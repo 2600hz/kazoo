@@ -10,16 +10,16 @@
 -module(kapi_authz).
 
 -export([authz_req/1, authz_req_v/1
-         ,authz_resp/1, authz_resp_v/1
-         ,balance_check_req/1, balance_check_req_v/1
-         ,balance_check_resp/1, balance_check_resp_v/1
-         ,bind_q/2, unbind_q/2
-         ,declare_exchanges/0
-         ,publish_authz_req/1, publish_authz_req/2
-         ,publish_authz_resp/2, publish_authz_resp/3
-         ,broadcast_authz_resp/1, broadcast_authz_resp/2
-         ,publish_balance_check_req/1, publish_balance_check_req/2
-         ,publish_balance_check_resp/2, publish_balance_check_resp/3
+	,authz_resp/1, authz_resp_v/1
+	,balance_check_req/1, balance_check_req_v/1
+	,balance_check_resp/1, balance_check_resp_v/1
+	,bind_q/2, unbind_q/2
+	,declare_exchanges/0
+	,publish_authz_req/1, publish_authz_req/2
+	,publish_authz_resp/2, publish_authz_resp/3
+	,broadcast_authz_resp/1, broadcast_authz_resp/2
+	,publish_balance_check_req/1, publish_balance_check_req/2
+	,publish_balance_check_resp/2, publish_balance_check_resp/3
         ]).
 
 -include_lib("kazoo/include/kz_api.hrl").
@@ -31,37 +31,37 @@
 
 %% Authorization Requests
 -define(AUTHZ_REQ_HEADERS, [<<"Call-Direction">>
-                            ,<<"Call-ID">>
-                            ,<<"Caller-ID-Name">>
-                            ,<<"Caller-ID-Number">>
-                            ,<<"From">>
-                            ,<<"Request">>
-                            ,<<"To">>
+			   ,<<"Call-ID">>
+			   ,<<"Caller-ID-Name">>
+			   ,<<"Caller-ID-Number">>
+			   ,<<"From">>
+			   ,<<"Request">>
+			   ,<<"To">>
                            ]).
 -define(BALANCE_CHECK_REQ_HEADERS, [<<"Accounts">>]).
 -define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>
-                                     ,<<"From-Network-Addr">>
-                                     ,<<"From-Network-Port">>
-                                     ,<<"Other-Leg-Call-ID">>
-                                     ,<<"From-Network-Addr">>
-                                     ,<<"From-Network-Port">>
-                                     ,<<"Switch-Hostname">>
+				    ,<<"From-Network-Addr">>
+				    ,<<"From-Network-Port">>
+				    ,<<"Other-Leg-Call-ID">>
+				    ,<<"From-Network-Addr">>
+				    ,<<"From-Network-Port">>
+				    ,<<"Switch-Hostname">>
                                     ]).
 -define(OPTIONAL_BALANCE_CHECK_REQ_HEADERS, []).
 -define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                           ,{<<"Event-Name">>, <<"authz_req">>}
+			  ,{<<"Event-Name">>, <<"authz_req">>}
                           ]).
 -define(BALANCE_CHECK_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                                   ,{<<"Event-Name">>, <<"balance_check_req">>}
-                          ]).
+				  ,{<<"Event-Name">>, <<"balance_check_req">>}
+				  ]).
 -define(AUTHZ_REQ_TYPES, [{<<"To">>, fun is_binary/1}
-                          ,{<<"From">>, fun is_binary/1}
-                          ,{<<"Call-ID">>, fun is_binary/1}
-                          ,{<<"Account-ID">>, fun is_binary/1}
-                          ,{<<"Caller-ID-Name">>, fun is_binary/1}
-                          ,{<<"Caller-ID-Number">>, fun is_binary/1}
-                          ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-                          ,{<<"Usage">>, fun kz_json:is_json_object/1}
+			 ,{<<"From">>, fun is_binary/1}
+			 ,{<<"Call-ID">>, fun is_binary/1}
+			 ,{<<"Account-ID">>, fun is_binary/1}
+			 ,{<<"Caller-ID-Name">>, fun is_binary/1}
+			 ,{<<"Caller-ID-Number">>, fun is_binary/1}
+			 ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+			 ,{<<"Usage">>, fun kz_json:is_json_object/1}
                          ]).
 %% TODO: allow only ne_binaries()
 -define(BALANCE_CHECK_REQ_TYPES, [{<<"Accounts">>, fun is_list/1}]).
@@ -70,18 +70,18 @@
 -define(AUTHZ_RESP_HEADERS, [<<"Call-ID">>, <<"Is-Authorized">>]).
 -define(BALANCE_CHECK_RESP_HEADERS, [<<"Balances">>]).
 -define(OPTIONAL_AUTHZ_RESP_HEADERS, [<<"Account-ID">>, <<"Account-Billing">>
-                                      ,<<"Reseller-ID">>, <<"Reseller-Billing">>
-                                      ,<<"Custom-Channel-Vars">>, <<"Call-Direction">>
-                                      ,<<"Soft-Limit">>, <<"Other-Leg-Call-ID">>
+				     ,<<"Reseller-ID">>, <<"Reseller-Billing">>
+				     ,<<"Custom-Channel-Vars">>, <<"Call-Direction">>
+				     ,<<"Soft-Limit">>, <<"Other-Leg-Call-ID">>
                                      ]).
 -define(OPTIONAL_BALANCE_CHECK_RESP_HEADERS, []).
 -define(AUTHZ_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                            ,{<<"Event-Name">>, <<"authz_resp">>}
-                            ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
-                            ,{<<"Global-Resource">>, [<<"true">>, <<"false">>]}
+			   ,{<<"Event-Name">>, <<"authz_resp">>}
+			   ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
+			   ,{<<"Global-Resource">>, [<<"true">>, <<"false">>]}
                            ]).
 -define(BALANCE_CHECK_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                                    ,{<<"Event-Name">>, <<"balance_check_resp">>}
+				   ,{<<"Event-Name">>, <<"balance_check_resp">>}
                                    ]).
 -define(AUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}]).
 -define(BALANCE_CHECK_RESP_TYPES, [{<<"Balances">>, fun kz_json:is_json_object/1}]).

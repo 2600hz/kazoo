@@ -54,57 +54,57 @@ send(_, _, 'undefined', 'undefined', 'undefined') ->
 send(CallId, CtrlQ, 'undefined', 'undefined', Media) ->
     NoopId = kz_datamgr:get_uuid(),
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
-                                   ,{<<"Msg-ID">>, NoopId}
-                                   ,{<<"Call-ID">>, CallId}
+				  ,{<<"Msg-ID">>, NoopId}
+				  ,{<<"Call-ID">>, CallId}
                                   ])
-                ,kz_json:from_list([{<<"Application-Name">>, <<"play">>}
-                                    ,{<<"Msg-ID">>, NoopId}
-                                    ,{<<"Media-Name">>, Media}
-                                    ,{<<"Call-ID">>, CallId}
-                                   ])
-                ,kz_json:from_list([{<<"Application-Name">>, <<"progress">>}
-                                    ,{<<"Msg-ID">>, NoopId}
-                                    ,{<<"Call-ID">>, CallId}
-                                   ])
+	       ,kz_json:from_list([{<<"Application-Name">>, <<"play">>}
+				  ,{<<"Msg-ID">>, NoopId}
+				  ,{<<"Media-Name">>, Media}
+				  ,{<<"Call-ID">>, CallId}
+				  ])
+	       ,kz_json:from_list([{<<"Application-Name">>, <<"progress">>}
+				  ,{<<"Msg-ID">>, NoopId}
+				  ,{<<"Call-ID">>, CallId}
+				  ])
                ],
     do_send(CallId, CtrlQ, Commands),
     {'ok', NoopId};
 send(CallId, CtrlQ, Code, Cause, 'undefined') ->
     NoopId = kz_datamgr:get_uuid(),
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
-                                   ,{<<"Msg-ID">>, NoopId}
-                                   ,{<<"Call-ID">>, CallId}
+				  ,{<<"Msg-ID">>, NoopId}
+				  ,{<<"Call-ID">>, CallId}
                                   ])
-                ,kz_json:from_list([{<<"Application-Name">>, <<"respond">>}
-                                    ,{<<"Msg-ID">>, NoopId}
-                                    ,{<<"Response-Code">>, Code}
-                                    ,{<<"Response-Message">>, Cause}
-                                    ,{<<"Call-ID">>, CallId}
-                                   ])
+	       ,kz_json:from_list([{<<"Application-Name">>, <<"respond">>}
+				  ,{<<"Msg-ID">>, NoopId}
+				  ,{<<"Response-Code">>, Code}
+				  ,{<<"Response-Message">>, Cause}
+				  ,{<<"Call-ID">>, CallId}
+				  ])
                ],
     do_send(CallId, CtrlQ, Commands),
     {'ok', NoopId};
 send(CallId, CtrlQ, Code, Cause, Media) ->
     NoopId = kz_datamgr:get_uuid(),
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
-                                   ,{<<"Msg-ID">>, NoopId}
-                                   ,{<<"Call-ID">>, CallId}
+				  ,{<<"Msg-ID">>, NoopId}
+				  ,{<<"Call-ID">>, CallId}
                                   ])
-                ,kz_json:from_list([{<<"Application-Name">>, <<"respond">>}
-                                    ,{<<"Response-Code">>, Code}
-                                    ,{<<"Response-Message">>, Cause}
-                                    ,{<<"Msg-ID">>, NoopId}
-                                    ,{<<"Call-ID">>, CallId}
-                                   ])
-                ,kz_json:from_list([{<<"Application-Name">>, <<"play">>}
-                                    ,{<<"Media-Name">>, Media}
-                                    ,{<<"Msg-ID">>, NoopId}
-                                    ,{<<"Call-ID">>, CallId}
-                                   ])
-                ,kz_json:from_list([{<<"Application-Name">>, <<"progress">>}
-                                    ,{<<"Msg-ID">>, NoopId}
-                                    ,{<<"Call-ID">>, CallId}
-                                   ])
+	       ,kz_json:from_list([{<<"Application-Name">>, <<"respond">>}
+				  ,{<<"Response-Code">>, Code}
+				  ,{<<"Response-Message">>, Cause}
+				  ,{<<"Msg-ID">>, NoopId}
+				  ,{<<"Call-ID">>, CallId}
+				  ])
+	       ,kz_json:from_list([{<<"Application-Name">>, <<"play">>}
+				  ,{<<"Media-Name">>, Media}
+				  ,{<<"Msg-ID">>, NoopId}
+				  ,{<<"Call-ID">>, CallId}
+				  ])
+	       ,kz_json:from_list([{<<"Application-Name">>, <<"progress">>}
+				  ,{<<"Msg-ID">>, NoopId}
+				  ,{<<"Call-ID">>, CallId}
+				  ])
                ],
     do_send(CallId, CtrlQ, Commands),
     {'ok', NoopId}.
@@ -112,16 +112,16 @@ send(CallId, CtrlQ, Code, Cause, Media) ->
 -spec do_send(ne_binary(), ne_binary(), kz_json:objects()) -> 'ok'.
 do_send(CallId, CtrlQ, Commands) ->
     Command = [{<<"Application-Name">>, <<"queue">>}
-               ,{<<"Call-ID">>, CallId}
-               ,{<<"Commands">>, Commands}
-               ,{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
+	      ,{<<"Call-ID">>, CallId}
+	      ,{<<"Commands">>, Commands}
+	      ,{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
                | kz_api:default_headers(<<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)
               ],
     kz_amqp_worker:cast(Command
-                        ,fun(C) ->
-                                 {'ok', Payload} = kapi_dialplan:queue(C),
-                                 kapi_dialplan:publish_action(CtrlQ, Payload)
-                         end
+		       ,fun(C) ->
+				{'ok', Payload} = kapi_dialplan:queue(C),
+				kapi_dialplan:publish_action(CtrlQ, Payload)
+			end
                        ).
 
 %%--------------------------------------------------------------------
@@ -152,10 +152,10 @@ send_default_response(Call, Response) ->
     Media = kz_json:get_value(<<"Media">>, Response),
 
     send(kapps_call:call_id(Call)
-         ,kapps_call:control_queue(Call)
-         ,kz_json:get_value(<<"Code">>, Response)
-         ,kz_json:get_value(<<"Message">>, Response)
-         ,kz_media_util:get_prompt(Media, Call)
+	,kapps_call:control_queue(Call)
+	,kz_json:get_value(<<"Code">>, Response)
+	,kz_json:get_value(<<"Message">>, Response)
+	,kz_media_util:get_prompt(Media, Call)
         ).
 
 %%--------------------------------------------------------------------
@@ -215,159 +215,159 @@ default_response(<<"CRASH">>) -> 'undefined';
 
 default_response(<<"UNALLOCATED_NUMBER">>) ->
     [{<<"Code">>, <<"404">>}
-     ,{<<"Message">>, <<"No route to destination">>}
-     ,{<<"Media">>, <<"fault-can_not_be_completed_as_dialed">>}
+    ,{<<"Message">>, <<"No route to destination">>}
+    ,{<<"Media">>, <<"fault-can_not_be_completed_as_dialed">>}
     ];
 default_response(<<"NO_ROUTE_TRANSIT_NET">>) ->
     [{<<"Code">>, <<"404">>}
-     ,{<<"Message">>, <<"Invalid number">>}
+    ,{<<"Message">>, <<"Invalid number">>}
     ];
 default_response(<<"NO_ROUTE_DESTINATION">>) ->
     [{<<"Code">>, <<"404">>}
-     ,{<<"Message">>, <<"No route to destination">>}
-     ,{<<"Media">>, <<"fault-can_not_be_completed_as_dialed">>}
+    ,{<<"Message">>, <<"No route to destination">>}
+    ,{<<"Media">>, <<"fault-can_not_be_completed_as_dialed">>}
     ];
 default_response(<<"NORMAL_CLEARING">>) ->
     [{<<"Media">>, <<"tone_stream://%(500,500,480,620);loops=25">>}];
 default_response(<<"USER_BUSY">>) ->
     [{<<"Code">>, <<"486">>}
-     ,{<<"Message">>, <<"Number busy">>}
-     ,{<<"Media">>, <<"tone_stream://%(500,500,480,620);loops=25">>}
+    ,{<<"Message">>, <<"Number busy">>}
+    ,{<<"Media">>, <<"tone_stream://%(500,500,480,620);loops=25">>}
     ];
 default_response(<<"NO_USER_RESPONSE">>) ->
     [{<<"Code">>, <<"408">>}
-     ,{<<"Message">>, <<"No response">>}
-     ,{<<"Media">>, <<"tone_stream://%(250,250,480,620);loops=25">>}
+    ,{<<"Message">>, <<"No response">>}
+    ,{<<"Media">>, <<"tone_stream://%(250,250,480,620);loops=25">>}
     ];
 default_response(<<"NO_ANSWER">>) ->
     [{<<"Code">>, <<"480">>}
-     ,{<<"Message">>, <<"No answer">>}
+    ,{<<"Message">>, <<"No answer">>}
     ];
 default_response(<<"SUBSCRIBER_ABSENT">>) ->
     [{<<"Code">>, <<"480">>}
-     ,{<<"Message">>, <<"Subscriber absent">>}
+    ,{<<"Message">>, <<"Subscriber absent">>}
     ];
 default_response(<<"CALL_REJECTED">>) ->
     [{<<"Code">>, <<"603">>}
-     ,{<<"Message">>, <<"Call Rejected">>}
-     ,{<<"Media">>, <<"tone_stream://%(250,250,480,620);loops=25">>}
+    ,{<<"Message">>, <<"Call Rejected">>}
+    ,{<<"Media">>, <<"tone_stream://%(250,250,480,620);loops=25">>}
     ];
 default_response(<<"NUMBER_CHANGED">>) ->
     [{<<"Code">>, <<"410">>}
-     ,{<<"Message">>, <<"Number changed">>}
+    ,{<<"Message">>, <<"Number changed">>}
     ];
 default_response(<<"REDIRECTION_TO_NEW_DESTINATION">>) ->
     [{<<"Code">>, <<"410">>}
-     ,{<<"Message">>, <<"Redirection to new destination">>}
+    ,{<<"Message">>, <<"Redirection to new destination">>}
     ];
 default_response(<<"EXCHANGE_ROUTING_ERROR">>) ->
     [{<<"Code">>, <<"483">>}
-     ,{<<"Message">>, <<"Exchange routing error">>}
-     ,{<<"Media">>, <<"fault-facility_trouble">>}
+    ,{<<"Message">>, <<"Exchange routing error">>}
+    ,{<<"Media">>, <<"fault-facility_trouble">>}
     ];
 default_response(<<"DESTINATION_OUT_OF_ORDER">>) ->
     [{<<"Code">>, <<"502">>}
-     ,{<<"Message">>, <<"Destination out of order">>}
-     ,{<<"Media">>, <<"fault-can_not_be_completed_as_dialed">>}
+    ,{<<"Message">>, <<"Destination out of order">>}
+    ,{<<"Media">>, <<"fault-can_not_be_completed_as_dialed">>}
     ];
 default_response(<<"INVALID_NUMBER_FORMAT">>) ->
     [{<<"Code">>, <<"484">>}
-     ,{<<"Message">>, <<"Invalid number format">>}
-     ,{<<"Media">>, <<"fault-can_not_be_completed_as_dialed">>}
+    ,{<<"Message">>, <<"Invalid number format">>}
+    ,{<<"Media">>, <<"fault-can_not_be_completed_as_dialed">>}
     ];
 default_response(<<"FACILITY_REJECTED">>) ->
     [{<<"Code">>, <<"510">>}
-     ,{<<"Message">>, <<"Facility rejected">>}
+    ,{<<"Message">>, <<"Facility rejected">>}
     ];
 default_response(<<"NORMAL_UNSPECIFIED">>) ->
     [{<<"Code">>, <<"480">>}
-     ,{<<"Message">>, <<"Normal unspecified">>}
+    ,{<<"Message">>, <<"Normal unspecified">>}
     ];
 default_response(<<"NORMAL_CIRCUIT_CONGESTION">>) ->
     [{<<"Code">>, <<"503">>}
-     ,{<<"Message">>, <<"Normal circuit congestion">>}
+    ,{<<"Message">>, <<"Normal circuit congestion">>}
     ];
 default_response(<<"NETWORK_OUT_OF_ORDER">>) ->
     [{<<"Code">>, <<"503">>}
-     ,{<<"Message">>, <<"Network out of order">>}
+    ,{<<"Message">>, <<"Network out of order">>}
     ];
 default_response(<<"NORMAL_TEMPORARY_FAILURE">>) ->
     [{<<"Code">>, <<"503">>}
-     ,{<<"Message">>, <<"Normal temporary failure">>}
-     ,{<<"Media">>, <<"fault-can_not_be_completed_at_this_time">>}
+    ,{<<"Message">>, <<"Normal temporary failure">>}
+    ,{<<"Media">>, <<"fault-can_not_be_completed_at_this_time">>}
     ];
 default_response(<<"SWITCH_CONGESTION">>) ->
     [{<<"Code">>, <<"503">>}
-     ,{<<"Message">>, <<"Switch congestion">>}
+    ,{<<"Message">>, <<"Switch congestion">>}
     ];
 default_response(<<"REQUESTED_CHAN_UNAVAIL">>) ->
     [{<<"Code">>, <<"503">>}
-     ,{<<"Message">>, <<"Requested channel unavailable">>}
+    ,{<<"Message">>, <<"Requested channel unavailable">>}
     ];
 default_response(<<"OUTGOING_CALL_BARRED">>) ->
     [{<<"Code">>, <<"403">>}
-     ,{<<"Message">>, <<"Outgoing call barred">>}
+    ,{<<"Message">>, <<"Outgoing call barred">>}
     ];
 default_response(<<"INCOMING_CALL_BARRED">>) ->
     [{<<"Code">>, <<"403">>}
-     ,{<<"Message">>, <<"Incoming call barred">>}
+    ,{<<"Message">>, <<"Incoming call barred">>}
     ];
 default_response(<<"BEARERCAPABILITY_NOTAUTH">>) ->
     [{<<"Code">>, <<"403">>}
-     ,{<<"Message">>, <<"Bearer capability not authorized">>}
+    ,{<<"Message">>, <<"Bearer capability not authorized">>}
     ];
 default_response(<<"BEARERCAPABILITY_NOTAVAIL">>) ->
     [{<<"Code">>, <<"403">>}
-     ,{<<"Message">>, <<"Bearer capability not presently available">>}
+    ,{<<"Message">>, <<"Bearer capability not presently available">>}
     ];
 default_response(<<"BEARERCAPABILITY_NOTIMPL">>) ->
     [{<<"Code">>, <<"488">>}
-     ,{<<"Message">>, <<"Bearer capability not implemented">>}
+    ,{<<"Message">>, <<"Bearer capability not implemented">>}
     ];
 default_response(<<"UNKNOWN">>) ->
     [{<<"Code">>, <<"500">>}
-     ,{<<"Message">>, <<"Unknown error happened">>}
+    ,{<<"Message">>, <<"Unknown error happened">>}
     ];
 default_response(<<"FACILITY_NOT_IMPLEMENTED">>) ->
     [{<<"Code">>, <<"501">>}
-     ,{<<"Message">>, <<"Facility not implemented">>}
+    ,{<<"Message">>, <<"Facility not implemented">>}
     ];
 default_response(<<"SERVICE_NOT_IMPLEMENTED">>) ->
     [{<<"Code">>, <<"501">>}
-     ,{<<"Message">>, <<"Service not implemented">>}
-     ,{<<"Media">>, <<"fault-facility_trouble">>}
+    ,{<<"Message">>, <<"Service not implemented">>}
+    ,{<<"Media">>, <<"fault-facility_trouble">>}
     ];
 default_response(<<"INCOMPATIBLE_DESTINATION">>) ->
     [{<<"Code">>, <<"488">>}
-     ,{<<"Message">>, <<"Incompatible destination">>}
-     ,{<<"Media">>, <<"fault-facility_trouble">>}
+    ,{<<"Message">>, <<"Incompatible destination">>}
+    ,{<<"Media">>, <<"fault-facility_trouble">>}
     ];
 default_response(<<"MANDATORY_IE_MISSING">>) ->
     [{<<"Code">>, <<"400">>}
-     ,{<<"Message">>, <<"Mandatory informatin missing">>}
-     ,{<<"Media">>, <<"fault-facility_trouble">>}
+    ,{<<"Message">>, <<"Mandatory informatin missing">>}
+    ,{<<"Media">>, <<"fault-facility_trouble">>}
     ];
 default_response(<<"RECOVERY_ON_TIMER_EXPIRE">>) ->
     [{<<"Code">>, <<"504">>}
-     ,{<<"Message">>, <<"Recovery on timer expire">>}
-     ,{<<"Media">>, <<"tone_stream://%(250,250,480,620);loops=25">>}
+    ,{<<"Message">>, <<"Recovery on timer expire">>}
+    ,{<<"Media">>, <<"tone_stream://%(250,250,480,620);loops=25">>}
     ];
 default_response(<<"MANDATORY_IE_LENGTH_ERROR">>) ->
     [{<<"Code">>, <<"400">>}
-     ,{<<"Message">>, <<"Mandatory informatin missing">>}
-     ,{<<"Media">>, <<"fault-facility_trouble">>}
+    ,{<<"Message">>, <<"Mandatory informatin missing">>}
+    ,{<<"Media">>, <<"fault-facility_trouble">>}
     ];
 default_response(<<"ORIGINATOR_CANCEL">>) ->
     [{<<"Code">>, <<"487">>}
-     ,{<<"Message">>, <<"Originator cancel">>}
+    ,{<<"Message">>, <<"Originator cancel">>}
     ];
 default_response(<<"MEDIA_TIMEOUT">>) ->
     [{<<"Code">>, <<"504">>}
-     ,{<<"Message">>, <<"Media timeout">>}
-     ,{<<"Media">>, <<"tone_stream://%(250,250,480,620);loops=25">>}
+    ,{<<"Message">>, <<"Media timeout">>}
+    ,{<<"Media">>, <<"tone_stream://%(250,250,480,620);loops=25">>}
     ];
 default_response(<<"PROGRESS_TIMEOUT">>) ->
     [{<<"Code">>, <<"486">>}
-     ,{<<"Message">>, <<"Progress timeout">>}
-     ,{<<"Media">>, <<"fault-can_not_be_completed_at_this_time">>}
+    ,{<<"Message">>, <<"Progress timeout">>}
+    ,{<<"Media">>, <<"fault-can_not_be_completed_at_this_time">>}
     ].

@@ -13,23 +13,23 @@
 -export([replicate_from_accounts/2, replicate_from_account/3]).
 -export([revise_whapp_views_in_accounts/1]).
 -export([get_all_accounts/0
-         ,get_all_accounts/1
-         ,get_all_accounts_and_mods/0
-         ,get_all_accounts_and_mods/1
-         ,get_all_account_mods/0
-         ,get_all_account_mods/1
-         ,get_account_mods/1
-         ,get_account_mods/2
+	,get_all_accounts/1
+	,get_all_accounts_and_mods/0
+	,get_all_accounts_and_mods/1
+	,get_all_account_mods/0
+	,get_all_account_mods/1
+	,get_account_mods/1
+	,get_account_mods/2
         ]).
 -export([is_account_db/1
         ,is_account_mod/1
         ]).
 -export([get_account_by_realm/1
-         ,get_account_by_ip/1, get_ccvs_by_ip/1
-         ,get_accounts_by_name/1
+	,get_account_by_ip/1, get_ccvs_by_ip/1
+	,get_accounts_by_name/1
         ]).
 -export([get_master_account_id/0
-         ,get_master_account_db/0
+	,get_master_account_db/0
         ]).
 -export([is_master_account/1]).
 -export([account_depth/1]).
@@ -47,14 +47,14 @@
 
 -export([amqp_pool_send/2]).
 -export([amqp_pool_request/3, amqp_pool_request/4
-         ,amqp_pool_request_custom/4, amqp_pool_request_custom/5
-         ,amqp_pool_collect/2, amqp_pool_collect/3
-         ,amqp_pool_collect/4
+	,amqp_pool_request_custom/4, amqp_pool_request_custom/5
+	,amqp_pool_collect/2, amqp_pool_collect/3
+	,amqp_pool_collect/4
         ]).
 
 -export([write_tts_file/2]).
 -export([to_magic_hash/1
-         ,from_magic_hash/1
+	,from_magic_hash/1
         ]).
 
 -export([media_local_store_url/2]).
@@ -131,9 +131,9 @@ replicate_from_account(AccountDb, AccountDb, _) ->
     {'error', 'matching_dbs'};
 replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
     ReplicateProps = [{<<"source">>, kz_util:format_account_id(AccountDb, ?REPLICATE_ENCODING)}
-                      ,{<<"target">>, TargetDb}
-                      ,{<<"filter">>, FilterDoc}
-                      ,{<<"create_target">>, 'true'}
+		     ,{<<"target">>, TargetDb}
+		     ,{<<"filter">>, FilterDoc}
+		     ,{<<"create_target">>, 'true'}
                      ],
     try kz_datamgr:db_replicate(ReplicateProps) of
         {'ok', _} ->
@@ -209,7 +209,7 @@ account_depth(Account) ->
 account_has_descendants(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     ViewOptions = [{'startkey', [AccountId]}
-                   ,{'endkey', [AccountId, kz_json:new()]}
+		  ,{'endkey', [AccountId, kz_json:new()]}
                   ],
     {'ok', JObjs} = kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions),
     length([JObj || JObj <- JObjs, kz_account:id(JObj) =/= AccountId]) > 0.
@@ -245,8 +245,8 @@ find_oldest_doc([First|Docs]) ->
                                 'false' -> Eldest
                             end
                     end
-                    ,{kz_doc:created(First), kz_doc:id(First)}
-                    ,Docs),
+		   ,{kz_doc:created(First), kz_doc:id(First)}
+		   ,Docs),
     {'ok', OldestDocID}.
 
 %%--------------------------------------------------------------------
@@ -262,7 +262,7 @@ get_all_accounts() -> get_all_accounts(?REPLICATE_ENCODING).
 
 get_all_accounts(Encoding) ->
     {'ok', Dbs} = kz_datamgr:db_list([{'startkey', <<"account/">>}
-                                      ,{'endkey', <<"account/\ufff0">>}
+				     ,{'endkey', <<"account/\ufff0">>}
                                      ]),
     [kz_util:format_account_id(Db, Encoding)
      || Db <- Dbs, is_account_db(Db)
@@ -285,7 +285,7 @@ get_all_accounts_and_mods(Encoding) ->
 format_db(Db, Encoding) ->
     Fs =
         [{fun is_account_db/1, fun kz_util:format_account_id/2}
-         ,{fun is_account_mod/1, fun kz_util:format_account_modb/2}
+	,{fun is_account_mod/1, fun kz_util:format_account_modb/2}
         ],
     format_db(Db, Encoding, Fs).
 
@@ -408,10 +408,10 @@ account_ccvs_from_ip_auth(Doc) ->
 
     props:filter_undefined(
       [{<<"Account-ID">>, AccountID}
-       ,{<<"Owner-ID">>, OwnerID}
-       ,{<<"Authorizing-ID">>, kz_doc:id(Doc)}
-       ,{<<"Inception">>, <<"on-net">>}
-       ,{<<"Authorizing-Type">>, AuthType}
+      ,{<<"Owner-ID">>, OwnerID}
+      ,{<<"Authorizing-ID">>, kz_doc:id(Doc)}
+      ,{<<"Inception">>, <<"on-net">>}
+      ,{<<"Authorizing-Type">>, AuthType}
       ]).
 
 %%--------------------------------------------------------------------
@@ -660,7 +660,7 @@ get_destination(JObj, [Key|Keys]) ->
     end;
 get_destination(JObj, []) ->
     {kz_json:get_value(<<"To-DID">>, JObj)
-     ,kz_json:get_value(<<"To-Realm">>, JObj)
+    ,kz_json:get_value(<<"To-Realm">>, JObj)
     }.
 
 -spec try_split(api_binary()) ->
@@ -713,9 +713,9 @@ system_report(Subject, Msg, Call) ->
     AppVersion = kapps_call:application_version(Call),
     Notify = props:filter_undefined(
                [{<<"Subject">>, Subject}
-                ,{<<"Message">>, iolist_to_binary(Msg)}
-                ,{<<"Details">>, kapps_call:to_json(Call)}
-                ,{<<"Account-ID">>, kapps_call:account_id(Call)}
+	       ,{<<"Message">>, iolist_to_binary(Msg)}
+	       ,{<<"Details">>, kapps_call:to_json(Call)}
+	       ,{<<"Account-ID">>, kapps_call:account_id(Call)}
                 | kz_api:default_headers(AppName, AppVersion)
                ]),
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).

@@ -34,11 +34,11 @@ reconcile(Services) ->
             Services;
         {'ok', Count} ->
             kz_services:update(
-                ?CATEGORY
-                ,?ITEM
-                ,Count
-                ,kz_services:reset_category(?CATEGORY, Services)
-            )
+	      ?CATEGORY
+			      ,?ITEM
+			      ,Count
+			      ,kz_services:reset_category(?CATEGORY, Services)
+	     )
     end.
 
 reconcile(Services0, ?ITEM=Item) ->

@@ -9,10 +9,10 @@
 -define(CONFIG_CAT, ?APP_NAME).
 
 -define(EVENT(CallId, EventName, Event)
-        ,{'event', CallId, EventName, Event}
+       ,{'event', CallId, EventName, Event}
        ).
 
 -define(WSD_ENABLED, kapps_config:get_is_true(?CONFIG_CAT, <<"webseq_enabled">>, 'false')).
-	   
+
 -define(KONAMI_HRL, 'true').
 -endif.

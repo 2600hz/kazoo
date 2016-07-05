@@ -10,9 +10,9 @@
 
 %% API
 -export([create_config/0
-         ,start/0
-         ,kazoo_ver/1
-         ,get_oid/4
+	,start/0
+	,kazoo_ver/1
+	,get_oid/4
         ]).
 
 -include("stats.hrl").
@@ -51,68 +51,68 @@ create_config() ->
     'ok' = filelib:ensure_dir(DDir ++ "/db"),
     write_conf('agent_entry', 'write_agent_config', ADir,
                [['intAgentUDPPort', 4000]
-                ,['snmpEngineID', "Kazoo agent"]
-                ,['snmpEngineMaxMessageSize', 484]
-                ,['intAgentIpAddress', [0, 0, 0, 0]]
+	       ,['snmpEngineID', "Kazoo agent"]
+	       ,['snmpEngineMaxMessageSize', 484]
+	       ,['intAgentIpAddress', [0, 0, 0, 0]]
                ]),
     write_conf('standard_entry', 'write_standard_config', ADir
-               ,[['sysDescr', "Erlang/OTP Agent"]
-                 ,['sysName', "Kazoo agent"]
-                 ,['sysContact', "info@2600hz.com"]
-                 ,['sysLocation', "US"]
-                 ,['sysObjectID', [3, 6, 1, 4, 1, 193, 19]]
-                 ,['sysServices', 72]
-                 ,['snmpEnableAuthenTraps', 'disabled']
-                ]),
+	      ,[['sysDescr', "Erlang/OTP Agent"]
+	       ,['sysName', "Kazoo agent"]
+	       ,['sysContact', "info@2600hz.com"]
+	       ,['sysLocation', "US"]
+	       ,['sysObjectID', [3, 6, 1, 4, 1, 193, 19]]
+	       ,['sysServices', 72]
+	       ,['snmpEnableAuthenTraps', 'disabled']
+	       ]),
     write_conf('community_entry', 'write_community_config', ADir
-               ,[["public", "public", "initial", "", ""]]),
+	      ,[["public", "public", "initial", "", ""]]),
     write_conf('vacm_s2g_entry', 'write_vacm_config', ADir
-               ,[['v2c', "initial", "initial"]
-                 ,['usm', "initial", "initial"]
-                ]),
+	      ,[['v2c', "initial", "initial"]
+	       ,['usm', "initial", "initial"]
+	       ]),
     write_conf('vacm_acc_entry','append_vacm_config',ADir,
                [["initial", "", 'any', 'noAuthNoPriv'
-                 ,'exact', "restricted", "", "restricted"
+		,'exact', "restricted", "", "restricted"
                 ]
-                ,["initial", "", 'usm', 'authNoPriv'
-                  ,'exact', "internet", "internet"
-                  ,"internet"
-                 ]
-                ,["initial", "", 'usm', 'authPriv'
-                  ,'exact', "internet", "internet"
-                  ,"internet"
-                 ]
+	       ,["initial", "", 'usm', 'authNoPriv'
+		,'exact', "internet", "internet"
+		,"internet"
+		]
+	       ,["initial", "", 'usm', 'authPriv'
+		,'exact', "internet", "internet"
+		,"internet"
+		]
                ]),
     write_conf('vacm_vtf_entry', 'append_vacm_config', ADir,
                [["internet", [1, 3, 6, 1], 'included', 'null'],
                 ["restricted", [1, 3, 6, 1], 'included', 'null']
                ]),
-%%    SNMP Manager not needed yet.
-%%    MDir = CWD ++ "/manager/conf",
-%%    filelib:ensure_dir(MDir ++ "/manager"),
-%%    MDDir = CWD ++ "/db",
-%%    filelib:ensure_dir(MDDir ++ "/db"),
-%%    write_conf('snmpm_conf', 'manager_entry', 'write_manager_config', MDir,
-%%               [['address', [0, 0, 0, 0]], ['port', 5000], ['engine_id', "Kazoo engine"]
-%%                ,['max_message_size', 484]
-%%               ]),
-%%    write_conf('snmpm_conf', 'users_entry', 'write_users_config', MDir,
-%%               [['simple_user']]),
-%%    write_conf('snmpm_conf', 'agents_entry', 'write_agents_config', MDir,
-%%               [['simple_user', "otp agent", "public", [127, 0, 0, 1], 4000
-%%                 ,"agent's engine", 'infinity', 484, 'v2', 'v2c', "initial"
-%%                 ,'noAuthNoPriv'
-%%                ]]),
+    %%    SNMP Manager not needed yet.
+    %%    MDir = CWD ++ "/manager/conf",
+    %%    filelib:ensure_dir(MDir ++ "/manager"),
+    %%    MDDir = CWD ++ "/db",
+    %%    filelib:ensure_dir(MDDir ++ "/db"),
+    %%    write_conf('snmpm_conf', 'manager_entry', 'write_manager_config', MDir,
+    %%               [['address', [0, 0, 0, 0]], ['port', 5000], ['engine_id', "Kazoo engine"]
+    %%                ,['max_message_size', 484]
+    %%               ]),
+    %%    write_conf('snmpm_conf', 'users_entry', 'write_users_config', MDir,
+    %%               [['simple_user']]),
+    %%    write_conf('snmpm_conf', 'agents_entry', 'write_agents_config', MDir,
+    %%               [['simple_user', "otp agent", "public", [127, 0, 0, 1], 4000
+    %%                 ,"agent's engine", 'infinity', 484, 'v2', 'v2c', "initial"
+    %%                 ,'noAuthNoPriv'
+    %%                ]]),
     {'ok', File} = file:open("snmp.config",['write']),
     Snmp = [{'snmp',[{'agent'
-                      ,[{'config', [{'dir', ADir}]}
-                        ,{'db_dir', DDir}
-                       ]}
-%%                     ,{'manager'
-%%                       ,[{'config', [{'dir', MDir}
-%%                                     ,{'db_dir', MDDir}
-%%                                    ]}
-%%                        ]}
+		     ,[{'config', [{'dir', ADir}]}
+		      ,{'db_dir', DDir}
+		      ]}
+		     %%                     ,{'manager'
+		     %%                       ,[{'config', [{'dir', MDir}
+		     %%                                     ,{'db_dir', MDDir}
+		     %%                                    ]}
+		     %%                        ]}
                     ]}
            ],
     lager:debug(File, "~p.", [Snmp]),

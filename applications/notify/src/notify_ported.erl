@@ -78,10 +78,10 @@ handle_req(JObj, _Props) ->
 create_template_props(Event, Account) ->
     Admin = notify_util:find_admin(kz_json:get_value(<<"Authorized-By">>, Event)),
     [{<<"request">>, notify_util:json_to_template_props(Event)}
-     ,{<<"account">>, notify_util:json_to_template_props(Account)}
-     ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
-     ,{<<"service">>, notify_util:get_service_props(Account, ?MOD_CONFIG_CAT)}
-     ,{<<"send_from">>, get_send_from(Admin)}
+    ,{<<"account">>, notify_util:json_to_template_props(Account)}
+    ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
+    ,{<<"service">>, notify_util:get_service_props(Account, ?MOD_CONFIG_CAT)}
+    ,{<<"send_from">>, get_send_from(Admin)}
     ].
 
 %%--------------------------------------------------------------------
@@ -111,16 +111,16 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     From = props:get_value(<<"send_from">>, Props),
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
-                 ,[{<<"From">>, From}
-                   ,{<<"To">>, To}
-                   ,{<<"Subject">>, Subject}
-                  ]
-             ,[]
-             ,[{<<"multipart">>, <<"alternative">>, [], []
-                ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
-                  ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
-                 ]
-               }
-              ]
+	    ,[{<<"From">>, From}
+	     ,{<<"To">>, To}
+	     ,{<<"Subject">>, Subject}
+	     ]
+	    ,[]
+	    ,[{<<"multipart">>, <<"alternative">>, [], []
+	      ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
+	       ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
+	       ]
+	      }
+	     ]
             },
     notify_util:send_email(From, To, Email).

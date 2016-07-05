@@ -9,15 +9,15 @@
 -module(kapi_xmpp).
 
 -export([event/1, event_v/1
-         ,bind_q/2, unbind_q/2
-         ,declare_exchanges/0
-         ,publish_event/1, publish_event/2
+	,bind_q/2, unbind_q/2
+	,declare_exchanges/0
+	,publish_event/1, publish_event/2
         ]).
 
 -export([jid_short/1
-         ,jid_username/1
-         ,jid_server/1
-         ,jid_resource/1
+	,jid_username/1
+	,jid_server/1
+	,jid_resource/1
         ]).
 
 -include("fax.hrl").
@@ -26,9 +26,9 @@
 
 
 -define(XMPP_EVENT_ROUTING_KEY(Event, JID), <<"xmpp."
-                                                 ,(kz_util:to_binary(Event))/binary
-                                                 ,"."
-                                                 ,(amqp_util:encode(JID))/binary>>).
+					      ,(kz_util:to_binary(Event))/binary
+					      ,"."
+					      ,(amqp_util:encode(JID))/binary>>).
 -define(XMPP_EVENT_HEADERS, [<<"JID">>]).
 -define(OPTIONAL_XMPP_EVENT_HEADERS, [<<"Application-Name">>
                                      ,<<"Application-Event">>

@@ -32,12 +32,12 @@
 -export([handle/2]).
 
 -record(state, {callflow :: kz_json:object()
-                ,is_no_match :: boolean()
-                ,id :: ne_binary()
-                ,type :: ne_binary()
-                ,number :: ne_binary()
-                ,channels :: kz_json:objects()
-                ,config :: kz_json:object()
+	       ,is_no_match :: boolean()
+	       ,id :: ne_binary()
+	       ,type :: ne_binary()
+	       ,number :: ne_binary()
+	       ,channels :: kz_json:objects()
+	       ,config :: kz_json:object()
                }).
 -type state() :: #state{}.
 
@@ -64,9 +64,9 @@ init([Data, Call]) ->
     CF = cf_flow:lookup(Number, kapps_call:account_id(Call)),
     case CF of
         {'ok', Callflow, IsNoMatch} -> just(#state{callflow = Callflow
-                                                   ,is_no_match = IsNoMatch
-                                                   ,number = Number
-                                                   ,config = Data
+						  ,is_no_match = IsNoMatch
+						  ,number = Number
+						  ,config = Data
                                                   });
         _ -> nothing()
     end.
@@ -95,13 +95,13 @@ check_target_type(#state{type = TargetType} = S) ->
 get_channels(#state{type = TargetType, id = TargetId} = S, Call) ->
     lager:debug("Exlpoing channels"),
     Usernames = case TargetType of
-                   <<"device">> -> cf_util:sip_users_from_device_ids([TargetId], Call);
-                   <<"user">> ->
-                       EPs = cf_util:find_user_endpoints([TargetId], [], Call),
-                       cf_util:sip_users_from_device_ids(EPs, Call);
-                   <<"offnet">> ->
-                       []
-               end,
+		    <<"device">> -> cf_util:sip_users_from_device_ids([TargetId], Call);
+		    <<"user">> ->
+			EPs = cf_util:find_user_endpoints([TargetId], [], Call),
+			cf_util:sip_users_from_device_ids(EPs, Call);
+		    <<"offnet">> ->
+			[]
+		end,
     just(S#state{channels = cf_util:find_channels(Usernames, Call)}).
 
 -spec check_self(state(), kapps_call:call()) -> maybe_m(state()).
@@ -135,11 +135,11 @@ do(Monad, Actions) ->
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Ok = do(just([Data, Call]),[fun init/1
-                                ,fun get_target/1
-                                ,fun check_target_type/1
-                                ,fun (State) -> check_self(State, Call) end
-                                ,fun (State) -> get_channels(State, Call) end
-                                ,fun (State) -> send_request(State, Call) end
+			       ,fun get_target/1
+			       ,fun check_target_type/1
+			       ,fun (State) -> check_self(State, Call) end
+			       ,fun (State) -> get_channels(State, Call) end
+			       ,fun (State) -> send_request(State, Call) end
                                ]),
     case Ok of
         {'Just', 'accepted'} ->
@@ -175,27 +175,27 @@ get_device_sip_username(AccountDb, DeviceId) ->
 -spec no_channels(state(), kapps_call:call()) -> maybe_m('accepted') |
                                                  maybe_m('connected').
 no_channels(#state{id = TargetId
-                   ,type = TargetType
-                   ,is_no_match = 'false'
+		  ,type = TargetType
+		  ,is_no_match = 'false'
                   }
-            ,Call) ->
+	   ,Call) ->
     Flow = kz_json:from_list([{<<"module">>, TargetType}
-                              ,{<<"data">>, kz_json:from_list([{<<"id">>, TargetId}])}
+			     ,{<<"data">>, kz_json:from_list([{<<"id">>, TargetId}])}
                              ]),
     cf_exe:branch(Flow, Call),
     just('connected');
 no_channels(#state{type = <<"offnet">>
-                   ,is_no_match = 'true'
-                   ,number = Number
-                   ,config = CFG
+		  ,is_no_match = 'true'
+		  ,number = Number
+		  ,config = CFG
                   }
-            ,Call) ->
+	   ,Call) ->
     MsgProps = props:filter_undefined(
                  [{<<"Number">>, Number}
-                  ,{<<"Call">>, kapps_call:to_json(Call)}
-                  ,{<<"Tries">>, kz_json:get_value(<<"tries">>, CFG)}
-                  ,{<<"Stop-After">>, kz_json:get_value(<<"stop_after">>, CFG)}
-                  ,{<<"Try-Interval">>, kz_json:get_value(<<"try_interval">>, CFG)}
+		 ,{<<"Call">>, kapps_call:to_json(Call)}
+		 ,{<<"Tries">>, kz_json:get_value(<<"tries">>, CFG)}
+		 ,{<<"Stop-After">>, kz_json:get_value(<<"stop_after">>, CFG)}
+		 ,{<<"Try-Interval">>, kz_json:get_value(<<"try_interval">>, CFG)}
                  ]),
     JObj = kz_json:from_list([{<<"Delegate-Message">>, kz_json:from_list(MsgProps)}
                               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -205,18 +205,18 @@ no_channels(#state{type = <<"offnet">>
 
 -spec has_channels(state(), kapps_call:call()) -> maybe_m('accepted').
 has_channels(#state{id = TargetId
-                    ,type = TargetType
-                    ,number = Number
-                    ,config = CFG
+		   ,type = TargetType
+		   ,number = Number
+		   ,config = CFG
                    }, Call) ->
     Targets = get_sip_usernames_for_target(TargetId, TargetType, Call),
     MsgProps = props:filter_undefined(
                  [{<<"Account-DB">>, kapps_call:account_db(Call)}
-                  ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
-                  ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
-                  ,{<<"Number">>, Number}
-                  ,{<<"Targets">>, Targets}
-                  ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, CFG)}
+		 ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
+		 ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
+		 ,{<<"Number">>, Number}
+		 ,{<<"Targets">>, Targets}
+		 ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, CFG)}
                  ]),
     JObj = kz_json:from_list([{<<"Delegate-Message">>, kz_json:from_list(MsgProps)}
                               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)

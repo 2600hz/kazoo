@@ -9,13 +9,13 @@
 -module(call_inspector_maintenance).
 
 -export([list_active_parsers/0
-         ,stop_active_parser/1
-         ,start_freeswitch_parser/3
-         ,start_kamailio_parser/3
-         ,start_hep_parser/2
+	,stop_active_parser/1
+	,start_freeswitch_parser/3
+	,start_kamailio_parser/3
+	,start_hep_parser/2
         ]).
 -export([flush/0
-         ,flush/1
+	,flush/1
         ]).
 -export([callid_details/1]).
 
@@ -76,8 +76,8 @@ callid_details(CallId) ->
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     case kz_amqp_worker:call_collect(Props
-                                     ,fun kapi_inspector:publish_lookup_req/1
-                                     ,{'call_inspector', 'true'}
+				    ,fun kapi_inspector:publish_lookup_req/1
+				    ,{'call_inspector', 'true'}
                                     )
     of
         {'ok', JObjs} ->

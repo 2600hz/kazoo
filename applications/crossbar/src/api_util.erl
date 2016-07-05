@@ -12,29 +12,29 @@
 -module(api_util).
 
 -export([is_cors_preflight/1
-         ,is_cors_request/1
-         ,add_cors_headers/2
-         ,allow_methods/3
-         ,parse_path_tokens/2
-         ,get_req_data/2
-         ,get_http_verb/2
-         ,get_auth_token/2
-         ,is_authentic/2
-         ,is_permitted/2
-         ,is_known_content_type/2
-         ,does_resource_exist/1
-         ,validate/1
-         ,succeeded/1
-         ,execute_request/2
-         ,finish_request/2
-         ,create_push_response/2, create_push_file_response/2
-         ,set_resp_headers/2
-         ,create_resp_content/2
-         ,create_pull_response/2, create_pull_file_response/2
-         ,halt/2
-         ,content_type_matches/2
-         ,ensure_content_type/1
-         ,create_event_name/2
+	,is_cors_request/1
+	,add_cors_headers/2
+	,allow_methods/3
+	,parse_path_tokens/2
+	,get_req_data/2
+	,get_http_verb/2
+	,get_auth_token/2
+	,is_authentic/2
+	,is_permitted/2
+	,is_known_content_type/2
+	,does_resource_exist/1
+	,validate/1
+	,succeeded/1
+	,execute_request/2
+	,finish_request/2
+	,create_push_response/2, create_push_file_response/2
+	,set_resp_headers/2
+	,create_resp_content/2
+	,create_pull_response/2, create_pull_file_response/2
+	,halt/2
+	,content_type_matches/2
+	,ensure_content_type/1
+	,create_event_name/2
         ]).
 
 -include("crossbar.hrl").
@@ -42,10 +42,10 @@
 -define(MAX_UPLOAD_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"max_upload_size">>, 8000000)).
 
 -define(DATA_SCHEMA
-        ,kz_json:from_list([{<<"type">>, [<<"object">>, <<"array">>]}
-                            ,{<<"description">>, <<"The request data to be processed">>}
-                            ,{<<"required">>, 'true'}
-                           ])
+       ,kz_json:from_list([{<<"type">>, [<<"object">>, <<"array">>]}
+			  ,{<<"description">>, <<"The request data to be processed">>}
+			  ,{<<"required">>, 'true'}
+			  ])
        ).
 
 -define(ENVELOPE_SCHEMA
@@ -127,8 +127,8 @@ add_cors_headers(Req0, Context) ->
     lists:foldl(fun({H, V}, ReqAcc) ->
                         cowboy_req:set_resp_header(H, V, ReqAcc)
                 end
-                ,Req1
-                ,get_cors_headers(Allow)
+	       ,Req1
+	       ,get_cors_headers(Allow)
                ).
 
 %%--------------------------------------------------------------------
@@ -139,10 +139,10 @@ add_cors_headers(Req0, Context) ->
 -spec get_cors_headers(ne_binaries()) -> kz_proplist().
 get_cors_headers(Allow) ->
     [{<<"access-control-allow-origin">>, <<"*">>}
-     ,{<<"access-control-allow-methods">>, kz_util:join_binary(Allow, <<", ">>)}
-     ,{<<"access-control-allow-headers">>, <<"Content-Type, Depth, User-Agent, X-Http-Method-Override, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-control, X-Auth-Token, X-Kazoo-Cluster-ID, If-Match">>}
-     ,{<<"access-control-expose-headers">>, <<"Content-Type, X-Auth-Token, X-Request-ID, X-Kazoo-Cluster-ID, Location, Etag, ETag">>}
-     ,{<<"access-control-max-age">>, kz_util:to_binary(?SECONDS_IN_DAY)}
+    ,{<<"access-control-allow-methods">>, kz_util:join_binary(Allow, <<", ">>)}
+    ,{<<"access-control-allow-headers">>, <<"Content-Type, Depth, User-Agent, X-Http-Method-Override, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-control, X-Auth-Token, X-Kazoo-Cluster-ID, If-Match">>}
+    ,{<<"access-control-expose-headers">>, <<"Content-Type, X-Auth-Token, X-Request-ID, X-Kazoo-Cluster-ID, Location, Etag, ETag">>}
+    ,{<<"access-control-max-age">>, kz_util:to_binary(?SECONDS_IN_DAY)}
     ].
 
 -spec get_req_data(cb_context:context(), cowboy_req:req()) ->
@@ -305,15 +305,15 @@ try_json(ReqBody, QS, Context, Req) ->
                                       halt_return().
 halt_on_invalid_envelope(Msg, Req, Context) ->
     ?MODULE:halt(Req
-                 ,cb_context:add_validation_error(<<"json">>
-                                                 ,<<"invalid">>
-                                                 ,kz_json:from_list(
-                                                    [{<<"message">>, Msg}
-                                                    ,{<<"target">>, <<"body">>}
-                                                    ]
-                                                   )
-                                                 ,cb_context:set_resp_error_code(Context, 400)
-                                                 )
+		,cb_context:add_validation_error(<<"json">>
+						,<<"invalid">>
+						,kz_json:from_list(
+						   [{<<"message">>, Msg}
+						   ,{<<"target">>, <<"body">>}
+						   ]
+						  )
+						,cb_context:set_resp_error_code(Context, 400)
+						)
                 ).
 
 halt_on_invalid_envelope(Req, Context) ->
@@ -335,14 +335,14 @@ extract_multipart(Context, {'ok', Headers, Req}, QS) ->
     {Ctx, R} = get_req_data(Context, {props:get_value(<<"content-type">>, Headers), Req}, QS),
     extract_multipart(
       Ctx
-      ,cowboy_req:part(R)
-      ,QS
+		     ,cowboy_req:part(R)
+		     ,QS
      );
 extract_multipart(Context, Req, QS) ->
     extract_multipart(
       Context
-      ,cowboy_req:part(Req)
-      ,QS
+		     ,cowboy_req:part(Req)
+		     ,QS
      ).
 
 -spec extract_file(cb_context:context(), ne_binary(), cowboy_req:req()) ->
@@ -356,8 +356,8 @@ extract_file(Context, ContentType, Req0) ->
     end.
 
 -spec extract_file_part_body(cb_context:context(), ne_binary(), cowboy_req:req()) ->
-                          {cb_context:context(), cowboy_req:req()} |
-                          halt_return().
+				    {cb_context:context(), cowboy_req:req()} |
+				    halt_return().
 extract_file_part_body(Context, ContentType, Req0) ->
     case cowboy_req:part_body(Req0, [{'length', ?MAX_UPLOAD_SIZE}]) of
         {'more', _, Req1} ->
@@ -367,8 +367,8 @@ extract_file_part_body(Context, ContentType, Req0) ->
     end.
 
 -spec extract_file_body(cb_context:context(), ne_binary(), cowboy_req:req()) ->
-                          {cb_context:context(), cowboy_req:req()} |
-                          halt_return().
+			       {cb_context:context(), cowboy_req:req()} |
+			       halt_return().
 extract_file_body(Context, ContentType, Req0) ->
     case cowboy_req:body(Req0, [{'length', ?MAX_UPLOAD_SIZE}]) of
         {'more', _, Req1} ->
@@ -388,9 +388,9 @@ handle_max_filesize_exceeded(Context, Req1) ->
     Message = <<"Files must not be more than ", MaxSize/binary, " bytes">>,
     JObj = kz_json:from_list([{<<"message">>, Message}, {<<"target">>, Maximum}]),
     Context1 = cb_context:add_validation_error(<<"file">>
-                                               ,<<"maxSize">>
-                                               ,JObj
-                                               ,cb_context:set_resp_error_code(Context, 413)
+					      ,<<"maxSize">>
+					      ,JObj
+					      ,cb_context:set_resp_error_code(Context, 413)
                                               ),
 
     ?MODULE:halt(Req1, Context1).
@@ -408,10 +408,10 @@ handle_file_contents(Context, ContentType, Req1, FileContents) ->
             lager:debug("unexpected transfer encoding: '~s'", [_Else]),
             {ContentLength, Req3} = cowboy_req:header(<<"content-length">>, Req2),
             Headers = kz_json:from_list([{<<"content_type">>, ContentType}
-                                         ,{<<"content_length">>, ContentLength}
+					,{<<"content_length">>, ContentLength}
                                         ]),
             FileJObj = kz_json:from_list([{<<"headers">>, Headers}
-                                          ,{<<"contents">>, FileContents}
+					 ,{<<"contents">>, FileContents}
                                          ]),
             lager:debug("request is a file upload of type: ~s", [ContentType]),
 
@@ -446,10 +446,10 @@ decode_base64(Context, CT, Req0, Body) ->
         {'error', E} ->
             lager:debug("error getting request body: ~p", [E]),
             ?MODULE:halt(Req0
-                         ,cb_context:set_resp_status(
-                            cb_context:set_resp_data(Context, E)
-                            ,'fatal'
-                           )
+			,cb_context:set_resp_status(
+			   cb_context:set_resp_data(Context, E)
+						   ,'fatal'
+			  )
                         );
         {'more', _, Req1} ->
             handle_max_filesize_exceeded(Context, Req1);
@@ -463,10 +463,10 @@ decode_base64(Context, CT, Req0, Body) ->
                               Else -> Else
                           end,
             Headers = kz_json:from_list([{<<"content_type">>, ContentType}
-                                         ,{<<"content_length">>, byte_size(FileContents)}
+					,{<<"content_length">>, byte_size(FileContents)}
                                         ]),
             FileJObj = kz_json:from_list([{<<"headers">>, Headers}
-                                          ,{<<"contents">>, FileContents}
+					 ,{<<"contents">>, FileContents}
                                          ]),
             lager:debug("request is a base64 file upload of type: ~s", [ContentType]),
             {cb_context:set_req_files(Context, [{default_filename(), FileJObj}]), Req1}
@@ -483,7 +483,7 @@ get_request_body(Req0, Body) ->
     catch
         'error':{'badmatch', _} ->
             get_request_body(Req0, Body, cowboy_req:body(Req0))
-     end.
+    end.
 
 -type body_return() :: {'more', binary(), cowboy_req:req()} |
                        {'error', atom()} |
@@ -647,8 +647,8 @@ allow_methods(Responses, ReqVerb, HttpVerb) ->
         [] -> [];
         Succeeded ->
             AllowedSet = lists:foldr(fun allow_methods_fold/2
-                                     ,sets:new()
-                                     ,Succeeded
+				    ,sets:new()
+				    ,Succeeded
                                     ),
             maybe_add_post_method(ReqVerb, HttpVerb, sets:to_list(AllowedSet))
     end.
@@ -731,8 +731,8 @@ is_authentic(Req, Context, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
     end.
 
 -spec prefer_new_context(kz_proplist(), cowboy_req:req(), cb_context:context()) ->
-                        {{'false', <<>>} | 'true', cowboy_req:req(), cb_context:context()} |
-                        halt_return().
+				{{'false', <<>>} | 'true', cowboy_req:req(), cb_context:context()} |
+				halt_return().
 prefer_new_context([], Req, Context) ->
     {'true', Req, Context};
 prefer_new_context([{'true', Context1}|_], Req, _) ->
@@ -754,20 +754,20 @@ get_auth_token(Req0, Context) ->
                 Token ->
                     lager:debug("using auth token found"),
                     {Req1, cb_context:setters(Context, [{fun cb_context:set_auth_token/2, Token}
-                                                        ,{fun cb_context:set_auth_token_type/2, 'x-auth-token'}
+						       ,{fun cb_context:set_auth_token_type/2, 'x-auth-token'}
                                                        ]
                                              )}
             end;
         {Token, Req1} ->
             lager:debug("using auth token from header"),
             {Req1, cb_context:setters(Context, [{fun cb_context:set_auth_token/2, Token}
-                                                ,{fun cb_context:set_auth_token_type/2, 'x-auth-token'}
+					       ,{fun cb_context:set_auth_token_type/2, 'x-auth-token'}
                                                ]
                                      )}
     end.
 
 -spec get_authorization_token(cowboy_req:req(), cb_context:context()) ->
-                            {cowboy_req:req(), cb_context:context()}.
+				     {cowboy_req:req(), cb_context:context()}.
 get_authorization_token(Req0, Context) ->
     case cowboy_req:header(<<"authorization">>, Req0) of
         {'undefined', Req1} ->
@@ -787,7 +787,7 @@ get_authorization_token(Req0, Context) ->
 -spec set_auth_context(cb_context:context(), ne_binary() | {ne_binary(), atom()}) -> cb_context:context().
 set_auth_context(Context, {Token, TokenType}) ->
     cb_context:setters(Context, [{fun cb_context:set_auth_token/2, Token}
-                                 ,{fun cb_context:set_auth_token_type/2, TokenType}
+				,{fun cb_context:set_auth_token_type/2, TokenType}
                                 ]
                       );
 set_auth_context(Context, Authorization) ->
@@ -833,8 +833,8 @@ is_permitted_verb(Req, Context0, _ReqVerb) ->
     end.
 
 -spec is_permitted_verb_on_module(cowboy_req:req(), cb_context:context(), http_method(), list()) ->
-                                {'true', cowboy_req:req(), cb_context:context()} |
-                                halt_return().
+					 {'true', cowboy_req:req(), cb_context:context()} |
+					 halt_return().
 is_permitted_verb_on_module(Req, Context0, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
     Event = ?MODULE:create_event_name(Context0, <<"authorize.", Mod/binary>>),
     Payload = [Context0 | Params],
@@ -1000,8 +1000,8 @@ validate_data(Context, [{Mod, Params}|_]) ->
 validate_resources(Context, ReqNouns) ->
     cb_context:import_errors(
       lists:foldr(fun validate_resources_fold/2
-                  ,cb_context:set_resp_status(Context, 'success')
-                  ,ReqNouns
+		 ,cb_context:set_resp_status(Context, 'success')
+		 ,ReqNouns
                  )).
 
 -spec validate_resources_fold(req_noun(), cb_context:context()) -> cb_context:context().
@@ -1055,8 +1055,8 @@ execute_request(Req, Context) ->
 
 execute_request(Req, Context, Mod, Params, Verb) ->
     Event = create_event_name(Context, [<<"execute">>
-                                        ,kz_util:to_lower_binary(Verb)
-                                        ,Mod
+				       ,kz_util:to_lower_binary(Verb)
+				       ,Mod
                                        ]),
     Payload = [Context | Params],
     Context1 = crossbar_bindings:fold(Event, Payload),
@@ -1122,12 +1122,12 @@ create_resp_content(Req0, Context) ->
             case cb_context:req_value(Context, <<"jsonp">>) of
                 'undefined' ->
                     {JSON
-                     ,cowboy_req:set_resp_header(<<"content-type">>, <<"application/json">>, Req0)
+		    ,cowboy_req:set_resp_header(<<"content-type">>, <<"application/json">>, Req0)
                     };
                 JsonFun when is_binary(JsonFun) ->
                     lager:debug("jsonp wrapping in ~s: ~p", [JsonFun, JSON]),
                     {[JsonFun, <<"(">>, JSON, <<");">>]
-                     ,cowboy_req:set_resp_header(<<"content-type">>, ?JSONP_CONTENT_TYPE, Req0)
+		    ,cowboy_req:set_resp_header(<<"content-type">>, ?JSONP_CONTENT_TYPE, Req0)
                     }
             end
     catch
@@ -1140,7 +1140,7 @@ create_resp_content(Req0, Context) ->
     end.
 
 -spec create_resp_file(cowboy_req:req(), cb_context:context()) ->
-                                 {resp_file(), cowboy_req:req()}.
+			      {resp_file(), cowboy_req:req()}.
 create_resp_file(Req, Context) ->
     File = cb_context:resp_file(Context),
     Len = filelib:file_size(File),
@@ -1172,7 +1172,7 @@ create_push_response(Req0, Context, Fun) ->
     {succeeded(Context), cowboy_req:set_resp_body(Content, Req2), Context}.
 
 -spec create_push_file_response(cowboy_req:req(), cb_context:context()) ->
-                                  {boolean(), cowboy_req:req(), cb_context:context()}.
+				       {boolean(), cowboy_req:req(), cb_context:context()}.
 create_push_file_response(Req, Context) ->
     create_push_response(Req, Context, fun create_resp_file/2).
 
@@ -1211,8 +1211,8 @@ maybe_set_pull_response_stream(Other) ->
     Other.
 
 -spec create_pull_file_response(cowboy_req:req(), cb_context:context()) ->
-                                  {pull_file_resp(), cowboy_req:req(), cb_context:context()} |
-                                  halt_return().
+				       {pull_file_resp(), cowboy_req:req(), cb_context:context()} |
+				       halt_return().
 create_pull_file_response(Req, Context) ->
     create_pull_response(Req, Context, fun create_resp_file/2).
 
@@ -1232,25 +1232,25 @@ do_create_resp_envelope(Context) ->
     Resp = case cb_context:response(Context) of
                {'ok', RespData} ->
                    [{<<"auth_token">>, cb_context:auth_token(Context)}
-                    ,{<<"status">>, <<"success">>}
-                    ,{<<"request_id">>, cb_context:req_id(Context)}
-                    ,{<<"revision">>, kz_util:to_binary(cb_context:resp_etag(Context))}
-                    ,{<<"data">>, RespData}
+		   ,{<<"status">>, <<"success">>}
+		   ,{<<"request_id">>, cb_context:req_id(Context)}
+		   ,{<<"revision">>, kz_util:to_binary(cb_context:resp_etag(Context))}
+		   ,{<<"data">>, RespData}
                    ];
                {'error', {ErrorCode, ErrorMsg, RespData}} ->
                    lager:debug("generating error ~b ~s response", [ErrorCode, ErrorMsg]),
                    [{<<"auth_token">>, kz_util:to_binary(cb_context:auth_token(Context))}
-                    ,{<<"request_id">>, cb_context:req_id(Context)}
-                    ,{<<"status">>, <<"error">>}
-                    ,{<<"message">>, ErrorMsg}
-                    ,{<<"error">>, kz_util:to_binary(ErrorCode)}
-                    ,{<<"data">>, RespData}
+		   ,{<<"request_id">>, cb_context:req_id(Context)}
+		   ,{<<"status">>, <<"error">>}
+		   ,{<<"message">>, ErrorMsg}
+		   ,{<<"error">>, kz_util:to_binary(ErrorCode)}
+		   ,{<<"data">>, RespData}
                    ]
            end,
 
     kz_json:set_values(
       props:filter_undefined(Resp)
-      ,cb_context:resp_envelope(Context)
+		      ,cb_context:resp_envelope(Context)
      ).
 
 %%--------------------------------------------------------------------

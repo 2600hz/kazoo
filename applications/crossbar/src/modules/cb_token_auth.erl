@@ -14,23 +14,23 @@
 -module(cb_token_auth).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
-         ,validate/1
-         ,delete/1
-         ,authenticate/1
-         ,authorize/1
-         ,finish_request/1
-         ,clean_expired/0, clean_expired/1
+	,allowed_methods/0
+	,resource_exists/0
+	,validate/1
+	,delete/1
+	,authenticate/1
+	,authorize/1
+	,finish_request/1
+	,clean_expired/0, clean_expired/1
         ]).
 
 -include("crossbar.hrl").
 
 -define(LOOP_TIMEOUT
-        ,kapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)
+       ,kapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)
        ).
 -define(PERCENT_OF_TIMEOUT
-        ,kapps_config:get_integer(?APP_NAME, <<"expiry_percentage">>, 75)
+       ,kapps_config:get_integer(?APP_NAME, <<"expiry_percentage">>, 75)
        ).
 
 %%%===================================================================
@@ -68,7 +68,7 @@ validate(Context, ?HTTP_GET) ->
              kz_json:public_fields(cb_context:auth_doc(Context))
             ),
     Setters = [{fun cb_context:set_resp_status/2, 'success'}
-               ,{fun cb_context:set_resp_data/2, JObj}
+	      ,{fun cb_context:set_resp_data/2, JObj}
               ],
     cb_context:setters(Context, Setters);
 validate(Context, ?HTTP_DELETE) ->
@@ -76,9 +76,9 @@ validate(Context, ?HTTP_DELETE) ->
         'undefined' -> Context;
         AuthDoc ->
             cb_context:setters(Context
-                               ,[{fun cb_context:set_resp_status/2, 'success'}
-                                 ,{fun cb_context:set_doc/2, AuthDoc}
-                                ])
+			      ,[{fun cb_context:set_resp_status/2, 'success'}
+			       ,{fun cb_context:set_doc/2, AuthDoc}
+			       ])
     end.
 
 -spec delete(cb_context:context()) -> cb_context:context().
@@ -87,13 +87,13 @@ delete(Context) ->
     case kz_datamgr:del_doc(?KZ_TOKEN_DB, AuthToken) of
         {'ok', _} ->
             cb_context:setters(Context
-                               ,[{fun cb_context:set_resp_status/2, 'success'}
-                                 ,{fun cb_context:set_resp_data/2, 'undefined'}
-                                 ,{fun cb_context:set_doc/2, 'undefined'}
-                                 ,{fun cb_context:set_auth_doc/2, 'undefined'}
-                                 ,{fun cb_context:set_auth_token/2, 'undefined'}
-                                 ,{fun cb_context:set_auth_account_id/2, 'undefined'}
-                                ]);
+			      ,[{fun cb_context:set_resp_status/2, 'success'}
+			       ,{fun cb_context:set_resp_data/2, 'undefined'}
+			       ,{fun cb_context:set_doc/2, 'undefined'}
+			       ,{fun cb_context:set_auth_doc/2, 'undefined'}
+			       ,{fun cb_context:set_auth_token/2, 'undefined'}
+			       ,{fun cb_context:set_auth_account_id/2, 'undefined'}
+			       ]);
         {'error', _E} ->
             lager:debug("failed to delete auth token ~s: ~p", [AuthToken, _E]),
             Context
@@ -123,7 +123,7 @@ maybe_save_auth_doc(OldAuthDoc) ->
             lager:debug("auth doc is past time (~ps after) to be saved, saving", [TimeLeft]),
             kz_datamgr:ensure_saved(?KZ_TOKEN_DB
                                    ,kz_doc:set_modified(OldAuthDoc, Now)
-                                  );
+				   );
         'false' ->
             lager:debug("auth doc is too new (~ps to go), not saving", [TimeLeft*-1])
     end.
@@ -135,8 +135,8 @@ clean_expired() ->
 
 clean_expired(CreatedBefore) ->
     ViewOpts = [{'startkey', 0}
-                ,{'endkey', CreatedBefore}
-                ,{'limit', kz_datamgr:max_bulk_insert()}
+	       ,{'endkey', CreatedBefore}
+	       ,{'limit', kz_datamgr:max_bulk_insert()}
                ],
 
     case kz_datamgr:get_results(?KZ_TOKEN_DB, <<"token_auth/listing_by_mtime">>, ViewOpts) of
@@ -180,14 +180,14 @@ authenticate(Context) ->
 authenticate(Context, 'x-auth-token') ->
     _ = cb_context:put_reqid(Context),
     case kz_buckets:consume_tokens(?APP_NAME
-                                   ,cb_modules_util:bucket_name(Context)
-                                   ,cb_modules_util:token_cost(Context)
+				  ,cb_modules_util:bucket_name(Context)
+				  ,cb_modules_util:token_cost(Context)
                                   )
     of
         'true' ->
             check_auth_token(Context
-                             ,cb_context:auth_token(Context)
-                             ,cb_context:magic_pathed(Context)
+			    ,cb_context:auth_token(Context)
+			    ,cb_context:magic_pathed(Context)
                             );
         'false' ->
             lager:warning("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
@@ -221,7 +221,7 @@ is_expired(Context, JObj) ->
             Cause =
                 kz_json:from_list(
                   [{<<"message">>, <<"account expired">>}
-                   ,{<<"cause">>, Expired}
+		  ,{<<"cause">>, Expired}
                   ]
                  ),
             Context1 = cb_context:add_validation_error(<<"account">>, <<"expired">>, Cause, Context),
@@ -242,7 +242,7 @@ check_as(Context, JObj) ->
                               {'true', cb_context:context()}.
 check_as_payload(Context, JObj, AccountId) ->
     case {kz_json:get_value([<<"as">>, <<"account_id">>], JObj, 'undefined')
-          ,kz_json:get_value([<<"as">>, <<"owner_id">>], JObj, 'undefined')
+	 ,kz_json:get_value([<<"as">>, <<"owner_id">>], JObj, 'undefined')
          }
     of
         {'undefined', _} -> {'true', set_auth_doc(Context, JObj)};
@@ -251,7 +251,7 @@ check_as_payload(Context, JObj, AccountId) ->
     end.
 
 -spec check_descendants(cb_context:context(), kz_json:object()
-                        ,ne_binary() ,ne_binary() ,ne_binary()
+		       ,ne_binary() ,ne_binary() ,ne_binary()
                        ) ->
                                boolean() |
                                {'true', cb_context:context()}.
@@ -264,9 +264,9 @@ check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->
                 'true' ->
                     JObj1 = kz_json:set_values(
                               [{<<"account_id">>, AsAccountId}
-                               ,{<<"owner_id">>, AsOwnerId}
+			      ,{<<"owner_id">>, AsOwnerId}
                               ]
-                              ,JObj
+					      ,JObj
                              ),
                     {'true', set_auth_doc(Context, JObj1)}
             end
@@ -279,9 +279,9 @@ get_descendants(AccountId) ->
     case kz_datamgr:get_results(<<"accounts">>
                                ,<<"accounts/listing_by_descendants">>
                                ,[{'startkey', [AccountId]}
-                                 ,{'endkey', [AccountId, kz_json:new()]}
+				,{'endkey', [AccountId, kz_json:new()]}
                                 ]
-                              )
+			       )
     of
         {'error', _}=Error -> Error;
         {'ok', JObjs} ->
@@ -292,8 +292,8 @@ get_descendants(AccountId) ->
                           cb_context:context().
 set_auth_doc(Context, JObj) ->
     Setters = [{fun cb_context:set_auth_doc/2, JObj}
-               ,{fun cb_context:set_auth_account_id/2
-                 ,kz_json:get_ne_value(<<"account_id">>, JObj)
-                }
+	      ,{fun cb_context:set_auth_account_id/2
+	       ,kz_json:get_ne_value(<<"account_id">>, JObj)
+	       }
               ],
     cb_context:setters(Context, Setters).

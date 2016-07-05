@@ -10,10 +10,10 @@
 -module(hangups_maintenance).
 
 -export([hangups_summary/0
-         ,hangup_summary/1, hangup_summary/2
-         ,account_summary/1
-         ,activate_monitor/2, activate_monitors/2
-         ,set_monitor_threshold/2, set_monitor_threshold/3
+	,hangup_summary/1, hangup_summary/2
+	,account_summary/1
+	,activate_monitor/2, activate_monitors/2
+	,set_monitor_threshold/2, set_monitor_threshold/3
         ]).
 
 -include("hangups.hrl").
@@ -24,27 +24,27 @@
 
 hangups_summary() ->
     Hangups = [{Name, hangups_query_listener:meter_resp(Name)}
-                   || Name <- folsom_metrics:get_metrics(),
-                      hangups_util:is_hangup_meter(Name)
-                  ],
+	       || Name <- folsom_metrics:get_metrics(),
+		  hangups_util:is_hangup_meter(Name)
+	      ],
     print_stats(Hangups).
 
 hangup_summary(HangupCause) ->
     HC = kz_util:to_upper_binary(HangupCause),
     io:format("checking hangup summary for ~s~n", [HC]),
     Hangups = [{Name, hangups_query_listener:meter_resp(Name)}
-                   || Name <- folsom_metrics:get_metrics(),
-                      hangups_util:is_hangup_meter(Name, HC)
-                  ],
+	       || Name <- folsom_metrics:get_metrics(),
+		  hangups_util:is_hangup_meter(Name, HC)
+	      ],
     print_stats(Hangups).
 
 hangup_summary(HangupCause, AccountId) ->
     HC = kz_util:to_upper_binary(HangupCause),
     io:format("checking hangup summary for ~s.~s~n", [HC, AccountId]),
     Hangups = [{Name, hangups_query_listener:meter_resp(Name)}
-                   || Name <- folsom_metrics:get_metrics(),
-                      hangups_util:is_hangup_meter(Name, HC, AccountId)
-                  ],
+	       || Name <- folsom_metrics:get_metrics(),
+		  hangups_util:is_hangup_meter(Name, HC, AccountId)
+	      ],
     print_stats(Hangups).
 
 -spec account_summary(ne_binary()) -> 'ok'.
@@ -57,14 +57,14 @@ account_summary(AccountId) ->
     print_stats(Hangups).
 
 -define(STAT_SUMMARY_FORMAT
-        ," ~-30s | ~-32s | ~-10s | ~-10s | ~-10s | ~-10s |~n"
+       ," ~-30s | ~-32s | ~-10s | ~-10s | ~-10s | ~-10s |~n"
        ).
 
 -spec print_stats(kz_proplist()) -> 'ok'.
 print_stats([]) -> io:format("No data found for request\n");
 print_stats(Stats) ->
     io:format(?STAT_SUMMARY_FORMAT
-              ,["Hangup Cause", "AccountId", "One", "Five", "Fifteen", "Thr. One"]
+	     ,["Hangup Cause", "AccountId", "One", "Five", "Fifteen", "Thr. One"]
              ),
     lists:foreach(fun print_stat/1, lists:keysort(1, Stats)).
 
@@ -79,13 +79,13 @@ print_stat({Name, Stats}) ->
     Threshold = kapps_config:get_float(ConfigName, <<"one">>),
 
     io:format(?STAT_SUMMARY_FORMAT
-              ,[HangupCause
-                ,AccountId
-                ,props:get_binary_value(<<"one">>, Stats)
-                ,props:get_binary_value(<<"five">>, Stats)
-                ,props:get_binary_value(<<"fifteen">>, Stats)
-                ,io_lib:format("~e", [Threshold])
-               ]).
+	     ,[HangupCause
+	      ,AccountId
+	      ,props:get_binary_value(<<"one">>, Stats)
+	      ,props:get_binary_value(<<"five">>, Stats)
+	      ,props:get_binary_value(<<"fifteen">>, Stats)
+	      ,io_lib:format("~e", [Threshold])
+	      ]).
 
 %% @public
 -spec activate_monitor(ne_binary(), ne_binary()) -> 'ok'.
@@ -117,8 +117,8 @@ set_monitor_threshold(HangupCause, TOM) ->
 -spec update_monitor_thresholds(ne_binary(), float()) -> boolean().
 update_monitor_thresholds(HangupCause, ThresholdOnMinute) ->
     Scales = [{<<"five">>, 5}
-              ,{<<"fifteen">>, 15}
-              ,{<<"day">>, 1440}
+	     ,{<<"fifteen">>, 15}
+	     ,{<<"day">>, 1440}
              ],
 
     lists:foldl(fun({ThresholdName, MinutesPer}, Acc) ->
@@ -126,8 +126,8 @@ update_monitor_thresholds(HangupCause, ThresholdOnMinute) ->
                         Succeeded = set_monitor_threshold(HangupCause, ThresholdName, Threshold),
                         Acc and Succeeded
                 end
-                ,'true'
-                ,Scales
+	       ,'true'
+	       ,Scales
                ).
 
 %% @public
@@ -136,9 +136,9 @@ update_monitor_thresholds(HangupCause, ThresholdOnMinute) ->
 set_monitor_threshold(HangupCause, ThresholdName, T) ->
     Threshold = kz_util:to_float(T),
     set_monitor_threshold(kz_util:to_upper_binary(HangupCause)
-                          ,ThresholdName
-                          ,Threshold
-                          ,is_valid_threshold_name(ThresholdName)
+			 ,ThresholdName
+			 ,Threshold
+			 ,is_valid_threshold_name(ThresholdName)
                          ).
 
 set_monitor_threshold(_HangupCause, ThresholdName, _Threshold, 'false') ->

@@ -20,22 +20,22 @@
 
 %% API
 -export([start_link/2, start_link/3, start_link/4, start_link/5
-         ,stop/1
-         ,consume/2
-         ,consume_until/2
-         ,credit/2
-         ,tokens/1
-         ,set_name/2
-         ,default_fill_time/0, default_fill_time/1
+	,stop/1
+	,consume/2
+	,consume_until/2
+	,credit/2
+	,tokens/1
+	,set_name/2
+	,default_fill_time/0, default_fill_time/1
         ]).
 
 %% gen_server callbacks
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("kz_buckets.hrl").
@@ -59,11 +59,11 @@
 -export_type([fill_rate_time/0]).
 
 -record(state, {max_tokens = 100 :: pos_integer() % max size of bucket
-                ,tokens = 0 :: non_neg_integer() % current count
-                ,fill_rate = 1 :: pos_integer() % tokens/fill_rate_time() added
-                ,fill_rate_time = 'second' :: fill_rate_time()
-                ,fill_ref :: reference()
-                ,fill_as_block = 'true' :: boolean()
+	       ,tokens = 0 :: non_neg_integer() % current count
+	       ,fill_rate = 1 :: pos_integer() % tokens/fill_rate_time() added
+	       ,fill_rate_time = 'second' :: fill_rate_time()
+	       ,fill_ref :: reference()
+	       ,fill_as_block = 'true' :: boolean()
                }).
 
 %%%===================================================================
@@ -101,9 +101,9 @@ start_link(Name, Max, FillRate, FillAsBlock, FillTime)
        )
        ->
     gen_server:start_link({'local', Name}
-                          ,?MODULE
-                          ,[Max, FillRate, FillAsBlock, FillTime]
-                          ,[]
+			 ,?MODULE
+			 ,[Max, FillRate, FillAsBlock, FillTime]
+			 ,[]
                          ).
 
 -spec stop(pid()) -> 'ok'.
@@ -168,14 +168,14 @@ normalize_fill_time(_) -> 'second'.
 init([Max, FillRate, FillAsBlock, FillTime]) ->
     kz_util:put_callid(?MODULE),
     lager:debug("starting token bucket with ~b max, filling at ~b/~s, in a block: ~s"
-                ,[Max, FillRate,FillTime, FillAsBlock]
+	       ,[Max, FillRate,FillTime, FillAsBlock]
                ),
     {'ok', #state{max_tokens=Max
-                  ,fill_rate=FillRate
-                  ,fill_rate_time=FillTime
-                  ,fill_ref=start_fill_timer(FillRate, FillAsBlock, FillTime)
-                  ,fill_as_block=FillAsBlock
-                  ,tokens=Max
+		 ,fill_rate=FillRate
+		 ,fill_rate_time=FillTime
+		 ,fill_ref=start_fill_timer(FillRate, FillAsBlock, FillTime)
+		 ,fill_as_block=FillAsBlock
+		 ,tokens=Max
                  }
     }.
 
@@ -228,7 +228,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'credit', Req}, #state{tokens=Current
-                                    ,max_tokens=Max
+				   ,max_tokens=Max
                                    }=State) ->
     case Current + Req of
         N when N > Max ->
@@ -260,16 +260,16 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'timeout', Ref, ?TOKEN_FILL_TIME}, #state{max_tokens=Max
-                                                       ,tokens=Current
-                                                       ,fill_rate=FillRate
-                                                       ,fill_rate_time=FillTime
-                                                       ,fill_ref=Ref
-                                                       ,fill_as_block=FillAsBlock
-                                                     }=State) ->
+						      ,tokens=Current
+						      ,fill_rate=FillRate
+						      ,fill_rate_time=FillTime
+						      ,fill_ref=Ref
+						      ,fill_as_block=FillAsBlock
+						      }=State) ->
     {'noreply'
-     ,State#state{tokens=add_tokens(Max, Current, FillRate, FillAsBlock, FillTime)
-                  ,fill_ref=start_fill_timer(FillRate, FillAsBlock, FillTime)
-                 }
+    ,State#state{tokens=add_tokens(Max, Current, FillRate, FillAsBlock, FillTime)
+		,fill_ref=start_fill_timer(FillRate, FillAsBlock, FillTime)
+		}
     };
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),

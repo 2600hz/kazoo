@@ -25,12 +25,12 @@
 -export([build_simple_channels/1]).
 -export([create_masquerade_event/2, create_masquerade_event/3]).
 -export([media_path/3, media_path/4
-         ,lookup_media/4
+	,lookup_media/4
         ]).
 -export([unserialize_fs_array/1]).
 -export([convert_fs_evt_name/1, convert_kazoo_app_name/1]).
 -export([fax_filename/1
-         ,recording_filename/1
+	,recording_filename/1
         ]).
 -export([maybe_sanitize_fs_value/2]).
 
@@ -51,23 +51,23 @@
 -export_type([send_cmd_ret/0]).
 
 -record(bridge_endpoint, {invite_format = <<"username">> :: ne_binary()
-                          ,endpoint_type = <<"sip">> :: ne_binary()
-                          ,ip_address :: api_binary()
-                          ,username :: api_binary()
-                          ,user :: api_binary()
-                          ,realm :: api_binary()
-                          ,number :: api_binary()
-                          ,route :: api_binary()
-                          ,proxy_address :: api_binary()
-                          ,forward_address :: api_binary()
-                          ,transport :: api_binary()
-                          ,span = <<"1">> :: ne_binary()
-                          ,channel_selection = <<"a">> :: ne_binary()
-                          ,interface = <<"RR">> :: ne_binary() % for Skype
-                          ,sip_interface
-                          ,channel_vars = ["[",[],"]"] :: iolist()
-                          ,include_channel_vars = 'true' :: boolean()
-                          ,failover
+			 ,endpoint_type = <<"sip">> :: ne_binary()
+			 ,ip_address :: api_binary()
+			 ,username :: api_binary()
+			 ,user :: api_binary()
+			 ,realm :: api_binary()
+			 ,number :: api_binary()
+			 ,route :: api_binary()
+			 ,proxy_address :: api_binary()
+			 ,forward_address :: api_binary()
+			 ,transport :: api_binary()
+			 ,span = <<"1">> :: ne_binary()
+			 ,channel_selection = <<"a">> :: ne_binary()
+			 ,interface = <<"RR">> :: ne_binary() % for Skype
+			 ,sip_interface
+			 ,channel_vars = ["[",[],"]"] :: iolist()
+			 ,include_channel_vars = 'true' :: boolean()
+			 ,failover
                          }).
 -type bridge_endpoint() :: #bridge_endpoint{}.
 
@@ -121,11 +121,11 @@ send_cmd(Node, _UUID, "transfer", Args) ->
     freeswitch:api(Node, 'uuid_transfer', kz_util:to_list(Args));
 send_cmd(Node, UUID, AppName, Args) ->
     Result = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-                                             ,{"execute-app-name", AppName}
-                                             ,{"execute-app-arg", kz_util:to_list(Args)}
+					    ,{"execute-app-name", AppName}
+					    ,{"execute-app-arg", kz_util:to_list(Args)}
                                             ]),
     lager:debug("execute on node ~s(~s) ~s(~s): ~p"
-                ,[Node, UUID, AppName, Args, Result]
+	       ,[Node, UUID, AppName, Args, Result]
                ),
     Result.
 
@@ -180,11 +180,11 @@ get_sip_from(Props, <<"outbound">>) ->
         'undefined' ->
             Number = props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props, <<"nouser">>),
             Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                             ,<<"variable_sip_auth_realm">>
+					    ,<<"variable_sip_auth_realm">>
                                             ], Props, ?DEFAULT_REALM),
             props:get_value(<<"variable_sip_from_uri">>
-                            ,Props
-                            ,<<Number/binary, "@", Realm/binary>>
+			   ,Props
+			   ,<<Number/binary, "@", Realm/binary>>
                            );
         OtherChannel ->
             lists:last(binary:split(OtherChannel, <<"/">>, ['global']))
@@ -193,12 +193,12 @@ get_sip_from(Props, _) ->
     Default = <<(props:get_value(<<"variable_sip_from_user">>, Props, <<"nouser">>))/binary
                 ,"@"
                 ,(props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                           ,<<"variable_sip_from_host">>
-                                           ,<<"sip_from_host">>
+					  ,<<"variable_sip_from_host">>
+					  ,<<"sip_from_host">>
                                           ], Props, ?DEFAULT_REALM))/binary
               >>,
     props:get_first_defined([<<"Channel-Presence-ID">>
-                             ,<<"variable_sip_from_uri">>
+			    ,<<"variable_sip_from_uri">>
                             ], Props, Default).
 
 %% retrieves the sip address for the 'request' field
@@ -207,26 +207,26 @@ get_sip_request(Props) ->
     [User | _] = binary:split(
                    props:get_first_defined(
                      [<<"Hunt-Destination-Number">>
-                      ,<<"Caller-Destination-Number">>
-                      ,<<"variable_sip_to_user">>
-                      ,<<"variable_sip_req_uri">>
-                      ,<<"variable_sip_loopback_req_uri">>
-                      ,<<"sip_req_uri">>
-                      ,<<"sip_to_user">>
+		     ,<<"Caller-Destination-Number">>
+		     ,<<"variable_sip_to_user">>
+		     ,<<"variable_sip_req_uri">>
+		     ,<<"variable_sip_loopback_req_uri">>
+		     ,<<"sip_req_uri">>
+		     ,<<"sip_to_user">>
                      ], Props, <<"nouser">>), <<"@">>, ['global']),
     Realm = lists:last(binary:split(
-                    props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                     ,<<"variable_sip_auth_realm">>
-                                     ,<<"variable_sip_to_host">>
-                                     ,<<"sip_auth_realm">>
-                                     ,<<"sip_to_host">>
-                                     ,<<"variable_sip_req_host">>
-                                     ,<<"sip_req_host">>
-                                     ,<<"variable_sip_req_uri">>
-                                     ,<<"sip_req_uri">>
-                                     ,<<"variable_sip_loopback_req_uri">>
-                                     ,<<"sip_loopback_req_uri">>
-                                    ], Props, ?DEFAULT_REALM), <<"@">>, ['global'])),
+			 props:get_first_defined([?GET_CCV(<<"Realm">>)
+						 ,<<"variable_sip_auth_realm">>
+						 ,<<"variable_sip_to_host">>
+						 ,<<"sip_auth_realm">>
+						 ,<<"sip_to_host">>
+						 ,<<"variable_sip_req_host">>
+						 ,<<"sip_req_host">>
+						 ,<<"variable_sip_req_uri">>
+						 ,<<"sip_req_uri">>
+						 ,<<"variable_sip_loopback_req_uri">>
+						 ,<<"sip_loopback_req_uri">>
+						 ], Props, ?DEFAULT_REALM), <<"@">>, ['global'])),
     <<User/binary, "@", Realm/binary>>.
 
 -spec get_orig_ip(kz_proplist()) -> api_binary().
@@ -256,8 +256,8 @@ get_sip_interface_from_db([FsPath]) ->
 -spec map_fs_path_to_sip_profile(ne_binary(), kz_json:object()) -> api_binary().
 map_fs_path_to_sip_profile(FsPath, NetworkMap) ->
     SIPInterfaceObj = kz_json:filter(fun({K, _}) ->
-                               kz_network_utils:verify_cidr(FsPath, K)
-                       end, NetworkMap),
+					     kz_network_utils:verify_cidr(FsPath, K)
+				     end, NetworkMap),
     case kz_json:get_values(SIPInterfaceObj) of
         {[],[]} -> 'undefined';
         {[V|_], _} ->
@@ -274,11 +274,11 @@ custom_channel_vars(Props) ->
 custom_channel_vars(Props, Initial) ->
     maybe_update_referred_ccv(
       Props
-      ,lists:usort(fun({A, _}, {B, _}) -> A =< B end
-                ,lists:foldl(fun custom_channel_vars_fold/2
-                  ,Initial
-                  ,Props
-                  ))
+			     ,lists:usort(fun({A, _}, {B, _}) -> A =< B end
+					 ,lists:foldl(fun custom_channel_vars_fold/2
+						     ,Initial
+						     ,Props
+						     ))
      ).
 
 custom_channel_vars_fold({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
@@ -296,10 +296,10 @@ custom_channel_vars_fold(_, Acc) -> Acc.
 maybe_update_referred_ccv(Props, CCVs) ->
     update_referred_by_ccv(
       props:get_value(<<"variable_sip_h_Referred-By">>, Props)
-      ,update_referred_to_ccv(
-         props:get_value(<<"variable_sip_refer_to">>, Props)
-         ,CCVs
-        )
+			  ,update_referred_to_ccv(
+			     props:get_value(<<"variable_sip_refer_to">>, Props)
+						 ,CCVs
+			    )
      ).
 
 -spec update_referred_by_ccv(api_binary(), kz_proplist()) -> kz_proplist().
@@ -307,8 +307,8 @@ update_referred_by_ccv('undefined', CCVs) -> props:delete(<<"Referred-By">>, CCV
 update_referred_by_ccv(ReferredBy, CCVs) ->
     props:set_value(
       <<"Referred-By">>
-      ,kz_http_util:urldecode(ReferredBy)
-      ,CCVs
+		   ,kz_http_util:urldecode(ReferredBy)
+		   ,CCVs
      ).
 
 -spec update_referred_to_ccv(api_binary(), kz_proplist()) -> kz_proplist().
@@ -316,8 +316,8 @@ update_referred_to_ccv('undefined', CCVs) -> props:delete(<<"Referred-To">>, CCV
 update_referred_to_ccv(ReferredTo, CCVs) ->
     props:set_value(
       <<"Referred-To">>
-      ,kz_http_util:urldecode(ReferredTo)
-      ,CCVs
+		   ,kz_http_util:urldecode(ReferredTo)
+		   ,CCVs
      ).
 
 %% convert a raw FS string of headers to a proplist
@@ -375,7 +375,7 @@ get_fs_kv(Key, Value) ->
 
 get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
     list_to_binary(["hold_music="
-                    ,kz_util:to_list(media_path(Media, 'extant', UUID, kz_json:new()))
+		   ,kz_util:to_list(media_path(Media, 'extant', UUID, kz_json:new()))
                    ]);
 get_fs_kv(<<?CHANNEL_VAR_PREFIX, Key/binary>>, Val, UUID) ->
     get_fs_kv(Key, Val, UUID);
@@ -391,8 +391,8 @@ get_fs_key(Key) ->
     end.
 
 -spec get_fs_key_and_value(ne_binary()
-                           ,ne_binary() | ne_binaries() | kz_json:object()
-                           ,ne_binary()
+			  ,ne_binary() | ne_binaries() | kz_json:object()
+			  ,ne_binary()
                           ) ->
                                   {ne_binary(), binary()} |
                                   [{ne_binary(), binary()}] |
@@ -501,19 +501,19 @@ endpoint_jobjs_to_records([Endpoint|Endpoints], IncludeVars, BridgeEndpoints) ->
             lager:debug("building bridge endpoint: ~-300p~n", [Key]),
             BridgeEndpoint = endpoint_jobj_to_record(Endpoint, IncludeVars),
             endpoint_jobjs_to_records(Endpoints, IncludeVars
-                                      ,[{Key, BridgeEndpoint}|BridgeEndpoints]
+				     ,[{Key, BridgeEndpoint}|BridgeEndpoints]
                                      )
     end.
 
 -spec endpoint_key(kz_json:object()) -> api_binaries().
 endpoint_key(Endpoint) ->
     [kz_json:get_value(<<"Invite-Format">>, Endpoint)
-     ,kz_json:get_value(<<"To-User">>, Endpoint)
-     ,kz_json:get_value(<<"To-Realm">>, Endpoint)
-     ,kz_json:get_value(<<"To-DID">>, Endpoint)
-     ,kz_json:get_value(<<"Route">>, Endpoint)
-     ,kz_json:get_value(<<"Proxy-Zone">>, Endpoint)
-     ,kz_json:get_value(<<"Proxy-IP">>, Endpoint)
+    ,kz_json:get_value(<<"To-User">>, Endpoint)
+    ,kz_json:get_value(<<"To-Realm">>, Endpoint)
+    ,kz_json:get_value(<<"To-DID">>, Endpoint)
+    ,kz_json:get_value(<<"Route">>, Endpoint)
+    ,kz_json:get_value(<<"Proxy-Zone">>, Endpoint)
+    ,kz_json:get_value(<<"Proxy-IP">>, Endpoint)
     ].
 
 -spec endpoint_jobj_to_record(kz_json:object()) -> bridge_endpoint().
@@ -524,23 +524,23 @@ endpoint_jobj_to_record(Endpoint) ->
 endpoint_jobj_to_record(Endpoint, IncludeVars) ->
     ToUser = kz_json:get_ne_value(<<"To-User">>, Endpoint),
     #bridge_endpoint{invite_format = kz_json:get_ne_value(<<"Invite-Format">>, Endpoint, <<"username">>)
-                     ,endpoint_type = kz_json:get_ne_value(<<"Endpoint-Type">>, Endpoint, <<"sip">>)
-                     ,ip_address = kz_json:get_ne_value(<<"To-IP">>, Endpoint)
-                     ,username = kz_json:get_ne_value(<<"To-Username">>, Endpoint, ToUser)
-                     ,user = ToUser
-                     ,realm = kz_json:get_ne_value(<<"To-Realm">>, Endpoint)
-                     ,number = kz_json:get_ne_value(<<"To-DID">>, Endpoint)
-                     ,route = kz_json:get_ne_value(<<"Route">>, Endpoint)
-                     ,proxy_address = kz_json:get_ne_value(<<"Proxy-IP">>, Endpoint)
-                     ,forward_address = kz_json:get_ne_value(<<"Forward-IP">>, Endpoint)
-                     ,transport = kz_json:get_ne_value(<<"SIP-Transport">>, Endpoint)
-                     ,span = get_endpoint_span(Endpoint)
-                     ,channel_selection = get_endpoint_channel_selection(Endpoint)
-                     ,interface = get_endpoint_interface(Endpoint)
-                     ,sip_interface = kz_json:get_ne_value(<<"SIP-Interface">>, Endpoint)
-                     ,channel_vars = ecallmgr_fs_xml:get_leg_vars(Endpoint)
-                     ,include_channel_vars = IncludeVars
-                     ,failover = kz_json:get_value(<<"Failover">>, Endpoint)
+		    ,endpoint_type = kz_json:get_ne_value(<<"Endpoint-Type">>, Endpoint, <<"sip">>)
+		    ,ip_address = kz_json:get_ne_value(<<"To-IP">>, Endpoint)
+		    ,username = kz_json:get_ne_value(<<"To-Username">>, Endpoint, ToUser)
+		    ,user = ToUser
+		    ,realm = kz_json:get_ne_value(<<"To-Realm">>, Endpoint)
+		    ,number = kz_json:get_ne_value(<<"To-DID">>, Endpoint)
+		    ,route = kz_json:get_ne_value(<<"Route">>, Endpoint)
+		    ,proxy_address = kz_json:get_ne_value(<<"Proxy-IP">>, Endpoint)
+		    ,forward_address = kz_json:get_ne_value(<<"Forward-IP">>, Endpoint)
+		    ,transport = kz_json:get_ne_value(<<"SIP-Transport">>, Endpoint)
+		    ,span = get_endpoint_span(Endpoint)
+		    ,channel_selection = get_endpoint_channel_selection(Endpoint)
+		    ,interface = get_endpoint_interface(Endpoint)
+		    ,sip_interface = kz_json:get_ne_value(<<"SIP-Interface">>, Endpoint)
+		    ,channel_vars = ecallmgr_fs_xml:get_leg_vars(Endpoint)
+		    ,include_channel_vars = IncludeVars
+		    ,failover = kz_json:get_value(<<"Failover">>, Endpoint)
                     }.
 
 -spec get_endpoint_span(kz_json:object()) -> ne_binary().
@@ -656,26 +656,26 @@ build_channel(EndpointJObj) ->
 build_freetdm_channel(#bridge_endpoint{number='undefined'}) ->
     {'error', 'number_not_provided'};
 build_freetdm_channel(#bridge_endpoint{invite_format = <<"e164">>
-                                       ,number=Number
-                                       ,span=Span
-                                       ,channel_selection=ChannelSelection
+				      ,number=Number
+				      ,span=Span
+				      ,channel_selection=ChannelSelection
                                       }) ->
     {'ok', <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", (knm_converters:normalize(Number))/binary>>};
 build_freetdm_channel(#bridge_endpoint{invite_format = <<"npan">>
-                                       ,number=Number
-                                       ,span=Span
-                                       ,channel_selection=ChannelSelection
+				      ,number=Number
+				      ,span=Span
+				      ,channel_selection=ChannelSelection
                                       }) ->
     {'ok', <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", (knm_converters:to_npan(Number))/binary>>};
 build_freetdm_channel(#bridge_endpoint{invite_format = <<"1npan">>
-                                       ,number=Number
-                                       ,span=Span
-                                       ,channel_selection=ChannelSelection
+				      ,number=Number
+				      ,span=Span
+				      ,channel_selection=ChannelSelection
                                       }) ->
     {'ok', <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", (knm_converters:to_1npan(Number))/binary>>};
 build_freetdm_channel(#bridge_endpoint{number=Number
-                                       ,span=Span
-                                       ,channel_selection=ChannelSelection
+				      ,span=Span
+				      ,channel_selection=ChannelSelection
                                       }) ->
     {'ok', <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", Number/binary>>}.
 
@@ -692,12 +692,12 @@ build_skype_channel(#bridge_endpoint{user=User, interface=IFace}) ->
                                {'error', any()}.
 build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
     Routines = [fun(C) -> maybe_clean_contact(C, Endpoint) end
-                ,fun(C) -> ensure_username_present(C, Endpoint) end
-                ,fun(C) -> maybe_replace_fs_path(C, Endpoint) end
-                ,fun(C) -> maybe_replace_transport(C, Endpoint) end
-                ,fun(C) -> maybe_format_user(C, Endpoint) end
-                ,fun(C) -> maybe_set_interface(C, Endpoint) end
-                ,fun(C) -> append_channel_vars(C, Endpoint) end
+	       ,fun(C) -> ensure_username_present(C, Endpoint) end
+	       ,fun(C) -> maybe_replace_fs_path(C, Endpoint) end
+	       ,fun(C) -> maybe_replace_transport(C, Endpoint) end
+	       ,fun(C) -> maybe_format_user(C, Endpoint) end
+	       ,fun(C) -> maybe_set_interface(C, Endpoint) end
+	       ,fun(C) -> append_channel_vars(C, Endpoint) end
                ],
     try lists:foldl(fun(F, C) -> F(C) end, get_sip_contact(Endpoint), Routines) of
         Channel -> {'ok', Channel}
@@ -726,8 +726,8 @@ get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route=Route}) -> R
 get_sip_contact(#bridge_endpoint{invite_format = <<"loopback">>, route=Route}) ->
     <<"loopback/", Route/binary, "/", (?DEFAULT_FREESWITCH_CONTEXT)/binary>>;
 get_sip_contact(#bridge_endpoint{ip_address='undefined'
-                                 ,realm=Realm
-                                 ,username=Username
+				,realm=Realm
+				,username=Username
                                 }) ->
     {'ok', Contact} = ecallmgr_registrar:lookup_contact(Realm, Username),
     binary:replace(Contact, <<">">>, <<>>);
@@ -776,9 +776,9 @@ maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address=Proxy}=Endpoint) -
 maybe_replace_transport(Contact, #bridge_endpoint{transport='undefined'}) -> Contact;
 maybe_replace_transport(Contact, #bridge_endpoint{transport=Transport}) ->
     case re:replace(Contact
-                    ,<<";transport=[^;?]*">>
-                    ,<<";transport=", Transport/binary>>
-                    ,[{'return', 'binary'}]
+		   ,<<";transport=[^;?]*">>
+		   ,<<";transport=", Transport/binary>>
+		   ,[{'return', 'binary'}]
                    )
     of
         Contact ->
@@ -789,11 +789,11 @@ maybe_replace_transport(Contact, #bridge_endpoint{transport=Transport}) ->
 
 -spec maybe_format_user(ne_binary(), bridge_endpoint()) -> ne_binary().
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"username">>
-                                            ,user=User
+					   ,user=User
                                            }) when User =/= 'undefined' ->
     re:replace(Contact, "^[^\@]+", User, [{'return', 'binary'}]);
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"username">>
-                                            ,username=Username
+					   ,username=Username
                                            }) when Username =/= 'undefined' ->
     re:replace(Contact, "^[^\@]+", Username, [{'return', 'binary'}]);
 maybe_format_user(Contact, #bridge_endpoint{number='undefined'}) -> Contact;
@@ -876,20 +876,20 @@ media_path(<<"https://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(U
 media_path(<<?HTTP_GET_PREFIX, _/binary>> = Media, _Type, _UUID, _) -> Media;
 media_path(<<"$", _/binary>> = Media, _Type, _UUID, _) -> Media;
 media_path(MediaName, Type, UUID, JObj) ->
-    case lookup_media(MediaName, UUID, JObj, Type) of
-        {'error', _E} ->
-            lager:warning("failed to get media path for ~s: ~p", [MediaName, _E]),
-            kz_util:to_binary(MediaName);
-        {'ok', Path} ->
-            lager:debug("found path ~s for ~s", [Path, MediaName]),
-            kz_util:to_binary(get_fs_playback(Path))
-    end.
+		   case lookup_media(MediaName, UUID, JObj, Type) of
+		       {'error', _E} ->
+			   lager:warning("failed to get media path for ~s: ~p", [MediaName, _E]),
+			   kz_util:to_binary(MediaName);
+		       {'ok', Path} ->
+			   lager:debug("found path ~s for ~s", [Path, MediaName]),
+			   kz_util:to_binary(get_fs_playback(Path))
+		   end.
 
 -spec fax_filename(ne_binary()) -> file:filename().
 fax_filename(UUID) ->
     Ext = ecallmgr_config:get(<<"default_fax_extension">>, <<".tiff">>),
     filename:join([ecallmgr_config:get(<<"fax_file_path">>, <<"/tmp/">>)
-                   ,<<(amqp_util:encode(UUID))/binary, Ext/binary>>
+		  ,<<(amqp_util:encode(UUID))/binary, Ext/binary>>
                   ]).
 
 -spec recording_filename(ne_binary()) -> file:filename().
@@ -899,11 +899,11 @@ recording_filename(MediaName) ->
     RootName = filename:basename(MediaName, Ext),
     Directory = recording_directory(MediaName),
     RecordingName = filename:join([Directory
-                                   ,<<(amqp_util:encode(RootName))/binary, Ext/binary>>
+				  ,<<(amqp_util:encode(RootName))/binary, Ext/binary>>
                                   ]),
     _ = kz_cache:store_local(?ECALLMGR_UTIL_CACHE
-                             ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
-                             ,RecordingName
+			    ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
+			    ,RecordingName
                             ),
     RecordingName.
 
@@ -984,7 +984,7 @@ convert_kazoo_app_name(App) ->
                           {'error', any()}.
 lookup_media(MediaName, CallId, JObj, Type) ->
     case kz_cache:fetch_local(?ECALLMGR_UTIL_CACHE
-                              ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
+			     ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
                              )
     of
         {'ok', _Path}=Ok ->
@@ -1001,24 +1001,24 @@ request_media_url(MediaName, CallId, JObj, Type) ->
     Request = kz_json:set_values(
                 props:filter_undefined(
                   [{<<"Media-Name">>, MediaName}
-                   ,{<<"Stream-Type">>, kz_util:to_binary(Type)}
-                   ,{<<"Call-ID">>, CallId}
-                   ,{<<"Msg-ID">>, kz_util:rand_hex_binary(8)}
+		  ,{<<"Stream-Type">>, kz_util:to_binary(Type)}
+		  ,{<<"Call-ID">>, CallId}
+		  ,{<<"Msg-ID">>, kz_util:rand_hex_binary(8)}
                    | kz_api:default_headers(<<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
                   ])
-                ,JObj),
+				,JObj),
     case kz_amqp_worker:call_collect(Request
-                                     ,fun kapi_media:publish_req/1
-                                     ,{'media_mgr', fun kapi_media:resp_v/1}
+				    ,fun kapi_media:publish_req/1
+				    ,{'media_mgr', fun kapi_media:resp_v/1}
                                     )
     of
         {'ok', MediaResp} ->
             MediaUrl = kz_json:find(<<"Stream-URL">>, MediaResp, <<>>),
             CacheProps = media_url_cache_props(MediaName),
             _ = kz_cache:store_local(?ECALLMGR_UTIL_CACHE
-                                     ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
-                                     ,MediaUrl
-                                     ,CacheProps
+				    ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
+				    ,MediaUrl
+				    ,CacheProps
                                     ),
             lager:debug("media ~s stored to playback cache : ~s", [MediaName, MediaUrl]),
             {'ok', MediaUrl};
@@ -1058,8 +1058,8 @@ media_url_cache_props(_MediaName) -> [].
 -spec custom_sip_headers(kz_proplist()) -> kz_proplist().
 custom_sip_headers(Props) ->
     lists:foldl(fun maybe_aggregate_headers/2
-                ,[]
-                ,props:filter(fun is_custom_sip_header/1, Props)
+	       ,[]
+	       ,props:filter(fun is_custom_sip_header/1, Props)
                ).
 
 -spec maybe_aggregate_headers({ne_binary(), ne_binary()}, kz_proplist()) ->
@@ -1109,7 +1109,7 @@ get_dial_separator(?DIAL_METHOD_SINGLE, _Endpoints) -> ?SEPARATOR_SINGLE;
 get_dial_separator('undefined', _Endpoints) -> ?SEPARATOR_SINGLE;
 get_dial_separator(JObj, Endpoints) ->
     get_dial_separator(kz_json:get_value(<<"Dial-Endpoint-Method">>, JObj, ?DIAL_METHOD_SINGLE)
-                       ,Endpoints
+		      ,Endpoints
                       ).
 
 -spec fix_contact(api_binary() | list(), ne_binary(), ne_binary()) -> api_binary().

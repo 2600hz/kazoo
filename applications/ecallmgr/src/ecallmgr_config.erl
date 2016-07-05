@@ -10,18 +10,18 @@
 -module(ecallmgr_config).
 
 -export([flush/0, flush/1, flush/2
-         ,flush_default/0, flush_default/1
+	,flush_default/0, flush_default/1
         ]).
 -export([get/1, get/2, get/3
-         ,get_integer/1, get_integer/2, get_integer/3
-         ,get_boolean/1, get_boolean/2, get_boolean/3
-         ,is_true/1, is_true/2, is_true/3
-         ,get_default/1, get_default/2
+	,get_integer/1, get_integer/2, get_integer/3
+	,get_boolean/1, get_boolean/2, get_boolean/3
+	,is_true/1, is_true/2, is_true/3
+	,get_default/1, get_default/2
         ]).
 -export([fetch/1, fetch/2, fetch/3, fetch/4
-         ,set/2
-         ,set_default/2
-         ,set_node/2, set_node/3
+	,set/2
+	,set_default/2
+	,set_node/2, set_node/3
         ]).
 
 -compile([{'no_auto_import', [get/1]}]).
@@ -50,14 +50,14 @@ flush(Key, Node) ->
     CacheKey = cache_key(Key, Node),
     kz_cache:erase_local(?ECALLMGR_UTIL_CACHE, CacheKey),
     Req = [{<<"Category">>, <<"ecallmgr">>}
-           ,{<<"Key">>, Key}
-           ,{<<"Node">>, Node}
-           ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+	  ,{<<"Key">>, Key}
+	  ,{<<"Node">>, Node}
+	  ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("flushing ~s from sysconf", [Key]),
     kz_amqp_worker:cast(props:filter_undefined(Req)
-                        ,fun kapi_sysconf:publish_flush_req/1
+		       ,fun kapi_sysconf:publish_flush_req/1
                        ).
 
 -spec flush_default() -> 'ok'.
@@ -175,17 +175,17 @@ fetch(Key, Default, Timeout) when is_integer(Timeout) ->
 
 fetch(Key, Default, Node, RequestTimeout) ->
     Req = [{<<"Category">>, <<"ecallmgr">>}
-           ,{<<"Key">>, Key}
-           ,{<<"Default">>, Default}
-           ,{<<"Node">>, Node}
-           ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+	  ,{<<"Key">>, Key}
+	  ,{<<"Default">>, Default}
+	  ,{<<"Node">>, Node}
+	  ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("looking up '~s' from sysconf", [Key]),
     ReqResp = kz_amqp_worker:call(props:filter_undefined(Req)
-                                  ,fun kapi_sysconf:publish_get_req/1
-                                  ,fun kapi_sysconf:get_resp_v/1
-                                  ,RequestTimeout - 100
+				 ,fun kapi_sysconf:publish_get_req/1
+				 ,fun kapi_sysconf:get_resp_v/1
+				 ,RequestTimeout - 100
                                  ),
     case ReqResp of
         {'error', _R} ->
@@ -231,17 +231,17 @@ set(Key, Value, Node, Opt) when not is_binary(Key) ->
     set(kz_util:to_binary(Key), Value, Node, Opt);
 set(Key, Value, Node, Opt) ->
     Props = [{<<"Category">>, <<"ecallmgr">>}
-             ,{<<"Key">>, Key}
-             ,{<<"Value">>, Value}
-             ,{<<"Node-Specific">>, props:is_true('node_specific', Opt, 'false')}
+	    ,{<<"Key">>, Key}
+	    ,{<<"Value">>, Value}
+	    ,{<<"Node-Specific">>, props:is_true('node_specific', Opt, 'false')}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     Req = [{<<"Node">>, Node}
            | lists:keydelete(<<"Node">>, 1, Props)
           ],
     ReqResp = kz_amqp_worker:call(props:filter_undefined(Req)
-                                  ,fun kapi_sysconf:publish_set_req/1
-                                  ,fun kz_util:always_true/1
+				 ,fun kapi_sysconf:publish_set_req/1
+				 ,fun kz_util:always_true/1
                                  ),
     case ReqResp of
         {'ok', _} -> maybe_cache_resp(Key, Node, Value);

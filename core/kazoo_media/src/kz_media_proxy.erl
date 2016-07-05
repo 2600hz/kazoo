@@ -9,7 +9,7 @@
 -module(kz_media_proxy).
 
 -export([start_link/0
-         ,stop/0
+	,stop/0
         ]).
 
 -include("kazoo_media.hrl").
@@ -20,8 +20,8 @@ start_link() ->
 
     Dispatch = cowboy_router:compile([
                                       {'_', [{<<"/store/[...]">>, 'kz_media_store_proxy', []}
-                                             ,{<<"/single/[...]">>, 'kz_media_single_proxy', []}
-                                             ,{<<"/continuous/[...]">>, 'kz_media_continuous_proxy', []}
+					    ,{<<"/single/[...]">>, 'kz_media_single_proxy', []}
+					    ,{<<"/continuous/[...]">>, 'kz_media_continuous_proxy', []}
                                             ]}
                                      ]),
     maybe_start_plaintext(Dispatch),
@@ -43,10 +43,10 @@ maybe_start_plaintext(Dispatch) ->
             Listeners = kapps_config:get_integer(?CONFIG_CAT, <<"proxy_listeners">>, 25),
 
             cowboy:start_http('kz_media_proxy', Listeners
-                              ,[{'ip', {0,0,0,0,0,0,0,0}}
-                                    ,{'port', Port}
-                               ]
-                              ,[{'env', [{'dispatch', Dispatch}]}]
+			     ,[{'ip', {0,0,0,0,0,0,0,0}}
+			      ,{'port', Port}
+			      ]
+			     ,[{'env', [{'dispatch', Dispatch}]}]
                              ),
             lager:info("started media proxy on port ~p", [Port])
     end.
@@ -58,13 +58,13 @@ maybe_start_ssl(Dispatch) ->
             RootDir = code:lib_dir('kazoo_media'),
 
             SSLCert = kapps_config:get_string(?CONFIG_CAT
-                                               ,<<"ssl_cert">>
-                                               ,filename:join([RootDir, <<"priv/ssl/media_mgr.crt">>])
-                                              ),
+					     ,<<"ssl_cert">>
+					     ,filename:join([RootDir, <<"priv/ssl/media_mgr.crt">>])
+					     ),
             SSLKey = kapps_config:get_string(?CONFIG_CAT
-                                              ,<<"ssl_key">>
-                                              ,filename:join([RootDir, <<"priv/ssl/media_mgr.key">>])
-                                             ),
+					    ,<<"ssl_key">>
+					    ,filename:join([RootDir, <<"priv/ssl/media_mgr.key">>])
+					    ),
 
             SSLPort = kapps_config:get_integer(?CONFIG_CAT, <<"ssl_port">>, 24518),
             SSLPassword = kapps_config:get_string(?CONFIG_CAT, <<"ssl_password">>, <<>>),
@@ -73,15 +73,15 @@ maybe_start_ssl(Dispatch) ->
 
             try
                 cowboy:start_https('media_mgr_ssl', Listeners
-                                   ,[{'port', SSLPort}
-                                     ,{'certfile', find_file(SSLCert, RootDir)}
-                                     ,{'keyfile', find_file(SSLKey, RootDir)}
-                                     ,{'password', SSLPassword}
-                                    ]
-                                   ,[{'env', [{'dispatch', Dispatch}]}
-                                     ,{'onrequest', fun on_request/1}
-                                     ,{'onresponse', fun on_response/3}
-                                    ]
+				  ,[{'port', SSLPort}
+				   ,{'certfile', find_file(SSLCert, RootDir)}
+				   ,{'keyfile', find_file(SSLKey, RootDir)}
+				   ,{'password', SSLPassword}
+				   ]
+				  ,[{'env', [{'dispatch', Dispatch}]}
+				   ,{'onrequest', fun on_request/1}
+				   ,{'onresponse', fun on_response/3}
+				   ]
                                   ),
                 lager:info("started ssl media proxy on port ~p", [SSLPort])
             catch

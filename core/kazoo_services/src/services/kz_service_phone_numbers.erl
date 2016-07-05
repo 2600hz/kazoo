@@ -93,10 +93,10 @@ update_numbers(Services, [JObj|JObjs]) ->
         'false' -> Services;
         'true' ->
             Routines = [fun(S) -> update_number_quantities(S, JObj) end
-                        ,fun(S) ->
-                            Features = kz_json:get_value(?PVT_FEATURES, JObj, kz_json:new()),
-                            update_feature_quantities(Features, S)
-                         end
+		       ,fun(S) ->
+				Features = kz_json:get_value(?PVT_FEATURES, JObj, kz_json:new()),
+				update_feature_quantities(Features, S)
+			end
                        ],
             UpdatedServices = lists:foldl(fun(F, S) -> F(S) end, Services, Routines),
             update_numbers(UpdatedServices, JObjs)

@@ -13,11 +13,11 @@
 -module(cb_access_lists).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
-         ,validate/1
-         ,post/1
-         ,delete/1
+	,allowed_methods/0
+	,resource_exists/0
+	,validate/1
+	,post/1
+	,delete/1
         ]).
 
 -include("crossbar.hrl").
@@ -98,8 +98,8 @@ thing_doc(Context) ->
         _Nouns ->
             cb_context:add_system_error(
               'faulty_request'
-              ,<<"access lists not supported on this URI path">>
-              ,Context
+				       ,<<"access lists not supported on this URI path">>
+				       ,Context
              )
     end.
 
@@ -116,10 +116,10 @@ thing_doc(Context, ThingId, Type) ->
 thing_id_not_found(Context, ThingId) ->
     cb_context:add_system_error(
       'bad_identifier'
-      ,kz_json:from_list([{<<"cause">>, <<"Identifier was not found">>}
-                          ,{<<"details">>, ThingId}
-                         ])
-      ,Context
+			       ,kz_json:from_list([{<<"cause">>, <<"Identifier was not found">>}
+						  ,{<<"details">>, ThingId}
+						  ])
+			       ,Context
      ).
 
 -spec validate_get_acls(cb_context:context()) -> cb_context:context().
@@ -144,9 +144,9 @@ validate_delete_acls(Context) ->
 
 validate_delete_acls(Context, Doc) ->
     crossbar_util:response(kz_json:new()
-                           ,cb_context:set_doc(Context
-                                               ,kz_json:delete_key(<<"access_lists">>, Doc)
-                                              )).
+			  ,cb_context:set_doc(Context
+					     ,kz_json:delete_key(<<"access_lists">>, Doc)
+					     )).
 
 -spec validate_set_acls(cb_context:context()) ->
                                cb_context:context().
@@ -166,7 +166,7 @@ validate_set_acls(Context, AccessLists, Doc) ->
     Doc1 = kz_json:set_value(<<"access_lists">>, AccessLists, Doc),
 
     crossbar_util:response(AccessLists
-                           ,cb_context:set_doc(Context, Doc1)
+			  ,cb_context:set_doc(Context, Doc1)
                           ).
 
 %%--------------------------------------------------------------------
@@ -186,7 +186,7 @@ after_post(Context) ->
 
 after_post(Context, 'success') ->
     crossbar_util:response(kz_json:get_value(<<"access_lists">>, cb_context:doc(Context))
-                           ,Context
+			  ,Context
                           );
 after_post(Context, _RespStatus) ->
     Context.

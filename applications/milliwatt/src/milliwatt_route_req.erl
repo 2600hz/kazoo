@@ -47,17 +47,17 @@ handle_req(JObj, _Props) ->
 send_route_response(Action, JObj, Call) ->
     lager:info("milliwatt knows how to route the call! sending park response"),
     Resp = props:filter_undefined([{?KEY_MSG_ID, kz_api:msg_id(JObj)}
-                                   ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
-                                   ,{<<"Routes">>, []}
-                                   ,{<<"Method">>, <<"park">>}
+				  ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
+				  ,{<<"Routes">>, []}
+				  ,{<<"Method">>, <<"park">>}
                                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                   ]),
     ServerId = kz_api:server_id(JObj),
     Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,
     case kz_amqp_worker:call(Resp
-                             ,Publisher
-                             ,fun kapi_route:win_v/1
-                             ,?ROUTE_WIN_TIMEOUT
+			    ,Publisher
+			    ,fun kapi_route:win_v/1
+			    ,?ROUTE_WIN_TIMEOUT
                             )
     of
         {'ok', RouteWin} ->
@@ -116,7 +116,7 @@ maybe_tone(Tone, To, From) ->
                                    'undefined' | 'tone' | 'echo'.
 maybe_echo_maybe_tone(Echo, Tone, To, From) ->
     case {rule_exist(Echo, To, From)
-          ,rule_exist(Tone, To, From)
+	 ,rule_exist(Tone, To, From)
          }
     of
         {'true', 'true'} ->
@@ -133,6 +133,6 @@ rule_exist(JObj, To, From) ->
     Numbers = kz_json:get_ne_value(<<"number">>, JObj, []),
 
     (not
-      (not lists:member(To, Numbers))
-        andalso (not lists:member(From, CallerIds))
+       (not lists:member(To, Numbers))
+     andalso (not lists:member(From, CallerIds))
     ).

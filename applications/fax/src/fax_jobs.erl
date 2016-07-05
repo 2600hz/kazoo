@@ -16,12 +16,12 @@
 -export([is_running/1]).
 
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("fax.hrl").
@@ -59,14 +59,14 @@
 -spec start_link(ne_binary()) -> startlink_ret().
 start_link(AccountId) ->
     case gen_listener:start_link(?SERVER(AccountId)
-                            ,?MODULE
-                            , [{'bindings', ?BINDINGS}
-                               ,{'responders', ?RESPONDERS}
-                               ,{'queue_name', ?QUEUE_NAME}
-                               ,{'queue_options', ?QUEUE_OPTIONS}
-                               ,{'consume_options', ?CONSUME_OPTIONS}
-                              ]
-                            , [AccountId])
+				,?MODULE
+				, [{'bindings', ?BINDINGS}
+				  ,{'responders', ?RESPONDERS}
+				  ,{'queue_name', ?QUEUE_NAME}
+				  ,{'queue_options', ?QUEUE_OPTIONS}
+				  ,{'consume_options', ?CONSUME_OPTIONS}
+				  ]
+				, [AccountId])
     of
         {'error', {'already_started', Pid}}
           when is_pid(Pid) ->
@@ -125,9 +125,9 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'job_status',{JobId, <<"start">>, ServerId}}, #state{jobs=#{pending := Pending
-                                                              ,running := Running
-                                                              }=Jobs
-                                                       }=State) ->
+									,running := Running
+									}=Jobs
+								 }=State) ->
     #{JobId := Number} = Pending,
     {'noreply', State#state{jobs=Jobs#{pending => maps:remove(JobId, Pending)
                                       ,running => Running#{JobId => #{number => Number
@@ -138,10 +138,10 @@ handle_cast({'job_status',{JobId, <<"start">>, ServerId}}, #state{jobs=#{pending
                            }, ?POLLING_INTERVAL
     };
 handle_cast({'job_status',{JobId, <<"end">>, ServerId}}, #state{jobs=#{pending := Pending
-                                                            ,running := Running
-                                                            ,numbers := Numbers
-                                                            }=Jobs
-                                                       }=State) ->
+								      ,running := Running
+								      ,numbers := Numbers
+								      }=Jobs
+							       }=State) ->
     #{JobId := #{queue := ServerId
                 ,number := Number
                 }
@@ -276,14 +276,14 @@ distribute_jobs(#state{account_id=AccountId
                                                        }});
         'false' ->
             Payload = [{<<"Job-ID">>, JobId}
-                       ,{<<"Account-ID">>, AccountId}
-                       ,{<<"To-Number">>, ToNumber}
-                           | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+		      ,{<<"Account-ID">>, AccountId}
+		      ,{<<"To-Number">>, ToNumber}
+		       | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                       ],
             kz_amqp_worker:cast(Payload, fun kapi_fax:publish_start_job/1),
             distribute_jobs(State#state{jobs=Map#{distribute => Jobs
-                                                  ,pending => Pending#{JobId => ToNumber}
-                                                  ,numbers => Numbers#{ToNumber => JobId}
+						 ,pending => Pending#{JobId => ToNumber}
+						 ,numbers => Numbers#{ToNumber => JobId}
                                                  }})
     end.
 

@@ -10,16 +10,16 @@
 
 -export([update_status/3, update_status/4
 
-         ,most_recent_status/2
-         ,most_recent_statuses/1, most_recent_statuses/2, most_recent_statuses/3
+	,most_recent_status/2
+	,most_recent_statuses/1, most_recent_statuses/2, most_recent_statuses/3
 
-         ,most_recent_ets_status/2
-         ,most_recent_db_status/2
+	,most_recent_ets_status/2
+	,most_recent_db_status/2
 
-         ,most_recent_ets_statuses/1, most_recent_ets_statuses/2, most_recent_ets_statuses/3
-         ,most_recent_db_statuses/1, most_recent_db_statuses/2, most_recent_db_statuses/3
+	,most_recent_ets_statuses/1, most_recent_ets_statuses/2, most_recent_ets_statuses/3
+	,most_recent_db_statuses/1, most_recent_db_statuses/2, most_recent_db_statuses/3
 
-         ,changed/2, find_most_recent_fold/3
+	,changed/2, find_most_recent_fold/3
         ]).
 
 -include("acdc.hrl").
@@ -30,9 +30,9 @@ update_status(AccountId, AgentId, Status) ->
     update_status(AccountId, AgentId, Status, []).
 update_status(?NE_BINARY = AccountId, AgentId, Status, Options) ->
     API = [{<<"Account-ID">>, AccountId}
-           ,{<<"Agent-ID">>, AgentId}
-           ,{<<"Status">>, Status}
-           ,{<<"Timestamp">>, kz_util:current_tstamp()}
+	  ,{<<"Agent-ID">>, AgentId}
+	  ,{<<"Status">>, Status}
+	  ,{<<"Timestamp">>, kz_util:current_tstamp()}
            | Options ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapps_util:amqp_pool_send(API, fun kapi_acdc_stats:publish_status_update/1).
@@ -53,13 +53,13 @@ most_recent_status(AccountId, AgentId) ->
                                     {'error', any()}.
 most_recent_ets_status(AccountId, AgentId) ->
     API = [{<<"Account-ID">>, AccountId}
-           ,{<<"Agent-ID">>, AgentId}
+	  ,{<<"Agent-ID">>, AgentId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kapps_util:amqp_pool_request(API
-                                       ,fun kapi_acdc_stats:publish_status_req/1
-                                       ,fun kapi_acdc_stats:status_resp_v/1
-                                      )
+				     ,fun kapi_acdc_stats:publish_status_req/1
+				     ,fun kapi_acdc_stats:status_resp_v/1
+				     )
     of
         {'error', _E}=E -> E;
         {'ok', Resp} ->
@@ -72,8 +72,8 @@ most_recent_ets_status(AccountId, AgentId) ->
                                    {'ok', ne_binary()}.
 most_recent_db_status(AccountId, AgentId) ->
     Opts = [{'startkey', [AgentId, kz_util:current_tstamp()]}
-            ,{'limit', 1}
-            ,'descending'
+	   ,{'limit', 1}
+	   ,'descending'
            ],
     case kz_datamgr:get_results(acdc_stats_util:db_name(AccountId), <<"agent_stats/status_log">>, Opts) of
         {'ok', [StatusJObj]} ->
@@ -94,8 +94,8 @@ most_recent_db_status(AccountId, AgentId) ->
                                          {'ok', ne_binary()}.
 prev_month_recent_db_status(AccountId, AgentId) ->
     Opts = [{'startkey', [AgentId, kz_util:current_tstamp()]}
-            ,{'limit', 1}
-            ,'descending'
+	   ,{'limit', 1}
+	   ,'descending'
            ],
     Db = kazoo_modb_util:prev_year_month_mod(acdc_stats_util:db_name(AccountId)),
     case kz_datamgr:get_results(Db, <<"agent_stats/status_log">>, Opts) of
@@ -132,8 +132,8 @@ most_recent_statuses(AccountId, Options) when is_list(Options) ->
 most_recent_statuses(AccountId, AgentId, Options) ->
     ETS = kz_util:spawn_monitor(fun async_most_recent_ets_statuses/4, [AccountId, AgentId, Options, self()]),
     DB = maybe_start_db_lookup('async_most_recent_db_statuses'
-                               ,fun async_most_recent_db_statuses/4
-                               ,AccountId, AgentId, Options, self()
+			      ,fun async_most_recent_db_statuses/4
+			      ,AccountId, AgentId, Options, self()
                               ),
 
     maybe_reduce_statuses(AgentId, receive_statuses([ETS, DB])).
@@ -241,13 +241,13 @@ most_recent_ets_statuses(AccountId, Options) when is_list(Options) ->
 most_recent_ets_statuses(AccountId, AgentId, Options) ->
     API = props:filter_undefined(
             [{<<"Account-ID">>, AccountId}
-             ,{<<"Agent-ID">>, AgentId}
+	    ,{<<"Agent-ID">>, AgentId}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION) ++ Options
             ]),
     case kapps_util:amqp_pool_request(API
-                                       ,fun kapi_acdc_stats:publish_status_req/1
-                                       ,fun kapi_acdc_stats:status_resp_v/1
-                                      )
+				     ,fun kapi_acdc_stats:publish_status_req/1
+				     ,fun kapi_acdc_stats:status_resp_v/1
+				     )
     of
         {'error', _}=E -> E;
         {'ok', Resp} ->
@@ -258,8 +258,8 @@ most_recent_ets_statuses(AccountId, AgentId, Options) ->
                                      statuses_return() |
                                      {'error', any()}.
 -spec most_recent_db_statuses(ne_binary(), api_binary(), kz_proplist()) ->
-                                      statuses_return() |
-                                      {'error', any()}.
+				     statuses_return() |
+				     {'error', any()}.
 most_recent_db_statuses(AccountId) ->
     most_recent_db_statuses(AccountId, 'undefined', []).
 most_recent_db_statuses(AccountId, ?NE_BINARY = AgentId) ->
@@ -280,7 +280,7 @@ most_recent_db_statuses_by_agent(AccountId, AgentId, ReqOptions) ->
     case kz_datamgr:get_results(acdc_stats_util:db_name(AccountId)
                                ,<<"agent_stats/most_recent_by_agent">>
                                ,ViewOptions
-                              )
+			       )
     of
         {'error', _}=E -> E;
         {'ok', Stats} ->
@@ -292,7 +292,7 @@ most_recent_db_statuses_by_timestamp(AccountId, ReqOptions) ->
     case kz_datamgr:get_results(acdc_stats_util:db_name(AccountId)
                                ,<<"agent_stats/most_recent_by_timestamp">>
                                ,ViewOptions
-                              )
+			       )
     of
         {'error', _}=E -> E;
         {'ok', Stats} -> {'ok', cleanup_db_statuses(Stats, ReqOptions)}
@@ -300,8 +300,8 @@ most_recent_db_statuses_by_timestamp(AccountId, ReqOptions) ->
 
 build_timestamp_view_options(ReqOptions) ->
     build_timestamp_view_options(ReqOptions, ['descending'
-                                              ,'include_docs'
-                                              ,{'reduce', 'false'}
+					     ,'include_docs'
+					     ,{'reduce', 'false'}
                                              ]).
 
 build_timestamp_view_options([], ViewOptions) -> ViewOptions;
@@ -314,8 +314,8 @@ build_timestamp_view_options([_|ReqOptions], ViewOptions) ->
 
 build_agent_view_options(AgentId, ReqOptions) ->
     ViewOptions = build_agent_view_options(AgentId, ReqOptions, ['descending'
-                                                                 ,'include_docs'
-                                                                 ,{'reduce', 'false'}
+								,'include_docs'
+								,{'reduce', 'false'}
                                                                 ]),
     constrain_agent_view_options(AgentId, ViewOptions).
 
@@ -327,7 +327,7 @@ constrain_agent_view_options(AgentId, ViewOptions) ->
             Now = kz_util:current_tstamp(),
             Past = Now - Window,
             [{'startkey', [AgentId, Now]}
-             ,{'endkey', [AgentId, Past]}
+	    ,{'endkey', [AgentId, Past]}
              | ViewOptions
             ];
         {'undefined', [AgentId, Past]} ->
@@ -376,33 +376,33 @@ cleanup_db_statuses(Stats, ReqOpts) ->
                    'undefined' -> fun always_true/1;
                    S -> fun(Stat) -> kz_json:get_value([<<"doc">>, <<"status">>], Stat) =:= S end
                end
-               ,case props:get_value(<<"Agent-ID">>, ReqOpts) of
-                    'undefined' -> fun always_true/1;
-                    A -> fun(Stat) -> kz_json:get_value([<<"doc">>, <<"agent_id">>], Stat) =:= A end
-                end
-               ,case props:get_value(<<"Start-Range">>, ReqOpts) of
-                    'undefined' -> fun always_true/1;
-                    T -> fun(Stat) ->
-                                 kz_json:get_integer_value([<<"doc">>, <<"timestamp">>], Stat) >= T
-                         end
-                end
-               ,case props:get_value(<<"End-Range">>, ReqOpts) of
-                    'undefined' -> fun always_true/1;
-                    T -> fun(Stat) ->
-                                 kz_json:get_integer_value([<<"doc">>, <<"timestamp">>], Stat) =< T
-                         end
-                end
+	      ,case props:get_value(<<"Agent-ID">>, ReqOpts) of
+		   'undefined' -> fun always_true/1;
+		   A -> fun(Stat) -> kz_json:get_value([<<"doc">>, <<"agent_id">>], Stat) =:= A end
+	       end
+	      ,case props:get_value(<<"Start-Range">>, ReqOpts) of
+		   'undefined' -> fun always_true/1;
+		   T -> fun(Stat) ->
+				kz_json:get_integer_value([<<"doc">>, <<"timestamp">>], Stat) >= T
+			end
+	       end
+	      ,case props:get_value(<<"End-Range">>, ReqOpts) of
+		   'undefined' -> fun always_true/1;
+		   T -> fun(Stat) ->
+				kz_json:get_integer_value([<<"doc">>, <<"timestamp">>], Stat) =< T
+			end
+	       end
               ],
 
     {Key1, Key2} = {[<<"doc">>, <<"agent_id">>], [<<"doc">>, <<"timestamp">>]},
 
     lists:foldl(fun(S, Acc) ->
                         kz_json:set_value([kz_json:get_binary_value(Key1, S), kz_json:get_binary_value(Key2, S)]
-                                          ,kz_doc:public_fields(kz_json:get_value(<<"doc">>, S))
-                                          ,Acc
+					 ,kz_doc:public_fields(kz_json:get_value(<<"doc">>, S))
+					 ,Acc
                                          )
                 end, kz_json:new()
-                ,[S || S <- Stats, lists:all(fun(Filter) -> Filter(S) end, Filters)]
+	       ,[S || S <- Stats, lists:all(fun(Filter) -> Filter(S) end, Filters)]
                ).
 
 always_true(_) -> 'true'.

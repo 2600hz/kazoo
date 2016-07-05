@@ -15,7 +15,7 @@
                      kz_json:json_term() | kz_json:json_proplist() |
                      api_binary() | ne_binaries().
 
- %% {file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}
+%% {file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}
 -type req_file() :: {ne_binary(), kz_json:object()}.
 -type req_files() :: [req_file()].
 -type req_json() :: kz_json:object() | {'malformed', binary()}.
@@ -30,7 +30,7 @@
 -type media_values() :: [media_value()].
 
 -define(MEDIA_VALUE(Type, SubType, Weight, Options, Extensions)
-        ,{{Type, SubType, Options}, Weight, Extensions}
+       ,{{Type, SubType, Options}, Weight, Extensions}
        ).
 -define(MEDIA_VALUE(Type, SubType, Weight), ?MEDIA_VALUE(Type, SubType, Weight, [], [])).
 -define(MEDIA_VALUE(Type, SubType), ?MEDIA_VALUE(Type, SubType, 1000, [], [])).
@@ -62,22 +62,22 @@
 -define(HTTP_PATCH, <<"PATCH">>).
 
 -define(CSV_CONTENT_TYPES, [{<<"application">>, <<"octet-stream">>}
-                            ,{<<"text">>, <<"csv">>}
-                            ,{<<"text">>, <<"comma-separated-values">>}
+			   ,{<<"text">>, <<"csv">>}
+			   ,{<<"text">>, <<"comma-separated-values">>}
                            ]).
 -define(JSON_CONTENT_TYPES, [{<<"application">>, <<"json">>}
-                             ,{<<"application">>, <<"x-json">>}
+			    ,{<<"application">>, <<"x-json">>}
                             ]).
 
 -define(MULTIPART_CONTENT_TYPES, [{<<"application">>, <<"x-www-form-urlencoded">>}
-                                  ,{<<"multipart">>, <<"form-data">>}
-                                  ,{<<"multipart">>, <<"mixed">>}
+				 ,{<<"multipart">>, <<"form-data">>}
+				 ,{<<"multipart">>, <<"mixed">>}
                                  ]).
 
 -define(IMAGE_CONTENT_TYPES, [{<<"image">>, <<"jpg">>}
-                              ,{<<"image">>, <<"jpeg">>}
-                              ,{<<"image">>, <<"png">>}
-                              ,{<<"image">>, <<"gif">>}
+			     ,{<<"image">>, <<"jpeg">>}
+			     ,{<<"image">>, <<"png">>}
+			     ,{<<"image">>, <<"gif">>}
                              ]).
 
 -define(AUDIO_CONTENT_TYPES, [{<<"audio">>, <<"x-wav">>}
@@ -96,11 +96,11 @@
                              ]).
 
 -define(BASE64_CONTENT_TYPES, [{<<"application">>, <<"base64">>}
-                               ,{<<"application">>, <<"x-base64">>}
+			      ,{<<"application">>, <<"x-base64">>}
                               ]).
 
 -define(PDF_CONTENT_TYPES, [{<<"application">>, <<"pdf">>}
-                            ,{<<"application">>, <<"x-pdf">>}
+			   ,{<<"application">>, <<"x-pdf">>}
                            ]).
 
 -define(JSONP_CONTENT_TYPE, <<"application/javascript">>).

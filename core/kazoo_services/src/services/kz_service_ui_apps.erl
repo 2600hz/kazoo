@@ -45,17 +45,17 @@ reconcile_account(Services, AccountDoc) ->
                       kz_services:update(?CATEGORY, AppName, 1, S)
               end
       end
-      ,kz_services:reset_category(<<"ui_apps">>, Services)
-      ,kz_json:get_value(<<"ui_apps">>, AccountDoc, kz_json:new())
+		 ,kz_services:reset_category(<<"ui_apps">>, Services)
+		 ,kz_json:get_value(<<"ui_apps">>, AccountDoc, kz_json:new())
      ).
 
 reconcile(Services, AppName) ->
     %% Because you can only be charged once for an app
     kz_services:update(
       ?CATEGORY
-      ,AppName
-      ,1
-      ,kz_services:reset_category(<<"ui_apps">>, Services)
+		      ,AppName
+		      ,1
+		      ,kz_services:reset_category(<<"ui_apps">>, Services)
      ).
 
 %%--------------------------------------------------------------------

@@ -12,14 +12,14 @@
 -module(cb_configs).
 
 -export([init/0
-         ,allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/2
-         ,get/2
-         ,put/2
-         ,post/2
-         ,patch/2
-         ,delete/2
+	,allowed_methods/1
+	,resource_exists/0, resource_exists/1
+	,validate/2
+	,get/2
+	,put/2
+	,post/2
+	,patch/2
+	,delete/2
         ]).
 
 -include("crossbar.hrl").

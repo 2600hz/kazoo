@@ -15,11 +15,11 @@
 -include("crossbar.hrl").
 
 -record(contact, {id
-                  ,callflow
-                  ,name
-                  ,first_module
-                  ,external_numbers = []
-                  ,internal_numbers = []
+		 ,callflow
+		 ,name
+		 ,first_module
+		 ,external_numbers = []
+		 ,internal_numbers = []
                  }).
 
 build(AccountDb) ->
@@ -28,11 +28,11 @@ build(AccountDb) ->
     ].
 
 contact_to_json(#contact{name=Name
-                         ,external_numbers=ExternalNumbers
-                         ,internal_numbers=InternalNumbers}) ->
+			,external_numbers=ExternalNumbers
+			,internal_numbers=InternalNumbers}) ->
     Props = [{<<"name">>, Name}
-             ,{<<"external_number">>, first_number(ExternalNumbers)}
-             ,{<<"internal_number">>, first_number(InternalNumbers)}
+	    ,{<<"external_number">>, first_number(ExternalNumbers)}
+	    ,{<<"internal_number">>, first_number(InternalNumbers)}
             ],
     kz_json:from_list(props:filter_undefined(Props)).
 
@@ -41,13 +41,13 @@ first_number(_) -> undefined.
 
 build_contacts(AccountDb) ->
     Routines = [fun filter_excluded/2
-                ,fun find_missing_names/2
-                ,fun maybe_append_module/2
-                ,fun filter_contacts/2
+	       ,fun find_missing_names/2
+	       ,fun maybe_append_module/2
+	       ,fun filter_contacts/2
                ],
     lists:foldl(fun(F, C) -> F(C, AccountDb) end
-                ,get_extension_contacts(AccountDb)
-                ,Routines).
+	       ,get_extension_contacts(AccountDb)
+	       ,Routines).
 
 get_extension_contacts(AccountDb) ->
     ViewOptions = [],
@@ -155,7 +155,7 @@ maybe_fix_numbers(JObj) ->
         Numbers ->
             {External, Internal} = split_contact_numbers(Numbers),
             Props = [{<<"external_numbers">>, External}
-                     ,{<<"internal_numbers">>, Internal}
+		    ,{<<"internal_numbers">>, Internal}
                     ],
             kz_json:set_values(Props, kz_json:delete_key(<<"numbers">>, JObj))
     end.

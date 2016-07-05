@@ -8,8 +8,8 @@
 -module(webhooks_parking).
 
 -export([init/0
-         ,bindings_and_responders/0
-         ,handle/2
+	,bindings_and_responders/0
+	,handle/2
         ]).
 
 -include("webhooks.hrl").
@@ -18,10 +18,10 @@
 -define(NAME, <<"parking">>).
 -define(DESC, <<"Events when calls get parked/retrieved">>).
 -define(METADATA
-        ,kz_json:from_list([{<<"_id">>, ?ID}
-                            ,{<<"name">>, ?NAME}
-                            ,{<<"description">>, ?DESC}
-                           ])
+       ,kz_json:from_list([{<<"_id">>, ?ID}
+			  ,{<<"name">>, ?NAME}
+			  ,{<<"description">>, ?DESC}
+			  ])
        ).
 
 %%--------------------------------------------------------------------
@@ -41,16 +41,16 @@ init() ->
 -spec bindings_and_responders() -> {gen_listener:bindings(), gen_listener:responders()}.
 bindings_and_responders() ->
     {[{'call', [{'restrict_to', ['PARK_PARKED', 'PARK_RETRIEVED', 'PARK_ABANDONED']}
-                ,'federate'
+	       ,'federate'
                ]
       }
      ]
-     ,[{{?MODULE, 'handle'}
-        ,[{<<"call_event">>, <<"PARK_PARKED">>}
-          ,{<<"call_event">>, <<"PARK_RETRIEVED">>}
-          ,{<<"call_event">>, <<"PARK_ABANDONED">>}]
-       }
-      ]
+    ,[{{?MODULE, 'handle'}
+      ,[{<<"call_event">>, <<"PARK_PARKED">>}
+       ,{<<"call_event">>, <<"PARK_RETRIEVED">>}
+       ,{<<"call_event">>, <<"PARK_ABANDONED">>}]
+      }
+     ]
     }.
 
 %%--------------------------------------------------------------------
@@ -84,11 +84,11 @@ maybe_send_event(AccountId, JObj) ->
 -spec format(kz_json:object()) -> kz_json:object().
 format(JObj) ->
     RemoveKeys = [
-        <<"Node">>
-        ,<<"Msg-ID">>
-        ,<<"App-Version">>
-        ,<<"App-Name">>
-        ,<<"Event-Category">>
-        ,<<"Custom-Channel-Vars">>
-    ],
+		  <<"Node">>
+		 ,<<"Msg-ID">>
+		 ,<<"App-Version">>
+		 ,<<"App-Name">>
+		 ,<<"Event-Category">>
+		 ,<<"Custom-Channel-Vars">>
+		 ],
     kz_json:normalize_jobj(JObj, RemoveKeys, []).

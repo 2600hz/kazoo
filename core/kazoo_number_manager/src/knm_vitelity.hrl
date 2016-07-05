@@ -19,10 +19,10 @@
 -else.
 
 -define(VITELITY_URI
-        ,kapps_config:get(?KNM_VITELITY_CONFIG_CAT
-                           ,<<"api_uri">>
-                           ,<<"http://api.vitelity.net/api.php">>
-                          )
+       ,kapps_config:get(?KNM_VITELITY_CONFIG_CAT
+			,<<"api_uri">>
+			,<<"http://api.vitelity.net/api.php">>
+			)
        ).
 -endif.
 

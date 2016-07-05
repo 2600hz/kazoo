@@ -15,8 +15,8 @@
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".do_not_disturb">>).
 
 -record(dnd, {enabled = 'false' :: boolean()
-              ,jobj = kz_json:new() :: kz_json:object()
-              ,account_db :: api_binary()
+	     ,jobj = kz_json:new() :: kz_json:object()
+	     ,account_db :: api_binary()
              }).
 -type dnd() :: #dnd{}.
 
@@ -52,8 +52,8 @@ maybe_build_dnd_record(Data, Call) ->
         {'ok', JObj} ->
             lager:info("changing dnd settings on document ~s", [kz_doc:id(JObj)]),
             {'ok', #dnd{enabled=kz_json:is_true([<<"do_not_disturb">>, <<"enabled">>], JObj)
-                        ,jobj=JObj
-                        ,account_db=AccountDb
+		       ,jobj=JObj
+		       ,account_db=AccountDb
                        }}
     end.
 
@@ -123,7 +123,7 @@ maybe_execute_action(_Action, _, Call) ->
 
 -spec activate_dnd(dnd(), kapps_call:call()) -> any().
 activate_dnd(#dnd{jobj=JObj
-                  ,account_db=AccountDb
+		 ,account_db=AccountDb
                  }, Call) ->
     case maybe_update_doc('true', JObj, AccountDb) of
         {'error', _} -> 'ok';
@@ -132,7 +132,7 @@ activate_dnd(#dnd{jobj=JObj
 
 -spec deactivate_dnd(dnd(), kapps_call:call()) -> any().
 deactivate_dnd(#dnd{jobj=JObj
-                    ,account_db=AccountDb
+		   ,account_db=AccountDb
                    }, Call) ->
     case maybe_update_doc('false', JObj, AccountDb) of
         {'error', _} -> 'ok';

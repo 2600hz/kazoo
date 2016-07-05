@@ -10,11 +10,11 @@
 -export([flush/0]).
 -export([flush_channels/0]).
 -export([authz_summary/0
-         ,authz_summary/1
+	,authz_summary/1
         ]).
 -export([authz_details/1]).
 -export([limits_summary/0
-         ,limits_summary/1
+	,limits_summary/1
         ]).
 -export([limits_details/1]).
 
@@ -46,14 +46,14 @@ print_authz_summary_header() ->
 authz_summary([]) -> 'no_return';
 authz_summary([AccountId|AccountIds]) ->
     io:format("| ~-32s | ~-5w | ~-14w | ~-10w | ~-14w | ~-15w | ~-10w |~n"
-              ,[AccountId
-                ,j5_channels:total_calls(AccountId)
-                ,j5_channels:resource_consuming(AccountId)
-                ,j5_channels:allotments(AccountId)
-                ,j5_channels:inbound_flat_rate(AccountId)
-                ,j5_channels:outbound_flat_rate(AccountId)
-                ,j5_channels:per_minute(AccountId)
-               ]),
+	     ,[AccountId
+	      ,j5_channels:total_calls(AccountId)
+	      ,j5_channels:resource_consuming(AccountId)
+	      ,j5_channels:allotments(AccountId)
+	      ,j5_channels:inbound_flat_rate(AccountId)
+	      ,j5_channels:outbound_flat_rate(AccountId)
+	      ,j5_channels:per_minute(AccountId)
+	      ]),
     io:format("+----------------------------------+-------+----------------+------------+----------------+-----------------+------------+~n"),
     authz_summary(AccountIds);
 authz_summary(<<_/binary>> = AccountId) ->
@@ -138,17 +138,17 @@ limits_summary([Limit|Limits]) ->
             io:format("|      -      |~n", []);
         'true' ->
             io:format("| ~-32s | ~-5w | ~-14w | ~-10w | ~-3w | ~-3w | ~-4w | ~-5w | ~-10s | ~-11s |~n"
-                      ,[j5_limits:account_id(Limit)
-                        ,j5_limits:calls(Limit)
-                        ,j5_limits:resource_consuming_calls(Limit)
-                        ,length(kz_json:get_keys(j5_limits:allotments(Limit)))
-                        ,j5_limits:inbound_trunks(Limit)
-                        ,j5_limits:outbound_trunks(Limit)
-                        ,j5_limits:twoway_trunks(Limit)
-                        ,j5_limits:burst_trunks(Limit)
-                        ,limits_summary_prepay(Limit)
-                        ,limits_summary_postpay(Limit)
-                       ])
+		     ,[j5_limits:account_id(Limit)
+		      ,j5_limits:calls(Limit)
+		      ,j5_limits:resource_consuming_calls(Limit)
+		      ,length(kz_json:get_keys(j5_limits:allotments(Limit)))
+		      ,j5_limits:inbound_trunks(Limit)
+		      ,j5_limits:outbound_trunks(Limit)
+		      ,j5_limits:twoway_trunks(Limit)
+		      ,j5_limits:burst_trunks(Limit)
+		      ,limits_summary_prepay(Limit)
+		      ,limits_summary_postpay(Limit)
+		      ])
     end,
     io:format("+----------------------------------+-------+----------------+------------+--------------------------+------------+-------------+~n"),
     limits_summary(Limits);

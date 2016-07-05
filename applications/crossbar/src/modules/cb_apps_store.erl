@@ -11,15 +11,15 @@
 -module(cb_apps_store).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-         ,authenticate/1
-         ,authorize/1
-         ,validate/1, validate/2, validate/3, validate/4
-         ,content_types_provided/3 ,content_types_provided/4
-         ,put/2
-         ,post/2
-         ,delete/2
+	,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+	,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+	,authenticate/1
+	,authorize/1
+	,validate/1, validate/2, validate/3, validate/4
+	,content_types_provided/3 ,content_types_provided/4
+	,put/2
+	,post/2
+	,delete/2
         ]).
 
 -include("crossbar.hrl").
@@ -205,10 +205,10 @@ post(Context, ?BLACKLIST) ->
     Blacklist = kz_json:get_value(<<"blacklist">>, ReqData, []),
     Doc = kz_json:set_value(<<"blacklist">>, Blacklist, cb_context:doc(Context)),
     return_only_blacklist(
-        crossbar_doc:save(
-            cb_context:set_doc(Context, Doc)
-        )
-    );
+      crossbar_doc:save(
+	cb_context:set_doc(Context, Doc)
+       )
+     );
 post(Context, Id) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
@@ -292,8 +292,8 @@ return_only_blacklist(Context) ->
             Blacklist = kz_json:get_value(<<"blacklist">>, RespData, []),
             NewRespData =
                 kz_json:from_list([
-                    {<<"blacklist">>, Blacklist}
-                ]),
+				   {<<"blacklist">>, Blacklist}
+				  ]),
             cb_context:set_resp_data(Context, NewRespData);
         _ -> Context
     end.
@@ -304,9 +304,9 @@ validate_app(Context, Id, ?HTTP_GET) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             cb_context:set_resp_data(
-                Context1
-                ,kz_json:public_fields(cb_context:doc(Context1))
-            );
+	      Context1
+				    ,kz_json:public_fields(cb_context:doc(Context1))
+	     );
         _ -> Context1
     end;
 validate_app(Context, Id, ?HTTP_PUT) ->
@@ -315,7 +315,7 @@ validate_app(Context, Id, ?HTTP_PUT) ->
         'success' ->
             Callback =
                 fun() ->
-                    install(Context1, Id)
+			install(Context1, Id)
                 end,
             crossbar_services:maybe_dry_run(Context1, Callback, <<"app">>);
         _ -> Context1
@@ -332,7 +332,7 @@ validate_app(Context, Id, ?HTTP_POST) ->
         'success' ->
             Callback =
                 fun() ->
-                    update(Context1, Id)
+			update(Context1, Id)
                 end,
             crossbar_services:maybe_dry_run(Context1, Callback, <<"app">>);
         _ -> Context1
@@ -365,10 +365,10 @@ can_modify(Context, Id) ->
             cb_context:add_system_error('forbidden', kz_json:from_list(Props), Context);
         App ->
             cb_context:store(
-                cb_context:set_resp_status(Context, 'success')
-                ,Id
-                ,App
-            )
+	      cb_context:set_resp_status(Context, 'success')
+			    ,Id
+			    ,App
+	     )
     end.
 
 %%--------------------------------------------------------------------
@@ -382,9 +382,9 @@ load_apps(Context) ->
     Apps = cb_apps_util:allowed_apps(AccountId),
     cb_context:setters(
       Context
-      ,[{fun cb_context:set_resp_status/2, 'success'}
-        ,{fun cb_context:set_resp_data/2, normalize_apps_result(Apps)}
-       ]
+		      ,[{fun cb_context:set_resp_status/2, 'success'}
+		       ,{fun cb_context:set_resp_data/2, normalize_apps_result(Apps)}
+		       ]
      ).
 
 %%--------------------------------------------------------------------
@@ -404,18 +404,18 @@ normalize_apps_result([App|Apps], Acc) ->
         'true' ->
             JObj =
                 kz_json:from_list(
-                    props:filter_undefined([
-                        {<<"id">>, kzd_app:id(App)}
-                        ,{<<"name">>, kzd_app:name(App)}
-                        ,{<<"i18n">>, kzd_app:i18n(App)}
-                        ,{<<"tags">>, kzd_app:tags(App)}
-                        ,{<<"api_url">>, kzd_app:api_url(App)}
-                        ,{<<"source_url">>, kzd_app:source_url(App)}
-                        ,{<<"account_id">>, kzd_app:account_id(App)}
-                        ,{<<"users">>, kz_json:get_value(<<"users">>, App)}
-                        ,{<<"allowed_users">>, kz_json:get_value(<<"allowed_users">>, App)}
-                        ,{<<"masqueradable">>, kz_json:is_true(<<"masqueradable">>, App, 'true')}
-                    ])
+		  props:filter_undefined([
+					  {<<"id">>, kzd_app:id(App)}
+					 ,{<<"name">>, kzd_app:name(App)}
+					 ,{<<"i18n">>, kzd_app:i18n(App)}
+					 ,{<<"tags">>, kzd_app:tags(App)}
+					 ,{<<"api_url">>, kzd_app:api_url(App)}
+					 ,{<<"source_url">>, kzd_app:source_url(App)}
+					 ,{<<"account_id">>, kzd_app:account_id(App)}
+					 ,{<<"users">>, kz_json:get_value(<<"users">>, App)}
+					 ,{<<"allowed_users">>, kz_json:get_value(<<"allowed_users">>, App)}
+					 ,{<<"masqueradable">>, kz_json:is_true(<<"masqueradable">>, App, 'true')}
+					 ])
                  ),
             normalize_apps_result(Apps, [JObj|Acc])
     end.
@@ -433,10 +433,10 @@ load_app(Context, AppId) ->
         App ->
             cb_context:setters(
               Context
-              ,[{fun cb_context:set_doc/2
-                 ,kz_json:set_value(<<"account_id">>, kzd_app:account_id(App), App)}
-                ,{fun cb_context:set_resp_status/2, 'success'}
-               ]
+			      ,[{fun cb_context:set_doc/2
+				,kz_json:set_value(<<"account_id">>, kzd_app:account_id(App), App)}
+			       ,{fun cb_context:set_resp_status/2, 'success'}
+			       ]
              )
     end.
 
@@ -449,11 +449,11 @@ load_app_from_master_account(Context, AppId) ->
     case [JObj || JObj <- DefaultApps, kz_doc:id(JObj) == AppId] of
         [AppJObj] ->
             cb_context:setters(Context
-                               ,[{fun cb_context:set_account_id/2, MasterAccountId}
-                                 ,{fun cb_context:set_account_db/2, MasterAccountDb}
-                                 ,{fun cb_context:set_doc/2, AppJObj}
-                                 ,{fun cb_context:set_resp_status/2, 'success'}
-                                ]
+			      ,[{fun cb_context:set_account_id/2, MasterAccountId}
+			       ,{fun cb_context:set_account_db/2, MasterAccountDb}
+			       ,{fun cb_context:set_doc/2, AppJObj}
+			       ,{fun cb_context:set_resp_status/2, 'success'}
+			       ]
                               );
         _Else ->
             bad_app_error(Context, AppId)
@@ -468,8 +468,8 @@ load_app_from_master_account(Context, AppId) ->
 bad_app_error(Context, AppId) ->
     cb_context:add_system_error(
       'bad_identifier'
-      ,kz_json:from_list([{'details', AppId}])
-      ,Context
+			       ,kz_json:from_list([{'details', AppId}])
+			       ,Context
      ).
 
 %%--------------------------------------------------------------------
@@ -489,8 +489,8 @@ install(Context, Id) ->
             UpdatedApps =
                 kz_json:set_value(
                   Id
-                  ,kz_json:set_value(<<"name">>, AppName, Data)
-                  ,Apps
+				 ,kz_json:set_value(<<"name">>, AppName, Data)
+				 ,Apps
                  ),
             UpdatedDoc = kzd_apps_store:set_apps(Doc, UpdatedApps),
             cb_context:set_doc(Context, UpdatedDoc);
@@ -526,7 +526,7 @@ uninstall(Context, Id) ->
 -spec update(cb_context:context(), ne_binary()) -> cb_context:context().
 update(Context, Id) ->
     Doc = cb_context:doc(Context),
-   Apps = kzd_apps_store:apps(Doc),
+    Apps = kzd_apps_store:apps(Doc),
     case kz_json:get_value(Id, Apps) of
         'undefined' ->
             crossbar_util:response('error', <<"Application is not installed">>, 400, Context);
@@ -536,8 +536,8 @@ update(Context, Id) ->
             UpdatedApps =
                 kz_json:set_value(
                   Id
-                  ,kz_json:set_value(<<"name">>, AppName, Data)
-                  ,Apps
+				 ,kz_json:set_value(<<"name">>, AppName, Data)
+				 ,Apps
                  ),
             UpdatedDoc = kzd_apps_store:set_apps(Doc, UpdatedApps),
             cb_context:set_doc(Context, UpdatedDoc)
@@ -587,7 +587,7 @@ get_screenshot(Context, Number) ->
         'error' ->
             crossbar_util:response_bad_identifier(
               <<?SCREENSHOT/binary , "/", Number/binary>>
-              ,Context
+						 ,Context
              );
         {'ok', Name, _} ->
             get_attachment(Context, Name)
@@ -607,10 +607,10 @@ load_apps_store(Context) ->
             AccountId = cb_context:account_id(Context),
             cb_context:setters(
               Context
-              ,[{fun cb_context:set_resp_status/2, 'success'}
-                ,{fun cb_context:set_resp_data/2, kz_json:new()}
-                ,{fun cb_context:set_doc/2, kzd_apps_store:new(AccountId)}
-               ]
+			      ,[{fun cb_context:set_resp_status/2, 'success'}
+			       ,{fun cb_context:set_resp_data/2, kz_json:new()}
+			       ,{fun cb_context:set_doc/2, kzd_apps_store:new(AccountId)}
+			       ]
              );
         {'success', _} -> Context1;
         {'error', _} -> Context1
@@ -652,12 +652,12 @@ get_attachment(Context, Id, JObj, Attachment) ->
 add_attachment(Context, Id, Attachment, AttachBin) ->
     RespHeaders =
         [{<<"Content-Disposition">>, <<"attachment; filename=", Id/binary>>}
-         ,{<<"Content-Type">>, kz_json:get_value(<<"content_type">>, Attachment)}
-         ,{<<"Content-Length">>, kz_json:get_value(<<"length">>, Attachment)}
+	,{<<"Content-Type">>, kz_json:get_value(<<"content_type">>, Attachment)}
+	,{<<"Content-Length">>, kz_json:get_value(<<"length">>, Attachment)}
         ],
     cb_context:setters(
       Context
-      ,[{fun cb_context:set_resp_data/2, AttachBin}
-        ,{fun cb_context:add_resp_headers/2, RespHeaders}
-       ]
+		      ,[{fun cb_context:set_resp_data/2, AttachBin}
+		       ,{fun cb_context:add_resp_headers/2, RespHeaders}
+		       ]
      ).

@@ -14,7 +14,7 @@
 -export([ fix_account_numbers/1
         , fix_accounts_numbers/1
 
-          ,generate_numbers/3
+	,generate_numbers/3
         ]).
 
 -define(TIME_BETWEEN_ACCOUNTS_MS

@@ -13,19 +13,19 @@
 
 %% API
 -export([start_link/4
-         ,ack/2
-         ,nack/2
-         ,deliveries/1
+	,ack/2
+	,nack/2
+	,deliveries/1
         ]).
 
 %% gen_server callbacks
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("acdc.hrl").
@@ -33,28 +33,28 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {fsm_pid :: pid()
-                ,deliveries = [] :: deliveries()
+	       ,deliveries = [] :: deliveries()
                }).
 
 -define(SHARED_BINDING_OPTIONS(Priority)
-        ,[{'consume_options', [{'no_ack', 'false'}
-                               ,{'exclusive', 'false'}
-                              ]}
-          ,{'basic_qos', 1}
-          ,{'queue_options', [{'exclusive', 'false'}
-                              ,{'arguments', [{<<"x-message-ttl">>, ?MILLISECONDS_IN_DAY}
-                                              ,{<<"x-max-length">>, 1000}
-                                              ,{<<"x-max-priority">>, Priority}
-                                             ]
-                               }
-                             ]
-           }
-         ]).
+       ,[{'consume_options', [{'no_ack', 'false'}
+			     ,{'exclusive', 'false'}
+			     ]}
+	,{'basic_qos', 1}
+	,{'queue_options', [{'exclusive', 'false'}
+			   ,{'arguments', [{<<"x-message-ttl">>, ?MILLISECONDS_IN_DAY}
+					  ,{<<"x-max-length">>, 1000}
+					  ,{<<"x-max-priority">>, Priority}
+					  ]
+			    }
+			   ]
+	 }
+	]).
 
 -define(SHARED_QUEUE_BINDINGS(AcctId, QueueId), [{'self', []}]).
 
 -define(RESPONDERS, [{{'acdc_queue_handler', 'handle_member_call'}
-                      ,[{<<"member">>, <<"call">>}]
+		     ,[{<<"member">>, <<"call">>}]
                      }
                     ]).
 
@@ -68,12 +68,12 @@
 -spec start_link(server_ref(), ne_binary(), ne_binary(), api_integer()) -> startlink_ret().
 start_link(FSMPid, AcctId, QueueId, Priority) ->
     gen_listener:start_link(?SERVER
-                            ,[{'bindings', ?SHARED_QUEUE_BINDINGS(AcctId, QueueId)}
-                              ,{'responders', ?RESPONDERS}
-                              ,{'queue_name', kapi_acdc_queue:shared_queue_name(AcctId, QueueId)}
-                              | ?SHARED_BINDING_OPTIONS(Priority)
-                             ]
-                            ,[FSMPid]
+			   ,[{'bindings', ?SHARED_QUEUE_BINDINGS(AcctId, QueueId)}
+			    ,{'responders', ?RESPONDERS}
+			    ,{'queue_name', kapi_acdc_queue:shared_queue_name(AcctId, QueueId)}
+			     | ?SHARED_BINDING_OPTIONS(Priority)
+			    ]
+			   ,[FSMPid]
                            ).
 
 -spec ack(server_ref(), gen_listener:basic_deliver()) -> 'ok'.

@@ -39,21 +39,21 @@ fetch(Account) ->
 -spec new(ne_binary()) -> kz_json:object().
 new(Account) ->
     Routines = [
-        fun(JObj) -> kz_doc:set_id(JObj, ?ID) end
-        ,fun(JObj) ->
-            AccountId = kz_util:format_account_id(Account, 'raw'),
-            kz_doc:set_account_id(JObj, AccountId)
-        end
-        ,fun(JObj) ->
-            AccountDb = kz_util:format_account_id(Account, 'encoded'),
-            kz_doc:set_account_db(JObj, AccountDb)
-        end
-    ],
+		fun(JObj) -> kz_doc:set_id(JObj, ?ID) end
+	       ,fun(JObj) ->
+			AccountId = kz_util:format_account_id(Account, 'raw'),
+			kz_doc:set_account_id(JObj, AccountId)
+		end
+	       ,fun(JObj) ->
+			AccountDb = kz_util:format_account_id(Account, 'encoded'),
+			kz_doc:set_account_db(JObj, AccountDb)
+		end
+	       ],
     lists:foldl(
-        fun(F, JObj) -> F(JObj) end
-        ,kz_json:new()
-        ,Routines
-    ).
+      fun(F, JObj) -> F(JObj) end
+	       ,kz_json:new()
+	       ,Routines
+     ).
 
 %%--------------------------------------------------------------------
 %% @public

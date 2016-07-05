@@ -11,46 +11,46 @@
 
 %% Convert JObj or Prop to iolist json
 -export([member_call/1, member_call_v/1
-         ,member_call_failure/1, member_call_failure_v/1
-         ,member_call_success/1, member_call_success_v/1
-         ,member_call_cancel/1, member_call_cancel_v/1
-         ,member_connect_req/1, member_connect_req_v/1
-         ,member_connect_resp/1, member_connect_resp_v/1
-         ,member_connect_win/1, member_connect_win_v/1
-         ,agent_timeout/1, agent_timeout_v/1
-         ,member_connect_retry/1, member_connect_retry_v/1
-         ,member_connect_accepted/1, member_connect_accepted_v/1
-         ,member_hungup/1, member_hungup_v/1
-         ,sync_req/1, sync_req_v/1
-         ,sync_resp/1, sync_resp_v/1
-         ,agent_change/1, agent_change_v/1
+	,member_call_failure/1, member_call_failure_v/1
+	,member_call_success/1, member_call_success_v/1
+	,member_call_cancel/1, member_call_cancel_v/1
+	,member_connect_req/1, member_connect_req_v/1
+	,member_connect_resp/1, member_connect_resp_v/1
+	,member_connect_win/1, member_connect_win_v/1
+	,agent_timeout/1, agent_timeout_v/1
+	,member_connect_retry/1, member_connect_retry_v/1
+	,member_connect_accepted/1, member_connect_accepted_v/1
+	,member_hungup/1, member_hungup_v/1
+	,sync_req/1, sync_req_v/1
+	,sync_resp/1, sync_resp_v/1
+	,agent_change/1, agent_change_v/1
         ]).
 
 -export([agent_change_available/0
-         ,agent_change_ringing/0
-         ,agent_change_unavailable/0
+	,agent_change_ringing/0
+	,agent_change_unavailable/0
         ]).
 
 -export([bind_q/2
-         ,unbind_q/2
+	,unbind_q/2
         ]).
 -export([declare_exchanges/0]).
 
 -export([publish_member_call/1, publish_member_call/2
-         ,publish_shared_member_call/1, publish_shared_member_call/3, publish_shared_member_call/4
-         ,publish_member_call_failure/2, publish_member_call_failure/3
-         ,publish_member_call_success/2, publish_member_call_success/3
-         ,publish_member_call_cancel/1, publish_member_call_cancel/2
-         ,publish_member_connect_req/1, publish_member_connect_req/2
-         ,publish_member_connect_resp/2, publish_member_connect_resp/3
-         ,publish_member_connect_win/2, publish_member_connect_win/3
-         ,publish_agent_timeout/2, publish_agent_timeout/3
-         ,publish_member_connect_retry/2, publish_member_connect_retry/3
-         ,publish_member_connect_accepted/2, publish_member_connect_accepted/3
-         ,publish_member_hungup/2, publish_member_hungup/3
-         ,publish_sync_req/1, publish_sync_req/2
-         ,publish_sync_resp/2, publish_sync_resp/3
-         ,publish_agent_change/1, publish_agent_change/2
+	,publish_shared_member_call/1, publish_shared_member_call/3, publish_shared_member_call/4
+	,publish_member_call_failure/2, publish_member_call_failure/3
+	,publish_member_call_success/2, publish_member_call_success/3
+	,publish_member_call_cancel/1, publish_member_call_cancel/2
+	,publish_member_connect_req/1, publish_member_connect_req/2
+	,publish_member_connect_resp/2, publish_member_connect_resp/3
+	,publish_member_connect_win/2, publish_member_connect_win/3
+	,publish_agent_timeout/2, publish_agent_timeout/3
+	,publish_member_connect_retry/2, publish_member_connect_retry/3
+	,publish_member_connect_accepted/2, publish_member_connect_accepted/3
+	,publish_member_hungup/2, publish_member_hungup/3
+	,publish_sync_req/1, publish_sync_req/2
+	,publish_sync_resp/2, publish_sync_resp/3
+	,publish_agent_change/1, publish_agent_change/2
         ]).
 
 -export([queue_size/2, shared_queue_name/2]).
@@ -63,10 +63,10 @@
 -define(MEMBER_CALL_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call">>]).
 -define(OPTIONAL_MEMBER_CALL_HEADERS, [<<"Member-Priority">>]).
 -define(MEMBER_CALL_VALUES, [{<<"Event-Category">>, <<"member">>}
-                             ,{<<"Event-Name">>, <<"call">>}
+			    ,{<<"Event-Name">>, <<"call">>}
                             ]).
 -define(MEMBER_CALL_TYPES, [{<<"Queue-ID">>, fun erlang:is_binary/1}
-                            ,{<<"Member-Priority">>, fun is_integer/1}
+			   ,{<<"Member-Priority">>, fun is_integer/1}
                            ]).
 
 -spec member_call(api_terms()) ->
@@ -107,7 +107,7 @@ member_call_routing_key(AcctId, QueueId) ->
 -define(MEMBER_CALL_FAIL_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call-ID">>]).
 -define(OPTIONAL_MEMBER_CALL_FAIL_HEADERS, [<<"Failure-Reason">>, <<"Process-ID">>, <<"Agent-ID">>]).
 -define(MEMBER_CALL_FAIL_VALUES, [{<<"Event-Category">>, <<"member">>}
-                                  ,{<<"Event-Name">>, <<"call_fail">>}
+				 ,{<<"Event-Name">>, <<"call_fail">>}
                                  ]).
 -define(MEMBER_CALL_FAIL_TYPES, []).
 
@@ -134,7 +134,7 @@ member_call_failure_v(JObj) ->
 -define(MEMBER_CALL_SUCCESS_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>]).
 -define(OPTIONAL_MEMBER_CALL_SUCCESS_HEADERS, [<<"Process-ID">>, <<"Agent-ID">>, <<"Call-ID">>]).
 -define(MEMBER_CALL_SUCCESS_VALUES, [{<<"Event-Category">>, <<"member">>}
-                                     ,{<<"Event-Name">>, <<"call_success">>}
+				    ,{<<"Event-Name">>, <<"call_success">>}
                                     ]).
 -define(MEMBER_CALL_SUCCESS_TYPES, []).
 
@@ -162,7 +162,7 @@ member_call_success_v(JObj) ->
 -define(MEMBER_CALL_CANCEL_HEADERS, [<<"Call-ID">>, <<"Account-ID">>, <<"Queue-ID">>]).
 -define(OPTIONAL_MEMBER_CALL_CANCEL_HEADERS, [<<"Reason">>]).
 -define(MEMBER_CALL_CANCEL_VALUES, [{<<"Event-Category">>, <<"member">>}
-                                    ,{<<"Event-Name">>, <<"call_cancel">>}
+				   ,{<<"Event-Name">>, <<"call_cancel">>}
                                    ]).
 -define(MEMBER_CALL_CANCEL_TYPES, []).
 
@@ -189,7 +189,7 @@ member_call_cancel_v(JObj) ->
 -define(MEMBER_CONNECT_REQ_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call-ID">>]).
 -define(OPTIONAL_MEMBER_CONNECT_REQ_HEADERS, [<<"Process-ID">>]).
 -define(MEMBER_CONNECT_REQ_VALUES, [{<<"Event-Category">>, <<"member">>}
-                                    ,{<<"Event-Name">>, <<"connect_req">>}
+				   ,{<<"Event-Name">>, <<"connect_req">>}
                                    ]).
 -define(MEMBER_CONNECT_REQ_TYPES, []).
 
@@ -229,7 +229,7 @@ member_connect_req_routing_key(AcctId, QID) ->
 -define(MEMBER_CONNECT_RESP_HEADERS, [<<"Agent-ID">>]).
 -define(OPTIONAL_MEMBER_CONNECT_RESP_HEADERS, [<<"Idle-Time">>, <<"Process-ID">>]).
 -define(MEMBER_CONNECT_RESP_VALUES, [{<<"Event-Category">>, <<"member">>}
-                                     ,{<<"Event-Name">>, <<"connect_resp">>}
+				    ,{<<"Event-Name">>, <<"connect_resp">>}
                                     ]).
 -define(MEMBER_CONNECT_RESP_TYPES, []).
 
@@ -255,13 +255,13 @@ member_connect_resp_v(JObj) ->
 %%------------------------------------------------------------------------------
 -define(MEMBER_CONNECT_WIN_HEADERS, [<<"Queue-ID">>, <<"Call">>]).
 -define(OPTIONAL_MEMBER_CONNECT_WIN_HEADERS, [<<"Ring-Timeout">>, <<"Caller-Exit-Key">>
-                                              ,<<"Wrapup-Timeout">>, <<"CDR-Url">>
-                                              ,<<"Process-ID">>, <<"Agent-Process-ID">>
-                                              ,<<"Record-Caller">>, <<"Recording-URL">>
-                                              ,<<"Notifications">>
+					     ,<<"Wrapup-Timeout">>, <<"CDR-Url">>
+					     ,<<"Process-ID">>, <<"Agent-Process-ID">>
+					     ,<<"Record-Caller">>, <<"Recording-URL">>
+					     ,<<"Notifications">>
                                              ]).
 -define(MEMBER_CONNECT_WIN_VALUES, [{<<"Event-Category">>, <<"member">>}
-                                    ,{<<"Event-Name">>, <<"connect_win">>}
+				   ,{<<"Event-Name">>, <<"connect_win">>}
                                    ]).
 -define(MEMBER_CONNECT_WIN_TYPES, [{<<"Record-Caller">>, fun kz_util:is_boolean/1}]).
 
@@ -288,7 +288,7 @@ member_connect_win_v(JObj) ->
 -define(AGENT_TIMEOUT_HEADERS, [<<"Queue-ID">>, <<"Call-ID">>]).
 -define(OPTIONAL_AGENT_TIMEOUT_HEADERS, [<<"Agent-Process-ID">>]).
 -define(AGENT_TIMEOUT_VALUES, [{<<"Event-Category">>, <<"agent">>}
-                               ,{<<"Event-Name">>, <<"connect_timeout">>}
+			      ,{<<"Event-Name">>, <<"connect_timeout">>}
                               ]).
 -define(AGENT_TIMEOUT_TYPES, []).
 
@@ -314,7 +314,7 @@ agent_timeout_v(JObj) ->
 -define(MEMBER_CONNECT_ACCEPTED_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_MEMBER_CONNECT_ACCEPTED_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Process-ID">>]).
 -define(MEMBER_CONNECT_ACCEPTED_VALUES, [{<<"Event-Category">>, <<"member">>}
-                                         ,{<<"Event-Name">>, <<"connect_accepted">>}
+					,{<<"Event-Name">>, <<"connect_accepted">>}
                                         ]).
 -define(MEMBER_CONNECT_ACCEPTED_TYPES, []).
 
@@ -343,7 +343,7 @@ member_connect_accepted_v(JObj) ->
 -define(MEMBER_CONNECT_RETRY_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_MEMBER_CONNECT_RETRY_HEADERS, [<<"Process-ID">>, <<"Agent-ID">>]).
 -define(MEMBER_CONNECT_RETRY_VALUES, [{<<"Event-Category">>, <<"member">>}
-                                      ,{<<"Event-Name">>, <<"connect_retry">>}
+				     ,{<<"Event-Name">>, <<"connect_retry">>}
                                      ]).
 -define(MEMBER_CONNECT_RETRY_TYPES, []).
 
@@ -373,7 +373,7 @@ member_connect_retry_v(JObj) ->
 -define(MEMBER_HUNGUP_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_MEMBER_HUNGUP_HEADERS, [<<"Process-ID">>]).
 -define(MEMBER_HUNGUP_VALUES, [{<<"Event-Category">>, <<"member">>}
-                               ,{<<"Event-Name">>, <<"hungup">>}
+			      ,{<<"Event-Name">>, <<"hungup">>}
                               ]).
 -define(MEMBER_HUNGUP_TYPES, []).
 
@@ -415,7 +415,7 @@ sync_req_routing_key(AcctId, QID) ->
 -define(SYNC_REQ_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>]).
 -define(OPTIONAL_SYNC_REQ_HEADERS, [<<"Process-ID">>]).
 -define(SYNC_REQ_VALUES, [{<<"Event-Category">>, <<"queue">>}
-                          ,{<<"Event-Name">>, <<"sync_req">>}
+			 ,{<<"Event-Name">>, <<"sync_req">>}
                          ]).
 -define(SYNC_REQ_TYPES, []).
 
@@ -437,11 +437,11 @@ sync_req_v(JObj) ->
     sync_req_v(kz_json:to_proplist(JObj)).
 
 -define(SYNC_RESP_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>
-                            ,<<"Current-Strategy">>
+			   ,<<"Current-Strategy">>
                            ]).
 -define(OPTIONAL_SYNC_RESP_HEADERS, [<<"Process-ID">>, <<"Strategy-State">>]).
 -define(SYNC_RESP_VALUES, [{<<"Event-Category">>, <<"queue">>}
-                           ,{<<"Event-Name">>, <<"sync_resp">>}
+			  ,{<<"Event-Name">>, <<"sync_resp">>}
                           ]).
 -define(SYNC_RESP_TYPES, []).
 
@@ -469,11 +469,11 @@ sync_resp_v(JObj) ->
 %%------------------------------------------------------------------------------
 agent_change_publish_key(Prop) when is_list(Prop) ->
     agent_change_routing_key(props:get_value(<<"Account-ID">>, Prop)
-                             ,props:get_value(<<"Queue-ID">>, Prop)
+			    ,props:get_value(<<"Queue-ID">>, Prop)
                             );
 agent_change_publish_key(JObj) ->
     agent_change_routing_key(kz_json:get_value(<<"Account-ID">>, JObj)
-                             ,kz_json:get_value(<<"Queue-ID">>, JObj)
+			    ,kz_json:get_value(<<"Queue-ID">>, JObj)
                             ).
 
 agent_change_routing_key(AcctId, QueueId) ->
@@ -483,8 +483,8 @@ agent_change_routing_key(AcctId, QueueId) ->
 -define(AGENT_CHANGE_RINGING, <<"ringing">>).
 -define(AGENT_CHANGE_UNAVAILABLE, <<"unavailable">>).
 -define(AGENT_CHANGES, [?AGENT_CHANGE_AVAILABLE
-                        ,?AGENT_CHANGE_RINGING
-                        ,?AGENT_CHANGE_UNAVAILABLE
+		       ,?AGENT_CHANGE_RINGING
+		       ,?AGENT_CHANGE_UNAVAILABLE
                        ]).
 
 agent_change_available() -> ?AGENT_CHANGE_AVAILABLE.
@@ -494,8 +494,8 @@ agent_change_unavailable() -> ?AGENT_CHANGE_UNAVAILABLE.
 -define(AGENT_CHANGE_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Queue-ID">>, <<"Change">>]).
 -define(OPTIONAL_AGENT_CHANGE_HEADERS, [<<"Process-ID">>]).
 -define(AGENT_CHANGE_VALUES, [{<<"Event-Category">>, <<"queue">>}
-                              ,{<<"Event-Name">>, <<"agent_change">>}
-                              ,{<<"Change">>, ?AGENT_CHANGES}
+			     ,{<<"Event-Name">>, <<"agent_change">>}
+			     ,{<<"Change">>, ?AGENT_CHANGES}
                              ]).
 -define(AGENT_CHANGE_TYPES, []).
 
@@ -525,7 +525,7 @@ shared_queue_name(AcctId, QueueId) ->
 queue_size(AcctId, QueueId) ->
     Q = shared_queue_name(AcctId, QueueId),
     try amqp_util:new_queue(Q, [{'return_field', 'all'}
-                                ,{'passive', 'true'}
+			       ,{'passive', 'true'}
                                ])
     of
         {'error', {'server_initiated_close', 404, _Msg}} ->
@@ -638,8 +638,8 @@ publish_member_call_cancel(API, ContentType) ->
 -spec publish_shared_member_call(ne_binary(), ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_shared_member_call(JObj) ->
     publish_shared_member_call(kz_json:get_value(<<"Account-ID">>, JObj)
-                               ,kz_json:get_value(<<"Queue-ID">>, JObj)
-                               ,JObj
+			      ,kz_json:get_value(<<"Queue-ID">>, JObj)
+			      ,JObj
                               ).
 publish_shared_member_call(AcctId, QueueId, JObj) ->
     publish_shared_member_call(AcctId, QueueId, JObj, ?DEFAULT_CONTENT_TYPE).
@@ -648,7 +648,7 @@ publish_shared_member_call(AcctId, QueueId, Props, ContentType) when is_list(Pro
 publish_shared_member_call(AcctId, QueueId, JObj, ContentType) ->
     Priority = kz_json:get_integer_value(<<"Member-Priority">>, JObj),
     Props = props:filter_undefined([{'priority', Priority}
-                                    ,{'mandatory', 'true'}
+				   ,{'mandatory', 'true'}
                                    ]),
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?MEMBER_CALL_VALUES, fun member_call/1),
     amqp_util:targeted_publish(shared_queue_name(AcctId, QueueId), Payload, ContentType, Props).

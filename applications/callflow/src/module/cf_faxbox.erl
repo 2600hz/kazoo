@@ -30,11 +30,11 @@ handle(Data, Call) ->
     lager:info("receive fax for faxbox: ~s", [FaxboxId]),
     Props = props:filter_undefined(
               props:filter_empty([{<<"Call">>, kapps_call:to_json(Call)}
-                               ,{<<"Action">>, <<"receive">>}
-                               ,{<<"FaxBox-ID">>, FaxboxId}
-                               ,{<<"Fax-T38-Option">>, lookup_fax_option(Call, Data)}
-                                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                               ])),
+				 ,{<<"Action">>, <<"receive">>}
+				 ,{<<"FaxBox-ID">>, FaxboxId}
+				 ,{<<"Fax-T38-Option">>, lookup_fax_option(Call, Data)}
+				  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+				 ])),
     kapi_fax:publish_req(Props),
     cf_exe:control_usurped(Call).
 

@@ -8,29 +8,29 @@
 -module(kzd_service_plan).
 
 -export([new/0
-         ,account_id/1, account_id/2
-         ,overrides/1, overrides/2
-         ,merge_overrides/2
+	,account_id/1, account_id/2
+	,overrides/1, overrides/2
+	,merge_overrides/2
 
-         ,plan/1, plan/2
-         ,set_plan/2
+	,plan/1, plan/2
+	,set_plan/2
 
-         ,item_plan/3, item_plan/4
-         ,category_plan/2, category_plan/3
+	,item_plan/3, item_plan/4
+	,category_plan/2, category_plan/3
 
-         ,item_activation_charge/3, item_activation_charge/4
-         ,category_activation_charge/2, category_activation_charge/3
+	,item_activation_charge/3, item_activation_charge/4
+	,category_activation_charge/2, category_activation_charge/3
 
-         ,item_minimum/3, item_minimum/4
-         ,item_name/3
-         ,item_exceptions/3
+	,item_minimum/3, item_minimum/4
+	,item_name/3
+	,item_exceptions/3
 
-         ,categories/1, category/2, category/3
-         ,items/2, item/3
+	,categories/1, category/2, category/3
+	,items/2, item/3
 
-         ,bookkeepers/1, bookkeeper/2, bookkeeper_ids/1
+	,bookkeepers/1, bookkeeper/2, bookkeeper_ids/1
 
-         ,all_items_key/0
+	,all_items_key/0
         ]).
 
 -include("kz_documents.hrl").
@@ -39,8 +39,8 @@
 -type docs() :: [doc()].
 -type api_doc() :: api_object().
 -export_type([doc/0
-              ,api_doc/0
-              ,docs/0
+	     ,api_doc/0
+	     ,docs/0
              ]).
 
 -define(PLAN, <<"plan">>).
@@ -78,13 +78,13 @@ item_activation_charge(Plan, Category, Item) ->
     item_activation_charge(Plan, Category, Item, 0).
 item_activation_charge(Plan, Category, Item, Default) ->
     kzd_item_plan:activation_charge(
-        kz_json:get_json_value(
-            [?PLAN, Category, Item]
-            ,Plan
-            ,kz_json:new()
-        )
-        ,Default
-    ).
+      kz_json:get_json_value(
+	[?PLAN, Category, Item]
+			    ,Plan
+			    ,kz_json:new()
+       )
+				   ,Default
+     ).
 
 -spec category_activation_charge(doc(), ne_binary()) -> float().
 -spec category_activation_charge(doc(), ne_binary(), Default) -> float() | Default.
@@ -131,20 +131,20 @@ item_minimum(Plan, CategoryId, ItemId) ->
 item_minimum(Plan, CategoryId, ItemId, Default) ->
     kzd_item_plan:minimum(
       kz_json:get_json_value([?PLAN, CategoryId, ItemId]
-                             ,Plan
-                             ,kz_json:new()
+			    ,Plan
+			    ,kz_json:new()
                             )
-      ,Default
+			 ,Default
      ).
 
 -spec item_name(doc(), ne_binary(), ne_binary()) -> ne_binary().
 item_name(Plan, CategoryId, ItemId) ->
     kzd_item_plan:name(
-        kz_json:get_json_value(
-            [?PLAN, CategoryId, ItemId]
-            ,Plan
-            ,kz_json:new()
-        )
+      kz_json:get_json_value(
+	[?PLAN, CategoryId, ItemId]
+			    ,Plan
+			    ,kz_json:new()
+       )
      ).
 
 -spec item_exceptions(doc(), ne_binary(), ne_binary()) -> ne_binary().
@@ -153,12 +153,12 @@ item_exceptions(Plan, CategoryId, ItemId) ->
     item_exceptions(Plan, CategoryId, ItemId, []).
 item_exceptions(Plan, CategoryId, ItemId, Default) ->
     kzd_item_plan:exceptions(
-        kz_json:get_json_value(
-            [?PLAN, CategoryId, ItemId]
-            ,Plan
-            ,kz_json:new()
-        )
-        ,Default
+      kz_json:get_json_value(
+	[?PLAN, CategoryId, ItemId]
+			    ,Plan
+			    ,kz_json:new()
+       )
+			    ,Default
      ).
 
 -spec item_plan(doc(), ne_binary(), ne_binary()) -> kz_json:object().

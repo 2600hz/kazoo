@@ -13,7 +13,7 @@
 -module(cb_noauthn).
 
 -export([init/0
-         ,authenticate/1
+	,authenticate/1
         ]).
 
 -include("crossbar.hrl").

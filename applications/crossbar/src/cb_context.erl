@@ -9,94 +9,94 @@
 -module(cb_context).
 
 -export([store/3
-         ,fetch/2, fetch/3
-         ,put_reqid/1
-         ,import_errors/1, failed/2
-         ,response/1
-         ,has_errors/1
-         ,add_system_error/2, add_system_error/3, add_system_error/4
-         ,add_validation_error/4
-         ,validate_request_data/2, validate_request_data/3, validate_request_data/4
-         ,add_content_types_provided/2
-         ,add_content_types_accepted/2
-         ,add_attachment_content_type/3
+	,fetch/2, fetch/3
+	,put_reqid/1
+	,import_errors/1, failed/2
+	,response/1
+	,has_errors/1
+	,add_system_error/2, add_system_error/3, add_system_error/4
+	,add_validation_error/4
+	,validate_request_data/2, validate_request_data/3, validate_request_data/4
+	,add_content_types_provided/2
+	,add_content_types_accepted/2
+	,add_attachment_content_type/3
 
-         ,is_context/1
+	,is_context/1
 
-         ,is_authenticated/1
+	,is_authenticated/1
 
          %% Getters / Setters
-         ,setters/2
-         ,new/0
+	,setters/2
+	,new/0
 
-         ,account_id/1, set_account_id/2
-         ,account_name/1, set_account_name/2
-         ,account_db/1, set_account_db/2
-         ,user_id/1, set_user_id/2
-         ,device_id/1, set_device_id/2
-         ,account_modb/1, account_modb/2, account_modb/3
-         ,set_account_modb/3, set_account_modb/4
-         ,reseller_id/1, set_reseller_id/2
-         ,account_realm/1
-         ,account_doc/1
-         ,auth_token_type/1, set_auth_token_type/2
-         ,auth_token/1, set_auth_token/2
-         ,auth_doc/1, set_auth_doc/2
-         ,auth_account_id/1, set_auth_account_id/2
-         ,auth_account_doc/1
-         ,auth_user_id/1
-         ,req_verb/1, set_req_verb/2
-         ,req_data/1, set_req_data/2
-         ,req_id/1, set_req_id/2
-         ,req_files/1, set_req_files/2
-         ,req_nouns/1, set_req_nouns/2
-         ,req_headers/1, set_req_headers/2
-         ,req_header/2, set_req_header/3
-         ,query_string/1, set_query_string/2
-         ,client_ip/1, set_client_ip/2
-         ,doc/1, set_doc/2, update_doc/2
-         ,load_merge_bypass/1, set_load_merge_bypass/2
-         ,start/1, set_start/2
-         ,resp_file/1, set_resp_file/2
-         ,resp_data/1, set_resp_data/2
-         ,resp_status/1, set_resp_status/2
-         ,resp_expires/1, set_resp_expires/2
-         ,api_version/1, set_api_version/2
-         ,resp_etag/1, set_resp_etag/2
-         ,resp_envelope/1, set_resp_envelope/2
-         ,allow_methods/1, set_allow_methods/2
-         ,allowed_methods/1, set_allowed_methods/2
-         ,method/1, set_method/2
-         ,path_tokens/1
-         ,magic_pathed/1, set_magic_pathed/2
-         ,should_paginate/1, set_should_paginate/2
+	,account_id/1, set_account_id/2
+	,account_name/1, set_account_name/2
+	,account_db/1, set_account_db/2
+	,user_id/1, set_user_id/2
+	,device_id/1, set_device_id/2
+	,account_modb/1, account_modb/2, account_modb/3
+	,set_account_modb/3, set_account_modb/4
+	,reseller_id/1, set_reseller_id/2
+	,account_realm/1
+	,account_doc/1
+	,auth_token_type/1, set_auth_token_type/2
+	,auth_token/1, set_auth_token/2
+	,auth_doc/1, set_auth_doc/2
+	,auth_account_id/1, set_auth_account_id/2
+	,auth_account_doc/1
+	,auth_user_id/1
+	,req_verb/1, set_req_verb/2
+	,req_data/1, set_req_data/2
+	,req_id/1, set_req_id/2
+	,req_files/1, set_req_files/2
+	,req_nouns/1, set_req_nouns/2
+	,req_headers/1, set_req_headers/2
+	,req_header/2, set_req_header/3
+	,query_string/1, set_query_string/2
+	,client_ip/1, set_client_ip/2
+	,doc/1, set_doc/2, update_doc/2
+	,load_merge_bypass/1, set_load_merge_bypass/2
+	,start/1, set_start/2
+	,resp_file/1, set_resp_file/2
+	,resp_data/1, set_resp_data/2
+	,resp_status/1, set_resp_status/2
+	,resp_expires/1, set_resp_expires/2
+	,api_version/1, set_api_version/2
+	,resp_etag/1, set_resp_etag/2
+	,resp_envelope/1, set_resp_envelope/2
+	,allow_methods/1, set_allow_methods/2
+	,allowed_methods/1, set_allowed_methods/2
+	,method/1, set_method/2
+	,path_tokens/1
+	,magic_pathed/1, set_magic_pathed/2
+	,should_paginate/1, set_should_paginate/2
 
-         ,req_json/1, set_req_json/2
-         ,resp_error_code/1, set_resp_error_code/2
-         ,resp_error_msg/1, set_resp_error_msg/2
+	,req_json/1, set_req_json/2
+	,resp_error_code/1, set_resp_error_code/2
+	,resp_error_msg/1, set_resp_error_msg/2
 
-         ,resp_headers/1
-         ,set_resp_headers/2, set_resp_header/3
-         ,add_resp_headers/2, add_resp_header/3
+	,resp_headers/1
+	,set_resp_headers/2, set_resp_header/3
+	,add_resp_headers/2, add_resp_header/3
 
-         ,content_types_accepted/1, set_content_types_accepted/2
-         ,content_types_provided/1, set_content_types_provided/2
-         ,languages_provided/1, set_languages_provided/2
-         ,encodings_provided/1, set_encodings_provided/2
+	,content_types_accepted/1, set_content_types_accepted/2
+	,content_types_provided/1, set_content_types_provided/2
+	,languages_provided/1, set_languages_provided/2
+	,encodings_provided/1, set_encodings_provided/2
 
-         ,validation_errors/1, set_validation_errors/2
+	,validation_errors/1, set_validation_errors/2
 
-         ,host_url/1, set_host_url/2
-         ,set_raw_host/2
-         ,set_port/2
-         ,set_raw_path/2
-         ,set_raw_qs/2
-         ,profile_id/1 ,set_profile_id/2
+	,host_url/1, set_host_url/2
+	,set_raw_host/2
+	,set_port/2
+	,set_raw_path/2
+	,set_raw_qs/2
+	,profile_id/1 ,set_profile_id/2
 
          %% Special accessors
-         ,req_value/2, req_value/3
-         ,accepting_charges/1, set_accepting_charges/1
-         ,req_param/2, req_param/3
+	,req_value/2, req_value/3
+	,accepting_charges/1, set_accepting_charges/1
+	,req_param/2, req_param/3
         ]).
 
 -include("crossbar.hrl").
@@ -109,10 +109,10 @@
 -type setter_fun_3() :: fun((context(), any(), any()) -> context()).
 -type setter_fun() :: setter_fun_1() | setter_fun_2() | setter_fun_3().
 -export_type([context/0
-              ,setter_fun/0
-              ,setter_fun_1/0
-              ,setter_fun_2/0
-              ,setter_fun_3/0
+	     ,setter_fun/0
+	     ,setter_fun_1/0
+	     ,setter_fun_2/0
+	     ,setter_fun_3/0
              ]).
 
 -type setter_kv() :: setter_fun_1() |
@@ -132,11 +132,11 @@ is_context(_) -> 'false'.
 req_value(#cb_context{}=Context, Key) ->
     req_value(Context, Key, 'undefined').
 req_value(#cb_context{req_data=ReqData
-                      ,query_json=QS
-                      ,req_json=JObj
+		     ,query_json=QS
+		     ,req_json=JObj
                      }
-          ,Key
-          ,Default
+	 ,Key
+	 ,Default
          ) ->
     kz_json:find(Key, [ReqData, QS, JObj], Default).
 
@@ -540,7 +540,7 @@ put_reqid(#cb_context{req_id=ReqId}) ->
 %% @end
 %%--------------------------------------------------------------------
 has_errors(#cb_context{validation_errors=JObj
-                       ,resp_status='success'
+		      ,resp_status='success'
                       }) ->
     (not kz_util:is_empty(JObj));
 has_errors(#cb_context{}) -> 'true'.
@@ -556,20 +556,20 @@ import_errors(#cb_context{}=Context) ->
         {'ok', _} -> Context;
         {'error', {ErrorCode, ErrorMsg, Errors}} ->
             Context#cb_context{resp_error_code=ErrorCode
-                               ,resp_error_msg=ErrorMsg
-                               ,resp_data=Errors
-                               ,resp_status='error'
+			      ,resp_error_msg=ErrorMsg
+			      ,resp_data=Errors
+			      ,resp_status='error'
                               }
     end.
 
 response(#cb_context{resp_status='success'
-                     ,resp_data=JObj
+		    ,resp_data=JObj
                     }) ->
     {'ok', JObj};
 response(#cb_context{resp_error_code=Code
-                     ,resp_error_msg=Msg
-                     ,resp_data=DataJObj
-                     ,validation_errors=ValidationJObj
+		    ,resp_error_msg=Msg
+		    ,resp_data=DataJObj
+		    ,validation_errors=ValidationJObj
                     }) ->
     ErrorCode = try kz_util:to_integer(Code) catch _:_ -> 500 end,
     ErrorMsg = case kz_util:is_empty(Msg) of
@@ -617,7 +617,7 @@ validate_request_data(SchemaJObj, Context) ->
              );
         {'error', Errors} when Strict ->
             lager:debug("request data did not validate against ~s: ~p", [kz_doc:id(SchemaJObj)
-                                                                         ,Errors
+									,Errors
                                                                         ]),
             failed(Context, Errors);
         {'error', Errors} ->
@@ -655,102 +655,102 @@ failed(Context, Errors) ->
                        ]
                       ),
     lists:foldl(fun failed_error/2
-                ,Context1
-                ,Errors
+	       ,Context1
+	       ,Errors
                ).
 
 failed_error({'data_invalid'
-              ,FailedSchemaJObj
-              ,'wrong_min_length'
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,FailedSchemaJObj
+	     ,'wrong_min_length'
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     Minimum = kz_json:get_value(<<"minLength">>, FailedSchemaJObj),
     MinLen = kz_util:to_binary(Minimum),
 
     add_validation_error(
       FailedKeyPath
-      ,<<"minLength">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"String must be at least ", MinLen/binary, " characters">>}
-          ,{<<"target">>, Minimum}
-         ])
-      ,Context
+			,<<"minLength">>
+			,kz_json:from_list(
+			   [{<<"message">>, <<"String must be at least ", MinLen/binary, " characters">>}
+			   ,{<<"target">>, Minimum}
+			   ])
+			,Context
      );
 failed_error({'data_invalid'
-              ,FailedSchemaJObj
-              ,'wrong_max_length'
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,FailedSchemaJObj
+	     ,'wrong_max_length'
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     Maximum = kz_json:get_value(<<"maxLength">>, FailedSchemaJObj),
     MaxLen = kz_util:to_binary(Maximum),
 
     add_validation_error(
       FailedKeyPath
-      ,<<"maxLength">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"String must not be more than ", MaxLen/binary, " characters">>}
-          ,{<<"target">>, Maximum}
-         ])
-      ,Context
+			,<<"maxLength">>
+			,kz_json:from_list(
+			   [{<<"message">>, <<"String must not be more than ", MaxLen/binary, " characters">>}
+			   ,{<<"target">>, Maximum}
+			   ])
+			,Context
      );
 failed_error({'data_invalid'
-              ,FailedSchemaJObj
-              ,'not_in_enum'
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,FailedSchemaJObj
+	     ,'not_in_enum'
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     add_validation_error(
       FailedKeyPath
-      ,<<"enum">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"Value not found in enumerated list of values">>}
-          ,{<<"target">>, kz_json:get_value(<<"enum">>, FailedSchemaJObj, [])}
-         ])
-      ,Context
+			,<<"enum">>
+			,kz_json:from_list(
+			   [{<<"message">>, <<"Value not found in enumerated list of values">>}
+			   ,{<<"target">>, kz_json:get_value(<<"enum">>, FailedSchemaJObj, [])}
+			   ])
+			,Context
      );
 failed_error({'data_invalid'
-              ,FailedSchemaJObj
-              ,'not_minimum'
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,FailedSchemaJObj
+	     ,'not_minimum'
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     Minimum = kz_json:get_first_defined([<<"minimum">>, <<"exclusiveMinimum">>], FailedSchemaJObj),
     Min = kz_util:to_binary(Minimum),
 
     add_validation_error(
       FailedKeyPath
-      ,<<"minimum">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"Value must be at least ", Min/binary>>}
-          ,{<<"target">>, Minimum}
-         ])
-      ,Context
+			,<<"minimum">>
+			,kz_json:from_list(
+			   [{<<"message">>, <<"Value must be at least ", Min/binary>>}
+			   ,{<<"target">>, Minimum}
+			   ])
+			,Context
      );
 failed_error({'data_invalid'
-              ,FailedSchemaJObj
-              ,'not_maximum'
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,FailedSchemaJObj
+	     ,'not_maximum'
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     Maximum = kz_json:get_first_defined([<<"maximum">>, <<"exclusiveMaximum">>], FailedSchemaJObj),
     Max = kz_util:to_binary(Maximum),
 
     add_validation_error(
       FailedKeyPath
-      ,<<"maximum">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"Value must be at most ", Max/binary>>}
-          ,{<<"target">>, Maximum}
-         ])
-      ,Context
+			,<<"maximum">>
+			,kz_json:from_list(
+			   [{<<"message">>, <<"Value must be at most ", Max/binary>>}
+			   ,{<<"target">>, Maximum}
+			   ])
+			,Context
      );
 failed_error({'data_invalid'
-              ,FailedSchemaJObj
-              ,'wrong_size'
-              ,FailedValue
-              ,FailedKeyPath
+	     ,FailedSchemaJObj
+	     ,'wrong_size'
+	     ,FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     Minimum = kz_json:get_value(<<"minItems">>, FailedSchemaJObj),
     Maximum = kz_json:get_value(<<"maxItems">>, FailedSchemaJObj),
@@ -758,228 +758,228 @@ failed_error({'data_invalid'
     case length(FailedValue) of
         N when N < Minimum ->
             failed_error({'data_invalid'
-                          ,FailedSchemaJObj
-                          ,'wrong_min_items'
-                          ,FailedValue
-                          ,FailedKeyPath
+			 ,FailedSchemaJObj
+			 ,'wrong_min_items'
+			 ,FailedValue
+			 ,FailedKeyPath
                          }
                         ,Context
                         );
         N when N > Maximum ->
             failed_error({'data_invalid'
-                          ,FailedSchemaJObj
-                          ,'wrong_max_items'
-                          ,FailedValue
-                          ,FailedKeyPath
+			 ,FailedSchemaJObj
+			 ,'wrong_max_items'
+			 ,FailedValue
+			 ,FailedKeyPath
                          }
                         ,Context
                         )
     end;
 failed_error({'data_invalid'
-              ,FailedSchemaJObj
-              ,'wrong_min_items'
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,FailedSchemaJObj
+	     ,'wrong_min_items'
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     Minimum = kz_json:get_value(<<"minItems">>, FailedSchemaJObj),
     Min = kz_util:to_binary(Minimum),
 
     add_validation_error(
       FailedKeyPath
-      ,<<"minItems">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"The list must have at least ", Min/binary, " items">>}
-          ,{<<"target">>, Minimum}
-         ])
-      ,Context
+			,<<"minItems">>
+			,kz_json:from_list(
+			   [{<<"message">>, <<"The list must have at least ", Min/binary, " items">>}
+			   ,{<<"target">>, Minimum}
+			   ])
+			,Context
      );
 failed_error({'data_invalid'
-              ,FailedSchemaJObj
-              ,'wrong_max_items'
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,FailedSchemaJObj
+	     ,'wrong_max_items'
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     Maximum = kz_json:get_value(<<"maxItems">>, FailedSchemaJObj),
     Max = kz_util:to_binary(Maximum),
 
     add_validation_error(
       FailedKeyPath
-      ,<<"maxItems">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"The list is more than ", Max/binary, " items">>}
-          ,{<<"target">>, Maximum}
-         ])
-      ,Context
+			,<<"maxItems">>
+			,kz_json:from_list(
+			   [{<<"message">>, <<"The list is more than ", Max/binary, " items">>}
+			   ,{<<"target">>, Maximum}
+			   ])
+			,Context
      );
 failed_error({'data_invalid'
-              ,FailedSchemaJObj
-              ,'wrong_min_properties'
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,FailedSchemaJObj
+	     ,'wrong_min_properties'
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     Minimum = kz_json:get_value(<<"minProperties">>, FailedSchemaJObj),
     Min = kz_util:to_binary(Minimum),
 
     add_validation_error(
       FailedKeyPath
-      ,<<"minProperties">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"The object must have at least ", Min/binary, " keys">>}
-          ,{<<"target">>, Minimum}
-         ])
-      ,Context
+			,<<"minProperties">>
+			,kz_json:from_list(
+			   [{<<"message">>, <<"The object must have at least ", Min/binary, " keys">>}
+			   ,{<<"target">>, Minimum}
+			   ])
+			,Context
      );
 failed_error({'data_invalid'
-              ,FailedSchemaJObj
-              ,{'not_unique', _Item}
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,FailedSchemaJObj
+	     ,{'not_unique', _Item}
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     lager:debug("item ~p is not unique", [_Item]),
     lager:debug("failed schema: ~p", [FailedSchemaJObj]),
     add_validation_error(
       FailedKeyPath
-      ,<<"uniqueItems">>
-      ,kz_json:from_list([{<<"message">>, <<"List of items is not unique">>}])
-      ,Context
+			,<<"uniqueItems">>
+			,kz_json:from_list([{<<"message">>, <<"List of items is not unique">>}])
+			,Context
      );
 failed_error({'data_invalid'
-              ,_FailedSchemaJObj
-              ,'no_extra_properties_allowed'
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,_FailedSchemaJObj
+	     ,'no_extra_properties_allowed'
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     add_validation_error(
       FailedKeyPath
-      ,<<"additionalProperties">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"Strict checking of data is enabled; only include schema-defined properties">>}]
-        )
-      ,Context
+			,<<"additionalProperties">>
+			,kz_json:from_list(
+			   [{<<"message">>, <<"Strict checking of data is enabled; only include schema-defined properties">>}]
+			  )
+			,Context
      );
 failed_error({'data_invalid'
-              ,_FailedSchemaJObj
-              ,'no_extra_items_allowed'
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,_FailedSchemaJObj
+	     ,'no_extra_items_allowed'
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     add_validation_error(
       FailedKeyPath
-      ,<<"additionalItems">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"Strict checking of data is enabled; only include schema-defined items">>}]
-        )
-      ,Context
+			,<<"additionalItems">>
+			,kz_json:from_list(
+			   [{<<"message">>, <<"Strict checking of data is enabled; only include schema-defined items">>}]
+			  )
+			,Context
      );
 failed_error({'data_invalid'
-              ,FailedSchemaJObj
-              ,'no_match'
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,FailedSchemaJObj
+	     ,'no_match'
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     Pattern = kz_json:get_value(<<"pattern">>, FailedSchemaJObj),
     add_validation_error(
       FailedKeyPath
-      ,<<"pattern">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"Failed to match pattern '", Pattern/binary, "'">>}
-          ,{<<"target">>, Pattern}
-         ])
-      ,Context
+			,<<"pattern">>
+			,kz_json:from_list(
+			   [{<<"message">>, <<"Failed to match pattern '", Pattern/binary, "'">>}
+			   ,{<<"target">>, Pattern}
+			   ])
+			,Context
      );
 failed_error({'data_invalid'
-              ,_FailedSchemaJObj
-              ,'missing_required_property'
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,_FailedSchemaJObj
+	     ,'missing_required_property'
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     add_validation_error(
       FailedKeyPath
-      ,<<"required">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"Field is required but missing">>}]
-        )
-      ,Context
+			,<<"required">>
+			,kz_json:from_list(
+			   [{<<"message">>, <<"Field is required but missing">>}]
+			  )
+			,Context
      );
 failed_error({'data_invalid'
-              ,_FailedSchemaJObj
-              ,'missing_dependency'
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,_FailedSchemaJObj
+	     ,'missing_dependency'
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     add_validation_error(
       FailedKeyPath
-      ,<<"dependencies">>
-      ,kz_json:from_list([{<<"message">>, <<"Dependencies were not validated">>}])
-      ,Context
+			,<<"dependencies">>
+			,kz_json:from_list([{<<"message">>, <<"Dependencies were not validated">>}])
+			,Context
      );
 failed_error({'data_invalid'
-              ,FailedSchemaJObj
-              ,'not_divisible'
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,FailedSchemaJObj
+	     ,'not_divisible'
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     DivBy = kz_json:get_binary_value(<<"divisibleBy">>, FailedSchemaJObj),
     add_validation_error(
       FailedKeyPath
-      ,<<"divisibleBy">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"Value not divisible by ", DivBy/binary>>}
-          ,{<<"target">>, DivBy}
-         ])
-      ,Context
+			,<<"divisibleBy">>
+			,kz_json:from_list(
+			   [{<<"message">>, <<"Value not divisible by ", DivBy/binary>>}
+			   ,{<<"target">>, DivBy}
+			   ])
+			,Context
      );
 failed_error({'data_invalid'
-              ,FailedSchemaJObj
-              ,'not_allowed'
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,FailedSchemaJObj
+	     ,'not_allowed'
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     Disallow = get_disallow(FailedSchemaJObj),
     add_validation_error(
       FailedKeyPath
-      ,<<"disallow">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"Value is disallowed by ", Disallow/binary>>}
-          ,{<<"target">>, Disallow}
-         ])
-      ,Context
+			,<<"disallow">>
+			,kz_json:from_list(
+			   [{<<"message">>, <<"Value is disallowed by ", Disallow/binary>>}
+			   ,{<<"target">>, Disallow}
+			   ])
+			,Context
      );
 failed_error({'data_invalid'
-              ,FailedSchemaJObj
-              ,'wrong_type'
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,FailedSchemaJObj
+	     ,'wrong_type'
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     Types = get_types(FailedSchemaJObj),
     add_validation_error(
       FailedKeyPath
-      ,<<"type">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"Value did not match type(s): ", Types/binary>>}
-          ,{<<"target">>, Types}
-         ])
-      ,Context
+			,<<"type">>
+			,kz_json:from_list(
+			   [{<<"message">>, <<"Value did not match type(s): ", Types/binary>>}
+			   ,{<<"target">>, Types}
+			   ])
+			,Context
      );
 failed_error({'data_invalid'
-              ,_FailedSchemaJObj
-              ,{'missing_required_property', FailKey}
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,_FailedSchemaJObj
+	     ,{'missing_required_property', FailKey}
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     add_validation_error(
       [FailedKeyPath, FailKey]
-      ,<<"required">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"Field is required but missing">>}]
-        )
-      ,Context
+			,<<"required">>
+			,kz_json:from_list(
+			   [{<<"message">>, <<"Field is required but missing">>}]
+			  )
+			,Context
      );
 failed_error({'data_invalid'
-              ,_FailedSchemaJObj
-              ,FailMsg
-              ,_FailedValue
-              ,FailedKeyPath
+	     ,_FailedSchemaJObj
+	     ,FailMsg
+	     ,_FailedValue
+	     ,FailedKeyPath
              }, Context) ->
     lager:debug("failed message: ~p", [FailMsg]),
     lager:debug("failed schema: ~p", [_FailedSchemaJObj]),
@@ -987,9 +987,9 @@ failed_error({'data_invalid'
     lager:debug("failed keypath: ~p", [FailedKeyPath]),
     add_validation_error(
       FailedKeyPath
-      ,kz_util:to_binary(FailMsg)
-      ,kz_json:from_list([{<<"message">>, <<"failed to validate">>}])
-      ,Context
+			,kz_util:to_binary(FailMsg)
+			,kz_json:from_list([{<<"message">>, <<"failed to validate">>}])
+			,Context
      ).
 
 -spec get_disallow(kz_json:object()) -> ne_binary().
@@ -1020,7 +1020,7 @@ passed(#cb_context{req_data=Data}=Context, Status) ->
             Context#cb_context{resp_status = Status};
         Id ->
             Context#cb_context{resp_status = Status
-                               ,doc = kz_doc:set_id(doc(Context), Id)
+			      ,doc = kz_doc:set_id(doc(Context), Id)
                               }
     end.
 
@@ -1140,9 +1140,9 @@ build_system_error(Code, Error, JObj, Context) ->
     ApiVersion = ?MODULE:api_version(Context),
     Message = build_error_message(ApiVersion, JObj),
     Context#cb_context{resp_status='error'
-                       ,resp_error_code=Code
-                       ,resp_data=Message
-                       ,resp_error_msg=kz_util:to_binary(Error)
+		      ,resp_error_code=Code
+		      ,resp_data=Message
+		      ,resp_error_msg=kz_util:to_binary(Error)
                       }.
 
 %%--------------------------------------------------------------------
@@ -1201,7 +1201,7 @@ add_validation_error(Property, <<"disabled">> = C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
 add_validation_error(Property, <<"expired">> = C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
-% Generic
+						% Generic
 add_validation_error(Property, <<"invalid">> = C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
 
@@ -1234,10 +1234,10 @@ add_depreciated_validation_error(Property, Code, Message, Context, ErrCode, ErrM
 
     Key = kz_util:join_binary(Property, <<".">>),
     Context#cb_context{validation_errors=kz_json:set_value([Key, Code], Error, JObj)
-                       ,resp_status='error'
-                       ,resp_error_code=ErrCode
-                       ,resp_data=kz_json:new()
-                       ,resp_error_msg=ErrMsg
+		      ,resp_status='error'
+		      ,resp_error_code=ErrCode
+		      ,resp_data=kz_json:new()
+		      ,resp_error_msg=ErrMsg
                       }.
 
 -spec build_error_message('v1', ne_binary() | kz_json:object()) ->
@@ -1260,7 +1260,7 @@ maybe_fix_js_types(Context, SchemaJObj, Errors) ->
     case lists:foldl(fun maybe_fix_js_type/2, JObj, Errors) of
         JObj ->
             lager:debug("request data did not validate against ~s: ~p", [kz_doc:id(SchemaJObj)
-                                                                         ,Errors
+									,Errors
                                                                         ]),
             failed(Context, Errors);
         NewJObj ->

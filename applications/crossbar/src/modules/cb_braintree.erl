@@ -12,12 +12,12 @@
 -module(cb_braintree).
 
 -export([init/0
-         ,allowed_methods/1, allowed_methods/2
-         ,resource_exists/1, resource_exists/2
-         ,validate/2, validate/3
-         ,put/2
-         ,post/2, post/3
-         ,delete/3
+	,allowed_methods/1, allowed_methods/2
+	,resource_exists/1, resource_exists/2
+	,validate/2, validate/3
+	,put/2
+	,post/2, post/3
+	,delete/3
         ]).
 
 -include("crossbar.hrl").
@@ -141,9 +141,9 @@ validate_customer(Context, ?HTTP_POST) ->
                                   kz_json:set_value([<<"credit_card">>, <<"id">>], Id, J)
                           end
                   end
-                  ,fun(J) ->
-                           kz_json:set_value(<<"id">>, cb_context:account_id(Context), J)
-                   end
+		 ,fun(J) ->
+			  kz_json:set_value(<<"id">>, cb_context:account_id(Context), J)
+		  end
                  ],
     Customer = braintree_customer:json_to_record(lists:foldr(fun(F, J) -> F(J) end, JObj, Generators)),
     crossbar_util:response(kz_json:new(), cb_context:store(Context, 'braintree', Customer)).
@@ -199,7 +199,7 @@ validate_credits(Context, ?HTTP_GET) ->
     BillingAccountId = kz_json:get_integer_value(<<"billing_account_id">>, Doc, AccountId),
     Resp =
         kz_json:from_list([{<<"amount">>, wht_util:current_account_dollars(AccountId)}
-                           ,{<<"billing_account_id">>, BillingAccountId}
+			  ,{<<"billing_account_id">>, BillingAccountId}
                           ]),
     crossbar_util:response(Resp, Context);
 validate_credits(Context, ?HTTP_PUT) ->
@@ -211,17 +211,17 @@ validate_credits(Context, ?HTTP_PUT) ->
             Message = <<"Available credit can not exceed $", (kz_util:to_binary(MaxCredit))/binary>>,
             cb_context:add_validation_error(
               <<"amount">>
-              ,<<"maximum">>
-              ,kz_json:from_list(
-                 [{<<"message">>, Message}
-                  ,{<<"cause">>, FuturAmount}
-                 ])
-              ,Context
+					   ,<<"maximum">>
+					   ,kz_json:from_list(
+					      [{<<"message">>, Message}
+					      ,{<<"cause">>, FuturAmount}
+					      ])
+					   ,Context
              );
-        'false' ->
-            Context1 = cb_context:store(Context, 'bt_order_id', kz_util:rand_hex_binary(16)),
-            maybe_charge_billing_id(Amount, Context1)
-    end.
+			'false' ->
+			      Context1 = cb_context:store(Context, 'bt_order_id', kz_util:rand_hex_binary(16)),
+			      maybe_charge_billing_id(Amount, Context1)
+		      end.
 
 validate(Context, ?CARDS_PATH_TOKEN, CardId) ->
     validate_card(Context, CardId, cb_context:req_verb(Context));
@@ -245,7 +245,7 @@ validate_card(Context, CardId, ?HTTP_GET) ->
 validate_card(Context, CardId, ?HTTP_POST) ->
     Card0 = braintree_card:json_to_record(cb_context:req_data(Context)),
     Card = Card0#bt_card{customer_id = cb_context:account_id(Context)
-                         ,token = CardId
+			,token = CardId
                         },
     crossbar_util:response(kz_json:new(), cb_context:store(Context, 'braintree', Card));
 validate_card(Context, _CardId, ?HTTP_DELETE) ->
@@ -266,7 +266,7 @@ validate_address(Context, AddressId, ?HTTP_GET) ->
 validate_address(Context, AddressId, ?HTTP_POST) ->
     Address0 = braintree_address:json_to_record(cb_context:req_data(Context)),
     Address = Address0#bt_address{customer_id = cb_context:account_id(Context)
-                                  ,id = AddressId
+				 ,id = AddressId
                                  },
     crossbar_util:response(kz_json:new(), cb_context:store(Context, 'braintree', Address));
 validate_address(Context, _AddressId, ?HTTP_DELETE) ->
@@ -362,32 +362,32 @@ create_credits(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
 
     Units = wht_util:dollars_to_units(
-               kz_json:get_float_value(<<"amount">>, cb_context:req_data(Context), 0.0)
+	      kz_json:get_float_value(<<"amount">>, cb_context:req_data(Context), 0.0)
              ),
     BTData = kz_json:delete_keys([<<"billing_address">>
-                                  ,<<"shipping_address">>
-                                  ,[<<"card">>, <<"billing_address">>]
-                                  ,[?CUSTOMER_PATH_TOKEN, <<"credit_cards">>]
-                                  ,[?CUSTOMER_PATH_TOKEN, ?ADDRESSES_PATH_TOKEN]
+				 ,<<"shipping_address">>
+				 ,[<<"card">>, <<"billing_address">>]
+				 ,[?CUSTOMER_PATH_TOKEN, <<"credit_cards">>]
+				 ,[?CUSTOMER_PATH_TOKEN, ?ADDRESSES_PATH_TOKEN]
                                  ]
-                                 ,cb_context:resp_data(Context)
+				,cb_context:resp_data(Context)
                                 ),
     OrderId = cb_context:fetch(Context, 'bt_order_id'),
 
     case add_credit_to_account(BTData, Units, AccountId, AuthAccountId, OrderId) of
         {'ok', Transaction} ->
             kapi_money:publish_credit([{<<"Amount">>, Units}
-                                       ,{<<"Account-ID">>, kz_transaction:account_id(Transaction)}
-                                       ,{<<"Transaction-ID">>, kz_transaction:id(Transaction)}
+				      ,{<<"Account-ID">>, kz_transaction:account_id(Transaction)}
+				      ,{<<"Transaction-ID">>, kz_transaction:id(Transaction)}
                                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                       ]),
             JObj = kz_transaction:to_json(Transaction),
             _ = reset_low_balance_notification(AccountId),
             cb_context:setters(Context
-                               ,[{fun cb_context:set_resp_status/2, 'success'}
-                                 ,{fun cb_context:set_doc/2, JObj}
-                                 ,{fun cb_context:set_resp_data/2, kz_json:public_fields(JObj)}
-                                ]);
+			      ,[{fun cb_context:set_resp_status/2, 'success'}
+			       ,{fun cb_context:set_doc/2, JObj}
+			       ,{fun cb_context:set_resp_data/2, kz_json:public_fields(JObj)}
+			       ]);
         {'error', Reason} ->
             crossbar_util:response('error', <<"transaction error">>, 500, Reason, Context)
     end.
@@ -470,7 +470,7 @@ maybe_charge_billing_id(Amount, Context) ->
             lager:debug("sub-accounts of non-master resellers must contact the reseller to change their credit"),
             Resp = kz_json:from_list(
                      [{<<"message">>, <<"Please contact your phone provider to add credit.">>}
-                      ,{<<"cause">>, ResellerId}
+		     ,{<<"cause">>, ResellerId}
                      ]),
             cb_context:add_validation_error(<<"amount">>, <<"forbidden">>, Resp, Context)
     end.
@@ -483,11 +483,11 @@ charge_billing_id(Amount, Context) ->
     Props = case BillingId of
                 AccountId ->
                     [{<<"purchase_order">>, ?CODE_MANUAL_ADDITION}
-                     ,{<<"order_id">>, cb_context:fetch(Context, 'bt_order_id')}
+		    ,{<<"order_id">>, cb_context:fetch(Context, 'bt_order_id')}
                     ];
                 _Id ->
                     [{<<"purchase_order">>, ?CODE_SUB_ACCOUNT_MANUAL_ADDITION}
-                     ,{<<"order_id">>, cb_context:fetch(Context, 'bt_order_id')}
+		    ,{<<"order_id">>, cb_context:fetch(Context, 'bt_order_id')}
                     ]
             end,
 
@@ -516,11 +516,11 @@ add_credit_to_account(BraintreeData, Units, LedgerId, AccountId, OrderId) ->
                                 kz_transaction:set_reason(<<"sub_account_manual_addition">>, T1)
                         end
                 end
-                ,fun(T) -> kz_transaction:set_bookkeeper_info(BraintreeData, T) end
-                ,fun(T) ->
-                         kz_transaction:set_description(<<"credit addition from credit card">>, T)
-                 end
-                ,fun (T) -> kz_transaction:set_order_id(OrderId, T) end
+	       ,fun(T) -> kz_transaction:set_bookkeeper_info(BraintreeData, T) end
+	       ,fun(T) ->
+			kz_transaction:set_description(<<"credit addition from credit card">>, T)
+		end
+	       ,fun (T) -> kz_transaction:set_order_id(OrderId, T) end
                ],
     Transaction = lists:foldl(fun(F, T) -> F(T) end, kz_transaction:credit(LedgerId, Units), Routines),
     kz_transaction:save(Transaction).

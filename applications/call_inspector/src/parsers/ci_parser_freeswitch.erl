@@ -17,20 +17,20 @@
 
 %% gen_server callbacks
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -record(state, {parser_id :: atom()
-                ,logfile :: file:name()
-                ,iodevice :: file:io_device()
-                ,logip :: ne_binary()
-                ,logport :: pos_integer()
-                ,timer :: reference()
-                ,counter :: pos_integer()
+	       ,logfile :: file:name()
+	       ,iodevice :: file:io_device()
+	       ,logip :: ne_binary()
+	       ,logport :: pos_integer()
+	       ,timer :: reference()
+	       ,counter :: pos_integer()
                }
        ).
 -type state() :: #state{}.
@@ -67,11 +67,11 @@ init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
     _ = kz_util:put_callid(ParserId),
     NewDev = ci_parsers_util:open_file(LogFile),
     State = #state{parser_id = ParserId
-                   ,logfile = LogFile
-                   ,iodevice = NewDev
-                   ,logip = LogIP
-                   ,logport = LogPort
-                   ,counter = 1
+		  ,logfile = LogFile
+		  ,iodevice = NewDev
+		  ,logip = LogIP
+		  ,logport = LogPort
+		  ,counter = 1
                   },
     self() ! 'start_parsing',
     {'ok', State}.
@@ -121,11 +121,11 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('start_parsing', State=#state{parser_id = ParserId
-                                          ,iodevice = IoDevice
-                                          ,logip = LogIP
-                                          ,logport = LogPort
-                                          ,timer = OldTimer
-                                          ,counter = Counter
+					 ,iodevice = IoDevice
+					 ,logip = LogIP
+					 ,logport = LogPort
+					 ,timer = OldTimer
+					 ,counter = Counter
                                          }) ->
     _ = case OldTimer of
             'undefined' -> 'ok';
@@ -133,11 +133,11 @@ handle_info('start_parsing', State=#state{parser_id = ParserId
         end,
     NewCounter = extract_chunks(ParserId, IoDevice, LogIP, LogPort, Counter),
     NewTimer = erlang:send_after(ci_parsers_util:parse_interval()
-                                 ,self()
-                                 ,'start_parsing'
+				,self()
+				,'start_parsing'
                                 ),
     {'noreply', State#state{timer = NewTimer
-                            ,counter = NewCounter
+			   ,counter = NewCounter
                            }};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -193,21 +193,21 @@ make_and_store_chunk(ParserId, LogIP, LogPort, Counter, Data00) ->
             'false' ->                         {Counter, Data00, Counter+1}
         end,
     Cleansers = [fun remove_whitespace_lines/1
-                 ,fun remove_unrelated_lines/1 %% MUST be called before unwrap_lines/1
-                 ,fun unwrap_lines/1
-                 ,fun strip_truncating_pieces/1
-                 ,fun remove_dashes/1
+		,fun remove_unrelated_lines/1 %% MUST be called before unwrap_lines/1
+		,fun unwrap_lines/1
+		,fun strip_truncating_pieces/1
+		,fun remove_dashes/1
                 ],
     Data = lists:foldl(Apply, Data0, Cleansers),
     Chunk =
         ci_chunk:setters(set_legs(LogIP, LogPort, ci_chunk:new(), Data)
-                         ,[{fun ci_chunk:data/2, Data}
-                           ,{fun ci_chunk:call_id/2, ci_parsers_util:call_id(Data)}
-                           ,{fun ci_chunk:timestamp/2, Timestamp}
-                           ,{fun ci_chunk:parser/2, ParserId}
-                           ,{fun ci_chunk:label/2, label(Data)}
-                           ,{fun ci_chunk:c_seq/2, ci_parsers_util:c_seq(Data)}
-                          ]
+			,[{fun ci_chunk:data/2, Data}
+			 ,{fun ci_chunk:call_id/2, ci_parsers_util:call_id(Data)}
+			 ,{fun ci_chunk:timestamp/2, Timestamp}
+			 ,{fun ci_chunk:parser/2, ParserId}
+			 ,{fun ci_chunk:label/2, label(Data)}
+			 ,{fun ci_chunk:c_seq/2, ci_parsers_util:c_seq(Data)}
+			 ]
                         ),
     lager:debug("parsed chunk ~s", [ci_chunk:call_id(Chunk)]),
     ci_datastore:store_chunk(Chunk),
@@ -283,11 +283,11 @@ set_legs(LogIP, LogPort, Chunk, [FirstLine|_Lines]) ->
             ToPort   = LogPort
     end,
     ci_chunk:setters(Chunk
-                     ,[{fun ci_chunk:src_ip/2, FromIP}
-                       ,{fun ci_chunk:dst_ip/2, ToIP}
-                       ,{fun ci_chunk:src_port/2, FromPort}
-                       ,{fun ci_chunk:dst_port/2, ToPort}
-                      ]
+		    ,[{fun ci_chunk:src_ip/2, FromIP}
+		     ,{fun ci_chunk:dst_ip/2, ToIP}
+		     ,{fun ci_chunk:src_port/2, FromPort}
+		     ,{fun ci_chunk:dst_port/2, ToPort}
+		     ]
                     ).
 
 -spec ip(ne_binary()) -> ne_binary().

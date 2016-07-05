@@ -11,18 +11,18 @@
 
 -export([start_link/0]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,terminate/2
+	,code_change/3
         ]).
 -export([increment_counter/1
-         ,increment_counter/2
-         ,send_counter/2
-         ,send_absolute/2
-         ,stop/0
-         ,getdb/0
+	,increment_counter/2
+	,send_counter/2
+	,send_absolute/2
+	,stop/0
+	,getdb/0
         ]).
 
 -include_lib("kazoo/include/kz_log.hrl").
@@ -33,8 +33,8 @@
 -define(SEND_INTERVAL, 10 * ?MILLISECONDS_IN_SECOND).
 
 -record(state, {variables=[]
-                ,sip=[]
-                ,send_stats=?SEND_INTERVAL
+	       ,sip=[]
+	       ,send_stats=?SEND_INTERVAL
                }).
 
 %%%===================================================================
@@ -245,8 +245,8 @@ get_ecallmgr_values2(VarList) ->
                                   ,is_list(X)
                           ]),
     [{'reduction',Reduction}
-     ,{'register-fail',RegFail}
-     ,{'processes', length(processes())}
+    ,{'register-fail',RegFail}
+    ,{'processes', length(processes())}
     ].
 
 send(RawPayload) ->
@@ -263,7 +263,7 @@ recursive_from_proplist(List) when is_list(List) ->
         'true' -> List;
         'false' ->
             kz_json:from_list([{kz_util:to_binary(K)
-                                ,recursive_from_proplist(V)}
+			       ,recursive_from_proplist(V)}
                                || {K,V} <- List
                               ])
     end;

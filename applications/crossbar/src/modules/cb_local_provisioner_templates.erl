@@ -22,16 +22,16 @@
 -module(cb_local_provisioner_templates).
 
 -export([init/0
-         ,content_types_provided/3, content_types_accepted/3
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
-         ,validate/1, validate/2, validate/3
-         ,put/1
-         ,post/2
-         ,delete/2
-         ,put/3
-         ,post/3
-         ,delete/3
+	,content_types_provided/3, content_types_accepted/3
+	,allowed_methods/0, allowed_methods/1, allowed_methods/2
+	,resource_exists/0, resource_exists/1, resource_exists/2
+	,validate/1, validate/2, validate/3
+	,put/1
+	,post/2
+	,delete/2
+	,put/3
+	,post/3
+	,delete/3
         ]).
 
 -include("crossbar.hrl").
@@ -41,7 +41,7 @@
 -define(IMAGE_REQ, <<"image">>).
 -define(TEMPLATE_ATTCH, <<"template">>).
 -define(MIME_TYPES, [{<<"image">>, <<"*">>}
-                     ,{<<"application">>, <<"octet-stream">>}
+		    ,{<<"application">>, <<"octet-stream">>}
                      | ?BASE64_CONTENT_TYPES
                     ]).
 
@@ -271,21 +271,21 @@ upload_template_image(Context) ->
     upload_template_image(Context, cb_context:req_files(Context)).
 upload_template_image(Context, []) ->
     cb_context:add_validation_error(
-        <<"file">>
-        ,<<"required">>
-        ,kz_json:from_list([
-            {<<"message">>, <<"please provide an image file">>}
-         ])
-        ,Context
-    );
+      <<"file">>
+				   ,<<"required">>
+				   ,kz_json:from_list([
+						       {<<"message">>, <<"please provide an image file">>}
+						      ])
+				   ,Context
+     );
 upload_template_image(Context, [{_, _}]) ->
     crossbar_util:response(kz_json:new(), Context);
 upload_template_image(Context, [_|_]) ->
-   cb_context:add_validation_error(<<"file">>
-                                  ,<<"maxItems">>
-                                  ,kz_json:from_list([{<<"message">>, <<"Please provide a single image file">>}])
-                                  ,Context
-                                  ).
+    cb_context:add_validation_error(<<"file">>
+				   ,<<"maxItems">>
+				   ,kz_json:from_list([{<<"message">>, <<"Please provide a single image file">>}])
+				   ,Context
+				   ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -353,8 +353,8 @@ update_provisioner_template(DocId, Context) ->
 on_successful_validation('undefined', Context) ->
     provisioner_util:get_provision_defaults(
       cb_context:set_doc(Context, kz_json:set_values([{<<"pvt_type">>, <<"provisioner_template">>}
-                                                      ,{<<"pvt_provider">>, <<"provisioner.net">>}
-                                                      ,{<<"pvt_provisioner_type">>, <<"local">>}
+						     ,{<<"pvt_provider">>, <<"provisioner.net">>}
+						     ,{<<"pvt_provisioner_type">>, <<"local">>}
                                                      ], cb_context:doc(Context))
                         ));
 on_successful_validation(DocId, Context) ->

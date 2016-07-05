@@ -21,8 +21,8 @@
 -export([lock/1, lock_v/1]).
 -export([mute_participant/1, mute_participant_v/1]).
 -export([play/1, play_v/1
-         ,tones/1, tones_v/1
-         ,say/1, say_v/1, tts/1, tts_v/1
+	,tones/1, tones_v/1
+	,say/1, say_v/1, tts/1, tts_v/1
         ]).
 -export([record/1, record_v/1]).
 -export([recordstop/1, recordstop_v/1]).
@@ -37,7 +37,7 @@
 -export([participant_event/1, participant_event_v/1]).
 -export([conference_error/1, conference_error_v/1]).
 -export([config_req/1, config_req_v/1
-         ,config_resp/1, config_resp_v/1
+	,config_resp/1, config_resp_v/1
         ]).
 -export([play_macro_req/1, play_macro_req_v/1]).
 
@@ -71,7 +71,7 @@
 -export([publish_command/2, publish_command/3]).
 -export([publish_targeted_command/2, publish_targeted_command/3]).
 -export([publish_config_req/1, publish_config_req/2
-         ,publish_config_resp/2, publish_config_resp/3
+	,publish_config_resp/2, publish_config_resp/3
         ]).
 
 -include_lib("kazoo/include/kz_api.hrl").
@@ -81,61 +81,61 @@
 -define(SEARCH_REQ_HEADERS, [<<"Conference-ID">>]).
 -define(OPTIONAL_SEARCH_REQ_HEADERS, []).
 -define(SEARCH_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                            ,{<<"Event-Name">>, <<"search_req">>}
+			   ,{<<"Event-Name">>, <<"search_req">>}
                            ]).
 -define(SEARCH_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
 %% Conference Search Response
 -define(SEARCH_RESP_HEADERS, [<<"Conference-ID">>, <<"Participant-Count">>]).
 -define(OPTIONAL_SEARCH_RESP_HEADERS, [<<"UUID">>, <<"Running">>, <<"Answered">>, <<"Dynamic">>
-                                       ,<<"Run-Time">>, <<"Start-Time">>, <<"Participants">>, <<"Locked">>
-                                       ,<<"Switch-Hostname">>, <<"Switch-URL">>, <<"Switch-External-IP">>
+				      ,<<"Run-Time">>, <<"Start-Time">>, <<"Participants">>, <<"Locked">>
+				      ,<<"Switch-Hostname">>, <<"Switch-URL">>, <<"Switch-External-IP">>
                                       ]).
 -define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                             ,{<<"Event-Name">>, <<"search_resp">>}
+			    ,{<<"Event-Name">>, <<"search_resp">>}
                             ]).
 -define(SEARCH_RESP_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
 %% Conference Discovery Request
 -define(DISCOVERY_REQ_HEADERS, [<<"Call">>]).
 -define(OPTIONAL_DISCOVERY_REQ_HEADERS, [<<"Conference-ID">>, <<"Moderator">>
-                                         ,<<"Conference-Doc">>, <<"Play-Welcome">>
-                                         ,<<"Play-Welcome-Media">>
-                                         ,<<"Play-Exit-Tone">>, <<"Play-Entry-Tone">>
+					,<<"Conference-Doc">>, <<"Play-Welcome">>
+					,<<"Play-Welcome-Media">>
+					,<<"Play-Exit-Tone">>, <<"Play-Entry-Tone">>
                                         ]).
 -define(DISCOVERY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                               ,{<<"Event-Name">>, <<"discovery_req">>}
+			      ,{<<"Event-Name">>, <<"discovery_req">>}
                               ]).
 -define(DISCOVERY_REQ_TYPES, [{<<"Moderator">>, fun kz_util:is_boolean/1}
-                              ,{<<"Play-Welcome">>, fun kz_util:is_boolean/1}
+			     ,{<<"Play-Welcome">>, fun kz_util:is_boolean/1}
                              ]).
 
 %% Conference Discovery Request
 -define(DISCOVERY_RESP_HEADERS, [<<"Participant-ID">>]).
 -define(OPTIONAL_DISCOVERY_RESP_HEADERS, [<<"Conference-ID">>]).
 -define(DISCOVERY_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                                ,{<<"Event-Name">>, <<"discovery_resp">>}
-                              ]).
+			       ,{<<"Event-Name">>, <<"discovery_resp">>}
+			       ]).
 -define(DISCOVERY_RESP_TYPES, []).
 
 %% Conference Deaf
 -define(DEAF_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>]).
 -define(OPTIONAL_DEAF_PARTICIPANT_HEADERS, []).
 -define(DEAF_PARTICIPANT_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                                  ,{<<"Event-Name">>, <<"command">>}
-                                  ,{<<"Application-Name">>, <<"deaf_participant">>}
+				 ,{<<"Event-Name">>, <<"command">>}
+				 ,{<<"Application-Name">>, <<"deaf_participant">>}
                                  ]).
 -define(DEAF_PARTICIPANT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                                 ]).
 
 %% Conference Energy
 -define(PARTICIPANT_ENERGY_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>
-                                         ,<<"Participant-ID">>, <<"Energy-Level">>
+				    ,<<"Participant-ID">>, <<"Energy-Level">>
                                     ]).
 -define(OPTIONAL_PARTICIPANT_ENERGY_HEADERS, []).
 -define(PARTICIPANT_ENERGY_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                                    ,{<<"Event-Name">>, <<"command">>}
-                                    ,{<<"Application-Name">>, <<"participant_energy">>}
+				   ,{<<"Event-Name">>, <<"command">>}
+				   ,{<<"Application-Name">>, <<"participant_energy">>}
                                    ]).
 -define(PARTICIPANT_ENERGY_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                                   ]).
@@ -144,8 +144,8 @@
 -define(KICK_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
 -define(OPTIONAL_KICK_HEADERS, [<<"Participant-ID">>]).
 -define(KICK_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                      ,{<<"Event-Name">>, <<"command">>}
-                      ,{<<"Application-Name">>, <<"kick">>}
+		     ,{<<"Event-Name">>, <<"command">>}
+		     ,{<<"Application-Name">>, <<"kick">>}
                      ]).
 -define(KICK_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                     ]).
@@ -154,8 +154,8 @@
 -define(PARTICIPANTS_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
 -define(OPTIONAL_PARTICIPANTS_REQ_HEADERS, []).
 -define(PARTICIPANTS_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                                  ,{<<"Event-Name">>, <<"command">>}
-                                  ,{<<"Application-Name">>, <<"participants">>}
+				 ,{<<"Event-Name">>, <<"command">>}
+				 ,{<<"Application-Name">>, <<"participants">>}
                                  ]).
 -define(PARTICIPANTS_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
@@ -163,7 +163,7 @@
 -define(PARTICIPANTS_RESP_HEADERS, [<<"Participants">>]).
 -define(OPTIONAL_PARTICIPANTS_RESP_HEADERS, []).
 -define(PARTICIPANTS_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                                   ,{<<"Event-Name">>, <<"participants_resp">>}
+				  ,{<<"Event-Name">>, <<"participants_resp">>}
                                   ]).
 -define(PARTICIPANTS_RESP_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
@@ -171,8 +171,8 @@
 -define(LOCK_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
 -define(OPTIONAL_LOCK_HEADERS, []).
 -define(LOCK_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                      ,{<<"Event-Name">>, <<"command">>}
-                      ,{<<"Application-Name">>, <<"lock">>}
+		     ,{<<"Event-Name">>, <<"command">>}
+		     ,{<<"Application-Name">>, <<"lock">>}
                      ]).
 -define(LOCK_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                     ]).
@@ -181,8 +181,8 @@
 -define(MUTE_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>]).
 -define(OPTIONAL_MUTE_PARTICIPANT_HEADERS, []).
 -define(MUTE_PARTICIPANT_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                                  ,{<<"Event-Name">>, <<"command">>}
-                                  ,{<<"Application-Name">>, <<"mute_participant">>}
+				 ,{<<"Event-Name">>, <<"command">>}
+				 ,{<<"Application-Name">>, <<"mute_participant">>}
                                  ]).
 -define(MUTE_PARTICIPANT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                                 ]).
@@ -191,19 +191,19 @@
 -define(PLAY_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_PLAY_HEADERS, [<<"Participant-ID">>, <<"Call-ID">>]).
 -define(PLAY_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                      ,{<<"Event-Name">>, <<"command">>}
-                      ,{<<"Application-Name">>, <<"play">>}
+		     ,{<<"Event-Name">>, <<"command">>}
+		     ,{<<"Application-Name">>, <<"play">>}
                      ]).
 -define(PLAY_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                     ,{<<"Media-Name">>, fun is_binary/1}
+		    ,{<<"Media-Name">>, fun is_binary/1}
                     ]).
 
 %% Conference Record
 -define(RECORD_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_RECORD_HEADERS, [<<"Call-ID">>]).
 -define(RECORD_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                        ,{<<"Event-Name">>, <<"command">>}
-                        ,{<<"Application-Name">>, <<"record">>}
+		       ,{<<"Event-Name">>, <<"command">>}
+		       ,{<<"Application-Name">>, <<"record">>}
                        ]).
 -define(RECORD_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
@@ -211,9 +211,9 @@
 -define(RECORDSTOP_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_RECORDSTOP_HEADERS, [<<"Call-ID">>]).
 -define(RECORDSTOP_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                        ,{<<"Event-Name">>, <<"command">>}
-                        ,{<<"Application-Name">>, <<"recordstop">>}
-                       ]).
+			   ,{<<"Event-Name">>, <<"command">>}
+			   ,{<<"Application-Name">>, <<"recordstop">>}
+			   ]).
 -define(RECORDSTOP_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
 
@@ -221,9 +221,9 @@
 -define(RELATE_PARTICIPANTS_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>, <<"Other-Participant">>]).
 -define(OPTIONAL_RELATE_PARTICIPANTS_HEADERS, [<<"Relationship">>]).
 -define(RELATE_PARTICIPANTS_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                                     ,{<<"Event-Name">>, <<"command">>}
-                                     ,{<<"Application-Name">>, <<"relate_participants">>}
-                                     ,{<<"Relationship">>, [<<"deaf">>, <<"mute">>, <<"clear">>]}
+				    ,{<<"Event-Name">>, <<"command">>}
+				    ,{<<"Application-Name">>, <<"relate_participants">>}
+				    ,{<<"Relationship">>, [<<"deaf">>, <<"mute">>, <<"clear">>]}
                                     ]).
 -define(RELATE_PARTICIPANTS_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                                    ]).
@@ -232,21 +232,21 @@
 -define(SET_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Parameter">>, <<"Value">>]).
 -define(OPTIONAL_SET_HEADERS, []).
 -define(SET_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                     ,{<<"Event-Name">>, <<"command">>}
-                     ,{<<"Application-Name">>, <<"set">>}
-                     ,{<<"Parameter">>, [<<"Max-Members">>, <<"Caller-ID-Name">>, <<"Caller-ID-Number">>]}
+		    ,{<<"Event-Name">>, <<"command">>}
+		    ,{<<"Application-Name">>, <<"set">>}
+		    ,{<<"Parameter">>, [<<"Max-Members">>, <<"Caller-ID-Name">>, <<"Caller-ID-Number">>]}
                     ]).
 -define(SET_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                    ,{<<"Value">>, fun is_binary/1}
+		   ,{<<"Value">>, fun is_binary/1}
                    ]).
 
 %% Conference Stop Play
 -define(STOP_PLAY_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
 -define(OPTIONAL_STOP_PLAY_HEADERS, [<<"Participant-ID">>, <<"Affects">>]).
 -define(STOP_PLAY_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                           ,{<<"Event-Name">>, <<"command">>}
-                           ,{<<"Application-Name">>, <<"stop_play">>}
-                           ,{<<"Affects">>, [<<"current">>, <<"all">>]}
+			  ,{<<"Event-Name">>, <<"command">>}
+			  ,{<<"Application-Name">>, <<"stop_play">>}
+			  ,{<<"Affects">>, [<<"current">>, <<"all">>]}
                           ]).
 -define(STOP_PLAY_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                          ]).
@@ -254,8 +254,8 @@
 -define(UNDEAF_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>]).
 -define(OPTIONAL_UNDEAF_PARTICIPANT_HEADERS, []).
 -define(UNDEAF_PARTICIPANT_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                                    ,{<<"Event-Name">>, <<"command">>}
-                                    ,{<<"Application-Name">>, <<"undeaf_participant">>}
+				   ,{<<"Event-Name">>, <<"command">>}
+				   ,{<<"Application-Name">>, <<"undeaf_participant">>}
                                    ]).
 -define(UNDEAF_PARTICIPANT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                                   ]).
@@ -264,8 +264,8 @@
 -define(UNLOCK_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
 -define(OPTIONAL_UNLOCK_HEADERS, []).
 -define(UNLOCK_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                        ,{<<"Event-Name">>, <<"command">>}
-                        ,{<<"Application-Name">>, <<"unlock">>}
+		       ,{<<"Event-Name">>, <<"command">>}
+		       ,{<<"Application-Name">>, <<"unlock">>}
                        ]).
 -define(UNLOCK_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                       ]).
@@ -274,56 +274,56 @@
 -define(UNMUTE_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>]).
 -define(OPTIONAL_UNMUTE_PARTICIPANT_HEADERS, []).
 -define(UNMUTE_PARTICIPANT_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                                    ,{<<"Event-Name">>, <<"command">>}
-                                    ,{<<"Application-Name">>, <<"unmute_participant">>}
+				   ,{<<"Event-Name">>, <<"command">>}
+				   ,{<<"Application-Name">>, <<"unmute_participant">>}
                                    ]).
 -define(UNMUTE_PARTICIPANT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                                   ]).
 
 %% Conference Set Volume In
 -define(PARTICIPANT_VOLUME_IN_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>
-                                            ,<<"Participant-ID">>, <<"Volume-In-Level">>
+				       ,<<"Participant-ID">>, <<"Volume-In-Level">>
                                        ]).
 -define(OPTIONAL_PARTICIPANT_VOLUME_IN_HEADERS, []).
 -define(PARTICIPANT_VOLUME_IN_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                                       ,{<<"Event-Name">>, <<"command">>}
-                                       ,{<<"Application-Name">>, <<"participant_volume_in">>}
+				      ,{<<"Event-Name">>, <<"command">>}
+				      ,{<<"Application-Name">>, <<"participant_volume_in">>}
                                       ]).
 -define(PARTICIPANT_VOLUME_IN_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                                      ]).
 
 %% Conference Set Volume Out
 -define(PARTICIPANT_VOLUME_OUT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>
-                                             ,<<"Participant-ID">>, <<"Volume-Out-Level">>
+					,<<"Participant-ID">>, <<"Volume-Out-Level">>
                                         ]).
 -define(OPTIONAL_PARTICIPANT_VOLUME_OUT_HEADERS, []).
 -define(PARTICIPANT_VOLUME_OUT_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                                        ,{<<"Event-Name">>, <<"command">>}
-                                        ,{<<"Application-Name">>, <<"participant_volume_out">>}
+				       ,{<<"Event-Name">>, <<"command">>}
+				       ,{<<"Application-Name">>, <<"participant_volume_out">>}
                                        ]).
 -define(PARTICIPANT_VOLUME_OUT_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                                       ]).
 
 %% Conference Participants Event
 -define(PARTICIPANT_EVENT_HEADERS, [<<"Event">>
-     ,<<"Call-ID">>
-     ,<<"Focus">>
-     ,<<"Conference-ID">>
-     ,<<"Instance-ID">>
-     ,<<"Participant-ID">>
-     ,<<"Floor">>
-     ,<<"Hear">>
-     ,<<"Speak">>
-     ,<<"Talking">>
-     ,<<"Current-Energy">>
-     ,<<"Energy-Level">>
-     ,<<"Video">>
-     ,<<"Mute-Detect">>
-     ,<<"Caller-ID-Name">>
-     ,<<"Caller-ID-Number">>
-     ,<<"Channel-Presence-ID">>
-     ,<<"Custom-Channel-Vars">>
-        ]).
+				   ,<<"Call-ID">>
+				   ,<<"Focus">>
+				   ,<<"Conference-ID">>
+				   ,<<"Instance-ID">>
+				   ,<<"Participant-ID">>
+				   ,<<"Floor">>
+				   ,<<"Hear">>
+				   ,<<"Speak">>
+				   ,<<"Talking">>
+				   ,<<"Current-Energy">>
+				   ,<<"Energy-Level">>
+				   ,<<"Video">>
+				   ,<<"Mute-Detect">>
+				   ,<<"Caller-ID-Name">>
+				   ,<<"Caller-ID-Number">>
+				   ,<<"Channel-Presence-ID">>
+				   ,<<"Custom-Channel-Vars">>
+				   ]).
 -define(OPTIONAL_PARTICIPANT_EVENT_HEADERS, []).
 -define(PARTICIPANT_EVENT_VALUES, [{<<"Event-Category">>, <<"conference">>}, {<<"Event-Name">>, <<"participant_event">>}]).
 -define(PARTICIPANT_EVENT_TYPES, []).
@@ -332,44 +332,44 @@
 -define(CONFERENCE_ERROR_HEADERS, [<<"Error-Message">>, <<"Request">>]).
 -define(OPTIONAL_CONFERENCE_ERROR_HEADERS, []).
 -define(CONFERENCE_ERROR_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                                  ,{<<"Event-Name">>, <<"error">>}
+				 ,{<<"Event-Name">>, <<"error">>}
                                  ]).
 -define(CONFERENCE_ERROR_TYPES, []).
 
 -define(CONFIG_REQ_HEADERS, [<<"Profile">>]).
 -define(OPTIONAL_CONFIG_REQ_HEADERS, []).
 -define(CONFIG_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                            ,{<<"Event-Name">>, <<"config_req">>}
+			   ,{<<"Event-Name">>, <<"config_req">>}
                            ]).
 -define(CONFIG_REQ_TYPES, []).
 
 -define(CONFIG_RESP_HEADERS, [<<"Profiles">>]).
 -define(OPTIONAL_CONFIG_RESP_HEADERS, [<<"Caller-Controls">>, <<"Advertise">>, <<"Chat-Permissions">>]).
 -define(CONFIG_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                             ,{<<"Event-Name">>, <<"config_resp">>}
+			    ,{<<"Event-Name">>, <<"config_resp">>}
                             ]).
 -define(CONFIG_RESP_TYPES, []).
 
 -define(APPLICTION_MAP, [{<<"deaf_participant">>, ?DEAF_PARTICIPANT_VALUES, fun ?MODULE:deaf_participant/1}
-                         ,{<<"participant_energy">>, ?PARTICIPANT_ENERGY_VALUES, fun ?MODULE:participant_energy/1}
-                         ,{<<"kick">>, ?KICK_VALUES, fun ?MODULE:kick/1}
-                         ,{<<"participants">>, ?PARTICIPANTS_REQ_VALUES, fun ?MODULE:participants_req/1}
-                         ,{<<"lock">>, ?LOCK_VALUES, fun ?MODULE:lock/1}
-                         ,{<<"mute_participant">>, ?MUTE_PARTICIPANT_VALUES, fun ?MODULE:mute_participant/1}
-                         ,{<<"play">>, ?PLAY_VALUES, fun ?MODULE:play/1}
-                         ,{<<"record">>, ?RECORD_VALUES, fun ?MODULE:record/1}
-                         ,{<<"recordstop">>, ?RECORDSTOP_VALUES, fun ?MODULE:recordstop/1}
-                         ,{<<"relate_participants">>, ?RELATE_PARTICIPANTS_VALUES, fun ?MODULE:relate_participants/1}
-                         ,{<<"stop_play">>, ?STOP_PLAY_VALUES, fun ?MODULE:stop_play/1}
-                         ,{<<"undeaf_participant">>, ?UNDEAF_PARTICIPANT_VALUES, fun ?MODULE:undeaf_participant/1}
-                         ,{<<"unlock">>, ?UNLOCK_VALUES, fun ?MODULE:unlock/1}
-                         ,{<<"unmute_participant">>, ?UNMUTE_PARTICIPANT_VALUES, fun ?MODULE:unmute_participant/1}
-                         ,{<<"participant_volume_in">>, ?PARTICIPANT_VOLUME_IN_VALUES, fun ?MODULE:participant_volume_in/1}
-                         ,{<<"participant_volume_out">>, ?PARTICIPANT_VOLUME_OUT_VALUES, fun ?MODULE:participant_volume_out/1}
-                         ,{<<"tones">>, ?CONF_TONES_REQ_VALUES, fun ?MODULE:tones/1}
-                         ,{<<"say">>, ?CONF_SAY_REQ_VALUES, fun ?MODULE:say/1}
-                         ,{<<"tts">>, ?CONF_SAY_REQ_VALUES, fun ?MODULE:tts/1}
-                         ,{<<"play_macro">>, ?CONF_PLAY_MACRO_REQ_VALUES, fun ?MODULE:play_macro_req/1}
+			,{<<"participant_energy">>, ?PARTICIPANT_ENERGY_VALUES, fun ?MODULE:participant_energy/1}
+			,{<<"kick">>, ?KICK_VALUES, fun ?MODULE:kick/1}
+			,{<<"participants">>, ?PARTICIPANTS_REQ_VALUES, fun ?MODULE:participants_req/1}
+			,{<<"lock">>, ?LOCK_VALUES, fun ?MODULE:lock/1}
+			,{<<"mute_participant">>, ?MUTE_PARTICIPANT_VALUES, fun ?MODULE:mute_participant/1}
+			,{<<"play">>, ?PLAY_VALUES, fun ?MODULE:play/1}
+			,{<<"record">>, ?RECORD_VALUES, fun ?MODULE:record/1}
+			,{<<"recordstop">>, ?RECORDSTOP_VALUES, fun ?MODULE:recordstop/1}
+			,{<<"relate_participants">>, ?RELATE_PARTICIPANTS_VALUES, fun ?MODULE:relate_participants/1}
+			,{<<"stop_play">>, ?STOP_PLAY_VALUES, fun ?MODULE:stop_play/1}
+			,{<<"undeaf_participant">>, ?UNDEAF_PARTICIPANT_VALUES, fun ?MODULE:undeaf_participant/1}
+			,{<<"unlock">>, ?UNLOCK_VALUES, fun ?MODULE:unlock/1}
+			,{<<"unmute_participant">>, ?UNMUTE_PARTICIPANT_VALUES, fun ?MODULE:unmute_participant/1}
+			,{<<"participant_volume_in">>, ?PARTICIPANT_VOLUME_IN_VALUES, fun ?MODULE:participant_volume_in/1}
+			,{<<"participant_volume_out">>, ?PARTICIPANT_VOLUME_OUT_VALUES, fun ?MODULE:participant_volume_out/1}
+			,{<<"tones">>, ?CONF_TONES_REQ_VALUES, fun ?MODULE:tones/1}
+			,{<<"say">>, ?CONF_SAY_REQ_VALUES, fun ?MODULE:say/1}
+			,{<<"tts">>, ?CONF_SAY_REQ_VALUES, fun ?MODULE:tts/1}
+			,{<<"play_macro">>, ?CONF_PLAY_MACRO_REQ_VALUES, fun ?MODULE:play_macro_req/1}
                         ]).
 
 -define(CONF_PLAY_MACRO_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Commands">>]).
@@ -386,9 +386,9 @@ focus_queue_name(Focus) -> <<(kz_util:to_binary(Focus))/binary, "_conference">>.
 %% @end
 %%--------------------------------------------------------------------
 -define(CONF_SAY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                              ,{<<"Application-Name">>, [<<"say">>, <<"tts">>]}
+			     ,{<<"Application-Name">>, [<<"say">>, <<"tts">>]}
                               | props:delete_keys([<<"Event-Category">>
-                                                   ,<<"Application-Name">>
+						  ,<<"Application-Name">>
                                                   ], ?TONES_REQ_VALUES)
                              ]).
 -spec say(api_terms()) -> api_formatter_return() .

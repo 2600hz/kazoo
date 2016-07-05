@@ -21,9 +21,9 @@ receive_fax(Node, UUID, JObj) ->
                          end
                         ,[]
                         ,[<<"Enable-T38-Fax">>
-                          ,<<"Enable-T38-Fax-Request">>
-                          ,<<"Enable-T38-Passthrough">>
-                          ,<<"Enable-T38-Gateway">>
+			 ,<<"Enable-T38-Fax-Request">>
+			 ,<<"Enable-T38-Passthrough">>
+			 ,<<"Enable-T38-Gateway">>
                          ])),
     ecallmgr_fs_command:set(Node, UUID, Sets),
     Filename = kz_util:to_list(kz_json:get_value(<<"Fax-Local-Filename">>, JObj, ecallmgr_util:fax_filename(UUID))),

@@ -35,7 +35,7 @@ save(Number) ->
 save(Number, ?NUMBER_STATE_IN_SERVICE) ->
     update_prepend(Number);
 save(Number, _State) ->
-  delete(Number).
+    delete(Number).
 
 %%--------------------------------------------------------------------
 %% @public

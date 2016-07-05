@@ -10,7 +10,7 @@
 -include("kazoo_config.hrl").
 
 -export([start_link/0
-         ,reload/0
+	,reload/0
         ]).
 
 -export([read_cookie/1]).

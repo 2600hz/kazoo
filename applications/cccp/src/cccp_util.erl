@@ -9,11 +9,11 @@
 -module(cccp_util).
 
 -export([relay_amqp/2
-         ,authorize/2
-         ,handle_disconnect/2
-         ,get_number/1
-         ,store_last_dialed/2
-         ,bridge/7
+	,authorize/2
+	,handle_disconnect/2
+	,get_number/1
+	,store_last_dialed/2
+	,bridge/7
         ]).
 
 -include("cccp.hrl").
@@ -71,8 +71,8 @@ authorize(Value, View) ->
             AccountId = kz_json:get_value([<<"value">>,<<"account_id">>], JObj),
             OutboundCID = kz_json:get_value([<<"value">>,<<"outbound_cid">>], JObj),
             [AccountId
-             ,legalize_outbound_cid(OutboundCID, AccountId)
-             ,kz_json:get_value([<<"value">>,<<"id">>], JObj)
+	    ,legalize_outbound_cid(OutboundCID, AccountId)
+	    ,kz_json:get_value([<<"value">>,<<"id">>], JObj)
             ];
         _E ->
             lager:info("Auth failed for ~p. Error occurred: ~p.", [Value, _E]),
@@ -91,9 +91,9 @@ ensure_valid_caller_id(OutboundCID, AccountId) ->
     {'ok', AccountPhoneNumbersList} =
         kz_datamgr:open_cache_doc(kz_util:format_account_id(AccountId, 'encoded')
                                  ,?KNM_PHONE_NUMBERS_DOC
-                                ),
+				 ),
     case lists:member(knm_converters:normalize(OutboundCID)
-                      ,kz_json:get_keys(AccountPhoneNumbersList)
+		     ,kz_json:get_keys(AccountPhoneNumbersList)
                      )
     of
         'true' ->
@@ -102,8 +102,8 @@ ensure_valid_caller_id(OutboundCID, AccountId) ->
             DefaultCID =
                 kapps_config:get(
                   ?CCCP_CONFIG_CAT
-                  ,<<"default_caller_id_number">>
-                  ,kz_util:anonymous_caller_id_number()
+				,<<"default_caller_id_number">>
+				,kz_util:anonymous_caller_id_number()
                  ),
             lager:debug("OutboundCID ~p is out of account's list; changing to application's default: ~p", [OutboundCID, DefaultCID]),
             DefaultCID
@@ -155,7 +155,7 @@ get_last_dialed_number(Call) ->
     {'ok', Doc} = kz_datamgr:open_doc(<<"cccps">>, DocId),
     LastDialed = kz_json:get_value(<<"pvt_last_dialed">>, Doc),
     case cccp_allowed_callee(LastDialed) of
-       'false' ->
+	'false' ->
             kapps_call_command:prompt(<<"hotdesk-invalid_entry">>, Call),
             kapps_call_command:queued_hangup(Call);
         'true' ->
@@ -177,10 +177,10 @@ check_restrictions(Number, Call) ->
     AccountId = kz_doc:account_id(Doc),
     AccountDb = kz_doc:account_db(Doc),
     case is_number_restricted(Number, AccountId, AccountDb) of
-       'true' ->
+	'true' ->
             lager:debug("Number ~p is restricted", [Number]),
             hangup_unauthorized_call(Call);
-       'false' ->
+	'false' ->
             is_user_restricted(Number, kz_json:get_value(<<"user_id">>, Doc), AccountDb, Call)
     end.
 
@@ -226,17 +226,17 @@ cccp_allowed_callee(Number) ->
 build_bridge_offnet_request(CallId, ToDID, Q, CtrlQ, AccountId, OutboundCID) ->
     props:filter_undefined(
       [{<<"Resource-Type">>, <<"audio">>}
-       ,{<<"Application-Name">>, <<"bridge">>}
-       ,{<<"Existing-Call-ID">>, CallId}
-       ,{<<"Call-ID">>, CallId}
-       ,{<<"Control-Queue">>, CtrlQ}
-       ,{<<"To-DID">>, ToDID}
-       ,{<<"Resource-Type">>, <<"originate">>}
-       ,{<<"Outbound-Caller-ID-Number">>, OutboundCID}
-       ,{<<"Outbound-Caller-ID-Name">>, OutboundCID}
-       ,{<<"Originate-Immediate">>, 'true'}
-       ,{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
-       ,{<<"Account-ID">>, AccountId}
+      ,{<<"Application-Name">>, <<"bridge">>}
+      ,{<<"Existing-Call-ID">>, CallId}
+      ,{<<"Call-ID">>, CallId}
+      ,{<<"Control-Queue">>, CtrlQ}
+      ,{<<"To-DID">>, ToDID}
+      ,{<<"Resource-Type">>, <<"originate">>}
+      ,{<<"Outbound-Caller-ID-Number">>, OutboundCID}
+      ,{<<"Outbound-Caller-ID-Name">>, OutboundCID}
+      ,{<<"Originate-Immediate">>, 'true'}
+      ,{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
+      ,{<<"Account-ID">>, AccountId}
        | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
       ]).
 
@@ -245,9 +245,9 @@ build_bridge_request(CallId, ToDID, CID, CtrlQ, AccountId) ->
     {'ok', AccountDoc} = kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId),
     Realm = kz_json:get_value(<<"realm">>, AccountDoc),
     CCVs = [{<<"Account-ID">>, AccountId}
-            ,{<<"Authorizing-ID">>, AccountId}
-            ,{<<"Authorizing-Type">>, <<"device">>}
-            ,{<<"Presence-ID">>, <<CID/binary, "@", Realm/binary>>}
+	   ,{<<"Authorizing-ID">>, AccountId}
+	   ,{<<"Authorizing-Type">>, <<"device">>}
+	   ,{<<"Presence-ID">>, <<CID/binary, "@", Realm/binary>>}
            ],
 
     Endpoint = [
@@ -259,20 +259,20 @@ build_bridge_request(CallId, ToDID, CID, CtrlQ, AccountId) ->
 
     props:filter_undefined(
       [{<<"Resource-Type">>, <<"audio">>}
-       ,{<<"Application-Name">>, <<"bridge">>}
-       ,{<<"Endpoints">>, [kz_json:from_list(Endpoint)]}
-       ,{<<"Existing-Call-ID">>, CallId}
-       ,{<<"Control-Queue">>, CtrlQ}
-       ,{<<"Resource-Type">>, <<"originate">>}
-       ,{<<"Caller-ID-Number">>, CID}
-       ,{<<"Caller-ID-Name">>, CID}
-       ,{<<"Originate-Immediate">>, 'true'}
-       ,{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
-       ,{<<"Account-ID">>, AccountId}
-       ,{<<"Dial-Endpoint-Method">>, <<"single">>}
-       ,{<<"Continue-On-Fail">>, 'true'}
-       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
-       ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
+      ,{<<"Application-Name">>, <<"bridge">>}
+      ,{<<"Endpoints">>, [kz_json:from_list(Endpoint)]}
+      ,{<<"Existing-Call-ID">>, CallId}
+      ,{<<"Control-Queue">>, CtrlQ}
+      ,{<<"Resource-Type">>, <<"originate">>}
+      ,{<<"Caller-ID-Number">>, CID}
+      ,{<<"Caller-ID-Name">>, CID}
+      ,{<<"Originate-Immediate">>, 'true'}
+      ,{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
+      ,{<<"Account-ID">>, AccountId}
+      ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+      ,{<<"Continue-On-Fail">>, 'true'}
+      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+      ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
        | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 

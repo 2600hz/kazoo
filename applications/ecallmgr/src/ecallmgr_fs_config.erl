@@ -15,11 +15,11 @@
 -export([start_link/1, start_link/2]).
 -export([handle_config_req/4]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -define(SERVER, ?MODULE).
@@ -27,7 +27,7 @@
 -include("ecallmgr.hrl").
 
 -record(state, {node :: atom()
-                ,options = [] :: kz_proplist()
+	       ,options = [] :: kz_proplist()
                }).
 
 %%%===================================================================
@@ -244,83 +244,83 @@ default_sip_profiles(Node) ->
                        SysconfResp
                end,
     JObj = kz_json:from_list([{kz_util:to_binary(?DEFAULT_FS_PROFILE)
-                               ,kz_json:from_list(default_sip_profile())}
+			      ,kz_json:from_list(default_sip_profile())}
                              ]),
     kz_json:set_value([kz_util:to_binary(?DEFAULT_FS_PROFILE), <<"Gateways">>]
-                      ,Gateways
-                      ,JObj
+		     ,Gateways
+		     ,JObj
                      ).
 
 -spec default_sip_profile() -> kz_proplist().
 default_sip_profile() ->
     [{<<"Settings">>, kz_json:from_list(default_sip_settings())}
-     ,{<<"Gateways">>, kz_json:from_list(default_sip_gateways())}
+    ,{<<"Gateways">>, kz_json:from_list(default_sip_gateways())}
     ].
 
 -spec default_sip_settings() -> kz_proplist().
 default_sip_settings() ->
     [{<<"message-threads">>, <<"10">>}
-     ,{<<"auth-calls">>, <<"true">>}
-     ,{<<"apply-nat-acl">>, <<"rfc1918.auto">>}
-     ,{<<"apply-inbound-acl">>, <<"trusted">>}
-     ,{<<"apply-proxy-acl">>, <<"authoritative">>}
-     ,{<<"local-network-acl">>, <<"localnet.auto">>}
-     ,{<<"challenge-realm">>, <<"auto_from">>}
-     ,{<<"multiple-registrations">>, <<"false">>}
-     ,{<<"accept-blind-reg">>, <<"false">>}
-     ,{<<"accept-blind-auth">>, <<"false">>}
-     ,{<<"nonce-ttl">>, <<"86400">>}
-     ,{<<"disable-register">>, <<"false">>}
-     ,{<<"inbound-reg-force-matching-username">>, <<"true">>}
-     ,{<<"auth-all-packets">>, <<"false">>}
-     ,{<<"context">>, <<"context_2">>}
-     ,{<<"dialplan">>, <<"XML">>}
-     ,{<<"manual-redirect">>, <<"false">>}
-     ,{<<"disable-transfer">>, <<"false">>}
-     ,{<<"sip-ip">>, <<"$${local_ip_v4}">>}
-     ,{<<"ext-sip-ip">>, <<"auto">>}
-     ,{<<"sip-port">>, <<"5060">>}
-     ,{<<"user-agent-string">>, <<"2600hz">>}
-     ,{<<"enable-100rel">>, <<"false">>}
-     ,{<<"max-proceeding">>, <<"1000">>}
-     ,{<<"inbound-use-callid-as-uuid">>, <<"true">>}
-     ,{<<"outbound-use-uuid-as-callid">>, <<"true">>}
-     ,{<<"rtp-ip">>, <<"$${local_ip_v4}">>}
-     ,{<<"ext-rtp-ip">>, <<"auto">>}
-     ,{<<"rtp-timer-name">>, <<"soft">>}
-     ,{<<"rtp-autoflush-during-bridge">>, <<"true">>}
-     ,{<<"rtp-rewrite-timestamps">>, <<"false">>}
-     ,{<<"hold-music">>, <<"local_stream://default">>}
-     ,{<<"record-path">>, <<"$${recordings_dir}">>}
-     ,{<<"record-template">>, <<"${caller_id_number}.${target_domain}.${strftime(%Y-%m-%d-%H-%M-%S)}.wav">>}
-     ,{<<"dtmf-duration">>, <<"960">>}
-     ,{<<"rfc2833-pt">>, <<"101">>}
-     ,{<<"dtmf-type">>, <<"rfc2833">>}
-     ,{<<"pass-rfc2833">>, <<"false">>}
-     ,{<<"inbound-codec-prefs">>, <<"$${codecs}">>}
-     ,{<<"outbound-codec-prefs">>, <<"$${codecs}">>}
-     ,{<<"inbound-codec-negotiation">>, <<"generous">>}
-     ,{<<"inbound-late-negotiation">>, <<"false">>}
-     ,{<<"disable-transcoding">>, <<"false">>}
-     ,{<<"t38-passthru">>, <<"true">>}
-     ,{<<"all-reg-options-ping">>, <<"true">>}
-     ,{<<"enable-timer">>, <<"false">>}
-     ,{<<"rtp-timeout-sec">>, <<"3600">>}
-     ,{<<"rtp-hold-timeout-sec">>, <<"3600">>}
-     ,{<<"minimum-session-expires">>, <<"90">>}
-     ,{<<"manage-presence">>, <<"true">>}
-     ,{<<"send-message-query-on-register">>, <<"false">>}
-     ,{<<"watchdog-enabled">>, <<"false">>}
-     ,{<<"debug">>, <<"info">>}
-     ,{<<"sip-trace">>, <<"true">>}
-     ,{<<"log-auth-failures">>, <<"true">>}
-     ,{<<"log-level">>, <<"info">>}
-     ,{<<"tracelevel">>, <<"debug">>}
-     ,{<<"debug-presence">>, <<"0">>}
-     ,{<<"debug-sla">>, <<"0">>}
-     ,{<<"auto-restart">>, <<"false">>}
-     ,{<<"rtp-enable-zrtp">>, <<"true">>}
-     ,{<<"liberal-dtmf">>, <<"true">>}
+    ,{<<"auth-calls">>, <<"true">>}
+    ,{<<"apply-nat-acl">>, <<"rfc1918.auto">>}
+    ,{<<"apply-inbound-acl">>, <<"trusted">>}
+    ,{<<"apply-proxy-acl">>, <<"authoritative">>}
+    ,{<<"local-network-acl">>, <<"localnet.auto">>}
+    ,{<<"challenge-realm">>, <<"auto_from">>}
+    ,{<<"multiple-registrations">>, <<"false">>}
+    ,{<<"accept-blind-reg">>, <<"false">>}
+    ,{<<"accept-blind-auth">>, <<"false">>}
+    ,{<<"nonce-ttl">>, <<"86400">>}
+    ,{<<"disable-register">>, <<"false">>}
+    ,{<<"inbound-reg-force-matching-username">>, <<"true">>}
+    ,{<<"auth-all-packets">>, <<"false">>}
+    ,{<<"context">>, <<"context_2">>}
+    ,{<<"dialplan">>, <<"XML">>}
+    ,{<<"manual-redirect">>, <<"false">>}
+    ,{<<"disable-transfer">>, <<"false">>}
+    ,{<<"sip-ip">>, <<"$${local_ip_v4}">>}
+    ,{<<"ext-sip-ip">>, <<"auto">>}
+    ,{<<"sip-port">>, <<"5060">>}
+    ,{<<"user-agent-string">>, <<"2600hz">>}
+    ,{<<"enable-100rel">>, <<"false">>}
+    ,{<<"max-proceeding">>, <<"1000">>}
+    ,{<<"inbound-use-callid-as-uuid">>, <<"true">>}
+    ,{<<"outbound-use-uuid-as-callid">>, <<"true">>}
+    ,{<<"rtp-ip">>, <<"$${local_ip_v4}">>}
+    ,{<<"ext-rtp-ip">>, <<"auto">>}
+    ,{<<"rtp-timer-name">>, <<"soft">>}
+    ,{<<"rtp-autoflush-during-bridge">>, <<"true">>}
+    ,{<<"rtp-rewrite-timestamps">>, <<"false">>}
+    ,{<<"hold-music">>, <<"local_stream://default">>}
+    ,{<<"record-path">>, <<"$${recordings_dir}">>}
+    ,{<<"record-template">>, <<"${caller_id_number}.${target_domain}.${strftime(%Y-%m-%d-%H-%M-%S)}.wav">>}
+    ,{<<"dtmf-duration">>, <<"960">>}
+    ,{<<"rfc2833-pt">>, <<"101">>}
+    ,{<<"dtmf-type">>, <<"rfc2833">>}
+    ,{<<"pass-rfc2833">>, <<"false">>}
+    ,{<<"inbound-codec-prefs">>, <<"$${codecs}">>}
+    ,{<<"outbound-codec-prefs">>, <<"$${codecs}">>}
+    ,{<<"inbound-codec-negotiation">>, <<"generous">>}
+    ,{<<"inbound-late-negotiation">>, <<"false">>}
+    ,{<<"disable-transcoding">>, <<"false">>}
+    ,{<<"t38-passthru">>, <<"true">>}
+    ,{<<"all-reg-options-ping">>, <<"true">>}
+    ,{<<"enable-timer">>, <<"false">>}
+    ,{<<"rtp-timeout-sec">>, <<"3600">>}
+    ,{<<"rtp-hold-timeout-sec">>, <<"3600">>}
+    ,{<<"minimum-session-expires">>, <<"90">>}
+    ,{<<"manage-presence">>, <<"true">>}
+    ,{<<"send-message-query-on-register">>, <<"false">>}
+    ,{<<"watchdog-enabled">>, <<"false">>}
+    ,{<<"debug">>, <<"info">>}
+    ,{<<"sip-trace">>, <<"true">>}
+    ,{<<"log-auth-failures">>, <<"true">>}
+    ,{<<"log-level">>, <<"info">>}
+    ,{<<"tracelevel">>, <<"debug">>}
+    ,{<<"debug-presence">>, <<"0">>}
+    ,{<<"debug-sla">>, <<"0">>}
+    ,{<<"auto-restart">>, <<"false">>}
+    ,{<<"rtp-enable-zrtp">>, <<"true">>}
+    ,{<<"liberal-dtmf">>, <<"true">>}
     ].
 
 default_sip_gateways() -> [].
@@ -368,9 +368,9 @@ compare_node_gateways(Running, New) ->
 
 kill_gateway(GatewayName, Node) ->
     Args = ["profile "
-            ,?DEFAULT_FS_PROFILE
-            ," killgw "
-            ,kz_util:to_list(GatewayName)
+	   ,?DEFAULT_FS_PROFILE
+	   ," killgw "
+	   ,kz_util:to_list(GatewayName)
            ],
     freeswitch:api(Node, 'sofia', lists:flatten(Args)).
 
@@ -406,9 +406,9 @@ maybe_fetch_conference_profile(Node, Id, Profile) ->
           ],
     lager:debug("fetching profile '~s'", [Profile]),
     XmlResp = case kz_amqp_worker:call(Cmd
-                                       ,fun kapi_conference:publish_config_req/1
-                                       ,fun kapi_conference:config_resp_v/1
-                                       ,ecallmgr_fs_node:fetch_timeout(Node)
+				      ,fun kapi_conference:publish_config_req/1
+				      ,fun kapi_conference:config_resp_v/1
+				      ,ecallmgr_fs_node:fetch_timeout(Node)
                                       )
               of
                   {'ok', Resp} ->

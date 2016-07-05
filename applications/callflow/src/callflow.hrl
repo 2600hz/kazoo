@@ -46,7 +46,7 @@
 -define(CACHE_NAME, 'callflow_cache').
 
 -define(DEFAULT_TIMEZONE
-        ,kapps_config:get(<<"accounts">>, <<"default_timezone">>, <<"America/Los_Angeles">>)
+       ,kapps_config:get(<<"accounts">>, <<"default_timezone">>, <<"America/Los_Angeles">>)
        ).
 
 -define(RESTRICTED_ENDPOINT_KEY, <<"Restricted-Endpoint-ID">>).

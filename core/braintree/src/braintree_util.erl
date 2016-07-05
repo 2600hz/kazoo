@@ -42,7 +42,7 @@
 -spec make_doc_xml(kz_proplist(), atom()) -> char_to_bin_res().
 make_doc_xml(Props, Root) ->
     Xml = xmerl:export_simple([doc_xml_simple(Props, Root)], 'xmerl_xml'
-                              ,[{'prolog', ?BT_XML_PROLOG}]
+			     ,[{'prolog', ?BT_XML_PROLOG}]
                              ),
     unicode:characters_to_binary(Xml).
 
@@ -85,8 +85,8 @@ props_to_xml([{K, V}|T], Xml) ->
 -spec bt_error_to_json(bt_error()) -> kz_json:object().
 bt_error_to_json(BtError) ->
     Props = [{<<"code">>, BtError#bt_error.code}
-             ,{<<"message">>, BtError#bt_error.message}
-             ,{<<"attribute">>, BtError#bt_error.attribute}
+	    ,{<<"message">>, BtError#bt_error.message}
+	    ,{<<"attribute">>, BtError#bt_error.attribute}
             ],
     kz_json:from_list(props:filter_undefined(Props)).
 
@@ -99,13 +99,13 @@ bt_error_to_json(BtError) ->
 -spec bt_verification_to_json(bt_verification()) -> kz_json:object().
 bt_verification_to_json(BtVerification) ->
     Props = [{<<"verification_status">>, BtVerification#bt_verification.verification_status}
-             ,{<<"processor_response_code">>, BtVerification#bt_verification.processor_response_code}
-             ,{<<"processor_response_text">>, BtVerification#bt_verification.processor_response_text}
-             ,{<<"cvv_response_code">>, BtVerification#bt_verification.cvv_response_code}
-             ,{<<"avs_response_code">>, BtVerification#bt_verification.avs_response_code}
-             ,{<<"postal_response_code">>, BtVerification#bt_verification.postal_response_code}
-             ,{<<"street_response_code">>, BtVerification#bt_verification.street_response_code}
-             ,{<<"gateway_rejection_reason">>, BtVerification#bt_verification.gateway_rejection_reason}
+	    ,{<<"processor_response_code">>, BtVerification#bt_verification.processor_response_code}
+	    ,{<<"processor_response_text">>, BtVerification#bt_verification.processor_response_text}
+	    ,{<<"cvv_response_code">>, BtVerification#bt_verification.cvv_response_code}
+	    ,{<<"avs_response_code">>, BtVerification#bt_verification.avs_response_code}
+	    ,{<<"postal_response_code">>, BtVerification#bt_verification.postal_response_code}
+	    ,{<<"street_response_code">>, BtVerification#bt_verification.street_response_code}
+	    ,{<<"gateway_rejection_reason">>, BtVerification#bt_verification.gateway_rejection_reason}
             ],
     kz_json:from_list(props:filter_undefined(Props)).
 
@@ -118,8 +118,8 @@ bt_verification_to_json(BtVerification) ->
 -spec bt_api_error_to_json(bt_api_error()) -> kz_json:object().
 bt_api_error_to_json(BtApiError) ->
     Props = [{<<"errors">>, [bt_error_to_json(Error) || Error <- BtApiError#bt_api_error.errors]}
-             ,{<<"verification">>, bt_verification_to_json(BtApiError#bt_api_error.verification)}
-             ,{<<"message">>, BtApiError#bt_api_error.message}
+	    ,{<<"verification">>, bt_verification_to_json(BtApiError#bt_api_error.verification)}
+	    ,{<<"message">>, BtApiError#bt_api_error.message}
             ],
     kz_json:from_list(props:filter_undefined(Props)).
 
@@ -241,7 +241,7 @@ error_io_fault() ->
 error_min_amount(Amount) ->
     Error = <<"Unable to process a transaction for less than $", (kz_util:to_binary(Amount))/binary>>,
     lager:debug("~s", [Error]),
-    throw({'min_amount', kz_json:from_list([{<<"min_amount">>, Error}])}).
+	      throw({'min_amount', kz_json:from_list([{<<"min_amount">>, Error}])}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -253,4 +253,4 @@ error_min_amount(Amount) ->
 error_max_amount(Amount) ->
     Error = <<"Unable to process a transaction for more than $", (kz_util:to_binary(Amount))/binary>>,
     lager:debug("~s", [Error]),
-    throw({'max_amount', kz_json:from_list([{<<"max_amount">>, Error}])}).
+	      throw({'max_amount', kz_json:from_list([{<<"max_amount">>, Error}])}).

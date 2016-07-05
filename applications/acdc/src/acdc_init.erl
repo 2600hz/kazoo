@@ -10,11 +10,11 @@
 -module(acdc_init).
 
 -export([start_link/0
-         ,init_db/0
-         ,init_acdc/0
-         ,init_acct/1
-         ,init_acct_queues/1
-         ,init_acct_agents/1
+	,init_db/0
+	,init_acdc/0
+	,init_acct/1
+	,init_acct_queues/1
+	,init_acct_agents/1
         ]).
 
 -include("acdc.hrl").
@@ -56,10 +56,10 @@ init_acct(Account) ->
     acdc_stats:init_db(AccountId),
 
     init_queues(AccountId
-                ,kz_datamgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [])
+	       ,kz_datamgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [])
                ),
     init_agents(AccountId
-                ,kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, [])
+	       ,kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, [])
                ).
 
 -spec init_acct_queues(ne_binary()) -> any().
@@ -69,7 +69,7 @@ init_acct_queues(Account) ->
 
     lager:debug("init acdc account queues: ~s", [AccountId]),
     init_agents(AccountId
-                ,kz_datamgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [])
+	       ,kz_datamgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [])
                ).
 
 -spec init_acct_agents(ne_binary()) -> any().
@@ -79,7 +79,7 @@ init_acct_agents(Account) ->
 
     lager:debug("init acdc account agents: ~s", [AccountId]),
     init_agents(AccountId
-                ,kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, [])
+	       ,kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, [])
                ).
 
 -spec init_queues(ne_binary(), kz_datamgr:get_results_return()) -> any().

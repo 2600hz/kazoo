@@ -67,10 +67,10 @@ proceed_with_endpoint(State, Endpoint, JObj) ->
                         'false' -> <<"bypass">>
                     end,
     Command = [{<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Endpoints">>, [Endpoint]}
-               ,{<<"Media">>, MediaHandling}
-               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
-               ,{<<"Call-ID">>, CallID}
+	      ,{<<"Endpoints">>, [Endpoint]}
+	      ,{<<"Media">>, MediaHandling}
+	      ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+	      ,{<<"Call-ID">>, CallID}
                | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     State1 = ts_callflow:set_failover(State, kz_json:get_value(<<"Failover">>, Endpoint, kz_json:new())),
@@ -124,7 +124,7 @@ wait_for_bridge(State) ->
 
 try_failover(State) ->
     case {ts_callflow:get_control_queue(State)
-          ,ts_callflow:get_failover(State)
+	 ,ts_callflow:get_failover(State)
          }
     of
         {<<>>, _} ->
@@ -157,12 +157,12 @@ try_failover_sip(State, SIPUri) ->
     Q = ts_callflow:get_my_queue(State),
     lager:info("routing to failover sip uri: ~s", [SIPUri]),
     EndPoint = kz_json:from_list([{<<"Invite-Format">>, <<"route">>}
-                                  ,{<<"Route">>, SIPUri}
+				 ,{<<"Route">>, SIPUri}
                                  ]),
     %% since we only route to one endpoint, we specify most options on the endpoint's leg
     Command = [{<<"Call-ID">>, CallID}
-               ,{<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Endpoints">>, [EndPoint]}
+	      ,{<<"Application-Name">>, <<"bridge">>}
+	      ,{<<"Endpoints">>, [EndPoint]}
                | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     kapi_dialplan:publish_command(CtlQ, Command),
@@ -182,21 +182,21 @@ try_failover_e164(State, ToDID) ->
     CCVs = ts_callflow:get_custom_channel_vars(State),
 
     Req = [{<<"Call-ID">>, CallID}
-           ,{<<"Resource-Type">>, <<"audio">>}
-           ,{<<"To-DID">>, ToDID}
-           ,{<<"Account-ID">>, AccountId}
-           ,{<<"Control-Queue">>, CtlQ}
-           ,{<<"Application-Name">>, <<"bridge">>}
-           ,{<<"Flags">>, kz_json:get_value(<<"flags">>, Endpoint)}
-           ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, Endpoint)}
-           ,{<<"Ignore-Early-Media">>, kz_json:get_value(<<"ignore_early_media">>, Endpoint)}
-           ,{<<"Outbound-Caller-ID-Name">>, kz_json:get_value(<<"Outbound-Caller-ID-Name">>, Endpoint, OriginalCIdName)}
-           ,{<<"Outbound-Caller-ID-Number">>, kz_json:get_value(<<"Outbound-Caller-ID-Number">>, Endpoint, OriginalCIdNumber)}
-           ,{<<"Ringback">>, kz_json:get_value(<<"ringback">>, Endpoint)}
-           ,{<<"Hunt-Account-ID">>, kz_json:get_value(<<"Hunt-Account-ID">>, Endpoint)}
-           ,{<<"Custom-SIP-Headers">>, ts_callflow:get_custom_sip_headers(State)}
-           ,{<<"Inception">>,  kz_json:get_value(<<"Inception">>, CCVs)}
-           ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}])}
+	  ,{<<"Resource-Type">>, <<"audio">>}
+	  ,{<<"To-DID">>, ToDID}
+	  ,{<<"Account-ID">>, AccountId}
+	  ,{<<"Control-Queue">>, CtlQ}
+	  ,{<<"Application-Name">>, <<"bridge">>}
+	  ,{<<"Flags">>, kz_json:get_value(<<"flags">>, Endpoint)}
+	  ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, Endpoint)}
+	  ,{<<"Ignore-Early-Media">>, kz_json:get_value(<<"ignore_early_media">>, Endpoint)}
+	  ,{<<"Outbound-Caller-ID-Name">>, kz_json:get_value(<<"Outbound-Caller-ID-Name">>, Endpoint, OriginalCIdName)}
+	  ,{<<"Outbound-Caller-ID-Number">>, kz_json:get_value(<<"Outbound-Caller-ID-Number">>, Endpoint, OriginalCIdNumber)}
+	  ,{<<"Ringback">>, kz_json:get_value(<<"ringback">>, Endpoint)}
+	  ,{<<"Hunt-Account-ID">>, kz_json:get_value(<<"Hunt-Account-ID">>, Endpoint)}
+	  ,{<<"Custom-SIP-Headers">>, ts_callflow:get_custom_sip_headers(State)}
+	  ,{<<"Inception">>,  kz_json:get_value(<<"Inception">>, CCVs)}
+	  ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}])}
            | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
           ],
     lager:info("sending offnet request for DID ~s", [ToDID]),
@@ -239,11 +239,11 @@ get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps) ->
     Invite = ts_util:invite_format(kz_util:to_lower_binary(InFormat), ToDID) ++ RoutingData,
     {'endpoint', kz_json:from_list(
                    [{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Auth-User">>, AuthUser}
-                                                                   ,{<<"Auth-Realm">>, AuthRealm}
-                                                                   ,{<<"Direction">>, <<"inbound">>}
-                                                                   ,{<<"Account-ID">>, AccountId}
-                                                                   ,{<<"Authorizing-ID">>, AuthzId}
-                                                                   ,{<<"Authorizing-Type">>, <<"sys_info">>}
+								  ,{<<"Auth-Realm">>, AuthRealm}
+								  ,{<<"Direction">>, <<"inbound">>}
+								  ,{<<"Account-ID">>, AccountId}
+								  ,{<<"Authorizing-ID">>, AuthzId}
+								  ,{<<"Authorizing-Type">>, <<"sys_info">>}
                                                                   ])
                     }
                     | Invite
@@ -280,7 +280,7 @@ routing_data(ToDID, AccountId, Settings) ->
             {'ok', AccountSettings} ->
                 lager:info("got account settings"),
                 {kz_json:get_value(<<"server">>, AccountSettings, kz_json:new())
-                 ,kz_json:get_value(<<"account">>, AccountSettings, kz_json:new())
+		,kz_json:get_value(<<"account">>, AccountSettings, kz_json:new())
                 }
         catch
             _E:_R ->
@@ -302,62 +302,62 @@ routing_data(ToDID, AccountId, Settings) ->
 
     InboundFormat = kz_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>),
     {CalleeName, CalleeNumber} = callee_id([kz_json:get_value(<<"caller_id">>, DIDOptions)
-                                            ,kz_json:get_value(<<"callerid_account">>, Settings)
-                                            ,kz_json:get_value(<<"callerid_server">>, Settings)
+					   ,kz_json:get_value(<<"callerid_account">>, Settings)
+					   ,kz_json:get_value(<<"callerid_server">>, Settings)
                                            ]),
     ProgressTimeout = ts_util:progress_timeout([kz_json:get_value(<<"progress_timeout">>, DIDOptions)
-                                                ,kz_json:get_value(<<"progress_timeout">>, SrvOptions)
-                                                ,kz_json:get_value(<<"progress_timeout">>, AcctStuff)
+					       ,kz_json:get_value(<<"progress_timeout">>, SrvOptions)
+					       ,kz_json:get_value(<<"progress_timeout">>, AcctStuff)
                                                ]),
     BypassMedia = ts_util:bypass_media([kz_json:get_value(<<"media_handling">>, DIDOptions)
-                                        ,kz_json:get_value(<<"media_handling">>, SrvOptions)
-                                        ,kz_json:get_value(<<"media_handling">>, AcctStuff)
+				       ,kz_json:get_value(<<"media_handling">>, SrvOptions)
+				       ,kz_json:get_value(<<"media_handling">>, AcctStuff)
                                        ]),
     FailoverLocations = [kz_json:get_value(<<"failover">>, NumConfig)
-                         ,kz_json:get_value(<<"failover">>, DIDOptions)
-                         ,kz_json:get_value(<<"failover">>, SrvOptions)
-                         ,kz_json:get_value(<<"failover">>, AcctStuff)
+			,kz_json:get_value(<<"failover">>, DIDOptions)
+			,kz_json:get_value(<<"failover">>, SrvOptions)
+			,kz_json:get_value(<<"failover">>, AcctStuff)
                         ],
 
     Failover = ts_util:failover(FailoverLocations),
     lager:info("failover found: ~p", [Failover]),
 
     Delay = ts_util:delay([kz_json:get_value(<<"delay">>, DIDOptions)
-                           ,kz_json:get_value(<<"delay">>, SrvOptions)
-                           ,kz_json:get_value(<<"delay">>, AcctStuff)
+			  ,kz_json:get_value(<<"delay">>, SrvOptions)
+			  ,kz_json:get_value(<<"delay">>, AcctStuff)
                           ]),
     SIPHeaders = ts_util:sip_headers([kz_json:get_value(<<"sip_headers">>, DIDOptions)
-                                      ,kz_json:get_value(<<"sip_headers">>, SrvOptions)
-                                      ,kz_json:get_value(<<"sip_headers">>, AcctStuff)
+				     ,kz_json:get_value(<<"sip_headers">>, SrvOptions)
+				     ,kz_json:get_value(<<"sip_headers">>, AcctStuff)
                                      ]),
     IgnoreEarlyMedia = ts_util:ignore_early_media([kz_json:get_value(<<"ignore_early_media">>, DIDOptions)
-                                                   ,kz_json:get_value(<<"ignore_early_media">>, SrvOptions)
-                                                   ,kz_json:get_value(<<"ignore_early_media">>, AcctStuff)
+						  ,kz_json:get_value(<<"ignore_early_media">>, SrvOptions)
+						  ,kz_json:get_value(<<"ignore_early_media">>, AcctStuff)
                                                   ]),
     Timeout = ts_util:ep_timeout([kz_json:get_value(<<"timeout">>, DIDOptions)
-                                  ,kz_json:get_value(<<"timeout">>, SrvOptions)
-                                  ,kz_json:get_value(<<"timeout">>, AcctStuff)
+				 ,kz_json:get_value(<<"timeout">>, SrvOptions)
+				 ,kz_json:get_value(<<"timeout">>, AcctStuff)
                                  ]),
 
     [KV || {_,V}=KV <- [ {<<"Invite-Format">>, InboundFormat}
-                         ,{<<"Codecs">>, kz_json:find(<<"codecs">>, [SrvOptions, Srv])}
-                         ,{<<"Bypass-Media">>, BypassMedia}
-                         ,{<<"Endpoint-Progress-Timeout">>, ProgressTimeout}
-                         ,{<<"Failover">>, Failover}
-                         ,{<<"Endpoint-Delay">>, Delay}
-                         ,{<<"Custom-SIP-Headers">>, SIPHeaders}
-                         ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-                         ,{<<"Endpoint-Timeout">>, Timeout}
-                         ,{<<"Callee-ID-Name">>, CalleeName}
-                         ,{<<"Callee-ID-Number">>, CalleeNumber}
-                         ,{<<"To-User">>, AuthU}
-                         ,{<<"To-Realm">>, AuthR}
-                         ,{<<"Caller-ID-Options">>, CidOptions}
-                         ,{<<"To-DID">>, ToDID}
-                         ,{<<"To-IP">>, build_ip(ToIP, ToPort)}
-                         ,{<<"Route-Options">>, RouteOpts}
-                         ,{<<"Hunt-Account-ID">>, HuntAccountId}
-                         ,{<<"Authorizing-ID">>, kz_doc:id(Settings)} % connectivity doc id
+		       ,{<<"Codecs">>, kz_json:find(<<"codecs">>, [SrvOptions, Srv])}
+		       ,{<<"Bypass-Media">>, BypassMedia}
+		       ,{<<"Endpoint-Progress-Timeout">>, ProgressTimeout}
+		       ,{<<"Failover">>, Failover}
+		       ,{<<"Endpoint-Delay">>, Delay}
+		       ,{<<"Custom-SIP-Headers">>, SIPHeaders}
+		       ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+		       ,{<<"Endpoint-Timeout">>, Timeout}
+		       ,{<<"Callee-ID-Name">>, CalleeName}
+		       ,{<<"Callee-ID-Number">>, CalleeNumber}
+		       ,{<<"To-User">>, AuthU}
+		       ,{<<"To-Realm">>, AuthR}
+		       ,{<<"Caller-ID-Options">>, CidOptions}
+		       ,{<<"To-DID">>, ToDID}
+		       ,{<<"To-IP">>, build_ip(ToIP, ToPort)}
+		       ,{<<"Route-Options">>, RouteOpts}
+		       ,{<<"Hunt-Account-ID">>, HuntAccountId}
+		       ,{<<"Authorizing-ID">>, kz_doc:id(Settings)} % connectivity doc id
                        ],
            V =/= 'undefined',
            V =/= <<>>

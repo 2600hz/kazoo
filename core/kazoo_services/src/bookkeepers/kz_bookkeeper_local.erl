@@ -78,15 +78,15 @@ handle_topup(BillingId, [Transaction|Transactions]) ->
 -spec send_topup_notification(ne_binary(), kz_transaction:transaction()) -> 'ok'.
 send_topup_notification(BillingId, Transaction) ->
     Props = [{<<"Account-ID">>, BillingId}
-             ,{<<"Amount">>, kz_transaction:amount(Transaction)}
-             ,{<<"Response">>, <<"Authorized">>}
-             ,{<<"Success">>, <<"true">>}
+	    ,{<<"Amount">>, kz_transaction:amount(Transaction)}
+	    ,{<<"Response">>, <<"Authorized">>}
+	    ,{<<"Success">>, <<"true">>}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     case
         kapps_util:amqp_pool_send(
           Props
-          ,fun kapi_notifications:publish_topup/1
+				 ,fun kapi_notifications:publish_topup/1
          )
     of
         'ok' ->

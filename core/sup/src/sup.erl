@@ -81,10 +81,10 @@ get_target(Options, Verbose) ->
     Host = get_host(Options),
     Cookie = get_cookie(Options, list_to_atom(Node)),
     Target = list_to_atom(Node ++ "@" ++ Host),
-     case net_adm:ping(Target) of
+    case net_adm:ping(Target) of
         'pong' ->
             Verbose
-                 andalso stdout("Connected to service ~s with cookie ~s", [Target, Cookie]),
+		andalso stdout("Connected to service ~s with cookie ~s", [Target, Cookie]),
             Target;
         'pang' ->
             stderr("Connection to service failed!", []),

@@ -16,10 +16,10 @@
 -include("ecallmgr.hrl").
 
 -define(RATE_VARS, [<<"Rate">>, <<"Rate-Increment">>
-                    ,<<"Rate-Minimum">>, <<"Surcharge">>
-                    ,<<"Rate-Name">>, <<"Rate-Description">>
-                    ,<<"Base-Cost">>, <<"Pvt-Cost">>
-                    ,<<"Discount-Percentage">>, <<"Rate-NoCharge-Time">>
+		   ,<<"Rate-Minimum">>, <<"Surcharge">>
+		   ,<<"Rate-Name">>, <<"Rate-Description">>
+		   ,<<"Base-Cost">>, <<"Pvt-Cost">>
+		   ,<<"Discount-Percentage">>, <<"Rate-NoCharge-Time">>
                    ]).
 
 -spec authorize(kz_proplist(), ne_binary(), atom()) -> boolean().
@@ -60,22 +60,22 @@ maybe_authorize_channel(Props, Node) ->
     case kzd_freeswitch:channel_authorized(Props) of
         <<"true">> ->
             kz_cache:store_local(?ECALLMGR_UTIL_CACHE
-                                 ,?AUTHZ_RESPONSE_KEY(CallId)
-                                 ,{'true', kz_json:new()}
+				,?AUTHZ_RESPONSE_KEY(CallId)
+				,{'true', kz_json:new()}
                                 ),
             'true';
         <<"false">> ->
             kz_cache:store_local(?ECALLMGR_UTIL_CACHE
-                                 ,?AUTHZ_RESPONSE_KEY(CallId)
-                                 ,'false'
+				,?AUTHZ_RESPONSE_KEY(CallId)
+				,'false'
                                 ),
             'false';
         _Else ->
             case kzd_freeswitch:hunt_destination_number(Props) of
                 <<"conference">> ->
                     kz_cache:store_local(?ECALLMGR_UTIL_CACHE
-                                         ,?AUTHZ_RESPONSE_KEY(CallId)
-                                         ,{'true', kz_json:new()}
+					,?AUTHZ_RESPONSE_KEY(CallId)
+					,{'true', kz_json:new()}
                                         ),
                     'true';
                 _Hunt ->
@@ -146,9 +146,9 @@ is_consuming_inbound_resource(Props, CallId, Node) ->
 request_channel_authorization(Props, CallId, Node) ->
     lager:debug("channel authorization request started"),
     ReqResp = kz_amqp_worker:call(authz_req(Props)
-                                  ,fun kapi_authz:publish_authz_req/1
-                                  ,fun kapi_authz:authz_resp_v/1
-                                  ,ecallmgr_fs_node:fetch_timeout(Node)
+				 ,fun kapi_authz:publish_authz_req/1
+				 ,fun kapi_authz:authz_resp_v/1
+				 ,ecallmgr_fs_node:fetch_timeout(Node)
                                  ),
     case ReqResp of
         {'error', _R} ->
@@ -166,9 +166,9 @@ authz_response(JObj, Props, CallId, Node) ->
         'true' -> authorize_account(JObj, Props, CallId, Node);
         'false' ->
             lager:info("channel is unauthorized: ~s/~s"
-                       ,[kz_json:get_value(<<"Account-Billing">>, JObj)
-                         ,kz_json:get_value(<<"Reseller-Billing">>, JObj)
-                        ]),
+		      ,[kz_json:get_value(<<"Account-Billing">>, JObj)
+		       ,kz_json:get_value(<<"Reseller-Billing">>, JObj)
+		       ]),
             maybe_deny_call(Props, CallId, Node)
                 andalso authorize_account(JObj, Props, CallId, Node)
     end.
@@ -196,10 +196,10 @@ authorize_account(JObj, Props, CallId, Node) ->
     lager:debug("call authorized by account ~s as ~s", [AccountId, Type]),
     P = props:set_values(
           [{?GET_CCV(<<"Account-ID">>), AccountId}
-           ,{?GET_CCV(<<"Account-Billing">>), Type}
-           ,{<<"Outbound-Flags">>, kz_json:get_value(<<"Outbound-Flags">>, ChanVars)}
+	  ,{?GET_CCV(<<"Account-Billing">>), Type}
+	  ,{<<"Outbound-Flags">>, kz_json:get_value(<<"Outbound-Flags">>, ChanVars)}
           ]
-          ,Props
+			,Props
          ),
 
     authorize_reseller(JObj, P, CallId, Node).
@@ -214,9 +214,9 @@ authorize_reseller(JObj, Props, CallId, Node) ->
             Type = kz_json:get_value(<<"Reseller-Billing">>, JObj),
             lager:debug("call authorized by reseller ~s as ~s", [ResellerId, Type]),
             P = props:set_values([{?GET_CCV(<<"Reseller-ID">>), ResellerId}
-                                  ,{?GET_CCV(<<"Reseller-Billing">>), Type}
+				 ,{?GET_CCV(<<"Reseller-Billing">>), Type}
                                  ]
-                                 ,Props
+				,Props
                                 ),
             rate_call(P, CallId, Node)
     end.
@@ -232,15 +232,15 @@ allow_call(Props, CallId, Node) ->
     lager:debug("channel authorization succeeded, allowing call"),
     Vars = props:filter_undefined(
              [{<<"Account-ID">>, kzd_freeswitch:account_id(Props)}
-              ,{<<"Account-Billing">>, kzd_freeswitch:account_billing(Props)}
-              ,{<<"Reseller-ID">>, kzd_freeswitch:reseller_id(Props)}
-              ,{<<"Reseller-Billing">>, kzd_freeswitch:reseller_billing(Props)}
-              ,{<<"Global-Resource">>, kzd_freeswitch:is_consuming_global_resource(Props)}
-              ,{<<"Channel-Authorized">>, <<"true">>}
+	     ,{<<"Account-Billing">>, kzd_freeswitch:account_billing(Props)}
+	     ,{<<"Reseller-ID">>, kzd_freeswitch:reseller_id(Props)}
+	     ,{<<"Reseller-Billing">>, kzd_freeswitch:reseller_billing(Props)}
+	     ,{<<"Global-Resource">>, kzd_freeswitch:is_consuming_global_resource(Props)}
+	     ,{<<"Channel-Authorized">>, <<"true">>}
              ]),
     kz_cache:store_local(?ECALLMGR_UTIL_CACHE
-                         ,?AUTHZ_RESPONSE_KEY(CallId)
-                         ,{'true', kz_json:from_list(Vars)}
+			,?AUTHZ_RESPONSE_KEY(CallId)
+			,{'true', kz_json:from_list(Vars)}
                         ),
     _ = case props:is_true(<<"Call-Setup">>, Props, 'false') of
             'false' -> ecallmgr_fs_command:set(Node, CallId, Vars);
@@ -264,10 +264,10 @@ rate_channel(Props, Node) ->
     kz_util:put_callid(CallId),
     Direction = kzd_freeswitch:call_direction(Props),
     ReqResp = kz_amqp_worker:call(rating_req(CallId, Props)
-                                  ,fun kapi_rate:publish_req/1
-                                  ,fun kapi_rate:resp_v/1
+				 ,fun kapi_rate:publish_req/1
+				 ,fun kapi_rate:resp_v/1
                                   %% get inbound_rate_resp_timeout or outbound_rate_resp_timeout
-                                  ,ecallmgr_config:get_integer(<<Direction/binary, "_rate_resp_timeout">>, 10 * ?MILLISECONDS_IN_SECOND)
+				 ,ecallmgr_config:get_integer(<<Direction/binary, "_rate_resp_timeout">>, 10 * ?MILLISECONDS_IN_SECOND)
                                  ),
     rate_channel_resp(Props, Node, ReqResp).
 
@@ -315,17 +315,17 @@ maybe_set_rating_ccvs(Props, JObj, Node) ->
 set_rating_ccvs(JObj, Node) ->
     lager:debug("setting rating information"),
     ecallmgr_fs_command:set(Node
-                      ,kz_json:get_value(<<"Call-ID">>, JObj)
-                      ,get_rating_ccvs(JObj)
-                     ).
+			   ,kz_json:get_value(<<"Call-ID">>, JObj)
+			   ,get_rating_ccvs(JObj)
+			   ).
 
 -spec get_rating_ccvs(kz_json:object()) -> kz_proplist().
 get_rating_ccvs(JObj) ->
     lists:foldl(fun(Key, Acc) ->
                         rating_ccv(Key, Acc, JObj)
                 end
-                ,[]
-                ,?RATE_VARS
+	       ,[]
+	       ,?RATE_VARS
                ).
 
 -spec rating_ccv(ne_binary(), kz_proplist(), kz_json:object()) ->
@@ -346,11 +346,11 @@ maybe_update_callee_id(JObj, Acc) ->
         'true' ->
             ConvertedRate = kz_util:to_binary(wht_util:units_to_dollars(kz_util:to_number(Rate))),
             [{<<"ignore_display_updates">>, <<"false">>}
-             ,{<<"effective_callee_id_name">>, <<"$", ConvertedRate/binary
+	    ,{<<"effective_callee_id_name">>, <<"$", ConvertedRate/binary
                                                  ," per min ${effective_callee_id_name}"
-                                               >>
-              }
-             ,{<<"Rate">>, Rate}
+					      >>
+	     }
+	    ,{<<"Rate">>, Rate}
              | Acc
             ];
         'false' -> [{<<"Rate">>, Rate}|Acc]
@@ -360,27 +360,27 @@ maybe_update_callee_id(JObj, Acc) ->
 authz_req(Props) ->
     props:filter_undefined(
       [{<<"To">>, ecallmgr_util:get_sip_to(Props)}
-       ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
-       ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
-       ,{<<"Call-ID">>, kzd_freeswitch:call_id(Props)}
-       ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
-       ,{<<"Other-Leg-Call-ID">>, kzd_freeswitch:other_leg_call_id(Props)}
-       ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props, kz_util:anonymous_caller_id_name())}
-       ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props, kz_util:anonymous_caller_id_number())}
-       ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
-       ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
-       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
+      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
+      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
+      ,{<<"Call-ID">>, kzd_freeswitch:call_id(Props)}
+      ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
+      ,{<<"Other-Leg-Call-ID">>, kzd_freeswitch:other_leg_call_id(Props)}
+      ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props, kz_util:anonymous_caller_id_name())}
+      ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props, kz_util:anonymous_caller_id_number())}
+      ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
+      ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
+      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec rating_req(ne_binary(), kz_proplist()) -> kz_proplist().
 rating_req(CallId, Props) ->
     [{<<"To-DID">>, kzd_freeswitch:to_did(Props)}
-     ,{<<"From-DID">>, kzd_freeswitch:caller_id_number(Props)}
-     ,{<<"Call-ID">>, CallId}
-     ,{<<"Account-ID">>, kzd_freeswitch:account_id(Props)}
-     ,{<<"Direction">>, kzd_freeswitch:call_direction(Props)}
-     ,{<<"Send-Empty">>, 'true'}
-     ,{<<"Outbound-Flags">>, props:get_value(<<"Outbound-Flags">>, Props)}
+    ,{<<"From-DID">>, kzd_freeswitch:caller_id_number(Props)}
+    ,{<<"Call-ID">>, CallId}
+    ,{<<"Account-ID">>, kzd_freeswitch:account_id(Props)}
+    ,{<<"Direction">>, kzd_freeswitch:call_direction(Props)}
+    ,{<<"Send-Empty">>, 'true'}
+    ,{<<"Outbound-Flags">>, props:get_value(<<"Outbound-Flags">>, Props)}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].

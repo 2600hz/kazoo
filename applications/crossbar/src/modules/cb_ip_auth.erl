@@ -12,12 +12,12 @@
 -module(cb_ip_auth).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
-         ,authorize/1
-         ,authenticate/1
-         ,validate/1
-         ,put/1
+	,allowed_methods/0
+	,resource_exists/0
+	,authorize/1
+	,authenticate/1
+	,validate/1
+	,put/1
         ]).
 
 -include("crossbar.hrl").
@@ -88,8 +88,8 @@ authenticate_ip(Context, IpKey) ->
     lager:debug("attemping to authenticate ip ~s", [IpKey]),
     case kz_json:is_empty(IpKey)
         orelse crossbar_doc:load_view(?AGG_VIEW_IP
-                                      ,ViewOptions
-                                      ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
+				     ,ViewOptions
+				     ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
                                      )
     of
         'true' ->
@@ -163,8 +163,8 @@ on_successful_validation(Context) ->
     ViewOptions = [{'key', IpKey}],
     case kz_json:is_empty(IpKey)
         orelse crossbar_doc:load_view(?AGG_VIEW_IP
-                                      ,ViewOptions
-                                      ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
+				     ,ViewOptions
+				     ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
                                      )
     of
         'true' ->
@@ -202,12 +202,12 @@ create_fake_token(Context, JObj) ->
     AccountId = kz_json:get_value([<<"value">>, <<"account_id">>], JObj),
     AuthToken = kz_util:rand_hex_binary(12),
     Token = [{<<"account_id">>, AccountId}
-             ,{<<"method">>, kz_util:to_binary(?MODULE)}
-             ,{<<"_id">>, AuthToken}
+	    ,{<<"method">>, kz_util:to_binary(?MODULE)}
+	    ,{<<"_id">>, AuthToken}
             ],
     crossbar_util:response(crossbar_util:response_auth(JObj)
-                           ,cb_context:setters(Context
-                                               ,[{fun cb_context:set_auth_token/2, AuthToken}
-                                                 ,{fun cb_context:set_auth_doc/2, kz_json:from_list(Token)}
-                                                 ,{fun cb_context:set_auth_account_id/2, AccountId}
-                                                ])).
+			  ,cb_context:setters(Context
+					     ,[{fun cb_context:set_auth_token/2, AuthToken}
+					      ,{fun cb_context:set_auth_doc/2, kz_json:from_list(Token)}
+					      ,{fun cb_context:set_auth_account_id/2, AccountId}
+					      ])).

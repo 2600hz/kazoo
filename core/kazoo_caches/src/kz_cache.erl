@@ -11,8 +11,8 @@
 -behaviour(gen_listener).
 
 -export([start_link/1
-         ,start_link/2
-         ,start_link/3
+	,start_link/2
+	,start_link/3
         ]).
 -export([stop_local/1]).
 -export([store/2, store/3]).
@@ -32,16 +32,16 @@
 -export([filter_local/2, filter_erase_local/2]).
 -export([dump_local/1, dump_local/2]).
 -export([wait_for_key_local/2
-         ,wait_for_key_local/3
+	,wait_for_key_local/3
         ]).
 
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("kz_caches.hrl").
@@ -69,17 +69,17 @@
 -export_type([store_options/0]).
 
 -record(state, {name :: atom()
-                ,tab :: ets:tab()
-                ,pointer_tab :: ets:tab()
-                ,monitor_tab :: ets:tab()
-                ,new_channel_flush = 'false' :: boolean()
-                ,channel_reconnect_flush = 'false' :: boolean()
-                ,new_node_flush = 'false' :: boolean()
-                ,expire_node_flush = 'false' :: boolean()
-                ,expire_period = ?EXPIRE_PERIOD :: kz_timeout()
-                ,expire_period_ref :: reference()
-                ,props = [] :: kz_proplist()
-                ,has_monitors = 'false' :: boolean()
+	       ,tab :: ets:tab()
+	       ,pointer_tab :: ets:tab()
+	       ,monitor_tab :: ets:tab()
+	       ,new_channel_flush = 'false' :: boolean()
+	       ,channel_reconnect_flush = 'false' :: boolean()
+	       ,new_node_flush = 'false' :: boolean()
+	       ,expire_node_flush = 'false' :: boolean()
+	       ,expire_period = ?EXPIRE_PERIOD :: kz_timeout()
+	       ,expire_period_ref :: reference()
+	       ,props = [] :: kz_proplist()
+	       ,has_monitors = 'false' :: boolean()
                }).
 -type state() :: #state{}.
 
@@ -108,13 +108,13 @@ start_link(Name, ExpirePeriod, Props) ->
             lager:debug("started new cache process (gen_listener): ~s", [Name]),
             Bindings = [{'conf', ['federate' | P]} || P <- maybe_add_db_binding(BindingProps)],
             gen_listener:start_link({'local', Name}, ?MODULE
-                                    ,[{'bindings', Bindings}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ]
-                                    ,[Name, ExpirePeriod, Props]
+				   ,[{'bindings', Bindings}
+				    ,{'responders', ?RESPONDERS}
+				    ,{'queue_name', ?QUEUE_NAME}
+				    ,{'queue_options', ?QUEUE_OPTIONS}
+				    ,{'consume_options', ?CONSUME_OPTIONS}
+				    ]
+				   ,[Name, ExpirePeriod, Props]
                                    )
     end.
 
@@ -208,7 +208,7 @@ fetch_local(Srv, K) ->
         {'error', 'not_found'}=E -> E;
         {'ok', _Value}=Ok ->
             ets:update_element(Srv, K, {#cache_obj.timestamp, kz_util:current_tstamp()}),
-%            gen_server:cast(Srv, {'update_timestamp', K, }),
+						%            gen_server:cast(Srv, {'update_timestamp', K, }),
             Ok
     end.
 
@@ -243,8 +243,8 @@ filter_erase_local(Srv, Pred) when is_function(Pred, 2) ->
                       end;
                  (_, Count) -> Count
               end
-              ,0
-              ,Srv
+	     ,0
+	     ,Srv
              ).
 
 -spec filter_local(atom(), fun((any(), any()) -> boolean())) -> [{any(), any()}].
@@ -354,10 +354,10 @@ init([Name, ExpirePeriod, Props]) ->
                  ,['set', 'public', 'named_table', {'keypos', #cache_obj.key}]
                  ),
     PointerTab = ets:new(pointer_tab(Name)
-                         ,['bag', 'public', {'keypos', #cache_obj.key}]
+			,['bag', 'public', {'keypos', #cache_obj.key}]
                         ),
     MonitorTab = ets:new(monitor_tab(Name)
-                         ,['bag', 'public', {'keypos', #cache_obj.key}]
+			,['bag', 'public', {'keypos', #cache_obj.key}]
                         ),
 
     _ = case props:get_value('new_node_flush', Props) of
@@ -369,16 +369,16 @@ init([Name, ExpirePeriod, Props]) ->
             _ -> 'ok'
         end,
     {'ok', #state{name=Name
-                  ,tab=Tab
-                  ,pointer_tab=PointerTab
-                  ,monitor_tab=MonitorTab
-                  ,new_channel_flush=props:get_value('new_channel_flush', Props)
-                  ,channel_reconnect_flush=props:get_value('channel_reconnect_flush', Props)
-                  ,new_node_flush=props:get_value('new_node_flush', Props)
-                  ,expire_node_flush=props:get_value('expire_node_flush', Props)
-                  ,expire_period=ExpirePeriod
-                  ,expire_period_ref=start_expire_period_timer(ExpirePeriod)
-                  ,props=Props
+		 ,tab=Tab
+		 ,pointer_tab=PointerTab
+		 ,monitor_tab=MonitorTab
+		 ,new_channel_flush=props:get_value('new_channel_flush', Props)
+		 ,channel_reconnect_flush=props:get_value('channel_reconnect_flush', Props)
+		 ,new_node_flush=props:get_value('new_node_flush', Props)
+		 ,expire_node_flush=props:get_value('expire_node_flush', Props)
+		 ,expire_period=ExpirePeriod
+		 ,expire_period_ref=start_expire_period_timer(ExpirePeriod)
+		 ,props=Props
                  }}.
 
 -spec pointer_tab(atom()) -> atom().
@@ -412,7 +412,7 @@ monitor_response_fun(Pid, Ref) ->
     fun(_, Value, Reason) -> Pid ! {Reason, Ref, Value} end.
 
 handle_call({'tables'}, _From, #state{pointer_tab=PointerTab
-                                      ,monitor_tab=MonitorTab
+				     ,monitor_tab=MonitorTab
                                      }=State) ->
     {'reply', {PointerTab, MonitorTab}, State};
 handle_call({'wait_for_key', Key, Timeout}
@@ -559,12 +559,12 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'timeout', Ref, ?EXPIRE_PERIOD_MSG}
-            ,#state{expire_period_ref=Ref
-                    ,expire_period=Period
-                    ,tab=Tab
-                    ,pointer_tab=PointerTab
-                    ,monitor_tab=MonitorTab
-                   }=State
+	   ,#state{expire_period_ref=Ref
+		  ,expire_period=Period
+		  ,tab=Tab
+		  ,pointer_tab=PointerTab
+		  ,monitor_tab=MonitorTab
+		  }=State
            ) ->
     _Expired = expire_objects(Tab, [PointerTab, MonitorTab]),
     _Expired > 0
@@ -648,16 +648,16 @@ get_props_origin(Props) -> props:get_value('origin', Props).
 expire_objects(Tab, AuxTables) ->
     Now = kz_util:current_tstamp(),
     FindSpec = [{#cache_obj{key = '$1'
-                            ,value = '$2'
-                            ,expires = '$3'
-                            ,timestamp = '$4'
-                            ,callback = '$5'
-                            ,_ = '_'
+			   ,value = '$2'
+			   ,expires = '$3'
+			   ,timestamp = '$4'
+			   ,callback = '$5'
+			   ,_ = '_'
                            }
-                 ,[{'=/=', '$3', 'infinity'}
-                   ,{'>', {'const', Now}, {'+', '$4', '$3'}}
-                  ]
-                 ,[{{'$5', '$1', '$2'}}]
+		,[{'=/=', '$3', 'infinity'}
+		 ,{'>', {'const', Now}, {'+', '$4', '$3'}}
+		 ]
+		,[{{'$5', '$1', '$2'}}]
                 }],
     expire_objects(Tab, AuxTables, ets:select(Tab, FindSpec)).
 
@@ -724,12 +724,12 @@ exec_erase_callbacks(Tab, Key, Fun) ->
 maybe_exec_flush_callbacks(Tab) ->
     MatchSpec =
         [{#cache_obj{key = '$1'
-                     ,value = '$2'
-                     ,callback = '$3'
-                     , _ = '_'
+		    ,value = '$2'
+		    ,callback = '$3'
+		    , _ = '_'
                     }
-          ,[{'=/=', '$3', 'undefined'}]
-          ,[{{'$3', '$1', '$2'}}]
+	 ,[{'=/=', '$3', 'undefined'}]
+	 ,[{{'$3', '$1', '$2'}}]
          }],
     _ = [kz_util:spawn(Callback, [K, V, 'flush'])
          || {Callback, K, V} <- ets:select(Tab, MatchSpec),
@@ -741,11 +741,11 @@ maybe_exec_flush_callbacks(Tab) ->
 maybe_exec_store_callbacks(#state{has_monitors='false'}=State, _, _) -> State;
 maybe_exec_store_callbacks(#state{monitor_tab=MonitorTab}=State, Key, Value) ->
     MatchSpec = [{#cache_obj{key = Key
-                             ,callback = '$2'
-                             ,_ = '_'
+			    ,callback = '$2'
+			    ,_ = '_'
                             }
-                  ,[]
-                  ,['$2']
+		 ,[]
+		 ,['$2']
                  }],
     _ = case ets:select(MonitorTab, MatchSpec) of
             [] -> 'ok';
@@ -814,7 +814,7 @@ handle_store(#cache_obj{key=Key
 
 -spec maybe_update_expire_period(state(), integer()) -> state().
 maybe_update_expire_period(#state{expire_period=ExpirePeriod
-                                  ,expire_period_ref=Ref
+				 ,expire_period_ref=Ref
                                  }=State
                           ,Expires)
   when Expires < ExpirePeriod ->

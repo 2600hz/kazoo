@@ -12,8 +12,8 @@
 -export([get_all_number_dbs/0]).
 
 -export([pretty_print/1, pretty_print/2
-         ,fixture/1
-         ,prefix_for_country/1
+	,fixture/1
+	,prefix_for_country/1
         ]).
 
 -include("knm.hrl").
@@ -21,7 +21,7 @@
 -spec get_all_number_dbs() -> ne_binaries().
 get_all_number_dbs() ->
     ViewOptions = [{'startkey', ?KNM_DB_PREFIX}
-                   ,{'endkey', <<?KNM_DB_PREFIX_L, "\ufff0">>}
+		  ,{'endkey', <<?KNM_DB_PREFIX_L, "\ufff0">>}
                   ],
     {'ok', Dbs} = kz_datamgr:db_list(ViewOptions),
     [kz_http_util:urlencode(Db) || Db <- Dbs].
@@ -58,8 +58,8 @@ pretty_print(<<"S", Format/binary>>, Number, Acc) ->
     pretty_print(Format, binary_tail(Number), Acc);
 pretty_print(<<"#", Format/binary>>, Number, Acc) ->
     pretty_print(Format
-                 ,binary_tail(Number)
-                 ,<<Acc/binary, (binary_head(Number))/binary>>
+		,binary_tail(Number)
+		,<<Acc/binary, (binary_head(Number))/binary>>
                 );
 pretty_print(<<"*", Format/binary>>, Number, Acc) ->
     pretty_print(Format, <<>>, <<Acc/binary, Number/binary>>);

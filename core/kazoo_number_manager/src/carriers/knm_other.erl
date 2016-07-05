@@ -29,7 +29,7 @@
 -define(COUNTRY, ?DEFAULT_COUNTRY).
 -else.
 -define(COUNTRY
-        ,kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY)
+       ,kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY)
        ).
 -endif.
 
@@ -52,11 +52,11 @@ is_local() -> 'false'.
 %%--------------------------------------------------------------------
 -ifdef(TEST).
 -define(PHONEBOOK_URL(Options)
-        ,props:get_value(<<"phonebook_url">>, Options)
+       ,props:get_value(<<"phonebook_url">>, Options)
        ).
 -else.
 -define(PHONEBOOK_URL(_Options)
-        ,kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>)
+       ,kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>)
        ).
 -endif.
 
@@ -139,9 +139,9 @@ acquire_number(Number) ->
                     end,
 
             ReqBody = kz_json:set_values([{[<<"data">>, <<"numbers">>], [Num]}
-                                          ,{[<<"data">>, <<"gateways">>], Hosts}
+					 ,{[<<"data">>, <<"gateways">>], Hosts}
                                          ]
-                                         ,kz_json:new()
+					,kz_json:new()
                                         ),
 
             Uri = <<Url/binary,  "/numbers/", DefaultCountry/binary, "/order">>,
@@ -150,7 +150,7 @@ acquire_number(Number) ->
                     format_acquire_resp(Number, kz_json:decode(Body));
                 {'ok', _Status, _Headers, Body} ->
                     lager:error("number lookup failed to ~s with ~p: ~s"
-                                ,[Uri, _Status, Body]),
+			       ,[Uri, _Status, Body]),
                     knm_errors:by_carrier(?MODULE, 'lookup_failed', Number);
                 {'error', Reason} ->
                     knm_errors:by_carrier(?MODULE, Reason, Number)
@@ -205,8 +205,8 @@ format_check_numbers_success(Body) ->
                      Status = kz_json:get_value(<<"status">>, NumberJObj),
                      kz_json:set_value(Number, Status, Acc)
              end
-             ,kz_json:new()
-             ,kz_json:get_value(<<"data">>, Body, [])
+		      ,kz_json:new()
+		      ,kz_json:get_value(<<"data">>, Body, [])
             ),
     {'ok', JObj}.
 
@@ -259,14 +259,14 @@ format_numbers_resp(JObj, Options) ->
             AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
 
             {'ok'
-             ,lists:reverse(
-                kz_json:foldl(fun(K, V, Acc) ->
-                                      format_number_resp(K, V, AccountId, Acc)
-                              end
-                              ,[]
-                              ,DataJObj
-                             )
-               )
+	    ,lists:reverse(
+	       kz_json:foldl(fun(K, V, Acc) ->
+				     format_number_resp(K, V, AccountId, Acc)
+			     end
+			    ,[]
+			    ,DataJObj
+			    )
+	      )
             };
         _Error ->
             lager:error("block lookup resp error: ~p", [_Error]),
@@ -334,7 +334,7 @@ format_blocks_resp(JObj, Options) ->
             Numbers =
                 lists:flatmap(
                   fun(I) -> format_block_resp_fold(I, AccountId) end
-                  ,kz_json:get_value(<<"data">>, JObj, [])
+			     ,kz_json:get_value(<<"data">>, JObj, [])
                  ),
             {'bulk', Numbers};
         _Error ->
@@ -369,11 +369,11 @@ format_acquire_resp(Number, Body) ->
     case kz_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
             Routines = [fun maybe_merge_opaque/2
-                        ,fun maybe_merge_locality/2
+		       ,fun maybe_merge_locality/2
                        ],
             lists:foldl(fun(F, N) -> F(JObj, N) end
-                        ,Number
-                        ,Routines
+		       ,Number
+		       ,Routines
                        );
         Error ->
             lager:error("number lookup resp error: ~p", [Error]),
@@ -393,7 +393,7 @@ maybe_merge_opaque(JObj, Number) ->
         Opaque ->
             knm_number:set_phone_number(
               Number
-              ,knm_phone_number:set_carrier_data(knm_number:phone_number(Number), Opaque)
+				       ,knm_phone_number:set_carrier_data(knm_number:phone_number(Number), Opaque)
              )
     end.
 
@@ -410,9 +410,9 @@ maybe_merge_locality(JObj, Number) ->
         Locality ->
             knm_number:set_phone_number(
               Number
-              ,knm_phone_number:set_feature(knm_number:phone_number(Number)
-                                            ,<<"locality">>
-                                            ,Locality
-                                           )
+				       ,knm_phone_number:set_feature(knm_number:phone_number(Number)
+								    ,<<"locality">>
+								    ,Locality
+								    )
              )
     end.

@@ -27,7 +27,7 @@ handle_req(JObj, _Props) ->
 send_response(CallIds, Q, MessageId) ->
     JObj = kz_json:from_list(
              [{<<"Call-IDs">>, CallIds}
-              ,{<<"Msg-ID">>, MessageId}
+	     ,{<<"Msg-ID">>, MessageId}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]
             ),

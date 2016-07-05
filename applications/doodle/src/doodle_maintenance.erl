@@ -54,12 +54,12 @@ check_sms_by_owner_id(AccountId, OwnerId) ->
 
 -spec start_check_sms_by_account(ne_binary(), kz_json:object()) -> pid().
 start_check_sms_by_account(AccountId, JObj) ->
-     case kz_doc:is_soft_deleted(JObj)
-         orelse kz_util:is_false(kz_json:get_value(<<"pvt_enabled">>, JObj, 'true'))
-     of
-         'true' -> 'ok';
-         'false' -> kz_util:spawn(fun check_pending_sms_for_delivery/1, [AccountId])
-     end.
+    case kz_doc:is_soft_deleted(JObj)
+	orelse kz_util:is_false(kz_json:get_value(<<"pvt_enabled">>, JObj, 'true'))
+    of
+	'true' -> 'ok';
+	'false' -> kz_util:spawn(fun check_pending_sms_for_delivery/1, [AccountId])
+    end.
 
 -spec check_pending_sms_for_outbound_delivery(ne_binary()) -> pid().
 check_pending_sms_for_outbound_delivery(AccountId) ->
@@ -107,7 +107,7 @@ spawn_handler(AccountId, JObj) ->
 -spec check_pending_sms_for_offnet_delivery(ne_binary()) -> 'ok'.
 check_pending_sms_for_offnet_delivery(AccountId) ->
     ViewOptions = [{'limit', 100}
-                   ,{'endkey', kz_util:current_tstamp()}
+		  ,{'endkey', kz_util:current_tstamp()}
                   ],
     case kazoo_modb:get_results(AccountId, <<"sms/deliver_to_offnet">>, ViewOptions) of
         {'ok', []} -> 'ok';
@@ -138,11 +138,11 @@ send_outbound_sms(To, Msg, Times) ->
 
 send_outbound_sms(To, From, RouteId, Msg) ->
     Payload = [{<<"Message-ID">>, kz_util:rand_hex_binary(16)}
-               ,{<<"System-ID">>, kz_util:node_name()}
-               ,{<<"Route-ID">>, RouteId}
-               ,{<<"From">>, From}
-               ,{<<"To">>, kz_util:to_binary(To)}
-               ,{<<"Body">>, Msg}
+	      ,{<<"System-ID">>, kz_util:node_name()}
+	      ,{<<"Route-ID">>, RouteId}
+	      ,{<<"From">>, From}
+	      ,{<<"To">>, kz_util:to_binary(To)}
+	      ,{<<"Body">>, Msg}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:cast(Payload, fun kapi_sms:publish_outbound/1).

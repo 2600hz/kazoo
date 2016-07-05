@@ -60,9 +60,9 @@ maybe_update_metaflow_control(_Data, Call, CallId, ControlQueue, 'a') ->
 
     konami_code_fsm:transfer_to(
       kapps_call:set_control_queue(ControlQueue
-                                    ,kapps_call:set_call_id(CallId, Call)
-                                   )
-      ,'a'
+				  ,kapps_call:set_call_id(CallId, Call)
+				  )
+			       ,'a'
      ),
 
     {'stop', Call};
@@ -71,7 +71,7 @@ maybe_update_metaflow_control(_Data, Call, CallId, _ControlQueue, 'b') ->
 
     konami_code_fsm:transfer_to(
       kapps_call:set_other_leg_call_id(CallId, Call)
-      ,'b'
+			       ,'b'
      ),
 
     {'stop', Call}.
@@ -90,7 +90,7 @@ get_originate_req(Data, Call) ->
     SourceOfDTMF = kz_json:get_value(<<"dtmf_leg">>, Data),
 
     Params = kz_json:set_values([{<<"source">>, ?MODULE}
-                                 ,{<<"can_call_self">>, 'true'}
+				,{<<"can_call_self">>, 'true'}
                                 ], Data),
 
     {SourceDeviceId, TargetCallId} =
@@ -118,8 +118,8 @@ build_endpoints(DeviceId, OwnerId, Params, Call) ->
                   _Else -> Acc
               end
       end
-      ,[]
-      ,kz_attributes:owned_by(OwnerId, <<"device">>, Call)
+	       ,[]
+	       ,kz_attributes:owned_by(OwnerId, <<"device">>, Call)
      ).
 
 -spec build_originate(kz_json:objects(), ne_binary(), kapps_call:call()) -> kz_proplist().
@@ -127,23 +127,23 @@ build_originate([], _CallId, _Call) -> [];
 build_originate(Endpoints, CallId, Call) ->
     lager:debug("targeting ~s for intercept", [CallId]),
     props:filter_undefined(
-        [{<<"Application-Name">>, <<"bridge">>}
-         ,{<<"Endpoints">>, Endpoints}
-         ,{<<"Existing-Call-ID">>, CallId}
-         ,{<<"Intercept-Unbridged-Only">>, 'false'}
-         ,{<<"Outbound-Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
-         ,{<<"Outbound-Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
-         ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
-         ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
+      [{<<"Application-Name">>, <<"bridge">>}
+      ,{<<"Endpoints">>, Endpoints}
+      ,{<<"Existing-Call-ID">>, CallId}
+      ,{<<"Intercept-Unbridged-Only">>, 'false'}
+      ,{<<"Outbound-Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
+      ,{<<"Outbound-Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
+      ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
+      ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
 
-         ,{<<"Outbound-Callee-ID-Name">>, kapps_call:callee_id_name(Call)}
-         ,{<<"Outbound-Callee-ID-Number">>, kapps_call:callee_id_number(Call)}
-         ,{<<"Callee-ID-Name">>, kapps_call:callee_id_name(Call)}
-         ,{<<"Callee-ID-Number">>, kapps_call:callee_id_number(Call)}
+      ,{<<"Outbound-Callee-ID-Name">>, kapps_call:callee_id_name(Call)}
+      ,{<<"Outbound-Callee-ID-Number">>, kapps_call:callee_id_number(Call)}
+      ,{<<"Callee-ID-Name">>, kapps_call:callee_id_name(Call)}
+      ,{<<"Callee-ID-Number">>, kapps_call:callee_id_number(Call)}
 
-         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-        ]
-    ).
+       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+      ]
+     ).
 
 -spec send_originate_req(kz_proplist(), kapps_call:call()) ->
                                 {'ok', kz_json:objects()} |
@@ -154,10 +154,10 @@ send_originate_req([], _Call) ->
     {'error', 'no_endpoints'};
 send_originate_req(OriginateProps, _Call) ->
     kapps_util:amqp_pool_collect(OriginateProps
-                                  ,fun kapi_resource:publish_originate_req/1
-                                  ,fun is_resp/1
-                                  ,20 * ?MILLISECONDS_IN_SECOND
-                                 ).
+				,fun kapi_resource:publish_originate_req/1
+				,fun is_resp/1
+				,20 * ?MILLISECONDS_IN_SECOND
+				).
 
 -spec is_resp(kz_json:objects() | kz_json:object()) -> boolean().
 is_resp([JObj|_]) ->
@@ -175,12 +175,12 @@ is_originate_uuid(JObj, CallId) ->
 -spec find_device_id_for_leg(ne_binary()) -> api_binary().
 find_device_id_for_leg(CallId) ->
     case kapps_util:amqp_pool_request([{<<"Fields">>, [<<"Authorizing-ID">>]}
-                                        ,{<<"Call-ID">>, CallId}
-                                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                       ]
-                                       ,fun kapi_call:publish_query_channels_req/1
-                                       ,fun kapi_call:query_channels_resp_v/1
-                                      )
+				      ,{<<"Call-ID">>, CallId}
+				       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+				      ]
+				     ,fun kapi_call:publish_query_channels_req/1
+				     ,fun kapi_call:query_channels_resp_v/1
+				     )
     of
         {'ok', RespJObj} ->
             kz_json:get_value([<<"Channels">>, CallId, <<"Authorizing-ID">>], RespJObj);

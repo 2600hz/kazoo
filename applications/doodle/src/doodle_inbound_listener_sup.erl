@@ -82,11 +82,11 @@ init([]) ->
 -spec default_connection() -> amqp_listener_connection().
 default_connection() ->
     #amqp_listener_connection{name = <<"default">>
-                              ,broker = ?DOODLE_INBOUND_BROKER
-                              ,exchange = ?DOODLE_INBOUND_EXCHANGE
-                              ,type = ?DOODLE_INBOUND_EXCHANGE_TYPE
-                              ,queue = ?DOODLE_INBOUND_QUEUE
-                              ,options = kz_json:to_proplist(?DOODLE_INBOUND_EXCHANGE_OPTIONS)
+			     ,broker = ?DOODLE_INBOUND_BROKER
+			     ,exchange = ?DOODLE_INBOUND_EXCHANGE
+			     ,type = ?DOODLE_INBOUND_EXCHANGE_TYPE
+			     ,queue = ?DOODLE_INBOUND_QUEUE
+			     ,options = kz_json:to_proplist(?DOODLE_INBOUND_EXCHANGE_OPTIONS)
                              }.
 
 -spec connections() -> amqp_listener_connections().
@@ -100,11 +100,11 @@ connections() ->
                               amqp_listener_connections().
 connections_fold(K, V, Acc) ->
     C = #amqp_listener_connection{name = K
-                                  ,broker = kz_json:get_value(<<"broker">>, V)
-                                  ,exchange = kz_json:get_value(<<"exchange">>, V)
-                                  ,type = kz_json:get_value(<<"type">>, V)
-                                  ,queue = kz_json:get_value(<<"queue">>, V)
-                                  ,options = connection_options(kz_json:get_value(<<"options">>, V))
+				 ,broker = kz_json:get_value(<<"broker">>, V)
+				 ,exchange = kz_json:get_value(<<"exchange">>, V)
+				 ,type = kz_json:get_value(<<"type">>, V)
+				 ,queue = kz_json:get_value(<<"queue">>, V)
+				 ,options = connection_options(kz_json:get_value(<<"options">>, V))
                                  },
     [C | Acc].
 

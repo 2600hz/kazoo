@@ -12,9 +12,9 @@
 -module(cb_contact_list).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
-         ,validate/1
+	,allowed_methods/0
+	,resource_exists/0
+	,validate/1
         ]).
 
 -include("crossbar.hrl").
@@ -74,5 +74,5 @@ validate(Context) ->
 validate(Context, ?HTTP_GET) ->
     ContactList = provisioner_contact_list:build(cb_context:account_db(Context)),
     cb_context:setters(Context, [{fun cb_context:set_resp_data/2, ContactList}
-                                 ,{fun cb_context:set_resp_status/2, 'success'}
+				,{fun cb_context:set_resp_status/2, 'success'}
                                 ]).

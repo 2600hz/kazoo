@@ -28,7 +28,7 @@
 
 
 encode_multipart(Parts, Boundary) ->
-   encode_multipart(Parts, Boundary, <<>>).
+    encode_multipart(Parts, Boundary, <<>>).
 
 encode_multipart([], Boundary, Encoded) ->
     Close = <<"\r\n--" , Boundary/binary, "--">>,
@@ -53,12 +53,12 @@ put_attachment(#{oauth_doc_id := TokenDocId, folder_id := Folder}, _DbName, _Doc
     JObj = kz_json:from_list(
              props:filter_empty(
                [{<<"mimeType">>, CT}
-              ,{<<"name">>, AName}
-              ,{<<"parents">>, [Folder]}
-              ,{<<"description">>, props:get_value('description', Options)}
-              ,{<<"appProperties">>, kz_json:from_list(props:get_value('metadata', Options, [])) }
-              ,{<<"properties">>, kz_json:from_list(props:get_value('metadata', Options, [])) }
-             ])),
+	       ,{<<"name">>, AName}
+	       ,{<<"parents">>, [Folder]}
+	       ,{<<"description">>, props:get_value('description', Options)}
+	       ,{<<"appProperties">>, kz_json:from_list(props:get_value('metadata', Options, [])) }
+	       ,{<<"properties">>, kz_json:from_list(props:get_value('metadata', Options, [])) }
+	       ])),
     JsonPart = {kz_json:encode(JObj), [{<<"Content-Type">>, <<"application/json">>}] },
     FilePart = {base64:encode(Contents), [{<<"Content-Type">>, CT},{<<"Content-Transfer-Encoding">>, <<"base64">>}] },
     Boundary = <<"------", (kz_util:rand_hex_binary(16))/binary>>,
@@ -66,7 +66,7 @@ put_attachment(#{oauth_doc_id := TokenDocId, folder_id := Folder}, _DbName, _Doc
     Body = encode_multipart([JsonPart, FilePart], Boundary),
     ContentType = kz_util:to_list(<<"multipart/related; boundary=", Boundary/binary>>),
     Headers = [{<<"Authorization">>, kazoo_oauth_util:authorization_header(Token)}
-               ,{<<"Content-Type">>, ContentType}
+	      ,{<<"Content-Type">>, ContentType}
               ],
     case kz_http:post(?DRV_MULTIPART_FILE_URL, Headers, Body) of
         {'ok', 200, ResponseHeaders, ResponseBody} ->

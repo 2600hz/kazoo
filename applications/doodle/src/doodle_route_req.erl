@@ -84,7 +84,7 @@ allow_no_match_type(Call) ->
                                 'ok'.
 maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
     lager:info("callflow ~s in ~s satisfies request"
-               ,[kz_doc:id(Flow), kapps_call:account_id(Call)]),
+	      ,[kz_doc:id(Flow), kapps_call:account_id(Call)]),
     {Name, Cost} = bucket_info(Call, Flow),
 
     case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of
@@ -120,17 +120,17 @@ bucket_cost(Flow) ->
 send_route_response(_Flow, JObj, Call) ->
     lager:info("doodle knows how to route the message! sending sms response"),
     Resp = props:filter_undefined([{?KEY_MSG_ID, kz_api:msg_id(JObj)}
-                                   ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
-                                   ,{<<"Routes">>, []}
-                                   ,{<<"Method">>, <<"sms">>}
+				  ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
+				  ,{<<"Routes">>, []}
+				  ,{<<"Method">>, <<"sms">>}
                                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                   ]),
     ServerId = kz_api:server_id(JObj),
     Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,
     case kz_amqp_worker:call(Resp
-                             ,Publisher
-                             ,fun kapi_route:win_v/1
-                             ,?ROUTE_WIN_TIMEOUT
+			    ,Publisher
+			    ,fun kapi_route:win_v/1
+			    ,?ROUTE_WIN_TIMEOUT
                             )
     of
         {'ok', RouteWin} ->
@@ -143,18 +143,18 @@ send_route_response(_Flow, JObj, Call) ->
 -spec update_call(kz_json:object(), boolean(), ne_binary(), kapps_call:call(), kz_json:object()) -> kapps_call:call().
 update_call(Flow, NoMatch, ControllerQ, Call, JObj) ->
     Updaters = [{fun kapps_call:kvs_store_proplist/2
-                 ,[{'cf_flow_id', kz_doc:id(Flow)}
-                   ,{'cf_flow', kz_json:get_value(<<"flow">>, Flow)}
-                   ,{'cf_capture_group', kz_json:get_ne_value(<<"capture_group">>, Flow)}
-                   ,{'cf_no_match', NoMatch}
-                   ,{'cf_metaflow', kz_json:get_value(<<"metaflows">>, Flow)}
-                   ,{'flow_status', <<"queued">>}
-                  ]
+		,[{'cf_flow_id', kz_doc:id(Flow)}
+		 ,{'cf_flow', kz_json:get_value(<<"flow">>, Flow)}
+		 ,{'cf_capture_group', kz_json:get_ne_value(<<"capture_group">>, Flow)}
+		 ,{'cf_no_match', NoMatch}
+		 ,{'cf_metaflow', kz_json:get_value(<<"metaflows">>, Flow)}
+		 ,{'flow_status', <<"queued">>}
+		 ]
                 }
-                ,{fun kapps_call:set_controller_queue/2, ControllerQ}
-                ,{fun kapps_call:set_application_name/2, ?APP_NAME}
-                ,{fun kapps_call:set_application_version/2, ?APP_VERSION}
-                ,fun(C) -> cache_resource_types(Flow, C, JObj) end
+	       ,{fun kapps_call:set_controller_queue/2, ControllerQ}
+	       ,{fun kapps_call:set_application_name/2, ?APP_NAME}
+	       ,{fun kapps_call:set_application_version/2, ?APP_VERSION}
+	       ,fun(C) -> cache_resource_types(Flow, C, JObj) end
                ],
     kapps_call:exec(Updaters, Call).
 
@@ -163,8 +163,8 @@ cache_resource_types(Flow, Call, JObj) ->
     lists:foldl(fun(K, C1) ->
                         kapps_call:kvs_store(K, kz_json:get_value(K, JObj), C1)
                 end
-                ,Call
-                ,cache_resource_types(kapps_call:resource_type(Call), Flow, Call, JObj)
+	       ,Call
+	       ,cache_resource_types(kapps_call:resource_type(Call), Flow, Call, JObj)
                ).
 
 -spec cache_resource_types(ne_binary(), kz_json:object(), kapps_call:call(), kz_json:object()) -> ne_binaries().

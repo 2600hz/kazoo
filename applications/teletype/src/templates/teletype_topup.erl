@@ -9,8 +9,8 @@
 -module(teletype_topup).
 
 -export([init/0
-         ,handle_topup/2
-         ,get_balance/1
+	,handle_topup/2
+	,get_balance/1
         ]).
 
 -include("teletype.hrl").
@@ -20,16 +20,16 @@
 
 -define(TOPUP_MACROS
        ,[?MACRO_VALUE(<<"amount">>, <<"amount">>, <<"Amount">>, <<"The top up amount">>)
-         ,?MACRO_VALUE(<<"success">>, <<"success">>, <<"Success">>, <<"Whether or not the top up was successful">>)
-         ,?MACRO_VALUE(<<"response">>, <<"response">>, <<"Response">>, <<"Transaction processor response">>)
-         ,?MACRO_VALUE(<<"balance">>, <<"balance">>, <<"Balance">>, <<"The resulting account balance">>)
+	,?MACRO_VALUE(<<"success">>, <<"success">>, <<"Success">>, <<"Whether or not the top up was successful">>)
+	,?MACRO_VALUE(<<"response">>, <<"response">>, <<"Response">>, <<"Transaction processor response">>)
+	,?MACRO_VALUE(<<"balance">>, <<"balance">>, <<"Balance">>, <<"The resulting account balance">>)
         ]).
 
 -define(TEMPLATE_MACROS
-        ,kz_json:from_list(?USER_MACROS
-                           ++ ?ACCOUNT_MACROS
-                           ++ ?TOPUP_MACROS
-                          )
+       ,kz_json:from_list(?USER_MACROS
+			  ++ ?ACCOUNT_MACROS
+			  ++ ?TOPUP_MACROS
+			 )
        ).
 
 -define(TEMPLATE_TEXT, <<"Attempted to top-up account \"{{account.name}}\" for {{amount}}.  The transaction processor response was {{response}} resulting in a new balance of {{balance}}.">>).
@@ -48,16 +48,16 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                           ,{'text', ?TEMPLATE_TEXT}
-                                           ,{'html', ?TEMPLATE_HTML}
-                                           ,{'subject', ?TEMPLATE_SUBJECT}
-                                           ,{'category', ?TEMPLATE_CATEGORY}
-                                           ,{'friendly_name', ?TEMPLATE_NAME}
-                                           ,{'to', ?TEMPLATE_TO}
-                                           ,{'from', ?TEMPLATE_FROM}
-                                           ,{'cc', ?TEMPLATE_CC}
-                                           ,{'bcc', ?TEMPLATE_BCC}
-                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
+					  ,{'text', ?TEMPLATE_TEXT}
+					  ,{'html', ?TEMPLATE_HTML}
+					  ,{'subject', ?TEMPLATE_SUBJECT}
+					  ,{'category', ?TEMPLATE_CATEGORY}
+					  ,{'friendly_name', ?TEMPLATE_NAME}
+					  ,{'to', ?TEMPLATE_TO}
+					  ,{'from', ?TEMPLATE_FROM}
+					  ,{'cc', ?TEMPLATE_CC}
+					  ,{'bcc', ?TEMPLATE_BCC}
+					  ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
 -spec handle_topup(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -78,8 +78,8 @@ handle_topup(JObj, _Props) ->
 handle_req(DataJObj) ->
     Macros = build_macro_data(
                kz_json:set_value(<<"account_params">>
-                                 ,kz_json:from_list(teletype_util:account_params(DataJObj))
-                                 ,DataJObj
+				,kz_json:from_list(teletype_util:account_params(DataJObj))
+				,DataJObj
                                 )
               ),
 
@@ -89,7 +89,7 @@ handle_req(DataJObj) ->
 
     Subject = teletype_util:render_subject(
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
-                ,Macros
+					  ,Macros
                ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
@@ -124,8 +124,8 @@ build_macro_data(DataJObj) ->
     kz_json:foldl(fun(MacroKey, _V, Acc) ->
                           maybe_add_macro_key(MacroKey, Acc, DataJObj)
                   end
-                  ,[]
-                  ,?TEMPLATE_MACROS
+		 ,[]
+		 ,?TEMPLATE_MACROS
                  ).
 
 -spec maybe_add_macro_key(kz_json:key(), kz_proplist(), kz_json:object()) -> kz_proplist().
@@ -141,8 +141,8 @@ maybe_add_macro_key(<<"success">> = Key, Acc, DataJObj) ->
     props:set_value(Key, kz_json:is_true(<<"success">>, DataJObj), Acc);
 maybe_add_macro_key(<<"response">> = Key, Acc, DataJObj) ->
     props:set_value(Key
-                    ,kz_json:get_value(<<"response">>, DataJObj, <<>>)
-                    ,Acc
+		   ,kz_json:get_value(<<"response">>, DataJObj, <<>>)
+		   ,Acc
                    );
 maybe_add_macro_key(_Key, Acc, _DataJObj) ->
     lager:debug("unprocessed macro key ~s: ~p", [_Key, _DataJObj]),
@@ -154,7 +154,7 @@ maybe_add_macro_key(_Key, Acc, _DataJObj) ->
                                     kz_proplist().
 maybe_add_account_data(Key, Acc, DataJObj) ->
     maybe_add_account_data(Key, Acc, DataJObj
-                           ,kz_json:get_value([<<"account_params">>, Key], DataJObj)
+			  ,kz_json:get_value([<<"account_params">>, Key], DataJObj)
                           ).
 maybe_add_account_data(_Key, Acc, _DataJObj, 'undefined') ->
     lager:debug("failed to find account param ~s", [_Key]),
@@ -163,8 +163,8 @@ maybe_add_account_data(Key, Acc, _DataJObj, Value) ->
     AccountData = props:get_value(<<"account">>, Acc, []),
 
     props:set_value(<<"account">>
-                    ,props:set_value(Key, Value, AccountData)
-                    ,Acc
+		   ,props:set_value(Key, Value, AccountData)
+		   ,Acc
                    ).
 
 -spec maybe_add_user_data(kz_json:key(), kz_proplist(), kz_json:object()) -> kz_proplist().

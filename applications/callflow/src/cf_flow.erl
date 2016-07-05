@@ -15,11 +15,11 @@
 -include_lib("kazoo/src/kz_json.hrl").
 
 -record(pattern, {
-                  flow_id :: ne_binary(),
-                  has_groups :: boolean(),
-                  names = [] :: ne_binaries(),
-                  regex :: re:mp()
-                 }).
+	  flow_id :: ne_binary(),
+	  has_groups :: boolean(),
+	  names = [] :: ne_binaries(),
+	  regex :: re:mp()
+	 }).
 
 -type pattern() :: #pattern{}.
 -type patterns() :: [pattern()].
@@ -146,8 +146,8 @@ cache_patterns(AccountId, Patterns) ->
     {'ok', Patterns}.
 
 -spec lookup_patterns(ne_binary(), ne_binary()) ->
-                                      {'ok', {kz_json:object(), api_binary()}} |
-                                      {'error', any()}.
+			     {'ok', {kz_json:object(), api_binary()}} |
+			     {'error', any()}.
 lookup_patterns(Number, AccountId) ->
     case fetch_patterns(AccountId) of
         {'ok', Patterns} -> lookup_callflow_patterns(Patterns, Number, AccountId);
@@ -166,7 +166,7 @@ lookup_callflow_patterns(Patterns, Number, AccountId) ->
         {Match, #pattern{flow_id=FlowId}=Pattern} ->
             NameMap = get_captured_names(Number, Pattern),
             Props = [{<<"capture_group">>, Match}
-                     ,{<<"capture_groups">>, kz_json:from_list(NameMap)}
+		    ,{<<"capture_groups">>, kz_json:from_list(NameMap)}
                     ],
             return_callflow_doc(FlowId, AccountId, Props)
     end.
@@ -183,7 +183,7 @@ get_captured_names(Number, #pattern{regex=Regex, names=Names}) ->
 
 -spec test_callflow_patterns(patterns(), ne_binary()) -> 'no_match' | test_pattern_acc().
 test_callflow_patterns(Patterns, Number) ->
-test_callflow_patterns(Patterns, Number, {<<>>, #pattern{}}).
+    test_callflow_patterns(Patterns, Number, {<<>>, #pattern{}}).
 
 -spec test_callflow_patterns(patterns(), ne_binary(), test_pattern_acc()) ->
                                     'no_match' | test_pattern_acc().
@@ -194,7 +194,7 @@ test_callflow_patterns([ #pattern{regex=Regex}=Pattern |T], Number, {Matched, _}
         {'match', Groups} ->
             case hd(lists:sort(fun(A, B) -> byte_size(A) >= byte_size(B) end, Groups)) of
                 Match when byte_size(Match) > byte_size(Matched) ->
-                  test_callflow_patterns(T, Number, {Match, Pattern});
+		    test_callflow_patterns(T, Number, {Match, Pattern});
                 _ -> test_callflow_patterns(T, Number, Result)
             end;
         _ ->
@@ -203,6 +203,6 @@ test_callflow_patterns([ #pattern{regex=Regex}=Pattern |T], Number, {Matched, _}
 
 -spec match_options(pattern()) -> list().
 match_options(#pattern{has_groups='true'}) ->
-   [{'capture', 'all_but_first', 'binary'}];
+    [{'capture', 'all_but_first', 'binary'}];
 match_options(_) ->
-   [{'capture', 'all', 'binary'}].
+    [{'capture', 'all', 'binary'}].

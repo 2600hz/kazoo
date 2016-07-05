@@ -11,19 +11,19 @@
 
 -export([refresh/0]).
 -export([add/0
-         ,add/3
+	,add/3
         ]).
 -export([assign/0
-         ,assign/2
+	,assign/2
         ]).
 -export([release/0
-         ,release/1
+	,release/1
         ]).
 -export([delete/0
-         ,delete/1
+	,delete/1
         ]).
 -export([summary/0
-         ,summary/1
+	,summary/1
         ]).
 
 %%--------------------------------------------------------------------
@@ -53,7 +53,7 @@ add(IPAddress, Zone, Host) ->
     case kz_ip:create(IPAddress, Zone, Host) of
         {'ok', _IP} ->
             io:format("added IP ~s to available dedicated ips~n"
-                      ,[IPAddress]
+		     ,[IPAddress]
                      );
         {'error', _R} ->
             io:format("unable to add IP ~s: ~p~n", [IPAddress, _R])
@@ -79,7 +79,7 @@ assign(IP, Account) ->
                 case kz_ip:assign(Account, IP) of
                     {'ok', _} ->
                         io:format("assigned IP ~s to ~s~n"
-                                  ,[IP, Account]);
+				 ,[IP, Account]);
                     {'error', _R} ->
                         io:format("unable to assign IP: ~p~n", [_R])
                 end;
@@ -147,7 +147,7 @@ summary(Host) ->
             {'ok', JObjs} -> print_summary(JObjs);
             {'error', _Reason} ->
                 io:format("Unable to list IPs assigned to host ~s: ~p~n"
-                          ,[Host, _Reason]
+			 ,[Host, _Reason]
                          )
         end,
     'no_return'.
@@ -164,10 +164,10 @@ print_summary(JObjs) ->
 -spec print_summary_headers(string()) -> 'ok'.
 print_summary_headers(FormatString) ->
     Headers = [<<"IP">>
-               ,<<"Status">>
-               ,<<"Zone">>
-               ,<<"Host">>
-               ,<<"Account">>
+	      ,<<"Status">>
+	      ,<<"Zone">>
+	      ,<<"Host">>
+	      ,<<"Account">>
               ],
     io:format(FormatString, Headers).
 
@@ -176,9 +176,9 @@ print_summary_row([], _) -> 'ok';
 print_summary_row([JObj|JObjs], FormatString) ->
     io:format(FormatString,
               [kz_json:get_value(<<"ip">>, JObj)
-               ,kz_json:get_value(<<"status">>, JObj)
-               ,kz_json:get_value(<<"zone">>, JObj)
-               ,kz_json:get_value(<<"host">>, JObj)
-               ,kz_json:get_value(<<"assigned_to">>, JObj)
+	      ,kz_json:get_value(<<"status">>, JObj)
+	      ,kz_json:get_value(<<"zone">>, JObj)
+	      ,kz_json:get_value(<<"host">>, JObj)
+	      ,kz_json:get_value(<<"assigned_to">>, JObj)
               ]),
     print_summary_row(JObjs, FormatString).

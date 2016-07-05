@@ -20,9 +20,9 @@
 -export([handle/2]).
 
 -record(call_waiting, {enabled = 'true' :: boolean()
-                       ,jobj = kz_json:new() :: kz_json:object()
-                       ,account_db :: api_binary()
-                       ,action :: ne_binary()
+		      ,jobj = kz_json:new() :: kz_json:object()
+		      ,account_db :: api_binary()
+		      ,action :: ne_binary()
                       }).
 -type call_waiting() :: #call_waiting{}.
 
@@ -30,8 +30,8 @@
 -spec actions() -> kz_proplist_kv(ne_binary(), switch_fun()).
 actions() ->
     [{<<"toggle">>, fun (Enabled) -> not Enabled end}
-     ,{<<"activate">>, fun (_Enabled) -> 'true' end}
-     ,{<<"deactivate">>, fun (_Enabled) -> 'false' end}
+    ,{<<"activate">>, fun (_Enabled) -> 'true' end}
+    ,{<<"deactivate">>, fun (_Enabled) -> 'false' end}
     ].
 
 %%--------------------------------------------------------------------
@@ -56,8 +56,8 @@ handle(Data, Call) ->
     end.
 
 -spec maybe_build_call_waiting_record(kz_json:object(), kapps_call:call()) ->
-                                    {'ok', call_waiting()} |
-                                    {'error', any()}.
+					     {'ok', call_waiting()} |
+					     {'error', any()}.
 maybe_build_call_waiting_record(Data, Call) ->
     AccountDb = kapps_call:account_db(Call),
     DocId = get_doc_id(kz_json:get_value(<<"scope">>, Data, <<"device">>), Call),
@@ -66,9 +66,9 @@ maybe_build_call_waiting_record(Data, Call) ->
         {'ok', JObj} ->
             lager:info("changing call waiting settings on document ~s", [kz_doc:id(JObj)]),
             {'ok', #call_waiting{enabled = kz_json:is_true([<<"call_waiting">>, <<"enabled">>], JObj, 'true')
-                                 ,jobj = JObj
-                                 ,account_db = AccountDb
-                                 ,action = kz_json:get_value(<<"action">>, Data, <<"toggle">>)
+				,jobj = JObj
+				,account_db = AccountDb
+				,action = kz_json:get_value(<<"action">>, Data, <<"toggle">>)
                                 }
             }
     end.
@@ -117,22 +117,22 @@ maybe_update_doc(Enabled, CW) ->
 -spec maybe_update_doc(boolean(), call_waiting(), 0..3) -> 'ok' | 'error'.
 maybe_update_doc(Enabled, #call_waiting{enabled = Enabled}, _Retries) -> 'ok';
 maybe_update_doc(Enabled
-                 ,#call_waiting{jobj = JObj
-                                ,account_db = AccountDb
-                               }=CW
-                 ,Retries
+		,#call_waiting{jobj = JObj
+			      ,account_db = AccountDb
+			      }=CW
+		,Retries
                 ) ->
     Updated = kz_json:set_value([<<"call_waiting">>, <<"enabled">>], Enabled, JObj),
     case kz_datamgr:save_doc(AccountDb, Updated) of
         {'ok', _} ->
             lager:info("call_waiting.enabled set to ~s on ~s ~s"
-                       ,[Enabled, kz_doc:type(JObj), kz_doc:id(JObj)]
+		      ,[Enabled, kz_doc:type(JObj), kz_doc:id(JObj)]
                       );
         {'error', 'conflict'} ->
             retry_update_doc(Enabled, CW, Retries);
         {'error', _R} ->
             lager:debug("unabled to update call_waiting.enabled on ~s ~s: ~p"
-                        ,[kz_doc:type(JObj), kz_doc:id(JObj), _R]
+		       ,[kz_doc:type(JObj), kz_doc:id(JObj), _R]
                        ),
             'error'
     end.
@@ -140,21 +140,21 @@ maybe_update_doc(Enabled
 -spec retry_update_doc(boolean(), call_waiting(), 0..3) -> 'ok' | 'error'.
 retry_update_doc(_Enabled, #call_waiting{jobj = JObj}, Retries) when Retries >= 3 ->
     lager:info("to many attempts to update call_waiting for ~s ~s: ~p"
-               ,[kz_doc:type(JObj), kz_doc:id(JObj)]
+	      ,[kz_doc:type(JObj), kz_doc:id(JObj)]
               ),
     'error';
 retry_update_doc(Enabled
-                 ,#call_waiting{jobj = JObj
-                                ,account_db = AccountDb
-                               }=CW
-                 ,Retries
+		,#call_waiting{jobj = JObj
+			      ,account_db = AccountDb
+			      }=CW
+		,Retries
                 ) ->
     case kz_datamgr:open_doc(AccountDb, kz_doc:id(JObj)) of
         {'ok', NewJObj} ->
             maybe_update_doc(Enabled, CW#call_waiting{jobj = NewJObj}, Retries+1);
         {'error', _R} ->
             lager:info("unable to retry call_waiting update for ~s ~s: ~p"
-                       ,[kz_doc:type(JObj), kz_doc:id(JObj), _R]
+		      ,[kz_doc:type(JObj), kz_doc:id(JObj), _R]
                       ),
             'error'
     end.

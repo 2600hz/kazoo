@@ -53,15 +53,15 @@ send_auth_resp(JObj, Props) ->
     Username = props:get_value('username', Props),
     CCVs = props:filter_undefined(
              [{<<"Username">>, Username}
-              ,{<<"Authorizing-ID">>, props:get_value('resource_id', Props)}
-              ,{<<"Realm">>, props:get_value('realm', Props)}
+	     ,{<<"Authorizing-ID">>, props:get_value('resource_id', Props)}
+	     ,{<<"Realm">>, props:get_value('realm', Props)}
              ]),
     Resp = props:filter_undefined(
              [{<<"Auth-Method">>, <<"password">>}
-              ,{<<"Auth-Username">>, Username}
-              ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-              ,{<<"Auth-Password">>, props:get_value('password', Props)}
-              ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+	     ,{<<"Auth-Username">>, Username}
+	     ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+	     ,{<<"Auth-Password">>, props:get_value('password', Props)}
+	     ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
               | kz_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("sending SIP authentication reply, with credentials"),

@@ -14,20 +14,20 @@
 
 -export([handle_req/2]).
 -export([start_meters/1
-         ,start_meters/2
+	,start_meters/2
         ]).
 
 -define(IGNORE, kapps_config:get(?APP_NAME
-                                  ,<<"ignore_hangup_causes">>
-                                  ,[<<"NO_ANSWER">>
-                                    ,<<"USER_BUSY">>
-                                    ,<<"NO_USER_RESPONSE">>
-                                    ,<<"LOSE_RACE">>
-                                    ,<<"ATTENDED_TRANSFER">>
-                                    ,<<"ORIGINATOR_CANCEL">>
-                                    ,<<"NORMAL_CLEARING">>
-                                    ,<<"ALLOTTED_TIMEOUT">>
-                                   ])).
+				,<<"ignore_hangup_causes">>
+				,[<<"NO_ANSWER">>
+				 ,<<"USER_BUSY">>
+				 ,<<"NO_USER_RESPONSE">>
+				 ,<<"LOSE_RACE">>
+				 ,<<"ATTENDED_TRANSFER">>
+				 ,<<"ORIGINATOR_CANCEL">>
+				 ,<<"NORMAL_CLEARING">>
+				 ,<<"ALLOTTED_TIMEOUT">>
+				 ])).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -49,14 +49,14 @@ alert_about_hangup(HangupCause, JObj) ->
     lager:debug("abnormal call termination: ~s", [HangupCause]),
     AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj, <<"unknown">>),
     kz_notify:detailed_alert("~s ~s to ~s (~s) on ~s(~s)"
-                             ,[kz_util:to_lower_binary(HangupCause)
-                               ,find_source(JObj)
-                               ,find_destination(JObj)
-                               ,find_direction(JObj)
-                               ,find_realm(JObj, AccountId)
-                               ,AccountId
-                              ]
-                             ,maybe_add_hangup_specific(HangupCause, JObj)
+			    ,[kz_util:to_lower_binary(HangupCause)
+			     ,find_source(JObj)
+			     ,find_destination(JObj)
+			     ,find_direction(JObj)
+			     ,find_realm(JObj, AccountId)
+			     ,AccountId
+			     ]
+			    ,maybe_add_hangup_specific(HangupCause, JObj)
                             ),
     add_to_meters(AccountId, HangupCause).
 

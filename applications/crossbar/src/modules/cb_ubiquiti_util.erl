@@ -9,13 +9,13 @@
 -module(cb_ubiquiti_util).
 
 -export([create_api_token/1, create_api_token/2
-         ,make_api_token/4
-         ,split_api_token/1
+	,make_api_token/4
+	,split_api_token/1
         ]).
 
 -ifdef(TEST).
 -export([auth_hash/4
-         ,encode_timestamp/1
+	,encode_timestamp/1
         ]).
 -endif.
 
@@ -44,11 +44,11 @@ make_api_token(ProviderId, Timestamp, Salt, Secret) ->
     TimestampHex = encode_timestamp(Timestamp),
     kz_util:join_binary(
       [?VERSION % Version
-       ,Salt
-       ,TimestampHex
-       ,auth_hash(ProviderId, TimestampHex, Salt, Secret)
+      ,Salt
+      ,TimestampHex
+      ,auth_hash(ProviderId, TimestampHex, Salt, Secret)
       ]
-      ,<<":">>
+		       ,<<":">>
      ).
 
 -spec encode_timestamp(integer()) -> ne_binary().
@@ -68,8 +68,8 @@ auth_hash(ProviderId, TimestampHex, Salt, Secret) ->
             ),
 
     PreHash = [ProviderId
-               ,TimestampHex
-               ,Auth
+	      ,TimestampHex
+	      ,Auth
               ],
 
     Hash = crypto:hash('sha', PreHash),

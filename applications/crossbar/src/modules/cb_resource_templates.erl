@@ -12,13 +12,13 @@
 -module(cb_resource_templates).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
-         ,put/1
-         ,post/2
-         ,patch/2
-         ,delete/2
+	,allowed_methods/0, allowed_methods/1
+	,resource_exists/0, resource_exists/1
+	,validate/1, validate/2
+	,put/1
+	,post/2
+	,patch/2
+	,delete/2
         ]).
 
 -include("crossbar.hrl").
@@ -177,13 +177,13 @@ is_allowed_to_update(Context) ->
 -spec forbidden(cb_context:context()) -> cb_context:context().
 forbidden(Context) ->
     cb_context:add_validation_error(
-        <<"Account">>
-        ,<<"forbidden">>
-        ,kz_json:from_list([
-            {<<"message">>, <<"You are not authorized to modify the resource templates">>}
-         ])
-        ,Context
-    ).
+      <<"Account">>
+				   ,<<"forbidden">>
+				   ,kz_json:from_list([
+						       {<<"message">>, <<"You are not authorized to modify the resource templates">>}
+						      ])
+				   ,Context
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -214,13 +214,13 @@ check_template_name(Context) ->
     case kz_json:get_ne_value(<<"template_name">>, cb_context:req_data(Context)) of
         'undefined' ->
             cb_context:add_validation_error(
-                <<"template_name">>
-               ,<<"required">>
-               ,kz_json:from_list([
-                    {<<"message">>, <<"Template name is required">>}
-                 ])
-               ,Context
-            );
+	      <<"template_name">>
+					   ,<<"required">>
+					   ,kz_json:from_list([
+							       {<<"message">>, <<"Template name is required">>}
+							      ])
+					   ,Context
+	     );
         _Name -> cb_context:set_resp_status(Context, 'success')
     end.
 

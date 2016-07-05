@@ -21,26 +21,26 @@
 -define(SUPPORT_NAME_ANNOUNCEMENT, kapps_config:get_is_true(?CONFIG_CAT, <<"support_name_announcement">>, 'true')).
 
 -define(DEFAULT_PROFILE_CONFIG, [{<<"rate">>, 8000}
-                                 ,{<<"caller-controls">>, <<"default">>}
-                                 ,{<<"interval">>, 20}
-                                 ,{<<"energy-level">>, 20}
-                                 ,{<<"comfort-noise">>, 1000}
-                                 ,{<<"moh-sound">>, <<"$${hold_music}">>}
-                                 ,{<<"enter-sound">>, ?ENTRY_TONE}
+				,{<<"caller-controls">>, <<"default">>}
+				,{<<"interval">>, 20}
+				,{<<"energy-level">>, 20}
+				,{<<"comfort-noise">>, 1000}
+				,{<<"moh-sound">>, <<"$${hold_music}">>}
+				,{<<"enter-sound">>, ?ENTRY_TONE}
                                 ]).
 
 -define(CALLER_CONTROLS(ConfigName, Default)
-        ,kapps_config:get(?CONFIG_CAT, [<<"caller-controls">>, ConfigName], [])
+       ,kapps_config:get(?CONFIG_CAT, [<<"caller-controls">>, ConfigName], [])
        ).
 -define(CALLER_CONTROLS(ConfigName), ?CALLER_CONTROLS(ConfigName, 'undefined')).
 
 -define(ADVERTISE(ConfigName, Default)
-        ,kapps_config:get(?CONFIG_CAT, [<<"advertise">>, ConfigName], Default)
+       ,kapps_config:get(?CONFIG_CAT, [<<"advertise">>, ConfigName], Default)
        ).
 -define(ADVERTISE(ConfigName), ?ADVERTISE(ConfigName, 'undefined')).
 
 -define(CHAT_PERMISSIONS(ConfigName, Default)
-        ,kapps_config:get(?CONFIG_CAT, [<<"chat-permissions">>, ConfigName], Default)
+       ,kapps_config:get(?CONFIG_CAT, [<<"chat-permissions">>, ConfigName], Default)
        ).
 -define(CHAT_PERMISSIONS(ConfigName), ?CHAT_PERMISSIONS(ConfigName, 'undefined')).
 

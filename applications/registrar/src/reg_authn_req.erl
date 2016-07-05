@@ -10,15 +10,15 @@
 -module(reg_authn_req).
 
 -export([init/0
-         ,handle_req/2
-         ,lookup_account_by_ip/1
+	,handle_req/2
+	,lookup_account_by_ip/1
         ]).
 
 -include("reg.hrl").
 
 -define(ENCRYPTION_MAP, [{<<"srtp">>, [{<<"RTP-Secure-Media">>, 'true'}]}
                         ,{<<"zrtp">>, [{<<"ZRTP-Secure-Media">>, 'true'}
-                                       ,{<<"ZRTP-Enrollment">>, 'true'}
+				      ,{<<"ZRTP-Enrollment">>, 'true'}
                                       ]}
                         ]).
 
@@ -51,26 +51,26 @@ handle_req(JObj, _Props) ->
 
 -spec send_auth_resp(auth_user(), kz_json:object()) -> 'ok'.
 send_auth_resp(#auth_user{password=Password
-                          ,username=Username
-                          ,method=Method
-                          ,realm=Realm
-                          ,suppress_unregister_notifications=SupressUnregister
-                          ,register_overwrite_notify=RegisterOverwrite
-                          ,nonce=Nonce
+			 ,username=Username
+			 ,method=Method
+			 ,realm=Realm
+			 ,suppress_unregister_notifications=SupressUnregister
+			 ,register_overwrite_notify=RegisterOverwrite
+			 ,nonce=Nonce
                          }=AuthUser
-               ,JObj
+	      ,JObj
               ) ->
     Category = kz_json:get_value(<<"Event-Category">>, JObj),
     Resp = props:filter_undefined(
              [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-              ,{<<"Auth-Password">>, Password}
-              ,{<<"Auth-Method">>, get_auth_method(Method)}
-              ,{<<"Auth-Nonce">>, Nonce}
-              ,{<<"Expires">>, kz_json:get_value(<<"Expires">>,JObj)}
-              ,{<<"Suppress-Unregister-Notifications">>, SupressUnregister}
-              ,{<<"Register-Overwrite-Notify">>, RegisterOverwrite}
-              ,{<<"Custom-Channel-Vars">>, create_ccvs(AuthUser)}
-              ,{<<"Custom-SIP-Headers">>, create_custom_sip_headers(Method, AuthUser)}
+	     ,{<<"Auth-Password">>, Password}
+	     ,{<<"Auth-Method">>, get_auth_method(Method)}
+	     ,{<<"Auth-Nonce">>, Nonce}
+	     ,{<<"Expires">>, kz_json:get_value(<<"Expires">>,JObj)}
+	     ,{<<"Suppress-Unregister-Notifications">>, SupressUnregister}
+	     ,{<<"Register-Overwrite-Notify">>, RegisterOverwrite}
+	     ,{<<"Custom-Channel-Vars">>, create_ccvs(AuthUser)}
+	     ,{<<"Custom-SIP-Headers">>, create_custom_sip_headers(Method, AuthUser)}
               | kz_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
              ]),
     lager:info("sending SIP authentication reply, with credentials for user ~s@~s",[Username,Realm]),
@@ -84,7 +84,7 @@ send_auth_error(JObj) ->
     %%   Defer-Response we can use that flag on registrar errors
     %%   to queue in Kazoo but still advance Kamailio.
     Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-            ,{<<"Defer-Response">>, <<"true">>}
+	   ,{<<"Defer-Response">>, <<"true">>}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     lager:debug("sending SIP authentication error"),
@@ -93,27 +93,27 @@ send_auth_error(JObj) ->
 -spec create_ccvs(auth_user()) -> kz_json:object().
 create_ccvs(#auth_user{doc=JObj}=AuthUser) ->
     Props = [{<<"Username">>, AuthUser#auth_user.username}
-             ,{<<"Realm">>, AuthUser#auth_user.realm}
-             ,{<<"Account-ID">>, AuthUser#auth_user.account_id}
-             ,{<<"Authorizing-ID">>, AuthUser#auth_user.authorizing_id}
-             ,{<<"Authorizing-Type">>, AuthUser#auth_user.authorizing_type}
-             ,{<<"Owner-ID">>, AuthUser#auth_user.owner_id}
-             ,{<<"Account-Realm">>, AuthUser#auth_user.account_normalized_realm}
-             ,{<<"Account-Name">>, AuthUser#auth_user.account_name}
-             ,{<<"Presence-ID">>, maybe_get_presence_id(AuthUser)}
-             ,{<<"Suppress-Unregister-Notifications">>, AuthUser#auth_user.suppress_unregister_notifications}
-             ,{<<"Register-Overwrite-Notify">>, AuthUser#auth_user.register_overwrite_notify}
-             ,{<<"Pusher-Application">>, kz_json:get_value([<<"push">>, <<"Token-App">>], JObj)}
+	    ,{<<"Realm">>, AuthUser#auth_user.realm}
+	    ,{<<"Account-ID">>, AuthUser#auth_user.account_id}
+	    ,{<<"Authorizing-ID">>, AuthUser#auth_user.authorizing_id}
+	    ,{<<"Authorizing-Type">>, AuthUser#auth_user.authorizing_type}
+	    ,{<<"Owner-ID">>, AuthUser#auth_user.owner_id}
+	    ,{<<"Account-Realm">>, AuthUser#auth_user.account_normalized_realm}
+	    ,{<<"Account-Name">>, AuthUser#auth_user.account_name}
+	    ,{<<"Presence-ID">>, maybe_get_presence_id(AuthUser)}
+	    ,{<<"Suppress-Unregister-Notifications">>, AuthUser#auth_user.suppress_unregister_notifications}
+	    ,{<<"Register-Overwrite-Notify">>, AuthUser#auth_user.register_overwrite_notify}
+	    ,{<<"Pusher-Application">>, kz_json:get_value([<<"push">>, <<"Token-App">>], JObj)}
              | (create_specific_ccvs(AuthUser, AuthUser#auth_user.method)
-                 ++ generate_security_ccvs(AuthUser))
+		++ generate_security_ccvs(AuthUser))
             ],
     kz_json:from_list(props:filter_undefined(Props)).
 
 -spec maybe_get_presence_id(auth_user()) -> api_binary().
 maybe_get_presence_id(#auth_user{account_db=AccountDb
-                                 ,authorizing_id=DeviceId
-                                 ,owner_id=OwnerId
-                                 ,account_realm=AccountRealm
+				,authorizing_id=DeviceId
+				,owner_id=OwnerId
+				,account_realm=AccountRealm
                                 }
                      ) ->
     case get_presence_id(AccountDb, DeviceId, OwnerId) of
@@ -158,27 +158,27 @@ get_device_presence_id(AccountDb, DeviceId) ->
 -spec create_specific_ccvs(auth_user(), ne_binary()) -> kz_proplist().
 create_specific_ccvs(#auth_user{msisdn=MSISDN}, ?GSM_ANY_METHOD) ->
     [{<<"Caller-ID">>, MSISDN}
-     ,{<<"Caller-ID-Number">>, MSISDN}
+    ,{<<"Caller-ID-Number">>, MSISDN}
     ];
 create_specific_ccvs(_, _) -> [].
 
 -spec create_custom_sip_headers(api_binary(), auth_user()) -> api_object().
 create_custom_sip_headers(?GSM_ANY_METHOD
-                          ,#auth_user{a3a8_kc=KC
-                                      ,a3a8_sres=SRES
-                                      ,msisdn=Number
-                                      ,account_realm=AccountRealm
-                                      ,realm=Realm
-                                      ,username=Username
-                                     }) ->
+			 ,#auth_user{a3a8_kc=KC
+				    ,a3a8_sres=SRES
+				    ,msisdn=Number
+				    ,account_realm=AccountRealm
+				    ,realm=Realm
+				    ,username=Username
+				    }) ->
     create_custom_sip_headers(
       props:filter_undefined(
         [{<<"P-GSM-Kc">>, KC}
-         ,{<<"P-GSM-SRes">>, SRES}
-         ,{<<"P-Asserted-Identity">>, <<"<sip:", Username/binary, "@", Realm/binary, ">">>}
-         ,{<<"P-Associated-URI">>, get_tel_uri(Number)}
-         ,{<<"P-Associated-URI">>, <<"<sip:", Username/binary, "@", AccountRealm/binary, ">">>}
-         ,{<<"P-Kazoo-Primary-Number">>, Number}
+	,{<<"P-GSM-SRes">>, SRES}
+	,{<<"P-Asserted-Identity">>, <<"<sip:", Username/binary, "@", Realm/binary, ">">>}
+	,{<<"P-Associated-URI">>, get_tel_uri(Number)}
+	,{<<"P-Associated-URI">>, <<"<sip:", Username/binary, "@", AccountRealm/binary, ">">>}
+	,{<<"P-Kazoo-Primary-Number">>, Number}
         ])
      );
 create_custom_sip_headers(?ANY_AUTH_METHOD, _) -> 'undefined'.
@@ -229,7 +229,7 @@ get_auth_user(Username, Realm) ->
                                   {'error', 'not_found'}.
 get_auth_user_in_agg(Username, Realm) ->
     ViewOptions = [{'key', [Realm, Username]}
-                   ,'include_docs'
+		  ,'include_docs'
                   ],
     case kapps_config:get_is_true(?CONFIG_CAT, <<"use_aggregate">>, 'true')
         andalso kz_datamgr:get_results(?KZ_SIP_DB, <<"credentials/lookup">>, ViewOptions)
@@ -253,7 +253,7 @@ get_auth_user_in_agg(Username, Realm) ->
                                       {'error', 'not_found'}.
 get_auth_user_in_account(Username, Realm, AccountDB) ->
     ViewOptions = [{'key', Username}
-                   ,'include_docs'
+		  ,'include_docs'
                   ],
     case kz_datamgr:get_results(AccountDB, <<"devices/sip_credentials">>, ViewOptions) of
         {'error', _R} ->
@@ -356,27 +356,27 @@ jobj_to_auth_user(JObj, Username, Realm, Req) ->
     AuthDoc = kz_json:get_value(<<"doc">>, JObj),
     Method = get_auth_method(AuthDoc),
     AuthUser = #auth_user{realm = Realm
-                          ,username = Username
-                          ,account_id = get_account_id(AuthDoc)
-                          ,account_db = get_account_db(AuthDoc)
-                          ,password = kz_json:get_value(<<"password">>, AuthValue, kz_util:rand_hex_binary(6))
-                          ,authorizing_type = kz_doc:type(AuthDoc, <<"anonymous">>)
-                          ,authorizing_id = kz_doc:id(JObj)
-                          ,method = kz_util:to_lower_binary(Method)
-                          ,owner_id = kz_json:get_value(<<"owner_id">>, AuthDoc)
-                          ,suppress_unregister_notifications = kz_json:is_true(<<"suppress_unregister_notifications">>, AuthDoc)
-                          ,register_overwrite_notify = kz_json:is_true(<<"register_overwrite_notify">>, AuthDoc)
-                          ,doc=AuthDoc
-                          ,request=Req
+			 ,username = Username
+			 ,account_id = get_account_id(AuthDoc)
+			 ,account_db = get_account_db(AuthDoc)
+			 ,password = kz_json:get_value(<<"password">>, AuthValue, kz_util:rand_hex_binary(6))
+			 ,authorizing_type = kz_doc:type(AuthDoc, <<"anonymous">>)
+			 ,authorizing_id = kz_doc:id(JObj)
+			 ,method = kz_util:to_lower_binary(Method)
+			 ,owner_id = kz_json:get_value(<<"owner_id">>, AuthDoc)
+			 ,suppress_unregister_notifications = kz_json:is_true(<<"suppress_unregister_notifications">>, AuthDoc)
+			 ,register_overwrite_notify = kz_json:is_true(<<"register_overwrite_notify">>, AuthDoc)
+			 ,doc=AuthDoc
+			 ,request=Req
                          },
     maybe_auth_method(add_account_name(AuthUser), AuthDoc, Req, Method).
 
 -spec get_auth_value(kz_json:object()) -> api_object().
 get_auth_value(JObj) ->
     kz_json:get_first_defined([[<<"doc">>,<<"sip">>]
-                               ,<<"value">>
+			      ,<<"value">>
                               ]
-                              ,JObj
+			     ,JObj
                              ).
 
 -spec add_account_name(auth_user()) -> auth_user().
@@ -386,8 +386,8 @@ add_account_name(#auth_user{account_id=AccountId}=AuthUser) ->
         {'ok', Account} ->
             Realm = kz_account:realm(Account),
             AuthUser#auth_user{account_name = kz_account:name(Account)
-                               ,account_realm = Realm
-                               ,account_normalized_realm = kz_util:to_lower_binary(Realm)
+			      ,account_realm = Realm
+			      ,account_normalized_realm = kz_util:to_lower_binary(Realm)
                               }
     end.
 
@@ -396,10 +396,10 @@ get_auth_method(?GSM_ANY_METHOD=M) when is_binary(M)-> <<"gsm">>;
 get_auth_method(M) when is_binary(M) -> M;
 get_auth_method(JObj) ->
     kz_json:get_first_defined([[<<"gsm">>,<<"method">>]
-                               ,[<<"sip">>,<<"method">>]
+			      ,[<<"sip">>,<<"method">>]
                               ]
-                              ,JObj
-                              ,<<"password">>
+			     ,JObj
+			     ,<<"password">>
                              ).
 
 -spec maybe_auth_method(auth_user(), kz_json:object(), kz_json:object(), ne_binary()) ->
@@ -410,10 +410,10 @@ maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
     CachedNonce = kz_json:get_value(<<"nonce">>, GsmDoc, kz_util:rand_hex_binary(16)),
     Nonce = remove_dashes(
               kz_json:get_first_defined([<<"nonce">>
-                                         ,<<"Auth-Nonce">>
+					,<<"Auth-Nonce">>
                                         ]
-                                        ,Req
-                                        ,CachedNonce
+				       ,Req
+				       ,CachedNonce
                                        )
              ),
     GsmKey = kz_json:get_value(<<"key">>, GsmDoc),
@@ -423,11 +423,11 @@ maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
     gsm_auth(
       maybe_update_gsm(
         ReqMethod
-        ,AuthUser#auth_user{msisdn=GsmNumber
-                            ,a3a8_key=GsmKey
-                            ,a3a8_sres=GsmSRes
-                            ,nonce=Nonce
-                           }
+		      ,AuthUser#auth_user{msisdn=GsmNumber
+					 ,a3a8_key=GsmKey
+					 ,a3a8_sres=GsmSRes
+					 ,nonce=Nonce
+					 }
        )
      );
 maybe_auth_method(AuthUser, _JObj, _Req, ?ANY_AUTH_METHOD)->
@@ -445,23 +445,23 @@ maybe_update_gsm(_, AuthUser) -> AuthUser.
 
 -spec maybe_msisdn(auth_user()) -> auth_user().
 maybe_msisdn(#auth_user{msisdn='undefined'
-                        ,owner_id='undefined'
-                        ,authorizing_id=Id
+		       ,owner_id='undefined'
+		       ,authorizing_id=Id
                        }=AuthUser) ->
     maybe_msisdn_from_callflows(AuthUser, <<"device">>, Id);
 maybe_msisdn(#auth_user{msisdn='undefined'
-                        ,owner_id=OwnerId
+		       ,owner_id=OwnerId
                        }=AuthUser) ->
     maybe_msisdn_from_callflows(AuthUser, <<"user">>, OwnerId);
 maybe_msisdn(AuthUser) -> AuthUser.
 
 -spec maybe_msisdn_from_callflows(auth_user(), ne_binary(), ne_binary()) -> auth_user().
 maybe_msisdn_from_callflows(#auth_user{account_db=AccountDB}=AuthUser
-                            ,Type
-                            ,Id
+			   ,Type
+			   ,Id
                            ) ->
     ViewOptions = [{'startkey', [Type, Id]}
-                   ,{'endkey', [Type, Id, <<"9999999">>]}
+		  ,{'endkey', [Type, Id, <<"9999999">>]}
                   ],
     case kz_datamgr:get_results(AccountDB, <<"callflows/msisdn">>, ViewOptions) of
         {'error', _R} ->
@@ -473,19 +473,19 @@ maybe_msisdn_from_callflows(#auth_user{account_db=AccountDB}=AuthUser
         {'ok', [User|_]} ->
             MSISDN = kz_json:get_value([<<"value">>,<<"msisdn">>], User),
             lager:debug("found msisdn ~s for ~s@~s in account db: ~s"
-                        ,[MSISDN, Type, Id, AccountDB]
+		       ,[MSISDN, Type, Id, AccountDB]
                        ),
             AuthUser#auth_user{msisdn=MSISDN}
     end.
 
 -spec gsm_auth(auth_user()) -> {'ok', auth_user()}.
 gsm_auth(#auth_user{method=?GSM_CACHED_METHOD
-                    ,a3a8_sres=SRES
+		   ,a3a8_sres=SRES
                    }=AuthUser) ->
     {'ok', AuthUser#auth_user{password=SRES}};
 gsm_auth(#auth_user{method=?GSM_A3A8_METHOD
-                    ,a3a8_key=GsmKey
-                    ,nonce=NonceHex
+		   ,a3a8_key=GsmKey
+		   ,nonce=NonceHex
                    }=AuthUser) ->
     Key = kz_util:from_hex_binary(GsmKey),
     Nonce = kz_util:from_hex_binary(NonceHex),
@@ -493,8 +493,8 @@ gsm_auth(#auth_user{method=?GSM_A3A8_METHOD
     SResHex = kz_util:to_hex_binary(SRes),
     <<SRES:8/binary, KC/binary>> = SResHex,
     {'ok', AuthUser#auth_user{a3a8_sres=SRES
-                              ,a3a8_kc=KC
-                              ,password=SRES
+			     ,a3a8_kc=KC
+			     ,password=SRES
                              }};
 gsm_auth(AuthUser) -> {'ok', AuthUser}.
 
@@ -520,9 +520,9 @@ get_account_id(JObj) ->
 -spec get_account_db(kz_json:object()) -> api_binary().
 get_account_db(JObj) ->
     case kz_json:get_first_defined([[<<"doc">>, <<"pvt_account_db">>]
-                                    ,<<"pvt_account_db">>
-                                    ,[<<"doc">>, <<"pvt_account_id">>]
-                                    ,<<"pvt_account_id">>
+				   ,<<"pvt_account_db">>
+				   ,[<<"doc">>, <<"pvt_account_id">>]
+				   ,<<"pvt_account_id">>
                                    ], JObj)
     of
         'undefined' -> 'undefined';
@@ -553,7 +553,7 @@ generate_security_ccvs(#auth_user{}=User) ->
 
 generate_security_ccvs(#auth_user{}=User, Acc0) ->
     CCVFuns = [fun maybe_enforce_security/1
-               ,fun maybe_set_encryption_flags/1
+	      ,fun maybe_set_encryption_flags/1
               ],
     {_, Acc} = lists:foldl(fun(F, Acc) -> F(Acc) end, {User, Acc0}, CCVFuns),
     Acc.
@@ -561,8 +561,8 @@ generate_security_ccvs(#auth_user{}=User, Acc0) ->
 -spec maybe_enforce_security({auth_user(), kz_proplist()}) -> {auth_user(), kz_proplist()}.
 maybe_enforce_security({#auth_user{doc=JObj}=User, Acc}) ->
     case kz_json:is_true([<<"media">>
-                          ,<<"encryption">>
-                          ,<<"enforce_security">>
+			 ,<<"encryption">>
+			 ,<<"enforce_security">>
                          ], JObj, 'false')
     of
         'true' -> {User, [{<<"Media-Encryption-Enforce-Security">>, 'true'} | Acc]};

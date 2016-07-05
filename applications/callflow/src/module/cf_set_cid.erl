@@ -25,7 +25,7 @@ handle(Data, Call) ->
     lager:info("update with name: ~s num: ~s", [NewCIDName, NewCIDNumber]),
 
     Updates = [fun(C) -> set_cid_name(C, NewCIDName) end
-               ,fun(C) -> set_cid_number(C, NewCIDNumber) end
+	      ,fun(C) -> set_cid_number(C, NewCIDNumber) end
               ],
     {'ok', Call1} = cf_exe:get_call(Call),
     cf_exe:set_call(kapps_call:exec(Updates, Call1)),

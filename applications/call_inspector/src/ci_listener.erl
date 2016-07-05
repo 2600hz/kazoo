@@ -12,12 +12,12 @@
 -export([start_link/0]).
 
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("call_inspector.hrl").
@@ -27,14 +27,14 @@
 -record(state, {}).
 
 -define(BINDINGS, [{'self', []}
-                   ,{'inspector', []}
+		  ,{'inspector', []}
                   ]).
 -define(RESPONDERS, [{'ci_lookup_req'
-                      ,[{<<"call_inspector">>, <<"lookup_req">>}]
+		     ,[{<<"call_inspector">>, <<"lookup_req">>}]
                      }
-                     ,{'ci_filter_req'
-                       ,[{<<"call_inspector">>, <<"filter_req">>}]
-                      }
+		    ,{'ci_filter_req'
+		     ,[{<<"call_inspector">>, <<"filter_req">>}]
+		     }
                     ]).
 
 %%%===================================================================
@@ -47,10 +47,10 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER
-                            ,[{'bindings', ?BINDINGS}
-                              ,{'responders', ?RESPONDERS}
-                             ]
-                            ,[]
+			   ,[{'bindings', ?BINDINGS}
+			    ,{'responders', ?RESPONDERS}
+			    ]
+			   ,[]
                            ).
 
 %%%===================================================================

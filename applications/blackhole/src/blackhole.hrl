@@ -16,18 +16,18 @@
 -define(VERSION_SUPPORTED, [<<"v1">>]).
 
 -record(bh_context, {
-           auth_token = <<>> :: api_binary() | '_'
-          ,auth_account_id :: api_binary() | '_'
-          ,account_id :: api_binary() | '_'
-          ,bindings = [] :: ne_binaries() | '_'
-          ,websocket_session_id :: api_binary() | '_'
-          ,websocket_pid :: api_pid() | '_'
-          ,req_id = <<(kz_util:rand_hex_binary(16))/binary, "-bh">> :: ne_binary() | '_'
-          ,timestamp :: gregorian_seconds() | '_'
-          ,name :: api_binary() | '_'
-          ,metadata :: any() | '_'
-          ,destination = kz_util:node_hostname() :: ne_binary() | '_'
-          ,source :: api_binary() | '_'
+	  auth_token = <<>> :: api_binary() | '_'
+		    ,auth_account_id :: api_binary() | '_'
+		    ,account_id :: api_binary() | '_'
+		    ,bindings = [] :: ne_binaries() | '_'
+		    ,websocket_session_id :: api_binary() | '_'
+		    ,websocket_pid :: api_pid() | '_'
+		    ,req_id = <<(kz_util:rand_hex_binary(16))/binary, "-bh">> :: ne_binary() | '_'
+		    ,timestamp :: gregorian_seconds() | '_'
+		    ,name :: api_binary() | '_'
+		    ,metadata :: any() | '_'
+		    ,destination = kz_util:node_hostname() :: ne_binary() | '_'
+		    ,source :: api_binary() | '_'
          }).
 
 -define(BLACKHOLE_HRL, 'true').

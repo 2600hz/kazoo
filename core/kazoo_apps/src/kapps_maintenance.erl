@@ -15,21 +15,21 @@
         ,rebuild_token_auth/1
         ]).
 -export([migrate/0
-         ,migrate/1
+	,migrate/1
         ]).
 -export([find_invalid_acccount_dbs/0]).
 -export([refresh/0, refresh/1
-         ,refresh_account_db/1
+	,refresh_account_db/1
         ]).
 -export([blocking_refresh/0
-         ,blocking_refresh/1
+	,blocking_refresh/1
         ]).
 -export([remove_depreciated_databases/0]).
 -export([ensure_aggregate_devices/0
         ,ensure_aggregate_device/1
         ]).
 -export([cleanup_aggregated_devices/0
-         ,cleanup_aggregated_device/1
+	,cleanup_aggregated_device/1
         ]).
 -export([cleanup_aggregated_accounts/0
         ,cleanup_aggregated_account/1
@@ -187,8 +187,8 @@ refresh(?KZ_SERVICES_DB) ->
 refresh(?KZ_SIP_DB) ->
     kz_datamgr:db_create(?KZ_SIP_DB),
     Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
-             ,kapps_util:get_view_json('registrar', <<"auth.json">>)
-             ,kapps_util:get_view_json('crossbar', <<"views/resources.json">>)
+	    ,kapps_util:get_view_json('registrar', <<"auth.json">>)
+	    ,kapps_util:get_view_json('crossbar', <<"views/resources.json">>)
             ],
     kapps_util:update_views(?KZ_SIP_DB, Views, 'true');
 refresh(?KZ_SCHEMA_DB) ->
@@ -215,9 +215,9 @@ refresh(?KZ_DEDICATED_IP_DB) ->
 refresh(?KZ_ACCOUNTS_DB) ->
     kz_datamgr:db_create(?KZ_ACCOUNTS_DB),
     Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
-             ,kapps_util:get_view_json('kazoo_apps', ?ACCOUNTS_AGG_VIEW_FILE)
-             ,kapps_util:get_view_json('kazoo_apps', ?SEARCH_VIEW_FILE)
-             ,kapps_util:get_view_json('notify', ?ACCOUNTS_AGG_NOTIFY_VIEW_FILE)
+	    ,kapps_util:get_view_json('kazoo_apps', ?ACCOUNTS_AGG_VIEW_FILE)
+	    ,kapps_util:get_view_json('kazoo_apps', ?SEARCH_VIEW_FILE)
+	    ,kapps_util:get_view_json('notify', ?ACCOUNTS_AGG_NOTIFY_VIEW_FILE)
             ],
     kapps_util:update_views(?KZ_ACCOUNTS_DB, Views, 'true'),
     'ok';
@@ -342,8 +342,8 @@ get_all_account_views() ->
 -spec fetch_all_account_views() -> kz_proplist().
 fetch_all_account_views() ->
     [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
-     ,kapps_util:get_view_json('conference', <<"views/conference.json">>)
-     ,kapps_util:get_view_json('webhooks', <<"webhooks.json">>)
+    ,kapps_util:get_view_json('conference', <<"views/conference.json">>)
+    ,kapps_util:get_view_json('webhooks', <<"webhooks.json">>)
      |kapps_util:get_views_json('crossbar', "account")
      ++ kapps_util:get_views_json('callflow', "views")
     ].
@@ -564,14 +564,14 @@ migrate_limits(Account) ->
     JObj = kz_json:from_list(
              props:filter_undefined(
                [{<<"_id">>, <<"limits">>}
-                ,{<<"twoway_trunks">>, TT}
-                ,{<<"inbound_trunks">>, IT}
-                ,{<<"pvt_account_db">>, AccountDb}
-                ,{<<"pvt_account_id">>, kz_util:format_account_id(Account, 'raw')}
-                ,{<<"pvt_type">>, <<"limits">>}
-                ,{<<"pvt_created">>, TStamp}
-                ,{<<"pvt_modified">>, TStamp}
-                ,{<<"pvt_vsn">>, 1}
+	       ,{<<"twoway_trunks">>, TT}
+	       ,{<<"inbound_trunks">>, IT}
+	       ,{<<"pvt_account_db">>, AccountDb}
+	       ,{<<"pvt_account_id">>, kz_util:format_account_id(Account, 'raw')}
+	       ,{<<"pvt_type">>, <<"limits">>}
+	       ,{<<"pvt_created">>, TStamp}
+	       ,{<<"pvt_modified">>, TStamp}
+	       ,{<<"pvt_vsn">>, 1}
                ]
               )),
     _ = kz_datamgr:save_doc(AccountDb, JObj),
@@ -581,7 +581,7 @@ migrate_limits(Account) ->
                                    {integer(), integer()}.
 clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks) ->
     ViewOptions = ['include_docs'
-                   ,{'reduce', 'false'}
+		  ,{'reduce', 'false'}
                   ],
     case kz_datamgr:get_results(AccountDb, <<"trunkstore/crossbar_listing">>, ViewOptions) of
         {'ok', JObjs} -> clean_trunkstore_docs(AccountDb, JObjs, TwowayTrunks, InboundTrunks);
@@ -672,7 +672,7 @@ ensure_aggregate_devices() ->
 ensure_aggregate_devices([]) -> 'ok';
 ensure_aggregate_devices([Account|Accounts]) ->
     _ = ensure_aggregate_device(Account),
-ensure_aggregate_devices(Accounts).
+    ensure_aggregate_devices(Accounts).
 
 -spec ensure_aggregate_device(ne_binary()) -> 'ok'.
 ensure_aggregate_device(Account) ->
@@ -766,8 +766,8 @@ migrate_attachment(AccountDb, ViewJObj) ->
 
 remove_deprecated_attachment_properties(AccountDb, Id, JObj) ->
     J = kz_json:delete_keys([<<"status">>, <<"content_size">>, <<"size">>
-                             ,<<"content_type">>, <<"content_length">>
-                             ,<<"format">>, <<"sample">>, <<"media_type">>
+			    ,<<"content_type">>, <<"content_length">>
+			    ,<<"format">>, <<"sample">>, <<"media_type">>
                             ], JObj),
     Result = case (J =/= JObj)
                  andalso kz_json:get_value(<<"source_id">>, J)
@@ -797,11 +797,11 @@ migrate_attachment(AccountDb, JObj, Attachment, MetaData) ->
     DocCT = kz_json:get_value(<<"content_type">>, JObj),
     MetaCT = kz_json:get_value(<<"content_type">>, MetaData),
     Migrations = [fun({A, MCT}) -> maybe_update_attachment_content_type(A, MCT, DocCT) end
-                  ,fun maybe_add_extension/1
+		 ,fun maybe_add_extension/1
                  ],
     Migrate = lists:foldl(fun(F, Acc) -> F(Acc) end
-                          ,{Attachment, MetaCT}
-                          ,Migrations
+			 ,{Attachment, MetaCT}
+			 ,Migrations
                          ),
     maybe_update_attachment(AccountDb, kz_doc:id(JObj), {Attachment, MetaCT}, Migrate).
 
@@ -845,12 +845,12 @@ maybe_update_attachment(AccountDb, Id, {OrigAttach, _CT1}, {NewAttach, CT}) ->
     %% However, if it failes at any of those stages it will leave the media doc with multiple
     %%    attachments and require manual intervention
     Updaters = [fun(_) -> try_load_attachment(AccountDb, Id, OrigAttach) end
-                ,fun(Content1) ->
-                         maybe_resave_attachment(Content1, AccountDb, Id, OrigAttach, NewAttach, CT)
-                 end
-                ,fun(_) ->
-                         maybe_cleanup_old_attachment(AccountDb, Id, OrigAttach, NewAttach)
-                 end
+	       ,fun(Content1) ->
+			maybe_resave_attachment(Content1, AccountDb, Id, OrigAttach, NewAttach, CT)
+		end
+	       ,fun(_) ->
+			maybe_cleanup_old_attachment(AccountDb, Id, OrigAttach, NewAttach)
+		end
                ],
     lists:foldl(fun(F, Acc) -> F(Acc) end, [], Updaters).
 
@@ -869,7 +869,7 @@ try_load_attachment(AccountDb, Id, OrigAttach) ->
 maybe_resave_attachment(Content1, AccountDb, Id, OrigAttach, NewAttach, CT) ->
     {'ok', Rev} = kz_datamgr:lookup_doc_rev(AccountDb, Id),
     Options = [{'content_type', CT}
-               ,{'rev', Rev}
+	      ,{'rev', Rev}
               ],
     %% bigcouch is awesome in that it sometimes returns 409 (conflict) but does the work anyway..
     %%   so rather than check the put return fetch the new attachment and compare it to the old
@@ -972,32 +972,32 @@ purge_doc_type(Type, Account)
   when is_binary(Type);
        is_binary(Account) ->
     purge_doc_type(Type
-                   ,Account
-                   ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
+		  ,Account
+		  ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
                   );
 purge_doc_type([], _Account) -> 'ok';
 purge_doc_type([Type|Types], Account) ->
     _ = purge_doc_type(Type, Account),
     purge_doc_type(Types
-                   ,Account
-                   ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
+		  ,Account
+		  ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
                   );
 purge_doc_type(Type, Account) when not is_binary(Type) ->
     purge_doc_type(kz_util:to_binary(Type)
-                   ,Account
-                   ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
+		  ,Account
+		  ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
                   );
 purge_doc_type(Type, Account) when not is_binary(Account) ->
     purge_doc_type(Type
-                   ,kz_util:to_binary(Account)
-                   ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
+		  ,kz_util:to_binary(Account)
+		  ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
                   ).
 
 purge_doc_type(Type, Account, ChunkSize) ->
     Db = kz_util:format_account_id(Account, 'encoded'),
     Opts = [{'key', Type}
-            ,{'limit', ChunkSize}
-            ,'include_docs'
+	   ,{'limit', ChunkSize}
+	   ,'include_docs'
            ],
     case kz_datamgr:get_results(Db, <<"maintenance/listing_by_type">>, Opts) of
         {'error', _}=E -> E;
@@ -1017,9 +1017,9 @@ call_id_status(CallId, Verbose) ->
            | kz_api:default_headers(<<"shell">>, <<"0">>)
           ],
     case kapps_util:amqp_pool_request(Req
-                                       ,fun kapi_call:publish_channel_status_req/1
-                                       ,fun kapi_call:channel_status_resp_v/1
-                                      )
+				     ,fun kapi_call:publish_channel_status_req/1
+				     ,fun kapi_call:channel_status_resp_v/1
+				     )
     of
         {'ok', Resp} ->
             show_status(CallId, kz_util:is_true(Verbose), Resp);

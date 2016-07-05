@@ -11,13 +11,13 @@
 -module(cb_services).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,content_types_provided/2
-         ,validate/1, validate/2
-         ,get/1, get/2
-         ,post/1
-         ,cleanup/1
+	,allowed_methods/0, allowed_methods/1
+	,resource_exists/0, resource_exists/1
+	,content_types_provided/2
+	,validate/1, validate/2
+	,get/1, get/2
+	,post/1
+	,cleanup/1
         ]).
 
 -include("crossbar.hrl").
@@ -45,14 +45,14 @@
 -spec init() -> 'ok'.
 init() ->
     Bindings = [{<<"*.allowed_methods.services">>, 'allowed_methods'}
-                ,{<<"*.resource_exists.services">>, 'resource_exists'}
-                ,{<<"*.content_types_provided.services">>, 'content_types_provided'}
-                ,{<<"*.validate.services">>, 'validate'}
-                ,{<<"*.execute.get.services">>, 'get'}
-                ,{<<"*.execute.put.services">>, 'put'}
-                ,{<<"*.execute.post.services">>, 'post'}
-                ,{<<"*.execute.delete.services">>, 'delete'}
-                ,{crossbar_cleanup:binding_system(), 'cleanup'}
+	       ,{<<"*.resource_exists.services">>, 'resource_exists'}
+	       ,{<<"*.content_types_provided.services">>, 'content_types_provided'}
+	       ,{<<"*.validate.services">>, 'validate'}
+	       ,{<<"*.execute.get.services">>, 'get'}
+	       ,{<<"*.execute.put.services">>, 'put'}
+	       ,{<<"*.execute.post.services">>, 'post'}
+	       ,{<<"*.execute.delete.services">>, 'delete'}
+	       ,{crossbar_cleanup:binding_system(), 'cleanup'}
                ],
     cb_modules_util:bind(?MODULE, Bindings).
 
@@ -123,15 +123,15 @@ validate_services(Context, ?HTTP_POST) ->
     try kz_services:set_billing_id(BillingId, cb_context:account_id(Context)) of
         'undefined' ->
             cb_context:setters(Context
-                               ,[{fun cb_context:set_doc/2, 'undefined'}
-                                 ,{fun cb_context:set_resp_status/2, 'success'}
-                                ]);
+			      ,[{fun cb_context:set_doc/2, 'undefined'}
+			       ,{fun cb_context:set_resp_status/2, 'success'}
+			       ]);
         ServicesRec ->
             cb_context:setters(Context
-                               ,[{fun cb_context:set_doc/2, kz_services:public_json(ServicesRec)}
-                                 ,{fun cb_context:store/3, 'services', ServicesRec}
-                                 ,{fun cb_context:set_resp_status/2, 'success'}
-                                ])
+			      ,[{fun cb_context:set_doc/2, kz_services:public_json(ServicesRec)}
+			       ,{fun cb_context:store/3, 'services', ServicesRec}
+			       ,{fun cb_context:set_resp_status/2, 'success'}
+			       ])
     catch
         'throw':{Error, Reason} ->
             R = kz_json:set_value([<<"billing_id">>, <<"invalid">>], Reason, kz_json:new()),
@@ -188,9 +188,9 @@ load_audit_logs(Context) ->
     case create_view_options(Context) of
         {'ok', ViewOptions} ->
             crossbar_doc:load_view(?AUDIT_LOG_LIST
-                                   ,ViewOptions
-                                   ,Context
-                                   ,fun normalize_audit_logs/2
+				  ,ViewOptions
+				  ,Context
+				  ,fun normalize_audit_logs/2
                                   );
         Context1 -> Context1
     end.
@@ -221,9 +221,9 @@ pagination_page_size(Context) ->
                                  cb_context:context().
 create_view_options(Context) ->
     MaxRange = kapps_config:get_integer(?MOD_CONFIG_CAT
-                                         ,<<"maximum_range">>
-                                         ,(?SECONDS_IN_DAY * 31  + ?SECONDS_IN_HOUR)
-                                        ),
+				       ,<<"maximum_range">>
+				       ,(?SECONDS_IN_DAY * 31  + ?SECONDS_IN_HOUR)
+				       ),
     case cb_modules_util:range_view_options(Context, MaxRange) of
         {CreatedFrom, CreatedTo} ->
             create_view_options(Context, CreatedFrom, CreatedTo);
@@ -234,11 +234,11 @@ create_view_options(Context) ->
                                  {'ok', kz_proplist()}.
 create_view_options(Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', CreatedTo}
-            ,{'endkey', CreatedFrom}
-            ,{'limit', pagination_page_size(Context)}
-            ,{'databases', ranged_modbs(Context, CreatedFrom, CreatedTo)}
-            ,'descending'
-            ,'include_docs'
+	   ,{'endkey', CreatedFrom}
+	   ,{'limit', pagination_page_size(Context)}
+	   ,{'databases', ranged_modbs(Context, CreatedFrom, CreatedTo)}
+	   ,'descending'
+	   ,'include_docs'
            ]}.
 
 -spec ranged_modbs(cb_context:context(), gregorian_seconds(), gregorian_seconds()) ->

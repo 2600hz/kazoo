@@ -9,29 +9,29 @@
 -module(ts_callflow).
 
 -export([init/2
-         ,start_amqp/1
-         ,send_park/1
-         ,wait_for_win/1
-         ,wait_for_bridge/1
-         ,send_hangup/1
-         ,send_hangup/2
+	,start_amqp/1
+	,send_park/1
+	,wait_for_win/1
+	,wait_for_bridge/1
+	,send_hangup/1
+	,send_hangup/2
         ]).
 
 %% data access functions
 -export([get_request_data/1
-         ,get_my_queue/1
-         ,get_control_queue/1
-         ,get_custom_channel_vars/1
-         ,get_custom_sip_headers/1
-         ,set_endpoint_data/2
-         ,set_account_id/2
-         ,get_aleg_id/1
-         ,get_bleg_id/1
-         ,get_call_cost/1
-         ,set_failover/2
-         ,get_failover/1
-         ,get_endpoint_data/1
-         ,get_account_id/1
+	,get_my_queue/1
+	,get_control_queue/1
+	,get_custom_channel_vars/1
+	,get_custom_sip_headers/1
+	,set_endpoint_data/2
+	,set_account_id/2
+	,get_aleg_id/1
+	,get_bleg_id/1
+	,get_call_cost/1
+	,set_failover/2
+	,get_failover/1
+	,get_endpoint_data/1
+	,get_account_id/1
         ]).
 
 -include("ts.hrl").
@@ -57,9 +57,9 @@ init(RouteReqJObj, Type) ->
             AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj),
             #ts_callflow_state{
                aleg_callid=CallID
-               ,route_req_jobj=RouteReqJObj
-               ,acctid=AccountId
-               ,acctdb=kz_util:format_account_id(AccountId, 'encoded')
+			      ,route_req_jobj=RouteReqJObj
+			      ,acctid=AccountId
+			      ,acctdb=kz_util:format_account_id(AccountId, 'encoded')
               }
     end.
 
@@ -75,15 +75,15 @@ start_amqp(#ts_callflow_state{}=State) ->
 
 -spec send_park(state()) -> state().
 send_park(#ts_callflow_state{my_q=Q
-                             ,route_req_jobj=JObj
-                             ,acctid=AccountId
+			    ,route_req_jobj=JObj
+			    ,acctid=AccountId
                             }=State) ->
     Resp = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-            ,{<<"Routes">>, []}
-            ,{<<"Pre-Park">>, pre_park_action()}
-            ,{<<"Method">>, <<"park">>}
-            ,{<<"From-Realm">>, kz_util:get_account_realm(AccountId)}
-            ,{<<"Custom-Channel-Vars">>, kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())}
+	   ,{<<"Routes">>, []}
+	   ,{<<"Pre-Park">>, pre_park_action()}
+	   ,{<<"Method">>, <<"park">>}
+	   ,{<<"From-Realm">>, kz_util:get_account_realm(AccountId)}
+	   ,{<<"Custom-Channel-Vars">>, kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())}
             | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
     lager:info("trunkstore knows how to route this call, sending park route response"),
@@ -92,7 +92,7 @@ send_park(#ts_callflow_state{my_q=Q
 
 -spec wait_for_win(state()) -> {'won' | 'lost', state()}.
 wait_for_win(#ts_callflow_state{aleg_callid=CallID
-                                ,my_q=Q
+			       ,my_q=Q
                                }=State) ->
     receive
         #'basic.consume_ok'{} -> wait_for_win(State);
@@ -209,10 +209,10 @@ process_event_for_bridge(_State, _JObj, _Unhandled) ->
 was_bridge_successful(JObj) ->
     is_success(<<"Disposition">>, JObj)
         orelse is_success([<<"Application-Response">>
-                           ,<<"Hangup-Cause">>
+			  ,<<"Hangup-Cause">>
                           ]
-                          ,JObj
-                          ,<<"UNSPECIFIED">>
+			 ,JObj
+			 ,<<"UNSPECIFIED">>
                          ).
 
 -spec was_bridge_blocked(kz_json:object()) -> boolean().
@@ -234,11 +234,11 @@ get_app(JObj) ->
 send_hangup(#ts_callflow_state{callctl_q = <<>>}) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q = 'undefined'}) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q=CtlQ
-                               ,my_q=Q
-                               ,aleg_callid=CallID}) ->
+			      ,my_q=Q
+			      ,aleg_callid=CallID}) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
-               ,{<<"Call-ID">>, CallID}
-               ,{<<"Insert-At">>, <<"now">>}
+	      ,{<<"Call-ID">>, CallID}
+	      ,{<<"Insert-At">>, <<"now">>}
                | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     lager:info("Sending hangup to ~s: ~p", [CtlQ, Command]),
@@ -247,7 +247,7 @@ send_hangup(#ts_callflow_state{callctl_q=CtlQ
 send_hangup(#ts_callflow_state{callctl_q = <<>>}, _) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q = 'undefined'}, _) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q=CtlQ
-                               ,aleg_callid=CallId}, Code) ->
+			      ,aleg_callid=CallId}, Code) ->
     lager:debug("responding to aleg with ~p", [Code]),
     kz_call_response:send(CallId, CtlQ, Code).
 

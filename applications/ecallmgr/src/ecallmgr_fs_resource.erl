@@ -14,12 +14,12 @@
 -export([start_link/1, start_link/2]).
 -export([handle_originate_req/2]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("ecallmgr.hrl").
@@ -27,14 +27,14 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {node :: atom()
-                ,options :: kz_proplist()
+	       ,options :: kz_proplist()
                }).
 
 -define(BINDINGS, [{'resource', [{'restrict_to', ['originate']}]}
-                   ,{'self', []}
+		  ,{'self', []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_originate_req'}
-                      ,[{<<"resource">>, <<"originate_req">>}]
+		     ,[{<<"resource">>, <<"originate_req">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<"ecallmgr_fs_resource">>).
@@ -53,12 +53,12 @@
 start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
     gen_listener:start_link(?SERVER
-                            ,[{'bindings', ?BINDINGS}
-                              ,{'responders', ?RESPONDERS}
-                              ,{'queue_name', ?QUEUE_NAME}
-                              ,{'queue_options', ?QUEUE_OPTIONS}
-                              ,{'consume_options', ?CONSUME_OPTIONS}
-                             ],
+			   ,[{'bindings', ?BINDINGS}
+			    ,{'responders', ?RESPONDERS}
+			    ,{'queue_name', ?QUEUE_NAME}
+			    ,{'queue_options', ?QUEUE_OPTIONS}
+			    ,{'consume_options', ?CONSUME_OPTIONS}
+			    ],
                             [Node, Options]).
 
 -spec handle_originate_req(kz_json:object(), kz_proplist()) -> sup_startchild_ret().

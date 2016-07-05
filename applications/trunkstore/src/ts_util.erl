@@ -13,32 +13,32 @@
 -module(ts_util).
 
 -export([find_ip/1
-         ,filter_active_calls/2
-         ,get_media_handling/1
+	,filter_active_calls/2
+	,get_media_handling/1
         ]).
 -export([constrain_weight/1]).
 
 -export([get_call_duration/1
-         ,lookup_user_flags/3
-         ,lookup_user_flags/4
-         ,lookup_did/2
+	,lookup_user_flags/3
+	,lookup_user_flags/4
+	,lookup_did/2
         ]).
 -export([invite_format/2]).
 
 %% Cascading settings
 -export([sip_headers/1
-         ,failover/1
-         ,progress_timeout/1
-         ,bypass_media/1
-         ,delay/1
-         ,ignore_early_media/1
-         ,ep_timeout/1
-         ,caller_id/1
-         ,offnet_flags/1
+	,failover/1
+	,progress_timeout/1
+	,bypass_media/1
+	,delay/1
+	,ignore_early_media/1
+	,ep_timeout/1
+	,caller_id/1
+	,offnet_flags/1
         ]).
 
 -export([maybe_ensure_cid_valid/4
-         ,maybe_restrict_call/2
+	,maybe_restrict_call/2
         ]).
 
 -include("ts.hrl").
@@ -99,7 +99,7 @@ constrain_weight(W) -> W.
 lookup_did(DID, AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case kz_cache:fetch_local(?CACHE_NAME
-                              ,{'lookup_did', DID, AccountId}
+			     ,{'lookup_did', DID, AccountId}
                              )
     of
         {'ok', _}=Resp ->
@@ -117,9 +117,9 @@ lookup_did(DID, AccountId) ->
                     ValueJObj = kz_json:get_value(<<"value">>, ViewJObj),
                     Resp = kz_json:set_value(<<"id">>, kz_doc:id(ViewJObj), ValueJObj),
                     kz_cache:store_local(?CACHE_NAME
-                                         ,{'lookup_did', DID, AccountId}
-                                         ,Resp
-                                         ,CacheProps
+					,{'lookup_did', DID, AccountId}
+					,Resp
+					,CacheProps
                                         ),
                     {'ok', Resp};
                 {'ok', [ViewJObj | _Rest]} ->
@@ -128,9 +128,9 @@ lookup_did(DID, AccountId) ->
                     ValueJObj = kz_json:get_value(<<"value">>, ViewJObj),
                     Resp = kz_json:set_value(<<"id">>, kz_doc:id(ViewJObj), ValueJObj),
                     kz_cache:store_local(?CACHE_NAME
-                                         ,{'lookup_did', DID, AccountId}
-                                         ,Resp
-                                         ,CacheProps
+					,{'lookup_did', DID, AccountId}
+					,Resp
+					,CacheProps
                                         ),
                     {'ok', Resp};
                 {'error', _}=E ->
@@ -174,7 +174,7 @@ lookup_user_flags('undefined', _, AccountId, DID) ->
 lookup_user_flags(Name, Realm, AccountId, _) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case kz_cache:fetch_local(?CACHE_NAME
-                              ,{'lookup_user_flags', Realm, Name, AccountId}
+			     ,{'lookup_user_flags', Realm, Name, AccountId}
                              )
     of
         {'ok', _}=Result ->
@@ -182,7 +182,7 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
             Result;
         {'error', 'not_found'} ->
             Options = [{'key', [kz_util:to_lower_binary(Realm)
-                                ,kz_util:to_lower_binary(Name)
+			       ,kz_util:to_lower_binary(Name)
                                ]
                        }],
             case kz_datamgr:get_results(AccountDb, <<"trunkstore/lookup_user_flags">>, Options) of
@@ -201,8 +201,8 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
                     Restriction = kz_json:get_value(<<"call_restriction">>, AccountJObj, kz_json:new()),
                     FlagsJObj = kz_json:set_value(<<"call_restriction">>, Restriction, JObj),
                     kz_cache:store_local(?CACHE_NAME
-                                         ,{'lookup_user_flags', Realm, Name, AccountId}
-                                         ,FlagsJObj
+					,{'lookup_user_flags', Realm, Name, AccountId}
+					,FlagsJObj
                                         ),
                     {'ok', FlagsJObj}
             end
@@ -215,39 +215,39 @@ get_call_duration(JObj) ->
 -spec invite_format(ne_binary(), ne_binary()) -> kz_proplist().
 invite_format(<<"e.164">>, To) ->
     [{<<"Invite-Format">>, <<"e164">>}
-     ,{<<"To-DID">>, knm_converters:normalize(To)}
+    ,{<<"To-DID">>, knm_converters:normalize(To)}
     ];
 invite_format(<<"e164">>, To) ->
     [{<<"Invite-Format">>, <<"e164">>}
-     ,{<<"To-DID">>, knm_converters:normalize(To)}
+    ,{<<"To-DID">>, knm_converters:normalize(To)}
     ];
 invite_format(<<"e164_without_plus">>, To) ->
     case knm_converters:normalize(To) of
         <<$+, PluslessDID/binary>> ->
             lager:info("while processing 'e164_without_plus' flag, DID ~s converted to E.164 with truncated '+': ~s",[To, PluslessDID]),
             [{<<"Invite-Format">>, <<"e164">>}
-             ,{<<"To-DID">>, PluslessDID}
+	    ,{<<"To-DID">>, PluslessDID}
             ];
         AsIsDID ->
             [{<<"Invite-Format">>, <<"e164">>}
-             ,{<<"To-DID">>, AsIsDID}
+	    ,{<<"To-DID">>, AsIsDID}
             ]
     end;
 invite_format(<<"1npanxxxxxx">>, To) ->
     [{<<"Invite-Format">>, <<"1npan">>}
-     ,{<<"To-DID">>, knm_converters:to_1npan(To)}
+    ,{<<"To-DID">>, knm_converters:to_1npan(To)}
     ];
 invite_format(<<"1npan">>, To) ->
     [{<<"Invite-Format">>, <<"1npan">>}
-     ,{<<"To-DID">>, knm_converters:to_1npan(To)}
+    ,{<<"To-DID">>, knm_converters:to_1npan(To)}
     ];
 invite_format(<<"npanxxxxxx">>, To) ->
     [{<<"Invite-Format">>, <<"npan">>}
-     ,{<<"To-DID">>, knm_converters:to_npan(To)}
+    ,{<<"To-DID">>, knm_converters:to_npan(To)}
     ];
 invite_format(<<"npan">>, To) ->
     [{<<"Invite-Format">>, <<"npan">>}
-     ,{<<"To-DID">>, knm_converters:to_npan(To)}
+    ,{<<"To-DID">>, knm_converters:to_npan(To)}
     ];
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>}].
@@ -257,7 +257,7 @@ caller_id([]) -> {'undefined', 'undefined'};
 caller_id(['undefined'|T]) -> caller_id(T);
 caller_id([CID|T]) ->
     case {kz_json:get_value(<<"cid_name">>, CID)
-          ,kz_json:get_value(<<"cid_number">>, CID)
+	 ,kz_json:get_value(<<"cid_number">>, CID)
          }
     of
         {'undefined', 'undefined'} -> caller_id(T);
@@ -362,9 +362,9 @@ validate_from_user(FromUser, AccountId) ->
 
 -spec maybe_restrict_call(ts_callflow:state(), kz_proplist()) -> boolean().
 maybe_restrict_call(#ts_callflow_state{acctid=AccountId
-                                       ,route_req_jobj=RRObj
+				      ,route_req_jobj=RRObj
                                       }
-                    ,Command) ->
+		   ,Command) ->
     Number = props:get_value(<<"To-DID">>, Command),
     Classification = knm_converters:classify(Number),
     lager:debug("Trunkstore classified number as ~p", [Classification]),

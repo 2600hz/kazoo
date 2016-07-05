@@ -17,7 +17,7 @@
         ,read/1
         ,all/0, all/1
         ,remove/1
-    ]).
+	]).
 
 %%% API used by workers
 -export([worker_finished/4
@@ -556,7 +556,7 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
             {'ok', _JObj} = update_task(Task1),
             State1 = remove_task(TaskId, State),
             {'noreply', State1}
-        end;
+    end;
 
 handle_info(_Info, State) ->
     lager:debug("unhandled message ~p", [_Info]),
@@ -982,7 +982,7 @@ find_API_errors(API, Fields, HasInputData) ->
                  case Mandatory -- Fields of
                      [] -> Errors;
                      Missing -> Errors#{?KZ_TASKS_INPUT_ERROR_MMF => Missing}
-                  end
+		 end
          end
         ,fun (Errors) ->
                  case Fields -- (Mandatory ++ optional(API)) of

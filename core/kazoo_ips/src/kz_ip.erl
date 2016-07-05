@@ -10,7 +10,7 @@
 -include("kazoo_ips.hrl").
 
 -export([to_json/1
-         ,from_json/1
+	,from_json/1
         ]).
 -export([create/3]).
 -export([fetch/1]).
@@ -60,13 +60,13 @@ create(IP, Zone, Host) ->
     Timestamp = kz_util:current_tstamp(),
     JObj = kz_json:from_list(
              [{<<"_id">>, IP}
-              ,{<<"pvt_vsn">>, <<"1">>}
-              ,{<<"pvt_status">>, ?AVAILABLE}
-              ,{<<"pvt_type">>, ?PVT_TYPE}
-              ,{<<"pvt_zone">>, Zone}
-              ,{<<"pvt_host">>, Host}
-              ,{<<"pvt_modified">>, Timestamp}
-              ,{<<"pvt_created">>, Timestamp}
+	     ,{<<"pvt_vsn">>, <<"1">>}
+	     ,{<<"pvt_status">>, ?AVAILABLE}
+	     ,{<<"pvt_type">>, ?PVT_TYPE}
+	     ,{<<"pvt_zone">>, Zone}
+	     ,{<<"pvt_host">>, Host}
+	     ,{<<"pvt_modified">>, Timestamp}
+	     ,{<<"pvt_created">>, Timestamp}
              ]
             ),
     case kz_datamgr:save_doc(?KZ_DEDICATED_IP_DB, JObj) of
@@ -76,12 +76,12 @@ create(IP, Zone, Host) ->
              );
         {'ok', SavedJObj} ->
             lager:debug("created dedicated ip ~s in zone ~s on host ~s"
-                        ,[IP, Zone, Host]
+		       ,[IP, Zone, Host]
                        ),
             {'ok', from_json(SavedJObj)};
         {'error', _R}=E ->
             lager:debug("unable to create dedicated ip ~s: ~p"
-                        ,[IP, _R]
+		       ,[IP, _R]
                        ),
             E
     end.
@@ -154,7 +154,7 @@ release(IP) ->
     'true' = is_dedicated_ip(IP),
     RemoveKeys = [<<"pvt_assigned_to">>],
     Props = [{<<"pvt_status">>, ?AVAILABLE}
-             ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+	    ,{<<"pvt_modified">>, kz_util:current_tstamp()}
             ],
     JObj = to_json(IP),
     save(kz_json:delete_keys(RemoveKeys, kz_json:set_values(Props, JObj))
@@ -168,7 +168,7 @@ release(IP) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(ne_binary() | ip()) ->
-                     {'ok', ip()} |
+		    {'ok', ip()} |
                     {'error', any()}.
 delete(<<_/binary>> = IP) ->
     case kz_datamgr:open_doc(?KZ_DEDICATED_IP_DB, IP) of

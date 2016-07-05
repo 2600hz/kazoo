@@ -16,18 +16,18 @@
 
 %% API
 -export([start_link/1, start_link/2, start_link/4
-         ,restart/1
-         ,listener/1
-         ,fsm/1
-         ,stop/1
-         ,status/1
+	,restart/1
+	,listener/1
+	,fsm/1
+	,stop/1
+	,status/1
         ]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 -define(CHILDREN, [?WORKER_ARGS('acdc_agent_listener', [self() | Args])
-                   ,?WORKER_ARGS('acdc_agent_fsm', [self() | Args])
+		  ,?WORKER_ARGS('acdc_agent_fsm', [self() | Args])
                   ]).
 
 %%%===================================================================
@@ -72,8 +72,8 @@ status(Supervisor) ->
     end.
 
 -define(AGENT_INFO_FIELDS, kapps_config:get(?CONFIG_CAT, <<"agent_info_fields">>
-                                                 ,[<<"first_name">>, <<"last_name">>, <<"username">>, <<"email">>]
-                                            )).
+					   ,[<<"first_name">>, <<"last_name">>, <<"username">>, <<"email">>]
+					   )).
 
 augment_status(Status, LPid) ->
     Fs = ?AGENT_INFO_FIELDS,

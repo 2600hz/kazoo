@@ -9,7 +9,7 @@
 -module(bh_fax).
 
 -export([handle_event/2
-         ,add_amqp_binding/2, rm_amqp_binding/2
+	,add_amqp_binding/2, rm_amqp_binding/2
         ]).
 
 -include("blackhole.hrl").
@@ -27,7 +27,7 @@ handle_event(Context, EventJObj) ->
 -spec is_account_event(bh_context:context(), kz_json:object()) -> any().
 is_account_event(Context, EventJObj) ->
     kz_json:get_first_defined([<<"Account-ID">>
-                               ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
+			      ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
                               ], EventJObj
                              )
         =:= bh_context:account_id(Context).
@@ -38,9 +38,9 @@ event_name(_JObj) -> <<"fax.status">>.
 -spec add_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
 add_amqp_binding(<<"fax.status.", FaxId/binary>>, Context) ->
     blackhole_listener:add_binding('fax', [{'restrict_to', ['status']}
-                                           ,{'account_id', bh_context:account_id(Context)}
-                                           ,{'fax_id', FaxId}
-                                           ,'federate'
+					  ,{'account_id', bh_context:account_id(Context)}
+					  ,{'fax_id', FaxId}
+					  ,'federate'
                                           ]);
 add_amqp_binding(_Binding, _Context) ->
     lager:debug("unmatched binding ~s", [_Binding]).
@@ -48,8 +48,8 @@ add_amqp_binding(_Binding, _Context) ->
 -spec rm_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
 rm_amqp_binding(<<"fax.status.", FaxId/binary>>, Context) ->
     blackhole_listener:remove_binding('fax', [{'restrict_to', ['status']}
-                                              ,{'account_id', bh_context:account_id(Context)}
-                                              ,{'fax_id', FaxId}
+					     ,{'account_id', bh_context:account_id(Context)}
+					     ,{'fax_id', FaxId}
                                              ]);
 rm_amqp_binding(_Binding, _Context) ->
     lager:debug("unmatched binding ~s", [_Binding]).

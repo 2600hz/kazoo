@@ -12,8 +12,8 @@
 
 %% API
 -export([lookup_acls/1
-         ,lookup_rate_limits/1
-         ,update_system_default/2
+	,lookup_rate_limits/1
+	,update_system_default/2
         ]).
 
 -spec lookup_acls(ne_binary()) -> 'ok'.
@@ -34,7 +34,7 @@ print_acl_record(Record) ->
 lookup_rate_limits(Entity) ->
     Limits = frontier_handle_rate:lookup_rate_limit_records(Entity),
     lists:foreach(fun(S) -> print_limits(S, kz_json:get_value(S, Limits)) end
-                  ,[<<"Device">>, <<"Realm">>]
+		 ,[<<"Device">>, <<"Realm">>]
                  ).
 
 -spec print_limits(ne_binary(), kz_json:object()) -> 'ok'.
@@ -47,7 +47,7 @@ print_limits(Section, Rates) ->
             || N <- frontier_handle_rate:names()],
     lists:foreach(fun(Key) ->
                           io:format("~-15s: ~7.10B/m ~7.10B/s~n"
-                                    ,[Key, kz_json:get_value(Key, Min), kz_json:get_value(Key, Sec)]
+				   ,[Key, kz_json:get_value(Key, Min), kz_json:get_value(Key, Sec)]
                                    )
                   end, Keys).
 

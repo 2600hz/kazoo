@@ -30,9 +30,9 @@ handle(Data, Call1) ->
            end,
     case kapps_util:amqp_pool_request(
            build_offnet_request(Data, Call)
-           ,fun kapi_offnet_resource:publish_req/1
-           ,fun kapi_offnet_resource:resp_v/1
-           ,30 * ?MILLISECONDS_IN_SECOND
+				     ,fun kapi_offnet_resource:publish_req/1
+				     ,fun kapi_offnet_resource:resp_v/1
+				     ,30 * ?MILLISECONDS_IN_SECOND
           )
     of
         {'ok', Res} ->
@@ -50,8 +50,8 @@ handle_result(JObj, Call) ->
     handle_result(Message, Code, Response, JObj, Call).
 
 -spec handle_result(binary(), binary()
-                    ,kz_json:object(), kz_json:object()
-                    ,kapps_call:call()
+		   ,kz_json:object(), kz_json:object()
+		   ,kapps_call:call()
                    ) -> 'ok'.
 handle_result(_Message, <<"sip:200">>, Response, _JObj, Call1) ->
     Status = doodle_util:sms_status(Response),
@@ -87,26 +87,26 @@ handle_bridge_failure(Cause, Code, Call) ->
 build_offnet_request(Data, Call) ->
     props:filter_undefined(
       [{<<"Resource-Type">>, <<"sms">>}
-       ,{<<"Application-Name">>, <<"sms">>}
-       ,{<<"Outbound-Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
-       ,{<<"Outbound-Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
-       ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
-       ,{<<"Call-ID">>, doodle_exe:callid(Call)}
-       ,{<<"Presence-ID">>, kz_attributes:presence_id(Call)}
-       ,{<<"Account-ID">>, kapps_call:account_id(Call)}
-       ,{<<"Account-Realm">>, kapps_call:from_realm(Call)}
-       ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, Data)}
-       ,{<<"Format-From-URI">>, kz_json:is_true(<<"format_from_uri">>, Data)}
-       ,{<<"Hunt-Account-ID">>, get_hunt_account_id(Data, Call)}
-       ,{<<"Flags">>, get_flags(Data, Call)}
-       ,{<<"Custom-SIP-Headers">>, get_sip_headers(Data, Call)}
-       ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
-       ,{<<"To-DID">>, get_to_did(Data, Call)}
-       ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
-       ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
-       ,{<<"Inception">>, get_inception(Call)}
-       ,{<<"Message-ID">>, kapps_call:kvs_fetch(<<"Message-ID">>, Call)}
-       ,{<<"Body">>, kapps_call:kvs_fetch(<<"Body">>, Call)}
+      ,{<<"Application-Name">>, <<"sms">>}
+      ,{<<"Outbound-Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
+      ,{<<"Outbound-Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
+      ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+      ,{<<"Call-ID">>, doodle_exe:callid(Call)}
+      ,{<<"Presence-ID">>, kz_attributes:presence_id(Call)}
+      ,{<<"Account-ID">>, kapps_call:account_id(Call)}
+      ,{<<"Account-Realm">>, kapps_call:from_realm(Call)}
+      ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, Data)}
+      ,{<<"Format-From-URI">>, kz_json:is_true(<<"format_from_uri">>, Data)}
+      ,{<<"Hunt-Account-ID">>, get_hunt_account_id(Data, Call)}
+      ,{<<"Flags">>, get_flags(Data, Call)}
+      ,{<<"Custom-SIP-Headers">>, get_sip_headers(Data, Call)}
+      ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
+      ,{<<"To-DID">>, get_to_did(Data, Call)}
+      ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
+      ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
+      ,{<<"Inception">>, get_inception(Call)}
+      ,{<<"Message-ID">>, kapps_call:kvs_fetch(<<"Message-ID">>, Call)}
+      ,{<<"Body">>, kapps_call:kvs_fetch(<<"Body">>, Call)}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
@@ -186,11 +186,11 @@ get_sip_headers(Data, Call) ->
 -spec get_flags(kz_json:object(), kapps_call:call()) -> 'undefined' | ne_binaries().
 get_flags(Data, Call) ->
     Routines = [fun get_endpoint_flags/3
-                ,fun get_flow_flags/3
-                ,fun get_flow_dynamic_flags/3
-                ,fun get_endpoint_dynamic_flags/3
-                ,fun get_account_dynamic_flags/3
-                ,fun get_resource_flags/3
+	       ,fun get_flow_flags/3
+	       ,fun get_flow_dynamic_flags/3
+	       ,fun get_endpoint_dynamic_flags/3
+	       ,fun get_account_dynamic_flags/3
+	       ,fun get_resource_flags/3
                ],
     lists:foldl(fun(F, A) -> F(Data, Call, A) end, [], Routines).
 
@@ -234,7 +234,7 @@ get_endpoint_dynamic_flags(_, Call, Flags) ->
         {'ok', JObj} ->
             case kz_json:get_value(<<"dynamic_flags">>, JObj) of
                 'undefined' -> Flags;
-                 DynamicFlags ->
+		DynamicFlags ->
                     process_dynamic_flags(DynamicFlags, Flags, Call)
             end
     end.
@@ -242,10 +242,10 @@ get_endpoint_dynamic_flags(_, Call, Flags) ->
 -spec get_account_dynamic_flags(kz_json:object(), kapps_call:call(), ne_binaries()) -> ne_binaries().
 get_account_dynamic_flags(_, Call, Flags) ->
     DynamicFlags = kapps_account_config:get(kapps_call:account_id(Call)
-                                             ,<<"callflow">>
-                                             ,<<"dynamic_flags">>
-                                             ,[]
-                                            ),
+					   ,<<"callflow">>
+					   ,<<"dynamic_flags">>
+					   ,[]
+					   ),
     process_dynamic_flags(DynamicFlags, Flags, Call).
 
 -spec process_dynamic_flags(ne_binaries(), ne_binaries(), kapps_call:call()) -> ne_binaries().

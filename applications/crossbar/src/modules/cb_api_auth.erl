@@ -17,12 +17,12 @@
 -module(cb_api_auth).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
-         ,authorize/1
-         ,authenticate/1
-         ,validate/1
-         ,put/1
+	,allowed_methods/0
+	,resource_exists/0
+	,authorize/1
+	,authenticate/1
+	,validate/1
+	,put/1
         ]).
 
 -include("crossbar.hrl").
@@ -140,8 +140,8 @@ on_successful_validation(Context) ->
                                  cb_context:context().
 validate_by_api_key(Context, ApiKey) ->
     Context1 = crossbar_doc:load_view(?AGG_VIEW_API
-                                      ,[{'key', ApiKey}]
-                                      ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
+				     ,[{'key', ApiKey}]
+				     ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
                                      ),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -151,29 +151,29 @@ validate_by_api_key(Context, ApiKey) ->
 
 validate_by_api_key(Context, ApiKey, []) ->
     lager:debug("api key '~s' not associated with any accounts"
-                ,[ApiKey]
+	       ,[ApiKey]
                ),
     crossbar_util:response_bad_identifier(ApiKey, Context);
 validate_by_api_key(Context, ApiKey, [Doc]) ->
     validate_by_api_key(Context, ApiKey, Doc);
 validate_by_api_key(Context, ApiKey, [Doc|_]) ->
     lager:debug("found multiple accounts with api key '~s', using '~s'"
-                ,[ApiKey, kz_doc:id(Doc)]
+	       ,[ApiKey, kz_doc:id(Doc)]
                ),
     validate_by_api_key(Context, ApiKey, Doc);
 validate_by_api_key(Context, ApiKey, Doc) ->
     lager:debug("found API key '~s' belongs to account ~s", [ApiKey, kz_doc:id(Doc)]),
     cb_context:setters(Context
-                       ,[{fun cb_context:set_resp_status/2, 'success'}
-                         ,{fun cb_context:set_doc/2, kz_json:get_value(<<"value">>, Doc)}
-                        ]
+		      ,[{fun cb_context:set_resp_status/2, 'success'}
+		       ,{fun cb_context:set_doc/2, kz_json:get_value(<<"value">>, Doc)}
+		       ]
                       ).
 
 -spec consume_tokens(cb_context:context()) -> cb_context:context().
 consume_tokens(Context) ->
     case kz_buckets:consume_tokens_until(?APP_NAME
-                                         ,cb_modules_util:bucket_name(Context)
-                                         ,cb_modules_util:token_cost(Context, ?API_AUTH_TOKENS)
+					,cb_modules_util:bucket_name(Context)
+					,cb_modules_util:token_cost(Context, ?API_AUTH_TOKENS)
                                         )
     of
         'true' -> cb_context:set_resp_status(Context, 'success');

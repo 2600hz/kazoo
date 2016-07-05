@@ -11,15 +11,15 @@
 -module(cb_directories).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,content_types_provided/2
-         ,to_pdf/1
-         ,validate/1, validate/2
-         ,put/1
-         ,post/2
-         ,patch/2
-         ,delete/2
+	,allowed_methods/0, allowed_methods/1
+	,resource_exists/0, resource_exists/1
+	,content_types_provided/2
+	,to_pdf/1
+	,validate/1, validate/2
+	,put/1
+	,post/2
+	,patch/2
+	,delete/2
         ]).
 
 -include("crossbar.hrl").
@@ -226,14 +226,14 @@ pdf_props(Context) ->
     Directory = kz_json:to_proplist(kz_json:delete_key(<<"users">>, RespData)),
     Users =
         pdf_users(
-            AccountId
-            ,props:get_binary_value(<<"sort_by">>, Directory, <<"last_name">>)
-            ,kz_json:get_value(<<"users">>, RespData, [])
-        ),
+	  AccountId
+		 ,props:get_binary_value(<<"sort_by">>, Directory, <<"last_name">>)
+		 ,kz_json:get_value(<<"users">>, RespData, [])
+	 ),
 
     [{<<"type">>, <<"directory">>}
-     ,{<<"users">>, Users}
-     ,{<<"directory">>, Directory}
+    ,{<<"users">>, Users}
+    ,{<<"directory">>, Directory}
     ].
 
 %%--------------------------------------------------------------------
@@ -254,9 +254,9 @@ pdf_users(AccountDb, SortBy, [JObj|Users], Acc) ->
     UserId = kz_json:get_value(<<"user_id">>, JObj),
     CallflowId = kz_json:get_value(<<"callflow_id">>, JObj),
     Props = [
-        {<<"user">>, pdf_user(AccountDb, UserId)}
-        ,{<<"callflow">>, pdf_callflow(AccountDb, CallflowId)}
-    ],
+	     {<<"user">>, pdf_user(AccountDb, UserId)}
+	    ,{<<"callflow">>, pdf_callflow(AccountDb, CallflowId)}
+	    ],
     pdf_users(AccountDb, SortBy, Users, [Props|Acc]).
 
 %%--------------------------------------------------------------------
@@ -318,9 +318,9 @@ read(Id, Context) ->
 -spec load_directory_users(ne_binary(), cb_context:context()) -> cb_context:context().
 load_directory_users(Id, Context) ->
     Context1 = crossbar_doc:load_view(?CB_USERS_LIST
-                                      ,[{<<"key">>, Id}]
-                                      ,Context
-                                      ,fun normalize_users_results/2
+				     ,[{<<"key">>, Id}]
+				     ,Context
+				     ,fun normalize_users_results/2
                                      ),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -364,7 +364,7 @@ validate_patch(DocId, Context) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
-                       ,kz_doc:set_type(cb_context:doc(Context), <<"directory">>)
+		      ,kz_doc:set_type(cb_context:doc(Context), <<"directory">>)
                       );
 on_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"directory">>)).
@@ -393,7 +393,7 @@ normalize_view_results(JObj, Acc) ->
 -spec normalize_users_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_users_results(JObj, Acc) ->
     [kz_json:from_list([{<<"user_id">>, kz_doc:id(JObj)}
-                        ,{<<"callflow_id">>, kz_json:get_value(<<"value">>, JObj)}
+		       ,{<<"callflow_id">>, kz_json:get_value(<<"value">>, JObj)}
                        ])
      | Acc
     ].

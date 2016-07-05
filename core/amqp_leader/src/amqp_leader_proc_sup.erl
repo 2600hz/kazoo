@@ -20,7 +20,7 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILDREN, [?WORKER_ARGS('amqp_leader_listener', [Name])
-                   ,?WORKER_ARGS('amqp_leader_proc', [Name, Nodes, Opts, Module, [], []])
+		  ,?WORKER_ARGS('amqp_leader_proc', [Name, Nodes, Opts, Module, [], []])
                   ]).
 
 %%%===================================================================

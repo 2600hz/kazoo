@@ -18,10 +18,10 @@
 -export([is_analysis/1]).
 
 -record(ci_analysis, {call_id
-                      ,originate_type
-                      ,terminate_type
-                      ,failure_location
-                      ,reason
+		     ,originate_type
+		     ,terminate_type
+		     ,failure_location
+		     ,reason
                      }).
 -type analysis() :: #ci_analysis{}.
 
@@ -82,9 +82,9 @@ to_json(#ci_analysis{}=Analysis) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"originate_type">>, originate_type(Analysis)}
-         ,{<<"terminate_type">>, terminate_type(Analysis)}
-         ,{<<"failure_location">>, failure_location(Analysis)}
-         ,{<<"reason">>, reason(Analysis)}
+	,{<<"terminate_type">>, terminate_type(Analysis)}
+	,{<<"failure_location">>, failure_location(Analysis)}
+	,{<<"reason">>, reason(Analysis)}
         ])
      ).
 

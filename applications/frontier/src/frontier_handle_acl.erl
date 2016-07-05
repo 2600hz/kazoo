@@ -9,7 +9,7 @@
 -module(frontier_handle_acl).
 
 -export([handle_acl_req/2
-         ,lookup_acl_records/1, lookup_acl_records/2
+	,lookup_acl_records/1, lookup_acl_records/2
         ]).
 
 -include("frontier.hrl").
@@ -30,7 +30,7 @@ send_response(Reqest, Responses) ->
     ServerID = kz_json:get_value(<<"Server-ID">>, Reqest),
     {DeviceACLs, RealmACLs} = lists:partition(fun frontier_utils:is_device/1, Responses),
     Resp = lists:foldl(fun kz_json:merge_jobjs/2, RespStub, [make_section(DeviceACLs, <<"Device">>)
-                                                             ,make_section(RealmACLs, <<"Realm">>)
+							    ,make_section(RealmACLs, <<"Realm">>)
                                                             ]),
     lager:debug("publishing response"),
     kapi_frontier:publish_acls_resp(ServerID, Resp).
@@ -46,11 +46,11 @@ make_section([JObj], Section) ->
     make_section(Section, Order, CIDRs, UserAgent).
 make_section(_, Order, CIDRs, _) when Order =:= 'undefined'
                                       orelse CIDRs =:= 'undefined' ->
-        kz_json:new();
+    kz_json:new();
 make_section(Section, Order, CIDRs, UserAgent) ->
     Props = props:filter_undefined([{<<"Order">>, Order}
-                                    ,{<<"CIDR">>, CIDRs}
-                                    ,{<<"User-Agent">>, UserAgent}
+				   ,{<<"CIDR">>, CIDRs}
+				   ,{<<"User-Agent">>, UserAgent}
                                    ]),
     kz_json:from_list([{Section, kz_json:from_list(Props)}]).
 
@@ -105,17 +105,17 @@ make_deny_acl(Entity, IncludeRealm) ->
                _ -> <<"realm">>
            end,
     ACL = kz_json:from_list([{<<"order">>, <<"allow,deny">>}
-                             ,{<<"cidrs">>, [<<"0.0.0.0/0">>]}
+			    ,{<<"cidrs">>, [<<"0.0.0.0/0">>]}
                             ]),
     Value = kz_json:from_list([{<<"type">>, Type}
-                               ,{<<"acls">>, ACL}
+			      ,{<<"acls">>, ACL}
                               ]),
     Record = kz_json:from_list([{<<"id">>, 'undefined'}
-                                ,{<<"key">>, Entity}
-                                ,{<<"value">>, Value}
+			       ,{<<"key">>, Entity}
+			       ,{<<"value">>, Value}
                                ]),
     case IsDevice
-         andalso IncludeRealm
+	andalso IncludeRealm
     of
         'true' -> [Record | make_deny_acl(Realm)];
         _ -> [Record]

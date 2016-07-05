@@ -14,22 +14,22 @@
 -module(cb_users_v2).
 
 -export([create_user/1
-         ,user_devices/1
+	,user_devices/1
         ]).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,content_types_provided/1, content_types_provided/2, content_types_provided/3, content_types_provided/4
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-         ,validate_resource/1, validate_resource/2, validate_resource/3, validate_resource/4
-         ,billing/1
-         ,authenticate/1
-         ,authorize/1
-         ,validate/1, validate/2, validate/3, validate/4
-         ,put/1
-         ,post/2, post/3
-         ,delete/2 ,delete/3
-         ,patch/2
+	,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+	,content_types_provided/1, content_types_provided/2, content_types_provided/3, content_types_provided/4
+	,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+	,validate_resource/1, validate_resource/2, validate_resource/3, validate_resource/4
+	,billing/1
+	,authenticate/1
+	,authorize/1
+	,validate/1, validate/2, validate/3, validate/4
+	,put/1
+	,post/2, post/3
+	,delete/2 ,delete/3
+	,patch/2
         ]).
 
 -include("crossbar.hrl").
@@ -109,12 +109,12 @@ content_types_provided(Context, _) ->
     Context.
 content_types_provided(Context, _, ?VCARD) ->
     cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"text">>, <<"x-vcard">>}
-                                                                   ,{<<"text">>, <<"directory">>}
+								  ,{<<"text">>, <<"directory">>}
                                                                   ]}
                                                    ]);
 content_types_provided(Context, _, ?PHOTO) ->
     cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"application">>, <<"octet-stream">>}
-                                                                   ,{<<"application">>, <<"base64">>}
+								  ,{<<"application">>, <<"base64">>}
                                                                   ]}
                                                    ]);
 content_types_provided(Context, _, _) ->
@@ -209,10 +209,10 @@ validate_user_id(UserId, Context) ->
         {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
         {'error', 'not_found'} ->
             cb_context:add_system_error(
-                'bad_identifier'
-                ,kz_json:from_list([{<<"cause">>, UserId}])
-                ,Context
-            );
+	      'bad_identifier'
+				       ,kz_json:from_list([{<<"cause">>, UserId}])
+				       ,Context
+	     );
         {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
 
@@ -220,15 +220,15 @@ validate_user_id(UserId, Context, Doc) ->
     case kz_doc:is_soft_deleted(Doc) of
         'true' ->
             cb_context:add_system_error(
-                'bad_identifier'
-                ,kz_json:from_list([{<<"cause">>, UserId}])
-                ,Context
-            );
+	      'bad_identifier'
+				       ,kz_json:from_list([{<<"cause">>, UserId}])
+				       ,Context
+	     );
         'false'->
             cb_context:setters(Context
-                               ,[{fun cb_context:set_user_id/2, UserId}
-                                 ,{fun cb_context:set_resp_status/2, 'success'}
-                                ])
+			      ,[{fun cb_context:set_user_id/2, UserId}
+			       ,{fun cb_context:set_resp_status/2, 'success'}
+			       ])
     end.
 
 %%--------------------------------------------------------------------
@@ -315,13 +315,13 @@ post(Context, UserId, ?PHOTO) ->
 put(Context) ->
     Callback =
         fun() ->
-            Context1 = crossbar_doc:save(Context),
-            case cb_context:resp_status(Context1) of
-                'success' ->
-                    _ = maybe_send_email(Context1),
-                    Context1;
-                _ -> Context1
-            end
+		Context1 = crossbar_doc:save(Context),
+		case cb_context:resp_status(Context1) of
+		    'success' ->
+			_ = maybe_send_email(Context1),
+			Context1;
+		    _ -> Context1
+		end
         end,
     crossbar_services:maybe_dry_run(Context, Callback).
 
@@ -350,14 +350,14 @@ patch(Context, _Id) ->
 load_attachment(AttachmentId, Context) ->
     cb_context:add_resp_headers(
       crossbar_doc:load_attachment(cb_context:doc(Context)
-                                   ,AttachmentId
-                                   ,?TYPE_CHECK_OPTION(kzd_user:type())
-                                   ,Context
+				  ,AttachmentId
+				  ,?TYPE_CHECK_OPTION(kzd_user:type())
+				  ,Context
                                   )
-      ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
-        ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
-        ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
-       ]).
+			       ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
+				,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
+				,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
+				]).
 
 load_attachment(UserId, AttachmentId, Context) ->
     Context1 = load_user(UserId, Context),
@@ -397,7 +397,7 @@ update_devices_presence(Context) ->
 update_devices_presence(Context, DeviceDocs) ->
     lists:foreach(
       fun(DeviceDoc) -> update_device_presence(Context, DeviceDoc) end
-      ,DeviceDocs
+		 ,DeviceDocs
      ).
 
 -spec user_devices(cb_context:context()) ->
@@ -450,15 +450,15 @@ send_email(Context) ->
     Doc = cb_context:doc(Context),
     ReqData = cb_context:req_data(Context),
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
-           ,{<<"User-ID">>, kz_doc:id(Doc)}
-           ,{<<"Password">>, kz_json:get_value(<<"password">>, ReqData)}
+	  ,{<<"User-ID">>, kz_doc:id(Doc)}
+	  ,{<<"Password">>, kz_json:get_value(<<"password">>, ReqData)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case
         kapps_util:amqp_pool_request(
           Req
-          ,fun kapi_notifications:publish_new_user/1
-          ,fun kapi_notifications:new_user_v/1
+				    ,fun kapi_notifications:publish_new_user/1
+				    ,fun kapi_notifications:new_user_v/1
          )
     of
         {'ok', _Resp} ->
@@ -478,9 +478,9 @@ send_email(Context) ->
 load_user_summary(Context) ->
     Context1 = crossbar_doc:load_view(
                  ?CB_LIST
-                 ,[]
-                 ,Context
-                 ,fun normalize_view_results/2
+				     ,[]
+				     ,Context
+				     ,fun normalize_view_results/2
                 ),
     fix_envelope(Context1).
 
@@ -588,9 +588,9 @@ maybe_import_credintials(UserId, Context) ->
         Creds ->
             RemoveKeys = [<<"credentials">>, <<"pvt_sha1_auth">>],
             C = cb_context:set_doc(Context
-                                   ,kz_json:set_value(<<"pvt_md5_auth">>, Creds
-                                                      ,kz_json:delete_keys(RemoveKeys, JObj)
-                                                     )
+				  ,kz_json:set_value(<<"pvt_md5_auth">>, Creds
+						    ,kz_json:delete_keys(RemoveKeys, JObj)
+						    )
                                   ),
             maybe_validate_username(UserId, C)
     end.
@@ -656,12 +656,12 @@ required_password_error(Context) ->
                           cb_context:context().
 rehash_creds(_UserId, 'undefined', _Password, Context) ->
     cb_context:add_validation_error(
-        <<"username">>
-        ,<<"required">>
-        ,kz_json:from_list(
-           [{<<"message">>, <<"The user name must be provided when updating the password">>}]
-          )
-        ,Context
+      <<"username">>
+				   ,<<"required">>
+				   ,kz_json:from_list(
+				      [{<<"message">>, <<"The user name must be provided when updating the password">>}]
+				     )
+				   ,Context
      );
 rehash_creds(_UserId, Username, Password, Context) ->
     lager:debug("password set on doc, updating hashes for ~s", [Username]),

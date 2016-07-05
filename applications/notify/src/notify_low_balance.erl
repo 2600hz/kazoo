@@ -11,7 +11,7 @@
 -module(notify_low_balance).
 
 -export([init/0, send/2
-         ,handle_req/2
+	,handle_req/2
         ]).
 -export([collect_recipients/1]).
 
@@ -42,7 +42,7 @@ handle_req(JObj, _Props) ->
     'true' = kapi_notifications:low_balance_v(JObj),
     {'ok', Account} = kz_account:fetch(kz_json:get_value(<<"Account-ID">>, JObj)),
     send(kz_json:get_integer_value(<<"Current-Balance">>, JObj)
-         ,Account
+	,Account
         ).
 
 %%--------------------------------------------------------------------
@@ -79,9 +79,9 @@ create_template_props(CurrentBalance, Account) ->
     AccountDb = kz_util:format_account_id(kz_doc:id(Account), 'encoded'),
     Threshold = notify_account_crawler:low_balance_threshold(AccountDb),
     [{<<"account">>, notify_util:json_to_template_props(Account)}
-     ,{<<"service">>, notify_util:get_service_props(kz_json:new(), Account, ?MOD_CONFIG_CAT)}
-     ,{<<"current_balance">>, pretty_print_dollars(wht_util:units_to_dollars(CurrentBalance))}
-     ,{<<"threshold">>, pretty_print_dollars(Threshold)}
+    ,{<<"service">>, notify_util:get_service_props(kz_json:new(), Account, ?MOD_CONFIG_CAT)}
+    ,{<<"current_balance">>, pretty_print_dollars(wht_util:units_to_dollars(CurrentBalance))}
+    ,{<<"threshold">>, pretty_print_dollars(Threshold)}
     ].
 
 %%--------------------------------------------------------------------
@@ -108,17 +108,17 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     From = props:get_value(<<"send_from">>, Service),
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
-                 ,[{<<"From">>, From}
-                   ,{<<"To">>, To}
-                   ,{<<"Subject">>, Subject}
-                  ]
-             ,[]
-             ,[{<<"multipart">>, <<"alternative">>, [], []
-                ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
-                  ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
-                 ]
-               }
-              ]
+	    ,[{<<"From">>, From}
+	     ,{<<"To">>, To}
+	     ,{<<"Subject">>, Subject}
+	     ]
+	    ,[]
+	    ,[{<<"multipart">>, <<"alternative">>, [], []
+	      ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
+	       ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
+	       ]
+	      }
+	     ]
             },
     notify_util:send_email(From, To, Email).
 
@@ -137,19 +137,19 @@ collect_recipients(AccountId) ->
 get_email(MasterAccountId, MasterAccountId) ->
     AccountDb = kz_util:format_account_id(MasterAccountId, 'encoded'),
     lager:debug("attempting to email low balance to master account ~s"
-                ,[MasterAccountId]
+	       ,[MasterAccountId]
                ),
     case kz_datamgr:open_doc(AccountDb, MasterAccountId) of
         {'ok', JObj} -> find_billing_email(JObj);
         {'error', _R} ->
             lager:error("could not open account ~s : ~p"
-                        ,[MasterAccountId, _R]
+		       ,[MasterAccountId, _R]
                        ),
             'undefined'
     end;
 get_email(AccountId, MasterAccountId) ->
     lager:debug("attempting to email low balance to account ~s"
-                ,[AccountId]
+	       ,[AccountId]
                ),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_doc(AccountDb, AccountId) of
@@ -164,7 +164,7 @@ get_email(JObj, AccountId, MasterAccountId) ->
     case find_billing_email(JObj) of
         'undefined' ->
             lager:debug("billing contact email not set or low balance disabled for account ~s"
-                        ,[AccountId]
+		       ,[AccountId]
                        ),
             ResellerId = kz_services:find_reseller_id(AccountId),
             get_email(ResellerId, MasterAccountId);
@@ -182,8 +182,8 @@ find_billing_email(JObj) ->
 -spec is_notify_enabled(kz_json:object()) -> boolean().
 is_notify_enabled(JObj) ->
     case kz_json:get_value([<<"notifications">>
-                            ,<<"low_balance">>
-                            ,<<"enabled">>
+			   ,<<"low_balance">>
+			   ,<<"enabled">>
                            ], JObj)
     of
         'undefined' -> is_notify_enabled_default();

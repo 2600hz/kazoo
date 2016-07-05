@@ -9,24 +9,24 @@
 -module(kz_notification).
 
 -export([macros/1, set_macros/2
-         ,macro/2, set_macro/3
-         ,subject/1, set_subject/2
-         ,category/1, set_category/2
-         ,name/1, set_name/2
+	,macro/2, set_macro/3
+	,subject/1, set_subject/2
+	,category/1, set_category/2
+	,name/1, set_name/2
 
-         ,to/1, set_to/2, to_email_addresses/1, to_email_type/1
-         ,cc/1, set_cc/2, cc_email_addresses/1, cc_email_type/1
-         ,bcc/1, set_bcc/2, bcc_email_addresses/1, bcc_email_type/1
+	,to/1, set_to/2, to_email_addresses/1, to_email_type/1
+	,cc/1, set_cc/2, cc_email_addresses/1, cc_email_type/1
+	,bcc/1, set_bcc/2, bcc_email_addresses/1, bcc_email_type/1
 
-         ,from/1, set_from/2
-         ,reply_to/1, set_reply_to/2
+	,from/1, set_from/2
+	,reply_to/1, set_reply_to/2
 
-         ,id/1, db_id/1, resp_id/1
+	,id/1, db_id/1, resp_id/1
 
-         ,set_base_properties/1, set_base_properties/2
-         ,pvt_type/0, pvt_type/1
+	,set_base_properties/1, set_base_properties/2
+	,pvt_type/0, pvt_type/1
 
-         ,is_enabled/1, is_enabled/2
+	,is_enabled/1, is_enabled/2
         ]).
 
 -type doc() :: kz_json:object().
@@ -184,7 +184,7 @@ set_base_properties(JObj) ->
 
 set_base_properties(JObj, Id) ->
     kz_json:set_values([{<<"pvt_type">>, ?PVT_TYPE}
-                        ,{<<"_id">>, db_id(Id)}
+		       ,{<<"_id">>, db_id(Id)}
                        ], JObj).
 
 -spec pvt_type() -> ne_binary().

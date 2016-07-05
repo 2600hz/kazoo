@@ -26,6 +26,7 @@ test:
   pre:
     - ./scripts/validate-js.sh $(find applications core -iname '*.json')
     - ./scripts/code_checks.bash
+    - make fmt
     - . ~/.kerl/$OTP_VERSION/activate && make
     - |
       if [[ 0 -ne `git status --porcelain | wc -l` ]]; then

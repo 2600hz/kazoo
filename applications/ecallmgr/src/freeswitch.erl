@@ -1,34 +1,34 @@
 -module(freeswitch).
 
 -export([version/1
-         ,version/2
+	,version/2
         ]).
 -export([noevents/1]).
 -export([close/1]).
 -export([getpid/1
-         ,getpid/2
+	,getpid/2
         ]).
 -export([bind/2
-         ,bind/3
+	,bind/3
         ]).
 -export([fetch_reply/4
-         ,fetch_reply/5
+	,fetch_reply/5
         ]).
 -export([api/2
-         ,api/3
-         ,api/4
+	,api/3
+	,api/4
         ]).
 -export([bgapi/3
-         ,bgapi/4
-         ,bgapi/5
-         ,bgapi/6
+	,bgapi/4
+	,bgapi/5
+	,bgapi/6
         ]).
 -export([event/2
-         ,event/3
+	,event/3
         ]).
 -export([nixevent/2]).
 -export([sendevent/3
-         ,sendevent_custom/3
+	,sendevent_custom/3
         ]).
 -export([sendmsg/3]).
 
@@ -48,7 +48,7 @@ version(Node, Timeout) ->
     catch
         _E:_R ->
             lager:info("failed to get mod_kazoo version from ~s: ~p ~p"
-                       ,[Node, _E, _R]),
+		      ,[Node, _E, _R]),
             {'error', 'exception'}
     end.
 
@@ -87,7 +87,7 @@ bind(Node, Type, Timeout) ->
     catch
         _E:_R ->
             lager:info("failed to get bind to ~p on ~s: ~p ~p"
-                       ,[Type, Node, _E, _R]),
+		      ,[Type, Node, _E, _R]),
             {'error', 'exception'}
     end.
 
@@ -106,7 +106,7 @@ fetch_reply(Node, FetchID, Section, Reply, Timeout) ->
     catch
         _E:_R ->
             lager:info("failed to send fetch reply to ~s: ~p ~p"
-                       ,[Node, _E, _R]),
+		      ,[Node, _E, _R]),
             {'error', 'exception'}
     end.
 
@@ -121,7 +121,7 @@ api(Node, Cmd, Args, Timeout) ->
     catch
         _E:_R ->
             lager:info("failed to execute api command ~s on ~s: ~p ~p"
-                       ,[Cmd, Node, _E, _R]),
+		      ,[Cmd, Node, _E, _R]),
             {'error', 'exception'}
     end.
 
@@ -152,7 +152,7 @@ bgapi(Node, Cmd, Args) ->
                   catch
                       _E:_R ->
                           lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
-                                     ,[Cmd, Node, _E, _R]),
+				    ,[Cmd, Node, _E, _R]),
                           Self ! {'api', {'error', 'exception'}}
                   end
           end),
@@ -182,7 +182,7 @@ bgapi(Node, Cmd, Args, Fun) when is_function(Fun, 2) ->
                   catch
                       _E:_R ->
                           lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
-                                     ,[Cmd, Node, _E, _R]),
+				    ,[Cmd, Node, _E, _R]),
                           Self ! {'api', {'error', 'exception'}}
                   end
           end),
@@ -215,7 +215,7 @@ bgapi(Node, Cmd, Args, Fun, CallBackParams) when is_function(Fun, 3) ->
                   catch
                       _E:_R ->
                           lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
-                                     ,[Cmd, Node, _E, _R]),
+				    ,[Cmd, Node, _E, _R]),
                           Self ! {'api', {'error', 'exception'}}
                   end
           end),
@@ -248,7 +248,7 @@ bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun) when is_function(Fun, 6) ->
                   catch
                       _E:_R ->
                           lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
-                                     ,[Cmd, Node, _E, _R]),
+				    ,[Cmd, Node, _E, _R]),
                           Self ! {'api', {'error', 'exception'}}
                   end
           end),
@@ -275,7 +275,7 @@ event(Node, [_|_]=Events, Timeout) ->
     catch
         _E:_R ->
             lager:info("failed to bind to events on ~s: ~p ~p"
-                       ,[Node, _E, _R]),
+		      ,[Node, _E, _R]),
             {'error', 'exception'}
     end;
 event(Node, Event, Timeout) ->

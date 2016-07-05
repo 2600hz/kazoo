@@ -13,9 +13,9 @@
 -module(cb_hotdesks).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
-         ,validate/1
+	,allowed_methods/0
+	,resource_exists/0
+	,validate/1
         ]).
 
 -include("crossbar.hrl").

@@ -15,111 +15,111 @@
 
 -export([presence/2, presence/3, presence/4, presence/5]).
 -export([channel_status/1, channel_status/2
-         ,channel_status_command/1, channel_status_command/2
-         ,b_channel_status/1
+	,channel_status_command/1, channel_status_command/2
+	,b_channel_status/1
         ]).
 
 -export([response/2, response/3, response/4]).
 
 -export([relay_event/2, relay_event/3
-         ,receive_event/1, receive_event/2
-         ,get_event_type/1
+	,receive_event/1, receive_event/2
+	,get_event_type/1
         ]).
 
 -export([audio_macro/2]).
 -export([pickup/2, pickup/3, pickup/4, pickup/5, pickup/6
-         ,pickup_command/2, pickup_command/3, pickup_command/4, pickup_command/5, pickup_command/6
-         ,b_pickup/2, b_pickup/3, b_pickup/4, b_pickup/5, b_pickup/6
+	,pickup_command/2, pickup_command/3, pickup_command/4, pickup_command/5, pickup_command/6
+	,b_pickup/2, b_pickup/3, b_pickup/4, b_pickup/5, b_pickup/6
         ]).
 -export([connect_leg/2, connect_leg/3, connect_leg/4, connect_leg/5, connect_leg/6
-         ,connect_leg_command/2, connect_leg_command/3, connect_leg_command/4, connect_leg_command/5, connect_leg_command/6
-         ,b_connect_leg/2, b_connect_leg/3, b_connect_leg/4, b_connect_leg/5, b_connect_leg/6
+	,connect_leg_command/2, connect_leg_command/3, connect_leg_command/4, connect_leg_command/5, connect_leg_command/6
+	,b_connect_leg/2, b_connect_leg/3, b_connect_leg/4, b_connect_leg/5, b_connect_leg/6
         ]).
 -export([redirect/2
-         ,redirect/3
-         ,redirect_to_node/3
+	,redirect/3
+	,redirect_to_node/3
         ]).
 -export([answer/1, answer_now/1
-         ,hangup/1, hangup/2
-         ,break/1
-         ,queued_hangup/1
-         ,set/3, set_terminators/2
-         ,fetch/1, fetch/2
+	,hangup/1, hangup/2
+	,break/1
+	,queued_hangup/1
+	,set/3, set_terminators/2
+	,fetch/1, fetch/2
         ]).
 -export([echo/1]).
 -export([ring/1]).
 -export([receive_fax/1
-         ,receive_fax/2
-         ,receive_fax/3
-         ,receive_fax/4
-         ,b_receive_fax/1
+	,receive_fax/2
+	,receive_fax/3
+	,receive_fax/4
+	,b_receive_fax/1
         ]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7
-         ,b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7, b_bridge/8
-         ,unbridge/1, unbridge/2, unbridge/3
-         ,b_bridge_wait/2
+	,b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7, b_bridge/8
+	,unbridge/1, unbridge/2, unbridge/3
+	,b_bridge_wait/2
         ]).
 -export([page/2, page/3, page/4, page/5, page/6]).
 -export([hold/1, hold/2
-         ,hold_command/1, hold_command/2
-         ,b_hold/1, b_hold/2, b_hold/3
-         ,park/1
-         ,park_command/1
+	,hold_command/1, hold_command/2
+	,b_hold/1, b_hold/2, b_hold/3
+	,park/1
+	,park_command/1
         ]).
 -export([soft_hold/1, soft_hold/2
-         ,soft_hold_command/2, soft_hold_command/4, soft_hold_command/5
+	,soft_hold_command/2, soft_hold_command/4, soft_hold_command/5
         ]).
 -export([play/2, play/3, play/4
-         ,play_command/2, play_command/3, play_command/4
-         ,b_play/2, b_play/3, b_play/4
+	,play_command/2, play_command/3, play_command/4
+	,b_play/2, b_play/3, b_play/4
         ]).
 -export([prompt/2, prompt/3]).
 
 -export([tts/2, tts/3, tts/4, tts/5, tts/6
-         ,b_tts/2, b_tts/3, b_tts/4, b_tts/5, b_tts/6
-         ,tts_command/2, tts_command/3, tts_command/4, tts_command/5, tts_command/6
+	,b_tts/2, b_tts/3, b_tts/4, b_tts/5, b_tts/6
+	,tts_command/2, tts_command/3, tts_command/4, tts_command/5, tts_command/6
         ]).
 
 -export([record/2, record/3, record/4, record/5, record/6]).
 -export([record_call/2, record_call/3, record_call/4, record_call/5
-         ,b_record_call/2, b_record_call/3, b_record_call/4, b_record_call/5
-         ,start_record_call/2, start_record_call/3, start_record_call/4
-         ,stop_record_call/2
+	,b_record_call/2, b_record_call/3, b_record_call/4, b_record_call/5
+	,start_record_call/2, start_record_call/3, start_record_call/4
+	,stop_record_call/2
         ]).
 -export([store/3, store/4, store/5, store/6
-         ,store_fax/2, store_fax/3
+	,store_fax/2, store_fax/3
         ]).
 -export([tones/2]).
 -export([prompt_and_collect_digit/2]).
 -export([prompt_and_collect_digits/4, prompt_and_collect_digits/5
-         ,prompt_and_collect_digits/6, prompt_and_collect_digits/7
-         ,prompt_and_collect_digits/8, prompt_and_collect_digits/9
+	,prompt_and_collect_digits/6, prompt_and_collect_digits/7
+	,prompt_and_collect_digits/8, prompt_and_collect_digits/9
         ]).
 -export([play_and_collect_digit/2]).
 -export([play_and_collect_digits/4, play_and_collect_digits/5
-         ,play_and_collect_digits/6, play_and_collect_digits/7
-         ,play_and_collect_digits/8, play_and_collect_digits/9
+	,play_and_collect_digits/6, play_and_collect_digits/7
+	,play_and_collect_digits/8, play_and_collect_digits/9
         ]).
 -export([say/2, say/3, say/4, say/5, say/6
-         ,say_command/2, say_command/3, say_command/4, say_command/5, say_command/6
-         ,b_say/2, b_say/3, b_say/4, b_say/5, b_say/6
+	,say_command/2, say_command/3, say_command/4, say_command/5, say_command/6
+	,b_say/2, b_say/3, b_say/4, b_say/5, b_say/6
         ]).
 
 -export([conference/2, conference/3
-         ,conference/4, conference/5
-         ,conference/6, conference/7
+	,conference/4, conference/5
+	,conference/6, conference/7
         ]).
 -export([b_conference/2, b_conference/3
-         ,b_conference/4, b_conference/5
-         ,b_conference/6, b_conference/7
+	,b_conference/4, b_conference/5
+	,b_conference/6, b_conference/7
         ]).
 
 -export([noop/1]).
 -export([flush/1, flush_dtmf/1
-         ,send_dtmf/2, send_dtmf/3
+	,send_dtmf/2, send_dtmf/3
         ]).
 -export([privacy/1
-         ,privacy/2
+	,privacy/2
         ]).
 
 -export([b_answer/1, b_hangup/1, b_hangup/2, b_fetch/1, b_fetch/2]).
@@ -131,61 +131,61 @@
 -export([b_prompt/2, b_prompt/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
 -export([b_store/3, b_store/4, b_store/5, b_store/6
-         ,b_store_fax/2
-         ,b_store_vm/6
+	,b_store_fax/2
+	,b_store_vm/6
         ]).
 -export([b_prompt_and_collect_digit/2]).
 -export([b_prompt_and_collect_digits/4, b_prompt_and_collect_digits/5
-         ,b_prompt_and_collect_digits/6, b_prompt_and_collect_digits/7
-         ,b_prompt_and_collect_digits/8, b_prompt_and_collect_digits/9
+	,b_prompt_and_collect_digits/6, b_prompt_and_collect_digits/7
+	,b_prompt_and_collect_digits/8, b_prompt_and_collect_digits/9
         ]).
 -export([b_play_and_collect_digit/2]).
 -export([b_play_and_collect_digits/4, b_play_and_collect_digits/5
-         ,b_play_and_collect_digits/6, b_play_and_collect_digits/7
-         ,b_play_and_collect_digits/8, b_play_and_collect_digits/9
+	,b_play_and_collect_digits/6, b_play_and_collect_digits/7
+	,b_play_and_collect_digits/8, b_play_and_collect_digits/9
         ]).
 
 -export([b_noop/1]).
 -export([b_flush/1]).
 -export([b_privacy/1
-         ,b_privacy/2
+	,b_privacy/2
         ]).
 
 -export([wait_for_message/2, wait_for_message/3
-         ,wait_for_message/4, wait_for_message/5
+	,wait_for_message/4, wait_for_message/5
         ]).
 -export([wait_for_application/2, wait_for_application/3
-         ,wait_for_application/4, wait_for_application/5
+	,wait_for_application/4, wait_for_application/5
         ]).
 -export([wait_for_headless_application/1, wait_for_headless_application/2
-         ,wait_for_headless_application/3, wait_for_headless_application/4
-         ,wait_for_headless_application/5
+	,wait_for_headless_application/3, wait_for_headless_application/4
+	,wait_for_headless_application/5
         ]).
 -export([wait_for_bridge/2, wait_for_bridge/3]).
 -export([wait_for_channel_bridge/0, wait_for_channel_unbridge/0]).
 -export([wait_for_dtmf/1]).
 -export([wait_for_noop/2]).
 -export([wait_for_hangup/0, wait_for_hangup/1
-         ,wait_for_unbridge/0, wait_for_unbridge/1
-       ]).
+	,wait_for_unbridge/0, wait_for_unbridge/1
+	]).
 -export([wait_for_application_or_dtmf/2]).
 -export([collect_digits/2, collect_digits/3
-         ,collect_digits/4, collect_digits/5
-         ,collect_digits/6
+	,collect_digits/4, collect_digits/5
+	,collect_digits/6
         ]).
 -export([send_command/2]).
 
 -export([default_collect_timeout/0
-         ,default_digit_timeout/0
-         ,default_interdigit_timeout/0
-         ,default_message_timeout/0
-         ,default_application_timeout/0
+	,default_digit_timeout/0
+	,default_interdigit_timeout/0
+	,default_message_timeout/0
+	,default_application_timeout/0
         ]).
 
 -export([start_fax_detection/3
-         ,stop_fax_detection/1
-         ,fax_detection/3
-         ,wait_for_fax_detection/2
+	,stop_fax_detection/1
+	,fax_detection/3
+	,wait_for_fax_detection/2
         ]).
 
 -export([wait_for_unparked_call/1, wait_for_unparked_call/2]).
@@ -206,7 +206,7 @@
                               {'tts', ne_binary(), ne_binary(), ne_binary()}.
 -type audio_macro_prompts() :: [audio_macro_prompt()].
 -export_type([audio_macro_prompt/0
-              ,audio_macro_prompts/0
+	     ,audio_macro_prompts/0
              ]).
 
 -define(CONFIG_CAT, <<"call_command">>).
@@ -276,20 +276,20 @@ presence(State, PresenceId, CallId, Call) ->
 presence(State, PresenceId, CallId, TargetURI, 'undefined') ->
     Command = props:filter_undefined(
                 [{<<"Presence-ID">>, PresenceId}
-                 ,{<<"From">>, TargetURI}
-                 ,{<<"State">>, State}
-                 ,{<<"Call-ID">>, CallId}
+		,{<<"From">>, TargetURI}
+		,{<<"State">>, State}
+		,{<<"Call-ID">>, CallId}
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     kapi_presence:publish_update(Command);
 presence(State, PresenceId, CallId, TargetURI, Call) ->
     Command = props:filter_undefined(
                 [{<<"Presence-ID">>, PresenceId}
-                 ,{<<"From">>, TargetURI}
-                 ,{<<"From-Tag">>, kapps_call:from_tag(Call)}
-                 ,{<<"To-Tag">>, kapps_call:to_tag(Call)}
-                 ,{<<"State">>, State}
-                 ,{<<"Call-ID">>, CallId}
+		,{<<"From">>, TargetURI}
+		,{<<"From-Tag">>, kapps_call:from_tag(Call)}
+		,{<<"To-Tag">>, kapps_call:to_tag(Call)}
+		,{<<"State">>, State}
+		,{<<"Call-ID">>, CallId}
                  | kz_api:default_headers(module_as_app(Call), ?APP_VERSION)
                 ]),
     kapi_presence:publish_update(Command).
@@ -325,7 +325,7 @@ channel_status_command(CallId) ->
 channel_status_command(<<_/binary>> = CallId, ActiveOnly) ->
     props:filter_undefined(
       [{<<"Call-ID">>, CallId}
-       ,{<<"Active-Only">>, ActiveOnly}
+      ,{<<"Active-Only">>, ActiveOnly}
       ]);
 channel_status_command(Call, ActiveOnly) ->
     channel_status_command(kapps_call:call_id(Call), ActiveOnly).
@@ -342,8 +342,8 @@ b_channel_status(ChannelId) when is_binary(ChannelId) ->
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     Resp = kz_amqp_worker:call_collect(Command
-                                       ,fun(C) -> kapi_call:publish_channel_status_req(ChannelId, C) end
-                                       ,{'ecallmgr', 'true'}
+				      ,fun(C) -> kapi_call:publish_channel_status_req(ChannelId, C) end
+				      ,{'ecallmgr', 'true'}
                                       ),
     case Resp of
         {'error', _}=E -> E;
@@ -408,12 +408,12 @@ audio_macro([], Call, Queue) ->
     NoopId = kz_datamgr:get_uuid(),
     Prompts = [kz_json:from_list(
                  [{<<"Application-Name">>, <<"noop">>}
-                  ,{<<"Msg-ID">>, NoopId}
-                  ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+		 ,{<<"Msg-ID">>, NoopId}
+		 ,{<<"Call-ID">>, kapps_call:call_id(Call)}
                  ]) | Queue
               ],
     Command = [{<<"Application-Name">>, <<"queue">>}
-               ,{<<"Commands">>, Prompts}
+	      ,{<<"Commands">>, Prompts}
               ],
     send_command(Command, Call),
     NoopId;
@@ -506,12 +506,12 @@ pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
     pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, 'false', Call).
 pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
     [{<<"Application-Name">>, <<"call_pickup">>}
-     ,{<<"Target-Call-ID">>, TargetCallId}
-     ,{<<"Insert-At">>, Insert}
-     ,{<<"Continue-On-Fail">>, ContinueOnFail}
-     ,{<<"Continue-On-Cancel">>, ContinueOnCancel}
-     ,{<<"Park-After-Pickup">>, ParkAfterPickup}
-     ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+    ,{<<"Target-Call-ID">>, TargetCallId}
+    ,{<<"Insert-At">>, Insert}
+    ,{<<"Continue-On-Fail">>, ContinueOnFail}
+    ,{<<"Continue-On-Cancel">>, ContinueOnCancel}
+    ,{<<"Park-After-Pickup">>, ParkAfterPickup}
+    ,{<<"Call-ID">>, kapps_call:call_id(Call)}
     ].
 
 -spec b_pickup(ne_binary(), kapps_call:call()) ->
@@ -581,24 +581,24 @@ connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call
     connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, 'false', Call).
 connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
     [{<<"Application-Name">>, <<"connect_leg">>}
-     ,{<<"Target-Call-ID">>, TargetCallId}
-     ,{<<"Insert-At">>, Insert}
-     ,{<<"Continue-On-Fail">>, ContinueOnFail}
-     ,{<<"Continue-On-Cancel">>, ContinueOnCancel}
-     ,{<<"Park-After-Pickup">>, ParkAfterPickup}
-     ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+    ,{<<"Target-Call-ID">>, TargetCallId}
+    ,{<<"Insert-At">>, Insert}
+    ,{<<"Continue-On-Fail">>, ContinueOnFail}
+    ,{<<"Continue-On-Cancel">>, ContinueOnCancel}
+    ,{<<"Park-After-Pickup">>, ParkAfterPickup}
+    ,{<<"Call-ID">>, kapps_call:call_id(Call)}
     ].
 
 -spec b_connect_leg(ne_binary(), kapps_call:call()) ->
-                      {'ok', kz_json:object()}.
+			   {'ok', kz_json:object()}.
 -spec b_connect_leg(ne_binary(), ne_binary(), kapps_call:call()) ->
-                      {'ok', kz_json:object()}.
+			   {'ok', kz_json:object()}.
 -spec b_connect_leg(ne_binary(), ne_binary(), boolean(), kapps_call:call()) ->
-                      {'ok', kz_json:object()}.
+			   {'ok', kz_json:object()}.
 -spec b_connect_leg(ne_binary(), ne_binary(), boolean(), boolean(), kapps_call:call()) ->
-                      {'ok', kz_json:object()}.
+			   {'ok', kz_json:object()}.
 -spec b_connect_leg(ne_binary(), ne_binary(), boolean(), boolean(), boolean(), kapps_call:call()) ->
-                      {'ok', kz_json:object()}.
+			   {'ok', kz_json:object()}.
 b_connect_leg(TargetCallId, Call) ->
     connect_leg(TargetCallId, Call),
     wait_for_channel_unbridge().
@@ -629,8 +629,8 @@ redirect(Contact, Call) ->
 redirect(Contact, Server, Call) ->
     lager:debug("redirect to ~s on ~s", [Contact, Server]),
     Command = [{<<"Redirect-Contact">>, Contact}
-               ,{<<"Redirect-Server">>, Server}
-               ,{<<"Application-Name">>, <<"redirect">>}
+	      ,{<<"Redirect-Server">>, Server}
+	      ,{<<"Application-Name">>, <<"redirect">>}
               ],
     send_command(Command, Call),
     timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
@@ -646,8 +646,8 @@ redirect(Contact, Server, Call) ->
 redirect_to_node(Contact, Node, Call) ->
     lager:debug("redirect ~s to ~s", [Contact, Node]),
     Command = [{<<"Redirect-Contact">>, Contact}
-               ,{<<"Redirect-Node">>, Node}
-               ,{<<"Application-Name">>, <<"redirect">>}
+	      ,{<<"Redirect-Node">>, Node}
+	      ,{<<"Application-Name">>, <<"redirect">>}
               ],
     send_command(Command, Call),
     timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
@@ -673,8 +673,8 @@ send_dtmf(DTMFs, Duration, Call) ->
 send_dtmf_command(DTMFs, Duration) ->
     props:filter_undefined(
       [{<<"DTMFs">>, DTMFs}
-       ,{<<"Duration">>, Duration}
-       ,{<<"Application-Name">>, <<"send_dtmf">>}
+      ,{<<"Duration">>, Duration}
+      ,{<<"Application-Name">>, <<"send_dtmf">>}
       ]).
 
 %%--------------------------------------------------------------------
@@ -695,16 +695,16 @@ set(ChannelVars, CallVars, Call) ->
         'true' -> 'ok';
         'false' ->
             Command = [{<<"Application-Name">>, <<"set">>}
-                       ,{<<"Insert-At">>, <<"now">>}
-                       ,{<<"Custom-Channel-Vars">>, ChannelVars}
-                       ,{<<"Custom-Call-Vars">>, CallVars}
+		      ,{<<"Insert-At">>, <<"now">>}
+		      ,{<<"Custom-Channel-Vars">>, ChannelVars}
+		      ,{<<"Custom-Call-Vars">>, CallVars}
                       ],
             send_command(Command, Call)
     end.
 
 set_terminators(Terminators, Call) ->
     Command = [{<<"Application-Name">>, <<"set_terminators">>}
-               ,{<<"Terminators">>, Terminators}
+	      ,{<<"Terminators">>, Terminators}
               ],
     send_command(Command, Call).
 
@@ -725,8 +725,8 @@ set_terminators(Terminators, Call) ->
 fetch(Call) -> fetch('false', Call).
 fetch(FromOtherLeg, Call) ->
     Command = [{<<"Application-Name">>, <<"fetch">>}
-               ,{<<"Insert-At">>, <<"now">>}
-               ,{<<"From-Other-Leg">>, FromOtherLeg}
+	      ,{<<"Insert-At">>, <<"now">>}
+	      ,{<<"From-Other-Leg">>, FromOtherLeg}
               ],
     send_command(Command, Call).
 
@@ -786,7 +786,7 @@ receive_fax(ResourceFlag, ReceiveFlag, Call) ->
 
 receive_fax(ResourceFlag, ReceiveFlag, LocalFilename, Call) ->
     Commands = props:filter_undefined([{<<"Application-Name">>, <<"receive_fax">>}
-                                       ,{<<"Fax-Local-Filename">>, LocalFilename}
+				      ,{<<"Fax-Local-Filename">>, LocalFilename}
                                        | get_inbound_t38_settings(ResourceFlag, ReceiveFlag)
                                       ]),
     send_command(Commands, Call).
@@ -815,7 +815,7 @@ get_default_t38_setting() ->
                       {'ok', kz_json:object()}.
 answer(Call) -> send_command([{<<"Application-Name">>, <<"answer">>}], Call).
 answer_now(Call) -> send_command([{<<"Application-Name">>, <<"answer">>}
-                                  ,{<<"Insert-At">>, <<"now">>}
+				 ,{<<"Insert-At">>, <<"now">>}
                                  ], Call).
 
 b_answer(Call) ->
@@ -830,8 +830,8 @@ b_answer(Call) ->
 %%--------------------------------------------------------------------
 -spec echo(kapps_call:call()) -> 'ok'.
 -spec b_echo(kapps_call:call()) ->
-                      kapps_api_error() |
-                      {'ok', kz_json:object()}.
+		    kapps_api_error() |
+		    {'ok', kz_json:object()}.
 echo(Call) -> send_command([{<<"Application-Name">>, <<"echo">>}], Call).
 
 b_echo(Call) ->
@@ -848,7 +848,7 @@ b_echo(Call) ->
 -spec break(kapps_call:call()) -> 'ok'.
 break(Call) ->
     Command = [{<<"Application-Name">>, <<"break">>}
-               ,{<<"Insert-At">>, <<"now">>}
+	      ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, Call).
 
@@ -870,7 +870,7 @@ break(Call) ->
 
 hangup(Call) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
-               ,{<<"Insert-At">>, <<"now">>}
+	      ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, Call).
 
@@ -880,8 +880,8 @@ queued_hangup(Call) ->
 
 hangup(OtherLegOnly, Call) when is_boolean(OtherLegOnly) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
-               ,{<<"Other-Leg-Only">>, OtherLegOnly}
-               ,{<<"Insert-At">>, <<"now">>}
+	      ,{<<"Other-Leg-Only">>, OtherLegOnly}
+	      ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, Call).
 
@@ -928,11 +928,11 @@ page(Endpoints, Timeout, CIDName, CIDNumber, Call) ->
     page(Endpoints, Timeout, CIDName, CIDNumber, 'undefined', Call).
 page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
     Command = [{<<"Application-Name">>, <<"page">>}
-               ,{<<"Endpoints">>, Endpoints}
-               ,{<<"Timeout">>, Timeout}
-               ,{<<"Caller-ID-Name">>, CIDName}
-               ,{<<"Caller-ID-Number">>, CIDNumber}
-               ,{<<"Custom-SIP-Headers">>, SIPHeaders}
+	      ,{<<"Endpoints">>, Endpoints}
+	      ,{<<"Timeout">>, Timeout}
+	      ,{<<"Caller-ID-Name">>, CIDName}
+	      ,{<<"Caller-ID-Number">>, CIDNumber}
+	      ,{<<"Custom-SIP-Headers">>, SIPHeaders}
               ],
     send_command(Command, Call).
 
@@ -991,13 +991,13 @@ bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHead
     bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, <<"false">>, Call).
 bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call) ->
     [{<<"Application-Name">>, <<"bridge">>}
-     ,{<<"Endpoints">>, Endpoints}
-     ,{<<"Timeout">>, Timeout}
-     ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-     ,{<<"Ringback">>, kz_media_util:media_path(Ringback, Call)}
-     ,{<<"Dial-Endpoint-Method">>, Strategy}
-     ,{<<"Custom-SIP-Headers">>, SIPHeaders}
-     ,{<<"Ignore-Forward">>, IgnoreFoward}
+    ,{<<"Endpoints">>, Endpoints}
+    ,{<<"Timeout">>, Timeout}
+    ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+    ,{<<"Ringback">>, kz_media_util:media_path(Ringback, Call)}
+    ,{<<"Dial-Endpoint-Method">>, Strategy}
+    ,{<<"Custom-SIP-Headers">>, SIPHeaders}
+    ,{<<"Ignore-Forward">>, IgnoreFoward}
     ].
 
 bridge(Endpoints, Call) ->
@@ -1070,9 +1070,9 @@ unbridge_command(Call, Leg) ->
     unbridge_command(Call, Leg, <<"now">>).
 unbridge_command(Call, Leg, Insert) ->
     [{<<"Application-Name">>, <<"unbridge">>}
-     ,{<<"Insert-At">>, Insert}
-     ,{<<"Leg">>, Leg}
-     ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+    ,{<<"Insert-At">>, Insert}
+    ,{<<"Leg">>, Leg}
+    ,{<<"Call-ID">>, kapps_call:call_id(Call)}
     ].
 
 -spec soft_hold(kapps_call:call()) -> 'ok'.
@@ -1095,9 +1095,9 @@ soft_hold_command(CallId, UnholdKey, AMOH, BMOH) ->
     soft_hold_command(CallId, UnholdKey, AMOH, BMOH, <<"now">>).
 soft_hold_command(CallId, UnholdKey, AMOH, BMOH, InsertAt) ->
     props:filter_undefined([{<<"Application-Name">>, <<"soft_hold">>}
-                            ,{<<"Call-ID">>, CallId}
-                            ,{<<"Insert-At">>, InsertAt}
-                            ,{<<"Unhold-Key">>, UnholdKey}
+			   ,{<<"Call-ID">>, CallId}
+			   ,{<<"Insert-At">>, InsertAt}
+			   ,{<<"Unhold-Key">>, UnholdKey}
                             | build_moh_keys(AMOH, BMOH)
                            ]).
 
@@ -1106,7 +1106,7 @@ soft_hold_command(CallId, UnholdKey, AMOH, BMOH, InsertAt) ->
 build_moh_keys('undefiend', _) -> [];
 build_moh_keys(AMOH, BMOH) ->
     [{<<"A-MOH">>, AMOH}
-     ,{<<"B-MOH">>, BMOH}
+    ,{<<"B-MOH">>, BMOH}
     ].
 
 %%--------------------------------------------------------------------
@@ -1141,9 +1141,9 @@ hold_command(MOH, <<_/binary>> = CallId) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"Application-Name">>, <<"hold">>}
-         ,{<<"Insert-At">>, <<"now">>}
-         ,{<<"Hold-Media">>, MOH}
-         ,{<<"Call-ID">>, CallId}
+	,{<<"Insert-At">>, <<"now">>}
+	,{<<"Hold-Media">>, MOH}
+	,{<<"Call-ID">>, CallId}
         ]));
 hold_command(MOH, Call) ->
     hold_command(kz_media_util:media_path(MOH, Call), kapps_call:call_id_direct(Call)).
@@ -1167,8 +1167,8 @@ park(Call) ->
 park_command(<<_/binary>> = CallId) ->
     kz_json:from_list(
       [{<<"Application-Name">>, <<"park">>}
-       ,{<<"Insert-At">>, <<"now">>}
-       ,{<<"Call-ID">>, CallId}
+      ,{<<"Insert-At">>, <<"now">>}
+      ,{<<"Call-ID">>, CallId}
       ]);
 park_command(Call) ->
     park_command(kapps_call:call_id(Call)).
@@ -1233,10 +1233,10 @@ play_command(Media, Terminators, Leg, <<_/binary>> = CallId) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"Application-Name">>, <<"play">>}
-         ,{<<"Media-Name">>, Media}
-         ,{<<"Terminators">>, play_terminators(Terminators)}
-         ,{<<"Leg">>, play_leg(Leg)}
-         ,{<<"Call-ID">>, CallId}
+	,{<<"Media-Name">>, Media}
+	,{<<"Terminators">>, play_terminators(Terminators)}
+	,{<<"Leg">>, play_leg(Leg)}
+	,{<<"Call-ID">>, CallId}
         ]));
 play_command(Media, Terminators, Leg, Call) ->
     play_command(Media, Terminators, Leg, kapps_call:call_id(Call)).
@@ -1255,13 +1255,13 @@ play(Media, Terminators, Call) ->
 play(Media, Terminators, Leg, Call) ->
     NoopId = kz_datamgr:get_uuid(),
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
-                                   ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-                                   ,{<<"Msg-ID">>, NoopId}
+				  ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+				  ,{<<"Msg-ID">>, NoopId}
                                   ])
-                ,play_command(Media, Terminators, Leg, Call)
+	       ,play_command(Media, Terminators, Leg, Call)
                ],
     Command = [{<<"Application-Name">>, <<"queue">>}
-               ,{<<"Commands">>, Commands}
+	      ,{<<"Commands">>, Commands}
               ],
     send_command(Command, Call),
     NoopId.
@@ -1292,20 +1292,20 @@ tts(SayMe, Voice, Call) -> tts(SayMe, Voice, kapps_call:language(Call), Call).
 tts(SayMe, Voice, Lang, Call) -> tts(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
 tts(SayMe, Voice, Lang, Terminators, Call) ->
     tts(SayMe, Voice, Lang, Terminators
-        ,kapps_account_config:get_global(Call, ?MOD_CONFIG_CAT, <<"tts_provider">>, <<"flite">>)
-        ,Call
+       ,kapps_account_config:get_global(Call, ?MOD_CONFIG_CAT, <<"tts_provider">>, <<"flite">>)
+       ,Call
        ).
 tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
     NoopId = kz_datamgr:get_uuid(),
 
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
-                                   ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-                                   ,{<<"Msg-ID">>, NoopId}
+				  ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+				  ,{<<"Msg-ID">>, NoopId}
                                   ])
-                ,tts_command(SayMe, Voice, Lang, Terminators, Engine, Call)
+	       ,tts_command(SayMe, Voice, Lang, Terminators, Engine, Call)
                ],
     Command = [{<<"Application-Name">>, <<"queue">>}
-               ,{<<"Commands">>, Commands}
+	      ,{<<"Commands">>, Commands}
               ],
     send_command(Command, Call),
     NoopId.
@@ -1323,19 +1323,19 @@ tts_command(SayMe, Voice, Language, Call) ->
     tts_command(SayMe, Voice, Language, ?ANY_DIGIT, Call).
 tts_command(SayMe, Voice, Language, Terminators, Call) ->
     tts_command(SayMe, Voice, Language, Terminators
-                ,kapps_account_config:get_global(Call, ?MOD_CONFIG_CAT, <<"tts_provider">>, <<"flite">>)
-                ,Call
+	       ,kapps_account_config:get_global(Call, ?MOD_CONFIG_CAT, <<"tts_provider">>, <<"flite">>)
+	       ,Call
                ).
 tts_command(SayMe, Voice, Language, Terminators, Engine, Call) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"Application-Name">>, <<"tts">>}
-         ,{<<"Text">>, SayMe}
-         ,{<<"Terminators">>, tts_terminators(Terminators)}
-         ,{<<"Voice">>, tts_voice(Voice)}
-         ,{<<"Language">>, tts_language(Language, Call)}
-         ,{<<"Engine">>, tts_engine(Engine)}
-         ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+	,{<<"Text">>, SayMe}
+	,{<<"Terminators">>, tts_terminators(Terminators)}
+	,{<<"Voice">>, tts_voice(Voice)}
+	,{<<"Language">>, tts_language(Language, Call)}
+	,{<<"Engine">>, tts_engine(Engine)}
+	,{<<"Call-ID">>, kapps_call:call_id(Call)}
         ])).
 
 tts_terminators('undefined') -> ?ANY_DIGIT;
@@ -1396,11 +1396,11 @@ record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
     record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"5">>, Call).
 record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
     Command = [{<<"Application-Name">>, <<"record">>}
-               ,{<<"Media-Name">>, MediaName}
-               ,{<<"Terminators">>, Terminators}
-               ,{<<"Time-Limit">>, TimeLimit}
-               ,{<<"Silence-Threshold">>, SilenceThreshold}
-               ,{<<"Silence-Hits">>, SilenceHits}
+	      ,{<<"Media-Name">>, MediaName}
+	      ,{<<"Terminators">>, Terminators}
+	      ,{<<"Time-Limit">>, TimeLimit}
+	      ,{<<"Silence-Threshold">>, SilenceThreshold}
+	      ,{<<"Silence-Hits">>, SilenceHits}
               ],
     send_command(Command, Call).
 
@@ -1415,10 +1415,10 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
     record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call),
     wait_for_headless_application(<<"record">>
-                                  ,{<<"RECORD_START">>, <<"RECORD_STOP">>}
-                                  ,<<"call_event">>
-                                  ,fun(JObj) -> verify_media_name(JObj, MediaName) end
-                                  ,'infinity'
+				 ,{<<"RECORD_START">>, <<"RECORD_STOP">>}
+				 ,<<"call_event">>
+				 ,fun(JObj) -> verify_media_name(JObj, MediaName) end
+				 ,'infinity'
                                  ).
 
 -spec verify_media_name(kz_json:object(), ne_binary()) -> boolean().
@@ -1464,17 +1464,17 @@ record_call(Media, Action, TimeLimit, Terminators, Call) ->
 
     Command = props:filter_undefined(
                 [{<<"Application-Name">>, <<"record_call">>}
-                 ,{<<"Media-Name">>, MediaName}
-                 ,{<<"Media-Recorder">>, MediaRecorder}
-                 ,{<<"Record-Action">>, Action}
-                 ,{<<"Time-Limit">>, Limit}
-                 ,{<<"Terminators">>, Terminators}
-                 ,{<<"Insert-At">>, <<"now">>}
-                 ,{<<"Media-Transfer-Method">>, Method}
-                 ,{<<"Media-Transfer-Destination">>, Destination}
-                 ,{<<"Additional-Headers">>, Headers}
-                 ,{<<"Record-Sample-Rate">>, SampleRate}
-                 ,{<<"Record-Min-Sec">>, RecordMinSec}
+		,{<<"Media-Name">>, MediaName}
+		,{<<"Media-Recorder">>, MediaRecorder}
+		,{<<"Record-Action">>, Action}
+		,{<<"Time-Limit">>, Limit}
+		,{<<"Terminators">>, Terminators}
+		,{<<"Insert-At">>, <<"now">>}
+		,{<<"Media-Transfer-Method">>, Method}
+		,{<<"Media-Transfer-Destination">>, Destination}
+		,{<<"Additional-Headers">>, Headers}
+		,{<<"Record-Sample-Rate">>, SampleRate}
+		,{<<"Record-Min-Sec">>, RecordMinSec}
                 ]),
 
     send_command(Command, Call).
@@ -1526,12 +1526,12 @@ store(MediaName, Transfer, Method, Headers, Call) ->
     store(MediaName, Transfer, Method, Headers, 'false', Call).
 store(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
     Command = [{<<"Application-Name">>, <<"store">>}
-               ,{<<"Media-Name">>, MediaName}
-               ,{<<"Media-Transfer-Method">>, Method}
-               ,{<<"Media-Transfer-Destination">>, Transfer}
-               ,{<<"Additional-Headers">>, Headers}
-               ,{<<"Insert-At">>, <<"now">>}
-               ,{<<"Suppress-Error-Report">>, SuppressReport}
+	      ,{<<"Media-Name">>, MediaName}
+	      ,{<<"Media-Transfer-Method">>, Method}
+	      ,{<<"Media-Transfer-Destination">>, Transfer}
+	      ,{<<"Additional-Headers">>, Headers}
+	      ,{<<"Insert-At">>, <<"now">>}
+	      ,{<<"Suppress-Error-Report">>, SuppressReport}
               ],
     send_command(Command, Call).
 
@@ -1547,22 +1547,22 @@ b_store(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
 
 b_store_vm(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
     Command = [{<<"Application-Name">>, <<"store_vm">>}
-               ,{<<"Media-Name">>, MediaName}
-               ,{<<"Media-Transfer-Method">>, Method}
-               ,{<<"Media-Transfer-Destination">>, Transfer}
-               ,{<<"Additional-Headers">>, Headers}
-               ,{<<"Insert-At">>, <<"now">>}
-               ,{<<"Suppress-Error-Report">>, SuppressReport}
+	      ,{<<"Media-Name">>, MediaName}
+	      ,{<<"Media-Transfer-Method">>, Method}
+	      ,{<<"Media-Transfer-Destination">>, Transfer}
+	      ,{<<"Additional-Headers">>, Headers}
+	      ,{<<"Insert-At">>, <<"now">>}
+	      ,{<<"Suppress-Error-Report">>, SuppressReport}
               ],
     send_command(Command, Call),
     wait_for_headless_application(<<"store_vm">>).
 
 audio_level(Call, Mode, Action, Level) ->
     Command = [{<<"Application-Name">>, <<"audio_level">>}
-               ,{<<"Action">>, Action}
-               ,{<<"Level">>, Level}
-               ,{<<"Mode">>, Mode}
-               ,{<<"Insert-At">>, <<"now">>}
+	      ,{<<"Action">>, Action}
+	      ,{<<"Level">>, Level}
+	      ,{<<"Mode">>, Mode}
+	      ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, Call).
 
@@ -1581,11 +1581,11 @@ store_fax(URL, Call) ->
 store_fax(URL, LocalFile, Call) ->
 
     Command = props:filter_undefined([{<<"Application-Name">>, <<"store_fax">>}
-               ,{<<"Media-Transfer-Method">>, <<"put">>}
-               ,{<<"Media-Transfer-Destination">>, URL}
-               ,{<<"Fax-Local-Filename">>, LocalFile}
-               ,{<<"Insert-At">>, <<"now">>}
-              ]),
+				     ,{<<"Media-Transfer-Method">>, <<"put">>}
+				     ,{<<"Media-Transfer-Destination">>, URL}
+				     ,{<<"Fax-Local-Filename">>, LocalFile}
+				     ,{<<"Insert-At">>, <<"now">>}
+				     ]),
     send_command(Command, Call).
 
 -spec b_store_fax(ne_binary(), kapps_call:call()) -> b_store_return().
@@ -1603,7 +1603,7 @@ b_store_fax(URL, Call) ->
 -spec tones(kz_json:objects(), kapps_call:call()) -> 'ok'.
 tones(Tones, Call) ->
     Command = [{<<"Application-Name">>, <<"tones">>}
-               ,{<<"Tones">>, Tones}
+	      ,{<<"Tones">>, Tones}
               ],
     send_command(Command, Call).
 
@@ -1611,8 +1611,8 @@ tones(Tones, Call) ->
 tones_command(Tones, Call) ->
     CallId = kapps_call:call_id(Call),
     kz_json:from_list([{<<"Application-Name">>, <<"tones">>}
-                       ,{<<"Tones">>, Tones}
-                       ,{<<"Call-ID">>, CallId}
+		      ,{<<"Tones">>, Tones}
+		      ,{<<"Call-ID">>, CallId}
                       ]).
 
 %%--------------------------------------------------------------------
@@ -1624,50 +1624,50 @@ tones_command(Tones, Call) ->
 %%--------------------------------------------------------------------
 -spec prompt_and_collect_digit(ne_binary(), kapps_call:call()) -> 'ok'.
 -spec prompt_and_collect_digits(integer(), integer(), ne_binary()
-                              ,kapps_call:call()) ->
-                                     'ok'.
+			       ,kapps_call:call()) ->
+				       'ok'.
 -spec prompt_and_collect_digits(integer(), integer(), ne_binary()
-                              ,integer(), kapps_call:call()) ->
-                                     'ok'.
+			       ,integer(), kapps_call:call()) ->
+				       'ok'.
 -spec prompt_and_collect_digits(integer(), integer(), ne_binary()
-                              ,integer(), integer(), kapps_call:call()) ->
-                                     'ok'.
+			       ,integer(), integer(), kapps_call:call()) ->
+				       'ok'.
 -spec prompt_and_collect_digits(integer(), integer(), ne_binary()
-                              ,integer(), integer(), api_binary()
-                              ,kapps_call:call()) ->
-                                     'ok'.
+			       ,integer(), integer(), api_binary()
+			       ,kapps_call:call()) ->
+				       'ok'.
 -spec prompt_and_collect_digits(integer(), integer(), ne_binary()
-                              ,integer(), integer(), api_binary()
-                              ,ne_binary(), kapps_call:call()) ->
-                                     'ok'.
+			       ,integer(), integer(), api_binary()
+			       ,ne_binary(), kapps_call:call()) ->
+				       'ok'.
 -spec prompt_and_collect_digits(integer(), integer(), ne_binary()
-                              ,integer(), integer(), api_binary()
-                              ,ne_binary(), ne_binaries(), kapps_call:call()) ->
-                                     'ok'.
+			       ,integer(), integer(), api_binary()
+			       ,ne_binary(), ne_binaries(), kapps_call:call()) ->
+				       'ok'.
 
 -spec b_prompt_and_collect_digit(ne_binary(), kapps_call:call()) ->
-                                      b_play_and_collect_digits_return().
+					b_play_and_collect_digits_return().
 -spec b_prompt_and_collect_digits(integer(), integer(), ne_binary()
-                                ,kapps_call:call()) ->
-                                       b_play_and_collect_digits_return().
+				 ,kapps_call:call()) ->
+					 b_play_and_collect_digits_return().
 -spec b_prompt_and_collect_digits(integer(), integer(), ne_binary()
-                                ,integer(), kapps_call:call()) ->
-                                       b_play_and_collect_digits_return().
+				 ,integer(), kapps_call:call()) ->
+					 b_play_and_collect_digits_return().
 -spec b_prompt_and_collect_digits(integer(), integer(), ne_binary()
-                                ,integer(), integer(), kapps_call:call()) ->
-                                       b_play_and_collect_digits_return().
+				 ,integer(), integer(), kapps_call:call()) ->
+					 b_play_and_collect_digits_return().
 -spec b_prompt_and_collect_digits(integer(), integer(), ne_binary()
-                                ,integer(), integer(), api_binary()
-                                ,kapps_call:call()) ->
-                                       b_play_and_collect_digits_return().
+				 ,integer(), integer(), api_binary()
+				 ,kapps_call:call()) ->
+					 b_play_and_collect_digits_return().
 -spec b_prompt_and_collect_digits(integer(), integer(), ne_binary()
-                                ,integer(), integer(), api_binary()
-                                ,ne_binary(), kapps_call:call()) ->
-                                       b_play_and_collect_digits_return().
+				 ,integer(), integer(), api_binary()
+				 ,ne_binary(), kapps_call:call()) ->
+					 b_play_and_collect_digits_return().
 -spec b_prompt_and_collect_digits(integer(), integer(), ne_binary()
-                                ,integer(), integer(), api_binary()
-                                ,ne_binary(), ne_binaries(), kapps_call:call()) ->
-                                       b_play_and_collect_digits_return().
+				 ,integer(), integer(), api_binary()
+				 ,ne_binary(), ne_binaries(), kapps_call:call()) ->
+					 b_play_and_collect_digits_return().
 
 prompt_and_collect_digit(Prompt, Call) ->
     prompt_and_collect_digits(1, 1, Prompt, Call).
@@ -1705,14 +1705,14 @@ b_prompt_and_collect_digits(_MinDigits, _MaxDigits, _Prompt, 0, _Timeout, Invali
     {'ok', <<>>};
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Terminators, Call) ->
     b_play_and_collect_digits(MinDigits
-                              ,MaxDigits
-                              ,kz_media_util:get_prompt(Prompt, Call)
-                              ,Tries
-                              ,Timeout
-                              ,InvalidPrompt
-                              ,Regex
-                              ,Terminators
-                              ,Call
+			     ,MaxDigits
+			     ,kz_media_util:get_prompt(Prompt, Call)
+			     ,Tries
+			     ,Timeout
+			     ,InvalidPrompt
+			     ,Regex
+			     ,Terminators
+			     ,Call
                              ).
 
 %%--------------------------------------------------------------------
@@ -1728,49 +1728,49 @@ b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Invali
 
 -spec play_and_collect_digit(ne_binary(), kapps_call:call()) -> 'ok'.
 -spec play_and_collect_digits(integer(), integer(), ne_binary()
-                              ,kapps_call:call()) ->
+			     ,kapps_call:call()) ->
                                      'ok'.
 -spec play_and_collect_digits(integer(), integer(), ne_binary()
-                              ,integer(), kapps_call:call()) ->
+			     ,integer(), kapps_call:call()) ->
                                      'ok'.
 -spec play_and_collect_digits(integer(), integer(), ne_binary()
-                              ,integer(), integer(), kapps_call:call()) ->
+			     ,integer(), integer(), kapps_call:call()) ->
                                      'ok'.
 -spec play_and_collect_digits(integer(), integer(), ne_binary()
-                              ,integer(), integer(), api_binary()
-                              ,kapps_call:call()) ->
+			     ,integer(), integer(), api_binary()
+			     ,kapps_call:call()) ->
                                      'ok'.
 -spec play_and_collect_digits(integer(), integer(), ne_binary()
-                              ,integer(), integer(), api_binary()
-                              ,ne_binary(), kapps_call:call()) ->
+			     ,integer(), integer(), api_binary()
+			     ,ne_binary(), kapps_call:call()) ->
                                      'ok'.
 -spec play_and_collect_digits(integer(), integer(), ne_binary()
-                              ,integer(), integer(), api_binary()
-                              ,ne_binary(), ne_binaries(), kapps_call:call()) ->
+			     ,integer(), integer(), api_binary()
+			     ,ne_binary(), ne_binaries(), kapps_call:call()) ->
                                      'ok'.
 
 -spec b_play_and_collect_digit(ne_binary(), kapps_call:call()) ->
                                       b_play_and_collect_digits_return().
 -spec b_play_and_collect_digits(integer(), integer(), ne_binary()
-                                ,kapps_call:call()) ->
+			       ,kapps_call:call()) ->
                                        b_play_and_collect_digits_return().
 -spec b_play_and_collect_digits(integer(), integer(), ne_binary()
-                                ,integer(), kapps_call:call()) ->
+			       ,integer(), kapps_call:call()) ->
                                        b_play_and_collect_digits_return().
 -spec b_play_and_collect_digits(integer(), integer(), ne_binary()
-                                ,integer(), integer(), kapps_call:call()) ->
+			       ,integer(), integer(), kapps_call:call()) ->
                                        b_play_and_collect_digits_return().
 -spec b_play_and_collect_digits(integer(), integer(), ne_binary()
-                                ,integer(), integer(), api_binary()
-                                ,kapps_call:call()) ->
+			       ,integer(), integer(), api_binary()
+			       ,kapps_call:call()) ->
                                        b_play_and_collect_digits_return().
 -spec b_play_and_collect_digits(integer(), integer(), ne_binary()
-                                ,integer(), integer(), api_binary()
-                                ,ne_binary(), kapps_call:call()) ->
+			       ,integer(), integer(), api_binary()
+			       ,ne_binary(), kapps_call:call()) ->
                                        b_play_and_collect_digits_return().
 -spec b_play_and_collect_digits(integer(), integer(), ne_binary()
-                                ,integer(), integer(), api_binary()
-                                ,ne_binary(), ne_binaries(), kapps_call:call()) ->
+			       ,integer(), integer(), api_binary()
+			       ,ne_binary(), ne_binaries(), kapps_call:call()) ->
                                        b_play_and_collect_digits_return().
 
 play_and_collect_digit(Media, Call) ->
@@ -1788,14 +1788,14 @@ play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvali
     play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, [<<"#">>], Call).
 play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, Call) ->
     Command = [{<<"Application-Name">>, <<"play_and_collect_digits">>}
-               ,{<<"Minimum-Digits">>, MinDigits}
-               ,{<<"Maximum-Digits">>, MaxDigits}
-               ,{<<"Timeout">>, Timeout}
-               ,{<<"Terminators">>, Terminators}
-               ,{<<"Media-Name">>, Media}
-               ,{<<"Media-Tries">>, Tries}
-               ,{<<"Failed-Media-Name">>, MediaInvalid}
-               ,{<<"Digits-Regex">>, Regex}
+	      ,{<<"Minimum-Digits">>, MinDigits}
+	      ,{<<"Maximum-Digits">>, MaxDigits}
+	      ,{<<"Timeout">>, Timeout}
+	      ,{<<"Terminators">>, Terminators}
+	      ,{<<"Media-Name">>, Media}
+	      ,{<<"Media-Tries">>, Tries}
+	      ,{<<"Failed-Media-Name">>, MediaInvalid}
+	      ,{<<"Digits-Regex">>, Regex}
               ],
     send_command(Command, Call).
 
@@ -1826,10 +1826,10 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
                     Ok;
                 _ ->
                     b_play_and_collect_digits(MinDigits, MaxDigits
-                                              ,Media, Tries - 1
-                                              ,Timeout, MediaInvalid
-                                              ,Regex, Terminators
-                                              ,Call
+					     ,Media, Tries - 1
+					     ,Timeout, MediaInvalid
+					     ,Regex, Terminators
+					     ,Call
                                              )
             end;
         {'error', _}=Else -> Else
@@ -1884,12 +1884,12 @@ say_command(Say, Type, Method, Language, Gender, Call) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"Application-Name">>, <<"say">>}
-         ,{<<"Say-Text">>, Say}
-         ,{<<"Type">>, say_type(Type)}
-         ,{<<"Method">>, say_method(Method)}
-         ,{<<"Language">>, say_language(Language, Call)}
-         ,{<<"Gender">>, say_gender(Gender)}
-         ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+	,{<<"Say-Text">>, Say}
+	,{<<"Type">>, say_type(Type)}
+	,{<<"Method">>, say_method(Method)}
+	,{<<"Language">>, say_language(Language, Call)}
+	,{<<"Gender">>, say_gender(Gender)}
+	,{<<"Call-ID">>, kapps_call:call_id(Call)}
         ])).
 
 say_type('undefined') -> <<"name_spelled">>;
@@ -1964,12 +1964,12 @@ conference(ConfId, Mute, Deaf, Moderator, ProfileName, Call) ->
     conference(ConfId, Mute, Deaf, Moderator, ProfileName, 'false', Call).
 conference(ConfId, Mute, Deaf, Moderator, ProfileName, Reinvite, Call) ->
     Command = [{<<"Application-Name">>, <<"conference">>}
-               ,{<<"Conference-ID">>, ConfId}
-               ,{<<"Mute">>, Mute}
-               ,{<<"Deaf">>, Deaf}
-               ,{<<"Moderator">>, Moderator}
-               ,{<<"Profile">>, ProfileName}
-               ,{<<"Reinvite">>, Reinvite}
+	      ,{<<"Conference-ID">>, ConfId}
+	      ,{<<"Mute">>, Mute}
+	      ,{<<"Deaf">>, Deaf}
+	      ,{<<"Moderator">>, Moderator}
+	      ,{<<"Profile">>, ProfileName}
+	      ,{<<"Reinvite">>, Reinvite}
               ],
     send_command(Command, Call).
 
@@ -1999,7 +1999,7 @@ b_conference(ConfId, Mute, Deaf, Moderator, Profile, Reinvite, Call) ->
 noop(Call) ->
     NoopId = kz_datamgr:get_uuid(),
     Command = [{<<"Application-Name">>, <<"noop">>}
-               ,{<<"Msg-ID">>, NoopId}
+	      ,{<<"Msg-ID">>, NoopId}
               ],
     send_command(Command, Call),
     NoopId.
@@ -2019,8 +2019,8 @@ b_noop(Call) -> wait_for_noop(Call, noop(Call)).
 flush(Call) ->
     NoopId = kz_datamgr:get_uuid(),
     Command = [{<<"Application-Name">>, <<"noop">>}
-               ,{<<"Msg-ID">>, NoopId}
-               ,{<<"Insert-At">>, <<"flush">>}
+	      ,{<<"Msg-ID">>, NoopId}
+	      ,{<<"Insert-At">>, <<"flush">>}
               ],
     send_command(Command, Call),
     NoopId.
@@ -2047,7 +2047,7 @@ privacy(Call) -> privacy(<<"full">>, Call).
 privacy('undefined', Call) -> privacy(Call);
 privacy(Mode, Call) ->
     Command = [{<<"Application-Name">>, <<"privacy">>}
-               ,{<<"Privacy-Mode">>, Mode}
+	      ,{<<"Privacy-Mode">>, Mode}
               ],
     send_command(Command, Call).
 
@@ -2089,63 +2089,63 @@ b_privacy(Mode, Call) ->
                             collect_digits_return().
 
 -record(wcc_collect_digits, {max_digits :: pos_integer()
-                             ,timeout = ?DEFAULT_DIGIT_TIMEOUT :: kz_timeout()
-                             ,interdigit = ?DEFAULT_INTERDIGIT_TIMEOUT :: pos_integer()
-                             ,noop_id :: api_binary()
-                             ,terminators = [<<"#">>] :: ne_binaries()
-                             ,call :: kapps_call:call()
-                             ,digits_collected = <<>> :: binary()
-                             ,after_timeout = ?MILLISECONDS_IN_DAY :: pos_integer()
+			    ,timeout = ?DEFAULT_DIGIT_TIMEOUT :: kz_timeout()
+			    ,interdigit = ?DEFAULT_INTERDIGIT_TIMEOUT :: pos_integer()
+			    ,noop_id :: api_binary()
+			    ,terminators = [<<"#">>] :: ne_binaries()
+			    ,call :: kapps_call:call()
+			    ,digits_collected = <<>> :: binary()
+			    ,after_timeout = ?MILLISECONDS_IN_DAY :: pos_integer()
                             }).
 -type wcc_collect_digits() :: #wcc_collect_digits{}.
 
 collect_digits(MaxDigits, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=kz_util:to_integer(MaxDigits)
-                                          ,call=Call
-                                          ,after_timeout=?DEFAULT_DIGIT_TIMEOUT
+					 ,call=Call
+					 ,after_timeout=?DEFAULT_DIGIT_TIMEOUT
                                          }).
 
 collect_digits(MaxDigits, Timeout, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=kz_util:to_integer(MaxDigits)
-                                          ,timeout=kz_util:to_integer(Timeout)
-                                          ,call=Call
-                                          ,after_timeout=kz_util:to_integer(Timeout)
+					 ,timeout=kz_util:to_integer(Timeout)
+					 ,call=Call
+					 ,after_timeout=kz_util:to_integer(Timeout)
                                          }).
 
 collect_digits(MaxDigits, Timeout, Interdigit, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=kz_util:to_integer(MaxDigits)
-                                          ,timeout=kz_util:to_integer(Timeout)
-                                          ,interdigit=kz_util:to_integer(Interdigit)
-                                          ,call=Call
+					 ,timeout=kz_util:to_integer(Timeout)
+					 ,interdigit=kz_util:to_integer(Interdigit)
+					 ,call=Call
                                          ,after_timeout=kz_util:to_integer(Timeout)
                                          }).
 
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=kz_util:to_integer(MaxDigits)
-                                          ,timeout=kz_util:to_integer(Timeout)
-                                          ,interdigit=kz_util:to_integer(Interdigit)
-                                          ,noop_id=NoopId
-                                          ,call=Call
+					 ,timeout=kz_util:to_integer(Timeout)
+					 ,interdigit=kz_util:to_integer(Interdigit)
+					 ,noop_id=NoopId
+					 ,call=Call
                                          }).
 
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=kz_util:to_integer(MaxDigits)
-                                          ,timeout=kz_util:to_integer(Timeout)
-                                          ,interdigit=kz_util:to_integer(Interdigit)
-                                          ,noop_id=NoopId
-                                          ,terminators=Terminators
-                                          ,call=Call
+					 ,timeout=kz_util:to_integer(Timeout)
+					 ,interdigit=kz_util:to_integer(Interdigit)
+					 ,noop_id=NoopId
+					 ,terminators=Terminators
+					 ,call=Call
                                          }).
 
 -spec do_collect_digits(wcc_collect_digits()) -> collect_digits_return().
 do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
-                                      ,timeout=Timeout
-                                      ,interdigit=Interdigit
-                                      ,noop_id=NoopId
-                                      ,terminators=Terminators
-                                      ,call=Call
-                                      ,digits_collected=Digits
-                                      ,after_timeout=After
+				     ,timeout=Timeout
+				     ,interdigit=Interdigit
+				     ,noop_id=NoopId
+				     ,terminators=Terminators
+				     ,call=Call
+				     ,digits_collected=Digits
+				     ,after_timeout=After
                                      }=Collect) ->
     Start = os:timestamp(),
     case receive_event(After) of
@@ -2175,7 +2175,7 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                             case <<Digits/binary, Digit/binary>> of
                                 D when byte_size(D) < MaxDigits ->
                                     do_collect_digits(Collect#wcc_collect_digits{digits_collected=D
-                                                                                 ,after_timeout=Interdigit
+										,after_timeout=Interdigit
                                                                                 });
                                 D ->
                                     lager:debug("collected maximum digits ('~s') from caller", [D]),
@@ -2208,14 +2208,14 @@ handle_collect_digit_event(JObj, NoopId, {<<"error">>, _, <<"noop">>}) ->
     case kz_json:get_value([<<"Request">>, <<"Msg-ID">>], JObj, NoopId) of
         NoopId when is_binary(NoopId), NoopId =/= <<>> ->
             lager:debug("channel execution error while collecting digits: ~s"
-                        ,[kz_json:get_value(<<"Error-Message">>, JObj)]
+		       ,[kz_json:get_value(<<"Error-Message">>, JObj)]
                        ),
             {'error', JObj};
         _NID when is_binary(NoopId), NoopId =/= <<>> ->
             {'continue'};
         _NID ->
             lager:debug("channel execution error while collecting digits with noop-id ~s: ~s"
-                        ,[NoopId, kz_json:encode(JObj)]
+		       ,[NoopId, kz_json:encode(JObj)]
                        ),
             {'error', JObj}
     end;
@@ -2340,16 +2340,16 @@ wait_for_application(Call, Application, Event, Type, Timeout) ->
 -spec wait_for_headless_application(ne_binary(), headless_event(), ne_binary()) ->
                                            wait_for_headless_application_return().
 -spec wait_for_headless_application(ne_binary()
-                                    ,headless_event()
-                                    ,ne_binary()
-                                    ,kz_timeout()
+				   ,headless_event()
+				   ,ne_binary()
+				   ,kz_timeout()
                                    ) ->
                                            wait_for_headless_application_return().
 -spec wait_for_headless_application(ne_binary()
-                                    ,headless_event()
-                                    ,ne_binary()
-                                    ,fun((kz_json:object()) -> boolean())
-                                    ,kz_timeout()
+				   ,headless_event()
+				   ,ne_binary()
+				   ,fun((kz_json:object()) -> boolean())
+				   ,kz_timeout()
                                    ) ->
                                            wait_for_headless_application_return().
 
@@ -2369,7 +2369,7 @@ wait_for_headless_application(Application, {StartEv, StopEv}=Event, Type, Fun, T
             case get_event_type(JObj) of
                 {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting for ~s: ~s"
-                                ,[Application, kz_json:encode(JObj)]
+			       ,[Application, kz_json:encode(JObj)]
                                ),
                     {'error', JObj};
                 {<<"call_event">>,<<"CHANNEL_DESTROY">>, _} ->
@@ -2466,7 +2466,7 @@ wait_for_bridge(_Timeout, _Fun, _Call, _Start, {'error', 'timeout'}=E) -> E;
 wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
     Disposition = kz_json:get_value(<<"Disposition">>, JObj),
     Cause = kz_json:get_first_defined([<<"Application-Response">>
-                                       ,<<"Hangup-Cause">>
+				      ,<<"Hangup-Cause">>
                                       ], JObj, <<"UNSPECIFIED">>),
     Result = case Disposition =:= <<"SUCCESS">>
                  orelse Cause =:= <<"SUCCESS">>
@@ -2683,7 +2683,7 @@ get_event_type(JObj) ->
 -spec get_app(kz_json:object()) -> api_binary().
 get_app(JObj) ->
     kz_json:get_first_defined([<<"Application-Name">>
-                               ,[<<"Request">>, <<"Application-Name">>]
+			      ,[<<"Request">>, <<"Application-Name">>]
                               ], JObj).
 
 %%--------------------------------------------------------------------
@@ -2733,41 +2733,41 @@ get_outbound_t38_settings(CarrierFlag, CallerFlag) when not is_boolean(CallerFla
     get_outbound_t38_settings(CarrierFlag, kz_util:is_true(CallerFlag));
 get_outbound_t38_settings('true', 'true') ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'true'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+    ,{<<"Enable-T38-Passthrough">>, 'true'}
+    ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ];
 get_outbound_t38_settings('true', 'false') ->
     [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"self">>}
+    ,{<<"Enable-T38-Fax-Request">>, 'true'}
+    ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+    ,{<<"Enable-T38-Gateway">>, <<"self">>}
     ];
 get_outbound_t38_settings('false', 'false') ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'true'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+    ,{<<"Enable-T38-Passthrough">>, 'true'}
+    ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ];
 get_outbound_t38_settings('false','true') ->
     [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
+    ,{<<"Enable-T38-Fax-Request">>, 'true'}
+    ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+    ,{<<"Enable-T38-Gateway">>, <<"peer">>}
     ].
 
 -spec get_outbound_t38_settings(boolean()) -> kz_proplist().
 get_outbound_t38_settings('true') ->
     [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ,{<<"Enable-T38-Fax-Request">>, 'true'}
+    ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+    ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ];
 get_outbound_t38_settings('false') ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+    ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+    ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ].
 
 %%--------------------------------------------------------------------
@@ -2786,85 +2786,85 @@ get_inbound_t38_settings(CarrierFlag, CallerFlag) when not is_boolean(CallerFlag
     get_inbound_t38_settings(CarrierFlag, kz_util:is_true(CallerFlag));
 get_inbound_t38_settings('true', 'true') ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'true'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+    ,{<<"Enable-T38-Passthrough">>, 'true'}
+    ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ];
 get_inbound_t38_settings('true', 'false') ->
     [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
+    ,{<<"Enable-T38-Fax-Request">>, 'true'}
+    ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+    ,{<<"Enable-T38-Gateway">>, <<"peer">>}
     ];
 get_inbound_t38_settings('true', 'undefined') ->
     [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
+    ,{<<"Enable-T38-Fax-Request">>, 'true'}
+    ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+    ,{<<"Enable-T38-Gateway">>, <<"peer">>}
     ];
 get_inbound_t38_settings('false', 'false') ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'true'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+    ,{<<"Enable-T38-Passthrough">>, 'true'}
+    ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ];
 get_inbound_t38_settings('false','true') ->
     [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"self">>}
+    ,{<<"Enable-T38-Fax-Request">>, 'true'}
+    ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+    ,{<<"Enable-T38-Gateway">>, <<"self">>}
     ];
 get_inbound_t38_settings('undefined','true') ->
     [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"self">>}
+    ,{<<"Enable-T38-Fax-Request">>, 'true'}
+    ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+    ,{<<"Enable-T38-Gateway">>, <<"self">>}
     ];
 get_inbound_t38_settings('undefined','false') ->
     [{<<"Enable-T38-Fax">>, 'false'}
-     ,{<<"Enable-T38-Fax-Request">>, 'false'}
-     ,{<<"Enable-T38-Passthrough">>, 'false'}
+    ,{<<"Enable-T38-Fax-Request">>, 'false'}
+    ,{<<"Enable-T38-Passthrough">>, 'false'}
     ];
 get_inbound_t38_settings('undefined','undefined') ->
     [{<<"Enable-T38-Fax">>, 'false'}
-     ,{<<"Enable-T38-Fax-Request">>, 'false'}
-     ,{<<"Enable-T38-Passthrough">>, 'false'}
+    ,{<<"Enable-T38-Fax-Request">>, 'false'}
+    ,{<<"Enable-T38-Passthrough">>, 'false'}
     ];
 get_inbound_t38_settings(_Carrier, _CallerFlag) ->
     [{<<"Enable-T38-Fax">>, 'false'}
-     ,{<<"Enable-T38-Fax-Request">>, 'false'}
-     ,{<<"Enable-T38-Passthrough">>, 'false'}
+    ,{<<"Enable-T38-Fax-Request">>, 'false'}
+    ,{<<"Enable-T38-Passthrough">>, 'false'}
     ].
 
 -spec get_inbound_t38_settings(boolean()) -> kz_proplist().
 get_inbound_t38_settings('true') ->
     [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ,{<<"Enable-T38-Fax-Request">>, 'true'}
+    ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+    ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ];
 get_inbound_t38_settings('false') ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+    ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+    ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ];
 get_inbound_t38_settings('undefined') ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+    ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+    ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ].
 
 -spec start_fax_detection(ne_binary(), integer(), kapps_call:call()) -> 'ok'.
 start_fax_detection(Direction, Duration, Call) ->
     CallId = kapps_call:call_id(Call),
     Command = [{<<"Application-Name">>, <<"fax_detection">>}
-               ,{<<"Action">>, <<"start">>}
-               ,{<<"Duration">>, Duration}
-               ,{<<"Direction">>, Direction}
-               ,{<<"Call-ID">>, CallId}
-               ,{<<"Insert-At">>, <<"now">>}
+	      ,{<<"Action">>, <<"start">>}
+	      ,{<<"Duration">>, Duration}
+	      ,{<<"Direction">>, Direction}
+	      ,{<<"Call-ID">>, CallId}
+	      ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, Call).
 
@@ -2872,9 +2872,9 @@ start_fax_detection(Direction, Duration, Call) ->
 stop_fax_detection(Call) ->
     CallId = kapps_call:call_id(Call),
     Command = [{<<"Application-Name">>, <<"fax_detection">>}
-               ,{<<"Action">>, <<"stop">>}
-               ,{<<"Call-ID">>, CallId}
-               ,{<<"Insert-At">>, <<"now">>}
+	      ,{<<"Action">>, <<"stop">>}
+	      ,{<<"Call-ID">>, CallId}
+	      ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, Call).
 
@@ -2912,9 +2912,9 @@ wait_for_fax_detection(Timeout, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec wait_for_unparked_call(kapps_call:call()) ->
-                              kapps_api_std_return().
+				    kapps_api_std_return().
 -spec wait_for_unparked_call(kapps_call:call(), kz_timeout()) ->
-                              kapps_api_std_return().
+				    kapps_api_std_return().
 
 wait_for_unparked_call(Call) ->
     wait_for_unparked_call(Call, ?DEFAULT_MESSAGE_TIMEOUT).
@@ -2946,8 +2946,8 @@ wait_for_unparked_call(Call, Timeout) ->
 -spec store_file_args(ne_binary(), ne_binary()) -> kz_proplist().
 store_file_args(Filename, Url) ->
     [{<<"File-Name">>, Filename}
-     ,{<<"Url">>, Url}
-     ,{<<"Http-Method">>, <<"put">>}
+    ,{<<"Url">>, Url}
+    ,{<<"Http-Method">>, <<"put">>}
     ].
 
 -spec store_file(ne_binary(), ne_binary(), kapps_call:call()) -> 'ok' | {'error', any()}.
@@ -2956,13 +2956,13 @@ store_file(Filename, Url, Call) ->
     store_file(Filename, Url, storage_retries(App), storage_timeout(App), Call).
 
 -spec store_file(ne_binary(), ne_binary(), pos_integer(), kapps_call:call()) ->
-          'ok' | {'error', any()}.
+			'ok' | {'error', any()}.
 store_file(Filename, Url, Tries, Call) ->
     App = kz_util:calling_app(),
     store_file(Filename, Url, Tries, storage_timeout(App), Call).
 
 -spec store_file(ne_binary(), ne_binary(), pos_integer(), kz_timeout(), kapps_call:call()) ->
-          'ok' | {'error', any()}.
+			'ok' | {'error', any()}.
 store_file(Filename, Url, Tries, Timeout, Call) ->
     Msg = case kapps_call:kvs_fetch('alert_msg', Call) of
               'undefined' ->
@@ -2972,15 +2972,15 @@ store_file(Filename, Url, Tries, Timeout, Call) ->
           end,
     {AppName, AppVersion} = kz_util:calling_app_version(),
     API = [{<<"Command">>, <<"send_http">>}
-           ,{<<"Args">>, kz_json:from_list(store_file_args(Filename, Url))}
-           ,{<<"FreeSWITCH-Node">>, kapps_call:switch_nodename(Call)}
+	  ,{<<"Args">>, kz_json:from_list(store_file_args(Filename, Url))}
+	  ,{<<"FreeSWITCH-Node">>, kapps_call:switch_nodename(Call)}
            | kz_api:default_headers(AppName, AppVersion)
           ],
     do_store_file(Tries, Timeout, API, Msg, Call).
 
 -spec do_store_file(pos_integer(), kz_timeout(), kz_proplist()
                    ,ne_binary(), kapps_call:call()) ->
-          'ok' | {'error', any()}.
+			   'ok' | {'error', any()}.
 do_store_file(Tries, Timeout, API, Msg, Call) ->
     case kz_amqp_worker:call(API, fun kapi_switch:publish_command/1, fun kapi_switch:fs_reply_v/1, Timeout) of
         {'ok', JObj} ->
@@ -2995,29 +2995,29 @@ do_store_file(Tries, Timeout, API, Msg, Call) ->
             end;
         {'returned', _JObj, _Basic} ->
             Error = io_lib:format("message returned from amqp. is ~s down ?"
-                                  ,[kapps_call:switch_nodename(Call)]
+				 ,[kapps_call:switch_nodename(Call)]
                                  ),
             Funs = [{fun kapps_call:kvs_store/3, 'basic_return', kz_json:to_proplist(_Basic)}],
             retry_store_file(Tries - 1, Timeout, API, Msg, kz_util:to_binary(Error), kapps_call:exec(Funs, Call));
         {'timeout', _JObj} ->
             Error = io_lib:format("timeout publishing message to amqp. is ~s down ?"
-                                  ,[kapps_call:switch_nodename(Call)]
+				 ,[kapps_call:switch_nodename(Call)]
                                  ),
             retry_store_file(Tries - 1, Timeout, API, Msg, kz_util:to_binary(Error), Call);
         {'error', Err} ->
             Error = io_lib:format("error publishing message to amqp. is ~s down ? : ~p"
-                                  ,[kapps_call:switch_nodename(Call), Err]
+				 ,[kapps_call:switch_nodename(Call), Err]
                                  ),
             retry_store_file(Tries - 1, Timeout, API, Msg, kz_util:to_binary(Error), Call)
     end.
 
 -spec retry_store_file(integer(), kz_timeout(), kz_proplist()
                       ,ne_binary(), ne_binary(), kapps_call:call()) ->
-          'ok' | {'error', any()}.
+			      'ok' | {'error', any()}.
 retry_store_file(0, _Timeout, _API, Msg, Error, Call) ->
     lager:critical("~s : ~s", [Msg, Error]),
     Funs = [{fun kapps_call:kvs_store/3, 'error_details', Error}
-            ,{fun kapps_call:kvs_store/3, 'media_server', kapps_call:switch_nodename(Call)}
+	   ,{fun kapps_call:kvs_store/3, 'media_server', kapps_call:switch_nodename(Call)}
            ],
     kapps_util:system_report(Msg, Error, kapps_call:exec(Funs, Call)),
     {'error', Error};

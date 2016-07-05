@@ -13,12 +13,12 @@
 -export([start_link/0]).
 
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("acdc.hrl").
@@ -29,19 +29,19 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'route', [{'restrict_to', ?RESOURCE_TYPES_HANDLED}]}
-                   ,{'self', []}
-                   ,{'conf', [{'doc_type', <<"queue">>}
-                              ,{'action', <<"created">>}
-                             ]}
+		  ,{'self', []}
+		  ,{'conf', [{'doc_type', <<"queue">>}
+			    ,{'action', <<"created">>}
+			    ]}
                   ]).
 -define(RESPONDERS, [
                      %% Received because of our route binding
                      {{'acdc_handlers', 'handle_route_req'}
-                      ,[{<<"dialplan">>, <<"route_req">>}]
+		     ,[{<<"dialplan">>, <<"route_req">>}]
                      }
-                     ,{{'acdc_queue_handler', 'handle_config_change'}
-                       ,[{<<"configuration">>, <<"*">>}]
-                      }
+		    ,{{'acdc_queue_handler', 'handle_config_change'}
+		     ,[{<<"configuration">>, <<"*">>}]
+		     }
                     ]).
 
 %%%===================================================================
@@ -54,9 +54,9 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER
-                            ,[{'bindings', ?BINDINGS}
-                              ,{'responders', ?RESPONDERS}
-                             ], []).
+			   ,[{'bindings', ?BINDINGS}
+			    ,{'responders', ?RESPONDERS}
+			    ], []).
 
 %%%===================================================================
 %%% gen_server callbacks

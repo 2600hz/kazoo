@@ -11,7 +11,7 @@
 -module(notify_system_alert).
 
 -export([init/0
-         ,handle_req/2
+	,handle_req/2
         ]).
 
 -include("notify.hrl").
@@ -84,21 +84,21 @@ alert_using_email('true', JObj) ->
 create_template_props(Event) ->
     [{<<"request">>, notify_util:json_to_template_props(
                        kz_json:delete_keys([<<"Details">>
-                                            ,<<"App-Version">>
-                                            ,<<"App-Name">>
-                                            ,<<"Event-Name">>
-                                            ,<<"Event-Category">>
-                                            ,<<"Server-ID">>
-                                            ,<<"Message">>
-                                            ,<<"Subject">>
+					   ,<<"App-Version">>
+					   ,<<"App-Name">>
+					   ,<<"Event-Name">>
+					   ,<<"Event-Category">>
+					   ,<<"Server-ID">>
+					   ,<<"Message">>
+					   ,<<"Subject">>
                                            ]
-                                           ,Event
+					  ,Event
                                           )
                       )
      }
-     ,{<<"message">>, kz_json:get_binary_value(<<"Message">>, Event)}
-     ,{<<"details">>, notify_util:json_to_template_props(kz_json:get_value(<<"Details">>, Event))}
-     ,{<<"service">>, notify_util:get_service_props(kz_json:new(), ?MOD_CONFIG_CAT)}
+    ,{<<"message">>, kz_json:get_binary_value(<<"Message">>, Event)}
+    ,{<<"details">>, notify_util:json_to_template_props(kz_json:get_value(<<"Details">>, Event))}
+    ,{<<"service">>, notify_util:get_service_props(kz_json:new(), ?MOD_CONFIG_CAT)}
     ].
 
 %%--------------------------------------------------------------------
@@ -121,31 +121,31 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
-             ,[{<<"From">>, From}
-               ,{<<"To">>, To}
-               ,{<<"Subject">>, Subject}
-              ]
-             ,ContentTypeParams
-             ,[{<<"multipart">>, <<"alternative">>, [], []
-                ,[{<<"text">>, <<"plain">>
-                   ,props:filter_undefined(
-                      [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}
-                       ,{<<"Content-Transfer-Encoding">>, PlainTransferEncoding}
-                      ])
-                   ,[]
-                   ,iolist_to_binary(TxtBody)
-                  }
-                  ,{<<"text">>, <<"html">>
-                    ,props:filter_undefined(
-                       [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}
-                        ,{<<"Content-Transfer-Encoding">>, HTMLTransferEncoding}
-                       ])
-                    ,[]
-                    ,iolist_to_binary(HTMLBody)
-                   }
-                 ]
-               }
-              ]
+	    ,[{<<"From">>, From}
+	     ,{<<"To">>, To}
+	     ,{<<"Subject">>, Subject}
+	     ]
+	    ,ContentTypeParams
+	    ,[{<<"multipart">>, <<"alternative">>, [], []
+	      ,[{<<"text">>, <<"plain">>
+		,props:filter_undefined(
+		   [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}
+		   ,{<<"Content-Transfer-Encoding">>, PlainTransferEncoding}
+		   ])
+		,[]
+		,iolist_to_binary(TxtBody)
+		}
+	       ,{<<"text">>, <<"html">>
+		,props:filter_undefined(
+		   [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}
+		   ,{<<"Content-Transfer-Encoding">>, HTMLTransferEncoding}
+		   ])
+		,[]
+		,iolist_to_binary(HTMLBody)
+		}
+	       ]
+	      }
+	     ]
             },
     notify_util:send_email(From, To, Email),
     lager:debug("sent email to be processed: ~s", [TxtBody]).

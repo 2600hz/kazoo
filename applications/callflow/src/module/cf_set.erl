@@ -17,7 +17,7 @@ handle(Data, Call) ->
     {'ok', Call1} = cf_exe:get_call(Call),
     Skills = kz_json:merge_recursive(
                kapps_call:kvs_fetch('cf_agent_skills', kz_json:new(), Call1)
-               ,Data
+				    ,Data
               ),
     cf_exe:set_call(kapps_call:kvs_store('cf_agent_skills', Skills, Call1)),
     cf_exe:continue(Call).

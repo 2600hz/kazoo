@@ -34,7 +34,7 @@ get_user_id(Call) ->
 get_user_id_from_device(Call) ->
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call)
                                   ,kapps_call:authorizing_id(Call)
-                                 )
+				  )
     of
         {'ok', DeviceDoc} -> kz_json:get_value(<<"owner_id">>, DeviceDoc);
         _ -> 'undefined'
@@ -63,9 +63,9 @@ record(Call) ->
     RecordName = list_to_binary(["conf_announce_",kz_datamgr:get_uuid(), ".mp3"]),
 
     Choice = while(fun user_discards_or_not_error/1
-                   ,fun () -> record_name(RecordName, Call) end
-                   ,'undefined'
-                   ,'true'
+		  ,fun () -> record_name(RecordName, Call) end
+		  ,'undefined'
+		  ,'true'
                   ),
 
     case Choice of
@@ -92,12 +92,12 @@ user_discards_or_not_error(_) ->
 record_name(RecordName, Call) ->
     lager:debug("recording name"),
     Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
-                              ,{<<"Duration-ON">>, <<"500">>}
-                              ,{<<"Duration-OFF">>, <<"100">>}
+			     ,{<<"Duration-ON">>, <<"500">>}
+			     ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
     _ = kapps_call_command:audio_macro([{'prompt', <<"conf-announce_your_name">>}
-                                         ,{'tones', [Tone]}
-                                        ], Call),
+				       ,{'tones', [Tone]}
+				       ], Call),
     kapps_call_command:b_record(RecordName, ?ANY_DIGIT, <<"60">>, Call),
     Force = kapps_config:get_is_true(?CONFIG_CAT, <<"review_name">>, 'false'),
     case Force of
@@ -113,12 +113,12 @@ prepare_media_doc(RecordName, Call) ->
     AccountDb = kapps_call:account_db(Call),
     Props = props:filter_undefined(
               [{<<"name">>, RecordName}
-               ,{<<"description">>, <<"conference: user's pronounced name">>}
-               ,{<<"source_type">>, <<"call to conference">>}
-               ,{<<"source_id">>, kapps_call:fetch_id(Call)}
-               ,{<<"owner_id">>, UserId}
-               ,{<<"media_source">>, <<"recording">>}
-               ,{<<"streamable">>, 'true'}
+	      ,{<<"description">>, <<"conference: user's pronounced name">>}
+	      ,{<<"source_type">>, <<"call to conference">>}
+	      ,{<<"source_id">>, kapps_call:fetch_id(Call)}
+	      ,{<<"owner_id">>, UserId}
+	      ,{<<"media_source">>, <<"recording">>}
+	      ,{<<"streamable">>, 'true'}
               ]),
     Doc = kz_doc:update_pvt_parameters(kz_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
     case kz_datamgr:save_doc(AccountDb, Doc) of
@@ -167,7 +167,7 @@ maybe_remove_attachments(Call, JObj) ->
         {'true', Removed} ->
             {'ok', _Saved} = kz_datamgr:save_doc(kapps_call:account_db(Call), Removed),
             lager:debug("removed attachments from media doc ~s (now ~s)"
-                        ,[kz_doc:id(_Saved), kz_doc:revision(_Saved)]
+		       ,[kz_doc:id(_Saved), kz_doc:revision(_Saved)]
                        )
     end.
 
@@ -175,13 +175,13 @@ maybe_remove_attachments(Call, JObj) ->
 review(RecordName, Call) ->
     lager:debug("review record"),
     NoopId = kapps_call_command:audio_macro([{'prompt', <<"conf-your_announcment">>}
-                                              ,{'play', RecordName}
-                                              ,{'prompt', <<"conf-review">>}
-                                             ], Call),
+					    ,{'play', RecordName}
+					    ,{'prompt', <<"conf-review">>}
+					    ], Call),
 
     kapps_call_command:collect_digits(1
-                                       ,kapps_call_command:default_collect_timeout()
-                                       ,kapps_call_command:default_interdigit_timeout()
-                                       ,NoopId
-                                       ,Call
-                                      ).
+				     ,kapps_call_command:default_collect_timeout()
+				     ,kapps_call_command:default_interdigit_timeout()
+				     ,NoopId
+				     ,Call
+				     ).

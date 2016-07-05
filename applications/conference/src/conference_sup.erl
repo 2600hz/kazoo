@@ -17,8 +17,8 @@
 -export([init/1]).
 
 -define(CHILDREN, [?SUPER('conf_participant_sup')
-                   ,?WORKER('conference_shared_listener')
-                   ,?WORKER('conference_listener')
+		  ,?WORKER('conference_shared_listener')
+		  ,?WORKER('conference_listener')
                   ]).
 
 %% ===================================================================

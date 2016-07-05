@@ -8,13 +8,13 @@
 -module(kapi_blackhole).
 
 -export([get_req/1, get_req_v/1
-         ,get_resp/1, get_resp_v/1
+	,get_resp/1, get_resp_v/1
 
-         ,bind_q/2, unbind_q/2
-         ,declare_exchanges/0
+	,bind_q/2, unbind_q/2
+	,declare_exchanges/0
 
-         ,publish_get_req/1, publish_get_req/2
-         ,publish_get_resp/2, publish_get_resp/3
+	,publish_get_req/1, publish_get_req/2
+	,publish_get_resp/2, publish_get_resp/3
         ]).
 
 -include_lib("kazoo/include/kz_api.hrl").
@@ -146,7 +146,7 @@ publish_get_resp(RespQ, JObj) ->
     publish_get_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_get_resp(RespQ, Api, ContentType) ->
     PrepareOptions = [{'formatter', fun ?MODULE:get_resp/1}
-                      ,{'remove_recursive', 'false'}
+		     ,{'remove_recursive', 'false'}
                      ],
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?BLACKHOLE_GET_RESP_VALUES, PrepareOptions),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).

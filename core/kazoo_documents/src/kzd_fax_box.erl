@@ -9,11 +9,11 @@
 -module(kzd_fax_box).
 
 -export([new/0
-         ,type/0
-         ,owner_id/1, owner_id/2
-         ,owner/1
-         ,timezone/1, timezone/2
-         ,retries/1, retries/2
+	,type/0
+	,owner_id/1, owner_id/2
+	,owner/1
+	,timezone/1, timezone/2
+	,retries/1, retries/2
         ]).
 
 -include("kz_documents.hrl").

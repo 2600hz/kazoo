@@ -12,11 +12,11 @@
 -include("kazoo_config.hrl").
 
 -export([get/2, get/3, get/4
-         ,get_global/3, get_global/4
-         ,set/4
-         ,set_global/4
-         ,flush/1, flush/2
-         ,migrate/1
+	,get_global/3, get_global/4
+	,set/4
+	,set_global/4
+	,flush/1, flush/2
+	,migrate/1
         ]).
 
 -type account() :: ne_binary() | kapps_call:call() | kz_json:object().
@@ -36,14 +36,14 @@ get_global(Account, Category, Key, Default) ->
     end.
 
 -spec maybe_get_global_from_reseller(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
-                        kz_json:json_term().
+					    kz_json:json_term().
 maybe_get_global_from_reseller(Account, Category, Key, Default) ->
     AccountId = account_id(Account),
     ResellerId = kz_services:find_reseller_id(AccountId),
     maybe_get_global_from_reseller(AccountId, ResellerId, Category, Key, Default).
 
 -spec maybe_get_global_from_reseller(account(), account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
-                        kz_json:json_term().
+					    kz_json:json_term().
 maybe_get_global_from_reseller(AccountId, AccountId, Category, Key, Default) ->
     kapps_config:get(Category, Key, Default);
 maybe_get_global_from_reseller(_AccountId, ResellerId, Category, Key, Default) ->
@@ -128,8 +128,8 @@ set_global(Account, Category, Key, Value) ->
           end,
 
     Doc1 = kz_json:set_value(Key
-                             ,Value
-                             ,update_config_for_saving(AccountDb, Doc)
+			    ,Value
+			    ,update_config_for_saving(AccountDb, Doc)
                             ),
 
     {'ok', JObj1} = kz_datamgr:ensure_saved(AccountDb, Doc1),
@@ -268,10 +268,10 @@ add_config_setting(AccountDb, JObj, ToSetting, [{FromId, Node, FromSetting, Valu
         _Else ->
             io:format("the system tried to move the parameter listed below but found a different setting already there, you need to correct this disparity manually!~n"),
             io:format("  Source~n    db: ~s~n    id: ~s~n    key: ~s ~s~n    value: ~p~n"
-                      ,[AccountDb, FromId, Node, FromSetting, Value]
+		     ,[AccountDb, FromId, Node, FromSetting, Value]
                      ),
             io:format("  Destination~n    db: ~s~n    id: ~s~n    key: ~s ~s~n    value: ~p~n"
-                      ,[AccountDb, ToId, Node, ToSetting, _Else]
+		     ,[AccountDb, ToId, Node, ToSetting, _Else]
                      ),
             {'error', 'disparity'}
     end.

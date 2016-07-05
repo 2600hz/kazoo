@@ -23,21 +23,21 @@
                          'PrivateKeyInfo' | 'CertificationRequest'.
 
 -type pem_entry() :: {pki_asn1_type()
-                      ,binary()
-                      ,'not_encrypted' | cipher_info()
+		     ,binary()
+		     ,'not_encrypted' | cipher_info()
                      }.
 
 -type cipher_info() :: any().
-                       %% {"RC2-CBC" | "DES-CBC" | "DES-EDE3-CBC"
-                       %%  ,binary() | 'PBES2-params'
-                       %% }.
+%% {"RC2-CBC" | "DES-CBC" | "DES-EDE3-CBC"
+%%  ,binary() | 'PBES2-params'
+%% }.
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 
 -type keycert() :: {'undefined' | {'PrivateKeyInfo', binary()}
-                    ,api_binary()
+		   ,api_binary()
                    }.
 -spec binary_to_keycert(binary()) -> keycert().
 binary_to_keycert(Binary) ->
@@ -67,5 +67,5 @@ user_agent_push_properties(_UserAgent, []) -> 'undefined';
 user_agent_push_properties(UserAgent, [JObj|UAs]) ->
     case re:run(UserAgent, kz_json:get_value(<<"regex">>, JObj, <<"^$">>)) of
         'nomatch' -> user_agent_push_properties(UserAgent, UAs);
-        _ -> kz_json:get_value(<<"properties">>, JObj, kz_json:new())
-    end.
+								  _ -> kz_json:get_value(<<"properties">>, JObj, kz_json:new())
+								end.

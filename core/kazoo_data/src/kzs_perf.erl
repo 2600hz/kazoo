@@ -14,7 +14,7 @@
 
 -define(CACHE_PROFILE_FROM_FILE, kz_json:load_fixture_from_file('kazoo_data', "defaults", "perf.json")).
 -define(CACHE_PROFILE_OPTS, [{'origin', [{'db', ?KZ_CONFIG_DB, ?CONFIG_CAT}]}
-                             ,{'expires', 'infinity'}
+			    ,{'expires', 'infinity'}
                             ]).
 
 %% ====================================================================
@@ -77,19 +77,19 @@ profile_match(Mod, Fun, Arity) ->
 
 -spec do_profile({atom(), atom(), arity()}, list(), map()) -> any().
 do_profile({Mod, Fun, _Arity}, Args, PD) ->
-        [Plan, DbName | Others] = Args,
-        {Time, Result} = timer:tc(fun() -> erlang:apply(Mod, Fun, Args) end),
-        From = kz_util:calling_process(),
-        FromList = [{kz_util:to_atom(<<"from_", (kz_util:to_binary(K))/binary>>, true), V} || {K,V} <- maps:to_list(From)],
-        MD = FromList ++ maps:to_list(maps:merge(Plan, PD)),
-        data:debug([{'mod', Mod}
-                    ,{'func', Fun}
-                    ,{'plan', Plan}
-                    ,{'duration', Time}
-                    ,{'database', DbName}
-                    ,{'from', From}
-                    | MD
-                   ],
-                   "execution of {~s:~s} in database ~s with args ~p took ~b",
-                   [Mod, Fun, DbName, Others, Time]),
-        Result.
+    [Plan, DbName | Others] = Args,
+    {Time, Result} = timer:tc(fun() -> erlang:apply(Mod, Fun, Args) end),
+    From = kz_util:calling_process(),
+    FromList = [{kz_util:to_atom(<<"from_", (kz_util:to_binary(K))/binary>>, true), V} || {K,V} <- maps:to_list(From)],
+    MD = FromList ++ maps:to_list(maps:merge(Plan, PD)),
+    data:debug([{'mod', Mod}
+	       ,{'func', Fun}
+	       ,{'plan', Plan}
+	       ,{'duration', Time}
+	       ,{'database', DbName}
+	       ,{'from', From}
+		| MD
+	       ],
+	       "execution of {~s:~s} in database ~s with args ~p took ~b",
+	       [Mod, Fun, DbName, Others, Time]),
+    Result.

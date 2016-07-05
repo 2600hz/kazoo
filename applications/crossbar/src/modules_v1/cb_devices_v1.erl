@@ -13,16 +13,16 @@
 -module(cb_devices_v1).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/3
-         ,billing/1
-         ,authenticate/1
-         ,authorize/1
-         ,validate/1, validate/2, validate/4
-         ,put/1
-         ,post/2
-         ,delete/2
-         ,lookup_regs/1
+	,allowed_methods/0, allowed_methods/1, allowed_methods/3
+	,resource_exists/0, resource_exists/1, resource_exists/3
+	,billing/1
+	,authenticate/1
+	,authorize/1
+	,validate/1, validate/2, validate/4
+	,put/1
+	,post/2
+	,delete/2
+	,lookup_regs/1
         ]).
 
 -include("crossbar.hrl").
@@ -229,8 +229,8 @@ load_device_summary(Context) ->
     load_device_summary(Context, cb_context:req_nouns(Context)).
 
 load_device_summary(Context, [{<<"devices">>, []}
-                              ,{<<"users">>, [UserId]}
-                             |_]
+			     ,{<<"users">>, [UserId]}
+			      |_]
                    ) ->
     load_users_device_summary(Context, UserId);
 load_device_summary(Context, _ReqNouns) ->
@@ -240,9 +240,9 @@ load_device_summary(Context, _ReqNouns) ->
                                        cb_context:context().
 load_users_device_summary(Context, UserId) ->
     crossbar_doc:load_view(?OWNER_LIST
-                           ,[{'key', UserId}]
-                           ,Context
-                           ,fun normalize_view_results/2
+			  ,[{'key', UserId}]
+			  ,Context
+			  ,fun normalize_view_results/2
                           ).
 
 %%--------------------------------------------------------------------
@@ -270,7 +270,7 @@ check_mac_address(DeviceId, Context) ->
         'true' ->
             prepare_outbound_flags(DeviceId, Context);
         'false' ->
-           error_used_mac_address(Context)
+	    error_used_mac_address(Context)
     end.
 
 -spec unique_mac_address(api_binary(), cb_context:context()) -> boolean().
@@ -285,12 +285,12 @@ error_used_mac_address(Context) ->
     MacAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
     cb_context:add_validation_error(
       ?KEY_MAC_ADDRESS
-      ,<<"unique">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"Mac address already in use">>}
-          ,{<<"cause">>, MacAddress}
-         ])
-      ,Context
+				   ,<<"unique">>
+				   ,kz_json:from_list(
+				      [{<<"message">>, <<"Mac address already in use">>}
+				      ,{<<"cause">>, MacAddress}
+				      ])
+				   ,Context
      ).
 
 -spec get_mac_addresses(ne_binary()) -> ne_binaries().
@@ -340,12 +340,12 @@ validate_device_creds(Realm, DeviceId, Context) ->
         Else ->
             C = cb_context:add_validation_error(
                   [<<"sip">>, <<"method">>]
-                  ,<<"enum">>
-                  ,kz_json:from_list([{<<"message">>, <<"SIP authentication method is invalid">>}
-                                      ,{<<"target">>, [<<"password">>, <<"ip">>]}
-                                      ,{<<"cause">>, Else}
-                                     ])
-                  ,Context
+					       ,<<"enum">>
+					       ,kz_json:from_list([{<<"message">>, <<"SIP authentication method is invalid">>}
+								  ,{<<"target">>, [<<"password">>, <<"ip">>]}
+								  ,{<<"cause">>, Else}
+								  ])
+					       ,Context
                  ),
             check_emergency_caller_id(DeviceId, C)
     end.
@@ -359,11 +359,11 @@ validate_device_password(Realm, DeviceId, Context) ->
         'false' ->
             C = cb_context:add_validation_error(
                   [<<"sip">>, <<"username">>]
-                  ,<<"unique">>
-                  ,kz_json:from_list([{<<"message">>, <<"SIP credentials already in use">>}
-                                      ,{<<"cause">>, Username}
-                                     ])
-                  ,Context
+					       ,<<"unique">>
+					       ,kz_json:from_list([{<<"message">>, <<"SIP credentials already in use">>}
+								  ,{<<"cause">>, Username}
+								  ])
+					       ,Context
                  ),
             check_emergency_caller_id(DeviceId, C)
     end.
@@ -376,11 +376,11 @@ validate_device_ip(IP, DeviceId, Context) ->
         'false' ->
             C = cb_context:add_validation_error(
                   [<<"sip">>, <<"ip">>]
-                  ,<<"type">>
-                  ,kz_json:from_list([{<<"message">>, <<"Must be a valid IPv4 RFC 791">>}
-                                      ,{<<"cause">>, IP}
-                                     ])
-                  ,Context
+					       ,<<"type">>
+					       ,kz_json:from_list([{<<"message">>, <<"Must be a valid IPv4 RFC 791">>}
+								  ,{<<"cause">>, IP}
+								  ])
+					       ,Context
                  ),
             check_emergency_caller_id(DeviceId, C)
     end.
@@ -394,12 +394,12 @@ validate_device_ip_unique(IP, DeviceId, Context) ->
         'false' ->
             C = cb_context:add_validation_error(
                   [<<"sip">>, <<"ip">>]
-                  ,<<"unique">>
-                  ,kz_json:from_list(
-                     [{<<"message">>, <<"SIP IP already in use">>}
-                      ,{<<"cause">>, IP}
-                     ])
-                  ,Context
+					       ,<<"unique">>
+					       ,kz_json:from_list(
+						  [{<<"message">>, <<"SIP IP already in use">>}
+						  ,{<<"cause">>, IP}
+						  ])
+					       ,Context
                  ),
             check_emergency_caller_id(DeviceId, C)
     end.
@@ -415,8 +415,8 @@ check_emergency_caller_id(DeviceId, Context) ->
 check_device_schema(DeviceId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,
     cb_context:validate_request_data(<<"devices">>
-                                     ,Context
-                                     ,OnSuccess
+				    ,Context
+				    ,OnSuccess
                                     ).
 
 -spec on_successful_validation(api_binary(), cb_context:context()) ->
@@ -474,20 +474,20 @@ normalize_view_results(JObj, Acc) ->
 -spec lookup_regs(ne_binary()) -> kz_json:objects().
 lookup_regs(AccountRealm) ->
     Req = [{<<"Realm">>, AccountRealm}
-           ,{<<"Fields">>, [<<"Authorizing-ID">>]}
+	  ,{<<"Fields">>, [<<"Authorizing-ID">>]}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kapps_util:amqp_pool_collect(Req
-                                       ,fun kapi_registration:publish_query_req/1
-                                       ,'ecallmgr'
-                                      )
+				     ,fun kapi_registration:publish_query_req/1
+				     ,'ecallmgr'
+				     )
     of
         {'error', _E} ->
             lager:debug("error getting reg: ~p", [_E]),
             [];
         {_, JObjs} ->
             [kz_json:from_list([{<<"device_id">>, AuthorizingId}
-                                ,{<<"registered">>, 'true'}
+			       ,{<<"registered">>, 'true'}
                                ])
              || AuthorizingId <- extract_device_registrations(JObjs)
             ]

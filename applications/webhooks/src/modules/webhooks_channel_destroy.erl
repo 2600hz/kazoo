@@ -7,7 +7,7 @@
 -module(webhooks_channel_destroy).
 
 -export([init/0
-         ,bindings_and_responders/0
+	,bindings_and_responders/0
         ]).
 
 -include("webhooks.hrl").
@@ -16,10 +16,10 @@
 -define(NAME, <<"channel_destroy">>).
 -define(DESC, <<"Events when calls end">>).
 -define(METADATA
-        ,kz_json:from_list([{<<"_id">>, ?ID}
-                            ,{<<"name">>, ?NAME}
-                            ,{<<"description">>, ?DESC}
-                           ])
+       ,kz_json:from_list([{<<"_id">>, ?ID}
+			  ,{<<"name">>, ?NAME}
+			  ,{<<"description">>, ?DESC}
+			  ])
        ).
 
 -spec init() -> 'ok'.
@@ -28,16 +28,16 @@ init() ->
 
 -spec bindings_and_responders() ->
                                      {gen_listener:bindings()
-                                      ,gen_listener:responders()
+				     ,gen_listener:responders()
                                      }.
 bindings_and_responders() ->
     {[{'call', [{'restrict_to', ['CHANNEL_DESTROY']}
-                ,'federate'
+	       ,'federate'
                ]
       }
      ]
-     ,[{{'webhooks_channel_util', 'handle_event'}
-        ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
-       }
-      ]
+    ,[{{'webhooks_channel_util', 'handle_event'}
+      ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
+      }
+     ]
     }.

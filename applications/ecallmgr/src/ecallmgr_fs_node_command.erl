@@ -38,9 +38,9 @@ exec_cmd(Cmd, _Args, JObj, _Node) ->
 -spec reply_error(ne_binary(), kz_json:object()) -> 'ok'.
 reply_error(Error, JObj) ->
     Values = [{<<"Result">>, <<"error">>}
-              ,{<<"Error">>, Error}
-              ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+	     ,{<<"Error">>, Error}
+	     ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+	      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ],
     API = kz_json:set_values(Values, kz_api:remove_defaults(JObj)),
     Queue = kz_api:server_id(JObj),
@@ -52,9 +52,9 @@ reply_success(JObj) ->
     reply_success(JObj, []).
 reply_success(JObj, Response) ->
     Values = [{<<"Result">>, <<"success">>}
-              ,{<<"Response">>, kz_json:from_list(Response)}
-              ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+	     ,{<<"Response">>, kz_json:from_list(Response)}
+	     ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+	      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ],
     API = kz_json:set_values(Values, kz_api:remove_defaults(JObj)),
     Queue = kz_api:server_id(JObj),

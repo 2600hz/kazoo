@@ -13,12 +13,12 @@
 %% API
 -export([start_link/0]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("dth.hrl").
@@ -26,21 +26,21 @@
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{'dth_cdr_handler'
-                      ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
+		     ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
                      }
-                     ,{'dth_blacklist_req'
-                       ,[{<<"dth">>, <<"blacklist_req">>}]
-                      }
+		    ,{'dth_blacklist_req'
+		     ,[{<<"dth">>, <<"blacklist_req">>}]
+		     }
                     ]).
 -define(BINDINGS, [{'call'
-                    ,[{'restrict_to', [<<"CHANNEL_DESTROY">>]}]
+		   ,[{'restrict_to', [<<"CHANNEL_DESTROY">>]}]
                    }
                   ]).
 
 -define(BLACKLIST_REFRESH, 60 * ?MILLISECONDS_IN_SECOND).
 
 -record(state, {wsdl_model = 'undefined' :: 'undefined' | #wsdl{}
-                ,dth_cdr_url = <<>> :: binary()
+	       ,dth_cdr_url = <<>> :: binary()
                }).
 
 %%%===================================================================
@@ -204,12 +204,12 @@ refresh_blacklist_response(Response) ->
 -spec get_blocklist_entries(#'p:GetBlockListResponse'{}) -> kz_json:object().
 get_blocklist_entries(#'p:GetBlockListResponse'{
                          'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
-                           'BlockListEntry'='undefined'
-                          }}) ->
+						 'BlockListEntry'='undefined'
+						}}) ->
     kz_json:new();
 get_blocklist_entries(#'p:GetBlockListResponse'{
                          'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
-                           'BlockListEntry'=Entries
-                          }}) when is_list(Entries) ->
+						 'BlockListEntry'=Entries
+						}}) when is_list(Entries) ->
     %% do some formatting of the entries to be [{ID, Reason}]
     kz_json:from_list([{kz_util:to_binary(ID), kz_util:to_binary(Reason)} || #'p:BlockListEntry'{'CustomerID'=ID, 'BlockReason'=Reason} <- Entries]).

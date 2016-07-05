@@ -24,7 +24,7 @@ handle_req(JObj, _Props) ->
             maybe_publish_no_rate_found(JObj);
         {'ok', Resp} ->
             kapi_rate:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj)
-                                   ,props:filter_undefined(Resp)
+				  ,props:filter_undefined(Resp)
                                   ),
             kapi_rate:broadcast_resp(props:filter_undefined(Resp))
     end.
@@ -61,7 +61,7 @@ get_rate_data(JObj) ->
         {'error', _E} ->
             kz_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),
             lager:debug("rate lookup error for ~s to ~s: ~p"
-                        ,[FromDID, ToDID, _E]
+		       ,[FromDID, ToDID, _E]
                        ),
             {'error', 'no_rate_found'};
         {'ok', Rates} ->
@@ -82,15 +82,15 @@ get_rate_data(JObj, ToDID, FromDID, Rates) ->
         [] ->
             kz_notify:system_alert("no rate found after filter/sort for ~s to ~s", [FromDID, ToDID]),
             lager:debug("no rates left for ~s to ~s after filter"
-                        ,[FromDID, ToDID]
+		       ,[FromDID, ToDID]
                        ),
             {'error', 'no_rate_found'};
         [Rate|_] ->
             lager:debug("using rate ~s for ~s to ~s"
-                        ,[kz_json:get_value(<<"rate_name">>, Rate)
-                          ,FromDID
-                          ,ToDID
-                         ]
+		       ,[kz_json:get_value(<<"rate_name">>, Rate)
+			,FromDID
+			,ToDID
+			]
                        ),
             {'ok', rate_resp(Rate, JObj)}
     end.
@@ -124,20 +124,20 @@ rate_resp(Rate, JObj) ->
     lager:debug("base cost for a minute call: ~p", [BaseCost]),
     UpdateCalleeId = maybe_update_callee_id(JObj),
     [{<<"Rate">>, kz_util:to_binary(RateCost)}
-     ,{<<"Rate-Increment">>, kz_json:get_binary_value(<<"rate_increment">>, Rate, <<"60">>)}
-     ,{<<"Rate-Minimum">>, kz_util:to_binary(RateMinimum)}
-     ,{<<"Discount-Percentage">>, maybe_get_rate_discount(JObj)}
-     ,{<<"Surcharge">>, kz_util:to_binary(RateSurcharge)}
-     ,{<<"Prefix">>, kz_json:get_binary_value(<<"prefix">>, Rate)}
-     ,{<<"Rate-Name">>, kz_json:get_binary_value(<<"rate_name">>, Rate)}
-     ,{<<"Rate-Description">>, kz_json:get_binary_value(<<"description">>, Rate)}
-     ,{<<"Rate-ID">>, kz_json:get_binary_value(<<"rate_id">>, Rate)}
-     ,{<<"Base-Cost">>, kz_util:to_binary(BaseCost)}
-     ,{<<"Pvt-Cost">>, kz_util:to_binary(PrivateCost)}
-     ,{<<"Rate-NoCharge-Time">>, kz_json:get_binary_value(<<"rate_nocharge_time">>, Rate)}
-     ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-     ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
-     ,{<<"Update-Callee-ID">>, UpdateCalleeId}
+    ,{<<"Rate-Increment">>, kz_json:get_binary_value(<<"rate_increment">>, Rate, <<"60">>)}
+    ,{<<"Rate-Minimum">>, kz_util:to_binary(RateMinimum)}
+    ,{<<"Discount-Percentage">>, maybe_get_rate_discount(JObj)}
+    ,{<<"Surcharge">>, kz_util:to_binary(RateSurcharge)}
+    ,{<<"Prefix">>, kz_json:get_binary_value(<<"prefix">>, Rate)}
+    ,{<<"Rate-Name">>, kz_json:get_binary_value(<<"rate_name">>, Rate)}
+    ,{<<"Rate-Description">>, kz_json:get_binary_value(<<"description">>, Rate)}
+    ,{<<"Rate-ID">>, kz_json:get_binary_value(<<"rate_id">>, Rate)}
+    ,{<<"Base-Cost">>, kz_util:to_binary(BaseCost)}
+    ,{<<"Pvt-Cost">>, kz_util:to_binary(PrivateCost)}
+    ,{<<"Rate-NoCharge-Time">>, kz_json:get_binary_value(<<"rate_nocharge_time">>, Rate)}
+    ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+    ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
+    ,{<<"Update-Callee-ID">>, UpdateCalleeId}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 

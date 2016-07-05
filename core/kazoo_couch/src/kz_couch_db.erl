@@ -11,16 +11,16 @@
 
 %% DB operations
 -export([db_compact/2
-         ,db_create/2
-         ,db_create/3
-         ,db_delete/2
-         ,db_replicate/2
-         ,db_view_cleanup/2
-         ,db_info/1
-         ,db_info/2
-         ,db_exists/2
-         ,db_archive/3
-         ,db_list/2
+	,db_create/2
+	,db_create/3
+	,db_delete/2
+	,db_replicate/2
+	,db_view_cleanup/2
+	,db_info/1
+	,db_info/2
+	,db_exists/2
+	,db_archive/3
+	,db_list/2
         ]).
 
 -include("kz_couch.hrl").
@@ -59,8 +59,8 @@ do_db_create_db(#server{url=ServerUrl, options=Opts}=Server, DbName, Options, Pa
             {ok, #db{server=Server, name=DbName, options=Options1}};
         {error, precondition_failed} ->
             {error, db_exists};
-       Error ->
-          Error
+	Error ->
+	    Error
     end.
 
 -spec db_delete(server(), ne_binary()) -> boolean().
@@ -71,15 +71,15 @@ db_delete(#server{}=Conn, DbName) ->
     end.
 
 -spec db_replicate(server(), kz_json:object() | kz_proplist()) ->
-                                {'ok', kz_json:object()} |
-                                couchbeam_error().
+			  {'ok', kz_json:object()} |
+			  couchbeam_error().
 db_replicate(#server{}=Conn, Prop) when is_list(Prop) ->
     couchbeam:replicate(Conn, kz_json:from_list(Prop));
 db_replicate(#server{}=Conn, JObj) ->
     couchbeam:replicate(Conn, JObj).
 
 -spec db_list(server(), view_options()) ->
-          {'ok', kz_json:objects() | ne_binaries()} | couchbeam_error().
+		     {'ok', kz_json:objects() | ne_binaries()} | couchbeam_error().
 db_list(#server{}=Conn, Options) ->
     couchbeam:all_dbs(Conn, Options).
 
@@ -123,8 +123,8 @@ archive(_Db, DbName, _File,  _MaxDocs, 0, _Pos) ->
     io:format("    archive ~s complete~n", [DbName]);
 archive(#db{}=Db, DbName, File, MaxDocs, N, Pos) when N =< MaxDocs ->
     ViewOptions = [{'limit', MaxDocs}
-                   ,{'skip', Pos}
-                   ,'include_docs'
+		  ,{'skip', Pos}
+		  ,'include_docs'
                   ],
     case kz_couch_view:all_docs(Db, ViewOptions) of
         {'ok', []} -> io:format("    no docs left after pos ~p~n", [Pos]);
@@ -138,8 +138,8 @@ archive(#db{}=Db, DbName, File, MaxDocs, N, Pos) when N =< MaxDocs ->
     end;
 archive(Db, DbName, File, MaxDocs, N, Pos) ->
     ViewOptions = [{'limit', MaxDocs}
-                   ,{'skip', Pos}
-                   ,'include_docs'
+		  ,{'skip', Pos}
+		  ,'include_docs'
                   ],
     case kz_couch_view:all_docs(Db, ViewOptions) of
         {'ok', []} -> io:format("    no docs left after pos ~p~n", [Pos]);

@@ -17,8 +17,8 @@ local_message_handling(Props, OffnetReq) ->
     CallId = kz_util:rand_hex_binary(16),
     ServerID = kapi_offnet_resource:server_id(OffnetReq),
     ReqResp = kz_amqp_worker:call(route_req(CallId, FetchId, Props, OffnetReq)
-                                  ,fun kapi_route:publish_req/1
-                                  ,fun kapi_route:is_actionable_resp/1
+				 ,fun kapi_route:publish_req/1
+				 ,fun kapi_route:is_actionable_resp/1
                                  ),
     case ReqResp of
         {'error', _R} ->
@@ -35,14 +35,14 @@ local_message_handling(Props, OffnetReq) ->
 -spec sms_error(kz_json:object(), kapi_offnet_resource:req()) -> kz_proplist().
 sms_error(JObj, OffnetReq) ->
     lager:debug("error during outbound request: ~s"
-                ,[kz_json:encode(kapi_offnet_resource:req_to_jobj(OffnetReq))]
+	       ,[kz_json:encode(kapi_offnet_resource:req_to_jobj(OffnetReq))]
                ),
     [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
-     ,{<<"Msg-ID">>, kapi_offnet_resource:msg_id(OffnetReq)}
-     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
-     ,{<<"Response-Code">>, <<"sip:500">>}
-     ,{<<"Error-Message">>, kz_json:get_value(<<"Error-Message">>, JObj, <<"failed to process request">>)}
-     ,{<<"To-DID">>, kapi_offnet_resource:to_did(OffnetReq)}
+    ,{<<"Msg-ID">>, kapi_offnet_resource:msg_id(OffnetReq)}
+    ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
+    ,{<<"Response-Code">>, <<"sip:500">>}
+    ,{<<"Error-Message">>, kz_json:get_value(<<"Error-Message">>, JObj, <<"failed to process request">>)}
+    ,{<<"To-DID">>, kapi_offnet_resource:to_did(OffnetReq)}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
@@ -50,10 +50,10 @@ sms_error(JObj, OffnetReq) ->
 sms_success(JObj, OffnetReq) ->
     lager:debug("outbound request successfully completed"),
     [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
-     ,{<<"Msg-ID">>, kapi_offnet_resource:msg_id(OffnetReq)}
-     ,{<<"Response-Message">>, <<"SUCCESS">>}
-     ,{<<"Response-Code">>, <<"sip:200">>}
-     ,{<<"Resource-Response">>, JObj}
+    ,{<<"Msg-ID">>, kapi_offnet_resource:msg_id(OffnetReq)}
+    ,{<<"Response-Message">>, <<"SUCCESS">>}
+    ,{<<"Response-Code">>, <<"sip:200">>}
+    ,{<<"Resource-Response">>, JObj}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
@@ -66,9 +66,9 @@ send_route_win(_FetchId, CallId, JObj) ->
     ServerQ = kz_api:server_id(JObj),
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     Win = [{<<"Msg-ID">>, CallId}
-           ,{<<"Call-ID">>, CallId}
-           ,{<<"Control-Queue">>, <<"chatplan_ignored">>}
-           ,{<<"Custom-Channel-Vars">>, CCVs}
+	  ,{<<"Call-ID">>, CallId}
+	  ,{<<"Control-Queue">>, <<"chatplan_ignored">>}
+	  ,{<<"Custom-Channel-Vars">>, CCVs}
            | kz_api:default_headers(<<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending route_win to ~s", [ServerQ]),
@@ -79,31 +79,31 @@ send_route_win(_FetchId, CallId, JObj) ->
 delivery_from_req(OffnetReq, Status, DeliveryCode, DeliveryFailure) ->
     OffnetJObj = kapi_offnet_resource:req_to_jobj(OffnetReq),
     Keys = [<<"Event-Category">>
-            ,<<"Event-Name">>
-            ,<<"App-Name">>
-            ,<<"App-Version">>
-            ,<<"Node">>
+	   ,<<"Event-Name">>
+	   ,<<"App-Name">>
+	   ,<<"App-Version">>
+	   ,<<"Node">>
            ],
     Props = props:filter_empty(
               [{<<"Delivery-Result-Code">>, DeliveryCode}
-               ,{<<"Delivery-Failure">>, DeliveryFailure}
-               ,{<<"Status">>, Status}
+	      ,{<<"Delivery-Failure">>, DeliveryFailure}
+	      ,{<<"Status">>, Status}
                | kz_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
               ]),
 
     kz_json:set_values(
       Props
-      ,kz_json:delete_keys(Keys, OffnetJObj)
+		      ,kz_json:delete_keys(Keys, OffnetJObj)
      ).
 
 -spec request_caller_id(kapi_offnet_resource:req()) -> {ne_binary(), ne_binary()}.
 request_caller_id(OffnetReq) ->
     {kapi_offnet_resource:outbound_caller_id_number(OffnetReq
-                                                    ,kz_util:anonymous_caller_id_number()
+						   ,kz_util:anonymous_caller_id_number()
                                                    )
-     ,kapi_offnet_resource:outbound_caller_id_name(OffnetReq
-                                                     ,kz_util:anonymous_caller_id_name()
-                                                    )
+    ,kapi_offnet_resource:outbound_caller_id_name(OffnetReq
+						 ,kz_util:anonymous_caller_id_name()
+						 )
     }.
 
 -spec route_req(ne_binary(), ne_binary(), knm_number_options:extra_options(), kapi_offnet_resource:req()) -> kz_proplist().
@@ -120,23 +120,23 @@ route_req(CallId, FetchId, Props, OffnetReq) ->
         kz_json:from_list(
           props:filter_undefined(
             [{<<"Fetch-ID">>, FetchId}
-             ,{<<"Account-ID">>, TargetAccountId}
-             ,{<<"Account-Realm">>, TargetAccountRealm}
-             ,{<<"Inception">>, From}
+	    ,{<<"Account-ID">>, TargetAccountId}
+	    ,{<<"Account-Realm">>, TargetAccountRealm}
+	    ,{<<"Inception">>, From}
             ]
            )
          ),
 
     [{<<"Msg-ID">>, FetchId}
-     ,{<<"Call-ID">>, CallId}
-     ,{<<"Message-ID">>, kapi_offnet_resource:message_id(OffnetReq)}
-     ,{<<"Caller-ID-Name">>, FromName}
-     ,{<<"Caller-ID-Number">>, FromNumber}
-     ,{<<"To">>, To}
-     ,{<<"From">>, From}
-     ,{<<"Request">>, To}
-     ,{<<"Body">>, kapi_offnet_resource:body(OffnetReq)}
-     ,{<<"Custom-Channel-Vars">>, CCVs}
-     ,{<<"Resource-Type">>, <<"sms">>}
+    ,{<<"Call-ID">>, CallId}
+    ,{<<"Message-ID">>, kapi_offnet_resource:message_id(OffnetReq)}
+    ,{<<"Caller-ID-Name">>, FromName}
+    ,{<<"Caller-ID-Number">>, FromNumber}
+    ,{<<"To">>, To}
+    ,{<<"From">>, From}
+    ,{<<"Request">>, To}
+    ,{<<"Body">>, kapi_offnet_resource:body(OffnetReq)}
+    ,{<<"Custom-Channel-Vars">>, CCVs}
+    ,{<<"Resource-Type">>, <<"sms">>}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].

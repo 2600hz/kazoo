@@ -11,42 +11,42 @@
 
 %% API
 -export([start_link/0
-         ,start_app/1
-         ,start_default_apps/0
-         ,stop_app/1
-         ,restart_app/1
-         ,running_apps/0, running_apps/1
-         ,list_apps/0
+	,start_app/1
+	,start_default_apps/0
+	,stop_app/1
+	,restart_app/1
+	,running_apps/0, running_apps/1
+	,list_apps/0
         ]).
 
 -include("kazoo_apps.hrl").
 
 -define(HIDDEN_APPS
-        ,['amqp_client','apns','asn1'
-          ,'bear','braintree'
-          ,'certifi','compiler','cowboy','cowlib','couchbeam','crypto'
-          ,'eflame','escalus','exml'
-          ,'folsom'
-          ,'gcm','gen_smtp','goldrush','gproc'
-          ,'hackney'
-          ,'idna','inets'
-          ,'kazoo_bindings','kazoo_caches','kazoo_couch','kazoo_data'
-          ,'kazoo_documents','kazoo_endpoint','kazoo_etsmgr','kazoo_globals'
-         ,'kazoo_modb','kazoo_number_manager','kazoo_oauth','kazoo_token_buckets'
-          ,'kazoo_voicemail','kazoo_web','kazoo_xml','kernel'
-          ,'lager','lager_syslog'
-          ,'mimerl'
-          ,'nksip'
-          ,'poolboy','public_key'
-          ,'rabbit_common','ranch'
-          ,'sasl','ssl','stdlib','syntax_tools','syslog'
-          ,'webseq'
-          ,'kazoo','kazoo_amqp','kazoo_apps','kazoo_config'
-          ,'kazoo_couch','kazoo_media'
-          ,'kazoo_services','kazoo_stats','kazoo_transactions'
-          ,'xmerl'
-          ,'zucchini'
-         ]).
+       ,['amqp_client','apns','asn1'
+	,'bear','braintree'
+	,'certifi','compiler','cowboy','cowlib','couchbeam','crypto'
+	,'eflame','escalus','exml'
+	,'folsom'
+	,'gcm','gen_smtp','goldrush','gproc'
+	,'hackney'
+	,'idna','inets'
+	,'kazoo_bindings','kazoo_caches','kazoo_couch','kazoo_data'
+	,'kazoo_documents','kazoo_endpoint','kazoo_etsmgr','kazoo_globals'
+	,'kazoo_modb','kazoo_number_manager','kazoo_oauth','kazoo_token_buckets'
+	,'kazoo_voicemail','kazoo_web','kazoo_xml','kernel'
+	,'lager','lager_syslog'
+	,'mimerl'
+	,'nksip'
+	,'poolboy','public_key'
+	,'rabbit_common','ranch'
+	,'sasl','ssl','stdlib','syntax_tools','syslog'
+	,'webseq'
+	,'kazoo','kazoo_amqp','kazoo_apps','kazoo_config'
+	,'kazoo_couch','kazoo_media'
+	,'kazoo_services','kazoo_stats','kazoo_transactions'
+	,'xmerl'
+	,'zucchini'
+	]).
 
 
 %%%===================================================================
@@ -141,11 +141,11 @@ initialize_kapps() ->
         'true' -> 'ok'
     end,
     KApps = case os:getenv("KAZOO_APPS", "noenv") of
-                 "noenv" ->
-                     kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS);
-                 KAZOO_APPS ->
-                     string:tokens(KAZOO_APPS, ", ")
-             end,
+		"noenv" ->
+		    kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS);
+		KAZOO_APPS ->
+		    string:tokens(KAZOO_APPS, ", ")
+	    end,
     StartKApps = [kz_util:to_atom(KApp, 'true') || KApp <- KApps],
 
     _ = [start_app(A) || A <- lists:sort(fun sysconf_first/2, StartKApps)],

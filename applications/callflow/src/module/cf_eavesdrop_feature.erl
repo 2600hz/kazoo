@@ -24,7 +24,7 @@
 -include("callflow.hrl").
 
 -export([handle/2
-         ,get_target_for_extension/2
+	,get_target_for_extension/2
         ]).
 
 -export_type([target/0]).
@@ -47,8 +47,8 @@ handle(Data, Call) ->
     of
         'true' ->
             Flow = kz_json:from_list([{<<"data">>, build_data(Target, Call)}
-                                      ,{<<"module">>, <<"eavesdrop">>}
-                                      ,{<<"children">>, kz_json:new()}
+				     ,{<<"module">>, <<"eavesdrop">>}
+				     ,{<<"children">>, kz_json:new()}
                                      ]),
             cf_exe:branch(Flow, Call);
         'false' ->
@@ -59,8 +59,8 @@ handle(Data, Call) ->
 -spec fields_to_check() -> kz_proplist().
 fields_to_check() ->
     [{<<"approved_device_id">>, fun(Id, Call) -> Id == kapps_call:authorizing_id(Call) end}
-     ,{<<"approved_user_id">>, fun cf_util:caller_belongs_to_user/2}
-     ,{<<"approved_group_id">>, fun cf_util:caller_belongs_to_group/2}
+    ,{<<"approved_user_id">>, fun cf_util:caller_belongs_to_user/2}
+    ,{<<"approved_group_id">>, fun cf_util:caller_belongs_to_group/2}
     ].
 
 -type target() :: {'ok', ne_binary(), ne_binary()} | 'error'.

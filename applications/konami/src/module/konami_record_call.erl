@@ -15,7 +15,7 @@
 -module(konami_record_call).
 
 -export([handle/2
-         ,number_builder/1
+	,number_builder/1
         ]).
 
 -include("konami.hrl").
@@ -35,10 +35,10 @@ handle(Data, Call, <<"start">>) ->
             Format = kz_media_recording:get_format(kz_json:get_value(<<"format">>, Data)),
             MediaName = kz_media_recording:get_media_name(kapps_call:call_id(Call), Format),
             Props = [{<<"Media-Name">>, MediaName}
-                     ,{<<"Media-Transfer-Method">>, kz_json:get_value(<<"method">>, Data, <<"put">>)}
-                     ,{<<"Media-Transfer-Destination">>, kz_json:get_value(<<"url">>, Data)}
-                     ,{<<"Additional-Headers">>, kz_json:get_value(<<"additional_headers">>, Data)}
-                     ,{<<"Time-Limit">>, kz_json:get_value(<<"time_limit">>, Data)}
+		    ,{<<"Media-Transfer-Method">>, kz_json:get_value(<<"method">>, Data, <<"put">>)}
+		    ,{<<"Media-Transfer-Destination">>, kz_json:get_value(<<"url">>, Data)}
+		    ,{<<"Additional-Headers">>, kz_json:get_value(<<"additional_headers">>, Data)}
+		    ,{<<"Time-Limit">>, kz_json:get_value(<<"time_limit">>, Data)}
                     ],
             _ = kapps_call_command:record_call(Props, <<"start">>, Call)
     end;
@@ -109,13 +109,13 @@ number_builder_url(NumberJObj, Action, TimeLimit, Format) ->
 -spec metaflow_jobj(kz_json:object(), ne_binary(), pos_integer(), ne_binary(), ne_binary()) -> kz_json:object().
 metaflow_jobj(NumberJObj, Action, TimeLimit, Format, URL) ->
     kz_json:set_values([{<<"module">>, <<"record_call">>}
-                        ,{<<"data">>, data(Action, TimeLimit, Format, URL)}
+		       ,{<<"data">>, data(Action, TimeLimit, Format, URL)}
                        ], NumberJObj).
 
 -spec data(ne_binary(), pos_integer(), ne_binary(), ne_binary()) -> kz_json:object().
 data(Action, TimeLimit, Format, URL) ->
     kz_json:from_list([{<<"action">>, Action}
-                       ,{<<"time_limit">>, TimeLimit}
-                       ,{<<"format">>, Format}
-                       ,{<<"url">>, URL}
+		      ,{<<"time_limit">>, TimeLimit}
+		      ,{<<"format">>, Format}
+		      ,{<<"url">>, URL}
                       ]).

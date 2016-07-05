@@ -47,9 +47,9 @@ find_numbers(Prefix, Quantity, Options) ->
     case props:is_true(<<"tollfree">>, Options, 'false') of
         'true' ->
             find(Prefix
-                 ,Quantity
-                 ,Options
-                 ,tollfree_options(Quantity, Options)
+		,Quantity
+		,Options
+		,tollfree_options(Quantity, Options)
                 );
         'false' ->
             classify_and_find(Prefix, Quantity, Options)
@@ -70,23 +70,23 @@ acquire_number(Number) ->
         <<"tollfree_us">> ->
             query_vitelity(
               Number
-              ,knm_vitelity_util:build_uri(
-                 purchase_tollfree_options(DID)
-                )
+			  ,knm_vitelity_util:build_uri(
+			     purchase_tollfree_options(DID)
+			    )
              );
         <<"tollfree">> ->
             query_vitelity(
               Number
-              ,knm_vitelity_util:build_uri(
-                 purchase_tollfree_options(DID)
-                )
+			  ,knm_vitelity_util:build_uri(
+			     purchase_tollfree_options(DID)
+			    )
              );
         _ ->
             query_vitelity(
               Number
-              ,knm_vitelity_util:build_uri(
-                 purchase_local_options(DID)
-                )
+			  ,knm_vitelity_util:build_uri(
+			     purchase_local_options(DID)
+			    )
              )
     end.
 
@@ -104,9 +104,9 @@ disconnect_number(Number) ->
     lager:debug("attempting to disconnect ~s", [DID]),
     query_vitelity(
       Number
-      ,knm_vitelity_util:build_uri(
-         release_did_options(DID)
-        )
+		  ,knm_vitelity_util:build_uri(
+		     release_did_options(DID)
+		    )
      ).
 
 %%--------------------------------------------------------------------
@@ -160,15 +160,15 @@ classify_and_find(Prefix, Quantity, Options) ->
                               knm_vitelity_util:query_options().
 tollfree_options(Quantity, Options) ->
     TollFreeOptions = [{'qs', [{'cmd', <<"listtollfree">>}
-                               ,{'limit', Quantity}
-                               ,{'xml', <<"yes">>}
+			      ,{'limit', Quantity}
+			      ,{'xml', <<"yes">>}
                                | knm_vitelity_util:default_options(Options)
                               ]}
-                       ,{'uri', knm_vitelity_util:api_uri()}
+		      ,{'uri', knm_vitelity_util:api_uri()}
                       ],
     lists:foldl(fun knm_vitelity_util:add_options_fold/2
-                ,[]
-                ,TollFreeOptions
+	       ,[]
+	       ,TollFreeOptions
                ).
 
 %%--------------------------------------------------------------------
@@ -181,35 +181,35 @@ tollfree_options(Quantity, Options) ->
                            knm_vitelity_util:query_options().
 local_options(Prefix, Options) when byte_size(Prefix) =< 3 ->
     LocalOptions = [{'qs', [{'npa', Prefix}
-                            ,{'cmd', <<"listnpa">>}
-                            ,{'withrates', knm_vitelity_util:get_query_value(<<"withrates">>, Options)}
-                            ,{'type', knm_vitelity_util:get_query_value(<<"type">>, Options)}
-                            ,{'provider', knm_vitelity_util:get_query_value(<<"provider">>, Options)}
-                            ,{'xml', <<"yes">>}
-                            ,{'cnam', knm_vitelity_util:get_query_value(<<"cnam">>, Options)}
+			   ,{'cmd', <<"listnpa">>}
+			   ,{'withrates', knm_vitelity_util:get_query_value(<<"withrates">>, Options)}
+			   ,{'type', knm_vitelity_util:get_query_value(<<"type">>, Options)}
+			   ,{'provider', knm_vitelity_util:get_query_value(<<"provider">>, Options)}
+			   ,{'xml', <<"yes">>}
+			   ,{'cnam', knm_vitelity_util:get_query_value(<<"cnam">>, Options)}
                             | knm_vitelity_util:default_options(Options)
                            ]}
-                    ,{'uri', knm_vitelity_util:api_uri()}
+		   ,{'uri', knm_vitelity_util:api_uri()}
                    ],
     lists:foldl(fun knm_vitelity_util:add_options_fold/2
-                ,[]
-                ,LocalOptions
+	       ,[]
+	       ,LocalOptions
                );
 local_options(Prefix, Options) ->
     LocalOptions = [{'qs', [{'npanxx', Prefix}
-                            ,{'cmd', <<"listnpanxx">>}
-                            ,{'withrates', knm_vitelity_util:get_query_value(<<"withrates">>, Options)}
-                            ,{'type', knm_vitelity_util:get_query_value(<<"type">>, Options)}
-                            ,{'provider', knm_vitelity_util:get_query_value(<<"provider">>, Options)}
-                            ,{'xml', <<"yes">>}
-                            ,{'cnam', knm_vitelity_util:get_query_value(<<"cnam">>, Options)}
+			   ,{'cmd', <<"listnpanxx">>}
+			   ,{'withrates', knm_vitelity_util:get_query_value(<<"withrates">>, Options)}
+			   ,{'type', knm_vitelity_util:get_query_value(<<"type">>, Options)}
+			   ,{'provider', knm_vitelity_util:get_query_value(<<"provider">>, Options)}
+			   ,{'xml', <<"yes">>}
+			   ,{'cnam', knm_vitelity_util:get_query_value(<<"cnam">>, Options)}
                             | knm_vitelity_util:default_options(Options)
                            ]}
-                    ,{'uri', knm_vitelity_util:api_uri()}
+		   ,{'uri', knm_vitelity_util:api_uri()}
                    ],
     lists:foldl(fun knm_vitelity_util:add_options_fold/2
-                ,[]
-                ,LocalOptions
+	       ,[]
+	       ,LocalOptions
                ).
 
 %%--------------------------------------------------------------------
@@ -223,8 +223,8 @@ local_options(Prefix, Options) ->
                   {'error', any()}.
 find(Prefix, Quantity, Options, VitelityOptions) ->
     case query_vitelity(Prefix
-                        ,Quantity
-                        ,knm_vitelity_util:build_uri(VitelityOptions)
+		       ,Quantity
+		       ,knm_vitelity_util:build_uri(VitelityOptions)
                        )
     of
         {'error', _}=Error -> Error;
@@ -236,10 +236,10 @@ find(Prefix, Quantity, Options, VitelityOptions) ->
 response_to_numbers(JObj, Options) ->
     AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
     {'ok'
-     ,kz_json:foldl(fun(K, V, Acc) -> response_pair_to_number(K, V, Acc, AccountId) end
-                    ,[]
-                    ,JObj
-                   )
+    ,kz_json:foldl(fun(K, V, Acc) -> response_pair_to_number(K, V, Acc, AccountId) end
+		  ,[]
+		  ,JObj
+		  )
     }.
 
 -spec response_pair_to_number(ne_binary(), kz_json:object(), knm_number:knm_numbers(), api_binary()) ->
@@ -263,7 +263,7 @@ response_pair_to_number(DID, CarrierData, Acc, AccountId) ->
 -ifdef(TEST).
 query_vitelity(Prefix, Quantity, URI) ->
     {'ok'
-     ,{'http', [], _Host, _Port, _Path, [$? | QueryString]}
+    ,{'http', [], _Host, _Port, _Path, [$? | QueryString]}
     } = http_uri:parse(kz_util:to_list(URI)),
     Options = cow_qs:parse_qs(kz_util:to_binary(QueryString)),
 
@@ -315,7 +315,7 @@ process_xml_resp(Prefix, Quantity, XML) ->
                                      {'ok', kz_json:object()} |
                                      {'error', any()}.
 process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
-                                                      ,content=Children
+						     ,content=Children
                                                      }) ->
     Els = kz_xml:elements(Children),
     case knm_vitelity_util:xml_resp_status_msg(Els) of
@@ -341,14 +341,14 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
 process_xml_numbers(_Prefix, _Quantity, 'undefined') ->
     {'error', 'no_numbers'};
 process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'
-                                                  ,content=Content
+						 ,content=Content
                                                  }) ->
     process_xml_numbers(Prefix, Quantity, kz_xml:elements(Content), []).
 
 process_xml_numbers(_Prefix, 0, _Els, Acc) ->
     {'ok', kz_json:from_list(Acc)};
 process_xml_numbers(_Prefix, _Quantity, [#xmlElement{name='response'
-                                                     ,content=Reason
+						    ,content=Reason
                                                     }
                                          |_], _Acc) ->
     {'error', kz_xml:texts_to_binary(Reason)};
@@ -390,16 +390,16 @@ number_matches_prefix(JObj, Prefix) ->
 %%--------------------------------------------------------------------
 -spec xml_did_to_json(xml_el()) -> kz_json:object().
 xml_did_to_json(#xmlElement{name='did'
-                            ,content=[#xmlText{}]=DID
+			   ,content=[#xmlText{}]=DID
                            }) ->
     kz_json:from_list([{<<"number">>
-                        ,knm_converters:normalize(
-                           kz_xml:texts_to_binary(DID)
-                          )
+		       ,knm_converters:normalize(
+			  kz_xml:texts_to_binary(DID)
+			 )
                        }
                       ]);
 xml_did_to_json(#xmlElement{name='did'
-                            ,content=DIDInfo
+			   ,content=DIDInfo
                            }) ->
     kz_json:from_list(
       knm_vitelity_util:xml_els_to_proplist(
@@ -422,12 +422,12 @@ xml_did_to_json(#xmlElement{name='number'
 -spec purchase_local_options(ne_binary()) -> knm_vitelity_util:query_options().
 purchase_local_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
-             ,{'cmd', <<"getlocaldid">>}
-             ,{'xml', <<"yes">>}
-             ,{'routesip', get_routesip()}
+	    ,{'cmd', <<"getlocaldid">>}
+	    ,{'xml', <<"yes">>}
+	    ,{'routesip', get_routesip()}
              | knm_vitelity_util:default_options()
             ]}
-     ,{'uri', knm_vitelity_util:api_uri()}
+    ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
 %%--------------------------------------------------------------------
@@ -439,12 +439,12 @@ purchase_local_options(DID) ->
 -spec purchase_tollfree_options(ne_binary()) -> knm_vitelity_util:query_options().
 purchase_tollfree_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
-             ,{'cmd', <<"gettollfree">>}
-             ,{'xml', <<"yes">>}
-             ,{'routesip', get_routesip()}
+	    ,{'cmd', <<"gettollfree">>}
+	    ,{'xml', <<"yes">>}
+	    ,{'routesip', get_routesip()}
              | knm_vitelity_util:default_options()
             ]}
-     ,{'uri', knm_vitelity_util:api_uri()}
+    ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
 %%--------------------------------------------------------------------
@@ -510,7 +510,7 @@ process_xml_resp(Number, XML) ->
 -spec process_xml_content_tag(knm_number:knm_number(), xml_el()) ->
                                      knm_number:knm_number().
 process_xml_content_tag(Number, #xmlElement{name='content'
-                                            ,content=Children
+					   ,content=Children
                                            }) ->
     Els = kz_xml:elements(Children),
     case knm_vitelity_util:xml_resp_status_msg(Els) of
@@ -532,9 +532,9 @@ process_xml_content_tag(Number, #xmlElement{name='content'
 -spec release_did_options(ne_binary()) -> knm_vitelity_util:query_options().
 release_did_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
-             ,{'cmd', <<"removedid">>}
-             ,{'xml', <<"yes">>}
+	    ,{'cmd', <<"removedid">>}
+	    ,{'xml', <<"yes">>}
              | knm_vitelity_util:default_options()
             ]}
-     ,{'uri', knm_vitelity_util:api_uri()}
+    ,{'uri', knm_vitelity_util:api_uri()}
     ].

@@ -14,7 +14,7 @@
 -module(cb_modb).
 
 -export([init/0
-         ,clean_modb/1
+	,clean_modb/1
         ]).
 
 -include("crossbar.hrl").

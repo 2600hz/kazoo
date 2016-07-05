@@ -62,7 +62,7 @@ handle(Data, Call) ->
             maybe_intercept(Data, Call, Params);
         {'error', _E} ->
             lager:info("Error <<~s>> processing intercept '~s' for number ~s"
-                       ,[_E, InterceptType, Number]
+		      ,[_E, InterceptType, Number]
                       ),
             _ = kapps_call_command:b_play(<<"park-no_caller">>, Call),
             cf_exe:stop(Call)
@@ -90,8 +90,8 @@ maybe_intercept(Call, Params) ->
 intercept_restrictions(Data) ->
     props:filter_undefined(
       [{<<"approved_device_id">>, kz_json:get_value(<<"approved_device_id">>, Data)}
-       ,{<<"approved_user_id">>, kz_json:get_value(<<"approved_user_id">>, Data)}
-       ,{<<"approved_group_id">>, kz_json:get_value(<<"approved_group_id">>, Data)}
+      ,{<<"approved_user_id">>, kz_json:get_value(<<"approved_user_id">>, Data)}
+      ,{<<"approved_group_id">>, kz_json:get_value(<<"approved_group_id">>, Data)}
       ]).
 
 -spec maybe_allowed_to_intercept(kapps_call:call(), kz_proplist()) -> boolean().

@@ -71,9 +71,9 @@ find_numbers_in_account(Number, Quantity, AccountId) ->
                                         {'error', any()}.
 do_find_numbers_in_account(Number, Quantity, AccountId) ->
     ViewOptions = [{'startkey', [AccountId, ?NUMBER_STATE_AVAILABLE, Number]}
-                   ,{'endkey', [AccountId, ?NUMBER_STATE_AVAILABLE, <<Number/binary, "\ufff0">>]}
-                   ,{'limit', Quantity}
-                   ,'include_docs'
+		  ,{'endkey', [AccountId, ?NUMBER_STATE_AVAILABLE, <<Number/binary, "\ufff0">>]}
+		  ,{'limit', Quantity}
+		  ,'include_docs'
                   ],
     case kz_datamgr:get_results(?KZ_INUM, <<"numbers/status">>, ViewOptions) of
         {'ok', []} ->
@@ -184,7 +184,7 @@ update_doc(Number, UpdateProps) ->
         {'ok', UpdatedDoc} ->
             knm_number:set_phone_number(
               Number
-              ,knm_phone_number:from_json(UpdatedDoc)
+				       ,knm_phone_number:from_json(UpdatedDoc)
              )
     end.
 

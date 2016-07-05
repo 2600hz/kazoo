@@ -10,11 +10,11 @@
 -export([start_link/0]).
 
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -record(state, {tab :: ets:tid()}).
@@ -22,7 +22,7 @@
 
 -spec start_link() -> startlink_ret().
 start_link() ->
-  gen_server:start_link({'local', ?SERVER}, ?MODULE, [],[]).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [],[]).
 
 -spec init([]) -> {'ok', state()}.
 init([]) ->
@@ -61,11 +61,11 @@ maybe_send_push_notification(Pid, JObj) ->
     Sender = kz_json:get_value(<<"Alert-Body">>, JObj),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
     apns:send_message(Pid, #apns_msg{device_token = kz_util:to_list(TokenID)
-                                     ,sound = <<"ring.caf">>
-                                     ,extra = [{<<"call-id">>, CallId}]
-                                     ,alert = #loc_alert{args = [Sender]
-                                                         ,key = <<"IC_MSG">>
-                                                        }
+				    ,sound = <<"ring.caf">>
+				    ,extra = [{<<"call-id">>, CallId}]
+				    ,alert = #loc_alert{args = [Sender]
+						       ,key = <<"IC_MSG">>
+						       }
                                     }
                      ).
 

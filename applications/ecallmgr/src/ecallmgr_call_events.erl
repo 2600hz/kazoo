@@ -28,11 +28,11 @@
 -export([shutdown/2]).
 -export([to_json/1]).
 -export([swap_call_legs/1
-         ,listen_for_other_leg/3
+	,listen_for_other_leg/3
         ]).
 -export([create_event/1
-         ,create_event/2
-         ,create_event/3
+	,create_event/2
+	,create_event/3
         ]).
 -export([publish_event/1]).
 -export([process_channel_event/1]).
@@ -40,21 +40,21 @@
 -export([handle_publisher_usurp/2]).
 -export([get_application_name/1]).
 -export([queue_name/1
-         ,callid/1
-         ,node/1
-         ,update_node/2
+	,callid/1
+	,node/1
+	,update_node/2
         ]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_publisher_usurp'}
-                      ,[{<<"call_event">>, <<"usurp_publisher">>}]
+		     ,[{<<"call_event">>, <<"usurp_publisher">>}]
                      }]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -62,15 +62,15 @@
 
 -record(state, {
           node :: atom()
-          ,call_id :: api_binary()
-          ,other_leg :: api_binary()
-          ,other_leg_events = [] :: ne_binaries()
-          ,is_node_up = 'true' :: boolean()
-          ,failed_node_checks = 0 :: non_neg_integer()
-          ,node_down_tref :: reference()
-          ,sanity_check_tref :: reference()
-          ,ref = kz_util:rand_hex_binary(12) :: ne_binary()
-          ,passive = 'false' :: boolean()
+	       ,call_id :: api_binary()
+	       ,other_leg :: api_binary()
+	       ,other_leg_events = [] :: ne_binaries()
+	       ,is_node_up = 'true' :: boolean()
+	       ,failed_node_checks = 0 :: non_neg_integer()
+	       ,node_down_tref :: reference()
+	       ,sanity_check_tref :: reference()
+	       ,ref = kz_util:rand_hex_binary(12) :: ne_binary()
+	       ,passive = 'false' :: boolean()
          }).
 -type state() :: #state{}.
 
@@ -84,14 +84,14 @@
 -spec start_link(atom(), ne_binary()) -> startlink_ret().
 start_link(Node, CallId) ->
     Bindings = [{'call', [{'callid', CallId}
-                          ,{'restrict_to', ['publisher_usurp']}
+			 ,{'restrict_to', ['publisher_usurp']}
                          ]}
                ],
     gen_listener:start_link(?SERVER, [{'bindings', Bindings}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
+				     ,{'responders', ?RESPONDERS}
+				     ,{'queue_name', ?QUEUE_NAME}
+				     ,{'queue_options', ?QUEUE_OPTIONS}
+				     ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], [Node, CallId]).
 
 -spec graceful_shutdown(atom(), ne_binary()) -> 'ok'.
@@ -142,11 +142,11 @@ handle_publisher_usurp(JObj, Props) ->
     Node = kz_util:to_binary(props:get_value('node', Props)),
 
     lager:debug("received publisher usurp for ~s on ~s (if ~s != ~s)"
-                ,[kz_json:get_value(<<"Call-ID">>, JObj)
-                  ,kz_json:get_value(<<"Media-Node">>, JObj)
-                  ,Ref
-                  ,kz_json:get_value(<<"Reference">>, JObj)
-                 ]),
+	       ,[kz_json:get_value(<<"Call-ID">>, JObj)
+		,kz_json:get_value(<<"Media-Node">>, JObj)
+		,Ref
+		,kz_json:get_value(<<"Reference">>, JObj)
+		]),
 
     case CallId =:= kz_json:get_value(<<"Call-ID">>, JObj)
         andalso Node =:= kz_json:get_value(<<"Media-Node">>, JObj)
@@ -189,8 +189,8 @@ init(Node, CallId) ->
     gen_listener:cast(self(), 'init'),
     lager:debug("started call event publisher"),
     {'ok', #state{node=Node
-                  ,call_id=CallId
-                  ,ref=kz_util:rand_hex_binary(12)
+		 ,call_id=CallId
+		 ,ref=kz_util:rand_hex_binary(12)
                  }}.
 -spec register_event_process(atom(), ne_binary()) -> 'ok' | {'error', any()}.
 register_event_process(Node, CallId) ->
@@ -247,7 +247,7 @@ handle_cast('init', #state{node=Node}=State) ->
 handle_cast({'update_node', Node}, #state{node=Node}=State) ->
     {'noreply', State};
 handle_cast({'update_node', Node}, #state{node=OldNode
-                                          ,call_id=CallId
+					 ,call_id=CallId
                                          }=State) ->
     lager:debug("node has changed from ~s to ~s", [OldNode, Node]),
     erlang:monitor_node(OldNode, 'false'),
@@ -261,7 +261,7 @@ handle_cast({'channel_redirected', Props}, State) ->
     process_channel_event(Props),
     {'stop', {'shutdown', 'redirect'}, State};
 handle_cast({'graceful_shutdown', CallId}, #state{node=Node
-                                                  ,call_id=CallId
+						 ,call_id=CallId
                                                  }=State) ->
     lager:debug("call event listener on node ~s received graceful shutdown request", [Node]),
     erlang:send_after(5 * ?MILLISECONDS_IN_SECOND, self(), 'shutdown'),
@@ -276,14 +276,14 @@ handle_cast({'transferer', _Props}, State) ->
     lager:debug("call control has been transferred"),
     {'stop', 'normal', State};
 handle_cast({'b_leg_events', NewEvents}, #state{other_leg_events=Evts
-                                                ,other_leg='undefined'
+					       ,other_leg='undefined'
                                                }=State) ->
     Events = lists:usort(Evts ++ NewEvents),
     lager:debug("will start event listener for b-leg if encountered"),
     {'noreply', State#state{other_leg_events=Events}};
 handle_cast({'b_leg_events', NewEvents}, #state{other_leg_events=Evts
-                                                ,other_leg=OtherLeg
-                                                ,node=Node
+					       ,other_leg=OtherLeg
+					       ,node=Node
                                                }=State) ->
     Events = lists:usort(Evts ++ NewEvents),
     lager:debug("tracking other leg events for ~s: ~p", [OtherLeg, Events]),
@@ -294,9 +294,9 @@ handle_cast({'b_leg_events', NewEvents}, #state{other_leg_events=Evts
     {'noreply', State#state{other_leg_events=Events}};
 
 handle_cast({'other_leg', OtherLeg}
-            ,#state{other_leg_events=Events
-                    ,node=Node
-                   }=State) ->
+	   ,#state{other_leg_events=Events
+		  ,node=Node
+		  }=State) ->
     lager:debug("tracking other leg events for ~s: ~p", [OtherLeg, Events]),
     _Started = (Events =/= [])
         andalso ecallmgr_call_sup:start_event_process(Node, OtherLeg),
@@ -322,9 +322,9 @@ unregister_for_events(Node, CallId) ->
 -spec update_events(atom(), ne_binary(), function()) -> 'true'.
 update_events(Node, CallId, Fun) ->
     Regs = ['call_events_processes'
-            ,?FS_CALL_EVENT_REG_MSG(Node, CallId)
-            ,?FS_EVENT_REG_MSG(Node, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)
-            ,?LOOPBACK_BOWOUT_REG(CallId)
+	   ,?FS_CALL_EVENT_REG_MSG(Node, CallId)
+	   ,?FS_EVENT_REG_MSG(Node, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)
+	   ,?LOOPBACK_BOWOUT_REG(CallId)
            ],
     _ = [update_event(Fun, Reg) || Reg <- Regs],
     'true'.
@@ -344,14 +344,14 @@ update_event(Fun, Reg) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'event', [CallId | _]}, #state{call_id=CallId
-                                            ,passive='true'
+					   ,passive='true'
                                            }=State) ->
     {'noreply', State};
 handle_info({'event', [CallId | Props]}, #state{node=Node
-                                                ,call_id=CallId
+					       ,call_id=CallId
                                                }=State) ->
     case {props:get_first_defined([<<"Event-Subclass">>, <<"Event-Name">>], Props)
-          ,props:get_value(<<"Application">>, Props)
+	 ,props:get_value(<<"Application">>, Props)
          }
     of
         {_, <<"redirect">>} ->
@@ -389,10 +389,10 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
             {'noreply', State}
     end;
 handle_info({'event', [CallId | Props]}, #state{other_leg=CallId
-                                                ,other_leg_events=Events
+					       ,other_leg_events=Events
                                                }=State) ->
     Event = props:get_first_defined([<<"Event-Subclass">>
-                                     ,<<"Event-Name">>
+				    ,<<"Event-Name">>
                                     ], Props),
 
     case lists:member(Event, Events) of
@@ -404,13 +404,13 @@ handle_info({'event', [CallId | Props]}, #state{other_leg=CallId
             {'noreply', State}
     end;
 handle_info({'event', [_WrongCallId | _Props]}, #state{call_id=_CallId
-                                                       ,other_leg=_OtherLeg
+						      ,other_leg=_OtherLeg
                                                       }=State) ->
     lager:debug("recv event for unknown ~s: ~s", [_WrongCallId, props:get_value(<<"Event-Name">>, _Props)]),
     lager:debug("will process events for call ~s and other leg ~s", [_CallId, _OtherLeg]),
     {'noreply', State};
 handle_info({'nodedown', _}, #state{node=Node
-                                    ,is_node_up='true'
+				   ,is_node_up='true'
                                    }=State) ->
     lager:debug("lost connection to node ~s, waiting for reconnection", [Node]),
     erlang:monitor_node(Node, 'false'),
@@ -419,28 +419,28 @@ handle_info({'nodedown', _}, #state{node=Node
 handle_info({'nodedown', _}, #state{is_node_up='false'}=State) ->
     {'noreply', State};
 handle_info({'check_node_status'}, #state{is_node_up='false'
-                                          ,failed_node_checks=FNC
+					 ,failed_node_checks=FNC
                                          }=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->
     lager:debug("node still not up after ~p checks, giving up", [FNC]),
     {'stop', 'normal', State};
 handle_info({'check_node_status'}, #state{node=Node
-                                          ,call_id=CallId
-                                          ,is_node_up='false'
-                                          ,failed_node_checks=FNC
+					 ,call_id=CallId
+					 ,is_node_up='false'
+					 ,failed_node_checks=FNC
                                          }=State) ->
     case ecallmgr_util:is_node_up(Node, CallId) of
         'true' ->
             lager:debug("reconnected to node ~s and call is active", [Node]),
             {'noreply', State#state{node_down_tref='undefined'
-                                    ,is_node_up='true'
-                                    ,failed_node_checks=0
+				   ,is_node_up='true'
+				   ,failed_node_checks=0
                                    }
-             ,'hibernate'};
+	    ,'hibernate'};
         'false' ->
             lager:debug("node ~s still not up, waiting ~pms to test again", [Node, ?NODE_CHECK_PERIOD]),
             TRef = erlang:send_after(?NODE_CHECK_PERIOD, self(), {'check_node_status'}),
             {'noreply', State#state{node_down_tref=TRef
-                                    ,failed_node_checks=FNC+1
+				   ,failed_node_checks=FNC+1
                                    }
             ,'hibernate'}
     end;
@@ -448,8 +448,8 @@ handle_info('timeout', #state{failed_node_checks=FNC}=State) when (FNC+1) > ?MAX
     lager:debug("unable to establish initial connectivity to the media node, laterz"),
     {'stop', 'normal', State};
 handle_info('timeout', #state{node=Node
-                              ,call_id=CallId
-                              ,failed_node_checks=FNC
+			     ,call_id=CallId
+			     ,failed_node_checks=FNC
                              }=State) ->
     erlang:monitor_node(Node, 'true'),
     %% TODO: die if there is already a event producer on the AMPQ queue... ping/pong?
@@ -483,7 +483,7 @@ handle_info('sanity_check', #state{call_id=CallId}=State) ->
 handle_info('shutdown', State) ->
     {'stop', 'normal', State};
 handle_info(?LOOPBACK_BOWOUT_MSG(Node, Props), #state{call_id=ResigningUUID
-                                                      ,node=Node
+						     ,node=Node
                                                      }=State) ->
     NewUUID = handle_bowout(Node, Props, ResigningUUID),
     {'noreply', State#state{call_id=NewUUID}};
@@ -494,7 +494,7 @@ handle_info(_Info, State) ->
 -spec handle_bowout(atom(), kz_proplist(), ne_binary()) -> ne_binary().
 handle_bowout(Node, Props, ResigningUUID) ->
     case {props:get_value(?RESIGNING_UUID, Props)
-          ,props:get_value(?ACQUIRED_UUID, Props)
+	 ,props:get_value(?ACQUIRED_UUID, Props)
          }
     of
         {ResigningUUID, ResigningUUID} ->
@@ -523,12 +523,12 @@ handle_bowout(Node, Props, ResigningUUID) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, #state{ref=Ref
-                           ,call_id=CallId
-                           ,node=Node
+			  ,call_id=CallId
+			  ,node=Node
                           }) ->
     {'reply', [{'reference', Ref}
-               ,{'call_id', CallId}
-               ,{'node', Node}
+	      ,{'call_id', CallId}
+	      ,{'node', Node}
               ]}.
 
 %%--------------------------------------------------------------------
@@ -543,7 +543,7 @@ handle_event(_JObj, #state{ref=Ref
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{node_down_tref=NDTRef
-                          ,sanity_check_tref=SCTRef
+			 ,sanity_check_tref=SCTRef
                          }) ->
     catch (erlang:cancel_timer(SCTRef)),
     catch (erlang:cancel_timer(NDTRef)),
@@ -570,7 +570,7 @@ maybe_process_channel_destroy(Node, CallId, Props) ->
         {'error', _} -> gen_server:cast(self(), {'graceful_shutdown', CallId});
         {'ok', _NewNode} ->
             lager:debug("channel is on ~s, not ~s: publishing channel move"
-                        ,[CallId, _NewNode, Node]
+		       ,[CallId, _NewNode, Node]
                        ),
             Event = create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props),
             publish_event(Event)
@@ -631,42 +631,42 @@ generic_call_event_props(Props) ->
     NormalizedFSTimestamp = kz_util:unix_seconds_to_gregorian_seconds(FSTimestamp div 1000000),
 
     [{<<"Timestamp">>, NormalizedFSTimestamp}
-     ,{<<"Msg-ID">>, kz_util:to_binary(FSTimestamp)}
-     ,{<<"Call-ID">>, get_call_id(Props)}
-     ,{<<"Transfer-History">>, get_transfer_history(Props)}
-     ,{<<"Hangup-Cause">>, get_hangup_cause(Props)}
-     ,{<<"Hangup-Code">>, get_hangup_code(Props)}
-     ,{<<"Disposition">>, get_disposition(Props)}
-     ,{<<"Raw-Application-Name">>, get_raw_application_name(Props)}
-     ,{<<"Channel-Moving">>, get_channel_moving(Props)}
-     ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
-     ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props)}
-     ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props)}
-     ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
-     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
-     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
-     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
-     ,{<<"Other-Leg-Call-ID">>, get_other_leg(Props)}
+    ,{<<"Msg-ID">>, kz_util:to_binary(FSTimestamp)}
+    ,{<<"Call-ID">>, get_call_id(Props)}
+    ,{<<"Transfer-History">>, get_transfer_history(Props)}
+    ,{<<"Hangup-Cause">>, get_hangup_cause(Props)}
+    ,{<<"Hangup-Code">>, get_hangup_code(Props)}
+    ,{<<"Disposition">>, get_disposition(Props)}
+    ,{<<"Raw-Application-Name">>, get_raw_application_name(Props)}
+    ,{<<"Channel-Moving">>, get_channel_moving(Props)}
+    ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
+    ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props)}
+    ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props)}
+    ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
+    ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
+    ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
+    ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
+    ,{<<"Other-Leg-Call-ID">>, get_other_leg(Props)}
 
-     ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
-     ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
-     ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
-     ,{<<"Replaced-By">>, props:get_first_defined([<<"att_xfer_replaced_by">>, ?ACQUIRED_UUID], Props)}
-     ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
-     ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
-     ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
-     ,{<<"Switch-URL">>, props:get_value(<<"Switch-URL">>, Props)}
-     ,{<<"Switch-URI">>, props:get_value(<<"Switch-URI">>, Props)}
-     ,{<<"Switch-Nodename">>, props:get_value(<<"Switch-Nodename">>, Props)}
-     ,{<<"Channel-State">>, get_channel_state(Props)}
-     ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
-     ,{<<"Channel-Name">>, props:get_value(<<"Channel-Name">>, Props)}
-     ,{<<"Channel-Is-Loopback">>, get_is_loopback(props:get_value(<<"variable_is_loopback">>, Props))}
-     ,{<<"Channel-Loopback-Leg">>, props:get_value(<<"variable_loopback_leg">>, Props)}
-     ,{<<"Channel-Loopback-Other-Leg-ID">>, props:get_value(<<"variable_other_loopback_leg_uuid">>, Props)}
-     ,{<<"Channel-Loopback-Bowout">>, props:get_is_true(<<"variable_loopback_bowout">>, Props)}
-     ,{<<"Channel-Loopback-Bowout-Execute">>, props:get_is_true(<<"variable_loopback_bowout_on_execute">>, Props)}
-     ,{<<"Channel-Created-Time">>, props:get_integer_value(<<"Caller-Channel-Created-Time">>, Props)}
+    ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
+    ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
+    ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
+    ,{<<"Replaced-By">>, props:get_first_defined([<<"att_xfer_replaced_by">>, ?ACQUIRED_UUID], Props)}
+    ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
+    ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
+    ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
+    ,{<<"Switch-URL">>, props:get_value(<<"Switch-URL">>, Props)}
+    ,{<<"Switch-URI">>, props:get_value(<<"Switch-URI">>, Props)}
+    ,{<<"Switch-Nodename">>, props:get_value(<<"Switch-Nodename">>, Props)}
+    ,{<<"Channel-State">>, get_channel_state(Props)}
+    ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
+    ,{<<"Channel-Name">>, props:get_value(<<"Channel-Name">>, Props)}
+    ,{<<"Channel-Is-Loopback">>, get_is_loopback(props:get_value(<<"variable_is_loopback">>, Props))}
+    ,{<<"Channel-Loopback-Leg">>, props:get_value(<<"variable_loopback_leg">>, Props)}
+    ,{<<"Channel-Loopback-Other-Leg-ID">>, props:get_value(<<"variable_other_loopback_leg_uuid">>, Props)}
+    ,{<<"Channel-Loopback-Bowout">>, props:get_is_true(<<"variable_loopback_bowout">>, Props)}
+    ,{<<"Channel-Loopback-Bowout-Execute">>, props:get_is_true(<<"variable_loopback_bowout_on_execute">>, Props)}
+    ,{<<"Channel-Created-Time">>, props:get_integer_value(<<"Caller-Channel-Created-Time">>, Props)}
      | callee_call_event_props(Props)
      ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
@@ -680,7 +680,7 @@ publish_event(Props) ->
     case {ApplicationName, EventName} of
         {_, <<"dtmf">>} ->
             lager:debug("publishing received DTMF digit ~s"
-                        ,[props:get_value(<<"DTMF-Digit">>, Props)]
+		       ,[props:get_value(<<"DTMF-Digit">>, Props)]
                        );
         {<<>>, <<"channel_bridge">>} ->
             OtherLeg = get_other_leg(Props),
@@ -720,82 +720,82 @@ specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"conference">>, Prop
 specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"playback">> = Application, Props) ->
     %% if the playback was terminated as a result of DTMF, include it
     [{<<"DTMF-Digit">>, props:get_value(<<"variable_playback_terminator_used">>, Props)}
-     ,{<<"Application-Name">>, props:get_value(Application, ?FS_APPLICATION_NAMES)}
-     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
-     ,{<<"Group-ID">>, props:get_value(<<"variable_media_group_id">>, Props)}
+    ,{<<"Application-Name">>, props:get_value(Application, ?FS_APPLICATION_NAMES)}
+    ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
+    ,{<<"Group-ID">>, props:get_value(<<"variable_media_group_id">>, Props)}
     ];
 specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>, Props) ->
     [{<<"Application-Name">>, <<"noop">>}
-     ,{<<"Application-Response">>, props:get_value(<<"kazoo_application_response">>, Props)}
+    ,{<<"Application-Response">>, props:get_value(<<"kazoo_application_response">>, Props)}
     ];
 specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Props) ->
     [{<<"Application-Name">>, <<"bridge">>}
-     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Props, <<"FAIL">>)}
+    ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Props, <<"FAIL">>)}
     ];
 specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"record">>, Props) ->
     [{<<"Application-Name">>, <<"bridge">>}
-     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Props, <<"FAIL">>)}
-     ,{<<"Length">>, props:get_value(<<"variable_record_ms">>, Props)}
+    ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Props, <<"FAIL">>)}
+    ,{<<"Length">>, props:get_value(<<"variable_record_ms">>, Props)}
     ];
 specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set">>, Props) ->
     [{<<"Application-Name">>, props:get_value(<<"set">>, ?FS_APPLICATION_NAMES)}
-     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
+    ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
     ];
 specific_call_event_props(<<"CHANNEL_CREATE">>, _, Props) ->
     [{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
-     ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
-     ,{<<"To-Uri">>, props:get_value(<<"variable_sip_to_uri">>, Props)}
-     ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
-     ,{<<"From-Uri">>, props:get_value(<<"variable_sip_from_uri">>, Props)}
+    ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
+    ,{<<"To-Uri">>, props:get_value(<<"variable_sip_to_uri">>, Props)}
+    ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
+    ,{<<"From-Uri">>, props:get_value(<<"variable_sip_from_uri">>, Props)}
     ];
 specific_call_event_props(<<"CHANNEL_ANSWER">>, _, Props) ->
     [{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
-     ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
-     ,{<<"To-Uri">>, props:get_value(<<"variable_sip_to_uri">>, Props)}
-     ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
-     ,{<<"From-Uri">>, props:get_value(<<"variable_sip_from_uri">>, Props)}
+    ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
+    ,{<<"To-Uri">>, props:get_value(<<"variable_sip_to_uri">>, Props)}
+    ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
+    ,{<<"From-Uri">>, props:get_value(<<"variable_sip_from_uri">>, Props)}
     ];
 specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
     [{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
-     ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
-     ,{<<"To-Uri">>, props:get_value(<<"variable_sip_to_uri">>, Props)}
-     ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
-     ,{<<"From-Uri">>, props:get_value(<<"variable_sip_from_uri">>, Props)}
-     ,{<<"Remote-SDP">>, props:get_value(<<"variable_switch_r_sdp">>, Props)}
-     ,{<<"Local-SDP">>, props:get_value(<<"variable_rtp_local_sdp_str">>, Props)}
-     ,{<<"Duration-Seconds">>, props:get_value(<<"variable_duration">>, Props)}
-     ,{<<"Billing-Seconds">>, get_billing_seconds(Props)}
-     ,{<<"Ringing-Seconds">>, props:get_value(<<"variable_progresssec">>, Props)}
-     ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
-     ,{<<"Fax-Info">>, maybe_fax_specific(Props)}
+    ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
+    ,{<<"To-Uri">>, props:get_value(<<"variable_sip_to_uri">>, Props)}
+    ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
+    ,{<<"From-Uri">>, props:get_value(<<"variable_sip_from_uri">>, Props)}
+    ,{<<"Remote-SDP">>, props:get_value(<<"variable_switch_r_sdp">>, Props)}
+    ,{<<"Local-SDP">>, props:get_value(<<"variable_rtp_local_sdp_str">>, Props)}
+    ,{<<"Duration-Seconds">>, props:get_value(<<"variable_duration">>, Props)}
+    ,{<<"Billing-Seconds">>, get_billing_seconds(Props)}
+    ,{<<"Ringing-Seconds">>, props:get_value(<<"variable_progresssec">>, Props)}
+    ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
+    ,{<<"Fax-Info">>, maybe_fax_specific(Props)}
      | debug_channel_props(Props)
     ];
 specific_call_event_props(<<"RECORD_START">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}
-     ,{<<"Application-Response">>, props:get_first_defined([<<"Record-File-Path">>
-                                                            ,<<"kazoo_application_response">>
-                                                           ], Props)
-      }
+    ,{<<"Application-Response">>, props:get_first_defined([<<"Record-File-Path">>
+							  ,<<"kazoo_application_response">>
+							  ], Props)
+     }
     ];
 specific_call_event_props(<<"RECORD_STOP">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}
-     ,{<<"Application-Response">>, props:get_first_defined([<<"Record-File-Path">>
-                                                            ,<<"kazoo_application_response">>
-                                                           ], Props)
-      }
-     ,{<<"Terminator">>, props:get_value(<<"variable_playback_terminator_used">>, Props)}
-     ,{<<"Length">>, props:get_value(<<"variable_record_ms">>, Props)}
-     ,{<<"Silence-Terminated">>, silence_terminated(Props)}
+    ,{<<"Application-Response">>, props:get_first_defined([<<"Record-File-Path">>
+							  ,<<"kazoo_application_response">>
+							  ], Props)
+     }
+    ,{<<"Terminator">>, props:get_value(<<"variable_playback_terminator_used">>, Props)}
+    ,{<<"Length">>, props:get_value(<<"variable_record_ms">>, Props)}
+    ,{<<"Silence-Terminated">>, silence_terminated(Props)}
     ];
 specific_call_event_props(<<"DETECTED_TONE">>, _, Props) ->
     [{<<"Detected-Tone">>, props:get_value(<<"Detected-Tone">>, Props)}];
 specific_call_event_props(<<"DTMF">>, _, Props) ->
     [{<<"DTMF-Digit">>, props:get_value(<<"DTMF-Digit">>, Props)}
-     ,{<<"DTMF-Duration">>, props:get_value(<<"DTMF-Duration">>, Props)}
+    ,{<<"DTMF-Duration">>, props:get_value(<<"DTMF-Duration">>, Props)}
     ];
 specific_call_event_props(_, <<"play_and_get_digits">>, Props) ->
     [{<<"Application-Name">>, <<"play_and_collect_digits">>}
-     ,{<<"Application-Response">>, props:get_value(<<"variable_collected_digits">>, Props, <<"">>)}
+    ,{<<"Application-Response">>, props:get_value(<<"variable_collected_digits">>, Props, <<"">>)}
     ];
 specific_call_event_props(<<"FAX_DETECTED">>, _, _Props) ->
     [{<<"Application-Name">>, <<"fax_detection">>}];
@@ -813,19 +813,19 @@ specific_call_event_props(<<"CHANNEL_INTERCEPTED">>, _, Props) ->
     [{<<"Intercepted-By">>, props:get_value(<<"intercepted_by">>, Props)}];
 specific_call_event_props(_Evt, Application, Props) ->
     [{<<"Application-Name">>, props:get_value(Application, ?FS_APPLICATION_NAMES)}
-     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
+    ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
     ].
 
 -spec page_specific(kz_proplist()) -> kz_proplist().
 page_specific(Props) ->
     [{<<"Application-Name">>, <<"page">>}
-     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
+    ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
     ].
 
 -spec conference_specific(kz_proplist()) -> kz_proplist().
 conference_specific(Props) ->
     Default = [{<<"Application-Name">>, <<"conference">>}
-               ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
+	      ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
               ],
     case props:get_value(<<"Application-Data">>, Props) of
         'undefined' -> Default;
@@ -833,7 +833,7 @@ conference_specific(Props) ->
             case binary:split(ConfData, <<"@">>) of
                 [ConfName, ConfConfig] ->
                     [{<<"Conference-Name">>, ConfName}
-                     ,{<<"Conference-Config">>, ConfConfig}
+		    ,{<<"Conference-Config">>, ConfConfig}
                      | Default
                     ];
                 _ -> Default
@@ -851,32 +851,32 @@ maybe_fax_specific(Props) ->
 fax_specific(Props) ->
     props:filter_undefined(
       [{<<"Fax-Success">>, get_fax_success(Props)}
-       ,{<<"Fax-ECM-Used">>, get_fax_ecm_used(Props)}
-       ,{<<"Fax-T38-Used">>, get_fax_t38_used(Props)}
-       ,{<<"Fax-Result-Text">>, props:get_value(<<"variable_fax_result_text">>, Props)}
-       ,{<<"Fax-Transferred-Pages">>, props:get_value(<<"variable_fax_document_transferred_pages">>, Props)}
-       ,{<<"Fax-Total-Pages">>, props:get_value(<<"variable_fax_document_total_pages">>, Props)}
-       ,{<<"Fax-Bad-Rows">>, props:get_value(<<"variable_fax_bad_rows">>, Props)}
-       ,{<<"Fax-Transfer-Rate">>, props:get_value(<<"variable_fax_transfer_rate">>, Props)}
-       ,{<<"Fax-Local-Station-ID">>, props:get_value(<<"variable_fax_local_station_id">>, Props)}
-       ,{<<"Fax-Remote-Station-ID">>, props:get_value(<<"variable_fax_remote_station_id">>, Props)}
-       ,{<<"Fax-Remote-Country">>, props:get_value(<<"variable_fax_remote_country">>, Props)}
-       ,{<<"Fax-Remote-Vendor">>, props:get_value(<<"variable_fax_remote_vendor">>, Props)}
-       ,{<<"Fax-Remote-Model">>, props:get_value(<<"variable_fax_remote_model">>, Props)}
-       ,{<<"Fax-Image-Resolution">>, props:get_value(<<"variable_fax_image_resolution">>, Props)}
-       ,{<<"Fax-File-Image-Resolution">>, props:get_value(<<"variable_fax_file_image_resolution">>, Props)}
-       ,{<<"Fax-Image-Size">>, props:get_value(<<"variable_fax_image_size">>, Props)}
-       ,{<<"Fax-Image-Pixel-Size">>, props:get_value(<<"variable_fax_image_pixel_size">>, Props)}
-       ,{<<"Fax-File-Image-Pixel-Size">>, props:get_value(<<"variable_fax_file_image_pixel_size">>, Props)}
-       ,{<<"Fax-Longest-Bad-Row-Run">>, props:get_value(<<"variable_fax_longest_bad_row_run">>, Props)}
-       ,{<<"Fax-Encoding">>, props:get_value(<<"variable_fax_encoding">>, Props)}
-       ,{<<"Fax-Encoding-Name">>, props:get_value(<<"variable_fax_encoding_name">>, Props)}
-       ,{<<"Fax-Timezone">>, props:get_value(<<"variable_fax_timezone">>, Props)}
-       ,{<<"Fax-Identity-Number">>, props:get_value(<<"variable_fax_ident">>, Props)}
-       ,{<<"Fax-Identity-Name">>, props:get_value(<<"variable_fax_header">>, Props)}
-       ,{<<"Fax-Doc-ID">>, props:get_value(<<"variable_fax_doc_id">>, Props)}
-       ,{<<"Fax-Doc-DB">>, props:get_value(<<"variable_fax_doc_database">>, Props)}
-       ]).
+      ,{<<"Fax-ECM-Used">>, get_fax_ecm_used(Props)}
+      ,{<<"Fax-T38-Used">>, get_fax_t38_used(Props)}
+      ,{<<"Fax-Result-Text">>, props:get_value(<<"variable_fax_result_text">>, Props)}
+      ,{<<"Fax-Transferred-Pages">>, props:get_value(<<"variable_fax_document_transferred_pages">>, Props)}
+      ,{<<"Fax-Total-Pages">>, props:get_value(<<"variable_fax_document_total_pages">>, Props)}
+      ,{<<"Fax-Bad-Rows">>, props:get_value(<<"variable_fax_bad_rows">>, Props)}
+      ,{<<"Fax-Transfer-Rate">>, props:get_value(<<"variable_fax_transfer_rate">>, Props)}
+      ,{<<"Fax-Local-Station-ID">>, props:get_value(<<"variable_fax_local_station_id">>, Props)}
+      ,{<<"Fax-Remote-Station-ID">>, props:get_value(<<"variable_fax_remote_station_id">>, Props)}
+      ,{<<"Fax-Remote-Country">>, props:get_value(<<"variable_fax_remote_country">>, Props)}
+      ,{<<"Fax-Remote-Vendor">>, props:get_value(<<"variable_fax_remote_vendor">>, Props)}
+      ,{<<"Fax-Remote-Model">>, props:get_value(<<"variable_fax_remote_model">>, Props)}
+      ,{<<"Fax-Image-Resolution">>, props:get_value(<<"variable_fax_image_resolution">>, Props)}
+      ,{<<"Fax-File-Image-Resolution">>, props:get_value(<<"variable_fax_file_image_resolution">>, Props)}
+      ,{<<"Fax-Image-Size">>, props:get_value(<<"variable_fax_image_size">>, Props)}
+      ,{<<"Fax-Image-Pixel-Size">>, props:get_value(<<"variable_fax_image_pixel_size">>, Props)}
+      ,{<<"Fax-File-Image-Pixel-Size">>, props:get_value(<<"variable_fax_file_image_pixel_size">>, Props)}
+      ,{<<"Fax-Longest-Bad-Row-Run">>, props:get_value(<<"variable_fax_longest_bad_row_run">>, Props)}
+      ,{<<"Fax-Encoding">>, props:get_value(<<"variable_fax_encoding">>, Props)}
+      ,{<<"Fax-Encoding-Name">>, props:get_value(<<"variable_fax_encoding_name">>, Props)}
+      ,{<<"Fax-Timezone">>, props:get_value(<<"variable_fax_timezone">>, Props)}
+      ,{<<"Fax-Identity-Number">>, props:get_value(<<"variable_fax_ident">>, Props)}
+      ,{<<"Fax-Identity-Name">>, props:get_value(<<"variable_fax_header">>, Props)}
+      ,{<<"Fax-Doc-ID">>, props:get_value(<<"variable_fax_doc_id">>, Props)}
+      ,{<<"Fax-Doc-DB">>, props:get_value(<<"variable_fax_doc_database">>, Props)}
+      ]).
 
 -spec should_publish(ne_binary(), ne_binary(), boolean()) -> boolean().
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, 'false') ->
@@ -1029,9 +1029,9 @@ get_transfer_history(Props) ->
 create_trnsf_history_object([Epoch, CallId, <<"att_xfer">>, Props]) ->
     [Transferee, Transferer] = binary:split(Props, <<"/">>),
     Trans = [{<<"Call-ID">>, CallId}
-             ,{<<"Type">>, <<"attended">>}
-             ,{<<"Transferee">>, Transferee}
-             ,{<<"Transferer">>, Transferer}
+	    ,{<<"Type">>, <<"attended">>}
+	    ,{<<"Transferee">>, Transferee}
+	    ,{<<"Transferer">>, Transferer}
             ],
     {Epoch, kz_json:from_list(Trans)};
 create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->
@@ -1041,14 +1041,14 @@ create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->
     Dialplan = lists:last(binary:split(kz_util:join_binary(Props, <<":">>), <<",">>)),
     [Exten | _] = binary:split(Dialplan, <<"/">>, ['global']),
     Trans = [{<<"Call-ID">>, CallId}
-             ,{<<"Type">>, <<"blind">>}
-             ,{<<"Extension">>, Exten}
+	    ,{<<"Type">>, <<"blind">>}
+	    ,{<<"Extension">>, Exten}
             ],
     {Epoch, kz_json:from_list(Trans)};
 create_trnsf_history_object([Epoch, CallId, <<"uuid_br">> , OtherLeg]) ->
     Trans = [{<<"Call-ID">>, CallId}
-             ,{<<"Type">>, <<"bridge">>}
-             ,{<<"Other-Leg">>, OtherLeg}
+	    ,{<<"Type">>, <<"bridge">>}
+	    ,{<<"Other-Leg">>, OtherLeg}
             ],
     {Epoch, kz_json:from_list(Trans)};
 create_trnsf_history_object(_Params) ->
@@ -1094,11 +1094,11 @@ swap_call_legs([Prop|T], Swap) ->
 
 -spec usurp_other_publishers(state()) -> 'ok'.
 usurp_other_publishers(#state{node=Node
-                              ,ref=Ref
-                              ,call_id=CallId}) ->
+			     ,ref=Ref
+			     ,call_id=CallId}) ->
     Usurp = [{<<"Call-ID">>, CallId}
-             ,{<<"Media-Node">>, Node}
-             ,{<<"Reference">>, Ref}
+	    ,{<<"Media-Node">>, Node}
+	    ,{<<"Reference">>, Ref}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     kapi_call:publish_usurp_publisher(CallId, Usurp).
@@ -1118,21 +1118,21 @@ store_recording(Props, CallId, Node) ->
             MediaName = kzd_freeswitch:ccv(Props, <<"Media-Name">>),
             %% TODO: if you change this logic be sure it matches kz_media_util as well!
             Url = kz_util:join_binary([kz_util:strip_right_binary(Destination, $/)
-                                       ,MediaName
+				      ,MediaName
                                       ]
-                                      ,<<"/">>
+				     ,<<"/">>
                                      ),
 
             JObj = kz_json:from_list(
                      [{<<"Call-ID">>, CallId}
-                      ,{<<"Msg-ID">>, CallId}
-                      ,{<<"Media-Name">>, MediaName}
-                      ,{<<"Media-Transfer-Destination">>, Url}
-                      ,{<<"Insert-At">>, <<"now">>}
-                      ,{<<"Media-Transfer-Method">>, media_transfer_method(Props)}
-                      ,{<<"Application-Name">>, <<"store">>}
-                      ,{<<"Event-Category">>, <<"call">>}
-                      ,{<<"Event-Name">>, <<"command">>}
+		     ,{<<"Msg-ID">>, CallId}
+		     ,{<<"Media-Name">>, MediaName}
+		     ,{<<"Media-Transfer-Destination">>, Url}
+		     ,{<<"Insert-At">>, <<"now">>}
+		     ,{<<"Media-Transfer-Method">>, media_transfer_method(Props)}
+		     ,{<<"Application-Name">>, <<"store">>}
+		     ,{<<"Event-Category">>, <<"call">>}
+		     ,{<<"Event-Name">>, <<"command">>}
                       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                      ]),
             ecallmgr_call_command:exec_cmd(Node, CallId, JObj, 'undefined')
@@ -1153,11 +1153,11 @@ callee_call_event_props(Props) ->
         {'ok', #channel{callee_name = Name,
                         callee_number = Num}} when Num =/= 'undefined' ->
             [{<<"Callee-ID-Number">>, Num}
-             ,{<<"Callee-ID-Name">>, Name}
+	    ,{<<"Callee-ID-Name">>, Name}
             ];
         _ ->
             [{<<"Callee-ID-Number">>, kzd_freeswitch:callee_id_number(Props)}
-             ,{<<"Callee-ID-Name">>, kzd_freeswitch:callee_id_name(Props)}
+	    ,{<<"Callee-ID-Name">>, kzd_freeswitch:callee_id_name(Props)}
             ]
     end.
 
@@ -1169,7 +1169,7 @@ debug_channel_props(Props) ->
 debug_channel_props(_Props, 'false') -> [];
 debug_channel_props(Props, 'true') ->
     [{<<"Channel-Debug">>
-      ,kz_json:from_list(lists:sort(fun sort_debug/2, Props))
+     ,kz_json:from_list(lists:sort(fun sort_debug/2, Props))
      }
     ].
 

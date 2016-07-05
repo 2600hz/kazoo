@@ -9,7 +9,7 @@
 -module(ecallmgr_channel_redirect).
 
 -export([redirect/2
-         ,redirect_remote/2
+	,redirect_remote/2
         ]).
 
 -include("ecallmgr.hrl").
@@ -33,7 +33,7 @@ redirect_remote(UUID, ChannelStatusJObj) ->
 -spec redirect_via_proxy(ne_binary(), ne_binary()) -> ecallmgr_util:send_cmd_ret().
 redirect_via_proxy(DestNodeURL, UUID) ->
     {'ok', #channel{destination=ToUser
-                    ,realm=Realm
+		   ,realm=Realm
                    }=Channel} = ecallmgr_fs_channel:fetch(UUID, 'record'),
     Contact = <<"sip:", ToUser/binary, "@", Realm/binary>>,
 
@@ -49,13 +49,13 @@ redirect_via_endpoint(DestNodeURL, UUID) ->
 -spec send_redirect(api_binary(), ne_binary(), channel()) ->
                            ecallmgr_util:send_cmd_ret().
 send_redirect('undefined', Contact, #channel{node=Node
-                                             ,uuid=UUID
-                                             ,answered=IsAnswered
+					    ,uuid=UUID
+					    ,answered=IsAnswered
                                             }) ->
     ecallmgr_util:send_cmd(Node, UUID, redirect_app(IsAnswered), Contact);
 send_redirect(RedirectUrl, Contact, #channel{node=Node
-                                             ,uuid=UUID
-                                             ,answered=IsAnswered
+					    ,uuid=UUID
+					    ,answered=IsAnswered
                                             }) ->
     ecallmgr_fs_command:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, RedirectUrl}]),
     ecallmgr_util:send_cmd(Node, UUID, redirect_app(IsAnswered), Contact).

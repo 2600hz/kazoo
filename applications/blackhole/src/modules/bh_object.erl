@@ -9,7 +9,7 @@
 -module(bh_object).
 
 -export([handle_event/2
-         ,add_amqp_binding/2, rm_amqp_binding/2
+	,add_amqp_binding/2, rm_amqp_binding/2
         ]).
 
 -include("blackhole.hrl").
@@ -25,10 +25,10 @@ handle_event(Context, EventJObj) ->
     kz_util:put_callid(EventJObj),
     lager:debug("handle_event fired for ~s ~s", [bh_context:account_id(Context), bh_context:websocket_session_id(Context)]),
     blackhole_data_emitter:emit(
-        bh_context:websocket_pid(Context)
-        ,event_name(EventJObj)
-        ,EventJObj
-    ).
+      bh_context:websocket_pid(Context)
+			       ,event_name(EventJObj)
+			       ,EventJObj
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -54,13 +54,13 @@ add_amqp_binding(_Binding, Context, Action, Type) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Keys = [[{'action', Action}, {'db', AccountDb}, {'doc_type', Type}]],
     blackhole_listener:add_binding(
-        'conf'
-        ,[{'restrict_to', ['doc_updates']}
-          ,{'account_id', AccountId}
-          ,{'keys', Keys}
-          ,'federate'
-        ]
-    ).
+      'conf'
+				  ,[{'restrict_to', ['doc_updates']}
+				   ,{'account_id', AccountId}
+				   ,{'keys', Keys}
+				   ,'federate'
+				   ]
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -75,13 +75,13 @@ rm_amqp_binding(Binding, Context) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Keys = [[{'action', Action}, {'db', AccountDb}, {'doc_type', Type}]],
     blackhole_listener:remove_binding(
-        'conf'
-        ,[{'restrict_to', ['doc_updates']}
-          ,{'account_id', AccountId}
-          ,{'keys', Keys}
-          ,'federate'
-        ]
-    ).
+      'conf'
+				     ,[{'restrict_to', ['doc_updates']}
+				      ,{'account_id', AccountId}
+				      ,{'keys', Keys}
+				      ,'federate'
+				      ]
+     ).
 
 %%--------------------------------------------------------------------
 %% @public

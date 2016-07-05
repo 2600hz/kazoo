@@ -10,11 +10,11 @@ start(N) ->
 
 start(N, 0, CDR, ECDR, Raw) ->
     {{total, N}
-     ,{cdr, CDR, CDR div N}
-     ,{ecdr, ECDR, ECDR div N}
-     ,{diff, CDR - ECDR, ECDR - CDR}
-     ,{avg_diff, (CDR - ECDR) div N, (ECDR - CDR) div N}
-     ,{raw, Raw}
+    ,{cdr, CDR, CDR div N}
+    ,{ecdr, ECDR, ECDR div N}
+    ,{diff, CDR - ECDR, ECDR - CDR}
+    ,{avg_diff, (CDR - ECDR) div N, (ECDR - CDR) div N}
+    ,{raw, Raw}
     };
 start(N, X, CDRTot, ECDRTot, Raw) ->
     StartKey = start_key(),

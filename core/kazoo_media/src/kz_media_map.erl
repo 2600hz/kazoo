@@ -11,25 +11,25 @@
 -behaviour(gen_listener).
 
 -export([start_link/0
-         ,prompt_path/3
-         ,handle_media_doc/2
-         ,flush/0
+	,prompt_path/3
+	,handle_media_doc/2
+	,flush/0
         ]).
 
 %% ETS related
 -export([table_id/0
-         ,table_options/0
-         ,find_me_function/0
-         ,gift_data/0
+	,table_options/0
+	,find_me_function/0
+	,gift_data/0
         ]).
 
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("kazoo_media.hrl").
@@ -51,9 +51,9 @@
 -define(CONSUME_OPTIONS, []).
 
 -record(media_map, {id :: ne_binary() %% account/prompt-id
-                    ,account_id :: ne_binary()
-                    ,prompt_id :: ne_binary()
-                    ,languages = kz_json:new() :: kz_json:object() %% {"lang1":"path1", "lang2":"path2"}
+		   ,account_id :: ne_binary()
+		   ,prompt_id :: ne_binary()
+		   ,languages = kz_json:new() :: kz_json:object() %% {"lang1":"path1", "lang2":"path2"}
                    }).
 -type media_map() :: #media_map{}.
 
@@ -67,14 +67,14 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
-                            ,?MODULE
-                            ,[{'bindings', ?BINDINGS}
-                              ,{'responders', ?RESPONDERS}
-                              ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                              ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                              ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                             ]
-                            ,[]
+			   ,?MODULE
+			   ,[{'bindings', ?BINDINGS}
+			    ,{'responders', ?RESPONDERS}
+			    ,{'queue_name', ?QUEUE_NAME}       % optional to include
+			    ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+			    ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+			    ]
+			   ,[]
                            ).
 
 -spec flush() -> 'ok'.
@@ -132,9 +132,9 @@ table_id() -> ?MODULE.
 -spec table_options() -> kz_proplist().
 table_options() ->
     ['set'
-     ,'protected'
-     ,{'keypos', #media_map.id}
-     ,'named_table'
+    ,'protected'
+    ,{'keypos', #media_map.id}
+    ,'named_table'
     ].
 
 -spec find_me_function() -> api_pid().
@@ -177,7 +177,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({'add_mapping', ?KZ_MEDIA_DB, JObj}, _From, State) ->
     _ = maybe_add_prompt(?KZ_MEDIA_DB, JObj),
-     {'reply', 'ok', State};
+    {'reply', 'ok', State};
 handle_call({'add_mapping', Account, JObj}, _From, State) ->
     _ = maybe_add_prompt(kz_util:format_account_id(Account), JObj),
     {'reply', 'ok', State};
@@ -302,8 +302,8 @@ init_map(Db) ->
 
 init_map(Db, View, StartKey, Limit, SendFun) ->
     Options = [{'startkey', StartKey}
-               ,{'limit', Limit+1}
-               ,'include_docs'
+	      ,{'limit', Limit+1}
+	      ,'include_docs'
               ],
     case kz_datamgr:get_results(Db, View, Options) of
         {'ok', []} -> lager:debug("no more results in ~s:~s", [Db, View]);
@@ -339,9 +339,9 @@ add_mapping(Db, _SendFun, JObjs, Srv) when Srv =:= self() ->
         ],
     'ok';
 add_mapping(Db, SendFun, JObjs, Srv) ->
-     AccountId = kz_util:format_account_id(Db, 'raw'),
+    AccountId = kz_util:format_account_id(Db, 'raw'),
     _ = [SendFun(Srv, {'add_mapping', AccountId, kz_json:get_value(<<"doc">>, JObj)}) || JObj <- JObjs],
-     'ok'.
+    'ok'.
 
 -spec maybe_add_prompt(ne_binary(), kz_json:object()) -> 'ok'.
 -spec maybe_add_prompt(ne_binary(), kz_json:object(), api_binary()) -> 'ok'.
@@ -409,9 +409,9 @@ get_map(?KZ_MEDIA_DB = Db, PromptId) ->
         [Map] -> Map;
         [] ->
             #media_map{id=MapId
-                       ,account_id=Db
-                       ,prompt_id=PromptId
-                       ,languages=kz_json:new()
+		      ,account_id=Db
+		      ,prompt_id=PromptId
+		      ,languages=kz_json:new()
                       }
     end;
 get_map(AccountId, PromptId) ->
@@ -442,7 +442,7 @@ new_map(Map) ->
 new_map(Map, Srv) when Srv =:= self() ->
     ets:insert_new(table_id(), Map);
 new_map(Map, Srv) ->
-   'true' = gen_listener:call(Srv, {'new_map', Map}).
+    'true' = gen_listener:call(Srv, {'new_map', Map}).
 
 -spec load_account_map(ne_binary(), ne_binary()) -> media_map().
 load_account_map(AccountId, PromptId) ->
@@ -451,11 +451,11 @@ load_account_map(AccountId, PromptId) ->
     case kz_datamgr:get_results(kz_util:format_account_id(AccountId, 'encoded')
                                ,<<"media/listing_by_prompt">>
                                ,[{'startkey', [PromptId]}
-                                 ,{'endkey', [PromptId, kz_json:new()]}
-                                 ,{'reduce', 'false'}
-                                 ,'include_docs'
+				,{'endkey', [PromptId, kz_json:new()]}
+				,{'reduce', 'false'}
+				,'include_docs'
                                 ]
-                              )
+			       )
     of
         {'ok', []} ->
             lager:debug("account ~s has 0 languages for prompt ~s", [AccountId, PromptId]);
@@ -496,9 +496,9 @@ mapping_id(AccountId, PromptId) ->
 
 language_keys_test_() ->
     LangTests = [{<<"en">>, [<<"en">>]}
-                 ,{<<"en-us">>, [<<"en-us">>, <<"en">>]}
-                 ,{<<"en-us_fr-fr">>, [<<"en-us_fr-fr">>, <<"en-us">>, <<"en">>]}
-                 ,{<<"foo-bar">>, [<<"foo-bar">>]}
+		,{<<"en-us">>, [<<"en-us">>, <<"en">>]}
+		,{<<"en-us_fr-fr">>, [<<"en-us_fr-fr">>, <<"en-us">>, <<"en">>]}
+		,{<<"foo-bar">>, [<<"foo-bar">>]}
                 ],
     [?_assertEqual(Result, language_keys(Lang))
      || {Lang, Result} <- LangTests

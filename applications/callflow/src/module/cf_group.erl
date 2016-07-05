@@ -69,7 +69,7 @@ attempt_endpoints(JObj, Data, Call) ->
             end;
         {'error', _R} ->
             lager:info("error bridging to group: ~p"
-                       ,[kz_json:get_value(<<"Error-Message">>, _R)]
+		      ,[kz_json:get_value(<<"Error-Message">>, _R)]
                       ),
             cf_exe:continue(Call)
     end.
@@ -78,15 +78,15 @@ attempt_endpoints(JObj, Data, Call) ->
 build_endpoints(JObj, Call) ->
     Members = kz_json:to_proplist(<<"endpoints">>, JObj),
     Routines = [fun build_device_endpoints/3
-                ,fun build_user_endpoints/3
+	       ,fun build_user_endpoints/3
                ],
     lists:flatten(
       [Endpoint
        || {_, {'ok', Endpoint}} <-
               lists:foldl(
                 fun(F, E) -> F(E, Members, Call) end
-                ,[]
-                ,Routines
+			 ,[]
+			 ,Routines
                )
       ]
      ).
@@ -115,11 +115,11 @@ build_user_endpoints(Endpoints, [{MemberId, Member} | Members], Call) ->
         'true' ->
             DeviceIds = kz_attributes:owned_by(MemberId, <<"device">>, Call),
             M = kz_json:set_values([{<<"source">>, ?MODULE}
-                                    ,{<<"type">>, <<"device">>}
+				   ,{<<"type">>, <<"device">>}
                                    ], Member),
             E = build_device_endpoints(Endpoints
-                                       ,[{DeviceId, M} || DeviceId <- DeviceIds]
-                                       ,Call
+				      ,[{DeviceId, M} || DeviceId <- DeviceIds]
+				      ,Call
                                       ),
             build_user_endpoints(E, Members, Call);
         'false' -> build_user_endpoints(Endpoints, Members, Call)

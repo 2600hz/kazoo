@@ -10,16 +10,16 @@
 -module(webseq).
 
 -export([start/1
-         ,stop/0, stop/1
-         ,running/0
+	,stop/0, stop/1
+	,running/0
 
-         ,evt/4
-         ,title/2
-         ,note/4
-         ,trunc/1
-         ,rotate/1
-         ,process_pid/1
-         ,reg_who/3
+	,evt/4
+	,title/2
+	,note/4
+	,trunc/1
+	,rotate/1
+	,process_pid/1
+	,reg_who/3
         ]).
 
 -include("webseq.hrl").

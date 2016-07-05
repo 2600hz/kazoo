@@ -15,16 +15,16 @@
 
 %% gen_fsm callbacks
 -export([init/1
-         ,handle_event/3
-         ,handle_sync_event/4
-         ,handle_info/3
-         ,terminate/3
-         ,code_change/4
+	,handle_event/3
+	,handle_sync_event/4
+	,handle_info/3
+	,terminate/3
+	,code_change/4
         ]).
 
 -export([idle/2
-         ,working/2
-         ,worker_timeout/2
+	,working/2
+	,worker_timeout/2
         ]).
 
 -include("ecallmgr.hrl").
@@ -37,7 +37,7 @@
 -type fsm_events() :: 'start_cycle' | 'worker_stop'.
 -type fsm_state() :: 'idle' | 'working' | 'worker_timeout'.
 -type fsm_reply() :: {'next_state', fsm_state(), api_pid()} |
-                    {'next_state', fsm_state(), api_pid(), 'hibernate'}.
+		     {'next_state', fsm_state(), api_pid(), 'hibernate'}.
 
 %%====================================================================
 %% API

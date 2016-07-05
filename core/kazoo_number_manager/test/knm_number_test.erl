@@ -12,8 +12,8 @@
 
 get_available_test_() ->
     [fun available_as_owner/0
-     ,fun available_as_parent/0
-     ,fun available_as_rando/0
+    ,fun available_as_parent/0
+    ,fun available_as_rando/0
     ].
 
 available_as_owner() ->
@@ -36,10 +36,10 @@ available_as(AuthAccountId) ->
 
 unavailable_tests(ErrorJObj) ->
     [{"verify unavailable number error code"
-      ,?_assertEqual(403, knm_errors:code(ErrorJObj))
+     ,?_assertEqual(403, knm_errors:code(ErrorJObj))
      }
-     ,{"verify unavailable number error"
-      ,?_assertEqual(<<"forbidden">>, knm_errors:error(ErrorJObj))
+    ,{"verify unavailable number error"
+     ,?_assertEqual(<<"forbidden">>, knm_errors:error(ErrorJObj))
      }
     ].
 
@@ -47,20 +47,20 @@ available_tests(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
 
     [{"Verify available phone number"
-      ,?_assertEqual(?TEST_AVAILABLE_NUM, knm_phone_number:number(PhoneNumber))
-      }
-     ,{"Verify available number module"
-       ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PhoneNumber))
-      }
-     ,{"Verify available number state"
-       ,?_assertEqual(?NUMBER_STATE_AVAILABLE, knm_phone_number:state(PhoneNumber))
-      }
+     ,?_assertEqual(?TEST_AVAILABLE_NUM, knm_phone_number:number(PhoneNumber))
+     }
+    ,{"Verify available number module"
+     ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PhoneNumber))
+     }
+    ,{"Verify available number state"
+     ,?_assertEqual(?NUMBER_STATE_AVAILABLE, knm_phone_number:state(PhoneNumber))
+     }
     ].
 
 get_unreconcilable_number_test_() ->
     [{"Verify non-reconcilable numbers result in errors"
-      ,?_assertMatch({'error', 'not_reconcilable'}
-                     ,knm_number:get(<<"1000">>)
-                    )
+     ,?_assertMatch({'error', 'not_reconcilable'}
+		   ,knm_number:get(<<"1000">>)
+		   )
      }
     ].

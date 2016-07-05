@@ -12,12 +12,12 @@
 
 -export([start_link/0]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("callflow.hrl").
@@ -25,26 +25,26 @@
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{'notifications'
-                    ,[{'restrict_to', ['register']}]
+		   ,[{'restrict_to', ['register']}]
                    },
                    {'presence'
-                    ,[{'restrict_to', ['probe', 'mwi_query']}
-                      ,{'probe_type', <<"dialog">>}
-                     ]
+		   ,[{'restrict_to', ['probe', 'mwi_query']}
+		    ,{'probe_type', <<"dialog">>}
+		    ]
                    }
-                   ,{'self', []}
-                   ,{'callflow', []}
+		  ,{'self', []}
+		  ,{'callflow', []}
                   ]).
 -define(RESPONDERS, [{{'cf_util', 'presence_probe'}
-                      ,[{<<"presence">>, <<"probe">>}]
+		     ,[{<<"presence">>, <<"probe">>}]
                      }
-                     ,{{'cf_util', 'presence_mwi_query'}
-                       ,[{<<"presence">>, <<"mwi_query">>}]
-                      }
-                     ,{{'cf_util', 'notification_register'}
-                       ,[{<<"notification">>, <<"register">>}]
-                      }
-                     ,{'cf_route_resume', [{<<"callflow">>, <<"resume">>}]}
+		    ,{{'cf_util', 'presence_mwi_query'}
+		     ,[{<<"presence">>, <<"mwi_query">>}]
+		     }
+		    ,{{'cf_util', 'notification_register'}
+		     ,[{<<"notification">>, <<"register">>}]
+		     }
+		    ,{'cf_route_resume', [{<<"callflow">>, <<"resume">>}]}
                     ]).
 -define(QUEUE_NAME, <<"callflow_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -60,10 +60,10 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
-                                      ,{'bindings', ?BINDINGS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
+				     ,{'bindings', ?BINDINGS}
+				     ,{'queue_name', ?QUEUE_NAME}
+				     ,{'queue_options', ?QUEUE_OPTIONS}
+				     ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================

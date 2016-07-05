@@ -10,12 +10,12 @@
 
 %% View-related
 -export([design_compact/3
-         ,design_info/3
-         ,all_design_docs/3
-         ,get_results/4
-         ,get_results_count/4
-         ,all_docs/3
-         ,doc_type_from_view/2
+	,design_info/3
+	,all_design_docs/3
+	,get_results/4
+	,get_results_count/4
+	,all_docs/3
+	,doc_type_from_view/2
         ]).
 
 -include("kz_data.hrl").

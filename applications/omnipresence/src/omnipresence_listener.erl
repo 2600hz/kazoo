@@ -11,12 +11,12 @@
 
 -export([start_link/0]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("omnipresence.hrl").
@@ -24,26 +24,26 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {subs_pid = 'undefined' :: api_pid()
-                ,subs_ref :: reference()
-                ,queue = 'undefined' :: api_binary()
-                ,consuming = 'false' :: boolean()
-                ,sync = 'false' :: boolean()
+	       ,subs_ref :: reference()
+	       ,queue = 'undefined' :: api_binary()
+	       ,consuming = 'false' :: boolean()
+	       ,sync = 'false' :: boolean()
                }).
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
-                   ,{'presence', [{'restrict_to', ['subscribe']}]}
-                   ,{'omnipresence', [{'restrict_to', ['notify']}]}
+		  ,{'presence', [{'restrict_to', ['subscribe']}]}
+		  ,{'omnipresence', [{'restrict_to', ['notify']}]}
                   ]).
 -define(RESPONDERS, [{{'omnip_subscriptions', 'handle_subscribe'}
-                       ,[{<<"presence">>, <<"subscription">>}]
-                      }
-                     ,{{'omnip_subscriptions', 'handle_sync'}
-                       ,[{<<"presence">>, <<"sync">>}]
-                      }
-                     ,{{'omnip_subscriptions', 'handle_kamailio_notify'}
-                       ,[{<<"presence">>, <<"notify">>}]
-                      }
+		     ,[{<<"presence">>, <<"subscription">>}]
+		     }
+		    ,{{'omnip_subscriptions', 'handle_sync'}
+		     ,[{<<"presence">>, <<"sync">>}]
+		     }
+		    ,{{'omnip_subscriptions', 'handle_kamailio_notify'}
+		     ,[{<<"presence">>, <<"notify">>}]
+		     }
                     ]).
 
 -define(QUEUE_NAME, <<>>).
@@ -62,10 +62,10 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
+				     ,{'responders', ?RESPONDERS}
+				     ,{'queue_name', ?QUEUE_NAME}
+				     ,{'queue_options', ?QUEUE_OPTIONS}
+				     ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================
@@ -126,7 +126,7 @@ handle_cast('find_subscriptions_srv', #state{subs_pid=_Pid}=State) ->
             lager:debug("new subs pid: ~p", [P]),
             gen_listener:cast(self(), 'send_sync'),
             {'noreply', State#state{subs_pid=P
-                                    ,subs_ref=erlang:monitor('process', P)
+				   ,subs_ref=erlang:monitor('process', P)
                                    }}
     end;
 handle_cast({'gen_listener',{'created_queue',Queue}}, State) ->
@@ -137,8 +137,8 @@ handle_cast({'gen_listener',{'is_consuming',IsConsuming}}, State) ->
     {'noreply', State#state{consuming=IsConsuming}};
 handle_cast('send_sync', #state{subs_pid=Pid, queue=Queue, consuming=IsConsuming} = State)
   when Pid =:= 'undefined'
-  orelse Queue =:= 'undefined'
-  orelse IsConsuming =:= 'false'  ->
+       orelse Queue =:= 'undefined'
+       orelse IsConsuming =:= 'false'  ->
     {'noreply', State};
 handle_cast('send_sync', #state{subs_pid='undefined'}=State) ->
     {'noreply', State};
@@ -164,11 +164,11 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
-                                                      ,subs_ref=Ref
+						     ,subs_ref=Ref
                                                      }=State) ->
     gen_listener:cast(self(), 'find_subscriptions_srv'),
     {'noreply', State#state{subs_pid='undefined'
-                            ,subs_ref='undefined'
+			   ,subs_ref='undefined'
                            }};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),

@@ -21,7 +21,7 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     #{url := BaseUrl, verb := Verb} = Params,
     {'ok', JObj} = kz_datamgr:open_cache_doc(DbName, DocId, Options),
     Args = [{<<"attachment">>, AName}
-            ,{<<"id">>, DocId}
+	   ,{<<"id">>, DocId}
            ],
     Fields = maps:get(field_list, Params, default_format()),
     DocUrlField = maps:get(document_url_field, Params, 'undefined'),

@@ -50,35 +50,35 @@
 -define(KZ_SERVICES_DB, <<"services">>).
 
 -record(kz_transaction, {id :: api_binary()
-                         ,rev :: api_binary()
-                         ,description :: api_binary()
-                         ,call_id :: api_binary()
-                         ,sub_account_id :: ne_binary()
-                         ,sub_account_name :: api_binary()
-                         ,event :: api_binary()
-                         ,number :: api_binary()
-                         ,feature :: api_binary()
-                         ,bookkeeper_info :: api_object()
-                         ,metadata :: api_object()
-                         ,pvt_status :: api_binary()
-                         ,pvt_reason :: api_binary()
-                         ,pvt_code :: api_integer()
-                         ,pvt_amount = 0 :: units()
-                         ,pvt_type :: ne_binary()
-                         ,pvt_created :: gregorian_seconds()
-                         ,pvt_modified :: gregorian_seconds()
-                         ,pvt_account_id :: ne_binary()
-                         ,pvt_account_db :: ne_binary()
-                         ,pvt_vsn = 2 :: integer()
-                         ,order_id :: api_binary()
+			,rev :: api_binary()
+			,description :: api_binary()
+			,call_id :: api_binary()
+			,sub_account_id :: ne_binary()
+			,sub_account_name :: api_binary()
+			,event :: api_binary()
+			,number :: api_binary()
+			,feature :: api_binary()
+			,bookkeeper_info :: api_object()
+			,metadata :: api_object()
+			,pvt_status :: api_binary()
+			,pvt_reason :: api_binary()
+			,pvt_code :: api_integer()
+			,pvt_amount = 0 :: units()
+			,pvt_type :: ne_binary()
+			,pvt_created :: gregorian_seconds()
+			,pvt_modified :: gregorian_seconds()
+			,pvt_account_id :: ne_binary()
+			,pvt_account_db :: ne_binary()
+			,pvt_vsn = 2 :: integer()
+			,order_id :: api_binary()
                         }).
 
 -type transaction() :: #kz_transaction{}.
 -type transactions() :: [transaction()].
 
 -export_type([transaction/0
-              ,transactions/0
-              ,units/0
+	     ,transactions/0
+	     ,units/0
              ]).
 
 %%--------------------------------------------------------------------
@@ -248,7 +248,7 @@ set_sub_account_info(AccountId, Transaction) when is_binary(AccountId) ->
         {'ok', JObj} ->
             AccountName = kz_json:get_value(<<"name">>, JObj),
             Transaction#kz_transaction{sub_account_id=AccountId
-                                       ,sub_account_name=AccountName
+				      ,sub_account_name=AccountName
                                       }
     end.
 
@@ -276,7 +276,7 @@ set_metadata(MetaData, Transaction) ->
 set_reason(Reason, Transaction) ->
     Code = wht_util:reason_code(Reason),
     Transaction#kz_transaction{pvt_reason=Reason
-                               ,pvt_code=Code
+			      ,pvt_code=Code
                               }.
 
 -spec set_status(ne_binary(), transaction()) -> transaction().
@@ -287,17 +287,17 @@ set_status(Status, Transaction) ->
 set_code(Code, Transaction) ->
     Reason = wht_util:code_reason(Code),
     Transaction#kz_transaction{pvt_reason=Reason
-                               ,pvt_code=Code
+			      ,pvt_code=Code
                               }.
 
 -spec set_amount(integer(), transaction()) -> transaction().
 set_amount(Amount, Transaction) when Amount > 0 ->
     Transaction#kz_transaction{pvt_amount=Amount
-                               ,pvt_type= <<"credit">>
+			      ,pvt_type= <<"credit">>
                               };
 set_amount(Amount, Transaction) when Amount < 0 ->
     Transaction#kz_transaction{pvt_amount=Amount
-                               ,pvt_type= <<"debit">>
+			      ,pvt_type= <<"debit">>
                               };
 set_amount(Amount, Transaction) when is_binary(Amount) ->
     set_amount(kz_util:to_integer(Amount), Transaction);
@@ -369,27 +369,27 @@ is_reason(_, _) -> 'false'.
 -spec to_json(transaction()) -> kz_json:object().
 to_json(#kz_transaction{}=T) ->
     Props = [{<<"_id">>, T#kz_transaction.id}
-             ,{<<"_rev">>, T#kz_transaction.rev}
-             ,{<<"description">>, T#kz_transaction.description}
-             ,{<<"call_id">>, T#kz_transaction.call_id}
-             ,{<<"sub_account_id">>, T#kz_transaction.sub_account_id}
-             ,{<<"sub_account_name">>, T#kz_transaction.sub_account_name}
-             ,{<<"event">>, T#kz_transaction.event}
-             ,{<<"number">>, T#kz_transaction.number}
-             ,{<<"feature">>, T#kz_transaction.feature}
-             ,{<<"bookkeeper_info">>, T#kz_transaction.bookkeeper_info}
-             ,{<<"metadata">>, T#kz_transaction.metadata}
-             ,{<<"pvt_status">>, T#kz_transaction.pvt_status}
-             ,{<<"pvt_reason">>, T#kz_transaction.pvt_reason}
-             ,{<<"pvt_code">>, T#kz_transaction.pvt_code}
-             ,{<<"pvt_amount">>, T#kz_transaction.pvt_amount}
-             ,{<<"pvt_type">>, T#kz_transaction.pvt_type}
-             ,{<<"pvt_created">>, T#kz_transaction.pvt_created}
-             ,{<<"pvt_modified">>, T#kz_transaction.pvt_modified}
-             ,{<<"pvt_account_id">>, T#kz_transaction.pvt_account_id}
-             ,{<<"pvt_account_db">>, T#kz_transaction.pvt_account_db}
-             ,{<<"pvt_vsn">>, T#kz_transaction.pvt_vsn}
-             ,{<<"order_id">>, T#kz_transaction.order_id}
+	    ,{<<"_rev">>, T#kz_transaction.rev}
+	    ,{<<"description">>, T#kz_transaction.description}
+	    ,{<<"call_id">>, T#kz_transaction.call_id}
+	    ,{<<"sub_account_id">>, T#kz_transaction.sub_account_id}
+	    ,{<<"sub_account_name">>, T#kz_transaction.sub_account_name}
+	    ,{<<"event">>, T#kz_transaction.event}
+	    ,{<<"number">>, T#kz_transaction.number}
+	    ,{<<"feature">>, T#kz_transaction.feature}
+	    ,{<<"bookkeeper_info">>, T#kz_transaction.bookkeeper_info}
+	    ,{<<"metadata">>, T#kz_transaction.metadata}
+	    ,{<<"pvt_status">>, T#kz_transaction.pvt_status}
+	    ,{<<"pvt_reason">>, T#kz_transaction.pvt_reason}
+	    ,{<<"pvt_code">>, T#kz_transaction.pvt_code}
+	    ,{<<"pvt_amount">>, T#kz_transaction.pvt_amount}
+	    ,{<<"pvt_type">>, T#kz_transaction.pvt_type}
+	    ,{<<"pvt_created">>, T#kz_transaction.pvt_created}
+	    ,{<<"pvt_modified">>, T#kz_transaction.pvt_modified}
+	    ,{<<"pvt_account_id">>, T#kz_transaction.pvt_account_id}
+	    ,{<<"pvt_account_db">>, T#kz_transaction.pvt_account_db}
+	    ,{<<"pvt_vsn">>, T#kz_transaction.pvt_vsn}
+	    ,{<<"order_id">>, T#kz_transaction.order_id}
             ],
     Transaction = kz_json:from_list(props:filter_undefined(Props)),
     maybe_correct_transaction(Transaction).
@@ -420,7 +420,7 @@ maybe_correct_transaction(JObj) ->
 maybe_add_sub_account_name(JObj) ->
     case
         {kz_json:get_value(<<"sub_account_name">>, JObj)
-         ,kz_json:get_value(<<"sub_account_id">>, JObj)
+	,kz_json:get_value(<<"sub_account_id">>, JObj)
         }
     of
         {'undefined', 'undefined'} -> JObj;
@@ -448,18 +448,18 @@ add_sub_account_name(AccountId, JObj) ->
 -spec clean_jobj(kz_json:object()) -> kz_json:object().
 clean_jobj(JObj) ->
     CleanKeys = [{<<"_id">>, <<"id">>}
-                 ,{<<"pvt_amount">>, <<"amount">>, fun wht_util:units_to_dollars/1}
-                 ,{<<"pvt_reason">>, <<"reason">>}
-                 ,{<<"pvt_status">>, <<"status">>}
-                 ,{<<"pvt_type">>, <<"type">>}
-                 ,{<<"pvt_created">>, <<"created">>}
-                 ,{<<"pvt_vsn">>, <<"version">>}
-                 ,{<<"pvt_code">>, <<"code">>}
+		,{<<"pvt_amount">>, <<"amount">>, fun wht_util:units_to_dollars/1}
+		,{<<"pvt_reason">>, <<"reason">>}
+		,{<<"pvt_status">>, <<"status">>}
+		,{<<"pvt_type">>, <<"type">>}
+		,{<<"pvt_created">>, <<"created">>}
+		,{<<"pvt_vsn">>, <<"version">>}
+		,{<<"pvt_code">>, <<"code">>}
                 ],
     RemoveKeys = [<<"pvt_account_db">>
-                  ,<<"pvt_account_id">>
-                  ,<<"pvt_modified">>
-                  ,<<"_rev">>
+		 ,<<"pvt_account_id">>
+		 ,<<"pvt_modified">>
+		 ,<<"_rev">>
                  ],
     kz_json:normalize_jobj(JObj, RemoveKeys, CleanKeys).
 
@@ -472,27 +472,27 @@ clean_jobj(JObj) ->
 -spec from_json(kz_json:object()) -> transaction().
 from_json(JObj) ->
     #kz_transaction{id = kz_doc:id(JObj)
-                    ,rev = kz_doc:revision(JObj)
-                    ,description = kz_json:get_ne_value(<<"description">>, JObj)
-                    ,call_id = kz_json:get_ne_value(<<"call_id">>, JObj)
-                    ,sub_account_id = kz_json:get_ne_value(<<"sub_account_id">>, JObj)
-                    ,sub_account_name = kz_json:get_ne_value(<<"sub_account_name">>, JObj)
-                    ,event = kz_json:get_ne_value(<<"event">>, JObj)
-                    ,number = kz_json:get_ne_value(<<"number">>, JObj)
-                    ,feature = kz_json:get_ne_value(<<"feature">>, JObj)
-                    ,bookkeeper_info = kz_json:get_ne_value(<<"bookkeeper_info">>, JObj)
-                    ,metadata = kz_json:get_ne_value(<<"metadata">>, JObj)
-                    ,pvt_reason = kz_json:get_ne_value(<<"pvt_reason">>, JObj)
-                    ,pvt_status = kz_json:get_ne_value(<<"pvt_status">>, JObj)
-                    ,pvt_code = kz_json:get_integer_value(<<"pvt_code">>, JObj, 0)
-                    ,pvt_amount = kz_json:get_integer_value(<<"pvt_amount">>, JObj, 0)
-                    ,pvt_type = kz_doc:type(JObj)
-                    ,pvt_created = kz_doc:created(JObj)
-                    ,pvt_modified = kz_doc:modified(JObj)
-                    ,pvt_account_id = kz_doc:account_id(JObj)
-                    ,pvt_account_db = kz_doc:account_db(JObj)
-                    ,pvt_vsn = kz_doc:vsn(JObj, 1)
-                    ,order_id = kz_json:get_ne_value(<<"order_id">>, JObj)
+		   ,rev = kz_doc:revision(JObj)
+		   ,description = kz_json:get_ne_value(<<"description">>, JObj)
+		   ,call_id = kz_json:get_ne_value(<<"call_id">>, JObj)
+		   ,sub_account_id = kz_json:get_ne_value(<<"sub_account_id">>, JObj)
+		   ,sub_account_name = kz_json:get_ne_value(<<"sub_account_name">>, JObj)
+		   ,event = kz_json:get_ne_value(<<"event">>, JObj)
+		   ,number = kz_json:get_ne_value(<<"number">>, JObj)
+		   ,feature = kz_json:get_ne_value(<<"feature">>, JObj)
+		   ,bookkeeper_info = kz_json:get_ne_value(<<"bookkeeper_info">>, JObj)
+		   ,metadata = kz_json:get_ne_value(<<"metadata">>, JObj)
+		   ,pvt_reason = kz_json:get_ne_value(<<"pvt_reason">>, JObj)
+		   ,pvt_status = kz_json:get_ne_value(<<"pvt_status">>, JObj)
+		   ,pvt_code = kz_json:get_integer_value(<<"pvt_code">>, JObj, 0)
+		   ,pvt_amount = kz_json:get_integer_value(<<"pvt_amount">>, JObj, 0)
+		   ,pvt_type = kz_doc:type(JObj)
+		   ,pvt_created = kz_doc:created(JObj)
+		   ,pvt_modified = kz_doc:modified(JObj)
+		   ,pvt_account_id = kz_doc:account_id(JObj)
+		   ,pvt_account_db = kz_doc:account_db(JObj)
+		   ,pvt_vsn = kz_doc:vsn(JObj, 1)
+		   ,order_id = kz_json:get_ne_value(<<"order_id">>, JObj)
                    }.
 
 %%--------------------------------------------------------------------
@@ -532,7 +532,7 @@ save(#kz_transaction{}=Transaction) ->
 
 -spec save_transaction(transaction()) -> {'ok', transaction()} | {'error', any()}.
 save_transaction(#kz_transaction{pvt_account_id=AccountId
-                                 ,pvt_created=Created
+				,pvt_created=Created
                                 }=Transaction) ->
     JObj = to_json(Transaction#kz_transaction{pvt_modified=kz_util:current_tstamp()}),
     case kazoo_modb:save_doc(AccountId, JObj, Created) of
@@ -618,18 +618,18 @@ prepare_transaction(Transaction) ->
 prepare_call_transaction(#kz_transaction{call_id='undefined'}) ->
     {'error', 'call_id_missing'};
 prepare_call_transaction(#kz_transaction{sub_account_id='undefined'
-                                         ,pvt_code=?CODE_SUB_ACCOUNT_PER_MINUTE_CALL
+					,pvt_code=?CODE_SUB_ACCOUNT_PER_MINUTE_CALL
                                         }) ->
     {'error', 'sub_account_id_missing'};
 prepare_call_transaction(#kz_transaction{event='undefined'}) ->
     {'error', 'event_missing'};
 prepare_call_transaction(#kz_transaction{call_id=CallId
-                                         ,event=Event
+					,event=Event
                                         }=Transaction) ->
     Transaction#kz_transaction{id = <<CallId/binary, "-"
                                       ,(kz_util:to_upper_binary(Event))/binary
                                     >>
-                                   ,event=kz_util:to_lower_binary(Event)
+			      ,event=kz_util:to_lower_binary(Event)
                               }.
 
 -spec prepare_feature_activation_transaction(transaction()) ->
@@ -640,7 +640,7 @@ prepare_feature_activation_transaction(#kz_transaction{feature='undefined'}) ->
 prepare_feature_activation_transaction(#kz_transaction{number='undefined'}) ->
     {'error', 'number_missing'};
 prepare_feature_activation_transaction(#kz_transaction{sub_account_id='undefined'
-                                                       ,pvt_code=?CODE_SUB_ACCOUNT_FEATURE_ACTIVATION
+						      ,pvt_code=?CODE_SUB_ACCOUNT_FEATURE_ACTIVATION
                                                       }) ->
     {'error', 'sub_account_id_missing'};
 prepare_feature_activation_transaction(Transaction) ->
@@ -652,7 +652,7 @@ prepare_feature_activation_transaction(Transaction) ->
 prepare_number_activation_transaction(#kz_transaction{number='undefined'}) ->
     {'error', 'number_missing'};
 prepare_number_activation_transaction(#kz_transaction{sub_account_id='undefined'
-                                                      ,pvt_code=?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION
+						     ,pvt_code=?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION
                                                      }) ->
     {'error', 'sub_account_id_missing'};
 prepare_number_activation_transaction(Transaction) ->
@@ -664,7 +664,7 @@ prepare_number_activation_transaction(Transaction) ->
 prepare_manual_addition_transaction(#kz_transaction{bookkeeper_info='undefined'}) ->
     {'error', 'bookkeeper_info_missing'};
 prepare_manual_addition_transaction(#kz_transaction{sub_account_id='undefined'
-                                                    ,pvt_code=?CODE_SUB_ACCOUNT_MANUAL_ADDITION
+						   ,pvt_code=?CODE_SUB_ACCOUNT_MANUAL_ADDITION
                                                    }) ->
     {'error', 'sub_account_id_missing'};
 prepare_manual_addition_transaction(Transaction) ->
@@ -692,9 +692,9 @@ prepare_topup_transaction(Transaction) ->
 -spec create(ne_binary(), non_neg_integer(), ne_binary()) -> transaction().
 create(Ledger, Amount, Type) ->
     #kz_transaction{pvt_type=Type
-                    ,pvt_amount=abs(Amount)
-                    ,pvt_account_id=kz_util:format_account_id(Ledger, 'raw')
-                    ,pvt_account_db=kz_util:format_account_mod_id(Ledger)
-                    ,pvt_created=kz_util:current_tstamp()
-                    ,pvt_modified=kz_util:current_tstamp()
+		   ,pvt_amount=abs(Amount)
+		   ,pvt_account_id=kz_util:format_account_id(Ledger, 'raw')
+		   ,pvt_account_db=kz_util:format_account_mod_id(Ledger)
+		   ,pvt_created=kz_util:current_tstamp()
+		   ,pvt_modified=kz_util:current_tstamp()
                    }.

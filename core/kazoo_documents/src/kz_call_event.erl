@@ -9,25 +9,25 @@
 -module(kz_call_event).
 
 -export([call_id/1
-         ,other_leg_call_id/1
-         ,other_leg_destination_number/1, other_leg_destination_number/2
-         ,replaced_by/1
-         ,custom_channel_vars/1, custom_channel_vars/2
-         ,custom_channel_var/2, custom_channel_var/3
-         ,custom_sip_headers/1
-         ,authorizing_id/1, authorizing_type/1
-         ,dtmf_digit/1
-         ,event_name/1
-         ,hangup_cause/1, hangup_code/1, disposition/1
-         ,application_name/1, application_response/1, is_authorized/1
-         ,application_event/1, application_data/1
-         ,response_message/1, response_code/1
-         ,account_id/1
-         ,owner_id/1
-         ,timestamp/1
-         ,ringing_seconds/1, billing_seconds/1, duration_seconds/1
-         ,is_call_forwarded/1, is_call_forwarded/2
-         ,error_message/1
+	,other_leg_call_id/1
+	,other_leg_destination_number/1, other_leg_destination_number/2
+	,replaced_by/1
+	,custom_channel_vars/1, custom_channel_vars/2
+	,custom_channel_var/2, custom_channel_var/3
+	,custom_sip_headers/1
+	,authorizing_id/1, authorizing_type/1
+	,dtmf_digit/1
+	,event_name/1
+	,hangup_cause/1, hangup_code/1, disposition/1
+	,application_name/1, application_response/1, is_authorized/1
+	,application_event/1, application_data/1
+	,response_message/1, response_code/1
+	,account_id/1
+	,owner_id/1
+	,timestamp/1
+	,ringing_seconds/1, billing_seconds/1, duration_seconds/1
+	,is_call_forwarded/1, is_call_forwarded/2
+	,error_message/1
         ]).
 
 -include("kz_documents.hrl").

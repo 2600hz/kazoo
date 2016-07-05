@@ -8,7 +8,7 @@
 -module(kz_services_modb).
 
 -export([start_link/0
-         ,modb/1
+	,modb/1
         ]).
 
 -include("kazoo_services.hrl").

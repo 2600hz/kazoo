@@ -143,7 +143,7 @@ routing_key(Event, Name) ->
 
 %% Globals Events
 -define(GLOBALS_EVENT_ROUTING_KEY(Event, Name)
-        ,routing_key(Event, Name)
+       ,routing_key(Event, Name)
        ).
 
 -define(QUERY_REQ_HEADERS, [<<"Name">>]).

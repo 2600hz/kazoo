@@ -14,13 +14,13 @@
 -module(cb_conferences).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
-         ,validate/1, validate/2, validate/3
-         ,put/1
-         ,post/2
-         ,patch/2
-         ,delete/2
+	,allowed_methods/0, allowed_methods/1, allowed_methods/2
+	,resource_exists/0, resource_exists/1, resource_exists/2
+	,validate/1, validate/2, validate/3
+	,put/1
+	,post/2
+	,patch/2
+	,delete/2
         ]).
 
 -include("crossbar.hrl").
@@ -29,16 +29,16 @@
 -define(CB_LIST_BY_NUMBER, <<"conference/listing_by_number">>).
 
 -define(PARTICIPANT_INFO_FIELDS, [<<"Is-Moderator">>
-    ,<<"Video">>
-    ,<<"Current-Energy">>
-    ,<<"Energy-Level">>
-    ,<<"Participant-ID">>
-    ,<<"Mute-Detect">>
-    ,<<"Talking">>
-    ,<<"Speak">>
-    ,<<"Hear">>
-    ,<<"Floor">>
-]).
+				 ,<<"Video">>
+				 ,<<"Current-Energy">>
+				 ,<<"Energy-Level">>
+				 ,<<"Participant-ID">>
+				 ,<<"Mute-Detect">>
+				 ,<<"Talking">>
+				 ,<<"Speak">>
+				 ,<<"Hear">>
+				 ,<<"Floor">>
+				 ]).
 
 %%%===================================================================
 %%% API
@@ -193,14 +193,14 @@ maybe_create_conference(Context) ->
                 {'true', Number} ->
                     lager:error("number ~s is already used", [Number]),
                     cb_context:add_validation_error(
-                        [<<"numbers">>]
-                        ,<<"unique">>
-                        ,kz_json:from_list([
-                            {<<"message">>, <<"Number already in use">>}
-                            ,{<<"cause">>, Number}
-                         ])
-                        ,Context
-                    )
+		      [<<"numbers">>]
+						   ,<<"unique">>
+						   ,kz_json:from_list([
+								       {<<"message">>, <<"Number already in use">>}
+								      ,{<<"cause">>, Number}
+								      ])
+						   ,Context
+		     )
             end
     end.
 
@@ -240,9 +240,9 @@ mute_conference(Context, ConfId) ->
     lager:error("P:~p", [Participants]),
     Conference = kapps_conference:set_id(ConfId, kapps_conference:new()),
     Muted = [
-        perform_conference_action(Conference, <<"mute">>, kz_json:get_value(<<"Participant-ID">>, P))
-            || P <- Participants, kz_json:is_false(<<"Is-Moderator">>, P), kz_json:is_true(<<"Speak">>, P)
-    ],
+	     perform_conference_action(Conference, <<"mute">>, kz_json:get_value(<<"Participant-ID">>, P))
+	     || P <- Participants, kz_json:is_false(<<"Is-Moderator">>, P), kz_json:is_true(<<"Speak">>, P)
+	    ],
     Resp = kz_json:set_value(<<"resp">>, Muted, kz_json:new()),
     crossbar_doc:handle_json_success(Resp, Context).
 
@@ -261,10 +261,10 @@ load_conference(ConfId, Context) ->
         Participants ->
             ConfCtx = crossbar_doc:load(ConfId, Context, ?TYPE_CHECK_OPTION(<<"conference">>)),
             ConfInfo = kz_json:from_list([
-                {<<"participants">>, Participants}
-                , {<<"created">>, conference_starttime(Confs)}
-                , {<<"duration">>, conference_runtime(Confs)}
-            ]),
+					  {<<"participants">>, Participants}
+					 , {<<"created">>, conference_starttime(Confs)}
+					 , {<<"duration">>, conference_runtime(Confs)}
+					 ]),
             cb_context:set_resp_data(ConfCtx, kz_json:set_value(<<"_read_only">>, ConfInfo, cb_context:resp_data(ConfCtx)))
     end.
 
@@ -286,8 +286,8 @@ load_conference_details(Context, ConfId) ->
 -spec get_conferences(ne_binary(), ne_binary()) -> kz_json:objects().
 get_conferences(Realm, ConfId) ->
     Req = [{<<"Realm">>, Realm}
-           ,{<<"Fields">>, []}
-           ,{<<"Conference-ID">>, ConfId}
+	  ,{<<"Fields">>, []}
+	  ,{<<"Conference-ID">>, ConfId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapps_util:amqp_pool_collect(Req, fun kapi_conference:publish_search_req/1, {'ecallmgr', 'true'}).
@@ -323,9 +323,9 @@ participants_info([{H}|T], Acc) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kapps_util:amqp_pool_request(Req
-                                       ,fun kapi_call:publish_channel_status_req/1
-                                       ,fun kapi_call:channel_status_resp_v/1
-                                      ) of
+				     ,fun kapi_call:publish_channel_status_req/1
+				     ,fun kapi_call:channel_status_resp_v/1
+				     ) of
         {'error', E} ->
             lager:debug("error fetching channel status for ~s (~p)", [CallId, E]),
             participants_info(T, Acc);
@@ -345,7 +345,7 @@ filter_fields(ParticipantInfo) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec do_conference_action(cb_context:context(), path_token(), kz_json:json_term(), kz_json:json_term()) ->
-                             cb_context:context().
+				  cb_context:context().
 do_conference_action(Context, _, _, 'undefined') ->
     cb_context:add_system_error('participant_missing', Context);
 do_conference_action(Context, Id, Action, ParticipantId) ->
@@ -353,13 +353,13 @@ do_conference_action(Context, Id, Action, ParticipantId) ->
     ConfDoc = cb_context:doc(load_conference(Id, Context)),
     ConfOwnerId = kz_json:get_value(<<"owner_id">>, ConfDoc),
     AuthOwnerId = kz_json:get_value(<<"owner_id">>, AuthDoc),
-    % Abort if the user is not room owner
+						% Abort if the user is not room owner
     case ConfOwnerId of
         AuthOwnerId ->
             Conference = kapps_conference:set_id(Id, kapps_conference:new()),
             Resp = kz_json:set_value(<<"resp">>
-                                     ,perform_conference_action(Conference, Action, ParticipantId)
-                                     ,kz_json:new()
+				    ,perform_conference_action(Conference, Action, ParticipantId)
+				    ,kz_json:new()
                                     ),
             crossbar_doc:handle_json_success(Resp, Context);
         _ -> cb_context:add_system_error('forbidden', Context)
@@ -410,7 +410,7 @@ patch_conference(DocId, Context) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
-                       ,kz_doc:set_type(cb_context:doc(Context), <<"conference">>)
+		      ,kz_doc:set_type(cb_context:doc(Context), <<"conference">>)
                       );
 on_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"conference">>)).
@@ -435,9 +435,9 @@ conference_stats(JObj, Conf) ->
     {'ok', Confs} = get_conferences(Realm, ConfId),
     Participants = conference_participants(Confs),
     [
-        {<<"members">>, count_members(Participants)}
-        ,{<<"admins">>, count_admins(Participants)}
-        ,{<<"duration">>, conference_runtime({'ok', Confs})}
+     {<<"members">>, count_members(Participants)}
+    ,{<<"admins">>, count_admins(Participants)}
+    ,{<<"duration">>, conference_runtime({'ok', Confs})}
     ].
 
 -spec count_admins(kz_json:objects()) -> integer().

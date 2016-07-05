@@ -11,8 +11,8 @@
 -module(cb_profile).
 
 -export([init/0
-         ,req_init/1
-         ,req_finish/1
+	,req_init/1
+	,req_finish/1
         ]).
 
 -include("crossbar.hrl").
@@ -42,7 +42,7 @@ init() ->
 -spec req_init({cb_context:context(), cowboy_req:req()}) ->
                       {cb_context:context(), cowboy_req:req()}.
 -spec req_init(api_binary(), {cb_context:context(), cowboy_req:req()}) ->
-                         {cb_context:context(), cowboy_req:req()}.
+		      {cb_context:context(), cowboy_req:req()}.
 req_init({Context, _} = InitArgs) ->
     req_init(cb_context:profile_id(Context), InitArgs).
 
@@ -51,8 +51,8 @@ req_init('undefined', InitArgs) ->
 req_init(ProfileId, InitArgs) ->
     File = list_to_binary([?TRACE_PATH, ProfileId, ".trace"]),
     case fprof:trace(['start'
-                      ,'verbose'
-                      ,{'file', kz_util:to_list(File)}
+		     ,'verbose'
+		     ,{'file', kz_util:to_list(File)}
                      ])
     of
         'ok' -> lager:debug("started trace ~s", [File]);
@@ -70,7 +70,7 @@ req_finish(ProfileId) when is_binary(ProfileId) ->
     lager:debug("now run: erlgrind ~s", [File]),
     lager:debug("then run kcachegrind on the .cgrind file created"),
     fprof:trace(['stop'
-                 ,{'file', kz_util:to_list(File)}
+		,{'file', kz_util:to_list(File)}
                 ]);
 req_finish(Context) ->
     req_finish(cb_context:profile_id(Context)).

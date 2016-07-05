@@ -11,7 +11,7 @@
 -module(bh_conference).
 
 -export([handle_event/2
-         ,add_amqp_binding/2, rm_amqp_binding/2
+	,add_amqp_binding/2, rm_amqp_binding/2
         ]).
 
 -include("blackhole.hrl").
@@ -20,8 +20,8 @@
 handle_event(Context, EventJObj) ->
     lager:debug("handling conference event ~s", [get_response_key(EventJObj)]),
     blackhole_data_emitter:emit(bh_context:websocket_pid(Context)
-                                ,get_response_key(EventJObj)
-                                ,EventJObj
+			       ,get_response_key(EventJObj)
+			       ,EventJObj
                                ).
 
 -spec add_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.

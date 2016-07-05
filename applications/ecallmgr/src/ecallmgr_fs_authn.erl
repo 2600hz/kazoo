@@ -13,16 +13,16 @@
 
 %% API
 -export([start_link/1
-         ,start_link/2
+	,start_link/2
         ]).
 -export([handle_directory_lookup/3]).
 -export([lookup_user/4]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -define(SERVER, ?MODULE).
@@ -30,7 +30,7 @@
 -include("ecallmgr.hrl").
 
 -record(state, {node :: atom()
-                ,options = [] :: kz_proplist()
+	       ,options = [] :: kz_proplist()
                }).
 
 %%%===================================================================
@@ -66,7 +66,7 @@ init([Node, Options]) ->
     lager:info("starting new fs authn listener for ~s", [Node]),
     gen_server:cast(self(), 'bind_to_directory'),
     {'ok', #state{node=Node
-                  ,options=Options
+		 ,options=Options
                  }}.
 
 %%--------------------------------------------------------------------
@@ -118,7 +118,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'fetch', 'directory', <<"domain">>, <<"name">>, _Value, Id, ['undefined' | Props]}
-            ,#state{node=Node}=State) ->
+	   ,#state{node=Node}=State) ->
     _ = kz_util:spawn(fun handle_directory_lookup/3, [Id, Props, Node]),
     {'noreply', State};
 handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Props]}, #state{node=Node}=State) ->
@@ -196,7 +196,7 @@ lookup_user(Node, Id, Method,  Props) ->
 -spec get_auth_realm(kz_proplist()) -> ne_binary().
 get_auth_realm(Props) ->
     case props:get_first_defined([<<"sip_auth_realm">>
-                                  ,<<"domain">>
+				 ,<<"domain">>
                                  ], Props)
     of
         'undefined' -> get_auth_uri_realm(Props);
@@ -222,17 +222,17 @@ get_auth_uri_realm(Props) ->
     end.
 
 -spec handle_lookup_resp(ne_binary(), ne_binary(), ne_binary()
-                         ,{'ok', kz_json:object()} | {'error', _}) ->
+			,{'ok', kz_json:object()} | {'error', _}) ->
                                 {'ok', _}.
 handle_lookup_resp(<<"reverse-lookup">>, Realm, Username, {'ok', JObj}) ->
     Props = [{<<"Domain-Name">>, Realm}
-             ,{<<"User-ID">>, Username}
+	    ,{<<"User-ID">>, Username}
             ],
     lager:debug("building reverse authn resp for ~s@~s", [Username, Realm]),
     ecallmgr_fs_xml:reverse_authn_resp_xml(kz_json:set_values(Props, JObj));
 handle_lookup_resp(_, Realm, Username, {'ok', JObj}) ->
     Props = [{<<"Domain-Name">>, Realm}
-             ,{<<"User-ID">>, Username}
+	    ,{<<"User-ID">>, Username}
             ],
     lager:debug("building authn resp for ~s@~s", [Username, Realm]),
     ecallmgr_fs_xml:authn_resp_xml(kz_json:set_values(Props, JObj));
@@ -255,25 +255,25 @@ maybe_query_registrar(Realm, Username, Node, Id, Method, Props) ->
 query_registrar(Realm, Username, Node, Id, Method, Props) ->
     lager:debug("looking up credentials of ~s@~s for a ~s", [Username, Realm, Method]),
     Req = [{<<"Msg-ID">>, Id}
-           ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
-           ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
-           ,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Props)}
-           ,{<<"Orig-Port">>, ecallmgr_util:get_orig_port(Props)}
-           ,{<<"Method">>, Method}
-           ,{<<"Auth-User">>, Username}
-           ,{<<"Auth-Realm">>, Realm}
-           ,{<<"Expires">>, props:get_value(<<"expires">>, Props)}
-           ,{<<"Auth-Nonce">>, props:get_value(<<"sip_auth_nonce">>, Props)}
-           ,{<<"Auth-Response">>, props:get_value(<<"sip_auth_response">>, Props)}
-           ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
-           ,{<<"User-Agent">>, props:get_value(<<"sip_user_agent">>, Props)}
-           ,{<<"Media-Server">>, kz_util:to_binary(Node)}
-           ,{<<"Call-ID">>, props:get_value(<<"sip_call_id">>, Props, Id)}
+	  ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
+	  ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
+	  ,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Props)}
+	  ,{<<"Orig-Port">>, ecallmgr_util:get_orig_port(Props)}
+	  ,{<<"Method">>, Method}
+	  ,{<<"Auth-User">>, Username}
+	  ,{<<"Auth-Realm">>, Realm}
+	  ,{<<"Expires">>, props:get_value(<<"expires">>, Props)}
+	  ,{<<"Auth-Nonce">>, props:get_value(<<"sip_auth_nonce">>, Props)}
+	  ,{<<"Auth-Response">>, props:get_value(<<"sip_auth_response">>, Props)}
+	  ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
+	  ,{<<"User-Agent">>, props:get_value(<<"sip_user_agent">>, Props)}
+	  ,{<<"Media-Server">>, kz_util:to_binary(Node)}
+	  ,{<<"Call-ID">>, props:get_value(<<"sip_call_id">>, Props, Id)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     ReqResp = kz_amqp_worker:call(props:filter_undefined(Req)
-                                  ,fun kapi_authn:publish_req/1
-                                  ,fun kapi_authn:resp_v/1
+				 ,fun kapi_authn:publish_req/1
+				 ,fun kapi_authn:resp_v/1
                                  ),
     case ReqResp of
         {'error', _}=E -> E;

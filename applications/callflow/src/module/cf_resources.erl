@@ -80,32 +80,32 @@ build_offnet_request(Data, Call) ->
     {CIDNumber, CIDName} = get_caller_id(Data, Call),
     props:filter_undefined(
       [{?KEY_ACCOUNT_ID, kapps_call:account_id(Call)}
-       ,{?KEY_ACCOUNT_REALM, kapps_call:from_realm(Call)}
-       ,{?KEY_APPLICATION_NAME, ?APPLICATION_BRIDGE}
-       ,{?KEY_BYPASS_E164, get_bypass_e164(Data)}
-       ,{?KEY_B_LEG_EVENTS, [<<"DTMF">>]}
-       ,{?KEY_CALL_ID, cf_exe:callid(Call)}
-       ,{?KEY_CCVS, get_channel_vars(Call)}
-       ,{?KEY_CONTROL_QUEUE, cf_exe:control_queue(Call)}
-       ,{?KEY_CSHS, get_sip_headers(Data, Call)}
-       ,{?KEY_E_CALLER_ID_NAME, ECIDName}
-       ,{?KEY_E_CALLER_ID_NUMBER, ECIDNum}
-       ,{?KEY_FLAGS, get_flags(Data, Call)}
-       ,{?KEY_FORMAT_FROM_URI, kz_json:is_true(<<"format_from_uri">>, Data)}
-       ,{?KEY_FROM_URI_REALM, get_from_uri_realm(Data, Call)}
-       ,{?KEY_HUNT_ACCOUNT_ID, get_hunt_account_id(Data, Call)}
-       ,{?KEY_IGNORE_EARLY_MEDIA, get_ignore_early_media(Data)}
-       ,{?KEY_INCEPTION, get_inception(Call)}
-       ,{?KEY_MEDIA, kz_json:get_first_defined([<<"media">>, <<"Media">>], Data)}
-       ,{?KEY_MSG_ID, kz_util:rand_hex_binary(6)}
-       ,{?KEY_OUTBOUND_CALLER_ID_NAME, CIDName}
-       ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, CIDNumber}
-       ,{?KEY_PRESENCE_ID, kz_attributes:presence_id(Call)}
-       ,{?KEY_RESOURCE_TYPE, ?RESOURCE_TYPE_AUDIO}
-       ,{?KEY_RINGBACK, kz_json:get_value(<<"ringback">>, Data)}
-       ,{?KEY_T38_ENABLED, get_t38_enabled(Call)}
-       ,{?KEY_TIMEOUT, kz_json:get_value(<<"timeout">>, Data)}
-       ,{?KEY_TO_DID, get_to_did(Data, Call)}
+      ,{?KEY_ACCOUNT_REALM, kapps_call:from_realm(Call)}
+      ,{?KEY_APPLICATION_NAME, ?APPLICATION_BRIDGE}
+      ,{?KEY_BYPASS_E164, get_bypass_e164(Data)}
+      ,{?KEY_B_LEG_EVENTS, [<<"DTMF">>]}
+      ,{?KEY_CALL_ID, cf_exe:callid(Call)}
+      ,{?KEY_CCVS, get_channel_vars(Call)}
+      ,{?KEY_CONTROL_QUEUE, cf_exe:control_queue(Call)}
+      ,{?KEY_CSHS, get_sip_headers(Data, Call)}
+      ,{?KEY_E_CALLER_ID_NAME, ECIDName}
+      ,{?KEY_E_CALLER_ID_NUMBER, ECIDNum}
+      ,{?KEY_FLAGS, get_flags(Data, Call)}
+      ,{?KEY_FORMAT_FROM_URI, kz_json:is_true(<<"format_from_uri">>, Data)}
+      ,{?KEY_FROM_URI_REALM, get_from_uri_realm(Data, Call)}
+      ,{?KEY_HUNT_ACCOUNT_ID, get_hunt_account_id(Data, Call)}
+      ,{?KEY_IGNORE_EARLY_MEDIA, get_ignore_early_media(Data)}
+      ,{?KEY_INCEPTION, get_inception(Call)}
+      ,{?KEY_MEDIA, kz_json:get_first_defined([<<"media">>, <<"Media">>], Data)}
+      ,{?KEY_MSG_ID, kz_util:rand_hex_binary(6)}
+      ,{?KEY_OUTBOUND_CALLER_ID_NAME, CIDName}
+      ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, CIDNumber}
+      ,{?KEY_PRESENCE_ID, kz_attributes:presence_id(Call)}
+      ,{?KEY_RESOURCE_TYPE, ?RESOURCE_TYPE_AUDIO}
+      ,{?KEY_RINGBACK, kz_json:get_value(<<"ringback">>, Data)}
+      ,{?KEY_T38_ENABLED, get_t38_enabled(Call)}
+      ,{?KEY_TIMEOUT, kz_json:get_value(<<"timeout">>, Data)}
+      ,{?KEY_TO_DID, get_to_did(Data, Call)}
        | kz_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
       ]).
 
@@ -123,8 +123,8 @@ get_channel_vars(EndpointId, Call) ->
     case kz_endpoint:get(EndpointId, kapps_call:account_db(Call)) of
         {'ok', Endpoint} ->
             [{<<"Authorizing-ID">>, EndpointId}
-             ,{<<"Owner-ID">>, kz_json:get_value(<<"owner_id">>, Endpoint)}
-             ,maybe_require_ignore_early_media(Call)
+	    ,{<<"Owner-ID">>, kz_json:get_value(<<"owner_id">>, Endpoint)}
+	    ,maybe_require_ignore_early_media(Call)
             ];
         {'error', _} -> [maybe_require_ignore_early_media(Call)]
     end.
@@ -282,11 +282,11 @@ get_t38_enabled(Call) ->
 -spec get_flags(kz_json:object(), kapps_call:call()) -> api_binaries().
 get_flags(Data, Call) ->
     Routines = [fun maybe_get_endpoint_flags/3
-                ,fun get_flow_flags/3
-                ,fun get_account_flags/3
-                ,fun get_flow_dynamic_flags/3
-                ,fun maybe_get_endpoint_dynamic_flags/3
-                ,fun get_account_dynamic_flags/3
+	       ,fun get_flow_flags/3
+	       ,fun get_account_flags/3
+	       ,fun get_flow_dynamic_flags/3
+	       ,fun maybe_get_endpoint_dynamic_flags/3
+	       ,fun get_account_dynamic_flags/3
                ],
     lists:foldl(fun(F, A) -> F(Data, Call, A) end, [], Routines).
 
@@ -325,7 +325,7 @@ get_account_flags(_Data, Call, Flags) ->
             AccountFlags ++ Flags;
         {'error', _E} ->
             lager:error("not applying account outbound flags for ~s: ~p"
-                        ,[AccountId, _E]
+		       ,[AccountId, _E]
                        ),
             Flags
     end.
@@ -339,7 +339,7 @@ get_flow_dynamic_flags(Data, Call, Flags) ->
     end.
 
 -spec maybe_get_endpoint_dynamic_flags(kz_json:object(), kapps_call:call(), ne_binaries()) ->
-                                        ne_binaries().
+					      ne_binaries().
 maybe_get_endpoint_dynamic_flags(_Data, Call, Flags) ->
     case kz_endpoint:get(Call) of
         {'error', _} -> Flags;
@@ -360,10 +360,10 @@ get_endpoint_dynamic_flags(Call, Flags, Endpoint) ->
                                        ne_binaries().
 get_account_dynamic_flags(_, Call, Flags) ->
     DynamicFlags = kapps_account_config:get(kapps_call:account_id(Call)
-                                             ,<<"callflow">>
-                                             ,<<"dynamic_flags">>
-                                             ,[]
-                                            ),
+					   ,<<"callflow">>
+					   ,<<"dynamic_flags">>
+					   ,[]
+					   ),
     process_dynamic_flags(DynamicFlags, Flags, Call).
 
 -spec process_dynamic_flags(ne_binaries(), ne_binaries(), kapps_call:call()) ->
@@ -407,7 +407,7 @@ wait_for_stepswitch(Call) ->
             case kz_util:get_event_type(JObj) of
                 {<<"resource">>, <<"offnet_resp">>} ->
                     {kz_call_event:response_message(JObj)
-                     ,kz_call_event:response_code(JObj)
+		    ,kz_call_event:response_code(JObj)
                     };
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     handle_channel_destroy(JObj);

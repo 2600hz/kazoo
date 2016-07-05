@@ -62,7 +62,7 @@ get_top_up('undefined') -> {'error', 'topup_undefined'};
 get_top_up(JObj) ->
     case
         {kz_json:get_integer_value(<<"amount">>, JObj)
-         ,kz_json:get_integer_value(<<"threshold">>, JObj)
+	,kz_json:get_integer_value(<<"threshold">>, JObj)
         }
     of
         {'undefined', _} -> {'error', 'amount_undefined'};

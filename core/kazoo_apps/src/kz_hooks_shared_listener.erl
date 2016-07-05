@@ -13,12 +13,12 @@
 
 -export([start_link/0]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("kazoo_apps.hrl").
@@ -28,18 +28,18 @@
 
 %% Three main call events
 -define(ALL_EVENTS, [<<"CHANNEL_CREATE">>
-                     ,<<"CHANNEL_ANSWER">>
-                     ,<<"CHANNEL_DESTROY">>
-                     ,<<"CHANNEL_BRIDGE">>
+		    ,<<"CHANNEL_ANSWER">>
+		    ,<<"CHANNEL_DESTROY">>
+		    ,<<"CHANNEL_BRIDGE">>
                     ]).
 -define(CALL_BINDING(Events), {'call', [{'restrict_to', Events}
-                                        ,'federate'
+				       ,'federate'
                                        ]}).
 -define(BINDINGS, []).
 -define(RESPONDERS, [{{'kz_hooks_util', 'handle_call_event'}
-                      ,[{<<"call_event">>, <<"*">>}
-                        ,{<<"dialplan">>, <<"route_req">>}
-                       ]
+		     ,[{<<"call_event">>, <<"*">>}
+		      ,{<<"dialplan">>, <<"route_req">>}
+		      ]
                      }
                     ]).
 -define(QUEUE_NAME, <<"hooks_shared_listener">>).
@@ -59,14 +59,14 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
-                            ,?MODULE
-                            ,[{'bindings', ?BINDINGS}
-                              ,{'responders', ?RESPONDERS}
-                              ,{'queue_name', ?QUEUE_NAME}
-                              ,{'queue_options', ?QUEUE_OPTIONS}
-                              ,{'consume_options', ?CONSUME_OPTIONS}
-                             ]
-                            ,[]
+			   ,?MODULE
+			   ,[{'bindings', ?BINDINGS}
+			    ,{'responders', ?RESPONDERS}
+			    ,{'queue_name', ?QUEUE_NAME}
+			    ,{'queue_options', ?QUEUE_OPTIONS}
+			    ,{'consume_options', ?CONSUME_OPTIONS}
+			    ]
+			   ,[]
                            ).
 
 %%%===================================================================

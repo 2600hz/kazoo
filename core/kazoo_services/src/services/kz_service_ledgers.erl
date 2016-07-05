@@ -37,10 +37,10 @@ reconcile(Services, Type) when is_binary(Type) ->
     kz_services:update(?CATEGORY, Type, Quantity+1, Services1);
 reconcile(Services, Props) ->
     lists:foldl(
-        fun reconcile_foldl/2
-        ,reconcile(Services)
-        ,Props
-    ).
+      fun reconcile_foldl/2
+	       ,reconcile(Services)
+	       ,Props
+     ).
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
@@ -55,11 +55,11 @@ reconcile(Services, Props) ->
 reconcile_foldl({Type, Quantity}, Services) ->
     OldQuantity = kz_services:updated_quantity(?CATEGORY, Type, Services),
     kz_services:update(
-        ?CATEGORY
-        ,Type
-        ,OldQuantity + kz_util:to_integer(Quantity)
-        ,Services
-    ).
+      ?CATEGORY
+		      ,Type
+		      ,OldQuantity + kz_util:to_integer(Quantity)
+		      ,Services
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -69,10 +69,10 @@ reconcile_foldl({Type, Quantity}, Services) ->
 -spec reconcile_account(kz_services:services(), kz_json:objects()) -> kz_services:services().
 reconcile_account(Services, JObjs) ->
     kz_json:foldl(
-        fun reconcile_account_foldl/3
-        ,kz_services:reset_category(?CATEGORY, Services)
-        ,JObjs
-    ).
+      fun reconcile_account_foldl/3
+		 ,kz_services:reset_category(?CATEGORY, Services)
+		 ,JObjs
+     ).
 
 reconcile_account_foldl(Type, Quantity, Services) when Quantity < 0 ->
     kz_services:update(?CATEGORY, Type, -1*Quantity, Services);

@@ -18,12 +18,12 @@
 -module(cb_signup).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1 %% only accept 0 or 1 path token
-         ,resource_exists/0, resource_exists/1
-         ,authorize/1
-         ,authenticate/1
-         ,validate/1, validate/2
-         ,put/1, post/2
+	,allowed_methods/0, allowed_methods/1 %% only accept 0 or 1 path token
+	,resource_exists/0, resource_exists/1
+	,authorize/1
+	,authenticate/1
+	,validate/1, validate/2
+	,put/1, post/2
         ]).
 
 %% cleanup process
@@ -41,12 +41,12 @@
 -define(SIGNUP_CONF, [code:lib_dir('crossbar', 'priv'), "/signup/signup.conf"]).
 
 -record(state, {cleanup_interval = 5 * ?SECONDS_IN_HOUR :: integer() %% once every 5 hours (in seconds)
-                ,signup_lifespan = ?SECONDS_IN_DAY :: integer() %% 24 hours (in seconds)
-                ,register_cmd = 'undefined' :: api_atom()
-                ,activation_email_plain = 'undefined' :: api_atom()
-                ,activation_email_html = 'undefined' :: api_atom()
-                ,activation_email_from = 'undefined' :: api_atom()
-                ,activation_email_subject = 'undefined' :: api_atom()
+	       ,signup_lifespan = ?SECONDS_IN_DAY :: integer() %% 24 hours (in seconds)
+	       ,register_cmd = 'undefined' :: api_atom()
+	       ,activation_email_plain = 'undefined' :: api_atom()
+	       ,activation_email_html = 'undefined' :: api_atom()
+	       ,activation_email_from = 'undefined' :: api_atom()
+	       ,activation_email_subject = 'undefined' :: api_atom()
                }).
 
 %%%===================================================================
@@ -164,10 +164,10 @@ post(Context, _) ->
         {'ok', Account, User} ->
             _ = kz_datamgr:del_doc(?SIGNUP_DB, JObj),
             NewRespData = kz_json:from_list([{<<"account">>, Account}
-                                             ,{<<"user">>, User}
+					    ,{<<"user">>, User}
                                             ]),
             cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-                                         ,{fun cb_context:set_resp_data/2, NewRespData}
+					,{fun cb_context:set_resp_data/2, NewRespData}
                                         ]);
         _Else ->
             cb_context:add_system_error('datastore_fault', Context)
@@ -183,7 +183,7 @@ put(Context) ->
             P ! {'register', Context},
             cb_context:set_resp_data(Context1, []);
         _ ->
-                cb_context:add_system_error('datastore_fault', Context)
+	    cb_context:add_system_error('datastore_fault', Context)
     end.
 
 %%%===================================================================
@@ -203,15 +203,15 @@ validate_new_signup(Context) ->
     case {AccountErrors, UserErrors} of
         {[], []} ->
             NewDoc = kz_json:from_list([{<<"pvt_user">>, User}
-                                        ,{<<"pvt_account">>, Account}
-                                        ,{<<"pvt_activation_key">>, create_activation_key()}
+				       ,{<<"pvt_account">>, Account}
+				       ,{<<"pvt_activation_key">>, create_activation_key()}
                                        ]),
             cb_context:setters(Context, [{fun cb_context:set_doc/2, NewDoc}
-                                         ,{fun cb_context:set_resp_status/2, 'success'}
+					,{fun cb_context:set_resp_status/2, 'success'}
                                         ]);
         _Else ->
             crossbar_util:response_invalid_data(kz_json:from_list([{<<"account">>, AccountErrors}
-                                                                   ,{<<"user">>, UserErrors}
+								  ,{<<"user">>, UserErrors}
                                                                   ]), Context)
     end.
 
@@ -285,7 +285,7 @@ create_activation_key() ->
 check_activation_key(ActivationKey, Context) ->
     case kz_datamgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_KEYS, [{'key', ActivationKey}
                                                                    ,'include_docs'
-                                                                  ])
+								   ])
     of
         {'ok', []} ->
             lager:debug("activation key not found"),
@@ -293,7 +293,7 @@ check_activation_key(ActivationKey, Context) ->
         {'ok', [JObj|_]} ->
             lager:debug("activation key is valid"),
             cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-                                         ,{fun cb_context:set_doc/2, kz_json:get_value(<<"doc">>, JObj)}
+					,{fun cb_context:set_doc/2, kz_json:get_value(<<"doc">>, JObj)}
                                         ]);
         _ ->
             lager:debug("db error while looking up activation key"),
@@ -360,7 +360,7 @@ activate_user(Account, User) ->
     Db = kz_util:format_account_id(AccountId, 'encoded'),
     Event = <<"*.execute.put.users">>,
     Payload = [cb_context:setters(cb_context:new(), [{fun cb_context:set_doc/2, User}
-                                                     ,{fun cb_context:set_account_db/2, Db}
+						    ,{fun cb_context:set_account_db/2, Db}
                                                     ])],
     Context1 = crossbar_bindings:fold(Event, Payload),
     case cb_context:resp_status(Context1) of
@@ -399,9 +399,9 @@ exec_register_command(Context, #state{register_cmd=CmdTmpl}) ->
                                    {'ok', pid()} |
                                    {'error', term()}.
 send_activation_email(Context
-                      ,#state{activation_email_subject=SubjectTmpl
-                              ,activation_email_from=FromTmpl
-                             }=State) ->
+		     ,#state{activation_email_subject=SubjectTmpl
+			    ,activation_email_from=FromTmpl
+			    }=State) ->
     JObj = cb_context:doc(Context),
     ReqId = cb_context:req_id(Context),
     Props = template_props(Context),
@@ -416,21 +416,21 @@ send_activation_email(Context
                    <<"no_reply@", (kz_util:to_binary(net_adm:localhost()))/binary>>
            end,
     Email = {<<"multipart">>, <<"alternative">> %% Content Type / Sub Type
-                 ,[ %% Headers
-                    {<<"From">>, From},
-                    {<<"To">>, To},
-                    {<<"Subject">>, Subject}
-                  ]
-             ,[] %% Parameters
-             ,create_body(State, Props, [])
+	    ,[ %% Headers
+	       {<<"From">>, From},
+	       {<<"To">>, To},
+	       {<<"Subject">>, Subject}
+	     ]
+	    ,[] %% Parameters
+	    ,create_body(State, Props, [])
             },
     Encoded = mimemail:encode(Email),
     lager:debug("sending activation email to ~s", [To]),
     gen_smtp_client:send({From, [To], Encoded}
-                         ,[{'relay', "localhost"}]
-                         ,fun(X) -> kz_util:put_callid(ReqId),
-                                    lager:debug("sending email to ~s resulted in ~p", [To, X])
-                          end).
+			,[{'relay', "localhost"}]
+			,fun(X) -> kz_util:put_callid(ReqId),
+				   lager:debug("sending email to ~s resulted in ~p", [To, X])
+			 end).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -444,25 +444,25 @@ create_body(#state{activation_email_html=Tmpl}=State, Props, Body) when Tmpl =/=
     case Tmpl:render(Props) of
         {'ok', Content} ->
             Part = {<<"text">>, <<"html">>
-                    ,[{<<"Content-Type">>, <<"text/html">>}]
-                    ,[]
-                    ,iolist_to_binary(Content)
+		   ,[{<<"Content-Type">>, <<"text/html">>}]
+		   ,[]
+		   ,iolist_to_binary(Content)
                    },
-             create_body(State#state{activation_email_html='undefined'}, Props, [Part|Body]);
+	    create_body(State#state{activation_email_html='undefined'}, Props, [Part|Body]);
         _ ->
-             create_body(State#state{activation_email_html='undefined'}, Props, Body)
+	    create_body(State#state{activation_email_html='undefined'}, Props, Body)
     end;
 create_body(#state{activation_email_plain=Tmpl}=State, Props, Body) when Tmpl =/= 'undefined' ->
     case Tmpl:render(Props) of
         {'ok', Content} ->
             Part = {<<"text">>, <<"plain">>
-                    ,[{<<"Content-Type">>, <<"text/plain">>}]
-                    ,[]
-                    ,iolist_to_binary(Content)
+		   ,[{<<"Content-Type">>, <<"text/plain">>}]
+		   ,[]
+		   ,iolist_to_binary(Content)
                    },
-             create_body(State#state{activation_email_plain='undefined'}, Props, [Part|Body]);
+	    create_body(State#state{activation_email_plain='undefined'}, Props, [Part|Body]);
         _ ->
-             create_body(State#state{activation_email_plain='undefined'}, Props, Body)
+	    create_body(State#state{activation_email_plain='undefined'}, Props, Body)
     end;
 create_body(_, _, Body) ->
     Body.
@@ -486,13 +486,13 @@ template_props(Context) ->
     %% create props to expose to the template
     props:filter_undefined(
       [{<<"account">>, kz_json:to_proplist(<<"pvt_account">>, JObj)}
-       ,{<<"user">>, kz_json:to_proplist(<<"pvt_user">>, JObj)}
-       ,{<<"request">>, kz_json:to_proplist(Req)}
-       ,{<<"api_url">>, [{<<"host">>, ApiHost}
-                         ,{<<"path">>, <<"v1/signup/">>}
-                        ]}
-       ,{<<"host">>, RawHost}
-       ,{<<"activation_key">>, kz_json:get_value(<<"pvt_activation_key">>, JObj, <<>>)}
+      ,{<<"user">>, kz_json:to_proplist(<<"pvt_user">>, JObj)}
+      ,{<<"request">>, kz_json:to_proplist(Req)}
+      ,{<<"api_url">>, [{<<"host">>, ApiHost}
+		       ,{<<"path">>, <<"v1/signup/">>}
+		       ]}
+      ,{<<"host">>, RawHost}
+      ,{<<"activation_key">>, kz_json:get_value(<<"pvt_activation_key">>, JObj, <<>>)}
       ]).
 
 %%--------------------------------------------------------------------
@@ -530,12 +530,12 @@ cleanup_signups(#state{signup_lifespan=Lifespan}) ->
     case kz_datamgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_CREATED, [{'startkey', 0}
                                                                       ,{'endkey', Expiration}
                                                                       ,'include_docs'
-                                                                     ])
+								      ])
     of
         {'ok', Expired} ->
             _ = kz_datamgr:del_docs(?SIGNUP_DB
                                    ,[kz_json:get_value(<<"doc">>, JObj) || JObj <- Expired]
-                                  ),
+				   ),
             'ok';
         _Else -> 'ok'
     end.
@@ -553,17 +553,17 @@ init_state() ->
             Defaults = #state{},
             #state{cleanup_interval =
                        props:get_integer_value('cleanup_interval', Terms, Defaults#state.cleanup_interval)
-                   ,signup_lifespan =
+		  ,signup_lifespan =
                        props:get_integer_value('signup_lifespan', Terms, Defaults#state.signup_lifespan)
-                   ,register_cmd =
+		  ,register_cmd =
                        compile_template(props:get_value('register_cmd', Terms), 'cb_signup_register_cmd')
-                   ,activation_email_plain =
+		  ,activation_email_plain =
                        compile_template(props:get_value('activation_email_plain', Terms), 'cb_signup_email_plain')
-                   ,activation_email_html =
+		  ,activation_email_html =
                        compile_template(props:get_value('activation_email_html', Terms), 'cb_signup_email_html')
-                   ,activation_email_from =
+		  ,activation_email_from =
                        compile_template(props:get_value('activation_email_from', Terms), 'cb_signup_email_from')
-                   ,activation_email_subject =
+		  ,activation_email_subject =
                        compile_template(props:get_value('activation_email_subject', Terms), 'cb_signup_email_subject')
                   };
         {'error', _} ->

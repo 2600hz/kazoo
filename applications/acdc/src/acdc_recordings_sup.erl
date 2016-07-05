@@ -12,7 +12,7 @@
 
 %% API
 -export([start_link/0
-         ,new/2
+	,new/2
         ]).
 
 %% Supervisor callbacks

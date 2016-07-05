@@ -11,12 +11,12 @@
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
 -export([ratelimits_req_v/1
-         ,ratelimits_resp_v/1
-         ,acls_req_v/1
-         ,acls_resp_v/1
+	,ratelimits_resp_v/1
+	,acls_req_v/1
+	,acls_resp_v/1
         ]).
 -export([publish_ratelimits_resp/2
-         ,publish_acls_resp/2
+	,publish_acls_resp/2
         ]).
 
 -include("frontier.hrl").
@@ -34,23 +34,23 @@
 -define(OPTIONAL_RESP_HEADERS, [<<"Realm">>, <<"Device">>]).
 
 -define(RATELIMITS_REQ_VALUES, [{<<"Event-Category">>, <<"rate_limit">>}
-                                ,{<<"Event-Name">>, <<"query">>}
+			       ,{<<"Event-Name">>, <<"query">>}
                                ]).
 -define(RATELIMITS_RESP_VALUES, [{<<"Event-Category">>, <<"rate_limit">>}
-                                 ,{<<"Event-Name">>, <<"query_resp">>}
+				,{<<"Event-Name">>, <<"query_resp">>}
                                 ]).
 -define(RATELIMITS_RESP_TYPES, [{<<"Realm">>, fun kz_json:is_json_object/1}
-                                ,{<<"Device">>, fun kz_json:is_json_object/1}
+			       ,{<<"Device">>, fun kz_json:is_json_object/1}
                                ]).
 
 -define(ACL_REQ_VALUES, [{<<"Event-Category">>, <<"acl">>}
-                         ,{<<"Event-Name">>, <<"query">>}
+			,{<<"Event-Name">>, <<"query">>}
                         ]).
 -define(ACL_RESP_VALUES, [{<<"Event-Category">>, <<"acl">>}
-                          ,{<<"Event-Name">>, <<"query_resp">>}
+			 ,{<<"Event-Name">>, <<"query_resp">>}
                          ]).
 -define(ACL_RESP_TYPES, [{<<"Realm">>, fun kz_json:is_json_object/1}
-                         ,{<<"Device">>, fun kz_json:is_json_object/1}
+			,{<<"Device">>, fun kz_json:is_json_object/1}
                         ]).
 
 -spec ratelimits_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.

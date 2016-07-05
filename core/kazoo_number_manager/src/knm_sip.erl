@@ -9,14 +9,14 @@
 -module(knm_sip).
 
 -export([parse/1
-         ,encode/1
+	,encode/1
         ]).
 
 %% Accessors
 -export([scheme/1, set_scheme/2
-         ,user/1, set_user/2
-         ,host/1, set_host/2
-         ,port/1, set_port/2
+	,user/1, set_user/2
+	,host/1, set_host/2
+	,port/1, set_port/2
         ]).
 
 -ifdef(TEST).
@@ -26,9 +26,9 @@
 -include("knm.hrl").
 
 -record(sip_uri, {scheme = 'sip' :: 'sip' | 'sips'
-                  ,user :: ne_binary()
-                  ,host :: ne_binary()
-                  ,port = 5060 :: pos_integer()
+		 ,user :: ne_binary()
+		 ,host :: ne_binary()
+		 ,port = 5060 :: pos_integer()
                  }).
 -type sip_uri() :: #sip_uri{}.
 -export_type([sip_uri/0]).

@@ -10,14 +10,14 @@
 
 %% Doc related
 -export([open_doc/4
-         ,lookup_doc_rev/3
-         ,save_doc/4
-         ,save_docs/4
-         ,del_doc/4
-         ,del_docs/4
-         ,ensure_saved/4
-         ,copy_doc/3
-         ,move_doc/3
+	,lookup_doc_rev/3
+	,save_doc/4
+	,save_docs/4
+	,del_doc/4
+	,del_docs/4
+	,ensure_saved/4
+	,copy_doc/3
+	,move_doc/3
         ]).
 
 -include("kz_couch.hrl").
@@ -26,7 +26,7 @@
 -define(MAX_BULK_INSERT, 2000).
 
 -type copy_function() :: fun((server(), ne_binary(), kz_json:object(), kz_proplist()) ->
-                              {'ok', kz_json:object()} | couchbeam_error()).
+				    {'ok', kz_json:object()} | couchbeam_error()).
 -export_type([copy_function/0]).
 -define(COPY_DOC_OVERRIDE_PROPERTY, 'override_existing_document').
 
@@ -230,10 +230,10 @@ default_copy_function('false') -> fun save_doc/4.
                       {'ok', kz_json:object()} |
                       couchbeam_error().
 copy_doc(#server{}=Conn, #kz_copy_doc{source_dbname = SourceDb
-                                      ,dest_dbname='undefined'
+				     ,dest_dbname='undefined'
                                      }=CopySpec, Options) ->
     copy_doc(Conn, CopySpec#kz_copy_doc{dest_dbname=SourceDb
-                                        ,dest_doc_id=kz_util:rand_hex_binary(16)
+				       ,dest_doc_id=kz_util:rand_hex_binary(16)
                                        }, Options);
 copy_doc(#server{}=Conn, #kz_copy_doc{dest_doc_id='undefined'}=CopySpec, Options) ->
     copy_doc(Conn, CopySpec#kz_copy_doc{dest_doc_id=kz_util:rand_hex_binary(16)}, Options);
@@ -247,9 +247,9 @@ copy_doc(#server{}=Conn, CopySpec, Options) ->
                       couchbeam_error().
 copy_doc(#server{}=Conn, CopySpec, CopyFun, Options) ->
     #kz_copy_doc{source_dbname = SourceDbName
-                 ,source_doc_id = SourceDocId
-                 ,dest_dbname = DestDbName
-                 ,dest_doc_id = DestDocId
+		,source_doc_id = SourceDocId
+		,dest_dbname = DestDbName
+		,dest_doc_id = DestDocId
                 } = CopySpec,
     case open_doc(Conn, SourceDbName, SourceDocId, Options) of
         {'ok', SourceDoc} ->
@@ -271,14 +271,14 @@ copy_doc(#server{}=Conn, CopySpec, CopyFun, Options) ->
                               {'error', any()}.
 copy_attachments(#server{}=Conn, CopySpec, {[], []}) ->
     #kz_copy_doc{dest_dbname = DestDbName
-                 ,dest_doc_id = DestDocId
+		,dest_doc_id = DestDocId
                 } = CopySpec,
     open_doc(Conn, DestDbName, DestDocId, []);
 copy_attachments(#server{}=Conn, CopySpec, {[JObj | JObjs], [Key | Keys]}) ->
     #kz_copy_doc{source_dbname = SourceDbName
-                 ,source_doc_id = SourceDocId
-                 ,dest_dbname = DestDbName
-                 ,dest_doc_id = DestDocId
+		,source_doc_id = SourceDocId
+		,dest_dbname = DestDbName
+		,dest_doc_id = DestDocId
                 } = CopySpec,
     case kz_couch_attachments:fetch_attachment(Conn, SourceDbName, SourceDocId, Key) of
         {'ok', Contents} ->
@@ -302,11 +302,11 @@ maybe_set_account_db(_1, _, _) -> [].
                       couchbeam_error().
 move_doc(Conn, CopySpec, Options) ->
     #kz_copy_doc{source_dbname = SourceDbName
-                 ,source_doc_id = SourceDocId
+		,source_doc_id = SourceDocId
                 } = CopySpec,
     case copy_doc(Conn, CopySpec, Options) of
         {'ok', _JObj}=Ok ->
             _ = del_doc(Conn, SourceDbName, SourceDocId, []),
             Ok;
         Error -> Error
-     end.
+    end.

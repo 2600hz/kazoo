@@ -14,15 +14,15 @@
 -export([update/1]).
 -export([wait_for_connection/0, wait_for_connection/1, wait_for_connection/2]).
 -export([get_server/0, get_server/1
-         ,test_conn/0, test_conn/1
+	,test_conn/0, test_conn/1
         ]).
 
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("kz_data.hrl").
@@ -86,13 +86,13 @@ get_server() ->
 -spec get_server(term()) -> server().
 get_server(Tag) ->
     MatchSpec = [{#data_connection{ready = 'true'
-                                   ,app = '$1'
-                                   ,server = '$2'
-                                   ,tag = Tag
-                                   ,_ = '_'
+				  ,app = '$1'
+				  ,server = '$2'
+				  ,tag = Tag
+				  ,_ = '_'
                                   }
-                  ,[]
-                  ,[{{'$1', '$2'}}]
+		 ,[]
+		 ,[{{'$1', '$2'}}]
                  }],
     case ets:select(?MODULE, MatchSpec, 1) of
         {[{App, Server}], _} -> {App, Server};
@@ -130,9 +130,9 @@ init([]) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(?LOG_SYSTEM_ID),
     _ = ets:new(?MODULE, ['ordered_set'
-                          ,{'read_concurrency', 'true'}
-                          ,{'keypos', #data_connection.id}
-                          ,'named_table'
+			 ,{'read_concurrency', 'true'}
+			 ,{'keypos', #data_connection.id}
+			 ,'named_table'
                          ]),
     {'ok', #state{}}.
 

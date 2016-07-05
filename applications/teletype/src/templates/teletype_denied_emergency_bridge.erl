@@ -9,7 +9,7 @@
 -module(teletype_denied_emergency_bridge).
 
 -export([init/0
-         ,handle_req/2
+	,handle_req/2
         ]).
 
 -include("teletype.hrl").
@@ -18,14 +18,14 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-        ,kz_json:from_list(
-           [?MACRO_VALUE(<<"call.outbound_caller_id_name">>, <<"outbound_caller_id_name">>, <<"Outbound Caller ID Name">>, <<"Outbound Caller ID Name">>)
-            ,?MACRO_VALUE(<<"call.outbound_caller_id_number">>, <<"outbound_caller_id_number">>, <<"Outbound Caller ID Number">>, <<"Outbound Caller ID Number">>)
-            ,?MACRO_VALUE(<<"call.emergency_caller_id_name">>, <<"emergency_caller_id_name">>, <<"Emergency Caller ID Name">>, <<"Emergency Caller ID Name">>)
-            ,?MACRO_VALUE(<<"call.emergency_caller_id_number">>, <<"emergency_caller_id_number">>, <<"Emergency Caller ID Number">>, <<"Emergency Caller ID Number">>)
-            ,?MACRO_VALUE(<<"call.call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID">>)
-            | ?ACCOUNT_MACROS
-           ])
+       ,kz_json:from_list(
+	  [?MACRO_VALUE(<<"call.outbound_caller_id_name">>, <<"outbound_caller_id_name">>, <<"Outbound Caller ID Name">>, <<"Outbound Caller ID Name">>)
+	  ,?MACRO_VALUE(<<"call.outbound_caller_id_number">>, <<"outbound_caller_id_number">>, <<"Outbound Caller ID Number">>, <<"Outbound Caller ID Number">>)
+	  ,?MACRO_VALUE(<<"call.emergency_caller_id_name">>, <<"emergency_caller_id_name">>, <<"Emergency Caller ID Name">>, <<"Emergency Caller ID Name">>)
+	  ,?MACRO_VALUE(<<"call.emergency_caller_id_number">>, <<"emergency_caller_id_number">>, <<"Emergency Caller ID Number">>, <<"Emergency Caller ID Number">>)
+	  ,?MACRO_VALUE(<<"call.call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID">>)
+	   | ?ACCOUNT_MACROS
+	  ])
        ).
 
 -define(TEMPLATE_TEXT, <<"Attention! The account '{{account.name}}' attempted a call ({{call.call_id}}) emergency services but the call was blocked because the address was not configured!  The emergency caller id was: {{call.emergency_caller_id_name}} {{call.emergency_caller_id_number}}  The external caller id was: {{call.outbound_caller_id_name}} {{call.outbound_caller_id_number}}">>).
@@ -44,16 +44,16 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                           ,{'text', ?TEMPLATE_TEXT}
-                                           ,{'html', ?TEMPLATE_HTML}
-                                           ,{'subject', ?TEMPLATE_SUBJECT}
-                                           ,{'category', ?TEMPLATE_CATEGORY}
-                                           ,{'friendly_name', ?TEMPLATE_NAME}
-                                           ,{'to', ?TEMPLATE_TO}
-                                           ,{'from', ?TEMPLATE_FROM}
-                                           ,{'cc', ?TEMPLATE_CC}
-                                           ,{'bcc', ?TEMPLATE_BCC}
-                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
+					  ,{'text', ?TEMPLATE_TEXT}
+					  ,{'html', ?TEMPLATE_HTML}
+					  ,{'subject', ?TEMPLATE_SUBJECT}
+					  ,{'category', ?TEMPLATE_CATEGORY}
+					  ,{'friendly_name', ?TEMPLATE_NAME}
+					  ,{'to', ?TEMPLATE_TO}
+					  ,{'from', ?TEMPLATE_FROM}
+					  ,{'cc', ?TEMPLATE_CC}
+					  ,{'bcc', ?TEMPLATE_BCC}
+					  ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -73,8 +73,8 @@ handle_req(JObj, _Props) ->
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
-              ,{<<"account">>, teletype_util:account_params(DataJObj)}
-              ,{<<"call">>, kz_json:to_proplist(kz_api:remove_defaults(DataJObj))}
+	     ,{<<"account">>, teletype_util:account_params(DataJObj)}
+	     ,{<<"call">>, kz_json:to_proplist(kz_api:remove_defaults(DataJObj))}
              ],
 
     %% Load templates
@@ -89,7 +89,7 @@ process_req(DataJObj) ->
 
     Subject = teletype_util:render_subject(
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
-                ,Macros
+					  ,Macros
                ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),

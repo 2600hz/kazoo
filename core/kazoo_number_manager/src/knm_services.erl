@@ -10,12 +10,12 @@
 -module(knm_services).
 
 -export([activate_feature/2
-         ,deactivate_feature/2
-         ,deactivate_features/2
-         ,update_services/1
-         ,activate_phone_number/1
-         ,activation_charges/1
-         ,phone_number_activation_charges/1
+	,deactivate_feature/2
+	,deactivate_features/2
+	,update_services/1
+	,activate_phone_number/1
+	,activation_charges/1
+	,phone_number_activation_charges/1
         ]).
 
 -include("knm.hrl").
@@ -56,7 +56,7 @@ activate_feature(Number, Feature, BillingId, Services) ->
         'false' ->
             lager:error(
               "not enough credit to activate feature '~s' for $~p"
-              ,[Feature, wht_util:units_to_dollars(Units)]
+		       ,[Feature, wht_util:units_to_dollars(Units)]
              ),
             knm_errors:not_enough_credit(Number, Units);
         'true' ->
@@ -69,7 +69,7 @@ activate_feature(Number, Feature, BillingId, Services) ->
             knm_number:set_phone_number(
               knm_number:add_transaction(
                 knm_number:set_charges(Number, Feature, TotalCharges)
-                ,Transaction
+					,Transaction
                ),
               knm_phone_number:set_feature(PhoneNumber, Feature, kz_json:new())
              )
@@ -87,7 +87,7 @@ deactivate_feature(Number, Feature) ->
     Features = knm_phone_number:features(PhoneNumber),
     knm_number:set_phone_number(
       Number
-      ,knm_phone_number:set_features(PhoneNumber, kz_json:delete_key(Feature, Features))
+			       ,knm_phone_number:set_features(PhoneNumber, kz_json:delete_key(Feature, Features))
      ).
 
 %%--------------------------------------------------------------------
@@ -102,7 +102,7 @@ deactivate_features(Number, Features) ->
     ExistingFeatures = knm_phone_number:features(PhoneNumber),
     knm_number:set_phone_number(
       Number
-      ,knm_phone_number:set_features(PhoneNumber, kz_json:delete_keys(Features, ExistingFeatures))
+			       ,knm_phone_number:set_features(PhoneNumber, kz_json:delete_keys(Features, ExistingFeatures))
      ).
 
 %%--------------------------------------------------------------------
@@ -115,11 +115,11 @@ deactivate_features(Number, Features) ->
 update_services(Number) -> Number.
 -else.
 -spec update_services(knm_number:knm_number(), boolean()) ->
-                                   knm_number:knm_number().
+			     knm_number:knm_number().
 update_services(Number) ->
     update_services(
       Number
-      ,knm_phone_number:dry_run(knm_number:phone_number(Number))
+		   ,knm_phone_number:dry_run(knm_number:phone_number(Number))
      ).
 
 update_services(Number, 'true') ->
@@ -157,7 +157,7 @@ activate_phone_number(Number, BillingId) ->
     Services = fetch_services(Number),
     Units = kz_service_phone_numbers:phone_number_activation_charge(
               Services
-              ,knm_phone_number:number(knm_number:phone_number(Number))
+								   ,knm_phone_number:number(knm_number:phone_number(Number))
              ),
     activate_phone_number(Number, BillingId, Units).
 
@@ -172,7 +172,7 @@ activate_phone_number(Number, BillingId, Units) ->
     case kz_services:check_bookkeeper(BillingId, TotalCharges) of
         'false' ->
             Message = io_lib:format("not enough credit to activate number for $~p"
-                                    ,[wht_util:units_to_dollars(Units)]
+				   ,[wht_util:units_to_dollars(Units)]
                                    ),
             lager:error(Message),
             knm_errors:service_restriction(Message);
@@ -181,8 +181,8 @@ activate_phone_number(Number, BillingId, Units) ->
 
             knm_number:set_charges(
               knm_number:add_transaction(Number, Transaction)
-              ,?KEY_NUMBER_ACTIVATION_CHARGES
-              ,TotalCharges
+				  ,?KEY_NUMBER_ACTIVATION_CHARGES
+				  ,TotalCharges
              )
     end.
 
@@ -238,17 +238,17 @@ create_transaction(Number, Units) ->
     Num = knm_phone_number:number(PhoneNumber),
 
     Routines = [fun(T) -> set_activation_reason(T, LedgerId, AccountId, <<"number">>) end
-                ,fun(T) -> kz_transaction:set_number(Num, T) end
-                ,fun(T) -> set_feature_description(T, kz_util:to_binary(Num)) end
+	       ,fun(T) -> kz_transaction:set_number(Num, T) end
+	       ,fun(T) -> set_feature_description(T, kz_util:to_binary(Num)) end
                ],
     lager:debug("staging number activation charge $~p for ~s via billing account ~s"
-                ,[wht_util:units_to_dollars(Units), AccountId, LedgerId]
+	       ,[wht_util:units_to_dollars(Units), AccountId, LedgerId]
                ),
 
     lists:foldl(
       fun(F, T) -> F(T) end
-      ,kz_transaction:debit(LedgerId, Units)
-      ,Routines
+	       ,kz_transaction:debit(LedgerId, Units)
+	       ,Routines
      ).
 
 -spec create_transaction(knm_number:knm_number(), ne_binary(), integer()) ->
@@ -261,18 +261,18 @@ create_transaction(Number, Feature, Units) ->
     Num = knm_phone_number:number(PhoneNumber),
 
     Routines = [fun(T) -> set_activation_reason(T, LedgerId, AccountId, <<"feature">>) end
-                ,fun(T) -> kz_transaction:set_feature(Feature, T) end
-                ,fun(T) -> kz_transaction:set_number(Num, T) end
-                ,fun(T) -> set_feature_description(T, kz_util:to_binary(Feature)) end
+	       ,fun(T) -> kz_transaction:set_feature(Feature, T) end
+	       ,fun(T) -> kz_transaction:set_number(Num, T) end
+	       ,fun(T) -> set_feature_description(T, kz_util:to_binary(Feature)) end
                ],
     lager:debug("staging feature '~s' activation charge $~p for ~s via billing account ~s"
-                ,[Feature, wht_util:units_to_dollars(Units), AccountId, LedgerId]
+	       ,[Feature, wht_util:units_to_dollars(Units), AccountId, LedgerId]
                ),
 
     lists:foldl(
       fun(F, T) -> F(T) end
-      ,kz_transaction:debit(LedgerId, Units)
-      ,Routines
+	       ,kz_transaction:debit(LedgerId, Units)
+	       ,Routines
      ).
 
 %%--------------------------------------------------------------------
@@ -287,12 +287,12 @@ set_feature_description(T, Feature) ->
     kz_transaction:set_description(Description, T).
 
 -spec set_activation_reason(kz_transaction:transaction(), ne_binary(), ne_binary(), ne_binary()) ->
-                                    kz_transaction:transaction().
+				   kz_transaction:transaction().
 set_activation_reason(Transaction, LedgerId, LedgerId, Key) ->
     kz_transaction:set_reason(<<Key/binary, "_activation">>, Transaction);
 set_activation_reason(Transaction, _LedgetId, AccountId, Key) ->
     kz_transaction:set_reason(<<"sub_account_", Key/binary, "_activation">>
-                              ,kz_transaction:set_sub_account_info(AccountId, Transaction)
+			     ,kz_transaction:set_sub_account_info(AccountId, Transaction)
                              ).
 
 phone_number_activation_charges(Number) ->
