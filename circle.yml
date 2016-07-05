@@ -25,7 +25,6 @@ dependencies:
 test:
   pre:
     - ./scripts/validate-js.sh $(find applications core -iname '*.json')
-    - . ~/.kerl/$OTP_VERSION/activate && make elvis
     - ./scripts/code_checks.bash
     - make fmt
     - . ~/.kerl/$OTP_VERSION/activate && make
@@ -35,6 +34,7 @@ test:
         git diff
         exit 1
       fi
+    - . ~/.kerl/$OTP_VERSION/activate && make elvis
     - . ~/.kerl/$OTP_VERSION/activate && make xref
     - . ~/.kerl/$OTP_VERSION/activate && make sup_completion
     - |
