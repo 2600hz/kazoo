@@ -9,8 +9,8 @@
 
 -define(INBOUND_ACCOUNT_TYPES,
         [<<"account">>
-	,<<"device">>
-	,<<"sys_info">>
+        ,<<"device">>
+        ,<<"sys_info">>
         ]).
 
 -define(APP_VERSION, kz_util:application_version('jonny5')).

@@ -13,18 +13,18 @@
 -define(FAX_WORKER_POOL, 'fax_worker_pool').
 
 -define(FAX_CHANNEL_DESTROY_PROPS, [<<"Ringing-Seconds">>, <<"Billing-Seconds">>
-				   ,<<"0">>, <<"Duration-Seconds">>
-				   ,<<"User-Agent">>
-				   ,<<"Hangup-Code">>, <<"Hangup-Cause">>
-				   ,{<<"Custom-Channel-Vars">>, [<<"Resource-ID">>, <<"Ecallmgr-Node">>
-								,<<"Call-ID">>, <<"Fetch-ID">>
-								]}
+                                   ,<<"0">>, <<"Duration-Seconds">>
+                                   ,<<"User-Agent">>
+                                   ,<<"Hangup-Code">>, <<"Hangup-Cause">>
+                                   ,{<<"Custom-Channel-Vars">>, [<<"Resource-ID">>, <<"Ecallmgr-Node">>
+                                                                ,<<"Call-ID">>, <<"Fetch-ID">>
+                                                                ]}
                                    ]).
 
 -record(fax_storage, {
-	  id :: api_binary()
-		     ,attachment_id :: api_binary()
-		     ,db :: api_binary()
+          id :: api_binary()
+                     ,attachment_id :: api_binary()
+                     ,db :: api_binary()
          }).
 -type fax_storage() :: #fax_storage{}.
 
@@ -49,20 +49,20 @@
 -define(OPENXML_MIME_PREFIX, "application/vnd.openxmlformats-officedocument.").
 -define(OPENOFFICE_MIME_PREFIX, "application/vnd.oasis.opendocument.").
 -define(OPENOFFICE_COMPATIBLE(CT), (
-			       CT =:= <<"application/msword">>
-				   orelse CT =:= <<"application/vnd.ms-excel">>
-				   orelse CT =:= <<"application/vnd.ms-powerpoint">>
-			      )).
+                               CT =:= <<"application/msword">>
+                                   orelse CT =:= <<"application/vnd.ms-excel">>
+                                   orelse CT =:= <<"application/vnd.ms-powerpoint">>
+                              )).
 
 -define(DEFAULT_ALLOWED_CONTENT_TYPES, [
                                         <<"application/pdf">>
-				       ,<<"image/tiff">>
-				       ,{[{<<"prefix">>, <<"image">>}]}
-				       ,{[{<<"prefix">>, <<?OPENXML_MIME_PREFIX>>}]}
-				       ,{[{<<"prefix">>, <<?OPENOFFICE_MIME_PREFIX>>}]}
-				       ,<<"application/msword">>
-				       ,<<"application/vnd.ms-excel">>
-				       ,<<"application/vnd.ms-powerpoint">>
+                                       ,<<"image/tiff">>
+                                       ,{[{<<"prefix">>, <<"image">>}]}
+                                       ,{[{<<"prefix">>, <<?OPENXML_MIME_PREFIX>>}]}
+                                       ,{[{<<"prefix">>, <<?OPENOFFICE_MIME_PREFIX>>}]}
+                                       ,<<"application/msword">>
+                                       ,<<"application/vnd.ms-excel">>
+                                       ,<<"application/vnd.ms-powerpoint">>
                                        ]).
 
 -define(SMTP_MSG_MAX_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"smtp_max_msg_size">>, 10485670)).

@@ -8,9 +8,9 @@
                           cert              = undefined                             :: undefined | binary(),
                           cert_file         = undefined                             :: undefined |string(),
                           key               = undefined                             :: undefined | {'RSAPrivateKey'|
-												    'DSAPrivateKey' |
-												    'ECPrivateKey' |
-												    'PrivateKeyInfo', binary()},
+                                                                                                    'DSAPrivateKey' |
+                                                                                                    'ECPrivateKey' |
+                                                                                                    'PrivateKeyInfo', binary()},
                           key_file          = undefined                             :: undefined | string(),
                           cert_password     = undefined                             :: undefined | string(),
                           timeout           = 30000                                 :: integer(),
@@ -19,7 +19,7 @@
                           feedback_port     = 2196                                  :: integer(),
                           feedback_fun      = fun erlang:display/1                  :: fun(({calendar:datetime(), string()}) -> _),
                           feedback_timeout  = 30*60*1000                            :: pos_integer()
-			 }).
+                         }).
 -record(apns_msg, {id = apns:message_id()       :: binary(),
                    expiry = apns:expiry(86400)  :: non_neg_integer(), %% default = 1 day
                    device_token                 :: string(),

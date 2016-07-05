@@ -14,9 +14,9 @@
 
 -define(DEFAULT_FAX_SETTINGS,
         kapps_config:get(<<"fax">>, ?FAX_SETTINGS_KEY, kz_json:from_list(
-							 [{<<"override_fax_identity">>, 'true'}
-							 ,{<<"override_callee_number">>, 'false'}
-							 ]))).
+                                                         [{<<"override_fax_identity">>, 'true'}
+                                                         ,{<<"override_callee_number">>, 'false'}
+                                                         ]))).
 
 -define(SYSTEM_FAX_SETTINGS, kz_json:set_value(?FAX_TIMEZONE_KEY, ?DEFAULT_TIMEZONE, ?DEFAULT_FAX_SETTINGS)).
 

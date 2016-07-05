@@ -10,8 +10,8 @@
 
 %%--------------------------------------------------------------------
 -define(KAPPS_CONFIG_ORIGIN_BINDINGS, [[{'type', <<"account">>}]
-				      ,[{'db', ?KZ_CONFIG_DB}]
-				      ]).
+                                      ,[{'db', ?KZ_CONFIG_DB}]
+                                      ]).
 
 -define(KAPPS_CONFIG_PROPS, [{'origin_bindings', ?KAPPS_CONFIG_ORIGIN_BINDINGS}]).
 %%--------------------------------------------------------------------
@@ -19,7 +19,7 @@
 
 %%--------------------------------------------------------------------
 -define(KAPPS_GETBY_ORIGIN_BINDINGS, [[{'type', <<"account">>}]
-				     ]).
+                                     ]).
 
 -define(KAPPS_GETBY_PROPS, [{'origin_bindings', ?KAPPS_GETBY_ORIGIN_BINDINGS}]).
 %%--------------------------------------------------------------------
