@@ -157,7 +157,9 @@ put(Context, ?RECOVERY) ->
 post(Context, ?RECOVERY) ->
     _ = cb_context:put_reqid(Context),
     Context1 = crossbar_doc:save(Context),
-    crossbar_util:create_auth_token(Context1, ?MODULE).
+    AccountId = kz_util:format_account_id(cb_context:account_db(Context1)),
+    Context2 = cb_context:set_doc(Context1, kz_json:from_list([{<<"account_id">>, AccountId}])),
+    crossbar_util:create_auth_token(Context2, ?MODULE).
 
 %%%===================================================================
 %%% Internal functions
