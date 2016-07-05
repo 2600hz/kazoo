@@ -480,7 +480,7 @@ maybe_load_user_doc_via_reset_id(Context) ->
 reset_id(?MATCH_ACCOUNT_ENCODED(A, B, Rest)) ->
     Noise = kz_util:rand_hex_binary((?RESET_ID_SIZE - 32) / 2),
     <<(?MATCH_ACCOUNT_RAW(A,B,Rest))/binary, Noise/binary>>;
-reset_id(<<(?MATCH_ACCOUNT_RAW(ResetId))/binary, _Noi:8, _se/binary>>) ->
+reset_id(<<ResetId:32/binary, _Noi:8, _se/binary>>) ->
     kz_util:format_account_db(kz_util:to_lower_binary(ResetId)).
 
 %% @private
