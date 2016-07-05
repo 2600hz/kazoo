@@ -12,11 +12,11 @@
 
 api_test_() ->
     Options = [{?KNM_ACCOUNTID_CARRIER, ?RESELLER_ACCOUNT_ID}
-               ,{<<"carriers">>, [<<"knm_voip_innovations">>]}
+	      ,{<<"carriers">>, [<<"knm_voip_innovations">>]}
               ],
     [find_numbers(Options)
-     ,acquire_number()
-     ,disconnect_number()
+    ,acquire_number()
+    ,disconnect_number()
     ].
 
 
@@ -34,11 +34,11 @@ find_numbers(Options) ->
         end,
     Results = knm_carriers:find(Prefix, Limit, Options),
     [{"Verify found numbers"
-      ,?_assertEqual(Limit, length(Results))
+     ,?_assertEqual(Limit, length(Results))
      }
-     ,{"Verify results match queried prefix"
-       ,?_assertEqual('true', lists:all(MatchPrefix, Results))
-      }
+    ,{"Verify results match queried prefix"
+     ,?_assertEqual('true', lists:all(MatchPrefix, Results))
+     }
     ].
 
 acquire_number() ->
@@ -47,7 +47,7 @@ acquire_number() ->
     Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
     Result = knm_voip_innovations:acquire_number(Number),
     [{"Verify number is still one inputed"
-      ,?_assertEqual(N, knm_phone_number:number(knm_number:phone_number(Result)))
+     ,?_assertEqual(N, knm_phone_number:number(knm_number:phone_number(Result)))
      }
     ].
 
@@ -57,6 +57,6 @@ disconnect_number() ->
     Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
     Msg = <<"Number currently available">>,
     [{"Verify cannot release number not detained"
-      ,?_assertException('throw', {'error','by_carrier',Number,{'knm_voip_innovations',Msg}}, knm_voip_innovations:disconnect_number(Number))
+     ,?_assertException('throw', {'error','by_carrier',Number,{'knm_voip_innovations',Msg}}, knm_voip_innovations:disconnect_number(Number))
      }
     ].

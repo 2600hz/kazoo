@@ -12,18 +12,18 @@
 
 %% API
 -export([start_link/2
-         ,single/1
-         ,continuous/1
-         ,stop/1
+	,single/1
+	,continuous/1
+	,stop/1
         ]).
 
 %% gen_server callbacks
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("kazoo_media.hrl").
@@ -34,19 +34,19 @@
 -define(MOD_CONFIG_CAT, <<"speech">>).
 
 -define(TIMEOUT_LIFETIME
-        ,kapps_config:get_integer(?CONFIG_CAT, <<"tts_cache">>, ?MILLISECONDS_IN_HOUR)
+       ,kapps_config:get_integer(?CONFIG_CAT, <<"tts_cache">>, ?MILLISECONDS_IN_HOUR)
        ).
 -define(TIMEOUT_MESSAGE, {'$kz_media_tts_cache', 'tts_timeout'}).
 
 -record(state, {
           text :: ne_binary()
-          ,contents = <<>> :: binary()
-          ,status :: 'streaming' | 'ready'
-          ,kz_http_req_id :: kz_http:req_id()
-          ,reqs :: [{pid(), reference()}]
-          ,meta :: kz_json:object()
-          ,timer_ref :: reference()
-          ,id :: ne_binary() %% used in publishing doc_deleted
+	       ,contents = <<>> :: binary()
+	       ,status :: 'streaming' | 'ready'
+	       ,kz_http_req_id :: kz_http:req_id()
+	       ,reqs :: [{pid(), reference()}]
+	       ,meta :: kz_json:object()
+	       ,timer_ref :: reference()
+	       ,id :: ne_binary() %% used in publishing doc_deleted
          }).
 
 %%%===================================================================
@@ -88,7 +88,7 @@ init([Text, JObj]) ->
     kz_util:put_callid(kz_util:binary_md5(Text)),
 
     Voice = list_to_binary([kz_json:get_value(<<"Voice">>, JObj, <<"female">>), "/"
-                            ,get_language(kz_json:get_value(<<"Language">>, JObj, <<"en-us">>))
+			   ,get_language(kz_json:get_value(<<"Language">>, JObj, <<"en-us">>))
                            ]),
 
     Format = kz_json:get_value(<<"Format">>, JObj, <<"wav">>),
@@ -100,16 +100,16 @@ init([Text, JObj]) ->
     lager:debug("text '~s' has id '~s'", [Text, MediaName]),
 
     Meta = kz_json:from_list([{<<"content_type">>, kz_mime:from_extension(Format)}
-                              ,{<<"media_name">>, MediaName}
+			     ,{<<"media_name">>, MediaName}
                              ]),
 
     {'ok', #state{kz_http_req_id = ReqID
-                  ,status = 'streaming'
-                  ,meta = Meta
-                  ,contents = <<>>
-                  ,reqs = []
-                  ,timer_ref = start_timer()
-                  ,id = MediaName
+		 ,status = 'streaming'
+		 ,meta = Meta
+		 ,contents = <<>>
+		 ,reqs = []
+		 ,timer_ref = start_timer()
+		 ,id = MediaName
                  }}.
 
 -spec get_language(ne_binary()) -> ne_binary().
@@ -132,16 +132,16 @@ get_language(Language) -> Language.
 %% @end
 %%--------------------------------------------------------------------
 handle_call('single', _From, #state{meta=Meta
-                                    ,contents=Contents
-                                    ,status=ready
-                                    ,timer_ref=TRef
+				   ,contents=Contents
+				   ,status=ready
+				   ,timer_ref=TRef
                                    }=State) ->
     %% doesn't currently check whether we're still streaming in from the DB
     lager:debug("returning media contents"),
     _ = stop_timer(TRef),
     {'reply', {Meta, Contents}, State#state{timer_ref=start_timer()}};
 handle_call('single', From, #state{reqs=Reqs
-                                   ,status='streaming'
+				  ,status='streaming'
                                   }=State) ->
     lager:debug("file not ready for ~p, queueing", [From]),
     {'noreply', State#state{reqs=[From | Reqs]}};
@@ -179,25 +179,25 @@ handle_info({'timeout', TRef, ?TIMEOUT_MESSAGE}, #state{timer_ref=TRef}=State) -
     {'stop', 'normal', State};
 
 handle_info({'http', {ReqID, 'stream_start', Hdrs}}, #state{kz_http_req_id=ReqID
-                                                            ,timer_ref=TRef
+							   ,timer_ref=TRef
                                                            }=State) ->
     lager:debug("start retrieving audio file for tts"),
     _ = stop_timer(TRef),
     {'noreply', State#state{meta=kz_json:normalize(kz_json:from_list(kv_to_bin(Hdrs)))
-                            ,timer_ref=start_timer()
+			   ,timer_ref=start_timer()
                            }};
 
 handle_info({'http', {ReqID, 'stream', Bin}}, #state{kz_http_req_id=ReqID
-                                                     ,meta=Meta
-                                                     ,contents=Contents
-                                                     ,timer_ref=TRef
+						    ,meta=Meta
+						    ,contents=Contents
+						    ,timer_ref=TRef
                                                     }=State) ->
     _ = stop_timer(TRef),
     case kz_json:get_value(<<"content_type">>, Meta) of
         <<"audio/", _/binary>> ->
             lager:debug("recv ~b bytes", [byte_size(Bin)]),
             {'noreply', State#state{contents = <<Contents/binary, Bin/binary>>
-                                        ,timer_ref=start_timer()
+				   ,timer_ref=start_timer()
                                    }};
         <<"application/json">> ->
             lager:debug("JSON response: ~s", [Bin]),
@@ -205,17 +205,17 @@ handle_info({'http', {ReqID, 'stream', Bin}}, #state{kz_http_req_id=ReqID
     end;
 
 handle_info({'http', {ReqID, 'stream_end', _FinalHeaders}}, #state{kz_http_req_id=ReqID
-                                                                   ,contents = <<>>
-                                                                   ,timer_ref=TRef
+								  ,contents = <<>>
+								  ,timer_ref=TRef
                                                                   }=State) ->
     _ = stop_timer(TRef),
     lager:debug("no tts contents were received, going down"),
     {'stop', 'normal', State};
 handle_info({'http', {ReqID, 'stream_end', _FinalHeaders}}, #state{kz_http_req_id=ReqID
-                                                                   ,contents=Contents
-                                                                   ,meta=Meta
-                                                                   ,reqs=Reqs
-                                                                   ,timer_ref=TRef
+								  ,contents=Contents
+								  ,meta=Meta
+								  ,reqs=Reqs
+								  ,timer_ref=TRef
                                                                   }=State) ->
     _ = stop_timer(TRef),
     Res = {Meta, Contents},
@@ -223,14 +223,14 @@ handle_info({'http', {ReqID, 'stream_end', _FinalHeaders}}, #state{kz_http_req_i
 
     lager:debug("finished receiving file contents"),
     {'noreply', State#state{status=ready
-                            ,timer_ref=start_timer()
+			   ,timer_ref=start_timer()
                            }
-     ,'hibernate'
+    ,'hibernate'
     };
 
 handle_info({'http', {ReqID, {{_, _StatusCode, _}, Hdrs, Contents}}}, #state{kz_http_req_id=ReqID
-                                                                             ,reqs=Reqs
-                                                                             ,timer_ref=TRef
+									    ,reqs=Reqs
+									    ,timer_ref=TRef
                                                                             }=State) ->
     _ = stop_timer(TRef),
     Res = {kz_json:normalize(kz_json:from_list(kv_to_bin(Hdrs))), Contents},
@@ -240,14 +240,14 @@ handle_info({'http', {ReqID, {{_, _StatusCode, _}, Hdrs, Contents}}}, #state{kz_
 
     lager:debug("finished receiving file contents"),
     {'noreply', State#state{status=ready
-                            ,timer_ref=start_timer()
+			   ,timer_ref=start_timer()
                            }
-     ,'hibernate'
+    ,'hibernate'
     };
 
 handle_info({'http', {ReqID, {'error', Error}}}, #state{kz_http_req_id=ReqID
-                                                        ,contents=Contents
-                                                        ,timer_ref=TRef
+						       ,contents=Contents
+						       ,timer_ref=TRef
                                                        }=State) ->
     _ = stop_timer(TRef),
     lager:info("recv error ~p : collected: ~p", [Error, Contents]),
@@ -304,11 +304,11 @@ stop_timer(_) -> 'ok'.
 publish_doc_update(Id) ->
     API =
         [{<<"ID">>, Id}
-         ,{<<"Type">>, Type = <<"media">>}
-         ,{<<"Database">>, Db = <<"tts">>}
-         ,{<<"Rev">>, <<"0">>}
+	,{<<"Type">>, Type = <<"media">>}
+	,{<<"Database">>, Db = <<"tts">>}
+	,{<<"Rev">>, <<"0">>}
          | kz_api:default_headers(<<"configuration">>, ?DOC_DELETED, ?APP_NAME, ?APP_VERSION)
         ],
     kz_amqp_worker:cast(API
-                        ,fun(P) -> kapi_conf:publish_doc_update('deleted', Db, Type, Id, P) end
+		       ,fun(P) -> kapi_conf:publish_doc_update('deleted', Db, Type, Id, P) end
                        ).

@@ -48,14 +48,14 @@ delete_test_() ->
 
 to_querystring_test_() ->
     Tests = [{[], <<>>}
-             ,{[{<<"foo">>, <<"bar">>}], <<"foo=bar">>}
-             ,{[{<<"foo">>, <<"bar">>}, {<<"fizz">>, <<"buzz">>}], <<"foo=bar&fizz=buzz">>}
-             ,{[{'foo', <<"bar">>}
-                ,{<<"fizz">>, <<"buzz">>}
-                ,{<<"arr">>, [1,3,5]}
-               ], <<"foo=bar&fizz=buzz&arr[]=1&arr[]=3&arr[]=5">>}
-             ,{[{<<"Msg-ID">>, <<"123-abc">>}], <<"Msg-ID=123-abc">>}
-             ,{[{<<"url">>, <<"http://user:pass@host:port/">>}], <<"url=http%3A%2F%2Fuser%3Apass%40host%3Aport%2F">>}
+	    ,{[{<<"foo">>, <<"bar">>}], <<"foo=bar">>}
+	    ,{[{<<"foo">>, <<"bar">>}, {<<"fizz">>, <<"buzz">>}], <<"foo=bar&fizz=buzz">>}
+	    ,{[{'foo', <<"bar">>}
+	      ,{<<"fizz">>, <<"buzz">>}
+	      ,{<<"arr">>, [1,3,5]}
+	      ], <<"foo=bar&fizz=buzz&arr[]=1&arr[]=3&arr[]=5">>}
+	    ,{[{<<"Msg-ID">>, <<"123-abc">>}], <<"Msg-ID=123-abc">>}
+	    ,{[{<<"url">>, <<"http://user:pass@host:port/">>}], <<"url=http%3A%2F%2Fuser%3Apass%40host%3Aport%2F">>}
             ],
     [?_assertEqual(QS, kz_util:to_binary(props:to_querystring(Props)))
      || {Props, QS} <- Tests
@@ -86,10 +86,10 @@ insert_values_test_() ->
 
 is_defined_test_() ->
     Tests = [{[], 'foo', 'false'}
-             ,{['foo'], 'foo', 'true'}
-             ,{['foo'], 'bar', 'false'}
-             ,{[{'foo', 'bar'}], 'foo', 'true'}
-             ,{[{'foo', 'bar'}], 'bar', 'false'}
+	    ,{['foo'], 'foo', 'true'}
+	    ,{['foo'], 'bar', 'false'}
+	    ,{[{'foo', 'bar'}], 'foo', 'true'}
+	    ,{[{'foo', 'bar'}], 'bar', 'false'}
             ],
     [?_assertEqual(Expected, props:is_defined(Key, Props))
      || {Props, Key, Expected} <- Tests

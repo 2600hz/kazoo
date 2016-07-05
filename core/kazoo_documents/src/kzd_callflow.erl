@@ -9,8 +9,8 @@
 -module(kzd_callflow).
 
 -export([new/0
-         ,type/0
-         ,is_feature_code/1
+	,type/0
+	,is_feature_code/1
         ]).
 
 -include("kz_documents.hrl").

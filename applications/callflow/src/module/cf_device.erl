@@ -29,7 +29,7 @@ handle(Data, Call) ->
         {'fail', _}=Reason -> maybe_handle_bridge_failure(Reason, Call);
         {'error', _R} ->
             lager:info("error bridging to device: ~s"
-                       ,[kz_json:get_value(<<"Error-Message">>, _R)]
+		      ,[kz_json:get_value(<<"Error-Message">>, _R)]
                       ),
             cf_exe:continue(Call)
     end.
@@ -59,13 +59,13 @@ bridge_to_endpoints(Data, Call) ->
             Timeout = kz_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
             IgnoreEarlyMedia = kz_endpoints:ignore_early_media(Endpoints),
             Command = [{<<"Application-Name">>, <<"bridge">>}
-                ,{<<"Endpoints">>, Endpoints}
-                ,{<<"Timeout">>, Timeout}
-                ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-                ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
-                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
-                ,{<<"Ignore-Forward">>, <<"false">>}
-            ],
+		      ,{<<"Endpoints">>, Endpoints}
+		      ,{<<"Timeout">>, Timeout}
+		      ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+		      ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
+		      ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+		      ,{<<"Ignore-Forward">>, <<"false">>}
+		      ],
             kapps_call_command:send_command(Command, Call),
             kapps_call_command:b_bridge_wait(Timeout, Call)
     end.

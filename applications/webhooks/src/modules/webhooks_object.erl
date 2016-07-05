@@ -7,9 +7,9 @@
 -module(webhooks_object).
 
 -export([init/0
-         ,bindings_and_responders/0
-         ,account_bindings/1
-         ,handle_event/2
+	,bindings_and_responders/0
+	,account_bindings/1
+	,handle_event/2
         ]).
 
 -include("webhooks.hrl").
@@ -21,47 +21,47 @@
 
 -define(
    OBJECT_TYPES
-   ,kapps_config:get(
-      ?APP_NAME
-      ,<<"object_types">>
-      ,?DOC_TYPES
-     )
+       ,kapps_config:get(
+	  ?APP_NAME
+			,<<"object_types">>
+			,?DOC_TYPES
+	 )
   ).
 
 -define(
    TYPE_MODIFIER
-   ,kz_json:from_list(
-      [{<<"type">>, <<"array">>}
-       ,{<<"description">>, <<"A list of object types to handle">>}
-       ,{<<"items">>, ?OBJECT_TYPES}
-      ])
+       ,kz_json:from_list(
+	  [{<<"type">>, <<"array">>}
+	  ,{<<"description">>, <<"A list of object types to handle">>}
+	  ,{<<"items">>, ?OBJECT_TYPES}
+	  ])
   ).
 
 -define(
    ACTIONS_MODIFIER
-   ,kz_json:from_list(
-      [{<<"type">>, <<"array">>}
-       ,{<<"description">>, <<"A list of object actions to handle">>}
-       ,{<<"items">>, ?DOC_ACTIONS}
-      ])
+       ,kz_json:from_list(
+	  [{<<"type">>, <<"array">>}
+	  ,{<<"description">>, <<"A list of object actions to handle">>}
+	  ,{<<"items">>, ?DOC_ACTIONS}
+	  ])
   ).
 
 -define(
    MODIFIERS
-   ,kz_json:from_list(
-      [{<<"type">>, ?TYPE_MODIFIER}
-       ,{<<"action">>, ?ACTIONS_MODIFIER}
-      ])
+       ,kz_json:from_list(
+	  [{<<"type">>, ?TYPE_MODIFIER}
+	  ,{<<"action">>, ?ACTIONS_MODIFIER}
+	  ])
   ).
 
 -define(
    METADATA
-   ,kz_json:from_list(
-      [{<<"_id">>, ?ID}
-       ,{<<"name">>, ?NAME}
-       ,{<<"description">>, ?DESC}
-       ,{<<"modifiers">>, ?MODIFIERS}
-      ])
+       ,kz_json:from_list(
+	  [{<<"_id">>, ?ID}
+	  ,{<<"name">>, ?NAME}
+	  ,{<<"description">>, ?DESC}
+	  ,{<<"modifiers">>, ?MODIFIERS}
+	  ])
   ).
 
 %%--------------------------------------------------------------------
@@ -108,7 +108,7 @@ handle_event(JObj, _Props) ->
         [] ->
             lager:debug(
               "no hooks to handle ~s for ~s"
-              ,[kz_api:event_name(JObj), AccountId]
+		       ,[kz_api:event_name(JObj), AccountId]
              );
         Hooks ->
             webhooks_util:fire_hooks(format_event(JObj, AccountId), Hooks)
@@ -128,14 +128,14 @@ load_accounts() ->
     case
         kz_datamgr:get_results(
           ?KZ_WEBHOOKS_DB
-          ,<<"webhooks/hook_listing">>
-          ,[{'key', ?NAME}]
+			      ,<<"webhooks/hook_listing">>
+			      ,[{'key', ?NAME}]
          )
     of
         {'ok', View} ->
             [kz_util:format_account_id(
                kz_json:get_value(<<"value">>, Result)
-               ,'encoded'
+				      ,'encoded'
               )
              || Result <- View
             ];
@@ -155,11 +155,11 @@ bindings([]) ->
     [];
 bindings(AccountsWithObjectHook) ->
     [{'conf'
-      ,[{'restrict_to', ['doc_updates']}
-        ,{'type', Type}
-        ,{'db', Account}
-        ,'federate'
-       ]
+     ,[{'restrict_to', ['doc_updates']}
+      ,{'type', Type}
+      ,{'db', Account}
+      ,'federate'
+      ]
      }
      || Type <- ?OBJECT_TYPES,
         Account <- lists:usort(AccountsWithObjectHook)
@@ -175,9 +175,9 @@ format_event(JObj, AccountId) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"id">>, kapi_conf:get_id(JObj)}
-         ,{<<"account_id">>, AccountId}
-         ,{<<"action">>, kz_api:event_name(JObj)}
-         ,{<<"type">>, kapi_conf:get_type(JObj)}
+	,{<<"account_id">>, AccountId}
+	,{<<"action">>, kz_api:event_name(JObj)}
+	,{<<"type">>, kapi_conf:get_type(JObj)}
         ])
      ).
 

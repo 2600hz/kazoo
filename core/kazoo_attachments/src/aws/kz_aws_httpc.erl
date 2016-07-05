@@ -26,21 +26,21 @@ request(URL, Method, Hdrs, Body, Timeout,
     request_hackney(URL, Method, Hdrs, Body, Timeout, Config);
 request(URL, Method, Hdrs, Body, Timeout,
         #aws_config{http_client = {M, F}} = Config)
-    when is_atom(M), is_atom(F) ->
+  when is_atom(M), is_atom(F) ->
     M:F(URL, Method, Hdrs, Body, Timeout, Config);
 request(URL, Method, Hdrs, Body, Timeout,
         #aws_config{http_client = F} = Config)
-    when is_function(F, 6) ->
+  when is_function(F, 6) ->
     F(URL, Method, Hdrs, Body, Timeout, Config).
 
 %% Guard clause protects against empty bodied requests from being
 %% unable to find a matching httpc:request call.
 request_httpc(URL, Method, Hdrs, <<>>, Timeout, _Config)
-    when (Method =:= 'options')
-         orelse (Method =:= 'get')
-         orelse (Method =:= 'head')
-         orelse (Method =:= 'delete')
-         orelse (Method =:= 'trace') ->
+  when (Method =:= 'options')
+       orelse (Method =:= 'get')
+       orelse (Method =:= 'head')
+       orelse (Method =:= 'delete')
+       orelse (Method =:= 'trace') ->
     HdrsStr = [{to_list_string(K), to_list_string(V)} || {K, V} <- Hdrs],
     response_httpc(httpc:request(Method
                                 ,{URL, HdrsStr}
@@ -52,9 +52,9 @@ request_httpc(URL, Method, Hdrs, Body, Timeout, _Config) ->
     HdrsStr = [{to_list_string(K), to_list_string(V)} || {K, V} <- Hdrs],
     {"content-type", ContentType} = lists:keyfind("content-type", 1, HdrsStr),
     response_httpc(httpc:request(Method
-                                 ,{URL, HdrsStr, ContentType, Body}
-                                 ,[{'timeout', Timeout}]
-                                 ,[{'body_format', 'binary'}]
+				,{URL, HdrsStr, ContentType, Body}
+				,[{'timeout', Timeout}]
+				,[{'body_format', 'binary'}]
                                 )
                   ).
 
@@ -100,11 +100,11 @@ header_str(Hdrs) ->
     [{string:to_lower(to_list_string(K)), to_list_string(V)} || {K, V} <- Hdrs].
 
 to_list_string(Val) when erlang:is_binary(Val) ->
-  erlang:binary_to_list(Val);
+    erlang:binary_to_list(Val);
 to_list_string(Val) when erlang:is_list(Val) ->
-  Val.
+    Val.
 
 to_binary(Val) when erlang:is_list(Val) ->
-  erlang:list_to_binary(Val);
+    erlang:list_to_binary(Val);
 to_binary(Val) when erlang:is_binary(Val) ->
-  Val.
+    Val.

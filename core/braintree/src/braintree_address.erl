@@ -73,7 +73,7 @@ create(CustomerId, Address) ->
 %%--------------------------------------------------------------------
 -spec update(bt_address()) -> bt_address().
 update(#bt_address{id=AddressId
-                   ,customer_id=CustomerId
+		  ,customer_id=CustomerId
                   }=Address) ->
     Url = url(CustomerId, AddressId),
     Request = record_to_xml(Address#bt_address{id='undefined'}, 'true'),
@@ -90,7 +90,7 @@ update(#bt_address{id=AddressId
 -spec delete(ne_binary() | nonempty_string(), ne_binary() | nonempty_string()) ->  bt_address().
 
 delete(#bt_address{customer_id=CustomerId
-                   ,id=AddressId
+		  ,id=AddressId
                   }) ->
     delete(CustomerId, AddressId).
 
@@ -145,17 +145,17 @@ record_to_xml(Address) ->
 record_to_xml('undefined', _ToString) -> 'undefined';
 record_to_xml(Address, ToString) ->
     Props = [{'first-name', Address#bt_address.first_name}
-             ,{'last-name', Address#bt_address.last_name}
-             ,{'company', Address#bt_address.company}
-             ,{'street-address', Address#bt_address.street_address}
-             ,{'extended-address', Address#bt_address.extended_address}
-             ,{'locality', Address#bt_address.locality}
-             ,{'region', Address#bt_address.region}
-             ,{'postal-code', Address#bt_address.postal_code}
-             ,{'country-code-alpha2', Address#bt_address.country_code_two}
-             ,{'country-code-alpha3', Address#bt_address.country_code_three}
-             ,{'country-code-numeric', Address#bt_address.country_code}
-             ,{'country-name', Address#bt_address.country_name}
+	    ,{'last-name', Address#bt_address.last_name}
+	    ,{'company', Address#bt_address.company}
+	    ,{'street-address', Address#bt_address.street_address}
+	    ,{'extended-address', Address#bt_address.extended_address}
+	    ,{'locality', Address#bt_address.locality}
+	    ,{'region', Address#bt_address.region}
+	    ,{'postal-code', Address#bt_address.postal_code}
+	    ,{'country-code-alpha2', Address#bt_address.country_code_two}
+	    ,{'country-code-alpha3', Address#bt_address.country_code_three}
+	    ,{'country-code-numeric', Address#bt_address.country_code}
+	    ,{'country-name', Address#bt_address.country_name}
             ],
     Props1 = case Address#bt_address.update_existing of
                  'true' -> [{'options', [{'update-existing', 'true'}]}|Props];
@@ -176,19 +176,19 @@ record_to_xml(Address, ToString) ->
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_address{id = create_or_get_json_id(JObj)
-                ,first_name = kz_json:get_value(<<"first_name">>, JObj)
-                ,last_name = kz_json:get_value(<<"last_name">>, JObj)
-                ,company = kz_json:get_value(<<"company">>, JObj)
-                ,street_address = kz_json:get_value(<<"street_address">>, JObj)
-                ,extended_address = kz_json:get_value(<<"extended_address">>, JObj)
-                ,locality = kz_json:get_value(<<"locality">>, JObj)
-                ,region = kz_json:get_value(<<"region">>, JObj)
-                ,postal_code = kz_json:get_value(<<"postal_code">>, JObj)
-                ,country_code_two = kz_json:get_value(<<"country_code_two">>, JObj)
-                ,country_code_three = kz_json:get_value(<<"country_code_three">>, JObj)
-                ,country_code = kz_json:get_value(<<"country_code">>, JObj)
-                ,country_name = kz_json:get_value(<<"country_name">>, JObj)
-                ,update_existing = kz_json:is_true(<<"update_existing">>, JObj)
+	       ,first_name = kz_json:get_value(<<"first_name">>, JObj)
+	       ,last_name = kz_json:get_value(<<"last_name">>, JObj)
+	       ,company = kz_json:get_value(<<"company">>, JObj)
+	       ,street_address = kz_json:get_value(<<"street_address">>, JObj)
+	       ,extended_address = kz_json:get_value(<<"extended_address">>, JObj)
+	       ,locality = kz_json:get_value(<<"locality">>, JObj)
+	       ,region = kz_json:get_value(<<"region">>, JObj)
+	       ,postal_code = kz_json:get_value(<<"postal_code">>, JObj)
+	       ,country_code_two = kz_json:get_value(<<"country_code_two">>, JObj)
+	       ,country_code_three = kz_json:get_value(<<"country_code_three">>, JObj)
+	       ,country_code = kz_json:get_value(<<"country_code">>, JObj)
+	       ,country_name = kz_json:get_value(<<"country_name">>, JObj)
+	       ,update_existing = kz_json:is_true(<<"update_existing">>, JObj)
                }.
 
 %%--------------------------------------------------------------------
@@ -201,21 +201,21 @@ json_to_record(JObj) ->
 record_to_json('undefined') -> 'undefined';
 record_to_json(#bt_address{}=Address) ->
     Props = [{<<"id">>, Address#bt_address.id}
-             ,{<<"customer_id">>, Address#bt_address.customer_id}
-             ,{<<"first_name">>, Address#bt_address.first_name}
-             ,{<<"last_name">>, Address#bt_address.last_name}
-             ,{<<"company">>, Address#bt_address.company}
-             ,{<<"street_address">>, Address#bt_address.street_address}
-             ,{<<"extended_address">>, Address#bt_address.extended_address}
-             ,{<<"locality">>, Address#bt_address.locality}
-             ,{<<"region">>, Address#bt_address.region}
-             ,{<<"postal_code">>, Address#bt_address.postal_code}
-             ,{<<"country_code_two">>, Address#bt_address.country_code_two}
-             ,{<<"country_code_three">>, Address#bt_address.country_code_three}
-             ,{<<"country_code">>, Address#bt_address.country_code}
-             ,{<<"country_name">>, Address#bt_address.country_name}
-             ,{<<"created_at">>, Address#bt_address.created_at}
-             ,{<<"updated_at">>, Address#bt_address.updated_at}
+	    ,{<<"customer_id">>, Address#bt_address.customer_id}
+	    ,{<<"first_name">>, Address#bt_address.first_name}
+	    ,{<<"last_name">>, Address#bt_address.last_name}
+	    ,{<<"company">>, Address#bt_address.company}
+	    ,{<<"street_address">>, Address#bt_address.street_address}
+	    ,{<<"extended_address">>, Address#bt_address.extended_address}
+	    ,{<<"locality">>, Address#bt_address.locality}
+	    ,{<<"region">>, Address#bt_address.region}
+	    ,{<<"postal_code">>, Address#bt_address.postal_code}
+	    ,{<<"country_code_two">>, Address#bt_address.country_code_two}
+	    ,{<<"country_code_three">>, Address#bt_address.country_code_three}
+	    ,{<<"country_code">>, Address#bt_address.country_code}
+	    ,{<<"country_name">>, Address#bt_address.country_name}
+	    ,{<<"created_at">>, Address#bt_address.created_at}
+	    ,{<<"updated_at">>, Address#bt_address.updated_at}
             ],
     kz_json:from_list(props:filter_undefined(Props)).
 

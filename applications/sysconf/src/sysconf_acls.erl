@@ -21,8 +21,8 @@
 -spec build(ne_binary()) -> acls().
 build(Node) ->
     Routines = [fun offnet_resources/1
-                ,fun local_resources/1
-                ,fun sip_auth_ips/1
+	       ,fun local_resources/1
+	       ,fun sip_auth_ips/1
                ],
     PidRefs = [kz_util:spawn_monitor(fun erlang:apply/2, [F, [self()]]) || F <- Routines],
     collect(system_config_acls(Node), PidRefs).
@@ -78,9 +78,9 @@ sip_auth_ips(Collector) ->
             {RawIPs, RawHosts} = lists:foldl(fun needs_resolving/2, {[], []}, JObjs),
             _ = [handle_sip_auth_result(Collector, JObj, IPs) || {IPs, JObj} <- RawIPs],
             PidRefs = [kz_util:spawn_monitor(fun resolve_hostname/4 ,[Collector
-                                                                      ,Host
-                                                                      ,JObj
-                                                                      ,fun handle_sip_auth_result/3
+								     ,Host
+								     ,JObj
+								     ,fun handle_sip_auth_result/3
                                                                      ])
                        || {Host, JObj} <- RawHosts
                       ],
@@ -188,9 +188,9 @@ handle_resource_result(Collector, JObj, IPs) ->
 -spec resource_inbound_ips(pid(), kz_json:object()) -> pid_refs().
 resource_inbound_ips(Collector, JObj) ->
     [kz_util:spawn_monitor(fun resolve_hostname/4, [Collector
-                                                    ,IP
-                                                    ,JObj
-                                                    ,fun handle_resource_result/3
+						   ,IP
+						   ,JObj
+						   ,fun handle_resource_result/3
                                                    ])
      || IP <- kz_json:get_value(<<"inbound_ips">>, JObj, [])
     ].
@@ -198,9 +198,9 @@ resource_inbound_ips(Collector, JObj) ->
 -spec resource_server_ips(pid(), kz_json:object()) -> pid_refs().
 resource_server_ips(Collector, JObj) ->
     [kz_util:spawn_monitor(fun resolve_hostname/4, [Collector
-                                                    ,kz_json:get_value(<<"server">>, Gateway)
-                                                    ,JObj
-                                                    ,fun handle_resource_result/3
+						   ,kz_json:get_value(<<"server">>, Gateway)
+						   ,JObj
+						   ,fun handle_resource_result/3
                                                    ])
      || Gateway <- kz_json:get_value(<<"gateways">>, JObj, []),
         kz_json:is_true(<<"enabled">>, Gateway, 'false')
@@ -210,11 +210,11 @@ resource_server_ips(Collector, JObj) ->
 add_trusted_objects(_Collector, _AccountId, _AuthorizingId, _AuthorizingType, []) -> 'ok';
 add_trusted_objects(Collector, AccountId, AuthorizingId, AuthorizingType, [IP|IPs]) ->
     Props = [{<<"type">>, <<"allow">>}
-             ,{<<"network-list-name">>, <<"trusted">>}
-             ,{<<"cidr">>, <<IP/binary, "/32">>}
-             ,{<<"account_id">>, AccountId}
-             ,{<<"authorizing_id">>, AuthorizingId}
-             ,{<<"authorizing_type">>, AuthorizingType}
+	    ,{<<"network-list-name">>, <<"trusted">>}
+	    ,{<<"cidr">>, <<IP/binary, "/32">>}
+	    ,{<<"account_id">>, AccountId}
+	    ,{<<"authorizing_id">>, AuthorizingId}
+	    ,{<<"authorizing_type">>, AuthorizingType}
             ],
     Collector ! ?ACL_RESULT(IP, kz_json:from_list(props:filter_undefined(Props))),
     add_trusted_objects(Collector, AccountId, AuthorizingId, AuthorizingType, IPs).

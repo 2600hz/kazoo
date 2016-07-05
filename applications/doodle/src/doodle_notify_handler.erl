@@ -35,11 +35,11 @@ handle_account_req(AccountDb, Username) ->
                     doodle_maintenance:start_check_sms_by_owner_id(AccountId, OwnerId);
                 {'error', _E} ->
                     lager:debug("error getting Endpoint ~s from account db ~s : ~p"
-                                ,[EndpointId, AccountDb, _E])
+			       ,[EndpointId, AccountDb, _E])
             end;
         {'error', _E} ->
             lager:debug("error getting EndpointId with username ~s from account db ~s : ~p"
-                        ,[Username, AccountDb, _E])
+		       ,[Username, AccountDb, _E])
     end.
 
 -spec handle_no_account_req(ne_binary(), ne_binary()) -> 'ok'.

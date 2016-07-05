@@ -20,9 +20,9 @@
 -define(BYTES_T, 1099511627776).
 
 -define(ANY_DIGIT, [<<"1">>, <<"2">>, <<"3">>
-                    ,<<"4">>, <<"5">>, <<"6">>
-                    ,<<"7">>, <<"8">>, <<"9">>
-                    ,<<"*">>, <<"0">>, <<"#">>
+		   ,<<"4">>, <<"5">>, <<"6">>
+		   ,<<"7">>, <<"8">>, <<"9">>
+		   ,<<"*">>, <<"0">>, <<"#">>
                    ]).
 
 -define(DEFAULT_CONTENT_TYPE, <<"application/json">>).
@@ -229,17 +229,17 @@
 %% Used by ecallmgr and kapi_dialplan at least
 -define(CALL_EVENTS,
         [<<"CALL_SECURE">>,<<"CALL_UPDATE">>
-         ,<<"CHANNEL_ANSWER">>
-         ,<<"CHANNEL_CREATE">>, <<"CHANNEL_DESTROY">>
-         ,<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>,<<"CHANNEL_EXECUTE_ERROR">>
-         ,<<"CHANNEL_FAX_STATUS">>,<<"CHANNEL_INTERCEPTED">>
-         ,<<"CHANNEL_PROGRESS_MEDIA">>,<<"CHANNEL_REPLACED">>
-         ,<<"CHANNEL_TRANSFEREE">>,<<"CHANNEL_TRANSFEROR">>
-         ,<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
-         ,<<"DETECTED_TONE">>,<<"DTMF">>
-         ,<<"LEG_CREATED">>, <<"LEG_DESTROYED">>
-         ,<<"RECORD_START">>,<<"RECORD_STOP">>
-         ,<<"dialplan">> %% errors are sent with this
+	,<<"CHANNEL_ANSWER">>
+	,<<"CHANNEL_CREATE">>, <<"CHANNEL_DESTROY">>
+	,<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>,<<"CHANNEL_EXECUTE_ERROR">>
+	,<<"CHANNEL_FAX_STATUS">>,<<"CHANNEL_INTERCEPTED">>
+	,<<"CHANNEL_PROGRESS_MEDIA">>,<<"CHANNEL_REPLACED">>
+	,<<"CHANNEL_TRANSFEREE">>,<<"CHANNEL_TRANSFEROR">>
+	,<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
+	,<<"DETECTED_TONE">>,<<"DTMF">>
+	,<<"LEG_CREATED">>, <<"LEG_DESTROYED">>
+	,<<"RECORD_START">>,<<"RECORD_STOP">>
+	,<<"dialplan">> %% errors are sent with this
         ]).
 
 -define(CHANNEL_LOOPBACK_HEADER_PREFIX, "Export-Loopback-").
@@ -359,18 +359,18 @@
 -type media_servers() :: [media_server()].
 
 -record(kz_node, {node = node() :: atom() | '$1' | '$2' | '_'
-                  ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
-                  ,kapps = [] :: kapps_info() | '$1' | '_'
-                  ,media_servers = [] :: media_servers() | '_'
-                  ,last_heartbeat = kz_util:now_ms() :: pos_integer() | 'undefined' | '$3' | '_'
-                  ,zone :: atom() | 'undefined' | '$2' | '_'
-                  ,broker :: api_binary() | '_'
-                  ,used_memory = 0 :: non_neg_integer() | '_'
-                  ,processes = 0 :: non_neg_integer() | '_'
-                  ,ports = 0 :: non_neg_integer() | '_'
-                  ,version :: api_binary() | '_'
-                  ,channels = 0 :: non_neg_integer() | '_'
-                  ,registrations = 0 :: non_neg_integer() | '_'
+		 ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
+		 ,kapps = [] :: kapps_info() | '$1' | '_'
+		 ,media_servers = [] :: media_servers() | '_'
+		 ,last_heartbeat = kz_util:now_ms() :: pos_integer() | 'undefined' | '$3' | '_'
+		 ,zone :: atom() | 'undefined' | '$2' | '_'
+		 ,broker :: api_binary() | '_'
+		 ,used_memory = 0 :: non_neg_integer() | '_'
+		 ,processes = 0 :: non_neg_integer() | '_'
+		 ,ports = 0 :: non_neg_integer() | '_'
+		 ,version :: api_binary() | '_'
+		 ,channels = 0 :: non_neg_integer() | '_'
+		 ,registrations = 0 :: non_neg_integer() | '_'
                  }).
 
 -type kz_node() :: #kz_node{}.

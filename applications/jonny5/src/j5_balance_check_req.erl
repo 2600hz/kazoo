@@ -30,7 +30,7 @@ account_balance(AccountId, Acc) ->
 build_resp(RespAccounts, ReqJObj) ->
     props:filter_undefined(
       [{<<"Balances">>, RespAccounts}
-       ,{<<"Msg-ID">>, kz_api:msg_id(ReqJObj)}
+      ,{<<"Msg-ID">>, kz_api:msg_id(ReqJObj)}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 

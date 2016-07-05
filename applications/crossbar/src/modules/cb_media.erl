@@ -12,19 +12,19 @@
 -module(cb_media).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
-         ,authorize/1
-         ,validate/1, validate/2, validate/3
-         ,content_types_provided/3
-         ,content_types_accepted/3
-         ,languages_provided/1, languages_provided/2, languages_provided/3
-         ,get/3
-         ,put/1
-         ,post/2, post/3
-         ,delete/2, delete/3
+	,allowed_methods/0, allowed_methods/1, allowed_methods/2
+	,resource_exists/0, resource_exists/1, resource_exists/2
+	,authorize/1
+	,validate/1, validate/2, validate/3
+	,content_types_provided/3
+	,content_types_accepted/3
+	,languages_provided/1, languages_provided/2, languages_provided/3
+	,get/3
+	,put/1
+	,post/2, post/3
+	,delete/2, delete/3
 
-         ,acceptable_content_types/0
+	,acceptable_content_types/0
         ]).
 
 -include("crossbar.hrl").
@@ -263,13 +263,13 @@ validate_media_binary(Context, MediaId, ?HTTP_GET, _Files) ->
     load_media_binary(Context, MediaId);
 validate_media_binary(Context, _MediaId, ?HTTP_POST, []) ->
     cb_context:add_validation_error(
-        <<"file">>
-        ,<<"required">>
-        ,kz_json:from_list([
-            {<<"message">>, <<"Please provide an media file">>}
-         ])
-        ,Context
-    );
+      <<"file">>
+				   ,<<"required">>
+				   ,kz_json:from_list([
+						       {<<"message">>, <<"Please provide an media file">>}
+						      ])
+				   ,Context
+     );
 validate_media_binary(Context, MediaId, ?HTTP_POST, [{_Filename, FileObj}]) ->
     Context1 = load_media_meta(Context, MediaId),
     lager:debug("loaded media meta for '~s'", [MediaId]),
@@ -280,13 +280,13 @@ validate_media_binary(Context, MediaId, ?HTTP_POST, [{_Filename, FileObj}]) ->
     end;
 validate_media_binary(Context, _MediaId, ?HTTP_POST, _Files) ->
     cb_context:add_validation_error(
-        <<"file">>
-        ,<<"maxItems">>
-        ,kz_json:from_list([
-            {<<"message">>, <<"Please provide a single media file">>}
-         ])
-        ,Context
-    ).
+      <<"file">>
+				   ,<<"maxItems">>
+				   ,kz_json:from_list([
+						       {<<"message">>, <<"Please provide a single media file">>}
+						      ])
+				   ,Context
+     ).
 
 -spec maybe_normalize_upload(cb_context:context(), ne_binary(), kz_json:object()) -> cb_context:context().
 maybe_normalize_upload(Context, MediaId, FileJObj) ->
@@ -311,12 +311,12 @@ normalize_upload(Context, MediaId, FileJObj, UploadContentType) ->
     ToExt =  ?NORMALIZATION_FORMAT,
 
     lager:info("upload is of type '~s', normalizing from ~s to ~s"
-               ,[UploadContentType, FromExt, ToExt]
+	      ,[UploadContentType, FromExt, ToExt]
               ),
 
     case kz_media_util:normalize_media(FromExt
-                                       ,ToExt
-                                       ,kz_json:get_value(<<"contents">>, FileJObj)
+				      ,ToExt
+				      ,kz_json:get_value(<<"contents">>, FileJObj)
                                       )
     of
         {'ok', Contents} ->
@@ -324,31 +324,31 @@ normalize_upload(Context, MediaId, FileJObj, UploadContentType) ->
             {Major, Minor, _} = cow_mimetypes:all(<<"foo.", (ToExt)/binary>>),
 
             NewFileJObj = kz_json:set_values([{[<<"headers">>, <<"content_type">>], <<Major/binary, "/", Minor/binary>>}
-                                              ,{[<<"headers">>, <<"content_length">>], iolist_size(Contents)}
-                                              ,{<<"contents">>, Contents}
+					     ,{[<<"headers">>, <<"content_length">>], iolist_size(Contents)}
+					     ,{<<"contents">>, Contents}
                                              ], FileJObj),
 
             validate_upload(
               cb_context:setters(Context
-                                 ,[{fun cb_context:set_req_files/2, [{<<"original_media">>, FileJObj}
-                                                                     ,{<<"normalized_media">>, NewFileJObj}
-                                                                    ]
-                                   }
-                                   ,{fun cb_context:set_doc/2, kz_json:delete_key(<<"normalization_error">>, cb_context:doc(Context))}
-                                  ]
+				,[{fun cb_context:set_req_files/2, [{<<"original_media">>, FileJObj}
+								   ,{<<"normalized_media">>, NewFileJObj}
+								   ]
+				  }
+				 ,{fun cb_context:set_doc/2, kz_json:delete_key(<<"normalization_error">>, cb_context:doc(Context))}
+				 ]
                                 )
-              ,MediaId
-              ,NewFileJObj
+			   ,MediaId
+			   ,NewFileJObj
              );
         {'error', Reason} ->
             lager:warning("failed to convert to ~s: ~s", [ToExt, Reason]),
 
             validate_upload(cb_context:set_doc(Context
-                                               ,kz_json:set_value(<<"normalization_error">>, Reason, cb_context:doc(Context))
+					      ,kz_json:set_value(<<"normalization_error">>, Reason, cb_context:doc(Context))
 
                                               )
-                            ,MediaId
-                            ,FileJObj
+			   ,MediaId
+			   ,FileJObj
                            )
     end.
 
@@ -356,30 +356,30 @@ normalize_upload(Context, MediaId, FileJObj, UploadContentType) ->
 validate_upload(Context, MediaId, FileJObj) ->
     CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj, <<"application/octet-stream">>),
     Size = kz_json:get_integer_value([<<"headers">>, <<"content_length">>]
-                                     ,FileJObj
-                                     ,iolist_size(kz_json:get_value(<<"contents">>, FileJObj, <<>>))
+				    ,FileJObj
+				    ,iolist_size(kz_json:get_value(<<"contents">>, FileJObj, <<>>))
                                     ),
 
     Props = [{<<"content_type">>, CT}
-             ,{<<"content_length">>, Size}
-             ,{<<"media_source">>, <<"upload">>}
+	    ,{<<"content_length">>, Size}
+	    ,{<<"media_source">>, <<"upload">>}
             ],
     validate_request(MediaId
-                     ,cb_context:set_req_data(Context
-                                              ,kz_json:set_values(Props, cb_context:doc(Context))
-                                             )
+		    ,cb_context:set_req_data(Context
+					    ,kz_json:set_values(Props, cb_context:doc(Context))
+					    )
                     ).
 
 -spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 get(Context, _MediaId, ?BIN_DATA) ->
     cb_context:add_resp_headers(Context
-                                ,[{<<"Content-Type">>
-                                   ,kz_json:get_value(<<"content-type">>, cb_context:doc(Context), <<"application/octet-stream">>)
-                                  }
-                                  ,{<<"Content-Length">>
-                                    ,binary:referenced_byte_size(cb_context:resp_data(Context))
-                                   }
-                                 ]).
+			       ,[{<<"Content-Type">>
+				 ,kz_json:get_value(<<"content-type">>, cb_context:doc(Context), <<"application/octet-stream">>)
+				 }
+				,{<<"Content-Length">>
+				 ,binary:referenced_byte_size(cb_context:resp_data(Context))
+				 }
+				]).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
@@ -428,14 +428,14 @@ post_media_doc(Context, MediaId, _AccountId) ->
                         maybe_merge_tts(C, MediaId, Text, Voice, cb_context:resp_status(C));
                    (C) -> C
                 end
-                ,fun(C) when TTS ->
-                         maybe_save_tts(C, Text, Voice, cb_context:resp_status(Context));
-                    (C) ->
-                         case cb_context:resp_status(C) of
-                             'success' -> crossbar_doc:save(C);
-                             _Status -> Context
-                         end
-                 end
+	       ,fun(C) when TTS ->
+			maybe_save_tts(C, Text, Voice, cb_context:resp_status(Context));
+		   (C) ->
+			case cb_context:resp_status(C) of
+			    'success' -> crossbar_doc:save(C);
+			    _Status -> Context
+			end
+		end
                ],
     lists:foldl(fun(F, C) -> F(C) end, Context, Routines).
 
@@ -454,16 +454,16 @@ maybe_save_tts(Context, Text, Voice, 'success') ->
     JObj = kz_json:set_value(<<"media_source">>, <<"tts">>, cb_context:doc(Context)),
     crossbar_doc:save(
       cb_context:set_doc(Context
-                         ,kz_json:set_values([{<<"pvt_previous_tts">>, Text}
-                                              ,{<<"pvt_previous_voice">>, Voice}
-                                             ], JObj)
+			,kz_json:set_values([{<<"pvt_previous_tts">>, Text}
+					    ,{<<"pvt_previous_voice">>, Voice}
+					    ], JObj)
                         )
      );
 maybe_save_tts(Context, _Text, _Voice, _Status) ->
     Context.
 
 -spec maybe_update_tts(cb_context:context(), ne_binary(), ne_binary(), crossbar_status()) ->
-                        cb_context:context().
+			      cb_context:context().
 maybe_update_tts(Context, Text, Voice, 'success') ->
     JObj = cb_context:doc(Context),
     Voice = kz_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
@@ -477,10 +477,10 @@ maybe_update_tts(Context, Text, Voice, 'success') ->
         {'ok', ContentType, Content} ->
             MediaId = kz_doc:id(JObj),
             Headers = kz_json:from_list([{<<"content_type">>, ContentType}
-                                         ,{<<"content_length">>, iolist_size(Content)}
+					,{<<"content_length">>, iolist_size(Content)}
                                         ]),
             FileJObj = kz_json:from_list([{<<"headers">>, Headers}
-                                          ,{<<"contents">>, Content}
+					 ,{<<"contents">>, Content}
                                          ]),
             FileName = <<"text_to_speech_"
                          ,(kz_util:to_binary(kz_util:current_tstamp()))/binary
@@ -488,9 +488,9 @@ maybe_update_tts(Context, Text, Voice, 'success') ->
                        >>,
             _ = update_media_binary(cb_context:set_resp_status(
                                       cb_context:set_req_files(Context, [{FileName, FileJObj}])
-                                      ,'error'
+							      ,'error'
                                      )
-                                    ,MediaId
+				   ,MediaId
                                    ),
             crossbar_doc:load(MediaId, Context, ?TYPE_CHECK_OPTION(kzd_media:type()))
     catch
@@ -510,10 +510,10 @@ maybe_merge_tts(Context, MediaId, Text, Voice, 'success') ->
         {'error', R} -> crossbar_util:response('error', kz_util:to_binary(R), Context);
         {'ok', ContentType, Content} ->
             Headers = kz_json:from_list([{<<"content_type">>, ContentType}
-                                         ,{<<"content_length">>, iolist_size(Content)}
+					,{<<"content_length">>, iolist_size(Content)}
                                         ]),
             FileJObj = kz_json:from_list([{<<"headers">>, Headers}
-                                          ,{<<"contents">>, Content}
+					 ,{<<"contents">>, Content}
                                          ]),
             FileName = <<"text_to_speech_"
                          ,(kz_util:to_binary(kz_util:current_tstamp()))/binary
@@ -522,11 +522,11 @@ maybe_merge_tts(Context, MediaId, Text, Voice, 'success') ->
 
             _ = update_media_binary(cb_context:set_resp_status(
                                       cb_context:set_req_files(Context
-                                                               ,[{FileName, FileJObj}]
+							      ,[{FileName, FileJObj}]
                                                               )
-                                      ,'error'
+							      ,'error'
                                      )
-                                    ,MediaId
+				   ,MediaId
                                    ),
             crossbar_doc:load_merge(MediaId, kz_json:public_fields(JObj), Context, ?TYPE_CHECK_OPTION(kzd_media:type()))
     end;
@@ -559,17 +559,17 @@ load_media_summary(Context, 'undefined') ->
     lager:debug("loading system_config media"),
     fix_start_keys(
       crossbar_doc:load_view(?CB_LIST
-                             ,[{'startkey_fun', fun start_key/1}]
-                             ,cb_context:set_account_db(Context, ?KZ_MEDIA_DB)
-                             ,fun normalize_view_results/2
+			    ,[{'startkey_fun', fun start_key/1}]
+			    ,cb_context:set_account_db(Context, ?KZ_MEDIA_DB)
+			    ,fun normalize_view_results/2
                             )
      );
 load_media_summary(Context, _AccountId) ->
     fix_start_keys(
       crossbar_doc:load_view(?CB_LIST
-                             ,[{'startkey_fun', fun start_key/1}]
-                             ,Context
-                             ,fun normalize_view_results/2
+			    ,[{'startkey_fun', fun start_key/1}]
+			    ,Context
+			    ,fun normalize_view_results/2
                             )
      ).
 
@@ -584,10 +584,10 @@ start_key(Context) ->
 fix_start_keys(Context) ->
     cb_context:set_resp_envelope(
       Context
-      ,lists:foldl(fun fix_start_keys_fold/2
-                   ,cb_context:resp_envelope(Context)
-                   ,[<<"start_key">>, <<"next_start_key">>]
-                  )
+				,lists:foldl(fun fix_start_keys_fold/2
+					    ,cb_context:resp_envelope(Context)
+					    ,[<<"start_key">>, <<"next_start_key">>]
+					    )
      ).
 
 -spec fix_start_keys_fold(kz_json:key(), kz_json:object()) -> kz_json:object().
@@ -609,17 +609,17 @@ load_available_languages(Context) ->
 load_available_languages(Context, 'undefined') ->
     fix_start_keys(
       crossbar_doc:load_view(?CB_LIST_BY_LANG
-                             ,[{'group_level', 1}]
-                             ,cb_context:set_account_db(Context, ?KZ_MEDIA_DB)
-                             ,fun normalize_count_results/2
+			    ,[{'group_level', 1}]
+			    ,cb_context:set_account_db(Context, ?KZ_MEDIA_DB)
+			    ,fun normalize_count_results/2
                             )
      );
 load_available_languages(Context, _AccountId) ->
     fix_start_keys(
       crossbar_doc:load_view(?CB_LIST_BY_LANG
-                             ,[{'group_level', 1}]
-                             ,Context
-                             ,fun normalize_count_results/2
+			    ,[{'group_level', 1}]
+			    ,Context
+			    ,fun normalize_count_results/2
                             )
      ).
 
@@ -648,25 +648,25 @@ load_media_docs_by_language(Context, Language) ->
 load_media_docs_by_language(Context, Language, 'undefined') ->
     fix_start_keys(
       crossbar_doc:load_view(?CB_LIST_BY_LANG
-                             ,[{'startkey_fun', fun(Ctx) -> language_start_key(Ctx, Language) end}
-                               ,{'endkey', [Language, kz_json:new()]}
-                               ,{'reduce', 'false'}
-                               ,{'include_docs', 'false'}
-                              ]
-                             ,cb_context:set_account_db(Context, ?KZ_MEDIA_DB)
-                             ,fun normalize_language_results/2
+			    ,[{'startkey_fun', fun(Ctx) -> language_start_key(Ctx, Language) end}
+			     ,{'endkey', [Language, kz_json:new()]}
+			     ,{'reduce', 'false'}
+			     ,{'include_docs', 'false'}
+			     ]
+			    ,cb_context:set_account_db(Context, ?KZ_MEDIA_DB)
+			    ,fun normalize_language_results/2
                             )
      );
 load_media_docs_by_language(Context, Language, _AccountId) ->
     fix_start_keys(
       crossbar_doc:load_view(?CB_LIST_BY_LANG
-                             ,[{'startkey_fun', fun(Ctx) -> language_start_key(Ctx, Language) end}
-                               ,{'endkey', [Language, kz_json:new()]}
-                               ,{'reduce', 'false'}
-                               ,{'include_docs', 'false'}
-                              ]
-                             ,Context
-                             ,fun normalize_language_results/2
+			    ,[{'startkey_fun', fun(Ctx) -> language_start_key(Ctx, Language) end}
+			     ,{'endkey', [Language, kz_json:new()]}
+			     ,{'reduce', 'false'}
+			     ,{'include_docs', 'false'}
+			     ]
+			    ,Context
+			    ,fun normalize_language_results/2
                             )
      ).
 
@@ -703,21 +703,21 @@ load_available_prompts(Context) ->
 load_available_prompts(Context, 'undefined') ->
     fix_prompt_start_keys(
       crossbar_doc:load_view(?CB_LIST_BY_PROMPT
-                             ,[{'group_level', 1}
-                               ,{'startkey_fun', fun prompt_start_key/1}
-                              ]
-                             ,cb_context:set_account_db(Context, ?KZ_MEDIA_DB)
-                             ,fun normalize_count_results/2
+			    ,[{'group_level', 1}
+			     ,{'startkey_fun', fun prompt_start_key/1}
+			     ]
+			    ,cb_context:set_account_db(Context, ?KZ_MEDIA_DB)
+			    ,fun normalize_count_results/2
                             )
      );
 load_available_prompts(Context, _AccountId) ->
     fix_prompt_start_keys(
       crossbar_doc:load_view(?CB_LIST_BY_PROMPT
-                             ,[{'group_level', 1}
-                               ,{'startkey_fun', fun prompt_start_key/1}
-                              ]
-                             ,Context
-                             ,fun normalize_count_results/2
+			    ,[{'group_level', 1}
+			     ,{'startkey_fun', fun prompt_start_key/1}
+			     ]
+			    ,Context
+			    ,fun normalize_count_results/2
                             )
      ).
 
@@ -730,25 +730,25 @@ load_media_docs_by_prompt(Context, PromptId) ->
 load_media_docs_by_prompt(Context, PromptId, 'undefined') ->
     fix_prompt_start_keys(
       crossbar_doc:load_view(?CB_LIST_BY_PROMPT
-                             ,[{'startkey_fun', fun(Ctx) -> prompt_start_key(Ctx, PromptId) end}
-                               ,{'endkey', [PromptId, kz_json:new()]}
-                               ,{'reduce', 'false'}
-                               ,{'include_docs', 'false'}
-                              ]
-                             ,cb_context:set_account_db(Context, ?KZ_MEDIA_DB)
-                             ,fun normalize_prompt_results/2
+			    ,[{'startkey_fun', fun(Ctx) -> prompt_start_key(Ctx, PromptId) end}
+			     ,{'endkey', [PromptId, kz_json:new()]}
+			     ,{'reduce', 'false'}
+			     ,{'include_docs', 'false'}
+			     ]
+			    ,cb_context:set_account_db(Context, ?KZ_MEDIA_DB)
+			    ,fun normalize_prompt_results/2
                             )
      );
 load_media_docs_by_prompt(Context, PromptId, _AccountId) ->
     fix_prompt_start_keys(
       crossbar_doc:load_view(?CB_LIST_BY_PROMPT
-                             ,[{'startkey_fun', fun(Ctx) -> prompt_start_key(Ctx, PromptId) end}
-                               ,{'endkey', [PromptId, kz_json:new()]}
-                               ,{'reduce', 'false'}
-                               ,{'include_docs', 'false'}
-                              ]
-                             ,Context
-                             ,fun normalize_prompt_results/2
+			    ,[{'startkey_fun', fun(Ctx) -> prompt_start_key(Ctx, PromptId) end}
+			     ,{'endkey', [PromptId, kz_json:new()]}
+			     ,{'reduce', 'false'}
+			     ,{'include_docs', 'false'}
+			     ]
+			    ,Context
+			    ,fun normalize_prompt_results/2
                             )
      ).
 
@@ -776,7 +776,7 @@ normalize_prompt_results(JObj, Acc) ->
         end,
     [kz_json:from_list(
        [{<<"id">>, kz_doc:id(JObj)}
-        ,{<<"has_attachments">>, HasAttachments}
+       ,{<<"has_attachments">>, HasAttachments}
        ])
      | Acc
     ].
@@ -785,10 +785,10 @@ normalize_prompt_results(JObj, Acc) ->
 fix_prompt_start_keys(Context) ->
     cb_context:set_resp_envelope(
       Context
-      ,lists:foldl(fun fix_prompt_start_keys_fold/2
-                   ,cb_context:resp_envelope(Context)
-                   ,[<<"start_key">>, <<"next_start_key">>]
-                  )
+				,lists:foldl(fun fix_prompt_start_keys_fold/2
+					    ,cb_context:resp_envelope(Context)
+					    ,[<<"start_key">>, <<"next_start_key">>]
+					    )
      ).
 
 -spec fix_prompt_start_keys_fold(kz_json:key(), kz_json:object()) -> kz_json:object().
@@ -836,7 +836,7 @@ validate_request(MediaId, Context) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, kzd_media:type()}
-             ,{<<"media_source">>, <<"upload">>}
+	    ,{<<"media_source">>, <<"upload">>}
              | maybe_add_prompt_fields(Context)
             ],
     cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context)));
@@ -919,14 +919,14 @@ load_media_binary(Context, MediaId) ->
                 [Attachment|_] ->
                     cb_context:add_resp_headers(
                       crossbar_doc:load_attachment(cb_context:doc(Context1)
-                                                   ,Attachment
-                                                   ,?TYPE_CHECK_OPTION(kzd_media:type())
-                                                   ,Context1
+						  ,Attachment
+						  ,?TYPE_CHECK_OPTION(kzd_media:type())
+						  ,Context1
                                                   )
-                      ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
-                        ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context1), Attachment)}
-                        ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context1), Attachment)}
-                       ])
+					       ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
+						,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context1), Attachment)}
+						,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context1), Attachment)}
+						])
             end;
         _Status -> Context1
     end.
@@ -943,8 +943,8 @@ load_media_binary(Context, MediaId) ->
                                  cb_context:context().
 update_media_binary(Context, MediaId) ->
     update_media_binary(crossbar_util:maybe_remove_attachments(Context)
-                        ,MediaId
-                        ,cb_context:req_files(Context)
+		       ,MediaId
+		       ,cb_context:req_files(Context)
                        ).
 
 update_media_binary(Context, _MediaId, []) -> Context;
@@ -956,13 +956,13 @@ update_media_binary(Context, MediaId, [{Filename, FileObj}|Files]) ->
 
     update_media_binary(
       crossbar_doc:save_attachment(MediaId
-                                   ,cb_modules_util:attachment_name(Filename, CT)
-                                   ,Contents
-                                   ,Context
-                                   ,Opts
+				  ,cb_modules_util:attachment_name(Filename, CT)
+				  ,Contents
+				  ,Context
+				  ,Opts
                                   )
-      ,MediaId
-      ,Files
+		       ,MediaId
+		       ,Files
      ).
 
 %%--------------------------------------------------------------------

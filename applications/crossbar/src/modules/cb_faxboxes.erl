@@ -1,4 +1,4 @@
- %%%-------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
@@ -11,14 +11,14 @@
 -module(cb_faxboxes).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
-         ,validate_resource/1, validate_resource/2
-         ,put/1
-         ,post/2
-         ,patch/2
-         ,delete/2
+	,allowed_methods/0, allowed_methods/1
+	,resource_exists/0, resource_exists/1
+	,validate/1, validate/2
+	,validate_resource/1, validate_resource/2
+	,put/1
+	,post/2
+	,patch/2
+	,delete/2
         ]).
 
 -include("crossbar.hrl").
@@ -38,18 +38,18 @@
 -define(SMTP_EMAIL_FIELD, <<"pvt_smtp_email_address">>).
 
 -define(LEAKED_FIELDS, [?CLOUD_STATE_FIELD
-                        ,?CLOUD_CLAIM_URL_FIELD
-                        ,?CLOUD_PRINTER_ID_FIELD
-                        ,?SMTP_EMAIL_FIELD
+		       ,?CLOUD_CLAIM_URL_FIELD
+		       ,?CLOUD_PRINTER_ID_FIELD
+		       ,?SMTP_EMAIL_FIELD
                        ]).
 
 -define(CLOUD_PROPERTIES, [<<"printer">>
-                           ,<<"default_display_name">>
-                           ,<<"manufacturer">>
-                           ,<<"model">>
-                           ,<<"setup_url">>
-                           ,<<"support_url">>
-                           ,<<"update_url">>
+			  ,<<"default_display_name">>
+			  ,<<"manufacturer">>
+			  ,<<"model">>
+			  ,<<"setup_url">>
+			  ,<<"support_url">>
+			  ,<<"update_url">>
                           ]).
 
 -type fax_field_name() :: ne_binary().
@@ -167,12 +167,12 @@ validate_email_address(Context) ->
         'false' ->
             cb_context:add_validation_error(
               <<"custom_smtp_email_address">>
-              ,<<"unique">>
-              ,kz_json:from_list(
-                 [{<<"message">>, <<"email address must be unique">>}
-                  ,{<<"cause">>, Email}
-                 ])
-              ,Context
+					   ,<<"unique">>
+					   ,kz_json:from_list(
+					      [{<<"message">>, <<"email address must be unique">>}
+					      ,{<<"cause">>, Email}
+					      ])
+					   ,Context
              )
     end.
 
@@ -196,9 +196,9 @@ validate_patch(Context) ->
             end;
         'false' ->
             cb_context:add_validation_error(<<"custom_smtp_email_address">>
-                                            ,<<"unique">>
-                                            ,<<"email address must be unique">>
-                                            ,Context
+					   ,<<"unique">>
+					   ,<<"email address must be unique">>
+					   ,Context
                                            )
     end.
 
@@ -305,8 +305,8 @@ leak_private_field_value(_K, K1, V, Acc) ->
 -spec remove_private_fields(cb_context:context()) -> cb_context:context().
 remove_private_fields(Context) ->
     JObj1 = lists:foldl(fun remove_private_fields_fold/2
-                        ,cb_context:req_data(Context)
-                        ,?LEAKED_FIELDS
+		       ,cb_context:req_data(Context)
+		       ,?LEAKED_FIELDS
                        ),
     cb_context:set_req_data(Context, JObj1).
 
@@ -338,16 +338,16 @@ update_faxbox(Id, Context) ->
 -spec on_faxbox_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_faxbox_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
-                       ,kz_json:set_values(
-                          [{<<"pvt_type">>, kzd_fax_box:type()}
-                           ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
-                           ,{<<"pvt_account_db">>, cb_context:account_db(Context)}
-                           ,{<<"pvt_reseller_id">>, cb_context:reseller_id(Context)}
-                           ,{<<"_id">>, kz_util:rand_hex_binary(16)}
-                           ,{<<"pvt_smtp_email_address">>, generate_email_address(Context)}
-                          ]
-                          ,cb_context:doc(Context)
-                         )
+		      ,kz_json:set_values(
+			 [{<<"pvt_type">>, kzd_fax_box:type()}
+			 ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
+			 ,{<<"pvt_account_db">>, cb_context:account_db(Context)}
+			 ,{<<"pvt_reseller_id">>, cb_context:reseller_id(Context)}
+			 ,{<<"_id">>, kz_util:rand_hex_binary(16)}
+			 ,{<<"pvt_smtp_email_address">>, generate_email_address(Context)}
+			 ]
+					 ,cb_context:doc(Context)
+			)
                       );
 on_faxbox_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(kzd_fax_box:type())).
@@ -370,9 +370,9 @@ generate_email_address(Context) ->
 faxbox_listing(Context) ->
     ViewOptions = ['include_docs'],
     crossbar_doc:load_view(<<"faxbox/crossbar_listing">>
-                           ,ViewOptions
-                           ,Context
-                           ,fun normalize_view_results/2
+			  ,ViewOptions
+			  ,Context
+			  ,fun normalize_view_results/2
                           ).
 
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
@@ -437,8 +437,8 @@ register_cloud_printer(Context, FaxboxId) ->
     ContentType = kz_util:to_list(<<"multipart/form-data; boundary=", Boundary/binary>>),
     ContentLength = length(Body),
     Headers = [?GPC_PROXY_HEADER
-               ,{"Content-Type",ContentType}
-               ,{'Content-Length', ContentLength}
+	      ,{"Content-Type",ContentType}
+	      ,{'Content-Length', ContentLength}
               ],
     Url = kz_util:to_list(?GPC_URL_REGISTER),
     case kz_http:post(Url, Headers, Body) of
@@ -463,22 +463,22 @@ register_cloud_printer(Context, FaxboxId) ->
 get_cloud_registered_properties(JObj) ->
     [PrinterDoc] = kz_json:get_value(<<"printers">>, JObj),
     [{<<"pvt_cloud_printer_id">>, kz_doc:id(PrinterDoc)}
-     ,{<<"pvt_cloud_proxy">>, kz_json:get_value(<<"proxy">>, PrinterDoc)}
-     ,{<<"pvt_cloud_created_time">>, kz_json:get_integer_value(<<"createTime">>, PrinterDoc)}
-     ,{<<"pvt_cloud_registration_token">>, kz_json:get_value(<<"registration_token">>, JObj)}
-     ,{<<"pvt_cloud_token_duration">>, kz_json:get_integer_value(<<"token_duration">>, JObj)}
-     ,{<<"pvt_cloud_polling_url">>, kz_json:get_value(<<"polling_url">>, JObj)}
-     ,{<<"pvt_cloud_connector_claim_url">>, kz_json:get_value(<<"complete_invite_url">>, JObj)}
-     ,{<<"pvt_cloud_state">>, <<"registered">>}
-     ,{<<"pvt_cloud_oauth_scope">>, kz_json:get_value(<<"oauth_scope">>, JObj)}
+    ,{<<"pvt_cloud_proxy">>, kz_json:get_value(<<"proxy">>, PrinterDoc)}
+    ,{<<"pvt_cloud_created_time">>, kz_json:get_integer_value(<<"createTime">>, PrinterDoc)}
+    ,{<<"pvt_cloud_registration_token">>, kz_json:get_value(<<"registration_token">>, JObj)}
+    ,{<<"pvt_cloud_token_duration">>, kz_json:get_integer_value(<<"token_duration">>, JObj)}
+    ,{<<"pvt_cloud_polling_url">>, kz_json:get_value(<<"polling_url">>, JObj)}
+    ,{<<"pvt_cloud_connector_claim_url">>, kz_json:get_value(<<"complete_invite_url">>, JObj)}
+    ,{<<"pvt_cloud_state">>, <<"registered">>}
+    ,{<<"pvt_cloud_oauth_scope">>, kz_json:get_value(<<"oauth_scope">>, JObj)}
     ].
 
 -spec register_body(ne_binary(), ne_binary(), ne_binary()) -> iolist().
 register_body(ResellerId, FaxboxId, Boundary) ->
     {'ok', DefaultFields} = file:consult(
-                       [filename:join(
-                          [code:priv_dir('fax'), "cloud/register.props"])
-                       ]),
+			      [filename:join(
+				 [code:priv_dir('fax'), "cloud/register.props"])
+			      ]),
     OverrideFields = kapps_account_config:get(ResellerId, <<"fax">>, <<"cloud_properties">>, []),
     Fields = lists:foldl(fun({<<"tag">>, _}=P, Acc) ->
                                  [P | Acc];
@@ -493,16 +493,16 @@ register_body(ResellerId, FaxboxId, Boundary) ->
                               [code:priv_dir('fax'), "cloud/printer.json"])
                            ]),
     Files = [{<<"capabilities">>
-              ,<<"capabilities">>
-              ,PrinterDef
-              ,<<"application/json">>
+	     ,<<"capabilities">>
+	     ,PrinterDef
+	     ,<<"application/json">>
              }],
     format_multipart_formdata(Boundary
-                              ,[{<<"uuid">>, FaxboxId}
-                                ,{<<"proxy">> , ?GPC_PROXY}
-                                | Fields
-                               ]
-                              ,Files
+			     ,[{<<"uuid">>, FaxboxId}
+			      ,{<<"proxy">> , ?GPC_PROXY}
+			       | Fields
+			      ]
+			     ,Files
                              ).
 
 -spec format_multipart_formdata(ne_binary(), kz_proplist(), fax_files()) -> iolist().
@@ -516,29 +516,29 @@ format_multipart_formdata(Boundary, Fields, Files) ->
 build_field_parts(Boundary, Fields, Acc0) ->
     lists:foldr(fun({FieldName, FieldContent}, Acc) ->
                         [<<"--", Boundary/binary>>
-                         ,<<"Content-Disposition: form-data; name=\"",FieldName/binary,"\"">>
-                         ,<<>>
-                         ,FieldContent
+			,<<"Content-Disposition: form-data; name=\"",FieldName/binary,"\"">>
+			,<<>>
+			,FieldContent
                          | Acc
                         ]
                 end
-                ,Acc0
-                ,Fields
+	       ,Acc0
+	       ,Fields
                ).
 
 -spec build_file_parts(ne_binary(), fax_files(), iolist()) -> iolist().
 build_file_parts(Boundary, Files, Acc0) ->
     lists:foldr(fun({FieldName, FileName, FileContent, FileContentType}, Acc) ->
                         [<<"--", Boundary/binary>>
-                         ,<<"Content-Disposition: format-data; name=\"",FieldName/binary,"\"; filename=\"",FileName/binary,"\"">>
-                         ,<<"Content-Type: ", FileContentType/binary>>
-                         ,<<>>
-                         ,FileContent
+			,<<"Content-Disposition: format-data; name=\"",FieldName/binary,"\"; filename=\"",FileName/binary,"\"">>
+			,<<"Content-Type: ", FileContentType/binary>>
+			,<<>>
+			,FileContent
                          | Acc
                         ]
                 end
-                ,Acc0
-                ,Files
+	       ,Acc0
+	       ,Files
                ).
 
 -spec join_formdata_fold(ne_binary(), iolist()) -> iolist().
@@ -560,7 +560,7 @@ oauth_req(Doc, OAuthRefresh, Context) ->
     {'ok', #oauth_token{expires=Expires}=Token} = kazoo_oauth_util:token(App, RefreshToken),
     TokenString = kazoo_oauth_util:authorization_header(Token),
     cb_context:set_resp_data(Context, kz_json:set_values([{<<"expires">>, Expires}
-                                                          ,{<<"token">>, TokenString}
+							 ,{<<"token">>, TokenString}
                                                          ], kz_json:new())).
 
 -spec faxbox_doc_save(cb_context:context()) -> cb_context:context().

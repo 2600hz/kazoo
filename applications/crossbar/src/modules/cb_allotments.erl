@@ -9,10 +9,10 @@
 -module(cb_allotments).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
-         ,post/1
+	,allowed_methods/0, allowed_methods/1
+	,resource_exists/0, resource_exists/1
+	,validate/1, validate/2
+	,post/1
         ]).
 
 -include("crossbar.hrl").
@@ -111,14 +111,14 @@ load_allotments(Context) ->
 -spec load_consumed(cb_context:context()) -> cb_context:context().
 load_consumed(Context) ->
     Allotments = kz_json:get_json_value(?PVT_ALLOTMENTS
-                                        ,cb_context:doc(crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)))
-                                        ,kz_json:new()),
+				       ,cb_context:doc(crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)))
+				       ,kz_json:new()),
     Mode = get_consumed_mode(Context),
     {ContextResult, _, Result} = kz_json:foldl(fun foldl_consumed/3, {Context, Mode, kz_json:new()}, Allotments),
     case cb_context:resp_status(ContextResult) of
         'success' ->
             cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-                                         ,{fun cb_context:set_resp_data/2, Result}
+					,{fun cb_context:set_resp_data/2, Result}
                                         ]);
         _Error -> ContextResult
     end.
@@ -134,8 +134,8 @@ foldl_consumed(Classification, Value, {Context, Mode, Acc}) ->
             [_, From] = props:get_value('startkey', ViewOptions),
             [_, To] = props:get_value('endkey', ViewOptions),
             ContextResult = crossbar_doc:load_view(?LIST_CONSUMED
-                                                   ,props:insert_value({'group_level', 1},ViewOptions)
-                                                   ,Context
+						  ,props:insert_value({'group_level', 1},ViewOptions)
+						  ,Context
                                                   ),
             Acc1 = normalize_result(Cycle, From, To, Acc, cb_context:doc(ContextResult)),
             {ContextResult, Mode, Acc1};
@@ -153,9 +153,9 @@ normalize_result(Cycle, From, To, Acc, [Head|Tail]) ->
                'undefined' ->
                    Value = kz_json:set_values(
                              [{<<"cycle">>, Cycle}
-                              ,{<<"consumed_from">>, From}
-                              ,{<<"consumed_to">>, To}
-                              ,{<<"consumed">>, Consumed}
+			     ,{<<"consumed_from">>, From}
+			     ,{<<"consumed_to">>, To}
+			     ,{<<"consumed">>, Consumed}
                              ], kz_json:new()),
                    kz_json:set_value(Classification, Value, Acc);
                AccValue ->
@@ -185,7 +185,7 @@ create_viewoptions(Context, Classification, _JObj, {'manual', From, To}) ->
 get_consumed_mode(Context) ->
     case
         {maybe_req_seconds(Context, <<"created_from">>)
-         ,maybe_req_seconds(Context, <<"created_to">>)
+	,maybe_req_seconds(Context, <<"created_to">>)
         }
     of
         {'undefined', 'undefined'} -> {'cycle', calendar:universal_time()};
@@ -250,17 +250,17 @@ maybe_handle_load_failure(Context) ->
 maybe_handle_load_failure(Context, 404) ->
     Data = cb_context:req_data(Context),
     NewLimits = kz_json:from_list([{<<"pvt_type">>, ?PVT_TYPE}
-                                   ,{<<"_id">>, ?PVT_TYPE}
+				  ,{<<"_id">>, ?PVT_TYPE}
                                   ]),
     JObj = kz_json_schema:add_defaults(kz_json:merge_jobjs(NewLimits, kz_json:public_fields(Data))
-                                       ,<<"limits">>
+				      ,<<"limits">>
                                       ),
 
     cb_context:setters(Context
-                       ,[{fun cb_context:set_resp_status/2, 'success'}
-                         ,{fun cb_context:set_resp_data/2, kz_json:public_fields(JObj)}
-                         ,{fun cb_context:set_doc/2, crossbar_doc:update_pvt_parameters(JObj, Context)}
-                        ]);
+		      ,[{fun cb_context:set_resp_status/2, 'success'}
+		       ,{fun cb_context:set_resp_data/2, kz_json:public_fields(JObj)}
+		       ,{fun cb_context:set_doc/2, crossbar_doc:update_pvt_parameters(JObj, Context)}
+		       ]);
 maybe_handle_load_failure(Context, _RespCode) -> Context.
 
 %%--------------------------------------------------------------------

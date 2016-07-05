@@ -59,7 +59,7 @@ collect_channel_prop(Key, JObj) ->
 -spec attachment_name(binary(), ne_binary()) -> ne_binary().
 attachment_name(Filename, CT) ->
     Generators = [fun maybe_generate_random_filename/1
-                  ,fun(A) -> maybe_attach_extension(A, CT) end
+		 ,fun(A) -> maybe_attach_extension(A, CT) end
                  ],
     lists:foldl(fun(F, A) -> F(A) end, Filename, Generators).
 

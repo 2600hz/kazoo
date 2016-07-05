@@ -13,16 +13,16 @@
 
 %% API
 -export([start_link/1
-         ,start_link/2
+	,start_link/2
         ]).
 -export([handle_command/2]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("ecallmgr.hrl").
@@ -30,13 +30,13 @@
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_command'}
-                      ,[{<<"conference">>, <<"command">>}]
+		     ,[{<<"conference">>, <<"command">>}]
                      }
                     ]).
 -define(BINDINGS, [{'conference'
-                    ,[{'restrict_to', ['command']}
-                      ,'federate'
-                     ]}
+		   ,[{'restrict_to', ['command']}
+		    ,'federate'
+		    ]}
                   ]).
 %% This queue is used to round-robin conference commands among ALL the
 %% conference listeners with the hopes that the one receiving the command
@@ -46,18 +46,18 @@
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -define(DEFAULT_PARTICIPANT_EVENTS, [<<"add-member">>
-                            , <<"del-member">>
-                            , <<"stop-talking">>
-                            , <<"start-talking">>
-                            , <<"mute-member">>
-                            , <<"unmute-member">>
-                            , <<"deaf-member">>
-                            , <<"undeaf-member">>
-                        ]).
+				    , <<"del-member">>
+				    , <<"stop-talking">>
+				    , <<"start-talking">>
+				    , <<"mute-member">>
+				    , <<"unmute-member">>
+				    , <<"deaf-member">>
+				    , <<"undeaf-member">>
+				    ]).
 
 -record(state, {node = 'undefined' :: atom()
-                ,options = [] :: kz_proplist()
-                ,publish_participant_event = [] :: [ne_binary()]
+	       ,options = [] :: kz_proplist()
+	       ,publish_participant_event = [] :: [ne_binary()]
                }).
 
 %%%===================================================================
@@ -73,10 +73,10 @@ start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
     gen_listener:start_link(?SERVER,
                             [{'responders', ?RESPONDERS}
-                             ,{'bindings', ?BINDINGS}
-                             ,{'queue_name', ?QUEUE_NAME}
-                             ,{'queue_options', ?QUEUE_OPTIONS}
-                             ,{'consume_options', ?CONSUME_OPTIONS}
+			    ,{'bindings', ?BINDINGS}
+			    ,{'queue_name', ?QUEUE_NAME}
+			    ,{'queue_options', ?QUEUE_OPTIONS}
+			    ,{'consume_options', ?CONSUME_OPTIONS}
                             ], [Node, Options]).
 
 -spec handle_command(kz_json:object(), kz_proplist()) -> any().
@@ -110,9 +110,9 @@ init([Node, Options]) ->
     gen_server:cast(self(), 'bind_to_events'),
     ecallmgr_fs_conferences:sync_node(Node),
     {'ok', #state{node=Node
-                    ,options=Options
-                    ,publish_participant_event=ecallmgr_config:get(<<"publish_participant_event">>, ?DEFAULT_PARTICIPANT_EVENTS)
-                }
+		 ,options=Options
+		 ,publish_participant_event=ecallmgr_config:get(<<"publish_participant_event">>, ?DEFAULT_PARTICIPANT_EVENTS)
+		 }
     }.
 
 %%--------------------------------------------------------------------
@@ -159,7 +159,7 @@ handle_cast({'gen_listener', {'created_queue', <<"ecallmgr_fs_conference">>}}, #
               kz_amqp_channel:consumer_pid(ConsumerPid),
               QueueName = kapi_conference:focus_queue_name(Node),
               Options = [{'queue_options', [{'exclusive', 'false'}]}
-                         ,{'consume_options', [{'exclusive', 'false'}]}
+			,{'consume_options', [{'exclusive', 'false'}]}
                         ],
               Bindings= [{'self', []}],
               gen_listener:add_queue(Self, QueueName, Options, Bindings)
@@ -283,7 +283,7 @@ process_participant_event(<<"dtmf">>, Props, _, _) ->
     %% Note: These are the digits dialed by the participant
     %%    not to be confused with dtmf-member
     {'continue', [{<<"DTMF-Digit">>, props:get_value(<<"DTMF-Key">>, Props)}
-                  ,{<<"DTMF-Data">>, props:get_value(<<"Data">>, Props)} %% ??
+		 ,{<<"DTMF-Data">>, props:get_value(<<"Data">>, Props)} %% ??
                  ]};
 process_participant_event(<<"energy-level">>, Props, _, CallId) ->
     Level = props:get_integer_value(<<"New-Level">>, Props, 0),
@@ -324,19 +324,19 @@ process_participant_event(<<"execute_app">>, _, _, _) ->
     'stop';
 process_participant_event(<<"play-file-member">> = Event, Props, _, _) ->
     {'continue', [{<<"Event-Name">>, <<"CHANNEL_EXECUTE">>}
-                  ,{<<"kazoo_event_name">>, <<"CHANNEL_EXECUTE">>}
-                  ,{<<"Application">>, Event}
-                  ,{<<"kazoo_application_name">>, Event}
-                  ,{<<"Application-Data">>, props:get_value(<<"File">>, Props)}
-                  ,{<<"Asynchronous-Playback">>, props:get_is_true(<<"Async">>, Props)}
+		 ,{<<"kazoo_event_name">>, <<"CHANNEL_EXECUTE">>}
+		 ,{<<"Application">>, Event}
+		 ,{<<"kazoo_application_name">>, Event}
+		 ,{<<"Application-Data">>, props:get_value(<<"File">>, Props)}
+		 ,{<<"Asynchronous-Playback">>, props:get_is_true(<<"Async">>, Props)}
                  ]};
 process_participant_event(<<"play-file-member-done">> = Event, Props, _, _) ->
     {'continue', [{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
-                  ,{<<"kazoo_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
-                  ,{<<"Application">>, Event}
-                  ,{<<"kazoo_application_name">>, Event}
-                  ,{<<"Application-Data">>, props:get_value(<<"File">>, Props)}
-                  ,{<<"Asynchronous-Playback">>, props:get_is_true(<<"Async">>, Props)}
+		 ,{<<"kazoo_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
+		 ,{<<"Application">>, Event}
+		 ,{<<"kazoo_application_name">>, Event}
+		 ,{<<"Application-Data">>, props:get_value(<<"File">>, Props)}
+		 ,{<<"Asynchronous-Playback">>, props:get_is_true(<<"Async">>, Props)}
                  ]};
 process_participant_event(<<"speak-text-member">>, _, _, _) ->
     %% Text = props:get_value(<<"Text">>, Props),
@@ -359,26 +359,26 @@ process_conference_event(<<"floor-change">>, Props, _) ->
     WithFloor = safe_integer_get(<<"New-ID">>, Props),
     LostFloor = safe_integer_get(<<"Old-ID">>, Props),
     _ = ecallmgr_fs_conferences:update(UUID, [{#conference.with_floor, WithFloor}
-                                              ,{#conference.lost_floor, LostFloor}
+					     ,{#conference.lost_floor, LostFloor}
                                              ]),
     {'continue', [{<<"With-Floor">>, ecallmgr_fs_conferences:participant_callid(UUID, WithFloor)}
-                  ,{<<"Lost-Floor">>, ecallmgr_fs_conferences:participant_callid(UUID, LostFloor)}
+		 ,{<<"Lost-Floor">>, ecallmgr_fs_conferences:participant_callid(UUID, LostFloor)}
                  ]};
 process_conference_event(<<"play-file">> = Event, Props, _) ->
     {'continue', [{<<"Event-Name">>, <<"CHANNEL_EXECUTE">>}
-                  ,{<<"kazoo_event_name">>, <<"CHANNEL_EXECUTE">>}
-                  ,{<<"Application">>, Event}
-                  ,{<<"kazoo_application_name">>, Event}
-                  ,{<<"Application-Data">>, props:get_value(<<"File">>, Props)}
-                  ,{<<"Asynchronous-Playback">>, props:get_is_true(<<"Async">>, Props)}
+		 ,{<<"kazoo_event_name">>, <<"CHANNEL_EXECUTE">>}
+		 ,{<<"Application">>, Event}
+		 ,{<<"kazoo_application_name">>, Event}
+		 ,{<<"Application-Data">>, props:get_value(<<"File">>, Props)}
+		 ,{<<"Asynchronous-Playback">>, props:get_is_true(<<"Async">>, Props)}
                  ]};
 process_conference_event(<<"play-file-done">> = Event, Props, _) ->
     {'continue', [{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
-                  ,{<<"kazoo_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
-                  ,{<<"Application">>, Event}
-                  ,{<<"kazoo_application_name">>, Event}
-                  ,{<<"Application-Data">>, props:get_value(<<"File">>, Props)}
-                  ,{<<"Asynchronous-Playback">>, props:get_is_true(<<"Async">>, Props)}
+		 ,{<<"kazoo_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
+		 ,{<<"Application">>, Event}
+		 ,{<<"kazoo_application_name">>, Event}
+		 ,{<<"Application-Data">>, props:get_value(<<"File">>, Props)}
+		 ,{<<"Asynchronous-Playback">>, props:get_is_true(<<"Async">>, Props)}
                  ]};
 process_conference_event(<<"lock">>, _, _) -> 'continue';
 process_conference_event(<<"unlock">>, _, _) -> 'continue';
@@ -391,20 +391,20 @@ process_conference_event(<<"enter-sounds-off">>, _, _) -> 'stop';
 process_conference_event(<<"enter-sound-file-changed">>, _, _) -> 'stop';
 process_conference_event(<<"start-recording">> = Event, Props, _) ->
     {'continue', [{<<"Event-Name">>, <<"CHANNEL_EXECUTE">>}
-                  ,{<<"kazoo_event_name">>, <<"CHANNEL_EXECUTE">>}
-                  ,{<<"Application">>, Event}
-                  ,{<<"kazoo_application_name">>, Event}
-                  ,{<<"Application-Data">>, props:get_value(<<"Path">>, Props)}
+		 ,{<<"kazoo_event_name">>, <<"CHANNEL_EXECUTE">>}
+		 ,{<<"Application">>, Event}
+		 ,{<<"kazoo_application_name">>, Event}
+		 ,{<<"Application-Data">>, props:get_value(<<"Path">>, Props)}
                  ]};
 process_conference_event(<<"pause-recording">>, _, _) -> 'stop';
 process_conference_event(<<"resume-recording">>, _, _) -> 'stop';
 process_conference_event(<<"stop-recording">> = Event, Props, _) ->
     {'continue', [{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
-                  ,{<<"kazoo_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
-                  ,{<<"Application">>, Event}
-                  ,{<<"kazoo_application_name">>, Event}
-                  ,{<<"Application-Data">>, props:get_value(<<"Path">>, Props)}
-                  ,{<<"Other-Recordings">>, props:get_is_true(<<"Other-Recordings">>, Props)}
+		 ,{<<"kazoo_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
+		 ,{<<"Application">>, Event}
+		 ,{<<"kazoo_application_name">>, Event}
+		 ,{<<"Application-Data">>, props:get_value(<<"Path">>, Props)}
+		 ,{<<"Other-Recordings">>, props:get_is_true(<<"Other-Recordings">>, Props)}
                  ]};
 process_conference_event(<<"bgdial-result">>, _, _) -> 'stop';
 process_conference_event(_, _, _) -> 'stop'.
@@ -417,9 +417,9 @@ send_conference_event(Action, Props) ->
 send_conference_event(Action, Props, CustomProps) ->
     ConferenceName =  props:get_value(<<"Conference-Name">>, Props),
     Event = [{<<"Event">>, Action}
-             ,{<<"Conference-ID">>, ConferenceName}
-             ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
-             ,{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
+	    ,{<<"Conference-ID">>, ConferenceName}
+	    ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
+	    ,{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     %% TODO: After KAZOO-27 is accepted the relay should not be necessary
@@ -428,23 +428,23 @@ send_conference_event(Action, Props, CustomProps) ->
 make_participant_event(Action, CallId, Props, Node) ->
     ConferenceName = props:get_value(<<"Conference-Name">>, Props),
     [{<<"Event">>, Action}
-     ,{<<"Call-ID">>, CallId}
-     ,{<<"Focus">>, kz_util:to_binary(Node)}
-     ,{<<"Conference-ID">>, ConferenceName}
-     ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
-     ,{<<"Participant-ID">>, props:get_integer_value(<<"Member-ID">>, Props, 0)}
-     ,{<<"Floor">>, props:get_is_true(<<"Floor">>, Props, 'false')}
-     ,{<<"Hear">>, props:get_is_true(<<"Hear">>, Props, 'true')}
-     ,{<<"Speak">>, props:get_is_true(<<"Speak">>, Props, 'true')}
-     ,{<<"Talking">>, props:get_is_true(<<"Talking">>, Props, 'false')}
-     ,{<<"Current-Energy">>, props:get_integer_value(<<"Current-Energy">>, Props, 0)}
-     ,{<<"Energy-Level">>, props:get_integer_value(<<"Energy-Level">>, Props, 0)}
-     ,{<<"Video">>, props:get_is_true(<<"Video">>, Props, 'false')}
-     ,{<<"Mute-Detect">>, props:get_is_true(<<"Must-Detect">>, Props, 'false')}
-     ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, Props)}
-     ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, Props)}
-     ,{<<"Channel-Presence-ID">>, props:get_value(<<"Channel-Presence-ID">>, Props)}
-     ,{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
+    ,{<<"Call-ID">>, CallId}
+    ,{<<"Focus">>, kz_util:to_binary(Node)}
+    ,{<<"Conference-ID">>, ConferenceName}
+    ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
+    ,{<<"Participant-ID">>, props:get_integer_value(<<"Member-ID">>, Props, 0)}
+    ,{<<"Floor">>, props:get_is_true(<<"Floor">>, Props, 'false')}
+    ,{<<"Hear">>, props:get_is_true(<<"Hear">>, Props, 'true')}
+    ,{<<"Speak">>, props:get_is_true(<<"Speak">>, Props, 'true')}
+    ,{<<"Talking">>, props:get_is_true(<<"Talking">>, Props, 'false')}
+    ,{<<"Current-Energy">>, props:get_integer_value(<<"Current-Energy">>, Props, 0)}
+    ,{<<"Energy-Level">>, props:get_integer_value(<<"Energy-Level">>, Props, 0)}
+    ,{<<"Video">>, props:get_is_true(<<"Video">>, Props, 'false')}
+    ,{<<"Mute-Detect">>, props:get_is_true(<<"Must-Detect">>, Props, 'false')}
+    ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, Props)}
+    ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, Props)}
+    ,{<<"Channel-Presence-ID">>, props:get_value(<<"Channel-Presence-ID">>, Props)}
+    ,{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
@@ -476,8 +476,8 @@ exec(Focus, ConferenceId, JObj) ->
                         freeswitch:api(Focus, 'conference', Command);
                     CallId ->
                         Command = kz_util:to_list(list_to_binary(["uuid:", CallId
-                                                                  ," conference ", ConferenceId
-                                                                  ," play ", AppData
+								 ," conference ", ConferenceId
+								 ," play ", AppData
                                                                  ])),
                         Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
                         lager:debug("api to ~s: expand ~s", [Focus, Command]),
@@ -487,12 +487,12 @@ exec(Focus, ConferenceId, JObj) ->
         {<<"play_macro">>, AppData} ->
             Commands = kz_json:get_value(<<"Commands">>, AppData, []),
             Result = lists:foldl(fun(Command, _Acc) ->
-                {<<"play">>, AppData2} = get_conf_command(<<"play">>, Focus, ConferenceId, Command),
-                Command2 = list_to_binary([ConferenceId, " play ", AppData2]),
-                Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command2]),
-                lager:debug("api to ~s: conference ~s", [Focus, Command2]),
-                freeswitch:api(Focus, 'conference', Command2)
-            end, 'undefined', Commands),
+					 {<<"play">>, AppData2} = get_conf_command(<<"play">>, Focus, ConferenceId, Command),
+					 Command2 = list_to_binary([ConferenceId, " play ", AppData2]),
+					 Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command2]),
+					 lager:debug("api to ~s: conference ~s", [Focus, Command2]),
+					 freeswitch:api(Focus, 'conference', Command2)
+				 end, 'undefined', Commands),
             send_response(App, Result, kz_json:get_value(<<"Server-ID">>, JObj), JObj);
         {AppName, AppData} ->
             Command = kz_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
@@ -641,7 +641,7 @@ get_conf_command(<<"participant_energy">>, _Focus, _ConferenceId, JObj) ->
             {'error', <<"conference participant_energy failed to execute as JObj did not validate.">>};
         'true' ->
             Args = list_to_binary([kz_json:get_binary_value(<<"Participant-ID">>, JObj)
-                                   ," ", kz_json:get_binary_value(<<"Energy-Level">>, JObj, <<"20">>)
+				  ," ", kz_json:get_binary_value(<<"Energy-Level">>, JObj, <<"20">>)
                                   ]),
             {<<"energy">>, Args}
     end;
@@ -651,8 +651,8 @@ get_conf_command(<<"relate_participants">>, _Focus, _ConferenceId, JObj) ->
             {'error', <<"conference relate_participants failed to execute as JObj did not validate.">>};
         'true' ->
             Args = list_to_binary([kz_json:get_binary_value(<<"Participant-ID">>, JObj)
-                                   ," ", kz_json:get_binary_value(<<"Other-Participant">>, JObj)
-                                   ," ", relationship(kz_json:get_binary_value(<<"Relationship">>, JObj))
+				  ," ", kz_json:get_binary_value(<<"Other-Participant">>, JObj)
+				  ," ", relationship(kz_json:get_binary_value(<<"Relationship">>, JObj))
                                   ]),
             {<<"relate">>, Args}
     end;
@@ -662,7 +662,7 @@ get_conf_command(<<"set">>, _Focus, _ConferenceId, JObj) ->
             {'error', <<"conference set failed to execute as JObj did not validate.">>};
         'true' ->
             Args = list_to_binary([kz_json:get_binary_value(<<"Parameter">>, JObj)
-                                   ," ", kz_json:get_binary_value(<<"Value">>, JObj)
+				  ," ", kz_json:get_binary_value(<<"Value">>, JObj)
                                   ]),
             {<<"set">>, Args}
     end;
@@ -686,7 +686,7 @@ get_conf_command(<<"participant_volume_in">>, _Focus, _ConferenceId, JObj) ->
             {'error', <<"conference participant_volume_in failed to execute as JObj did not validate.">>};
         'true' ->
             Args = list_to_binary([kz_json:get_binary_value(<<"Participant-ID">>, JObj)
-                                   ," ", kz_json:get_binary_value(<<"Volume-In-Level">>, JObj, <<"0">>)
+				  ," ", kz_json:get_binary_value(<<"Volume-In-Level">>, JObj, <<"0">>)
                                   ]),
             {<<"volume_in">>, Args}
     end;
@@ -696,7 +696,7 @@ get_conf_command(<<"participant_volume_out">>, _Focus, _ConferenceId, JObj) ->
             {'error', <<"conference participant_volume_out failed to execute as JObj did not validate.">>};
         'true' ->
             Args = list_to_binary([kz_json:get_binary_value(<<"Participant-ID">>, JObj)
-                                   ," ", kz_json:get_binary_value(<<"Volume-Out-Level">>, JObj, <<"0">>)
+				  ," ", kz_json:get_binary_value(<<"Volume-Out-Level">>, JObj, <<"0">>)
                                   ]),
             {<<"volume_out">>, Args}
     end;
@@ -707,27 +707,27 @@ get_conf_command(Cmd, _Focus, _ConferenceId, _JObj) ->
 -spec send_response(ne_binary(), tuple(), api_binary(), kz_json:object()) -> 'ok'.
 send_response(<<"stop_play">>, {'ok', Res}, _Queue, Command) ->
     Evt = [{<<"Conference-Name">>, kz_json:get_value(<<"Conference-ID">>, Command)}
-           ,{<<"Event-Date-Timestamp">>, kz_util:current_tstamp()}
-           ,{<<"Action">>,<<"play-file-done">>}
-           ,{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
-           ,{<<"kazoo_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
-           ,{<<"Application">>, <<"play-file-done">>}
-           ,{<<"kazoo_application_name">>, <<"play-file-done">>}
-           ,{<<"Application-Data">>, Res}
+	  ,{<<"Event-Date-Timestamp">>, kz_util:current_tstamp()}
+	  ,{<<"Action">>,<<"play-file-done">>}
+	  ,{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
+	  ,{<<"kazoo_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
+	  ,{<<"Application">>, <<"play-file-done">>}
+	  ,{<<"kazoo_application_name">>, <<"play-file-done">>}
+	  ,{<<"Application-Data">>, Res}
           ],
     relay_event(Evt);
 send_response(_, _, 'undefined', _) -> lager:debug("no server-id to respond");
 send_response(_, {'ok', <<"Non-Existant ID", _/binary>> = Msg}, RespQ, Command) ->
     Error = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Command, <<>>)}
-             ,{<<"Error-Message">>, binary:replace(Msg, <<"\n">>, <<>>)}
-             ,{<<"Request">>, Command}
+	    ,{<<"Error-Message">>, binary:replace(Msg, <<"\n">>, <<>>)}
+	    ,{<<"Request">>, Command}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     lager:debug("error in conference command: ~s", [Msg]),
     kapi_conference:publish_error(RespQ, Error);
 send_response(<<"participants">>, {'noop', Conference}, RespQ, Command) ->
     Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Command, <<>>)}
-            ,{<<"Participants">>, kz_json:get_value(<<"Participants">>, Conference, kz_json:new())}
+	   ,{<<"Participants">>, kz_json:get_value(<<"Participants">>, Conference, kz_json:new())}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_conference:publish_participants_resp(RespQ, Resp);
@@ -736,23 +736,23 @@ send_response(_, {'ok', Response}, RespQ, Command) ->
         'nomatch' -> 'ok';
         _Else ->
             Error = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Command, <<>>)}
-                     ,{<<"Error-Message">>, binary:replace(Response, <<"\n">>, <<>>)}
-                     ,{<<"Request">>, Command}
+		    ,{<<"Error-Message">>, binary:replace(Response, <<"\n">>, <<>>)}
+		    ,{<<"Request">>, Command}
                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
             kapi_conference:publish_error(RespQ, Error)
     end;
 send_response(_, {'error', Msg}, RespQ, Command) ->
     Error = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Command, <<>>)}
-             ,{<<"Error-Message">>, binary:replace(kz_util:to_binary(Msg), <<"\n">>, <<>>)}
-             ,{<<"Request">>, Command}
+	    ,{<<"Error-Message">>, binary:replace(kz_util:to_binary(Msg), <<"\n">>, <<>>)}
+	    ,{<<"Request">>, Command}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     kapi_conference:publish_error(RespQ, Error);
 send_response(_, 'timeout', RespQ, Command) ->
     Error = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Command, <<>>)}
-             ,{<<"Error-Message">>, <<"Node Timeout">>}
-             ,{<<"Request">>, Command}
+	    ,{<<"Error-Message">>, <<"Node Timeout">>}
+	    ,{<<"Request">>, Command}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     kapi_conference:publish_error(RespQ, Error).
@@ -792,9 +792,9 @@ relay_event(UUID, Node, Props) ->
 
 -spec publish_participant_event(boolean(), kz_proplist(), ne_binary(), kz_proplist()) -> ok | skip.
 publish_participant_event(true=_Publish, Event, CallId, Props) ->
-   Ev = [{<<"Event-Category">>, <<"conference">>}
-       ,{<<"Event-Name">>, <<"participant_event">>}
-       | Event],
+    Ev = [{<<"Event-Category">>, <<"conference">>}
+	 ,{<<"Event-Name">>, <<"participant_event">>}
+	  | Event],
     ConferenceId = props:get_value(<<"Conference-Name">>, Props),
     Publisher = fun(P) -> kapi_conference:publish_participant_event(ConferenceId, CallId, P) end,
     kz_amqp_worker:cast(Ev, Publisher),

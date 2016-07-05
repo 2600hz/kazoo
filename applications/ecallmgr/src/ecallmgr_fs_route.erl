@@ -13,11 +13,11 @@
 -export([start_link/1, start_link/2]).
 -export([process_route_req/5]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include_lib("kazoo_sip/include/kzsip_uri.hrl").
@@ -26,20 +26,20 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {node = 'undefined' :: atom()
-                ,options = [] :: kz_proplist()
+	       ,options = [] :: kz_proplist()
                }).
 
 -define(CALLER_PRIVACY(Props)
-        ,props:is_true(<<"Caller-Screen-Bit">>, Props, 'false')
+       ,props:is_true(<<"Caller-Screen-Bit">>, Props, 'false')
        ).
 
 -define(CALLER_PRIVACY_NUMBER(Props)
-        ,?CALLER_PRIVACY(Props)
+       ,?CALLER_PRIVACY(Props)
         andalso props:is_true(<<"Caller-Privacy-Hide-Number">>, Props, 'false')
        ).
 
 -define(CALLER_PRIVACY_NAME(Props)
-        ,?CALLER_PRIVACY(Props)
+       ,?CALLER_PRIVACY(Props)
         andalso props:is_true(<<"Caller-Privacy-Hide-Name">>, Props, 'false')
        ).
 
@@ -138,15 +138,15 @@ handle_info({'fetch', 'chatplan', Something, Key, Value, Id, ['undefined' | Data
     handle_info({'fetch', 'chatplan', Something, Key, Value, Id, [MsgId, {<<"Unique-ID">>, MsgId} | Data]}, State);
 handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Data]}, #state{node=Node}=State) ->
     lager:warning("fetch unknown section from ~s: ~p So: ~p, K: ~p V: ~p Id: ~s"
-                  ,[Node, _Section, _Something, _Key, _Value, Id]),
+		 ,[Node, _Section, _Something, _Key, _Value, Id]),
     {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
     _ = freeswitch:fetch_reply(Node, Id, _Section, Resp),
     {'noreply', State};
 handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}, #state{node=Node}=State) ->
     case {Section
-          ,props:get_value(<<"Event-Name">>, FSData)
-          ,props:get_value(<<"Event-Subclass">>, FSData)
-          ,props:get_value(<<"Caller-Context">>, FSData)
+	 ,props:get_value(<<"Event-Name">>, FSData)
+	 ,props:get_value(<<"Event-Subclass">>, FSData)
+	 ,props:get_value(<<"Caller-Context">>, FSData)
          }
     of
         {'dialplan', <<"REQUEST_PARAMS">>, _SubClass, _Context} ->
@@ -183,7 +183,7 @@ handle_info(_Other, State) ->
 %% @private
 %% @doc
 %% This function is called by a gen_server when it is about to
-% terminate. It should be the opposite of Module:init/1 and do any
+						% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
 %% with Reason. The return value is ignored.
 %%
@@ -215,7 +215,7 @@ should_expand_var(_) -> 'false'.
 -spec init_message_props(kz_proplist()) -> kz_proplist().
 init_message_props(Props) ->
     Routines = [fun add_message_missing_props/1
-                ,fun expand_message_vars/1
+	       ,fun expand_message_vars/1
                ],
     lists:foldl(fun(F,P) -> F(P) end, Props, Routines).
 
@@ -228,14 +228,14 @@ add_message_missing_props(Props) ->
       ,{<<"Caller-Caller-ID-Number">>, props:get_value(<<"from_user">>, Props)}
       ,{<<"Caller-Destination-Number">>, props:get_value(<<"to_user">>, Props)}
       ]
-      ,Props
+		       ,Props
      ).
 
 -spec expand_message_vars(kz_proplist()) -> kz_proplist().
 expand_message_vars(Props) ->
     lists:foldl(fun expand_message_var/2
-                ,Props
-                ,props:filter(fun should_expand_var/1, Props)
+	       ,Props
+	       ,props:filter(fun should_expand_var/1, Props)
                ).
 
 -spec expand_message_var({ne_binary(), ne_binary()}, kz_proplist()) ->
@@ -254,7 +254,7 @@ process_route_req(Section, Node, FetchId, CallId, Props) ->
         'true' ->
             lager:debug("recovered channel already exists on ~s, park it", [Node]),
             JObj = kz_json:from_list([{<<"Routes">>, []}
-                                      ,{<<"Method">>, <<"park">>}
+				     ,{<<"Method">>, <<"park">>}
                                      ]),
             reply_affirmative(Section, Node, FetchId, CallId, JObj, Props)
     end.
@@ -264,9 +264,9 @@ search_for_route(Section, Node, FetchId, CallId, Props) ->
     SetupCall = props:set_value(<<"Call-Setup">>, <<"true">>, Props),
     _ = kz_util:spawn(fun ecallmgr_fs_authz:authorize/3, [SetupCall, CallId, Node]),
     ReqResp = kz_amqp_worker:call(route_req(CallId, FetchId, Props, Node)
-                                  ,fun kapi_route:publish_req/1
-                                  ,fun kapi_route:is_actionable_resp/1
-                                  ,ecallmgr_fs_node:fetch_timeout(Node)
+				 ,fun kapi_route:publish_req/1
+				 ,fun kapi_route:is_actionable_resp/1
+				 ,ecallmgr_fs_node:fetch_timeout(Node)
                                  ),
     case ReqResp of
         {'error', _R} ->
@@ -274,8 +274,8 @@ search_for_route(Section, Node, FetchId, CallId, Props) ->
         {'ok', JObj} ->
             'true' = kapi_route:resp_v(JObj),
             maybe_wait_for_authz(Section, Node, FetchId, CallId
-                                 , JObj
-                                 , Props)
+				, JObj
+				, Props)
     end.
 
 -spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), kz_json:object(), kz_proplist()) -> 'ok'.
@@ -294,8 +294,8 @@ wait_for_authz(Section, Node, FetchId, CallId, JObj, Props) ->
             _ = kz_cache:erase_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)),
             CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
             J = kz_json:set_value(<<"Custom-Channel-Vars">>
-                                  ,kz_json:merge_jobjs(CCVs, AuthzCCVs)
-                                  ,JObj
+				 ,kz_json:merge_jobjs(CCVs, AuthzCCVs)
+				 ,JObj
                                  ),
             reply_affirmative(Section, Node, FetchId, CallId, J, Props);
         _Else -> reply_forbidden(Section, Node, FetchId)
@@ -307,11 +307,11 @@ reply_forbidden(Section, Node, FetchId) ->
     lager:info("received forbidden route response for ~s, sending 403 Incoming call barred", [FetchId]),
     {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(
                     [{<<"Method">>, <<"error">>}
-                     ,{<<"Route-Error-Code">>, <<"403">>}
-                     ,{<<"Route-Error-Message">>, <<"Incoming call barred">>}
-                     ,{<<"Fetch-Section">>, kz_util:to_binary(Section)}
+		    ,{<<"Route-Error-Code">>, <<"403">>}
+		    ,{<<"Route-Error-Message">>, <<"Incoming call barred">>}
+		    ,{<<"Fetch-Section">>, kz_util:to_binary(Section)}
                     ]
-                    , []),
+						, []),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
         'ok' -> lager:info("node ~s accepted ~s route response for request ~s", [Node, Section, FetchId]);
@@ -346,9 +346,9 @@ start_call_handling(Node, FetchId, CallId, JObj) ->
     CCVs =
         kz_json:set_values(
           [{<<"Application-Name">>, kz_json:get_value(<<"App-Name">>, JObj)}
-           ,{<<"Application-Node">>, kz_json:get_value(<<"Node">>, JObj)}
+	  ,{<<"Application-Node">>, kz_json:get_value(<<"Node">>, JObj)}
           ]
-          ,kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())
+			  ,kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())
          ),
     _Evt = ecallmgr_call_sup:start_event_process(Node, CallId),
     _Ctl = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs),
@@ -362,9 +362,9 @@ start_message_handling(_Node, _FetchId, CallId, JObj) ->
     ServerQ = kz_json:get_value(<<"Server-ID">>, JObj),
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     Win = [{<<"Msg-ID">>, CallId}
-           ,{<<"Call-ID">>, CallId}
-           ,{<<"Control-Queue">>, <<"chatplan_ignored">>}
-           ,{<<"Custom-Channel-Vars">>, CCVs}
+	  ,{<<"Call-ID">>, CallId}
+	  ,{<<"Control-Queue">>, <<"chatplan_ignored">>}
+	  ,{<<"Custom-Channel-Vars">>, CCVs}
            | kz_api:default_headers(<<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending route_win to ~s", [ServerQ]),
@@ -376,28 +376,28 @@ route_req(CallId, FetchId, Props, Node) ->
     [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
     SwitchURI = <<"sip:", SwitchURIHost/binary>>,
     [{<<"Msg-ID">>, FetchId}
-     ,{<<"Call-ID">>, CallId}
-     ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
-     ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
-     ,{<<"Caller-ID-Name">>, caller_id_name(Props)}
-     ,{<<"Caller-ID-Number">>, caller_id_number(Props)}
-     ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
-     ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
-     ,{<<"User-Agent">>, kzd_freeswitch:user_agent(Props)}
-     ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
-     ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
-     ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
-     ,{<<"Body">>, get_body(Props) }
-     ,{<<"SIP-Request-Host">>, props:get_value(<<"variable_sip_req_host">>, Props)}
-     ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
-     ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
-     ,{<<"Switch-URL">>, SwitchURL}
-     ,{<<"Switch-URI">>, SwitchURI}
-     ,{<<"Custom-Channel-Vars">>, kz_json:from_list(route_req_ccvs(FetchId, Props))}
-     ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
-     ,{<<"Resource-Type">>, kzd_freeswitch:resource_type(Props, <<"audio">>)}
-     ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
-     ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
+    ,{<<"Call-ID">>, CallId}
+    ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
+    ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
+    ,{<<"Caller-ID-Name">>, caller_id_name(Props)}
+    ,{<<"Caller-ID-Number">>, caller_id_number(Props)}
+    ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
+    ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
+    ,{<<"User-Agent">>, kzd_freeswitch:user_agent(Props)}
+    ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
+    ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
+    ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
+    ,{<<"Body">>, get_body(Props) }
+    ,{<<"SIP-Request-Host">>, props:get_value(<<"variable_sip_req_host">>, Props)}
+    ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
+    ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
+    ,{<<"Switch-URL">>, SwitchURL}
+    ,{<<"Switch-URI">>, SwitchURI}
+    ,{<<"Custom-Channel-Vars">>, kz_json:from_list(route_req_ccvs(FetchId, Props))}
+    ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
+    ,{<<"Resource-Type">>, kzd_freeswitch:resource_type(Props, <<"audio">>)}
+    ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
+    ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
@@ -407,11 +407,11 @@ route_req_ccvs(FetchId, Props) ->
     CCVs = ecallmgr_util:custom_channel_vars(Props),
     props:filter_undefined(
       [{<<?CALL_INTERACTION_ID>>, props:get_value(<<?CALL_INTERACTION_ID>>, CCVs, ?CALL_INTERACTION_DEFAULT)}
-       ,{<<"Fetch-ID">>, FetchId}
-       ,{<<"Redirected-By">>, RedirectedBy}
-       ,{<<"Redirected-Reason">>, RedirectedReason}
-       ,{<<"Caller-Privacy-Number">>, ?CALLER_PRIVACY_NUMBER(Props)}
-       ,{<<"Caller-Privacy-Name">>, ?CALLER_PRIVACY_NAME(Props)}
+      ,{<<"Fetch-ID">>, FetchId}
+      ,{<<"Redirected-By">>, RedirectedBy}
+      ,{<<"Redirected-Reason">>, RedirectedReason}
+      ,{<<"Caller-Privacy-Number">>, ?CALLER_PRIVACY_NUMBER(Props)}
+      ,{<<"Caller-Privacy-Name">>, ?CALLER_PRIVACY_NAME(Props)}
        | props:delete(<<?CALL_INTERACTION_ID>>, CCVs)
       ]
      ).

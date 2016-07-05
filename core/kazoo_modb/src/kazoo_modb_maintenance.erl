@@ -7,16 +7,16 @@
 -module(kazoo_modb_maintenance).
 
 -export([delete_modbs/1
-         ,archive_modbs/0
-         ,archive_modbs/1
+	,archive_modbs/0
+	,archive_modbs/1
         ]).
 -export([verify_rollups/0
-         ,verify_rollups/1
+	,verify_rollups/1
         ]).
 -export([fix_rollup/1]).
 -export([rollup_accounts/0
-         ,rollup_account/1
-         ,rollup_account/2
+	,rollup_account/1
+	,rollup_account/2
         ]).
 
 -include("kazoo_modb.hrl").
@@ -100,7 +100,7 @@ verify_rollups() ->
                               {pos_integer(), pos_integer()}.
 verify_db_rollup(AccountDb, {Current, Total}) ->
     io:format("verify rollup accounts (~p/~p) '~s'~n"
-              ,[Current, Total, AccountDb]
+	     ,[Current, Total, AccountDb]
              ),
     verify_rollups(AccountDb),
     {Current+1, Total}.
@@ -122,8 +122,8 @@ verify_rollups(AccountDb, Year, Month) ->
 
 verify_rollups(AccountDb, Year, Month, AccountId, JObj) ->
     Balance = wht_util:previous_balance(AccountDb
-                                        ,kz_util:to_binary(Year)
-                                        ,kz_util:pad_month(Month)
+				       ,kz_util:to_binary(Year)
+				       ,kz_util:pad_month(Month)
                                        ),
     case rollup_balance(JObj) of
         Balance ->
@@ -132,7 +132,7 @@ verify_rollups(AccountDb, Year, Month, AccountId, JObj) ->
             verify_rollups(AccountDb, PYear, PMonth);
         _RollupBalance ->
             io:format("    account ~s has a discrepancy! rollup/balance ~p/~p~n"
-                      ,[AccountId, _RollupBalance, Balance]
+		     ,[AccountId, _RollupBalance, Balance]
                      )
     end.
 
@@ -142,8 +142,8 @@ fix_rollup(Account) ->
     {Y, M, _} = erlang:date(),
     {PYear, PMonth} =  kazoo_modb_util:prev_year_month(Y, M),
     Balance = wht_util:previous_balance(AccountId
-                                        ,kz_util:to_binary(PYear)
-                                        ,kz_util:pad_month(PMonth)
+				       ,kz_util:to_binary(PYear)
+				       ,kz_util:pad_month(PMonth)
                                        ),
     AccountMODb = kazoo_modb:get_modb(AccountId),
     lager:debug("rolling up ~p credits to ~s", [Balance, AccountMODb]),

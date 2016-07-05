@@ -22,21 +22,21 @@
 -module(cb_sup).
 
 -export([init/0
-         ,authorize/1, authorize/2, authorize/3, authorize/4
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-         ,validate/1, validate/2, validate/3, validate/4
+	,authorize/1, authorize/2, authorize/3, authorize/4
+	,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+	,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+	,validate/1, validate/2, validate/3, validate/4
 
-         ,format_path_tokens/1
+	,format_path_tokens/1
 
          %% IO Server
-         ,start_link/0
-         ,init_io/1
-         ,io_loop/2
-         ,system_continue/3
-         ,system_terminate/4
-         ,system_get_state/1
-         ,system_replace_state/2
+	,start_link/0
+	,init_io/1
+	,io_loop/2
+	,system_continue/3
+	,system_terminate/4
+	,system_get_state/1
+	,system_replace_state/2
         ]).
 
 -include("crossbar.hrl").
@@ -199,7 +199,7 @@ does_resource_exist(ModuleBin, FunctionBin, Args) ->
     Arity = erlang:length(Args),
 
     try {module_name(ModuleBin)
-         ,kz_util:to_atom(FunctionBin)
+	,kz_util:to_atom(FunctionBin)
         }
     of
         {Module, Function} ->
@@ -249,7 +249,7 @@ validate_sup(Context, Module, Function, Args) ->
     OldGroupLeader = group_leader(),
     group_leader(whereis(?MODULE), self()),
     lager:debug("attempting ~s:~s/~p"
-                ,[Module, Function, length(Args)]),
+	       ,[Module, Function, length(Args)]),
     try apply(Module, Function, Args) of
         'no_return' ->
             group_leader(OldGroupLeader, self()),

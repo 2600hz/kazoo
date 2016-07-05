@@ -11,10 +11,10 @@
 -include("blackhole.hrl").
 
 -export([
-    open/3,
-    recv/4,
-    close/3
-]).
+	 open/3,
+	 recv/4,
+	 close/3
+	]).
 
 -type cb_return() :: {'ok', bh_context:context()}.
 
@@ -59,9 +59,9 @@ amqp_send(Context, Data) ->
             {Keys, _} = lists:unzip(Message),
 
             SendMessage = Message ++ [
-                {<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
-                | kz_api:default_headers(<<"qubicle">>, <<"1.0">>)
-            ],
+				      {<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+				      | kz_api:default_headers(<<"qubicle">>, <<"1.0">>)
+				     ],
 
             {'ok', Payload} = kz_api:build_message(SendMessage, [], Keys),
             amqp_util:basic_publish(<<"qubicle">>, <<"qubicle.recipient">>, Payload, ?DEFAULT_CONTENT_TYPE);
@@ -117,9 +117,9 @@ check_binding(Context, JObj, Binding) ->
     case bh_context:is_bound(Context, Binding) of
         'true' ->
             ErrorJObj = kz_json:from_list([
-                {<<"message">>, <<"binding already in use">>}
-                ,{<<"cause">>, Binding}
-            ]),
+					   {<<"message">>, <<"binding already in use">>}
+					  ,{<<"cause">>, Binding}
+					  ]),
             {'ok', blackhole_util:respond_with_error(Context, <<"error">>, ErrorJObj)};
         'false' ->
             Module = blackhole_util:get_callback_module(Binding),

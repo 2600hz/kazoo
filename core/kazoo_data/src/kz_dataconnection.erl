@@ -12,11 +12,11 @@
 -export([start_link/1]).
 
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("kz_data.hrl").
@@ -104,8 +104,8 @@ handle_info('maintain_connection', #data_connection{connected = 'false'}=Connect
             {'noreply', connection_established(C#data_connection{connected='true'})}
     end;
 handle_info('maintain_connection', #data_connection{ready=Ready
-                                                    ,server=Server
-                                                    ,app=App
+						   ,server=Server
+						   ,app=App
                                                    }=Connection) ->
     case App:server_info(Server) of
         {'ok', _} when not Ready ->
@@ -181,5 +181,5 @@ reset_connection(Connection) ->
     %% TODO: this is disabled for the moment to maintain backward
     %% compatablity with couch_mgr which always assumed the connection
     %% was available
-%%    kz_dataconnections:update(C),
+    %%    kz_dataconnections:update(C),
     C.

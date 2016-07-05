@@ -9,21 +9,21 @@
 
 %% Doc related
 -export([open_doc/4
-         ,lookup_doc_rev/3
-         ,save_doc/4
-         ,save_docs/4
-         ,del_doc/4
-         ,del_docs/4
-         ,ensure_saved/4
-         ,copy_doc/4
-         ,move_doc/4
+	,lookup_doc_rev/3
+	,save_doc/4
+	,save_docs/4
+	,del_doc/4
+	,del_docs/4
+	,ensure_saved/4
+	,copy_doc/4
+	,move_doc/4
         ]).
 
 
 -include("kz_data.hrl").
 
 -type copy_function() :: fun((map(), ne_binary(), kz_json:object(), kz_proplist()) ->
-                              {'ok', kz_json:object()} | data_error()).
+				    {'ok', kz_json:object()} | data_error()).
 -export_type([copy_function/0]).
 -define(COPY_DOC_OVERRIDE_PROPERTY, 'override_existing_document').
 -define(COPY_TRANSFORM, 'transform').
@@ -60,7 +60,7 @@ save_docs(#{server := {App, Conn}}, DbName, Docs, Options) ->
     {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- Docs]),
     try App:save_docs(Conn, DbName, PreparedDocs, Options) of
         {'ok', JObjs}=Ok -> kzs_publish:maybe_publish_docs(DbName, Publish, JObjs),
-                           Ok;
+			    Ok;
         Else -> Else
     catch
         _Ex:Er -> {'error', {_Ex, Er}}
@@ -130,7 +130,7 @@ del_docs(#{server := {App, Conn}}=Server, DbName, Docs, Options) ->
     try App:del_docs(Conn, DbName, PreparedDocs, Options) of
         {'ok', JObjs}=Ok -> kzs_publish:maybe_publish_docs(DbName, Publish, JObjs),
                             kzs_cache:flush_cache_docs(DbName, JObjs),
-                           Ok;
+			    Ok;
         Else -> Else
     catch
         _Ex:Er -> {'error', {_Ex, Er}}
@@ -151,8 +151,8 @@ prepare_doc_for_del(Server, DbName, Doc) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"_id">>, Id}
-         ,{<<"_rev">>, DocRev}
-         ,{<<"_deleted">>, 'true'}
+	,{<<"_rev">>, DocRev}
+	,{<<"_deleted">>, 'true'}
          | kzs_publish:publish_fields(Doc)
         ])).
 
@@ -211,10 +211,10 @@ copy_doc(Src, Dst, CopySpec, Options) ->
                       data_error().
 copy_doc(Src, Dst, CopySpec, CopyFun, Opts) ->
     #copy_doc{source_dbname = SourceDbName
-                 ,source_doc_id = SourceDocId
-                 ,dest_dbname = DestDbName
-                 ,dest_doc_id = DestDocId
-                } = CopySpec,
+	     ,source_doc_id = SourceDocId
+	     ,dest_dbname = DestDbName
+	     ,dest_doc_id = DestDocId
+	     } = CopySpec,
     Transform = props:get_value(?COPY_TRANSFORM, Opts),
     Options = props:delete(?COPY_TRANSFORM, Opts),
     case open_doc(Src, SourceDbName, SourceDocId, Options) of
@@ -242,20 +242,20 @@ copy_transform(Fun, SourceDoc, DestinationDoc) -> Fun(SourceDoc, DestinationDoc)
                               {'error', any()}.
 copy_attachments(_Src, Dst, CopySpec, {[], []}, _) ->
     #copy_doc{dest_dbname = DestDbName
-                 ,dest_doc_id = DestDocId
-                } = CopySpec,
+	     ,dest_doc_id = DestDocId
+	     } = CopySpec,
     open_doc(Dst, DestDbName, DestDocId, []);
 copy_attachments(Src, Dst, CopySpec, {[JObj | JObjs], [Key | Keys]}, Rev) ->
     #copy_doc{source_dbname = SourceDbName
-                 ,source_doc_id = SourceDocId
-                 ,dest_dbname = DestDbName
-                 ,dest_doc_id = DestDocId
-                } = CopySpec,
+	     ,source_doc_id = SourceDocId
+	     ,dest_dbname = DestDbName
+	     ,dest_doc_id = DestDocId
+	     } = CopySpec,
     case kzs_attachments:fetch_attachment(Src, SourceDbName, SourceDocId, Key) of
         {'ok', Contents} ->
             ContentType = kz_json:get_value([<<"content_type">>], JObj),
             Opts = [{'content_type', kz_util:to_list(ContentType)}
-                    ,{'rev', Rev}
+		   ,{'rev', Rev}
                    ],
             case kzs_attachments:put_attachment(Dst, DestDbName, DestDocId, Key, Contents, Opts) of
                 {'ok', AttachmentDoc} ->
@@ -282,4 +282,4 @@ move_doc(Src, Dst, CopySpec, Options) ->
             _ = del_doc(Src, SourceDbName, SourceDocId, []),
             {'ok', JObj};
         Error -> Error
-     end.
+    end.

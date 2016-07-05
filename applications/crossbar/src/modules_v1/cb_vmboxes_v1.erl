@@ -13,17 +13,17 @@
 -module(cb_vmboxes_v1).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3, allowed_methods/4
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3, resource_exists/4
-         ,validate/1, validate/2, validate/3, validate/4, validate/5
-         ,content_types_provided/5
-         ,put/1
-         ,post/2, post/3, post/4
-         ,patch/2
-         ,delete/2, delete/3, delete/4
+	,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3, allowed_methods/4
+	,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3, resource_exists/4
+	,validate/1, validate/2, validate/3, validate/4, validate/5
+	,content_types_provided/5
+	,put/1
+	,post/2, post/3, post/4
+	,patch/2
+	,delete/2, delete/3, delete/4
 
-         ,migrate/1
-         ,acceptable_content_types/0
+	,migrate/1
+	,acceptable_content_types/0
         ]).
 
 -include("crossbar.hrl").
@@ -317,9 +317,9 @@ validate_messages(Context, DocId, ?HTTP_DELETE) ->
     ToDelete = filter_messages(Messages, Filter),
 
     cb_context:set_resp_data(
-        cb_context:set_resp_status(Context, 'success')
-        ,ToDelete
-    ).
+      cb_context:set_resp_status(Context, 'success')
+			    ,ToDelete
+     ).
 
 -spec get_folder_filter(cb_context:context(), ne_binary()) -> kz_vm_message:vm_folder().
 get_folder_filter(Context, Default) ->
@@ -351,8 +351,8 @@ filter_messages([Mess|Messages], <<"all">>=Filters, Selected) ->
     Id = kzd_box_message:media_id(Mess),
     filter_messages(Messages, Filters, [Id|Selected]);
 filter_messages([Mess|Messages], Filters, Selected) when Filters =:= ?VM_FOLDER_NEW;
-                                                        Filters =:= ?VM_FOLDER_SAVED;
-                                                        Filters =:= ?VM_FOLDER_DELETED ->
+							 Filters =:= ?VM_FOLDER_SAVED;
+							 Filters =:= ?VM_FOLDER_DELETED ->
     Id = kzd_box_message:media_id(Mess),
     case kzd_box_message:folder(Mess) of
         Filters -> filter_messages(Messages, Filters, [Id|Selected]);
@@ -396,9 +396,9 @@ validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
         'false' ->
             C = cb_context:add_validation_error(
                   <<"mailbox">>
-                  ,<<"unique">>
-                  ,kz_json:from_list([{<<"message">>, <<"Invalid mailbox number or already exists">>}])
-                  ,Context
+					       ,<<"unique">>
+					       ,kz_json:from_list([{<<"message">>, <<"Invalid mailbox number or already exists">>}])
+					       ,Context
                  ),
             check_vmbox_schema(VMBoxId, C)
     end.
@@ -427,12 +427,12 @@ maybe_migrate_notification_emails(Context) ->
     case maybe_migrate_vm_box(ReqData) of
         {'true', ReqData1} ->
             cb_context:setters(Context
-                               ,[{fun cb_context:set_req_data/2, ReqData1}
-                                 ,{fun cb_context:add_resp_header/3
-                                   ,<<"Warning">>
-                                   ,<<"214 Transformation applied: attribute notify_email_address replaced">>
-                                  }
-                                ]
+			      ,[{fun cb_context:set_req_data/2, ReqData1}
+			       ,{fun cb_context:add_resp_header/3
+				,<<"Warning">>
+				,<<"214 Transformation applied: attribute notify_email_address replaced">>
+				}
+			       ]
                               );
         'false' -> Context
     end.
@@ -546,20 +546,20 @@ load_message_doc(MediaId, BoxId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec ensure_message_in_folder(kz_json:object(), kz_json:object(), cb_context:context()) ->
-                                        {boolean(), cb_context:context()}.
+				      {boolean(), cb_context:context()}.
 ensure_message_in_folder(Message, UpdateJObj, Context) ->
     CurrentFolder = kzd_box_message:folder(Message, ?VM_FOLDER_NEW),
 
     RequestedFolder = cb_context:req_value(Context
-                                           ,?VM_KEY_FOLDER
-                                           ,kzd_box_message:folder(UpdateJObj, CurrentFolder)
+					  ,?VM_KEY_FOLDER
+					  ,kzd_box_message:folder(UpdateJObj, CurrentFolder)
                                           ),
     lager:debug("ensuring message is in folder ~s", [RequestedFolder]),
     NewMessage = kz_json:merge_jobjs(kzd_box_message:set_folder(RequestedFolder, UpdateJObj)
-                                     ,Message
+				    ,Message
                                     ),
     {CurrentFolder =/= RequestedFolder
-     ,cb_context:set_resp_data(cb_context:set_doc(Context, NewMessage), NewMessage)
+    ,cb_context:set_resp_data(cb_context:set_doc(Context, NewMessage), NewMessage)
     }.
 
 %%--------------------------------------------------------------------
@@ -596,9 +596,9 @@ load_attachment_from_message(Doc, Context, Timezone) ->
 
     [AttachmentId] = kz_doc:attachment_names(Doc),
     Filename = generate_media_name(kz_json:get_value(<<"caller_id_number">>, VMMetaJObj)
-                                   ,kz_json:get_value(<<"timestamp">>, VMMetaJObj)
-                                   ,filename:extension(AttachmentId)
-                                   ,Timezone
+				  ,kz_json:get_value(<<"timestamp">>, VMMetaJObj)
+				  ,filename:extension(AttachmentId)
+				  ,Timezone
                                   ),
     case kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MediaId, AttachmentId) of
         {'error', Error} ->
@@ -606,14 +606,14 @@ load_attachment_from_message(Doc, Context, Timezone) ->
         {'ok', AttachBin} ->
             lager:debug("Sending file with filename ~s", [Filename]),
             Setters = [{fun cb_context:set_resp_status/2, 'success'}
-                       ,{fun cb_context:set_resp_data/2, AttachBin}
-                       ,{fun cb_context:set_resp_etag/2, 'undefined'}
-                       ,{fun cb_context:add_resp_headers/2
-                         ,[{<<"Content-Type">>, kz_doc:attachment_content_type(Doc, AttachmentId)}
-                           ,{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
-                           ,{<<"Content-Length">>, kz_doc:attachment_length(Doc, AttachmentId)}
-                          ]
-                        }
+		      ,{fun cb_context:set_resp_data/2, AttachBin}
+		      ,{fun cb_context:set_resp_etag/2, 'undefined'}
+		      ,{fun cb_context:add_resp_headers/2
+		       ,[{<<"Content-Type">>, kz_doc:attachment_content_type(Doc, AttachmentId)}
+			,{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
+			,{<<"Content-Length">>, kz_doc:attachment_length(Doc, AttachmentId)}
+			]
+		       }
                       ],
             cb_context:setters(Context, Setters)
     end.
@@ -676,7 +676,7 @@ check_uniqueness(VMBoxId, Context, Mailbox) ->
     case kz_datamgr:get_results(cb_context:account_db(Context)
                                ,<<"vmboxes/listing_by_mailbox">>
                                ,ViewOptions
-                              )
+			       )
     of
         {'ok', []} -> 'true';
         {'ok', [VMBox]} ->
@@ -759,8 +759,8 @@ maybe_migrate_boxes(AccountDb, Boxes) ->
                                 {'true', Box1} -> [Box1 | Acc]
                             end
                     end
-                    ,[]
-                    ,Boxes
+		   ,[]
+		   ,Boxes
                    ),
     io:format("migrating ~p out of ~p boxes~n", [length(ToUpdate), length(Boxes)]),
     maybe_update_boxes(AccountDb, ToUpdate).

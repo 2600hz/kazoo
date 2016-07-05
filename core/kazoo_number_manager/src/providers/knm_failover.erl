@@ -72,7 +72,7 @@ has_emergency_services(_Number) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec update_failover(knm_number:knm_number()) ->
-                                   knm_number:knm_number().
+			     knm_number:knm_number().
 update_failover(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Features = knm_phone_number:features(PhoneNumber),

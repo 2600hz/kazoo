@@ -38,9 +38,9 @@
 
 %% ETS Management
 -export([table_id/0
-         ,table_options/0
-         ,gift_data/0
-         ,find_me/0
+	,table_options/0
+	,gift_data/0
+	,find_me/0
         ]).
 
 %% AMQP handlers
@@ -665,9 +665,9 @@ handle_amqp_send(JObj, _Props) ->
         'undefined' -> 'ok';
         Global ->
             maybe_handle_local_send(JObj
-                                    ,Global
-                                    ,kz_global:is_local(Global)
-                                    ,kz_global:is_local_node(Global)
+				   ,Global
+				   ,kz_global:is_local(Global)
+				   ,kz_global:is_local_node(Global)
                                    )
     end.
 
@@ -683,9 +683,9 @@ handle_amqp_query(JObj, _Props) ->
         'undefined' -> 'ok';
         Global ->
             maybe_handle_local_query(JObj
-                                     ,Global
-                                     ,kz_global:is_local(Global)
-                                     ,kz_global:is_local_node(Global)
+				    ,Global
+				    ,kz_global:is_local(Global)
+				    ,kz_global:is_local_node(Global)
                                     )
     end.
 
@@ -718,8 +718,8 @@ handle_amqp_register_state(JObj, 'pending') ->
         'undefined' -> amqp_register_reply(JObj);
         Global ->
             maybe_handle_local_register(JObj, Global
-                                        ,kz_global:is_local(Global)
-                                        ,kz_global:is_local_node(Global)
+				       ,kz_global:is_local(Global)
+				       ,kz_global:is_local_node(Global)
                                        )
     end;
 handle_amqp_register_state(JObj, 'registered') ->
@@ -774,7 +774,7 @@ handle_amqp_unregister(JObj, _Props) ->
 maybe_unregister_remote(_Global, _Reason, 'true') -> 'ok';
 maybe_unregister_remote(Global, Reason, 'false') ->
     gen_listener:call(?SERVER
-                      ,{'amqp_delete', Global, Reason}
+		     ,{'amqp_delete', Global, Reason}
                      ).
 
 -spec from_json(kz_json:object(), globals_state()) -> kz_global:global().
@@ -791,8 +791,8 @@ delete_by_pid(Pid) ->
 -spec delete_by_pid(pid(), term()) -> 'ok'.
 delete_by_pid(Pid, Reason) ->
     _Res = [delete_global(Global, Reason)
-         || Global <- kz_global:all_globals_by_pid(?TAB_NAME, Pid)
-        ],
+	    || Global <- kz_global:all_globals_by_pid(?TAB_NAME, Pid)
+	   ],
     lager:info("deleted ~p proxies", [length(_Res)]).
 
 -spec delete_by_node(atom()) -> 'ok'.
@@ -804,8 +804,8 @@ delete_by_node(Node) ->
                 kz_global_proxy:stop(kz_global:pid(Global)),
                 delete_global(Global, 'expired')
             end
-         || Global <- kz_global:all_globals_by_node(?TAB_NAME, Node)
-        ],
+	    || Global <- kz_global:all_globals_by_node(?TAB_NAME, Node)
+	   ],
     lager:info("deleted ~p proxies for expired node ~p", [length(_Res), Node]).
 
 -spec delete_global(kz_global:global(), term()) -> 'ok' | 'true'.

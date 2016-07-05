@@ -77,8 +77,8 @@ exec(Num, Action, Providers) ->
                   'false' -> Number
               end
       end
-      ,Num
-      ,Providers
+	       ,Num
+	       ,Providers
      ).
 
 -spec apply_action(knm_number:knm_number(), exec_action(), ne_binary()) ->

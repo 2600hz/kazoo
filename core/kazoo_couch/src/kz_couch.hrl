@@ -12,8 +12,8 @@
 -define(DEFAULT_PORT, 5984).
 -define(DEFAULT_ADMIN_PORT, 5986).
 -define(IBROWSE_OPTS, [{'max_sessions', 512}
-                       ,{'max_pipeline_size', 10}
-                       ,{'connect_timeout', 500}
+		      ,{'max_pipeline_size', 10}
+		      ,{'connect_timeout', 500}
                       ]).
 
 -define(RETRY_504(F), kz_couch_util:retry504s(fun() -> F end)).
@@ -36,35 +36,35 @@
 
 -record(design_data, {
           db_name = <<>> :: binary() %% the actual DB name, encoded (/ -> %2f)
-         ,design_name = <<>> :: binary()
-         ,node :: atom()
-         ,shards = [] :: ne_binaries()
-         ,disk_size = 0 :: non_neg_integer()
-         ,data_size = 0 :: non_neg_integer()
-         ,conn = #server{} :: server()
-         ,admin_conn = #server{} :: server()
-         ,do_compaction = 'false' :: boolean()
+		     ,design_name = <<>> :: binary()
+		     ,node :: atom()
+		     ,shards = [] :: ne_binaries()
+		     ,disk_size = 0 :: non_neg_integer()
+		     ,data_size = 0 :: non_neg_integer()
+		     ,conn = #server{} :: server()
+		     ,admin_conn = #server{} :: server()
+		     ,do_compaction = 'false' :: boolean()
          }).
 -record(db_data, {
           db_name = <<>> :: binary() %% the shard name
-         ,node :: atom()
-         ,disk_size = 0 :: non_neg_integer()
-         ,data_size = 0 :: non_neg_integer()
-         ,conn = #server{} :: server()
-         ,admin_conn = #server{} :: server()
-         ,do_compaction = 'false' :: boolean()
+		 ,node :: atom()
+		 ,disk_size = 0 :: non_neg_integer()
+		 ,data_size = 0 :: non_neg_integer()
+		 ,conn = #server{} :: server()
+		 ,admin_conn = #server{} :: server()
+		 ,do_compaction = 'false' :: boolean()
          }).
 
 -record(kz_couch_connection, {id = kz_util:current_tstamp()
-                              ,host = "localhost"
-                              ,port = ?DEFAULT_PORT
-                              ,username = ""
-                              ,password = ""
-                              ,options = [] :: kz_proplist()
-                              ,connected = 'false'
-                              ,ready = 'false'
-                              ,admin = 'false'
-                              ,server = #server{}
+			     ,host = "localhost"
+			     ,port = ?DEFAULT_PORT
+			     ,username = ""
+			     ,password = ""
+			     ,options = [] :: kz_proplist()
+			     ,connected = 'false'
+			     ,ready = 'false'
+			     ,admin = 'false'
+			     ,server = #server{}
                              }).
 -type couch_connection() :: #kz_couch_connection{}.
 -type couch_connections() :: [couch_connection()].
@@ -72,9 +72,9 @@
 -type couchbeam_db() :: #db{}.
 
 -record(kz_copy_doc, {source_dbname  :: ne_binary()
-                      ,source_doc_id  :: ne_binary()
-                      ,dest_dbname = 'undefined' :: api_binary()
-                      ,dest_doc_id = 'undefined' :: api_binary()
+		     ,source_doc_id  :: ne_binary()
+		     ,dest_dbname = 'undefined' :: api_binary()
+		     ,dest_doc_id = 'undefined' :: api_binary()
                      }).
 -type copy_doc() :: #kz_copy_doc{}.
 

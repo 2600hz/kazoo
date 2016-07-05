@@ -10,15 +10,15 @@
 -module(kz_config).
 
 -export([get/1, get/2, get/3
-         ,get_atom/2, get_atom/3
-         ,get_boolean/2, get_boolean/3
-         ,get_integer/2, get_integer/3
-         ,get_string/2, get_string/3
-         ,get_raw_string/2, get_raw_string/3
-         ,get_node_section_name/0
-         ,set/3, unset/2
-         ,get_section/1
-         ,zone/0, zone/1
+	,get_atom/2, get_atom/3
+	,get_boolean/2, get_boolean/3
+	,get_integer/2, get_integer/3
+	,get_string/2, get_string/3
+	,get_raw_string/2, get_raw_string/3
+	,get_node_section_name/0
+	,set/3, unset/2
+	,get_section/1
+	,zone/0, zone/1
         ]).
 
 -include("kazoo_config.hrl").
@@ -164,10 +164,10 @@ set(NewSection, Props) ->
 unset(Section, Key) ->
     Props = load(),
     case props:get_value(Section, Props) of
-      'undefined' -> 'ok';
-      Val ->
-          NewSection = props:delete(Key, Val),
-          set({Section, NewSection}, props:delete(Section, Props))
+	'undefined' -> 'ok';
+	Val ->
+	    NewSection = props:delete(Key, Val),
+	    set({Section, NewSection}, props:delete(Section, Props))
     end.
 
 %%--------------------------------------------------------------------

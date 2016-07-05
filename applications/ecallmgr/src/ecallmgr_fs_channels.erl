@@ -14,10 +14,10 @@
 -export([start_link/0]).
 -export([sync/2]).
 -export([summary/0
-         ,summary/1
+	,summary/1
         ]).
 -export([details/0
-         ,details/1
+	,details/1
         ]).
 -export([show_all/0]).
 -export([per_minute_accounts/0]).
@@ -26,10 +26,10 @@
 -export([new/1]).
 -export([destroy/2]).
 -export([update/3
-         ,updates/2
-         ,cleanup_old_channels/0, cleanup_old_channels/1
-         ,max_channel_uptime/0
-         ,set_max_channel_uptime/1, set_max_channel_uptime/2
+	,updates/2
+	,cleanup_old_channels/0, cleanup_old_channels/1
+	,max_channel_uptime/0
+	,set_max_channel_uptime/1, set_max_channel_uptime/2
         ]).
 -export([match_presence/1]).
 -export([count/0]).
@@ -43,12 +43,12 @@
 -export([has_channels_for_owner/1]).
 
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("ecallmgr.hrl").
@@ -56,23 +56,23 @@
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_query_auth_id'}
-                      ,[{<<"call_event">>, <<"query_auth_id_req">>}]
+		     ,[{<<"call_event">>, <<"query_auth_id_req">>}]
                      }
-                     ,{{?MODULE, 'handle_query_user_channels'}
-                       ,[{<<"call_event">>, <<"query_user_channels_req">>}]
-                      }
-                     ,{{?MODULE, 'handle_query_account_channels'}
-                       ,[{<<"call_event">>, <<"query_account_channels_req">>}]
-                      }
-                     ,{{?MODULE, 'handle_query_channels'}
-                       ,[{<<"call_event">>, <<"query_channels_req">>}]
-                      }
-                     ,{{?MODULE, 'handle_channel_status'}
-                       ,[{<<"call_event">>, <<"channel_status_req">>}]
-                      }
+		    ,{{?MODULE, 'handle_query_user_channels'}
+		     ,[{<<"call_event">>, <<"query_user_channels_req">>}]
+		     }
+		    ,{{?MODULE, 'handle_query_account_channels'}
+		     ,[{<<"call_event">>, <<"query_account_channels_req">>}]
+		     }
+		    ,{{?MODULE, 'handle_query_channels'}
+		     ,[{<<"call_event">>, <<"query_channels_req">>}]
+		     }
+		    ,{{?MODULE, 'handle_channel_status'}
+		     ,[{<<"call_event">>, <<"channel_status_req">>}]
+		     }
                     ]).
 -define(BINDINGS, [{'call', [{'restrict_to', ['status_req']}
-                             ,'federate'
+			    ,'federate'
                             ]}
                   ]).
 -define(QUEUE_NAME, <<>>).
@@ -93,10 +93,10 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'responders', ?RESPONDERS}
-                                                          ,{'bindings', ?BINDINGS}
-                                                          ,{'queue_name', ?QUEUE_NAME}
-                                                          ,{'queue_options', ?QUEUE_OPTIONS}
-                                                          ,{'consume_options', ?CONSUME_OPTIONS}
+							 ,{'bindings', ?BINDINGS}
+							 ,{'queue_name', ?QUEUE_NAME}
+							 ,{'queue_options', ?QUEUE_OPTIONS}
+							 ,{'consume_options', ?CONSUME_OPTIONS}
                                                          ], []).
 
 -spec sync(atom(), ne_binaries()) -> 'ok'.
@@ -106,8 +106,8 @@ sync(Node, Channels) ->
 -spec summary() -> 'ok'.
 summary() ->
     MatchSpec = [{#channel{_ = '_'}
-                  ,[]
-                  ,['$_']
+		 ,[]
+		 ,['$_']
                  }],
     print_summary(ets:select(?CHANNELS_TBL, MatchSpec, 1)).
 
@@ -116,16 +116,16 @@ summary(Node) when not is_atom(Node) ->
     summary(kz_util:to_atom(Node, 'true'));
 summary(Node) ->
     MatchSpec = [{#channel{node='$1', _ = '_'}
-                  ,[{'=:=', '$1', {'const', Node}}]
-                  ,['$_']
+		 ,[{'=:=', '$1', {'const', Node}}]
+		 ,['$_']
                  }],
     print_summary(ets:select(?CHANNELS_TBL, MatchSpec, 1)).
 
 -spec details() -> 'ok'.
 details() ->
     MatchSpec = [{#channel{_ = '_'}
-                  ,[]
-                  ,['$_']
+		 ,[]
+		 ,['$_']
                  }],
     print_details(ets:select(?CHANNELS_TBL, MatchSpec, 1)).
 
@@ -134,8 +134,8 @@ details(UUID) when not is_binary(UUID) ->
     details(kz_util:to_binary(UUID));
 details(UUID) ->
     MatchSpec = [{#channel{uuid='$1', _ = '_'}
-                  ,[{'=:=', '$1', {'const', UUID}}]
-                  ,['$_']
+		 ,[{'=:=', '$1', {'const', UUID}}]
+		 ,['$_']
                  }],
     print_details(ets:select(?CHANNELS_TBL, MatchSpec, 1)).
 
@@ -149,21 +149,21 @@ show_all() ->
 per_minute_accounts() ->
     MatchSpec = [
                  {#channel{account_id = '$1'
-                           ,account_billing = <<"per_minute">>
-                           ,reseller_id = '$2'
-                           ,reseller_billing = <<"per_minute">>
-                           ,_ = '_'}
-                  ,[{'andalso', {'=/=', '$1', 'undefined'}, {'=/=', '$2', 'undefined'}}]
-                  ,['$$']
+			  ,account_billing = <<"per_minute">>
+			  ,reseller_id = '$2'
+			  ,reseller_billing = <<"per_minute">>
+			  ,_ = '_'}
+		 ,[{'andalso', {'=/=', '$1', 'undefined'}, {'=/=', '$2', 'undefined'}}]
+		 ,['$$']
                  }
-                 ,{#channel{reseller_id = '$1', reseller_billing = <<"per_minute">>, _ = '_'}
-                   ,[{'=/=', '$1', 'undefined'}]
-                   ,['$$']
-                  }
-                 ,{#channel{account_id = '$1', account_billing = <<"per_minute">>, _ = '_'}
-                   ,[{'=/=', '$1', 'undefined'}]
-                   ,['$$']
-                  }
+		,{#channel{reseller_id = '$1', reseller_billing = <<"per_minute">>, _ = '_'}
+		 ,[{'=/=', '$1', 'undefined'}]
+		 ,['$$']
+		 }
+		,{#channel{account_id = '$1', account_billing = <<"per_minute">>, _ = '_'}
+		 ,[{'=/=', '$1', 'undefined'}]
+		 ,['$$']
+		 }
                 ],
     lists:usort(lists:flatten(ets:select(?CHANNELS_TBL, MatchSpec))).
 
@@ -171,13 +171,13 @@ per_minute_accounts() ->
 per_minute_channels(AccountId) ->
     MatchSpec = [
                  {#channel{node = '$1', uuid = '$2', reseller_id = AccountId, reseller_billing = <<"per_minute">>, _ = '_'}
-                   ,[]
-                   ,[{{'$1', '$2'}}]
-                  }
-                 ,{#channel{node = '$1', uuid = '$2', account_id = AccountId, account_billing = <<"per_minute">>, _ = '_'}
-                   ,[]
-                   ,[{{'$1', '$2'}}]
-                  }
+		 ,[]
+		 ,[{{'$1', '$2'}}]
+		 }
+		,{#channel{node = '$1', uuid = '$2', account_id = AccountId, account_billing = <<"per_minute">>, _ = '_'}
+		 ,[]
+		 ,[{{'$1', '$2'}}]
+		 }
                 ],
     ets:select(?CHANNELS_TBL, MatchSpec).
 
@@ -207,11 +207,11 @@ count() -> ets:info(?CHANNELS_TBL, 'size').
 -spec match_presence(ne_binary()) -> kz_proplist_kv(ne_binary(), atom()).
 match_presence(PresenceId) ->
     MatchSpec = [{#channel{uuid = '$1'
-                           ,presence_id = '$2'
-                           ,node = '$3'
-                           , _ = '_'}
-                  ,[{'=:=', '$2', {'const', PresenceId}}]
-                  ,[{{'$1', '$3'}}]}
+			  ,presence_id = '$2'
+			  ,node = '$3'
+			  , _ = '_'}
+		 ,[{'=:=', '$2', {'const', PresenceId}}]
+		 ,[{{'$1', '$3'}}]}
                 ],
     ets:select(?CHANNELS_TBL, MatchSpec).
 
@@ -224,7 +224,7 @@ handle_query_auth_id(JObj, _Props) ->
                    {'ok', C} -> C
                end,
     Resp = [{<<"Channels">>, Channels}
-            ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+	   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
@@ -237,7 +237,7 @@ handle_query_user_channels(JObj, _Props) ->
                         'undefined' -> [];
                         Realm ->
                             Usernames = kz_json:get_first_defined([<<"Username">>
-                                                                   ,<<"Usernames">>
+								  ,<<"Usernames">>
                                                                   ], JObj),
                             find_by_user_realm(Usernames, Realm)
                     end,
@@ -260,16 +260,16 @@ send_user_query_resp(JObj, []) ->
         'false' ->
             lager:debug("no channels, sending empty response"),
             Resp = [{<<"Channels">>, []}
-                    ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+		   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
+		   ],
             ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
             lager:debug("sending back channel data to ~s", [ServerId]),
             kapi_call:publish_query_user_channels_resp(ServerId, Resp)
     end;
 send_user_query_resp(JObj, Cs) ->
     Resp = [{<<"Channels">>, Cs}
-            ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+	   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
@@ -287,7 +287,7 @@ handle_query_account_channels(JObj, _) ->
 -spec send_account_query_resp(kz_json:object(), kz_json:objects()) -> 'ok'.
 send_account_query_resp(JObj, Cs) ->
     Resp = [{<<"Channels">>, Cs}
-            ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+	   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
@@ -329,15 +329,15 @@ handle_channel_status(JObj, _Props) ->
             Resp =
                 props:filter_undefined(
                   [{<<"Call-ID">>, CallId}
-                   ,{<<"Status">>, <<"active">>}
-                   ,{<<"Switch-Hostname">>, Hostname}
-                   ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
-                   ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
-                   ,{<<"Other-Leg-Call-ID">>, kz_json:get_value(<<"other_leg">>, Channel)}
-                   ,{<<"Realm">>, kz_json:get_value(<<"realm">>, Channel)}
-                   ,{<<"Username">>, kz_json:get_value(<<"username">>, Channel)}
-                   ,{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_fs_channel:channel_ccvs(Channel))}
-                   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+		  ,{<<"Status">>, <<"active">>}
+		  ,{<<"Switch-Hostname">>, Hostname}
+		  ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
+		  ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
+		  ,{<<"Other-Leg-Call-ID">>, kz_json:get_value(<<"other_leg">>, Channel)}
+		  ,{<<"Realm">>, kz_json:get_value(<<"realm">>, Channel)}
+		  ,{<<"Username">>, kz_json:get_value(<<"username">>, Channel)}
+		  ,{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_fs_channel:channel_ccvs(Channel))}
+		  ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                   ]
                  ),
@@ -354,9 +354,9 @@ maybe_send_empty_channel_resp(CallId, JObj) ->
 -spec send_empty_channel_resp(ne_binary(), kz_json:object()) -> 'ok'.
 send_empty_channel_resp(CallId, JObj) ->
     Resp = [{<<"Call-ID">>, CallId}
-            ,{<<"Status">>, <<"terminated">>}
-            ,{<<"Error-Msg">>, <<"no node found with channel">>}
-            ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+	   ,{<<"Status">>, <<"terminated">>}
+	   ,{<<"Error-Msg">>, <<"no node found with channel">>}
+	   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_call:publish_channel_status_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).
@@ -381,14 +381,14 @@ init([]) ->
     process_flag('trap_exit', 'true'),
     lager:debug("starting new fs channels"),
     _ = ets:new(?CHANNELS_TBL, ['set'
-                                ,'protected'
-                                ,'named_table'
-                                ,{'keypos', #channel.uuid}
+			       ,'protected'
+			       ,'named_table'
+			       ,{'keypos', #channel.uuid}
                                ]),
     {'ok', #state{max_channel_cleanup_ref=start_cleanup_ref()}}.
 
 -define(CLEANUP_TIMEOUT
-        ,ecallmgr_config:get_integer(<<"max_channel_cleanup_timeout_ms">>, ?MILLISECONDS_IN_MINUTE)
+       ,ecallmgr_config:get_integer(<<"max_channel_cleanup_timeout_ms">>, ?MILLISECONDS_IN_MINUTE)
        ).
 
 -spec start_cleanup_ref() -> reference().
@@ -431,9 +431,9 @@ handle_call(_, _, State) ->
 -spec handle_cast(any(), state()) -> {'noreply', state()}.
 handle_cast({'destroy_channel', UUID, Node}, State) ->
     MatchSpec = [{#channel{uuid='$1', node='$2', _ = '_'}
-                  ,[{'andalso', {'=:=', '$2', {'const', Node}}
-                     ,{'=:=', '$1', UUID}}
-                   ],
+		 ,[{'andalso', {'=:=', '$2', {'const', Node}}
+		   ,{'=:=', '$1', UUID}}
+		  ],
                   ['true']
                  }],
     N = ets:select_delete(?CHANNELS_TBL, MatchSpec),
@@ -443,8 +443,8 @@ handle_cast({'destroy_channel', UUID, Node}, State) ->
 handle_cast({'sync_channels', Node, Channels}, State) ->
     lager:debug("ensuring channel cache is in sync with ~s", [Node]),
     MatchSpec = [{#channel{uuid = '$1', node = '$2', _ = '_'}
-                  ,[{'=:=', '$2', {'const', Node}}]
-                  ,['$1']}
+		 ,[{'=:=', '$2', {'const', Node}}]
+		 ,['$1']}
                 ],
     CachedChannels = sets:from_list(ets:select(?CHANNELS_TBL, MatchSpec)),
     SyncChannels = sets:from_list(Channels),
@@ -473,11 +473,11 @@ handle_cast({'flush_node', Node}, State) ->
     lager:debug("flushing all channels in cache associated to node ~s", [Node]),
 
     LocalChannelsMS = [{#channel{node = '$1'
-                                 ,handling_locally='true'
-                                 ,_ = '_'
+				,handling_locally='true'
+				,_ = '_'
                                 }
-                        ,[{'=:=', '$1', {'const', Node}}]
-                        ,['$_']}
+		       ,[{'=:=', '$1', {'const', Node}}]
+		       ,['$_']}
                       ],
     case ets:select(?CHANNELS_TBL, LocalChannelsMS) of
         [] ->
@@ -488,8 +488,8 @@ handle_cast({'flush_node', Node}, State) ->
     end,
 
     MatchSpec = [{#channel{node = '$1', _ = '_'}
-                  ,[{'=:=', '$1', {'const', Node}}]
-                  ,['true']}
+		 ,[{'=:=', '$1', {'const', Node}}]
+		 ,['true']}
                 ],
     ets:select_delete(?CHANNELS_TBL, MatchSpec),
     {'noreply', State};
@@ -563,8 +563,8 @@ code_change(_OldVsn, State, _Extra) ->
                              {'error', 'not_found'}.
 find_by_auth_id(AuthorizingId) ->
     MatchSpec = [{#channel{authorizing_id = '$1', _ = '_'}
-                  ,[{'=:=', '$1', {'const', AuthorizingId}}]
-                  ,['$_']}
+		 ,[{'=:=', '$1', {'const', AuthorizingId}}]
+		 ,['$_']}
                 ],
     case ets:select(?CHANNELS_TBL, MatchSpec) of
         [] -> {'error', 'not_found'};
@@ -576,10 +576,10 @@ find_by_auth_id(AuthorizingId) ->
 -spec has_channels_for_owner(ne_binary()) -> boolean().
 has_channels_for_owner(OwnerId) ->
     MatchSpec = [{#channel{owner_id = '$1'
-                           ,_ = '_'
+			  ,_ = '_'
                           }
-                  ,[]
-                  ,[{'=:=', '$1', {const, OwnerId}}]
+		 ,[]
+		 ,[{'=:=', '$1', {const, OwnerId}}]
                  }
                 ],
     Count = ets:select_count(?CHANNELS_TBL, MatchSpec),
@@ -594,7 +594,7 @@ find_by_authorizing_id(AuthIds) ->
 find_by_authorizing_id([], Acc) -> Acc;
 find_by_authorizing_id([AuthId|AuthIds], Acc) ->
     Pattern = #channel{authorizing_id=AuthId
-                       ,_='_'},
+		      ,_='_'},
     case ets:match_object(?CHANNELS_TBL, Pattern) of
         [] -> find_by_authorizing_id(AuthIds, Acc);
         Channels ->
@@ -612,7 +612,7 @@ find_by_user_realm('undefined', Realm) ->
         [] -> [];
         Channels ->
             [{Channel#channel.uuid, ecallmgr_fs_channel:to_json(Channel)}
-              || Channel <- Channels
+	     || Channel <- Channels
             ]
     end;
 find_by_user_realm(<<?CALL_PARK_FEATURE, _/binary>>=Username, Realm) ->
@@ -624,22 +624,22 @@ find_by_user_realm(<<?CALL_PARK_FEATURE, _/binary>>=Username, Realm) ->
         [] -> [];
         Channels ->
             [{Channel#channel.uuid, ecallmgr_fs_channel:to_json(Channel)}
-                || Channel <- Channels
+	     || Channel <- Channels
             ]
     end;
 find_by_user_realm(Usernames, Realm) when is_list(Usernames) ->
     ETSUsernames = build_matchspec_ors(Usernames),
     MatchSpec = [{#channel{username='$1'
-                           ,realm=kz_util:to_lower_binary(Realm)
-                           ,_ = '_'}
-                  ,[ETSUsernames]
-                  ,['$_']
+			  ,realm=kz_util:to_lower_binary(Realm)
+			  ,_ = '_'}
+		 ,[ETSUsernames]
+		 ,['$_']
                  }],
     case ets:select(?CHANNELS_TBL, MatchSpec) of
         [] -> [];
         Channels ->
             [{Channel#channel.uuid, ecallmgr_fs_channel:to_json(Channel)}
-                || Channel <- Channels
+	     || Channel <- Channels
             ]
     end;
 find_by_user_realm(Username, Realm) ->
@@ -650,7 +650,7 @@ find_by_user_realm(Username, Realm) ->
         [] -> [];
         Channels ->
             [{Channel#channel.uuid, ecallmgr_fs_channel:to_json(Channel)}
-                || Channel <- Channels
+	     || Channel <- Channels
             ]
     end.
 
@@ -669,8 +669,8 @@ find_account_channels(AccountId) ->
 -spec build_matchspec_ors(ne_binaries()) -> tuple() | 'false'.
 build_matchspec_ors(Usernames) ->
     lists:foldl(fun build_matchspec_ors_fold/2
-                ,'false'
-                ,Usernames
+	       ,'false'
+	       ,Usernames
                ).
 
 -spec build_matchspec_ors_fold(ne_binary(), tuple() | 'false') -> tuple().
@@ -680,27 +680,27 @@ build_matchspec_ors_fold(Username, Acc) ->
 -spec query_channels(ne_binaries(), api_binary()) -> kz_json:object().
 query_channels(Fields, 'undefined') ->
     query_channels(ets:match_object(?CHANNELS_TBL, #channel{_='_'}, 1)
-                   ,Fields
-                   ,kz_json:new()
+		  ,Fields
+		  ,kz_json:new()
                   );
 query_channels(Fields, CallId) ->
     query_channels(ets:match_object(?CHANNELS_TBL, #channel{uuid=CallId, _='_'}, 1)
-                   ,Fields
-                   ,kz_json:new()
+		  ,Fields
+		  ,kz_json:new()
                   ).
 
 -spec query_channels({[channel()], ets:continuation()} | '$end_of_table', ne_binary() | ne_binaries(), kz_json:object()) ->
                             kz_json:object().
 query_channels('$end_of_table', _, Channels) -> Channels;
 query_channels({[#channel{uuid=CallId}=Channel], Continuation}
-                ,<<"all">>, Channels) ->
+	      ,<<"all">>, Channels) ->
     JObj = ecallmgr_fs_channel:to_api_json(Channel),
     query_channels(ets:match_object(Continuation)
-                   ,<<"all">>
-                   ,kz_json:set_value(CallId, JObj, Channels)
+		  ,<<"all">>
+		  ,kz_json:set_value(CallId, JObj, Channels)
                   );
 query_channels({[#channel{uuid=CallId}=Channel], Continuation}
-               ,Fields, Channels) ->
+	      ,Fields, Channels) ->
     Props = ecallmgr_fs_channel:to_api_props(Channel),
     JObj = kz_json:from_list(
              props:filter_undefined(
@@ -709,8 +709,8 @@ query_channels({[#channel{uuid=CallId}=Channel], Continuation}
                ]
               )),
     query_channels(ets:match_object(Continuation)
-                   ,Fields
-                   ,kz_json:set_value(CallId, JObj, Channels)
+		  ,Fields
+		  ,kz_json:set_value(CallId, JObj, Channels)
                   ).
 
 -define(SUMMARY_HEADER, "| ~-50s | ~-40s | ~-9s | ~-15s | ~-32s |~n").
@@ -720,7 +720,7 @@ print_summary('$end_of_table') ->
 print_summary(Match) ->
     io:format("+----------------------------------------------------+------------------------------------------+-----------+-----------------+----------------------------------+~n"),
     io:format(?SUMMARY_HEADER
-              ,[ <<"UUID">>, <<"Node">>, <<"Direction">>, <<"Destination">>, <<"Account-ID">>]
+	     ,[ <<"UUID">>, <<"Node">>, <<"Direction">>, <<"Destination">>, <<"Account-ID">>]
              ),
     io:format("+====================================================+==========================================+===========+=================+==================================+~n"),
     print_summary(Match, 0).
@@ -729,15 +729,15 @@ print_summary('$end_of_table', Count) ->
     io:format("+----------------------------------------------------+------------------------------------------+-----------+-----------------+----------------------------------+~n"),
     io:format("Found ~p channels~n", [Count]);
 print_summary({[#channel{uuid=UUID
-                         ,node=Node
-                         ,direction=Direction
-                         ,destination=Destination
-                         ,account_id=AccountId
+			,node=Node
+			,direction=Direction
+			,destination=Destination
+			,account_id=AccountId
                         }]
-               ,Continuation}
-              ,Count) ->
+	      ,Continuation}
+	     ,Count) ->
     io:format(?SUMMARY_HEADER
-              ,[UUID, Node, Direction, Destination, AccountId]
+	     ,[UUID, Node, Direction, Destination, AccountId]
              ),
     print_summary(ets:select(Continuation), Count + 1).
 
@@ -749,8 +749,8 @@ print_details(Match) ->
 print_details('$end_of_table', Count) ->
     io:format("~nFound ~p channels~n", [Count]);
 print_details({[#channel{}=Channel]
-               ,Continuation}
-              ,Count) ->
+	      ,Continuation}
+	     ,Count) ->
     io:format("~n"),
     _ = [io:format("~-19s: ~s~n", [K, kz_util:to_binary(V)])
          || {K, V} <- ecallmgr_fs_channel:to_props(Channel)
@@ -759,9 +759,9 @@ print_details({[#channel{}=Channel]
 
 -spec handle_channel_reconnected(channel(), boolean()) -> 'ok'.
 handle_channel_reconnected(#channel{handling_locally='true'
-                                    ,uuid=_UUID
+				   ,uuid=_UUID
                                    }=Channel
-                           ,'true') ->
+			  ,'true') ->
     lager:debug("channel ~s connected, publishing update", [_UUID]),
     publish_channel_connection_event(Channel, [{<<"Event-Name">>, <<"CHANNEL_CONNECTED">>}]);
 handle_channel_reconnected(_Channel, _ShouldPublish) ->
@@ -778,24 +778,24 @@ handle_channel_disconnected(Channel) ->
 
 -spec publish_channel_connection_event(channel(), kz_proplist()) -> 'ok'.
 publish_channel_connection_event(#channel{uuid=UUID
-                                          ,direction=Direction
-                                          ,node=Node
-                                          ,destination=Destination
-                                          ,username=Username
-                                          ,realm=Realm
-                                          ,presence_id=PresenceId
-                                          ,answered=IsAnswered
+					 ,direction=Direction
+					 ,node=Node
+					 ,destination=Destination
+					 ,username=Username
+					 ,realm=Realm
+					 ,presence_id=PresenceId
+					 ,answered=IsAnswered
                                          }=Channel
-                                 ,ChannelSpecific) ->
+				,ChannelSpecific) ->
     Event = [{<<"Timestamp">>, kz_util:current_tstamp()}
-             ,{<<"Call-ID">>, UUID}
-             ,{<<"Call-Direction">>, Direction}
-             ,{<<"Media-Server">>, Node}
-             ,{<<"Custom-Channel-Vars">>, connection_ccvs(Channel)}
-             ,{<<"To">>, <<Destination/binary, "@", Realm/binary>>}
-             ,{<<"From">>, <<Username/binary, "@", Realm/binary>>}
-             ,{<<"Presence-ID">>, PresenceId}
-             ,{<<"Channel-Call-State">>, channel_call_state(IsAnswered)}
+	    ,{<<"Call-ID">>, UUID}
+	    ,{<<"Call-Direction">>, Direction}
+	    ,{<<"Media-Server">>, Node}
+	    ,{<<"Custom-Channel-Vars">>, connection_ccvs(Channel)}
+	    ,{<<"To">>, <<Destination/binary, "@", Realm/binary>>}
+	    ,{<<"From">>, <<Username/binary, "@", Realm/binary>>}
+	    ,{<<"Presence-ID">>, PresenceId}
+	    ,{<<"Channel-Call-State">>, channel_call_state(IsAnswered)}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION) ++ ChannelSpecific
             ],
     kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1),
@@ -809,22 +809,22 @@ channel_call_state('false') ->
 
 -spec connection_ccvs(channel()) -> kz_json:object().
 connection_ccvs(#channel{account_id=AccountId
-                         ,authorizing_id=AuthorizingId
-                         ,authorizing_type=AuthorizingType
-                         ,resource_id=ResourceId
-                         ,fetch_id=FetchId
-                         ,bridge_id=BridgeId
-                         ,owner_id=OwnerId
+			,authorizing_id=AuthorizingId
+			,authorizing_type=AuthorizingType
+			,resource_id=ResourceId
+			,fetch_id=FetchId
+			,bridge_id=BridgeId
+			,owner_id=OwnerId
                         }) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"Account-ID">>, AccountId}
-         ,{<<"Authorizing-ID">>, AuthorizingId}
-         ,{<<"Authorizing-Type">>, AuthorizingType}
-         ,{<<"Resource-ID">>, ResourceId}
-         ,{<<"Fetch-ID">>, FetchId}
-         ,{<<"Bridge-ID">>, BridgeId}
-         ,{<<"Owner-ID">>, OwnerId}
+	,{<<"Authorizing-ID">>, AuthorizingId}
+	,{<<"Authorizing-Type">>, AuthorizingType}
+	,{<<"Resource-ID">>, ResourceId}
+	,{<<"Fetch-ID">>, FetchId}
+	,{<<"Bridge-ID">>, BridgeId}
+	,{<<"Owner-ID">>, OwnerId}
         ])).
 
 -define(MAX_CHANNEL_UPTIME_KEY, <<"max_channel_uptime_s">>).
@@ -860,13 +860,13 @@ cleanup_old_channels(MaxAge) ->
     NoOlderThan = kz_util:current_tstamp() - MaxAge,
 
     MatchSpec = [{#channel{uuid='$1'
-                           ,node='$2'
-                           ,timestamp='$3'
-                           ,handling_locally='true'
-                           ,_ = '_'
+			  ,node='$2'
+			  ,timestamp='$3'
+			  ,handling_locally='true'
+			  ,_ = '_'
                           }
-                  ,[{'<', '$3', NoOlderThan}]
-                  ,[['$1', '$2', '$3']]
+		 ,[{'<', '$3', NoOlderThan}]
+		 ,[['$1', '$2', '$3']]
                  }],
     case ets:select(?CHANNELS_TBL, MatchSpec) of
         [] -> 0;
@@ -888,6 +888,6 @@ hangup_old_channels(OldChannels) ->
 -spec hangup_old_channel(old_channel()) -> 'ok'.
 hangup_old_channel([UUID, Node, Started]) ->
     lager:debug("killing channel ~s on ~s, started ~s"
-                ,[UUID, Node, kz_util:pretty_print_datetime(Started)]
+	       ,[UUID, Node, kz_util:pretty_print_datetime(Started)]
                ),
     freeswitch:api(Node, 'uuid_kill', UUID).

@@ -28,7 +28,7 @@ start(_Type, _Args) ->
 %%--------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
-   'ok'.
+    'ok'.
 
 
 -spec declare_exchanges() -> 'ok'.

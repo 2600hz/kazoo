@@ -11,7 +11,7 @@
 -include("doodle.hrl").
 
 -export([handle/2
-         ,get_endpoints/3
+	,get_endpoints/3
         ]).
 
 %%--------------------------------------------------------------------
@@ -26,7 +26,7 @@
 handle(Data, Call1) ->
     UserId = kz_doc:id(Data),
     Funs = [{fun doodle_util:set_callee_id/2, UserId}
-            ,{fun kapps_call:kvs_store/3, <<"target_owner_id">>, UserId}
+	   ,{fun kapps_call:kvs_store/3, <<"target_owner_id">>, UserId}
            ],
     Call = kapps_call:exec(Funs, Call1),
     {Endpoints, Dnd} = get_endpoints(UserId, Data, Call),
@@ -66,7 +66,7 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
         'not_found' ->
             doodle_util:maybe_reschedule_sms(
               doodle_util:set_flow_status(<<"pending">>, kz_util:to_binary(R), Call)
-              );
+	     );
         'ok' -> 'ok'
     end.
 
@@ -85,26 +85,26 @@ get_endpoints(UserId, Data, Call) ->
     Params = kz_json:set_value(<<"source">>, ?MODULE, Data),
     EndpointIds = kz_attributes:owned_by(UserId, <<"device">>, Call),
     {Endpoints, DndCount} = lists:foldr(fun(EndpointId, {Acc, Dnd}) ->
-                        case kz_endpoint:build(EndpointId, Params, Call) of
-                            {'ok', Endpoint} -> {Endpoint ++ Acc, Dnd};
-                            {'error', 'do_not_disturb'} -> {Acc, Dnd+1};
-                            {'error', _E} -> {Acc, Dnd}
-                        end
-                end
-                ,{[], 0}
-                ,EndpointIds
-               ),
+						case kz_endpoint:build(EndpointId, Params, Call) of
+						    {'ok', Endpoint} -> {Endpoint ++ Acc, Dnd};
+						    {'error', 'do_not_disturb'} -> {Acc, Dnd+1};
+						    {'error', _E} -> {Acc, Dnd}
+						end
+					end
+				       ,{[], 0}
+				       ,EndpointIds
+				       ),
     SortedEndpoints = sort_endpoints_by_type(Endpoints),
     {SortedEndpoints, DndCount}.
 
 -spec sort_endpoints_by_type(kz_json:objects()) -> kz_json:objects().
 sort_endpoints_by_type(Endpoints) ->
     lists:sort(fun(EndpointA, EndpointB) ->
-            EndpointAValue = endpoint_type_sort_value(kz_json:get_value(<<"Endpoint-Type">>, EndpointA)),
-            EndpointBValue = endpoint_type_sort_value(kz_json:get_value(<<"Endpoint-Type">>, EndpointB)),
-            (EndpointAValue < EndpointBValue)
-        end,
-        Endpoints).
+		       EndpointAValue = endpoint_type_sort_value(kz_json:get_value(<<"Endpoint-Type">>, EndpointA)),
+		       EndpointBValue = endpoint_type_sort_value(kz_json:get_value(<<"Endpoint-Type">>, EndpointB)),
+		       (EndpointAValue < EndpointBValue)
+	       end,
+	       Endpoints).
 
 -spec endpoint_type_sort_value(binary()) -> non_neg_integer().
 endpoint_type_sort_value(<<"amqp">>) ->

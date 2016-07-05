@@ -10,7 +10,7 @@
 -module(konami_break).
 
 -export([handle/2
-         ,number_builder/1
+	,number_builder/1
         ]).
 
 -include("konami.hrl").
@@ -23,8 +23,8 @@ handle(Data, Call) ->
     lager:debug("attempting to break ~s", [RequestingLeg]),
 
     Command = [{<<"Application-Name">>, <<"break">>}
-               ,{<<"Call-ID">>, RequestingLeg}
-               ,{<<"Insert-At">>, <<"now">>}
+	      ,{<<"Call-ID">>, RequestingLeg}
+	      ,{<<"Insert-At">>, <<"now">>}
               ],
     kapps_call_command:send_command(Command, Call),
     {'continue', Call}.
@@ -64,5 +64,5 @@ number_builder_check_option(NumberJObj, _Option) ->
 -spec metaflow_jobj(kz_json:object()) -> kz_json:object().
 metaflow_jobj(NumberJObj) ->
     kz_json:set_values([{<<"module">>, <<"break">>}
-                        ,{<<"data">>, kz_json:new()}
+		       ,{<<"data">>, kz_json:new()}
                        ], NumberJObj).

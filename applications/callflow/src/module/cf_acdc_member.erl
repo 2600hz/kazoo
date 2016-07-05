@@ -23,9 +23,9 @@
 -define(MEMBER_HANGUP, <<"member_hangup">>).
 
 -record(member_call, {call              :: kapps_call:call()
-                      ,queue_id         :: api_binary()
-                      ,config_data = [] :: kz_proplist()
-                      ,max_wait = 60 * ?MILLISECONDS_IN_SECOND :: max_wait()
+		     ,queue_id         :: api_binary()
+		     ,config_data = [] :: kz_proplist()
+		     ,max_wait = 60 * ?MILLISECONDS_IN_SECOND :: max_wait()
                      }).
 -type member_call() :: #member_call{}.
 
@@ -43,9 +43,9 @@ handle(Data, Call) ->
 
     MemberCall = props:filter_undefined(
                    [{<<"Account-ID">>, kapps_call:account_id(Call)}
-                    ,{<<"Queue-ID">>, QueueId}
-                    ,{<<"Call">>, kapps_call:to_json(Call)}
-                    ,{<<"Member-Priority">>, Priority}
+		   ,{<<"Queue-ID">>, QueueId}
+		   ,{<<"Call">>, kapps_call:to_json(Call)}
+		   ,{<<"Member-Priority">>, Priority}
                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ]),
 
@@ -62,11 +62,11 @@ handle(Data, Call) ->
     lager:info("max size: ~p curr size: ~p", [MaxQueueSize, CurrQueueSize]),
 
     maybe_enter_queue(#member_call{call=Call1
-                                   ,config_data=MemberCall
-                                   ,queue_id=QueueId
-                                   ,max_wait=MaxWait
+				  ,config_data=MemberCall
+				  ,queue_id=QueueId
+				  ,max_wait=MaxWait
                                   }
-                      ,is_queue_full(MaxQueueSize, CurrQueueSize)
+		     ,is_queue_full(MaxQueueSize, CurrQueueSize)
                      ).
 
 -spec lookup_priority(kz_json:object(), kapps_call:call()) -> api_binary().
@@ -84,17 +84,17 @@ maybe_enter_queue(#member_call{call=Call}, 'true') ->
     lager:info("queue has reached max size"),
     cf_exe:continue(Call);
 maybe_enter_queue(#member_call{call=Call
-                               ,config_data=MemberCall
-                               ,queue_id=QueueId
-                               ,max_wait=MaxWait
+			      ,config_data=MemberCall
+			      ,queue_id=QueueId
+			      ,max_wait=MaxWait
                               }=MC
-                  ,'false') ->
+		 ,'false') ->
     lager:info("asking for an agent, waiting up to ~p ms", [MaxWait]),
 
     cf_exe:send_amqp(Call, MemberCall, fun kapi_acdc_queue:publish_member_call/1),
     _ = kapps_call_command:flush_dtmf(Call),
     wait_for_bridge(MC#member_call{call=kapps_call:kvs_store('queue_id', QueueId, Call)}
-                    ,MaxWait
+		   ,MaxWait
                    ).
 
 -spec wait_for_bridge(member_call(), max_wait()) -> 'ok'.
@@ -120,8 +120,8 @@ end_member_call(Call) ->
     cf_exe:continue(Call).
 
 -spec process_message(member_call(), max_wait(), kz_now()
-                      ,kz_now(), kz_json:object()
-                      ,{ne_binary(), ne_binary()}
+		     ,kz_now(), kz_json:object()
+		     ,{ne_binary(), ne_binary()}
                      ) -> 'ok'.
 process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}) ->
     lager:info("member was bridged to agent, yay! took ~b s", [kz_util:elapsed_s(Start)]),
@@ -131,13 +131,13 @@ process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"call_event"
     cancel_member_call(Call, ?MEMBER_HANGUP),
     cf_exe:stop(Call);
 process_message(#member_call{call=Call
-                             ,queue_id=QueueId
+			    ,queue_id=QueueId
                             }=MC, Timeout, Start, Wait, JObj, {<<"member">>, <<"call_fail">>}) ->
     case QueueId =:= kz_json:get_value(<<"Queue-ID">>, JObj) of
         'true' ->
             Failure = kz_json:get_value(<<"Failure-Reason">>, JObj),
             lager:info("call failed to be processed: ~s (took ~b s)"
-                       ,[Failure, kz_util:elapsed_s(Start)]
+		      ,[Failure, kz_util:elapsed_s(Start)]
                       ),
             cancel_member_call(Call, Failure),
             stop_hold_music(Call),
@@ -188,17 +188,17 @@ cancel_member_call(Call, Reason) ->
 
     Req = props:filter_undefined(
             [{<<"Account-ID">>, AcctId}
-             ,{<<"Queue-ID">>, QueueId}
-             ,{<<"Call-ID">>, CallId}
-             ,{<<"Reason">>, Reason}
+	    ,{<<"Queue-ID">>, QueueId}
+	    ,{<<"Call-ID">>, CallId}
+	    ,{<<"Reason">>, Reason}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     kapi_acdc_queue:publish_member_call_cancel(Req).
 
 stop_hold_music(Call) ->
     Cmd = [{<<"Application-Name">>, <<"play">>}
-           ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-           ,{<<"Media-Name">>, <<"silence_stream://50">>}
-           ,{<<"Insert-At">>, <<"now">>}
+	  ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+	  ,{<<"Media-Name">>, <<"silence_stream://50">>}
+	  ,{<<"Insert-At">>, <<"now">>}
           ],
     kapps_call_command:send_command(Cmd, Call).

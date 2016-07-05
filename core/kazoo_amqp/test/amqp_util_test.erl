@@ -26,13 +26,13 @@ trim_test_() ->
     Max = 255,
 
     Vals = [{Min-100, Min}
-            ,{Min-1, Min}
-            ,{Min, Min}
-            ,{Min+1, Min+1}
-            ,{Max-1, Max-1}
-            ,{Max, Max}
-            ,{Max+1, Max}
-            ,{Max+100, Max}
+	   ,{Min-1, Min}
+	   ,{Min, Min}
+	   ,{Min+1, Min+1}
+	   ,{Max-1, Max-1}
+	   ,{Max, Max}
+	   ,{Max+1, Max}
+	   ,{Max+100, Max}
            ],
     [check_trim(Min, Max, Test) || Test <- Vals].
 

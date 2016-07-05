@@ -43,9 +43,9 @@ search(Conference) ->
            | kz_api:default_headers(AppName, AppVersion)
           ],
     ReqResp = kapps_util:amqp_pool_collect(Req
-                                            ,fun kapi_conference:publish_search_req/1
-                                            ,{'ecallmgr', fun kapi_conference:search_resp_v/1, 'true'}
-                                           ),
+					  ,fun kapi_conference:publish_search_req/1
+					  ,{'ecallmgr', fun kapi_conference:search_resp_v/1, 'true'}
+					  ),
     lager:debug("searching for conference ~s", [ConferenceId]),
     case ReqResp of
         {'error', _R}=E ->
@@ -72,15 +72,15 @@ conference_search_filter([JObj|JObjs], ConferenceId) ->
 -spec deaf_participant(non_neg_integer(), kapps_conference:conference()) -> 'ok'.
 deaf_participant(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"deaf_participant">>}
-               ,{<<"Participant-ID">>, ParticipantId}
+	      ,{<<"Participant-ID">>, ParticipantId}
               ],
     send_command(Command, Conference).
 
 -spec participant_energy(non_neg_integer(),  ne_binary(), kapps_conference:conference()) -> 'ok'.
 participant_energy(ParticipantId, EnergyLevel, Conference) ->
     Command = [{<<"Application-Name">>, <<"participant_energy">>}
-               ,{<<"Participant-ID">>, ParticipantId}
-               ,{<<"Energy-Level">>, EnergyLevel}
+	      ,{<<"Participant-ID">>, ParticipantId}
+	      ,{<<"Energy-Level">>, EnergyLevel}
               ],
     send_command(Command, Conference).
 
@@ -91,7 +91,7 @@ kick(Conference) ->
     kick('undefined', Conference).
 kick(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"kick">>}
-               ,{<<"Participant-ID">>, ParticipantId}
+	      ,{<<"Participant-ID">>, ParticipantId}
               ],
     send_command(Command, Conference).
 
@@ -108,7 +108,7 @@ lock(Conference) ->
 -spec mute_participant(non_neg_integer(), kapps_conference:conference()) -> 'ok'.
 mute_participant(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"mute_participant">>}
-               ,{<<"Participant-ID">>, ParticipantId}
+	      ,{<<"Participant-ID">>, ParticipantId}
               ],
     send_command(Command, Conference).
 
@@ -127,8 +127,8 @@ play_command(Media) ->
     play_command(Media, 'undefined').
 play_command(Media, ParticipantId) ->
     [{<<"Application-Name">>, <<"play">>}
-     ,{<<"Media-Name">>, Media}
-     ,{<<"Participant-ID">>, ParticipantId}
+    ,{<<"Media-Name">>, Media}
+    ,{<<"Participant-ID">>, ParticipantId}
     ].
 
 -spec play(ne_binary(), kapps_conference:conference()) -> 'ok'.
@@ -158,9 +158,9 @@ relate_participants(ParticipantId, OtherParticipantId, Conference) ->
 
 relate_participants(ParticipantId, OtherParticipantId, Relationship, Conference) ->
     Command = [{<<"Application-Name">>, <<"relate_participants">>}
-               ,{<<"Participant-ID">>, ParticipantId}
-               ,{<<"Other-Participant">>, OtherParticipantId}
-               ,{<<"Relationship">>, Relationship}
+	      ,{<<"Participant-ID">>, ParticipantId}
+	      ,{<<"Other-Participant">>, OtherParticipantId}
+	      ,{<<"Relationship">>, Relationship}
               ],
     send_command(Command, Conference).
 
@@ -176,15 +176,15 @@ stop_play(ParticipantId, Conference) ->
 
 stop_play(ParticipantId, Affects, Conference) ->
     Command = [{<<"Application-Name">>, <<"stop_play">>}
-               ,{<<"Participant-ID">>, ParticipantId}
-               ,{<<"Affects">>, Affects}
+	      ,{<<"Participant-ID">>, ParticipantId}
+	      ,{<<"Affects">>, Affects}
               ],
     send_command(Command, Conference).
 
 -spec undeaf_participant(non_neg_integer(), kapps_conference:conference()) -> 'ok'.
 undeaf_participant(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"undeaf_participant">>}
-               ,{<<"Participant-ID">>, ParticipantId}
+	      ,{<<"Participant-ID">>, ParticipantId}
               ],
     send_command(Command, Conference).
 
@@ -196,23 +196,23 @@ unlock(Conference) ->
 -spec unmute_participant(non_neg_integer(), kapps_conference:conference()) -> 'ok'.
 unmute_participant(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"unmute_participant">>}
-               ,{<<"Participant-ID">>, ParticipantId}
+	      ,{<<"Participant-ID">>, ParticipantId}
               ],
     send_command(Command, Conference).
 
 -spec participant_volume_in(non_neg_integer(),  ne_binary(), kapps_conference:conference()) -> 'ok'.
 participant_volume_in(ParticipantId, VolumeIn, Conference) ->
     Command = [{<<"Application-Name">>, <<"participant_energy">>}
-               ,{<<"Participant-ID">>, ParticipantId}
-               ,{<<"Volume-In-Level">>, VolumeIn}
+	      ,{<<"Participant-ID">>, ParticipantId}
+	      ,{<<"Volume-In-Level">>, VolumeIn}
               ],
     send_command(Command, Conference).
 
 -spec participant_volume_out(non_neg_integer(),  ne_binary(), kapps_conference:conference()) -> 'ok'.
 participant_volume_out(ParticipantId, VolumeOut,Conference) ->
     Command = [{<<"Application-Name">>, <<"participant_energy">>}
-               ,{<<"Participant-ID">>, ParticipantId}
-               ,{<<"Volume-Out-Level">>, VolumeOut}
+	      ,{<<"Participant-ID">>, ParticipantId}
+	      ,{<<"Volume-Out-Level">>, VolumeOut}
               ],
     send_command(Command, Conference).
 
@@ -235,16 +235,16 @@ send_command(JObj, Conference) -> send_command(kz_json:to_proplist(JObj), Confer
 
 macro(Commands, Conference) ->
     Values = [{<<"Event-Category">>, <<"conference">>}
-              ,{<<"Event-Name">>, <<"command">>}
-              ,{<<"Conference-ID">>, kapps_conference:id(Conference)}
-              ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+	     ,{<<"Event-Name">>, <<"command">>}
+	     ,{<<"Conference-ID">>, kapps_conference:id(Conference)}
+	     ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ],
     JsonCommands = lists:reverse(lists:foldl(fun(Command, Acc) ->
-        [kz_json:from_list(props:filter_undefined(Command ++ Values)) | Acc]
-    end, [], Commands)),
+						     [kz_json:from_list(props:filter_undefined(Command ++ Values)) | Acc]
+					     end, [], Commands)),
     Prop = [{<<"Application-Name">>, <<"play_macro">>}
-            ,{<<"Commands">>, JsonCommands}
+	   ,{<<"Commands">>, JsonCommands}
             | Values
            ],
     send_command(Prop, Conference).

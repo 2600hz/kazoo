@@ -16,7 +16,7 @@
 -export([owner_id/1, owner_id/2]).
 -export([presence_id/1, presence_id/2]).
 -export([owned_by/2, owned_by/3
-         ,owned_by_docs/2, owned_by_docs/3
+	,owned_by_docs/2, owned_by_docs/3
         ]).
 -export([owner_ids/2]).
 -export([maybe_get_assigned_number/3]).
@@ -119,7 +119,7 @@ log_configured_endpoint_cid(Attribute, Name, Number) ->
     lager:debug("endpoint configured with ~s caller id <~s> ~s", [Attribute, Name, Number]).
 
 -spec maybe_use_presence_number(api_binary(), api_binary(), kz_json:object(), boolean(), ne_binary(), kapps_call:call()) ->
-                                 {api_binary(), api_binary()}.
+				       {api_binary(), api_binary()}.
 maybe_use_presence_number('undefined', Name, Endpoint, Validate, <<"internal">> = Attribute, Call) ->
     case maybe_get_presence_number(Endpoint, Call) of
         'undefined' -> maybe_normalize_cid('undefined', Name, Validate, Attribute, Call);
@@ -166,7 +166,7 @@ maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call) ->
     end.
 
 -spec maybe_rewrite_cid_number(ne_binary(), ne_binary(), boolean(), ne_binary(), kapps_call:call()) ->
-                                     {api_binary(), api_binary()}.
+				      {api_binary(), api_binary()}.
 maybe_rewrite_cid_number(Number, Name, Validate, Attribute, Call) ->
     case kapps_call:kvs_fetch('rewrite_cid_number', Call) of
         'undefined' -> maybe_rewrite_cid_name(Number, Name, Validate, Attribute, Call);
@@ -176,7 +176,7 @@ maybe_rewrite_cid_number(Number, Name, Validate, Attribute, Call) ->
     end.
 
 -spec maybe_rewrite_cid_name(ne_binary(), ne_binary(), boolean(), ne_binary(), kapps_call:call()) ->
-                                   {api_binary(), api_binary()}.
+				    {api_binary(), api_binary()}.
 maybe_rewrite_cid_name(Number, Name, Validate, Attribute, Call) ->
     case kapps_call:kvs_fetch('rewrite_cid_name', Call) of
         'undefined' -> maybe_ensure_cid_valid(Number, Name, Validate, Attribute, Call);
@@ -210,13 +210,13 @@ maybe_cid_privacy(Number, Name, Call) ->
         'true' ->
             lager:info("overriding caller id to maintain privacy"),
             {kapps_config:get_non_empty(<<"callflow">>
-                                        ,<<"privacy_number">>
-                                        ,kz_util:anonymous_caller_id_number()
-                                        )
+				       ,<<"privacy_number">>
+				       ,kz_util:anonymous_caller_id_number()
+				       )
             ,kapps_config:get_non_empty(<<"callflow">>
-                                        ,<<"privacy_name">>
-                                        ,kz_util:anonymous_caller_id_name()
-                                        )
+				       ,<<"privacy_name">>
+				       ,kz_util:anonymous_caller_id_name()
+				       )
             };
         'false' -> {Number, Name}
     end.
@@ -493,7 +493,7 @@ owned_by('undefined', _) -> [];
 owned_by(OwnerId, Call) ->
     AccountDb = kapps_call:account_db(Call),
     ViewOptions = [{'startkey', [OwnerId]}
-                   ,{'endkey', [OwnerId, kz_json:new()]}
+		  ,{'endkey', [OwnerId, kz_json:new()]}
                   ],
     case kz_datamgr:get_results(AccountDb, <<"kz_attributes/owned">>, ViewOptions) of
         {'ok', JObjs} -> [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
@@ -516,8 +516,8 @@ owned_by_docs('undefined', _) -> [];
 owned_by_docs(OwnerId, Call) ->
     AccountDb = kapps_call:account_db(Call),
     ViewOptions = [{'startkey', [OwnerId]}
-                   ,{'endkey', [OwnerId, kz_json:new()]}
-                   ,'include_docs'
+		  ,{'endkey', [OwnerId, kz_json:new()]}
+		  ,'include_docs'
                   ],
     case kz_datamgr:get_results(AccountDb, <<"kz_attributes/owned">>, ViewOptions) of
         {'ok', JObjs} -> [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];

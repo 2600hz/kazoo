@@ -13,13 +13,13 @@
 -module(cb_menus).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
-         ,put/1
-         ,post/2
-         ,patch/2
-         ,delete/2
+	,allowed_methods/0, allowed_methods/1
+	,resource_exists/0, resource_exists/1
+	,validate/1, validate/2
+	,put/1
+	,post/2
+	,patch/2
+	,delete/2
         ]).
 
 -include("crossbar.hrl").
@@ -182,9 +182,9 @@ validate_patch(DocId, Context) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, kz_json:set_values([{<<"pvt_type">>, <<"menu">>}
-                                                    ,{<<"pvt_vsn">>, <<"2">>}
+						   ,{<<"pvt_vsn">>, <<"2">>}
                                                    ]
-                                                   ,cb_context:doc(Context)
+						  ,cb_context:doc(Context)
                                                   ));
 on_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"menu">>)).

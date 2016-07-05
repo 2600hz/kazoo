@@ -12,13 +12,13 @@
 -include_lib("kazoo/include/kz_api.hrl").
 
 -export([originate_req/1, originate_req_v/1
-         ,originate_resp/1, originate_resp_v/1
-         ,originate_ready/1, originate_ready_v/1
-         ,originate_execute/1, originate_execute_v/1
-         ,originate_started/1, originate_started_v/1
-         ,originate_uuid/1, originate_uuid_v/1
-         ,eavesdrop_req/1, eavesdrop_req_v/1
-         ,eavesdrop_resp/1, eavesdrop_resp_v/1
+	,originate_resp/1, originate_resp_v/1
+	,originate_ready/1, originate_ready_v/1
+	,originate_execute/1, originate_execute_v/1
+	,originate_started/1, originate_started_v/1
+	,originate_uuid/1, originate_uuid_v/1
+	,eavesdrop_req/1, eavesdrop_req_v/1
+	,eavesdrop_resp/1, eavesdrop_resp_v/1
         ]).
 
 -export([is_valid_mode/1]).
@@ -27,17 +27,17 @@
 -export([declare_exchanges/0]).
 
 -export([publish_originate_req/1, publish_originate_req/2
-         ,publish_originate_resp/2, publish_originate_resp/3
-         ,publish_originate_started/2, publish_originate_started/3
-         ,publish_originate_uuid/2, publish_originate_uuid/3
-         ,publish_eavesdrop_req/1, publish_eavesdrop_req/2
-         ,publish_eavesdrop_resp/2, publish_eavesdrop_resp/3
+	,publish_originate_resp/2, publish_originate_resp/3
+	,publish_originate_started/2, publish_originate_started/3
+	,publish_originate_uuid/2, publish_originate_uuid/3
+	,publish_eavesdrop_req/1, publish_eavesdrop_req/2
+	,publish_eavesdrop_resp/2, publish_eavesdrop_resp/3
         ]).
 
 %% Eavesdrop: If you set a Group ID, the Call-ID is ignored and "all" is used instead
 -define(EAVESDROP_VALID_MODES, [<<"listen">>   % hear both sides - default
-                                ,<<"whisper">> % talk to one side
-                                ,<<"full">>    % talk to both sides
+			       ,<<"whisper">> % talk to one side
+			       ,<<"full">>    % talk to both sides
                                ]).
 -define(EAVESDROP_MODE, {<<"Eavesdrop-Mode">>, ?EAVESDROP_VALID_MODES}).
 
@@ -45,22 +45,22 @@
 
 -define(EAVESDROP_REQ_HEADERS, [<<"Account-ID">>, <<"Endpoint-ID">>]).
 -define(OPTIONAL_EAVESDROP_REQ_HEADERS, [<<"Eavesdrop-Group-ID">>, <<"Eavesdrop-Mode">>
-                                         ,<<"Eavesdrop-Call-ID">>
-                                         | ?OPTIONAL_ORIGINATE_REQ_HEADERS
+					,<<"Eavesdrop-Call-ID">>
+					     | ?OPTIONAL_ORIGINATE_REQ_HEADERS
                                         ]).
 -define(EAVESDROP_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
-                               ,{<<"Event-Name">>, <<"eavesdrop_req">>}
-                               ,?EAVESDROP_MODE
+			      ,{<<"Event-Name">>, <<"eavesdrop_req">>}
+			      ,?EAVESDROP_MODE
                               ]).
 -define(EAVESDROP_REQ_TYPES, []).
 
 -define(EAVESDROP_RESP_HEADERS, [<<"Status">>]).
 -define(OPTIONAL_EAVESDROP_RESP_HEADERS, [<<"Eavesdropper-Call-ID">>
-                                          ,<<"Error-Msg">>
+					 ,<<"Error-Msg">>
                                          ]).
 -define(EAVESDROP_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
-                                ,{<<"Event-Name">>, <<"eavesdrop_resp">>}
-                                ,{<<"Status">>, [<<"started">>, <<"error">>]}
+			       ,{<<"Event-Name">>, <<"eavesdrop_resp">>}
+			       ,{<<"Status">>, [<<"started">>, <<"error">>]}
                                ]).
 -define(EAVESDROP_RESP_TYPES, []).
 
@@ -69,39 +69,39 @@
 
 -define(ORIGINATE_REQ_HEADERS, [<<"Endpoints">>, <<"Application-Name">>]).
 -define(OPTIONAL_ORIGINATE_REQ_HEADERS, [<<"Application-Data">>
-                                         ,<<"Custom-Channel-Vars">>
-                                         ,<<"Existing-Call-ID">> % If set, use this node, otherwise ignore
-                                         ,<<"Export-Custom-Channel-Vars">>
-                                         ,<<"Originate-Immediate">>
-                                         ,<<"Outbound-Call-ID">>
-                                         %% Eavesdrop
-                                         ,<<"Eavesdrop-Call-ID">>
-                                         ,<<"Eavesdrop-Mode">>
-                                         ,<<"Eavesdrop-Group-ID">>
-                                         ,<<"Fax-Identity-Name">>
-                                         ,<<"Fax-Identity-Number">>
-                                         ,<<"Fax-Timezone">>
-                                         ,<<"Intercept-Unbridged-Only">>
-                                         ,<<"Simplify-Loopback">> %% loopback_bowout flag
-                                         ,<<"Loopback-Bowout">>
-                                         ,<<"Start-Control-Process">>
-                                         | kapi_dialplan:optional_bridge_req_headers()
+					,<<"Custom-Channel-Vars">>
+					,<<"Existing-Call-ID">> % If set, use this node, otherwise ignore
+					,<<"Export-Custom-Channel-Vars">>
+					,<<"Originate-Immediate">>
+					,<<"Outbound-Call-ID">>
+					     %% Eavesdrop
+					,<<"Eavesdrop-Call-ID">>
+					,<<"Eavesdrop-Mode">>
+					,<<"Eavesdrop-Group-ID">>
+					,<<"Fax-Identity-Name">>
+					,<<"Fax-Identity-Number">>
+					,<<"Fax-Timezone">>
+					,<<"Intercept-Unbridged-Only">>
+					,<<"Simplify-Loopback">> %% loopback_bowout flag
+					,<<"Loopback-Bowout">>
+					,<<"Start-Control-Process">>
+					     | kapi_dialplan:optional_bridge_req_headers()
                                         ]).
 -define(ORIGINATE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
-                               ,{<<"Event-Name">>, <<"originate_req">>}
-                               ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
-                               ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
-                               ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>
-                                                          ,<<"fax">>, <<"eavesdrop">>
-                                                         ]}
+			      ,{<<"Event-Name">>, <<"originate_req">>}
+			      ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
+			      ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
+			      ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>
+							,<<"fax">>, <<"eavesdrop">>
+							]}
                                %% Eavesdrop
-                               ,?EAVESDROP_MODE
+			      ,?EAVESDROP_MODE
                               ]).
 -define(ORIGINATE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
-                              ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
-                              ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-                              ,{<<"Continue-On-Fail">>, fun kz_util:is_boolean/1}
-                              ,{<<"Simplify-Bowout">>, fun kz_util:is_boolean/1}
+			     ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+			     ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+			     ,{<<"Continue-On-Fail">>, fun kz_util:is_boolean/1}
+			     ,{<<"Simplify-Bowout">>, fun kz_util:is_boolean/1}
                              ]).
 
 %% Originate Endpoints
@@ -110,17 +110,17 @@
 -define(ORIGINATE_REQ_ENDPOINT_VALUES, [{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>]}
                                        ]).
 -define(ORIGINATE_REQ_ENDPOINT_TYPES, [{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
-                                       ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-                                       ,{<<"Endpoint-Options">>, fun kz_json:is_json_object/1}
-                                       ,{<<"Ignore-Early-Media">>, fun kz_util:is_boolean/1}
-                                       ,{<<"Bypass-Media">>, fun kz_util:is_boolean/1}
+				      ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+				      ,{<<"Endpoint-Options">>, fun kz_json:is_json_object/1}
+				      ,{<<"Ignore-Early-Media">>, fun kz_util:is_boolean/1}
+				      ,{<<"Bypass-Media">>, fun kz_util:is_boolean/1}
                                       ]).
 
 %% Origintate Resp
 -define(ORIGINATE_RESP_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_ORIGINATE_RESP_HEADERS, [<<"Channel-Call-State">> | kapi_call:optional_call_event_headers()]).
 -define(ORIGINATE_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
-                                ,{<<"Event-Name">>, <<"originate_resp">>}
+			       ,{<<"Event-Name">>, <<"originate_resp">>}
                                ]).
 -define(ORIGINATE_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}]).
 
@@ -128,7 +128,7 @@
 -define(ORIGINATE_STARTED_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_ORIGINATE_STARTED_HEADERS, [<<"Channel-Call-State">> | kapi_call:optional_call_event_headers()]).
 -define(ORIGINATE_STARTED_VALUES, [{<<"Event-Category">>, <<"resource">>}
-                                   ,{<<"Event-Name">>, <<"originate_started">>}
+				  ,{<<"Event-Name">>, <<"originate_started">>}
                                   ]).
 -define(ORIGINATE_STARTED_TYPES, [{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}]).
 
@@ -136,7 +136,7 @@
 -define(ORIGINATE_UUID_HEADERS, [<<"Outbound-Call-ID">>]).
 -define(OPTIONAL_ORIGINATE_UUID_HEADERS, [<<"Outbound-Call-Control-Queue">>]).
 -define(ORIGINATE_UUID_VALUES, [{<<"Event-Category">>, <<"resource">>}
-                                ,{<<"Event-Name">>, <<"originate_uuid">>}
+			       ,{<<"Event-Name">>, <<"originate_uuid">>}
                                ]).
 -define(ORIGINATE_UUID_TYPES, []).
 
@@ -179,8 +179,8 @@ originate_req_v(JObj) ->
     originate_req_v(kz_json:to_proplist(JObj)).
 
 -spec originate_req_endpoint_headers(api_terms()) ->
-                                     {'ok', kz_proplist()} |
-                                     {'error', string()}.
+					    {'ok', kz_proplist()} |
+					    {'error', string()}.
 originate_req_endpoint_headers(Prop) when is_list(Prop) ->
     kz_api:build_message_specific_headers(Prop, ?ORIGINATE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_ORIGINATE_REQ_ENDPOINT_HEADERS);
 originate_req_endpoint_headers(JObj) ->

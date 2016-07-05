@@ -9,8 +9,8 @@
 -module(omnip_util).
 
 -export([extract_user/1
-         ,normalize_variables/1
-         ,are_valid_uris/1, is_valid_uri/1
+	,normalize_variables/1
+	,are_valid_uris/1, is_valid_uri/1
         ]).
 
 -include("omnipresence.hrl").

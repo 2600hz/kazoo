@@ -9,17 +9,17 @@
 -module(kzd_box_message).
 
 -export([new/0, new/6, build_metadata_object/6
-         ,count_folder/2, normalize_count/1
-         ,create_message_name/3
-         ,type/0
-         ,folder/1, folder/2, set_folder/2, set_folder_new/1, set_folder_saved/1, set_folder_deleted/1, filter_folder/2
-         ,message_history/1, add_message_history/2
-         ,message_name/1, message_name/2, set_message_name/2
-         ,media_id/1, set_media_id/2
-         ,metadata/1, metadata/2, set_metadata/2
-         ,source_id/1, set_source_id/2
-         ,to_sip/1, to_sip/2, set_to_sip/2
-         ,utc_seconds/1
+	,count_folder/2, normalize_count/1
+	,create_message_name/3
+	,type/0
+	,folder/1, folder/2, set_folder/2, set_folder_new/1, set_folder_saved/1, set_folder_deleted/1, filter_folder/2
+	,message_history/1, add_message_history/2
+	,message_name/1, message_name/2, set_message_name/2
+	,media_id/1, set_media_id/2
+	,metadata/1, metadata/2, set_metadata/2
+	,source_id/1, set_source_id/2
+	,to_sip/1, to_sip/2, set_to_sip/2
+	,utc_seconds/1
         ]).
 
 -include("kz_documents.hrl").
@@ -74,16 +74,16 @@ new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
     Name = create_message_name(BoxNum, Timezone, UtcSeconds),
 
     DocProps = props:filter_undefined(
-              [{<<"_id">>, DocId}
-               ,{?KEY_NAME, Name}
-               ,{?KEY_DESC, <<"mailbox message media">>}
-               ,{?KEY_SOURCE_TYPE, ?KEY_VOICEMAIL}
-               ,{?KEY_SOURCE_ID, props:get_value(<<"Box-Id">>, Props)}
-               ,{?KEY_MEDIA_SOURCE, <<"recording">>}
-               ,{?KEY_MEDIA_FILENAME, AttachmentName}
-               ,{?KEY_STREAMABLE, 'true'}
-               ,{?KEY_UTC_SEC, UtcSeconds}
-              ]),
+		 [{<<"_id">>, DocId}
+		 ,{?KEY_NAME, Name}
+		 ,{?KEY_DESC, <<"mailbox message media">>}
+		 ,{?KEY_SOURCE_TYPE, ?KEY_VOICEMAIL}
+		 ,{?KEY_SOURCE_ID, props:get_value(<<"Box-Id">>, Props)}
+		 ,{?KEY_MEDIA_SOURCE, <<"recording">>}
+		 ,{?KEY_MEDIA_FILENAME, AttachmentName}
+		 ,{?KEY_STREAMABLE, 'true'}
+		 ,{?KEY_UTC_SEC, UtcSeconds}
+		 ]),
     kz_doc:update_pvt_parameters(kz_json:from_list(DocProps), Db, [{'type', type()}]).
 
 %%--------------------------------------------------------------------
@@ -107,12 +107,12 @@ create_message_name(BoxNum, Timezone, UtcSeconds) ->
 -spec message_name(ne_binary(), kz_datetime(), string()) -> ne_binary().
 message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
     list_to_binary(["mailbox ", BoxNum, " message "
-                    ,kz_util:to_binary(M), "-"
-                    ,kz_util:to_binary(D), "-"
-                    ,kz_util:to_binary(Y), " "
-                    ,kz_util:to_binary(H), ":"
-                    ,kz_util:to_binary(I), ":"
-                    ,kz_util:to_binary(S), TZ
+		   ,kz_util:to_binary(M), "-"
+		   ,kz_util:to_binary(D), "-"
+		   ,kz_util:to_binary(Y), " "
+		   ,kz_util:to_binary(H), ":"
+		   ,kz_util:to_binary(I), ":"
+		   ,kz_util:to_binary(S), TZ
                    ]).
 
 %%--------------------------------------------------------------------
@@ -121,21 +121,21 @@ message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec build_metadata_object(pos_integer(), kapps_call:call(), ne_binary(), ne_binary(), ne_binary(), gregorian_seconds()) ->
-                                    doc().
+				   doc().
 build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
     kz_json:from_list(
-        props:filter_undefined(
-            [{?KEY_META_TIMESTAMP, Timestamp}
-             ,{?KEY_META_FROM, kapps_call:from(Call)}
-             ,{?KEY_META_TO, kapps_call:to(Call)}
-             ,{?KEY_META_CID_NUMBER, CIDNumber}
-             ,{?KEY_META_CID_NAME, CIDName}
-             ,{?KEY_META_CALL_ID, kapps_call:call_id(Call)}
-             ,{?VM_KEY_FOLDER, ?VM_FOLDER_NEW}
-             ,{?KEY_META_LENGTH, Length}
-             ,{?KEY_MEDIA_ID, MediaId}
-            ])
-        ).
+      props:filter_undefined(
+	[{?KEY_META_TIMESTAMP, Timestamp}
+	,{?KEY_META_FROM, kapps_call:from(Call)}
+	,{?KEY_META_TO, kapps_call:to(Call)}
+	,{?KEY_META_CID_NUMBER, CIDNumber}
+	,{?KEY_META_CID_NAME, CIDName}
+	,{?KEY_META_CALL_ID, kapps_call:call_id(Call)}
+	,{?VM_KEY_FOLDER, ?VM_FOLDER_NEW}
+	,{?KEY_META_LENGTH, Length}
+	,{?KEY_MEDIA_ID, MediaId}
+	])
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -250,12 +250,12 @@ filter_folder(Messages, Folder) ->
 -spec normalize_count(kz_json:objects()) -> {non_neg_integer(), non_neg_integer()}.
 normalize_count(ViewRes) ->
     Props = [{kz_json:get_value([<<"key">>, 2], Msg)
-              ,kz_json:get_integer_value(<<"value">>, Msg)
+	     ,kz_json:get_integer_value(<<"value">>, Msg)
              }
              || Msg <- ViewRes
             ],
     {props:get_integer_value(<<"new">>, Props, 0)
-     ,props:get_integer_value(<<"saved">>, Props, 0)
+    ,props:get_integer_value(<<"saved">>, Props, 0)
     }.
 
 %%--------------------------------------------------------------------

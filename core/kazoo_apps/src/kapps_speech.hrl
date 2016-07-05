@@ -4,50 +4,50 @@
 -define(MOD_CONFIG_CAT, <<"speech">>).
 
 -define(ISPEECH_VOICE_MAPPINGS
-        ,[{<<"female/en-us">>, <<"usenglishfemale">>}
-          ,{<<"male/en-us">>, <<"usenglishmale">>}
-          ,{<<"female/en-ca">>, <<"caenglishfemale">>}
-          ,{<<"female/en-au">>, <<"auenglishfemale">>}
-          ,{<<"female/en-gb">>, <<"ukenglishfemale">>}
-          ,{<<"male/en-gb">>, <<"ukenglishmale">>}
-          ,{<<"female/es-us">>, <<"usspanishfemale">>}
-          ,{<<"male/es-us">>, <<"usspanishmale">>}
-          ,{<<"female/us-us">>, <<"usspanishfemale">>}
-          ,{<<"female/zh-cn">>, <<"chchinesefemale">>}
-          ,{<<"male/zh-cn">>, <<"chchinesemale">>}
-          ,{<<"female/zh-hk">>, <<"hkchinesefemale">>}
-          ,{<<"female/zh-tw">>, <<"twchinesefemale">>}
-          ,{<<"female/ja-jp">>, <<"jpjapanesefemale">>}
-          ,{<<"male/ja-jp">>, <<"jpjapanesemale">>}
-          ,{<<"female/ko-kr">>, <<"krkoreanfemale">>}
-          ,{<<"male/ko-kr">>, <<"krkoreanmale">>}
-          ,{<<"female/da-dk">>, <<"eurdanishfemale">>}
-          ,{<<"female/de-de">>, <<"eurgermanfemale">>}
-          ,{<<"male/de-de">>, <<"eurgermanmale">>}
-          ,{<<"female/ca-es">>, <<"eurcatalanfemale">>}
-          ,{<<"female/es-es">>, <<"eurspanishfemale">>}
-          ,{<<"male/es-es">>, <<"eurspanishmale">>}
-          ,{<<"female/fi-fi">>, <<"eurfinnishfemale">>}
-          ,{<<"female/fr-ca">>, <<"cafrenchfemale">>}
-          ,{<<"male/fr-ca">>, <<"cafrenchmale">>}
-          ,{<<"female/fr-fr">>, <<"eurfrenchfemale">>}
-          ,{<<"male/fr-fr">>, <<"eurfrenchmale">>}
-          ,{<<"female/it-it">>, <<"euritalianfemale">>}
-          ,{<<"male/it-it">>, <<"euritalianmale">>}
-          ,{<<"female/nb-no">>, <<"eurnorwegianfemale">>}
-          ,{<<"female/nl-nl">>, <<"eurdutchfemale">>}
-          ,{<<"female/pl-pl">>, <<"eurpolishfemale">>}
-          ,{<<"female/pt-br">>, <<"brportuguesefemale">>}
-          ,{<<"female/pt-pt">>, <<"eurportuguesefemale">>}
-          ,{<<"male/pt-pt">>, <<"eurportuguesemale">>}
-          ,{<<"female/ru-ru">>, <<"rurussianfemale">>}
-          ,{<<"male/ru-ru">>, <<"rurussianmale">>}
-          ,{<<"female/sv-se">>, <<"swswedishfemale">>}
-          ,{<<"female/hu-hu">>, <<"huhungarianfemale">>}
-          ,{<<"female/cs-cz">>, <<"eurczechfemale">>}
-          ,{<<"female/tr-tr">>, <<"eurturkishfemale">>}
-          ,{<<"male/tr-tr">>, <<"eurturkishmale">>}
-         ]
+       ,[{<<"female/en-us">>, <<"usenglishfemale">>}
+	,{<<"male/en-us">>, <<"usenglishmale">>}
+	,{<<"female/en-ca">>, <<"caenglishfemale">>}
+	,{<<"female/en-au">>, <<"auenglishfemale">>}
+	,{<<"female/en-gb">>, <<"ukenglishfemale">>}
+	,{<<"male/en-gb">>, <<"ukenglishmale">>}
+	,{<<"female/es-us">>, <<"usspanishfemale">>}
+	,{<<"male/es-us">>, <<"usspanishmale">>}
+	,{<<"female/us-us">>, <<"usspanishfemale">>}
+	,{<<"female/zh-cn">>, <<"chchinesefemale">>}
+	,{<<"male/zh-cn">>, <<"chchinesemale">>}
+	,{<<"female/zh-hk">>, <<"hkchinesefemale">>}
+	,{<<"female/zh-tw">>, <<"twchinesefemale">>}
+	,{<<"female/ja-jp">>, <<"jpjapanesefemale">>}
+	,{<<"male/ja-jp">>, <<"jpjapanesemale">>}
+	,{<<"female/ko-kr">>, <<"krkoreanfemale">>}
+	,{<<"male/ko-kr">>, <<"krkoreanmale">>}
+	,{<<"female/da-dk">>, <<"eurdanishfemale">>}
+	,{<<"female/de-de">>, <<"eurgermanfemale">>}
+	,{<<"male/de-de">>, <<"eurgermanmale">>}
+	,{<<"female/ca-es">>, <<"eurcatalanfemale">>}
+	,{<<"female/es-es">>, <<"eurspanishfemale">>}
+	,{<<"male/es-es">>, <<"eurspanishmale">>}
+	,{<<"female/fi-fi">>, <<"eurfinnishfemale">>}
+	,{<<"female/fr-ca">>, <<"cafrenchfemale">>}
+	,{<<"male/fr-ca">>, <<"cafrenchmale">>}
+	,{<<"female/fr-fr">>, <<"eurfrenchfemale">>}
+	,{<<"male/fr-fr">>, <<"eurfrenchmale">>}
+	,{<<"female/it-it">>, <<"euritalianfemale">>}
+	,{<<"male/it-it">>, <<"euritalianmale">>}
+	,{<<"female/nb-no">>, <<"eurnorwegianfemale">>}
+	,{<<"female/nl-nl">>, <<"eurdutchfemale">>}
+	,{<<"female/pl-pl">>, <<"eurpolishfemale">>}
+	,{<<"female/pt-br">>, <<"brportuguesefemale">>}
+	,{<<"female/pt-pt">>, <<"eurportuguesefemale">>}
+	,{<<"male/pt-pt">>, <<"eurportuguesemale">>}
+	,{<<"female/ru-ru">>, <<"rurussianfemale">>}
+	,{<<"male/ru-ru">>, <<"rurussianmale">>}
+	,{<<"female/sv-se">>, <<"swswedishfemale">>}
+	,{<<"female/hu-hu">>, <<"huhungarianfemale">>}
+	,{<<"female/cs-cz">>, <<"eurczechfemale">>}
+	,{<<"female/tr-tr">>, <<"eurturkishfemale">>}
+	,{<<"male/tr-tr">>, <<"eurturkishmale">>}
+	]
        ).
 -define(ISPEECH_TTS_URL, kapps_config:get_string(?MOD_CONFIG_CAT, <<"tts_url">>, <<"http://api.ispeech.org/api/json">>)).
 

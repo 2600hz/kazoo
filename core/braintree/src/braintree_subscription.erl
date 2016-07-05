@@ -42,7 +42,7 @@
 -type subscriptions() :: [subscription()].
 
 -export_type([subscription/0
-              ,subscriptions/0
+	     ,subscriptions/0
              ]).
 
 %%--------------------------------------------------------------------
@@ -63,9 +63,9 @@ url(SubscriptionId) ->
 
 url(SubscriptionId, Options) ->
     lists:append(["/subscriptions/"
-                  ,kz_util:to_list(SubscriptionId)
-                  ,"/"
-                  ,kz_util:to_list(Options)
+		 ,kz_util:to_list(SubscriptionId)
+		 ,"/"
+		 ,kz_util:to_list(Options)
                  ]).
 
 %%--------------------------------------------------------------------
@@ -82,9 +82,9 @@ new(PlanId, PaymentToken) ->
 
 new(SubscriptionId, PlanId, PaymentToken) ->
     #bt_subscription{id=SubscriptionId
-                     ,payment_token=PaymentToken
-                     ,plan_id=PlanId
-                     ,create='true'
+		    ,payment_token=PaymentToken
+		    ,plan_id=PlanId
+		    ,create='true'
                     }.
 
 %% @private
@@ -154,7 +154,7 @@ update_addon_amount(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Amou
             end;
         #bt_addon{}=AddOn ->
             AddOn1 = AddOn#bt_addon{existing_id=AddOnId
-                                    ,amount=kz_util:to_binary(Amount)
+				   ,amount=kz_util:to_binary(Amount)
                                    },
             Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}
     end.
@@ -194,7 +194,7 @@ update_discount_amount(#bt_subscription{discounts=Discounts}=Subscription, Disco
             end;
         #bt_discount{}=Discount ->
             Discount1 = Discount#bt_discount{existing_id=DiscountId
-                                             ,amount=kz_util:to_binary(Amount)
+					    ,amount=kz_util:to_binary(Amount)
                                             },
             Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.id, Discounts, Discount1)}
     end.
@@ -274,7 +274,7 @@ cancel(SubscriptionId) ->
 -spec reset(subscription()) -> subscription().
 reset(Subscription) ->
     lists:foldl(fun(F, S) -> F(S) end, Subscription, [fun reset_addons/1
-                                                      ,fun reset_discounts/1
+						     ,fun reset_discounts/1
                                                      ]).
 
 %%--------------------------------------------------------------------
@@ -317,7 +317,7 @@ update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Qu
             case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
                 'false' ->
                     AddOn = #bt_addon{inherited_from=AddOnId
-                                      ,quantity=Quantity
+				     ,quantity=Quantity
                                      },
                     Subscription#bt_subscription{add_ons=[AddOn|AddOns]};
                 #bt_addon{}=AddOn ->
@@ -326,7 +326,7 @@ update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Qu
             end;
         #bt_addon{}=AddOn ->
             AddOn1 = AddOn#bt_addon{existing_id=AddOnId
-                                    ,quantity=Quantity
+				   ,quantity=Quantity
                                    },
             Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}
     end.
@@ -425,15 +425,15 @@ update_payment_token(#bt_subscription{id=Id}, PaymentToken) ->
     %% https://developers.braintreepayments.com/ios+ruby/guides/recurring-billing/manage
     %% https://articles.braintreepayments.com/guides/recurring-billing/subscriptions
     #bt_subscription{payment_token = PaymentToken
-                     ,id = Id
-                     ,do_not_inherit = 'undefined'
-                     ,revert_on_prorate_fail = 'undefined'
-                     ,replace_add_ons = 'undefined'
-                     ,start_immediately = 'undefined'
-                     ,prorate_charges = 'undefined'
-                     ,never_expires = 'undefined'
-                     ,trial_period = <<"false">>
-                   }.
+		    ,id = Id
+		    ,do_not_inherit = 'undefined'
+		    ,revert_on_prorate_fail = 'undefined'
+		    ,replace_add_ons = 'undefined'
+		    ,start_immediately = 'undefined'
+		    ,prorate_charges = 'undefined'
+		    ,never_expires = 'undefined'
+		    ,trial_period = <<"false">>
+		    }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -499,7 +499,7 @@ xml_to_record(Xml, Base) ->
                     ,discounts = [braintree_discount:xml_to_record(Discount)
                                   || Discount <- xmerl_xpath:string(DiscountsPath, Xml)
                                  ]
-                     }.
+		    }.
 
 
 %%--------------------------------------------------------------------
@@ -516,40 +516,40 @@ record_to_xml(Subscription) ->
 
 record_to_xml(#bt_subscription{}=Subscription, ToString) ->
     Props = [{'id', Subscription#bt_subscription.id}
-             ,{'merchant-account-id', Subscription#bt_subscription.merchant_account_id}
-             ,{'never-expires', Subscription#bt_subscription.never_expires}
-             ,{'first-billing-date', Subscription#bt_subscription.billing_first_date}
-             ,{'number-of-billing-cycles', Subscription#bt_subscription.number_of_cycles}
-             ,{'payment-method-token', Subscription#bt_subscription.payment_token}
-             ,{'plan-id', Subscription#bt_subscription.plan_id}
-             ,{'price', Subscription#bt_subscription.price}
-             ,{'add-ons', create_addon_changes(Subscription#bt_subscription.add_ons)}
-             ,{'discounts', create_discount_changes(Subscription#bt_subscription.discounts)}
+	    ,{'merchant-account-id', Subscription#bt_subscription.merchant_account_id}
+	    ,{'never-expires', Subscription#bt_subscription.never_expires}
+	    ,{'first-billing-date', Subscription#bt_subscription.billing_first_date}
+	    ,{'number-of-billing-cycles', Subscription#bt_subscription.number_of_cycles}
+	    ,{'payment-method-token', Subscription#bt_subscription.payment_token}
+	    ,{'plan-id', Subscription#bt_subscription.plan_id}
+	    ,{'price', Subscription#bt_subscription.price}
+	    ,{'add-ons', create_addon_changes(Subscription#bt_subscription.add_ons)}
+	    ,{'discounts', create_discount_changes(Subscription#bt_subscription.discounts)}
             ],
     Conditionals = [fun(#bt_subscription{do_not_inherit=Value}, P) ->
-                        update_options('do-not-inherit-add-ons-or-discounts', Value, P)
+			    update_options('do-not-inherit-add-ons-or-discounts', Value, P)
                     end
-                    ,fun should_prorate/2
-                    ,fun(#bt_subscription{revert_on_prorate_fail=Value}, P) ->
-                        update_options('revert-subscription-on-proration-failure', Value, P)
-                     end
-                    ,fun(#bt_subscription{replace_add_ons=Value}, P) ->
-                        update_options('replace-all-add-ons-and-discounts', Value, P)
-                     end
-                    ,fun(#bt_subscription{start_immediately=Value}, P) ->
-                        update_options('start-immediately', Value, P)
-                     end
-                    ,fun (S, P) ->
-                             case S#bt_subscription.trial_period of
-                                 <<"false">> -> P;
-                                 _ ->
-                                     [{'trial-duration', S#bt_subscription.trial_duration}
-                                      ,{'trial-duration-unit', S#bt_subscription.trial_duration_unit}
-                                      ,{'trial-period', S#bt_subscription.trial_period}
-                                      | P
-                                     ]
-                             end
-                     end
+		   ,fun should_prorate/2
+		   ,fun(#bt_subscription{revert_on_prorate_fail=Value}, P) ->
+			    update_options('revert-subscription-on-proration-failure', Value, P)
+		    end
+		   ,fun(#bt_subscription{replace_add_ons=Value}, P) ->
+			    update_options('replace-all-add-ons-and-discounts', Value, P)
+		    end
+		   ,fun(#bt_subscription{start_immediately=Value}, P) ->
+			    update_options('start-immediately', Value, P)
+		    end
+		   ,fun (S, P) ->
+			    case S#bt_subscription.trial_period of
+				<<"false">> -> P;
+				_ ->
+				    [{'trial-duration', S#bt_subscription.trial_duration}
+				    ,{'trial-duration-unit', S#bt_subscription.trial_duration_unit}
+				    ,{'trial-period', S#bt_subscription.trial_period}
+				     | P
+				    ]
+			    end
+		    end
                    ],
     Props1 = lists:foldr(fun(F, P) -> F(Subscription, P) end, Props, Conditionals),
     case ToString of
@@ -566,35 +566,35 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
 -spec record_to_json(subscription()) -> kz_json:object().
 record_to_json(Subscription) ->
     Props = [{<<"id">>, Subscription#bt_subscription.id}
-             ,{<<"balance">>, Subscription#bt_subscription.balance}
-             ,{<<"billing_dom">>, Subscription#bt_subscription.billing_dom}
-             ,{<<"billing_first_date">>, Subscription#bt_subscription.billing_first_date}
-             ,{<<"billing_end_date">>, Subscription#bt_subscription.billing_end_date}
-             ,{<<"billing_start_date">>, Subscription#bt_subscription.billing_start_date}
-             ,{<<"billing_cycle">>, Subscription#bt_subscription.billing_cycle}
-             ,{<<"number_of_cycles">>, Subscription#bt_subscription.number_of_cycles}
-             ,{<<"days_past_due">>, Subscription#bt_subscription.days_past_due}
-             ,{<<"failure_count">>, Subscription#bt_subscription.failure_count}
-             ,{<<"merchant_account_id">>, Subscription#bt_subscription.merchant_account_id}
-             ,{<<"never_expires">>, Subscription#bt_subscription.never_expires}
-             ,{<<"next_bill_amount">>, Subscription#bt_subscription.next_bill_amount}
-             ,{<<"next_cycle_amount">>, Subscription#bt_subscription.next_cycle_amount}
-             ,{<<"next_bill_date">>, Subscription#bt_subscription.next_bill_date}
-             ,{<<"paid_through_date">>, Subscription#bt_subscription.paid_through_date}
-             ,{<<"payment_token">>, Subscription#bt_subscription.payment_token}
-             ,{<<"plan_id">>, Subscription#bt_subscription.plan_id}
-             ,{<<"price">>, Subscription#bt_subscription.price}
-             ,{<<"status">>, Subscription#bt_subscription.status}
-             ,{<<"trial_duration">>, Subscription#bt_subscription.trial_duration}
-             ,{<<"trial_duration_unit">>, Subscription#bt_subscription.trial_duration_unit}
-             ,{<<"trial_period">>, Subscription#bt_subscription.trial_period}
-             ,{<<"descriptor">>, Subscription#bt_subscription.descriptor}
-             ,{<<"do_not_inherit">>, Subscription#bt_subscription.do_not_inherit}
-             ,{<<"start_immediately">>, Subscription#bt_subscription.start_immediately}
-             ,{<<"prorate_charges">>, Subscription#bt_subscription.prorate_charges}
-             ,{<<"revert_on_prorate_fail">>, Subscription#bt_subscription.revert_on_prorate_fail}
-             ,{<<"replace_add_ons">>, Subscription#bt_subscription.replace_add_ons}
-             ,{<<"create">>, Subscription#bt_subscription.create}
+	    ,{<<"balance">>, Subscription#bt_subscription.balance}
+	    ,{<<"billing_dom">>, Subscription#bt_subscription.billing_dom}
+	    ,{<<"billing_first_date">>, Subscription#bt_subscription.billing_first_date}
+	    ,{<<"billing_end_date">>, Subscription#bt_subscription.billing_end_date}
+	    ,{<<"billing_start_date">>, Subscription#bt_subscription.billing_start_date}
+	    ,{<<"billing_cycle">>, Subscription#bt_subscription.billing_cycle}
+	    ,{<<"number_of_cycles">>, Subscription#bt_subscription.number_of_cycles}
+	    ,{<<"days_past_due">>, Subscription#bt_subscription.days_past_due}
+	    ,{<<"failure_count">>, Subscription#bt_subscription.failure_count}
+	    ,{<<"merchant_account_id">>, Subscription#bt_subscription.merchant_account_id}
+	    ,{<<"never_expires">>, Subscription#bt_subscription.never_expires}
+	    ,{<<"next_bill_amount">>, Subscription#bt_subscription.next_bill_amount}
+	    ,{<<"next_cycle_amount">>, Subscription#bt_subscription.next_cycle_amount}
+	    ,{<<"next_bill_date">>, Subscription#bt_subscription.next_bill_date}
+	    ,{<<"paid_through_date">>, Subscription#bt_subscription.paid_through_date}
+	    ,{<<"payment_token">>, Subscription#bt_subscription.payment_token}
+	    ,{<<"plan_id">>, Subscription#bt_subscription.plan_id}
+	    ,{<<"price">>, Subscription#bt_subscription.price}
+	    ,{<<"status">>, Subscription#bt_subscription.status}
+	    ,{<<"trial_duration">>, Subscription#bt_subscription.trial_duration}
+	    ,{<<"trial_duration_unit">>, Subscription#bt_subscription.trial_duration_unit}
+	    ,{<<"trial_period">>, Subscription#bt_subscription.trial_period}
+	    ,{<<"descriptor">>, Subscription#bt_subscription.descriptor}
+	    ,{<<"do_not_inherit">>, Subscription#bt_subscription.do_not_inherit}
+	    ,{<<"start_immediately">>, Subscription#bt_subscription.start_immediately}
+	    ,{<<"prorate_charges">>, Subscription#bt_subscription.prorate_charges}
+	    ,{<<"revert_on_prorate_fail">>, Subscription#bt_subscription.revert_on_prorate_fail}
+	    ,{<<"replace_add_ons">>, Subscription#bt_subscription.replace_add_ons}
+	    ,{<<"create">>, Subscription#bt_subscription.create}
             ],
     kz_json:from_list(props:filter_undefined(Props)).
 
@@ -641,23 +641,23 @@ create_addon_changes(AddOns) ->
     lists:foldr(fun(#bt_addon{id=Id, quantity=0}, C) ->
                         append_items('remove', Id, C);
                    (#bt_addon{existing_id='undefined'
-                              ,inherited_from='undefined'
+			     ,inherited_from='undefined'
                              }, C) ->
                         C;
                    (#bt_addon{existing_id='undefined'
-                              ,inherited_from=Id
-                              ,quantity=Q
-                              ,amount=A
+			     ,inherited_from=Id
+			     ,quantity=Q
+			     ,amount=A
                              }, C) ->
                         Item = [{'inherited_from_id', Id}
-                                ,{'quantity', Q}
-                                ,{'amount', A}
+			       ,{'quantity', Q}
+			       ,{'amount', A}
                                ],
                         append_items('add', props:filter_undefined(Item), C);
                    (#bt_addon{existing_id=Id, quantity=Q, amount=A}, C) ->
                         Item = [{'existing_id', Id}
-                                ,{'quantity', Q}
-                                ,{'amount', A}
+			       ,{'quantity', Q}
+			       ,{'amount', A}
                                ],
                         append_items('update', props:filter_undefined(Item), C)
                 end, [], AddOns).
@@ -673,23 +673,23 @@ create_discount_changes(Discounts) ->
     lists:foldr(fun(#bt_discount{id=Id, quantity=0}, C) ->
                         append_items('remove', Id, C);
                    (#bt_discount{existing_id='undefined'
-                                 ,inherited_from='undefined'
+				,inherited_from='undefined'
                                 }, C) ->
                         C;
                    (#bt_discount{existing_id='undefined'
-                                 ,inherited_from=Id
-                                 ,quantity=Q
-                                 ,amount=A
+				,inherited_from=Id
+				,quantity=Q
+				,amount=A
                                 }, C) ->
                         Item = [{'inherited_from_id', Id}
-                                ,{'quantity', Q}
-                                ,{'amount', A}
+			       ,{'quantity', Q}
+			       ,{'amount', A}
                                ],
                         append_items('add', props:filter_undefined(Item), C);
                    (#bt_discount{existing_id=Id, quantity=Q, amount=A}, C) ->
                         Item = [{'existing_id', Id}
-                                ,{'quantity', Q}
-                                ,{'amount', A}
+			       ,{'quantity', Q}
+			       ,{'amount', A}
                                ],
                         append_items('update', props:filter_undefined(Item), C)
                 end, [], Discounts).

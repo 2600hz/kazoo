@@ -9,7 +9,7 @@
 -module(teletype_low_balance).
 
 -export([init/0
-         ,handle_low_balance/2
+	,handle_low_balance/2
         ]).
 
 -include("teletype.hrl").
@@ -18,7 +18,7 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-        ,kz_json:from_list(?ACCOUNT_MACROS)
+       ,kz_json:from_list(?ACCOUNT_MACROS)
        ).
 
 -define(TEMPLATE_TEXT, <<"The account \"{{account.name}}\" has less than {{threshold}} of credit remaining.\nIf the account runs out of credit it will not be able to make or receive per-minute calls.\nThe current balance is: {{current_balance}}\n\nAccount ID: {{account.id}}">>).
@@ -37,16 +37,16 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                           ,{'text', ?TEMPLATE_TEXT}
-                                           ,{'html', ?TEMPLATE_HTML}
-                                           ,{'subject', ?TEMPLATE_SUBJECT}
-                                           ,{'category', ?TEMPLATE_CATEGORY}
-                                           ,{'friendly_name', ?TEMPLATE_NAME}
-                                           ,{'to', ?TEMPLATE_TO}
-                                           ,{'from', ?TEMPLATE_FROM}
-                                           ,{'cc', ?TEMPLATE_CC}
-                                           ,{'bcc', ?TEMPLATE_BCC}
-                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
+					  ,{'text', ?TEMPLATE_TEXT}
+					  ,{'html', ?TEMPLATE_HTML}
+					  ,{'subject', ?TEMPLATE_SUBJECT}
+					  ,{'category', ?TEMPLATE_CATEGORY}
+					  ,{'friendly_name', ?TEMPLATE_NAME}
+					  ,{'to', ?TEMPLATE_TO}
+					  ,{'from', ?TEMPLATE_FROM}
+					  ,{'cc', ?TEMPLATE_CC}
+					  ,{'bcc', ?TEMPLATE_BCC}
+					  ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
 -spec handle_low_balance(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -84,9 +84,9 @@ get_balance_threshold(DataJObj) ->
 -spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
-              ,{<<"account">>, teletype_util:account_params(DataJObj)}
-              ,{<<"current_balance">>, get_current_balance(DataJObj)}
-              ,{<<"threshold">>, get_balance_threshold(DataJObj)}
+	     ,{<<"account">>, teletype_util:account_params(DataJObj)}
+	     ,{<<"current_balance">>, get_current_balance(DataJObj)}
+	     ,{<<"threshold">>, get_balance_threshold(DataJObj)}
               | build_macro_data(DataJObj)
              ],
 
@@ -97,7 +97,7 @@ handle_req(DataJObj) ->
 
     Subject = teletype_util:render_subject(
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
-                ,Macros
+					  ,Macros
                ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
@@ -112,8 +112,8 @@ build_macro_data(DataJObj) ->
     kz_json:foldl(fun(MacroKey, _V, Acc) ->
                           maybe_add_macro_key(MacroKey, Acc, DataJObj)
                   end
-                  ,[]
-                  ,?TEMPLATE_MACROS
+		 ,[]
+		 ,?TEMPLATE_MACROS
                  ).
 
 -spec maybe_add_macro_key(kz_json:key(), kz_proplist(), kz_json:object()) -> kz_proplist().

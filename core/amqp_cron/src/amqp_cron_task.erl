@@ -99,11 +99,11 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {
-        schedule :: schedule(),
-        exec :: execargs(),
-        task_pid :: pid(),
-        status :: status(),
-        next}).
+	  schedule :: schedule(),
+	  exec :: execargs(),
+	  task_pid :: pid(),
+	  status :: status(),
+	  next}).
 
 -define(DAY_IN_SECONDS, 86400).
 -define(HOUR_IN_SECONDS, 3600).
@@ -119,10 +119,10 @@
 %% Repeating schedule sleeping between executions.
 
 -type cron() :: {cron, {Minute :: cronspec(),
-            Hour :: cronspec(),
-            DayOfMonth :: cronspec(),
-            Month :: cronspec(),
-            DayOfWeek :: cronspec()}}.
+			Hour :: cronspec(),
+			DayOfMonth :: cronspec(),
+			Month :: cronspec(),
+			DayOfWeek :: cronspec()}}.
 %% Unix like cron schedule representing the five cron fields:
 %% minute, hour, day of month, month, day of week.
 
@@ -220,16 +220,16 @@ stop(Pid) ->
 init([{Schedule, Exec}]) ->
     Self = self(),
     Pid = spawn_link(fun() ->
-         case Schedule of
-             {oneshot, _} ->
-                 oneshot(Schedule, Exec, Self);
-             _ ->
-                 run_task(Schedule, Exec, Self)
-         end
-    end),
+			     case Schedule of
+				 {oneshot, _} ->
+				     oneshot(Schedule, Exec, Self);
+				 _ ->
+				     run_task(Schedule, Exec, Self)
+			     end
+		     end),
     {ok, #state{schedule = Schedule
-                ,exec = Exec
-                ,task_pid = Pid}}.
+	       ,exec = Exec
+	       ,task_pid = Pid}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -353,13 +353,13 @@ apply_task(Exec) ->
                 apply(F, A)
         end
     catch
-    Error:Reason ->
-        Stacktrace = erlang:get_stacktrace(),
-        Format = "Task ~p in process ~p with value:~n~p",
-        Message = lists:flatten(io_lib:format(
-                      Format,
-                      [Error, self(), {Reason, Stacktrace}])),
-        error_logger:error_report(Message)
+	Error:Reason ->
+	    Stacktrace = erlang:get_stacktrace(),
+	    Format = "Task ~p in process ~p with value:~n~p",
+	    Message = lists:flatten(io_lib:format(
+				      Format,
+				      [Error, self(), {Reason, Stacktrace}])),
+	    error_logger:error_report(Message)
     end.
 
 -spec time_to_wait_millis(datetime(), datetime()) -> integer().
@@ -386,60 +386,60 @@ next_valid_datetime(not_done, {cron, Schedule} = Cron, DateTime) ->
     {MinuteSpec, HourSpec, DayOfMonthSpec, MonthSpec, DayOfWeekSpec} = Schedule,
     {{Year, Month, Day},  {Hour, Minute, _}} = DateTime,
     {Done, Time} =
-    case value_valid(MonthSpec, 1, 12, Month) of
-        false ->
-            case Month of
-                12 ->
-                {not_done, {{Year + 1, 1, 1}, {0, 0, 0}}};
-                Month ->
-                {not_done, {{Year, Month + 1, 1}, {0, 0, 0}}}
-            end;
-        true ->
-            DayOfWeek = case calendar:day_of_the_week(Year, Month, Day) of
-                    7 ->
-                        0; % we want 0 to be Sunday not 7
-                    DOW ->
-                        DOW
-                    end,
-            DOMValid = value_valid(DayOfMonthSpec, 1, 31, Day),
-            DOWValid = value_valid(DayOfWeekSpec, 0, 6, DayOfWeek),
-            case (((DayOfMonthSpec /= all) and
-                   (DayOfWeekSpec /= all) and
-                  (DOMValid or DOWValid)) or (DOMValid and DOWValid)) of
-                false ->
-                    Temp1 = advance_seconds(DateTime, ?DAY_IN_SECONDS),
-                    {{Y, M, D}, {_, _, _}} = Temp1,
-                    {not_done, {{Y, M, D}, {0, 0, 0}}};
-                true ->
-                    case value_valid(HourSpec, 0, 23, Hour) of
-                        false ->
-                            Temp3 = advance_seconds(DateTime,
-                                ?HOUR_IN_SECONDS),
-                            {{Y, M, D}, {H, _, _}} = Temp3,
-                            {not_done, {{Y, M, D}, {H, 0, 0}}};
-                        true ->
-                            case value_valid(MinuteSpec, 0, 59, Minute) of
-                                false ->
-                                    {not_done, advance_seconds(DateTime, ?MINUTE_IN_SECONDS)};
-                                true ->
-                                    {done, DateTime}
-                            end
-                    end
-            end
-    end,
+	case value_valid(MonthSpec, 1, 12, Month) of
+	    false ->
+		case Month of
+		    12 ->
+			{not_done, {{Year + 1, 1, 1}, {0, 0, 0}}};
+		    Month ->
+			{not_done, {{Year, Month + 1, 1}, {0, 0, 0}}}
+		end;
+	    true ->
+		DayOfWeek = case calendar:day_of_the_week(Year, Month, Day) of
+				7 ->
+				    0; % we want 0 to be Sunday not 7
+				DOW ->
+				    DOW
+			    end,
+		DOMValid = value_valid(DayOfMonthSpec, 1, 31, Day),
+		DOWValid = value_valid(DayOfWeekSpec, 0, 6, DayOfWeek),
+		case (((DayOfMonthSpec /= all) and
+						 (DayOfWeekSpec /= all) and
+									  (DOMValid or DOWValid)) or (DOMValid and DOWValid)) of
+		    false ->
+			Temp1 = advance_seconds(DateTime, ?DAY_IN_SECONDS),
+			{{Y, M, D}, {_, _, _}} = Temp1,
+			{not_done, {{Y, M, D}, {0, 0, 0}}};
+		    true ->
+			case value_valid(HourSpec, 0, 23, Hour) of
+			    false ->
+				Temp3 = advance_seconds(DateTime,
+							?HOUR_IN_SECONDS),
+				{{Y, M, D}, {H, _, _}} = Temp3,
+				{not_done, {{Y, M, D}, {H, 0, 0}}};
+			    true ->
+				case value_valid(MinuteSpec, 0, 59, Minute) of
+				    false ->
+					{not_done, advance_seconds(DateTime, ?MINUTE_IN_SECONDS)};
+				    true ->
+					{done, DateTime}
+				end
+			end
+		end
+	end,
     next_valid_datetime(Done, Cron, Time).
 
 -spec value_valid(cronspec(), integer(), integer(), integer()) -> boolean().
 
 value_valid(Spec, Min, Max, Value) when Value >= Min, Value =< Max->
     case Spec of
-    all ->
-        true;
-    Spec ->
-        ValidValues = extract_integers(Spec, Min, Max),
-        lists:any(fun(Item) ->
-                  Item == Value
-              end, ValidValues)
+	all ->
+	    true;
+	Spec ->
+	    ValidValues = extract_integers(Spec, Min, Max),
+	    lists:any(fun(Item) ->
+			      Item == Value
+		      end, ValidValues)
     end.
 
 -spec advance_seconds(datetime(), integer()) -> datetime().
@@ -449,7 +449,7 @@ advance_seconds(DateTime, Seconds) ->
     calendar:gregorian_seconds_to_datetime(Seconds1).
 
 -spec extract_integers([rangespec()|listspec()], integer(), integer()) ->
-                  [integer()].
+			      [integer()].
 
 extract_integers(Spec, Min, Max) when Min < Max ->
     extract_integers(Spec, Min, Max, []).
@@ -466,27 +466,27 @@ extract_integers([], Min, Max, Acc) ->
     lists:foreach(
       fun
           (Int) when Int < Min ->
-              throw({'error', {'out_of_range', {'min', Min}, {'value', Int}}});
+			 throw({'error', {'out_of_range', {'min', Min}, {'value', Int}}});
           (Int) when Int > Max ->
-              throw({'error', {'out_of_range', {'max', Max}, {'value', Int}}});
+			 throw({'error', {'out_of_range', {'max', Max}, {'value', Int}}});
           (_Int) ->
-              'ok'
-      end, Integers),
+			 'ok'
+		 end, Integers),
     Integers;
 extract_integers(Spec, Min, Max, Acc) ->
     [H|T] = Spec,
     Values = case H of
-         {range, Lower, Upper} when Lower < Upper ->
-             lists:seq(Lower, Upper);
-         {list, List} ->
-             List;
-         {Lower, Upper} when Lower < Upper ->
-             lists:seq(Lower, Upper);
-         List when is_list(List) ->
-             List;
-         Integer when is_integer(Integer) ->
-             [Integer]
-    end,
+		 {range, Lower, Upper} when Lower < Upper ->
+		     lists:seq(Lower, Upper);
+		 {list, List} ->
+		     List;
+		 {Lower, Upper} when Lower < Upper ->
+		     lists:seq(Lower, Upper);
+		 List when is_list(List) ->
+		     List;
+		 Integer when is_integer(Integer) ->
+		     [Integer]
+	     end,
     extract_integers(T, Min, Max, [Values|Acc]).
 
 -define(LONG_SLEEP_TIME, 100000000).

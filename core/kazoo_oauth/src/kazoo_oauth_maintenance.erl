@@ -17,14 +17,14 @@
 -spec register_oauth_app(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> any().
 register_oauth_app(AccountId, OAuthId, EMail, Secret, Provider) ->
     Doc = kz_json:from_list([
-           {<<"_id">>, OAuthId}
-          ,{<<"pvt_account_id">>, AccountId}
-          ,{<<"pvt_secret">>,Secret}
-          ,{<<"pvt_email">>, EMail}
-          ,{<<"pvt_user_prefix">>, kz_util:rand_hex_binary(16)}
-          ,{<<"pvt_oauth_provider">>, Provider}
-          ,{<<"pvt_type">>, <<"app">>}
-          ]),
+			     {<<"_id">>, OAuthId}
+			    ,{<<"pvt_account_id">>, AccountId}
+			    ,{<<"pvt_secret">>,Secret}
+			    ,{<<"pvt_email">>, EMail}
+			    ,{<<"pvt_user_prefix">>, kz_util:rand_hex_binary(16)}
+			    ,{<<"pvt_oauth_provider">>, Provider}
+			    ,{<<"pvt_type">>, <<"app">>}
+			    ]),
     case kz_datamgr:open_doc(?KZ_OAUTH_DB, OAuthId) of
         {'ok', _JObj} -> {'error', <<"already registered">>};
         {'error', _} -> kz_datamgr:save_doc(?KZ_OAUTH_DB, Doc)

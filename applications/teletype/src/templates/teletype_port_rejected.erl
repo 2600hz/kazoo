@@ -9,7 +9,7 @@
 -module(teletype_port_rejected).
 
 -export([init/0
-         ,handle_req/2
+	,handle_req/2
         ]).
 
 -include("teletype.hrl").
@@ -18,10 +18,10 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-        ,kz_json:from_list(
-           ?PORT_REQUEST_MACROS
-           ++ ?ACCOUNT_MACROS
-          )
+       ,kz_json:from_list(
+	  ?PORT_REQUEST_MACROS
+	  ++ ?ACCOUNT_MACROS
+	 )
        ).
 
 -define(TEMPLATE_TEXT, <<"Port request rejected for {{account.name}}.\n\n Numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}.">>).
@@ -40,16 +40,16 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                           ,{'text', ?TEMPLATE_TEXT}
-                                           ,{'html', ?TEMPLATE_HTML}
-                                           ,{'subject', ?TEMPLATE_SUBJECT}
-                                           ,{'category', ?TEMPLATE_CATEGORY}
-                                           ,{'friendly_name', ?TEMPLATE_NAME}
-                                           ,{'to', ?TEMPLATE_TO}
-                                           ,{'from', ?TEMPLATE_FROM}
-                                           ,{'cc', ?TEMPLATE_CC}
-                                           ,{'bcc', ?TEMPLATE_BCC}
-                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
+					  ,{'text', ?TEMPLATE_TEXT}
+					  ,{'html', ?TEMPLATE_HTML}
+					  ,{'subject', ?TEMPLATE_SUBJECT}
+					  ,{'category', ?TEMPLATE_CATEGORY}
+					  ,{'friendly_name', ?TEMPLATE_NAME}
+					  ,{'to', ?TEMPLATE_TO}
+					  ,{'from', ?TEMPLATE_FROM}
+					  ,{'cc', ?TEMPLATE_CC}
+					  ,{'bcc', ?TEMPLATE_BCC}
+					  ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -72,8 +72,8 @@ process_req(DataJObj) ->
     {'ok', PortReqJObj} = teletype_util:open_doc(<<"port_request">>, PortReqId, DataJObj),
 
     ReqData = kz_json:set_value(<<"port_request">>
-                                ,teletype_port_utils:fix_port_request_data(PortReqJObj)
-                                ,DataJObj
+			       ,teletype_port_utils:fix_port_request_data(PortReqJObj)
+			       ,DataJObj
                                ),
 
     case teletype_util:is_preview(DataJObj) of
@@ -84,8 +84,8 @@ process_req(DataJObj) ->
 -spec handle_port_request(kz_json:object()) -> 'ok'.
 handle_port_request(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
-              ,{<<"account">>, teletype_util:account_params(DataJObj)}
-              ,{<<"port_request">>, teletype_util:public_proplist(<<"port_request">>, DataJObj)}
+	     ,{<<"account">>, teletype_util:account_params(DataJObj)}
+	     ,{<<"port_request">>, teletype_util:public_proplist(<<"port_request">>, DataJObj)}
              ],
 
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
@@ -98,7 +98,7 @@ handle_port_request(DataJObj) ->
     Subject =
         teletype_util:render_subject(
           kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
-          ,Macros
+				    ,Macros
          ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),

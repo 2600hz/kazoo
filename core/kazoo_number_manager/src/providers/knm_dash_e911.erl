@@ -23,10 +23,10 @@
 -define(DASH_AUTH_USERNAME, kapps_config:get_binary(?KNM_DASH_CONFIG_CAT, <<"auth_username">>, <<>>)).
 -define(DASH_AUTH_PASSWORD, kapps_config:get_binary(?KNM_DASH_CONFIG_CAT, <<"auth_password">>, <<>>)).
 -define(DASH_EMERG_URL
-        ,kapps_config:get_string(?KNM_DASH_CONFIG_CAT
-                                  ,<<"emergency_provisioning_url">>
-                                  ,<<"https://service.dashcs.com/dash-api/xml/emergencyprovisioning/v1">>
-                                 )
+       ,kapps_config:get_string(?KNM_DASH_CONFIG_CAT
+			       ,<<"emergency_provisioning_url">>
+			       ,<<"https://service.dashcs.com/dash-api/xml/emergencyprovisioning/v1">>
+			       )
        ).
 
 -define(DASH_DEBUG, kapps_config:get_is_true(?KNM_DASH_CONFIG_CAT, <<"debug">>, 'false')).
@@ -54,7 +54,7 @@ save(Number, ?NUMBER_STATE_RESERVED) ->
 save(Number, ?NUMBER_STATE_IN_SERVICE) ->
     maybe_update_dash_e911(Number);
 save(Number, ?NUMBER_STATE_PORT_IN) ->
-     maybe_update_dash_e911(Number);
+    maybe_update_dash_e911(Number);
 save(Number, _State) ->
     delete(Number).
 
@@ -72,7 +72,7 @@ delete(Number) ->
         'undefined' -> Number;
         _Else ->
             lager:debug("removing e911 information from ~s"
-                        ,[knm_phone_number:number(knm_number:phone_number(Number))]
+		       ,[knm_phone_number:number(knm_number:phone_number(Number))]
                        ),
             _ = remove_number(Number),
             knm_services:deactivate_feature(Number, ?DASH_KEY)
@@ -121,7 +121,7 @@ maybe_update_dash_e911(Number) ->
             UpdatedFeatures = maybe_update_dash_e911(Number1, E911, Features),
             knm_number:set_phone_number(
               Number1
-              ,knm_phone_number:set_features(PhoneNumber, UpdatedFeatures)
+				       ,knm_phone_number:set_features(PhoneNumber, UpdatedFeatures)
              )
     end.
 
@@ -138,7 +138,7 @@ maybe_update_dash_e911(Number, Address, JObj) ->
             Error =
                 kz_json:from_list(
                   [{<<"cause">>, Address}
-                   ,{<<"message">>, Reason}
+		  ,{<<"message">>, Reason}
                   ]),
             knm_errors:invalid(Number, Error);
         {'provisioned', _} ->
@@ -152,8 +152,8 @@ maybe_update_dash_e911(Number, Address, JObj) ->
             Update =
                 kz_json:from_list(
                   [{<<"cause">>, Address}
-                   ,{<<"details">>, Addresses}
-                   ,{<<"message">>, <<"more than one address found">>}
+		  ,{<<"details">>, Addresses}
+		  ,{<<"message">>, <<"more than one address found">>}
                   ]),
             knm_errors:multiple_choice(Number, Update);
         {'geocoded', _Loc} ->
@@ -203,8 +203,8 @@ provision_geocoded(JObj, E911) ->
         Status ->
             lager:debug("provisioning attempt moved location to status: ~s", [Status]),
             kz_json:set_value(?DASH_KEY
-                              ,kz_json:set_value(<<"status">>, Status, E911)
-                              ,JObj
+			     ,kz_json:set_value(<<"status">>, Status, E911)
+			     ,JObj
                              )
     end.
 
@@ -250,7 +250,7 @@ is_valid_location(Location) ->
                           {'error', binary()}.
 add_location(Number, Location, CallerName) ->
     Props = [{'uri', [{'uri', [kz_util:to_list(<<"tel:", (knm_converters:to_1npan(Number))/binary>>)]}
-                      ,{'callername', [kz_util:to_list(CallerName)]}
+		     ,{'callername', [kz_util:to_list(CallerName)]}
                      ]
              }
              | Location
@@ -342,18 +342,18 @@ emergency_provisioning_request(Verb, Props) ->
     URL = list_to_binary([?DASH_EMERG_URL, "/", kz_util:to_lower_binary(Verb)]),
     Body = unicode:characters_to_binary(
              xmerl:export_simple([{Verb, Props}]
-                                 ,'xmerl_xml'
-                                 ,[{'prolog', ?DASH_XML_PROLOG}]
+				,'xmerl_xml'
+				,[{'prolog', ?DASH_XML_PROLOG}]
                                 )
             ),
     Headers = [{"Accept", "*/*"}
-               ,{"User-Agent", ?KNM_USER_AGENT}
-               ,{"Content-Type", "text/xml"}
+	      ,{"User-Agent", ?KNM_USER_AGENT}
+	      ,{"Content-Type", "text/xml"}
               ],
     HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}
-                   ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
-                   ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
-                   ,{'basic_auth', {?DASH_AUTH_USERNAME, ?DASH_AUTH_PASSWORD}}
+		  ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
+		  ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+		  ,{'basic_auth', {?DASH_AUTH_USERNAME, ?DASH_AUTH_PASSWORD}}
                   ],
     lager:debug("making ~s request to dash e911 ~s", [Verb, URL]),
     ?DASH_DEBUG("Request:~n~s ~s~n~s~n", ['post', URL, Body]),
@@ -410,11 +410,11 @@ emergency_provisioning_request(Verb, Props) ->
 -spec json_address_to_xml_location(kz_json:object()) -> [xml_location()].
 json_address_to_xml_location(JObj) ->
     Props = [{'address1', [kz_json:get_string_value(<<"street_address">>, JObj)]}
-             ,{'address2', [kz_json:get_string_value(<<"extended_address">>, JObj)]}
-             ,{'community', [kz_json:get_string_value(<<"locality">>, JObj)]}
-             ,{'state', [kz_json:get_string_value(<<"region">>, JObj)]}
-             ,{'postalcode', [kz_json:get_string_value(<<"postal_code">>, JObj)]}
-             ,{'type', ["ADDRESS"]}
+	    ,{'address2', [kz_json:get_string_value(<<"extended_address">>, JObj)]}
+	    ,{'community', [kz_json:get_string_value(<<"locality">>, JObj)]}
+	    ,{'state', [kz_json:get_string_value(<<"region">>, JObj)]}
+	    ,{'postalcode', [kz_json:get_string_value(<<"postal_code">>, JObj)]}
+	    ,{'type', ["ADDRESS"]}
             ],
     [{'location', [KV || {_, V}=KV <- Props, V =/= ['undefined']]}].
 
@@ -434,20 +434,20 @@ location_xml_to_json_address(Xml) when is_list(Xml) ->
 location_xml_to_json_address(Xml) ->
     Props =
         [{<<"street_address">>, kz_util:get_xml_value("address1/text()", Xml)}
-         ,{<<"extended_address">>, kz_util:get_xml_value("address2/text()", Xml)}
-         ,{<<"activated_time">>, kz_util:get_xml_value("activated_time/text()", Xml)}
-         ,{<<"caller_name">>, kz_util:get_xml_value("callername/text()", Xml)}
-         ,{<<"comments">>, kz_util:get_xml_value("comments/text()", Xml)}
-         ,{<<"locality">>, kz_util:get_xml_value("community/text()", Xml)}
-         ,{<<"order_id">>, kz_util:get_xml_value("customerorderid/text()", Xml)}
-         ,{<<"latitude">>, kz_util:get_xml_value("latitude/text()", Xml)}
-         ,{<<"longitude">>, kz_util:get_xml_value("longitude/text()", Xml)}
-         ,{<<"location_id">>, kz_util:get_xml_value("locationid/text()", Xml)}
-         ,{<<"plus_four">>, kz_util:get_xml_value("plusfour/text()", Xml)}
-         ,{<<"postal_code">>, kz_util:get_xml_value("postalcode/text()", Xml)}
-         ,{<<"region">>, kz_util:get_xml_value("state/text()", Xml)}
-         ,{<<"status">>, kz_util:get_xml_value("status/code/text()", Xml)}
-         ,{<<"legacy_data">>, legacy_data_xml_to_json(xmerl_xpath:string("legacydata", Xml))}
+	,{<<"extended_address">>, kz_util:get_xml_value("address2/text()", Xml)}
+	,{<<"activated_time">>, kz_util:get_xml_value("activated_time/text()", Xml)}
+	,{<<"caller_name">>, kz_util:get_xml_value("callername/text()", Xml)}
+	,{<<"comments">>, kz_util:get_xml_value("comments/text()", Xml)}
+	,{<<"locality">>, kz_util:get_xml_value("community/text()", Xml)}
+	,{<<"order_id">>, kz_util:get_xml_value("customerorderid/text()", Xml)}
+	,{<<"latitude">>, kz_util:get_xml_value("latitude/text()", Xml)}
+	,{<<"longitude">>, kz_util:get_xml_value("longitude/text()", Xml)}
+	,{<<"location_id">>, kz_util:get_xml_value("locationid/text()", Xml)}
+	,{<<"plus_four">>, kz_util:get_xml_value("plusfour/text()", Xml)}
+	,{<<"postal_code">>, kz_util:get_xml_value("postalcode/text()", Xml)}
+	,{<<"region">>, kz_util:get_xml_value("state/text()", Xml)}
+	,{<<"status">>, kz_util:get_xml_value("status/code/text()", Xml)}
+	,{<<"legacy_data">>, legacy_data_xml_to_json(xmerl_xpath:string("legacydata", Xml))}
         ],
     kz_json:from_list(props:filter_undefined(Props)).
 
@@ -466,8 +466,8 @@ legacy_data_xml_to_json(Xml) when is_list(Xml) ->
     [legacy_data_xml_to_json(X) || X <- Xml];
 legacy_data_xml_to_json(Xml) ->
     Props = [{<<"house_number">>, kz_util:get_xml_value("housenumber/text()", Xml)}
-             ,{<<"predirectional">>, kz_util:get_xml_value("predirectional/text()", Xml)}
-             ,{<<"streetname">>, kz_util:get_xml_value("streetname/text()", Xml)}
-             ,{<<"suite">>, kz_util:get_xml_value("suite/text()", Xml)}
+	    ,{<<"predirectional">>, kz_util:get_xml_value("predirectional/text()", Xml)}
+	    ,{<<"streetname">>, kz_util:get_xml_value("streetname/text()", Xml)}
+	    ,{<<"suite">>, kz_util:get_xml_value("suite/text()", Xml)}
             ],
     kz_json:from_list(props:filter_undefined(Props)).

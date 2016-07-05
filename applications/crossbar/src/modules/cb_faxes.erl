@@ -10,15 +10,15 @@
 -module(cb_faxes).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-         ,content_types_provided/4
-         ,content_types_accepted/1, content_types_accepted/2
-         ,validate/1, validate/2, validate/3, validate/4
-         ,put/1, put/2
-         ,delete/3, delete/4
+	,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+	,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+	,content_types_provided/4
+	,content_types_accepted/1, content_types_accepted/2
+	,validate/1, validate/2, validate/3, validate/4
+	,put/1, put/2
+	,delete/3, delete/4
 
-         ,acceptable_content_types/0
+	,acceptable_content_types/0
         ]).
 
 -include("crossbar.hrl").
@@ -370,9 +370,9 @@ get_execution_status(Id, JObj) ->
 get_fax_running_status(Id, Q) ->
     Api = [{<<"Job-ID">>, Id} | kz_api:default_headers(?APP_NAME, ?APP_VERSION)],
     case kapps_util:amqp_pool_request(Api
-                                       ,fun(A) -> kapi_fax:publish_query_status(Q, A) end
-                                       ,fun kapi_fax:status_v/1
-                                      )
+				     ,fun(A) -> kapi_fax:publish_query_status(Q, A) end
+				     ,fun kapi_fax:status_v/1
+				     )
     of
         {'ok', JObj } -> kz_json:get_value(<<"Status">>, JObj);
         _ -> <<"not available">>
@@ -405,20 +405,20 @@ on_successful_validation('undefined', Context) ->
     JobStatus = initial_job_status(cb_context:req_files(Context)),
 
     cb_context:set_doc(Context
-                       ,kz_json:set_values([{<<"pvt_type">>, <<"fax">>}
-                                            ,{<<"pvt_job_status">>, JobStatus}
-                                            ,{<<"attempts">>, 0}
-                                            ,{<<"pvt_account_id">>, AccountId}
-                                            ,{<<"pvt_account_db">>, AccountDb}
-                                            ,{<<"pvt_reseller_id">>, ResellerId}
-                                            ,{<<"fax_timezone">>, Timezone}
-                                           ]
-                                           ,cb_context:doc(Context)
-                                          )
-                       );
+		      ,kz_json:set_values([{<<"pvt_type">>, <<"fax">>}
+					  ,{<<"pvt_job_status">>, JobStatus}
+					  ,{<<"attempts">>, 0}
+					  ,{<<"pvt_account_id">>, AccountId}
+					  ,{<<"pvt_account_db">>, AccountDb}
+					  ,{<<"pvt_reseller_id">>, ResellerId}
+					  ,{<<"fax_timezone">>, Timezone}
+					  ]
+					 ,cb_context:doc(Context)
+					 )
+		      );
 on_successful_validation(DocId, Context) ->
     maybe_reset_job(crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"fax">>))
-                    ,cb_context:resp_status(Context)).
+		   ,cb_context:resp_status(Context)).
 
 -spec initial_job_status(req_files()) -> ne_binary().
 initial_job_status([]) -> <<"pending">>;
@@ -431,11 +431,11 @@ maybe_reset_job(Context, 'success') ->
         'undefined' -> Context;
         _Else ->
             cb_context:set_doc(Context
-                               ,kz_json:set_values([{<<"pvt_job_status">>, <<"pending">>}
-                                                    ,{<<"attempts">>, 0}
-                                                   ]
-                                                   ,JObj
-                                                  ))
+			      ,kz_json:set_values([{<<"pvt_job_status">>, <<"pending">>}
+						  ,{<<"attempts">>, 0}
+						  ]
+						 ,JObj
+						 ))
     end;
 maybe_reset_job(Context, _Status) -> Context.
 
@@ -452,7 +452,7 @@ maybe_user_filter_doc(Context) ->
         'undefined' -> kz_json:new();
         UserId ->
             Options = [{'id', UserId}
-                       ,{'type', <<"user">>}
+		      ,{'type', <<"user">>}
                       ],
             kz_doc:update_pvt_parameters(kz_json:new(), 'undefined', Options)
     end.
@@ -471,9 +471,9 @@ fax_modb_summary(Context, Folder) ->
     case cb_modules_util:range_modb_view_options(Context, PreFilter, PostFilter) of
         {'ok', ViewOptions} ->
             crossbar_doc:load_view(View
-                                   ,['include_docs' | ViewOptions]
-                                   ,cb_context:set_resp_status(Context, 'success')
-                                   ,fun normalize_incoming_view_results/2
+				  ,['include_docs' | ViewOptions]
+				  ,cb_context:set_resp_status(Context, 'success')
+				  ,fun normalize_incoming_view_results/2
                                   );
         Ctx -> Ctx
     end.
@@ -485,7 +485,7 @@ inbox_summary(Context) -> fax_modb_summary(Context, ?INBOX).
 outbox_summary(Context) -> fax_modb_summary(Context, ?OUTBOX).
 
 -spec get_incoming_view_and_filter(kz_json:object(), ne_binary()) ->
-          {ne_binary(), api_binaries(), api_binaries()}.
+					  {ne_binary(), api_binaries(), api_binaries()}.
 get_incoming_view_and_filter(JObj, Folder) ->
     Id = kz_doc:id(JObj),
     case kz_doc:type(JObj) of
@@ -499,9 +499,9 @@ load_smtp_log(Context) ->
     case cb_modules_util:range_modb_view_options(Context) of
         {'ok', ViewOptions} ->
             crossbar_doc:load_view(?CB_LIST_SMTP_LOG
-                                   ,['include_docs' | ViewOptions]
-                                   ,Context
-                                   ,fun normalize_view_results/2
+				  ,['include_docs' | ViewOptions]
+				  ,Context
+				  ,fun normalize_view_results/2
                                   );
         Ctx -> Ctx
     end.
@@ -534,14 +534,14 @@ do_load_fax_binary(FaxId, Context) ->
 -spec set_fax_binary(cb_context:context(), ne_binary()) -> cb_context:context().
 set_fax_binary(Context, AttachmentId) ->
     cb_context:setters(crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, ?TYPE_CHECK_OPTION(<<"fax">>), Context)
-                       ,[{fun cb_context:set_resp_etag/2, 'undefined'}
-                         ,{fun cb_context:add_resp_headers/2
-                           ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
-                             ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
-                             ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
-                            ]
-                          }
-                        ]
+		      ,[{fun cb_context:set_resp_etag/2, 'undefined'}
+		       ,{fun cb_context:add_resp_headers/2
+			,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
+			 ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
+			 ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
+			 ]
+			}
+		       ]
                       ).
 
 %%--------------------------------------------------------------------
@@ -558,21 +558,21 @@ outgoing_summary(Context) ->
         case kz_doc:type(JObj) of
             <<"faxbox">> ->
                 {?CB_LIST_BY_FAXBOX
-                 ,[{'key', kz_doc:id(JObj)}
-                   ,'include_docs'
-                  ]};
+		,[{'key', kz_doc:id(JObj)}
+		 ,'include_docs'
+		 ]};
             _Else ->
                 {?CB_LIST_BY_ACCOUNT
-                 ,[{'startkey', [cb_context:account_id(Context)]}
-                   ,{'endkey', [cb_context:account_id(Context), kz_json:new()]}
-                   ,'include_docs'
-                  ]}
+		,[{'startkey', [cb_context:account_id(Context)]}
+		 ,{'endkey', [cb_context:account_id(Context), kz_json:new()]}
+		 ,'include_docs'
+		 ]}
         end,
 
     crossbar_doc:load_view(View
-                           ,ViewOptions
-                           ,Context
-                           ,fun normalize_view_results/2
+			  ,ViewOptions
+			  ,Context
+			  ,fun normalize_view_results/2
                           ).
 
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
@@ -607,16 +607,16 @@ save_attachment(Context, Filename, FileJObj) ->
     Contents = kz_json:get_value(<<"contents">>, FileJObj),
     CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     Opts = [{'content_type', CT}
-            ,{'rev', kz_doc:revision(JObj)}
+	   ,{'rev', kz_doc:revision(JObj)}
             | ?TYPE_CHECK_OPTION(<<"fax">>)
            ],
     set_pending(crossbar_doc:save_attachment(DocId
-                                             ,cb_modules_util:attachment_name(Filename, CT)
-                                             ,Contents
-                                             ,Context
-                                             ,Opts
+					    ,cb_modules_util:attachment_name(Filename, CT)
+					    ,Contents
+					    ,Context
+					    ,Opts
                                             )
-                ,DocId
+	       ,DocId
                ).
 
 -spec set_pending(cb_context:context(), binary()) -> cb_context:context().

@@ -12,31 +12,31 @@
 
 %% API
 -export([start_link/0
-         ,stop/0
-         ,crawl_numbers/0
+	,stop/0
+	,crawl_numbers/0
         ]).
 
 %% gen_server callbacks
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("knm.hrl").
 
 -define(DISCOVERY_EXPIRY
-        ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"discovery_expiry_d">>, 90)
+       ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"discovery_expiry_d">>, 90)
        ).
 
 -define(DELETED_EXPIRY
-        ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"deleted_expiry_d">>, 90)
+       ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"deleted_expiry_d">>, 90)
        ).
 
 -define(NUMBERS_TO_CRAWL
-        ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)
+       ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)
        ).
 
 -record(state, {cleanup_ref :: reference()}).
@@ -196,23 +196,23 @@ is_number_doc(Doc) ->
 -spec crawl_number_doc(knm_phone_number:knm_phone_number()) -> 'ok'.
 crawl_number_doc(PhoneNumber) ->
     Fs = [fun maybe_remove_discovery/1
-          ,fun maybe_remove_deleted/1
+	 ,fun maybe_remove_deleted/1
          ],
     try run_crawler_funs(PhoneNumber, Fs) of
         _ -> 'ok'
     catch
         'throw':'number_purged' ->
             lager:debug(" number '~s' was purged from the sytem"
-                        ,[knm_phone_number:number(PhoneNumber)]
+		       ,[knm_phone_number:number(PhoneNumber)]
                        );
         'throw':{'error', _E} ->
             lager:debug(" number '~s' encountered an error: ~p"
-                        ,[knm_phone_number:number(PhoneNumber), _E]
+		       ,[knm_phone_number:number(PhoneNumber), _E]
                        );
         _E:_R ->
             ST = erlang:get_stacktrace(),
             lager:debug(" '~s' encountered with ~s: ~p"
-                        ,[_E, knm_phone_number:number(PhoneNumber), _R]
+		       ,[_E, knm_phone_number:number(PhoneNumber), _R]
                        ),
             kz_util:log_stacktrace(ST)
     end.
@@ -221,8 +221,8 @@ crawl_number_doc(PhoneNumber) ->
                               knm_phone_number:knm_phone_number().
 run_crawler_funs(PhoneNumber, Fs) ->
     lists:foldl(fun(F, PN) -> F(PN) end
-                ,PhoneNumber
-                ,Fs
+	       ,PhoneNumber
+	       ,Fs
                ).
 
 -spec maybe_remove_discovery(knm_phone_number:knm_phone_number()) ->

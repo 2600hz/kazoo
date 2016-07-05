@@ -20,7 +20,7 @@
                                         'undefined' -> kapps_config:get(?CONFIG_CAT, ?LOOPBACK_KEY, 'true');
                                         _ -> kapps_account_config:get_global(AccountId, ?CONFIG_CAT, ?LOOPBACK_KEY, 'true')
                                     end
-                                    ).
+       ).
 
 -define(CHANNEL_VARS, <<"Custom-Channel-Vars">>).
 -define(CCV(Key), [?CHANNEL_VARS, Key]).
@@ -32,7 +32,7 @@ handle_req(JObj, _Props) ->
     _ = kz_util:put_callid(JObj),
     kz_datamgr:suppress_change_notice(),
     Routines = [fun maybe_ignore_app/1
-                ,fun maybe_ignore_loopback/1
+	       ,fun maybe_ignore_loopback/1
                ],
     case lists:foldl(fun maybe_ignore_cdr/2, {JObj, []}, Routines) of
         {_, []} -> handle_req(JObj);
@@ -50,7 +50,7 @@ maybe_ignore_cdr(Fun, {JObj, Acc}) ->
 maybe_ignore_app(JObj) ->
     AppName = kz_util:to_binary(kz_call_event:application_name(JObj)),
     {lists:member(AppName, ?IGNORED_APP)
-     ,<<"ignoring cdr request from ", AppName/binary>>
+    ,<<"ignoring cdr request from ", AppName/binary>>
     }.
 
 -spec maybe_ignore_loopback(kz_json:object()) -> {boolean(), binary()}.
@@ -79,35 +79,35 @@ handle_req(JObj) ->
 -spec prepare_and_save(account_id(), gregorian_seconds(), kz_json:object()) -> 'ok'.
 prepare_and_save(AccountId, Timestamp, JObj) ->
     Routines = [fun update_pvt_parameters/3
-                ,fun update_ccvs/3
-                ,fun set_doc_id/3
-                ,fun set_recording_url/3
-                ,fun set_call_priority/3
-                ,fun maybe_set_e164_destination/3
-                ,fun is_conference/3
-                ,fun set_interaction/3
-                ,fun save_cdr/3
+	       ,fun update_ccvs/3
+	       ,fun set_doc_id/3
+	       ,fun set_recording_url/3
+	       ,fun set_call_priority/3
+	       ,fun maybe_set_e164_destination/3
+	       ,fun is_conference/3
+	       ,fun set_interaction/3
+	       ,fun save_cdr/3
                ],
 
     lists:foldl(fun(F, J) ->
                         F(AccountId, Timestamp, J)
                 end
-                ,JObj
-                ,Routines
+	       ,JObj
+	       ,Routines
                ),
     'ok'.
 
 -spec update_pvt_parameters(api_binary(), gregorian_seconds(), kz_json:object()) -> kz_json:object().
 update_pvt_parameters('undefined', _, JObj) ->
     Props = [{'type', 'cdr'}
-             ,{'crossbar_doc_vsn', 2}
+	    ,{'crossbar_doc_vsn', 2}
             ],
     kz_doc:update_pvt_parameters(JObj, ?KZ_ANONYMOUS_CDR_DB, Props);
 update_pvt_parameters(AccountId, Timestamp, JObj) ->
     AccountMODb = kz_util:format_account_id(AccountId, Timestamp),
     Props = [{'type', 'cdr'}
-             ,{'crossbar_doc_vsn', 2}
-             ,{'account_id', AccountId}
+	    ,{'crossbar_doc_vsn', 2}
+	    ,{'account_id', AccountId}
             ],
     kz_doc:update_pvt_parameters(JObj, AccountMODb, Props).
 
@@ -128,16 +128,16 @@ update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
         'false' -> Acc;
         'true' ->
             {kz_json:set_value(Key, Value, JObj)
-             ,kz_json:delete_key(Key, CCVs)
+	    ,kz_json:delete_key(Key, CCVs)
             }
     end.
 
 -spec set_doc_id(api_binary(), gregorian_seconds(), kz_json:object()) -> kz_json:object().
 set_doc_id(_, Timestamp, JObj) ->
     CallId = kz_call_event:call_id(JObj),
-%% we should consider this because there is a lost channel in case of
-%% nightmare transfers
-%%    CallId = kz_util:rand_hex_binary(16),
+    %% we should consider this because there is a lost channel in case of
+    %% nightmare transfers
+    %%    CallId = kz_util:rand_hex_binary(16),
     DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
     kz_doc:set_id(JObj, DocId).
 
@@ -167,13 +167,13 @@ maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
         'undefined' -> JObj;
         Default -> JObj;
         Value -> kz_json:set_value(Key
-                                   ,Value
-                                   ,kz_json:delete_key(?CCV(Key), JObj)
+				  ,Value
+				  ,kz_json:delete_key(?CCV(Key), JObj)
                                   )
     end.
 
 -spec set_interaction(api_binary(), gregorian_seconds(), kz_json:object()) ->
-                       kz_json:object().
+			     kz_json:object().
 set_interaction(_AccountId, _Timestamp, JObj) ->
     <<Time:11/binary, "-", Key/binary>> = Interaction = kz_call_event:custom_channel_var(JObj, <<?CALL_INTERACTION_ID>>),
     Timestamp = kz_util:to_integer(Time),
@@ -182,10 +182,10 @@ set_interaction(_AccountId, _Timestamp, JObj) ->
 
     kz_json:set_values(
       [{<<"Interaction-Time">>, Timestamp}
-       ,{<<"Interaction-Key">>, Key}
-       ,{<<"Interaction-Id">>, Interaction}
+      ,{<<"Interaction-Key">>, Key}
+      ,{<<"Interaction-Id">>, Interaction}
       ]
-      ,kz_json:delete_key(?CCV(<<?CALL_INTERACTION_ID>>), kz_doc:set_id(JObj, DocId))
+		      ,kz_json:delete_key(?CCV(<<?CALL_INTERACTION_ID>>), kz_doc:set_id(JObj, DocId))
      ).
 
 -spec save_cdr(api_binary(), gregorian_seconds(), kz_json:object()) -> kz_json:object().

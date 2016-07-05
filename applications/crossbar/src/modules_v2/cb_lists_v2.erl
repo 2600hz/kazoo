@@ -13,12 +13,12 @@
 
 -export([maybe_migrate/1]).
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3, allowed_methods/4
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3, resource_exists/4
-         ,content_types_provided/1, content_types_provided/2, content_types_provided/3, content_types_provided/4, content_types_provided/5
-         ,validate/1, validate/2, validate/3, validate/4, validate/5
-         ,delete/2, delete/3, delete/4
-         ,save/1, save/2, save/3, save/4, save/5
+	,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3, allowed_methods/4
+	,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3, resource_exists/4
+	,content_types_provided/1, content_types_provided/2, content_types_provided/3, content_types_provided/4, content_types_provided/5
+	,validate/1, validate/2, validate/3, validate/4, validate/5
+	,delete/2, delete/3, delete/4
+	,save/1, save/2, save/3, save/4, save/5
         ]).
 
 -include("crossbar.hrl").
@@ -48,9 +48,9 @@ migrate(AccountDb, [List | Lists]) ->
 
     MigrateEntryFun = fun({Id, Entry}) ->
                               kz_json:set_values([{<<"pvt_type">>, ?TYPE_LIST_ENTRY}
-                                                  ,{<<"list_entry_old_id">>, Id}
-                                                  ,{<<"list_id">>, DocId}]
-                                                 ,Entry)
+						 ,{<<"list_entry_old_id">>, Id}
+						 ,{<<"list_id">>, DocId}]
+						,Entry)
                       end,
     Entries1 = lists:map(MigrateEntryFun, Entries),
     kz_datamgr:save_doc(AccountDb, Entries1),
@@ -64,13 +64,13 @@ migrate(_AccountDb, []) ->
 init() ->
     [crossbar_bindings:bind(Binding, ?MODULE, F)
      || {Binding, F} <- [{<<"v2_resource.allowed_methods.lists">>, 'allowed_methods'}
-                         ,{<<"v2_resource.resource_exists.lists">>, 'resource_exists'}
-                         ,{<<"v2_resource.content_types_provided.lists">>, 'content_types_provided'}
-                         ,{<<"v2_resource.validate.lists">>, 'validate'}
-                         ,{<<"v2_resource.execute.put.lists">>, 'save'}
-                         ,{<<"v2_resource.execute.post.lists">>, 'save'}
-                         ,{<<"v2_resource.execute.patch.lists">>, 'save'}
-                         ,{<<"v2_resource.execute.delete.lists">>, 'delete'}
+			,{<<"v2_resource.resource_exists.lists">>, 'resource_exists'}
+			,{<<"v2_resource.content_types_provided.lists">>, 'content_types_provided'}
+			,{<<"v2_resource.validate.lists">>, 'validate'}
+			,{<<"v2_resource.execute.put.lists">>, 'save'}
+			,{<<"v2_resource.execute.post.lists">>, 'save'}
+			,{<<"v2_resource.execute.patch.lists">>, 'save'}
+			,{<<"v2_resource.execute.delete.lists">>, 'delete'}
                         ]
     ].
 
@@ -184,10 +184,10 @@ validate_req(?HTTP_GET, Context, [_ListId, ?ENTRIES, EntryId, ?VCARD]) ->
     JObj2 = kz_json:set_values(
               props:filter_empty(
                 [{<<"first_name">>, kz_json:get_value(<<"firstname">>, JObj1)}
-                 ,{<<"last_name">>, kz_json:get_value(<<"lastname">>, JObj1)}
-                 ,{<<"middle_name">>, kz_json:get_value(<<"middlename">>, JObj1)}
-                 ,{<<"nicknames">>, [kz_json:get_value(<<"displayname">>, JObj1)]}])
-              ,JObj1),
+		,{<<"last_name">>, kz_json:get_value(<<"lastname">>, JObj1)}
+		,{<<"middle_name">>, kz_json:get_value(<<"middlename">>, JObj1)}
+		,{<<"nicknames">>, [kz_json:get_value(<<"displayname">>, JObj1)]}])
+			      ,JObj1),
     JObj3 = set_org(JObj2, Context1),
     JObj4 = set_photo(JObj3, Context1),
     RespData = kzd_user:to_vcard(JObj4),

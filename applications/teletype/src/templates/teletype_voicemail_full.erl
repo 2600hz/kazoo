@@ -9,7 +9,7 @@
 -module(teletype_voicemail_full).
 
 -export([init/0
-         ,handle_full_voicemail/2
+	,handle_full_voicemail/2
         ]).
 
 -include("teletype.hrl").
@@ -18,15 +18,15 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-        ,kz_json:from_list(
-           [?MACRO_VALUE(<<"voicemail.box">>, <<"voicemail_box">>, <<"Voicemail Box">>, <<"Which voicemail box was the message left in">>)
-            ,?MACRO_VALUE(<<"voicemail.name">>, <<"voicemail_name">>, <<"Voicemail Name">>, <<"Name of the voicemail file">>)
-            ,?MACRO_VALUE(<<"voicemail.number">>, <<"voicemail_number">>, <<"Voicemail Number">>, <<"Number of the voicemail box">>)
-            ,?MACRO_VALUE(<<"owner.first_name">>, <<"first_name">>, <<"First Name">>, <<"First name of the owner of the voicemail box">>)
-            ,?MACRO_VALUE(<<"owner.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last name of the owner of the voicemail box">>)
-            ,?MACRO_VALUE(<<"voicemail.max_messages">>, <<"max_messages">>, <<"Maximum Messages">>, <<"The maximum number of messages this box can hold">>)
-            ,?MACRO_VALUE(<<"voicemail.message_count">>, <<"message_count">>, <<"Message Count">>, <<"The current number of messages in the voicemail box">>)
-           ])
+       ,kz_json:from_list(
+	  [?MACRO_VALUE(<<"voicemail.box">>, <<"voicemail_box">>, <<"Voicemail Box">>, <<"Which voicemail box was the message left in">>)
+	  ,?MACRO_VALUE(<<"voicemail.name">>, <<"voicemail_name">>, <<"Voicemail Name">>, <<"Name of the voicemail file">>)
+	  ,?MACRO_VALUE(<<"voicemail.number">>, <<"voicemail_number">>, <<"Voicemail Number">>, <<"Number of the voicemail box">>)
+	  ,?MACRO_VALUE(<<"owner.first_name">>, <<"first_name">>, <<"First Name">>, <<"First name of the owner of the voicemail box">>)
+	  ,?MACRO_VALUE(<<"owner.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last name of the owner of the voicemail box">>)
+	  ,?MACRO_VALUE(<<"voicemail.max_messages">>, <<"max_messages">>, <<"Maximum Messages">>, <<"The maximum number of messages this box can hold">>)
+	  ,?MACRO_VALUE(<<"voicemail.message_count">>, <<"message_count">>, <<"Message Count">>, <<"The current number of messages in the voicemail box">>)
+	  ])
        ).
 
 -define(TEMPLATE_TEXT, <<"Your voicemail box '{{voicemail.name}}' is full.">>).
@@ -45,16 +45,16 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                           ,{'text', ?TEMPLATE_TEXT}
-                                           ,{'html', ?TEMPLATE_HTML}
-                                           ,{'subject', ?TEMPLATE_SUBJECT}
-                                           ,{'category', ?TEMPLATE_CATEGORY}
-                                           ,{'friendly_name', ?TEMPLATE_NAME}
-                                           ,{'to', ?TEMPLATE_TO}
-                                           ,{'from', ?TEMPLATE_FROM}
-                                           ,{'cc', ?TEMPLATE_CC}
-                                           ,{'bcc', ?TEMPLATE_BCC}
-                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
+					  ,{'text', ?TEMPLATE_TEXT}
+					  ,{'html', ?TEMPLATE_HTML}
+					  ,{'subject', ?TEMPLATE_SUBJECT}
+					  ,{'category', ?TEMPLATE_CATEGORY}
+					  ,{'friendly_name', ?TEMPLATE_NAME}
+					  ,{'to', ?TEMPLATE_TO}
+					  ,{'from', ?TEMPLATE_FROM}
+					  ,{'cc', ?TEMPLATE_CC}
+					  ,{'bcc', ?TEMPLATE_BCC}
+					  ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
 -spec handle_full_voicemail(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -78,10 +78,10 @@ handle_full_voicemail(JObj, _Props) ->
     ReqData =
         kz_json:set_values(
           [{<<"voicemail">>, VMBox}
-           ,{<<"owner">>, User}
-           ,{<<"to">>, Emails}
+	  ,{<<"owner">>, User}
+	  ,{<<"to">>, Emails}
           ]
-          ,DataJObj
+			  ,DataJObj
          ),
     process_req(kz_json:merge_jobjs(DataJObj, ReqData)).
 
@@ -113,8 +113,8 @@ get_vm_box_owner(VMBox, JObj) ->
 process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
     Macros = [{<<"system">>, teletype_util:system_params()}
-              ,{<<"account">>, teletype_util:account_params(DataJObj)}
-              ,{<<"owner">>, teletype_util:public_proplist(<<"owner">>, DataJObj)}
+	     ,{<<"account">>, teletype_util:account_params(DataJObj)}
+	     ,{<<"owner">>, teletype_util:public_proplist(<<"owner">>, DataJObj)}
               | build_template_data(DataJObj)
              ],
 
@@ -123,12 +123,12 @@ process_req(DataJObj) ->
 
     {'ok', TemplateMetaJObj} =
         teletype_templates:fetch_notification(?TEMPLATE_ID
-                                      ,teletype_util:find_account_id(DataJObj)
-                                     ),
+					     ,teletype_util:find_account_id(DataJObj)
+					     ),
 
     Subject = teletype_util:render_subject(
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
-                ,Macros
+					  ,Macros
                ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
@@ -148,8 +148,8 @@ build_template_data(DataJObj) ->
 build_voicemail_data(DataJObj) ->
     props:filter_undefined(
       [{<<"box">>, kz_json:get_value(<<"voicemail_box">>, DataJObj)}
-       ,{<<"number">>, kz_json:get_value(<<"voicemail_number">>, DataJObj)}
-       ,{<<"max_messages">>, kz_json:get_binary_value(<<"max_message_count">>, DataJObj)}
-       ,{<<"message_count">>, kz_json:get_binary_value(<<"message_count">>, DataJObj)}
+      ,{<<"number">>, kz_json:get_value(<<"voicemail_number">>, DataJObj)}
+      ,{<<"max_messages">>, kz_json:get_binary_value(<<"max_message_count">>, DataJObj)}
+      ,{<<"message_count">>, kz_json:get_binary_value(<<"message_count">>, DataJObj)}
        | props:delete(<<"pin">>, teletype_util:public_proplist(<<"voicemail">>, DataJObj))
       ]).

@@ -49,42 +49,42 @@ outbound_child_name(OffnetReq) ->
 -spec bridge(kz_json:objects(), kapi_offnet_resource:req()) -> sup_startchild_ret().
 bridge(Endpoints, OffnetReq) ->
     supervisor:start_child(?SERVER
-                           ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)
-                                                   ,'stepswitch_bridge'
-                                                   ,[Endpoints, OffnetReq]
-                                                   ,'temporary'
-                                                  )
+			  ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)
+						 ,'stepswitch_bridge'
+						 ,[Endpoints, OffnetReq]
+						 ,'temporary'
+						 )
                           ).
 
 -spec local_extension(knm_number_options:extra_options(), kapi_offnet_resource:req()) ->
                              sup_startchild_ret().
 local_extension(Props, OffnetReq) ->
     supervisor:start_child(?SERVER
-                           ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)
-                                                   ,'stepswitch_local_extension'
-                                                   ,[Props, OffnetReq]
-                                                   ,'temporary'
-                                                  )
+			  ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)
+						 ,'stepswitch_local_extension'
+						 ,[Props, OffnetReq]
+						 ,'temporary'
+						 )
                           ).
 
 -spec originate(kz_json:objects(), kapi_offnet_resource:req()) -> sup_startchild_ret().
 originate(Endpoints, OffnetReq) ->
     supervisor:start_child(?SERVER
-                           ,?WORKER_NAME_ARGS_TYPE(outbound_child_name(OffnetReq)
-                                                   ,'stepswitch_originate'
-                                                   ,[Endpoints, OffnetReq]
-                                                   ,'temporary'
-                                                  )
+			  ,?WORKER_NAME_ARGS_TYPE(outbound_child_name(OffnetReq)
+						 ,'stepswitch_originate'
+						 ,[Endpoints, OffnetReq]
+						 ,'temporary'
+						 )
                           ).
 
 -spec sms(kz_json:objects(), kapi_offnet_resource:req()) -> sup_startchild_ret().
 sms(Endpoints, OffnetReq) ->
     supervisor:start_child(?SERVER
-                           ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)
-                                                   ,'stepswitch_sms'
-                                                   ,[Endpoints, OffnetReq]
-                                                   ,'temporary'
-                                                  )
+			  ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)
+						 ,'stepswitch_sms'
+						 ,[Endpoints, OffnetReq]
+						 ,'temporary'
+						 )
                           ).
 
 %% ===================================================================

@@ -13,17 +13,17 @@
 
 %% API
 -export([start_link/0
-         ,handle_media_req/2
+	,handle_media_req/2
         ]).
 
 %% gen_server callbacks
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("media.hrl").
@@ -40,9 +40,9 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'bindings', [{'media', []}]}
-                                      ,{'responders', [{{?MODULE, 'handle_media_req'}
-                                                        ,[{<<"media">>, <<"media_req">>}]}
-                                                      ]}
+				     ,{'responders', [{{?MODULE, 'handle_media_req'}
+						      ,[{<<"media">>, <<"media_req">>}]}
+						     ]}
                                      ], []).
 
 handle_media_req(JObj, _Props) ->
@@ -154,9 +154,9 @@ code_change(_OldVsn, State, _Extra) ->
 send_error_resp(JObj, ErrMsg) ->
     MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
     Error = [{<<"Media-Name">>, MediaName}
-             ,{<<"Error-Code">>, <<"other">>}
-             ,{<<"Error-Msg">>, kz_util:to_binary(ErrMsg)}
-             ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+	    ,{<<"Error-Code">>, <<"other">>}
+	    ,{<<"Error-Msg">>, kz_util:to_binary(ErrMsg)}
+	    ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     lager:debug("sending error reply ~s for ~s", [ErrMsg, MediaName]),
@@ -168,8 +168,8 @@ send_error_resp(JObj, ErrMsg) ->
 send_media_resp(JObj, StreamURL) ->
     lager:debug("media stream URL: ~s", [StreamURL]),
     Resp = [{<<"Media-Name">>, kz_json:get_value(<<"Media-Name">>, JObj)}
-            ,{<<"Stream-URL">>, StreamURL}
-            ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+	   ,{<<"Stream-URL">>, StreamURL}
+	   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     ServerId = kz_json:get_value(<<"Server-ID">>, JObj),

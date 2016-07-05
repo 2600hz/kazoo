@@ -8,10 +8,10 @@
 -module(kz_http_util).
 
 -export([urldecode/1
-         ,urlencode/1
-         ,parse_query_string/1
-         ,urlsplit/1
-         ,urlunsplit/1
+	,urlencode/1
+	,parse_query_string/1
+	,urlsplit/1
+	,urlunsplit/1
         ]).
 
 %%--------------------------------------------------------------------

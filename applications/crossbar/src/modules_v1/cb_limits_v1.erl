@@ -183,15 +183,15 @@ maybe_handle_load_failure(Context) ->
 maybe_handle_load_failure(Context, 404) ->
     Data = cb_context:req_data(Context),
     NewLimits = kz_json:from_list([{<<"pvt_type">>, ?PVT_TYPE}
-                                   ,{<<"_id">>, ?PVT_TYPE}
+				  ,{<<"_id">>, ?PVT_TYPE}
                                   ]),
     JObj = kz_json_schema:add_defaults(kz_json:merge_jobjs(NewLimits, kz_json:public_fields(Data))
-                                       ,<<"limits">>
+				      ,<<"limits">>
                                       ),
 
     cb_context:setters(Context
-                       ,[{fun cb_context:set_resp_status/2, 'success'}
-                         ,{fun cb_context:set_resp_data/2, kz_json:public_fields(JObj)}
-                         ,{fun cb_context:set_doc/2, crossbar_doc:update_pvt_parameters(JObj, Context)}
-                        ]);
+		      ,[{fun cb_context:set_resp_status/2, 'success'}
+		       ,{fun cb_context:set_resp_data/2, kz_json:public_fields(JObj)}
+		       ,{fun cb_context:set_doc/2, crossbar_doc:update_pvt_parameters(JObj, Context)}
+		       ]);
 maybe_handle_load_failure(Context, _RespCode) -> Context.

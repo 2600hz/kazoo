@@ -13,11 +13,11 @@
 -export([sync/1]).
 -export([clean/1]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("kazoo_services.hrl").
@@ -194,8 +194,8 @@ sync(AccountId, ServicesJObj) ->
 maybe_sync_service() ->
     SyncBufferPeriod = kapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_buffer_period">>, 600),
     ViewOptions = [{'limit', 1}
-                   ,'include_docs'
-                   ,{'endkey', kz_util:current_tstamp() - SyncBufferPeriod}
+		  ,'include_docs'
+		  ,{'endkey', kz_util:current_tstamp() - SyncBufferPeriod}
                   ],
     case kz_datamgr:get_results(?KZ_SERVICES_DB, <<"services/dirty">>, ViewOptions) of
         {'error', _}=E -> E;
@@ -310,8 +310,8 @@ sync_transactions(AccountId, ServicesJObj, Bookkeeper, Transactions) ->
     BillingId = kzd_services:billing_id(ServicesJObj),
     FailedTransactions = Bookkeeper:charge_transactions(BillingId, Transactions),
     case kz_datamgr:save_doc(?KZ_SERVICES_DB
-                           ,kzd_services:set_transactions(ServicesJObj, FailedTransactions)
-                           )
+			    ,kzd_services:set_transactions(ServicesJObj, FailedTransactions)
+			    )
     of
         {'error', _E} ->
             lager:warning("failed to clean pending transactions ~p", [_E]);
@@ -338,7 +338,7 @@ handle_topup_transactions(Account, [JObj|JObjs]=List, Retry) when Retry > 0 ->
                     lager:warning("did not write top up transaction for account ~s already exist for today", [Account]);
                 {'error', _E} ->
                     lager:error("failed to write top up transaction ~p , for account ~s (amount: ~p), retrying ~p..."
-                                ,[_E, Account, Amount, Retry]
+			       ,[_E, Account, Amount, Retry]
                                ),
                     handle_topup_transactions(Account, List, Retry-1)
             end;
@@ -350,15 +350,15 @@ handle_topup_transactions(Account, _, _) ->
 -spec did_topup_failed(kz_json:objects()) -> boolean().
 did_topup_failed(JObjs) ->
     lists:foldl(
-        fun(JObj, Acc) ->
-            case kz_json:get_integer_value(<<"pvt_code">>, JObj) of
-                ?CODE_TOPUP -> 'true';
-                _ -> Acc
-            end
-        end
-        ,'false'
-        ,JObjs
-    ).
+      fun(JObj, Acc) ->
+	      case kz_json:get_integer_value(<<"pvt_code">>, JObj) of
+		  ?CODE_TOPUP -> 'true';
+		  _ -> Acc
+	      end
+      end
+	       ,'false'
+	       ,JObjs
+     ).
 
 -spec maybe_sync_reseller(ne_binary(), kzd_services:doc()) -> kz_std_return().
 maybe_sync_reseller(AccountId, ServicesJObj) ->
@@ -389,35 +389,35 @@ mark_dirty(AccountId) when is_binary(AccountId) ->
 mark_dirty(ServicesJObj) ->
     kz_datamgr:save_doc(?KZ_SERVICES_DB
                        ,kz_json:set_values([{<<"pvt_dirty">>, 'true'}
-                                            ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+					   ,{<<"pvt_modified">>, kz_util:current_tstamp()}
                                            ]
                                           ,ServicesJObj
                                           )
-                      ).
+		       ).
 
 -spec mark_clean(kzd_services:doc()) -> kz_std_return().
 mark_clean(ServicesJObj) ->
     kz_datamgr:save_doc(?KZ_SERVICES_DB
-                      ,kzd_services:set_is_dirty(ServicesJObj, 'false')
-                      ).
+		       ,kzd_services:set_is_dirty(ServicesJObj, 'false')
+		       ).
 
 -spec mark_clean_and_status(ne_binary(), kzd_services:doc()) -> kz_std_return().
 mark_clean_and_status(Status, ServicesJObj) ->
     lager:debug("marking services clean with status ~s", [Status]),
     kz_datamgr:save_doc(?KZ_SERVICES_DB
-                      ,kz_json:set_values([{<<"pvt_dirty">>, 'false'}
-                                          ,{<<"pvt_status">>, Status}
-                                          ]
-                                         ,ServicesJObj
-                                         )
-                      ).
+		       ,kz_json:set_values([{<<"pvt_dirty">>, 'false'}
+					   ,{<<"pvt_status">>, Status}
+					   ]
+					  ,ServicesJObj
+					  )
+		       ).
 
 -spec maybe_update_billing_id(ne_binary(), ne_binary(), kz_json:object()) -> kz_std_return().
 maybe_update_billing_id(BillingId, AccountId, ServicesJObj) ->
     case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, BillingId) of
         {'error', _} ->
             lager:debug("billing id ~s on ~s does not exist anymore, updating to bill self"
-                        ,[BillingId, AccountId]
+		       ,[BillingId, AccountId]
                        ),
             kz_datamgr:save_doc(?KZ_SERVICES_DB, kzd_services:set_billing_id(ServicesJObj, AccountId));
         {'ok', JObj} ->
@@ -425,7 +425,7 @@ maybe_update_billing_id(BillingId, AccountId, ServicesJObj) ->
                 'false' -> kz_services:reconcile(BillingId);
                 'true' ->
                     lager:debug("billing id ~s on ~s was deleted, updating to bill self"
-                                ,[BillingId, AccountId]
+			       ,[BillingId, AccountId]
                                ),
                     kz_datamgr:save_doc(?KZ_SERVICES_DB, kzd_services:set_billing_id(ServicesJObj, AccountId))
             end

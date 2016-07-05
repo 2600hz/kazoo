@@ -9,41 +9,41 @@
 -module(kzd_freeswitch).
 
 -export([caller_id_name/1, caller_id_name/2
-         ,caller_id_number/1, caller_id_number/2
-         ,callee_id_name/1, callee_id_name/2
-         ,callee_id_number/1, callee_id_number/2
-         ,dialed_number/1
-         ,call_id/1
-         ,other_leg_call_id/1
-         ,call_direction/1
-         ,resource_type/1, resource_type/2
-         ,channel_authorized/1
-         ,hunt_destination_number/1
-         ,is_channel_recovering/1, is_channel_recovering/2
-         ,is_consuming_global_resource/1, is_consuming_global_resource/2
-         ,resource_id/1
+	,caller_id_number/1, caller_id_number/2
+	,callee_id_name/1, callee_id_name/2
+	,callee_id_number/1, callee_id_number/2
+	,dialed_number/1
+	,call_id/1
+	,other_leg_call_id/1
+	,call_direction/1
+	,resource_type/1, resource_type/2
+	,channel_authorized/1
+	,hunt_destination_number/1
+	,is_channel_recovering/1, is_channel_recovering/2
+	,is_consuming_global_resource/1, is_consuming_global_resource/2
+	,resource_id/1
 
-         ,hangup_code/1, hangup_cause/1
-         ,disposition/1
+	,hangup_code/1, hangup_cause/1
+	,disposition/1
 
-         ,transfer_history/1
-         ,transfer_source/1
+	,transfer_history/1
+	,transfer_source/1
 
-         ,authorizing_id/1
-         ,authorizing_type/1
+	,authorizing_id/1
+	,authorizing_type/1
 
-         ,account_id/1, account_billing/1
-         ,reseller_id/1, reseller_billing/1
+	,account_id/1, account_billing/1
+	,reseller_id/1, reseller_billing/1
 
-         ,from_network_ip/1, from_network_port/1
-         ,user_agent/1
+	,from_network_ip/1, from_network_port/1
+	,user_agent/1
 
-         ,to_did/1
+	,to_did/1
 
-         ,application_name/1, raw_application_name/1
-         ,event_name/1
+	,application_name/1, raw_application_name/1
+	,event_name/1
 
-         ,ccv/2, ccv/3
+	,ccv/2, ccv/3
         ]).
 
 -include("kz_documents.hrl").
@@ -57,10 +57,10 @@ caller_id_name(Props) ->
     caller_id_name(Props, 'undefined').
 caller_id_name(Props, Default) ->
     props:get_first_defined([<<"variable_effective_caller_id_name">>
-                             ,<<"Caller-Caller-ID-Name">>
+			    ,<<"Caller-Caller-ID-Name">>
                             ]
-                            ,Props
-                            ,Default
+			   ,Props
+			   ,Default
                            ).
 
 -spec caller_id_number(kz_proplist()) -> api_binary().
@@ -69,10 +69,10 @@ caller_id_number(Props) ->
     caller_id_number(Props, 'undefined').
 caller_id_number(Props, Default) ->
     props:get_first_defined([<<"variable_effective_caller_id_number">>
-                             ,<<"Caller-Caller-ID-Number">>
+			    ,<<"Caller-Caller-ID-Number">>
                             ]
-                            ,Props
-                            ,Default
+			   ,Props
+			   ,Default
                            ).
 
 -spec callee_id_name(kz_proplist()) -> api_binary().
@@ -81,10 +81,10 @@ callee_id_name(Props) ->
     callee_id_name(Props, 'undefined').
 callee_id_name(Props, Default) ->
     props:get_first_defined([<<"variable_effective_callee_id_name">>
-                             ,<<"Caller-Callee-ID-Name">>
+			    ,<<"Caller-Callee-ID-Name">>
                             ]
-                            ,Props
-                            ,Default
+			   ,Props
+			   ,Default
                            ).
 
 -spec callee_id_number(kz_proplist()) -> api_binary().
@@ -93,29 +93,29 @@ callee_id_number(Props) ->
     callee_id_number(Props, 'undefined').
 callee_id_number(Props, Default) ->
     props:get_first_defined([<<"variable_effective_callee_id_number">>
-                             ,<<"Caller-Callee-ID-Number">>
+			    ,<<"Caller-Callee-ID-Number">>
                             ]
-                            ,Props
-                            ,Default
+			   ,Props
+			   ,Default
                            ).
 
 -spec dialed_number(kz_proplist()) -> api_binary().
 dialed_number(Props) ->
     props:get_first_defined([<<"variable_destination_number">>
-                             ,<<"Caller-Destination-Number">>
+			    ,<<"Caller-Destination-Number">>
                             ]
-                            ,Props
+			   ,Props
                            ).
 
 -spec call_id(kz_proplist()) -> api_binary().
 call_id(Props) ->
     props:get_first_defined([<<"Caller-Unique-ID">>
-                             ,<<"Unique-ID">>
-                             ,<<"Call-ID">>
-                             ,<<"variable_uuid">>
-                             ,<<"Channel-Call-UUID">>
-                             ,<<"variable_sip_call_id">>
-                             ,?RESIGNING_UUID
+			    ,<<"Unique-ID">>
+			    ,<<"Call-ID">>
+			    ,<<"variable_uuid">>
+			    ,<<"Channel-Call-UUID">>
+			    ,<<"variable_sip_call_id">>
+			    ,?RESIGNING_UUID
                             ], Props).
 
 -spec other_leg_call_id(kz_proplist()) -> api_binary().
@@ -189,10 +189,10 @@ reseller_billing(Props) ->
 -spec to_did(kz_proplist()) -> api_binary().
 to_did(Props) ->
     props:get_first_defined([?CCV(<<"E164-Destination">>)
-                             ,?CCV(<<"Original-Number">>)
-                             ,<<"Caller-Destination-Number">>
+			    ,?CCV(<<"Original-Number">>)
+			    ,<<"Caller-Destination-Number">>
                             ]
-                            ,Props
+			   ,Props
                            ).
 
 -spec ccv(kz_proplist(), ne_binary()) -> api_binary().
@@ -206,13 +206,13 @@ ccv(Props, Key, Default) ->
 -spec hangup_code(kz_proplist()) -> api_binary().
 hangup_code(Props) ->
     props:get_first_defined([<<"variable_proto_specific_hangup_cause">>
-                             ,<<"variable_last_bridge_proto_specific_hangup_cause">>
+			    ,<<"variable_last_bridge_proto_specific_hangup_cause">>
                             ], Props).
 
 -spec disposition(kz_proplist()) -> api_binary().
 disposition(Props) ->
     props:get_first_defined([<<"variable_originate_disposition">>
-                             ,<<"variable_endpoint_disposition">>
+			    ,<<"variable_endpoint_disposition">>
                             ], Props).
 
 -spec hangup_cause(kz_proplist()) -> api_binary().
@@ -220,13 +220,13 @@ hangup_cause(Props) ->
     case props:get_value(<<"variable_current_application">>, Props) of
         <<"bridge">> ->
             props:get_first_defined([<<"variable_bridge_hangup_cause">>
-                                     ,<<"variable_hangup_cause">>
-                                     ,<<"Hangup-Cause">>
+				    ,<<"variable_hangup_cause">>
+				    ,<<"Hangup-Cause">>
                                     ], Props);
         _Else ->
             props:get_first_defined([<<"variable_hangup_cause">>
-                                     ,<<"variable_bridge_hangup_cause">>
-                                     ,<<"Hangup-Cause">>
+				    ,<<"variable_bridge_hangup_cause">>
+				    ,<<"Hangup-Cause">>
                                     ], Props)
     end.
 
@@ -241,43 +241,43 @@ transfer_source(Props) ->
 -spec raw_application_name(kz_proplist()) -> api_binary().
 raw_application_name(Props) ->
     props:get_first_defined([<<"Application">>
-                             ,<<"kazoo_application_name">>
-                             ,<<"Event-Subclass">>
+			    ,<<"kazoo_application_name">>
+			    ,<<"Event-Subclass">>
                             ], Props).
 
 -spec application_name(kz_proplist()) -> api_binary().
 application_name(Props) ->
     props:get_first_defined([<<"kazoo_application_name">>
-                             ,<<"Application">>
-                             ,<<"Event-Subclass">>
+			    ,<<"Application">>
+			    ,<<"Event-Subclass">>
                             ], Props).
 
 -spec event_name(kz_proplist()) -> api_binary().
 event_name(Props) ->
     props:get_first_defined([<<"kazoo_event_name">>
-                             ,<<"Event-Name">>
+			    ,<<"Event-Name">>
                             ], Props).
 
 -spec from_network_ip(kz_proplist()) -> api_binary().
 from_network_ip(Props) ->
     props:get_first_defined([<<"variable_sip_h_X-AUTH-IP">>
-                             ,<<"variable_sip_received_ip">>
+			    ,<<"variable_sip_received_ip">>
                             ]
-                            ,Props
+			   ,Props
                            ).
 
 -spec from_network_port(kz_proplist()) -> api_binary().
 from_network_port(Props) ->
     props:get_first_defined([<<"variable_sip_h_X-AUTH-PORT">>
-                             ,<<"variable_sip_received_port">>
+			    ,<<"variable_sip_received_port">>
                             ]
-                            ,Props
+			   ,Props
                            ).
 
 -spec user_agent(kz_proplist()) -> api_binary().
 user_agent(Props) ->
     props:get_first_defined([<<"variable_sip_user_agent">>
-                             ,<<"sip_user_agent">>
+			    ,<<"sip_user_agent">>
                             ]
-                            ,Props
+			   ,Props
                            ).

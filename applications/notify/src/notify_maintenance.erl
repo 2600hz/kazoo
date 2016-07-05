@@ -17,10 +17,10 @@
 -export([refresh_template/0]).
 -export([reload_smtp_configs/0]).
 -export([configure_smtp_relay/1
-         ,configure_smtp_username/1
-         ,configure_smtp_password/1
-         ,configure_smtp_auth/1
-         ,configure_smtp_port/1
+	,configure_smtp_username/1
+	,configure_smtp_password/1
+	,configure_smtp_auth/1
+	,configure_smtp_port/1
         ]).
 
 -define(TEMPLATE_PATH, code:lib_dir('notify', 'priv')).
@@ -60,7 +60,7 @@ check_initial_registration(Account) when is_binary(Account) ->
             case kz_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>], JObj) of
                 'true' -> io:format("account ~s has registered successfully~n", [AccountId]);
                 'false' -> io:format("account ~s has yet to register successfully~n", [AccountId])
-        end;
+	    end;
         {'error', _R} ->
             io:format("unable to open account doc ~s: ~p", [AccountId, _R])
     end.
@@ -76,7 +76,7 @@ configure_smtp_relay(Value) ->
         {'ok', _} ->
             'ok';
         _Error ->
-           'failed'
+	    'failed'
     end.
 %%--------------------------------------------------------------------
 %% @public
@@ -90,7 +90,7 @@ configure_smtp_username(Value) ->
         {'ok', _} ->
             'ok';
         _Error ->
-           'failed'
+	    'failed'
     end.
 
 %%--------------------------------------------------------------------
@@ -105,7 +105,7 @@ configure_smtp_password(Value) ->
         {'ok', _} ->
             'ok';
         _Error ->
-           'failed'
+	    'failed'
     end.
 
 %%--------------------------------------------------------------------
@@ -119,7 +119,7 @@ configure_smtp_auth(Value) ->
     case update_smtp_client_document(<<"auth">>, Value) of
         {'ok', _} ->
             'ok';
-         _Error ->
+	_Error ->
             'failed'
     end.
 
@@ -135,7 +135,7 @@ configure_smtp_port(Value) ->
         {'ok', _} ->
             'ok';
         _Error ->
-           'failed'
+	    'failed'
     end.
 
 %%--------------------------------------------------------------------
@@ -180,16 +180,16 @@ reload_smtp_configs() ->
 template_files() ->
     {'ok', Files} = file:list_dir(?TEMPLATE_PATH),
     lists:foldl(
-        fun(File, Acc) ->
-            case kz_util:to_binary(File) of
-                 <<"notify_", _/binary>>=Bin ->
-                    [Bin|Acc];
-                _ -> Acc
-            end
-        end
-        ,[]
-        ,Files
-    ).
+      fun(File, Acc) ->
+	      case kz_util:to_binary(File) of
+		  <<"notify_", _/binary>>=Bin ->
+		      [Bin|Acc];
+		  _ -> Acc
+	      end
+      end
+	       ,[]
+	       ,Files
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -200,17 +200,17 @@ template_files() ->
 template_ids() ->
     {'ok', JObjs} =  kz_datamgr:all_docs(?SYSTEM_CONFIG_DB),
     lists:foldl(
-        fun(JObj, Acc) ->
-           case kz_doc:id(JObj) of
-                <<"notify.", _/binary>>=Id ->
-                    [Id|Acc];
-                _ ->
-                    Acc
-            end
-        end
-        ,[]
-        ,JObjs
-    ).
+      fun(JObj, Acc) ->
+	      case kz_doc:id(JObj) of
+		  <<"notify.", _/binary>>=Id ->
+		      [Id|Acc];
+		  _ ->
+		      Acc
+	      end
+      end
+	       ,[]
+	       ,JObjs
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -220,31 +220,31 @@ template_ids() ->
 -spec match_file_to_db(ne_binaries(), ne_binaries()) -> kz_proplist().
 match_file_to_db(Files, Ids) ->
     lists:foldl(
-        fun(<<"notify_", FileKey/binary>>=File, Acc) ->
-            Key = binary:replace(FileKey, <<".config">>, <<>>),
-            Id = <<"notify.", Key/binary>>,
-            case
-                {lists:member(Id, Ids)
-                 ,module_exists(<<"notify_", Key/binary>>)
-                }
-            of
-                {'true', 'true'} ->
-                    io:format("found doc & module for template file: '~s' ~n", [File]),
-                    [{File, Id}|Acc];
-                {'false', 'false'} ->
-                    io:format("did not found doc & module for template file: '~s', ignoring... ~n", [File]),
-                    Acc;
-                {'false', _} ->
-                    io:format("did not found doc but module exist for template file: '~s', adding... ~n", [File]),
-                    [{File, Id}|Acc];
-                {_, 'false'} ->
-                    io:format("did not module for template file: '~s', ignoring... ~n", [File]),
-                    Acc
-            end
-        end
-        ,[]
-        ,Files
-    ).
+      fun(<<"notify_", FileKey/binary>>=File, Acc) ->
+	      Key = binary:replace(FileKey, <<".config">>, <<>>),
+	      Id = <<"notify.", Key/binary>>,
+	      case
+		  {lists:member(Id, Ids)
+		  ,module_exists(<<"notify_", Key/binary>>)
+		  }
+	      of
+		  {'true', 'true'} ->
+		      io:format("found doc & module for template file: '~s' ~n", [File]),
+		      [{File, Id}|Acc];
+		  {'false', 'false'} ->
+		      io:format("did not found doc & module for template file: '~s', ignoring... ~n", [File]),
+		      Acc;
+		  {'false', _} ->
+		      io:format("did not found doc but module exist for template file: '~s', adding... ~n", [File]),
+		      [{File, Id}|Acc];
+		  {_, 'false'} ->
+		      io:format("did not module for template file: '~s', ignoring... ~n", [File]),
+		      Acc
+	      end
+      end
+	       ,[]
+	       ,Files
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -285,7 +285,7 @@ compare_template_system_config([{FileId, Id}|Match]) ->
         {Props, 'not_found'} ->
             io:format("comparing, failed to open document (does not exist): ~s~n", [Id]),
             JObj = kz_json:from_list([{<<"_id">>, Id}
-                                      ,{<<"default">>, kz_json:new()}
+				     ,{<<"default">>, kz_json:new()}
                                      ]),
             compare_template_system_config(Props, JObj),
             compare_template_system_config(Match);
@@ -352,10 +352,10 @@ compare_template_system_config(DefaultTemplates, DocTemplate, FileTemplate) ->
 set_template(Key, Template, JObj) ->
     Default = kz_json:get_value(<<"default">>, JObj),
     kz_json:set_value(
-        <<"default">>
-        ,kz_json:set_value(Key, Template, Default)
-        ,JObj
-    ).
+      <<"default">>
+		     ,kz_json:set_value(Key, Template, Default)
+		     ,JObj
+     ).
 
 %%--------------------------------------------------------------------
 %% @private

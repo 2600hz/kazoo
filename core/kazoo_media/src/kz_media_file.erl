@@ -21,7 +21,7 @@
                      {'error', 'no_data'} |
                      {'error', 'no_stream_strategy'}.
 get_uri(#media_store_path{}=Store, JObj) ->
-     maybe_proxy(JObj, Store);
+    maybe_proxy(JObj, Store);
 get_uri(Media, JObj) when is_binary(Media) ->
     kz_util:put_callid(JObj),
     Paths = [Path
@@ -61,11 +61,11 @@ start_media_file_cache(Db, Id, Attachment) ->
     end.
 
 -spec maybe_proxy(kz_json:object(), media_store_path()) ->
-          ne_binary() | {'error', 'no_stream_strategy'}.
+			 ne_binary() | {'error', 'no_stream_strategy'}.
 maybe_proxy(JObj, #media_store_path{db = Db
-                                    ,id = Id
-                                    ,att = Attachment
-                                    ,opt = Options
+				   ,id = Id
+				   ,att = Attachment
+				   ,opt = Options
                                    }=Store) ->
     lager:debug("fetching attachment url for '~p' , '~p', '~p'", [Db, Id, Attachment]),
     case kz_datamgr:attachment_url(Db, Id, Attachment, Options) of
@@ -75,11 +75,11 @@ maybe_proxy(JObj, #media_store_path{db = Db
     end.
 
 -spec proxy_uri(kz_json:object(), media_store_path()) ->
-          ne_binary() | {'error', 'no_stream_strategy'}.
+		       ne_binary() | {'error', 'no_stream_strategy'}.
 proxy_uri(JObj, #media_store_path{db = Db
-                                  ,id = Id
-                                  ,att = Attachment
-                                  ,opt=Options
+				 ,id = Id
+				 ,att = Attachment
+				 ,opt=Options
                                  }=Store) ->
     StreamType = kz_media_util:convert_stream_type(kz_json:get_value(<<"Stream-Type">>, JObj)),
     _ = maybe_prepare_proxy(StreamType, Store),
@@ -182,6 +182,6 @@ maybe_find_attachment(Db, Id, JObj) ->
             AccountId = kz_util:format_account_id(Db, 'raw'),
             lager:debug("found first attachment ~s on ~s in ~s", [AttachmentName, Id, Db]),
             find_attachment([AccountId, Id, AttachmentName, [{'doc_type', kz_doc:type(JObj)}
-                                                             ,{'rev', kz_doc:revision(JObj)}
+							    ,{'rev', kz_doc:revision(JObj)}
                                                             ]])
     end.

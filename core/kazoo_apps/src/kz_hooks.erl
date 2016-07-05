@@ -8,7 +8,7 @@
 -module(kz_hooks).
 
 -export([register/0, register/1, register/2
-         ,register_rr/0, register_rr/1, register_rr/2
+	,register_rr/0, register_rr/1, register_rr/2
         ]).
 
 -include_lib("kazoo/include/kz_types.hrl").

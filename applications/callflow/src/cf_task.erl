@@ -10,15 +10,15 @@
 -behaviour(gen_listener).
 
 -export([start_link/3
-         ,relay_amqp/2
+	,relay_amqp/2
         ]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("callflow.hrl").
@@ -26,20 +26,20 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {call :: kapps_call:call()
-                ,callback :: fun()
-                ,args :: list()
-                ,pid :: pid()
-                ,ref ::reference()
-                ,queue :: api_binary()
+	       ,callback :: fun()
+	       ,args :: list()
+	       ,pid :: pid()
+	       ,ref ::reference()
+	       ,queue :: api_binary()
                }).
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS(CallId), [{'call', [{'callid', CallId}]}
-                           ,{'self', []}
+			  ,{'self', []}
                           ]).
 -define(RESPONDERS, [{{?MODULE, 'relay_amqp'}
-                      ,[{<<"*">>, <<"*">>}]
+		     ,[{<<"*">>, <<"*">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -52,13 +52,13 @@
 -spec start_link(kapps_call:call(), fun(), list()) -> startlink_ret().
 start_link(Call, Fun, Args) ->
     gen_listener:start_link(?SERVER
-                            ,[{'bindings', ?BINDINGS(kapps_call:call_id(Call))}
-                              ,{'responders', ?RESPONDERS}
-                              ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                              ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                              ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                             ]
-                            ,[Call, Fun, Args]
+			   ,[{'bindings', ?BINDINGS(kapps_call:call_id(Call))}
+			    ,{'responders', ?RESPONDERS}
+			    ,{'queue_name', ?QUEUE_NAME}       % optional to include
+			    ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+			    ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+			    ]
+			   ,[Call, Fun, Args]
                            ).
 
 %%--------------------------------------------------------------------
@@ -87,8 +87,8 @@ init([Call, Callback, Args]) ->
     _ = kapps_call:put_callid(Call),
     lager:debug("started event listener for cf_task"),
     {'ok', #state{call=Call
-                  ,callback=Callback
-                  ,args=Args
+		 ,callback=Callback
+		 ,args=Args
                  }}.
 
 %%--------------------------------------------------------------------
@@ -130,9 +130,9 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> {'noreply', state()}.
 handle_info({'DOWN', Ref, 'process', Pid, Reason}
-            ,#state{ref=Ref
-                    ,pid=Pid
-                   }=State
+	   ,#state{ref=Ref
+		  ,pid=Pid
+		  }=State
            ) ->
     lager:debug("task in ~p (~p) exited with reason: ~p", [Pid, Ref, Reason]),
     {'stop', 'normal', State};
@@ -176,9 +176,9 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec launch_task(state()) -> state().
 launch_task(#state{queue=Q
-                   ,call=Call
-                   ,callback=Callback
-                   ,args=Args
+		  ,call=Call
+		  ,callback=Callback
+		  ,args=Args
                   }=State) ->
     {Pid, Ref} = kz_util:spawn_monitor(fun task_launched/5, [Q, Call, Callback, Args, self()]),
     lager:debug("watching task execute in ~p (~p)", [Pid, Ref]),
@@ -190,6 +190,6 @@ task_launched(Q, Call, Callback, Args, Parent) ->
     kapps_call:put_callid(Call),
     kz_amqp_channel:consumer_pid(Parent),
     Funs = [{fun kapps_call:kvs_store/3, 'consumer_pid', Parent}
-            ,{fun kapps_call:set_controller_queue/2, Q}
+	   ,{fun kapps_call:set_controller_queue/2, Q}
            ],
     apply(Callback, Args ++ [kapps_call:exec(Funs, Call)]).

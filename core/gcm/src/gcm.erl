@@ -114,8 +114,8 @@ do_backoff(RetryAfter, RegIds, Message, Key, Retry) ->
         no_retry ->
             ok;
         _ ->
-        error_logger:info_msg("Received retry-after. Will retry: ~p times~n", [Retry-1]),
-        timer:apply_after(RetryAfter * 1000, ?MODULE, do_push, [RegIds, Message, Key, Retry - 1])
+	    error_logger:info_msg("Received retry-after. Will retry: ~p times~n", [Retry-1]),
+	    timer:apply_after(RetryAfter * 1000, ?MODULE, do_push, [RegIds, Message, Key, Retry - 1])
     end.
 
 %% parse(Result) ->

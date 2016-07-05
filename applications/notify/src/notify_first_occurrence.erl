@@ -58,7 +58,7 @@ send(Occurrence, Account) ->
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
     To = kz_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"send_to">>], Account
-                           ,kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
+			  ,kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
     RepEmail = notify_util:get_rep_email(Account),
 
     _ = build_and_send_email(TxtBody, HTMLBody, Subject, To, Props),
@@ -74,9 +74,9 @@ send(Occurrence, Account) ->
 create_template_props(Account, Occurrence) ->
     Admin = notify_util:find_admin(Account),
     [{<<"event">>, Occurrence}
-     ,{<<"account">>, notify_util:json_to_template_props(Account)}
-     ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
-     ,{<<"service">>, notify_util:get_service_props(kz_json:new(), Account, ?MOD_CONFIG_CAT)}
+    ,{<<"account">>, notify_util:json_to_template_props(Account)}
+    ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
+    ,{<<"service">>, notify_util:get_service_props(kz_json:new(), Account, ?MOD_CONFIG_CAT)}
     ].
 
 %%--------------------------------------------------------------------
@@ -98,26 +98,26 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
-                 ,[{<<"From">>, From}
-                   ,{<<"To">>, To}
-                   ,{<<"Subject">>, Subject}
-                  ]
-             ,ContentTypeParams
-             ,[{<<"multipart">>, <<"alternative">>, [], []
-                ,[{<<"text">>, <<"plain">>
-                   ,props:filter_undefined(
-                      [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}
-                       ,{<<"Content-Transfer-Encoding">>, PlainTransferEncoding}
-                      ])
-                   ,[], iolist_to_binary(TxtBody)}
-                  ,{<<"text">>, <<"html">>
-                    ,props:filter_undefined(
-                       [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}
-                        ,{<<"Content-Transfer-Encoding">>, HTMLTransferEncoding}
-                       ])
-                    ,[], iolist_to_binary(HTMLBody)}
-                 ]
-               }
-              ]
+	    ,[{<<"From">>, From}
+	     ,{<<"To">>, To}
+	     ,{<<"Subject">>, Subject}
+	     ]
+	    ,ContentTypeParams
+	    ,[{<<"multipart">>, <<"alternative">>, [], []
+	      ,[{<<"text">>, <<"plain">>
+		,props:filter_undefined(
+		   [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}
+		   ,{<<"Content-Transfer-Encoding">>, PlainTransferEncoding}
+		   ])
+		,[], iolist_to_binary(TxtBody)}
+	       ,{<<"text">>, <<"html">>
+		,props:filter_undefined(
+		   [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}
+		   ,{<<"Content-Transfer-Encoding">>, HTMLTransferEncoding}
+		   ])
+		,[], iolist_to_binary(HTMLBody)}
+	       ]
+	      }
+	     ]
             },
     notify_util:send_email(From, To, Email).

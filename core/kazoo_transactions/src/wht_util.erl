@@ -9,16 +9,16 @@
 -module(wht_util).
 
 -export([reasons/0
-         ,reasons/1
-         ,reasons/2
+	,reasons/1
+	,reasons/2
         ]).
 -export([dollars_to_units/1]).
 -export([units_to_dollars/1]).
 -export([pretty_print_dollars/1]).
 -export([base_call_cost/3]).
 -export([current_balance/1
-         ,previous_balance/3
-         ,current_account_dollars/1
+	,previous_balance/3
+	,current_account_dollars/1
         ]).
 -export([get_balance_from_account/2]).
 -export([call_cost/1]).
@@ -31,7 +31,7 @@
 -export([collapse_call_transactions/1]).
 -export([modb/1]).
 -export([rollup/1
-         ,rollup/2
+	,rollup/2
         ]).
 
 -include("include/kazoo_transactions.hrl").
@@ -40,23 +40,23 @@
 -define(DOLLAR_TO_UNIT, 10000).
 
 -define(REASONS, [{<<"per_minute_call">>, ?CODE_PER_MINUTE_CALL}
-                  ,{<<"sub_account_per_minute_call">>, ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL}
-                  ,{<<"feature_activation">>, ?CODE_FEATURE_ACTIVATION}
-                  ,{<<"sub_account_feature_activation">>, ?CODE_SUB_ACCOUNT_FEATURE_ACTIVATION}
-                  ,{<<"number_activation">>, ?CODE_NUMBER_ACTIVATION}
-                  ,{<<"sub_account_number_activation">>, ?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION}
-                  ,{<<"manual_addition">>, ?CODE_MANUAL_ADDITION}
-                  ,{<<"sub_account_manual_addition">>, ?CODE_SUB_ACCOUNT_MANUAL_ADDITION}
-                  ,{<<"auto_addition">>, ?CODE_AUTO_ADDITION}
-                  ,{<<"sub_account_auto_addition">>, ?CODE_SUB_ACCOUNT_AUTO_ADDITION}
-                  ,{<<"admin_discretion">>, ?CODE_ADMIN_DISCRETION}
-                  ,{<<"topup">>, ?CODE_TOPUP}
-                  ,{<<"database_rollup">>, ?CODE_DATABASE_ROLLUP}
-                  ,{<<"recurring">>, ?CODE_RECURRING}
-                  ,{<<"monthly_recurring">>, ?CODE_MONTHLY_RECURRING}
-                  ,{<<"recurring_prorate">>, ?CODE_RECURRING_PRORATE}
-                  ,{<<"mobile">>, ?CODE_MOBILE}
-                  ,{<<"unknown">>, ?CODE_UNKNOWN}
+		 ,{<<"sub_account_per_minute_call">>, ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL}
+		 ,{<<"feature_activation">>, ?CODE_FEATURE_ACTIVATION}
+		 ,{<<"sub_account_feature_activation">>, ?CODE_SUB_ACCOUNT_FEATURE_ACTIVATION}
+		 ,{<<"number_activation">>, ?CODE_NUMBER_ACTIVATION}
+		 ,{<<"sub_account_number_activation">>, ?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION}
+		 ,{<<"manual_addition">>, ?CODE_MANUAL_ADDITION}
+		 ,{<<"sub_account_manual_addition">>, ?CODE_SUB_ACCOUNT_MANUAL_ADDITION}
+		 ,{<<"auto_addition">>, ?CODE_AUTO_ADDITION}
+		 ,{<<"sub_account_auto_addition">>, ?CODE_SUB_ACCOUNT_AUTO_ADDITION}
+		 ,{<<"admin_discretion">>, ?CODE_ADMIN_DISCRETION}
+		 ,{<<"topup">>, ?CODE_TOPUP}
+		 ,{<<"database_rollup">>, ?CODE_DATABASE_ROLLUP}
+		 ,{<<"recurring">>, ?CODE_RECURRING}
+		 ,{<<"monthly_recurring">>, ?CODE_MONTHLY_RECURRING}
+		 ,{<<"recurring_prorate">>, ?CODE_RECURRING_PRORATE}
+		 ,{<<"mobile">>, ?CODE_MOBILE}
+		 ,{<<"unknown">>, ?CODE_UNKNOWN}
                  ]).
 
 -spec reasons() -> kz_proplist().
@@ -137,8 +137,8 @@ previous_balance(Account, Year, Month) ->
 get_balance(Account, Options) ->
     View = <<"transactions/credit_remaining">>,
     ViewOptions = ['reduce'
-                   ,'group'
-                   ,{'group_level', 1}
+		  ,'group'
+		  ,{'group_level', 1}
                    | Options
                   ],
     case kazoo_modb:get_results(Account, View, ViewOptions) of
@@ -164,8 +164,8 @@ get_balance_from_previous(Account, ViewOptions, Retries) when Retries >= 0 ->
     {Year, Month} = kazoo_modb_util:prev_year_month(Y, M),
 
     VOptions = [{'year', Year}
-                ,{'month', Month}
-                ,{'retry', Retries-1}
+	       ,{'month', Month}
+	       ,{'retry', Retries-1}
                ],
     lager:warning("could not find current balance trying previous month: ~p", [VOptions]),
     get_balance(Account, VOptions);
@@ -217,7 +217,7 @@ get_rollup_from_previous(Account) ->
     {Y, M, _} = erlang:date(),
     {Year, Month} = kazoo_modb_util:prev_year_month(Y, M),
     ModbOptions = [{'year', Year}
-                   ,{'month', Month}
+		  ,{'month', Month}
                   ],
     case kazoo_modb:open_doc(Account, <<"monthly_rollup">>, ModbOptions) of
         {'ok', _} ->
@@ -240,8 +240,8 @@ get_rollup_from_previous(Account) ->
 get_rollup_balance(Account, Options) ->
     View = <<"transactions/credit_remaining">>,
     ViewOptions = ['reduce'
-                   ,'group'
-                   ,{'group_level', 1}
+		  ,'group'
+		  ,{'group_level', 1}
                    | Options
                   ],
     case kazoo_modb:get_results(Account, View, ViewOptions) of
@@ -250,7 +250,7 @@ get_rollup_balance(Account, Options) ->
             {'ok', kz_json:get_integer_value(<<"value">>, ViewRes, 0)};
         {'error', _R}=E ->
             lager:warning("unable to get rollup balance for ~s: ~p"
-                          ,[Account, _R]
+			 ,[Account, _R]
                          ),
             E
     end.
@@ -302,10 +302,10 @@ call_cost(JObj) ->
 -spec calculate_call(kz_json:object()) -> {integer(), units()}.
 calculate_call(JObj) ->
     CCVs = kz_json:get_first_defined([<<"Custom-Channel-Vars">>
-                                      ,<<"custom_channel_vars">>
+				     ,<<"custom_channel_vars">>
                                      ]
-                                     ,JObj
-                                     ,JObj
+				    ,JObj
+				    ,JObj
                                     ),
     RateNoChargeTime = get_integer_value(<<"Rate-NoCharge-Time">>, CCVs),
     BillingSecs = get_integer_value(<<"Billing-Seconds">>, JObj)
@@ -326,16 +326,16 @@ calculate_call(JObj) ->
             {ChargedSeconds, Cost} = calculate_call(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
             Discount = trunc((get_integer_value(<<"Discount-Percentage">>, CCVs) * 0.01) * Cost),
             lager:info("rate $~p/~ps, minimum ~ps, surcharge $~p, for ~ps (~ps), no charge time ~ps, sub total $~p, discount $~p, total $~p"
-                       ,[units_to_dollars(Rate)
-                         ,RateIncr, RateMin
-                         ,units_to_dollars(Surcharge)
-                         ,BillingSecs
-                         ,ChargedSeconds
-                         ,RateNoChargeTime
-                         ,units_to_dollars(Cost)
-                         ,units_to_dollars(Discount)
-                         ,units_to_dollars(Cost - Discount)
-                        ]),
+		      ,[units_to_dollars(Rate)
+		       ,RateIncr, RateMin
+		       ,units_to_dollars(Surcharge)
+		       ,BillingSecs
+		       ,ChargedSeconds
+		       ,RateNoChargeTime
+		       ,units_to_dollars(Cost)
+		       ,units_to_dollars(Discount)
+		       ,units_to_dollars(Cost - Discount)
+		       ]),
             {ChargedSeconds, trunc(Cost - Discount)}
     end.
 
@@ -458,8 +458,8 @@ code_reason(Code) ->
 -spec collapse_call_transactions(kz_json:objects()) -> kz_json:objects().
 collapse_call_transactions(Transactions) ->
     collapse_call_transactions(Transactions
-                               ,dict:new()
-                               ,[]
+			      ,dict:new()
+			      ,[]
                               ).
 
 %%--------------------------------------------------------------------
@@ -471,8 +471,8 @@ collapse_call_transactions(Transactions) ->
 -spec modb(ne_binary()) -> 'ok'.
 modb(AccountMODb) ->
     Routines = [fun kazoo_modb_util:prev_year_month/1
-                ,fun({Year, Month}) -> previous_balance(AccountMODb, Year, Month) end
-                ,fun(Balance) -> rollup(AccountMODb, Balance) end
+	       ,fun({Year, Month}) -> previous_balance(AccountMODb, Year, Month) end
+	       ,fun(Balance) -> rollup(AccountMODb, Balance) end
                ],
     lists:foldl(fun(F, A) -> F(A) end, AccountMODb, Routines).
 
@@ -543,9 +543,9 @@ collapse_call_transaction(CallId, JObj, Calls) ->
             dict:store(CallId, NJObj, Calls);
         {'ok', Call} ->
             Routines = [fun(C) -> collapse_created_time(C, JObj) end
-                        ,fun(C) -> collapse_ended_time(C, JObj) end
-                        ,fun(C) -> collapse_amount(C, JObj) end
-                        ,fun(C) -> collapse_metadata(C, JObj) end
+		       ,fun(C) -> collapse_ended_time(C, JObj) end
+		       ,fun(C) -> collapse_amount(C, JObj) end
+		       ,fun(C) -> collapse_metadata(C, JObj) end
                        ],
             C = lists:foldl(fun(F, C) -> F(C) end, Call, Routines),
             dict:store(CallId, C, Calls)
@@ -664,9 +664,9 @@ clean_transactions([Transaction|Transactions], Acc) ->
 -spec clean_transaction(kz_json:object()) -> kz_json:object().
 clean_transaction(Transaction) ->
     Routines = [fun clean_amount/1
-                ,fun clean_version/1
-                ,fun clean_event/1
-                ,fun clean_id/1
+	       ,fun clean_version/1
+	       ,fun clean_event/1
+	       ,fun clean_id/1
                ],
     lists:foldl(fun(F, T) -> F(T) end, Transaction, Routines).
 
@@ -682,9 +682,9 @@ clean_amount(Transaction) ->
     case Amount < 0 of
         'true' ->
             kz_json:set_values([{<<"type">>, <<"debit">>}
-                                ,{<<"amount">>, Amount*-1}
+			       ,{<<"amount">>, Amount*-1}
                                ]
-                               ,Transaction
+			      ,Transaction
                               );
         'false' ->
             kz_json:set_value(<<"type">>, <<"credit">>, Transaction)

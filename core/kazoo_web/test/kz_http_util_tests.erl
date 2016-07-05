@@ -47,7 +47,7 @@ urlencode_test_() ->
           ),
 
     [?_assertEqual(<<"1">> , kz_http_util:urlencode(1))
-    %% ,?_assertEqual(<<"1.1">> , kz_http_util:urlencode(1.1))
+     %% ,?_assertEqual(<<"1.1">> , kz_http_util:urlencode(1.1))
     ,?_assertEqual(<<"1">> , kz_http_util:urlencode(<<"1">>))
     ,?_assertEqual(<<"1.1">> , kz_http_util:urlencode(<<"1.1">>))
     ,?_assertEqual(<<"foo">> , kz_http_util:urlencode(<<"foo">>))

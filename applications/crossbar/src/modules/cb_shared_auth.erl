@@ -22,12 +22,12 @@
 -module(cb_shared_auth).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
-         ,authorize/1
-         ,authenticate/1
-         ,validate/1
-         ,put/1
+	,allowed_methods/0
+	,resource_exists/0
+	,authorize/1
+	,authenticate/1
+	,validate/1
+	,put/1
         ]).
 
 -include("crossbar.hrl").
@@ -137,8 +137,8 @@ validate_request(Context, ?HTTP_PUT, _) ->
             case import_missing_data(RemoteData) of
                 'true' ->
                     cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-                                                 ,{fun cb_context:set_doc/2, RemoteData}
-                                                 ,{fun cb_context:set_auth_token/2, SharedToken}
+						,{fun cb_context:set_doc/2, RemoteData}
+						,{fun cb_context:set_auth_token/2, SharedToken}
                                                 ]);
                 'false' ->
                     cb_context:add_system_error('datastore_fault', Context)
@@ -167,7 +167,7 @@ validate_request(Context, ?HTTP_GET, JObj) ->
             case kz_datamgr:open_doc(Db, UserId) of
                 {'ok', User} ->
                     RespData = kz_json:from_list([{<<"account">>, Account}
-                                                  ,{<<"user">>, User}
+						 ,{<<"user">>, User}
                                                  ]),
                     cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
                                                 ,{fun cb_context:set_resp_data/2, RespData}
@@ -203,18 +203,18 @@ put(Context) ->
 create_local_token(Context) ->
     JObj = cb_context:doc(Context),
     Token = kz_json:from_list([{<<"account_id">>, kz_json:get_value([<<"account">>, <<"_id">>], JObj, <<>>)}
-                               ,{<<"owner_id">>, kz_json:get_value([<<"user">>, <<"_id">>], JObj, <<>>)}
-                               ,{<<"created">>, kz_util:current_tstamp()}
-                               ,{<<"modified">>, kz_util:current_tstamp()}
-                               ,{<<"method">>, kz_util:to_binary(?MODULE)}
-                               ,{<<"shared_token">>, cb_context:auth_token(Context)}
+			      ,{<<"owner_id">>, kz_json:get_value([<<"user">>, <<"_id">>], JObj, <<>>)}
+			      ,{<<"created">>, kz_util:current_tstamp()}
+			      ,{<<"modified">>, kz_util:current_tstamp()}
+			      ,{<<"method">>, kz_util:to_binary(?MODULE)}
+			      ,{<<"shared_token">>, cb_context:auth_token(Context)}
                               ]),
     case kz_datamgr:save_doc(?KZ_TOKEN_DB, Token) of
         {'ok', Doc} ->
             AuthToken = kz_doc:id(Doc),
             lager:debug("created new local auth token ~s", [AuthToken]),
             Context1 = cb_context:set_doc(cb_context:set_auth_token(Context, AuthToken)
-                                          ,Doc),
+					 ,Doc),
             crossbar_util:response(crossbar_util:response_auth(JObj), Context1);
         {'error', R} ->
             lager:debug("could not create new local auth token, ~p", [R]),
@@ -237,7 +237,7 @@ authenticate_shared_token('undefined', _) ->
 authenticate_shared_token(SharedToken, XBarUrl) ->
     Url = lists:flatten(XBarUrl, "/shared_auth"),
     Headers = [{"Accept", "application/json"}
-               ,{"X-Auth-Token", kz_util:to_list(SharedToken)}
+	      ,{"X-Auth-Token", kz_util:to_list(SharedToken)}
               ],
     lager:debug("validating shared token ~s via ~s", [SharedToken, Url]),
     case kz_http:get(Url, Headers) of
@@ -294,8 +294,8 @@ import_missing_account(AccountId, Account) ->
                     Context1 = crossbar_bindings:fold(Event
                                                      ,[cb_context:set_doc(
                                                          cb_context:set_account_db(cb_context:new(), Db)
-                                                                          ,Doc)
-                                                       ,AccountId
+									 ,Doc)
+						      ,AccountId
                                                       ]),
                     case cb_context:resp_status(Context1) of
                         'success' ->
@@ -349,7 +349,7 @@ import_missing_user(AccountId, UserId, User) ->
             Event = <<"*.execute.put.users">>,
             Context1 = crossbar_bindings:fold(Event, [cb_context:set_doc(
                                                         cb_context:set_account_db(cb_context:new(), Db)
-                                                                         ,Doc)]),
+									,Doc)]),
             case cb_context:resp_status(Context1) of
                 'success' ->
                     lager:debug("imported user ~s in account ~s", [UserId, AccountId]),

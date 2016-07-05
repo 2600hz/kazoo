@@ -18,12 +18,12 @@
 -module(cf_acdc_agent).
 
 -export([handle/2
-         ,find_agent/1
-         ,find_agent_status/2
-         ,play_not_an_agent/1
-         ,play_agent_invalid/1
-         ,login_agent/2
-         ,logout_agent/2
+	,find_agent/1
+	,find_agent_status/2
+	,play_not_an_agent/1
+	,play_agent_invalid/1
+	,login_agent/2
+	,logout_agent/2
         ]).
 
 -include("callflow.hrl").
@@ -125,14 +125,14 @@ login_agent(Call, AgentId) ->
 login_agent(Call, AgentId, Data) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, kapps_call:account_id(Call)}
-                ,{<<"Agent-ID">>, AgentId}
-                ,{<<"Presence-ID">>, presence_id(Data)}
-                ,{<<"Presence-State">>, presence_state(Data)}
+	       ,{<<"Agent-ID">>, AgentId}
+	       ,{<<"Presence-ID">>, presence_id(Data)}
+	       ,{<<"Presence-State">>, presence_state(Data)}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     case kz_amqp_worker:call(Update
-                             ,fun kapi_acdc_agent:publish_login/1
-                             ,fun kapi_acdc_agent:login_resp_v/1
+			    ,fun kapi_acdc_agent:publish_login/1
+			    ,fun kapi_acdc_agent:login_resp_v/1
                             )
     of
         {'ok', RespJObj} ->
@@ -152,8 +152,8 @@ pause_agent(Call, AgentId, Data, Timeout) when is_integer(Timeout) ->
     update_agent_status(Call, AgentId, Data, fun kapi_acdc_agent:publish_pause/1, Timeout).
 pause_agent(Call, AgentId, Data) ->
     Timeout = kz_json:get_integer_value(<<"timeout">>
-                                        ,Data
-                                        ,kapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
+				       ,Data
+				       ,kapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
                                        ),
     lager:info("agent ~s is pausing work for ~b s", [AgentId, Timeout]),
     pause_agent(Call, AgentId, Data, Timeout).
@@ -170,10 +170,10 @@ update_agent_status(Call, AgentId, Data, PubFun, Timeout) ->
 send_new_status(Call, AgentId, Data, PubFun, Timeout) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, kapps_call:account_id(Call)}
-                ,{<<"Agent-ID">>, AgentId}
-                ,{<<"Time-Limit">>, Timeout}
-                ,{<<"Presence-ID">>, presence_id(Data)}
-                ,{<<"Presence-State">>, presence_state(Data)}
+	       ,{<<"Agent-ID">>, AgentId}
+	       ,{<<"Time-Limit">>, Timeout}
+	       ,{<<"Presence-ID">>, presence_id(Data)}
+	       ,{<<"Presence-State">>, presence_state(Data)}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     PubFun(Update).

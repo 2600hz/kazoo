@@ -12,9 +12,9 @@
 -module(cb_acls).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
-         ,validate/1
+	,allowed_methods/0
+	,resource_exists/0
+	,validate/1
         ]).
 
 -include("crossbar.hrl").
@@ -86,18 +86,18 @@ validate_summary(Context, ?HTTP_GET) ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     Req = [{<<"Category">>, ?ECALLMGR}
-           ,{<<"Key">>, ?ECALLMGR_ACLS}
-           ,{<<"Default">>, kz_json:new()}
-           ,{<<"Node">>, kz_util:to_binary(node())}
-           ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+	  ,{<<"Key">>, ?ECALLMGR_ACLS}
+	  ,{<<"Default">>, kz_json:new()}
+	  ,{<<"Node">>, kz_util:to_binary(node())}
+	  ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("looking up acls from sysconf", []),
     ReqResp = kapps_util:amqp_pool_request(Req
-                                            ,fun kapi_sysconf:publish_get_req/1
-                                            ,fun kapi_sysconf:get_resp_v/1
-                                            ,2 * ?MILLISECONDS_IN_SECOND
-                                           ),
+					  ,fun kapi_sysconf:publish_get_req/1
+					  ,fun kapi_sysconf:get_resp_v/1
+					  ,2 * ?MILLISECONDS_IN_SECOND
+					  ),
     case ReqResp of
         {'error', _R} ->
             lager:debug("unable to get acls from sysconf: ~p", [_R]),
@@ -105,6 +105,6 @@ summary(Context) ->
         {'ok', JObj} ->
             ACLs = kz_json:get_value(<<"Value">>, JObj, kz_json:new()),
             cb_context:setters(Context, [{fun cb_context:set_resp_data/2, ACLs}
-                                         ,{fun cb_context:set_resp_status/2, 'success'}
+					,{fun cb_context:set_resp_status/2, 'success'}
                                         ])
     end.

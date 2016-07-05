@@ -98,7 +98,7 @@ maybe_port_changed(Number, Port, 'false') ->
         'true' -> Number;
         'false' ->
             lager:debug("port information has been changed: ~s"
-                        ,[kz_json:encode(Port)]
+		       ,[kz_json:encode(Port)]
                        ),
             _ = publish_port_update(Number, Port),
             Number
@@ -114,11 +114,11 @@ maybe_port_changed(Number, Port, 'false') ->
 publish_port_update(Number, Port) ->
     PhoneNumber = knm_number:phone_number(Number),
     Notify = [{<<"Account-ID">>,  knm_phone_number:assigned_to(PhoneNumber)}
-              ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
-              ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL}
-              ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
-              ,{<<"Authorized-By">>, knm_phone_number:auth_by(PhoneNumber)}
-              ,{<<"Port">>, Port}
+	     ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
+	     ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL}
+	     ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
+	     ,{<<"Authorized-By">>, knm_phone_number:auth_by(PhoneNumber)}
+	     ,{<<"Port">>, Port}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapi_notifications:publish_port_request(Notify).
@@ -133,11 +133,11 @@ publish_port_update(Number, Port) ->
 publish_ported(Number, Port) ->
     PhoneNumber = knm_number:phone_number(Number),
     Notify = [{<<"Account-ID">>,  knm_phone_number:assigned_to(PhoneNumber)}
-              ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
-              ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL}
-              ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
-              ,{<<"Authorized-By">>, knm_phone_number:auth_by(PhoneNumber)}
-              ,{<<"Port">>, Port}
+	     ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
+	     ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL}
+	     ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
+	     ,{<<"Authorized-By">>, knm_phone_number:auth_by(PhoneNumber)}
+	     ,{<<"Port">>, Port}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapi_notifications:publish_ported(Notify).

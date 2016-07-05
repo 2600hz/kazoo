@@ -73,7 +73,7 @@ assume_e164(Number) -> <<$+, Number/binary>>.
 get_outbound_destination(OffnetReq) ->
     Number = kapi_offnet_resource:to_did(OffnetReq),
     case kapi_offnet_resource:bypass_e164(OffnetReq) of
-         'false' -> knm_converters:normalize(Number);
+	'false' -> knm_converters:normalize(Number);
         'true' -> Number
     end.
 
@@ -138,7 +138,7 @@ correct_shortdial(Number, CIDNum) when is_binary(CIDNum) ->
             CorrectedNumber;
         _ ->
             lager:debug("unable to correct shortdial ~s via CID ~s"
-                        ,[Number, CIDNum]),
+		       ,[Number, CIDNum]),
             'undefined'
     end;
 correct_shortdial(Number, OffnetReq) ->
@@ -157,8 +157,8 @@ get_sip_headers(OffnetReq) ->
         Diversions ->
             lager:debug("setting diversions ~p", [Diversions]),
             kz_json:set_value(<<"Diversions">>
-                              ,Diversions
-                              ,SIPHeaders
+			     ,Diversions
+			     ,SIPHeaders
                              )
     end.
 
@@ -182,12 +182,12 @@ get_diversions('undefined', _Diversion) -> 'undefined';
 get_diversions(_Inception, []) -> 'undefined';
 get_diversions(Inception, Diversions) ->
     Fs = [{fun kzsip_diversion:set_address/2, <<"sip:", Inception/binary>>}
-          ,{fun kzsip_diversion:set_counter/2, find_diversion_count(Diversions) + 1}
+	 ,{fun kzsip_diversion:set_counter/2, find_diversion_count(Diversions) + 1}
          ],
     [kzsip_diversion:to_binary(
        lists:foldl(fun({F, V}, D) -> F(D, V) end
-                   ,kzsip_diversion:new()
-                   ,Fs
+		  ,kzsip_diversion:new()
+		  ,Fs
                   )
       )
     ].
@@ -218,10 +218,10 @@ format_endpoints(Endpoints, Name, Number, OffnetReq, FilterFun) ->
     SIPHeaders = stepswitch_util:get_sip_headers(OffnetReq),
     AccountId = kapi_offnet_resource:hunt_account_id(
                   OffnetReq
-                  ,kapi_offnet_resource:account_id(OffnetReq)
+						    ,kapi_offnet_resource:account_id(OffnetReq)
                  ),
     [format_endpoint(set_endpoint_caller_id(Endpoint, Name, Number)
-                     ,Number, FilterFun, OffnetReq, SIPHeaders, AccountId
+		    ,Number, FilterFun, OffnetReq, SIPHeaders, AccountId
                     )
      || Endpoint <- Endpoints
     ].
@@ -240,7 +240,7 @@ set_endpoint_caller_id(Endpoint, Name, Number) ->
                             ,{?KEY_OUTBOUND_CALLER_ID_NAME, Name}
                             ]
                            )
-                          ,Endpoint
+			 ,Endpoint
                          ).
 
 -spec format_endpoint(kz_json:object(), api_binary(), filter_fun(), kapi_offnet_resource:req(), kz_json:object(), ne_binary()) ->
@@ -253,11 +253,11 @@ format_endpoint(Endpoint, Number, FilterFun, OffnetReq, SIPHeaders, AccountId) -
 -spec apply_formatters(kz_json:object(), kz_json:object(), ne_binary()) -> kz_json:object().
 apply_formatters(Endpoint, SIPHeaders, AccountId) ->
     stepswitch_formatters:apply(maybe_add_sip_headers(Endpoint, SIPHeaders)
-                                ,props:get_value(<<"Formatters">>
-                                                 ,endpoint_props(Endpoint, AccountId)
-                                                 ,kz_json:new()
-                                                )
-                                ,'outbound'
+			       ,props:get_value(<<"Formatters">>
+					       ,endpoint_props(Endpoint, AccountId)
+					       ,kz_json:new()
+					       )
+			       ,'outbound'
                                ).
 
 -spec endpoint_props(kz_json:object(), api_binary()) -> kz_proplist().
@@ -291,13 +291,13 @@ maybe_endpoint_format_from(Endpoint, Number, OffnetReq) ->
         'true' -> endpoint_format_from(Endpoint, Number, OffnetReq, CCVs);
         'false' ->
             kz_json:set_value(<<"Custom-Channel-Vars">>
-                              ,kz_json:delete_keys([<<"Format-From-URI">>
-                                                    ,<<"From-URI-Realm">>
-                                                    ,<<"From-Account-Realm">>
-                                                   ]
-                                                   ,CCVs
-                                                  )
-                              ,Endpoint
+			     ,kz_json:delete_keys([<<"Format-From-URI">>
+						  ,<<"From-URI-Realm">>
+						  ,<<"From-Account-Realm">>
+						  ]
+						 ,CCVs
+						 )
+			     ,Endpoint
                              )
     end.
 
@@ -309,28 +309,28 @@ endpoint_format_from(Endpoint, Number, OffnetReq, CCVs) ->
         <<_/binary>> = Realm ->
             FromURI = <<"sip:", FromNumber/binary, "@", Realm/binary>>,
             lager:debug("setting resource ~s from-uri to ~s"
-                        ,[kz_json:get_value(<<"Resource-ID">>, CCVs)
-                          ,FromURI
-                         ]),
+		       ,[kz_json:get_value(<<"Resource-ID">>, CCVs)
+			,FromURI
+			]),
             UpdatedCCVs = kz_json:set_value(<<"From-URI">>, FromURI, CCVs),
             kz_json:set_value(<<"Custom-Channel-Vars">>
-                              ,kz_json:delete_keys([<<"Format-From-URI">>
-                                                    ,<<"From-URI-Realm">>
-                                                    ,<<"From-Account-Realm">>
-                                                   ]
-                                                   ,UpdatedCCVs
-                                                  )
-                              ,Endpoint
+			     ,kz_json:delete_keys([<<"Format-From-URI">>
+						  ,<<"From-URI-Realm">>
+						  ,<<"From-Account-Realm">>
+						  ]
+						 ,UpdatedCCVs
+						 )
+			     ,Endpoint
                              );
         _ ->
             kz_json:set_value(<<"Custom-Channel-Vars">>
-                              ,kz_json:delete_keys([<<"Format-From-URI">>
-                                                    ,<<"From-URI-Realm">>
-                                                    ,<<"From-Account-Realm">>
-                                                   ]
-                                                   ,CCVs
-                                                  )
-                              ,Endpoint
+			     ,kz_json:delete_keys([<<"Format-From-URI">>
+						  ,<<"From-URI-Realm">>
+						  ,<<"From-Account-Realm">>
+						  ]
+						 ,CCVs
+						 )
+			     ,Endpoint
                              )
     end.
 
@@ -344,11 +344,11 @@ get_endpoint_format_from(OffnetReq, CCVs) ->
 
 -spec route_by() -> atom().
 route_by() ->
-        RouteBy = kapps_config:get_ne_binary(?SS_CONFIG_CAT, <<"route_by">>, ?DEFAULT_ROUTE_BY),
-        case kz_util:try_load_module(RouteBy) of
-            'false' -> kz_util:to_atom(?DEFAULT_ROUTE_BY);
-            Module -> Module
-        end.
+    RouteBy = kapps_config:get_ne_binary(?SS_CONFIG_CAT, <<"route_by">>, ?DEFAULT_ROUTE_BY),
+    case kz_util:try_load_module(RouteBy) of
+	'false' -> kz_util:to_atom(?DEFAULT_ROUTE_BY);
+	Module -> Module
+    end.
 
 -spec resources_to_endpoints(stepswitch_resources:resources(), ne_binary(), kapi_offnet_resource:req()) ->
                                     kz_json:objects().
@@ -366,9 +366,9 @@ resources_to_endpoints([Resource|Resources], Number, OffnetJObj, Endpoints) ->
 -spec maybe_resource_to_endpoints(stepswitch_resources:resource(), ne_binary(), kapi_offnet_resource:req(), kz_json:objects()) ->
                                          kz_json:objects().
 maybe_resource_to_endpoints(Resource
-                            ,Number
-                            ,OffnetJObj
-                            ,Endpoints
+			   ,Number
+			   ,OffnetJObj
+			   ,Endpoints
                            ) ->
     Id = stepswitch_resources:get_resrc_id(Resource),
     Name = stepswitch_resources:get_resrc_name(Resource),
@@ -381,12 +381,12 @@ maybe_resource_to_endpoints(Resource
     DestinationNumber = Number,
     lager:debug("building resource ~s endpoints", [Id]),
     CCVUpdates = [{<<"Global-Resource">>, kz_util:to_binary(Global)}
-                  ,{<<"Resource-ID">>, Id}
-                  ,{<<"E164-Destination">>, DestinationNumber}
-                  ,{<<"Original-Number">>, kapi_offnet_resource:to_did(OffnetJObj)}
+		 ,{<<"Resource-ID">>, Id}
+		 ,{<<"E164-Destination">>, DestinationNumber}
+		 ,{<<"Original-Number">>, kapi_offnet_resource:to_did(OffnetJObj)}
                  ],
     Updates = [{<<"Name">>, Name}
-               ,{<<"Weight">>, Weight}
+	      ,{<<"Weight">>, Weight}
               ],
     EndpointList = [kz_json:set_values(Updates ,update_ccvs(Endpoint, CCVUpdates))
                     || Endpoint <- stepswitch_resources:gateways_to_endpoints(DestinationNumber, Gateways, OffnetJObj, [])

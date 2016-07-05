@@ -22,9 +22,9 @@
 
 put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
     #{bucket := Bucket
-      ,key := Key
-      ,secret := Secret
-      ,path := Path
+     ,key := Key
+     ,secret := Secret
+     ,path := Path
      } = Params,
     FilePath = kz_util:to_list(list_to_binary([Path, "/", DbName, "/", DocId, "_", AName])),
     Config = kz_aws_s3:new(kz_util:to_list(Key), kz_util:to_list(Secret)),

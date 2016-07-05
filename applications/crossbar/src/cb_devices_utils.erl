@@ -35,7 +35,7 @@ is_ip_unique(IP, DeviceId) ->
 is_ip_acl_unique(IP, DeviceId) ->
     lists:all(
       fun(JObj) -> is_ip_unique(JObj, IP, DeviceId) end
-      ,get_all_acl_ips()
+	     ,get_all_acl_ips()
      ).
 
 -spec is_ip_unique(kz_json:object(), ne_binary(), ne_binary()) -> boolean().
@@ -68,16 +68,16 @@ is_ip_sip_auth_unique(IP, DeviceId) ->
 -spec get_all_acl_ips() -> kz_json:objects().
 get_all_acl_ips() ->
     Req = [{<<"Category">>, <<"ecallmgr">>}
-           ,{<<"Key">>, <<"acls">>}
-           ,{<<"Node">>, <<"all">>}
-           ,{<<"Default">>, kz_json:new()}
-           ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+	  ,{<<"Key">>, <<"acls">>}
+	  ,{<<"Node">>, <<"all">>}
+	  ,{<<"Default">>, kz_json:new()}
+	  ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Resp = kapps_util:amqp_pool_request(
              props:filter_undefined(Req)
-             ,fun kapi_sysconf:publish_get_req/1
-             ,fun kapi_sysconf:get_resp_v/1
+				       ,fun kapi_sysconf:publish_get_req/1
+				       ,fun kapi_sysconf:get_resp_v/1
             ),
     case Resp of
         {'error', _} -> [];
@@ -102,7 +102,7 @@ extract_ip(_Key, Value, Acc) ->
         'undefined' -> Acc;
         CIDR ->
             [kz_json:from_list([{<<"ip">>, CIDR}
-                                ,{?AUTHZ_ID, kz_json:get_value(?AUTHZ_ID, Value)}
+			       ,{?AUTHZ_ID, kz_json:get_value(?AUTHZ_ID, Value)}
                                ])
              |Acc
             ]

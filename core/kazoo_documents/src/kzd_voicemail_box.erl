@@ -9,20 +9,20 @@
 -module(kzd_voicemail_box).
 
 -export([new/0
-         ,type/0
-         ,notification_emails/1, notification_emails/2
-         ,owner_id/1, owner_id/2
-         ,owner/1
-         ,timezone/1, timezone/2
-         ,skip_instructions/1, skip_instructions/2
-         ,skip_greeting/1, skip_greeting/2
-         ,pin/1, pin/2
-         ,mailbox_number/1, mailbox_number/2
-         ,pin_required/1, pin_required/2
-         ,check_if_owner/1, check_if_owner/2
-         ,is_setup/1, is_setup/2
+	,type/0
+	,notification_emails/1, notification_emails/2
+	,owner_id/1, owner_id/2
+	,owner/1
+	,timezone/1, timezone/2
+	,skip_instructions/1, skip_instructions/2
+	,skip_greeting/1, skip_greeting/2
+	,pin/1, pin/2
+	,mailbox_number/1, mailbox_number/2
+	,pin_required/1, pin_required/2
+	,check_if_owner/1, check_if_owner/2
+	,is_setup/1, is_setup/2
 
-         ,set_notification_emails/2
+	,set_notification_emails/2
         ]).
 
 -include("kz_documents.hrl").

@@ -9,18 +9,18 @@
 -module(kzsip_diversion).
 
 -export([to_binary/1
-         ,from_binary/1
+	,from_binary/1
         ]).
 
 -export([reason/1, set_reason/2
-         ,counter/1, set_counter/2
-         ,limit/1
-         ,privacy/1
-         ,screen/1
-         ,extensions/1
-         ,address/1, set_address/2
-         ,user/1, set_user/2
-         ,new/0
+	,counter/1, set_counter/2
+	,limit/1
+	,privacy/1
+	,screen/1
+	,extensions/1
+	,address/1, set_address/2
+	,user/1, set_user/2
+	,new/0
         ]).
 
 -ifdef(TEST).
@@ -72,7 +72,7 @@ extensions(JObj) ->
     case kz_json:get_ne_value(?PARAM_EXTENSION, JObj) of
         'undefined' -> 'undefined';
         Extensions ->
-           lists:foldl(fun extensions_fold/2, [], kz_json:to_proplist(Extensions))
+	    lists:foldl(fun extensions_fold/2, [], kz_json:to_proplist(Extensions))
     end.
 
 -spec extensions_fold({ne_binary(), ne_binary()}, kz_proplist()) ->
@@ -182,7 +182,7 @@ parse_param(?PARAM_PRIVACY, Value, JObj) ->
 parse_param(?PARAM_SCREEN, Value, JObj) ->
     kz_json:set_value(?PARAM_SCREEN, parse_screen_param(Value), JObj);
 parse_param(Extension, Value, JObj) ->
-   add_extension(Extension, maybe_unquote(Value), JObj).
+    add_extension(Extension, maybe_unquote(Value), JObj).
 
 -spec add_extension(binary(), kz_json:object()) ->
                            kz_json:object().
@@ -190,11 +190,11 @@ add_extension(<<>>, JObj) -> JObj;
 add_extension(Extension, JObj) ->
     Extensions = kz_json:get_value(?PARAM_EXTENSION, JObj, kz_json:new()),
     kz_json:set_value(?PARAM_EXTENSION
-                      ,kz_json:set_value(maybe_unquote(Extension)
-                                         ,?SOLO_EXTENSION
-                                         ,Extensions
-                                        )
-                      ,JObj
+		     ,kz_json:set_value(maybe_unquote(Extension)
+				       ,?SOLO_EXTENSION
+				       ,Extensions
+				       )
+		     ,JObj
                      ).
 
 -spec add_extension(ne_binary(), ne_binary(), kz_json:object()) ->
@@ -202,32 +202,32 @@ add_extension(Extension, JObj) ->
 add_extension(Extension, Value, JObj) ->
     Extensions = kz_json:get_value(?PARAM_EXTENSION, JObj, kz_json:new()),
     kz_json:set_value(?PARAM_EXTENSION
-                      ,kz_json:set_value(Extension
-                                         ,maybe_unquote(Value)
-                                         ,Extensions
-                                        )
-                      ,JObj
+		     ,kz_json:set_value(Extension
+				       ,maybe_unquote(Value)
+				       ,Extensions
+				       )
+		     ,JObj
                      ).
 
 -define(PARAM_REASON_LITERALS, [<<"unknown">>
-                                ,<<"user-busy">>
-                                ,<<"no-answer">>
-                                ,<<"unavailable">>
-                                ,<<"unconditional">>
-                                ,<<"time-of-day">>
-                                ,<<"do-not-disturb">>
-                                ,<<"deflection">>
-                                ,<<"follow-me">>
-                                ,<<"out-of-service">>
-                                ,<<"away">>
+			       ,<<"user-busy">>
+			       ,<<"no-answer">>
+			       ,<<"unavailable">>
+			       ,<<"unconditional">>
+			       ,<<"time-of-day">>
+			       ,<<"do-not-disturb">>
+			       ,<<"deflection">>
+			       ,<<"follow-me">>
+			       ,<<"out-of-service">>
+			       ,<<"away">>
                                ]).
 parse_reason_param(Reason) ->
     parse_param_value(Reason, ?PARAM_REASON_LITERALS).
 
 -define(PARAM_PRIVACY_LITERALS, [<<"full">>
-                                 ,<<"name">>
-                                 ,<<"uri">>
-                                 ,<<"off">>
+				,<<"name">>
+				,<<"uri">>
+				,<<"off">>
                                 ]).
 parse_privacy_param(Privacy) ->
     parse_param_value(Privacy, ?PARAM_PRIVACY_LITERALS).

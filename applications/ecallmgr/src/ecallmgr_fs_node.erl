@@ -15,9 +15,9 @@
 -export([handle_reload_acls/2]).
 -export([handle_reload_gateways/2]).
 -export([sync_channels/1
-         ,sync_interface/1
-         ,sync_capabilities/1
-         ,sync_registrations/1
+	,sync_interface/1
+	,sync_capabilities/1
+	,sync_registrations/1
         ]).
 -export([sip_url/1]).
 -export([sip_external_ip/1]).
@@ -26,12 +26,12 @@
 -export([interface/1]).
 -export([fetch_timeout/0, fetch_timeout/1]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("ecallmgr.hrl").
@@ -41,114 +41,114 @@
 -define(UPTIME_S, ecallmgr_config:get_integer(<<"fs_node_uptime_s">>, 600)).
 
 -record(interface, {name
-                    ,domain_name
-                    ,auto_nat
-                    ,presence_hosts
-                    ,dialplan
-                    ,context
-                    ,challenge_realm
-                    ,rtp_ip
-                    ,ext_rtp_ip
-                    ,sip_ip
-                    ,ext_sip_ip
-                    ,url
-                    ,bind_url
-                    ,hold_music
-                    ,outbound_proxy
-                    ,codecs_in
-                    ,codecs_out
-                    ,tel_event
-                    ,dtmf_mode
-                    ,cng
-                    ,session_to
-                    ,max_dialog
-                    ,no_media
-                    ,late_neg
-                    ,proxy_media
-                    ,zrtp_passthru
-                    ,aggressive_nat
-                    ,stun_enabled
-                    ,stun_auto_disabled
-                    ,interface_props = []
+		   ,domain_name
+		   ,auto_nat
+		   ,presence_hosts
+		   ,dialplan
+		   ,context
+		   ,challenge_realm
+		   ,rtp_ip
+		   ,ext_rtp_ip
+		   ,sip_ip
+		   ,ext_sip_ip
+		   ,url
+		   ,bind_url
+		   ,hold_music
+		   ,outbound_proxy
+		   ,codecs_in
+		   ,codecs_out
+		   ,tel_event
+		   ,dtmf_mode
+		   ,cng
+		   ,session_to
+		   ,max_dialog
+		   ,no_media
+		   ,late_neg
+		   ,proxy_media
+		   ,zrtp_passthru
+		   ,aggressive_nat
+		   ,stun_enabled
+		   ,stun_auto_disabled
+		   ,interface_props = []
                    }).
 -type interface() :: #interface{}.
 
 -define(DEFAULT_FS_COMMANDS, [kz_json:from_list([{<<"load">>, <<"mod_sofia">>}])
-                              ,kz_json:from_list([{<<"reloadacl">>, <<>>}])
+			     ,kz_json:from_list([{<<"reloadacl">>, <<>>}])
                              ]).
 
 -define(DEFAULT_CAPABILITIES, [kz_json:from_list([{<<"module">>, <<"mod_conference">>}
-                                                  ,{<<"is_loaded">>, 'false'}
-                                                  ,{<<"capability">>, <<"conference">>}
+						 ,{<<"is_loaded">>, 'false'}
+						 ,{<<"capability">>, <<"conference">>}
                                                  ])
-                               ,kz_json:from_list([{<<"module">>, <<"mod_channel_move">>}
-                                                   ,{<<"is_loaded">>, 'false'}
-                                                   ,{<<"capability">>, <<"channel_move">>}
-                                                  ])
-                               ,kz_json:from_list([{<<"module">>, <<"mod_http_cache">>}
-                                                   ,{<<"is_loaded">>, 'false'}
-                                                   ,{<<"capability">>, <<"http_cache">>}
-                                                  ])
-                               ,kz_json:from_list([{<<"module">>, <<"mod_dptools">>}
-                                                   ,{<<"is_loaded">>, 'false'}
-                                                   ,{<<"capability">>, <<"dialplan">>}
-                                                  ])
-                               ,kz_json:from_list([{<<"module">>, <<"mod_sofia">>}
-                                                   ,{<<"is_loaded">>, 'false'}
-                                                   ,{<<"capability">>, <<"sip">>}
-                                                  ])
-                               ,kz_json:from_list([{<<"module">>, <<"mod_spandsp">>}
-                                                   ,{<<"is_loaded">>, 'false'}
-                                                   ,{<<"capability">>, <<"fax">>}
-                                                  ])
-                               ,kz_json:from_list([{<<"module">>, <<"mod_flite">>}
-                                                   ,{<<"is_loaded">>, 'false'}
-                                                   ,{<<"capability">>, <<"tts">>}
-                                                  ])
-                               ,kz_json:from_list([{<<"module">>, <<"mod_freetdm">>}
-                                                   ,{<<"is_loaded">>, 'false'}
-                                                   ,{<<"capability">>, <<"freetdm">>}
-                                                  ])
-                               ,kz_json:from_list([{<<"module">>, <<"mod_skypopen">>}
-                                                   ,{<<"is_loaded">>, 'false'}
-                                                   ,{<<"capability">>, <<"skype">>}
-                                                  ])
-                               ,kz_json:from_list([{<<"module">>, <<"mod_dingaling">>}
-                                                   ,{<<"is_loaded">>, 'false'}
-                                                   ,{<<"capability">>, <<"xmpp">>}
-                                                  ])
-                               ,kz_json:from_list([{<<"module">>, <<"mod_skinny">>}
-                                                   ,{<<"is_loaded">>, 'false'}
-                                                   ,{<<"capability">>, <<"skinny">>}
-                                                  ])
-                               ,kz_json:from_list([{<<"module">>, <<"mod_sms">>}
-                                                   ,{<<"is_loaded">>, 'false'}
-                                                   ,{<<"capability">>, <<"sms">>}
-                                                  ])
+			      ,kz_json:from_list([{<<"module">>, <<"mod_channel_move">>}
+						 ,{<<"is_loaded">>, 'false'}
+						 ,{<<"capability">>, <<"channel_move">>}
+						 ])
+			      ,kz_json:from_list([{<<"module">>, <<"mod_http_cache">>}
+						 ,{<<"is_loaded">>, 'false'}
+						 ,{<<"capability">>, <<"http_cache">>}
+						 ])
+			      ,kz_json:from_list([{<<"module">>, <<"mod_dptools">>}
+						 ,{<<"is_loaded">>, 'false'}
+						 ,{<<"capability">>, <<"dialplan">>}
+						 ])
+			      ,kz_json:from_list([{<<"module">>, <<"mod_sofia">>}
+						 ,{<<"is_loaded">>, 'false'}
+						 ,{<<"capability">>, <<"sip">>}
+						 ])
+			      ,kz_json:from_list([{<<"module">>, <<"mod_spandsp">>}
+						 ,{<<"is_loaded">>, 'false'}
+						 ,{<<"capability">>, <<"fax">>}
+						 ])
+			      ,kz_json:from_list([{<<"module">>, <<"mod_flite">>}
+						 ,{<<"is_loaded">>, 'false'}
+						 ,{<<"capability">>, <<"tts">>}
+						 ])
+			      ,kz_json:from_list([{<<"module">>, <<"mod_freetdm">>}
+						 ,{<<"is_loaded">>, 'false'}
+						 ,{<<"capability">>, <<"freetdm">>}
+						 ])
+			      ,kz_json:from_list([{<<"module">>, <<"mod_skypopen">>}
+						 ,{<<"is_loaded">>, 'false'}
+						 ,{<<"capability">>, <<"skype">>}
+						 ])
+			      ,kz_json:from_list([{<<"module">>, <<"mod_dingaling">>}
+						 ,{<<"is_loaded">>, 'false'}
+						 ,{<<"capability">>, <<"xmpp">>}
+						 ])
+			      ,kz_json:from_list([{<<"module">>, <<"mod_skinny">>}
+						 ,{<<"is_loaded">>, 'false'}
+						 ,{<<"capability">>, <<"skinny">>}
+						 ])
+			      ,kz_json:from_list([{<<"module">>, <<"mod_sms">>}
+						 ,{<<"is_loaded">>, 'false'}
+						 ,{<<"capability">>, <<"sms">>}
+						 ])
                               ]).
 
 -record(state, {node :: atom()
-                ,options = []             :: kz_proplist()
-                ,interface = #interface{} :: interface()
-                ,start_cmds_pid_ref       :: pid_ref() | 'undefined'
+	       ,options = []             :: kz_proplist()
+	       ,interface = #interface{} :: interface()
+	       ,start_cmds_pid_ref       :: pid_ref() | 'undefined'
                }).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_reload_acls'}
-                      ,[{<<"switch_event">>, <<"reload_acls">>}]
+		     ,[{<<"switch_event">>, <<"reload_acls">>}]
                      }
                     ,{{?MODULE, 'handle_reload_gateways'}
-                      ,[{<<"switch_event">>, <<"reload_gateways">>}]
+		     ,[{<<"switch_event">>, <<"reload_gateways">>}]
                      }
                     ,{'ecallmgr_fs_node_command'
-                      ,[{<<"switch_event">>, <<"command">>}]
+		     ,[{<<"switch_event">>, <<"command">>}]
                      }
                     ]).
 -define(BINDINGS(Node), [{'switch', [{'node', Node}
-                                      ,{'restrict_to', ['reload_acls'
-                                                        ,'reload_gateways'
-                                                        ,'command'
-                                                       ]
-                                       }
+				    ,{'restrict_to', ['reload_acls'
+						     ,'reload_gateways'
+						     ,'command'
+						     ]
+				     }
                                     ]
                          }
                         ]).
@@ -166,18 +166,18 @@
 
 -define(REPLAY_REG_MAP,
         [{<<"Realm">>, <<"realm">>}
-         ,{<<"Username">>, <<"reg_user">>}
-         ,{<<"Network-IP">>, <<"network_ip">>}
-         ,{<<"Network-Port">>, <<"network_port">>}
-         ,{<<"FreeSWITCH-Hostname">>, <<"hostname">>}
-         ,{<<"To-Host">>, <<"realm">>}
-         ,{<<"To-User">>, <<"reg_user">>}
-         ,{<<"From-Host">>, <<"realm">>}
-         ,{<<"From-User">>, <<"reg_user">>}
-         ,{<<"Call-ID">>, <<"token">>}
-         ,{<<"Profile-Name">>, {fun replay_profile/1, <<"url">> } }
-         ,{<<"Contact">>, {fun replay_contact/1, <<"url">> } }
-         ,{<<"Expires">>, {fun replay_expires/1, <<"expires">>}}
+	,{<<"Username">>, <<"reg_user">>}
+	,{<<"Network-IP">>, <<"network_ip">>}
+	,{<<"Network-Port">>, <<"network_port">>}
+	,{<<"FreeSWITCH-Hostname">>, <<"hostname">>}
+	,{<<"To-Host">>, <<"realm">>}
+	,{<<"To-User">>, <<"reg_user">>}
+	,{<<"From-Host">>, <<"realm">>}
+	,{<<"From-User">>, <<"reg_user">>}
+	,{<<"Call-ID">>, <<"token">>}
+	,{<<"Profile-Name">>, {fun replay_profile/1, <<"url">> } }
+	,{<<"Contact">>, {fun replay_contact/1, <<"url">> } }
+	,{<<"Expires">>, {fun replay_expires/1, <<"expires">>}}
         ]).
 
 -type fs_node() :: atom() | ne_binary() | pid().
@@ -198,10 +198,10 @@ start_link(Node, Options) ->
                   ,(kz_util:to_binary(?MODULE))/binary
                 >>,
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
-                                      ,{'bindings', ?BINDINGS(Node)}
-                                      ,{'queue_name', QueueName}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
+				     ,{'bindings', ?BINDINGS(Node)}
+				     ,{'queue_name', QueueName}
+				     ,{'queue_options', ?QUEUE_OPTIONS}
+				     ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], [Node, Options]).
 
 -spec sync_channels(fs_node()) -> 'ok'.
@@ -253,8 +253,8 @@ handle_reload_gateways(JObj, Props) ->
 
     Node = props:get_value('node', Props),
     Args = ["profile "
-            ,?DEFAULT_FS_PROFILE
-            ," rescan"
+	   ,?DEFAULT_FS_PROFILE
+	   ," rescan"
            ],
     case ecallmgr_config:get_boolean(<<"process_gateways">>, 'false')
         andalso freeswitch:bgapi(Node, 'sofia', lists:flatten(Args))
@@ -310,8 +310,8 @@ init([Node, Options]) ->
     lager:debug("running start commands in ~p", [PidRef]),
 
     {'ok', #state{node=Node
-                  ,options=Options
-                  ,start_cmds_pid_ref=PidRef
+		 ,options=Options
+		 ,start_cmds_pid_ref=PidRef
                  }}.
 
 %%--------------------------------------------------------------------
@@ -348,7 +348,7 @@ handle_call('node', _, #state{node=Node}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast('sync_interface', #state{node=Node
-                                     ,interface=Interface
+				    ,interface=Interface
                                     }=State) ->
     {'noreply', State#state{interface=node_interface(Node, Interface)}};
 handle_cast('sync_capabilities', #state{node=Node}=State) ->
@@ -380,7 +380,7 @@ handle_cast(_Req, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('sync_interface', #state{node=Node
-                                     ,interface=Interface
+				    ,interface=Interface
                                     }=State) ->
     {'noreply', State#state{interface=node_interface(Node, Interface)}};
 handle_info({'bgok', _Job, _Result}, State) ->
@@ -480,7 +480,7 @@ is_restarting_status(UP) ->
 run_start_cmds(Node, Options, Parent, 'true') ->
     lager:debug("node ~s is considered restarting", [Node]),
     run_start_cmds(Node, Options, Parent
-                   ,ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node)
+		  ,ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node)
                   );
 run_start_cmds(Node, Options, Parent, 'false') ->
     lager:debug("node ~s is not considered restarting, trying reconnect cmds first", [Node]),
@@ -525,9 +525,9 @@ process_cmds(Node, Options, Cmds) ->
 -spec process_cmd(atom(), kz_proplist(), kz_json:object(), cmd_results()) -> cmd_results().
 process_cmd(Node, Options, JObj, Acc0) ->
     kz_json:foldl(fun(ApiCmd, ApiArg, Acc) ->
-                        lager:debug("process ~s: ~s: ~s", [Node, ApiCmd, ApiArg]),
-                        process_cmd(Node, Options, ApiCmd, ApiArg, Acc)
-                end, Acc0, JObj).
+			  lager:debug("process ~s: ~s: ~s", [Node, ApiCmd, ApiArg]),
+			  process_cmd(Node, Options, ApiCmd, ApiArg, Acc)
+		  end, Acc0, JObj).
 
 -spec process_cmd(atom(), kz_proplist(), ne_binary(), kz_json:json_term(), cmd_results()) -> cmd_results().
 -spec process_cmd(atom(), kz_proplist(), ne_binary(), kz_json:json_term(), cmd_results(), 'list'|'binary') -> cmd_results().
@@ -625,35 +625,35 @@ channels_as_json(Node) ->
 -spec interface_from_props(kz_proplist()) -> interface().
 interface_from_props(Props) ->
     #interface{name=props:get_value(<<"Name">>, Props, ?DEFAULT_FS_PROFILE)
-               ,domain_name=props:get_value(<<"DomainName">>, Props)
-               ,auto_nat=props:get_is_true(<<"Auto-NAT">>, Props)
-               ,presence_hosts=props:get_value(<<"PresHosts">>, Props)
-               ,dialplan=props:get_value(<<"Dialplan">>, Props)
-               ,context=props:get_value(<<"Context">>, Props)
-               ,challenge_realm=props:get_value(<<"ChallengeRealm">>, Props)
-               ,rtp_ip=props:get_value(<<"RTP-IP">>, Props)
-               ,ext_rtp_ip=props:get_value(<<"Ext-RTP-IP">>, Props)
-               ,sip_ip=props:get_value(<<"SIP-IP">>, Props)
-               ,ext_sip_ip=props:get_value(<<"Ext-SIP-IP">>, Props)
-               ,url=props:get_value(<<"URL">>, Props)
-               ,bind_url=props:get_value(<<"BIND-URL">>, Props)
-               ,hold_music=props:get_value(<<"HOLD_MUSIC">>, Props)
-               ,outbound_proxy=props:get_value(<<"OUTBOUND-PROXY">>, Props)
-               ,codecs_in=split_codes(<<"CODECSIN">>, Props)
-               ,codecs_out=split_codes(<<"CODECSOUT">>, Props)
-               ,tel_event=props:get_value(<<"TEL-EVENT">>, Props)
-               ,dtmf_mode=props:get_value(<<"DTMF-MODE">>, Props)
-               ,cng=props:get_value(<<"CNG">>, Props)
-               ,session_to=props:get_value(<<"SESSION-TO">>, Props)
-               ,max_dialog=props:get_value(<<"MAX-DIALOG">>, Props)
-               ,no_media=props:get_is_true(<<"NOMEDIA">>, Props)
-               ,late_neg=props:get_is_true(<<"LATE-NEG">>, Props)
-               ,proxy_media=props:get_is_true(<<"PROXY-MEDIA">>, Props)
-               ,zrtp_passthru=props:get_is_true(<<"ZRTP-PASSTHRU">>, Props)
-               ,aggressive_nat=props:get_is_true(<<"AGGRESSIVENAT">>, Props)
-               ,stun_enabled=props:get_is_true(<<"STUN-ENABLED">>, Props)
-               ,stun_auto_disabled=props:get_is_true(<<"STUN-AUTO-DISABLE">>, Props)
-               ,interface_props=Props
+	      ,domain_name=props:get_value(<<"DomainName">>, Props)
+	      ,auto_nat=props:get_is_true(<<"Auto-NAT">>, Props)
+	      ,presence_hosts=props:get_value(<<"PresHosts">>, Props)
+	      ,dialplan=props:get_value(<<"Dialplan">>, Props)
+	      ,context=props:get_value(<<"Context">>, Props)
+	      ,challenge_realm=props:get_value(<<"ChallengeRealm">>, Props)
+	      ,rtp_ip=props:get_value(<<"RTP-IP">>, Props)
+	      ,ext_rtp_ip=props:get_value(<<"Ext-RTP-IP">>, Props)
+	      ,sip_ip=props:get_value(<<"SIP-IP">>, Props)
+	      ,ext_sip_ip=props:get_value(<<"Ext-SIP-IP">>, Props)
+	      ,url=props:get_value(<<"URL">>, Props)
+	      ,bind_url=props:get_value(<<"BIND-URL">>, Props)
+	      ,hold_music=props:get_value(<<"HOLD_MUSIC">>, Props)
+	      ,outbound_proxy=props:get_value(<<"OUTBOUND-PROXY">>, Props)
+	      ,codecs_in=split_codes(<<"CODECSIN">>, Props)
+	      ,codecs_out=split_codes(<<"CODECSOUT">>, Props)
+	      ,tel_event=props:get_value(<<"TEL-EVENT">>, Props)
+	      ,dtmf_mode=props:get_value(<<"DTMF-MODE">>, Props)
+	      ,cng=props:get_value(<<"CNG">>, Props)
+	      ,session_to=props:get_value(<<"SESSION-TO">>, Props)
+	      ,max_dialog=props:get_value(<<"MAX-DIALOG">>, Props)
+	      ,no_media=props:get_is_true(<<"NOMEDIA">>, Props)
+	      ,late_neg=props:get_is_true(<<"LATE-NEG">>, Props)
+	      ,proxy_media=props:get_is_true(<<"PROXY-MEDIA">>, Props)
+	      ,zrtp_passthru=props:get_is_true(<<"ZRTP-PASSTHRU">>, Props)
+	      ,aggressive_nat=props:get_is_true(<<"AGGRESSIVENAT">>, Props)
+	      ,stun_enabled=props:get_is_true(<<"STUN-ENABLED">>, Props)
+	      ,stun_auto_disabled=props:get_is_true(<<"STUN-AUTO-DISABLE">>, Props)
+	      ,interface_props=Props
               }.
 
 -spec split_codes(ne_binary(), kz_proplist()) -> ne_binaries().
@@ -670,8 +670,8 @@ probe_capabilities(Node) ->
 probe_capabilities(Node, PossibleCapabilities) ->
     kz_util:put_callid(Node),
     lists:foreach(fun(Capability) ->
-                            maybe_add_capability(Node, Capability)
-                    end, PossibleCapabilities).
+			  maybe_add_capability(Node, Capability)
+		  end, PossibleCapabilities).
 
 -spec maybe_add_capability(atom(), kz_json:object()) -> any().
 maybe_add_capability(Node, Capability) ->
@@ -700,7 +700,7 @@ replay_registration(_Node, [[]]) -> 'ok';
 replay_registration(_Node, []) -> 'ok';
 replay_registration(Node, [Reg | Regs]) ->
     Payload = [{<<"FreeSWITCH-Nodename">>, kz_util:to_binary(Node)}
-               ,{<<"Event-Timestamp">>, round(kz_util:current_tstamp())}
+	      ,{<<"Event-Timestamp">>, round(kz_util:current_tstamp())}
                | lists:map(fun({K,{F, V}}) when is_function(F,1) ->
                                    {K, F(props:get_value(V, Reg))};
                               ({K,V}) ->
@@ -710,7 +710,7 @@ replay_registration(Node, [Reg | Regs]) ->
               ],
     lager:debug("replaying registration: ~p",[Payload]),
     kz_amqp_worker:cast(Payload
-                        ,fun kapi_registration:publish_success/1
+		       ,fun kapi_registration:publish_success/1
                        ),
     replay_registration(Node, Regs).
 

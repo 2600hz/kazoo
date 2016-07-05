@@ -125,7 +125,7 @@ maybe_fax_number(A, B) ->
 fetch_ticket(JobId, Authorization) ->
     URL = <<?TICKET_URL,JobId/binary>>,
     Headers = [?GPC_PROXY_HEADER
-               ,{"Authorization",Authorization}
+	      ,{"Authorization",Authorization}
               ],
     case kz_http:get(kz_util:to_list(URL), Headers) of
         {'ok', 200, _RespHeaders, RespBody} ->
@@ -145,12 +145,12 @@ update_job_status(PrinterId, JobId, <<"DONE">>=Status) ->
 update_job_status(PrinterId, JobId, <<"ABORTED">>=Status) ->
     StateObj = kz_json:from_list(
                  [{<<"state">>
-                   ,?JSON([{<<"type">>, Status}
-                           ,{<<"device_action_cause">>
-                             ,?JSON([{<<"error_code">>,<<"OTHER">>}])
-                            }
-                          ]
-                         )
+		  ,?JSON([{<<"type">>, Status}
+			 ,{<<"device_action_cause">>
+			  ,?JSON([{<<"error_code">>,<<"OTHER">>}])
+			  }
+			 ]
+			)
                   }
                  ]),
     update_job_status(PrinterId, JobId, StateObj);
@@ -165,12 +165,12 @@ update_job_status(PrinterId, JobId, Status) ->
 -spec send_update_job_status(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_update_job_status(JobId, Status, Authorization) ->
     Headers = [?GPC_PROXY_HEADER
-               ,{"Authorization",Authorization}
-               ,{"Content-Type","application/x-www-form-urlencoded"}
+	      ,{"Authorization",Authorization}
+	      ,{"Content-Type","application/x-www-form-urlencoded"}
               ],
 
     Fields = [{"jobid", JobId}
-              ,{"semantic_state_diff", kz_json:encode(Status)}
+	     ,{"semantic_state_diff", kz_json:encode(Status)}
              ],
 
     Body = props:to_querystring(Fields),
@@ -258,50 +258,50 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
     FaxBoxUserEmail = kz_json:get_value(<<"owner_email">>, FaxBoxDoc),
 
     FaxBoxEmailNotify = kz_json:get_value([<<"notifications">>
-                                           ,<<"outbound">>
-                                           ,<<"email">>
-                                           ,<<"send_to">>
+					  ,<<"outbound">>
+					  ,<<"email">>
+					  ,<<"send_to">>
                                           ]
-                                          ,FaxBoxDoc
-                                          ,[]
+					 ,FaxBoxDoc
+					 ,[]
                                          ),
 
     FaxBoxNotify = kz_json:set_value([<<"notifications">>
-                                      ,<<"outbound">>
-                                      ,<<"email">>
-                                      ,<<"send_to">>
+				     ,<<"outbound">>
+				     ,<<"email">>
+				     ,<<"send_to">>
                                      ]
-                                     ,fax_util:notify_email_list(OwnerId, FaxBoxUserEmail, FaxBoxEmailNotify)
-                                     ,FaxBoxDoc
+				    ,fax_util:notify_email_list(OwnerId, FaxBoxUserEmail, FaxBoxEmailNotify)
+				    ,FaxBoxDoc
                                     ),
 
     Notify = kz_json:get_value([<<"notifications">>,<<"outbound">>],FaxBoxNotify),
     Props = props:filter_undefined(
               [{<<"from_name">>,kz_json:get_value(<<"caller_name">>,FaxBoxDoc)}
-               ,{<<"from_number">>,kz_json:get_value(<<"caller_id">>,FaxBoxDoc)}
-               ,{<<"fax_identity_name">>, kz_json:get_value(<<"fax_header">>, FaxBoxDoc)}
-               ,{<<"fax_identity_number">>, kz_json:get_value(<<"fax_identity">>, FaxBoxDoc)}
-               ,{<<"fax_timezone">>, kzd_fax_box:timezone(FaxBoxDoc)}
-               ,{<<"to_name">>,FaxNumber}
-               ,{<<"to_number">>,FaxNumber}
-               ,{<<"retries">>,kz_json:get_value(<<"retries">>,FaxBoxDoc,3)}
-               ,{<<"notifications">>, Notify }
-               ,{<<"faxbox_id">>, kz_doc:id(FaxBoxDoc)}
-               ,{<<"folder">>, <<"outbox">>}
-               ,{<<"cloud_printer_id">>, PrinterId}
-               ,{<<"cloud_job_id">>, JobId}
-               ,{<<"cloud_job">>, Job}
-               ,{<<"_id">>, JobId}
+	      ,{<<"from_number">>,kz_json:get_value(<<"caller_id">>,FaxBoxDoc)}
+	      ,{<<"fax_identity_name">>, kz_json:get_value(<<"fax_header">>, FaxBoxDoc)}
+	      ,{<<"fax_identity_number">>, kz_json:get_value(<<"fax_identity">>, FaxBoxDoc)}
+	      ,{<<"fax_timezone">>, kzd_fax_box:timezone(FaxBoxDoc)}
+	      ,{<<"to_name">>,FaxNumber}
+	      ,{<<"to_number">>,FaxNumber}
+	      ,{<<"retries">>,kz_json:get_value(<<"retries">>,FaxBoxDoc,3)}
+	      ,{<<"notifications">>, Notify }
+	      ,{<<"faxbox_id">>, kz_doc:id(FaxBoxDoc)}
+	      ,{<<"folder">>, <<"outbox">>}
+	      ,{<<"cloud_printer_id">>, PrinterId}
+	      ,{<<"cloud_job_id">>, JobId}
+	      ,{<<"cloud_job">>, Job}
+	      ,{<<"_id">>, JobId}
               ]),
     Doc = kz_json:set_values([{<<"pvt_type">>, <<"fax">>}
-                              ,{<<"pvt_job_status">>, <<"queued">>}
-                              ,{<<"pvt_created">>, kz_util:current_tstamp()}
-                              ,{<<"attempts">>, 0}
-                              ,{<<"pvt_account_id">>, AccountId}
-                              ,{<<"pvt_account_db">>, AccountDb}
-                              ,{<<"pvt_reseller_id">>, ResellerId}
+			     ,{<<"pvt_job_status">>, <<"queued">>}
+			     ,{<<"pvt_created">>, kz_util:current_tstamp()}
+			     ,{<<"attempts">>, 0}
+			     ,{<<"pvt_account_id">>, AccountId}
+			     ,{<<"pvt_account_db">>, AccountDb}
+			     ,{<<"pvt_reseller_id">>, ResellerId}
                              ]
-                             ,kz_json_schema:add_defaults(kz_json:from_list(Props), <<"faxes">>)
+			    ,kz_json_schema:add_defaults(kz_json:from_list(Props), <<"faxes">>)
                             ),
     kz_datamgr:save_doc(?KZ_FAXES_DB, Doc).
 
@@ -425,22 +425,22 @@ process_registration_result('true', AppId, JObj, Result) ->
     update_printer(
       kz_json:set_values(
         [{<<"pvt_cloud_authorization_code">>, AuthorizationCode}
-         ,{<<"pvt_cloud_refresh_token">>, RefreshToken}
-         ,{<<"pvt_cloud_user_email">>, UserEmail}
-         ,{<<"pvt_cloud_xmpp_jid">>, JID}
-         ,{<<"pvt_cloud_state">>, <<"claimed">>}
-         ,{<<"pvt_cloud_oauth_app">>, AppId}
+	,{<<"pvt_cloud_refresh_token">>, RefreshToken}
+	,{<<"pvt_cloud_user_email">>, UserEmail}
+	,{<<"pvt_cloud_xmpp_jid">>, JID}
+	,{<<"pvt_cloud_state">>, <<"claimed">>}
+	,{<<"pvt_cloud_oauth_app">>, AppId}
         ]
-        ,JObj
+			,JObj
        )),
 
     timer:sleep(15 * ?MILLISECONDS_IN_SECOND),
     Payload = props:filter_undefined(
                 [{<<"Event-Name">>, <<"start">>}
-                 ,{<<"Application-Name">>, <<"fax">>}
-                 ,{<<"Application-Event">>, <<"claimed">>}
-                 ,{<<"Application-Data">>, FaxBoxId}
-                 ,{<<"JID">>, JID}
+		,{<<"Application-Name">>, <<"fax">>}
+		,{<<"Application-Event">>, <<"claimed">>}
+		,{<<"Application-Data">>, FaxBoxId}
+		,{<<"JID">>, JID}
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     kapi_xmpp:publish_event(Payload);
@@ -459,13 +459,13 @@ process_registration_result('false', AppId, JObj, _Result) ->
             update_printer(
               kz_json:set_values(
                 [{<<"pvt_cloud_state">>, <<"expired">>}]
-                ,kz_json:delete_keys(Keys, JObj)
+				,kz_json:delete_keys(Keys, JObj)
                )
              );
         'false' ->
             SleepTime = kapps_config:get_integer(?CONFIG_CAT, <<"cloud_registration_pool_interval">>, ?DEFAULT_CLOUD_REG_SLEEP),
             lager:debug("Printer ~s not claimed at ~s. sleeping for ~B seconds, Elapsed/Duration (~p/~p)."
-                        ,[PrinterId,InviteUrl, SleepTime div 1000 , Elapsed, TokenDuration]
+		       ,[PrinterId,InviteUrl, SleepTime div 1000 , Elapsed, TokenDuration]
                        ),
             timer:sleep(SleepTime),
             check_registration(AppId, <<"registered">>, JObj)
@@ -485,10 +485,10 @@ handle_faxbox_deleted(JObj, _Props) ->
     ID = kz_json:get_value(<<"ID">>, JObj),
     Payload = props:filter_undefined(
                 [{<<"Event-Name">>, <<"stop">>}
-                 ,{<<"Application-Name">>, <<"fax">>}
-                 ,{<<"Application-Event">>, <<"deleted">>}
-                 ,{<<"Application-Data">>, ID}
-                 ,{<<"JID">>, ID}
+		,{<<"Application-Name">>, <<"fax">>}
+		,{<<"Application-Event">>, <<"deleted">>}
+		,{<<"Application-Data">>, ID}
+		,{<<"JID">>, ID}
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     kapi_xmpp:publish_event(Payload).

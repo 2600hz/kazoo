@@ -14,12 +14,12 @@
 
 -export([start_link/0]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("hangups.hrl").
@@ -27,11 +27,11 @@
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{'hangups_channel_destroy'
-                      ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
+		     ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
                      }
                     ]).
 -define(BINDINGS, [{'call'
-                    ,[{'restrict_to', ['CHANNEL_DESTROY']}]}
+		   ,[{'restrict_to', ['CHANNEL_DESTROY']}]}
                   ]).
 -define(QUEUE_NAME, <<"hangups_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -47,10 +47,10 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
-                                      ,{'bindings', ?BINDINGS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
+				     ,{'bindings', ?BINDINGS}
+				     ,{'queue_name', ?QUEUE_NAME}
+				     ,{'queue_options', ?QUEUE_OPTIONS}
+				     ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================

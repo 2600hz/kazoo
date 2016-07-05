@@ -10,18 +10,18 @@
 -behaviour(gen_listener).
 
 -export([start_link/0
-         ,handle_metaflow/2
-         ,handle_channel_create/2
-         ,handle_route_req/2
+	,handle_metaflow/2
+	,handle_channel_create/2
+	,handle_route_req/2
         ]).
 
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("konami.hrl").
@@ -32,17 +32,17 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'dialplan', ['metaflow']}
-                   ,{'route', []}
+		  ,{'route', []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_metaflow'}
-                      ,[{<<"call">>, <<"command">>}]
+		     ,[{<<"call">>, <<"command">>}]
                      }
-                     ,{{?MODULE, 'handle_channel_create'}
-                       ,[{<<"call_event">>, <<"CHANNEL_CREATE">>}]
-                      }
-                     ,{{?MODULE, 'handle_route_req'}
-                       ,[{<<"dialplan">>, <<"route_req">>}]
-                      }
+		    ,{{?MODULE, 'handle_channel_create'}
+		     ,[{<<"call_event">>, <<"CHANNEL_CREATE">>}]
+		     }
+		    ,{{?MODULE, 'handle_route_req'}
+		     ,[{<<"dialplan">>, <<"route_req">>}]
+		     }
                     ]).
 -define(QUEUE_NAME, <<"konami_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -58,10 +58,10 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+				     ,{'responders', ?RESPONDERS}
+				     ,{'queue_name', ?QUEUE_NAME}       % optional to include
+				     ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+				     ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], []).
 
 -spec handle_metaflow(kz_json:object(), kz_proplist()) -> no_return().
@@ -72,7 +72,7 @@ handle_metaflow(JObj, Props) ->
 
     try konami_code_fsm:start_fsm(
           kapps_call:kvs_store('consumer_pid', props:get_value('server', Props), Call)
-          ,JObj
+				 ,JObj
          )
     of
         _ -> 'ok'
@@ -90,10 +90,10 @@ handle_route_req(JObj, _Props) ->
     Call = kapps_call:from_route_req(JObj),
 
     maybe_start_metaflows(kapps_call:account_id(Call)
-                          ,kapps_call:authorizing_type(Call)
-                          ,kapps_call:authorizing_id(Call)
-                          ,kapps_call:owner_id(Call)
-                          ,Call
+			 ,kapps_call:authorizing_type(Call)
+			 ,kapps_call:authorizing_id(Call)
+			 ,kapps_call:owner_id(Call)
+			 ,Call
                          ).
 
 -spec handle_channel_create(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -103,10 +103,10 @@ handle_channel_create(JObj, _Props) ->
     Call = kapps_call:from_json(JObj),
 
     maybe_start_metaflows(kapps_call:account_id(Call)
-                          ,kapps_call:authorizing_type(Call)
-                          ,kapps_call:authorizing_id(Call)
-                          ,kapps_call:owner_id(Call)
-                          ,Call
+			 ,kapps_call:authorizing_type(Call)
+			 ,kapps_call:authorizing_id(Call)
+			 ,kapps_call:owner_id(Call)
+			 ,Call
                          ).
 
 -spec maybe_start_metaflows(api_binary(), api_binary(), api_binary(), api_binary(), kapps_call:call()) -> 'ok'.
@@ -120,7 +120,7 @@ maybe_start_metaflows(AccountId, 'undefined', DeviceId, OwnerId, CallId) ->
     maybe_start_user_metaflows(AccountId, OwnerId, CallId);
 maybe_start_metaflows(_AccountId, _AuthorizingType, _AuthorizingId, _OwnerId, _CallId) ->
     lager:debug("unhandled channel for account ~s: ~s(~s) owned by ~s"
-                ,[_AccountId, _AuthorizingId, _AuthorizingType, _OwnerId]
+	       ,[_AccountId, _AuthorizingId, _AuthorizingType, _OwnerId]
                ).
 
 -spec maybe_start_device_metaflows(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
@@ -128,7 +128,7 @@ maybe_start_device_metaflows(_AccountId, 'undefined', _Call) -> 'ok';
 maybe_start_device_metaflows(AccountId, DeviceId, Call) ->
     {'ok', Endpoint} = kz_datamgr:open_cache_doc(kapps_call:account_db(Call)
                                                 ,DeviceId
-                                               ),
+						),
     maybe_start_metaflows(AccountId, Call, kz_json:get_value(<<"metaflows">>, Endpoint)).
 
 -spec maybe_start_user_metaflows(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
@@ -136,7 +136,7 @@ maybe_start_user_metaflows(_AccountId, 'undefined', _Call) -> 'ok';
 maybe_start_user_metaflows(AccountId, UserId, Call) ->
     {'ok', User} = kz_datamgr:open_cache_doc(kapps_call:account_db(Call)
                                             ,UserId
-                                           ),
+					    ),
     maybe_start_metaflows(AccountId, Call, kz_json:get_value(<<"metaflows">>, User)).
 
 -spec maybe_start_metaflows(ne_binary(), kapps_call:call(), api_object()) -> 'ok'.

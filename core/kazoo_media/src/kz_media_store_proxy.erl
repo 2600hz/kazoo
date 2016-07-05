@@ -9,8 +9,8 @@
 -module(kz_media_store_proxy).
 
 -export([init/3
-         ,terminate/3
-         ,handle/2
+	,terminate/3
+	,handle/2
         ]).
 
 -include("kazoo_media.hrl").
@@ -99,7 +99,7 @@ maybe_acl_authentication([ACL|ACLs], Ip, PathTokens, Req0) ->
 credentials(Req0) ->
     case cowboy_req:header(<<"authorization">>, Req0) of
         {'undefined', Req1} ->
-                {'undefined', 'undefined', Req1};
+	    {'undefined', 'undefined', Req1};
         {Authorization, Req1} ->
             {Username, Password} = credentials_from_header(Authorization),
             {Username, Password, Req1}
@@ -138,17 +138,17 @@ unauthorized_body() ->
      \"http://www.w3.org/TR/1999/REC-html401-19991224/loose.dt\">
     <HTML>
       <HEAD>
-        <TITLE>Error</TITLE>
-        <META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=ISO-8859-1\">
+      <TITLE>Error</TITLE>
+      <META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=ISO-8859-1\">
       </HEAD>
       <BODY><H1>401 Unauthorized.</H1></BODY>
-    </HTML>
-    ">>.
+      </HTML>
+      ">>.
 
 -spec handle(cowboy_req:req(), ne_binaries()) ->
-                    {'ok', cowboy_req:req(), 'ok'}.
+	    {'ok', cowboy_req:req(), 'ok'}.
 handle(Req0, [Url, _AName]) ->
-   {Db, Id, Attachment, Options} = binary_to_term(base64:decode(Url)),
+    {Db, Id, Attachment, Options} = binary_to_term(base64:decode(Url)),
     Path = #media_store_path{db = Db
                             ,id = Id
                             ,att = Attachment
@@ -219,7 +219,7 @@ try_to_store(#media_store_path{db=Db
                               }, CT, Req0) ->
     {'ok', Contents, Req1} = cowboy_req:body(Req0),
     Options = [{'content_type', kz_util:to_list(CT)}
-               ,{'content_length', byte_size(Contents)}
+	      ,{'content_length', byte_size(Contents)}
                | Opts
               ],
     lager:debug("putting ~s onto ~s(~s): ~s", [Attachment, Id, Db, CT]),

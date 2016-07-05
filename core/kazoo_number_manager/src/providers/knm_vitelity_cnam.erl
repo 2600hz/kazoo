@@ -51,10 +51,10 @@ save(Number, _State) ->
 delete(Number) ->
     knm_services:deactivate_features(
       Number
-      ,[?FEATURE_INBOUND_CNAM
-        ,?FEATURE_OUTBOUND_CNAM
-        ,?FEATURE_CNAM
-       ]
+				    ,[?FEATURE_INBOUND_CNAM
+				     ,?FEATURE_OUTBOUND_CNAM
+				     ,?FEATURE_CNAM
+				     ]
      ).
 
 %%--------------------------------------------------------------------
@@ -81,7 +81,7 @@ has_emergency_services(_Number) -> 'false'.
                                   knm_number:knm_number().
 handle_outbound_cnam(Number) ->
     handle_outbound_cnam(Number
-                         ,knm_phone_number:dry_run(knm_number:phone_number(Number))
+			,knm_phone_number:dry_run(knm_number:phone_number(Number))
                         ).
 
 handle_outbound_cnam(Number, 'true') ->
@@ -152,12 +152,12 @@ try_update_outbound_cnam(Number, NewCNAM) ->
                                    knm_vitelity_util:query_options().
 outbound_cnam_options(DID, NewCNAM) ->
     [{'qs', [{'cmd', <<"lidb">>}
-             ,{'did', knm_converters:to_npan(DID)}
-             ,{'name', NewCNAM}
-             ,{'xml', <<"yes">>}
+	    ,{'did', knm_converters:to_npan(DID)}
+	    ,{'name', NewCNAM}
+	    ,{'xml', <<"yes">>}
              | knm_vitelity_util:default_options()
             ]}
-     ,{'uri', knm_vitelity_util:api_uri()}
+    ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
 %%--------------------------------------------------------------------
@@ -171,9 +171,9 @@ outbound_cnam_options(DID, NewCNAM) ->
 process_outbound_xml_resp(Number, XML) ->
     try xmerl_scan:string(XML) of
         {#xmlElement{name='content'
-                     ,content=Children
+		    ,content=Children
                     }
-         ,_Left
+	,_Left
         } ->
             process_outbound_resp(Number, Children);
         _ ->
@@ -233,7 +233,7 @@ check_outbound_response_tag(Number, Children) ->
 handle_inbound_cnam(Number) ->
     handle_inbound_cnam(
       Number
-      ,knm_phone_number:dry_run(knm_number:phone_number(Number))
+		       ,knm_phone_number:dry_run(knm_number:phone_number(Number))
      ).
 
 handle_inbound_cnam(Number, 'true') ->
@@ -277,11 +277,11 @@ remove_inbound_cnam(Number) ->
 -spec remove_inbound_options(ne_binary()) -> knm_vitelity_util:query_options().
 remove_inbound_options(Number) ->
     [{'qs', [{'did', knm_converters:to_npan(Number)}
-             ,{'cmd', <<"cnamdisable">>}
-             ,{'xml', <<"yes">>}
+	    ,{'cmd', <<"cnamdisable">>}
+	    ,{'xml', <<"yes">>}
              | knm_vitelity_util:default_options()
             ]}
-     ,{'uri', knm_vitelity_util:api_uri()}
+    ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
 %%--------------------------------------------------------------------
@@ -315,11 +315,11 @@ add_inbound_cnam(Number) ->
 -spec inbound_options(ne_binary()) -> knm_vitelity_util:query_options().
 inbound_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
-             ,{'cmd', <<"cnamenable">>}
-             ,{'xml', <<"yes">>}
+	    ,{'cmd', <<"cnamenable">>}
+	    ,{'xml', <<"yes">>}
              | knm_vitelity_util:default_options()
             ]}
-     ,{'uri', knm_vitelity_util:api_uri()}
+    ,{'uri', knm_vitelity_util:api_uri()}
     ].
 
 %%--------------------------------------------------------------------
@@ -348,14 +348,14 @@ process_xml_resp(Number, XML) ->
 -spec process_xml_content_tag(knm_number:knm_number(), xml_el()) ->
                                      knm_number:knm_number().
 process_xml_content_tag(Number, #xmlElement{name='content'
-                                            ,content=Children
+					   ,content=Children
                                            }) ->
     Els = kz_xml:elements(Children),
     case knm_vitelity_util:xml_resp_status_msg(Els) of
         <<"fail">> ->
             knm_errors:unspecified(
               knm_vitelity_util:xml_resp_error_msg(Els)
-              ,Number
+				  ,Number
              );
         <<"ok">> ->
             knm_services:activate_feature(Number, ?FEATURE_INBOUND_CNAM)
@@ -372,11 +372,11 @@ publish_cnam_update(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM),
     Notify = [{<<"Account-ID">>, knm_phone_number:assigned_to(PhoneNumber)}
-              ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
-              ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL}
-              ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
-              ,{<<"Acquired-For">>, knm_phone_number:auth_by(PhoneNumber)}
-              ,{<<"Cnam">>, case Feature of 'undefined' -> kz_json:new(); _ -> Feature end}
+	     ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
+	     ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL}
+	     ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
+	     ,{<<"Acquired-For">>, knm_phone_number:auth_by(PhoneNumber)}
+	     ,{<<"Cnam">>, case Feature of 'undefined' -> kz_json:new(); _ -> Feature end}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapi_notifications:publish_cnam_request(Notify).

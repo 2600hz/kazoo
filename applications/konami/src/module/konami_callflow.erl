@@ -23,7 +23,7 @@ handle(Data, Call) ->
     {'ok', CallflowJObj} = callflow(Data, Call),
     Flow = kz_json:get_value(<<"flow">>, CallflowJObj),
     API = [{<<"Call">>, kapps_call:to_json(Call)}
-           ,{<<"Flow">>, Flow}
+	  ,{<<"Flow">>, Flow}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapi_callflow:publish_resume(API),
@@ -34,12 +34,12 @@ callflow(Data, Call) ->
 
 callflow(Data, Call, 'undefined') ->
     captured_callflow(Call, kz_json:get_first_defined([<<"captures">>
-                                                       ,<<"collected">>
+						      ,<<"collected">>
                                                       ], Data));
 callflow(_Data, Call, CallflowId) ->
     kz_datamgr:open_cache_doc(kapps_call:account_db(Call)
                              ,CallflowId
-                            ).
+			     ).
 
 captured_callflow(_Call, 'undefined') -> 'undefined';
 captured_callflow(Call, [Number]) ->

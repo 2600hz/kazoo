@@ -15,16 +15,16 @@
 
 %% API
 -export([start_link/1, start_link/2
-         ,default_table_options/0
+	,default_table_options/0
         ]).
 
 %% gen_server callbacks
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,terminate/2
+	,code_change/3
         ]).
 
 %% Internal
@@ -45,14 +45,14 @@
 
 -type find_me_fun() :: fun(() -> pid()).
 -export_type([start_arg/0, start_args/0
-              ,find_me_fun/0
+	     ,find_me_fun/0
              ]).
 
 -record(state, {table_id :: atom()
-                ,give_away_pid :: pid()
-                ,find_me_fun :: find_me_fun()
-                ,find_me_pid_ref :: {pid(), reference()}
-                ,gift_data :: any()
+	       ,give_away_pid :: pid()
+	       ,find_me_fun :: find_me_fun()
+	       ,find_me_pid_ref :: {pid(), reference()}
+	       ,gift_data :: any()
                }).
 
 %%%===================================================================
@@ -105,8 +105,8 @@ init([Opts]) ->
     lager:debug("started etsmgr for table ~p", [TableId]),
 
     {'ok', #state{table_id=TableId
-                  ,find_me_fun=opt_find_me_fun(Opts)
-                  ,gift_data=opt_gift_data(Opts)
+		 ,find_me_fun=opt_find_me_fun(Opts)
+		 ,gift_data=opt_gift_data(Opts)
                  }}.
 
 -define(DEFAULT_TABLE_OPTIONS, ['set', 'protected', {'keypos', 2}]).
@@ -179,38 +179,38 @@ handle_info({'EXIT', Pid, 'shutdown'}, #state{give_away_pid=Pid}=State) ->
     lager:debug("ets mgr ~p shutdown", [Pid]),
     {'noreply', State#state{give_away_pid='undefined'}};
 handle_info({'ETS-TRANSFER', Tbl, Pid, _Data}, #state{table_id=Tbl
-                                                      ,give_away_pid=Pid
+						     ,give_away_pid=Pid
                                                      }=State) ->
     lager:debug("ets table ~p transferred back to ourselves", [Tbl]),
     send_give_away_retry(Tbl),
     {'noreply', State#state{give_away_pid='undefined'}};
 handle_info({'give_away', Tbl}, #state{table_id=Tbl
-                                       ,give_away_pid='undefined'
-                                       ,find_me_fun=F
+				      ,give_away_pid='undefined'
+				      ,find_me_fun=F
                                       }=State) ->
     lager:debug("give away ~p", [Tbl]),
     FindMe = kz_util:spawn_monitor(fun find_me/2, [F, self()]),
     lager:debug("finding the successor in ~p", [FindMe]),
     {'noreply', State#state{find_me_pid_ref=FindMe}};
 handle_info({'found_me', Pid}, #state{table_id=Tbl
-                                      ,give_away_pid='undefined'
-                                      ,find_me_pid_ref={_FindMePid, FindMeRef}
-                                      ,gift_data=GiftData
+				     ,give_away_pid='undefined'
+				     ,find_me_pid_ref={_FindMePid, FindMeRef}
+				     ,gift_data=GiftData
                                      }=State) ->
     lager:debug("found our new writer pid: ~p", [Pid]),
     erlang:demonitor(FindMeRef, ['flush']),
     link(Pid),
     ets:give_away(Tbl, Pid, GiftData),
     {'noreply', State#state{give_away_pid=Pid
-                            ,find_me_pid_ref='undefined'
+			   ,find_me_pid_ref='undefined'
                            }, 'hibernate'};
 handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{table_id=Tbl
-                                                           ,find_me_pid_ref={Pid, Ref}
+							  ,find_me_pid_ref={Pid, Ref}
                                                           }=State) ->
     lager:debug("our find_me pid ~p went down: ~p", [Pid, _Reason]),
     send_give_away_retry(Tbl),
     {'noreply', State#state{find_me_pid_ref='undefined'
-                            ,give_away_pid='undefined'
+			   ,give_away_pid='undefined'
                            }};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),

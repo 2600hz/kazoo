@@ -15,17 +15,17 @@
 
 %% API
 -export([start_link/0
-         ,check_stats/0
+	,check_stats/0
         ]).
 -export([hangups_to_monitor/0]).
 
 %% gen_server callbacks
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("hangups.hrl").
@@ -145,14 +145,14 @@ code_change(_OldVsn, State, _Extra) ->
 -spec hangups_to_monitor() -> ne_binaries().
 hangups_to_monitor() ->
     kapps_config:get(?APP_NAME
-                     ,<<"hangups_to_monitor">>
-                     ,[<<"WRONG_CALL_STATE">>
-                       ,<<"NO_ROUTE_DESTINATION">>
-                       ,<<"CALL_REJECT">>
-                       ,<<"MANDATORY_IE_MISSING">>
-                       ,<<"PROGRESS_TIMEOUT">>
-                       ,<<"RECOVERY_ON_TIMER_EXPIRE">>
-                      ]).
+		    ,<<"hangups_to_monitor">>
+		    ,[<<"WRONG_CALL_STATE">>
+		     ,<<"NO_ROUTE_DESTINATION">>
+		     ,<<"CALL_REJECT">>
+		     ,<<"MANDATORY_IE_MISSING">>
+		     ,<<"PROGRESS_TIMEOUT">>
+		     ,<<"RECOVERY_ON_TIMER_EXPIRE">>
+		     ]).
 
 %%%===================================================================
 %%% Internal functions

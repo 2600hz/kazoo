@@ -12,15 +12,15 @@
 -module(cb_comments).
 
 -export([init/0
-         ,authenticate/1
-         ,authorize/1
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
-         ,put/1
-         ,post/2
-         ,delete/1 ,delete/2
-         ,finish_request/1
+	,authenticate/1
+	,authorize/1
+	,allowed_methods/0, allowed_methods/1
+	,resource_exists/0, resource_exists/1
+	,validate/1, validate/2
+	,put/1
+	,post/2
+	,delete/1 ,delete/2
+	,finish_request/1
         ]).
 
 -include("crossbar.hrl").
@@ -282,8 +282,8 @@ update(Context, Id) ->
     Doc1 =
         kz_json:set_value(
           ?COMMENTS
-          ,lists:append([Head1, [Comment], Tail])
-          ,Doc
+			 ,lists:append([Head1, [Comment], Tail])
+			 ,Doc
          ),
     crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
 
@@ -298,8 +298,8 @@ remove(Context) ->
     Doc =
         kz_json:set_value(
           ?COMMENTS
-          ,[]
-          ,cb_context:doc(Context)
+			 ,[]
+			 ,cb_context:doc(Context)
          ),
     crossbar_doc:save(cb_context:set_doc(Context, Doc)).
 
@@ -311,8 +311,8 @@ remove(Context, Id) ->
     Doc1 =
         kz_json:set_value(
           ?COMMENTS
-          ,lists:delete(Comment, Comments)
-          ,Doc
+			 ,lists:delete(Comment, Comments)
+			 ,Doc
          ),
     crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
 
@@ -323,7 +323,7 @@ remove(Context, Id) ->
 %%--------------------------------------------------------------------
 -spec finish_req(cb_context:context(), path_token(), http_method()) -> 'ok'.
 finish_req(Context, <<"port_requests">>, ?HTTP_PUT) ->
-   send_port_comment_notification(Context);
+    send_port_comment_notification(Context);
 finish_req(Context, <<"port_requests">>, ?HTTP_POST) ->
     send_port_comment_notification(Context);
 finish_req(_Context, _Type, _Verb) -> 'ok'.
@@ -365,8 +365,8 @@ load_doc(Context) ->
 
 load_doc(Context, <<"port_requests">>, [Id]) ->
     crossbar_doc:load(Id
-                      ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-                      ,?TYPE_CHECK_OPTION(<<"port_request">>));
+		     ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+		     ,?TYPE_CHECK_OPTION(<<"port_request">>));
 load_doc(Context, _Type, [Id]) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION_ANY);
 load_doc(Context, _Type, _) ->
@@ -383,7 +383,7 @@ only_return_comments(Context) ->
     Comments = kz_json:get_value(?COMMENTS, Doc, []),
     cb_context:set_resp_data(
       Context
-      ,kz_json:from_list([{?COMMENTS, Comments}])
+			    ,kz_json:from_list([{?COMMENTS, Comments}])
      ).
 
 %%--------------------------------------------------------------------
@@ -399,7 +399,7 @@ only_return_comment(Context, Id) ->
     Number = id_to_number(Id),
     cb_context:set_resp_data(
       Context
-      ,lists:nth(Number, Comments)
+			    ,lists:nth(Number, Comments)
      ).
 
 %%--------------------------------------------------------------------
@@ -424,9 +424,9 @@ send_port_comment_notification(Context) ->
 
 send_port_comment_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
-           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
-           ,{<<"Port-Request-ID">>, Id}
-           ,{<<"Version">>, cb_context:api_version(Context)}
+	  ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
+	  ,{<<"Port-Request-ID">>, Id}
+	  ,{<<"Version">>, cb_context:api_version(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(Req, fun kapi_notifications:publish_port_comment/1).

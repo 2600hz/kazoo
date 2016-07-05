@@ -8,12 +8,12 @@
 -module(kapi_rate).
 
 -export([req/1, req_v/1
-         ,resp/1, resp_v/1
-         ,bind_q/2, unbind_q/2
-         ,declare_exchanges/0
-         ,publish_req/1, publish_req/2
-         ,publish_resp/2, publish_resp/3
-         ,broadcast_resp/1, broadcast_resp/2
+	,resp/1, resp_v/1
+	,bind_q/2, unbind_q/2
+	,declare_exchanges/0
+	,publish_req/1, publish_req/2
+	,publish_resp/2, publish_resp/3
+	,broadcast_resp/1, broadcast_resp/2
         ]).
 
 -include_lib("kazoo/include/kz_api.hrl").
@@ -25,29 +25,29 @@
 %% AMQP fields for Rating Request
 -define(RATE_REQ_HEADERS, [<<"To-DID">>]).
 -define(OPTIONAL_RATE_REQ_HEADERS, [<<"Call-ID">>, <<"Account-ID">>, <<"From-DID">>
-                                    ,<<"Options">>, <<"Direction">>, <<"Resource-Type">>
-                                    ,<<"Send-Empty">>, <<"Outbound-Flags">>
+				   ,<<"Options">>, <<"Direction">>, <<"Resource-Type">>
+				   ,<<"Send-Empty">>, <<"Outbound-Flags">>
                                    ]).
 -define(RATE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                          ,{<<"Event-Name">>, <<"req">>}
-                          ,{<<"Direction">>, [<<"inbound">>, <<"outbound">>]}
-                          ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>, <<"sms">>]}
+			 ,{<<"Event-Name">>, <<"req">>}
+			 ,{<<"Direction">>, [<<"inbound">>, <<"outbound">>]}
+			 ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>, <<"sms">>]}
                          ]).
 -define(RATE_REQ_TYPES, [{<<"Options">>, fun is_list/1}
-                         ,{<<"Send-Empty">>, fun kz_util:is_boolean/1}
+			,{<<"Send-Empty">>, fun kz_util:is_boolean/1}
                         ]).
 
 %% AMQP fields for Rating Response
 -define(RATE_RESP_HEADERS, []).
 -define(OPTIONAL_RATE_RESP_HEADERS, [<<"Rate">>, <<"Call-ID">>
-                                     ,<<"Rate-Increment">>, <<"Rate-Minimum">>
-                                     ,<<"Surcharge">>, <<"Base-Cost">>, <<"Pvt-Cost">>
-                                     ,<<"Prefix">>, <<"Rate-Name">>
-                                     ,<<"Rate-Description">>, <<"Discount-Percentage">>
-                                     ,<<"Update-Callee-ID">>, <<"Rate-NoCharge-Time">>
+				    ,<<"Rate-Increment">>, <<"Rate-Minimum">>
+				    ,<<"Surcharge">>, <<"Base-Cost">>, <<"Pvt-Cost">>
+				    ,<<"Prefix">>, <<"Rate-Name">>
+				    ,<<"Rate-Description">>, <<"Discount-Percentage">>
+				    ,<<"Update-Callee-ID">>, <<"Rate-NoCharge-Time">>
                                     ]).
 -define(RATE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                           ,{<<"Event-Name">>, <<"resp">>}
+			  ,{<<"Event-Name">>, <<"resp">>}
                           ]).
 -define(RATE_RESP_TYPES, []).
 

@@ -25,7 +25,7 @@
 -include("callflow.hrl").
 
 -export([handle/2
-         ,no_permission_to_eavesdrop/1
+	,no_permission_to_eavesdrop/1
         ]).
 
 %%--------------------------------------------------------------------
@@ -50,8 +50,8 @@ handle(Data, Call) ->
 -spec fields_to_check() -> kz_proplist().
 fields_to_check() ->
     [{<<"approved_device_id">>, fun(Id, Call) -> Id == kapps_call:authorizing_id(Call) end}
-     ,{<<"approved_user_id">>, fun cf_util:caller_belongs_to_user/2}
-     ,{<<"approved_group_id">>, fun cf_util:caller_belongs_to_group/2}
+    ,{<<"approved_user_id">>, fun cf_util:caller_belongs_to_user/2}
+    ,{<<"approved_group_id">>, fun cf_util:caller_belongs_to_group/2}
     ].
 
 -spec maybe_allowed_to_eavesdrop(kz_json:object(), kapps_call:call()) ->
@@ -94,9 +94,9 @@ eavesdrop_a_channel(Channels, Call) ->
 -spec channels_sort(kz_json:object(), channel_sort_acc()) -> channel_sort_acc().
 channels_sort(Channel, {MyUUID, MyMediaServer, {Local, Remote}} = Acc) ->
     lager:debug("channel: c: ~s a: ~s n: ~s oleg: ~s", [kz_json:get_value(<<"uuid">>, Channel)
-                                                        ,kz_json:is_true(<<"answered">>, Channel)
-                                                        ,kz_json:get_value(<<"node">>, Channel)
-                                                        ,kz_json:get_value(<<"other_leg">>, Channel)
+						       ,kz_json:is_true(<<"answered">>, Channel)
+						       ,kz_json:get_value(<<"node">>, Channel)
+						       ,kz_json:get_value(<<"other_leg">>, Channel)
                                                        ]),
     case kz_json:get_value(<<"node">>, Channel) of
         MyMediaServer ->
@@ -143,8 +143,8 @@ verify_call_is_active(Call) ->
 -spec eavesdrop_cmd(ne_binary()) -> kz_proplist().
 eavesdrop_cmd(TargetCallId) ->
     [{<<"Application-Name">>, <<"eavesdrop">>}
-     ,{<<"Target-Call-ID">>, TargetCallId}
-     ,{<<"Enable-DTMF">>, 'true'}
+    ,{<<"Target-Call-ID">>, TargetCallId}
+    ,{<<"Enable-DTMF">>, 'true'}
     ].
 
 -spec find_sip_endpoints(kz_json:object(), kapps_call:call()) ->

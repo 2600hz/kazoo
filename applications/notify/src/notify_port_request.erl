@@ -52,7 +52,7 @@ handle_req(JObj, _Props) ->
     AccountJObj = kz_doc:public_fields(AccountDoc),
 
     lager:debug("creating port change notice for ~s(~s)", [kz_account:name(AccountJObj)
-                                                           ,kz_doc:account_id(AccountDoc)
+							  ,kz_doc:account_id(AccountDoc)
                                                           ]),
 
     Version = kz_json:get_value(<<"Version">>, JObj),
@@ -97,27 +97,27 @@ create_template_props(<<"v2">>, NotifyJObj, AccountJObj) ->
     NumberString = kz_util:join_binary(Numbers, <<" ">>),
 
     Request = [{<<"port">>
-                ,[{<<"service_provider">>, kz_json:get_value(<<"carrier">>, PortDoc)}
-                  ,{<<"billing_name">>, kz_json:get_value([<<"bill">>, <<"name">>], PortDoc)}
-                  ,{<<"billing_account_id">>, kz_doc:account_id(PortDoc)}
-                  ,{<<"billing_street_address">>, kz_json:get_value([<<"bill">>, <<"address">>], PortDoc)}
-                  ,{<<"billing_locality">>, kz_json:get_value([<<"bill">>, <<"locality">>], PortDoc)}
-                  ,{<<"billing_postal_code">>, kz_json:get_value([<<"bill">>, <<"postal_code">>], PortDoc)}
-                  ,{<<"billing_telephone_number">>, kz_json:get_value([<<"bill">>, <<"phone_number">>], PortDoc)}
-                  ,{<<"requested_port_date">>, kz_json:get_value(<<"transfer_date">>, PortDoc)}
-                  ,{<<"customer_contact">>, kz_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], PortDoc)}
-                 ]
+	       ,[{<<"service_provider">>, kz_json:get_value(<<"carrier">>, PortDoc)}
+		,{<<"billing_name">>, kz_json:get_value([<<"bill">>, <<"name">>], PortDoc)}
+		,{<<"billing_account_id">>, kz_doc:account_id(PortDoc)}
+		,{<<"billing_street_address">>, kz_json:get_value([<<"bill">>, <<"address">>], PortDoc)}
+		,{<<"billing_locality">>, kz_json:get_value([<<"bill">>, <<"locality">>], PortDoc)}
+		,{<<"billing_postal_code">>, kz_json:get_value([<<"bill">>, <<"postal_code">>], PortDoc)}
+		,{<<"billing_telephone_number">>, kz_json:get_value([<<"bill">>, <<"phone_number">>], PortDoc)}
+		,{<<"requested_port_date">>, kz_json:get_value(<<"transfer_date">>, PortDoc)}
+		,{<<"customer_contact">>, kz_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], PortDoc)}
+		]
                }
-               ,{<<"number">>, NumberString}
+	      ,{<<"number">>, NumberString}
               ],
 
     [{<<"numbers">>, Numbers}
-     ,{<<"number">>, Number}
-     ,{<<"request">>, Request}
-     ,{<<"account">>, notify_util:json_to_template_props(AccountJObj)}
-     ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
-     ,{<<"service">>, notify_util:get_service_props(AccountJObj, ?MOD_CONFIG_CAT)}
-     ,{<<"send_from">>, get_send_from(PortDoc, Admin)}
+    ,{<<"number">>, Number}
+    ,{<<"request">>, Request}
+    ,{<<"account">>, notify_util:json_to_template_props(AccountJObj)}
+    ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
+    ,{<<"service">>, notify_util:get_service_props(AccountJObj, ?MOD_CONFIG_CAT)}
+    ,{<<"send_from">>, get_send_from(PortDoc, Admin)}
     ];
 create_template_props(_, NotifyJObj, AccountJObj) ->
     Admin = notify_util:find_admin(kz_json:get_value(<<"Authorized-By">>, NotifyJObj)),
@@ -129,18 +129,18 @@ create_template_props(_, NotifyJObj, AccountJObj) ->
     [Number|_]=Numbers = find_numbers(PortData, NotifyJObj),
 
     [{<<"numbers">>, Numbers}
-     ,{<<"number">>, Number}
-     ,{<<"request">>, Request}
-     ,{<<"account">>, notify_util:json_to_template_props(AccountJObj)}
-     ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
-     ,{<<"service">>, notify_util:get_service_props(AccountJObj, ?MOD_CONFIG_CAT)}
-     ,{<<"send_from">>, get_send_from(PortDoc, Admin)}
+    ,{<<"number">>, Number}
+    ,{<<"request">>, Request}
+    ,{<<"account">>, notify_util:json_to_template_props(AccountJObj)}
+    ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
+    ,{<<"service">>, notify_util:get_service_props(AccountJObj, ?MOD_CONFIG_CAT)}
+    ,{<<"send_from">>, get_send_from(PortDoc, Admin)}
     ].
 
 -spec get_send_from(kz_json:object(), kz_json:object()) -> ne_binary().
 get_send_from(PortDoc, Admin) ->
     case kz_json:get_first_defined([<<"email">>
-                                    ,[<<"Port">>, <<"email">>]
+				   ,[<<"Port">>, <<"email">>]
                                    ], PortDoc)
     of
         'undefined' -> get_admin_send_from(Admin);
@@ -205,17 +205,17 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) ->
     From = props:get_value(<<"send_from">>, Props),
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
-             ,[{<<"From">>, From}
-               ,{<<"To">>, To}
-               ,{<<"Subject">>, Subject}
-              ]
-             ,[]
-             ,[{<<"multipart">>, <<"alternative">>, [], []
-                ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
-                  ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
-                 ]
-               } | Attachements
-              ]
+	    ,[{<<"From">>, From}
+	     ,{<<"To">>, To}
+	     ,{<<"Subject">>, Subject}
+	     ]
+	    ,[]
+	    ,[{<<"multipart">>, <<"alternative">>, [], []
+	      ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
+	       ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
+	       ]
+	      } | Attachements
+	     ]
             },
     lager:debug("sending email from ~s to ~s", [From, To]),
     notify_util:send_email(From, To, Email),
@@ -279,11 +279,11 @@ create_attachment(AttachmentName, AttachmentJObj, AttachmentBin) ->
         binary:split(kz_json:get_ne_value(<<"content_type">>, AttachmentJObj, <<"application/octet-stream">>), <<"/">>),
     lager:debug("found attachment ~s (~s/~s)", [AttachmentName, Type, Subtype]),
     {Type, Subtype
-     ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentName, "\""])}
-       ,{<<"Content-Type">>, list_to_binary([Type, "/", Subtype, <<"; name=\"">>, AttachmentName, "\""])}
-       ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
-      ]
-     ,[], AttachmentBin
+    ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentName, "\""])}
+     ,{<<"Content-Type">>, list_to_binary([Type, "/", Subtype, <<"; name=\"">>, AttachmentName, "\""])}
+     ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
+     ]
+    ,[], AttachmentBin
     }.
 
 %%--------------------------------------------------------------------

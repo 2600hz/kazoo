@@ -9,11 +9,11 @@
 -module(trunkstore_maintenance).
 
 -export([migrate/0
-         ,i_understand_migrate/0
-         ,clear_old_calls/0
-         ,classifier_inherit/2
-         ,classifier_deny/2
-         ,flush/0, flush/1
+	,i_understand_migrate/0
+	,clear_old_calls/0
+	,classifier_inherit/2
+	,classifier_deny/2
+	,flush/0, flush/1
         ]).
 
 -include("ts.hrl").
@@ -27,7 +27,7 @@ flush(Account) ->
     AccountId = kz_util:format_account_id(Account),
 
     Flush = kz_cache:filter_local(?CACHE_NAME
-                                  ,fun(Key, _Value) -> is_ts_cache_object(Key, AccountId) end
+				 ,fun(Key, _Value) -> is_ts_cache_object(Key, AccountId) end
                                  ),
     _ = [kz_cache:erase_local(?CACHE_NAME, Key) || {Key, _Value} <- Flush],
     'ok'.
@@ -87,8 +87,8 @@ has_ts_doc(AcctDB) ->
 create_ts_doc(AcctDB, AcctID, TSJObj) ->
     lager:info("creating the ts doc in ~s", [AcctDB]),
     JObj = kz_json:set_values([{<<"pvt_type">>, <<"sys_info">>}
-                               ,{<<"pvt_account_db">>, AcctDB}
-                               ,{<<"pvt_account_id">>, AcctID}
+			      ,{<<"pvt_account_db">>, AcctDB}
+			      ,{<<"pvt_account_id">>, AcctID}
                               ], kz_json:delete_key(<<"_id">>, kz_doc:delete_revision(TSJObj))),
     lager:info("saving ts doc ~s into ~s", [kz_doc:id(TSJObj), AcctDB]),
     {'ok', _} = kz_datamgr:save_doc(AcctDB, JObj).
@@ -98,10 +98,10 @@ create_credit_doc(AcctDB, AcctID, TSJObj) ->
     Units = wht_util:dollars_to_units(kz_util:to_float(Credit)),
     lager:info("Putting ~p units", [Units]),
     Transaction = kz_json:from_list([{<<"amount">>, Units}
-                                     ,{<<"pvt_type">>, <<"credit">>}
-                                     ,{<<"pvt_description">>, <<"initial account balance">>}
-                                     ,{<<"pvt_account_db">>, AcctDB}
-                                     ,{<<"pvt_account_id">>, AcctID}
+				    ,{<<"pvt_type">>, <<"credit">>}
+				    ,{<<"pvt_description">>, <<"initial account balance">>}
+				    ,{<<"pvt_account_db">>, AcctDB}
+				    ,{<<"pvt_account_id">>, AcctID}
                                     ]),
     kz_datamgr:save_doc(AcctDB, Transaction).
 
@@ -111,8 +111,8 @@ account_exists_with_realm(Realm) ->
         {'ok', []} -> 'false';
         {'ok', [AcctObj]} ->
             {'true'
-             ,kz_json:get_value([<<"value">>, <<"account_db">>], AcctObj)
-             ,kz_json:get_value([<<"value">>, <<"account_id">>], AcctObj)};
+	    ,kz_json:get_value([<<"value">>, <<"account_db">>], AcctObj)
+	    ,kz_json:get_value([<<"value">>, <<"account_id">>], AcctObj)};
         {'error', _E} ->
             lager:info("failed to lookup account view: ~p", [_E]),
             'ignore'
@@ -140,14 +140,14 @@ create_account_doc(Realm, AcctID, AcctDB) ->
     lager:info("creating the account doc in ~s and ~s", [AcctDB, ?KZ_ACCOUNTS_DB]),
     Default = kapps_config:get(<<"crossbar.accounts">>, <<"default_parent">>, <<>>),
     Doc = kz_json:from_list([{<<"realm">>, Realm}
-                             ,{<<"name">>, Realm}
-                             ,{<<"pvt_account_id">>, AcctID}
-                             ,{<<"pvt_account_db">>, AcctDB}
-                             ,{<<"pvt_type">>, <<"account">>}
-                             ,{<<"pvt_account_from">>, <<"trunkstore">>}
-                             ,{<<"pvt_enabled">>, <<"true">>}
-                             ,{<<"pvt_tree">>, [Default]}
-                             ,{<<"_id">>, AcctID}
+			    ,{<<"name">>, Realm}
+			    ,{<<"pvt_account_id">>, AcctID}
+			    ,{<<"pvt_account_db">>, AcctDB}
+			    ,{<<"pvt_type">>, <<"account">>}
+			    ,{<<"pvt_account_from">>, <<"trunkstore">>}
+			    ,{<<"pvt_enabled">>, <<"true">>}
+			    ,{<<"pvt_tree">>, [Default]}
+			    ,{<<"_id">>, AcctID}
                             ]),
     case kz_datamgr:save_doc(AcctDB, Doc) of
         {'ok', _} ->

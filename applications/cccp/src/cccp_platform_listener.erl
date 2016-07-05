@@ -11,15 +11,15 @@
 -behaviour(gen_listener).
 
 -export([start_link/1
-         ,handle_answer/2
+	,handle_answer/2
         ]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("cccp.hrl").
@@ -49,10 +49,10 @@ start_link(Call) ->
                ],
 
     gen_listener:start_link(?SERVER, [{'bindings', Bindings}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+				     ,{'responders', ?RESPONDERS}
+				     ,{'queue_name', ?QUEUE_NAME}       % optional to include
+				     ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+				     ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                       %%,{basic_qos, 1}                % only needed if prefetch controls
                                      ], [Call]).
 

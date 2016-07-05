@@ -12,7 +12,7 @@
 
 api_test_() ->
     Options = [{?KNM_ACCOUNTID_CARRIER, ?RESELLER_ACCOUNT_ID}
-               ,{<<"carriers">>, [<<"knm_bandwidth2">>]}
+	      ,{<<"carriers">>, [<<"knm_bandwidth2">>]}
               ],
     [find_numbers(Options)
     ,find_tollfree_numbers(Options)
@@ -34,11 +34,11 @@ find_numbers(Options) ->
         end,
     Results = knm_carriers:find(Prefix, Limit, Options),
     [{"Verify found numbers"
-      ,?_assertEqual(Limit, length(Results))
+     ,?_assertEqual(Limit, length(Results))
      }
-     ,{"Verify results match queried prefix"
-       ,?_assertEqual('true', lists:all(MatchPrefix, Results))
-      }
+    ,{"Verify results match queried prefix"
+     ,?_assertEqual('true', lists:all(MatchPrefix, Results))
+     }
     ].
 
 find_tollfree_numbers(Options) ->
@@ -55,11 +55,11 @@ find_tollfree_numbers(Options) ->
         end,
     Results = knm_carriers:find(Prefix, Limit, Options),
     [{"Verify found numbers"
-      ,?_assertEqual(Limit, length(Results))
+     ,?_assertEqual(Limit, length(Results))
      }
-     ,{"Verify results match queried prefix"
-       ,?_assertEqual('true', lists:all(MatchPrefix, Results))
-      }
+    ,{"Verify results match queried prefix"
+     ,?_assertEqual('true', lists:all(MatchPrefix, Results))
+     }
     ].
 
 acquire_number() ->
@@ -67,7 +67,7 @@ acquire_number() ->
     Number = knm_number(N),
     Result = knm_bandwidth2:acquire_number(Number),
     [{"Verify number is still one inputed"
-      ,?_assertEqual(N, knm_phone_number:number(knm_number:phone_number(Result)))
+     ,?_assertEqual(N, knm_phone_number:number(knm_number:phone_number(Result)))
      }
     ].
 

@@ -27,7 +27,7 @@ by_owner_id(OwnerId, Data, Call) ->
                ,kz_attributes:owned_by(OwnerId, <<"device">>, Call)
                ).
 
-% copy of kz_endpoints:ignore_early_media/1
+						% copy of kz_endpoints:ignore_early_media/1
 -spec ignore_early_media(kz_json:objects()) -> api_binary().
 ignore_early_media(Endpoints) ->
     case lists:any(fun(Endpoint) ->

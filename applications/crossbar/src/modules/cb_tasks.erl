@@ -459,10 +459,10 @@ load_csv_attachment(Context, TaskId, AName) ->
             lager:debug("loaded csv ~s from task doc ~s", [AName, TaskId]),
             cb_context:add_resp_headers(
               Ctx
-              ,[{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
-               ,{<<"Content-Type">>, <<"text/csv">>}
-               ,{<<"Content-Length">>, byte_size(cb_context:resp_data(Ctx))}
-               ]);
+				       ,[{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
+					,{<<"Content-Type">>, <<"text/csv">>}
+					,{<<"Content-Length">>, byte_size(cb_context:resp_data(Ctx))}
+					]);
         _ ->
             lager:debug("no such csv ~s in task doc ~s", [AName, TaskId]),
             Ctx

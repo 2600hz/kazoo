@@ -10,69 +10,69 @@
 -module(kz_util).
 
 -export([log_stacktrace/0, log_stacktrace/1
-         ,format_account_id/1, format_account_id/2, format_account_id/3
-         ,format_account_mod_id/1, format_account_mod_id/2, format_account_mod_id/3
-         ,format_account_db/1
-         ,format_account_modb/1, format_account_modb/2
-         ,format_resource_selectors_id/1, format_resource_selectors_id/2
-         ,format_resource_selectors_db/1
-         ,normalize_account_name/1
-         ,account_update/1, account_update/2
+	,format_account_id/1, format_account_id/2, format_account_id/3
+	,format_account_mod_id/1, format_account_mod_id/2, format_account_mod_id/3
+	,format_account_db/1
+	,format_account_modb/1, format_account_modb/2
+	,format_resource_selectors_id/1, format_resource_selectors_id/2
+	,format_resource_selectors_db/1
+	,normalize_account_name/1
+	,account_update/1, account_update/2
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
 -export([is_system_admin/1
-         ,is_system_db/1
+	,is_system_db/1
         ]).
 -export([get_account_realm/1, get_account_realm/2]).
 -export([is_account_enabled/1, is_account_expired/1]).
 -export([maybe_disable_account/1
-         ,disable_account/1
-         ,enable_account/1
-         ,set_superduper_admin/2
-         ,set_allow_number_additions/2
+	,disable_account/1
+	,enable_account/1
+	,set_superduper_admin/2
+	,set_allow_number_additions/2
         ]).
 
 -export([try_load_module/1]).
 -export([shuffle_list/1]).
 
 -export([to_integer/1, to_integer/2
-         ,to_float/1, to_float/2
-         ,to_number/1
-         ,to_hex/1, to_hex_binary/1, rand_hex_binary/1
-         ,hexencode_binary/1
-         ,from_hex_binary/1, from_hex_string/1
-         ,to_list/1, to_binary/1
-         ,to_atom/1, to_atom/2
-         ,to_date/1
-         ,to_datetime/1
-         ,error_to_binary/1
+	,to_float/1, to_float/2
+	,to_number/1
+	,to_hex/1, to_hex_binary/1, rand_hex_binary/1
+	,hexencode_binary/1
+	,from_hex_binary/1, from_hex_string/1
+	,to_list/1, to_binary/1
+	,to_atom/1, to_atom/2
+	,to_date/1
+	,to_datetime/1
+	,error_to_binary/1
         ]).
 -export([to_boolean/1, is_boolean/1
-         ,is_true/1, is_false/1
-         ,is_empty/1, is_not_empty/1
-         ,is_proplist/1
-         ,identity/1
-         ,always_true/1, always_false/1
+	,is_true/1, is_false/1
+	,is_empty/1, is_not_empty/1
+	,is_proplist/1
+	,identity/1
+	,always_true/1, always_false/1
         ]).
 -export([to_lower_binary/1, to_upper_binary/1
-         ,to_lower_string/1, to_upper_string/1
-         ,ucfirst_binary/1, lcfirst_binary/1
-         ,strip_binary/1, strip_binary/2
-         ,strip_left_binary/2, strip_right_binary/2
-         ,suffix_binary/2
-         ,truncate_binary/2, truncate_binary/3
-         ,truncate_left_binary/2, truncate_right_binary/2
+	,to_lower_string/1, to_upper_string/1
+	,ucfirst_binary/1, lcfirst_binary/1
+	,strip_binary/1, strip_binary/2
+	,strip_left_binary/2, strip_right_binary/2
+	,suffix_binary/2
+	,truncate_binary/2, truncate_binary/3
+	,truncate_left_binary/2, truncate_right_binary/2
         ]).
 
 -export([clean_binary/1, clean_binary/2
-         ,remove_white_spaces/1
+	,remove_white_spaces/1
         ]).
 
 -export([uri_encode/1
-         ,uri_decode/1
-         ,resolve_uri/2
-         ,safe_urlencode/1
-         ,normalize_amqp_uri/1
+	,uri_decode/1
+	,resolve_uri/2
+	,safe_urlencode/1
+	,normalize_amqp_uri/1
         ]).
 
 -export([uri/2]).
@@ -84,15 +84,15 @@
 -export([a1hash/3, floor/1, ceiling/1]).
 
 -export([current_tstamp/0, current_unix_tstamp/0
-         ,gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
-         ,unix_timestamp_to_gregorian_seconds/1
-         ,pretty_print_datetime/1
-         ,rfc1036/1, rfc1036/2
-         ,iso8601/1
-         ,pretty_print_elapsed_s/1
-         ,decr_timeout/2
-         ,pretty_print_bytes/1
-         ,bin_usage/0, mem_usage/0
+	,gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
+	,unix_timestamp_to_gregorian_seconds/1
+	,pretty_print_datetime/1
+	,rfc1036/1, rfc1036/2
+	,iso8601/1
+	,pretty_print_elapsed_s/1
+	,decr_timeout/2
+	,pretty_print_bytes/1
+	,bin_usage/0, mem_usage/0
         ]).
 -export([microseconds_to_seconds/1
         ,milliseconds_to_seconds/1
@@ -103,10 +103,10 @@
         ]).
 
 -export([put_callid/1, get_callid/0
-         ,spawn/1, spawn/2
-         ,spawn_link/1, spawn_link/2
-         ,spawn_monitor/2
-         ,set_startup/0, startup/0
+	,spawn/1, spawn/2
+	,spawn_link/1, spawn_link/2
+	,spawn_monitor/2
+	,set_startup/0, startup/0
         ]).
 -export([get_event_type/1]).
 -export([get_xml_value/2]).
@@ -114,8 +114,8 @@
 -export([kazoo_version/0, write_pid/1]).
 
 -export([change_console_log_level/1
-         ,change_error_log_level/1
-         ,change_syslog_log_level/1
+	,change_error_log_level/1
+	,change_syslog_log_level/1
         ]).
 
 -export([format_date/0, format_date/1]).
@@ -125,12 +125,12 @@
 -export([node_name/0, node_hostname/0]).
 
 -export([anonymous_caller_id_name/0
-         ,anonymous_caller_id_number/0
+	,anonymous_caller_id_number/0
         ]).
 
 -export([write_file/2, write_file/3
-         ,delete_file/1
-         ,make_dir/1
+	,delete_file/1
+	,make_dir/1
         ]).
 
 -export([calling_app/0]).
@@ -180,23 +180,23 @@ log_stacktrace_mfa(M, F, Args, Info) ->
     'ok'.
 
 -define(LOG_LEVELS, ['emergency'
-                     ,'alert'
-                     ,'critical'
-                     ,'error'
-                     ,'warning'
-                     ,'notice'
-                     ,'info'
-                     ,'debug'
+		    ,'alert'
+		    ,'critical'
+		    ,'error'
+		    ,'warning'
+		    ,'notice'
+		    ,'info'
+		    ,'debug'
                     ]).
 -type log_level() :: 'emergency'
-                     | 'alert'
-                     | 'critical'
-                     | 'error'
-                     | 'warning'
-                     | 'notice'
-                     | 'info'
-                     | 'debug'
-                     | ne_binary().
+		   | 'alert'
+		   | 'critical'
+		   | 'error'
+		   | 'warning'
+		   | 'notice'
+		   | 'info'
+		   | 'debug'
+		   | ne_binary().
 
 -spec change_console_log_level(log_level()) -> 'ok'.
 change_console_log_level(L) when is_atom(L) ->
@@ -313,7 +313,7 @@ raw_account_modb(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month)) ->
 %%--------------------------------------------------------------------
 -spec format_resource_selectors_id(api_binary()) -> api_binary().
 -spec format_resource_selectors_id(api_binary(), account_format()) -> api_binary();
-                       (api_binary(), gregorian_seconds()) -> api_binary(). %% MODb!
+				  (api_binary(), gregorian_seconds()) -> api_binary(). %% MODb!
 
 format_resource_selectors_id(Account) ->
     format_resource_selectors_id(Account, 'raw').
@@ -567,7 +567,7 @@ is_account_expired(Account) ->
             lager:debug("failed to check if expired token auth, ~p", [_R]),
             'false';
         {'ok', JObj} ->
-             kz_account:is_expired(JObj)
+	    kz_account:is_expired(JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -576,8 +576,8 @@ is_account_expired(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_disable_account(ne_binary()) ->
-                            {'ok', kz_json:object()} |
-                            {'error', any()}.
+				   {'ok', kz_json:object()} |
+				   {'error', any()}.
 maybe_disable_account(Account) ->
     case is_account_enabled(Account) of
         'false' -> 'ok';
@@ -591,8 +591,8 @@ maybe_disable_account(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec disable_account(ne_binary()) ->
-                            {'ok', kz_json:object()} |
-                            {'error', any()}.
+			     {'ok', kz_json:object()} |
+			     {'error', any()}.
 disable_account(Account) ->
     account_update(Account, fun kz_account:disable/1).
 
@@ -613,8 +613,8 @@ enable_account(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec set_superduper_admin(ne_binary(), boolean()) ->
-                            {'ok', kz_json:object()} |
-                            {'error', any()}.
+				  {'ok', kz_json:object()} |
+				  {'error', any()}.
 set_superduper_admin(Account, IsAdmin) ->
     account_update(Account, fun(J) -> kz_account:set_superduper_admin(J, IsAdmin) end).
 
@@ -624,8 +624,8 @@ set_superduper_admin(Account, IsAdmin) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec set_allow_number_additions(ne_binary(), boolean()) ->
-                            {'ok', kz_json:object()} |
-                            {'error', any()}.
+					{'ok', kz_json:object()} |
+					{'error', any()}.
 set_allow_number_additions(Account, IsAllowed) ->
     account_update(Account, fun(J) -> kz_account:set_allow_number_additions(J, IsAllowed) end).
 
@@ -801,15 +801,15 @@ spawn(Fun) ->
 spawn_link(Fun, Arguments) ->
     CallId = get_callid(),
     erlang:spawn_link(fun () ->
-                         _ = put_callid(CallId),
-                         erlang:apply(Fun, Arguments)
-                 end).
+			      _ = put_callid(CallId),
+			      erlang:apply(Fun, Arguments)
+		      end).
 spawn_link(Fun) ->
     CallId = get_callid(),
     erlang:spawn_link(fun() ->
-                         _ = put_callid(CallId),
-                         Fun()
-                 end).
+			      _ = put_callid(CallId),
+			      Fun()
+		      end).
 
 -spec spawn_monitor(fun(), list()) -> pid_ref().
 spawn_monitor(Fun, Arguments) ->
@@ -837,11 +837,11 @@ startup() ->
 -spec get_event_type(kz_json:object() | kz_proplist()) -> {api_binary(), api_binary()}.
 get_event_type(Props) when is_list(Props) ->
     {props:get_value(<<"Event-Category">>, Props)
-     ,props:get_value(<<"Event-Name">>, Props)
+    ,props:get_value(<<"Event-Name">>, Props)
     };
 get_event_type(JObj) ->
     {kz_json:get_value(<<"Event-Category">>, JObj)
-     ,kz_json:get_value(<<"Event-Name">>, JObj)
+    ,kz_json:get_value(<<"Event-Name">>, JObj)
     }.
 
 %%--------------------------------------------------------------------
@@ -974,7 +974,7 @@ resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
 resolve_uri(<<_/binary>> = RawPath, <<_/binary>> = Relative) ->
     join_binary(
       resolve_uri_path(RawPath, Relative)
-      ,<<"/">>
+	       ,<<"/">>
      );
 resolve_uri(RawPath, Relative) ->
     resolve_uri(to_binary(RawPath), to_binary(Relative)).
@@ -1234,8 +1234,8 @@ strip_binary(B, 'both') -> strip_right_binary(strip_left_binary(B, $\s), $\s);
 strip_binary(B, C) when is_integer(C) -> strip_right_binary(strip_left_binary(B, C), C);
 strip_binary(B, Cs) when is_list(Cs) ->
     lists:foldl(fun(C, Acc) -> strip_binary(Acc, C) end
-                ,B
-                ,Cs
+	       ,B
+	       ,Cs
                ).
 
 strip_left_binary(<<C, B/binary>>, C) -> strip_left_binary(B, C);
@@ -1370,7 +1370,7 @@ pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
     pretty_print_datetime(calendar:gregorian_seconds_to_datetime(Timestamp));
 pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w"
-                                   ,[Y, Mo, D, H, Mi, S]
+				  ,[Y, Mo, D, H, Mi, S]
                                   )).
 
 -spec rfc1036(calendar:datetime() | gregorian_seconds()) -> ne_binary().
@@ -1675,11 +1675,11 @@ calling_process() ->
             {Parent, MFA } -> {Parent, MFA}
         end,
     #{app => NewApp
-      ,module => Mod
-      ,function => Function
-      ,arity => Arity
-      ,file => Filename
-      ,line => Line
+     ,module => Mod
+     ,function => Function
+     ,arity => Arity
+     ,file => Filename
+     ,line => Line
      }.
 
 -spec get_app(atom() | ne_binary()) -> {atom(), string(), string()} | 'undefined'.

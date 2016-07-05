@@ -3,12 +3,12 @@
 -include("kz_data.hrl").
 
 -export_type([db_create_options/0
-              ,data_error/0
-              ,data_errors/0
-              ,get_results_return/0
-              ,db_classifications/0
-              ,view_options/0
-              ,docid/0, docids/0
+	     ,data_error/0
+	     ,data_errors/0
+	     ,get_results_return/0
+	     ,db_classifications/0
+	     ,view_options/0
+	     ,docid/0, docids/0
              ]).
 
 -export([trace_file/0, trace_file/1, trace_file/2, trace_file/3]).
@@ -17,7 +17,7 @@
 -define(DEFAULT_TRACE_OUTPUT_FORMAT, [time," [",severity,"] |", from_app,  "|", {callid, <<"0000000000">>}, "|", mod, ":" , func, ":", line, " (",pid, ") ", message, "\n"]).
 -define(DEFAULT_TRACE_PROPS,
         [{formatter, lager_default_formatter}
-         ,{formatter_config, ?DEFAULT_TRACE_OUTPUT_FORMAT}
+	,{formatter_config, ?DEFAULT_TRACE_OUTPUT_FORMAT}
         ]
        ).
 

@@ -29,20 +29,20 @@
 -export([sip_users_from_device_ids/2]).
 
 -export([caller_belongs_to_group/2
-         ,maybe_belongs_to_group/3
-         ,caller_belongs_to_user/2
-         ,find_endpoints/3
-         ,find_channels/2
-         ,find_user_endpoints/3
-         ,find_group_endpoints/2
-         ,check_value_of_fields/4
-         ,get_timezone/2, account_timezone/1
+	,maybe_belongs_to_group/3
+	,caller_belongs_to_user/2
+	,find_endpoints/3
+	,find_channels/2
+	,find_user_endpoints/3
+	,find_group_endpoints/2
+	,check_value_of_fields/4
+	,get_timezone/2, account_timezone/1
         ]).
 
 -export([wait_for_noop/2]).
 -export([start_task/3]).
 -export([start_event_listener/3
-         ,event_listener_name/2
+	,event_listener_name/2
         ]).
 
 -include("callflow.hrl").
@@ -69,7 +69,7 @@ presence_probe(JObj, _Props) ->
     Username = kz_json:get_value(<<"Username">>, JObj),
     Realm = kz_json:get_value(<<"Realm">>, JObj),
     ProbeRepliers = [fun manual_presence/2
-                     ,fun presence_parking_slot/2
+		    ,fun presence_parking_slot/2
                     ],
     lists:takewhile(fun(Fun) ->
                             Fun(Username, Realm) =:= 'not_found'
@@ -149,8 +149,8 @@ manual_presence_resp(Username, Realm, JObj) ->
         'undefined' -> 'not_found';
         State ->
             PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
-                              ,{<<"State">>, State}
-                              ,{<<"Call-ID">>, kz_util:to_hex_binary(crypto:hash(md5, PresenceId))}
+			     ,{<<"State">>, State}
+			     ,{<<"Call-ID">>, kz_util:to_hex_binary(crypto:hash(md5, PresenceId))}
                               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ],
             kapps_util:amqp_pool_send(PresenceUpdate, fun kapi_presence:publish_update/1)
@@ -243,7 +243,7 @@ unsolicited_owner_mwi_update(_AccountDb, _OwnerId, 'false') ->
     lager:debug("unsolicitated mwi updated disabled : ~s", [_AccountDb]);
 unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
     ViewOptions = [{'key', [OwnerId, <<"device">>]}
-                   ,'include_docs'
+		  ,'include_docs'
                   ],
     case kz_datamgr:get_results(AccountDb, <<"kz_attributes/owned">>, ViewOptions) of
         {'ok', JObjs} ->
@@ -251,7 +251,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
             AccountId = kz_util:format_account_id(AccountDb, 'raw'),
             lists:foreach(
               fun(JObj) -> maybe_send_mwi_update(JObj, AccountId, New, Saved) end
-              ,JObjs
+			 ,JObjs
              );
         {'error', _R}=E ->
             lager:warning("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
@@ -334,9 +334,9 @@ send_mwi_update(New, Saved, Username, Realm) ->
 -spec send_mwi_update(vm_count(), vm_count(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 send_mwi_update(New, Saved, Username, Realm, JObj) ->
     Command = [{<<"To">>, <<Username/binary, "@", Realm/binary>>}
-               ,{<<"Messages-New">>, New}
-               ,{<<"Messages-Saved">>, Saved}
-               ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
+	      ,{<<"Messages-New">>, New}
+	      ,{<<"Messages-Saved">>, Saved}
+	      ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     lager:debug("updating MWI for ~s@~s (~b/~b)", [Username, Realm, New, Saved]),
@@ -446,7 +446,7 @@ endpoint_id_by_sip_username(AccountDb, Username) ->
     case kz_cache:peek_local(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(AccountDb, Username)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
-           get_endpoint_id_by_sip_username(AccountDb, Username)
+	    get_endpoint_id_by_sip_username(AccountDb, Username)
     end.
 
 -spec get_endpoint_id_by_sip_username(ne_binary(), ne_binary()) ->
@@ -616,9 +616,9 @@ load_system_dialplans(Names) ->
                                    fun(({ne_binary(), kz_json:object()}, kz_json:object()) -> kz_json:object()).
 fold_system_dialplans(Names) ->
     fun({Key, Val}, Acc) when is_list(Val) ->
-        lists:foldl(fun(ValElem, A) -> maybe_dialplan_suits({Key, ValElem}, A, Names) end, Acc, Val);
+	    lists:foldl(fun(ValElem, A) -> maybe_dialplan_suits({Key, ValElem}, A, Names) end, Acc, Val);
        ({Key, Val}, Acc) ->
-        maybe_dialplan_suits({Key, Val}, Acc, Names)
+	    maybe_dialplan_suits({Key, Val}, Acc, Names)
     end.
 
 -spec maybe_dialplan_suits({ne_binary(), kz_json:object()} ,kz_json:object(), ne_binaries()) -> kz_json:object().
@@ -641,14 +641,14 @@ maybe_system_dialplan_name({Key, Val}, Acc, Names) ->
 
 -spec index_of(ne_binary(), list()) -> api_integer().
 index_of(Value, List) ->
-   Map = lists:zip(List, lists:seq(1, length(List))),
-   case dict:find(Value, dict:from_list(Map)) of
-      {ok, Index} -> Index;
-      error -> 'undefined'
-   end.
+    Map = lists:zip(List, lists:seq(1, length(List))),
+    case dict:find(Value, dict:from_list(Map)) of
+	{ok, Index} -> Index;
+	error -> 'undefined'
+    end.
 
 -spec start_event_listener(kapps_call:call(), atom(), list()) ->
-          {'ok', pid()} | {'error', any()}.
+				  {'ok', pid()} | {'error', any()}.
 start_event_listener(Call, Mod, Args) ->
     lager:debug("starting evt listener ~s", [Mod]),
     Name = event_listener_name(Call, Mod),
@@ -713,13 +713,13 @@ find_channels(Usernames, Call) ->
     Realm = kz_util:get_account_realm(kapps_call:account_id(Call)),
     lager:debug("finding channels for realm ~s, usernames ~p", [Realm, Usernames]),
     Req = [{<<"Realm">>, Realm}
-           ,{<<"Usernames">>, Usernames}
+	  ,{<<"Usernames">>, Usernames}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kapps_util:amqp_pool_request(Req
-                                       ,fun kapi_call:publish_query_user_channels_req/1
-                                       ,fun kapi_call:query_user_channels_resp_v/1
-                                      )
+				     ,fun kapi_call:publish_query_user_channels_req/1
+				     ,fun kapi_call:query_user_channels_resp_v/1
+				     )
     of
         {'ok', Resp} -> kz_json:get_value(<<"Channels">>, Resp, []);
         {'error', _E} ->
@@ -733,7 +733,7 @@ check_value_of_fields(Perms, Def, Data, Call) ->
     case lists:dropwhile(fun({K, _F}) ->
                                  kz_json:get_value(K, Data) =:= 'undefined'
                          end
-                         ,Perms
+			,Perms
                         )
     of
         [] -> Def;
@@ -743,8 +743,8 @@ check_value_of_fields(Perms, Def, Data, Call) ->
 -spec sip_users_from_device_ids(ne_binaries(), kapps_call:call()) -> ne_binaries().
 sip_users_from_device_ids(EndpointIds, Call) ->
     lists:foldl(fun(EID, Acc) -> sip_users_from_device_id(EID, Acc, Call) end
-                ,[]
-                ,EndpointIds
+	       ,[]
+	       ,EndpointIds
                ).
 
 -spec sip_users_from_device_id(ne_binary(), ne_binaries(), kapps_call:call()) ->

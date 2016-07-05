@@ -9,20 +9,20 @@
 -module(kzd_alert).
 
 -export([new/0
-         ,type/0
-         ,id/1
-         ,fetch/1
+	,type/0
+	,id/1
+	,fetch/1
         ]).
 
 -export([title/0, title/1, title/2, set_title/2
-         ,category/0 ,category/1, category/2, set_category/2
-         ,message/0, message/1, message/2, set_message/2
-         ,metadata/0, metadata/1, metadata/2, set_metadata/2
-         ,level/0, level/1, level/2, set_level/2
-         ,from/0, from/1, from/2, set_from/2
-         ,to/0, to/1, to/2, set_to/2
-         ,expiration_date/0, expiration_date/1, expiration_date/2, set_expiration_date/2
-         ,expired/1
+	,category/0 ,category/1, category/2, set_category/2
+	,message/0, message/1, message/2, set_message/2
+	,metadata/0, metadata/1, metadata/2, set_metadata/2
+	,level/0, level/1, level/2, set_level/2
+	,from/0, from/1, from/2, set_from/2
+	,to/0, to/1, to/2, set_to/2
+	,expiration_date/0, expiration_date/1, expiration_date/2, set_expiration_date/2
+	,expired/1
         ]).
 
 -define(ID, <<"_id">>).
@@ -74,7 +74,7 @@ id(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch(api_binary()) -> {'ok', doc()} |
-                            {'error', any()}.
+			     {'error', any()}.
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
 fetch(<<_/binary>> = AlertId) ->

@@ -9,7 +9,7 @@
 -module(kz_media_proxy_util).
 
 -export([stream/6
-         ,get_shout_header/2
+	,get_shout_header/2
         ]).
 
 -include("kazoo_media.hrl").
@@ -67,7 +67,7 @@ the_header({K, H}) ->
 -spec get_shout_header(ne_binary(), ne_binary()) -> shout_header().
 get_shout_header(MediaName, Url) ->
     Bin = list_to_binary(["StreamTitle='",MediaName
-                          ,"';StreamUrl='",Url,"';"
+			 ,"';StreamUrl='",Url,"';"
                          ]),
     Nblocks = ((byte_size(Bin) - 1) div 16) + 1,
     NPad = Nblocks*16 - byte_size(Bin),

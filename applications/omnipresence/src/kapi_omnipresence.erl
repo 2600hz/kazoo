@@ -9,24 +9,24 @@
 -module(kapi_omnipresence).
 
 -export([subscribe/1, subscribe_v/1
-         ,update/1, update_v/1
-         ,notify/1, notify_v/1
-         ,search_req/1, search_req_v/1
-         ,search_partial_resp/1, search_partial_resp_v/1
-         ,search_resp/1, search_resp_v/1
+	,update/1, update_v/1
+	,notify/1, notify_v/1
+	,search_req/1, search_req_v/1
+	,search_partial_resp/1, search_partial_resp_v/1
+	,search_resp/1, search_resp_v/1
         ]).
 
 -export([publish_subscribe/1, publish_subscribe/2
-         ,publish_update/2, publish_update/3
-         ,publish_notify/1, publish_notify/2
-         ,publish_search_req/1, publish_search_req/2
-         ,publish_search_partial_resp/2, publish_search_partial_resp/3
-         ,publish_search_resp/2, publish_search_resp/3
+	,publish_update/2, publish_update/3
+	,publish_notify/1, publish_notify/2
+	,publish_search_req/1, publish_search_req/2
+	,publish_search_partial_resp/2, publish_search_partial_resp/3
+	,publish_search_resp/2, publish_search_resp/3
         ]).
 
 -export([bind_q/2
-         ,unbind_q/2
-         ,declare_exchanges/0
+	,unbind_q/2
+	,declare_exchanges/0
         ]).
 
 -include("omnipresence.hrl").
@@ -41,30 +41,30 @@
 
 -define(SUBSCRIBE_HEADERS, [<<"User">>, <<"Expires">>]).
 -define(OPTIONAL_SUBSCRIBE_HEADERS, [<<"Queue">>, <<"From">>
-                                     ,<<"Event-Package">>, <<"Call-ID">>
-                                     ,<<"From-Tag">>, <<"To-Tag">>
-                                     ,<<"Contact">>
+				    ,<<"Event-Package">>, <<"Call-ID">>
+				    ,<<"From-Tag">>, <<"To-Tag">>
+				    ,<<"Contact">>
                                     ]).
 -define(SUBSCRIBE_VALUES, [{<<"Event-Category">>, <<"presence">>}
-                           ,{<<"Event-Name">>, <<"subscription">>}
+			  ,{<<"Event-Name">>, <<"subscription">>}
                           ]).
 -define(SUBSCRIBE_TYPES, [{<<"Expires">>, fun(V) -> is_integer(kz_util:to_integer(V)) end}]).
 
 -define(UPDATE_HEADERS, [<<"To">>, <<"From">>]).
 -define(OPTIONAL_UPDATE_HEADERS, [<<"Call-ID">>, <<"Direction">>
-                                  ,<<"Event-Package">>, <<"State">>
-                                  ,<<"From-Tag">>, <<"To-Tag">>
-                                  ,<<"From-User">>, <<"From-Realm">>, <<"From-URI">>
-                                  ,<<"To-User">>, <<"To-Realm">>, <<"To-URI">>
-                                  ,<<"Messages-Waiting">>, <<"Messages-New">>
-                                  ,<<"Messages-Saved">>, <<"Messages-Urgent">>
-                                  ,<<"Messages-Urgent-Saved">>, <<"Message-Account">>
-                                  ,<<"Expires">>, <<"Flush-Level">>
-                                  ,<<"Presentity">>, <<"Presentity-User">>, <<"Presentity-Realm">>
-                                  ,<<"Target-Call-ID">>, <<"Switch-URI">>, <<"Call-Cookie">>
+				 ,<<"Event-Package">>, <<"State">>
+				 ,<<"From-Tag">>, <<"To-Tag">>
+				 ,<<"From-User">>, <<"From-Realm">>, <<"From-URI">>
+				 ,<<"To-User">>, <<"To-Realm">>, <<"To-URI">>
+				 ,<<"Messages-Waiting">>, <<"Messages-New">>
+				 ,<<"Messages-Saved">>, <<"Messages-Urgent">>
+				 ,<<"Messages-Urgent-Saved">>, <<"Message-Account">>
+				 ,<<"Expires">>, <<"Flush-Level">>
+				 ,<<"Presentity">>, <<"Presentity-User">>, <<"Presentity-Realm">>
+				 ,<<"Target-Call-ID">>, <<"Switch-URI">>, <<"Call-Cookie">>
                                  ]).
 -define(UPDATE_VALUES, [{<<"Event-Category">>, <<"presence">>}
-                        ,{<<"Event-Name">>, <<"update">>}
+		       ,{<<"Event-Name">>, <<"update">>}
                        ]).
 -define(UPDATE_TYPES, [
                        {<<"State">>, fun(A) -> lists:member(A, kapi_presence:presence_states()) end}
@@ -72,11 +72,11 @@
 
 -define(NOTIFY_HEADERS, [<<"To">>, <<"From">>]).
 -define(OPTIONAL_NOTIFY_HEADERS, [<<"Call-ID">>, <<"Event-Package">>
-                                  ,<<"From-Tag">>, <<"To-Tag">>
-                                  ,<<"Body">>
+				 ,<<"From-Tag">>, <<"To-Tag">>
+				 ,<<"Body">>
                                  ]).
 -define(NOTIFY_VALUES, [{<<"Event-Category">>, <<"presence">>}
-                        ,{<<"Event-Name">>, <<"notify">>}
+		       ,{<<"Event-Name">>, <<"notify">>}
                        ]).
 -define(NOTIFY_TYPES, []).
 
@@ -84,8 +84,8 @@
 -define(SEARCH_REQ_HEADERS, [<<"Realm">>, <<"Scope">>]).
 -define(OPTIONAL_SEARCH_REQ_HEADERS, [<<"Username">>, <<"Event-Package">>]).
 -define(SEARCH_REQ_VALUES, [{<<"Event-Category">>, <<"presence">>}
-                            ,{<<"Event-Name">>, <<"search_req">>}
-                            ,{<<"Scope">>, [<<"presentity">>, <<"watchers">>]}
+			   ,{<<"Event-Name">>, <<"search_req">>}
+			   ,{<<"Scope">>, [<<"presentity">>, <<"watchers">>]}
                            ]).
 -define(SEARCH_REQ_TYPES, []).
 
@@ -93,15 +93,15 @@
 -define(SEARCH_PARTIAL_RESP_HEADERS, [<<"Subscriptions">>]).
 -define(OPTIONAL_SEARCH_PARTIAL_RESP_HEADERS, []).
 -define(SEARCH_PARTIAL_RESP_VALUES, [{<<"Event-Category">>, <<"presence">>}
-                                     ,{<<"Event-Name">>, <<"search_partial_resp">>}
-                            ]).
+				    ,{<<"Event-Name">>, <<"search_partial_resp">>}
+				    ]).
 -define(SEARCH_PARTIAL_RESP_TYPES, []).
 
 %% Search response for active subscriptions
 -define(SEARCH_RESP_HEADERS, []).
 -define(OPTIONAL_SEARCH_RESP_HEADERS, [<<"Subscriptions">>]).
 -define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"presence">>}
-                             ,{<<"Event-Name">>, <<"search_resp">>}
+			    ,{<<"Event-Name">>, <<"search_resp">>}
                             ]).
 -define(SEARCH_RESP_TYPES, []).
 
@@ -109,7 +109,7 @@
 -define(RESET_HEADERS, [<<"Realm">>, <<"Username">>]).
 -define(OPTIONAL_RESET_HEADERS, [<<"Event-Package">>]).
 -define(RESET_VALUES, [{<<"Event-Category">>, <<"presence">>}
-                       ,{<<"Event-Name">>, <<"reset">>}
+		      ,{<<"Event-Name">>, <<"reset">>}
                       ]).
 -define(RESET_TYPES, []).
 
@@ -283,33 +283,33 @@ bind_q(Queue, Props) ->
 
 bind_q(Queue, 'undefined', Props) ->
     amqp_util:bind_q_to_exchange(Queue
-                                 ,?SUBSCRIBE_RK(Props)
-                                 ,?DIALOGINFO_SUBS_EXCHANGE
+				,?SUBSCRIBE_RK(Props)
+				,?DIALOGINFO_SUBS_EXCHANGE
                                 ),
     amqp_util:bind_q_to_exchange(Queue
-                                 ,Queue
-                                 ,?DIALOGINFO_EXCHANGE
+				,Queue
+				,?DIALOGINFO_EXCHANGE
                                 ),
     amqp_util:bind_q_to_exchange(Queue
-                                 ,?NOTIFY_RK(Props)
-                                 ,?OMNIPRESENCE_EXCHANGE
+				,?NOTIFY_RK(Props)
+				,?OMNIPRESENCE_EXCHANGE
                                 );
 bind_q(Queue, ['subscribe'|Restrict], Props) ->
     amqp_util:bind_q_to_exchange(Queue
-                                 ,?SUBSCRIBE_RK(Props)
-                                 ,?DIALOGINFO_SUBS_EXCHANGE
+				,?SUBSCRIBE_RK(Props)
+				,?DIALOGINFO_SUBS_EXCHANGE
                                 ),
     bind_q(Queue, Restrict, Props);
 bind_q(Queue, ['update'|Restrict], Props) ->
     amqp_util:bind_q_to_exchange(Queue
-                                 ,Queue
-                                 ,?DIALOGINFO_EXCHANGE
+				,Queue
+				,?DIALOGINFO_EXCHANGE
                                 ),
     bind_q(Queue, Restrict, Props);
 bind_q(Queue, ['notify'|Restrict], Props) ->
     amqp_util:bind_q_to_exchange(Queue
-                                 ,?NOTIFY_RK(Props)
-                                 ,?OMNIPRESENCE_EXCHANGE
+				,?NOTIFY_RK(Props)
+				,?OMNIPRESENCE_EXCHANGE
                                 ),
     bind_q(Queue, Restrict, Props);
 bind_q(Queue, [_|Restrict], Props) ->
@@ -323,33 +323,33 @@ unbind_q(Queue, Props) ->
 
 unbind_q(Queue, 'undefined', Props) ->
     amqp_util:unbind_q_from_exchange(Queue
-                                     ,?SUBSCRIBE_RK(Props)
-                                     ,?DIALOGINFO_SUBS_EXCHANGE
+				    ,?SUBSCRIBE_RK(Props)
+				    ,?DIALOGINFO_SUBS_EXCHANGE
                                     ),
     amqp_util:unbind_q_from_exchange(Queue
-                                     ,Queue
-                                     ,?DIALOGINFO_EXCHANGE
+				    ,Queue
+				    ,?DIALOGINFO_EXCHANGE
                                     ),
     amqp_util:unbind_q_from_exchange(Queue
-                                     ,?NOTIFY_RK(Props)
-                                     ,?OMNIPRESENCE_EXCHANGE
+				    ,?NOTIFY_RK(Props)
+				    ,?OMNIPRESENCE_EXCHANGE
                                     );
 unbind_q(Queue, ['subscribe'|Restrict], Props) ->
     amqp_util:unbind_q_from_exchange(Queue
-                                     ,?SUBSCRIBE_RK(Props)
-                                     ,?DIALOGINFO_SUBS_EXCHANGE
+				    ,?SUBSCRIBE_RK(Props)
+				    ,?DIALOGINFO_SUBS_EXCHANGE
                                     ),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['update'|Restrict], Props) ->
     amqp_util:unbind_q_from_exchange(Queue
-                                     ,Queue
-                                     ,?DIALOGINFO_EXCHANGE
+				    ,Queue
+				    ,?DIALOGINFO_EXCHANGE
                                     ),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['notify'|Restrict], Props) ->
     amqp_util:unbind_q_from_exchange(Queue
-                                     ,?NOTIFY_RK(Props)
-                                     ,?OMNIPRESENCE_EXCHANGE
+				    ,?NOTIFY_RK(Props)
+				    ,?OMNIPRESENCE_EXCHANGE
                                     ),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, [_|Restrict], Props) ->

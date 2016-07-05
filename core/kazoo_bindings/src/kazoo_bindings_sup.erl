@@ -10,7 +10,7 @@
 -behaviour(supervisor).
 
 -export([start_link/0
-         ,stop/0
+	,stop/0
         ]).
 -export([init/1]).
 
@@ -22,14 +22,14 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER(?ID)
-                   ,?WORKER_ARGS('kazoo_etsmgr_srv'
-                                ,[
-                                  [{'table_id', kazoo_bindings:table_id()}
-                                  ,{'table_options', kazoo_bindings:table_options()}
-                                  ,{'find_me_function', fun kazoo_bindings:find_me_function/0}
-                                  ,{'gift_data', kazoo_bindings:gift_data()}
-                                  ]
-                                 ])
+		  ,?WORKER_ARGS('kazoo_etsmgr_srv'
+			       ,[
+				 [{'table_id', kazoo_bindings:table_id()}
+				 ,{'table_options', kazoo_bindings:table_options()}
+				 ,{'find_me_function', fun kazoo_bindings:find_me_function/0}
+				 ,{'gift_data', kazoo_bindings:gift_data()}
+				 ]
+				])
                   ]).
 
 %% ===================================================================

@@ -25,9 +25,9 @@ handle_req(JObj, _Props) ->
 send_response(Props, Q, MessageId) ->
     JObj = kz_json:from_list(
              [{<<"Chunks">>, chunks_as_json(Props)}
-              ,{<<"Dialog-Entities">>, ci_chunk:get_dialog_entities(get_chunks(Props))}
-              ,{<<"Analysis">>, analysis_as_json(Props)}
-              ,{<<"Msg-ID">>, MessageId}
+	     ,{<<"Dialog-Entities">>, ci_chunk:get_dialog_entities(get_chunks(Props))}
+	     ,{<<"Analysis">>, analysis_as_json(Props)}
+	     ,{<<"Msg-ID">>, MessageId}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]
             ),

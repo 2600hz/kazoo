@@ -83,7 +83,7 @@ insert_decimal(0, S) ->
 insert_decimal(Place, S) when Place > 0 ->
     L = length(S),
     case Place - L of
-         0 ->
+	0 ->
             S ++ ".0";
         N when N < 0 ->
             {S0, S1} = lists:split(L + N, S),
@@ -322,7 +322,7 @@ digits_test_() ->
                    digits(LargeNorm))
     ,?_assertEqual(LargeNorm,
                    list_to_float(digits(LargeNorm)))
-    %% issue #10 - mochinum:frexp(math:pow(2, -1074)).
+     %% issue #10 - mochinum:frexp(math:pow(2, -1074)).
     ,?_assertEqual("5.0e-324",
                    digits(math:pow(2, -1074)))
     ].
@@ -346,15 +346,15 @@ frexp_test_() ->
 
     %% zero
     [?_assertEqual({0.0, 0}, frexp(0.0))
-    %% one
+     %% one
     ,?_assertEqual({0.5, 1}, frexp(1.0))
-    %% negative one
+     %% negative one
     ,?_assertEqual({-0.5, 1}, frexp(-1.0))
     ,?_assertEqual({0.5, -1073}, frexp(SmallDenorm))
     ,?_assertEqual({0.99999999999999978, -1022}, frexp(BigDenorm))
     ,?_assertEqual({0.5, -1021}, frexp(SmallNorm))
     ,?_assertEqual({0.99999999999999989, 1024}, frexp(LargeNorm))
-    %% issue #10 - mochinum:frexp(math:pow(2, -1074)).
+     %% issue #10 - mochinum:frexp(math:pow(2, -1074)).
     ,?_assertEqual({0.5, -1073}, frexp(math:pow(2, -1074)))
     ].
 

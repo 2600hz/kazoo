@@ -9,7 +9,7 @@
 -module(teletype_new_user).
 
 -export([init/0
-         ,handle_req/2
+	,handle_req/2
         ]).
 
 -include("teletype.hrl").
@@ -18,10 +18,10 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-        ,kz_json:from_list(
-           [?MACRO_VALUE(<<"user.password">>, <<"password">>, <<"Password">>, <<"Password">>)
-            | ?USER_MACROS ++ ?ACCOUNT_MACROS
-           ])
+       ,kz_json:from_list(
+	  [?MACRO_VALUE(<<"user.password">>, <<"password">>, <<"Password">>, <<"Password">>)
+	   | ?USER_MACROS ++ ?ACCOUNT_MACROS
+	  ])
        ).
 
 -define(TEMPLATE_TEXT, <<"Welcome {{user.first_name}} {{user.last_name}}.\n\nYour password is: {{user.password}}\n Please make sure your change it soon!">>).
@@ -40,17 +40,17 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                               ,{'text', ?TEMPLATE_TEXT}
-                                               ,{'html', ?TEMPLATE_HTML}
-                                               ,{'subject', ?TEMPLATE_SUBJECT}
-                                               ,{'category', ?TEMPLATE_CATEGORY}
-                                               ,{'friendly_name', ?TEMPLATE_NAME}
-                                               ,{'to', ?TEMPLATE_TO}
-                                               ,{'from', ?TEMPLATE_FROM}
-                                               ,{'cc', ?TEMPLATE_CC}
-                                               ,{'bcc', ?TEMPLATE_BCC}
-                                               ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                              ]).
+					  ,{'text', ?TEMPLATE_TEXT}
+					  ,{'html', ?TEMPLATE_HTML}
+					  ,{'subject', ?TEMPLATE_SUBJECT}
+					  ,{'category', ?TEMPLATE_CATEGORY}
+					  ,{'friendly_name', ?TEMPLATE_NAME}
+					  ,{'to', ?TEMPLATE_TO}
+					  ,{'from', ?TEMPLATE_FROM}
+					  ,{'cc', ?TEMPLATE_CC}
+					  ,{'bcc', ?TEMPLATE_BCC}
+					  ,{'reply_to', ?TEMPLATE_REPLY_TO}
+					  ]).
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
@@ -75,9 +75,9 @@ do_handle_req(DataJObj) ->
     ReqData =
         kz_json:set_values(
           [{<<"user">>, kz_json:set_value(<<"password">>, Password, UserJObj)}
-           ,{<<"to">>, [kz_json:get_ne_value(<<"email">>, UserJObj)]}
+	  ,{<<"to">>, [kz_json:get_ne_value(<<"email">>, UserJObj)]}
           ]
-          ,DataJObj
+			  ,DataJObj
          ),
 
     case teletype_util:is_preview(DataJObj) of
@@ -88,8 +88,8 @@ do_handle_req(DataJObj) ->
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
-              ,{<<"account">>, teletype_util:account_params(DataJObj)}
-              ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
+	     ,{<<"account">>, teletype_util:account_params(DataJObj)}
+	     ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
              ],
 
     %% Populate templates
@@ -103,7 +103,7 @@ process_req(DataJObj) ->
     Subject =
         teletype_util:render_subject(
           kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
-          ,Macros
+				    ,Macros
          ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),

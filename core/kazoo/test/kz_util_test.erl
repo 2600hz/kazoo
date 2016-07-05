@@ -35,69 +35,69 @@
 
 prop_to_integer() ->
     ?FORALL({F, I}
-            ,{float(), integer()}
-            ,begin
-                 Is = [[Fun(N), N]
-                        || Fun <- [fun kz_util:to_list/1
-                                   ,fun kz_util:to_binary/1
-                                  ],
-                           N <- [F, I]
-                      ],
-                 lists:all(fun([FN, N]) ->
-                                   erlang:is_integer(kz_util:to_integer(N))
-                                       andalso erlang:is_integer(kz_util:to_integer(FN))
-                           end
-                           ,Is
-                          )
-             end).
+	   ,{float(), integer()}
+	   ,begin
+		Is = [[Fun(N), N]
+		      || Fun <- [fun kz_util:to_list/1
+				,fun kz_util:to_binary/1
+				],
+			 N <- [F, I]
+		     ],
+		lists:all(fun([FN, N]) ->
+				  erlang:is_integer(kz_util:to_integer(N))
+				      andalso erlang:is_integer(kz_util:to_integer(FN))
+			  end
+			 ,Is
+			 )
+	    end).
 
 prop_to_number() ->
     ?FORALL({F, I}
-            ,{float(), integer()}
-            ,begin
-                 Is = [[Fun(N), N]
-                       || Fun <- [fun kz_util:to_list/1
-                                  ,fun kz_util:to_binary/1
-                                 ],
-                          N <- [F, I]
-                      ],
-                 lists:all(fun([FN, N]) ->
-                                   erlang:is_number(kz_util:to_number(N))
-                                       andalso erlang:is_number(kz_util:to_number(FN))
-                           end
-                           ,Is
-                          )
-             end).
+	   ,{float(), integer()}
+	   ,begin
+		Is = [[Fun(N), N]
+		      || Fun <- [fun kz_util:to_list/1
+				,fun kz_util:to_binary/1
+				],
+			 N <- [F, I]
+		     ],
+		lists:all(fun([FN, N]) ->
+				  erlang:is_number(kz_util:to_number(N))
+				      andalso erlang:is_number(kz_util:to_number(FN))
+			  end
+			 ,Is
+			 )
+	    end).
 
 prop_to_float() ->
     ?FORALL({F, I}
-            ,{float(), integer()}
-            ,begin
-                 Fs = [[Fun(N), N]
-                       || Fun <- [fun kz_util:to_list/1
-                                  ,fun kz_util:to_binary/1
-                                 ],
-                          N <- [F, I]
-                      ],
-                 lists:all(fun([FN, N]) ->
-                                   erlang:is_float(kz_util:to_float(N))
-                                       andalso erlang:is_float(kz_util:to_float(FN))
-                           end
-                           ,Fs
-                          )
-             end).
+	   ,{float(), integer()}
+	   ,begin
+		Fs = [[Fun(N), N]
+		      || Fun <- [fun kz_util:to_list/1
+				,fun kz_util:to_binary/1
+				],
+			 N <- [F, I]
+		     ],
+		lists:all(fun([FN, N]) ->
+				  erlang:is_float(kz_util:to_float(N))
+				      andalso erlang:is_float(kz_util:to_float(FN))
+			  end
+			 ,Fs
+			 )
+	    end).
 
 prop_to_list() ->
     ?FORALL({A, L, B, I, F}
-            ,{atom(), list(), binary(), integer(), float()}
-            ,lists:all(fun(X) -> is_list(kz_util:to_list(X)) end, [A, L, B, I, F])
+	   ,{atom(), list(), binary(), integer(), float()}
+	   ,lists:all(fun(X) -> is_list(kz_util:to_list(X)) end, [A, L, B, I, F])
            ).
 
 %%-type iolist() :: maybe_improper_list(char() | binary() | iolist(), binary() | []).
 prop_to_binary() ->
     ?FORALL({A, L, B, I, F, IO}
-            ,{atom(), list(range(0,255)), binary(), integer(), float(), iolist()}
-            ,lists:all(fun(X) -> is_binary(kz_util:to_binary(X)) end, [A, L, B, I, F, IO])
+	   ,{atom(), list(range(0,255)), binary(), integer(), float(), iolist()}
+	   ,lists:all(fun(X) -> is_binary(kz_util:to_binary(X)) end, [A, L, B, I, F, IO])
            ).
 
 prop_iolist_t() ->
@@ -111,51 +111,51 @@ prop_to_from_hex() ->
 
 prop_pretty_print_elapsed_s() ->
     ?FORALL({D, H, M, S}
-            ,{non_neg_integer(), range(0,23), range(0, 59), range(0,59)}
-            ,begin
-                 Seconds = (D * ?SECONDS_IN_DAY) + (H * ?SECONDS_IN_HOUR) + (M * ?SECONDS_IN_MINUTE) + S,
-                 Expected = lists:foldl(fun({0, "s"}, "") ->
-                                                ["s", <<"0">>];
-                                           ({0, _}, Acc) -> Acc;
-                                           ({N, Unit}, Acc) -> [Unit, kz_util:to_binary(N) | Acc]
-                                        end
-                                        ,[]
-                                        ,[{D, "d"}
-                                          ,{H, "h"}
-                                          ,{M, "m"}
-                                          ,{S, "s"}
-                                         ]),
-                 Result = kz_util:pretty_print_elapsed_s(Seconds),
-                 Result =:= iolist_to_binary(lists:reverse(Expected))
-             end).
+	   ,{non_neg_integer(), range(0,23), range(0, 59), range(0,59)}
+	   ,begin
+		Seconds = (D * ?SECONDS_IN_DAY) + (H * ?SECONDS_IN_HOUR) + (M * ?SECONDS_IN_MINUTE) + S,
+		Expected = lists:foldl(fun({0, "s"}, "") ->
+					       ["s", <<"0">>];
+					  ({0, _}, Acc) -> Acc;
+					  ({N, Unit}, Acc) -> [Unit, kz_util:to_binary(N) | Acc]
+				       end
+				      ,[]
+				      ,[{D, "d"}
+				       ,{H, "h"}
+				       ,{M, "m"}
+				       ,{S, "s"}
+				       ]),
+		Result = kz_util:pretty_print_elapsed_s(Seconds),
+		Result =:= iolist_to_binary(lists:reverse(Expected))
+	    end).
 
 
 prop_pretty_print_bytes() ->
     ?FORALL({T, G, M, K, B}
-            ,{range(0,3), range(0,1023), range(0,1023), range(0,1023), range(0,1023)}
-            ,begin
-                 Bytes = (T * ?BYTES_T) + (G * ?BYTES_G) + (M * ?BYTES_M) + (K * ?BYTES_K) + B,
-                 Expected = iolist_to_binary(
-                              lists:reverse(
-                                lists:foldl(fun({0, "B"}, "") ->
-                                                    ["B", <<"0">>];
-                                               ({0, _}, Acc) -> Acc;
-                                               ({N, Unit}, Acc) -> [Unit, kz_util:to_binary(N) | Acc]
-                                            end
-                                           ,[]
-                                           ,[{T, "T"}
-                                            ,{G, "G"}
-                                            ,{M, "M"}
-                                            ,{K, "K"}
-                                            ,{B, "B"}
-                                            ])
-                               )
-                             ),
-                 Result = kz_util:pretty_print_bytes(Bytes),
-                 ?WHENFAIL(io:format("~pT ~pG ~pM ~pK ~pB (~pb): ~p =:= ~p~n", [T, G, M, K, B, Bytes, Result, Expected])
-                          ,Result =:= Expected
-                          )
-             end).
+	   ,{range(0,3), range(0,1023), range(0,1023), range(0,1023), range(0,1023)}
+	   ,begin
+		Bytes = (T * ?BYTES_T) + (G * ?BYTES_G) + (M * ?BYTES_M) + (K * ?BYTES_K) + B,
+		Expected = iolist_to_binary(
+			     lists:reverse(
+			       lists:foldl(fun({0, "B"}, "") ->
+						   ["B", <<"0">>];
+					      ({0, _}, Acc) -> Acc;
+					      ({N, Unit}, Acc) -> [Unit, kz_util:to_binary(N) | Acc]
+					   end
+					  ,[]
+					  ,[{T, "T"}
+					   ,{G, "G"}
+					   ,{M, "M"}
+					   ,{K, "K"}
+					   ,{B, "B"}
+					   ])
+			      )
+			    ),
+		Result = kz_util:pretty_print_bytes(Bytes),
+		?WHENFAIL(io:format("~pT ~pG ~pM ~pK ~pB (~pb): ~p =:= ~p~n", [T, G, M, K, B, Bytes, Result, Expected])
+			 ,Result =:= Expected
+			 )
+	    end).
 
 proper_test_() ->
     {"Runs the module's PropEr tests during eunit testing",
@@ -317,19 +317,19 @@ suffix_binary_test_() ->
 
 rfc1036_test_() ->
     Tests = [{ {{2015,4,7},{1,3,2}}, <<"Tue, 07 Apr 2015 01:03:02 GMT">>}
-             ,{ {{2015,12,12},{12,13,12}}, <<"Sat, 12 Dec 2015 12:13:12 GMT">>}
-             ,{ 63595733389, <<"Wed, 08 Apr 2015 17:29:49 GMT">>}
+	    ,{ {{2015,12,12},{12,13,12}}, <<"Sat, 12 Dec 2015 12:13:12 GMT">>}
+	    ,{ 63595733389, <<"Wed, 08 Apr 2015 17:29:49 GMT">>}
             ],
     [?_assertEqual(Expected, kz_util:rfc1036(Date))
-    || {Date, Expected} <- Tests].
+     || {Date, Expected} <- Tests].
 
 iso8601_test_() ->
     Tests = [{ {{2015,4,7},{1,3,2}}, <<"2015-04-07">>}
-             ,{ {{2015,12,12},{12,13,12}}, <<"2015-12-12">>}
-             ,{ 63595733389, <<"2015-04-08">>}
+	    ,{ {{2015,12,12},{12,13,12}}, <<"2015-12-12">>}
+	    ,{ 63595733389, <<"2015-04-08">>}
             ],
     [?_assertEqual(Expected, kz_util:iso8601(Date))
-    || {Date, Expected} <- Tests].
+     || {Date, Expected} <- Tests].
 
 resolve_uri_test_() ->
     RawPath = <<"http://pivot/script.php">>,
@@ -354,24 +354,24 @@ account_formats_test_() ->
     MODbUn = list_to_binary([AccountDbUn, "-", Year, Month]),
 
     Formats = [AccountId, AccountDbUn, AccountDbEn
-               ,MODbId, MODbEn, MODbUn
+	      ,MODbId, MODbEn, MODbUn
               ],
     %% Note: the whole point of exporting some of these is so that function_clause can be caught
     Funs = [{fun kz_util:format_account_id/1, AccountId}
-            ,{fun ?MODULE:format_account_id_raw/1, AccountId}
-            ,{fun ?MODULE:format_account_id_encoded/1, AccountDbEn}
-            ,{fun ?MODULE:format_account_id_unencoded/1, AccountDbUn}
-            ,{fun kz_util:format_account_db/1, AccountDbEn}
-            ,{fun kz_util:format_account_mod_id/1, MODbEn}
-            ,{fun ?MODULE:format_account_mod_id_from_year_month/1, MODbEn}
-            ,{fun ?MODULE:format_account_mod_id_from_now/1, MODbEn}
-            ,{fun kz_util:format_account_modb/1, MODbId}
-            ,{fun ?MODULE:format_account_modb_raw/1, MODbId}
-            ,{fun ?MODULE:format_account_modb_encoded/1, MODbEn}
-            ,{fun ?MODULE:format_account_modb_unencoded/1, MODbUn}
+	   ,{fun ?MODULE:format_account_id_raw/1, AccountId}
+	   ,{fun ?MODULE:format_account_id_encoded/1, AccountDbEn}
+	   ,{fun ?MODULE:format_account_id_unencoded/1, AccountDbUn}
+	   ,{fun kz_util:format_account_db/1, AccountDbEn}
+	   ,{fun kz_util:format_account_mod_id/1, MODbEn}
+	   ,{fun ?MODULE:format_account_mod_id_from_year_month/1, MODbEn}
+	   ,{fun ?MODULE:format_account_mod_id_from_now/1, MODbEn}
+	   ,{fun kz_util:format_account_modb/1, MODbId}
+	   ,{fun ?MODULE:format_account_modb_raw/1, MODbId}
+	   ,{fun ?MODULE:format_account_modb_encoded/1, MODbEn}
+	   ,{fun ?MODULE:format_account_modb_unencoded/1, MODbUn}
            ],
     [{format_title(Fun, Format, Expected)
-      ,format_assert(Fun, Format, Expected)
+     ,format_assert(Fun, Format, Expected)
      }
      || {Fun, Expected} <- Funs,
         Format <- Formats

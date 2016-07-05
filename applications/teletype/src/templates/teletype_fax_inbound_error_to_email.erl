@@ -9,7 +9,7 @@
 -module(teletype_fax_inbound_error_to_email).
 
 -export([init/0
-         ,handle_fax_inbound_error/2
+	,handle_fax_inbound_error/2
         ]).
 
 -include("teletype.hrl").
@@ -19,33 +19,33 @@
 -define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
 
 -define(TEMPLATE_MACROS
-        ,kz_json:from_list(
-           [?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the fax transmission">>)
-            ,?MACRO_VALUE(<<"fax.info">>, <<"fax_info">>, <<"Fax Info">>, <<"Fax Info">>)
-            ,?MACRO_VALUE(<<"fax.id">>, <<"fax_id">>, <<"Fax ID">>, <<"Fax ID">>)
-            ,?MACRO_VALUE(<<"fax.box_id">>, <<"fax_box_id">>, <<"FaxBox ID">>, <<"FaxBox ID">>)
-            ,?MACRO_VALUE(<<"fax.timestamp">>, <<"fax_timestamp">>, <<"Fax Timestamp">>, <<"Fax Timestamp">>)
-            ,?MACRO_VALUE(<<"fax.remote_station_id">>, <<"fax_remote_station_id">>, <<"Fax Remote Station ID">>, <<"Fax Remote Station ID">>)
-            ,?MACRO_VALUE(<<"error.call_info">>, <<"error_call_info">>, <<"Fax Call Error">>, <<"Fax Call Error">>)
-            ,?MACRO_VALUE(<<"error.fax_info">>, <<"error_fax_info">>, <<"Fax Processor Error">>, <<"Fax Processor Error">>)
-            | ?DEFAULT_CALL_MACROS
-           ]
-          )).
+       ,kz_json:from_list(
+	  [?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the fax transmission">>)
+	  ,?MACRO_VALUE(<<"fax.info">>, <<"fax_info">>, <<"Fax Info">>, <<"Fax Info">>)
+	  ,?MACRO_VALUE(<<"fax.id">>, <<"fax_id">>, <<"Fax ID">>, <<"Fax ID">>)
+	  ,?MACRO_VALUE(<<"fax.box_id">>, <<"fax_box_id">>, <<"FaxBox ID">>, <<"FaxBox ID">>)
+	  ,?MACRO_VALUE(<<"fax.timestamp">>, <<"fax_timestamp">>, <<"Fax Timestamp">>, <<"Fax Timestamp">>)
+	  ,?MACRO_VALUE(<<"fax.remote_station_id">>, <<"fax_remote_station_id">>, <<"Fax Remote Station ID">>, <<"Fax Remote Station ID">>)
+	  ,?MACRO_VALUE(<<"error.call_info">>, <<"error_call_info">>, <<"Fax Call Error">>, <<"Fax Call Error">>)
+	  ,?MACRO_VALUE(<<"error.fax_info">>, <<"error_fax_info">>, <<"Fax Processor Error">>, <<"Fax Processor Error">>)
+	   | ?DEFAULT_CALL_MACROS
+	  ]
+	 )).
 
 -define(TEMPLATE_TEXT, <<"Error : {% firstof error.fax_info error.call_info \"unknown error\" %}
 
 Caller ID: {% firstof caller_id.name fax.remote_station_id caller_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})
 
-Called To: {{to.user}} (Originally dialed number)
-Called On: {% firstof fax.timestamp|date:\"l, F j, Y \\a\\t H:i\" date_called|date:\"l, F j, Y \\a\\t H:i\" %}
-">>).
+	 Called To: {{to.user}} (Originally dialed number)
+	 Called On: {% firstof fax.timestamp|date:\"l, F j, Y \\a\\t H:i\" date_called|date:\"l, F j, Y \\a\\t H:i\" %}
+		  ">>).
 -define(TEMPLATE_HTML, <<"<html><body><h3>Error : {% firstof error.fax_info error.call_info \"unknown error\" %} </h3>
 <table>
-<tr><td>Caller ID</td><td>{% firstof caller_id.name fax.remote_station_id caller_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})</td></tr>
-<tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr>
-<tr><td>Call received</td><td>{% firstof fax.timestamp|date:\"l, F j, Y \\\\a\\\\t H:i\" date_called|date:\"l, F j, Y \\\\a\\\\t H:i\"%}</td></tr>
-</table>
-<p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p></body></html>
+			 <tr><td>Caller ID</td><td>{% firstof caller_id.name fax.remote_station_id caller_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})</td></tr>
+						  <tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr>
+						      <tr><td>Call received</td><td>{% firstof fax.timestamp|date:\"l, F j, Y \\\\a\\\\t H:i\" date_called|date:\"l, F j, Y \\\\a\\\\t H:i\"%}</td></tr>
+										   </table>
+										       <p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p></body></html>
 ">>).
 -define(TEMPLATE_SUBJECT, <<"Error Receiving Fax from {% firstof caller_id.name fax.remote_station_id caller_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
@@ -61,16 +61,16 @@ Called On: {% firstof fax.timestamp|date:\"l, F j, Y \\a\\t H:i\" date_called|da
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                           ,{'text', ?TEMPLATE_TEXT}
-                                           ,{'html', ?TEMPLATE_HTML}
-                                           ,{'subject', ?TEMPLATE_SUBJECT}
-                                           ,{'category', ?TEMPLATE_CATEGORY}
-                                           ,{'friendly_name', ?TEMPLATE_NAME}
-                                           ,{'to', ?TEMPLATE_TO}
-                                           ,{'from', ?TEMPLATE_FROM}
-                                           ,{'cc', ?TEMPLATE_CC}
-                                           ,{'bcc', ?TEMPLATE_BCC}
-                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
+					  ,{'text', ?TEMPLATE_TEXT}
+					  ,{'html', ?TEMPLATE_HTML}
+					  ,{'subject', ?TEMPLATE_SUBJECT}
+					  ,{'category', ?TEMPLATE_CATEGORY}
+					  ,{'friendly_name', ?TEMPLATE_NAME}
+					  ,{'to', ?TEMPLATE_TO}
+					  ,{'from', ?TEMPLATE_FROM}
+					  ,{'cc', ?TEMPLATE_CC}
+					  ,{'bcc', ?TEMPLATE_BCC}
+					  ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
 -spec handle_fax_inbound_error(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -102,7 +102,7 @@ handle_fax_inbound(DataJObj) ->
 
     Subject = teletype_util:render_subject(
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
-                ,Macros
+					  ,Macros
                ),
     lager:debug("rendered subject: ~s", [Subject]),
 
@@ -114,8 +114,8 @@ handle_fax_inbound(DataJObj) ->
         end,
 
     Emails = teletype_util:find_addresses(EmailsJObj
-                                          ,TemplateMetaJObj
-                                          ,?MOD_CONFIG_CAT
+					 ,TemplateMetaJObj
+					 ,?MOD_CONFIG_CAT
                                          ),
 
     EmailAttachements = teletype_fax_util:get_attachments(DataJObj, Macros),
@@ -130,41 +130,41 @@ error_data(DataJObj) ->
         'false' ->
             kz_json:from_list(
               [{<<"call_info">>, kz_json:get_value(<<"fax_error">>, DataJObj)}
-               ,{<<"fax_info">>, kz_json:get_value([<<"fax_info">>, <<"fax_result_text">>], DataJObj)}
+	      ,{<<"fax_info">>, kz_json:get_value([<<"fax_info">>, <<"fax_result_text">>], DataJObj)}
               ]);
         'true'->
             kz_json:from_list(
               [{<<"call_info">>, <<"CALL_INFO">>}
-               ,{<<"fax_info">>, <<"FAX_INFO">>}
+	      ,{<<"fax_info">>, <<"FAX_INFO">>}
               ])
     end.
 
 -spec build_template_data(kz_json:object()) -> kz_proplist().
 build_template_data(DataJObj) ->
     [{<<"account">>, teletype_util:account_params(DataJObj)}
-     ,{<<"fax">>, build_fax_template_data(DataJObj)}
-     ,{<<"system">>, teletype_util:system_params()}
-     ,{<<"caller_id">>, caller_id_data(DataJObj)}
-     ,{<<"callee_id">>, callee_id_data(DataJObj)}
-     ,{<<"date_called">>, date_called_data(DataJObj)}
-     ,{<<"from">>, from_data(DataJObj)}
-     ,{<<"to">>, to_data(DataJObj)}
-     ,{<<"call_id">>, kz_json:get_value(<<"call_id">>, DataJObj)}
-     ,{<<"error">>, kz_json:to_proplist(<<"error">>, DataJObj)}
+    ,{<<"fax">>, build_fax_template_data(DataJObj)}
+    ,{<<"system">>, teletype_util:system_params()}
+    ,{<<"caller_id">>, caller_id_data(DataJObj)}
+    ,{<<"callee_id">>, callee_id_data(DataJObj)}
+    ,{<<"date_called">>, date_called_data(DataJObj)}
+    ,{<<"from">>, from_data(DataJObj)}
+    ,{<<"to">>, to_data(DataJObj)}
+    ,{<<"call_id">>, kz_json:get_value(<<"call_id">>, DataJObj)}
+    ,{<<"error">>, kz_json:to_proplist(<<"error">>, DataJObj)}
     ].
 
 -spec caller_id_data(kz_json:object()) -> kz_proplist().
 caller_id_data(DataJObj) ->
     props:filter_undefined(
       [{<<"name">>, kz_json:get_value(<<"caller_id_name">>, DataJObj)}
-       ,{<<"number">>, kz_json:get_value(<<"caller_id_number">>, DataJObj)}
+      ,{<<"number">>, kz_json:get_value(<<"caller_id_number">>, DataJObj)}
       ]).
 
 -spec callee_id_data(kz_json:object()) -> kz_proplist().
 callee_id_data(DataJObj) ->
     props:filter_undefined(
       [{<<"name">>, kz_json:get_value(<<"callee_id_name">>, DataJObj)}
-       ,{<<"number">>, kz_json:get_value(<<"callee_id_number">>, DataJObj)}
+      ,{<<"number">>, kz_json:get_value(<<"callee_id_number">>, DataJObj)}
       ]).
 
 -spec date_called_data(kz_json:object()) -> kz_proplist().
@@ -176,7 +176,7 @@ date_called_data(DataJObj) ->
 
     props:filter_undefined(
       [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
-       ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
+      ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
       ]).
 
 -spec from_data(kz_json:object()) -> kz_proplist().
@@ -184,7 +184,7 @@ from_data(DataJObj) ->
     FromE164 = kz_json:get_value(<<"from_user">>, DataJObj),
     props:filter_undefined(
       [{<<"from_user">>, knm_util:pretty_print(FromE164)}
-       ,{<<"from_realm">>, kz_json:get_value(<<"from_realm">>, DataJObj)}
+      ,{<<"from_realm">>, kz_json:get_value(<<"from_realm">>, DataJObj)}
       ]).
 
 -spec to_data(kz_json:object()) -> kz_proplist().
@@ -192,21 +192,21 @@ to_data(DataJObj) ->
     ToE164 = kz_json:get_value(<<"to_user">>, DataJObj),
     props:filter_undefined(
       [{<<"user">>, knm_util:pretty_print(ToE164)}
-       ,{<<"realm">>, kz_json:get_value(<<"to_realm">>, DataJObj)}
+      ,{<<"realm">>, kz_json:get_value(<<"to_realm">>, DataJObj)}
       ]).
 
 -spec to_email_addresses(kz_json:object()) -> api_binaries().
 to_email_addresses(DataJObj) ->
     to_email_addresses(DataJObj
-                       ,kz_json:get_first_defined([[<<"to">>, <<"email_addresses">>]
-                                                   ,[<<"fax">>, <<"email">>, <<"send_to">>]
-                                                   ,[<<"fax_notifications">>, <<"email">>, <<"send_to">>]
-                                                   ,[<<"notifications">>, <<"email">>, <<"send_to">>]
-                                                   ,[<<"owner">>, <<"email">>]
-                                                   ,[<<"owner">>, <<"username">>]
-                                                  ]
-                                                  ,DataJObj
-                                                 )
+		      ,kz_json:get_first_defined([[<<"to">>, <<"email_addresses">>]
+						 ,[<<"fax">>, <<"email">>, <<"send_to">>]
+						 ,[<<"fax_notifications">>, <<"email">>, <<"send_to">>]
+						 ,[<<"notifications">>, <<"email">>, <<"send_to">>]
+						 ,[<<"owner">>, <<"email">>]
+						 ,[<<"owner">>, <<"username">>]
+						 ]
+						,DataJObj
+						)
                       ).
 
 -spec to_email_addresses(kz_json:object(), ne_binary() | api_binaries()) -> api_binaries().
@@ -236,9 +236,9 @@ default_to_addresses() ->
 build_fax_template_data(DataJObj) ->
     props:filter_undefined(
       [{<<"id">>, kz_json:get_value(<<"fax_id">>, DataJObj)}
-       ,{<<"info">>, kz_json:to_proplist(<<"fax_info">>, DataJObj)}
-       ,{<<"box_id">>, kz_json:get_value(<<"faxbox_id">>, DataJObj)}
-       ,{<<"timestamp">>, kz_json:get_value(<<"fax_timestamp">>, DataJObj)}
-       ,{<<"notifications">>, kz_json:get_value(<<"fax_notifications">>, DataJObj)}
-       ,{<<"remote_station_id">>, kz_json:get_value(<<"fax_remote_station_id">>, DataJObj)}
+      ,{<<"info">>, kz_json:to_proplist(<<"fax_info">>, DataJObj)}
+      ,{<<"box_id">>, kz_json:get_value(<<"faxbox_id">>, DataJObj)}
+      ,{<<"timestamp">>, kz_json:get_value(<<"fax_timestamp">>, DataJObj)}
+      ,{<<"notifications">>, kz_json:get_value(<<"fax_notifications">>, DataJObj)}
+      ,{<<"remote_station_id">>, kz_json:get_value(<<"fax_remote_station_id">>, DataJObj)}
       ]).

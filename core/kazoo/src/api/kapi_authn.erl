@@ -12,15 +12,15 @@
 -compile({no_auto_import, [error/1]}).
 
 -export([req/1, req_v/1
-         ,resp/1, resp_v/1
-         ,error/1, error_v/1
-         ,bind_q/2, unbind_q/2
-         ,declare_exchanges/0
-         ,publish_req/1, publish_req/2
-         ,publish_resp/2, publish_resp/3
-         ,publish_error/2, publish_error/3
-         ,get_auth_user/1, get_auth_realm/1
-         ,req_event_type/0
+	,resp/1, resp_v/1
+	,error/1, error_v/1
+	,bind_q/2, unbind_q/2
+	,declare_exchanges/0
+	,publish_req/1, publish_req/2
+	,publish_resp/2, publish_resp/3
+	,publish_error/2, publish_error/3
+	,get_auth_user/1, get_auth_realm/1
+	,req_event_type/0
         ]).
 
 -include_lib("kazoo/include/kz_api.hrl").
@@ -31,33 +31,33 @@
 -define(AUTHN_REQ_EVENT_NAME, <<"authn_req">>).
 
 -define(AUTHN_REQ_HEADERS, [<<"To">>, <<"From">>
-                            ,<<"Auth-User">>, <<"Auth-Realm">>
+			   ,<<"Auth-User">>, <<"Auth-Realm">>
                            ]).
 -define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>, <<"Switch-Hostname">>
-                                     ,<<"Orig-IP">>, <<"Orig-Port">>, <<"Call-ID">>
-                                     ,<<"Auth-Nonce">>, <<"Auth-Response">>
-                                     ,<<"User-Agent">>, <<"Expires">>
-                                     ,<<"Custom-SIP-Headers">>
+				    ,<<"Orig-IP">>, <<"Orig-Port">>, <<"Call-ID">>
+				    ,<<"Auth-Nonce">>, <<"Auth-Response">>
+				    ,<<"User-Agent">>, <<"Expires">>
+				    ,<<"Custom-SIP-Headers">>
                                     ]).
 -define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                           ,{<<"Event-Name">>, ?AUTHN_REQ_EVENT_NAME}
+			  ,{<<"Event-Name">>, ?AUTHN_REQ_EVENT_NAME}
                           ]).
 -define(AUTHN_REQ_TYPES, [{<<"To">>, fun is_binary/1}
-                          ,{<<"From">>, fun is_binary/1}
-                          ,{<<"Orig-IP">>, fun is_binary/1}
-                          ,{<<"Orig-Port">>, fun is_binary/1}
-                          ,{<<"Auth-User">>, fun is_binary/1}
-                          ,{<<"Auth-Realm">>, fun is_binary/1}
-                          ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+			 ,{<<"From">>, fun is_binary/1}
+			 ,{<<"Orig-IP">>, fun is_binary/1}
+			 ,{<<"Orig-Port">>, fun is_binary/1}
+			 ,{<<"Auth-User">>, fun is_binary/1}
+			 ,{<<"Auth-Realm">>, fun is_binary/1}
+			 ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
                          ]).
 
 %% Authentication Responses
 -define(AUTHN_RESP_HEADERS, [<<"Auth-Method">>, <<"Auth-Password">>]).
 -define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
-                                      ,<<"Auth-Username">>, <<"Auth-Nonce">>
-                                      ,<<"Access-Group">>, <<"Tenant-ID">>, <<"Expires">>
-                                      ,<<"Suppress-Unregister-Notifications">>
-                                      ,<<"Register-Overwrite-Notify">>
+				     ,<<"Auth-Username">>, <<"Auth-Nonce">>
+				     ,<<"Access-Group">>, <<"Tenant-ID">>, <<"Expires">>
+				     ,<<"Suppress-Unregister-Notifications">>
+				     ,<<"Register-Overwrite-Notify">>
                                      ]).
 -define(AUTHN_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
                            ,{<<"Event-Name">>, <<"authn_resp">>}
@@ -65,20 +65,20 @@
                                                 ,<<"a1-hash">>, <<"error">>
                                                 ,<<"gsm">>, <<"nonce">>, <<"a3a8">>
                                                 ]}
-                         ]).
+			   ]).
 -define(AUTHN_RESP_TYPES, [{<<"Auth-Password">>, fun is_binary/1}
-                           ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-                           ,{<<"Access-Group">>, fun is_binary/1}
-                           ,{<<"Tenant-ID">>, fun is_binary/1}
-                           ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+			  ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+			  ,{<<"Access-Group">>, fun is_binary/1}
+			  ,{<<"Tenant-ID">>, fun is_binary/1}
+			  ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
                           ]).
 
 %% Authentication Failure Response
 -define(AUTHN_ERR_HEADERS, []).
 -define(OPTIONAL_AUTHN_ERR_HEADERS, []).
 -define(AUTHN_ERR_VALUES, [{<<"Event-Category">>, <<"directory">>}
-                            ,{<<"Event-Name">>, <<"authn_err">>}
-                         ]).
+			  ,{<<"Event-Name">>, <<"authn_err">>}
+			  ]).
 -define(AUTHN_ERR_TYPES, []).
 
 %%--------------------------------------------------------------------
@@ -88,9 +88,9 @@
 %%--------------------------------------------------------------------
 -spec req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
-        case req_v(Prop) of
-            true -> kz_api:build_message(Prop, ?AUTHN_REQ_HEADERS, ?OPTIONAL_AUTHN_REQ_HEADERS);
-            false -> {error, "Proplist failed validation for authn_req"}
+    case req_v(Prop) of
+	true -> kz_api:build_message(Prop, ?AUTHN_REQ_HEADERS, ?OPTIONAL_AUTHN_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for authn_req"}
     end;
 req(JObj) ->
     req(kz_json:to_proplist(JObj)).

@@ -200,14 +200,14 @@ acquire_number(Number) ->
                     OrderData = number_order_response_to_json(Response),
                     knm_number:set_phone_number(
                       Number
-                      ,knm_phone_number:update_carrier_data(PhoneNumber, OrderData)
+					       ,knm_phone_number:update_carrier_data(PhoneNumber, OrderData)
                      )
             end
     end.
 
 -spec reformat_number_for_acquire(ne_binary()) -> ne_binary().
- reformat_number_for_acquire(<<"+1", Number/binary>>) -> Number;
- reformat_number_for_acquire(Number) -> Number.
+reformat_number_for_acquire(<<"+1", Number/binary>>) -> Number;
+reformat_number_for_acquire(Number) -> Number.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -386,7 +386,7 @@ number_order_response_to_json(Xml) ->
         ,{<<"number">>, Num}
         ]
        )
-    ).
+     ).
 
 %% @private
 -spec search_response_to_KNM(xml_els() | xml_el(), ne_binary()) ->

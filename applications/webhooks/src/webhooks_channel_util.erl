@@ -19,7 +19,7 @@ handle_event(JObj, _Props) ->
         {'ok', AccountId} ->
             lager:debug("determined account id for ~s is ~s", [HookEvent, AccountId]),
             J = kz_json:set_value([<<"Custom-Channel-Vars">>
-                                   ,<<"Account-ID">>
+				  ,<<"Account-ID">>
                                   ], AccountId, JObj),
             maybe_handle_channel_event(AccountId, HookEvent, J)
     end.
@@ -41,30 +41,30 @@ hook_event_name(Event) -> Event.
                           kz_json:object().
 format_event(JObj, AccountId, <<"CHANNEL_CREATE">>) ->
     kz_json:set_value(<<"hook_event">>, <<"channel_create">>
-                      ,base_hook_event(JObj, AccountId)
+		     ,base_hook_event(JObj, AccountId)
                      );
 format_event(JObj, AccountId, <<"CHANNEL_ANSWER">>) ->
     kz_json:set_value(<<"hook_event">>, <<"channel_answer">>
-                      ,base_hook_event(JObj, AccountId)
+		     ,base_hook_event(JObj, AccountId)
                      );
 format_event(JObj, AccountId, <<"CHANNEL_BRIDGE">>) ->
     base_hook_event(JObj
-                    ,AccountId
-                    ,[{<<"hook_event">>, <<"channel_bridge">>}
-                      ,{<<"original_number">>, ccv(JObj, <<"Original-Number">>)}
-                      ,{<<"other_leg_destination_number">>, kz_call_event:other_leg_destination_number(JObj)}
-                     ]
+		   ,AccountId
+		   ,[{<<"hook_event">>, <<"channel_bridge">>}
+		    ,{<<"original_number">>, ccv(JObj, <<"Original-Number">>)}
+		    ,{<<"other_leg_destination_number">>, kz_call_event:other_leg_destination_number(JObj)}
+		    ]
                    );
 format_event(JObj, AccountId, <<"CHANNEL_DESTROY">>) ->
     base_hook_event(JObj
-                    ,AccountId
-                    ,[{<<"hook_event">>, <<"channel_destroy">>}
-                      ,{<<"hangup_cause">>, kz_call_event:hangup_cause(JObj)}
-                      ,{<<"hangup_code">>, kz_call_event:hangup_code(JObj)}
-                      ,{<<"duration_seconds">>, kz_call_event:duration_seconds(JObj)}
-                      ,{<<"ringing_seconds">>, kz_call_event:ringing_seconds(JObj)}
-                      ,{<<"billing_seconds">>, kz_call_event:billing_seconds(JObj)}
-                     ]
+		   ,AccountId
+		   ,[{<<"hook_event">>, <<"channel_destroy">>}
+		    ,{<<"hangup_cause">>, kz_call_event:hangup_cause(JObj)}
+		    ,{<<"hangup_code">>, kz_call_event:hangup_code(JObj)}
+		    ,{<<"duration_seconds">>, kz_call_event:duration_seconds(JObj)}
+		    ,{<<"ringing_seconds">>, kz_call_event:ringing_seconds(JObj)}
+		    ,{<<"billing_seconds">>, kz_call_event:billing_seconds(JObj)}
+		    ]
                    ).
 
 -spec base_hook_event(kz_json:object(), api_binary()) -> kz_json:object().
@@ -77,26 +77,26 @@ base_hook_event(JObj, AccountId, Acc) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"call_direction">>, kz_json:get_value(<<"Call-Direction">>, JObj)}
-         ,{<<"timestamp">>, kz_call_event:timestamp(JObj)}
-         ,{<<"account_id">>, ccv(JObj, <<"Account-ID">>, AccountId)}
-         ,{<<"request">>, kz_json:get_value(<<"Request">>, JObj)}
-         ,{<<"to">>, kz_json:get_value(<<"To">>, JObj)}
-         ,{<<"from">>, kz_json:get_value(<<"From">>, JObj)}
-         ,{<<"inception">>, kz_json:get_value(<<"Inception">>, JObj)}
-         ,{<<"call_id">>, kz_call_event:call_id(JObj)}
-         ,{<<"other_leg_call_id">>, kz_call_event:other_leg_call_id(JObj)}
-         ,{<<"caller_id_name">>, kz_json:get_value(<<"Caller-ID-Name">>, JObj)}
-         ,{<<"caller_id_number">>, kz_json:get_value(<<"Caller-ID-Number">>, JObj)}
-         ,{<<"callee_id_name">>, kz_json:get_value(<<"Callee-ID-Name">>, JObj)}
-         ,{<<"callee_id_number">>, kz_json:get_value(<<"Callee-ID-Number">>, JObj)}
-         ,{<<"owner_id">>, kz_call_event:owner_id(JObj)}
-         ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
-         ,{<<"authorizing_id">>, kz_call_event:authorizing_id(JObj)}
-         ,{<<"authorizing_type">>, kz_call_event:authorizing_type(JObj)}
-         ,{<<"local_resource_used">>, (not WasGlobal)}
-         ,{<<"local_resource_id">>, resource_used(WasGlobal, JObj)}
-         ,{<<"emergency_resource_used">>, kz_util:is_true(ccv(JObj, <<"Emergency-Resource">>))}
-         ,{<<"call_forwarded">>, kz_call_event:is_call_forwarded(JObj)}
+	,{<<"timestamp">>, kz_call_event:timestamp(JObj)}
+	,{<<"account_id">>, ccv(JObj, <<"Account-ID">>, AccountId)}
+	,{<<"request">>, kz_json:get_value(<<"Request">>, JObj)}
+	,{<<"to">>, kz_json:get_value(<<"To">>, JObj)}
+	,{<<"from">>, kz_json:get_value(<<"From">>, JObj)}
+	,{<<"inception">>, kz_json:get_value(<<"Inception">>, JObj)}
+	,{<<"call_id">>, kz_call_event:call_id(JObj)}
+	,{<<"other_leg_call_id">>, kz_call_event:other_leg_call_id(JObj)}
+	,{<<"caller_id_name">>, kz_json:get_value(<<"Caller-ID-Name">>, JObj)}
+	,{<<"caller_id_number">>, kz_json:get_value(<<"Caller-ID-Number">>, JObj)}
+	,{<<"callee_id_name">>, kz_json:get_value(<<"Callee-ID-Name">>, JObj)}
+	,{<<"callee_id_number">>, kz_json:get_value(<<"Callee-ID-Number">>, JObj)}
+	,{<<"owner_id">>, kz_call_event:owner_id(JObj)}
+	,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
+	,{<<"authorizing_id">>, kz_call_event:authorizing_id(JObj)}
+	,{<<"authorizing_type">>, kz_call_event:authorizing_type(JObj)}
+	,{<<"local_resource_used">>, (not WasGlobal)}
+	,{<<"local_resource_id">>, resource_used(WasGlobal, JObj)}
+	,{<<"emergency_resource_used">>, kz_util:is_true(ccv(JObj, <<"Emergency-Resource">>))}
+	,{<<"call_forwarded">>, kz_call_event:is_call_forwarded(JObj)}
          | Acc
         ])).
 

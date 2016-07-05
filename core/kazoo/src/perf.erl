@@ -3,9 +3,9 @@
 -export([test/1]).
 
 -define(DEFAULT_HEADERS, [<<"Server-ID">>, <<"Event-Category">>, <<"Event-Name">>
-                          , <<"App-Name">>, <<"App-Version">>, <<"Raw-Headers">>, <<"Destination-Server">>
-                          , <<"Geo-Location">>, <<"Access-Group">>
-                          , <<"Tenant-ID">>]).
+			 , <<"App-Name">>, <<"App-Version">>, <<"Raw-Headers">>, <<"Destination-Server">>
+			 , <<"Geo-Location">>, <<"Access-Group">>
+			 , <<"Tenant-ID">>]).
 
 test(Times) ->
     Props = [get_prop() || _ <- lists:seq(1, Times)],
@@ -15,16 +15,16 @@ test(Times) ->
 
 try_one(Prop) ->
     [ {H, V} || H <- ?DEFAULT_HEADERS,
-        (V = props:get_value(H, Prop)) =/= undefined
+		(V = props:get_value(H, Prop)) =/= undefined
     ].
 
 try_two(Prop) ->
     lists:foldl(fun(H, Acc) ->
-                case props:get_value(H, Prop) of
-                    undefined -> Acc;
-                    V -> [{H, V} | Acc]
-                end
-            end, [], ?DEFAULT_HEADERS).
+			case props:get_value(H, Prop) of
+			    undefined -> Acc;
+			    V -> [{H, V} | Acc]
+			end
+		end, [], ?DEFAULT_HEADERS).
 
 get_prop() ->
     get_vals(?DEFAULT_HEADERS).

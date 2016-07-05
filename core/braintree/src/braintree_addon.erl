@@ -61,12 +61,12 @@ record_to_xml(Addon) ->
 
 record_to_xml(Addon, ToString) ->
     Props = [{'id', Addon#bt_addon.id}
-             ,{'amount', Addon#bt_addon.amount}
-             ,{'never-expires', Addon#bt_addon.never_expires}
-             ,{'number-of-billing-cycles', Addon#bt_addon.number_of_cycles}
-             ,{'quantity', Addon#bt_addon.quantity}
-             ,{'inherited-from-id', Addon#bt_addon.inherited_from}
-             ,{'existing-id', Addon#bt_addon.id}
+	    ,{'amount', Addon#bt_addon.amount}
+	    ,{'never-expires', Addon#bt_addon.never_expires}
+	    ,{'number-of-billing-cycles', Addon#bt_addon.number_of_cycles}
+	    ,{'quantity', Addon#bt_addon.quantity}
+	    ,{'inherited-from-id', Addon#bt_addon.inherited_from}
+	    ,{'existing-id', Addon#bt_addon.id}
             ],
     case ToString of
         true -> braintree_util:make_doc_xml(Props, 'add-on');
@@ -82,8 +82,8 @@ record_to_xml(Addon, ToString) ->
 -spec record_to_json(bt_addon()) -> kz_json:object().
 record_to_json(#bt_addon{id=Id, amount=Amount, quantity=Q}) ->
     Props = [{<<"id">>, Id}
-             ,{<<"amount">>, Amount}
-             ,{<<"quantity">>, kz_util:to_integer(Q)}
+	    ,{<<"amount">>, Amount}
+	    ,{<<"quantity">>, kz_util:to_integer(Q)}
             ],
     kz_json:from_list([KV || {_, V}=KV <- Props, V =/= undefined]).
 
@@ -97,11 +97,11 @@ record_to_json(#bt_addon{id=Id, amount=Amount, quantity=Q}) ->
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_addon{id = kz_doc:id(JObj)
-              ,amount = kz_json:get_binary_value(<<"amount">>, JObj)
-              ,never_expires = kz_json:get_value(<<"never_expires">>, JObj, 'true')
-              ,billing_cycle = kz_json:get_binary_value(<<"billing_cycle">>, JObj)
-              ,number_of_cycles = kz_json:get_binary_value(<<"number_of_cycles">>, JObj)
-              ,quantity = kz_json:get_integer_value(<<"quantity">>, JObj)
-              ,inherited_from = kz_json:get_binary_value(<<"inherited_from">>, JObj)
-              ,existing_id = kz_json:get_binary_value(<<"existing_id">>, JObj)
-    }.
+	     ,amount = kz_json:get_binary_value(<<"amount">>, JObj)
+	     ,never_expires = kz_json:get_value(<<"never_expires">>, JObj, 'true')
+	     ,billing_cycle = kz_json:get_binary_value(<<"billing_cycle">>, JObj)
+	     ,number_of_cycles = kz_json:get_binary_value(<<"number_of_cycles">>, JObj)
+	     ,quantity = kz_json:get_integer_value(<<"quantity">>, JObj)
+	     ,inherited_from = kz_json:get_binary_value(<<"inherited_from">>, JObj)
+	     ,existing_id = kz_json:get_binary_value(<<"existing_id">>, JObj)
+	     }.

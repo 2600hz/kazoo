@@ -1,4 +1,4 @@
-%-------------------------------------------------------------------
+						%-------------------------------------------------------------------
 %%% @copyright (C) 2015, 2600Hz INC
 %%% @doc
 %%%
@@ -9,9 +9,9 @@
 -module(knm_number_states).
 
 -export([to_reserved/1
-         ,to_deleted/1
-         ,to_in_service/1
-         ,to_state/2, to_state/3
+	,to_deleted/1
+	,to_in_service/1
+	,to_state/2, to_state/3
         ]).
 
 -include("knm.hrl").
@@ -52,26 +52,26 @@ to_reserved(Number) ->
 
 to_reserved(Number, ?NUMBER_STATE_RESERVED) ->
     Routines = [fun not_assigning_to_self/1
-                ,fun is_auth_by_authorized/1
-                ,fun update_reserve_history/1
-                ,fun move_to_reserved_state/1
-                ,fun knm_services:activate_phone_number/1
-                ,fun knm_carriers:acquire/1
+	       ,fun is_auth_by_authorized/1
+	       ,fun update_reserve_history/1
+	       ,fun move_to_reserved_state/1
+	       ,fun knm_services:activate_phone_number/1
+	       ,fun knm_carriers:acquire/1
                ],
     apply_transitions(Number, Routines);
 to_reserved(Number, ?NUMBER_STATE_DISCOVERY) ->
     Routines = [fun authorize/1
-                ,fun update_reserve_history/1
-                ,fun move_to_reserved_state/1
-                ,fun knm_services:activate_phone_number/1
-                ,fun knm_carriers:acquire/1
+	       ,fun update_reserve_history/1
+	       ,fun move_to_reserved_state/1
+	       ,fun knm_services:activate_phone_number/1
+	       ,fun knm_carriers:acquire/1
                ],
     apply_transitions(Number, Routines);
 to_reserved(Number, ?NUMBER_STATE_AVAILABLE) ->
     Routines = [fun authorize/1
-                ,fun update_reserve_history/1
-                ,fun move_to_reserved_state/1
-                ,fun knm_services:activate_phone_number/1
+	       ,fun update_reserve_history/1
+	       ,fun move_to_reserved_state/1
+	       ,fun knm_services:activate_phone_number/1
                ],
     apply_transitions(Number, Routines);
 to_reserved(Number, ?NUMBER_STATE_IN_SERVICE) ->
@@ -87,26 +87,26 @@ to_in_service(Number) ->
 
 to_in_service(Number, ?NUMBER_STATE_DISCOVERY) ->
     Routines = [fun authorize/1
-                ,fun move_to_in_service_state/1
-                ,fun knm_services:activate_phone_number/1
-                ,fun knm_carriers:acquire/1
+	       ,fun move_to_in_service_state/1
+	       ,fun knm_services:activate_phone_number/1
+	       ,fun knm_carriers:acquire/1
                ],
     apply_transitions(Number, Routines);
 to_in_service(Number, ?NUMBER_STATE_PORT_IN) ->
     Routines = [fun authorize/1
-                ,fun move_to_in_service_state/1
+	       ,fun move_to_in_service_state/1
                ],
     apply_transitions(Number, Routines);
 to_in_service(Number, ?NUMBER_STATE_AVAILABLE) ->
     Routines = [fun authorize/1
-                ,fun move_to_in_service_state/1
-                ,fun knm_services:activate_phone_number/1
-                ,fun knm_carriers:acquire/1
+	       ,fun move_to_in_service_state/1
+	       ,fun knm_services:activate_phone_number/1
+	       ,fun knm_carriers:acquire/1
                ],
     apply_transitions(Number, Routines);
 to_in_service(Number, ?NUMBER_STATE_RESERVED) ->
     Routines = [fun in_service_from_reserved_authorize/1
-                ,fun move_to_in_service_state/1
+	       ,fun move_to_in_service_state/1
                ],
     apply_transitions(Number, Routines);
 to_in_service(Number, ?NUMBER_STATE_IN_SERVICE) ->
@@ -116,7 +116,7 @@ to_in_service(Number, ?NUMBER_STATE_IN_SERVICE) ->
         AssignTo -> Number;
         _AssignedTo ->
             Routines = [fun in_service_from_in_service_authorize/1
-                        ,fun move_to_in_service_state/1
+		       ,fun move_to_in_service_state/1
                        ],
             apply_transitions(Number, Routines)
     end;
@@ -134,12 +134,12 @@ authorize(Number) ->
 
 -ifdef(TEST).
 -define(ACCT_HIERARCHY(AuthBy, AssignTo, _)
-        ,AuthBy =:= ?MASTER_ACCOUNT_ID
+       ,AuthBy =:= ?MASTER_ACCOUNT_ID
         andalso AssignTo =:= ?RESELLER_ACCOUNT_ID
        ).
 -else.
 -define(ACCT_HIERARCHY(AuthBy, AssignTo, Bool)
-        ,kz_util:is_in_account_hierarchy(AuthBy, AssignTo, Bool)
+       ,kz_util:is_in_account_hierarchy(AuthBy, AssignTo, Bool)
        ).
 -endif.
 
@@ -214,7 +214,7 @@ update_reserve_history(Number) ->
     AssignTo = knm_phone_number:assign_to(PhoneNumber),
     knm_number:set_phone_number(
       Number
-      ,knm_phone_number:add_reserve_history(PhoneNumber, AssignTo)
+			       ,knm_phone_number:add_reserve_history(PhoneNumber, AssignTo)
      ).
 
 -spec move_to_reserved_state(kn()) -> kn().
@@ -222,10 +222,10 @@ move_to_reserved_state(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     knm_number:set_phone_number(
       Number
-      ,move_phone_number_to_state(
-         PhoneNumber
-         ,?NUMBER_STATE_RESERVED
-        )
+			       ,move_phone_number_to_state(
+				  PhoneNumber
+							  ,?NUMBER_STATE_RESERVED
+				 )
      ).
 
 -spec move_to_in_service_state(kn()) -> kn().
@@ -233,24 +233,24 @@ move_to_in_service_state(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     knm_number:set_phone_number(
       Number
-      ,move_phone_number_to_state(
-         PhoneNumber
-         ,?NUMBER_STATE_IN_SERVICE
-        )
+			       ,move_phone_number_to_state(
+				  PhoneNumber
+							  ,?NUMBER_STATE_IN_SERVICE
+				 )
      ).
 
 move_phone_number_to_state(PhoneNumber, ToState) ->
     move_phone_number_to_state(PhoneNumber
-                               ,ToState
-                               ,knm_phone_number:assigned_to(PhoneNumber)
+			      ,ToState
+			      ,knm_phone_number:assigned_to(PhoneNumber)
                               ).
 
 -spec move_phone_number_to_state(knm_phone_number:knm_phone_number(), ne_binary(), api_binary()) ->
-                                                 knm_phone_number:knm_phone_number().
+					knm_phone_number:knm_phone_number().
 move_phone_number_to_state(PhoneNumber, ToState, 'undefined') ->
     Setters =
         [{fun knm_phone_number:set_assigned_to/2, knm_phone_number:assign_to(PhoneNumber)}
-         ,{fun knm_phone_number:set_state/2, ToState}
+	,{fun knm_phone_number:set_state/2, ToState}
         ],
     {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Setters),
     NewPhoneNumber;
@@ -265,8 +265,8 @@ move_phone_number_to_state(PhoneNumber, ToState, AssignTo, AssignTo) ->
     NewPhoneNumber;
 move_phone_number_to_state(PhoneNumber, ToState, AssignedTo, AssignTo) ->
     Setters = [{fun knm_phone_number:set_prev_assigned_to/2, AssignedTo}
-               ,{fun knm_phone_number:set_assigned_to/2, AssignTo}
-               ,{fun knm_phone_number:set_state/2, ToState}
+	      ,{fun knm_phone_number:set_assigned_to/2, AssignTo}
+	      ,{fun knm_phone_number:set_state/2, ToState}
               ],
     {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Setters),
     NewPhoneNumber.
@@ -275,7 +275,7 @@ move_to_deleted_state(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     knm_number:set_phone_number(
       Number
-      ,move_phone_number_to_state(PhoneNumber, ?NUMBER_STATE_DELETED)
+			       ,move_phone_number_to_state(PhoneNumber, ?NUMBER_STATE_DELETED)
      ).
 
 -type transition() :: fun((kn()) -> kn()).
@@ -288,10 +288,10 @@ apply_transitions(Number, Routines) ->
 
 -spec is_authorized_operation(ne_binary(), ne_binary()) -> boolean().
 is_authorized_operation(CheckFor, InAccount) ->
-     kz_util:is_in_account_hierarchy(
-       CheckFor
-       ,InAccount
-      ).
+    kz_util:is_in_account_hierarchy(
+      CheckFor
+				   ,InAccount
+     ).
 
 -spec number_state(kn()) -> ne_binary().
 number_state(Number) ->

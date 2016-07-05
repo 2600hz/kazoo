@@ -12,7 +12,7 @@
 
 %% API
 -export([maybe_add_queue/2, maybe_add_queue/3
-         ,maybe_rm_queue/2, maybe_rm_queue/3
+	,maybe_rm_queue/2, maybe_rm_queue/3
         ]).
 
 -spec maybe_add_queue(kz_json:object(), ne_binary()) -> kz_json:object().

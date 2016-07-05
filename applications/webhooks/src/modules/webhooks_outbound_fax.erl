@@ -7,8 +7,8 @@
 -module(webhooks_outbound_fax).
 
 -export([init/0
-         ,bindings_and_responders/0
-         ,handle_event/2
+	,bindings_and_responders/0
+	,handle_event/2
         ]).
 
 -include("webhooks.hrl").
@@ -17,28 +17,28 @@
 -define(NAME, <<"outbound_fax">>).
 -define(DESC, <<"Outbound faxes (or errors if they occur)">>).
 -define(METADATA
-        ,kz_json:from_list([{<<"_id">>, ?ID}
-                            ,{<<"name">>, ?NAME}
-                            ,{<<"description">>, ?DESC}
-                           ])
+       ,kz_json:from_list([{<<"_id">>, ?ID}
+			  ,{<<"name">>, ?NAME}
+			  ,{<<"description">>, ?DESC}
+			  ])
        ).
 
 -define(FAX_NOTIFY_RESTRICT_TO, ['outbound_fax'
-                                 ,'outbound_fax_error'
+				,'outbound_fax_error'
                                 ]).
 
 -define(BINDINGS, [{'notifications'
-                    ,[{'restrict_to', ?FAX_NOTIFY_RESTRICT_TO}]
+		   ,[{'restrict_to', ?FAX_NOTIFY_RESTRICT_TO}]
                    }
                   ]
        ).
 -define(RESPONDERS
-        ,[{{'webhooks_outbound_fax', 'handle_event'}
-           ,[{<<"notification">>, ?NAME}
-             ,{<<"notification">>, <<"outbound_fax_error">>}
-            ]
-          }
-         ]
+       ,[{{'webhooks_outbound_fax', 'handle_event'}
+	 ,[{<<"notification">>, ?NAME}
+	  ,{<<"notification">>, <<"outbound_fax_error">>}
+	  ]
+	 }
+	]
        ).
 
 -spec init() -> 'ok'.
@@ -47,7 +47,7 @@ init() ->
 
 -spec bindings_and_responders() ->
                                      {gen_listener:bindings()
-                                      ,gen_listener:responders()
+				     ,gen_listener:responders()
                                      }.
 bindings_and_responders() ->
     {?BINDINGS, ?RESPONDERS}.
@@ -80,14 +80,14 @@ maybe_send_event(EventName, AccountId, JObj) ->
 -spec format_outbound_fax_event(kz_json:object()) -> kz_json:object().
 format_outbound_fax_event(JObj) ->
     RemoveKeys = [<<"Fax-Notifications">>
-                  ,<<"Node">>
-                  ,<<"Msg-ID">>
-                  ,<<"App-Version">>
-                  ,<<"App-Name">>
-                  ,<<"Event-Category">>
-                  ,<<"Fax-Info">>
+		 ,<<"Node">>
+		 ,<<"Msg-ID">>
+		 ,<<"App-Version">>
+		 ,<<"App-Name">>
+		 ,<<"Event-Category">>
+		 ,<<"Fax-Info">>
                  ],
     FaxInfo = kz_json:normalize_jobj(kz_json:get_value(<<"Fax-Info">>, JObj, kz_json:new())),
     kz_json:merge_jobjs(FaxInfo
-                        ,kz_json:normalize_jobj(JObj, RemoveKeys, [])
+		       ,kz_json:normalize_jobj(JObj, RemoveKeys, [])
                        ).

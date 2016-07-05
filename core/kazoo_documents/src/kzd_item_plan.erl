@@ -8,19 +8,19 @@
 -module(kzd_item_plan).
 
 -export([minimum/1, minimum/2
-         ,flat_rates/1, flat_rates/2
-         ,rates/1, rates/2
-         ,rate/1, rate/2
-         ,exceptions/1, exceptions/2
-         ,should_cascade/1, should_cascade/2
-         ,masquerade_as/1, masquerade_as/2
-         ,name/1
-         ,discounts/1, discounts/2
-         ,single_discount/1, single_discount/2
-         ,cumulative_discount/1, cumulative_discount/2
-         ,activation_charge/1, activation_charge/2
-         ,is_enabled/1
-         ,keys/1
+	,flat_rates/1, flat_rates/2
+	,rates/1, rates/2
+	,rate/1, rate/2
+	,exceptions/1, exceptions/2
+	,should_cascade/1, should_cascade/2
+	,masquerade_as/1, masquerade_as/2
+	,name/1
+	,discounts/1, discounts/2
+	,single_discount/1, single_discount/2
+	,cumulative_discount/1, cumulative_discount/2
+	,activation_charge/1, activation_charge/2
+	,is_enabled/1
+	,keys/1
         ]).
 
 -include("kz_documents.hrl").
@@ -28,7 +28,7 @@
 -type doc() :: kz_json:object().
 -type api_doc() :: api_object().
 -export_type([doc/0
-              ,api_doc/0
+	     ,api_doc/0
              ]).
 
 -define(ACTIVATION_CHARGE, <<"activation_charge">>).

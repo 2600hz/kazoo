@@ -13,17 +13,17 @@
 -module(cb_devices_v2).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-         ,validate_resource/1, validate_resource/2
-         ,billing/1
-         ,authenticate/1
-         ,authorize/1
-         ,validate/1, validate/2, validate/3, validate/4
-         ,put/1
-         ,post/2, post/3
-         ,delete/2
-         ,lookup_regs/1
+	,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+	,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+	,validate_resource/1, validate_resource/2
+	,billing/1
+	,authenticate/1
+	,authorize/1
+	,validate/1, validate/2, validate/3, validate/4
+	,put/1
+	,post/2, post/3
+	,delete/2
+	,lookup_regs/1
         ]).
 
 -include("crossbar.hrl").
@@ -46,22 +46,22 @@
 %%%===================================================================
 init() ->
     Bindings = [{<<"v2_resource.allowed_methods.devices">>, 'allowed_methods'}
-                ,{<<"v2_resource.resource_exists.devices">>, 'resource_exists'}
-                ,{<<"v2_resource.authenticate">>, 'authenticate'}
-                ,{<<"v2_resource.authorize">>, 'authorize'}
-                ,{<<"v2_resource.billing">>, 'billing'}
-                ,{<<"v2_resource.validate_resource.devices">>, 'validate_resource'}
-                ,{<<"v2_resource.validate.devices">>, 'validate'}
-                ,{<<"v2_resource.execute.put.devices">>, 'put'}
-                ,{<<"v2_resource.execute.post.devices">>, 'post'}
-                ,{<<"v2_resource.execute.delete.devices">>, 'delete'}
+	       ,{<<"v2_resource.resource_exists.devices">>, 'resource_exists'}
+	       ,{<<"v2_resource.authenticate">>, 'authenticate'}
+	       ,{<<"v2_resource.authorize">>, 'authorize'}
+	       ,{<<"v2_resource.billing">>, 'billing'}
+	       ,{<<"v2_resource.validate_resource.devices">>, 'validate_resource'}
+	       ,{<<"v2_resource.validate.devices">>, 'validate'}
+	       ,{<<"v2_resource.execute.put.devices">>, 'put'}
+	       ,{<<"v2_resource.execute.post.devices">>, 'post'}
+	       ,{<<"v2_resource.execute.delete.devices">>, 'delete'}
                ],
     cb_modules_util:bind(?MODULE, Bindings),
 
     crossbar_bindings:bind(
       <<"v2_resource.finish_request.*.devices">>
-      ,'crossbar_services'
-      ,'reconcile'
+			  ,'crossbar_services'
+			  ,'reconcile'
      ).
 
 %%--------------------------------------------------------------------
@@ -135,10 +135,10 @@ billing(Context, _ReqVerb, [{<<"devices">>, _}|_Nouns]) ->
     catch
         'throw':{Error, Reason} ->
             lager:debug("account ~s is not allowed to make billing updates: ~s: ~p"
-                        ,[props:get_value(<<"accounts">>, _Nouns)
-                          ,Error
-                          ,Reason
-                         ]
+		       ,[props:get_value(<<"accounts">>, _Nouns)
+			,Error
+			,Reason
+			]
                        ),
             crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
     end;
@@ -193,8 +193,8 @@ validate_device_id(Context, DeviceId) ->
         {'error', 'not_found'} ->
             cb_context:add_system_error(
               'bad_identifier'
-              ,kz_json:from_list([{<<"cause">>, DeviceId}])
-              ,Context
+				       ,kz_json:from_list([{<<"cause">>, DeviceId}])
+				       ,Context
              );
         {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
@@ -312,8 +312,8 @@ load_device_summary(Context) ->
     load_device_summary(Context, cb_context:req_nouns(Context)).
 
 load_device_summary(Context, [{<<"devices">>, []}
-                              ,{<<"users">>, [UserId]}
-                             |_]
+			     ,{<<"users">>, [UserId]}
+			      |_]
                    ) ->
     load_users_device_summary(Context, UserId);
 load_device_summary(Context, _ReqNouns) ->
@@ -323,9 +323,9 @@ load_device_summary(Context, _ReqNouns) ->
                                        cb_context:context().
 load_users_device_summary(Context, UserId) ->
     crossbar_doc:load_view(?OWNER_LIST
-                           ,[{'key', UserId}]
-                           ,Context
-                           ,fun normalize_view_results/2
+			  ,[{'key', UserId}]
+			  ,Context
+			  ,fun normalize_view_results/2
                           ).
 
 %%--------------------------------------------------------------------
@@ -365,11 +365,11 @@ check_mdn_undefined(DeviceId, Context) ->
 error_mdn_undefined(Context) ->
     cb_context:add_validation_error(
       ?KEY_MOBILE_MDN
-      ,<<"required">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"Field is required but missing">>}]
-        )
-      ,Context
+				   ,<<"required">>
+				   ,kz_json:from_list(
+				      [{<<"message">>, <<"Field is required but missing">>}]
+				     )
+				   ,Context
      ).
 
 -spec check_mdn_changed(api_binary(), cb_context:context()) -> cb_context:context().
@@ -393,12 +393,12 @@ error_mdn_changed(Context) ->
                ,[_OldMDN, NewMDN]),
     cb_context:add_validation_error(
       ?KEY_MOBILE_MDN
-      ,<<"invalid">>
-      ,kz_json:from_list(
-         [ {<<"message">>, <<"Mobile Device Number cannot be changed">>}
-         , {<<"cause">>, NewMDN}
-         ])
-      ,Context
+				   ,<<"invalid">>
+				   ,kz_json:from_list(
+				      [ {<<"message">>, <<"Mobile Device Number cannot be changed">>}
+				      , {<<"cause">>, NewMDN}
+				      ])
+				   ,Context
      ).
 
 -spec check_mdn_taken(api_binary(), cb_context:context()) -> cb_context:context().
@@ -415,12 +415,12 @@ check_mdn_taken(DeviceId, Context) ->
 error_mdn_taken(MDN, Context) ->
     cb_context:add_validation_error(
       ?KEY_MOBILE_MDN
-      ,<<"unique">>
-      ,kz_json:from_list(
-         [ {<<"message">>, <<"Mobile Device Number already exists in the system">>}
-         , {<<"cause">>, MDN}
-         ])
-      ,Context
+				   ,<<"unique">>
+				   ,kz_json:from_list(
+				      [ {<<"message">>, <<"Mobile Device Number already exists in the system">>}
+				      , {<<"cause">>, MDN}
+				      ])
+				   ,Context
      ).
 
 -spec check_mdn_registered(api_binary(), cb_context:context()) -> cb_context:context().
@@ -462,12 +462,12 @@ error_used_mac_address(Context) ->
     MacAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
     cb_context:add_validation_error(
       ?KEY_MAC_ADDRESS
-      ,<<"unique">>
-      ,kz_json:from_list(
-         [{<<"message">>, <<"Mac address already in use">>}
-          ,{<<"cause">>, MacAddress}
-         ])
-      ,Context
+				   ,<<"unique">>
+				   ,kz_json:from_list(
+				      [{<<"message">>, <<"Mac address already in use">>}
+				      ,{<<"cause">>, MacAddress}
+				      ])
+				   ,Context
      ).
 
 -spec get_mac_addresses(ne_binary()) -> ne_binaries().
@@ -515,12 +515,12 @@ validate_device_creds(Realm, DeviceId, Context) ->
         Else ->
             C = cb_context:add_validation_error(
                   [<<"sip">>, <<"method">>]
-                  ,<<"enum">>
-                  ,kz_json:from_list([{<<"message">>, <<"SIP authentication method is invalid">>}
-                                      ,{<<"target">>, [<<"password">>, <<"ip">>]}
-                                      ,{<<"cause">>, Else}
-                                     ])
-                  ,Context
+					       ,<<"enum">>
+					       ,kz_json:from_list([{<<"message">>, <<"SIP authentication method is invalid">>}
+								  ,{<<"target">>, [<<"password">>, <<"ip">>]}
+								  ,{<<"cause">>, Else}
+								  ])
+					       ,Context
                  ),
             check_emergency_caller_id(DeviceId, C)
     end.
@@ -533,11 +533,11 @@ validate_device_password(Realm, DeviceId, Context) ->
         'false' ->
             C = cb_context:add_validation_error(
                   [<<"sip">>, <<"username">>]
-                  ,<<"unique">>
-                  ,kz_json:from_list([{<<"message">>, <<"SIP credentials already in use">>}
-                                      ,{<<"cause">>, Username}
-                                     ])
-                  ,Context
+					       ,<<"unique">>
+					       ,kz_json:from_list([{<<"message">>, <<"SIP credentials already in use">>}
+								  ,{<<"cause">>, Username}
+								  ])
+					       ,Context
                  ),
             check_emergency_caller_id(DeviceId, C)
     end.
@@ -551,11 +551,11 @@ validate_device_ip(IP, DeviceId, Context) ->
         'false' ->
             C = cb_context:add_validation_error(
                   [<<"sip">>, <<"ip">>]
-                  ,<<"type">>
-                  ,kz_json:from_list([{<<"message">>, <<"Must be a valid IPv4 RFC 791">>}
-                                      ,{<<"cause">>, IP}
-                                     ])
-                  ,Context
+					       ,<<"type">>
+					       ,kz_json:from_list([{<<"message">>, <<"Must be a valid IPv4 RFC 791">>}
+								  ,{<<"cause">>, IP}
+								  ])
+					       ,Context
                  ),
             check_emergency_caller_id(DeviceId, C)
     end.
@@ -569,12 +569,12 @@ validate_device_ip_unique(IP, DeviceId, Context) ->
         'false' ->
             C = cb_context:add_validation_error(
                   [<<"sip">>, <<"ip">>]
-                  ,<<"unique">>
-                  ,kz_json:from_list(
-                     [{<<"message">>, <<"SIP IP already in use">>}
-                      ,{<<"cause">>, IP}
-                     ])
-                  ,Context
+					       ,<<"unique">>
+					       ,kz_json:from_list(
+						  [{<<"message">>, <<"SIP IP already in use">>}
+						  ,{<<"cause">>, IP}
+						  ])
+					       ,Context
                  ),
             check_emergency_caller_id(DeviceId, C)
     end.
@@ -602,12 +602,12 @@ check_device_type_change(DeviceId, Context) ->
 error_device_type_change(DeviceType, Context) ->
     cb_context:add_validation_error(
       <<"device_type">>
-      ,<<"invalid">>
-      ,kz_json:from_list(
-         [ {<<"message">>, <<"Not authorized to change type of device">>}
-         , {<<"cause">>, DeviceType}
-         ])
-      ,Context
+				   ,<<"invalid">>
+				   ,kz_json:from_list(
+				      [ {<<"message">>, <<"Not authorized to change type of device">>}
+				      , {<<"cause">>, DeviceType}
+				      ])
+				   ,Context
      ).
 
 -spec check_device_schema(api_binary(), cb_context:context()) -> cb_context:context().
@@ -668,20 +668,20 @@ normalize_view_results(JObj, Acc) ->
 -spec lookup_regs(ne_binary()) -> kz_json:objects().
 lookup_regs(AccountRealm) ->
     Req = [{<<"Realm">>, AccountRealm}
-           ,{<<"Fields">>, [<<"Authorizing-ID">>]}
+	  ,{<<"Fields">>, [<<"Authorizing-ID">>]}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kapps_util:amqp_pool_collect(Req
-                                       ,fun kapi_registration:publish_query_req/1
-                                       ,{'ecallmgr', 'true'}
-                                      )
+				     ,fun kapi_registration:publish_query_req/1
+				     ,{'ecallmgr', 'true'}
+				     )
     of
         {'error', _E} ->
             lager:debug("error getting reg: ~p", [_E]),
             [];
         {_, JObjs} ->
             [kz_json:from_list([{<<"device_id">>, AuthorizingId}
-                                ,{<<"registered">>, 'true'}
+			       ,{<<"registered">>, 'true'}
                                ])
              || AuthorizingId <- extract_device_registrations(JObjs)
             ]

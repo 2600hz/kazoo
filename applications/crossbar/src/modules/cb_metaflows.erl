@@ -15,11 +15,11 @@
 -module(cb_metaflows).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
-         ,validate/1
-         ,post/1
-         ,delete/1
+	,allowed_methods/0
+	,resource_exists/0
+	,validate/1
+	,post/1
+	,delete/1
         ]).
 
 -include("crossbar.hrl").
@@ -123,9 +123,9 @@ validate_delete_metaflows(Context, 'undefined') ->
     validate_delete_metaflows(Context, AccountDoc);
 validate_delete_metaflows(Context, Doc) ->
     crossbar_util:response(kz_json:new()
-                           ,cb_context:set_doc(Context
-                                               ,kz_json:delete_key(<<"metaflows">>, Doc)
-                                              )).
+			  ,cb_context:set_doc(Context
+					     ,kz_json:delete_key(<<"metaflows">>, Doc)
+					     )).
 
 -spec validate_set_metaflows(cb_context:context()) ->
                                     cb_context:context().
@@ -142,11 +142,11 @@ validate_set_metaflows(Context, Metaflows, 'undefined') ->
 validate_set_metaflows(Context, Metaflows, Doc) ->
     OwnerId = kz_json:get_first_defined([<<"_id">>, <<"pvt_account_id">>], Doc),
     Doc1 = kz_json:set_value(<<"metaflows">>
-                             ,kz_json:set_value(<<"owner_id">>, OwnerId, Metaflows)
-                             ,Doc
+			    ,kz_json:set_value(<<"owner_id">>, OwnerId, Metaflows)
+			    ,Doc
                             ),
     crossbar_util:response(Metaflows
-                           ,cb_context:set_doc(Context, Doc1)
+			  ,cb_context:set_doc(Context, Doc1)
                           ).
 
 %%--------------------------------------------------------------------
@@ -168,7 +168,7 @@ after_post(Context) ->
 after_post(Context, 'success') ->
     lager:debug("saved, returning the metaflows"),
     crossbar_util:response(kz_json:get_value(<<"metaflows">>, cb_context:doc(Context))
-                           ,Context
+			  ,Context
                           );
 after_post(Context, _RespStatus) ->
     Context.

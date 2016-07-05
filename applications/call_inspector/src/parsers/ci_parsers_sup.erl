@@ -12,8 +12,8 @@
 -export([start_link/0]).
 -export([init/1]).
 -export([start_child/2
-         ,stop_child/1
-         ,children/0
+	,stop_child/1
+	,children/0
         ]).
 
 -include("call_inspector.hrl").

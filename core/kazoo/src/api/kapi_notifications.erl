@@ -13,69 +13,69 @@
 -export([declare_exchanges/0]).
 
 -export([voicemail/1, voicemail_v/1
-         ,voicemail_full/1, voicemail_full_v/1
-         ,voicemail_saved/1, voicemail_saved_v/1
-         ,fax_inbound/1, fax_inbound_v/1
-         ,fax_inbound_error/1, fax_inbound_error_v/1
-         ,fax_outbound/1, fax_outbound_v/1
-         ,fax_outbound_error/1, fax_outbound_error_v/1
-         ,register/1, register_v/1
-         ,deregister/1, deregister_v/1
-         ,password_recovery/1, password_recovery_v/1
-         ,new_account/1, new_account_v/1
-         ,new_user/1, new_user_v/1
-         ,port_request/1, port_request_v/1
-         ,port_pending/1, port_pending_v/1
-         ,port_scheduled/1, port_scheduled_v/1
-         ,port_rejected/1, port_rejected_v/1
-         ,port_cancel/1, port_cancel_v/1
-         ,ported/1, ported_v/1
-         ,port_comment/1, port_comment_v/1
-         ,cnam_request/1, cnam_request_v/1
-         ,low_balance/1, low_balance_v/1
-         ,topup/1, topup_v/1
-         ,transaction/1, transaction_v/1
-         ,system_alert/1, system_alert_v/1
-         ,webhook/1, webhook_v/1
-         ,webhook_disabled/1, webhook_disabled_v/1
+	,voicemail_full/1, voicemail_full_v/1
+	,voicemail_saved/1, voicemail_saved_v/1
+	,fax_inbound/1, fax_inbound_v/1
+	,fax_inbound_error/1, fax_inbound_error_v/1
+	,fax_outbound/1, fax_outbound_v/1
+	,fax_outbound_error/1, fax_outbound_error_v/1
+	,register/1, register_v/1
+	,deregister/1, deregister_v/1
+	,password_recovery/1, password_recovery_v/1
+	,new_account/1, new_account_v/1
+	,new_user/1, new_user_v/1
+	,port_request/1, port_request_v/1
+	,port_pending/1, port_pending_v/1
+	,port_scheduled/1, port_scheduled_v/1
+	,port_rejected/1, port_rejected_v/1
+	,port_cancel/1, port_cancel_v/1
+	,ported/1, ported_v/1
+	,port_comment/1, port_comment_v/1
+	,cnam_request/1, cnam_request_v/1
+	,low_balance/1, low_balance_v/1
+	,topup/1, topup_v/1
+	,transaction/1, transaction_v/1
+	,system_alert/1, system_alert_v/1
+	,webhook/1, webhook_v/1
+	,webhook_disabled/1, webhook_disabled_v/1
          %% published on completion of notification
-         ,notify_update/1, notify_update_v/1
-         ,denied_emergency_bridge/1, denied_emergency_bridge_v/1
-         ,customer_update/1, customer_update_v/1
-         ,skel/1, skel_v/1
-         ,headers/1
+	,notify_update/1, notify_update_v/1
+	,denied_emergency_bridge/1, denied_emergency_bridge_v/1
+	,customer_update/1, customer_update_v/1
+	,skel/1, skel_v/1
+	,headers/1
         ]).
 
 -export([publish_voicemail/1, publish_voicemail/2
-         ,publish_voicemail_full/1, publish_voicemail_full/2
-         ,publish_voicemail_saved/1, publish_voicemail_saved/2
-         ,publish_fax_inbound/1, publish_fax_inbound/2
-         ,publish_fax_outbound/1, publish_fax_outbound/2
-         ,publish_fax_inbound_error/1, publish_fax_inbound_error/2
-         ,publish_fax_outbound_error/1, publish_fax_outbound_error/2
-         ,publish_register/1, publish_register/2
-         ,publish_deregister/1, publish_deregister/2
-         ,publish_password_recovery/1, publish_password_recovery/2
-         ,publish_new_account/1, publish_new_account/2
-         ,publish_new_user/1, publish_new_user/2
-         ,publish_port_request/1, publish_port_request/2
-         ,publish_port_pending/1, publish_port_pending/2
-         ,publish_port_scheduled/1, publish_port_scheduled/2
-         ,publish_port_rejected/1, publish_port_rejected/2
-         ,publish_port_cancel/1, publish_port_cancel/2
-         ,publish_ported/1, publish_ported/2
-         ,publish_port_comment/1, publish_port_comment/2
-         ,publish_cnam_request/1, publish_cnam_request/2
-         ,publish_low_balance/1, publish_low_balance/2
-         ,publish_topup/1, publish_topup/2
-         ,publish_transaction/1, publish_transaction/2
-         ,publish_system_alert/1, publish_system_alert/2
-         ,publish_webhook/1, publish_webhook/2
-         ,publish_webhook_disabled/1, publish_webhook_disabled/2
-         ,publish_notify_update/2, publish_notify_update/3
-         ,publish_denied_emergency_bridge/1, publish_denied_emergency_bridge/2
-         ,publish_customer_update/1, publish_customer_update/2
-         ,publish_skel/1, publish_skel/2
+	,publish_voicemail_full/1, publish_voicemail_full/2
+	,publish_voicemail_saved/1, publish_voicemail_saved/2
+	,publish_fax_inbound/1, publish_fax_inbound/2
+	,publish_fax_outbound/1, publish_fax_outbound/2
+	,publish_fax_inbound_error/1, publish_fax_inbound_error/2
+	,publish_fax_outbound_error/1, publish_fax_outbound_error/2
+	,publish_register/1, publish_register/2
+	,publish_deregister/1, publish_deregister/2
+	,publish_password_recovery/1, publish_password_recovery/2
+	,publish_new_account/1, publish_new_account/2
+	,publish_new_user/1, publish_new_user/2
+	,publish_port_request/1, publish_port_request/2
+	,publish_port_pending/1, publish_port_pending/2
+	,publish_port_scheduled/1, publish_port_scheduled/2
+	,publish_port_rejected/1, publish_port_rejected/2
+	,publish_port_cancel/1, publish_port_cancel/2
+	,publish_ported/1, publish_ported/2
+	,publish_port_comment/1, publish_port_comment/2
+	,publish_cnam_request/1, publish_cnam_request/2
+	,publish_low_balance/1, publish_low_balance/2
+	,publish_topup/1, publish_topup/2
+	,publish_transaction/1, publish_transaction/2
+	,publish_system_alert/1, publish_system_alert/2
+	,publish_webhook/1, publish_webhook/2
+	,publish_webhook_disabled/1, publish_webhook_disabled/2
+	,publish_notify_update/2, publish_notify_update/3
+	,publish_denied_emergency_bridge/1, publish_denied_emergency_bridge/2
+	,publish_customer_update/1, publish_customer_update/2
+	,publish_skel/1, publish_skel/2
         ]).
 
 -include_lib("kazoo/include/kz_api.hrl").
@@ -83,10 +83,10 @@
 
 %% supports preview mode
 -define(DEFAULT_OPTIONAL_HEADERS, [<<"To">>, <<"Cc">>, <<"Bcc">>
-                                   ,<<"From">>, <<"Reply-To">>
-                                   ,<<"Subject">>, <<"HTML">>, <<"Text">>
-                                   ,<<"Account-ID">>, <<"Account-DB">>
-                                   ,<<"Preview">>, <<"Attachment-URL">>
+				  ,<<"From">>, <<"Reply-To">>
+				  ,<<"Subject">>, <<"HTML">>, <<"Text">>
+				  ,<<"Account-ID">>, <<"Account-DB">>
+				  ,<<"Preview">>, <<"Attachment-URL">>
                                   ]).
 
 -define(NOTIFY_VOICEMAIL_SAVED, <<"notifications.voicemail.saved">>).
@@ -123,126 +123,126 @@
 
 %% Notify New Voicemail or Voicemail Saved
 -define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>
-                            ,<<"To-User">>, <<"To-Realm">>
-                            ,<<"Account-DB">>
-                            ,<<"Voicemail-Box">>, <<"Voicemail-Name">>
-                            ,<<"Voicemail-Timestamp">>
+			   ,<<"To-User">>, <<"To-Realm">>
+			   ,<<"Account-DB">>
+			   ,<<"Voicemail-Box">>, <<"Voicemail-Name">>
+			   ,<<"Voicemail-Timestamp">>
                            ]).
 -define(OPTIONAL_VOICEMAIL_HEADERS, [<<"Voicemail-Length">>, <<"Call-ID">>
-                                     ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
-                                     ,<<"Voicemail-Transcription">>
-                                     | ?DEFAULT_OPTIONAL_HEADERS
+				    ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
+				    ,<<"Voicemail-Transcription">>
+					 | ?DEFAULT_OPTIONAL_HEADERS
                                     ]).
 -define(VOICEMAIL_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                           ,{<<"Event-Name">>, <<"voicemail_new">>}
+			  ,{<<"Event-Name">>, <<"voicemail_new">>}
                           ]).
 -define(VOICEMAIL_TYPES, []).
 
 -define(VOICEMAIL_SAVED_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                                 ,{<<"Event-Name">>, <<"voicemail_saved">>}
+				,{<<"Event-Name">>, <<"voicemail_saved">>}
                                 ]).
 
 %% Notify Voicemail full
 -define(VOICEMAIL_FULL_HEADERS, [<<"Account-DB">>
-                                 ,<<"Voicemail-Box">> ,<<"Voicemail-Number">>
-                                 ,<<"Max-Message-Count">> ,<<"Message-Count">>
+				,<<"Voicemail-Box">> ,<<"Voicemail-Number">>
+				,<<"Max-Message-Count">> ,<<"Message-Count">>
                                 ]).
 -define(OPTIONAL_VOICEMAIL_FULL_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(VOICEMAIL_FULL_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                                ,{<<"Event-Name">>, <<"voicemail_full">>}
+			       ,{<<"Event-Name">>, <<"voicemail_full">>}
                                ]).
 -define(VOICEMAIL_FULL_TYPES, []).
 
 %% Notify New Fax
 -define(FAX_INBOUND_HEADERS, [<<"From-User">>, <<"From-Realm">>
-                              ,<<"To-User">>, <<"To-Realm">>
-                              ,<<"Account-ID">>, <<"Fax-ID">>
+			     ,<<"To-User">>, <<"To-Realm">>
+			     ,<<"Account-ID">>, <<"Fax-ID">>
                              ]).
 -define(OPTIONAL_FAX_INBOUND_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                       ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-                                       ,<<"Call-ID">>, <<"Fax-Info">>
-                                       ,<<"Owner-ID">>, <<"FaxBox-ID">>
-                                       ,<<"Fax-Notifications">>, <<"Fax-Timestamp">>
-                                       | ?DEFAULT_OPTIONAL_HEADERS
+				      ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+				      ,<<"Call-ID">>, <<"Fax-Info">>
+				      ,<<"Owner-ID">>, <<"FaxBox-ID">>
+				      ,<<"Fax-Notifications">>, <<"Fax-Timestamp">>
+					   | ?DEFAULT_OPTIONAL_HEADERS
                                       ]).
 -define(FAX_INBOUND_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                             ,{<<"Event-Name">>, <<"inbound_fax">>}
+			    ,{<<"Event-Name">>, <<"inbound_fax">>}
                             ]).
 -define(FAX_INBOUND_TYPES, []).
 
 -define(FAX_INBOUND_ERROR_HEADERS, [<<"From-User">>, <<"From-Realm">>
-                                    ,<<"To-User">>, <<"To-Realm">>
-                                    ,<<"Account-ID">>
+				   ,<<"To-User">>, <<"To-Realm">>
+				   ,<<"Account-ID">>
                                    ]).
 -define(OPTIONAL_FAX_INBOUND_ERROR_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                             ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-                                             ,<<"Call-ID">>, <<"Fax-Info">>, <<"Fax-ID">>
-                                             ,<<"Owner-ID">>, <<"FaxBox-ID">>
-                                             ,<<"Fax-Notifications">>, <<"Fax-Error">>
-                                             ,<<"Fax-Timestamp">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
+					    ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+					    ,<<"Call-ID">>, <<"Fax-Info">>, <<"Fax-ID">>
+					    ,<<"Owner-ID">>, <<"FaxBox-ID">>
+					    ,<<"Fax-Notifications">>, <<"Fax-Error">>
+					    ,<<"Fax-Timestamp">>
+						 | ?DEFAULT_OPTIONAL_HEADERS
                                             ]).
 -define(FAX_INBOUND_ERROR_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                                   ,{<<"Event-Name">>, <<"inbound_fax_error">>}
+				  ,{<<"Event-Name">>, <<"inbound_fax_error">>}
                                   ]).
 -define(FAX_INBOUND_ERROR_TYPES, []).
 
 -define(FAX_OUTBOUND_HEADERS, [<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
-                               ,<<"Account-ID">>, <<"Fax-JobId">>, <<"Fax-ID">>
+			      ,<<"Account-ID">>, <<"Fax-JobId">>, <<"Fax-ID">>
                               ]).
 -define(OPTIONAL_FAX_OUTBOUND_HEADERS, [<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
-                                        ,<<"Call-ID">>, <<"Fax-Info">>
-                                        ,<<"Owner-ID">>, <<"FaxBox-ID">>
-                                        ,<<"Fax-Notifications">>, <<"Fax-Timestamp">>
-                                        | ?DEFAULT_OPTIONAL_HEADERS
+				       ,<<"Call-ID">>, <<"Fax-Info">>
+				       ,<<"Owner-ID">>, <<"FaxBox-ID">>
+				       ,<<"Fax-Notifications">>, <<"Fax-Timestamp">>
+					    | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(FAX_OUTBOUND_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                              ,{<<"Event-Name">>, <<"outbound_fax">>}
+			     ,{<<"Event-Name">>, <<"outbound_fax">>}
                              ]).
 -define(FAX_OUTBOUND_TYPES, []).
 
 -define(FAX_OUTBOUND_ERROR_HEADERS, [<<"Fax-JobId">>, <<"Fax-ID">>]).
 -define(OPTIONAL_FAX_OUTBOUND_ERROR_HEADERS, [<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
-                                              ,<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
-                                              ,<<"Call-ID">>, <<"Fax-Info">>
-                                              ,<<"Owner-ID">>, <<"FaxBox-ID">>
-                                              ,<<"Fax-Notifications">>, <<"Fax-Error">>
-                                              ,<<"Fax-Timestamp">>
-                                              | ?DEFAULT_OPTIONAL_HEADERS
+					     ,<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
+					     ,<<"Call-ID">>, <<"Fax-Info">>
+					     ,<<"Owner-ID">>, <<"FaxBox-ID">>
+					     ,<<"Fax-Notifications">>, <<"Fax-Error">>
+					     ,<<"Fax-Timestamp">>
+						  | ?DEFAULT_OPTIONAL_HEADERS
                                              ]).
 -define(FAX_OUTBOUND_ERROR_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                                    ,{<<"Event-Name">>, <<"outbound_fax_error">>}
+				   ,{<<"Event-Name">>, <<"outbound_fax_error">>}
                                    ]).
 -define(FAX_OUTBOUND_ERROR_TYPES, []).
 
 %% Notify Deregister
 -define(DEREGISTER_HEADERS, [<<"Username">>, <<"Realm">>, <<"Account-ID">>]).
 -define(OPTIONAL_DEREGISTER_HEADERS, [<<"Status">>, <<"User-Agent">>, <<"Call-ID">>, <<"Profile-Name">>, <<"Presence-Hosts">>
-                                      ,<<"From-User">>, <<"From-Host">>, <<"FreeSWITCH-Hostname">>, <<"RPid">>
-                                      ,<<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
-                                      ,<<"Event-Timestamp">>, <<"Contact">>, <<"Expires">>, <<"Account-DB">>
-                                      ,<<"Authorizing-ID">>, <<"Suppress-Unregister-Notify">>
-                                      | ?DEFAULT_OPTIONAL_HEADERS
+				     ,<<"From-User">>, <<"From-Host">>, <<"FreeSWITCH-Hostname">>, <<"RPid">>
+				     ,<<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
+				     ,<<"Event-Timestamp">>, <<"Contact">>, <<"Expires">>, <<"Account-DB">>
+				     ,<<"Authorizing-ID">>, <<"Suppress-Unregister-Notify">>
+					  | ?DEFAULT_OPTIONAL_HEADERS
                                      ]).
 -define(DEREGISTER_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                            ,{<<"Event-Name">>, <<"deregister">>}
+			   ,{<<"Event-Name">>, <<"deregister">>}
                            ]).
 -define(DEREGISTER_TYPES, []).
 
 %% Notify Register
 -define(REGISTER_HEADERS, [<<"Username">>, <<"Realm">>, <<"Account-ID">>]).
 -define(OPTIONAL_REGISTER_HEADERS, [<<"Owner-ID">>, <<"User-Agent">>, <<"Call-ID">>
-                                    ,<<"From-User">>, <<"From-Host">>
-                                    ,<<"To-User">>, <<"To-Host">>
-                                    ,<<"Network-IP">>, <<"Network-Port">>
-                                    ,<<"Event-Timestamp">>, <<"Contact">>
-                                    ,<<"Expires">>, <<"Account-DB">>
-                                    ,<<"Authorizing-ID">>, <<"Authorizing-Type">>
-                                    ,<<"Suppress-Unregister-Notify">>
-                                    | ?DEFAULT_OPTIONAL_HEADERS
+				   ,<<"From-User">>, <<"From-Host">>
+				   ,<<"To-User">>, <<"To-Host">>
+				   ,<<"Network-IP">>, <<"Network-Port">>
+				   ,<<"Event-Timestamp">>, <<"Contact">>
+				   ,<<"Expires">>, <<"Account-DB">>
+				   ,<<"Authorizing-ID">>, <<"Authorizing-Type">>
+				   ,<<"Suppress-Unregister-Notify">>
+					| ?DEFAULT_OPTIONAL_HEADERS
                                    ]).
 -define(REGISTER_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                          ,{<<"Event-Name">>, <<"register">>}
+			 ,{<<"Event-Name">>, <<"register">>}
                          ]).
 -define(REGISTER_TYPES, []).
 
@@ -264,11 +264,11 @@
 %% Notify New Account
 -define(NEW_ACCOUNT_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_NEW_ACCOUNT_HEADERS, [<<"Account-DB">>, <<"Account-Name">>
-                                       ,<<"Account-API-Key">>, <<"Account-Realm">>
-                                       | ?DEFAULT_OPTIONAL_HEADERS
+				      ,<<"Account-API-Key">>, <<"Account-Realm">>
+					   | ?DEFAULT_OPTIONAL_HEADERS
                                       ]).
 -define(NEW_ACCOUNT_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                             ,{<<"Event-Name">>, <<"new_account">>}
+			    ,{<<"Event-Name">>, <<"new_account">>}
                             ]).
 -define(NEW_ACCOUNT_TYPES, []).
 
@@ -276,99 +276,99 @@
 -define(NEW_USER_HEADERS, [<<"Account-ID">>, <<"User-ID">>, <<"Password">>]).
 -define(OPTIONAL_NEW_USER_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(NEW_USER_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                          ,{<<"Event-Name">>, <<"new_user">>}
+			 ,{<<"Event-Name">>, <<"new_user">>}
                          ]).
 -define(NEW_USER_TYPES, []).
 
 %% Notify Port Request
 -define(PORT_REQUEST_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORT_REQUEST_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
-                                        ,<<"Number-State">>, <<"Local-Number">>
-                                        ,<<"Number">>, <<"Port">>, <<"Version">>
-                                        | ?DEFAULT_OPTIONAL_HEADERS
+				       ,<<"Number-State">>, <<"Local-Number">>
+				       ,<<"Number">>, <<"Port">>, <<"Version">>
+					    | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(PORT_REQUEST_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                              ,{<<"Event-Name">>, <<"port_request">>}
+			     ,{<<"Event-Name">>, <<"port_request">>}
                              ]).
 -define(PORT_REQUEST_TYPES, []).
 
 %% Notify Port Pending
 -define(PORT_PENDING_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORT_PENDING_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
-                                        ,<<"Number-State">>, <<"Local-Number">>
-                                        ,<<"Number">>, <<"Port">>, <<"Version">>
-                                        | ?DEFAULT_OPTIONAL_HEADERS
+				       ,<<"Number-State">>, <<"Local-Number">>
+				       ,<<"Number">>, <<"Port">>, <<"Version">>
+					    | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(PORT_PENDING_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                              ,{<<"Event-Name">>, <<"port_pending">>}
+			     ,{<<"Event-Name">>, <<"port_pending">>}
                              ]).
 -define(PORT_PENDING_TYPES, []).
 
 %% Notify Port Scheduled
 -define(PORT_SCHEDULED_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORT_SCHEDULED_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
-                                          ,<<"Number-State">>, <<"Local-Number">>
-                                          ,<<"Number">>, <<"Port">>, <<"Version">>
-                                          | ?DEFAULT_OPTIONAL_HEADERS
+					 ,<<"Number-State">>, <<"Local-Number">>
+					 ,<<"Number">>, <<"Port">>, <<"Version">>
+					      | ?DEFAULT_OPTIONAL_HEADERS
                                          ]).
 -define(PORT_SCHEDULED_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                                ,{<<"Event-Name">>, <<"port_scheduled">>}
+			       ,{<<"Event-Name">>, <<"port_scheduled">>}
                                ]).
 -define(PORT_SCHEDULED_TYPES, []).
 
-% Notify Port Rejected
+						% Notify Port Rejected
 -define(PORT_REJECTED_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORT_REJECTED_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
-                                         ,<<"Number-State">>, <<"Local-Number">>
-                                         ,<<"Number">>, <<"Port">>
-                                         | ?DEFAULT_OPTIONAL_HEADERS
+					,<<"Number-State">>, <<"Local-Number">>
+					,<<"Number">>, <<"Port">>
+					     | ?DEFAULT_OPTIONAL_HEADERS
                                         ]).
 -define(PORT_REJECTED_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                               ,{<<"Event-Name">>, <<"port_rejected">>}
+			      ,{<<"Event-Name">>, <<"port_rejected">>}
                               ]).
 -define(PORT_REJECTED_TYPES, []).
 
-% Notify Port Cancel
+						% Notify Port Cancel
 -define(PORT_CANCEL_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORT_CANCEL_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
-                                       ,<<"Number-State">>, <<"Local-Number">>
-                                       ,<<"Number">>, <<"Port">>
-                                       | ?DEFAULT_OPTIONAL_HEADERS
+				      ,<<"Number-State">>, <<"Local-Number">>
+				      ,<<"Number">>, <<"Port">>
+					   | ?DEFAULT_OPTIONAL_HEADERS
                                       ]).
 -define(PORT_CANCEL_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                             ,{<<"Event-Name">>, <<"port_cancel">>}
+			    ,{<<"Event-Name">>, <<"port_cancel">>}
                             ]).
 -define(PORT_CANCEL_TYPES, []).
 
 %% Notify Ported Request
 -define(PORTED_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORTED_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Authorized-By">>, <<"Request">>
-                                  ,<<"Port-Request-ID">>, <<"Number">>, <<"Port">>
-                                  | ?DEFAULT_OPTIONAL_HEADERS
+				 ,<<"Port-Request-ID">>, <<"Number">>, <<"Port">>
+				      | ?DEFAULT_OPTIONAL_HEADERS
                                  ]).
 -define(PORTED_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                        ,{<<"Event-Name">>, <<"ported">>}
+		       ,{<<"Event-Name">>, <<"ported">>}
                        ]).
 -define(PORTED_TYPES, []).
 
 %% Notify Ported Request
 -define(PORT_COMMENT_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORT_COMMENT_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Authorized-By">>, <<"Request">>
-                                        ,<<"Port-Request-ID">>, <<"Number">>, <<"Port">>
-                                        | ?DEFAULT_OPTIONAL_HEADERS
+				       ,<<"Port-Request-ID">>, <<"Number">>, <<"Port">>
+					    | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(PORT_COMMENT_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                              ,{<<"Event-Name">>, <<"port_comment">>}
+			     ,{<<"Event-Name">>, <<"port_comment">>}
                              ]).
 -define(PORT_COMMENT_TYPES, []).
 
 %% Notify Cnam Request
 -define(CNAM_REQUEST_HEADERS, [<<"Account-ID">>, <<"Number">>, <<"Cnam">>]).
 -define(OPTIONAL_CNAM_REQUEST_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Acquired-For">>, <<"Request">>
-                                        | ?DEFAULT_OPTIONAL_HEADERS
+					    | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(CNAM_REQUEST_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                              ,{<<"Event-Name">>, <<"cnam_request">>}
+			     ,{<<"Event-Name">>, <<"cnam_request">>}
                              ]).
 -define(CNAM_REQUEST_TYPES, []).
 
@@ -376,48 +376,48 @@
 -define(LOW_BALANCE_HEADERS, [<<"Account-ID">>, <<"Current-Balance">>]).
 -define(OPTIONAL_LOW_BALANCE_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(LOW_BALANCE_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                             ,{<<"Event-Name">>, <<"low_balance">>}
+			    ,{<<"Event-Name">>, <<"low_balance">>}
                             ]).
 -define(LOW_BALANCE_TYPES, []).
 
 %% Notify Top Up
 -define(TOPUP_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_TOPUP_HEADERS, [<<"Amount">>, <<"Response">>, <<"Success">>
-                                 | ?DEFAULT_OPTIONAL_HEADERS
+				     | ?DEFAULT_OPTIONAL_HEADERS
                                 ]).
 -define(TOPUP_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                       ,{<<"Event-Name">>, <<"topup">>}
+		      ,{<<"Event-Name">>, <<"topup">>}
                       ]).
 -define(TOPUP_TYPES, []).
 
 %% Notify Transaction
 -define(TRANSACTION_HEADERS, [<<"Account-ID">>, <<"Transaction">>]).
 -define(OPTIONAL_TRANSACTION_HEADERS, [<<"Service-Plan">>, <<"Billing-ID">>
-                                       | ?DEFAULT_OPTIONAL_HEADERS
+					   | ?DEFAULT_OPTIONAL_HEADERS
                                       ]).
 -define(TRANSACTION_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                             ,{<<"Event-Name">>, <<"transaction">>}
+			    ,{<<"Event-Name">>, <<"transaction">>}
                             ]).
 -define(TRANSACTION_TYPES, []).
 
 %% Notify System Alert
 -define(SYSTEM_ALERT_HEADERS, [<<"Subject">>, <<"Message">>]).
 -define(OPTIONAL_SYSTEM_ALERT_HEADERS, [<<"Pid">>, <<"Module">>, <<"Line">>, <<"Request-ID">>, <<"Section">>
-                                        ,<<"Node">>, <<"Details">>
-                                        | ?DEFAULT_OPTIONAL_HEADERS
+				       ,<<"Node">>, <<"Details">>
+					    | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(SYSTEM_ALERT_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                              ,{<<"Event-Name">>, <<"system_alert">>}
+			     ,{<<"Event-Name">>, <<"system_alert">>}
                              ]).
 -define(SYSTEM_ALERT_TYPES, []).
 
 %% Notify webhook
 -define(WEBHOOK_HEADERS, [<<"Hook">>, <<"Data">>]).
 -define(OPTIONAL_WEBHOOK_HEADERS, [<<"Timestamp">>
-                                   | ?DEFAULT_OPTIONAL_HEADERS
+				       | ?DEFAULT_OPTIONAL_HEADERS
                                   ]).
 -define(WEBHOOK_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                         ,{<<"Event-Name">>, <<"webhook">>}
+			,{<<"Event-Name">>, <<"webhook">>}
                         ]).
 -define(WEBHOOK_TYPES, []).
 
@@ -425,38 +425,38 @@
 -define(WEBHOOK_DISABLED_HEADERS, [<<"Hook-ID">>, <<"Account-ID">>]).
 -define(OPTIONAL_WEBHOOK_DISABLED_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(WEBHOOK_DISABLED_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                                  ,{<<"Event-Name">>, <<"webhook_disabled">>}
+				 ,{<<"Event-Name">>, <<"webhook_disabled">>}
                                  ]).
 -define(WEBHOOK_DISABLED_TYPES, []).
 
 -define(NOTIFY_UPDATE_HEADERS, [<<"Status">>]).
 -define(OPTIONAL_NOTIFY_UPDATE_HEADERS, [<<"Failure-Message">>
-                                         | ?DEFAULT_OPTIONAL_HEADERS
+					     | ?DEFAULT_OPTIONAL_HEADERS
                                         ]).
 -define(NOTIFY_UPDATE_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                               ,{<<"Event-Name">>, <<"update">>}
-                               ,{<<"Status">>, [<<"completed">>, <<"failed">>, <<"pending">>]}
+			      ,{<<"Event-Name">>, <<"update">>}
+			      ,{<<"Status">>, [<<"completed">>, <<"failed">>, <<"pending">>]}
                               ]).
 -define(NOTIFY_UPDATE_TYPES, []).
 
 %% Denied Emergency Bridge
 -define(DENIED_EMERGENCY_BRIDGE_HEADERS, [<<"Account-ID">>, <<"Call-ID">>]).
 -define(OPTIONAL_DENIED_EMERGENCY_BRIDGE_HEADERS, [<<"Emergency-Caller-ID-Number">>
-                                                   ,<<"Emergency-Caller-ID-Name">>
-                                                   ,<<"Outbound-Caller-ID-Number">>
-                                                   ,<<"Outbound-Caller-ID-Name">>
-                                                   | ?DEFAULT_OPTIONAL_HEADERS
+						  ,<<"Emergency-Caller-ID-Name">>
+						  ,<<"Outbound-Caller-ID-Number">>
+						  ,<<"Outbound-Caller-ID-Name">>
+						       | ?DEFAULT_OPTIONAL_HEADERS
                                                   ]).
 -define(DENIED_EMERGENCY_BRIDGE_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                                         ,{<<"Event-Name">>, <<"denied_emergency_bridge">>}
+					,{<<"Event-Name">>, <<"denied_emergency_bridge">>}
                                         ]).
 -define(DENIED_EMERGENCY_BRIDGE_TYPES, []).
 
 %% Customer update
 -define(CUSTOMER_UPDATE_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_CUSTOMER_UPDATE_HEADERS, [<<"Recipient-ID">>
-                                           ,<<"User-Type">>
-                                           | ?DEFAULT_OPTIONAL_HEADERS
+					  ,<<"User-Type">>
+					       | ?DEFAULT_OPTIONAL_HEADERS
                                           ]).
 -define(CUSTOMER_UPDATE_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                 ,{<<"Event-Name">>, <<"customer_update">>}
@@ -467,7 +467,7 @@
 -define(SKEL_HEADERS, [<<"Account-ID">>, <<"User-ID">>]).
 -define(OPTIONAL_SKEL_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(SKEL_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                      ,{<<"Event-Name">>, <<"skel">>}
+		     ,{<<"Event-Name">>, <<"skel">>}
                      ]).
 -define(SKEL_TYPES, []).
 
@@ -1296,8 +1296,8 @@ publish_voicemail_saved(JObj) -> publish_voicemail_saved(JObj, ?DEFAULT_CONTENT_
 publish_voicemail_saved(Voicemail, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Voicemail, ?VOICEMAIL_SAVED_VALUES, fun ?MODULE:voicemail_saved/1),
     amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_SAVED
-                                    ,Payload
-                                    ,ContentType
+				   ,Payload
+				   ,ContentType
                                    ).
 
 -spec publish_voicemail(api_terms()) -> 'ok'.

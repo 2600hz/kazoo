@@ -16,15 +16,15 @@
 -type cycle_type() :: binary(). %%<<"date">> | <<"daily">> | <<"weekly">> | <<"monthly">> | <<"yearly">>.
 
 -record(keys, {enable = <<"1">> :: ne_binary()
-               ,disable = <<"2">> :: ne_binary()
-               ,reset = <<"3">> :: ne_binary()
+	      ,disable = <<"2">> :: ne_binary()
+	      ,reset = <<"3">> :: ne_binary()
               }).
 -type keys() :: #keys{}.
 
 -record(prompts, {marked_disabled = <<"temporal-marked_disabled">> :: ne_binary()
-                  ,marked_enabled = <<"temporal-marked_enabled">> :: ne_binary()
-                  ,marker_reset = <<"temporal-marker_reset">> :: ne_binary()
-                  ,main_menu = <<"temporal-menu">> :: ne_binary()
+		 ,marked_enabled = <<"temporal-marked_enabled">> :: ne_binary()
+		 ,marker_reset = <<"temporal-marker_reset">> :: ne_binary()
+		 ,main_menu = <<"temporal-menu">> :: ne_binary()
                  }).
 -type prompts() :: #prompts{}.
 
@@ -40,32 +40,32 @@
 -define(RULE_DEFAULT_WTIME_STOP, ?SECONDS_IN_DAY).
 
 -record(rule, {id = <<>> :: binary()
-               ,enabled :: api_boolean()
-               ,name = ?RULE_DEFAULT_NAME :: binary()
-               ,cycle = ?RULE_DEFAULT_CYCLE :: cycle_type()
-               ,interval = ?RULE_DEFAULT_INTERVAL :: non_neg_integer()
-               ,days = ?RULE_DEFAULT_DAYS :: [kz_day()]
-               ,wdays = ?RULE_DEFAULT_WDAYS :: [wday()]
-               ,ordinal = ?RULE_DEFAULT_ORDINAL :: ordinal()
-               ,month = ?RULE_DEFAULT_MONTH :: kz_month()
-               ,start_date = ?RULE_DEFAULT_START_DATE :: kz_date()
-               ,wtime_start = ?RULE_DEFAULT_WTIME_START :: non_neg_integer()
-               ,wtime_stop = ?RULE_DEFAULT_WTIME_STOP :: non_neg_integer()
-               ,rule_set  = 'false' :: boolean()
+	      ,enabled :: api_boolean()
+	      ,name = ?RULE_DEFAULT_NAME :: binary()
+	      ,cycle = ?RULE_DEFAULT_CYCLE :: cycle_type()
+	      ,interval = ?RULE_DEFAULT_INTERVAL :: non_neg_integer()
+	      ,days = ?RULE_DEFAULT_DAYS :: [kz_day()]
+	      ,wdays = ?RULE_DEFAULT_WDAYS :: [wday()]
+	      ,ordinal = ?RULE_DEFAULT_ORDINAL :: ordinal()
+	      ,month = ?RULE_DEFAULT_MONTH :: kz_month()
+	      ,start_date = ?RULE_DEFAULT_START_DATE :: kz_date()
+	      ,wtime_start = ?RULE_DEFAULT_WTIME_START :: non_neg_integer()
+	      ,wtime_stop = ?RULE_DEFAULT_WTIME_STOP :: non_neg_integer()
+	      ,rule_set  = 'false' :: boolean()
               }).
 
 -type rule() :: #rule{}.
 -type rules() :: [rule()].
 
 -record(temporal, {local_sec = 0 :: non_neg_integer()
-                   ,local_date = {2011, 1, 1} :: kz_date()
-                   ,local_time = {0, 0, 0} :: kz_time()
-                   ,routes = [] :: kz_json:keys()
-                   ,timezone :: api_binary()
-                   ,prompts = #prompts{} :: prompts()
-                   ,keys = #keys{} :: keys()
-                   ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
-                   ,rule_set = 'false' :: boolean()
+		  ,local_date = {2011, 1, 1} :: kz_date()
+		  ,local_time = {0, 0, 0} :: kz_time()
+		  ,routes = [] :: kz_json:keys()
+		  ,timezone :: api_binary()
+		  ,prompts = #prompts{} :: prompts()
+		  ,keys = #keys{} :: keys()
+		  ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
+		  ,rule_set = 'false' :: boolean()
                   }).
 -type temporal() :: #temporal{}.
 

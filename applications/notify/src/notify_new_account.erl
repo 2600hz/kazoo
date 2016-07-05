@@ -98,10 +98,10 @@ create_template_props(Event, Admin, Account, AllDocs) ->
                             kz_json:get_value([<<"doc">>, <<"pvt_type">>], J2) =:= <<"device">>
                         ],
     [{<<"account">>, notify_util:json_to_template_props(Account)}
-     ,{<<"devices">>, notify_util:json_to_template_props(DevicesWithOwners)}
-     ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
-     ,{<<"request">>, notify_util:json_to_template_props(Event)}
-     ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
+    ,{<<"devices">>, notify_util:json_to_template_props(DevicesWithOwners)}
+    ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
+    ,{<<"request">>, notify_util:json_to_template_props(Event)}
+    ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
     ].
 
 %%--------------------------------------------------------------------
@@ -124,27 +124,27 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
-                 ,[{<<"From">>, From}
-                   ,{<<"To">>, To}
-                   ,{<<"Subject">>, Subject}
-                  ]
-             ,ContentTypeParams
-             ,[{<<"multipart">>, <<"alternative">>, [], []
-                ,[{<<"text">>, <<"plain">>
-                       ,props:filter_undefined(
-                          [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}
-                           ,{<<"Content-Transfer-Encoding">>, PlainTransferEncoding}
-                          ])
-                   ,[], iolist_to_binary(TxtBody)}
-                  ,{<<"text">>, <<"html">>
-                        ,props:filter_undefined(
-                           [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}
-                            ,{<<"Content-Transfer-Encoding">>, HTMLTransferEncoding}
-                           ])
-                    ,[], iolist_to_binary(HTMLBody)}
-                 ]
-               }
-              ]
+	    ,[{<<"From">>, From}
+	     ,{<<"To">>, To}
+	     ,{<<"Subject">>, Subject}
+	     ]
+	    ,ContentTypeParams
+	    ,[{<<"multipart">>, <<"alternative">>, [], []
+	      ,[{<<"text">>, <<"plain">>
+		,props:filter_undefined(
+		   [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}
+		   ,{<<"Content-Transfer-Encoding">>, PlainTransferEncoding}
+		   ])
+		,[], iolist_to_binary(TxtBody)}
+	       ,{<<"text">>, <<"html">>
+		,props:filter_undefined(
+		   [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}
+		   ,{<<"Content-Transfer-Encoding">>, HTMLTransferEncoding}
+		   ])
+		,[], iolist_to_binary(HTMLBody)}
+	       ]
+	      }
+	     ]
             },
     notify_util:send_email(From, To, Email).
 

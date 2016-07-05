@@ -18,7 +18,7 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILDREN, [?CACHE(?CACHE_NAME)
-                   ,?WORKER('stats_listener')
+		  ,?WORKER('stats_listener')
                   ]).
 
 %% ===================================================================

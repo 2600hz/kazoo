@@ -35,10 +35,10 @@ start_link() ->
 -spec start_leader(atom(), atoms(), list(), atom(), list(), list()) -> startlink_ret().
 start_leader(Name, Nodes, Opts, Module, [], []) ->
     supervisor:start_child(?SERVER
-                           ,?SUPER_NAME_ARGS_TYPE(Name
-                                                  ,'amqp_leader_proc_sup'
-                                                  ,[Name, Nodes, Opts, Module, [], []]
-                                                  ,'transient')).
+			  ,?SUPER_NAME_ARGS_TYPE(Name
+						,'amqp_leader_proc_sup'
+						,[Name, Nodes, Opts, Module, [], []]
+						,'transient')).
 
 %% ===================================================================
 %% Supervisor callbacks

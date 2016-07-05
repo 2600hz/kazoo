@@ -167,14 +167,14 @@ aws_request4_no_update(Method, Protocol, Host, Port, Path, Params, Service, #aws
 
 aws_request_form(Method, Protocol, Host, Port, Path, Form, Headers, Config) ->
     UProtocol = case Protocol of
-        undefined -> "https://";
-        _ -> [Protocol, "://"]
-    end,
+		    undefined -> "https://";
+		    _ -> [Protocol, "://"]
+		end,
 
     URL = case Port of
-        undefined -> [UProtocol, Host, Path];
-        _ -> [UProtocol, Host, $:, port_to_str(Port), Path]
-    end,
+	      undefined -> [UProtocol, Host, Path];
+	      _ -> [UProtocol, Host, $:, port_to_str(Port), Path]
+	  end,
 
     %% Note: httpc MUST be used with {timeout, timeout()} option
     %%       Many timeout related failures is observed at prod env
@@ -480,10 +480,10 @@ authorization(Config, CredentialScope, SignedHeaders, Signature) ->
 -spec get_service_status(list(string())) -> ok | list().
 get_service_status(ServiceNames) when is_list(ServiceNames) ->
     {ok, Json} = aws_request_form(get, "http", "status.aws.amazon.com", undefined,
-        "/data.json", "", [], default_config()),
+				  "/data.json", "", [], default_config()),
 
     case get_filtered_statuses(ServiceNames,
-            proplists:get_value(<<"current">>, kz_json:decode(Json)))
+			       proplists:get_value(<<"current">>, kz_json:decode(Json)))
     of
         [] -> ok;
         ReturnStatuses -> ReturnStatuses

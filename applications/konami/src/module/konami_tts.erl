@@ -26,14 +26,14 @@ handle(Data, Call) ->
     lager:debug("tts: '~s'", [TTS]),
 
     TTSCommand = kapps_call_command:tts_command(TTS
-                                                 ,kz_json:get_value(<<"voice">>, Data)
-                                                 ,kz_json:get_value(<<"language">>, Data)
-                                                 ,kz_json:get_value(<<"terminators">>, Data)
-                                                 ,kz_json:get_value(<<"engine">>, Data)
-                                                 ,Call
-                                                ),
+					       ,kz_json:get_value(<<"voice">>, Data)
+					       ,kz_json:get_value(<<"language">>, Data)
+					       ,kz_json:get_value(<<"terminators">>, Data)
+					       ,kz_json:get_value(<<"engine">>, Data)
+					       ,Call
+					       ),
     kapps_call_command:send_command(
       kz_json:set_value(<<"Insert-At">>, <<"now">>, TTSCommand)
-      ,Call
+				   ,Call
      ),
     {'continue', Call}.

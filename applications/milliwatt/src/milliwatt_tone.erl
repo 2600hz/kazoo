@@ -33,7 +33,7 @@ get_tone() ->
 
     kz_json:from_list(
       [{<<"Frequencies">>, Hz}
-       ,{<<"Duration-ON">>, kz_util:to_binary(Duration)}
-       ,{<<"Duration-OFF">>, <<"1000">>}
+      ,{<<"Duration-ON">>, kz_util:to_binary(Duration)}
+      ,{<<"Duration-OFF">>, <<"1000">>}
       ]
      ).

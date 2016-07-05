@@ -11,12 +11,12 @@
 
 -export([start_link/0]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,handle_event/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("jonny5.hrl").
@@ -28,12 +28,12 @@
 %%   as that will cause duplicate credit/debits at the end of the call since
 %%   the round-robin shared queue thing wont work.
 -define(RESPONDERS, [{'j5_authz_req', [{<<"authz">>, <<"authz_req">>}]}
-                     ,{'j5_balance_check_req', [{<<"authz">>, <<"balance_check_req">>}]}
-                     ,{'j5_channel_destroy', [{<<"call_event">>, <<"CHANNEL_DESTROY">>}]}
+		    ,{'j5_balance_check_req', [{<<"authz">>, <<"balance_check_req">>}]}
+		    ,{'j5_channel_destroy', [{<<"call_event">>, <<"CHANNEL_DESTROY">>}]}
                     ]).
 -define(BINDINGS, [{'call', [{'restrict_to', [<<"CHANNEL_DESTROY">>]}]}
-                   ,{'authz', []}
-                   ,{'self', []}
+		  ,{'authz', []}
+		  ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"jonny5_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -51,10 +51,10 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'bindings', ?BINDINGS}
-                                                          ,{'responders', ?RESPONDERS}
-                                                          ,{'queue_name', ?QUEUE_NAME}
-                                                          ,{'queue_options', ?QUEUE_OPTIONS}
-                                                          ,{'consume_options', ?CONSUME_OPTIONS}
+							 ,{'responders', ?RESPONDERS}
+							 ,{'queue_name', ?QUEUE_NAME}
+							 ,{'queue_options', ?QUEUE_OPTIONS}
+							 ,{'consume_options', ?CONSUME_OPTIONS}
                                                          ], []).
 
 %%%===================================================================

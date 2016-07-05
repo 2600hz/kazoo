@@ -13,7 +13,7 @@
 -module(konami_play).
 
 -export([handle/2
-         ,number_builder/1
+	,number_builder/1
         ]).
 
 -include("konami.hrl").
@@ -42,7 +42,7 @@ play(Data, Call, Media) ->
     PlayCommand = kapps_call_command:play_command(Media, ?ANY_DIGIT, leg(Data, Call), Call),
     kapps_call_command:send_command(
       kz_json:set_value(<<"Insert-At">>, <<"now">>, PlayCommand)
-      ,Call
+				   ,Call
      ).
 
 -spec leg(kz_json:object(), kapps_call:call()) -> ne_binary().
@@ -106,11 +106,11 @@ number_builder_leg(NumberJObj, Media) ->
 -spec metaflow_jobj(kz_json:object(), ne_binary(), ne_binary()) -> kz_json:object().
 metaflow_jobj(NumberJObj, Media, Leg) ->
     kz_json:set_values([{<<"module">>, <<"play">>}
-                        ,{<<"data">>, play_data(Media, Leg)}
+		       ,{<<"data">>, play_data(Media, Leg)}
                        ], NumberJObj).
 
 -spec play_data(ne_binary(), ne_binary()) -> kz_json:object().
 play_data(Media, Leg) ->
     kz_json:from_list([{<<"id">>, Media}
-                       ,{<<"leg">>, Leg}
+		      ,{<<"leg">>, Leg}
                       ]).

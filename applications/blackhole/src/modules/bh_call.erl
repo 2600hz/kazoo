@@ -27,7 +27,7 @@ handle_event(Context, EventJObj) ->
 
 is_account_event(Context, EventJObj) ->
     kz_json:get_first_defined([<<"Account-ID">>
-                               ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
+			      ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
                               ], EventJObj
                              ) =:=
         bh_context:account_id(Context).

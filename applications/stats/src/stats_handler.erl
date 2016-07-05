@@ -11,10 +11,10 @@
 -include("stats.hrl").
 
 -export([get_db/1
-         ,handle_event/2
-         ,send/1
-         ,get_next/3
-         ,handle_req/2
+	,handle_event/2
+	,send/1
+	,get_next/3
+	,handle_req/2
         ]).
 
 -include("stats.hrl").
@@ -137,41 +137,41 @@ value(Row, Col, Table, Order) ->
 table_def() ->
     [{<<"vm">>,
       [{<<"nodename">>, <<"">>}
-       ,{<<"erlang-version">>, <<"">>}
-       ,{<<"memory-total">>, 0}
-       ,{<<"memory-processes">>, 0}
-       ,{<<"memory-system">>, 0}
-       ,{<<"memory-atom">>, 0}
-       ,{<<"memory-binary">>, 0}
-       ,{<<"memory-code">>, 0}
-       ,{<<"memory-ets">>, 0}
-       ,{<<"amqp-error">>, 0}
-       ,{<<"amqp-request">>, 0}
-       ,{<<"bigcouch-504-error">>, 0}
-       ,{<<"bigcouch-other-error">>, 0}
-       ,{<<"bigcouch-request">>, 0}
+      ,{<<"erlang-version">>, <<"">>}
+      ,{<<"memory-total">>, 0}
+      ,{<<"memory-processes">>, 0}
+      ,{<<"memory-system">>, 0}
+      ,{<<"memory-atom">>, 0}
+      ,{<<"memory-binary">>, 0}
+      ,{<<"memory-code">>, 0}
+      ,{<<"memory-ets">>, 0}
+      ,{<<"amqp-error">>, 0}
+      ,{<<"amqp-request">>, 0}
+      ,{<<"bigcouch-504-error">>, 0}
+      ,{<<"bigcouch-other-error">>, 0}
+      ,{<<"bigcouch-request">>, 0}
       ]},
      {<<"ecallmgr">>,
       [{<<"nodename">>, <<"">>}
-       ,{<<"reduction">>, 0}
-       ,{<<"processes">>, 0}
-       ,{<<"register-attempt">>, 0}
-       ,{<<"register-fail">>, 0}
-       ,{<<"presence">>, 0}
+      ,{<<"reduction">>, 0}
+      ,{<<"processes">>, 0}
+      ,{<<"register-attempt">>, 0}
+      ,{<<"register-fail">>, 0}
+      ,{<<"presence">>, 0}
       ]},
      {<<"sip-domain">>,
       [{<<"domain-name">>, <<"">>}
-       ,{<<"RECOVERY_ON_TIMER_EXPIRE">>, 0}
-       ,{<<"PROGRESS_TIMEOUT">>, 0}
-       ,{<<"UNALLOCATED_NUMBER">>, 0}
-       ,{<<"NO_ROUTE_DESTINATION">>, 0}
-       ,{<<"NORMAL_CLEARING">>, 0}
-       ,{<<"ORIGINATOR_CANCEL">>, 0}
-       ,{<<"DESTINATION_OUT_OF_ORDER">>, 0}
-       ,{<<"REQUESTED_CHAN_UNAVAIL">>, 0}
-       ,{<<"NO_ANSWER">>, 0}
-       ,{<<"INVALID_NUMBER_FORMAT">>, 0}
-       ,{<<"INCOMPATIBLE_DESTINATION">>, 0}
+      ,{<<"RECOVERY_ON_TIMER_EXPIRE">>, 0}
+      ,{<<"PROGRESS_TIMEOUT">>, 0}
+      ,{<<"UNALLOCATED_NUMBER">>, 0}
+      ,{<<"NO_ROUTE_DESTINATION">>, 0}
+      ,{<<"NORMAL_CLEARING">>, 0}
+      ,{<<"ORIGINATOR_CANCEL">>, 0}
+      ,{<<"DESTINATION_OUT_OF_ORDER">>, 0}
+      ,{<<"REQUESTED_CHAN_UNAVAIL">>, 0}
+      ,{<<"NO_ANSWER">>, 0}
+      ,{<<"INVALID_NUMBER_FORMAT">>, 0}
+      ,{<<"INCOMPATIBLE_DESTINATION">>, 0}
       ]}].
 
 table_order(Table) ->

@@ -30,7 +30,7 @@
         ,delete/3
         ,reserve/4
         ,add/5
-        %,update_features/5
+						%,update_features/5
         ]).
 
 -include("knm.hrl").
@@ -140,18 +140,18 @@ help() ->
                         ])
      }
 
-    %% ,{<<"update_features">>
-    %%  ,kz_json:from_list([{<<"description">>, <<"Bulk-update features of numbers">>}
-    %%                     ,{<<"expected_content">>, <<"text/csv">>}
-    %%                     ,{<<"mandatory">>, [<<"number">>
-    %%                                        ]}
-    %%                     ,{<<"optional">>, [<<"cnam.inbound">>
-    %%                                       ,<<"cnam.outbound">>
-    %%                                       ,<<"e911.street_address">>
-    %%                                            %%TODO: exhaustive list
-    %%                                       ]}
-    %%                     ])
-    %%  }
+     %% ,{<<"update_features">>
+     %%  ,kz_json:from_list([{<<"description">>, <<"Bulk-update features of numbers">>}
+     %%                     ,{<<"expected_content">>, <<"text/csv">>}
+     %%                     ,{<<"mandatory">>, [<<"number">>
+     %%                                        ]}
+     %%                     ,{<<"optional">>, [<<"cnam.inbound">>
+     %%                                       ,<<"cnam.outbound">>
+     %%                                       ,<<"e911.street_address">>
+     %%                                            %%TODO: exhaustive list
+     %%                                       ]}
+     %%                     ])
+     %%  }
     ].
 
 %%% Verifiers

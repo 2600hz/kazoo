@@ -11,37 +11,37 @@
 -behaviour(gen_server).
 
 -export([start_link/0
-         ,handle_search_req/2
-         ,handle_reset/2
-         ,handle_subscribe/2
-         ,handle_kamailio_subscribe/2
-         ,handle_kamailio_notify/2
-         ,handle_mwi_update/2
-         ,handle_presence_update/2
-         ,handle_channel_event/2
-         ,table_id/0
-         ,table_config/0
-         ,find_subscription/1
-         ,find_subscriptions/1
-         ,find_subscriptions/2
-         ,find_user_subscriptions/2
-         ,get_subscriptions/2, get_subscriptions/3
-         ,get_stalkers/2
-         ,search_for_subscriptions/2
-         ,search_for_subscriptions/3
-         ,subscription_to_json/1
-         ,subscriptions_to_json/1
-         ,cached_terminated_callids/0
-         ,handle_sync/2
-         ,proxy_subscribe/1
-         ,reset/1
+	,handle_search_req/2
+	,handle_reset/2
+	,handle_subscribe/2
+	,handle_kamailio_subscribe/2
+	,handle_kamailio_notify/2
+	,handle_mwi_update/2
+	,handle_presence_update/2
+	,handle_channel_event/2
+	,table_id/0
+	,table_config/0
+	,find_subscription/1
+	,find_subscriptions/1
+	,find_subscriptions/2
+	,find_user_subscriptions/2
+	,get_subscriptions/2, get_subscriptions/3
+	,get_stalkers/2
+	,search_for_subscriptions/2
+	,search_for_subscriptions/3
+	,subscription_to_json/1
+	,subscriptions_to_json/1
+	,cached_terminated_callids/0
+	,handle_sync/2
+	,proxy_subscribe/1
+	,reset/1
         ]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+	,handle_call/3
+	,handle_cast/2
+	,handle_info/2
+	,terminate/2
+	,code_change/3
         ]).
 
 -include("omnipresence.hrl").
@@ -82,7 +82,7 @@ handle_search_req(JObj, _Props) ->
     lager:debug("searching for subs for ~s@~s", [Username, Realm]),
     Subs = search_for_subscriptions(Event, Realm, Username),
     Resp = [{<<"Subscriptions">>, subscriptions_to_json(Subs)}
-            ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+	   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_presence:publish_search_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp).
@@ -176,9 +176,9 @@ handle_channel_event(JObj, _Props) ->
 maybe_handle_event(JObj, CallId, <<"CHANNEL_DESTROY">>) ->
     lager:debug("caching CHANNEL_DESTROY for ~s", [CallId]),
     kz_cache:store_local(?CACHE_NAME
-                         ,terminated_cache_key(CallId)
-                         ,'terminated'
-                         ,[{'expires', ?CACHE_TERMINATED_CALLID}]
+			,terminated_cache_key(CallId)
+			,'terminated'
+			,[{'expires', ?CACHE_TERMINATED_CALLID}]
                         ),
     handle_the_event(JObj);
 maybe_handle_event(JObj, CallId, <<"CHANNEL_CREATE">> = _EventName) ->
@@ -212,7 +212,7 @@ table_id() -> 'omnipresence_subscriptions'.
 -spec table_config() -> kz_proplist().
 table_config() ->
     ['protected', 'named_table', 'set'
-     ,{'keypos', #omnip_subscription.call_id}
+    ,{'keypos', #omnip_subscription.call_id}
     ].
 
 %%%===================================================================
@@ -296,11 +296,11 @@ handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}=_R, #state{expire_ref=Ref, ready='
         _N -> lager:debug("expired ~p subscriptions", [_N])
     end,
     {'noreply', State#state{expire_ref=start_expire_ref()
-                            ,other_nodes_count=kz_nodes:whapp_count(?APP_NAME)
+			   ,other_nodes_count=kz_nodes:whapp_count(?APP_NAME)
                            }};
 handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}=_R, #state{expire_ref=Ref, ready='false'}=State) ->
     {'noreply', State#state{expire_ref=start_expire_ref()
-                            ,other_nodes_count=kz_nodes:whapp_count(?APP_NAME)
+			   ,other_nodes_count=kz_nodes:whapp_count(?APP_NAME)
                            }};
 handle_info(?TABLE_READY(_Tbl), State) ->
     lager:debug("recv table_ready for ~p", [_Tbl]),
@@ -354,14 +354,14 @@ notify_packages(Msg) ->
 
 -spec resubscribe_notify(subscription()) -> 'ok'.
 resubscribe_notify(#omnip_subscription{event=Package
-                                       ,user=User
+				      ,user=User
                                       }=Subscription) ->
     Msg = {'omnipresence', {'resubscribe_notify', Package, User, Subscription}},
     notify_packages(Msg).
 
 -spec subscribe_notify(subscription()) -> 'ok'.
 subscribe_notify(#omnip_subscription{event=Package
-                                     ,user=User
+				    ,user=User
                                     }=Subscription) ->
     Msg = {'omnipresence', {'subscribe_notify', Package, User, Subscription}},
     notify_packages(Msg).
@@ -377,7 +377,7 @@ distribute_subscribe(Count, JObj)
   when Count > 1 ->
     kapps_util:amqp_pool_send(
       kz_json:delete_key(<<"Node">>, JObj)
-      ,fun kapi_presence:publish_subscribe/1
+			     ,fun kapi_presence:publish_subscribe/1
      );
 distribute_subscribe(_Count, _JObj) -> 'ok'.
 
@@ -396,24 +396,24 @@ subscribe_to_record(JObj) ->
                   _Else -> 2
               end,
     #omnip_subscription{user=U
-                        ,from=F
-                        ,protocol=P
-                        ,expires=expires(JObj)
-                        ,normalized_user=kz_util:to_lower_binary(U)
-                        ,normalized_from=kz_util:to_lower_binary(F)
-                        ,username=kz_util:to_lower_binary(Username)
-                        ,realm=kz_util:to_lower_binary(Realm)
-                        ,stalker=kz_json:get_first_defined([<<"Subscription-ID">>
-                                                            ,<<"Server-ID">>
-                                                            ,<<"Queue">>
-                                                           ], JObj)
-                        ,event=kz_json:get_value(<<"Event-Package">>, JObj, ?DEFAULT_EVENT)
-                        ,contact=kz_json:get_value(<<"Contact">>, JObj)
-                        ,call_id=kz_json:get_value(<<"Call-ID">>, JObj)
-                        ,subscription_id=kz_json:get_value(<<"Subscription-ID">>, JObj)
-                        ,proxy_route= kz_json:get_value(<<"Proxy-Route">>, JObj)
-                        ,version=Version
-                        ,user_agent=kz_json:get_binary_value(<<"User-Agent">>, JObj)
+		       ,from=F
+		       ,protocol=P
+		       ,expires=expires(JObj)
+		       ,normalized_user=kz_util:to_lower_binary(U)
+		       ,normalized_from=kz_util:to_lower_binary(F)
+		       ,username=kz_util:to_lower_binary(Username)
+		       ,realm=kz_util:to_lower_binary(Realm)
+		       ,stalker=kz_json:get_first_defined([<<"Subscription-ID">>
+							  ,<<"Server-ID">>
+							  ,<<"Queue">>
+							  ], JObj)
+		       ,event=kz_json:get_value(<<"Event-Package">>, JObj, ?DEFAULT_EVENT)
+		       ,contact=kz_json:get_value(<<"Contact">>, JObj)
+		       ,call_id=kz_json:get_value(<<"Call-ID">>, JObj)
+		       ,subscription_id=kz_json:get_value(<<"Subscription-ID">>, JObj)
+		       ,proxy_route= kz_json:get_value(<<"Proxy-Route">>, JObj)
+		       ,version=Version
+		       ,user_agent=kz_json:get_binary_value(<<"User-Agent">>, JObj)
                        }.
 
 %%--------------------------------------------------------------------
@@ -428,45 +428,45 @@ subscriptions_to_json(Subs) ->
 
 -spec subscription_to_json(subscription()) -> kz_json:object().
 subscription_to_json(#omnip_subscription{user=User
-                                         ,from=From
-                                         ,stalker=Stalker
-                                         ,expires=Expires
-                                         ,timestamp=Timestamp
-                                         ,protocol=Protocol
-                                         ,username=Username
-                                         ,realm=Realm
-                                         ,event=Event
-                                         ,contact=Contact
-                                         ,call_id=CallId
-                                         ,subscription_id=SubId
-                                         ,proxy_route=ProxyRoute
-                                         ,version=Version
-                                         ,last_sequence=Sequence
-                                         ,last_reply=Reply
-                                         ,last_body=Body
-                                         ,user_agent=UA
+					,from=From
+					,stalker=Stalker
+					,expires=Expires
+					,timestamp=Timestamp
+					,protocol=Protocol
+					,username=Username
+					,realm=Realm
+					,event=Event
+					,contact=Contact
+					,call_id=CallId
+					,subscription_id=SubId
+					,proxy_route=ProxyRoute
+					,version=Version
+					,last_sequence=Sequence
+					,last_reply=Reply
+					,last_body=Body
+					,user_agent=UA
                                         }) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"user">>, User}
-         ,{<<"from">>, From}
-         ,{<<"stalker">>, Stalker}
-         ,{<<"expires">>, Expires}
-         ,{<<"timestamp">>, Timestamp}
-         ,{<<"protocol">>, Protocol}
-         ,{<<"username">>, Username}
-         ,{<<"realm">>, Realm}
-         ,{<<"event">>, Event}
-         ,{<<"contact">>, Contact}
-         ,{<<"call_id">>, CallId}
-         ,{<<"subscription_id">>, SubId}
-         ,{<<"proxy_route">>, ProxyRoute}
-         ,{<<"version">>, Version}
-         ,{<<"notify">>, kz_json:from_list([{<<"sequence">>, Sequence}
-                                            ,{<<"reply">>, Reply}
-                                            ,{<<"body">>, Body}
-                                           ])}
-         ,{<<"user_agent">>, UA}
+	,{<<"from">>, From}
+	,{<<"stalker">>, Stalker}
+	,{<<"expires">>, Expires}
+	,{<<"timestamp">>, Timestamp}
+	,{<<"protocol">>, Protocol}
+	,{<<"username">>, Username}
+	,{<<"realm">>, Realm}
+	,{<<"event">>, Event}
+	,{<<"contact">>, Contact}
+	,{<<"call_id">>, CallId}
+	,{<<"subscription_id">>, SubId}
+	,{<<"proxy_route">>, ProxyRoute}
+	,{<<"version">>, Version}
+	,{<<"notify">>, kz_json:from_list([{<<"sequence">>, Sequence}
+					  ,{<<"reply">>, Reply}
+					  ,{<<"body">>, Body}
+					  ])}
+	,{<<"user_agent">>, UA}
         ])).
 
 -spec start_expire_ref() -> reference().
@@ -477,11 +477,11 @@ start_expire_ref() ->
 expire_old_subscriptions() ->
     Now = kz_util:current_tstamp(),
     ets:select_delete(table_id(), [{#omnip_subscription{timestamp='$1'
-                                                        ,expires='$2'
-                                                        ,_='_'
+						       ,expires='$2'
+						       ,_='_'
                                                        }
-                                    ,[{'>', {'const', Now}, {'+', '$1', '$2'}}]
-                                    ,['true']
+				   ,[{'>', {'const', Now}, {'+', '$1', '$2'}}]
+				   ,['true']
                                    }]).
 
 %%--------------------------------------------------------------------
@@ -510,19 +510,19 @@ find_subscriptions(User) when is_binary(User) ->
 find_subscriptions(JObj) ->
     find_subscriptions(
       kz_json:get_value(<<"Event-Package">>, JObj, ?DEFAULT_EVENT)
-      ,<<(kz_json:get_value(<<"Username">>, JObj))/binary
-         ,"@"
-         ,(kz_json:get_value(<<"Realm">>, JObj))/binary
-       >>).
+		      ,<<(kz_json:get_value(<<"Username">>, JObj))/binary
+			 ,"@"
+			 ,(kz_json:get_value(<<"Realm">>, JObj))/binary
+		       >>).
 
 find_subscriptions(Event, User) when is_binary(User) ->
     U = kz_util:to_lower_binary(User),
     MatchSpec = [{#omnip_subscription{normalized_user='$1'
-                                      ,event=Event
-                                      ,_='_'
+				     ,event=Event
+				     ,_='_'
                                      }
-                  ,[{'=:=', '$1', {'const', U}}]
-                  ,['$_']
+		 ,[{'=:=', '$1', {'const', U}}]
+		 ,['$_']
                  }],
     case ets:select(table_id(), MatchSpec) of
         [] -> {'error', 'not_found'};
@@ -535,20 +535,20 @@ find_subscriptions(Event, User) when is_binary(User) ->
 find_user_subscriptions(?OMNIPRESENCE_EVENT_ALL, User) ->
     U = kz_util:to_lower_binary(User),
     MatchSpec = [{#omnip_subscription{normalized_from='$1'
-                                      ,_='_'
+				     ,_='_'
                                      }
-                  ,[{'=:=', '$1', {'const', U}}]
-                  ,['$_']
+		 ,[{'=:=', '$1', {'const', U}}]
+		 ,['$_']
                  }],
     find_user_subscriptions(MatchSpec);
 find_user_subscriptions(Event, User) ->
     U = kz_util:to_lower_binary(User),
     MatchSpec = [{#omnip_subscription{normalized_from='$1'
-                                      ,event=Event
-                                      ,_='_'
+				     ,event=Event
+				     ,_='_'
                                      }
-                  ,[{'=:=', '$1', {'const', U}}]
-                  ,['$_']
+		 ,[{'=:=', '$1', {'const', U}}]
+		 ,['$_']
                  }],
     find_user_subscriptions(MatchSpec).
 
@@ -564,17 +564,17 @@ find_user_subscriptions(MatchSpec) ->
     end.
 
 -spec get_stalkers(ne_binary(), ne_binary()) ->
-                               {'ok', binaries()} |
-                               {'error', 'not_found'}.
+			  {'ok', binaries()} |
+			  {'error', 'not_found'}.
 get_stalkers(Event, User) ->
     U = kz_util:to_lower_binary(User),
     MatchSpec = [{#omnip_subscription{normalized_user='$1'
-                                      ,stalker='$2'
-                                      ,event=Event
-                                      ,_='_'
+				     ,stalker='$2'
+				     ,event=Event
+				     ,_='_'
                                      }
-                  ,[{'=:=', '$1', {'const', U}}]
-                  ,['$2']
+		 ,[{'=:=', '$1', {'const', U}}]
+		 ,['$2']
                  }],
     case ets:select(table_id(), MatchSpec) of
         [] -> {'error', 'not_found'};
@@ -597,12 +597,12 @@ get_subscriptions(Event, User) ->
 get_subscriptions(Event, User, Version) ->
     U = kz_util:to_lower_binary(User),
     MatchSpec = [{#omnip_subscription{normalized_user='$1'
-                                      ,event=Event
-                                      ,version=Version
-                                      ,_='_'
+				     ,event=Event
+				     ,version=Version
+				     ,_='_'
                                      }
-                  ,[{'=:=', '$1', {'const', U}}]
-                  ,['$_']
+		 ,[{'=:=', '$1', {'const', U}}]
+		 ,['$_']
                  }],
     case ets:select(table_id(), MatchSpec) of
         [] -> {'error', 'not_found'};
@@ -617,13 +617,13 @@ dedup(Subscriptions) ->
 dedup([], Dictionary) ->
     [Subscription || {_, Subscription} <- dict:to_list(Dictionary)];
 dedup([#omnip_subscription{normalized_user=User
-                           ,stalker=Stalker
-                           ,event=Event
+			  ,stalker=Stalker
+			  ,event=Event
                           }=Subscription
        | Subscriptions
       ], Dictionary) ->
     dedup(Subscriptions
-          ,dict:store({User, Stalker, Event}, Subscription, Dictionary)
+	 ,dict:store({User, Stalker, Event}, Subscription, Dictionary)
          ).
 
 %%--------------------------------------------------------------------
@@ -648,8 +648,8 @@ expires(JObj) -> expires(kz_json:get_integer_value(<<"Expires">>, JObj)).
 search_for_subscriptions(Event, Realm) ->
     MatchSpec =
         #omnip_subscription{realm=kz_util:to_lower_binary(Realm)
-                            ,event=Event
-                            ,_='_'
+			   ,event=Event
+			   ,_='_'
                            },
     ets:match_object(table_id(), MatchSpec).
 
@@ -658,9 +658,9 @@ search_for_subscriptions(Event, Realm, '_') ->
 search_for_subscriptions(Event, Realm, Username) ->
     MatchSpec =
         #omnip_subscription{username=kz_util:to_lower_binary(Username)
-                            ,realm=kz_util:to_lower_binary(Realm)
-                            ,event=Event
-                            ,_='_'
+			   ,realm=kz_util:to_lower_binary(Realm)
+			   ,event=Event
+			   ,_='_'
                            },
     ets:match_object(table_id(), MatchSpec).
 
@@ -672,47 +672,47 @@ subscribe(#omnip_subscription{from = <<>>}=_S) ->
     lager:debug("subscription with no from: ~p", [subscription_to_json(_S)]),
     'invalid';
 subscribe(#omnip_subscription{expires=E
-                              ,user=_U
-                              ,from=_F
-                              ,stalker=_S
-                              ,call_id=CallId
+			     ,user=_U
+			     ,from=_F
+			     ,stalker=_S
+			     ,call_id=CallId
                              }=S)
   when E =< 0 ->
     case find_subscription(CallId) of
         {'error', 'not_found'} -> {'unsubscribe', S};
         {'ok', #omnip_subscription{timestamp=_T
-                                   ,expires=_E
+				  ,expires=_E
                                   }=O} ->
             lager:debug("unsubscribe ~s/~s (had ~p s left)", [_U, _F, _E - kz_util:elapsed_s(_T)]),
             ets:delete_object(table_id(), O),
             {'unsubscribe', O}
     end;
 subscribe(#omnip_subscription{user=_U
-                              ,from=_F
-                              ,expires=E1
-                              ,timestamp=T1
-                              ,call_id=CallId
-                              ,stalker=Stalker
-                              ,contact=Contact
+			     ,from=_F
+			     ,expires=E1
+			     ,timestamp=T1
+			     ,call_id=CallId
+			     ,stalker=Stalker
+			     ,contact=Contact
                              }=S) ->
     case find_subscription(CallId) of
         {'ok', #omnip_subscription{timestamp=_T
-                                   ,expires=_E2
+				  ,expires=_E2
                                   }=O
         } ->
             lager:debug("re-subscribe ~s/~s/~s expires in ~ps(prior remaing ~ps)"
-                        ,[_U, _F, CallId, E1, _E2 - kz_util:elapsed_s(_T)]
+		       ,[_U, _F, CallId, E1, _E2 - kz_util:elapsed_s(_T)]
                        ),
             ets:update_element(table_id(), CallId,
                                [{#omnip_subscription.timestamp, T1}
-                                ,{#omnip_subscription.expires, E1}
-                                ,{#omnip_subscription.stalker, Stalker}
-                                ,{#omnip_subscription.contact, Contact}
+			       ,{#omnip_subscription.expires, E1}
+			       ,{#omnip_subscription.stalker, Stalker}
+			       ,{#omnip_subscription.contact, Contact}
                                ]),
             {'resubscribe', O#omnip_subscription{timestamp=T1
-                                                 ,expires=E1
-                                                 ,stalker=Stalker
-                                                 ,contact=Contact
+						,expires=E1
+						,stalker=Stalker
+						,contact=Contact
                                                 }};
         {'error', 'not_found'} ->
             lager:debug("subscribe ~s/~s/~s expires in ~ps", [_U, _F, CallId, E1]),
@@ -728,14 +728,14 @@ notify_update(JObj) ->
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
     case find_subscription(CallId) of
         {'ok', #omnip_subscription{from = From
-                                   ,user = User
-                                   ,event = Event
+				  ,user = User
+				  ,event = Event
                                   }} ->
             lager:debug("received notify reply ~B for ~s subscription (~s) of ~s to ~s", [Reply, Event, CallId, From, User]),
             ets:update_element(table_id(), CallId,
                                [{#omnip_subscription.last_sequence, Sequence}
-                                ,{#omnip_subscription.last_reply, Reply}
-                                ,{#omnip_subscription.last_body, Body}
+			       ,{#omnip_subscription.last_reply, Reply}
+			       ,{#omnip_subscription.last_body, Body}
                                ]);
         {'error', _} = E ->
             lager:debug("notify received for unexistent subscription ~s", [CallId]),

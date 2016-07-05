@@ -19,7 +19,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER('frontier_init')
-                   ,?WORKER('frontier_shared_listener')
+		  ,?WORKER('frontier_shared_listener')
                   ]).
 
 %% ===================================================================

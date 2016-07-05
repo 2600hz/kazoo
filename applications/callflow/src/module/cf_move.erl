@@ -50,8 +50,8 @@ get_channels(OwnerId, Call) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kapps_util:amqp_pool_collect(Req
-                                       ,fun kapi_call:publish_query_user_channels_req/1
-                                       ,{'ecallmgr', 'true'})
+				     ,fun kapi_call:publish_query_user_channels_req/1
+				     ,{'ecallmgr', 'true'})
     of
         {'error', _E} ->
             lager:error("could not reach ecallmgr channels: ~p", [_E]),
@@ -71,13 +71,13 @@ clean_channels([JObj|JObjs], Dict) ->
 
 clean_channel(JObj, Dict) ->
     lists:foldl(
-        fun(Channel, D) ->
-            UUID = kz_json:get_value(<<"uuid">>, Channel),
-            dict:store(UUID, Channel, D)
-        end
-        ,Dict
-        ,kz_json:get_value(<<"Channels">>, JObj, [])
-    ).
+      fun(Channel, D) ->
+	      UUID = kz_json:get_value(<<"uuid">>, Channel),
+	      dict:store(UUID, Channel, D)
+      end
+	       ,Dict
+	       ,kz_json:get_value(<<"Channels">>, JObj, [])
+     ).
 
 -spec filter_channels(dict:dict(), kapps_call:call()) ->
                              {'ok', kz_json:object()} |

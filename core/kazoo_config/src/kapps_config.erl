@@ -27,7 +27,7 @@
 -export([get_ne_binary/2, get_ne_binary/3, get_ne_binary/4]).
 
 -export([set/3, set/4, set_default/3, set_node/4
-         ,update_default/3, update_default/4
+	,update_default/3, update_default/4
         ]).
 -export([lock_db/0, lock_db/1, is_locked/0]).
 -export([flush/0, flush/1, flush/2, flush/3]).
@@ -281,7 +281,7 @@ get_current(Category, Keys, Default, Node) ->
     end.
 
 -spec get_value(config_category(), config_key(), config_key(), Default, kz_json:object()) ->
-                         Default | any().
+		       Default | any().
 get_value(Category, ?KEY_DEFAULT, Keys, Default, JObj) ->
     get_default_value(Category, Keys, Default, JObj);
 get_value(Category, Node, Keys, Default, JObj) ->
@@ -291,7 +291,7 @@ get_value(Category, Node, Keys, Default, JObj) ->
     end.
 
 -spec get_zone_value(config_category(), config_key(), config_key(), Default, kz_json:object()) ->
-                         Default | any().
+			    Default | any().
 get_zone_value(Category, _Node, Keys, Default, JObj) ->
     Zone = kz_config:zone(),
     case kz_json:get_value([Zone | Keys], JObj) of
@@ -300,7 +300,7 @@ get_zone_value(Category, _Node, Keys, Default, JObj) ->
     end.
 
 -spec get_default_value(config_category(), config_key(), Default, kz_json:object()) ->
-                                 Default | _.
+			       Default | _.
 get_default_value(Category, Keys, Default, JObj) ->
     case kz_json:get_value([?KEY_DEFAULT | Keys], JObj) of
         'undefined' ->
@@ -393,9 +393,9 @@ update_category(Category, Keys, Value, Node, Options) ->
     case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, Category) of
         {'ok', JObj} ->
             lager:debug("updating category ~s(~s).~s to ~p", [Category
-                                                              ,Node
-                                                              ,kz_util:join_binary(Keys)
-                                                              ,Value
+							     ,Node
+							     ,kz_util:join_binary(Keys)
+							     ,Value
                                                              ]),
             update_category(Category, Keys, Value, Node, Options, JObj);
         {'error', 'not_found'} ->
@@ -455,7 +455,7 @@ maybe_save_category(_, JObj, _, _, 'true') ->
     {'ok', JObj};
 maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
     lager:debug("updating configuration category ~s(~s)"
-                ,[Category, kz_doc:revision(JObj)]
+	       ,[Category, kz_doc:revision(JObj)]
                ),
 
     JObj1 = update_pvt_fields(Category, JObj, PvtFields),
@@ -481,8 +481,8 @@ maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
 update_pvt_fields(Category, JObj, 'undefined') ->
     kz_doc:update_pvt_parameters(
       kz_doc:set_id(JObj, Category)
-      ,?KZ_CONFIG_DB
-      ,[{'type', <<"config">>}]
+				,?KZ_CONFIG_DB
+				,[{'type', <<"config">>}]
      );
 update_pvt_fields(Category, JObj, PvtFields) ->
     Base = update_pvt_fields(Category, JObj, 'undefined'),
@@ -702,11 +702,11 @@ add_config_setting(Id, Setting, Values) when is_binary(Id) ->
             add_config_setting(
               kz_doc:update_pvt_parameters(
                 kz_doc:set_id(kz_json:new(), Id)
-                ,?KZ_CONFIG_DB
-                ,[{'type', <<"config">>}]
+					  ,?KZ_CONFIG_DB
+					  ,[{'type', <<"config">>}]
                )
-              ,Setting
-              ,Values
+			      ,Setting
+			      ,Values
              );
         {'error', _}=Error -> Error
     end;
@@ -718,24 +718,24 @@ add_config_setting(JObj, ToSetting, [{FromId, Node, FromSetting, Value} | Values
         'undefined' ->
             io:format(
               "migrating setting from ~s ~s.~s to ~s ~s.~s value ~p~n"
-              ,[FromId, Node, FromSetting
-                ,ToId, Node, ToSetting
-                ,Value
-               ]
+		     ,[FromId, Node, FromSetting
+		      ,ToId, Node, ToSetting
+		      ,Value
+		      ]
              ),
             add_config_setting(
               kz_json:set_value(Key, Value, JObj)
-              ,ToSetting
-              ,Values
+			      ,ToSetting
+			      ,Values
              );
         Value -> add_config_setting(JObj, ToSetting, Values);
         _Else ->
             io:format("the system tried to move the parameter listed below but found a different setting already there, you need to correct this disparity manually!~n", []),
             io:format("  Source~n    db: ~s~n    id: ~s~n    key: ~s ~s~n    value: ~p~n"
-                      ,[?KZ_CONFIG_DB, FromId, Node, FromSetting, Value]
+		     ,[?KZ_CONFIG_DB, FromId, Node, FromSetting, Value]
                      ),
             io:format("  Destination~n    db: ~s~n    id: ~s~n    key: ~s ~s~n    value: ~p~n"
-                      ,[?KZ_CONFIG_DB, ToId, Node, ToSetting, _Else]
+		     ,[?KZ_CONFIG_DB, ToId, Node, ToSetting, _Else]
                      ),
             {'error', 'disparity'}
     end.
