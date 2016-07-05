@@ -7,24 +7,24 @@
 -define(APP_VERSION, <<"4.0.0">> ).
 
 -define(HTTP_OPTIONS, ['autoredirect'
-		      ,'connect_timeout'
-		      ,'essl'
-		      ,'proxy_auth'
-		      ,'relaxed'
-		      ,'ssl'
-		      ,'timeout'
-		      ,'url_encode'
-		      ,'version'
+                      ,'connect_timeout'
+                      ,'essl'
+                      ,'proxy_auth'
+                      ,'relaxed'
+                      ,'ssl'
+                      ,'timeout'
+                      ,'url_encode'
+                      ,'version'
                       ]).
 
 -define(OPTIONS, ['body_format'
-		 ,'full_result'
-		 ,'headers_as_is'
-		 ,'ipv6_host_with_brackets'
-		 ,'receiver'
-		 ,'socket_opts'
-		 ,'stream'
-		 ,'sync'
+                 ,'full_result'
+                 ,'headers_as_is'
+                 ,'ipv6_host_with_brackets'
+                 ,'receiver'
+                 ,'socket_opts'
+                 ,'stream'
+                 ,'sync'
                  ]).
 
 -define(KZ_WEB_HRL, 'true').

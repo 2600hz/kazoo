@@ -29,10 +29,10 @@
 
 -define(ENDPOINT_DEVICE
        ,kz_json:from_list(
-	  [{<<"allowed_accounts">>, ?ACCOUNTS_AUTH}
-	  ,{<<"rules">>, kz_json:new()}
-	  ]
-	 )
+          [{<<"allowed_accounts">>, ?ACCOUNTS_AUTH}
+          ,{<<"rules">>, kz_json:new()}
+          ]
+         )
        ).
 
 -define(DEVICE_RULES
@@ -41,88 +41,88 @@
 
 -define(ALLOW_ALL_RULE_RESTRICTIONS
        ,kz_json:from_list(
-	  [{?CATCH_ALL
-	   ,[kz_json:from_list(
-	       [{<<"allowed_accounts">>, ?ACCOUNTS_ANY}
-	       ,{<<"rules">>, kz_json:from_list([{?ARGS_ANY, ?HTTP_ANY}])}
-	       ]
-	      )
-	    ]
-	   }
-	  ]
-	 )
+          [{?CATCH_ALL
+           ,[kz_json:from_list(
+               [{<<"allowed_accounts">>, ?ACCOUNTS_ANY}
+               ,{<<"rules">>, kz_json:from_list([{?ARGS_ANY, ?HTTP_ANY}])}
+               ]
+              )
+            ]
+           }
+          ]
+         )
        ).
 
 -define(DENY_API_ENDPOINT_RESTRICTIONS
        ,kz_json:from_list(
-	  [{<<"accounts">>
-	   ,[kz_json:from_list(
-	       [{<<"allowed_accounts">>, ?ACCOUNTS_ANY}
-	       ,{<<"rules">>, kz_json:from_list([{?ARGS_ANY, ?HTTP_ANY}])}
-	       ]
-	      )
-	    ]
-	   }
-	  ]
-	 )
+          [{<<"accounts">>
+           ,[kz_json:from_list(
+               [{<<"allowed_accounts">>, ?ACCOUNTS_ANY}
+               ,{<<"rules">>, kz_json:from_list([{?ARGS_ANY, ?HTTP_ANY}])}
+               ]
+              )
+            ]
+           }
+          ]
+         )
        ).
 
 -define(ALLOW_API_ENDPOINT_RESTRICTIONS
        ,kz_json:from_list(
-	  [{<<"devices">>
-	   ,[kz_json:from_list(
-	       [{<<"allowed_accounts">>, ?ACCOUNTS_ANY}
-	       ,{<<"rules">>, kz_json:from_list([{?ARGS_ANY, ?HTTP_ANY}])}
-	       ]
-	      )
-	    ]
-	   }
-	  ]
-	 )
+          [{<<"devices">>
+           ,[kz_json:from_list(
+               [{<<"allowed_accounts">>, ?ACCOUNTS_ANY}
+               ,{<<"rules">>, kz_json:from_list([{?ARGS_ANY, ?HTTP_ANY}])}
+               ]
+              )
+            ]
+           }
+          ]
+         )
        ).
 
 -define(ALLOW_ACCOUNTS_RESTRICTIONS(AccountId)
        ,kz_json:from_list(
-	  [{<<"devices">>
-	   ,[kz_json:from_list(
-	       [{<<"allowed_accounts">>
-		,case AccountId of 'undefined' -> 'undefined'; _ -> [AccountId] end
-		}
-	       ,{<<"rules">>, kz_json:from_list([{?ARGS_ANY, ?HTTP_ANY}])}
-	       ]
-	      )
-	    ]
-	   }
-	  ]
-	 )
+          [{<<"devices">>
+           ,[kz_json:from_list(
+               [{<<"allowed_accounts">>
+                ,case AccountId of 'undefined' -> 'undefined'; _ -> [AccountId] end
+                }
+               ,{<<"rules">>, kz_json:from_list([{?ARGS_ANY, ?HTTP_ANY}])}
+               ]
+              )
+            ]
+           }
+          ]
+         )
        ).
 
 -define(ARGUMENTS_RESTRICTIONS(Arg)
        ,kz_json:from_list(
-	  [{<<"devices">>
-	   ,[kz_json:from_list(
-	       [{<<"allowed_accounts">>, [?ACCOUNT_ID]}
-	       ,{<<"rules">>, kz_json:from_list([{Arg, ?HTTP_ANY}])}
-	       ]
-	      )
-	    ]
-	   }
-	  ]
-	 )
+          [{<<"devices">>
+           ,[kz_json:from_list(
+               [{<<"allowed_accounts">>, [?ACCOUNT_ID]}
+               ,{<<"rules">>, kz_json:from_list([{Arg, ?HTTP_ANY}])}
+               ]
+              )
+            ]
+           }
+          ]
+         )
        ).
 
 -define(HTTP_VERB_RESTRICTIONS(Verbs)
        ,kz_json:from_list(
-	  [{<<"devices">>
-	   ,[kz_json:from_list(
-	       [{<<"allowed_accounts">>, [?ACCOUNT_ID]}
-	       ,{<<"rules">>, kz_json:from_list([{?ARGS_ANY, Verbs}])}
-	       ]
-	      )
-	    ]
-	   }
-	  ]
-	 )
+          [{<<"devices">>
+           ,[kz_json:from_list(
+               [{<<"allowed_accounts">>, [?ACCOUNT_ID]}
+               ,{<<"rules">>, kz_json:from_list([{?ARGS_ANY, Verbs}])}
+               ]
+              )
+            ]
+           }
+          ]
+         )
        ).
 
 -define(CB_TOKEN_RESTRICTIONS_TEST_HRL, 'true').

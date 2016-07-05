@@ -51,9 +51,9 @@
 -define(KNM_AVAILABLE_STATES, [?NUMBER_STATE_DISCOVERY, ?NUMBER_STATE_AVAILABLE]).
 
 -define(DEFAULT_PROVIDER_MODULES, [<<"cnam_notifier">>
-				  ,<<"port_notifier">>
-				  ,<<"failover">>
-				  ,<<"prepend">>
+                                  ,<<"port_notifier">>
+                                  ,<<"failover">>
+                                  ,<<"prepend">>
                                   ]).
 
 -define(EMERGENCY_SERVICES_KEY, <<"e911">>).

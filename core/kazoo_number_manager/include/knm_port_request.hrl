@@ -16,12 +16,12 @@
 -define(PVT_SENT, <<"pvt_sent">>).
 
 -define(PORT_STATES, [?PORT_UNCONFIRMED
-		     ,?PORT_SUBMITTED
-		     ,?PORT_PENDING
-		     ,?PORT_SCHEDULED
-		     ,?PORT_COMPLETED
-		     ,?PORT_REJECTED
-		     ,?PORT_CANCELED
+                     ,?PORT_SUBMITTED
+                     ,?PORT_PENDING
+                     ,?PORT_SCHEDULED
+                     ,?PORT_COMPLETED
+                     ,?PORT_REJECTED
+                     ,?PORT_CANCELED
                      ]).
 
 -define(KNM_PORT_REQUEST_HRL, 'true').

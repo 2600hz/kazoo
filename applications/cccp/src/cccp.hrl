@@ -15,17 +15,17 @@
 -define(DEFAULT_TIMEOUT, 15).
 
 -record(state, {customer_number :: ne_binary()
-	       ,b_leg_number :: ne_binary()
-	       ,call = kapps_call:new() :: kapps_call:call()
-	       ,account_id :: ne_binary()
-	       ,account_cid :: ne_binary()
-	       ,queue :: api_binary()
-	       ,parked_call_id :: ne_binary()
-	       ,offnet_ctl_q :: ne_binary()
-	       ,auth_doc_id :: ne_binary()
-	       ,self = self() :: pid()
-	       ,consumer_pid :: pid()
-	       ,callback_delay :: integer()
+               ,b_leg_number :: ne_binary()
+               ,call = kapps_call:new() :: kapps_call:call()
+               ,account_id :: ne_binary()
+               ,account_cid :: ne_binary()
+               ,queue :: api_binary()
+               ,parked_call_id :: ne_binary()
+               ,offnet_ctl_q :: ne_binary()
+               ,auth_doc_id :: ne_binary()
+               ,self = self() :: pid()
+               ,consumer_pid :: pid()
+               ,callback_delay :: integer()
                }).
 
 -type state() :: #state{}.

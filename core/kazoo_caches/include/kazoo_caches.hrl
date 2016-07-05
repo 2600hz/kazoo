@@ -17,11 +17,11 @@
 -type origin_tuples() :: [origin_tuple()].
 
 -record(cache_obj, {key :: any()| '_' | '$1'
-		   ,value :: any() | '_' | '$1' | '$2'
-		   ,expires :: kz_timeout() | '_' | '$3'
-		   ,timestamp = kz_util:current_tstamp() :: gregorian_seconds() | '_' | '$4'
-		   ,callback :: callback_fun() | '_' | '$2' | '$3' | '$5'
-		   ,origin :: origin_tuple() | origin_tuples() | '$1' | '_'
+                   ,value :: any() | '_' | '$1' | '$2'
+                   ,expires :: kz_timeout() | '_' | '$3'
+                   ,timestamp = kz_util:current_tstamp() :: gregorian_seconds() | '_' | '$4'
+                   ,callback :: callback_fun() | '_' | '$2' | '$3' | '$5'
+                   ,origin :: origin_tuple() | origin_tuples() | '$1' | '_'
                    }).
 
 -type cache_obj() :: #cache_obj{}.

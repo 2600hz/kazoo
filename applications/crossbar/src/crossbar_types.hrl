@@ -62,22 +62,22 @@
 -define(HTTP_PATCH, <<"PATCH">>).
 
 -define(CSV_CONTENT_TYPES, [{<<"application">>, <<"octet-stream">>}
-			   ,{<<"text">>, <<"csv">>}
-			   ,{<<"text">>, <<"comma-separated-values">>}
+                           ,{<<"text">>, <<"csv">>}
+                           ,{<<"text">>, <<"comma-separated-values">>}
                            ]).
 -define(JSON_CONTENT_TYPES, [{<<"application">>, <<"json">>}
-			    ,{<<"application">>, <<"x-json">>}
+                            ,{<<"application">>, <<"x-json">>}
                             ]).
 
 -define(MULTIPART_CONTENT_TYPES, [{<<"application">>, <<"x-www-form-urlencoded">>}
-				 ,{<<"multipart">>, <<"form-data">>}
-				 ,{<<"multipart">>, <<"mixed">>}
+                                 ,{<<"multipart">>, <<"form-data">>}
+                                 ,{<<"multipart">>, <<"mixed">>}
                                  ]).
 
 -define(IMAGE_CONTENT_TYPES, [{<<"image">>, <<"jpg">>}
-			     ,{<<"image">>, <<"jpeg">>}
-			     ,{<<"image">>, <<"png">>}
-			     ,{<<"image">>, <<"gif">>}
+                             ,{<<"image">>, <<"jpeg">>}
+                             ,{<<"image">>, <<"png">>}
+                             ,{<<"image">>, <<"gif">>}
                              ]).
 
 -define(AUDIO_CONTENT_TYPES, [{<<"audio">>, <<"x-wav">>}
@@ -96,11 +96,11 @@
                              ]).
 
 -define(BASE64_CONTENT_TYPES, [{<<"application">>, <<"base64">>}
-			      ,{<<"application">>, <<"x-base64">>}
+                              ,{<<"application">>, <<"x-base64">>}
                               ]).
 
 -define(PDF_CONTENT_TYPES, [{<<"application">>, <<"pdf">>}
-			   ,{<<"application">>, <<"x-pdf">>}
+                           ,{<<"application">>, <<"x-pdf">>}
                            ]).
 
 -define(JSONP_CONTENT_TYPE, <<"application/javascript">>).
