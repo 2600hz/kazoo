@@ -50,8 +50,8 @@ save(Number, _State) ->
                     knm_number:knm_number().
 delete(Number) ->
     knm_services:deactivate_features(Number, [?FEATURE_INBOUND_CNAM
-					     ,?FEATURE_OUTBOUND_CNAM
-					     ,?FEATURE_CNAM
+                                             ,?FEATURE_OUTBOUND_CNAM
+                                             ,?FEATURE_CNAM
                                              ]).
 
 %%--------------------------------------------------------------------
@@ -138,11 +138,11 @@ publish_cnam_update(Number, 'false') ->
     PhoneNumber = knm_number:phone_number(Number),
     Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM),
     Notify = [{<<"Account-ID">>, knm_phone_number:assigned_to(PhoneNumber)}
-	     ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
-	     ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL}
-	     ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
-	     ,{<<"Acquired-For">>, knm_phone_number:auth_by(PhoneNumber)}
-	     ,{<<"Cnam">>, case Feature of 'undefined' -> kz_json:new(); _ -> Feature end}
+             ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
+             ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL}
+             ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
+             ,{<<"Acquired-For">>, knm_phone_number:auth_by(PhoneNumber)}
+             ,{<<"Cnam">>, case Feature of 'undefined' -> kz_json:new(); _ -> Feature end}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapi_notifications:publish_cnam_request(Notify).

@@ -5,7 +5,7 @@
 %% cat /path/to/eflame.trace.out | grep -v 'SLEEP' | ./flamegraph.riak-color.pl > /var/www/html/flame.svg
 
 -export([add_trace/1, add_trace/2
-	,gen_load/1, gen_load/2
+        ,gen_load/1, gen_load/2
         ]).
 
 -include_lib("kazoo_data/src/kz_data.hrl").
@@ -106,10 +106,10 @@ verify_no_docs(Docs) ->
 
 verify_no_doc(Doc) ->
     case kz_cache:peek_local(?CACHE_NAME
-			    ,{'couch_util'
-			     ,kz_doc:account_db(Doc)
-			     ,kz_doc:id(Doc)
-			     }
+                            ,{'couch_util'
+                             ,kz_doc:account_db(Doc)
+                             ,kz_doc:id(Doc)
+                             }
                             )
     of
         {'error', 'not_found'} -> 'true';

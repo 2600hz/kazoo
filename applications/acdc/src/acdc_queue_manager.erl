@@ -16,16 +16,16 @@
 
 %% API
 -export([start_link/2, start_link/3
-	,handle_member_call/2
-	,handle_member_call_cancel/2
-	,handle_agent_change/2
-	,are_agents_available/1
-	,handle_config_change/2
-	,should_ignore_member_call/3, should_ignore_member_call/4
-	,config/1
-	,status/1
-	,current_agents/1
-	,refresh/2
+        ,handle_member_call/2
+        ,handle_member_call_cancel/2
+        ,handle_agent_change/2
+        ,are_agents_available/1
+        ,handle_config_change/2
+        ,should_ignore_member_call/3, should_ignore_member_call/4
+        ,config/1
+        ,status/1
+        ,current_agents/1
+        ,refresh/2
         ]).
 
 %% FSM helpers
@@ -33,12 +33,12 @@
 
 %% gen_server callbacks
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("acdc.hrl").
@@ -51,58 +51,58 @@
 -type queue_strategy_state() :: queue:queue() | ne_binaries().
 
 -record(state, {ignored_member_calls = dict:new() :: dict:dict()
-	       ,account_id :: api_binary()
-	       ,queue_id :: api_binary()
-	       ,supervisor :: pid()
-	       ,strategy = 'rr' :: queue_strategy() % round-robin | most-idle
-	       ,strategy_state :: queue_strategy_state() % based on the strategy
-	       ,known_agents = dict:new() :: dict:dict() % how many agent processes are available {AgentId, Count}
-	       ,enter_when_empty = 'true' :: boolean() % allow caller into queue if no agents are logged in
-	       ,moh :: api_binary()
+               ,account_id :: api_binary()
+               ,queue_id :: api_binary()
+               ,supervisor :: pid()
+               ,strategy = 'rr' :: queue_strategy() % round-robin | most-idle
+               ,strategy_state :: queue_strategy_state() % based on the strategy
+               ,known_agents = dict:new() :: dict:dict() % how many agent processes are available {AgentId, Count}
+               ,enter_when_empty = 'true' :: boolean() % allow caller into queue if no agents are logged in
+               ,moh :: api_binary()
                }).
 -type mgr_state() :: #state{}.
 
 -define(BINDINGS(A, Q), [{'conf', [{'type', <<"queue">>}
-				  ,{'db', kz_util:format_account_id(A, 'encoded')}
-				  ,{'id', Q}
-				  ,'federate'
+                                  ,{'db', kz_util:format_account_id(A, 'encoded')}
+                                  ,{'id', Q}
+                                  ,'federate'
                                   ]}
-			,{'acdc_queue', [{'restrict_to', ['stats_req', 'agent_change']}
-					,{'account_id', A}
-					,{'queue_id', Q}
-					]}
-			,{'presence', [{'restrict_to', ['probe']}]}
+                        ,{'acdc_queue', [{'restrict_to', ['stats_req', 'agent_change']}
+                                        ,{'account_id', A}
+                                        ,{'queue_id', Q}
+                                        ]}
+                        ,{'presence', [{'restrict_to', ['probe']}]}
                         ]).
 
 -define(RESPONDERS, [{{'acdc_queue_handler', 'handle_config_change'}
-		     ,[{<<"configuration">>, <<"*">>}]
+                     ,[{<<"configuration">>, <<"*">>}]
                      }
-		    ,{{'acdc_queue_handler', 'handle_stats_req'}
-		     ,[{<<"queue">>, <<"stats_req">>}]
-		     }
-		    ,{{'acdc_queue_handler', 'handle_presence_probe'}
-		     ,[{<<"presence">>, <<"probe">>}]
-		     }
-		    ,{{'acdc_queue_manager', 'handle_member_call'}
-		     ,[{<<"member">>, <<"call">>}]
-		     }
-		    ,{{'acdc_queue_manager', 'handle_member_call_cancel'}
-		     ,[{<<"member">>, <<"call_cancel">>}]
-		     }
-		    ,{{'acdc_queue_manager', 'handle_agent_change'}
-		     ,[{<<"queue">>, <<"agent_change">>}]
-		     }
+                    ,{{'acdc_queue_handler', 'handle_stats_req'}
+                     ,[{<<"queue">>, <<"stats_req">>}]
+                     }
+                    ,{{'acdc_queue_handler', 'handle_presence_probe'}
+                     ,[{<<"presence">>, <<"probe">>}]
+                     }
+                    ,{{'acdc_queue_manager', 'handle_member_call'}
+                     ,[{<<"member">>, <<"call">>}]
+                     }
+                    ,{{'acdc_queue_manager', 'handle_member_call_cancel'}
+                     ,[{<<"member">>, <<"call_cancel">>}]
+                     }
+                    ,{{'acdc_queue_manager', 'handle_agent_change'}
+                     ,[{<<"queue">>, <<"agent_change">>}]
+                     }
                     ]).
 
 -define(SECONDARY_BINDINGS(AccountId, QueueId)
        ,[{'acdc_queue', [{'restrict_to', ['member_call']}
-			,{'account_id', AccountId}
-			,{'queue_id', QueueId}
-			]}
-	]).
+                        ,{'account_id', AccountId}
+                        ,{'queue_id', QueueId}
+                        ]}
+        ]).
 -define(SECONDARY_QUEUE_NAME(QueueId), <<"acdc.queue.manager.", QueueId/binary>>).
 -define(SECONDARY_QUEUE_OPTIONS(MaxPriority), [{'exclusive', 'false'}
-					      ,{'arguments',[{<<"x-max-priority">>, MaxPriority}]}
+                                              ,{'arguments',[{<<"x-max-priority">>, MaxPriority}]}
                                               ]).
 -define(SECONDARY_CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
@@ -119,19 +119,19 @@ start_link(Super, QueueJObj) ->
     QueueId = kz_doc:id(QueueJObj),
 
     gen_listener:start_link(?SERVER
-			   ,[{'bindings', ?BINDINGS(AccountId, QueueId)}
-			    ,{'responders', ?RESPONDERS}
-			    ]
-			   ,[Super, QueueJObj]
+                           ,[{'bindings', ?BINDINGS(AccountId, QueueId)}
+                            ,{'responders', ?RESPONDERS}
+                            ]
+                           ,[Super, QueueJObj]
                            ).
 
 -spec start_link(pid(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(Super, AccountId, QueueId) ->
     gen_listener:start_link(?SERVER
-			   ,[{'bindings', ?BINDINGS(AccountId, QueueId)}
-			    ,{'responders', ?RESPONDERS}
-			    ]
-			   ,[Super, AccountId, QueueId]
+                           ,[{'bindings', ?BINDINGS(AccountId, QueueId)}
+                            ,{'responders', ?RESPONDERS}
+                            ]
+                           ,[Super, AccountId, QueueId]
                            ).
 
 handle_member_call(JObj, Props) ->
@@ -141,13 +141,13 @@ handle_member_call(JObj, Props) ->
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),
 
     case are_agents_available(props:get_value('server', Props)
-			     ,props:get_value('enter_when_empty', Props)
+                             ,props:get_value('enter_when_empty', Props)
                              )
     of
         'false' ->
             lager:info("no agents are available to take the call, cancel queueing"),
             gen_listener:cast(props:get_value('server', Props)
-			     ,{'reject_member_call', Call, JObj}
+                             ,{'reject_member_call', Call, JObj}
                              );
         'true' ->
             start_queue_call(JObj, Props, Call)
@@ -168,10 +168,10 @@ start_queue_call(JObj, Props, Call) ->
     lager:info("member call for queue ~s recv", [QueueId]),
 
     acdc_stats:call_waiting(AccountId, QueueId
-			   ,kapps_call:call_id(Call)
-			   ,kapps_call:caller_id_name(Call)
-			   ,kapps_call:caller_id_number(Call)
-			   ,kz_json:get_integer_value(<<"Member-Priority">>, JObj)
+                           ,kapps_call:call_id(Call)
+                           ,kapps_call:caller_id_name(Call)
+                           ,kapps_call:caller_id_number(Call)
+                           ,kz_json:get_integer_value(<<"Member-Priority">>, JObj)
                            ),
 
     lager:debug("answering call"),
@@ -190,11 +190,11 @@ start_queue_call(JObj, Props, Call) ->
     lager:debug("put call into shared messaging queue"),
 
     _ = kapps_call_command:set('undefined'
-			      ,kz_json:from_list([{<<"Eavesdrop-Group-ID">>, QueueId}
-						 ,{<<"Queue-ID">>, QueueId}
-						 ])
-			      ,Call
-			      ),
+                              ,kz_json:from_list([{<<"Eavesdrop-Group-ID">>, QueueId}
+                                                 ,{<<"Queue-ID">>, QueueId}
+                                                 ])
+                              ,Call
+                              ),
 
     gen_listener:cast(props:get_value('server', Props), {'monitor_call', Call}),
 
@@ -205,8 +205,8 @@ handle_member_call_cancel(JObj, Props) ->
     lager:debug("cancel call ~p", [JObj]),
     'true' = kapi_acdc_queue:member_call_cancel_v(JObj),
     K = make_ignore_key(kz_json:get_value(<<"Account-ID">>, JObj)
-		       ,kz_json:get_value(<<"Queue-ID">>, JObj)
-		       ,kz_json:get_value(<<"Call-ID">>, JObj)
+                       ,kz_json:get_value(<<"Queue-ID">>, JObj)
+                       ,kz_json:get_value(<<"Call-ID">>, JObj)
                        ),
     gen_listener:cast(props:get_value('server', Props), {'member_call_cancel', K, JObj}).
 
@@ -230,9 +230,9 @@ handle_config_change(Srv, JObj) ->
 -spec should_ignore_member_call(server_ref(), kapps_call:call(), ne_binary(), ne_binary()) -> boolean().
 should_ignore_member_call(Srv, Call, CallJObj) ->
     should_ignore_member_call(Srv
-			     ,Call
-			     ,kz_json:get_value(<<"Account-ID">>, CallJObj)
-			     ,kz_json:get_value(<<"Queue-ID">>, CallJObj)
+                             ,Call
+                             ,kz_json:get_value(<<"Account-ID">>, CallJObj)
+                             ,kz_json:get_value(<<"Queue-ID">>, CallJObj)
                              ).
 should_ignore_member_call(Srv, Call, AccountId, QueueId) ->
     K = make_ignore_key(AccountId, QueueId, kapps_call:call_id(Call)),
@@ -295,10 +295,10 @@ init(Super, AccountId, QueueId, QueueJObj) ->
 
     lager:debug("queue mgr started for ~s", [QueueId]),
     {'ok', update_properties(QueueJObj, #state{account_id=AccountId
-					      ,queue_id=QueueId
-					      ,supervisor=Super
-					      ,strategy=Strategy
-					      ,strategy_state=StrategyState
+                                              ,queue_id=QueueId
+                                              ,supervisor=Super
+                                              ,strategy=Strategy
+                                              ,strategy_state=StrategyState
                                               })}.
 
 %%--------------------------------------------------------------------
@@ -322,7 +322,7 @@ handle_call({'should_ignore_member_call', K}, _, #state{ignored_member_calls=Dic
     end;
 
 handle_call('config', _, #state{account_id=AccountId
-			       ,queue_id=QueueId
+                               ,queue_id=QueueId
                                }=State) ->
     {'reply', {AccountId, QueueId}, State};
 
@@ -348,7 +348,7 @@ handle_call('enter_when_empty', _, #state{enter_when_empty=EnterWhenEmpty}=State
 handle_call('next_winner', _, #state{strategy='mi'}=State) ->
     {'reply', 'undefined', State};
 handle_call('next_winner', _, #state{strategy='rr'
-				    ,strategy_state=SS
+                                    ,strategy_state=SS
                                     }=State) ->
     case queue:out(SS) of
         {{'value', Winner}, SS1} ->
@@ -358,11 +358,11 @@ handle_call('next_winner', _, #state{strategy='rr'
     end;
 
 handle_call('current_agents', _, #state{strategy='rr'
-				       ,strategy_state=Q
+                                       ,strategy_state=Q
                                        }=State) ->
     {'reply', queue:to_list(Q), State};
 handle_call('current_agents', _, #state{strategy='mi'
-				       ,strategy_state=L
+                                       ,strategy_state=L
                                        }=State) ->
     {'reply', L, State};
 
@@ -400,24 +400,24 @@ handle_cast({'member_call_cancel', K, JObj}, #state{ignored_member_calls=Dict}=S
 handle_cast({'monitor_call', Call}, State) ->
     CallId = kapps_call:call_id(Call),
     gen_listener:add_binding(self(), 'call', [{'callid', CallId}
-					     ,{'restrict_to', [<<"CHANNEL_DESTROY">>]}
+                                             ,{'restrict_to', [<<"CHANNEL_DESTROY">>]}
                                              ]),
     lager:debug("bound for call events for ~s", [CallId]),
     {'noreply', State};
 handle_cast({'start_workers'}, #state{account_id=AccountId
-				     ,queue_id=QueueId
-				     ,supervisor=QueueSup
+                                     ,queue_id=QueueId
+                                     ,supervisor=QueueSup
                                      }=State) ->
     WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
     case kz_datamgr:get_results(kz_util:format_account_id(AccountId, 'encoded')
                                ,<<"queues/agents_listing">>
                                ,[{'key', QueueId}
-				,'include_docs'
+                                ,'include_docs'
                                 ])
     of
         {'ok', Agents} ->
             _ = [start_agent_and_worker(WorkersSup, AccountId, QueueId
-				       ,kz_json:get_value(<<"doc">>, A)
+                                       ,kz_json:get_value(<<"doc">>, A)
                                        )
                  || A <- Agents
                 ],
@@ -432,28 +432,28 @@ handle_cast({'start_workers'}, #state{account_id=AccountId
 handle_cast({'start_worker'}, State) ->
     handle_cast({'start_worker', 1}, State);
 handle_cast({'start_worker', N}, #state{account_id=AccountId
-				       ,queue_id=QueueId
-				       ,supervisor=QueueSup
+                                       ,queue_id=QueueId
+                                       ,supervisor=QueueSup
                                        }=State) ->
     WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
     acdc_queue_workers_sup:new_workers(WorkersSup, AccountId, QueueId, N),
     {'noreply', State};
 
 handle_cast({'agent_available', AgentId}, #state{strategy=Strategy
-						,strategy_state=StrategyState
-						,known_agents=As
+                                                ,strategy_state=StrategyState
+                                                ,known_agents=As
                                                 }=State) when is_binary(AgentId) ->
     lager:info("adding agent ~s to strategy ~s", [AgentId, Strategy]),
     {StrategyState1, As1} = update_strategy_with_agent(Strategy, StrategyState, As, AgentId, 'add'),
     {'noreply', State#state{strategy_state=StrategyState1
-			   ,known_agents=As1
+                           ,known_agents=As1
                            }
     ,'hibernate'};
 handle_cast({'agent_available', JObj}, State) ->
     handle_cast({'agent_available', kz_json:get_value(<<"Agent-ID">>, JObj)}, State);
 
 handle_cast({'agent_ringing', AgentId}, #state{strategy=Strategy
-					      ,strategy_state=StrategyState
+                                              ,strategy_state=StrategyState
                                               }=State) when is_binary(AgentId) ->
     lager:info("agent ~s ringing, maybe updating strategy ~s", [AgentId, Strategy]),
 
@@ -463,9 +463,9 @@ handle_cast({'agent_ringing', JObj}, State) ->
     handle_cast({'agent_ringing', kz_json:get_value(<<"Agent-ID">>, JObj)}, State);
 
 handle_cast({'agent_unavailable', AgentId}, #state{strategy=Strategy
-						  ,strategy_state=StrategyState
-						  ,known_agents=As
-						  ,supervisor=QueueSup
+                                                  ,strategy_state=StrategyState
+                                                  ,known_agents=As
+                                                  ,supervisor=QueueSup
                                                   }=State) when is_binary(AgentId) ->
     lager:info("agent ~s unavailable, maybe updating strategy ~s", [AgentId, Strategy]),
 
@@ -474,19 +474,19 @@ handle_cast({'agent_unavailable', AgentId}, #state{strategy=Strategy
     maybe_start_queue_workers(QueueSup, dict:size(As1)),
 
     {'noreply', State#state{strategy_state=StrategyState1
-			   ,known_agents=As1
+                           ,known_agents=As1
                            }
     ,'hibernate'};
 handle_cast({'agent_unavailable', JObj}, State) ->
     handle_cast({'agent_unavailable', kz_json:get_value(<<"Agent-ID">>, JObj)}, State);
 
 handle_cast({'reject_member_call', Call, JObj}, #state{account_id=AccountId
-						      ,queue_id=QueueId
+                                                      ,queue_id=QueueId
                                                       }=State) ->
     Prop = [{<<"Call-ID">>, kapps_call:call_id(Call)}
-	   ,{<<"Account-ID">>, AccountId}
-	   ,{<<"Queue-ID">>, QueueId}
-	   ,{<<"Failure-Reason">>, <<"no agents">>}
+           ,{<<"Account-ID">>, AccountId}
+           ,{<<"Queue-ID">>, QueueId}
+           ,{<<"Failure-Reason">>, <<"no agents">>}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     Q = kz_json:get_value(<<"Server-ID">>, JObj),
@@ -528,10 +528,10 @@ handle_info(_Info, State) ->
     {'noreply', State}.
 
 handle_event(_JObj, #state{enter_when_empty=EnterWhenEmpty
-			  ,moh=MOH
+                          ,moh=MOH
                           }) ->
     {'reply', [{'enter_when_empty', EnterWhenEmpty}
-	      ,{'moh', MOH}
+              ,{'moh', MOH}
               ]}.
 
 %%--------------------------------------------------------------------
@@ -566,13 +566,13 @@ start_secondary_queue(AccountId, QueueId) ->
     AccountDb = kz_util:format_account_db(AccountId),
     Priority = lookup_priority_levels(AccountDb, QueueId),
     kz_util:spawn(fun gen_listener:add_queue/4
-		 ,[self()
-		  ,?SECONDARY_QUEUE_NAME(QueueId)
-		  ,[{'queue_options', ?SECONDARY_QUEUE_OPTIONS(Priority)}
-		   ,{'consume_options', ?SECONDARY_CONSUME_OPTIONS}
-		   ]
-		  ,?SECONDARY_BINDINGS(AccountId, QueueId)
-		  ]).
+                 ,[self()
+                  ,?SECONDARY_QUEUE_NAME(QueueId)
+                  ,[{'queue_options', ?SECONDARY_QUEUE_OPTIONS(Priority)}
+                   ,{'consume_options', ?SECONDARY_CONSUME_OPTIONS}
+                   ]
+                  ,?SECONDARY_BINDINGS(AccountId, QueueId)
+                  ]).
 
 -spec lookup_priority_levels(ne_binary(), ne_binary()) -> api_integer().
 lookup_priority_levels(AccountDB, QueueId) ->
@@ -642,7 +642,7 @@ update_strategy_with_agent('rr', AgentQueue, As, AgentId, 'remove') ->
                         [A || A <- queue:to_list(AgentQueue),
                               A =/= AgentId
                         ])
-		     ,dict:erase(AgentId, As)
+                     ,dict:erase(AgentId, As)
                      }
             end
     end;
@@ -707,8 +707,8 @@ get_strategy(<<"most_idle">>) -> 'mi';
 get_strategy(_) -> 'rr'.
 
 -spec create_strategy_state(queue_strategy()
-			   ,queue_strategy_state() | 'undefined'
-			   ,ne_binary(), ne_binary()
+                           ,queue_strategy_state() | 'undefined'
+                           ,ne_binary(), ne_binary()
                            ) -> queue_strategy_state().
 create_strategy_state(Strategy, AcctDb, QueueId) ->
     create_strategy_state(Strategy, 'undefined', AcctDb, QueueId).
@@ -760,5 +760,5 @@ maybe_start_queue_workers(QueueSup, AgentCount) ->
 update_properties(QueueJObj, State) ->
     State#state{
       enter_when_empty=kz_json:is_true(<<"enter_when_empty">>, QueueJObj, 'true')
-	       ,moh=kz_json:get_ne_value(<<"moh">>, QueueJObj)
+               ,moh=kz_json:get_ne_value(<<"moh">>, QueueJObj)
      }.

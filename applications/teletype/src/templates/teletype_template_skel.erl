@@ -9,7 +9,7 @@
 -module(teletype_template_skel).
 
 -export([init/0
-	,handle_req/2
+        ,handle_req/2
         ]).
 
 -include("teletype.hrl").
@@ -19,10 +19,10 @@
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
-	  [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
-	  ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
-	   | ?USER_MACROS
-	  ])
+          [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
+          ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
+           | ?USER_MACROS
+          ])
        ).
 
 -define(TEMPLATE_TEXT, <<"Hi {{user.first_name}} {{user.last_name}}.\n\nThis is the skeleton template\nBrought to you by VoIP Services">>).
@@ -41,16 +41,16 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-					  ,{'text', ?TEMPLATE_TEXT}
-					  ,{'html', ?TEMPLATE_HTML}
-					  ,{'subject', ?TEMPLATE_SUBJECT}
-					  ,{'category', ?TEMPLATE_CATEGORY}
-					  ,{'friendly_name', ?TEMPLATE_NAME}
-					  ,{'to', ?TEMPLATE_TO}
-					  ,{'from', ?TEMPLATE_FROM}
-					  ,{'cc', ?TEMPLATE_CC}
-					  ,{'bcc', ?TEMPLATE_BCC}
-					  ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                          ,{'text', ?TEMPLATE_TEXT}
+                                          ,{'html', ?TEMPLATE_HTML}
+                                          ,{'subject', ?TEMPLATE_SUBJECT}
+                                          ,{'category', ?TEMPLATE_CATEGORY}
+                                          ,{'friendly_name', ?TEMPLATE_NAME}
+                                          ,{'to', ?TEMPLATE_TO}
+                                          ,{'from', ?TEMPLATE_FROM}
+                                          ,{'cc', ?TEMPLATE_CC}
+                                          ,{'bcc', ?TEMPLATE_BCC}
+                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -70,7 +70,7 @@ handle_req(JObj, _Props) ->
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
-	     ,{<<"system">>, teletype_util:account_params(DataJObj)}
+             ,{<<"system">>, teletype_util:account_params(DataJObj)}
               | build_macro_data(DataJObj)
              ],
 
@@ -80,7 +80,7 @@ process_req(DataJObj) ->
 
     Subject = teletype_util:render_subject(
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
-					  ,Macros
+                                          ,Macros
                ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
@@ -95,8 +95,8 @@ build_macro_data(DataJObj) ->
     kz_json:foldl(fun(MacroKey, _V, Acc) ->
                           maybe_add_macro_key(MacroKey, Acc, DataJObj)
                   end
-		 ,[]
-		 ,?TEMPLATE_MACROS
+                 ,[]
+                 ,?TEMPLATE_MACROS
                  ).
 
 -spec maybe_add_macro_key(kz_json:key(), kz_proplist(), kz_json:object()) -> kz_proplist().

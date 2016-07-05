@@ -16,12 +16,12 @@
                    kz_json:object().
 apply(JObj, MetaFormatters, Direction) ->
     Fs = [fun format_request/3
-	 ,fun maybe_format_sip_headers/3
+         ,fun maybe_format_sip_headers/3
          ],
 
     lists:foldl(fun(F, J) -> F(J, MetaFormatters, Direction) end
-	       ,JObj
-	       ,Fs
+               ,JObj
+               ,Fs
                ).
 
 -spec maybe_format_sip_headers(kz_json:object(), kz_json:object(), direction()) ->
@@ -29,9 +29,9 @@ apply(JObj, MetaFormatters, Direction) ->
 maybe_format_sip_headers(JObj, MetaFormatters, Direction) ->
     maybe_format_sub_object(
       JObj
-			   ,MetaFormatters
-			   ,Direction
-			   ,<<"Custom-SIP-Headers">>
+                           ,MetaFormatters
+                           ,Direction
+                           ,<<"Custom-SIP-Headers">>
      ).
 
 -spec maybe_format_sub_object(kz_json:object(), kz_json:object(), direction(), ne_binary()) ->
@@ -58,13 +58,13 @@ format_request(JObj, MetaFormatters, Direction) ->
     kz_json:foldl(fun(MetaKey, Formatters, AccJObj) ->
                           lager:debug("processing ~s ~p", [MetaKey, Formatters]),
                           maybe_apply_formatters_fold(AccJObj
-						     ,JObjKeys
-						     ,MetaKey
-						     ,filter_formatters_by_direction(Direction, Formatters)
+                                                     ,JObjKeys
+                                                     ,MetaKey
+                                                     ,filter_formatters_by_direction(Direction, Formatters)
                                                      )
                   end
-		 ,JObj
-		 ,MetaFormatters
+                 ,JObj
+                 ,MetaFormatters
                  ).
 
 -spec request_keys(kz_json:object()) -> kz_proplist().
@@ -120,9 +120,9 @@ maybe_apply_formatters(JObj, <<_/binary>> = Key, Formatters) ->
 maybe_apply_formatters(JObj, _Key, _Value, []) -> JObj;
 maybe_apply_formatters(JObj, Key, Value, [_|_]=Formatters) ->
     Funs = [fun maybe_strip/4
-	   ,fun maybe_replace/4
-	   ,fun maybe_match_invite_format/4
-	   ,fun maybe_match/4
+           ,fun maybe_replace/4
+           ,fun maybe_match_invite_format/4
+           ,fun maybe_match/4
            ],
     apply_formatter_funs(JObj, Key, Value, Formatters, Funs).
 
@@ -204,7 +204,7 @@ maybe_match(JObj, <<"Diversions">> = Key, Value, Formatter) ->
             kz_json:set_value(Key, kzsip_diversion:set_user(Value, User), JObj);
         'nomatch' ->
             lager:debug("diversion ~s didn't match ~s"
-		       ,[kzsip_diversion:user(Value), kz_json:get_value(<<"regex">>, Formatter)]
+                       ,[kzsip_diversion:user(Value), kz_json:get_value(<<"regex">>, Formatter)]
                        ),
             'false'
     end;
@@ -217,9 +217,9 @@ maybe_match(JObj, Key, Value, Formatter) ->
 maybe_apply_formatters(JObj, _Key, _User, _Realm, []) -> JObj;
 maybe_apply_formatters(JObj, Key, User, Realm, Formatters) ->
     Funs = [fun maybe_strip/5
-	   ,fun maybe_replace/5
-	   ,fun maybe_match_invite_format/5
-	   ,fun maybe_match/5
+           ,fun maybe_replace/5
+           ,fun maybe_match_invite_format/5
+           ,fun maybe_match/5
            ],
     apply_formatter_funs(JObj, Key, User, Realm, Formatters, Funs).
 
@@ -285,11 +285,11 @@ maybe_match_invite_format(JObj, Formatter) ->
 match_invite_format(JObj, Key, User, Realm) ->
     FormatFun = invite_format_fun(JObj),
     kz_json:set_value(Key
-		     ,list_to_binary([FormatFun(User)
-				     ,"@"
-				     ,Realm
-				     ])
-		     ,JObj
+                     ,list_to_binary([FormatFun(User)
+                                     ,"@"
+                                     ,Realm
+                                     ])
+                     ,JObj
                      ).
 
 -spec invite_format_fun(kz_json:object()) ->
@@ -331,8 +331,8 @@ maybe_match(Regex, Value) ->
                              kz_json:object().
 apply_formatter(Captured, Formatter) ->
     list_to_binary([kz_json:get_value(<<"prefix">>, Formatter, <<>>)
-		   ,Captured
-		   ,kz_json:get_value(<<"suffix">>, Formatter, <<>>)
+                   ,Captured
+                   ,kz_json:get_value(<<"suffix">>, Formatter, <<>>)
                    ]).
 
 apply_formatter(JObj, Key, Captured, Formatter) ->

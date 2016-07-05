@@ -15,8 +15,8 @@
 -export([b_send_sms/2, b_send_sms/3, b_send_sms/4]).
 
 -export([default_collect_timeout/0
-	,default_message_timeout/0
-	,default_application_timeout/0
+        ,default_message_timeout/0
+        ,default_application_timeout/0
         ]).
 
 -define(CONFIG_CAT, <<"sms_command">>).
@@ -48,7 +48,7 @@ default_application_timeout() ->
     ?DEFAULT_APPLICATION_TIMEOUT.
 
 -type kapps_api_sms_return() :: {'error', 'timeout' | kz_json:object()} |
-				{'ok', kz_json:object()}.
+                                {'ok', kz_json:object()}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -81,10 +81,10 @@ send(<<"single">>, API, [Endpoint | Others]) ->
     CallId = props:get_value(<<"Call-ID">>, API),
     Payload = props:set_values(
                 [{<<"Endpoints">>, [Endpoint]}
-		,{<<"Callee-ID-Name">>, kz_json:get_value(<<"Callee-ID-Name">>, Endpoint)}
-		,{<<"Callee-ID-Number">>, kz_json:get_value(<<"Callee-ID-Number">>, Endpoint)}
-		,{<<"To-DID">>, kz_json:get_value(<<"To-DID">>, Endpoint)}
-		 | kz_json:get_value(<<"Endpoint-Options">>, Endpoint, [])
+                ,{<<"Callee-ID-Name">>, kz_json:get_value(<<"Callee-ID-Name">>, Endpoint)}
+                ,{<<"Callee-ID-Number">>, kz_json:get_value(<<"Callee-ID-Number">>, Endpoint)}
+                ,{<<"To-DID">>, kz_json:get_value(<<"To-DID">>, Endpoint)}
+                 | kz_json:get_value(<<"Endpoint-Options">>, Endpoint, [])
                 ], API),
     case kapps_util:amqp_pool_send(Payload, fun kapi_sms:publish_message/1) of
         'ok' -> 'ok';
@@ -114,8 +114,8 @@ send_and_wait(<<"single">>, API, [Endpoint| Others], Timeout) ->
             lager:info("processing next endpoint."),
             send_and_wait(<<"single">>, API, Others, Timeout);
         {_, _JObjs} = Ret ->
-	    lager:debug("received sms delivery result for msg ~s", [CallId]),
-	    Ret
+            lager:debug("received sms delivery result for msg ~s", [CallId]),
+            Ret
     end;
 send_and_wait(Strategy, _API, _Endpoints, _Timeout) ->
     lager:debug("Strategy ~s not implemented", [Strategy]).
@@ -145,33 +145,33 @@ send(<<"amqp">>, API, Endpoint, _Timeout) ->
         'ok' ->
             DeliveryProps = props:filter_undefined(
                               [{<<"Delivery-Result-Code">>, <<"sip:200">> }
-			      ,{<<"Status">>, <<"Success">>}
-			      ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
-			      ,{<<"Call-ID">>, CallId }
+                              ,{<<"Status">>, <<"Success">>}
+                              ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
+                              ,{<<"Call-ID">>, CallId }
                                | kz_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
                               ]),
             {'ok', kz_json:set_values(DeliveryProps, kz_json:new())};
         {'error', {'timeout', _Reason}} when FailOver =:= 'undefined' ->
             DeliveryProps = props:filter_undefined(
                               [{<<"Delivery-Result-Code">>, <<"sip:500">> }
-			      ,{<<"Delivery-Failure">>, 'true'}
-			      ,{<<"Error-Code">>, 500}
-			      ,{<<"Error-Message">>, <<"timeout">>}
-			      ,{<<"Status">>, <<"Failed">>}
-			      ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
-			      ,{<<"Call-ID">>, CallId }
+                              ,{<<"Delivery-Failure">>, 'true'}
+                              ,{<<"Error-Code">>, 500}
+                              ,{<<"Error-Message">>, <<"timeout">>}
+                              ,{<<"Status">>, <<"Failed">>}
+                              ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
+                              ,{<<"Call-ID">>, CallId }
                                | kz_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
                               ]),
             {'ok', kz_json:set_values(DeliveryProps, kz_json:new())};
         {'error', Reason} when FailOver =:= 'undefined' ->
             DeliveryProps = props:filter_undefined(
                               [{<<"Delivery-Result-Code">>, <<"sip:500">> }
-			      ,{<<"Delivery-Failure">>, 'true'}
-			      ,{<<"Error-Code">>, 500}
-			      ,{<<"Error-Message">>, kz_util:to_binary(Reason)}
-			      ,{<<"Status">>, <<"Failed">>}
-			      ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
-			      ,{<<"Call-ID">>, CallId }
+                              ,{<<"Delivery-Failure">>, 'true'}
+                              ,{<<"Error-Code">>, 500}
+                              ,{<<"Error-Message">>, kz_util:to_binary(Reason)}
+                              ,{<<"Status">>, <<"Failed">>}
+                              ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
+                              ,{<<"Call-ID">>, CallId }
                                | kz_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
                               ]),
             {'ok', kz_json:set_values(DeliveryProps, kz_json:new())};
@@ -215,12 +215,12 @@ create_sms(Call) ->
     AccountRealm = kapps_call:to_realm(Call),
     CCVUpdates = props:filter_undefined(
                    [{<<"Ignore-Display-Updates">>, <<"true">>}
-		   ,{<<"Account-ID">>, AccountId}
-		   ,{<<"Account-Realm">>, AccountRealm}
-		   ,{<<"From-User">>, kapps_call:from_user(Call)}
-		   ,{<<"From-Realm">>, kapps_call:from_realm(Call)}
-		   ,{<<"From-URI">>, kapps_call:from(Call)}
-		   ,{<<"Reseller-ID">>, kz_services:find_reseller_id(AccountId)}
+                   ,{<<"Account-ID">>, AccountId}
+                   ,{<<"Account-Realm">>, AccountRealm}
+                   ,{<<"From-User">>, kapps_call:from_user(Call)}
+                   ,{<<"From-Realm">>, kapps_call:from_realm(Call)}
+                   ,{<<"From-URI">>, kapps_call:from(Call)}
+                   ,{<<"Reseller-ID">>, kz_services:find_reseller_id(AccountId)}
                    ]),
     [{<<"Message-ID">>, kapps_call:kvs_fetch(<<"Message-ID">>, Call)}
     ,{<<"Call-ID">>, kapps_call:call_id(Call)}
@@ -253,7 +253,7 @@ create_sms_endpoint(Endpoint, <<"sip">>) ->
             Options = kz_json:get_value(<<"Endpoint-Options">>, Endpoint, []),
             kz_json:set_values(
               [{<<"Route-ID">>, Node}
-	      ,{<<"Endpoint-Options">>, kz_json:from_list([{<<"Route-ID">>, Node} | Options])}
+              ,{<<"Endpoint-Options">>, kz_json:from_list([{<<"Route-ID">>, Node} | Options])}
               ], Endpoint);
         {'error', _E} -> 'undefined'
     end.
@@ -262,14 +262,14 @@ create_sms_endpoint(Endpoint, <<"sip">>) ->
                                               {'ok', ne_binary()}.
 lookup_reg(Username, Realm) ->
     Req = [{<<"Realm">>, Realm}
-	  ,{<<"Username">>, Username}
-	  ,{<<"Fields">>, [<<"Registrar-Node">>]}
+          ,{<<"Username">>, Username}
+          ,{<<"Fields">>, [<<"Registrar-Node">>]}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kapps_util:amqp_pool_collect(Req
-				     ,fun kapi_registration:publish_query_req/1
-				     ,{'ecallmgr', 'true'}
-				     )
+                                     ,fun kapi_registration:publish_query_req/1
+                                     ,{'ecallmgr', 'true'}
+                                     )
     of
         {'error', _E}=E ->
             lager:debug("error getting registration: ~p", [_E]),

@@ -17,12 +17,12 @@
 
 %% gen_listener callbacks
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -export([handle_fax_event/2
@@ -35,20 +35,20 @@
 
 -record(state, {
           call :: kapps_call:call()
-	       ,action = 'receive' :: 'receive' | 'transmit'
-	       ,owner_id :: api_binary()
-	       ,faxbox_id :: api_binary()
-	       ,fax_doc :: api_object()
-	       ,storage :: fax_storage()
-	       ,fax_option :: api_binary()
-	       ,fax_result :: api_object()
-	       ,fax_notify = 'undefined' :: api_object()
-	       ,fax_store_count = 0 :: integer()
-	       ,fax_id = 'undefined' :: api_binary()
-	       ,account_id = 'undefined' :: api_binary()
-	       ,fax_status :: api_object()
-	       ,page = 0  ::integer()
-	       ,status :: binary()
+               ,action = 'receive' :: 'receive' | 'transmit'
+               ,owner_id :: api_binary()
+               ,faxbox_id :: api_binary()
+               ,fax_doc :: api_object()
+               ,storage :: fax_storage()
+               ,fax_option :: api_binary()
+               ,fax_result :: api_object()
+               ,fax_notify = 'undefined' :: api_object()
+               ,fax_store_count = 0 :: integer()
+               ,fax_id = 'undefined' :: api_binary()
+               ,account_id = 'undefined' :: api_binary()
+               ,fax_status :: api_object()
+               ,page = 0  ::integer()
+               ,status :: binary()
          }).
 -type state() :: #state{}.
 
@@ -56,19 +56,19 @@
                               {'stop', atom(), state()}.
 
 -define(BINDINGS(CALL), [{'call', [{'callid', kapps_call:call_id(CALL)}
-				  ,{'restrict_to', [<<"CHANNEL_EXECUTE_COMPLETE">>
-						   ,<<"CHANNEL_FAX_STATUS">>
-						   ]}
+                                  ,{'restrict_to', [<<"CHANNEL_EXECUTE_COMPLETE">>
+                                                   ,<<"CHANNEL_FAX_STATUS">>
+                                                   ]}
                                   ]}
-			,{'self', []}
+                        ,{'self', []}
                         ]).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_execute_complete'}
-		     ,[{<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>}]
+                     ,[{<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>}]
                      }
-		    ,{{?MODULE, 'handle_fax_event'}
-		     ,[{<<"call_event">>, <<"CHANNEL_FAX_STATUS">>}]
-		     }
+                    ,{{?MODULE, 'handle_fax_event'}
+                     ,[{<<"call_event">>, <<"CHANNEL_FAX_STATUS">>}]
+                     }
                     ]).
 
 %%%===================================================================
@@ -81,10 +81,10 @@
 -spec start_link(kapps_call:call(), kz_json:object()) -> startlink_ret().
 start_link(Call, JObj) ->
     gen_listener:start_link(?SERVER
-			   ,[{'bindings', ?BINDINGS(Call)}
-			    ,{'responders', ?RESPONDERS}
-			    ]
-			   ,[Call, JObj]
+                           ,[{'bindings', ?BINDINGS(Call)}
+                            ,{'responders', ?RESPONDERS}
+                            ]
+                           ,[Call, JObj]
                            ).
 
 -spec handle_execute_complete(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -119,11 +119,11 @@ init([Call, JObj]) ->
     kapps_call:put_callid(Call),
     gen_listener:cast(self(), 'start_action'),
     {'ok', #state{call = Call
-		 ,action = get_action(JObj)
-		 ,owner_id = kz_json:get_value(<<"Owner-ID">>, JObj)
-		 ,faxbox_id = kz_json:get_value(<<"FaxBox-ID">>, JObj)
-		 ,fax_option = kz_json:get_value(<<"Fax-T38-Option">>, JObj, 'false')
-		 ,account_id = kapps_call:account_id(Call)
+                 ,action = get_action(JObj)
+                 ,owner_id = kz_json:get_value(<<"Owner-ID">>, JObj)
+                 ,faxbox_id = kz_json:get_value(<<"FaxBox-ID">>, JObj)
+                 ,fax_option = kz_json:get_value(<<"Fax-T38-Option">>, JObj, 'false')
+                 ,account_id = kapps_call:account_id(Call)
                  }}.
 
 %%--------------------------------------------------------------------
@@ -155,9 +155,9 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_return().
 handle_cast('start_action', #state{call=_Call
-				  ,action='receive'
-				  ,owner_id=OwnerId
-				  ,faxbox_id=FaxBoxId
+                                  ,action='receive'
+                                  ,owner_id=OwnerId
+                                  ,faxbox_id=FaxBoxId
                                   }=State) ->
     lager:debug("receiving a fax for ~p/~p", [OwnerId,FaxBoxId]),
     {'noreply', State};
@@ -168,24 +168,24 @@ handle_cast({'fax_status', <<"negociateresult">>, JObj}, State) ->
     Status = list_to_binary(["fax negotiated at ", kz_util:to_list(TransferRate)]),
     send_status(State, Status, Data),
     {'noreply', State#state{status=Status
-			   ,page=1
-			   ,fax_status=Data
+                           ,page=1
+                           ,fax_status=Data
                            }};
 handle_cast({'fax_status', <<"pageresult">>, JObj}
-	   ,#state{page=Page
-		  ,fax_id=JobId
-		  }=State
+           ,#state{page=Page
+                  ,fax_id=JobId
+                  }=State
            ) ->
     Data = kz_json:get_value(<<"Application-Data">>, JObj, kz_json:new()),
     TransferredPages = kz_json:get_integer_value(<<"Fax-Transferred-Pages">>, Data, 0),
     lager:debug("fax status - page result - ~s : ~p : ~p"
-	       ,[JobId, TransferredPages, kz_util:current_tstamp()]
+               ,[JobId, TransferredPages, kz_util:current_tstamp()]
                ),
     Status = list_to_binary(["Received  Page ", kz_util:to_list(Page)]),
     send_status(State, Status, Data),
     {'noreply', State#state{page=TransferredPages
-			   ,status=Status
-			   ,fax_status=Data
+                           ,status=Status
+                           ,fax_status=Data
                            }};
 handle_cast({'fax_status', <<"result">>, JObj}, State) ->
     end_receive_fax(JObj, State);
@@ -265,17 +265,17 @@ get_action(JObj) ->
 
 -spec start_receive_fax(state()) -> {'noreply', state()}.
 start_receive_fax(#state{call=Call
-			,fax_option=ReceiveFlag
+                        ,fax_option=ReceiveFlag
                         }=State) ->
     kapps_call:put_callid(Call),
     Storage = get_fax_storage(Call),
     Props = [{<<"Fax-Doc-ID">>, Storage#fax_storage.id}
-	    ,{<<"Fax-Doc-DB">>, Storage#fax_storage.db}
+            ,{<<"Fax-Doc-DB">>, Storage#fax_storage.db}
             ],
     NewCall = kapps_call:kvs_store_proplist(Props, Call),
     NewState = maybe_update_fax_settings(State#state{storage=Storage
-						    ,fax_id=Storage#fax_storage.id
-						    ,call=NewCall
+                                                    ,fax_id=Storage#fax_storage.id
+                                                    ,call=NewCall
                                                     }),
     ResourceFlag = kapps_call:custom_channel_var(<<"Resource-Fax-Option">>, Call),
     LocalFile = get_fs_filename(NewState),
@@ -301,14 +301,14 @@ get_fax_storage(Call) ->
     FaxAttachmentId = <<AttachmentId/binary, Ext/binary>>,
 
     #fax_storage{id=FaxId
-		,db=FaxDb
-		,attachment_id=FaxAttachmentId
+                ,db=FaxDb
+                ,attachment_id=FaxAttachmentId
                 }.
 
 -spec maybe_update_fax_settings(state()) -> state().
 maybe_update_fax_settings(#state{call=Call
-				,owner_id=OwnerId
-				,faxbox_id='undefined'
+                                ,owner_id=OwnerId
+                                ,faxbox_id='undefined'
                                 }=State) ->
     AccountDb = kapps_call:account_db(Call),
     case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
@@ -326,7 +326,7 @@ maybe_update_fax_settings(#state{call=Call
             maybe_update_fax_settings_from_account(State)
     end;
 maybe_update_fax_settings(#state{call=Call
-				,faxbox_id=FaxBoxId
+                                ,faxbox_id=FaxBoxId
                                 }=State) ->
     AccountDb = kapps_call:account_db(Call),
     case kz_datamgr:open_doc(AccountDb, FaxBoxId) of
@@ -411,7 +411,7 @@ callee_name(JObj) ->
 overridden_callee_id(Call, JObj) ->
     kz_util:to_binary(
       kz_json:get_first_defined([<<"caller_id">>,<<"fax_identity">>], JObj
-			       ,kapps_call:to_user(Call)
+                               ,kapps_call:to_user(Call)
                                )
      ).
 
@@ -419,7 +419,7 @@ overridden_callee_id(Call, JObj) ->
 overridden_fax_identity(Call, JObj) ->
     kz_util:to_binary(
       kz_json:get_first_defined([<<"fax_identity">>,<<"caller_id">>], JObj
-			       ,kapps_call:to_user(Call)
+                               ,kapps_call:to_user(Call)
                                )
      ).
 
@@ -462,9 +462,9 @@ get_fs_filename(#state{storage=#fax_storage{attachment_id=AttachmentId}}) ->
 
 -spec store_attachment(state()) -> handle_cast_return().
 store_attachment(#state{call=Call
-		       ,fax_result=FaxResultObj
-		       ,storage=#fax_storage{attachment_id=AttachmentId}
-		       ,fax_doc=FaxDoc
+                       ,fax_result=FaxResultObj
+                       ,storage=#fax_storage{attachment_id=AttachmentId}
+                       ,fax_doc=FaxDoc
                        }=State) ->
     FaxUrl = kz_media_url:store(FaxDoc, AttachmentId),
     FaxFile = get_fs_filename(State),
@@ -481,18 +481,18 @@ store_attachment(#state{call=Call
                             {'ok', kz_json:object()} |
                             {'error', any()}.
 create_fax_doc(JObj, #state{owner_id = OwnerId
-			   ,faxbox_id = FaxBoxId
-			   ,fax_notify = Notify
-			   ,call=Call
-			   ,storage=#fax_storage{id=FaxDocId
-						,db=FaxDb
-						}
+                           ,faxbox_id = FaxBoxId
+                           ,fax_notify = Notify
+                           ,call=Call
+                           ,storage=#fax_storage{id=FaxDocId
+                                                ,db=FaxDb
+                                                }
                            }) ->
     {{Y,M,D}, {H,I,S}} = calendar:gregorian_seconds_to_datetime(kz_util:current_tstamp()),
     Name = list_to_binary(["fax message received at "
-			  ,kz_util:to_binary(Y), "-", kz_util:to_binary(M), "-", kz_util:to_binary(D)
-			  ," " , kz_util:to_binary(H), ":", kz_util:to_binary(I), ":", kz_util:to_binary(S)
-			  ," UTC"
+                          ,kz_util:to_binary(Y), "-", kz_util:to_binary(M), "-", kz_util:to_binary(D)
+                          ," " , kz_util:to_binary(H), ":", kz_util:to_binary(I), ":", kz_util:to_binary(S)
+                          ," UTC"
                           ]),
 
     ?MATCH_MODB_PREFIX(Year,Month,_) = FaxDocId,
@@ -504,26 +504,26 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
 
     Props = props:filter_undefined(
               [{<<"name">>, Name}
-	      ,{<<"to_number">>, kapps_call:request_user(Call)}
-	      ,{<<"from_number">>, kapps_call:from_user(Call)}
-	      ,{<<"description">>, <<"fax document received">>}
-	      ,{<<"source_type">>, <<"incoming_fax">>}
-	      ,{<<"folder">>, <<"inbox">>}
-	      ,{<<"timestamp">>, kz_json:get_value(<<"Timestamp">>, JObj)}
-	      ,{<<"owner_id">>, OwnerId}
-	      ,{<<"faxbox_id">>, FaxBoxId}
-	      ,{<<"media_type">>, <<"tiff">>}
-	      ,{<<"call_id">>, kapps_call:call_id(Call)}
-	      ,{<<"cdr_doc_id">>, CdrId}
-	      ,{<<"_id">>, FaxDocId}
-	      ,{<<"rx_result">>, rx_result(JObj)}
-	      ,{<<"pvt_job_node">>, kz_util:to_binary(node())}
-	      ,{<<"notifications">>, Notify}
+              ,{<<"to_number">>, kapps_call:request_user(Call)}
+              ,{<<"from_number">>, kapps_call:from_user(Call)}
+              ,{<<"description">>, <<"fax document received">>}
+              ,{<<"source_type">>, <<"incoming_fax">>}
+              ,{<<"folder">>, <<"inbox">>}
+              ,{<<"timestamp">>, kz_json:get_value(<<"Timestamp">>, JObj)}
+              ,{<<"owner_id">>, OwnerId}
+              ,{<<"faxbox_id">>, FaxBoxId}
+              ,{<<"media_type">>, <<"tiff">>}
+              ,{<<"call_id">>, kapps_call:call_id(Call)}
+              ,{<<"cdr_doc_id">>, CdrId}
+              ,{<<"_id">>, FaxDocId}
+              ,{<<"rx_result">>, rx_result(JObj)}
+              ,{<<"pvt_job_node">>, kz_util:to_binary(node())}
+              ,{<<"notifications">>, Notify}
               ]),
 
     Doc = kz_doc:update_pvt_parameters(kz_json:from_list(Props)
-				      ,FaxDb
-				      ,[{'type', <<"fax">>}]
+                                      ,FaxDb
+                                      ,[{'type', <<"fax">>}]
                                       ),
     kazoo_modb:save_doc(kapps_call:account_id(Call), Doc).
 
@@ -570,34 +570,34 @@ notify_failure(JObj, 'undefined', State) ->
 notify_failure(JObj, NonBinary, State) when not is_binary(NonBinary) ->
     notify_failure(JObj, kz_util:to_binary(NonBinary), State);
 notify_failure(JObj, Reason, #state{call=Call
-				   ,owner_id=OwnerId
-				   ,faxbox_id=FaxBoxId
-				   ,fax_notify=Notify
-				   ,account_id=AccountId
-				   ,storage=#fax_storage{id=FaxId, db=FaxDb}
+                                   ,owner_id=OwnerId
+                                   ,faxbox_id=FaxBoxId
+                                   ,fax_notify=Notify
+                                   ,account_id=AccountId
+                                   ,storage=#fax_storage{id=FaxId, db=FaxDb}
                                    }=State) ->
     Data = kz_json:get_value(<<"Application-Data">>, JObj, kz_json:new()),
     Status = list_to_binary(["Error receiving fax : ", Reason]),
     send_error_status(State, Status, Data),
     Message = props:filter_undefined(
                 [{<<"Fax-ID">>, FaxId}
-		,{<<"Fax-Error">>, Reason}
-		,{<<"Owner-ID">>, OwnerId}
-		,{<<"FaxBox-ID">>, FaxBoxId}
-		,{<<"Account-ID">>, AccountId}
-		,{<<"Account-DB">>, FaxDb}
-		,{<<"Fax-Notifications">>,  Notify}
+                ,{<<"Fax-Error">>, Reason}
+                ,{<<"Owner-ID">>, OwnerId}
+                ,{<<"FaxBox-ID">>, FaxBoxId}
+                ,{<<"Account-ID">>, AccountId}
+                ,{<<"Account-DB">>, FaxDb}
+                ,{<<"Fax-Notifications">>,  Notify}
                  | notify_fields(Call, JObj)
                 ]),
     kapi_notifications:publish_fax_inbound_error(Message).
 
 -spec notify_success(kz_json:object(), state()) -> 'ok'.
 notify_success(JObj, #state{call=Call
-			   ,owner_id=OwnerId
-			   ,faxbox_id=FaxBoxId
-			   ,fax_notify=Notify
-			   ,account_id=AccountId
-			   ,storage=#fax_storage{id=FaxId, db=FaxDb}
+                           ,owner_id=OwnerId
+                           ,faxbox_id=FaxBoxId
+                           ,fax_notify=Notify
+                           ,account_id=AccountId
+                           ,storage=#fax_storage{id=FaxId, db=FaxDb}
                            }=State) ->
     Data = kz_json:get_value(<<"Application-Data">>, JObj, kz_json:new()),
     Status = <<"Fax Successfuly received">>,
@@ -605,11 +605,11 @@ notify_success(JObj, #state{call=Call
 
     Message = props:filter_undefined(
                 [{<<"Fax-ID">>, FaxId}
-		,{<<"Owner-ID">>, OwnerId}
-		,{<<"FaxBox-ID">>, FaxBoxId}
-		,{<<"Account-ID">>, AccountId}
-		,{<<"Account-DB">>, FaxDb}
-		,{<<"Fax-Notifications">>, Notify}
+                ,{<<"Owner-ID">>, OwnerId}
+                ,{<<"FaxBox-ID">>, FaxBoxId}
+                ,{<<"Account-ID">>, AccountId}
+                ,{<<"Account-DB">>, FaxDb}
+                ,{<<"Fax-Notifications">>, Notify}
                  | notify_fields(Call, JObj)
                 ]),
     kapi_notifications:publish_fax_inbound(Message).
@@ -624,26 +624,26 @@ send_status(State, Status, FaxInfo) ->
 
 -spec send_status(state(), ne_binary(), ne_binary(), api_object()) -> 'ok'.
 send_status(#state{call=Call
-		  ,account_id=AccountId
-		  ,page=Page
-		  ,fax_id=JobId
-		  ,faxbox_id=FaxboxId
+                  ,account_id=AccountId
+                  ,page=Page
+                  ,fax_id=JobId
+                  ,faxbox_id=FaxboxId
                   }
-	   ,Status, FaxState, FaxInfo
+           ,Status, FaxState, FaxInfo
            ) ->
     Payload = props:filter_undefined(
                 [{<<"Job-ID">>, JobId}
-		,{<<"FaxBox-ID">>, FaxboxId}
-		,{<<"Account-ID">>, AccountId}
-		,{<<"Status">>, Status}
-		,{<<"Fax-State">>, FaxState}
-		,{<<"Fax-Info">>, FaxInfo}
-		,{<<"Direction">>, ?FAX_INCOMING}
-		,{<<"Page">>, Page}
-		,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
-		,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
-		,{<<"Callee-ID-Number">>, kapps_call:callee_id_number(Call)}
-		,{<<"Callee-ID-Name">>, kapps_call:callee_id_name(Call)}
+                ,{<<"FaxBox-ID">>, FaxboxId}
+                ,{<<"Account-ID">>, AccountId}
+                ,{<<"Status">>, Status}
+                ,{<<"Fax-State">>, FaxState}
+                ,{<<"Fax-Info">>, FaxInfo}
+                ,{<<"Direction">>, ?FAX_INCOMING}
+                ,{<<"Page">>, Page}
+                ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
+                ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
+                ,{<<"Callee-ID-Number">>, kapps_call:callee_id_number(Call)}
+                ,{<<"Callee-ID-Name">>, kapps_call:callee_id_name(Call)}
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     kapi_fax:publish_status(Payload).

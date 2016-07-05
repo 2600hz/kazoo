@@ -10,11 +10,11 @@
 -module(cb_call_inspector).
 
 -export([init/0
-	,allowed_methods/0, allowed_methods/1
-	,resource_exists/0, resource_exists/1
-	,validate/1, validate/2
-	,to_json/1
-	,to_csv/1
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,validate/1, validate/2
+        ,to_json/1
+        ,to_csv/1
         ]).
 
 -include("crossbar.hrl").
@@ -41,7 +41,7 @@ init() ->
 -spec to_json(cb_cdrs:payload(), list()) -> cb_cdrs:payload().
 to_json({Req1, Context}) ->
     to_json({Req1, Context}
-	   ,props:get_value(<<"call_inspector">>, cb_context:req_nouns(Context), [])
+           ,props:get_value(<<"call_inspector">>, cb_context:req_nouns(Context), [])
            ).
 to_json(Payload, [_|_]) -> Payload;
 to_json({Req1, Context}, []) ->
@@ -52,10 +52,10 @@ to_json({Req1, Context}, []) ->
     'ok' = cowboy_req:chunk("]", Req3),
     _ = cb_cdrs:pagination({Req3, Context1}),
     'ok' = cowboy_req:chunk([",\"request_id\":\"", cb_context:req_id(Context), "\""
-			    ,",\"auth_token\":\"", cb_context:auth_token(Context), "\""
-			    ,"}"
+                            ,",\"auth_token\":\"", cb_context:auth_token(Context), "\""
+                            ,"}"
                             ]
-			   ,Req3
+                           ,Req3
                            ),
     'ok' = cowboy_req:ensure_response(Req3, 200),
     {Req3, cb_context:store(Context1, 'is_chunked', 'true')}.
@@ -64,15 +64,15 @@ to_json({Req1, Context}, []) ->
 -spec to_csv(cb_cdrs:payload(), list()) -> cb_cdrs:payload().
 to_csv({Req, Context}) ->
     to_csv({Req, Context}
-	  ,props:get_value(<<"call_inspector">>, cb_context:req_nouns(Context), [])
+          ,props:get_value(<<"call_inspector">>, cb_context:req_nouns(Context), [])
           ).
 
 to_csv(Payload, [_|_]) -> Payload;
 to_csv({Req, Context}, []) ->
     Headers = props:set_values([{<<"content-type">>, <<"application/octet-stream">>}
-			       ,{<<"content-disposition">>, <<"attachment; filename=\"cdrs.csv\"">>}
+                               ,{<<"content-disposition">>, <<"attachment; filename=\"cdrs.csv\"">>}
                                ]
-			      ,cowboy_req:get('resp_headers', Req)
+                              ,cowboy_req:get('resp_headers', Req)
                               ),
     {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req),
     Context1 = cb_context:store(Context, 'is_csv', 'true'),
@@ -139,8 +139,8 @@ inspect_call_id(CallId, Context) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call(Req
-			    ,fun kapi_inspector:publish_lookup_req/1
-			    ,fun kapi_inspector:lookup_resp_v/1
+                            ,fun kapi_inspector:publish_lookup_req/1
+                            ,fun kapi_inspector:lookup_resp_v/1
                             )
     of
         {'ok', JObj} ->
@@ -148,9 +148,9 @@ inspect_call_id(CallId, Context) ->
             Analysis = sanitize(kz_json:get_value(<<"Analysis">>, JObj, [])),
             Response = kz_json:from_list(
                          [{<<"call-id">>, CallId}
-			 ,{<<"messages">>, Chunks}
-			 ,{<<"dialog_entities">>, kz_json:get_value(<<"Dialog-Entities">>, JObj, [])}
-			 ,{<<"analysis">>, Analysis}
+                         ,{<<"messages">>, Chunks}
+                         ,{<<"dialog_entities">>, kz_json:get_value(<<"Dialog-Entities">>, JObj, [])}
+                         ,{<<"analysis">>, Analysis}
                          ]
                         ),
             crossbar_util:response(Response, Context);
@@ -203,8 +203,8 @@ filter_cdr_ids(Ids) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call(Req
-			    ,fun kapi_inspector:publish_filter_req/1
-			    ,fun kapi_inspector:filter_resp_v/1
+                            ,fun kapi_inspector:publish_filter_req/1
+                            ,fun kapi_inspector:filter_resp_v/1
                             )
     of
         {'ok', JObj} ->

@@ -88,7 +88,7 @@ descendant_quantities(_, [SubAccountMoDB | DescendantsMoDBs]) ->
 %%%===================================================================
 
 -spec rows_for_quantities(ne_binary(), ne_binary(), kz_json:object(), kz_json:object()) ->
-				 [kz_csv:row()].
+                                 [kz_csv:row()].
 rows_for_quantities(AccountId, YYYYMM, BoM, EoM) ->
     lists:append(
       [quantities_for_items(AccountId, YYYYMM, Category, BoMItem, EoMItem)
@@ -201,8 +201,8 @@ eom_1() ->
       ,{<<"users">>, kz_json:new()}
       ,{<<"ui_apps">>, kz_json:new()}
       ,{<<"number_services">>, kz_json:from_list(
-				 [{<<"local">>, 130}
-				 ])
+                                 [{<<"local">>, 130}
+                                 ])
        }
       ,{<<"phone_numbers">>, kz_json:from_list(
                                [{<<"did_us">>, 1}

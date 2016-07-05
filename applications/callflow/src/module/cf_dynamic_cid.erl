@@ -31,24 +31,24 @@
 
 -record(prompts
        ,{accept_tone =
-	     ?CONFIG_BIN(<<"accept_prompt">>, <<"tone_stream://%(250,50,440)">>)
-	,reject_tone =
-	     kz_media_util:get_prompt(
-	       ?CONFIG_BIN(<<"reject_prompt">>, <<"dynamic-cid-invalid_using_default">>)
+             ?CONFIG_BIN(<<"accept_prompt">>, <<"tone_stream://%(250,50,440)">>)
+        ,reject_tone =
+             kz_media_util:get_prompt(
+               ?CONFIG_BIN(<<"reject_prompt">>, <<"dynamic-cid-invalid_using_default">>)
               )
-	,default_prompt =
-	     kz_media_util:get_prompt(
-	       ?CONFIG_BIN(<<"default_prompt">>, <<"dynamic-cid-enter_cid">>)
+        ,default_prompt =
+             kz_media_util:get_prompt(
+               ?CONFIG_BIN(<<"default_prompt">>, <<"dynamic-cid-enter_cid">>)
               )
-	}).
+        }).
 -type prompts() :: #prompts{}.
 
 -record(dynamic_cid
        ,{prompts = #prompts{} :: prompts()
-	,max_digits = ?CONFIG_INT(<<"max_digits">>, 10) :: integer()
-	,min_digits = ?CONFIG_INT(<<"min_digits">>, 10) :: integer()
-	,whitelist = ?CONFIG_BIN(<<"whitelist_regex">>, <<"\\d+">>) :: ne_binary()
-	}
+        ,max_digits = ?CONFIG_INT(<<"max_digits">>, 10) :: integer()
+        ,min_digits = ?CONFIG_INT(<<"min_digits">>, 10) :: integer()
+        ,whitelist = ?CONFIG_BIN(<<"whitelist_regex">>, <<"\\d+">>) :: ne_binary()
+        }
        ).
 
 %%--------------------------------------------------------------------
@@ -88,10 +88,10 @@ handle_manual(Data, Call) ->
     To = list_to_binary([Number, "@", kapps_call:to_realm(Call)]),
 
     Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', CID}
-	      ,{fun kapps_call:set_caller_id_number/2, CID}
-	      ,{fun kapps_call:set_request/2, Request}
-	      ,{fun kapps_call:set_to/2, To}
-	      ,{fun kapps_call:set_callee_id_number/2, Number}
+              ,{fun kapps_call:set_caller_id_number/2, CID}
+              ,{fun kapps_call:set_request/2, Request}
+              ,{fun kapps_call:set_to/2, To}
+              ,{fun kapps_call:set_callee_id_number/2, Number}
               ],
     {'ok', C1} = cf_exe:get_call(Call),
     lager:info("setting the caller id number to ~s", [CID]),
@@ -132,8 +132,8 @@ maybe_proceed_with_call(_, _, Call) ->
 proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call) ->
     lager:debug("caller id number is about to be changed from: ~p to: ~p ", [kapps_call:caller_id_number(Call), NewCallerIdNumber]),
     Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', NewCallerIdNumber}
-	      ,{fun kapps_call:set_caller_id_number/2, NewCallerIdNumber}
-	      ,{fun kapps_call:set_caller_id_name/2, NewCallerIdName}
+              ,{fun kapps_call:set_caller_id_number/2, NewCallerIdNumber}
+              ,{fun kapps_call:set_caller_id_name/2, NewCallerIdName}
               ],
     cf_exe:set_call(kapps_call:exec(Updates, Call)),
     Number = knm_converters:normalize(Dest),
@@ -146,11 +146,11 @@ maybe_route_to_callflow(Data, Call, Number) ->
         {'ok', Flow, 'true'} ->
             lager:info("callflow ~s satisfies request", [kz_json:get_value(<<"_id">>, Flow)]),
             Updates = [{fun kapps_call:set_request/2
-		       ,list_to_binary([Number, "@", kapps_call:request_realm(Call)])
+                       ,list_to_binary([Number, "@", kapps_call:request_realm(Call)])
                        }
-		      ,{fun kapps_call:set_to/2
-		       ,list_to_binary([Number, "@", kapps_call:to_realm(Call)])
-		       }
+                      ,{fun kapps_call:set_to/2
+                       ,list_to_binary([Number, "@", kapps_call:to_realm(Call)])
+                       }
                       ],
             {'ok', C} = cf_exe:get_call(Call),
             cf_exe:set_call(kapps_call:exec(Updates, C)),
@@ -231,8 +231,8 @@ collect_cid_number(Data, Call) ->
     DefaultCID = kapps_call:caller_id_number(Call),
 
     Interdigit = kz_json:get_integer_value(<<"interdigit_timeout">>
-					  ,Data
-					  ,kapps_call_command:default_interdigit_timeout()
+                                          ,Data
+                                          ,kapps_call_command:default_interdigit_timeout()
                                           ),
 
     NoopId = kapps_call_command:play(Media, Call),
@@ -303,7 +303,7 @@ get_new_caller_id(CIDKey, ListJObj) ->
         'undefined' -> {<<>>, <<>>};
         NewCallerId ->
             {kz_json:get_binary_value(<<"name">>, NewCallerId, <<>>)
-	    ,kz_json:get_binary_value(<<"number">>, NewCallerId, <<>>)}
+            ,kz_json:get_binary_value(<<"number">>, NewCallerId, <<>>)}
     end.
 
 -spec get_lists_entry(kz_json:object(), kapps_call:call()) -> cid_entry().
@@ -332,7 +332,7 @@ cid_key_lookup(CIDKey, Entries) ->
 cidkey_wanted(CIDKey, Entry, Acc) ->
     case kz_json:get_binary_value([<<"value">>, <<"cid_key">>], Entry) == CIDKey of
         'true' -> Acc ++ [{kz_json:get_binary_value([<<"value">>, <<"cid_name">>], Entry, <<>>)
-			  ,kz_json:get_binary_value([<<"value">>, <<"cid_number">>], Entry, <<>>)
+                          ,kz_json:get_binary_value([<<"value">>, <<"cid_number">>], Entry, <<>>)
                           }];
         'false' -> Acc
     end.

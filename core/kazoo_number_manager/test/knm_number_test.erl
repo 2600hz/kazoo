@@ -60,7 +60,7 @@ available_tests(Number) ->
 get_unreconcilable_number_test_() ->
     [{"Verify non-reconcilable numbers result in errors"
      ,?_assertMatch({'error', 'not_reconcilable'}
-		   ,knm_number:get(<<"1000">>)
-		   )
+                   ,knm_number:get(<<"1000">>)
+                   )
      }
     ].

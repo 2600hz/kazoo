@@ -28,8 +28,8 @@ maybe_handle_sms_document(_Status, _Origin, _FetchId, _Id, _JObj) -> 'ok'.
 -spec process_sms_api_document(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 process_sms_api_document(FetchId, <<_:7/binary, CallId/binary>> = _Id, APIJObj) ->
     ReqResp = kz_amqp_worker:call(route_req(FetchId, CallId, APIJObj)
-				 ,fun kapi_route:publish_req/1
-				 ,fun kapi_route:is_actionable_resp/1
+                                 ,fun kapi_route:publish_req/1
+                                 ,fun kapi_route:is_actionable_resp/1
                                  ),
     case ReqResp of
         {'error', _R} ->
@@ -44,9 +44,9 @@ send_route_win(FetchId, CallId, JObj) ->
     ServerQ = kz_json:get_value(<<"Server-ID">>, JObj),
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     Win = [{<<"Msg-ID">>, FetchId}
-	  ,{<<"Call-ID">>, CallId}
-	  ,{<<"Control-Queue">>, <<"chatplan_ignored">>}
-	  ,{<<"Custom-Channel-Vars">>, CCVs}
+          ,{<<"Call-ID">>, CallId}
+          ,{<<"Control-Queue">>, <<"chatplan_ignored">>}
+          ,{<<"Custom-Channel-Vars">>, CCVs}
            | kz_api:default_headers(<<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sms api handler sending route_win to ~s", [ServerQ]),

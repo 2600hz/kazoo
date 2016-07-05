@@ -62,11 +62,11 @@ resume(UUID, NewNode, Evt) ->
     Meta = fix_metadata(props:get_value(<<"metadata">>, Evt)),
 
     freeswitch:sendevent_custom(NewNode, ?CHANNEL_MOVE_REQUEST_EVENT
-			       ,[{"profile_name", kz_util:to_list(?DEFAULT_FS_PROFILE)}
-				,{"channel_id", kz_util:to_list(UUID)}
-				,{"metadata", kz_util:to_list(Meta)}
-				,{"technology", kz_util:to_list(props:get_value(<<"technology">>, Evt, <<"sofia">>))}
-				]),
+                               ,[{"profile_name", kz_util:to_list(?DEFAULT_FS_PROFILE)}
+                                ,{"channel_id", kz_util:to_list(UUID)}
+                                ,{"metadata", kz_util:to_list(Meta)}
+                                ,{"technology", kz_util:to_list(props:get_value(<<"technology">>, Evt, <<"sofia">>))}
+                                ]),
     lager:debug("sent channel_move::move_request with metadata to ~s for ~s", [NewNode, UUID]).
 
 %% We receive un-escaped < and > in the SIP URIs in this data
@@ -78,11 +78,11 @@ resume(UUID, NewNode, Evt) ->
 -spec fix_metadata(ne_binary()) -> ne_binary().
 fix_metadata(Meta) ->
     Replacements = [{<<"<sip:">>, <<"%3Csip:">>}
-		   ,{<<"><sip">>, <<"%3E<sip">>}
-		   ,{<<">;">>, <<"%3E;">>} % this is especially nice :)
+                   ,{<<"><sip">>, <<"%3E<sip">>}
+                   ,{<<">;">>, <<"%3E;">>} % this is especially nice :)
                     %% until such time as FS sets these properly
-		   ,{<<"<dialplan></dialplan>">>, <<"<dialplan>XML</dialplan>">>}
-		   ,{<<"<context>default</context>">>, <<"<context>context_2</context>">>}
+                   ,{<<"<dialplan></dialplan>">>, <<"<dialplan>XML</dialplan>">>}
+                   ,{<<"<context>default</context>">>, <<"<context>context_2</context>">>}
                    ],
     lists:foldl(fun({S, R}, MetaAcc) ->
                         iolist_to_binary(re:replace(MetaAcc, S, R, ['global']))
@@ -109,8 +109,8 @@ teardown_sbd(UUID, OriginalNode) ->
     catch gproc:reg({'p', 'l', ?CHANNEL_MOVE_REG(OriginalNode, UUID)}),
 
     freeswitch:sendevent_custom(OriginalNode, ?CHANNEL_MOVE_REQUEST_EVENT
-			       ,[{"profile_name", kz_util:to_list(?DEFAULT_FS_PROFILE)}
-				,{"channel_id", kz_util:to_list(UUID)}
-				,{"technology", ?DEFAULT_FS_TECHNOLOGY}
-				]),
+                               ,[{"profile_name", kz_util:to_list(?DEFAULT_FS_PROFILE)}
+                                ,{"channel_id", kz_util:to_list(UUID)}
+                                ,{"technology", ?DEFAULT_FS_TECHNOLOGY}
+                                ]),
     lager:debug("sent channel_move::move_request to ~s for ~s", [OriginalNode, UUID]).

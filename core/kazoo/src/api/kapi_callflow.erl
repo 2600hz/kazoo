@@ -12,7 +12,7 @@
 -export([resume/1, resume_v/1]).
 
 -export([bind_q/2
-	,unbind_q/2
+        ,unbind_q/2
         ]).
 -export([declare_exchanges/0]).
 -export([publish_resume/1]).
@@ -22,7 +22,7 @@
 -define(RESUME_HEADERS, [<<"Call">>, <<"Flow">>]).
 -define(OPTIONAL_RESUME_HEADERS, []).
 -define(RESUME_VALUES, [{<<"Event-Category">>, <<"callflow">>}
-		       ,{<<"Event-Name">>, <<"resume">>}
+                       ,{<<"Event-Name">>, <<"resume">>}
                        ]).
 -define(RESUME_TYPES, []).
 

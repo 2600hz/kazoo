@@ -13,15 +13,15 @@
 -behaviour(gen_listener).
 
 -export([start_link/1
-	,handle_call_event/2
+        ,handle_call_event/2
         ]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("callflow.hrl").
@@ -33,15 +33,15 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS(CallID), [{'call', [{'callid', CallID}
-				    ,{'restrict_to',
-				      [ <<"CHANNEL_DESTROY">>
-				      , <<"CHANNEL_TRANSFEROR">>
-				      ]}
+                                    ,{'restrict_to',
+                                      [ <<"CHANNEL_DESTROY">>
+                                      , <<"CHANNEL_TRANSFEROR">>
+                                      ]}
                                     ]}
-			  ,{'self', []}
+                          ,{'self', []}
                           ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_call_event'}
-		     ,[{<<"*">>, <<"*">>}]
+                     ,[{<<"*">>, <<"*">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -54,10 +54,10 @@
 -spec start_link(kapps_call:call()) -> startlink_ret().
 start_link(Call) ->
     gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS(kapps_call:call_id(Call))}
-				     ,{'responders', ?RESPONDERS}
-				     ,{'queue_name', ?QUEUE_NAME}       % optional to include
-				     ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-				     ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                                     ,{'responders', ?RESPONDERS}
+                                     ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                                     ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                                     ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], [Call]).
 
 %%--------------------------------------------------------------------
@@ -73,7 +73,7 @@ handle_call_event(JObj, Props) ->
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             gen_listener:cast(props:get_value('server', Props), {'end_hook', JObj});
         {<<"call_event">>, <<"CHANNEL_TRANSFEROR">>} ->
-						% stop the listener so we don't send the destroy event
+                                                % stop the listener so we don't send the destroy event
             gen_listener:cast(props:get_value('server', Props), {'stop', JObj});
         {_, _Evt} -> lager:debug("ignore event ~p", [_Evt])
     end.

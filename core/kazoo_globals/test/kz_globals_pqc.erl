@@ -18,7 +18,7 @@
 
 %% test helpers
 -export([remote_register/3
-	,remote_unregister/2
+        ,remote_unregister/2
         ]).
 
 -define(LOCAL_NODE, 0).
@@ -101,7 +101,7 @@ unregister_name(Name, Registries) ->
 
 %% Remote Node updates
 next_state(Registries, _V
-	  ,{'call', ?MODULE, 'remote_register', [Remote, Name, Pid]}
+          ,{'call', ?MODULE, 'remote_register', [Remote, Name, Pid]}
           ) ->
     case name_exists(Name, Registries) of
         'true' -> Registries;
@@ -111,12 +111,12 @@ next_state(Registries, _V
                          (Node, Registry, Acc) ->
                               Acc#{Node => [?REG(Name, Pid, 'remote') | Registry]}
                       end
-		     ,maps:new()
-		     ,Registries
+                     ,maps:new()
+                     ,Registries
                      )
     end;
 next_state(Registries, _V
-	  ,{'call', ?MODULE, 'remote_unregister', [Remote, Name]}
+          ,{'call', ?MODULE, 'remote_unregister', [Remote, Name]}
           ) ->
     #{Remote := Registry} = Registries,
     case lists:keysearch(Name, 1, Registry) of
@@ -161,7 +161,7 @@ next_state(Registries, _V
     Registries.
 
 precondition(Registries
-	    ,{'call', ?MODULE, 'remote_register', [Node, Name, _Pid]}
+            ,{'call', ?MODULE, 'remote_register', [Node, Name, _Pid]}
             ) ->
     #{Node := Registry} = Registries,
     case lists:keysearch(Name, 1, Registry) of
@@ -169,7 +169,7 @@ precondition(Registries
         'false' -> 'true'
     end;
 precondition(Registries
-	    ,{'call', ?MODULE, 'remote_unregister', [Node, Name]}
+            ,{'call', ?MODULE, 'remote_unregister', [Node, Name]}
             ) ->
     #{Node := Registry} = Registries,
     case lists:keysearch(Name, 1, Registry) of
@@ -177,7 +177,7 @@ precondition(Registries
         _ -> 'false'
     end;
 precondition(#{?LOCAL_NODE := Registry}
-	    ,{'call', 'kz_globals', 'unregister_name', [Name]}
+            ,{'call', 'kz_globals', 'unregister_name', [Name]}
             ) ->
     case lists:keysearch(Name, 1, Registry) of
         {'value', ?REG(Name, _Pid, 'local')} -> 'true';
@@ -186,9 +186,9 @@ precondition(#{?LOCAL_NODE := Registry}
 precondition(_Registry, _Call) -> 'true'.
 
 postcondition(Registries
-	     ,{'call', ?MODULE, 'remote_register', [_Remote, Name, _Pid]}
-	     ,WasRegistered
-	     ) ->
+             ,{'call', ?MODULE, 'remote_register', [_Remote, Name, _Pid]}
+             ,WasRegistered
+             ) ->
     case name_exists(Name, Registries) of
         'true' -> 'no' =:= WasRegistered;
         'false' -> 'yes' =:= WasRegistered

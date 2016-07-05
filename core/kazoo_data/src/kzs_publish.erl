@@ -9,12 +9,12 @@
 
 
 -export([maybe_publish_db/2
-	,maybe_publish_doc/3
-	,maybe_publish_docs/3
-	,publish_db/2
-	,publish_doc/3
-	,publish_fields/1, publish_fields/2
-	,publish/3
+        ,maybe_publish_doc/3
+        ,maybe_publish_docs/3
+        ,publish_db/2
+        ,publish_doc/3
+        ,publish_fields/1, publish_fields/2
+        ,publish/3
         ]).
 
 -include("kz_data.hrl").
@@ -92,12 +92,12 @@ publish_doc(DbName, Doc, JObj) ->
 publish_db(DbName, Action) ->
     Props =
         [{<<"Type">>, 'database'}
-	,{<<"ID">>, DbName}
-	,{<<"Database">>, DbName}
+        ,{<<"ID">>, DbName}
+        ,{<<"Database">>, DbName}
          | kz_api:default_headers(<<"configuration">>
-				 ,<<"db_", (kz_util:to_binary(Action))/binary>>
-				 ,?CONFIG_CAT
-				 ,<<"1.0.0">>
+                                 ,<<"db_", (kz_util:to_binary(Action))/binary>>
+                                 ,?CONFIG_CAT
+                                 ,<<"1.0.0">>
                                  )
         ],
     Fun = fun(P) -> kapi_conf:publish_db_update(Action, DbName, P) end,

@@ -11,11 +11,11 @@
 
 %% View-related
 -export([design_compact/3
-	,design_info/3
-	,all_design_docs/3
-	,get_results/4
-	,get_results_count/4
-	,all_docs/2, all_docs/3
+        ,design_info/3
+        ,all_design_docs/3
+        ,get_results/4
+        ,get_results_count/4
+        ,all_docs/2, all_docs/3
         ]).
 
 -include("kz_couch.hrl").
@@ -45,7 +45,7 @@ design_info(#server{}=Conn, DBName, Design) ->
 all_design_docs(#server{}=Conn, DBName, Options) ->
     Db = kz_couch_util:get_db(Conn, DBName),
     Filter = [{'startkey', <<"_design/">>}
-	     ,{'endkey', <<"_design0">>}
+             ,{'endkey', <<"_design0">>}
               | Options
              ],
     do_fetch_results(Db, 'all_docs', Filter).

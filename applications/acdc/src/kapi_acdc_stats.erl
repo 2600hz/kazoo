@@ -11,75 +11,75 @@
 
 %% Convert JObj or Prop to iolist json
 -export([call_waiting/1, call_waiting_v/1
-	,call_missed/1, call_missed_v/1
-	,call_abandoned/1, call_abandoned_v/1
-	,call_handled/1, call_handled_v/1
-	,call_processed/1, call_processed_v/1
+        ,call_missed/1, call_missed_v/1
+        ,call_abandoned/1, call_abandoned_v/1
+        ,call_handled/1, call_handled_v/1
+        ,call_processed/1, call_processed_v/1
 
-	,call_flush/1, call_flush_v/1
+        ,call_flush/1, call_flush_v/1
 
-	,current_calls_req/1, current_calls_req_v/1
-	,current_calls_err/1, current_calls_err_v/1
-	,current_calls_resp/1, current_calls_resp_v/1
+        ,current_calls_req/1, current_calls_req_v/1
+        ,current_calls_err/1, current_calls_err_v/1
+        ,current_calls_resp/1, current_calls_resp_v/1
 
-	,status_req/1, status_req_v/1
-	,status_err/1, status_err_v/1
-	,status_resp/1, status_resp_v/1
+        ,status_req/1, status_req_v/1
+        ,status_err/1, status_err_v/1
+        ,status_resp/1, status_resp_v/1
 
-	,status_ready/1, status_ready_v/1
-	,status_logged_in/1, status_logged_in_v/1
-	,status_logged_out/1, status_logged_out_v/1
-	,status_pending_logged_out/1, status_pending_logged_out_v/1
-	,status_connecting/1, status_connecting_v/1
-	,status_connected/1, status_connected_v/1
-	,status_wrapup/1, status_wrapup_v/1
-	,status_paused/1, status_paused_v/1
-	,status_outbound/1, status_outbound_v/1
-	,status_update/1, status_update_v/1
+        ,status_ready/1, status_ready_v/1
+        ,status_logged_in/1, status_logged_in_v/1
+        ,status_logged_out/1, status_logged_out_v/1
+        ,status_pending_logged_out/1, status_pending_logged_out_v/1
+        ,status_connecting/1, status_connecting_v/1
+        ,status_connected/1, status_connected_v/1
+        ,status_wrapup/1, status_wrapup_v/1
+        ,status_paused/1, status_paused_v/1
+        ,status_outbound/1, status_outbound_v/1
+        ,status_update/1, status_update_v/1
         ]).
 
 -export([bind_q/2
-	,unbind_q/2
+        ,unbind_q/2
         ]).
 -export([declare_exchanges/0]).
 
 -export([publish_call_waiting/1, publish_call_waiting/2
-	,publish_call_missed/1, publish_call_missed/2
-	,publish_call_abandoned/1, publish_call_abandoned/2
-	,publish_call_handled/1, publish_call_handled/2
-	,publish_call_processed/1, publish_call_processed/2
+        ,publish_call_missed/1, publish_call_missed/2
+        ,publish_call_abandoned/1, publish_call_abandoned/2
+        ,publish_call_handled/1, publish_call_handled/2
+        ,publish_call_processed/1, publish_call_processed/2
 
-	,publish_call_flush/1, publish_call_flush/2
+        ,publish_call_flush/1, publish_call_flush/2
 
-	,publish_current_calls_req/1, publish_current_calls_req/2
-	,publish_current_calls_err/2, publish_current_calls_err/3
-	,publish_current_calls_resp/2, publish_current_calls_resp/3
+        ,publish_current_calls_req/1, publish_current_calls_req/2
+        ,publish_current_calls_err/2, publish_current_calls_err/3
+        ,publish_current_calls_resp/2, publish_current_calls_resp/3
 
-	,publish_status_req/1, publish_status_req/2
-	,publish_status_err/2, publish_status_err/3
-	,publish_status_resp/2, publish_status_resp/3
+        ,publish_status_req/1, publish_status_req/2
+        ,publish_status_err/2, publish_status_err/3
+        ,publish_status_resp/2, publish_status_resp/3
 
-	,publish_status_ready/1, publish_status_ready/2
-	,publish_status_logged_in/1, publish_status_logged_in/2
-	,publish_status_logged_out/1, publish_status_logged_out/2
-	,publish_status_pending_logged_out/1, publish_status_pending_logged_out/2
-	,publish_status_connecting/1, publish_status_connecting/2
-	,publish_status_connected/1, publish_status_connected/2
-	,publish_status_wrapup/1, publish_status_wrapup/2
-	,publish_status_paused/1, publish_status_paused/2
-	,publish_status_outbound/1, publish_status_outbound/2
-	,publish_status_update/1, publish_status_update/2
+        ,publish_status_ready/1, publish_status_ready/2
+        ,publish_status_logged_in/1, publish_status_logged_in/2
+        ,publish_status_logged_out/1, publish_status_logged_out/2
+        ,publish_status_pending_logged_out/1, publish_status_pending_logged_out/2
+        ,publish_status_connecting/1, publish_status_connecting/2
+        ,publish_status_connected/1, publish_status_connected/2
+        ,publish_status_wrapup/1, publish_status_wrapup/2
+        ,publish_status_paused/1, publish_status_paused/2
+        ,publish_status_outbound/1, publish_status_outbound/2
+        ,publish_status_update/1, publish_status_update/2
         ]).
 
 -include("acdc.hrl").
 
 -define(CALL_REQ_HEADERS, [<<"Call-ID">>, <<"Account-ID">>, <<"Queue-ID">>]).
 -define(CALL_REQ_VALUES(Name), [{<<"Event-Category">>, <<"acdc_call_stat">>}
-			       ,{<<"Event-Name">>, Name}
+                               ,{<<"Event-Name">>, Name}
                                ]).
 
 -define(WAITING_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-			 ,<<"Entered-Timestamp">>, <<"Caller-Priority">>
+                         ,<<"Entered-Timestamp">>, <<"Caller-Priority">>
                          ]).
 -define(WAITING_VALUES, ?CALL_REQ_VALUES(<<"waiting">>)).
 -define(WAITING_TYPES, []).
@@ -190,8 +190,8 @@ call_processed_v(JObj) ->
     call_processed_v(kz_json:to_proplist(JObj)).
 
 -spec call_flush(api_terms()) ->
-			{'ok', iolist()} |
-			{'error', string()}.
+                        {'ok', iolist()} |
+                        {'error', string()}.
 call_flush(Props) when is_list(Props) ->
     case call_flush_v(Props) of
         'true' -> kz_api:build_message(Props, ?CALL_REQ_HEADERS, ?FLUSH_HEADERS);
@@ -208,11 +208,11 @@ call_flush_v(JObj) ->
 
 -define(CURRENT_CALLS_REQ_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_CURRENT_CALLS_REQ_HEADERS, [<<"Queue-ID">>, <<"Agent-ID">>
-					    ,<<"Status">>
-					    ,<<"Start-Range">>, <<"End-Range">>
+                                            ,<<"Status">>
+                                            ,<<"Start-Range">>, <<"End-Range">>
                                             ]).
 -define(CURRENT_CALLS_REQ_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
-				  ,{<<"Event-Name">>, <<"current_calls_req">>}
+                                  ,{<<"Event-Name">>, <<"current_calls_req">>}
                                   ]).
 -define(CURRENT_CALLS_REQ_TYPES, []).
 
@@ -236,7 +236,7 @@ current_calls_req_v(JObj) ->
 -define(CURRENT_CALLS_ERR_HEADERS, [<<"Error-Reason">>]).
 -define(OPTIONAL_CURRENT_CALLS_ERR_HEADERS, []).
 -define(CURRENT_CALLS_ERR_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
-				  ,{<<"Event-Name">>, <<"current_calls_err">>}
+                                  ,{<<"Event-Name">>, <<"current_calls_err">>}
                                   ]).
 -define(CURRENT_CALLS_ERR_TYPES, []).
 
@@ -259,10 +259,10 @@ current_calls_err_v(JObj) ->
 
 -define(CURRENT_CALLS_RESP_HEADERS, [<<"Query-Time">>]).
 -define(OPTIONAL_CURRENT_CALLS_RESP_HEADERS, [<<"Waiting">>, <<"Handled">>
-					     ,<<"Abandoned">>, <<"Processed">>
+                                             ,<<"Abandoned">>, <<"Processed">>
                                              ]).
 -define(CURRENT_CALLS_RESP_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
-				   ,{<<"Event-Name">>, <<"current_calls_resp">>}
+                                   ,{<<"Event-Name">>, <<"current_calls_resp">>}
                                    ]).
 -define(CURRENT_CALLS_RESP_TYPES, []).
 
@@ -285,10 +285,10 @@ current_calls_resp_v(JObj) ->
 
 -define(STATUS_REQ_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_STATUS_REQ_HEADERS, [<<"Agent-ID">>, <<"Start-Range">>, <<"End-Range">>
-				     ,<<"Status">>
+                                     ,<<"Status">>
                                      ]).
 -define(STATUS_REQ_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
-			   ,{<<"Event-Name">>, <<"status_req">>}
+                           ,{<<"Event-Name">>, <<"status_req">>}
                            ]).
 -define(STATUS_REQ_TYPES, []).
 
@@ -312,7 +312,7 @@ status_req_v(JObj) ->
 -define(STATUS_ERR_HEADERS, [<<"Error-Reason">>]).
 -define(OPTIONAL_STATUS_ERR_HEADERS, []).
 -define(STATUS_ERR_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
-			   ,{<<"Event-Name">>, <<"status_err">>}
+                           ,{<<"Event-Name">>, <<"status_err">>}
                            ]).
 -define(STATUS_ERR_TYPES, []).
 
@@ -336,7 +336,7 @@ status_err_v(JObj) ->
 -define(STATUS_RESP_HEADERS, [<<"Agents">>]).
 -define(OPTIONAL_STATUS_RESP_HEADERS, []).
 -define(STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
-			    ,{<<"Event-Name">>, <<"status_resp">>}
+                            ,{<<"Event-Name">>, <<"status_resp">>}
                             ]).
 -define(STATUS_RESP_TYPES, []).
 
@@ -359,16 +359,16 @@ status_resp_v(JObj) ->
 
 -define(STATUS_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Timestamp">>]).
 -define(STATUS_OPTIONAL_HEADERS, [<<"Wait-Time">>, <<"Pause-Time">>, <<"Call-ID">>
-				 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                                  ]).
 -define(STATUS_VALUES(Name), [{<<"Event-Category">>, <<"acdc_status_stat">>}
-			     ,{<<"Event-Name">>, Name}
+                             ,{<<"Event-Name">>, Name}
                              ]).
 -define(STATUS_TYPES, []).
 
 -spec status_update(api_terms()) ->
-			   {'ok', iolist()} |
-			   {'error', string()}.
+                           {'ok', iolist()} |
+                           {'error', string()}.
 status_update(Props) when is_list(Props) ->
     case status_update_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATUS_HEADERS, ?STATUS_OPTIONAL_HEADERS);
@@ -436,8 +436,8 @@ status_logged_out_v(JObj) ->
     status_logged_out_v(kz_json:to_proplist(JObj)).
 
 -spec status_pending_logged_out(api_terms()) ->
-				       {'ok', iolist()} |
-				       {'error', string()}.
+                                       {'ok', iolist()} |
+                                       {'error', string()}.
 status_pending_logged_out(Props) when is_list(Props) ->
     case status_pending_logged_out_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATUS_HEADERS, ?STATUS_OPTIONAL_HEADERS);
@@ -739,33 +739,33 @@ publish_status_resp(RespQ, API, ContentType) ->
 
 call_stat_routing_key(Prop) when is_list(Prop) ->
     call_stat_routing_key(props:get_value(<<"Account-ID">>, Prop)
-			 ,props:get_value(<<"Queue-ID">>, Prop)
+                         ,props:get_value(<<"Queue-ID">>, Prop)
                          );
 call_stat_routing_key(JObj) ->
     call_stat_routing_key(kz_json:get_value(<<"Account-ID">>, JObj)
-			 ,kz_json:get_value(<<"Queue-ID">>, JObj)
+                         ,kz_json:get_value(<<"Queue-ID">>, JObj)
                          ).
 call_stat_routing_key(AcctId, QID) ->
     <<"acdc_stats.call.", AcctId/binary, ".", QID/binary>>.
 
 status_stat_routing_key(Prop) when is_list(Prop) ->
     status_stat_routing_key(props:get_value(<<"Account-ID">>, Prop)
-			   ,props:get_value(<<"Agent-ID">>, Prop)
+                           ,props:get_value(<<"Agent-ID">>, Prop)
                            );
 status_stat_routing_key(JObj) ->
     status_stat_routing_key(kz_json:get_value(<<"Account-ID">>, JObj)
-			   ,kz_json:get_value(<<"Agent-ID">>, JObj)
+                           ,kz_json:get_value(<<"Agent-ID">>, JObj)
                            ).
 status_stat_routing_key(AcctId, AID) ->
     <<"acdc_stats.status.", AcctId/binary, ".", AID/binary>>.
 
 query_call_stat_routing_key(Prop) when is_list(Prop) ->
     query_call_stat_routing_key(props:get_value(<<"Account-ID">>, Prop)
-			       ,props:get_value(<<"Queue-ID">>, Prop)
+                               ,props:get_value(<<"Queue-ID">>, Prop)
                                );
 query_call_stat_routing_key(JObj) ->
     query_call_stat_routing_key(kz_json:get_value(<<"Account-ID">>, JObj)
-			       ,kz_json:get_value(<<"Queue-ID">>, JObj)
+                               ,kz_json:get_value(<<"Queue-ID">>, JObj)
                                ).
 
 query_call_stat_routing_key(AcctId, 'undefined') ->
@@ -775,11 +775,11 @@ query_call_stat_routing_key(AcctId, QID) ->
 
 query_status_stat_routing_key(Prop) when is_list(Prop) ->
     query_status_stat_routing_key(props:get_value(<<"Account-ID">>, Prop)
-				 ,props:get_value(<<"Agent-ID">>, Prop)
+                                 ,props:get_value(<<"Agent-ID">>, Prop)
                                  );
 query_status_stat_routing_key(JObj) ->
     query_status_stat_routing_key(kz_json:get_value(<<"Account-ID">>, JObj)
-				 ,kz_json:get_value(<<"AgentId-ID">>, JObj)
+                                 ,kz_json:get_value(<<"AgentId-ID">>, JObj)
                                  ).
 
 query_status_stat_routing_key(AcctId, 'undefined') ->

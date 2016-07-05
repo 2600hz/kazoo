@@ -40,17 +40,17 @@ maybe_send_route_response(JObj, Call) ->
 send_route_response(JObj, Call, Conference) ->
     lager:info("conference knows how to route the call! sending park response"),
     Resp = props:filter_undefined([{?KEY_MSG_ID, kz_api:msg_id(JObj)}
-				  ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
-				  ,{<<"Routes">>, []}
-				  ,{<<"Method">>, <<"park">>}
+                                  ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
+                                  ,{<<"Routes">>, []}
+                                  ,{<<"Method">>, <<"park">>}
                                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                   ]),
     ServerId = kz_api:server_id(JObj),
     Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,
     case kz_amqp_worker:call(Resp
-			    ,Publisher
-			    ,fun kapi_route:win_v/1
-			    ,?ROUTE_WIN_TIMEOUT
+                            ,Publisher
+                            ,fun kapi_route:win_v/1
+                            ,?ROUTE_WIN_TIMEOUT
                             )
     of
         {'ok', RouteWin} ->
@@ -71,8 +71,8 @@ start_participant(Call, Conference) ->
 -spec join_local(kapps_call:call(), kapps_conference:conference(), server_ref()) -> 'ok'.
 join_local(Call, Conference, Participant) ->
     Routines = [{fun kapps_conference:set_moderator/2, 'false'}
-	       ,{fun kapps_conference:set_application_version/2, ?APP_VERSION}
-	       ,{fun kapps_conference:set_application_name/2, ?APP_NAME}
+               ,{fun kapps_conference:set_application_version/2, ?APP_VERSION}
+               ,{fun kapps_conference:set_application_name/2, ?APP_NAME}
                ],
     C = kapps_conference:update(Routines, Conference),
     conf_participant:set_conference(C, Participant),
@@ -80,7 +80,7 @@ join_local(Call, Conference, Participant) ->
     conf_participant:join_local(Participant).
 
 -spec find_conference(kapps_call:call()) -> {'error', any()} |
-					    {'ok', kapps_conference:conference()}.
+                                            {'ok', kapps_conference:conference()}.
 find_conference(Call) ->
     find_conference(Call, find_account_db(Call)).
 
@@ -93,7 +93,7 @@ find_conference(Call, AccountDb) ->
             {'ok', kapps_conference:from_conference_doc(JObj)};
         {'error', _R}=Error ->
             lager:info("unable to find conference ~s in account db ~s: ~p"
-		      ,[ConferenceId, AccountDb, _R]
+                      ,[ConferenceId, AccountDb, _R]
                       ),
             Error
     end.
@@ -106,7 +106,7 @@ find_account_db(Call) ->
         {'multiples', [AccountDb|_]} -> AccountDb;
         {'error', _R} ->
             lager:debug("unable to find account for realm ~s: ~p"
-		       ,[Realm, _R]
+                       ,[Realm, _R]
                        ),
             'undefined'
     end.
@@ -118,7 +118,7 @@ bridged_conference(Conference) ->
     case ?SUPPORT_NAME_ANNOUNCEMENT of
         'true' ->
             Updaters = [fun(Conf) -> kapps_conference:set_play_entry_tone('false', Conf) end
-		       ,fun(Conf) -> kapps_conference:set_play_exit_tone('false', Conf) end
+                       ,fun(Conf) -> kapps_conference:set_play_exit_tone('false', Conf) end
                        ],
             kapps_conference:update(Updaters, Conference);
         'false' -> Conference

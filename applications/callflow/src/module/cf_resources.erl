@@ -123,8 +123,8 @@ get_channel_vars(EndpointId, Call) ->
     case kz_endpoint:get(EndpointId, kapps_call:account_db(Call)) of
         {'ok', Endpoint} ->
             [{<<"Authorizing-ID">>, EndpointId}
-	    ,{<<"Owner-ID">>, kz_json:get_value(<<"owner_id">>, Endpoint)}
-	    ,maybe_require_ignore_early_media(Call)
+            ,{<<"Owner-ID">>, kz_json:get_value(<<"owner_id">>, Endpoint)}
+            ,maybe_require_ignore_early_media(Call)
             ];
         {'error', _} -> [maybe_require_ignore_early_media(Call)]
     end.
@@ -282,11 +282,11 @@ get_t38_enabled(Call) ->
 -spec get_flags(kz_json:object(), kapps_call:call()) -> api_binaries().
 get_flags(Data, Call) ->
     Routines = [fun maybe_get_endpoint_flags/3
-	       ,fun get_flow_flags/3
-	       ,fun get_account_flags/3
-	       ,fun get_flow_dynamic_flags/3
-	       ,fun maybe_get_endpoint_dynamic_flags/3
-	       ,fun get_account_dynamic_flags/3
+               ,fun get_flow_flags/3
+               ,fun get_account_flags/3
+               ,fun get_flow_dynamic_flags/3
+               ,fun maybe_get_endpoint_dynamic_flags/3
+               ,fun get_account_dynamic_flags/3
                ],
     lists:foldl(fun(F, A) -> F(Data, Call, A) end, [], Routines).
 
@@ -325,7 +325,7 @@ get_account_flags(_Data, Call, Flags) ->
             AccountFlags ++ Flags;
         {'error', _E} ->
             lager:error("not applying account outbound flags for ~s: ~p"
-		       ,[AccountId, _E]
+                       ,[AccountId, _E]
                        ),
             Flags
     end.
@@ -339,7 +339,7 @@ get_flow_dynamic_flags(Data, Call, Flags) ->
     end.
 
 -spec maybe_get_endpoint_dynamic_flags(kz_json:object(), kapps_call:call(), ne_binaries()) ->
-					      ne_binaries().
+                                              ne_binaries().
 maybe_get_endpoint_dynamic_flags(_Data, Call, Flags) ->
     case kz_endpoint:get(Call) of
         {'error', _} -> Flags;
@@ -360,10 +360,10 @@ get_endpoint_dynamic_flags(Call, Flags, Endpoint) ->
                                        ne_binaries().
 get_account_dynamic_flags(_, Call, Flags) ->
     DynamicFlags = kapps_account_config:get(kapps_call:account_id(Call)
-					   ,<<"callflow">>
-					   ,<<"dynamic_flags">>
-					   ,[]
-					   ),
+                                           ,<<"callflow">>
+                                           ,<<"dynamic_flags">>
+                                           ,[]
+                                           ),
     process_dynamic_flags(DynamicFlags, Flags, Call).
 
 -spec process_dynamic_flags(ne_binaries(), ne_binaries(), kapps_call:call()) ->
@@ -407,7 +407,7 @@ wait_for_stepswitch(Call) ->
             case kz_util:get_event_type(JObj) of
                 {<<"resource">>, <<"offnet_resp">>} ->
                     {kz_call_event:response_message(JObj)
-		    ,kz_call_event:response_code(JObj)
+                    ,kz_call_event:response_code(JObj)
                     };
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     handle_channel_destroy(JObj);

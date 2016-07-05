@@ -12,7 +12,7 @@
 
 %% API
 -export([start_link/0
-	,stats_srv/0
+        ,stats_srv/0
         ]).
 
 %% Supervisor callbacks
@@ -23,8 +23,8 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILDREN, [?WORKER_NAME_ARGS('acdc_stats_etsmgr', 'acdc_stats_call', [acdc_stats:call_table_id(), acdc_stats:call_table_opts()])
-		  ,?WORKER_NAME_ARGS('acdc_stats_etsmgr', 'acdc_stats_status', [acdc_agent_stats:status_table_id(), acdc_agent_stats:status_table_opts()])
-		  ,?WORKER('acdc_stats')
+                  ,?WORKER_NAME_ARGS('acdc_stats_etsmgr', 'acdc_stats_status', [acdc_agent_stats:status_table_id(), acdc_agent_stats:status_table_opts()])
+                  ,?WORKER('acdc_stats')
                   ]).
 
 %%%===================================================================

@@ -11,21 +11,21 @@
 -module(knm_vitelity_util).
 
 -export([api_uri/0
-	,config_cat/0
-	,add_options_fold/2
-	,get_query_value/2
-	,default_options/0, default_options/1
-	,build_uri/1
-	,query_vitelity/1
-	,get_short_state/1
+        ,config_cat/0
+        ,add_options_fold/2
+        ,get_query_value/2
+        ,default_options/0, default_options/1
+        ,build_uri/1
+        ,query_vitelity/1
+        ,get_short_state/1
 
-	,xml_resp_status_msg/1
-	,xml_resp_error_msg/1
-	,xml_resp_response_msg/1
-	,xml_resp_numbers/1
-	,xml_resp_info/1
-	,xml_resp_response/1
-	,xml_els_to_proplist/1
+        ,xml_resp_status_msg/1
+        ,xml_resp_error_msg/1
+        ,xml_resp_response_msg/1
+        ,xml_resp_numbers/1
+        ,xml_resp_info/1
+        ,xml_resp_response/1
+        ,xml_els_to_proplist/1
         ]).
 
 -include("knm.hrl").
@@ -126,7 +126,7 @@ xml_els_to_proplist(Els) ->
 
 -spec xml_el_to_kv_pair(xml_el()) -> {ne_binary(), api_binary() | kz_json:object()}.
 xml_el_to_kv_pair(#xmlElement{name='did'
-			     ,content=Value
+                             ,content=Value
                              }) ->
     %% due to inconsistency in listdids
     Num = kz_xml:texts_to_binary(Value),
@@ -134,7 +134,7 @@ xml_el_to_kv_pair(#xmlElement{name='did'
     ,knm_converters:normalize(Num)
     };
 xml_el_to_kv_pair(#xmlElement{name='number'
-			     ,content=Value
+                             ,content=Value
                              }) ->
     %% due to inconsistency in listdids
     Num = kz_xml:texts_to_binary(Value),
@@ -142,20 +142,20 @@ xml_el_to_kv_pair(#xmlElement{name='number'
     ,knm_converters:normalize(Num)
     };
 xml_el_to_kv_pair(#xmlElement{name=Name
-			     ,content=[]
+                             ,content=[]
                              }) ->
     {Name, 'undefined'};
 xml_el_to_kv_pair(#xmlElement{name=Name
-			     ,content=Value
+                             ,content=Value
                              }) ->
     case kz_xml:elements(Value) of
         [] ->
             {kz_util:to_binary(Name)
-	    ,kz_xml:texts_to_binary(Value)
+            ,kz_xml:texts_to_binary(Value)
             };
         Els ->
             {kz_util:to_binary(Name)
-	    ,kz_json:from_list(xml_els_to_proplist(Els))
+            ,kz_json:from_list(xml_els_to_proplist(Els))
             }
     end.
 
@@ -176,64 +176,64 @@ query_vitelity(URI) ->
 -spec get_short_state(ne_binary()) -> state_two_letters() | 'undefined'.
 get_short_state(FullState) ->
     States = [{<<"alabama">>, <<"AL">>}
-	     ,{<<"alaska">>, <<"AK">>}
-	     ,{<<"american samoa">>, <<"AS">>}
-	     ,{<<"arizona">>, <<"AZ">>}
-	     ,{<<"arkansas">>, <<"AR">>}
-	     ,{<<"california">>, <<"CA">>}
-	     ,{<<"colorado">>, <<"CO">>}
-	     ,{<<"connecticut">>, <<"CT">>}
-	     ,{<<"delaware">>, <<"DE">>}
-	     ,{<<"district of columbia">>, <<"DC">>}
-	     ,{<<"federated states of micronesia">>, <<"FM">>}
-	     ,{<<"florida">>, <<"FL">>}
-	     ,{<<"georgia">>, <<"GA">>}
-	     ,{<<"guam">>, <<"GU">>}
-	     ,{<<"hawaii">>, <<"HI">>}
-	     ,{<<"idaho">>, <<"ID">>}
-	     ,{<<"illinois">>, <<"IL">>}
-	     ,{<<"indiana">>, <<"IN">>}
-	     ,{<<"iowa">>, <<"IA">>}
-	     ,{<<"kansas">>, <<"KS">>}
-	     ,{<<"kentucky">>, <<"KY">>}
-	     ,{<<"louisiana">>, <<"LA">>}
-	     ,{<<"maine">>, <<"ME">>}
-	     ,{<<"marshall islands">>, <<"MH">>}
-	     ,{<<"maryland">>, <<"MD">>}
-	     ,{<<"massachusetts">>, <<"MA">>}
-	     ,{<<"michigan">>, <<"MI">>}
-	     ,{<<"minnesota">>, <<"MN">>}
-	     ,{<<"mississippi">>, <<"MS">>}
-	     ,{<<"missouri">>, <<"MO">>}
-	     ,{<<"montana">>, <<"MT">>}
-	     ,{<<"nebraska">>, <<"NE">>}
-	     ,{<<"nevada">>, <<"NV">>}
-	     ,{<<"new hampshire">>, <<"NH">>}
-	     ,{<<"new jersey">>, <<"NJ">>}
-	     ,{<<"new mexico">>, <<"NM">>}
-	     ,{<<"new york">>, <<"NY">>}
-	     ,{<<"north carolina">>, <<"NC">>}
-	     ,{<<"north dakota">>, <<"ND">>}
-	     ,{<<"northern mariana islands">>, <<"MP">>}
-	     ,{<<"ohio">>, <<"OH">>}
-	     ,{<<"oklahoma">>, <<"OK">>}
-	     ,{<<"oregon">>, <<"OR">>}
-	     ,{<<"palau">>, <<"PW">>}
-	     ,{<<"pennsylvania">>, <<"PA">>}
-	     ,{<<"puerto rico">>, <<"PR">>}
-	     ,{<<"rhode island">>, <<"RI">>}
-	     ,{<<"south carolina">>, <<"SC">>}
-	     ,{<<"south dakota">>, <<"SD">>}
-	     ,{<<"tennessee">>, <<"TN">>}
-	     ,{<<"texas">>, <<"TX">>}
-	     ,{<<"utah">>, <<"UT">>}
-	     ,{<<"vermont">>, <<"VT">>}
-	     ,{<<"virgin islands">>, <<"VI">>}
-	     ,{<<"virginia">>, <<"VA">>}
-	     ,{<<"washington">>, <<"WA">>}
-	     ,{<<"west virginia">>, <<"WV">>}
-	     ,{<<"wisconsin">>, <<"WI">>}
-	     ,{<<"wyoming">>, <<"WY">>}
+             ,{<<"alaska">>, <<"AK">>}
+             ,{<<"american samoa">>, <<"AS">>}
+             ,{<<"arizona">>, <<"AZ">>}
+             ,{<<"arkansas">>, <<"AR">>}
+             ,{<<"california">>, <<"CA">>}
+             ,{<<"colorado">>, <<"CO">>}
+             ,{<<"connecticut">>, <<"CT">>}
+             ,{<<"delaware">>, <<"DE">>}
+             ,{<<"district of columbia">>, <<"DC">>}
+             ,{<<"federated states of micronesia">>, <<"FM">>}
+             ,{<<"florida">>, <<"FL">>}
+             ,{<<"georgia">>, <<"GA">>}
+             ,{<<"guam">>, <<"GU">>}
+             ,{<<"hawaii">>, <<"HI">>}
+             ,{<<"idaho">>, <<"ID">>}
+             ,{<<"illinois">>, <<"IL">>}
+             ,{<<"indiana">>, <<"IN">>}
+             ,{<<"iowa">>, <<"IA">>}
+             ,{<<"kansas">>, <<"KS">>}
+             ,{<<"kentucky">>, <<"KY">>}
+             ,{<<"louisiana">>, <<"LA">>}
+             ,{<<"maine">>, <<"ME">>}
+             ,{<<"marshall islands">>, <<"MH">>}
+             ,{<<"maryland">>, <<"MD">>}
+             ,{<<"massachusetts">>, <<"MA">>}
+             ,{<<"michigan">>, <<"MI">>}
+             ,{<<"minnesota">>, <<"MN">>}
+             ,{<<"mississippi">>, <<"MS">>}
+             ,{<<"missouri">>, <<"MO">>}
+             ,{<<"montana">>, <<"MT">>}
+             ,{<<"nebraska">>, <<"NE">>}
+             ,{<<"nevada">>, <<"NV">>}
+             ,{<<"new hampshire">>, <<"NH">>}
+             ,{<<"new jersey">>, <<"NJ">>}
+             ,{<<"new mexico">>, <<"NM">>}
+             ,{<<"new york">>, <<"NY">>}
+             ,{<<"north carolina">>, <<"NC">>}
+             ,{<<"north dakota">>, <<"ND">>}
+             ,{<<"northern mariana islands">>, <<"MP">>}
+             ,{<<"ohio">>, <<"OH">>}
+             ,{<<"oklahoma">>, <<"OK">>}
+             ,{<<"oregon">>, <<"OR">>}
+             ,{<<"palau">>, <<"PW">>}
+             ,{<<"pennsylvania">>, <<"PA">>}
+             ,{<<"puerto rico">>, <<"PR">>}
+             ,{<<"rhode island">>, <<"RI">>}
+             ,{<<"south carolina">>, <<"SC">>}
+             ,{<<"south dakota">>, <<"SD">>}
+             ,{<<"tennessee">>, <<"TN">>}
+             ,{<<"texas">>, <<"TX">>}
+             ,{<<"utah">>, <<"UT">>}
+             ,{<<"vermont">>, <<"VT">>}
+             ,{<<"virgin islands">>, <<"VI">>}
+             ,{<<"virginia">>, <<"VA">>}
+             ,{<<"washington">>, <<"WA">>}
+             ,{<<"west virginia">>, <<"WV">>}
+             ,{<<"wisconsin">>, <<"WI">>}
+             ,{<<"wyoming">>, <<"WY">>}
              ],
     State = kz_util:to_lower_binary(FullState),
     props:get_value(State, States).

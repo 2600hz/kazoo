@@ -11,7 +11,7 @@
 -module(konami_resume).
 
 -export([handle/2
-	,number_builder/1
+        ,number_builder/1
         ]).
 
 -include("konami.hrl").
@@ -20,7 +20,7 @@
                     {'continue', kapps_call:call()}.
 handle(_Data, Call) ->
     lager:debug("reconnecting ~s and ~s", [kapps_call:call_id(Call)
-					  ,kapps_call:other_leg_call_id(Call)
+                                          ,kapps_call:other_leg_call_id(Call)
                                           ]),
     kapps_call_command:pickup(kapps_call:other_leg_call_id(Call), <<"now">>, Call),
     {'continue', Call}.
@@ -60,5 +60,5 @@ number_builder_check_option(NumberJObj, _Option) ->
 -spec metaflow_jobj(kz_json:object()) -> kz_json:object().
 metaflow_jobj(NumberJObj) ->
     kz_json:set_values([{<<"module">>, <<"resume">>}
-		       ,{<<"data">>, kz_json:new()}
+                       ,{<<"data">>, kz_json:new()}
                        ], NumberJObj).

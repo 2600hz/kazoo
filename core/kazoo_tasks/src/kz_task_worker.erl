@@ -127,7 +127,7 @@ loop(State=#state{task_id = TaskId
                         _ = kz_tasks:worker_maybe_send_update(TaskId, TotalSucceeded+1, TotalFailed),
                         State#state{total_succeeded = TotalSucceeded + 1
                                    }
-		end,
+                end,
             _ = put(?IN, CSVRest),
             _ = kz_tasks:worker_pause(),
             loop(NewState)

@@ -25,9 +25,9 @@
                      ]).
 
 -define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
-		  ,?SUPER('stepswitch_cnam_pool_sup')
-		  ,?SUPER('stepswitch_request_sup')
-		  ,?WORKER('stepswitch_listener')
+                  ,?SUPER('stepswitch_cnam_pool_sup')
+                  ,?SUPER('stepswitch_request_sup')
+                  ,?WORKER('stepswitch_listener')
                   ]).
 
 %% ===================================================================

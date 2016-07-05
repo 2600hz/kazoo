@@ -11,10 +11,10 @@
 -module(cb_search).
 
 -export([init/0
-	,allowed_methods/0 ,allowed_methods/1
-	,resource_exists/0 ,resource_exists/1
-	,validate/1 ,validate/2
-	,authorize/1, authorize/2
+        ,allowed_methods/0 ,allowed_methods/1
+        ,resource_exists/0 ,resource_exists/1
+        ,validate/1 ,validate/2
+        ,authorize/1, authorize/2
         ]).
 
 -include("crossbar.hrl").
@@ -132,9 +132,9 @@ validate(Context, ?MULTI) ->
 validate_search(Context, 'undefined') ->
     cb_context:add_validation_error(
       <<"t">>
-				   ,<<"required">>
-				   ,kz_json:from_list([{<<"message">>, <<"Search needs a document type to search on">>}])
-				   ,Context
+                                   ,<<"required">>
+                                   ,kz_json:from_list([{<<"message">>, <<"Search needs a document type to search on">>}])
+                                   ,Context
      );
 validate_search(Context, Type) ->
     validate_search(Context, Type, cb_context:req_value(Context, <<"q">>)).
@@ -143,18 +143,18 @@ validate_search(Context, Type) ->
 validate_search(Context, _Type, 'undefined') ->
     Context1 = cb_context:add_validation_error(
                  <<"q">>
-					      ,<<"required">>
-					      ,kz_json:from_list([{<<"message">>, <<"Search needs a view to search in">>}])
-					      ,Context
+                                              ,<<"required">>
+                                              ,kz_json:from_list([{<<"message">>, <<"Search needs a view to search in">>}])
+                                              ,Context
                 ),
     cb_context:add_validation_error(
       <<"q">>
-				   ,<<"enum">>
-				   ,kz_json:from_list(
-				      [{<<"message">>, <<"Value not found in enumerated list of values">>}
-				      ,{<<"target">>, query_options(cb_context:account_db(Context1))}
-				      ])
-				   ,Context1
+                                   ,<<"enum">>
+                                   ,kz_json:from_list(
+                                      [{<<"message">>, <<"Value not found in enumerated list of values">>}
+                                      ,{<<"target">>, query_options(cb_context:account_db(Context1))}
+                                      ])
+                                   ,Context1
      );
 validate_search(Context, Type, Query) ->
     Context1 = validate_query(Context, Query),
@@ -168,9 +168,9 @@ validate_search(Context, Type, Query) ->
 validate_search(Context, _Type, _Query, 'undefined') ->
     cb_context:add_validation_error(
       <<"v">>
-				   ,<<"required">>
-				   ,kz_json:from_list([{<<"message">>, <<"Search needs a value to search with">>}])
-				   ,Context
+                                   ,<<"required">>
+                                   ,kz_json:from_list([{<<"message">>, <<"Search needs a value to search with">>}])
+                                   ,Context
      );
 validate_search(Context, Type, Query, <<_/binary>> = Value) ->
     search(Context, Type, Query, Value);
@@ -190,23 +190,23 @@ validate_search(Context, Type, Query, Value) ->
 validate_multi(Context, 'undefined') ->
     cb_context:add_validation_error(
       <<"t">>
-				   ,<<"required">>
-				   ,kz_json:from_list([{<<"message">>, <<"Search needs a document type to search on">>}])
-				   ,Context
+                                   ,<<"required">>
+                                   ,kz_json:from_list([{<<"message">>, <<"Search needs a document type to search on">>}])
+                                   ,Context
      );
 validate_multi(Context, Type) ->
     case kz_json:to_proplist(cb_context:query_string(Context)) of
         [_|_]=Props -> validate_multi(Context, Type, Props);
         _Other ->
             cb_context:add_validation_error(
-	      <<"multi">>
-					   ,<<"enum">>
-					   ,kz_json:from_list([
-							       {<<"message">>, <<"Multi Search needs something to search like a doc type">>}
-							      ,{<<"target">>, ?SEARCHABLE}
-							      ])
-					   ,Context
-	     )
+              <<"multi">>
+                                           ,<<"enum">>
+                                           ,kz_json:from_list([
+                                                               {<<"message">>, <<"Multi Search needs something to search like a doc type">>}
+                                                              ,{<<"target">>, ?SEARCHABLE}
+                                                              ])
+                                           ,Context
+             )
     end.
 
 validate_multi(Context, Type, Props) ->
@@ -249,15 +249,15 @@ validate_query(Context, Available, Query) when is_binary(Query) ->
             cb_context:set_resp_status(Context, 'success');
         'false' ->
             cb_context:add_validation_error(
-	      <<"q">>
-					   ,<<"enum">>
-					   ,kz_json:from_list([
-							       {<<"message">>, <<"Value not found in enumerated list of values">>}
-							      ,{<<"target">>, Available}
-							      ,{<<"cause">>, Query}
-							      ])
-					   ,Context
-	     )
+              <<"q">>
+                                           ,<<"enum">>
+                                           ,kz_json:from_list([
+                                                               {<<"message">>, <<"Value not found in enumerated list of values">>}
+                                                              ,{<<"target">>, Available}
+                                                              ,{<<"cause">>, Query}
+                                                              ])
+                                           ,Context
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -303,15 +303,15 @@ search(Context, Type, Query, Val) ->
     Value = maybe_normalize_value(Type, Val),
     ViewOptions =
         [{'startkey', get_start_key(Context, Type, Value)}
-	,{'endkey', get_end_key(Context, Type, Value)}
-	,{'limit', crossbar_doc:pagination_page_size(Context)}
+        ,{'endkey', get_end_key(Context, Type, Value)}
+        ,{'limit', crossbar_doc:pagination_page_size(Context)}
         ],
     fix_envelope(
       crossbar_doc:load_view(
         ViewName
-			    ,ViewOptions
-			    ,Context
-			    ,fun normalize_view_results/2
+                            ,ViewOptions
+                            ,Context
+                            ,fun normalize_view_results/2
        )
      ).
 
@@ -335,14 +335,14 @@ multi_search(Context, Type, [{<<"by_", Query/binary>>, Val}|Props], Acc) ->
     Value = maybe_normalize_value(Type, Val),
     ViewOptions =
         [{'startkey', get_start_key(Context, Type, Value)}
-	,{'endkey', get_end_key(Context, Type, Value)}
+        ,{'endkey', get_end_key(Context, Type, Value)}
         ],
     Context1 =
         crossbar_doc:load_view(
           ViewName
-			      ,ViewOptions
-			      ,Context
-			      ,fun normalize_view_results/2
+                              ,ViewOptions
+                              ,Context
+                              ,fun normalize_view_results/2
          ),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -425,11 +425,11 @@ next_binary_key(Bin) ->
 fix_envelope(Context) ->
     cb_context:set_resp_envelope(
       cb_context:set_resp_data(Context, lists:reverse(cb_context:resp_data(Context)))
-				,lists:foldl(
-				   fun fix_envelope_fold/2
-					    ,cb_context:resp_envelope(Context)
-					    ,[<<"start_key">>, <<"next_start_key">>]
-				  )
+                                ,lists:foldl(
+                                   fun fix_envelope_fold/2
+                                            ,cb_context:resp_envelope(Context)
+                                            ,[<<"start_key">>, <<"next_start_key">>]
+                                  )
      ).
 
 %%--------------------------------------------------------------------

@@ -9,7 +9,7 @@
 -module(dth).
 
 -export([add_binding_to_q/2
-	,rm_binding_from_q/1
+        ,rm_binding_from_q/1
         ]).
 
 -include("dth.hrl").

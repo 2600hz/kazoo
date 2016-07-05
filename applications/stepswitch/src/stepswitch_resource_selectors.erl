@@ -16,33 +16,33 @@
 -define(MOD_PREFIX, "kz_srs_").
 -define(SRS_RULES_DOC, <<"resource_selector_rules">>).
 -define(DEFAULT_SRS_RULES, [{[{<<"get_resources">>
-			      ,{[]}
+                              ,{[]}
                               }]}
-			   ,{[{<<"filter_list">>
-			      ,{[{<<"value_a">>,<<"request:Flags">>}
-				,{<<"value_b">>,<<"resource:flags">>}
-				,{<<"action">>,<<"keep">>}
-				]}
-			      }]}
-			   ,{[{<<"filter_regex">>
-			      ,{[{<<"value_a">>,<<"number">>}
-				,{<<"value_b">>,<<"resource:rules">>}
-				,{<<"action">>,<<"keep">>}
-				,{<<"mode">>,<<"empty_fail">>}
-				]}
-			      }]}
-			   ,{[{<<"filter_regex">>
-			      ,{[{<<"value_a">>,<<"cid_number">>}
-				,{<<"value_b">>,<<"resource:cid_rules">>}
-				,{<<"action">>,<<"keep">>}
-				,{<<"mode">>,<<"empty_ok">>}
-				]}
-			      }]}
-			   ,{[{<<"order">>
-			      ,{[{<<"value">>, <<"resource:weight_cost">>}
-				,{<<"direction">>, <<"ascend">>}
-				]}
-			      }]}
+                           ,{[{<<"filter_list">>
+                              ,{[{<<"value_a">>,<<"request:Flags">>}
+                                ,{<<"value_b">>,<<"resource:flags">>}
+                                ,{<<"action">>,<<"keep">>}
+                                ]}
+                              }]}
+                           ,{[{<<"filter_regex">>
+                              ,{[{<<"value_a">>,<<"number">>}
+                                ,{<<"value_b">>,<<"resource:rules">>}
+                                ,{<<"action">>,<<"keep">>}
+                                ,{<<"mode">>,<<"empty_fail">>}
+                                ]}
+                              }]}
+                           ,{[{<<"filter_regex">>
+                              ,{[{<<"value_a">>,<<"cid_number">>}
+                                ,{<<"value_b">>,<<"resource:cid_rules">>}
+                                ,{<<"action">>,<<"keep">>}
+                                ,{<<"mode">>,<<"empty_ok">>}
+                                ]}
+                              }]}
+                           ,{[{<<"order">>
+                              ,{[{<<"value">>, <<"resource:weight_cost">>}
+                                ,{<<"direction">>, <<"ascend">>}
+                                ]}
+                              }]}
                            ]
        ).
 
@@ -64,16 +64,16 @@ foldl_modules(Number, OffnetJObj, SelectorsDb, SelectorRules) ->
                         ModuleName = real_module_name(Module),
                         ModuleParams = kz_json:get_value(Module, JObj),
                         try Res = ModuleName:handle_req(Resources
-						       ,Number
-						       ,OffnetJObj
-						       ,SelectorsDb
-						       ,ModuleParams
+                                                       ,Number
+                                                       ,OffnetJObj
+                                                       ,SelectorsDb
+                                                       ,ModuleParams
                                                        ),
-			     lager:info("module ~p return resources: ~p"
+                             lager:info("module ~p return resources: ~p"
                                        ,[Module, [ stepswitch_resources:get_resrc_id(R) ||
-						     R <- Res ]
+                                                     R <- Res ]
                                         ]),
-			     Res
+                             Res
                         catch
                             'error':R ->
                                 ST = erlang:get_stacktrace(),
@@ -85,8 +85,8 @@ foldl_modules(Number, OffnetJObj, SelectorsDb, SelectorRules) ->
                                 []
                         end
                 end
-	       ,[]
-	       ,SelectorRules
+               ,[]
+               ,SelectorRules
                ).
 
 -spec maybe_get_hunt_account(kapi_offnet_resource:req()) -> api_binary().
@@ -95,7 +95,7 @@ maybe_get_hunt_account(OffnetJObj) ->
     AccountId = kapi_offnet_resource:account_id(OffnetJObj),
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     case kz_util:is_not_empty(HuntAccountId)
-	andalso kz_util:is_in_account_hierarchy(HuntAccountId, AccountId, 'true')
+        andalso kz_util:is_in_account_hierarchy(HuntAccountId, AccountId, 'true')
     of
         'true' -> HuntAccountId;
         'false' -> MasterAccountId

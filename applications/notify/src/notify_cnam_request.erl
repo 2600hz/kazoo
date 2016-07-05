@@ -101,16 +101,16 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     From = props:get_value(<<"send_from">>, Service),
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
-	    ,[{<<"From">>, From}
-	     ,{<<"To">>, To}
-	     ,{<<"Subject">>, Subject}
-	     ]
-	    ,[]
-	    ,[{<<"multipart">>, <<"alternative">>, [], []
-	      ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
-	       ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
-	       ]
-	      }
-	     ]
+            ,[{<<"From">>, From}
+             ,{<<"To">>, To}
+             ,{<<"Subject">>, Subject}
+             ]
+            ,[]
+            ,[{<<"multipart">>, <<"alternative">>, [], []
+              ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
+               ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
+               ]
+              }
+             ]
             },
     notify_util:send_email(From, To, Email).

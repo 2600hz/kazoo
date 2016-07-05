@@ -11,12 +11,12 @@
 -module(ecallmgr_fs_xml).
 
 -export([get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
-	,route_resp_xml/2 ,authn_resp_xml/1, reverse_authn_resp_xml/1
-	,acl_xml/1, not_found/0, empty_response/0
-	,sip_profiles_xml/1, sofia_gateways_xml_to_json/1
-	,sip_channel_xml/1
-	,escape/2
-	,conference_resp_xml/1
+        ,route_resp_xml/2 ,authn_resp_xml/1, reverse_authn_resp_xml/1
+        ,acl_xml/1, not_found/0, empty_response/0
+        ,sip_profiles_xml/1, sofia_gateways_xml_to_json/1
+        ,sip_channel_xml/1
+        ,escape/2
+        ,conference_resp_xml/1
         ]).
 
 -export([config_el/2, config_el/3]).
@@ -60,7 +60,7 @@ sip_channel_xml(Props) ->
 -spec authn_resp_xml(ne_binary(), kz_json:object()) -> {'ok', xml_els()}.
 authn_resp_xml([_|_]=RespProp) ->
     authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp)
-		  ,kz_json:from_list(RespProp)
+                  ,kz_json:from_list(RespProp)
                   );
 authn_resp_xml(JObj) ->
     DomainName = kz_json:get_value(<<"Domain-Name">>, JObj),
@@ -75,10 +75,10 @@ authn_resp_xml(JObj) ->
                        ),
             Username = kz_json:get_value(<<"Auth-Username">>, JObj, UserId),
             UserEl = user_el([{'number-alias', Number}
-			     ,{'cacheable', Expires}
+                             ,{'cacheable', Expires}
                               | user_el_default_props(Username)
                              ]
-			    ,Elements
+                            ,Elements
                             ),
             DomainEl = domain_el(kz_json:get_value(<<"Auth-Realm">>, JObj, DomainName), UserEl),
             SectionEl = section_el(<<"directory">>, DomainEl),
@@ -123,7 +123,7 @@ authn_resp_xml(_Method, _JObj) ->
                                     {'ok', xml_els()}.
 reverse_authn_resp_xml([_|_]=RespProp) ->
     reverse_authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp)
-			  ,kz_json:from_list(RespProp)
+                          ,kz_json:from_list(RespProp)
                           );
 reverse_authn_resp_xml(JObj) ->
     case reverse_authn_resp_xml(kz_json:get_value(<<"Auth-Method">>, JObj), JObj) of
@@ -168,7 +168,7 @@ conference_resp_xml([_|_]=Resp) ->
     ChatPermsEl = chat_permissions_xml(CPs),
 
     ConfigurationEl = config_el(<<"conference.conf">>, <<"Built by Kazoo">>
-			       ,[AdvertiseEl, ProfilesEl, CallerControlsEl, ChatPermsEl]
+                               ,[AdvertiseEl, ProfilesEl, CallerControlsEl, ChatPermsEl]
                                ),
     SectionEl = section_el(<<"configuration">>, ConfigurationEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
@@ -192,8 +192,8 @@ caller_controls_xml(CCs) -> caller_controls_xml(kz_json:to_proplist(CCs)).
 
 group_xml(Name, Controls) when is_list(Controls) ->
     ControlEls = [control_el(kz_json:get_value(<<"action">>, Control)
-			    ,kz_json:get_value(<<"digits">>, Control)
-			    ,kz_json:get_value(<<"data">>, Control)
+                            ,kz_json:get_value(<<"digits">>, Control)
+                            ,kz_json:get_value(<<"data">>, Control)
                             )
                   || Control <- Controls
                  ],
@@ -218,9 +218,9 @@ conference_profile_xml(Name, Params) ->
 route_resp_xml([_|_]=RespProp, Props) -> route_resp_xml(kz_json:from_list(RespProp), Props);
 route_resp_xml(RespJObj, Props) ->
     route_resp_xml(kz_json:get_value(<<"Method">>, RespJObj)
-		  ,kz_json:get_value(<<"Routes">>, RespJObj, [])
-		  ,RespJObj
-		  , Props
+                  ,kz_json:get_value(<<"Routes">>, RespJObj, [])
+                  ,RespJObj
+                  , Props
                   ).
 
 %% Prop = Route Response
@@ -283,12 +283,12 @@ route_resp_xml(<<"bridge">>, Routes, JObj, Props) ->
 
 route_resp_xml(<<"park">>, _Routes, JObj, Props) ->
     Exten = [route_resp_log_winning_node()
-	    ,route_resp_set_winning_node()
-	    ,route_resp_bridge_id()
-	    ,route_resp_ringback(JObj)
-	    ,route_resp_transfer_ringback(JObj)
-	    ,route_resp_pre_park_action(JObj)
-	    ,maybe_start_dtmf_action(Props)
+            ,route_resp_set_winning_node()
+            ,route_resp_bridge_id()
+            ,route_resp_ringback(JObj)
+            ,route_resp_transfer_ringback(JObj)
+            ,route_resp_pre_park_action(JObj)
+            ,maybe_start_dtmf_action(Props)
              | route_resp_ccvs(JObj) ++ unset_custom_sip_headers(Props) ++ [action_el(<<"park">>)]
             ],
     ParkExtEl = extension_el(<<"park">>, 'undefined', [condition_el(Exten)]),
@@ -305,11 +305,11 @@ route_resp_xml(<<"dialplan_error">>, _Routes, JObj, _Props) ->
     ErrCode = kz_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", kz_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
     Exten = [route_resp_log_winning_node()
-	    ,route_resp_set_winning_node()
-	    ,route_resp_bridge_id()
-	    ,route_resp_ringback(JObj)
-	    ,route_resp_transfer_ringback(JObj)
-	    ,action_el(<<"respond">>, [ErrCode, ErrMsg])
+            ,route_resp_set_winning_node()
+            ,route_resp_bridge_id()
+            ,route_resp_ringback(JObj)
+            ,route_resp_transfer_ringback(JObj)
+            ,action_el(<<"respond">>, [ErrCode, ErrMsg])
             ],
     ErrExtEl = extension_el([condition_el(Exten)]),
     ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ErrExtEl]),
@@ -338,8 +338,8 @@ route_resp_xml(<<"sms_error">>, _Routes, JObj, _Props) ->
     ErrCode = kz_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", kz_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
     Exten = [route_resp_log_winning_node()
-	    ,route_resp_set_winning_node()
-	    ,action_el(<<"respond">>, [ErrCode, ErrMsg])
+            ,route_resp_set_winning_node()
+            ,action_el(<<"respond">>, [ErrCode, ErrMsg])
             ],
     ErrExtEl = extension_el([condition_el(Exten)]),
     ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ErrExtEl]),
@@ -452,13 +452,13 @@ get_channel_vars({<<"Custom-SIP-Headers">>, SIPJObj}, Vars) ->
     kz_json:foldl(fun sip_headers_fold/3, Vars, SIPJObj);
 get_channel_vars({<<"To-User">>, Username}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Username"
-		    ,"='", kz_util:to_list(Username), "'"
+                    ,"='", kz_util:to_list(Username), "'"
                     ])
      | Vars
     ];
 get_channel_vars({<<"To-Realm">>, Realm}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Realm"
-		    ,"='", kz_util:to_list(Realm), "'"
+                    ,"='", kz_util:to_list(Realm), "'"
                     ])
      | Vars
     ];
@@ -479,7 +479,7 @@ get_channel_vars({<<"origination_uuid">> = K, UUID}, Vars) ->
 
 get_channel_vars({<<"Hold-Media">>, Media}, Vars) ->
     [list_to_binary(["hold_music="
-		    ,kz_util:to_list(ecallmgr_util:media_path(Media, 'extant', get('callid'), kz_json:new()))
+                    ,kz_util:to_list(ecallmgr_util:media_path(Media, 'extant', get('callid'), kz_json:new()))
                     ])
      | Vars];
 
@@ -500,8 +500,8 @@ get_channel_vars({<<"Timeout">>, V}, Vars) ->
     case kz_util:to_integer(V) of
         TO when TO > 0 ->
             [<<"call_timeout=", (kz_util:to_binary(TO))/binary>>
-	    ,<<"originate_timeout=", (kz_util:to_binary(TO))/binary>>
-		 | Vars
+            ,<<"originate_timeout=", (kz_util:to_binary(TO))/binary>>
+                 | Vars
             ];
         _Else -> Vars
     end;
@@ -517,9 +517,9 @@ get_channel_vars({<<"Enable-T38-Gateway">>, Direction}, Vars) ->
 
 get_channel_vars({<<"Confirm-File">>, V}, Vars) ->
     [list_to_binary(["group_confirm_file='"
-		    ,kz_util:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), kz_json:new()))
-		    ,"'"
-		    ]) | Vars];
+                    ,kz_util:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), kz_json:new()))
+                    ,"'"
+                    ]) | Vars];
 
 get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
@@ -552,12 +552,12 @@ get_channel_vars_fold(K, V, Acc) ->
     case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->
             [list_to_binary([?CHANNEL_VAR_PREFIX, kz_util:to_list(K)
-			    ,"='", kz_util:to_list(V), "'"])
+                            ,"='", kz_util:to_list(V), "'"])
              | Acc];
         {_, <<"group_confirm_file">>} ->
             [list_to_binary(["group_confirm_file='"
-			    ,kz_util:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), kz_json:new()))
-			    ,"'"
+                            ,kz_util:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), kz_json:new()))
+                            ,"'"
                             ])
              | Acc];
         {_, Prefix} ->
@@ -642,9 +642,9 @@ hunt_context(Props) ->
 -spec acl_node_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 acl_node_el(Type, CIDR) ->
     #xmlElement{name='node'
-	       ,attributes=[xml_attrib('type', Type)
-			   ,xml_attrib('cidr', CIDR)
-			   ]
+               ,attributes=[xml_attrib('type', Type)
+                           ,xml_attrib('cidr', CIDR)
+                           ]
                }.
 
 -spec acl_list_el(xml_attrib_value()) -> xml_el().
@@ -656,10 +656,10 @@ acl_list_el(Name, Default) ->
     acl_list_el(Name, Default, []).
 acl_list_el(Name, Default, Children) ->
     #xmlElement{name='list'
-	       ,attributes=[xml_attrib('name', Name)
-			   ,xml_attrib('default', Default)
-			   ]
-	       ,content=Children
+               ,attributes=[xml_attrib('name', Name)
+                           ,xml_attrib('default', Default)
+                           ]
+               ,content=Children
                }.
 
 -spec network_list_el(xml_els()) -> xml_el().
@@ -673,10 +673,10 @@ config_el(Name, Desc, #xmlElement{}=Content) ->
     config_el(Name, Desc, [Content]);
 config_el(Name, Desc, Content) ->
     #xmlElement{name='configuration'
-	       ,attributes=[xml_attrib('name', Name)
-			   ,xml_attrib('description', Desc)
-			   ]
-	       ,content=Content
+               ,attributes=[xml_attrib('name', Name)
+                           ,xml_attrib('description', Desc)
+                           ]
+               ,content=Content
                }.
 
 -spec channel_el(api_binary(), xml_el() | xml_els()) -> xml_el() | xml_els().
@@ -689,10 +689,10 @@ channel_el(UUID, Desc, #xmlElement{}=Content) ->
     channel_el(UUID, Desc, [Content]);
 channel_el(UUID, Desc, Content) ->
     #xmlElement{name='channel'
-	       ,attributes=[xml_attrib('uuid', UUID)
-			   ,xml_attrib('description', Desc)
-			   ]
-	       ,content=Content
+               ,attributes=[xml_attrib('uuid', UUID)
+                           ,xml_attrib('description', Desc)
+                           ]
+               ,content=Content
                }.
 
 -spec section_el(xml_attrib_value(), xml_el() | xml_els()) -> xml_el().
@@ -701,18 +701,18 @@ section_el(Name, #xmlElement{}=Content) ->
     section_el(Name, [Content]);
 section_el(Name, Content) ->
     #xmlElement{name='section'
-	       ,attributes=[xml_attrib('name', Name)]
-	       ,content=Content
+               ,attributes=[xml_attrib('name', Name)]
+               ,content=Content
                }.
 
 section_el(Name, Desc, #xmlElement{}=Content) ->
     section_el(Name, Desc, [Content]);
 section_el(Name, Desc, Content) ->
     #xmlElement{name='section'
-	       ,attributes=[xml_attrib('name', Name)
-			   ,xml_attrib('description', Desc)
-			   ]
-	       ,content=Content
+               ,attributes=[xml_attrib('name', Name)
+                           ,xml_attrib('description', Desc)
+                           ]
+               ,content=Content
                }.
 
 -spec domain_el(xml_attrib_value(), xml_el() | xml_els()) -> xml_el().
@@ -720,8 +720,8 @@ domain_el(Name, Child) when not is_list(Child) ->
     domain_el(Name, [Child]);
 domain_el(Name, Children) ->
     #xmlElement{name='domain'
-	       ,attributes=[xml_attrib('name', Name)]
-	       ,content=Children
+               ,attributes=[xml_attrib('name', Name)]
+               ,content=Children
                }.
 
 -spec user_el(xml_attrib_value() | kz_proplist(), xml_els()) -> xml_el().
@@ -729,57 +729,57 @@ user_el(Id, Children) when not is_list(Id) ->
     user_el(user_el_default_props(Id), Children);
 user_el(Props, Children) ->
     #xmlElement{name='user'
-	       ,attributes=[xml_attrib(K, V)
-			    || {K, V} <- props:unique(
-					   props:filter_undefined(Props)
-					  )
-			   ]
-	       ,content=Children
+               ,attributes=[xml_attrib(K, V)
+                            || {K, V} <- props:unique(
+                                           props:filter_undefined(Props)
+                                          )
+                           ]
+               ,content=Children
                }.
 
 -spec user_el_default_props(xml_attrib_value()) -> kz_proplist().
 user_el_default_props(Id) ->
     [{'id', Id}
     ,{'cacheable', ecallmgr_config:get_integer(<<"user_cache_time_in_ms">>
-					      ,?DEFAULT_USER_CACHE_TIME_IN_MS
-					      )
+                                              ,?DEFAULT_USER_CACHE_TIME_IN_MS
+                                              )
      }
     ].
 
 -spec chat_user_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 chat_user_el(Name, Commands) ->
     #xmlElement{name='user'
-	       ,attributes=[xml_attrib('name', Name)
-			   ,xml_attrib('commands', Commands)
-			   ]
+               ,attributes=[xml_attrib('name', Name)
+                           ,xml_attrib('commands', Commands)
+                           ]
                }.
 
 -spec params_el(xml_els()) -> xml_el().
 params_el(Children) ->
     #xmlElement{name='params'
-	       ,content=Children
+               ,content=Children
                }.
 
 -spec param_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 param_el(<<"moh-sound">> = Name, MediaName) ->
     Value = ecallmgr_util:media_path(MediaName, kz_util:get_callid(), kz_json:new()),
     #xmlElement{name='param'
-	       ,attributes=[xml_attrib('name', Name)
-			   ,xml_attrib('value', Value)
-			   ]
+               ,attributes=[xml_attrib('name', Name)
+                           ,xml_attrib('value', Value)
+                           ]
                };
 param_el(<<"max-members-sound">> = Name, MediaName) ->
     Value = ecallmgr_util:media_path(MediaName, kz_util:get_callid(), kz_json:new()),
     #xmlElement{name='param'
-	       ,attributes=[xml_attrib('name', Name)
-			   ,xml_attrib('value', Value)
-			   ]
+               ,attributes=[xml_attrib('name', Name)
+                           ,xml_attrib('value', Value)
+                           ]
                };
 param_el(Name, Value) ->
     #xmlElement{name='param'
-	       ,attributes=[xml_attrib('name', Name)
-			   ,xml_attrib('value', Value)
-			   ]
+               ,attributes=[xml_attrib('name', Name)
+                           ,xml_attrib('value', Value)
+                           ]
                }.
 
 -spec maybe_param_el(xml_attrib_value(), xml_attrib_value()) -> xml_el() | 'undefined'.
@@ -791,105 +791,105 @@ maybe_param_el(Name, Value) ->
 
 profile_el(Name, Children) ->
     #xmlElement{name='profile'
-	       ,content=Children
-	       ,attributes=[xml_attrib('name', Name)]
+               ,content=Children
+               ,attributes=[xml_attrib('name', Name)]
                }.
 
 profiles_el(Children) ->
     #xmlElement{name='profiles'
-	       ,content=Children
+               ,content=Children
                }.
 
 group_el(Name, Children) ->
     #xmlElement{name='group'
-	       ,content=Children
-	       ,attributes=[xml_attrib('name', Name)]
+               ,content=Children
+               ,attributes=[xml_attrib('name', Name)]
                }.
 
 control_el(Action, Digits) ->
     #xmlElement{name='control'
-	       ,attributes=[xml_attrib('action', Action)
-			   ,xml_attrib('digits', Digits)
-			   ]
+               ,attributes=[xml_attrib('action', Action)
+                           ,xml_attrib('digits', Digits)
+                           ]
                }.
 
 control_el(Action, Digits, 'undefined') -> control_el(Action, Digits);
 control_el(Action, Digits, Data) ->
     #xmlElement{name='control'
-	       ,attributes=[xml_attrib('action', Action)
-			   ,xml_attrib('digits', Digits)
-			   ,xml_attrib('data', Data)
-			   ]
+               ,attributes=[xml_attrib('action', Action)
+                           ,xml_attrib('digits', Digits)
+                           ,xml_attrib('data', Data)
+                           ]
                }.
 
 advertise_el(Rooms) ->
     #xmlElement{name='advertise'
-	       ,content=Rooms
+               ,content=Rooms
                }.
 
 caller_controls_el(Groups) ->
     #xmlElement{name='caller-controls'
-	       ,content=Groups
+               ,content=Groups
                }.
 
 chat_permissions_el(Profiles) ->
     #xmlElement{name='chat-permissions'
-	       ,content=Profiles
+               ,content=Profiles
                }.
 
 -spec variables_el(xml_els()) -> xml_el().
 variables_el(Children) ->
     #xmlElement{name='variables'
-	       ,content=Children
+               ,content=Children
                }.
 
 -spec variable_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 variable_el(Name, Value) ->
     #xmlElement{name='variable'
-	       ,attributes=[xml_attrib('name', Name)
-			   ,xml_attrib('value', Value)
-			   ]
+               ,attributes=[xml_attrib('name', Name)
+                           ,xml_attrib('value', Value)
+                           ]
                }.
 
 -spec registration_headers_el(xml_els()) -> xml_el().
 registration_headers_el(Children) ->
     #xmlElement{name='registration-headers'
-	       ,content=Children
+               ,content=Children
                }.
 
 -spec header_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 header_el(Name, Value) ->
     #xmlElement{name='header'
-	       ,attributes=[xml_attrib('name', Name)
-			   ,xml_attrib('value', Value)
-			   ]
+               ,attributes=[xml_attrib('name', Name)
+                           ,xml_attrib('value', Value)
+                           ]
                }.
 
 -spec context_el(xml_attrib_value(), xml_els()) -> xml_el().
 context_el(Name, Children) ->
     #xmlElement{name='context'
-	       ,attributes=[xml_attrib('name', Name)]
-	       ,content=Children
+               ,attributes=[xml_attrib('name', Name)]
+               ,content=Children
                }.
 
 -spec extension_el(xml_els()) -> xml_el().
 -spec extension_el(xml_attrib_value(), xml_attrib_value() | 'undefined', xml_els()) -> xml_el().
 extension_el(Children) ->
     #xmlElement{name='extension'
-	       ,content=Children
+               ,content=Children
                }.
 
 extension_el(Name, 'undefined', Children) ->
     #xmlElement{name='extension'
-	       ,attributes=[xml_attrib('name', Name)]
-	       ,content=[Child || Child <- Children, Child =/= 'undefined']
+               ,attributes=[xml_attrib('name', Name)]
+               ,content=[Child || Child <- Children, Child =/= 'undefined']
                };
 extension_el(Name, Continue, Children) ->
     #xmlElement{name='extension'
-	       ,attributes=[xml_attrib('name', Name)
-			   ,xml_attrib('continue', kz_util:is_true(Continue))
-			   ]
-	       ,content=[Child || Child <- Children, Child =/= 'undefined']
+               ,attributes=[xml_attrib('name', Name)
+                           ,xml_attrib('continue', kz_util:is_true(Continue))
+                           ]
+               ,content=[Child || Child <- Children, Child =/= 'undefined']
                }.
 
 -spec condition_el(xml_el() | xml_els() | 'undefined') -> xml_el().
@@ -897,7 +897,7 @@ condition_el(Child) when not is_list(Child) ->
     condition_el([Child]);
 condition_el(Children) ->
     #xmlElement{name='condition'
-	       ,content=[Child || Child <- Children, Child =/= 'undefined']
+               ,content=[Child || Child <- Children, Child =/= 'undefined']
                }.
 
 -spec condition_el(xml_el() | xml_els() | 'undefined', xml_attrib_value(), xml_attrib_value()) -> xml_el().
@@ -905,10 +905,10 @@ condition_el(Child, Field, Expression) when not is_list(Child) ->
     condition_el([Child], Field, Expression);
 condition_el(Children, Field, Expression) ->
     #xmlElement{name='condition'
-	       ,content=[Child || Child <- Children, Child =/= 'undefined']
-	       ,attributes=[xml_attrib('field', Field)
-			   ,xml_attrib('expression', Expression)
-			   ]
+               ,content=[Child || Child <- Children, Child =/= 'undefined']
+               ,attributes=[xml_attrib('field', Field)
+                           ,xml_attrib('expression', Expression)
+                           ]
                }.
 
 -spec action_el(xml_attrib_value()) -> xml_el().
@@ -916,33 +916,33 @@ condition_el(Children, Field, Expression) ->
 -spec action_el(xml_attrib_value(), xml_attrib_value(), boolean()) -> xml_el().
 action_el(App) ->
     #xmlElement{name='action'
-	       ,attributes=[xml_attrib('application', App)]
+               ,attributes=[xml_attrib('application', App)]
                }.
 action_el(App, Data) ->
     #xmlElement{name='action'
-	       ,attributes=[xml_attrib('application', App)
-			   ,xml_attrib('data', Data)
-			   ]
+               ,attributes=[xml_attrib('application', App)
+                           ,xml_attrib('data', Data)
+                           ]
                }.
 action_el(App, Data, Inline) ->
     #xmlElement{name='action'
-	       ,attributes=[xml_attrib('application', App)
-			   ,xml_attrib('data', Data)
-			   ,xml_attrib('inline', kz_util:to_binary(Inline))
-			   ]
+               ,attributes=[xml_attrib('application', App)
+                           ,xml_attrib('data', Data)
+                           ,xml_attrib('inline', kz_util:to_binary(Inline))
+                           ]
                }.
 
 -spec result_el(xml_attrib_value()) -> xml_el().
 result_el(Status) ->
     #xmlElement{name='result'
-	       ,attributes=[xml_attrib('status', Status)]
+               ,attributes=[xml_attrib('status', Status)]
                }.
 
 room_el(Name, Status) ->
     #xmlElement{name='room'
-	       ,attributes=[xml_attrib('name', Name)
-			   ,xml_attrib('status', Status)
-			   ]
+               ,attributes=[xml_attrib('name', Name)
+                           ,xml_attrib('status', Status)
+                           ]
                }.
 
 -spec prepend_child(xml_el(), xml_el()) -> xml_el().
@@ -957,8 +957,8 @@ sofia_profiles_el(JObj) ->
     Content = lists:foldl(fun(Key, Xml) ->
                                   Profile = kz_json:get_value(Key, JObj),
                                   [#xmlElement{name='profile'
-					      ,attributes=[xml_attrib('name', Key)]
-					      ,content=sofia_profile_el(Profile)
+                                              ,attributes=[xml_attrib('name', Key)]
+                                              ,content=sofia_profile_el(Profile)
                                               }
                                    | Xml
                                   ]
@@ -969,11 +969,11 @@ sofia_profile_el(JObj) ->
     Settings = kz_json:get_value(<<"Settings">>, JObj, kz_json:new()),
     Gateways = kz_json:get_value(<<"Gateways">>, JObj, kz_json:new()),
     [#xmlElement{name='settings'
-		,content=sofia_settings_el(Settings)
+                ,content=sofia_settings_el(Settings)
                 }
     ,#xmlElement{name='gateways'
-		,content=sofia_gateways_el(Gateways)
-		}
+                ,content=sofia_gateways_el(Gateways)
+                }
     ].
 
 sofia_settings_el(JObj) ->
@@ -981,9 +981,9 @@ sofia_settings_el(JObj) ->
                         Value = kz_json:get_value(Key, JObj),
                         Name = kz_util:to_lower_binary(Key),
                         [#xmlElement{name='param'
-				    ,attributes=[xml_attrib('name', Name)
-						,xml_attrib('value', Value)
-						]
+                                    ,attributes=[xml_attrib('name', Name)
+                                                ,xml_attrib('value', Value)
+                                                ]
                                     }
                          | Xml
                         ]
@@ -993,10 +993,10 @@ sofia_gateways_el(JObj) ->
     lists:foldl(fun(Key, Xml) ->
                         Gateway = kz_json:get_value(Key, JObj),
                         [#xmlElement{name='gateway'
-				    ,attributes=[xml_attrib('name', Key)]
-				    ,content=sofia_gateway_el(Gateway)
+                                    ,attributes=[xml_attrib('name', Key)]
+                                    ,content=sofia_gateway_el(Gateway)
                                     }
-			 | Xml
+                         | Xml
                         ]
                 end, [], kz_json:get_keys(JObj)).
 
@@ -1004,7 +1004,7 @@ sofia_gateway_el(JObj) ->
     lists:foldl(fun(<<"Variables">>, Xml) ->
                         Variables = kz_json:get_value(<<"Variables">>, JObj),
                         [#xmlElement{name='variables'
-				    ,content=sofia_gateway_vars_el(Variables)
+                                    ,content=sofia_gateway_vars_el(Variables)
                                     }
                          | Xml
                         ];
@@ -1012,9 +1012,9 @@ sofia_gateway_el(JObj) ->
                         Value = kz_json:get_value(Key, JObj),
                         Name = kz_util:to_lower_binary(Key),
                         [#xmlElement{name='param'
-				    ,attributes=[xml_attrib('name', Name)
-						,xml_attrib('value', Value)
-						]
+                                    ,attributes=[xml_attrib('name', Name)
+                                                ,xml_attrib('value', Value)
+                                                ]
                                     }
                          | Xml
                         ]
@@ -1024,10 +1024,10 @@ sofia_gateway_vars_el(JObj) ->
     lists:foldl(fun(Key, Xml) ->
                         Value = kz_json:get_value(Key, JObj),
                         [#xmlElement{name='variable'
-				    ,attributes=[xml_attrib('name', Key)
-						,xml_attrib('value', Value)
-						,xml_attrib('direction', "inbound")
-						]
+                                    ,attributes=[xml_attrib('name', Key)
+                                                ,xml_attrib('value', Value)
+                                                ,xml_attrib('direction', "inbound")
+                                                ]
                                     }
                          | Xml
                         ]
@@ -1035,8 +1035,8 @@ sofia_gateway_vars_el(JObj) ->
 
 sofia_gateways_xml_to_json(Xml) ->
     lists:foldl(fun sofia_gateway_xml_to_json/2
-	       ,kz_json:new()
-	       ,get_sofia_gateways_el(Xml)).
+               ,kz_json:new()
+               ,get_sofia_gateways_el(Xml)).
 
 get_sofia_gateways_el(Xml) ->
     case xmerl_xpath:string("/gateways/gateway", Xml) of
@@ -1049,13 +1049,13 @@ sofia_gateway_xml_to_json(Xml, JObj) ->
     InboundVars = xmerl_xpath:string("/gateway/inbound-variables/*", Xml),
     OutboundVars = xmerl_xpath:string("/gateway/outbound-variables/*", Xml),
     Props = [{<<"Username">>, kz_util:get_xml_value("/gateway/username/text()", Xml)}
-	    ,{<<"Password">>, kz_util:get_xml_value("/gateway/password/text()", Xml)}
-	    ,{<<"Realm">>, kz_util:get_xml_value("/gateway/realm/text()", Xml)}
-	    ,{<<"Proxy">>, kz_util:get_xml_value("/gateway/proxy/text()", Xml)}
-	    ,{<<"From-Domain">>, kz_util:get_xml_value("/gateway/from/text()", Xml)}
-	    ,{<<"Expire-Seconds">>, kz_util:get_xml_value("/gateway/expires/text()", Xml)}
-	    ,{<<"Inbound-Variables">>, sofia_gateway_vars_xml_to_json(InboundVars, kz_json:new())}
-	    ,{<<"Outbound-Variables">>, sofia_gateway_vars_xml_to_json(OutboundVars, kz_json:new())}
+            ,{<<"Password">>, kz_util:get_xml_value("/gateway/password/text()", Xml)}
+            ,{<<"Realm">>, kz_util:get_xml_value("/gateway/realm/text()", Xml)}
+            ,{<<"Proxy">>, kz_util:get_xml_value("/gateway/proxy/text()", Xml)}
+            ,{<<"From-Domain">>, kz_util:get_xml_value("/gateway/from/text()", Xml)}
+            ,{<<"Expire-Seconds">>, kz_util:get_xml_value("/gateway/expires/text()", Xml)}
+            ,{<<"Inbound-Variables">>, sofia_gateway_vars_xml_to_json(InboundVars, kz_json:new())}
+            ,{<<"Outbound-Variables">>, sofia_gateway_vars_xml_to_json(OutboundVars, kz_json:new())}
             ],
     kz_json:set_value(Id, kz_json:from_list(Props), JObj).
 

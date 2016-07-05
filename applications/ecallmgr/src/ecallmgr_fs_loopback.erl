@@ -15,8 +15,8 @@
 -include("ecallmgr.hrl").
 
 -define(IS_LOOPBACK(Props), props:get_value(<<"variable_loopback_leg">>, Props) =:= <<"B">>
-	    andalso props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, ?LOOPBACK_FILTERED>>, Props) =:= 'undefined'
-	andalso props:get_value(<<?CHANNEL_VAR_PREFIX, ?LOOPBACK_FILTERED>>, Props) =:= 'undefined'
+            andalso props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, ?LOOPBACK_FILTERED>>, Props) =:= 'undefined'
+        andalso props:get_value(<<?CHANNEL_VAR_PREFIX, ?LOOPBACK_FILTERED>>, Props) =:= 'undefined'
        ).
 -define(LOOPBACK_FILTERED, "Filtered-By-Loopback").
 
@@ -38,9 +38,9 @@ filter('true', Node, UUID, Props, Update) ->
             UpdateCCVs = [{<<?CHANNEL_VAR_PREFIX, ?LOOPBACK_FILTERED>>, <<"true">>} | LoopBackCCVs],
             {Clear, Filtered} = lists:foldl(fun filter_props/2, {[], []}, Props),
             Funs = fun() ->
-			   ecallmgr_fs_command:unset(Node, UUID, Clear),
-			   ecallmgr_fs_command:set(Node, UUID, UpdateCCVs)
-		   end,
+                           ecallmgr_fs_command:unset(Node, UUID, Clear),
+                           ecallmgr_fs_command:set(Node, UUID, UpdateCCVs)
+                   end,
             maybe_update_ccvs(Update, Funs, updated_props(Filtered, UpdateCCVs))
     end.
 

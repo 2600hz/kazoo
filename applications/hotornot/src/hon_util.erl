@@ -9,8 +9,8 @@
 -module(hon_util).
 
 -export([candidate_rates/1, candidate_rates/2
-	,matching_rates/2, matching_rates/4
-	,sort_rates/1
+        ,matching_rates/2, matching_rates/4
+        ,sort_rates/1
         ]).
 
 -ifdef(TEST).
@@ -51,9 +51,9 @@ find_candidate_rates(E164, _FromDID) when byte_size(E164) > ?MIN_PREFIX_LEN ->
         {'error', _}=E -> E;
         {'ok', ViewRows} ->
             {'ok'
-	    ,[kz_json:get_value(<<"doc">>, ViewRow)
-	      || ViewRow <- ViewRows
-	     ]
+            ,[kz_json:get_value(<<"doc">>, ViewRow)
+              || ViewRow <- ViewRows
+             ]
             }
     end;
 find_candidate_rates(DID, _) ->
@@ -114,7 +114,7 @@ matching_rate(Rate, E164, Direction, RouteOptions) ->
 -spec matching_routes(kz_json:object(), ne_binary()) -> boolean().
 matching_routes(Rate, E164) ->
     lists:any(fun(Regex) -> re:run(E164, Regex) =/= 'nomatch' end
-	     ,kz_json:get_value([<<"routes">>], Rate, [])
+             ,kz_json:get_value([<<"routes">>], Rate, [])
              ).
 
 -spec matching_direction(kz_json:object(), api_binary()) -> boolean().
@@ -122,7 +122,7 @@ matching_direction(_Rate, 'undefined') ->
     'true';
 matching_direction(Rate, Direction) ->
     lists:member(Direction
-		,kz_json:get_value([<<"direction">>], Rate, ?BOTH_DIRECTIONS)
+                ,kz_json:get_value([<<"direction">>], Rate, ?BOTH_DIRECTIONS)
                 ).
 
 %% Return true if RateA has lower weight than RateB
@@ -154,5 +154,5 @@ options_match(RateOptions, RouteOptions) ->
     lists:all(fun(RouteOption) ->
                       props:get_value(RouteOption, RateOptions, 'false') =/= 'false'
               end
-	     ,RouteOptions
+             ,RouteOptions
              ).

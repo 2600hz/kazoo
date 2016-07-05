@@ -58,12 +58,12 @@ maybe_collect_more_digits(Data, Call, AlreadyCollected, ACS, Max) ->
 -spec collect_more_digits(kz_json:object(), kapps_call:call(), binary(), pos_integer()) -> 'ok'.
 collect_more_digits(Data, Call, AlreadyCollected, MaxDigits) ->
     case kapps_call_command:collect_digits(MaxDigits
-					  ,collect_timeout(Data)
-					  ,interdigit(Data)
-					  ,'undefined'
-					  ,terminators(Data)
-					  ,Call
-					  )
+                                          ,collect_timeout(Data)
+                                          ,interdigit(Data)
+                                          ,'undefined'
+                                          ,terminators(Data)
+                                          ,Call
+                                          )
     of
         {'ok', Ds} ->
             CollectionName = collection_name(Data),

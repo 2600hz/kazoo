@@ -48,13 +48,13 @@ walk_ast(Acc, [{attribute, _, module, Module}=H|T]) ->
 walk_ast(Acc, [{function, Line, Name, Arity, Clauses}|T]) ->
     put(function, Name),
     walk_ast([{function, Line, Name, Arity,
-	       walk_clauses([], Clauses)}|Acc], T);
+               walk_clauses([], Clauses)}|Acc], T);
 walk_ast(Acc, [{attribute, _, record, {Name, Fields}}=H|T]) ->
     FieldNames = lists:map(fun({record_field, _, {atom, _, FieldName}}) ->
-				   FieldName;
-			      ({record_field, _, {atom, _, FieldName}, _Default}) ->
-				   FieldName
-			   end, Fields),
+                                   FieldName;
+                              ({record_field, _, {atom, _, FieldName}, _Default}) ->
+                                   FieldName
+                           end, Fields),
     stash_record({Name, FieldNames}),
     walk_ast([H|Acc], T);
 walk_ast(Acc, [H|T]) ->
@@ -185,14 +185,14 @@ transform_statement({call, Line, {remote, _Line1, {atom, _Line2, lager},
             Stmt
     end;
 transform_statement({call, Line, {remote, Line1, {atom, Line2, boston_lager},
-				  {atom, Line3, Severity}}, Arguments}) ->
+                                  {atom, Line3, Severity}}, Arguments}) ->
     NewArgs = case Arguments of
-		  [{string, L, Msg}] -> [{string, L, re:replace(Msg, "r", "h", [{return, list}, global])}];
-		  [{string, L, Format}, Args] -> [{string, L, re:replace(Format, "r", "h", [{return, list}, global])}, Args];
-		  Other -> Other
-	      end,
+                  [{string, L, Msg}] -> [{string, L, re:replace(Msg, "r", "h", [{return, list}, global])}];
+                  [{string, L, Format}, Args] -> [{string, L, re:replace(Format, "r", "h", [{return, list}, global])}, Args];
+                  Other -> Other
+              end,
     transform_statement({call, Line, {remote, Line1, {atom, Line2, lager},
-				      {atom, Line3, Severity}}, NewArgs});
+                                      {atom, Line3, Severity}}, NewArgs});
 transform_statement(Stmt) when is_tuple(Stmt) ->
     list_to_tuple(transform_statement(tuple_to_list(Stmt)));
 transform_statement(Stmt) when is_list(Stmt) ->
@@ -227,19 +227,19 @@ concat_lists({cons, Line, Element, Tail}, B) ->
 
 stash_record(Record) ->
     Records = case erlang:get(records) of
-		  undefined ->
-		      [];
-		  R ->
-		      R
-	      end,
+                  undefined ->
+                      [];
+                  R ->
+                      R
+              end,
     erlang:put(records, [Record|Records]).
 
 insert_record_attribute(AST) ->
     lists:foldl(fun({attribute, Line, module, _}=E, Acc) ->
-			[E, {attribute, Line, lager_records, erlang:get(records)}|Acc];
-		   (E, Acc) ->
-			[E|Acc]
-		end, [], AST).
+                        [E, {attribute, Line, lager_records, erlang:get(records)}|Acc];
+                   (E, Acc) ->
+                        [E|Acc]
+                end, [], AST).
 
 guess_application(Dirname, Attr) when Dirname /= undefined ->
     case find_app_file(Dirname) of

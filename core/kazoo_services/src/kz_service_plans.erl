@@ -15,7 +15,7 @@
 -export([plan_summary/1]).
 -export([activation_charges/3]).
 -export([create_items/1
-	,create_items/2
+        ,create_items/2
         ]).
 -export([public_json_items/1]).
 
@@ -26,7 +26,7 @@
 -include("kazoo_services.hrl").
 
 -record(kz_service_plans, {vendor_id :: api_binary()
-			  ,plans = [] :: kzd_service_plan:docs()
+                          ,plans = [] :: kzd_service_plan:docs()
                           }).
 
 -type plans() :: [#kz_service_plans{}].
@@ -97,11 +97,11 @@ add_service_plan(PlanId, ResellerId, ServicesJObj) ->
         {'ok', JObj} ->
             Plan =
                 kz_json:from_list(
-		  props:filter_undefined([
-					  {<<"account_id">>, ResellerId}
-					 ,{<<"category">>, kz_json:get_value(<<"category">>, JObj)}
-					 ])
-		 ),
+                  props:filter_undefined([
+                                          {<<"account_id">>, ResellerId}
+                                         ,{<<"category">>, kz_json:get_value(<<"category">>, JObj)}
+                                         ])
+                 ),
             kzd_services:set_plan(ServicesJObj, PlanId, Plan)
     end.
 
@@ -131,8 +131,8 @@ plan_summary(ServicesJObj) ->
                             _Else -> J
                         end
                 end
-	       ,kz_json:new()
-	       ,kz_json:get_keys(kzd_services:plans(ServicesJObj))
+               ,kz_json:new()
+               ,kz_json:get_keys(kzd_services:plans(ServicesJObj))
                ).
 
 %%--------------------------------------------------------------------
@@ -181,8 +181,8 @@ create_items(ServiceJObj, ServicePlans) ->
     lists:foldl(fun(Plan, Items) ->
                         kz_service_plan:create_items(Plan, Items, Services)
                 end
-	       ,kz_service_items:empty()
-	       ,Plans
+               ,kz_service_items:empty()
+               ,Plans
                ).
 
 %%--------------------------------------------------------------------
@@ -214,8 +214,8 @@ get_plans(PlanIds, ResellerId, Services) ->
     lists:foldl(fun(PlanId, ServicePlans) ->
                         get_plan(PlanId, ResellerId, Services, ServicePlans)
                 end
-	       ,empty()
-	       ,PlanIds
+               ,empty()
+               ,PlanIds
                ).
 
 get_plan(PlanId, ResellerId, Services, ServicePlans) ->
@@ -257,13 +257,13 @@ append_vendor_plan(Plan, VendorId, ServicePlans) ->
     case lists:keyfind(VendorId, #kz_service_plans.vendor_id, ServicePlans) of
         'false' ->
             ServicePlan = #kz_service_plans{vendor_id=VendorId
-					   ,plans=[Plan]
+                                           ,plans=[Plan]
                                            },
             [ServicePlan|ServicePlans];
         #kz_service_plans{plans=Plans}=ServicePlan ->
             lists:keyreplace(VendorId
-			    ,#kz_service_plans.vendor_id
-			    ,ServicePlans
-			    ,ServicePlan#kz_service_plans{plans=[Plan|Plans]}
+                            ,#kz_service_plans.vendor_id
+                            ,ServicePlans
+                            ,ServicePlan#kz_service_plans{plans=[Plan|Plans]}
                             )
     end.

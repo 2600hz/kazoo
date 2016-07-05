@@ -23,44 +23,44 @@
 %% (AAABBBCCCC, 1AAABBBCCCC) -> AAABBBCCCCCC.
 prop_to_npan() ->
     ?FORALL(Number
-	   ,range(2002000000,19999999999)
-	   ,begin
-		BinNum = kz_util:to_binary(Number),
-		NPAN = ?MODULE_TESTED:to_npan(BinNum),
-		case byte_size(BinNum) of
-		    11 -> BinNum =:= <<"1", NPAN/binary>>;
-		    _ -> NPAN =:= BinNum
-		end
-	    end
+           ,range(2002000000,19999999999)
+           ,begin
+                BinNum = kz_util:to_binary(Number),
+                NPAN = ?MODULE_TESTED:to_npan(BinNum),
+                case byte_size(BinNum) of
+                    11 -> BinNum =:= <<"1", NPAN/binary>>;
+                    _ -> NPAN =:= BinNum
+                end
+            end
            ).
 
 %% (AAABBBCCCC, 1AAABBBCCCC) -> 1AAABBBCCCCCC.
 prop_to_1npan() ->
     ?FORALL(Number
-	   ,range(2002000000,19999999999)
-	   ,begin
-		BinNum = kz_util:to_binary(Number),
-		OneNPAN = ?MODULE_TESTED:to_1npan(BinNum),
-		case byte_size(BinNum) of
-		    11 -> OneNPAN =:= BinNum;
-		    _ -> OneNPAN =:= <<"1", BinNum/binary>>
-		end
-	    end
+           ,range(2002000000,19999999999)
+           ,begin
+                BinNum = kz_util:to_binary(Number),
+                OneNPAN = ?MODULE_TESTED:to_1npan(BinNum),
+                case byte_size(BinNum) of
+                    11 -> OneNPAN =:= BinNum;
+                    _ -> OneNPAN =:= <<"1", BinNum/binary>>
+                end
+            end
            ).
 
 %% (AAABBBCCCC, 1AAABBBCCCC) -> +1AAABBBCCCCCC.
 prop_normalize() ->
     ?FORALL(Number
-	   ,range(2002000000,19999999999)
-	   ,begin
-		BinNum = kz_util:to_binary(Number),
-		E164 = ?MODULE_TESTED:normalize(BinNum),
-		case byte_size(BinNum) of
-		    11 -> E164 =:= <<$+, BinNum/binary>>;
-		    10 -> E164 =:= <<$+, $1, BinNum/binary>>;
-		    _ -> E164 =:= BinNum
-		end
-	    end
+           ,range(2002000000,19999999999)
+           ,begin
+                BinNum = kz_util:to_binary(Number),
+                E164 = ?MODULE_TESTED:normalize(BinNum),
+                case byte_size(BinNum) of
+                    11 -> E164 =:= <<$+, BinNum/binary>>;
+                    10 -> E164 =:= <<$+, $1, BinNum/binary>>;
+                    _ -> E164 =:= BinNum
+                end
+            end
            ).
 
 proper_test_() ->

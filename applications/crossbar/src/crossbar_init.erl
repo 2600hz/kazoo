@@ -11,7 +11,7 @@
 -module(crossbar_init).
 
 -export([start_link/0
-	,start_mod/1, stop_mod/1
+        ,start_mod/1, stop_mod/1
         ]).
 
 -include("crossbar.hrl").
@@ -131,16 +131,16 @@ maybe_start_plaintext(Dispatch) ->
 
             %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
             try cowboy:start_http('api_resource', Workers
-				 ,[{'ip', {0,0,0,0,0,0,0,0}}
-				  ,{'port', Port}
-				  ]
-				 ,[{'env', [{'dispatch', Dispatch}
-					   ,{'timeout', ReqTimeout}
-					   ]}
-				  ,{'onrequest', fun on_request/1}
-				  ,{'onresponse', fun on_response/4}
-				  ,{'compress', ?USE_COMPRESSION}
-				  ]
+                                 ,[{'ip', {0,0,0,0,0,0,0,0}}
+                                  ,{'port', Port}
+                                  ]
+                                 ,[{'env', [{'dispatch', Dispatch}
+                                           ,{'timeout', ReqTimeout}
+                                           ]}
+                                  ,{'onrequest', fun on_request/1}
+                                  ,{'onresponse', fun on_response/4}
+                                  ,{'compress', ?USE_COMPRESSION}
+                                  ]
                                  ) of
                 {'ok', _} ->
                     lager:info("started plaintext API server");
@@ -170,21 +170,21 @@ start_ssl(Dispatch) ->
             Workers = kapps_config:get_integer(?CONFIG_CAT, <<"ssl_workers">>, 100),
 
             try cowboy:start_https('api_resource_ssl', Workers
-				  ,SSLOpts
-				  ,[{'env', [{'dispatch', Dispatch}
-					    ,{'timeout', ReqTimeout}
-					    ]}
-				   ,{'onrequest', fun on_request/1}
-				   ,{'onresponse', fun on_response/4}
-				   ,{'compress', ?USE_COMPRESSION}
-				   ]
+                                  ,SSLOpts
+                                  ,[{'env', [{'dispatch', Dispatch}
+                                            ,{'timeout', ReqTimeout}
+                                            ]}
+                                   ,{'onrequest', fun on_request/1}
+                                   ,{'onresponse', fun on_response/4}
+                                   ,{'compress', ?USE_COMPRESSION}
+                                   ]
                                   )
             of
                 {'ok', _} ->
                     lager:info("started SSL API server on port ~b", [props:get_value('port', SSLOpts)]);
                 {'error', {'already_started', _P}} ->
                     lager:info("already started SSL API server on port ~b at ~p"
-			      ,[props:get_value('port', SSLOpts), _P]
+                              ,[props:get_value('port', SSLOpts), _P]
                               )
             catch
                 'throw':{'invalid_file', _File} ->
@@ -209,13 +209,13 @@ ssl_opts(RootDir) ->
 base_ssl_opts(RootDir) ->
     [{'port', kapps_config:get_integer(?CONFIG_CAT, <<"ssl_port">>, 8443)}
     ,{'certfile', find_file(kapps_config:get_string(?CONFIG_CAT
-						   ,<<"ssl_cert">>
-						   ,filename:join([RootDir, <<"priv/ssl/crossbar.crt">>])
-						   ), RootDir)}
+                                                   ,<<"ssl_cert">>
+                                                   ,filename:join([RootDir, <<"priv/ssl/crossbar.crt">>])
+                                                   ), RootDir)}
     ,{'keyfile', find_file(kapps_config:get_string(?CONFIG_CAT
-						  ,<<"ssl_key">>
-						  ,filename:join([RootDir, <<"priv/ssl/crossbar.key">>])
-						  ), RootDir)}
+                                                  ,<<"ssl_key">>
+                                                  ,filename:join([RootDir, <<"priv/ssl/crossbar.key">>])
+                                                  ), RootDir)}
     ,{'password', kapps_config:get_string(?CONFIG_CAT, <<"ssl_password">>, <<>>)}
     ].
 

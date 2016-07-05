@@ -10,12 +10,12 @@
 
 %% Attachment-related
 -export([fetch_attachment/4
-	,stream_attachment/5
-	,put_attachment/5
-	,put_attachment/6
-	,delete_attachment/4
-	,delete_attachment/5
-	,attachment_url/5
+        ,stream_attachment/5
+        ,put_attachment/5
+        ,put_attachment/6
+        ,delete_attachment/4
+        ,delete_attachment/5
+        ,attachment_url/5
         ]).
 
 -include("kz_couch.hrl").
@@ -61,7 +61,7 @@ delete_attachment(#server{}=Conn, DbName, DocId, AName, Options) ->
     do_del_attachment(Db, DocId, AName,  kz_couch_util:maybe_add_rev(Db, DocId, Options)).
 
 -spec attachment_url(server(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
-			    {'ok', ne_binary()} | {'proxy', tuple()}.
+                            {'ok', ne_binary()} | {'proxy', tuple()}.
 attachment_url(#server{}=Conn, DbName, DocId, AName, Options) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"use_bigcouch_direct">>, 'true') of
         'true' ->

@@ -24,7 +24,7 @@ handle_req(JObj, _Props) ->
             maybe_publish_no_rate_found(JObj);
         {'ok', Resp} ->
             kapi_rate:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj)
-				  ,props:filter_undefined(Resp)
+                                  ,props:filter_undefined(Resp)
                                   ),
             kapi_rate:broadcast_resp(props:filter_undefined(Resp))
     end.
@@ -61,7 +61,7 @@ get_rate_data(JObj) ->
         {'error', _E} ->
             kz_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),
             lager:debug("rate lookup error for ~s to ~s: ~p"
-		       ,[FromDID, ToDID, _E]
+                       ,[FromDID, ToDID, _E]
                        ),
             {'error', 'no_rate_found'};
         {'ok', Rates} ->
@@ -82,15 +82,15 @@ get_rate_data(JObj, ToDID, FromDID, Rates) ->
         [] ->
             kz_notify:system_alert("no rate found after filter/sort for ~s to ~s", [FromDID, ToDID]),
             lager:debug("no rates left for ~s to ~s after filter"
-		       ,[FromDID, ToDID]
+                       ,[FromDID, ToDID]
                        ),
             {'error', 'no_rate_found'};
         [Rate|_] ->
             lager:debug("using rate ~s for ~s to ~s"
-		       ,[kz_json:get_value(<<"rate_name">>, Rate)
-			,FromDID
-			,ToDID
-			]
+                       ,[kz_json:get_value(<<"rate_name">>, Rate)
+                        ,FromDID
+                        ,ToDID
+                        ]
                        ),
             {'ok', rate_resp(Rate, JObj)}
     end.

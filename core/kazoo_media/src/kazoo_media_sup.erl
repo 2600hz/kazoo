@@ -17,18 +17,18 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?SUPER('kz_media_cache_sup')
-		  ,?SUPER('kz_media_recording_sup')
-		  ,?WORKER_APP_INIT('kazoo_media_init', 20 * ?SECONDS_IN_MINUTE)
-		  ,?WORKER_ARGS('kazoo_etsmgr_srv'
-			       ,[
-				 [{'table_id', kz_media_map:table_id()}
-				 ,{'table_options', kz_media_map:table_options()}
-				 ,{'find_me_function', fun kz_media_map:find_me_function/0}
-				 ,{'gift_data', kz_media_map:gift_data()}
-				 ]
-				])
-		  ,?WORKER('kz_media_map')
-		  ,?WORKER('kz_media_proxy')
+                  ,?SUPER('kz_media_recording_sup')
+                  ,?WORKER_APP_INIT('kazoo_media_init', 20 * ?SECONDS_IN_MINUTE)
+                  ,?WORKER_ARGS('kazoo_etsmgr_srv'
+                               ,[
+                                 [{'table_id', kz_media_map:table_id()}
+                                 ,{'table_options', kz_media_map:table_options()}
+                                 ,{'find_me_function', fun kz_media_map:find_me_function/0}
+                                 ,{'gift_data', kz_media_map:gift_data()}
+                                 ]
+                                ])
+                  ,?WORKER('kz_media_map')
+                  ,?WORKER('kz_media_proxy')
                   ]).
 
 %% ===================================================================

@@ -1,9 +1,9 @@
 -module(knm_config).
 
 -export([should_permanently_delete/0, should_permanently_delete/1
-	,released_state/0, released_state/1
-	,default_locality_url/0, default_locality_url/1
-	,locality_url/0, locality_url/1
+        ,released_state/0, released_state/1
+        ,default_locality_url/0, default_locality_url/1
+        ,locality_url/0, locality_url/1
         ]).
 
 -include("knm.hrl").

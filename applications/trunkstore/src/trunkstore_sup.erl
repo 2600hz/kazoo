@@ -21,19 +21,19 @@
 -define(SERVER, ?MODULE).
 
 -define(ORIGIN_BINDINGS, [[{'type', <<"account">>}]
-			 ,[{'type', <<"connectivity">>}]
-			 ,[{'type', <<"sys_info">>}]
-			 ,[{'type', <<"number">>}]
+                         ,[{'type', <<"connectivity">>}]
+                         ,[{'type', <<"sys_info">>}]
+                         ,[{'type', <<"number">>}]
                          ]).
 
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
                      ]).
 
 -define(CHILDREN, [?SUPER('ts_onnet_sup') %% handles calls originating on-net (customer)
-		  ,?WORKER('ts_offnet_sup') %% handles calls originating off-net (carrier)
-		  ,?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
-		  ,?WORKER('ts_responder')
-		  ,?WORKER('trunkstore_listener')
+                  ,?WORKER('ts_offnet_sup') %% handles calls originating off-net (carrier)
+                  ,?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
+                  ,?WORKER('ts_responder')
+                  ,?WORKER('trunkstore_listener')
                   ]).
 
 %% ===================================================================

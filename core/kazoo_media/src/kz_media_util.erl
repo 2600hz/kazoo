@@ -11,16 +11,16 @@
 -export([recording_url/2]).
 -export([base_url/2, base_url/3]).
 -export([convert_stream_type/1
-	,normalize_media/3
+        ,normalize_media/3
         ]).
 -export([media_path/1, media_path/2]).
 -export([max_recording_time_limit/0]).
 -export([get_prompt/1, get_prompt/2, get_prompt/3
-	,get_account_prompt/3, get_system_prompt/2
-	,default_prompt_language/0, default_prompt_language/1
-	,prompt_language/1, prompt_language/2
-	,prompt_id/1, prompt_id/2
-	,prompt_path/1, prompt_path/2
+        ,get_account_prompt/3, get_system_prompt/2
+        ,default_prompt_language/0, default_prompt_language/1
+        ,prompt_language/1, prompt_language/2
+        ,prompt_id/1, prompt_id/2
+        ,prompt_path/1, prompt_path/2
         ]).
 -export([store_path_from_doc/1, store_path_from_doc/2]).
 
@@ -57,14 +57,14 @@ normalize_media(FromFormat, ToFormat, FileContents, Options) ->
     ExtraArgs = props:get_value('extra_args', Options, ""),
 
     Command = iolist_to_binary([?NORMALIZE_EXE
-			       ," ", ExtraArgs
-			       ," -t ", FromFormat, " ", FromArgs, " - "
-			       ," -t ", ToFormat, " ", ToArgs, " - "
+                               ," ", ExtraArgs
+                               ," -t ", FromFormat, " ", FromArgs, " - "
+                               ," -t ", ToFormat, " ", ToArgs, " - "
                                ]),
     PortOptions = ['binary'
-		  ,'exit_status'
-		  ,'use_stdio'
-		  ,'stderr_to_stdout'
+                  ,'exit_status'
+                  ,'use_stdio'
+                  ,'stderr_to_stdout'
                   ],
     Response =
         try open_port({'spawn', kz_util:to_list(Command)}, PortOptions) of
@@ -80,7 +80,7 @@ normalize_media(FromFormat, ToFormat, FileContents, Options) ->
     Response.
 
 -spec do_normalize_media(binary(), port(), pos_integer()) ->
-				normalized_media().
+                                normalized_media().
 do_normalize_media(FileContents, Port, Timeout) ->
     try erlang:port_command(Port, FileContents) of
         'true' ->
@@ -173,7 +173,7 @@ build_url(H, P, User, Pwd) ->
                  'false' -> <<"http">>
              end,
     list_to_binary([Scheme, "://", kz_util:to_binary(User), ":", kz_util:to_binary(Pwd)
-		   ,"@", kz_util:to_binary(H), ":", kz_util:to_binary(P), "/"
+                   ,"@", kz_util:to_binary(H), ":", kz_util:to_binary(P), "/"
                    ]).
 
 convert_stream_type(<<"extant">>) -> <<"continuous">>;
@@ -443,8 +443,8 @@ store_path_from_doc(JObj) ->
 -spec store_path_from_doc(kz_json:object(), ne_binary()) -> media_store_path().
 store_path_from_doc(JObj, AName) ->
     Opts = [{'doc_type', kz_doc:type(JObj)}
-	   ,{'doc_owner', kz_json:get_value(<<"owner_id">>, JObj)}
-	   ,{'storage_id', kz_json:get_first_defined([<<"storage_ref_id">>, <<"source_id">>], JObj)}
+           ,{'doc_owner', kz_json:get_value(<<"owner_id">>, JObj)}
+           ,{'storage_id', kz_json:get_first_defined([<<"storage_ref_id">>, <<"source_id">>], JObj)}
            ],
     #media_store_path{db = kz_doc:account_db(JObj)
                      ,id = kz_doc:id(JObj)

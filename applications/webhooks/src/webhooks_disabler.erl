@@ -10,17 +10,17 @@
 -behaviour(gen_server).
 
 -export([start_link/0
-	,check_failed_attempts/0
-	,find_failures/0
-	,flush_failures/1, flush_failures/2, flush_hooks/1
+        ,check_failed_attempts/0
+        ,find_failures/0
+        ,flush_failures/1, flush_failures/2, flush_hooks/1
         ]).
 
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("webhooks.hrl").
@@ -80,7 +80,7 @@ flush_hooks(HookJObjs) ->
     lists:sum(
       [flush_failures(
          kz_doc:account_id(HookJObj)
-		     ,kz_doc:id(HookJObj)
+                     ,kz_doc:id(HookJObj)
         )
        || HookJObj <- HookJObjs
       ]
@@ -95,18 +95,18 @@ flush_failures(AccountId, HookId) ->
                         maybe_remove_failure(K, AccountId, HookId)
                 end,
     kz_cache:filter_erase_local(?CACHE_NAME
-			       ,FilterFun
+                               ,FilterFun
                                ).
 
 -spec maybe_remove_failure(tuple(), ne_binary(), api_binary()) -> boolean().
 maybe_remove_failure(?FAILURE_CACHE_KEY(AccountId, HookId, _Timestamp)
-		    ,AccountId
-		    ,HookId
+                    ,AccountId
+                    ,HookId
                     ) ->
     'true';
 maybe_remove_failure(?FAILURE_CACHE_KEY(AccountId, _HookId, _Timestamp)
-		    ,AccountId
-		    ,'undefined'
+                    ,AccountId
+                    ,'undefined'
                     ) ->
     'true';
 maybe_remove_failure(_K, _AccountId, _HookId) ->
@@ -117,7 +117,7 @@ find_failures(Keys) ->
 
 -spec process_failed_key(tuple(), dict:dict()) -> dict:dict().
 process_failed_key(?FAILURE_CACHE_KEY(AccountId, HookId, _Timestamp)
-		  ,Dict
+                  ,Dict
                   ) ->
     dict:update_counter({AccountId, HookId}, 1, Dict);
 process_failed_key(_Key, Dict) ->
@@ -162,18 +162,18 @@ disable_hook(AccountId, HookId) ->
 -spec filter_cache(ne_binary(), ne_binary()) -> non_neg_integer().
 filter_cache(AccountId, HookId) ->
     kz_cache:filter_erase_local(?CACHE_NAME
-			       ,fun(?FAILURE_CACHE_KEY(A, H, _), _) ->
-					lager:debug("maybe remove ~s/~s", [A, H]),
-					A =:= AccountId
-					    andalso H =:= HookId;
-				   (_K, _V) -> 'false'
-				end
+                               ,fun(?FAILURE_CACHE_KEY(A, H, _), _) ->
+                                        lager:debug("maybe remove ~s/~s", [A, H]),
+                                        A =:= AccountId
+                                            andalso H =:= HookId;
+                                   (_K, _V) -> 'false'
+                                end
                                ).
 
 -spec send_notification(ne_binary(), ne_binary()) -> 'ok'.
 send_notification(AccountId, HookId) ->
     API = [{<<"Account-ID">>, AccountId}
-	  ,{<<"Hook-ID">>, HookId}
+          ,{<<"Hook-ID">>, HookId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(API, fun kapi_notifications:publish_webhook_disabled/1).

@@ -27,10 +27,10 @@
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
 -define(CHILDREN, [?WORKER('crossbar_init')
-		  ,?SUPER('crossbar_module_sup')
-		  ,?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
-		  ,?WORKER('crossbar_cleanup')
-		  ,?WORKER('crossbar_bindings')
+                  ,?SUPER('crossbar_module_sup')
+                  ,?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
+                  ,?WORKER('crossbar_cleanup')
+                  ,?WORKER('crossbar_bindings')
                   ]
        ).
 

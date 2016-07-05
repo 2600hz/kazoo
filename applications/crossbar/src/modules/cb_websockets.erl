@@ -9,11 +9,11 @@
 -module(cb_websockets).
 
 -export([init/0
-	,authenticate/1
-	,authorize/1
-	,allowed_methods/0, allowed_methods/1
-	,resource_exists/0, resource_exists/1
-	,validate/1, validate/2
+        ,authenticate/1
+        ,authorize/1
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,validate/1, validate/2
         ]).
 
 -include("crossbar.hrl").
@@ -24,31 +24,31 @@
 -define(
    TO_JSON(Binding, Event)
        ,kz_json:from_list([
-			   {<<"binding">>, Binding}
-			  ,{<<"event">>, Event}
-			  ])
+                           {<<"binding">>, Binding}
+                          ,{<<"event">>, Event}
+                          ])
   ).
 
 -define(CALL, [?TO_JSON(<<"call.CHANNEL_CREATE.*">>, <<"CHANNEL_CREATE">>)
-	      ,?TO_JSON(<<"call.CHANNEL_ANSWER.*">>, <<"CHANNEL_ANSWER">>)
-	      ,?TO_JSON(<<"call.CHANNEL_DESTROY.*">>, <<"CHANNEL_DESTROY">>)
-	      ,?TO_JSON(<<"call.CHANNEL_BRIDGE.*">>, <<"CHANNEL_BRIDGE">>)
+              ,?TO_JSON(<<"call.CHANNEL_ANSWER.*">>, <<"CHANNEL_ANSWER">>)
+              ,?TO_JSON(<<"call.CHANNEL_DESTROY.*">>, <<"CHANNEL_DESTROY">>)
+              ,?TO_JSON(<<"call.CHANNEL_BRIDGE.*">>, <<"CHANNEL_BRIDGE">>)
               ]).
 
 -define(
    OBJECTS
        ,[?TO_JSON(<<A/binary, ".*.", T/binary, ".*">>, <<A/binary, "_", T/binary>>)
-	 || A <- ?DOC_ACTIONS, T <- ?DOC_TYPES
-	]
+         || A <- ?DOC_ACTIONS, T <- ?DOC_TYPES
+        ]
   ).
 
 -define(
    AVAILABLE
        ,kz_json:from_list([
-			   {<<"call">>, ?CALL}
-			  ,{<<"fax">>, [?TO_JSON(<<"fax.status.*">>, <<"fax">>)]}
-			  ,{<<"object">>, ?OBJECTS}
-			  ])
+                           {<<"call">>, ?CALL}
+                          ,{<<"fax">>, [?TO_JSON(<<"fax.status.*">>, <<"fax">>)]}
+                          ,{<<"object">>, ?OBJECTS}
+                          ])
   ).
 
 %%%===================================================================
@@ -195,7 +195,7 @@ validate_websocket(Context, Id, ?HTTP_GET) ->
 -spec summary_available(cb_context:context()) -> cb_context:context().
 summary_available(Context) ->
     cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-				,{fun cb_context:set_resp_data/2, ?AVAILABLE}
+                                ,{fun cb_context:set_resp_data/2, ?AVAILABLE}
                                 ]).
 
 
@@ -231,9 +231,9 @@ blackhole_req(Context, Props) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kapps_util:amqp_pool_collect(Req ++ Props
-				     ,fun kapi_blackhole:publish_get_req/1
-				     ,{'blackhole', 'true'}
-				     )
+                                     ,fun kapi_blackhole:publish_get_req/1
+                                     ,{'blackhole', 'true'}
+                                     )
     of
         {'error', _R} ->
             lager:error("could not reach blackhole sockets tracking: ~p", [_R]),
@@ -255,7 +255,7 @@ blackhole_resp(Context, JObjs) ->
 
 blackhole_resp(Context, [], RespData) ->
     cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-				,{fun cb_context:set_resp_data/2, RespData}
+                                ,{fun cb_context:set_resp_data/2, RespData}
                                 ]);
 blackhole_resp(Context, [JObj|JObjs], RespData) ->
     case kz_json:get_value(<<"Data">>, JObj) of

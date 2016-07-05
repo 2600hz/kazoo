@@ -11,16 +11,16 @@
 -export([start_link/1]).
 -export([render/2]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -export([lookup/1
-	,flush/0
+        ,flush/0
         ]).
 
 -include("stepswitch.hrl").
@@ -70,13 +70,13 @@ start_link(_) ->
 -spec lookup(kz_json:object() | ne_binary()) -> kz_json:object().
 lookup(<<_/binary>> = Number) ->
     Num = case ?DISABLE_NORMALIZE of
-	      'false' -> knm_converters:normalize(Number);
-	      'true'  -> Number
-	  end,
+              'false' -> knm_converters:normalize(Number);
+              'true'  -> Number
+          end,
     lookup(kz_json:set_values([{<<"phone_number">>, kz_util:uri_encode(Num)}
-			      ,{<<"Caller-ID-Number">>, Num}
+                              ,{<<"Caller-ID-Number">>, Num}
                               ]
-			     ,kz_json:new()
+                             ,kz_json:new()
                              )
           );
 lookup(JObj) ->
@@ -101,8 +101,8 @@ set_phone_number(Num, JObj) ->
 update_request(JObj, 'undefined', _) -> JObj;
 update_request(JObj, CNAM, FromCache) ->
     Props = [{<<"Caller-ID-Name">>, CNAM}
-	    ,{[<<"Custom-Channel-Vars">>, <<"Caller-ID-Name">>], CNAM}
-	    ,{[<<"Custom-Channel-Vars">>, <<"CNAM-From-Cache">>], FromCache}
+            ,{[<<"Custom-Channel-Vars">>, <<"Caller-ID-Name">>], CNAM}
+            ,{[<<"Custom-Channel-Vars">>, <<"CNAM-From-Cache">>], FromCache}
             ],
     kz_json:set_values(Props, JObj).
 
@@ -272,10 +272,10 @@ fetch_cnam(Number, JObj) ->
 make_request(Number, JObj) ->
     Url = kz_util:to_list(get_http_url(JObj)),
     case kz_http:req(get_http_method()
-		    ,Url
-		    ,get_http_headers()
-		    ,get_http_body(JObj)
-		    ,get_http_options(Url)
+                    ,Url
+                    ,get_http_headers()
+                    ,get_http_body(JObj)
+                    ,get_http_options(Url)
                     )
     of
         {'ok', 404, _, _} ->
@@ -325,15 +325,15 @@ get_http_body(JObj) ->
 -spec get_http_headers() -> [{nonempty_string(), nonempty_string()}].
 get_http_headers() ->
     Headers = [{"Accept", ?HTTP_ACCEPT_HEADER}
-	      ,{"User-Agent", ?HTTP_USER_AGENT}
-	      ,{"Content-Type", ?HTTP_CONTENT_TYPE}
+              ,{"User-Agent", ?HTTP_USER_AGENT}
+              ,{"Content-Type", ?HTTP_CONTENT_TYPE}
               ],
     maybe_enable_auth(Headers).
 
 -spec get_http_options(ne_binary()) -> kz_proplist().
 get_http_options(Url) ->
     Defaults = [{'connect_timeout', ?HTTP_CONNECT_TIMEOUT_MS}
-	       ,{'timeout', 1500}
+               ,{'timeout', 1500}
                ],
     maybe_enable_ssl(Url, Defaults).
 

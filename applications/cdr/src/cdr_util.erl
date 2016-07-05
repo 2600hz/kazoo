@@ -9,7 +9,7 @@
 -module(cdr_util).
 
 -export([get_cdr_doc_id/2
-	,get_cdr_doc_id/3
+        ,get_cdr_doc_id/3
         ]).
 -export([save_cdr/2]).
 

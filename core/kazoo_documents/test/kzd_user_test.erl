@@ -11,10 +11,10 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define(DOC, kz_json:set_values([{<<"first_name">>, "F"}
-				,{<<"last_name">>, "L"}
-				,{<<"email">>, <<"email@example.com">>}
-				,{<<"vm_to_email_enabled">>, 'true'}]
-			       , kz_json:new())).
+                                ,{<<"last_name">>, "L"}
+                                ,{<<"email">>, <<"email@example.com">>}
+                                ,{<<"vm_to_email_enabled">>, 'true'}]
+                               , kz_json:new())).
 -define(EMPTY, kz_json:new()).
 
 email_test_() ->
@@ -36,4 +36,4 @@ to_vcard_test() ->
                    "N:L;F\n"
                    "EMAIL:email@example.com\n"
                    "END:VCARD">>
-		, kzd_user:to_vcard(?DOC)).
+                , kzd_user:to_vcard(?DOC)).

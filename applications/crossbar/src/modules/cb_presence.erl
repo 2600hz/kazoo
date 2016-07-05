@@ -9,13 +9,13 @@
 -module('cb_presence').
 
 -export([init/0
-	,authenticate/1
-	,authorize/1
-	,allowed_methods/0, allowed_methods/1
-	,resource_exists/0, resource_exists/1
-	,content_types_provided/2
-	,validate/1, validate/2
-	,post/1, post/2
+        ,authenticate/1
+        ,authorize/1
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,content_types_provided/2
+        ,validate/1, validate/2
+        ,post/1, post/2
         ]).
 
 -include("crossbar.hrl").
@@ -28,9 +28,9 @@
 -define(PRESENCE_QUERY_TIMEOUT_KEY, <<"query_presence_timeout">>).
 -define(PRESENCE_QUERY_DEFAULT_TIMEOUT, 1000).
 -define(PRESENCE_QUERY_TIMEOUT, kapps_config:get_integer(?MOD_CONFIG_CAT
-							,?PRESENCE_QUERY_TIMEOUT_KEY
-							,?PRESENCE_QUERY_DEFAULT_TIMEOUT
-							)
+                                                        ,?PRESENCE_QUERY_TIMEOUT_KEY
+                                                        ,?PRESENCE_QUERY_DEFAULT_TIMEOUT
+                                                        )
        ).
 -define(REPORT_CONTENT_TYPE, [{'send_file', [{<<"application">>, <<"json">>}]}]).
 -define(REPORT_PREFIX, "report-").
@@ -187,9 +187,9 @@ search_spawn(Pid, Fun, Context) ->
 -spec search_collect(cb_context:context(), kz_json:object(), integer()) -> cb_context:context().
 search_collect(Context, JObj, 0) ->
     cb_context:setters(Context
-		      ,[{fun cb_context:set_resp_data/2, JObj}
-		       ,{fun cb_context:set_resp_status/2, 'success'}
-		       ]
+                      ,[{fun cb_context:set_resp_data/2, JObj}
+                       ,{fun cb_context:set_resp_status/2, 'success'}
+                       ]
                       );
 search_collect(Context, JObj, N) ->
     receive
@@ -198,8 +198,8 @@ search_collect(Context, JObj, N) ->
             lager:debug("error collecting responses from presence : ~p", [Reason]),
             search_collect(Context, JObj, N - 1)
     after ?PRESENCE_QUERY_TIMEOUT ->
-	    lager:debug("timeout (~B) collecting responses from presence", [?PRESENCE_QUERY_TIMEOUT]),
-	    search_collect(Context, JObj, N - 1)
+            lager:debug("timeout (~B) collecting responses from presence", [?PRESENCE_QUERY_TIMEOUT]),
+            search_collect(Context, JObj, N - 1)
     end.
 
 -spec search_req(cb_context:context()) ->
@@ -207,13 +207,13 @@ search_collect(Context, JObj, N) ->
                         {'error', any()}.
 search_req(Context) ->
     Req = [{<<"Realm">>, cb_context:account_realm(Context)}
-	  ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
-	  ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+          ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
+          ,{<<"Msg-ID">>, cb_context:req_id(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req
-				    ,fun kapi_presence:publish_search_req/1
-				    ,{'omnipresence', 'true', 'true'}
+                                    ,fun kapi_presence:publish_search_req/1
+                                    ,{'omnipresence', 'true', 'true'}
                                     )
     of
         {'error', _R}=Err -> Err;
@@ -235,10 +235,10 @@ process_search_responses(JObjs, Timeout) ->
     {'ok'
     ,kz_json:from_list(
        props:filter_undefined(
-	 [{<<"subscriptions">>, Subscriptions}
-	 ,{<<"timeout">>, Timeout}
-	 ]
-	)
+         [{<<"subscriptions">>, Subscriptions}
+         ,{<<"timeout">>, Timeout}
+         ]
+        )
       )
     }.
 
@@ -257,8 +257,8 @@ extract_subscriptions_from_result(JObj, Acc) ->
                                   kz_json:object().
 extract_subscription(Subscription, Acc) ->
     Key = [kz_json:get_value(<<"username">>, Subscription)
-	  ,kz_json:get_value(<<"event">>, Subscription)
-	  ,kz_json:get_value(<<"call_id">>, Subscription)
+          ,kz_json:get_value(<<"event">>, Subscription)
+          ,kz_json:get_value(<<"call_id">>, Subscription)
           ],
     case kz_json:get_value(Key, Acc) of
         'undefined' ->
@@ -270,18 +270,18 @@ extract_subscription(Subscription, Acc) ->
                               kz_json:object().
 add_subscription(Subscription, Acc, Key) ->
     kz_json:set_value(Key
-		     ,kz_json:delete_keys(
-			[<<"username">>
-			,<<"user">>
-			,<<"event">>
-			,<<"realm">>
-			,<<"protocol">>
-			,<<"contact">>
-			,<<"call_id">>
-			]
-					 ,Subscription
-		       )
-		     ,Acc
+                     ,kz_json:delete_keys(
+                        [<<"username">>
+                        ,<<"user">>
+                        ,<<"event">>
+                        ,<<"realm">>
+                        ,<<"protocol">>
+                        ,<<"contact">>
+                        ,<<"call_id">>
+                        ]
+                                         ,Subscription
+                       )
+                     ,Acc
                      ).
 
 -spec presentity_search_req(cb_context:context()) ->
@@ -289,9 +289,9 @@ add_subscription(Subscription, Acc, Key) ->
                                    {'error', any()}.
 presentity_search_req(Context) ->
     Req = [{<<"Realm">>, cb_context:account_realm(Context)}
-	  ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
-	  ,{<<"Scope">>, <<"presentity">>}
-	  ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+          ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
+          ,{<<"Scope">>, <<"presentity">>}
+          ,{<<"Msg-ID">>, cb_context:req_id(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Count = kz_nodes:whapp_count(<<"kamailio">>, 'true'),
@@ -299,8 +299,8 @@ presentity_search_req(Context) ->
     lager:debug("attempting presentity search from ~p servers", [Count]),
 
     case kz_amqp_worker:call_collect(Req
-				    ,fun kapi_omnipresence:publish_search_req/1
-				    ,{fun collect_presentities/2, {0, Count}}
+                                    ,fun kapi_omnipresence:publish_search_req/1
+                                    ,{fun collect_presentities/2, {0, Count}}
                                     )
     of
         {'error', _E}=Err -> Err;
@@ -338,10 +338,10 @@ process_presentity_responses(JObjs, Timeout) ->
     {'ok'
     ,kz_json:from_list(
        props:filter_undefined(
-	 [{<<"presentities">>, Presentities}
-	 ,{<<"timeout">>, Timeout}
-	 ]
-	)
+         [{<<"presentities">>, Presentities}
+         ,{<<"timeout">>, Timeout}
+         ]
+        )
       )
     }.
 
@@ -362,26 +362,26 @@ process_partial_response(JObj, Acc) ->
     lists:foldl(fun(Key, Acc1) ->
                         process_partial_response(Key, Acc1, JObj, Node)
                 end
-	       ,Acc
-	       ,SubscriptionKeys
+               ,Acc
+               ,SubscriptionKeys
                ).
 
 process_partial_response(Key, Acc, JObj, Node) ->
     kz_json:set_value([Key, Node]
-		     ,kz_json:get_value([<<"Subscriptions">>, Key], JObj)
-		     ,Acc
+                     ,kz_json:get_value([<<"Subscriptions">>, Key], JObj)
+                     ,Acc
                      ).
 
 -spec validate_thing_reset(cb_context:context(), req_nouns()) ->
                                   cb_context:context().
 validate_thing_reset(Context, [{<<"presence">>, []}
-			      ,{<<"devices">>, [DeviceId]}
-			      ,{<<"accounts">>, [_AccountId]}
+                              ,{<<"devices">>, [DeviceId]}
+                              ,{<<"accounts">>, [_AccountId]}
                               ]) ->
     maybe_load_thing(Context, DeviceId);
 validate_thing_reset(Context, [{<<"presence">>, []}
-			      ,{<<"users">>, [UserId]}
-			      ,{<<"accounts">>, [_AccountId]}
+                              ,{<<"users">>, [UserId]}
+                              ,{<<"accounts">>, [_AccountId]}
                               ]) ->
     case is_reset_request(Context) of
         'true' -> validate_user_reset(Context, UserId);
@@ -430,13 +430,13 @@ is_reset_request(Context) ->
 -spec reset_validation_error(cb_context:context()) -> cb_context:context().
 reset_validation_error(Context) ->
     cb_context:add_validation_error(<<"reset">>
-				   ,<<"required">>
-				   ,kz_json:from_list(
-				      [{<<"message">>, <<"Field must be set to true">>}
-				      ,{<<"target">>, <<"required">>}
-				      ]
-				     )
-				   ,Context
+                                   ,<<"required">>
+                                   ,kz_json:from_list(
+                                      [{<<"message">>, <<"Field must be set to true">>}
+                                      ,{<<"target">>, <<"required">>}
+                                      ]
+                                     )
+                                   ,Context
                                    ).
 
 -spec post(cb_context:context()) -> cb_context:context().
@@ -474,8 +474,8 @@ publish_presence_reset(_Realm, 'undefined') -> 'ok';
 publish_presence_reset(Realm, PresenceId) ->
     lager:debug("resetting ~s @ ~s", [PresenceId, Realm]),
     API = [{<<"Realm">>, Realm}
-	  ,{<<"Username">>, PresenceId}
-	  ,{<<"Msg-ID">>, kz_util:get_callid()}
+          ,{<<"Username">>, PresenceId}
+          ,{<<"Msg-ID">>, kz_util:get_callid()}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(API, fun kapi_presence:publish_reset/1).
@@ -504,10 +504,10 @@ set_report(Context, File) ->
                        [{fun cb_context:set_resp_file/2, File}
                        ,{fun cb_context:set_resp_etag/2, 'undefined'}
                        ,{fun cb_context:add_resp_headers/2
-			,[{<<"Content-Disposition">>, <<"attachment; filename=", Name/binary>>}]
+                        ,[{<<"Content-Disposition">>, <<"attachment; filename=", Name/binary>>}]
                         }
                        ,{fun cb_context:set_resp_status/2, 'success'}
-		       ]
+                       ]
                       ).
 
 -spec collect_report(cb_context:context(), ne_binary() | kz_json:object() | kz_json:objects()) -> any().

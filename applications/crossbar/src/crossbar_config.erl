@@ -9,9 +9,9 @@
 -module(crossbar_config).
 
 -export([autoload_modules/0, autoload_modules/1
-	,set_autoload_modules/1, set_default_autoload_modules/1
+        ,set_autoload_modules/1, set_default_autoload_modules/1
 
-	,flush/0
+        ,flush/0
         ]).
 
 -include("crossbar.hrl").

@@ -11,8 +11,8 @@
 -include("kazoo_modb.hrl").
 
 -export([prev_year_month/1, prev_year_month/2
-	,prev_year_month_mod/1
-	,split_account_mod/1
+        ,prev_year_month_mod/1
+        ,split_account_mod/1
         ]).
 
 -spec prev_year_month(ne_binary()) -> {kz_year(), kz_month()}.

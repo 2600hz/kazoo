@@ -11,17 +11,17 @@
 -behaviour(gen_listener).
 
 -export([start_link/0
-	,handle_push/2
-	,handle_reg_success/2
+        ,handle_push/2
+        ,handle_reg_success/2
         ]).
 
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("pusher.hrl").
@@ -30,21 +30,21 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {subs_pid :: pid()
-	       ,subs_ref :: reference()
+               ,subs_ref :: reference()
                }).
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
-		  ,{'pusher', []}
-		  ,{'registration', [{'restrict_to',['reg_success']}]}
+                  ,{'pusher', []}
+                  ,{'registration', [{'restrict_to',['reg_success']}]}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_push'}
-		     ,[{<<"notification">>, <<"push_req">>}]
+                     ,[{<<"notification">>, <<"push_req">>}]
                      }
-		    ,{{?MODULE, 'handle_reg_success'}
-		     ,[{<<"directory">>, <<"reg_success">>}]
-		     }
+                    ,{{?MODULE, 'handle_reg_success'}
+                     ,[{<<"directory">>, <<"reg_success">>}]
+                     }
                     ]).
 
 -define(QUEUE_NAME, <<"pusher_shared_listener">>).
@@ -64,9 +64,9 @@ handle_push(JObj, _Props) ->
     lager:debug("pushing for token ~s(~s) to module ~s", [Token, TokenType, Module]),
 
     kz_cache:store_local(?CACHE_NAME
-			,Token
-			,JObj
-			,[{'expires', 20}]
+                        ,Token
+                        ,JObj
+                        ,[{'expires', 20}]
                         ),
     gen_server:cast(Module, {'push', JObj}).
 
@@ -101,10 +101,10 @@ maybe_process_reg_success(Token, UA, JObj, Params) ->
 -spec maybe_update_push_token(api_binary(), api_binary(), kz_json:object(), kz_json:object(), kz_proplist()) -> 'ok'.
 maybe_update_push_token(UA, JObj, Params) ->
     AccountId = kz_json:get_first_defined([[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
-					  ,<<"Account-ID">>
+                                          ,<<"Account-ID">>
                                           ], JObj),
     AuthorizingId = kz_json:get_first_defined([[<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>]
-					      ,<<"Authorizing-ID">>
+                                              ,<<"Authorizing-ID">>
                                               ], JObj),
 
     maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params).
@@ -149,7 +149,7 @@ send_reply(Token, JObj) ->
     kz_cache:erase_local(?CACHE_NAME, Token),
     Queue = kz_json:get_value(<<"Server-ID">>, JObj),
     Payload = [{<<"Token-ID">>, Token}
-	      ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+              ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     lager:debug("sending pusher reply to ~s: ~p", [Queue, Payload]),
@@ -161,10 +161,10 @@ send_reply(Token, JObj) ->
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
-				     ,{'responders', ?RESPONDERS}
-				     ,{'queue_name', ?QUEUE_NAME}       % optional to include
-				     ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-				     ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                                     ,{'responders', ?RESPONDERS}
+                                     ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                                     ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                                     ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], []).
 
 %%%===================================================================

@@ -14,17 +14,17 @@
 -export([start_link/2]).
 
 -export([node_srv/1
-	,authn_srv/1
-	,route_srv/1
-	,channel_srv/1
-	,config_srv/1
-	,resource_srv/1
-	,notify_srv/1
-	,authz_srv/1
-	,cdr_srv/1
-	,conference_srv/1
-	,event_stream_sup/1
-	,msg_srv/1
+        ,authn_srv/1
+        ,route_srv/1
+        ,channel_srv/1
+        ,config_srv/1
+        ,resource_srv/1
+        ,notify_srv/1
+        ,authz_srv/1
+        ,cdr_srv/1
+        ,conference_srv/1
+        ,event_stream_sup/1
+        ,msg_srv/1
         ]).
 
 -export([init/1]).
@@ -32,10 +32,10 @@
 -include("ecallmgr.hrl").
 
 -define(CHILDREN, [<<"node">>, <<"authn">>, <<"route">>, <<"channel">>
-		  ,<<"config">>, <<"resource">>, <<"notify">>
-		  ,<<"conference">>
-		  ,<<"event_stream_sup">>
-		  ,<<"msg">>
+                  ,<<"config">>, <<"resource">>, <<"notify">>
+                  ,<<"conference">>
+                  ,<<"event_stream_sup">>
+                  ,<<"msg">>
                   ]).
 
 %% ===================================================================

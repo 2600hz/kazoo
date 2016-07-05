@@ -10,12 +10,12 @@
 -module(cb_service_plans).
 
 -export([init/0
-	,allowed_methods/0, allowed_methods/1, allowed_methods/2
-	,resource_exists/0, resource_exists/1, resource_exists/2
-	,content_types_provided/1 ,content_types_provided/2, content_types_provided/3
-	,validate/1, validate/2, validate/3
-	,post/1 ,post/2, post/3
-	,delete/2
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,content_types_provided/1 ,content_types_provided/2, content_types_provided/3
+        ,validate/1, validate/2, validate/3
+        ,post/1 ,post/2, post/3
+        ,delete/2
         ]).
 
 -include("crossbar.hrl").
@@ -41,13 +41,13 @@
 init() ->
     cb_modules_util:bind(
       ?MODULE
-			,[{<<"*.allowed_methods.service_plans">>, 'allowed_methods'}
-			 ,{<<"*.resource_exists.service_plans">>, 'resource_exists'}
-			 ,{<<"*.content_types_provided.service_plans">>, 'content_types_provided'}
-			 ,{<<"*.validate.service_plans">>, 'validate'}
-			 ,{<<"*.execute.post.service_plans">>, 'post'}
-			 ,{<<"*.execute.delete.service_plans">>, 'delete'}
-			 ]
+                        ,[{<<"*.allowed_methods.service_plans">>, 'allowed_methods'}
+                         ,{<<"*.resource_exists.service_plans">>, 'resource_exists'}
+                         ,{<<"*.content_types_provided.service_plans">>, 'content_types_provided'}
+                         ,{<<"*.validate.service_plans">>, 'validate'}
+                         ,{<<"*.execute.post.service_plans">>, 'post'}
+                         ,{<<"*.execute.delete.service_plans">>, 'delete'}
+                         ]
      ).
 
 %%--------------------------------------------------------------------
@@ -108,11 +108,11 @@ validate(Context) ->
 validate(Context, ?CURRENT) ->
     cb_context:setters(
       Context
-		      ,[{fun cb_context:set_resp_status/2, 'success'}
-		       ,{fun cb_context:set_resp_data/2
-			,kz_services:public_json(cb_context:account_id(Context))
-			}
-		       ]
+                      ,[{fun cb_context:set_resp_status/2, 'success'}
+                       ,{fun cb_context:set_resp_data/2
+                        ,kz_services:public_json(cb_context:account_id(Context))
+                        }
+                       ]
      );
 validate(Context, ?AVAILABLE) ->
     AccountId = cb_context:account_id(Context),
@@ -120,9 +120,9 @@ validate(Context, ?AVAILABLE) ->
     ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
     crossbar_doc:load_view(
       ?CB_LIST
-			  ,[]
-			  ,cb_context:set_account_db(Context, ResellerDb)
-			  ,fun normalize_view_results/2
+                          ,[]
+                          ,cb_context:set_account_db(Context, ResellerDb)
+                          ,fun normalize_view_results/2
      );
 validate(Context, ?SYNCHRONIZATION) ->
     case is_allowed(Context) of
@@ -139,10 +139,10 @@ validate(Context, ?OVERRIDE) ->
     case kz_util:is_system_admin(AuthAccountId) of
         'true' ->
             crossbar_doc:load(
-	      cb_context:account_id(Context)
-			     ,cb_context:set_account_db(Context, ?KZ_SERVICES_DB)
-			     ,?TYPE_CHECK_OPTION(kzd_services:type())
-	     );
+              cb_context:account_id(Context)
+                             ,cb_context:set_account_db(Context, ?KZ_SERVICES_DB)
+                             ,?TYPE_CHECK_OPTION(kzd_services:type())
+             );
         'false' -> cb_context:add_system_error('forbidden', Context)
     end;
 validate(Context, PlanId) ->
@@ -159,9 +159,9 @@ validate(Context, ?AVAILABLE, PlanId) ->
 validate_service_plan(Context, ?HTTP_GET) ->
     crossbar_doc:load_view(
       ?CB_LIST
-			  ,[]
-			  ,Context
-			  ,fun normalize_view_results/2
+                          ,[]
+                          ,Context
+                          ,fun normalize_view_results/2
      );
 validate_service_plan(Context, ?HTTP_POST) ->
     maybe_allow_change(Context).
@@ -186,14 +186,14 @@ validate_service_plan(Context, PlanId, ?HTTP_DELETE) ->
 
 post(Context) ->
     Routines = [fun(S) -> add_plans(Context, S) end
-	       ,fun(S) -> delete_plans(Context, S) end
-	       ,fun kz_services:save/1
+               ,fun(S) -> delete_plans(Context, S) end
+               ,fun kz_services:save/1
                ],
     Services = lists:foldl(fun apply_fun/2, kz_services:fetch(cb_context:account_id(Context)), Routines),
     cb_context:setters(
       Context
-		      ,[{fun cb_context:set_resp_data/2, kz_services:service_plan_json(Services)}
-		       ,{fun cb_context:set_resp_status/2, 'success'}]
+                      ,[{fun cb_context:set_resp_data/2, kz_services:service_plan_json(Services)}
+                       ,{fun cb_context:set_resp_status/2, 'success'}]
      ).
 
 post(Context, ?SYNCHRONIZATION) ->
@@ -211,32 +211,32 @@ post(Context, ?OVERRIDE) ->
     Overrides = kz_json:get_value(<<"overrides">>, cb_context:req_data(Context), kz_json:new()),
     NewDoc =
         kz_json:foldl(
-	  fun(PlanId, _JObj, Doc) ->
-		  Override = kz_json:get_value(PlanId, Overrides, kz_json:new()),
-		  kz_json:set_value([<<"plans">>, PlanId, <<"overrides">>], Override, Doc)
-	  end
-		     ,cb_context:doc(Context)
-		     ,kz_json:get_value(<<"plans">>, cb_context:doc(Context))
-	 ),
+          fun(PlanId, _JObj, Doc) ->
+                  Override = kz_json:get_value(PlanId, Overrides, kz_json:new()),
+                  kz_json:set_value([<<"plans">>, PlanId, <<"overrides">>], Override, Doc)
+          end
+                     ,cb_context:doc(Context)
+                     ,kz_json:get_value(<<"plans">>, cb_context:doc(Context))
+         ),
 
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, NewDoc)),
     case cb_context:resp_status(Context1) of
         'success' ->
             cb_context:set_resp_data(
-	      Context1
-				    ,kz_json:get_value(<<"plans">>, NewDoc)
-	     );
+              Context1
+                                    ,kz_json:get_value(<<"plans">>, NewDoc)
+             );
         _Status -> Context1
     end;
 post(Context, PlanId) ->
     Routines = [fun(S) -> kz_services:add_service_plan(PlanId, S) end
-	       ,fun kz_services:save/1
+               ,fun kz_services:save/1
                ],
     Services = lists:foldl(fun apply_fun/2, kz_services:fetch(cb_context:account_id(Context)), Routines),
     cb_context:setters(Context
-		      ,[{fun cb_context:set_resp_data/2, kz_services:service_plan_json(Services)}
-		       ,{fun cb_context:set_resp_status/2, 'success'}
-		       ]).
+                      ,[{fun cb_context:set_resp_data/2, kz_services:service_plan_json(Services)}
+                       ,{fun cb_context:set_resp_status/2, 'success'}
+                       ]).
 
 post(Context, PlanId, ?OVERRIDE) ->
     Doc = cb_context:doc(Context),
@@ -261,13 +261,13 @@ post(Context, PlanId, ?OVERRIDE) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, PlanId) ->
     Routines = [fun(S) -> kz_services:delete_service_plan(PlanId, S) end
-	       ,fun kz_services:save/1
+               ,fun kz_services:save/1
                ],
     Services = lists:foldl(fun apply_fun/2, kz_services:fetch(cb_context:account_id(Context)), Routines),
     cb_context:setters(Context
-		      ,[{fun cb_context:set_resp_data/2, kz_services:service_plan_json(Services)}
-		       ,{fun cb_context:set_resp_status/2, 'success'}
-		       ]).
+                      ,[{fun cb_context:set_resp_data/2, kz_services:service_plan_json(Services)}
+                       ,{fun cb_context:set_resp_status/2, 'success'}
+                       ]).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -278,8 +278,8 @@ add_plans(Context, Services) ->
     ReqData = cb_context:req_data(Context),
     lists:foldl(
       fun kz_services:add_service_plan/2
-	       ,Services
-	       ,kz_json:get_value(<<"add">>, ReqData, [])
+               ,Services
+               ,kz_json:get_value(<<"add">>, ReqData, [])
      ).
 
 %%--------------------------------------------------------------------
@@ -292,8 +292,8 @@ delete_plans(Context, Services) ->
     ReqData = cb_context:req_data(Context),
     lists:foldl(
       fun kz_services:delete_service_plan/2
-	       ,Services
-	       ,kz_json:get_value(<<"delete">>, ReqData, [])
+               ,Services
+               ,kz_json:get_value(<<"delete">>, ReqData, [])
      ).
 
 %%--------------------------------------------------------------------
@@ -400,14 +400,14 @@ check_plan_ids(Context, ResellerId) ->
 check_plan_ids(Context, ResellerId, PlanIds) ->
     lists:foldl(
       fun(PlanId, Ctxt) ->
-	      case cb_context:resp_status(Ctxt) of
-		  'success' ->
-		      check_plan_id(Ctxt, PlanId, ResellerId);
-		  _Status -> Ctxt
-	      end
+              case cb_context:resp_status(Ctxt) of
+                  'success' ->
+                      check_plan_id(Ctxt, PlanId, ResellerId);
+                  _Status -> Ctxt
+              end
       end
-	       ,cb_context:set_resp_status(Context, 'success')
-	       ,PlanIds
+               ,cb_context:set_resp_status(Context, 'success')
+               ,PlanIds
      ).
 
 

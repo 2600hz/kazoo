@@ -9,11 +9,11 @@
 -module(acdc_agent_maintenance).
 
 -export([acct_restart/1
-	,agent_restart/2
+        ,agent_restart/2
 
-	,status/0
-	,acct_status/1
-	,agent_status/2
+        ,status/0
+        ,acct_status/1
+        ,agent_status/2
         ]).
 
 -include("acdc.hrl").

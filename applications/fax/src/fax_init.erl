@@ -27,8 +27,8 @@ start_link() ->
     Workers = kapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 50),
     %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
     cowboy:start_http('fax_file', Workers
-		     ,[{'port', Port}]
-		     ,[{'env', [{'dispatch', Dispatch}]}]
+                     ,[{'port', Port}]
+                     ,[{'env', [{'dispatch', Dispatch}]}]
                      ),
     'ignore'.
 

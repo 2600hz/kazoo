@@ -9,50 +9,50 @@
 -module(kzt_util).
 
 -export([http_method/1
-	,resolve_uri/2
-	,offnet_req/2
-	,update_call_status/2, get_call_status/1
-	,get_request_vars/1
-	,add_error/3, get_errors/1
-	,set_hangup_dtmf/2, get_hangup_dtmf/1
-	,set_digit_pressed/2, get_digit_pressed/1
-	,set_call_timeout/2, get_call_timeout/1
-	,set_call_time_limit/2, get_call_time_limit/1
-	,set_record_call/2, get_record_call/1
-	,set_voice_uri/2, get_voice_uri/1
-	,set_voice_uri_method/2, get_voice_uri_method/1
+        ,resolve_uri/2
+        ,offnet_req/2
+        ,update_call_status/2, get_call_status/1
+        ,get_request_vars/1
+        ,add_error/3, get_errors/1
+        ,set_hangup_dtmf/2, get_hangup_dtmf/1
+        ,set_digit_pressed/2, get_digit_pressed/1
+        ,set_call_timeout/2, get_call_timeout/1
+        ,set_call_time_limit/2, get_call_time_limit/1
+        ,set_record_call/2, get_record_call/1
+        ,set_voice_uri/2, get_voice_uri/1
+        ,set_voice_uri_method/2, get_voice_uri_method/1
 
-	,set_digits_collected/2, get_digits_collected/1
-	,add_digit_collected/2, clear_digits_collected/1
+        ,set_digits_collected/2, get_digits_collected/1
+        ,add_digit_collected/2, clear_digits_collected/1
 
-	,set_recording_url/2, get_recording_url/1
-	,set_recording_duration/2, get_recording_duration/1
-	,set_recording_sid/2, get_recording_sid/1
+        ,set_recording_url/2, get_recording_url/1
+        ,set_recording_duration/2, get_recording_duration/1
+        ,set_recording_sid/2, get_recording_sid/1
 
-	,set_transcription_sid/2, get_transcription_sid/1
-	,set_transcription_text/2, get_transcription_text/1
-	,set_transcription_status/2, get_transcription_status/1
-	,set_transcription_url/2, get_transcription_url/1
+        ,set_transcription_sid/2, get_transcription_sid/1
+        ,set_transcription_text/2, get_transcription_text/1
+        ,set_transcription_status/2, get_transcription_status/1
+        ,set_transcription_url/2, get_transcription_url/1
 
-	,set_dial_call_status/2, get_dial_call_status/1
-	,set_dial_call_sid/2, get_dial_call_sid/1
-	,set_dial_call_duration/2, get_dial_call_duration/1
-	,set_queue_sid/2, get_queue_sid/1
-	,set_dequeue_result/2, get_dequeue_result/1
-	,set_dequeued_call_sid/2, get_dequeued_call_sid/1
-	,set_dequeued_call_queue_time/2, get_dequeued_call_queue_time/1
-	,set_dequeued_call_duration/2, get_dequeued_call_duration/1
-	,set_media_meta/2, get_media_meta/1
-	,set_amqp_listener/2, get_amqp_listener/1
+        ,set_dial_call_status/2, get_dial_call_status/1
+        ,set_dial_call_sid/2, get_dial_call_sid/1
+        ,set_dial_call_duration/2, get_dial_call_duration/1
+        ,set_queue_sid/2, get_queue_sid/1
+        ,set_dequeue_result/2, get_dequeue_result/1
+        ,set_dequeued_call_sid/2, get_dequeued_call_sid/1
+        ,set_dequeued_call_queue_time/2, get_dequeued_call_queue_time/1
+        ,set_dequeued_call_duration/2, get_dequeued_call_duration/1
+        ,set_media_meta/2, get_media_meta/1
+        ,set_amqp_listener/2, get_amqp_listener/1
 
-	,set_gather_pidref/2, get_gather_pidref/1
+        ,set_gather_pidref/2, get_gather_pidref/1
 
-	,set_conference_profile/2, get_conference_profile/1
-	,set_caller_controls/2, get_caller_controls/1
-	,set_advertise/2, get_advertise/1
-	,set_chat_permissions/2, get_chat_permissions/1
+        ,set_conference_profile/2, get_conference_profile/1
+        ,set_caller_controls/2, get_caller_controls/1
+        ,set_advertise/2, get_advertise/1
+        ,set_chat_permissions/2, get_chat_permissions/1
 
-	,iteration/1, increment_iteration/1
+        ,iteration/1, increment_iteration/1
         ]).
 
 -include("kzt.hrl").
@@ -90,21 +90,21 @@ offnet_req(Data, Call) ->
              end,
 
     Req = [{<<"Call-ID">>, kapps_call:call_id(Call)}
-	  ,{<<"Resource-Type">>, <<"audio">>}
-	  ,{<<"To-DID">>, kapps_call:request_user(Call)}
-	  ,{<<"Account-ID">>, kapps_call:account_id(Call)}
-	  ,{<<"Account-Realm">>, kapps_call:from_realm(Call)}
-	  ,{<<"Control-Queue">>, kapps_call:control_queue(Call)}
-	  ,{<<"Application-Name">>, <<"bridge">>}
-	  ,{<<"Flags">>, props:get_value(<<"flags">>, Data)}
-	  ,{<<"Timeout">>, props:get_value(<<"timeout">>, Data)}
-	  ,{<<"Ignore-Early-Media">>, props:get_value(<<"ignore_early_media">>, Data)}
-	  ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
-	  ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
-	  ,{<<"Outbound-Caller-ID-Name">>, CIDName}
-	  ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
-	  ,{<<"Presence-ID">>, kz_attributes:presence_id(Call)}
-	  ,{<<"Ringback">>, props:get_value(<<"ringback">>, Data)}
+          ,{<<"Resource-Type">>, <<"audio">>}
+          ,{<<"To-DID">>, kapps_call:request_user(Call)}
+          ,{<<"Account-ID">>, kapps_call:account_id(Call)}
+          ,{<<"Account-Realm">>, kapps_call:from_realm(Call)}
+          ,{<<"Control-Queue">>, kapps_call:control_queue(Call)}
+          ,{<<"Application-Name">>, <<"bridge">>}
+          ,{<<"Flags">>, props:get_value(<<"flags">>, Data)}
+          ,{<<"Timeout">>, props:get_value(<<"timeout">>, Data)}
+          ,{<<"Ignore-Early-Media">>, props:get_value(<<"ignore_early_media">>, Data)}
+          ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
+          ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
+          ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+          ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
+          ,{<<"Presence-ID">>, kz_attributes:presence_id(Call)}
+          ,{<<"Ringback">>, props:get_value(<<"ringback">>, Data)}
            | kz_api:default_headers(kapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
           ] ++ Data,
 
@@ -181,9 +181,9 @@ get_digits_collected(Call) -> kapps_call:kvs_fetch(<<"digits_collected">>, Call)
 clear_digits_collected(Call) -> kapps_call:kvs_store(<<"digits_collected">>, <<>>, Call).
 add_digit_collected(D, Call) ->
     kapps_call:kvs_update(<<"digits_collected">>, fun(<<_/binary>> = Ds) -> <<Ds/binary, D/binary>>;
-						     (_) -> D
-						  end
-			 ,D, Call).
+                                                     (_) -> D
+                                                  end
+                         ,D, Call).
 
 -spec set_recording_url(ne_binary(), kapps_call:call()) -> kapps_call:call().
 -spec get_recording_url(kapps_call:call()) -> api_binary().
@@ -321,13 +321,13 @@ get_request_vars(Call) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"Digits">>, get_digits_collected(Call)}
-	,{<<"RecordingUrl">>, get_recording_url(Call)}
-	,{<<"RecordingDuration">>, get_recording_duration(Call)}
-	,{<<"DialCallStatus">>, get_dial_call_status(Call)}
-	,{<<"DialCallSid">>, get_dial_call_sid(Call)}
-	,{<<"DialCallDuration">>, get_dial_call_duration(Call)}
-	,{<<"QueueSid">>, get_queue_sid(Call)}
-	,{<<"CallStatus">>, get_call_status(Call)}
+        ,{<<"RecordingUrl">>, get_recording_url(Call)}
+        ,{<<"RecordingDuration">>, get_recording_duration(Call)}
+        ,{<<"DialCallStatus">>, get_dial_call_status(Call)}
+        ,{<<"DialCallSid">>, get_dial_call_sid(Call)}
+        ,{<<"DialCallDuration">>, get_dial_call_duration(Call)}
+        ,{<<"QueueSid">>, get_queue_sid(Call)}
+        ,{<<"CallStatus">>, get_call_status(Call)}
         ]
        )
      ).

@@ -91,14 +91,14 @@ has_keys(Doc) ->
     TrueTests = lists:foldl(fun(QS, Acc) ->
                                     has_key_gen(QS, Acc, Doc, Filter, 'true')
                             end
-			   ,[]
-			   ,QSTrue
+                           ,[]
+                           ,QSTrue
                            ),
     lists:foldl(fun(QS, Acc) ->
                         has_key_gen(QS, Acc, Doc, Filter, 'false')
                 end
-	       ,TrueTests
-	       ,QSFalse
+               ,TrueTests
+               ,QSFalse
                ).
 
 missing_keys(Doc) ->
@@ -109,14 +109,14 @@ missing_keys(Doc) ->
     TrueTests = lists:foldl(fun(QS, Acc) ->
                                     has_key_gen(QS, Acc, Doc, Filter, 'true')
                             end
-			   ,[]
-			   ,QSTrue
+                           ,[]
+                           ,QSTrue
                            ),
     lists:foldl(fun(QS, Acc) ->
                         has_key_gen(QS, Acc, Doc, Filter, 'false')
                 end
-	       ,TrueTests
-	       ,QSFalse
+               ,TrueTests
+               ,QSFalse
                ).
 
 existing_keys(Filter) ->
@@ -154,36 +154,36 @@ modified(Doc) ->
 
 to_gen(Doc, {Before, Now, After}, Filter) ->
     [{test_desc("Verify doc is removed when querying ~s_to with timestamp before doc's"
-	       ,[Filter]
-	       )
+               ,[Filter]
+               )
      ,?_assertEqual('false', crossbar_doc:filter_doc_by_querystring(Doc, to_qs(Before, Filter)))
      }
     ,{test_desc("Verify doc is kept when querying ~s_to with timestamp equal to doc's"
-	       ,[Filter]
-	       )
+               ,[Filter]
+               )
      ,?_assertEqual('true', crossbar_doc:filter_doc_by_querystring(Doc, to_qs(Now, Filter)))
      }
     ,{test_desc("Verify doc is kept when querying ~s_to with timestamp after doc's"
-	       ,[Filter]
-	       )
+               ,[Filter]
+               )
      ,?_assertEqual('true', crossbar_doc:filter_doc_by_querystring(Doc, to_qs(After, Filter)))
      }
     ].
 
 from_gen(Doc, {Before, Now, After}, Filter) ->
     [{test_desc("Verify doc is kept when querying ~s_from with timestamp before doc's"
-	       ,[Filter]
+               ,[Filter]
                )
      ,?_assertEqual('true', crossbar_doc:filter_doc_by_querystring(Doc, from_qs(Before, Filter)))
      }
     ,{test_desc("Verify doc is kept when querying ~s_from with timestamp equal to doc's"
-	       ,[Filter]
-	       )
+               ,[Filter]
+               )
      ,?_assertEqual('true', crossbar_doc:filter_doc_by_querystring(Doc, from_qs(Now, Filter)))
      }
     ,{test_desc("Verify doc is removed when querying ~s_from with timestamp after doc's"
-	       ,[Filter]
-	       )
+               ,[Filter]
+               )
      ,?_assertEqual('false', crossbar_doc:filter_doc_by_querystring(Doc, from_qs(After, Filter)))
      }
     ].

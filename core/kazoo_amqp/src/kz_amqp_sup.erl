@@ -10,10 +10,10 @@
 -behaviour(supervisor).
 
 -export([start_link/0
-	,stop_bootstrap/0
-	,pool_name/0
-	,add_amqp_pool/4, add_amqp_pool/5, add_amqp_pool/6, add_amqp_pool/7
-	,pool_pid/1
+        ,stop_bootstrap/0
+        ,pool_name/0
+        ,add_amqp_pool/4, add_amqp_pool/5, add_amqp_pool/6, add_amqp_pool/7
+        ,pool_pid/1
         ]).
 
 -export([init/1]).
@@ -35,25 +35,25 @@
 -define(POOL_NAME_ARGS(Name, Args), ?WORKER_NAME_ARGS('poolboy', Name, Args)).
 
 -define(CHILDREN, [?WORKER('kz_amqp_connections')
-		  ,?SUPER('kz_amqp_connection_sup')
-		  ,?WORKER('kz_amqp_assignments')
-		  ,?WORKER('kz_amqp_history')
-		  ,?WORKER('kz_amqp_bootstrap')
+                  ,?SUPER('kz_amqp_connection_sup')
+                  ,?WORKER('kz_amqp_assignments')
+                  ,?WORKER('kz_amqp_history')
+                  ,?WORKER('kz_amqp_bootstrap')
                   ]).
 
 -define(POOL_THRESHOLD, kz_config:get_integer(?CONFIG_SECTION, 'pool_threshold', ?DEFAULT_POOL_THRESHOLD)).
 
 -define(ADD_POOL_ARGS(Pool, Broker, Size, Overflow, Bindings, Exchanges, ServerAck),
         [[{'worker_module', 'kz_amqp_worker'}
-	 ,{'name', {'local', Pool}}
-	 ,{'size', Size}
-	 ,{'max_overflow', Overflow}
-	 ,{'neg_resp_threshold', ?POOL_THRESHOLD}
-	 ,{'amqp_broker', Broker}
-	 ,{'amqp_queuename_start', Pool}
-	 ,{'amqp_bindings', Bindings}
-	 ,{'amqp_exchanges', Exchanges}
-	 ,{'amqp_server_confirms', ServerAck}
+         ,{'name', {'local', Pool}}
+         ,{'size', Size}
+         ,{'max_overflow', Overflow}
+         ,{'neg_resp_threshold', ?POOL_THRESHOLD}
+         ,{'amqp_broker', Broker}
+         ,{'amqp_queuename_start', Pool}
+         ,{'amqp_bindings', Bindings}
+         ,{'amqp_exchanges', Exchanges}
+         ,{'amqp_server_confirms', ServerAck}
          ]]).
 
 %% ===================================================================
@@ -166,10 +166,10 @@ init([]) ->
         end,
 
     PoolArgs = [{'worker_module', 'kz_amqp_worker'}
-	       ,{'name', {'local', ?POOL_NAME}}
-	       ,{'size', PoolSize}
-	       ,{'max_overflow', PoolOverflow}
-	       ,{'neg_resp_threshold', PoolThreshold}
+               ,{'name', {'local', ?POOL_NAME}}
+               ,{'size', PoolSize}
+               ,{'max_overflow', PoolOverflow}
+               ,{'neg_resp_threshold', PoolThreshold}
                ],
 
     Children = ?CHILDREN ++ [?POOL_NAME_ARGS(?POOL_NAME, [PoolArgs])],

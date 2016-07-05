@@ -14,7 +14,7 @@
 -module(cb_simple_authz).
 
 -export([init/0
-	,authorize/1
+        ,authorize/1
         ]).
 
 -include("crossbar.hrl").
@@ -22,11 +22,11 @@
 -define(SERVER, ?MODULE).
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
 -define(SYS_ADMIN_MODS, [<<"global_resources">>
-			,<<"templates">>
-			,<<"rates">>
-			,<<"acls">>
-			,<<"global_provisioner_templates">>
-			,<<"sup">>
+                        ,<<"templates">>
+                        ,<<"rates">>
+                        ,<<"acls">>
+                        ,<<"global_provisioner_templates">>
+                        ,<<"sup">>
                         ]).
 
 %% Endpoints performing their own auth
@@ -161,5 +161,5 @@ allowed_if_sys_admin_mod(IsSysAdmin, Context) ->
 is_sys_admin_mod(Context) ->
     Nouns = cb_context:req_nouns(Context),
     lists:any(fun kz_util:identity/1
-	     ,[props:get_value(Mod, Nouns) =/= 'undefined' || Mod <- ?SYS_ADMIN_MODS]
+             ,[props:get_value(Mod, Nouns) =/= 'undefined' || Mod <- ?SYS_ADMIN_MODS]
              ).

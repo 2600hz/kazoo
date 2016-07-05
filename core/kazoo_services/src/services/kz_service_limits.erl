@@ -38,17 +38,17 @@ reconcile(Services) ->
 -spec reconcile(kz_services:services(), kz_json:object()) -> kz_services:services().
 reconcile(Services, JObj) ->
     Routines = [
-		fun(S) ->
-			Quantity = kz_json:get_integer_value(<<"twoway_trunks">>, JObj, 0),
-			kz_services:update(<<"limits">>, <<"twoway_trunks">>, Quantity, S)
-		end
-	       ,fun(S) ->
-			Quantity = kz_json:get_integer_value(<<"inbound_trunks">>, JObj, 0),
-			kz_services:update(<<"limits">>, <<"inbound_trunks">>, Quantity, S)
-		end
-	       ,fun(S) ->
-			Quantity = kz_json:get_integer_value(<<"outbound_trunks">>, JObj, 0),
-			kz_services:update(<<"limits">>, <<"outbound_trunks">>, Quantity, S)
-		end
-	       ],
+                fun(S) ->
+                        Quantity = kz_json:get_integer_value(<<"twoway_trunks">>, JObj, 0),
+                        kz_services:update(<<"limits">>, <<"twoway_trunks">>, Quantity, S)
+                end
+               ,fun(S) ->
+                        Quantity = kz_json:get_integer_value(<<"inbound_trunks">>, JObj, 0),
+                        kz_services:update(<<"limits">>, <<"inbound_trunks">>, Quantity, S)
+                end
+               ,fun(S) ->
+                        Quantity = kz_json:get_integer_value(<<"outbound_trunks">>, JObj, 0),
+                        kz_services:update(<<"limits">>, <<"outbound_trunks">>, Quantity, S)
+                end
+               ],
     lists:foldl(fun(F, S) -> F(S) end, kz_services:reset_category(<<"limits">>, Services), Routines).

@@ -13,19 +13,19 @@
 
 -define(MOD_NAME, <<"filter_list">>).
 -define(ALLOWED_FILTER_MODES, [<<"exact">>
-			      ,<<"subset">>
-			      ,<<"ne_subset">>
-			      ,<<"ne_subset_or_exact">>
-			      ,<<"intersect">>
-			      ,<<"disjoint">>
+                              ,<<"subset">>
+                              ,<<"ne_subset">>
+                              ,<<"ne_subset_or_exact">>
+                              ,<<"intersect">>
+                              ,<<"disjoint">>
                               ]).
 -define(DEFAULT_FILTER_MODE, <<"ne_subset_or_exact">>).
 
 -spec handle_req(stepswitch_resources:resources()
-		,ne_binary()
-		,kapi_offnet_resource:req()
-		,ne_binary()
-		,kz_json:object()
+                ,ne_binary()
+                ,kapi_offnet_resource:req()
+                ,ne_binary()
+                ,kz_json:object()
                 ) -> stepswitch_resources:resources().
 handle_req(Resources, Number, OffnetJObj, DB, Params) ->
     SourceA = kz_srs_util:get_source(kz_json:get_value(<<"value_a">>, Params)),
@@ -50,12 +50,12 @@ handle_req(Resources, Number, OffnetJObj, DB, Params) ->
                                     not Result
                             end
                     end
-		   ,Resources
+                   ,Resources
                    ).
 
 -spec filter_list(sets:set()
-		 ,sets:set()
-		 ,ne_binary()
+                 ,sets:set()
+                 ,ne_binary()
                  ) -> boolean().
 filter_list(Set, Set, <<"axact">>) -> 'true';
 filter_list(SetA, SetB, <<"subset">>) -> sets:is_subset(SetA, SetB);

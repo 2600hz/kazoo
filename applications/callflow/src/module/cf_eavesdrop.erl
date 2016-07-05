@@ -25,7 +25,7 @@
 -include("callflow.hrl").
 
 -export([handle/2
-	,no_permission_to_eavesdrop/1
+        ,no_permission_to_eavesdrop/1
         ]).
 
 %%--------------------------------------------------------------------
@@ -94,9 +94,9 @@ eavesdrop_a_channel(Channels, Call) ->
 -spec channels_sort(kz_json:object(), channel_sort_acc()) -> channel_sort_acc().
 channels_sort(Channel, {MyUUID, MyMediaServer, {Local, Remote}} = Acc) ->
     lager:debug("channel: c: ~s a: ~s n: ~s oleg: ~s", [kz_json:get_value(<<"uuid">>, Channel)
-						       ,kz_json:is_true(<<"answered">>, Channel)
-						       ,kz_json:get_value(<<"node">>, Channel)
-						       ,kz_json:get_value(<<"other_leg">>, Channel)
+                                                       ,kz_json:is_true(<<"answered">>, Channel)
+                                                       ,kz_json:get_value(<<"node">>, Channel)
+                                                       ,kz_json:get_value(<<"other_leg">>, Channel)
                                                        ]),
     case kz_json:get_value(<<"node">>, Channel) of
         MyMediaServer ->

@@ -16,11 +16,11 @@
 
 -export([start_link/2]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("ecallmgr.hrl").
@@ -28,8 +28,8 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {node = 'undefined' :: atom()
-	       ,options = [] :: kz_proplist()
-	       ,timeout = 2 * ?MILLISECONDS_IN_SECOND
+               ,options = [] :: kz_proplist()
+               ,timeout = 2 * ?MILLISECONDS_IN_SECOND
                }).
 
 %%%===================================================================

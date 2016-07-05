@@ -29,22 +29,22 @@
 -behaviour(proper_statem).
 
 -export([command/1
-	,initial_state/0
-	,next_state/3
-	,postcondition/3
-	,precondition/2
+        ,initial_state/0
+        ,next_state/3
+        ,postcondition/3
+        ,precondition/2
 
-	,correct/0
-	,correct_parallel/0
+        ,correct/0
+        ,correct_parallel/0
         ]).
 
 -define(SERVER, 'kz_token_bucket').
 
 -record(state, {current :: non_neg_integer()
-	       ,max :: pos_integer()
-	       ,fill_rate :: pos_integer()
-	       ,fill_rate_time = 'second' :: 'second'
-	       ,handled_ms = 0 :: non_neg_integer()
+               ,max :: pos_integer()
+               ,fill_rate :: pos_integer()
+               ,fill_rate_time = 'second' :: 'second'
+               ,handled_ms = 0 :: non_neg_integer()
                }).
 
 sequential_test_() ->
@@ -52,13 +52,13 @@ sequential_test_() ->
     ,{'timeout'
      ,50000
      ,?_assertEqual('true'
-		   ,proper:quickcheck(?MODULE:correct()
-				     ,[{'max_shrinks', 4}
-				      ,{'numtests', 50}
-				      ,{'to_file', 'user'}
-				      ]
-				     )
-		   )
+                   ,proper:quickcheck(?MODULE:correct()
+                                     ,[{'max_shrinks', 4}
+                                      ,{'numtests', 50}
+                                      ,{'to_file', 'user'}
+                                      ]
+                                     )
+                   )
      }
     }.
 
@@ -67,44 +67,44 @@ parallel_test_() ->
     ,{'timeout'
      ,50000
      ,?_assertEqual('true'
-		   ,proper:quickcheck(?MODULE:correct_parallel()
-				     ,[{'max_shrinks', 4}
-				      ,{'numtests', 50}
-				      ,{'to_file', 'user'}
-				      ]
-				     )
-		   )
+                   ,proper:quickcheck(?MODULE:correct_parallel()
+                                     ,[{'max_shrinks', 4}
+                                      ,{'numtests', 50}
+                                      ,{'to_file', 'user'}
+                                      ]
+                                     )
+                   )
      }
     }.
 
 correct() ->
     ?FORALL(Cmds
-	   ,commands(?MODULE)
-	   ,?TRAPEXIT(
-	       begin
-		   {History, _State, Result} = run_commands(?MODULE, Cmds),
-		   ?SERVER:stop(?SERVER),
-		   ?WHENFAIL(io:format('user'
-				      ,"Failing Cmds: ~p\n"
-				      ,[zip(Cmds, History)]
-				      )
-			    ,aggregate(command_names(Cmds), Result =:= 'ok')
-			    )
-	       end
-	      )
+           ,commands(?MODULE)
+           ,?TRAPEXIT(
+               begin
+                   {History, _State, Result} = run_commands(?MODULE, Cmds),
+                   ?SERVER:stop(?SERVER),
+                   ?WHENFAIL(io:format('user'
+                                      ,"Failing Cmds: ~p\n"
+                                      ,[zip(Cmds, History)]
+                                      )
+                            ,aggregate(command_names(Cmds), Result =:= 'ok')
+                            )
+               end
+              )
            ).
 
 correct_parallel() ->
     ?FORALL(Cmds
-	   ,parallel_commands(?MODULE),
+           ,parallel_commands(?MODULE),
             begin
                 {Sequential, Parallel, Result} = run_parallel_commands(?MODULE, Cmds),
                 ?SERVER:stop(?SERVER),
                 ?WHENFAIL(io:format('user'
-				   ,"Failing Cmds: ~p\nS: ~p\nP: ~p\n"
-				   ,[Cmds, Sequential, Parallel]
+                                   ,"Failing Cmds: ~p\nS: ~p\nP: ~p\n"
+                                   ,[Cmds, Sequential, Parallel]
                                    )
-			 ,aggregate(command_names(Cmds), Result =:= 'ok')
+                         ,aggregate(command_names(Cmds), Result =:= 'ok')
                          )
             end).
 
@@ -112,57 +112,57 @@ initial_state() -> 'ok'.
 
 command('ok') ->
     frequency([{1, {'call'
-		   ,?SERVER
-		   ,'start_link'
-		   ,[?SERVER, pos_integer(), pos_integer(), 'true', 'second']
+                   ,?SERVER
+                   ,'start_link'
+                   ,[?SERVER, pos_integer(), pos_integer(), 'true', 'second']
                    }
                }
               ]);
 command(#state{}=_Model) ->
     oneof([{'call', ?SERVER, 'consume', [?SERVER, integer()]}
-	  ,{'call', ?SERVER, 'consume_until', [?SERVER, integer()]}
-	  ,{'call', ?SERVER, 'tokens', [?SERVER]}
-	  ,{'call', ?SERVER, 'credit', [?SERVER, pos_integer()]}
-	  ,{'call', 'timer', 'sleep', [range(800,5200)]}
+          ,{'call', ?SERVER, 'consume_until', [?SERVER, integer()]}
+          ,{'call', ?SERVER, 'tokens', [?SERVER]}
+          ,{'call', ?SERVER, 'credit', [?SERVER, pos_integer()]}
+          ,{'call', 'timer', 'sleep', [range(800,5200)]}
           ]).
 
 next_state('ok'
-	  ,_V
-	  ,{'call', ?SERVER, 'start_link', [_Server, Max, FR, _, FRT]}
+          ,_V
+          ,{'call', ?SERVER, 'start_link', [_Server, Max, FR, _, FRT]}
           ) ->
     #state{current=Max
-	  ,max=Max
-	  ,fill_rate=FR
-	  ,fill_rate_time=FRT
-	  ,handled_ms=0
+          ,max=Max
+          ,fill_rate=FR
+          ,fill_rate_time=FRT
+          ,handled_ms=0
           };
 next_state(#state{}=Model
-	  ,_V
-	  ,{'call', _Server, 'consume', [_Server, Ts]}
+          ,_V
+          ,{'call', _Server, 'consume', [_Server, Ts]}
           ) ->
     tokens_consume(Ts
-		  ,Model
+                  ,Model
                   );
 next_state(#state{}=Model
-	  ,_V
-	  ,{'call', _Server, 'consume_until', [_Server, Ts]}
+          ,_V
+          ,{'call', _Server, 'consume_until', [_Server, Ts]}
           ) ->
     tokens_consume_until(Ts
-			,Model
+                        ,Model
                         );
 next_state(#state{}=Model
-	  ,_V
-	  ,{'call', _Server, 'credit', [_Server, Ts]}
+          ,_V
+          ,{'call', _Server, 'credit', [_Server, Ts]}
           ) ->
     tokens_credit(Ts, Model);
 next_state(#state{}=Model
-	  ,_V
-	  ,{'call', _Server, 'tokens', [_Server]}
+          ,_V
+          ,{'call', _Server, 'tokens', [_Server]}
           ) ->
     Model;
 next_state(#state{}=Model
-	  ,_V
-	  ,{'call', 'timer', 'sleep', [Wait]}
+          ,_V
+          ,{'call', 'timer', 'sleep', [Wait]}
           ) ->
     adjust_for_time(Model, Wait).
 
@@ -172,55 +172,55 @@ precondition('ok', _Call) -> 'false';
 precondition(_Method, _Call) -> 'true'.
 
 postcondition('ok'
-	     ,{'call', _Server, 'start_link', _Args}
-	     ,Result
-	     ) ->
+             ,{'call', _Server, 'start_link', _Args}
+             ,Result
+             ) ->
     {'ok', P} = Result,
     is_pid(P);
 postcondition(#state{}
-	     ,{'call', _Server, Fun, [_Server, Ts]}
-	     ,Result
+             ,{'call', _Server, Fun, [_Server, Ts]}
+             ,Result
              ) when Ts =< 0
                     andalso (Fun == 'consume'
                              orelse Fun == 'consume_until'
                             ) ->
     'true' == Result;
 postcondition(#state{current=B}
-	     ,{'call', _Server, Fun, [_Server, Ts]}
-	     ,Result
+             ,{'call', _Server, Fun, [_Server, Ts]}
+             ,Result
              ) when Ts =< B
                     andalso (Fun == 'consume'
                              orelse Fun == 'consume_until'
                             ) ->
     'true' == Result;
 postcondition(#state{}
-	     ,{'call', _Server, Fun, [_Server, _Ts]}
-	     ,Result
+             ,{'call', _Server, Fun, [_Server, _Ts]}
+             ,Result
              ) when Fun == 'consume'
                     orelse Fun == 'consume_until'
                     ->
     'false' == Result;
 postcondition(#state{}
-	     ,{'call', _Server, 'credit', [_Server, _Ts]}
-	     ,Result
+             ,{'call', _Server, 'credit', [_Server, _Ts]}
+             ,Result
              ) ->
     'ok' == Result;
 postcondition(#state{current=B
-		    ,max=Max
-		    ,fill_rate=FR
+                    ,max=Max
+                    ,fill_rate=FR
                     }
-	     ,{'call', _Server, 'tokens', [_Server]}
-	     ,Ts
+             ,{'call', _Server, 'tokens', [_Server]}
+             ,Ts
              ) ->
     B == Ts
         orelse (B+FR) == Ts
         orelse Max == Ts;
 postcondition(#state{current=_B
-		    ,max=_M
-		    ,fill_rate=_FR
+                    ,max=_M
+                    ,fill_rate=_FR
                     }
-	     ,{'call', 'timer', 'sleep', [_Wait]}
-	     ,'ok'
+             ,{'call', 'timer', 'sleep', [_Wait]}
+             ,'ok'
              ) ->
     'true';
 postcondition(#state{}=_Model, _Call, _Res) ->
@@ -247,9 +247,9 @@ tokens_consume_until(N, #state{current=T}=Model) ->
     Model#state{current=T-N}.
 
 maybe_add_tokens(#state{current=T
-		       ,max=Max
+                       ,max=Max
                        }=Model
-		,ToAdd
+                ,ToAdd
                 ) ->
     case T + ToAdd of
         N when N > Max -> Model#state{current=Max};
@@ -257,9 +257,9 @@ maybe_add_tokens(#state{current=T
     end.
 
 adjust_for_time(#state{handled_ms=Handled
-		      ,fill_rate=FR
+                      ,fill_rate=FR
                       }=Model
-	       ,Wait
+               ,Wait
                ) ->
     case Handled + Wait of
         N when N < 1000 -> Model#state{handled_ms=N};
@@ -268,8 +268,8 @@ adjust_for_time(#state{handled_ms=Handled
     end.
 
 adjust_for_time(Model
-	       ,Elapsed
-	       ,Tokens
+               ,Elapsed
+               ,Tokens
                ) ->
     Model1 = maybe_add_tokens(Model, Tokens),
     Model1#state{handled_ms=(Elapsed rem 1000)}.
@@ -278,7 +278,7 @@ wait_tokens(Wait, FR) ->
     ((Wait div 1000) * FR).
 
 tokens_credit(Credit, #state{current=T
-			    ,max=M
+                            ,max=M
                             }=Model) ->
     case Credit + T of
         N when N > M -> Model#state{current=M};

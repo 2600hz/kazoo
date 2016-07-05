@@ -14,7 +14,7 @@
 
 -define(CACHE_PROFILE_FROM_FILE, kz_json:load_fixture_from_file('kazoo_data', "defaults", "perf.json")).
 -define(CACHE_PROFILE_OPTS, [{'origin', [{'db', ?KZ_CONFIG_DB, ?CONFIG_CAT}]}
-			    ,{'expires', 'infinity'}
+                            ,{'expires', 'infinity'}
                             ]).
 
 %% ====================================================================
@@ -83,13 +83,13 @@ do_profile({Mod, Fun, _Arity}, Args, PD) ->
     FromList = [{kz_util:to_atom(<<"from_", (kz_util:to_binary(K))/binary>>, true), V} || {K,V} <- maps:to_list(From)],
     MD = FromList ++ maps:to_list(maps:merge(Plan, PD)),
     data:debug([{'mod', Mod}
-	       ,{'func', Fun}
-	       ,{'plan', Plan}
-	       ,{'duration', Time}
-	       ,{'database', DbName}
-	       ,{'from', From}
-		| MD
-	       ],
-	       "execution of {~s:~s} in database ~s with args ~p took ~b",
-	       [Mod, Fun, DbName, Others, Time]),
+               ,{'func', Fun}
+               ,{'plan', Plan}
+               ,{'duration', Time}
+               ,{'database', DbName}
+               ,{'from', From}
+                | MD
+               ],
+               "execution of {~s:~s} in database ~s with args ~p took ~b",
+               [Mod, Fun, DbName, Others, Time]),
     Result.

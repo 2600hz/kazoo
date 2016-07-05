@@ -11,36 +11,36 @@
 
 %% Doc related
 -export([open_cache_doc/3, open_cache_doc/4
-	,add_to_doc_cache/3
-	,flush_cache_doc/2
-	,flush_cache_doc/3
-	,flush_cache_docs/0
-	,flush_cache_docs/1
-	,flush_cache_docs/2
-	,flush_cache_docs/3
+        ,add_to_doc_cache/3
+        ,flush_cache_doc/2
+        ,flush_cache_doc/3
+        ,flush_cache_docs/0
+        ,flush_cache_docs/1
+        ,flush_cache_docs/2
+        ,flush_cache_docs/3
         ]).
 
 
 -include("kz_data.hrl").
 
 -define(DEFAULT_NO_CACHING_TYPES, [<<"media">>, <<"private_media">>, <<"call_recording">>
-				  ,<<"fax">>, <<"mailbox_message">>
+                                  ,<<"fax">>, <<"mailbox_message">>
                                   ]).
 -define(NO_CACHING_TYPES, kapps_config:get(?CONFIG_CAT
-					  ,<<"no_caching_doc_types">>
-					  ,?DEFAULT_NO_CACHING_TYPES
-					  )).
+                                          ,<<"no_caching_doc_types">>
+                                          ,?DEFAULT_NO_CACHING_TYPES
+                                          )).
 -define(DEFAULT_CACHE_PERIOD, 15 * ?SECONDS_IN_MINUTE).
 -define(DEFAULT_CACHING_POLICY, kz_json:from_list(
-				  [{<<"deprecated">>, ?DEFAULT_CACHE_PERIOD}
-				  ,{<<"aggregate">>, ?DEFAULT_CACHE_PERIOD}
-				  ,{<<"numbers">>, ?DEFAULT_CACHE_PERIOD}
-				  ,{<<"modb">>, ?DEFAULT_CACHE_PERIOD}
-				  ,{<<"account">>, ?DEFAULT_CACHE_PERIOD}
-				  ,{<<"system">>, ?DEFAULT_CACHE_PERIOD}
-				  ,{<<"system_config">>, 'infinity'}
-				  ,{<<"system_data">>, 'infinity'}
-				  ])).
+                                  [{<<"deprecated">>, ?DEFAULT_CACHE_PERIOD}
+                                  ,{<<"aggregate">>, ?DEFAULT_CACHE_PERIOD}
+                                  ,{<<"numbers">>, ?DEFAULT_CACHE_PERIOD}
+                                  ,{<<"modb">>, ?DEFAULT_CACHE_PERIOD}
+                                  ,{<<"account">>, ?DEFAULT_CACHE_PERIOD}
+                                  ,{<<"system">>, ?DEFAULT_CACHE_PERIOD}
+                                  ,{<<"system_config">>, 'infinity'}
+                                  ,{<<"system_data">>, 'infinity'}
+                                  ])).
 
 -spec open_cache_doc(text(), ne_binary(), kz_proplist()) ->
                             {'ok', kz_json:object()} |
@@ -104,11 +104,11 @@ maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCo
 add_to_doc_cache(DbName, DocId, CacheValue) ->
     kz_cache:erase_local(?CACHE_NAME, {?MODULE, DbName, DocId}),
     CacheProps = [{'origin', {'db', DbName, DocId}}
-		 ,{'expires', expires_policy_value(DbName, CacheValue)}
+                 ,{'expires', expires_policy_value(DbName, CacheValue)}
                  ],
     case kz_json:is_json_object(CacheValue) of
         'true' ->
-	    cache_if_not_media(CacheProps, DbName, DocId, CacheValue);
+            cache_if_not_media(CacheProps, DbName, DocId, CacheValue);
         'false' ->
             kz_cache:store_local(?CACHE_NAME, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
     end.
@@ -122,14 +122,14 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
     %%   attachments).  What needs to happen is a change notice get sent on the
     %%   message bus anytime a http_put is issued (or maybe if the store
     %%   url is built in media IF everything uses that helper function,
-						%    which is not currently the case...)
+                                                %    which is not currently the case...)
     case kzs_util:db_classification(DbName) =/= 'system'
         andalso lists:member(kz_doc:type(CacheValue), ?NO_CACHING_TYPES) of
         'true' -> 'ok';
         'false' -> kz_cache:store_local(?CACHE_NAME
-				       ,{?MODULE, DbName, DocId}
-				       ,CacheValue
-				       ,CacheProps
+                                       ,{?MODULE, DbName, DocId}
+                                       ,CacheValue
+                                       ,CacheProps
                                        )
     end.
 

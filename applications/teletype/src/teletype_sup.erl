@@ -10,7 +10,7 @@
 -behaviour(supervisor).
 
 -export([start_link/0
-	,render_farm_name/0
+        ,render_farm_name/0
         ]).
 -export([init/1]).
 
@@ -23,16 +23,16 @@
 -define(POOL_OVERFLOW, 50).
 
 -define(POOL_ARGS, [[{'worker_module', 'teletype_renderer'}
-		    ,{'name', {'local', ?POOL_NAME}}
-		    ,{'size', ?POOL_SIZE}
-		    ,{'max_overflow', ?POOL_OVERFLOW}
+                    ,{'name', {'local', ?POOL_NAME}}
+                    ,{'size', ?POOL_SIZE}
+                    ,{'max_overflow', ?POOL_OVERFLOW}
                     ]]).
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE(?CACHE_NAME)
-		  ,?WORKER_NAME_ARGS('poolboy', ?POOL_NAME, ?POOL_ARGS)
-		  ,?WORKER('teletype_listener')
-		  ,?WORKER('teletype_shared_listener')
+                  ,?WORKER_NAME_ARGS('poolboy', ?POOL_NAME, ?POOL_ARGS)
+                  ,?WORKER('teletype_listener')
+                  ,?WORKER('teletype_shared_listener')
                   ]).
 
 %% ===================================================================

@@ -58,14 +58,14 @@ maybe_inbound_account_by_ip(Request, IP) ->
 inbound_account_by_ip(Request, IP) ->
     AccountId = j5_request:account_id(Request),
     lager:debug("source IP ~s belongs to account ~s, allowing"
-	       ,[IP, AccountId]
+               ,[IP, AccountId]
                ),
     Routines = [fun(R) ->
-			ResellerId = kz_services:find_reseller_id(AccountId),
-			j5_request:set_reseller_id(ResellerId, R)
-		end
-	       ,fun(R) -> j5_request:authorize_account(<<"limits_disabled">>, R) end
-	       ,fun(R) -> j5_request:authorize_reseller(<<"limits_disabled">>, R) end
+                        ResellerId = kz_services:find_reseller_id(AccountId),
+                        j5_request:set_reseller_id(ResellerId, R)
+                end
+               ,fun(R) -> j5_request:authorize_account(<<"limits_disabled">>, R) end
+               ,fun(R) -> j5_request:authorize_reseller(<<"limits_disabled">>, R) end
                ],
     send_response(lists:foldl(fun(F, R) -> F(R) end, Request, Routines)).
 
@@ -83,7 +83,7 @@ determine_account_id_from_number(Request) ->
              );
         {'error', _R} ->
             lager:debug("unable to determine account id for ~s: ~p"
-		       ,[Number, _R]
+                       ,[Number, _R]
                        ),
             'ok'
     end.
@@ -113,15 +113,15 @@ maybe_authz_local_resource(AccountId, Request) ->
 allow_local_resource(AccountId, Request) ->
     Number = j5_request:number(Request),
     lager:debug("number ~s is a local number for account ~s, allowing"
-	       ,[Number, AccountId]
+               ,[Number, AccountId]
                ),
     Routines = [fun(R) -> j5_request:set_account_id(AccountId, R) end
-	       ,fun(R) ->
-			ResellerId = kz_services:find_reseller_id(AccountId),
-			j5_request:set_reseller_id(ResellerId, R)
-		end
-	       ,fun(R) -> j5_request:authorize_account(<<"limits_disabled">>, R) end
-	       ,fun(R) -> j5_request:authorize_reseller(<<"limits_disabled">>, R) end
+               ,fun(R) ->
+                        ResellerId = kz_services:find_reseller_id(AccountId),
+                        j5_request:set_reseller_id(ResellerId, R)
+                end
+               ,fun(R) -> j5_request:authorize_account(<<"limits_disabled">>, R) end
+               ,fun(R) -> j5_request:authorize_reseller(<<"limits_disabled">>, R) end
                ],
     send_response(lists:foldl(fun(F, R) -> F(R) end, Request, Routines)).
 
@@ -139,7 +139,7 @@ maybe_account_limited(Request) ->
         'true' -> maybe_determine_reseller_id(R);
         'false' ->
             lager:debug("account ~s is not authorized to create this channel"
-		       ,[AccountId]
+                       ,[AccountId]
                        ),
             send_response(R)
     end.
@@ -178,7 +178,7 @@ check_reseller_limits(Request, ResellerId) ->
     R = maybe_authorize(Request, Limits),
     (not j5_request:is_authorized(R, Limits))
         andalso lager:debug("reseller ~s is not authorized to create this channel"
-			   ,[ResellerId]
+                           ,[ResellerId]
                            ),
     send_response(R).
 
@@ -189,7 +189,7 @@ maybe_authorize(Request, Limits) ->
         'true' -> maybe_authorize_exception(Request, Limits);
         'false' ->
             lager:debug("limits are disabled for account ~s"
-		       ,[j5_limits:account_id(Limits)]
+                       ,[j5_limits:account_id(Limits)]
                        ),
             j5_request:authorize(<<"limits_disabled">>, Request, Limits)
     end.
@@ -218,8 +218,8 @@ maybe_hard_limit(Request, Limits) ->
 -spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 authorize(Request, Limits) ->
     Routines = [fun j5_allotments:authorize/2
-	       ,fun j5_flat_rate:authorize/2
-	       ,fun j5_per_minute:authorize/2
+               ,fun j5_flat_rate:authorize/2
+               ,fun j5_per_minute:authorize/2
                ],
     maybe_soft_limit(
       lists:foldl(fun(F, R) ->
@@ -228,21 +228,21 @@ authorize(Request, Limits) ->
                               'true' -> R
                           end
                   end
-		 ,Request
-		 ,Routines
+                 ,Request
+                 ,Routines
                  )
-		    ,Limits
+                    ,Limits
      ).
 
 -spec maybe_soft_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_soft_limit(Request, Limits) ->
     case j5_request:is_authorized(Request) of
-	'true' -> Request;
-	'false' ->
-	    case j5_request:call_direction(Request) of
-		<<"outbound">> -> maybe_outbound_soft_limit(Request, Limits);
-		<<"inbound">> -> maybe_inbound_soft_limit(Request, Limits)
-	    end
+        'true' -> Request;
+        'false' ->
+            case j5_request:call_direction(Request) of
+                <<"outbound">> -> maybe_outbound_soft_limit(Request, Limits);
+                <<"inbound">> -> maybe_inbound_soft_limit(Request, Limits)
+            end
     end.
 
 -spec maybe_outbound_soft_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
@@ -288,24 +288,24 @@ send_response(Request) ->
     CCVs = kz_json:from_list(
              props:filter_undefined(
                [{<<"Account-Trunk-Usage">>, trunk_usage(j5_request:account_id(Request))}
-	       ,{<<"Reseller-Trunk-Usage">>, trunk_usage(j5_request:reseller_id(Request))}
-	       ,{<<"Outbound-Flags">>, OutboundFlags}
+               ,{<<"Reseller-Trunk-Usage">>, trunk_usage(j5_request:reseller_id(Request))}
+               ,{<<"Outbound-Flags">>, OutboundFlags}
                ]
               )
             ),
 
     Resp = props:filter_undefined(
              [{<<"Is-Authorized">>, kz_util:to_binary(j5_request:is_authorized(Request))}
-	     ,{<<"Account-ID">>, j5_request:account_id(Request)}
-	     ,{<<"Account-Billing">>, j5_request:account_billing(Request)}
-	     ,{<<"Reseller-ID">>, j5_request:reseller_id(Request)}
-	     ,{<<"Reseller-Billing">>, j5_request:reseller_billing(Request)}
-	     ,{<<"Call-Direction">>, j5_request:call_direction(Request)}
-	     ,{<<"Other-Leg-Call-ID">>, j5_request:other_leg_call_id(Request)}
-	     ,{<<"Soft-Limit">>, kz_util:to_binary(j5_request:soft_limit(Request))}
-	     ,{<<"Msg-ID">>, j5_request:message_id(Request)}
-	     ,{<<"Call-ID">>, j5_request:call_id(Request)}
-	     ,{<<"Custom-Channel-Vars">>, CCVs}
+             ,{<<"Account-ID">>, j5_request:account_id(Request)}
+             ,{<<"Account-Billing">>, j5_request:account_billing(Request)}
+             ,{<<"Reseller-ID">>, j5_request:reseller_id(Request)}
+             ,{<<"Reseller-Billing">>, j5_request:reseller_billing(Request)}
+             ,{<<"Call-Direction">>, j5_request:call_direction(Request)}
+             ,{<<"Other-Leg-Call-ID">>, j5_request:other_leg_call_id(Request)}
+             ,{<<"Soft-Limit">>, kz_util:to_binary(j5_request:soft_limit(Request))}
+             ,{<<"Msg-ID">>, j5_request:message_id(Request)}
+             ,{<<"Call-ID">>, j5_request:call_id(Request)}
+             ,{<<"Custom-Channel-Vars">>, CCVs}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
 

@@ -12,7 +12,7 @@
 -export([reload_gateways/1, reload_gateways_v/1]).
 -export([fs_xml_flush/1, fs_xml_flush_v/1]).
 -export([check_sync/1, check_sync_v/1
-	,check_sync_realm/1, check_sync_username/1
+        ,check_sync_realm/1, check_sync_username/1
         ]).
 -export([fs_command/1, fs_command_v/1]).
 -export([fs_reply/1, fs_reply_v/1]).
@@ -33,7 +33,7 @@
 -define(RELOAD_ACLS_HEADERS, []).
 -define(OPTIONAL_RELOAD_ACLS_HEADERS, []).
 -define(RELOAD_ACLS_VALUES, [{<<"Event-Name">>, <<"reload_acls">>}
-			    ,{<<"Event-Category">>, <<"switch_event">>}
+                            ,{<<"Event-Category">>, <<"switch_event">>}
                             ]).
 -define(RELOAD_ACLS_TYPES, []).
 -define(RELOAD_ACLS_KEY, <<"switch.reload_acls">>).
@@ -42,7 +42,7 @@
 -define(RELOAD_GATEWAYS_HEADERS, []).
 -define(OPTIONAL_RELOAD_GATEWAYS_HEADERS, []).
 -define(RELOAD_GATEWAYS_VALUES, [{<<"Event-Name">>, <<"reload_gateways">>}
-				,{<<"Event-Category">>, <<"switch_event">>}
+                                ,{<<"Event-Category">>, <<"switch_event">>}
                                 ]).
 -define(RELOAD_GATEWAYS_TYPES, []).
 -define(RELOAD_GATEWAYS_KEY, <<"switch.reload_gateways">>).
@@ -51,7 +51,7 @@
 -define(FS_XML_FLUSH_HEADERS, [<<"Username">>]).
 -define(OPTIONAL_FS_XML_FLUSH_HEADERS, [<<"Realm">>]).
 -define(FS_XML_FLUSH_VALUES, [{<<"Event-Name">>, <<"fs_xml_flush">>}
-			     ,{<<"Event-Category">>, <<"switch_event">>}
+                             ,{<<"Event-Category">>, <<"switch_event">>}
                              ]).
 -define(FS_XML_FLUSH_TYPES, []).
 -define(FS_XML_FLUSH_KEY, <<"switch.fs_xml_flush">>).
@@ -59,23 +59,23 @@
 -define(CHECK_SYNC_HEADERS, [<<"Username">>, <<"Realm">>]).
 -define(OPTIONAL_CHECK_SYNC_HEADERS, []).
 -define(CHECK_SYNC_VALUES, [{<<"Event-Category">>, <<"switch_event">>}
-			   ,{<<"Event-Name">>, <<"check_sync">>}
+                           ,{<<"Event-Name">>, <<"check_sync">>}
                            ]).
 -define(CHECK_SYNC_TYPES, []).
 -define(CHECK_SYNC_KEY(Realm, Username)
        ,kz_util:join_binary([<<"switch.check_sync">>
-			    ,amqp_util:encode(Realm)
-			    ,amqp_util:encode(Username)
-			    ]
-			   ,<<".">>
-			   )
+                            ,amqp_util:encode(Realm)
+                            ,amqp_util:encode(Username)
+                            ]
+                           ,<<".">>
+                           )
        ).
 
 %% request fs command
 -define(FS_COMMAND_HEADERS, [<<"Command">>, <<"Args">>]).
 -define(OPTIONAL_FS_COMMAND_HEADERS, [<<"FreeSWITCH-Node">>]).
 -define(FS_COMMAND_VALUES, [{<<"Event-Name">>, <<"command">>}
-			   ,{<<"Event-Category">>, <<"switch_event">>}
+                           ,{<<"Event-Category">>, <<"switch_event">>}
                            ]).
 -define(FS_COMMAND_TYPES, []).
 -define(FS_COMMAND_KEY(N), <<"switch.command.", (amqp_util:encode(N))/binary>>).
@@ -83,11 +83,11 @@
 %% reply fs command
 -define(FSREPLY_COMMAND_HEADERS, [<<"Command">>, <<"Result">>]).
 -define(OPTIONAL_FSREPLY_COMMAND_HEADERS, [<<"FreeSWITCH-Node">>
-					  ,<<"Error">>
-					  ,<<"Response">>
+                                          ,<<"Error">>
+                                          ,<<"Response">>
                                           ]).
 -define(FSREPLY_COMMAND_VALUES, [{<<"Event-Name">>, <<"reply">>}
-				,{<<"Event-Category">>, <<"switch_event">>}
+                                ,{<<"Event-Category">>, <<"switch_event">>}
                                 ]).
 -define(FSREPLY_COMMAND_TYPES, []).
 
@@ -279,8 +279,8 @@ publish_check_sync(Req, ContentType) ->
     Username = check_sync_username(Req),
 
     amqp_util:configuration_publish(?CHECK_SYNC_KEY(Realm, Username)
-				   ,Payload
-				   ,ContentType
+                                   ,Payload
+                                   ,ContentType
                                    ).
 
 -spec check_sync_realm(api_terms()) -> api_binary().

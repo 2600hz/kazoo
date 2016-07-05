@@ -9,30 +9,30 @@
 -module(kz_device).
 
 -export([sip_username/1, sip_username/2, set_sip_username/2
-	,sip_password/1, sip_password/2, set_sip_password/2
-	,sip_method/1, sip_method/2, set_sip_method/2
-	,sip_realm/1, sip_realm/2, set_sip_realm/2
-	,sip_ip/1, sip_ip/2, set_sip_ip/2
-	,sip_invite_format/1, sip_invite_format/2, set_sip_invite_format/2
-	,sip_route/1, sip_route/2, set_sip_route/2
-	,custom_sip_headers_inbound/1, custom_sip_headers_inbound/2, set_custom_sip_headers_inbound/2
-	,custom_sip_headers_outbound/1, custom_sip_headers_outbound/2, set_custom_sip_headers_outbound/2
+        ,sip_password/1, sip_password/2, set_sip_password/2
+        ,sip_method/1, sip_method/2, set_sip_method/2
+        ,sip_realm/1, sip_realm/2, set_sip_realm/2
+        ,sip_ip/1, sip_ip/2, set_sip_ip/2
+        ,sip_invite_format/1, sip_invite_format/2, set_sip_invite_format/2
+        ,sip_route/1, sip_route/2, set_sip_route/2
+        ,custom_sip_headers_inbound/1, custom_sip_headers_inbound/2, set_custom_sip_headers_inbound/2
+        ,custom_sip_headers_outbound/1, custom_sip_headers_outbound/2, set_custom_sip_headers_outbound/2
 
-	,sip_settings/1, sip_settings/2, set_sip_settings/2
+        ,sip_settings/1, sip_settings/2, set_sip_settings/2
 
-	,presence_id/1, presence_id/2, set_presence_id/2
-	,name/1, name/2, set_name/2
-	,mac_address/1, mac_address/2, set_mac_address/2
-	,language/1, language/2, set_language/2
-	,device_type/1, device_type/2, set_device_type/2
-	,owner_id/1, owner_id/2, set_owner_id/2
-	,enabled/1, enabled/2, set_enabled/2
-	,timezone/1, timezone/2
-	,unsolicitated_mwi_updates/1, set_unsolicitated_mwi_updates/2
+        ,presence_id/1, presence_id/2, set_presence_id/2
+        ,name/1, name/2, set_name/2
+        ,mac_address/1, mac_address/2, set_mac_address/2
+        ,language/1, language/2, set_language/2
+        ,device_type/1, device_type/2, set_device_type/2
+        ,owner_id/1, owner_id/2, set_owner_id/2
+        ,enabled/1, enabled/2, set_enabled/2
+        ,timezone/1, timezone/2
+        ,unsolicitated_mwi_updates/1, set_unsolicitated_mwi_updates/2
 
-	,new/0
-	,type/0
-	,is_device/1
+        ,new/0
+        ,type/0
+        ,is_device/1
         ]).
 
 -include("kz_documents.hrl").
@@ -40,7 +40,7 @@
 -type doc() :: kz_json:object().
 -type docs() :: [doc()].
 -export_type([doc/0
-	     ,docs/0
+             ,docs/0
              ]).
 
 -define(SIP, <<"sip">>).
@@ -138,7 +138,7 @@ custom_sip_headers_inbound(DeviceJObj) ->
 
 custom_sip_headers_inbound(DeviceJObj, Default) ->
     LegacyCSH = kz_json:filter(fun filter_custom_sip_headers/1
-			      ,kz_json:get_value(?CUSTOM_SIP_HEADERS_KV_ONLY, DeviceJObj, kz_json:new())),
+                              ,kz_json:get_value(?CUSTOM_SIP_HEADERS_KV_ONLY, DeviceJObj, kz_json:new())),
     InCSH = kz_json:get_value(?CUSTOM_SIP_HEADERS_IN, DeviceJObj, kz_json:new()),
     CustomHeaders = kz_json:merge_jobjs(InCSH, LegacyCSH),
     case kz_json:is_empty(CustomHeaders) of
@@ -218,8 +218,8 @@ presence_id(DeviceJObj, Default) ->
 set_presence_id(DeviceJObj, Id) ->
     kz_json:set_value(
       ?PRESENCE_ID
-		     ,kz_util:to_binary(Id)
-		     ,DeviceJObj
+                     ,kz_util:to_binary(Id)
+                     ,DeviceJObj
      ).
 
 -spec name(doc()) -> api_binary().

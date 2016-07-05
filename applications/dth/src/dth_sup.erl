@@ -19,7 +19,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE(?CACHE_NAME)
-		  ,?WORKER('dth_listener')
+                  ,?WORKER('dth_listener')
                   ]).
 
 %% ===================================================================

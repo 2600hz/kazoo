@@ -9,16 +9,16 @@
 -module(kzd_user).
 
 -export([email/1, email/2
-	,voicemail_notification_enabled/1, voicemail_notification_enabled/2
-	,to_vcard/1
-	,timezone/1, timezone/2
-	,presence_id/1, presence_id/2, set_presence_id/2
-	,is_enabled/1, is_enabled/2
-	,enable/1, disable/1
-	,type/0
-	,devices/1
-	,fetch/2
-	,fax_settings/1
+        ,voicemail_notification_enabled/1, voicemail_notification_enabled/2
+        ,to_vcard/1
+        ,timezone/1, timezone/2
+        ,presence_id/1, presence_id/2, set_presence_id/2
+        ,is_enabled/1, is_enabled/2
+        ,enable/1, disable/1
+        ,type/0
+        ,devices/1
+        ,fetch/2
+        ,fax_settings/1
         ]).
 
 -include("kz_documents.hrl").
@@ -51,25 +51,25 @@ voicemail_notification_enabled(User, Default) ->
 to_vcard(JObj) ->
     %% TODO add SOUND, AGENT (X-ASSISTANT), X-MANAGER
     Fields = [<<"BEGIN">>
-	     ,<<"VERSION">>
-	     ,<<"FN">>
-	     ,<<"N">>
-	     ,<<"ORG">>
-	     ,<<"PHOTO">>
-	     ,<<"EMAIL">>
-	     ,<<"BDAY">>
-	     ,<<"NOTE">>
-	     ,<<"TITLE">>
-	     ,<<"ROLE">>
-	     ,<<"TZ">>
-	     ,<<"NICKNAME">>
-	     ,<<"TEL">>
-	     ,<<"ADR">>
-	     ,<<"END">>
+             ,<<"VERSION">>
+             ,<<"FN">>
+             ,<<"N">>
+             ,<<"ORG">>
+             ,<<"PHOTO">>
+             ,<<"EMAIL">>
+             ,<<"BDAY">>
+             ,<<"NOTE">>
+             ,<<"TITLE">>
+             ,<<"ROLE">>
+             ,<<"TZ">>
+             ,<<"NICKNAME">>
+             ,<<"TEL">>
+             ,<<"ADR">>
+             ,<<"END">>
              ],
     NotEmptyFields = lists:foldl(fun vcard_fields_acc/2
-				,[]
-				,[card_field(Key, JObj) || Key <- Fields]
+                                ,[]
+                                ,[card_field(Key, JObj) || Key <- Fields]
                                 ),
     PackedFields = lists:reverse(
                      [kz_util:join_binary([X, Y], <<":">>) ||
@@ -133,10 +133,10 @@ card_field(Key = <<"FN">>, JObj) ->
     MiddleName = kz_json:get_value(<<"middle_name">>, JObj),
     {Key
     ,kz_util:join_binary([X || X <- [FirstName, MiddleName, LastName],
-			       not kz_util:is_empty(X)
-			 ]
-			,<<" ">>
-			)
+                               not kz_util:is_empty(X)
+                         ]
+                        ,<<" ">>
+                        )
     };
 card_field(Key = <<"N">>, JObj) ->
     FirstName = kz_json:get_value(<<"first_name">>, JObj),
@@ -222,8 +222,8 @@ presence_id(UserJObj, Default) ->
 set_presence_id(UserJObj, Id) ->
     kz_json:set_value(
       ?KEY_PRESENCE_ID
-		     ,kz_util:to_binary(Id)
-		     ,UserJObj
+                     ,kz_util:to_binary(Id)
+                     ,UserJObj
      ).
 
 -spec is_enabled(doc()) -> boolean().
@@ -249,8 +249,8 @@ devices(UserJObj) ->
     UserId = kz_doc:id(UserJObj),
 
     ViewOptions = [{'startkey', [UserId]}
-		  ,{'endkey', [UserId, kz_json:new()]}
-		  ,'include_docs'
+                  ,{'endkey', [UserId, kz_json:new()]}
+                  ,'include_docs'
                   ],
     case kz_datamgr:get_results(AccountDb, <<"kz_attributes/owned">>, ViewOptions) of
         {'ok', JObjs} -> [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
@@ -270,8 +270,8 @@ fetch(_, _) ->
 fax_settings(JObj) ->
     FaxSettings = kz_json:get_json_value(?FAX_SETTINGS_KEY, JObj, kz_json:new()),
     UserFaxSettings = case kz_json:get_value(?FAX_TIMEZONE_KEY, FaxSettings) of
-			  'undefined' -> kz_json:set_value(?FAX_TIMEZONE_KEY, timezone(JObj), FaxSettings);
-			  _ -> FaxSettings
-		      end,
+                          'undefined' -> kz_json:set_value(?FAX_TIMEZONE_KEY, timezone(JObj), FaxSettings);
+                          _ -> FaxSettings
+                      end,
     AccountFaxSettings = kz_account:fax_settings(kz_doc:account_id(JObj)),
     kz_json:merge_jobjs(UserFaxSettings, AccountFaxSettings).

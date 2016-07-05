@@ -12,11 +12,11 @@
 -module(cb_bulk).
 
 -export([init/0
-	,allowed_methods/0
-	,resource_exists/0
-	,validate/1
-	,post/1
-	,delete/1
+        ,allowed_methods/0
+        ,resource_exists/0
+        ,validate/1
+        ,post/1
+        ,delete/1
         ]).
 
 -include("crossbar.hrl").
@@ -120,13 +120,13 @@ follow_group(JObj, JObjs, Ids, Context) ->
         'success' ->
             NewJObjs = cb_context:doc(Context1),
             maybe_follow_groups(NewJObjs ++ JObjs
-			       ,sets:union(Ids, Members)
-			       ,Context);
+                               ,sets:union(Ids, Members)
+                               ,Context);
         _Else ->
             lager:info("failed to follow group, continuing"),
             maybe_follow_groups(JObjs
-			       ,sets:union(Ids, Members)
-			       ,Context)
+                               ,sets:union(Ids, Members)
+                               ,Context)
     end.
 
 -spec maybe_update_docs(cb_context:context()) -> cb_context:context().
@@ -144,7 +144,7 @@ revalidate_docs(Context) ->
     JObjs = cb_context:doc(Context),
     Context1 = cb_context:setters(Context
                                  ,[{fun cb_context:set_doc/2, []}
-				  ,{fun cb_context:set_resp_data/2, kz_json:new()}
+                                  ,{fun cb_context:set_resp_data/2, kz_json:new()}
                                   ]),
     revalidate_docs(JObjs, Context1).
 
@@ -168,23 +168,23 @@ revalidate_doc(Id, JObj, Context) ->
         'undefined' ->
             Details = [{'type', kz_doc:type(JObj)}],
             InterimContext = cb_context:add_system_error('invalid_bulk_type'
-							,kz_json:from_list(Details)
-							,cb_context:new()),
+                                                        ,kz_json:from_list(Details)
+                                                        ,cb_context:new()),
             import_results(Id, InterimContext, Context);
         Binding ->
             Setters = [{fun cb_context:set_req_verb/2, ?HTTP_POST}
-		      ,{fun cb_context:set_method/2, ?HTTP_POST}
-		      ,{fun cb_context:set_auth_token/2, cb_context:auth_token(Context)}
-		      ,{fun cb_context:set_auth_account_id/2, cb_context:auth_account_id(Context)}
-		      ,{fun cb_context:set_auth_doc/2, cb_context:auth_doc(Context)}
-		      ,{fun cb_context:set_account_id/2, cb_context:account_id(Context)}
-		      ,{fun cb_context:set_account_db/2, cb_context:account_db(Context)}
-		      ,{fun cb_context:set_req_id/2, cb_context:req_id(Context)}
-		      ,{fun cb_context:set_query_string/2, cb_context:query_string(Context)}
-		      ,{fun cb_context:set_doc/2, JObj}
-		      ,{fun cb_context:set_req_data/2, JObj}
-		      ,{fun cb_context:set_resp_status/2, 'fatal'}
-		      ,{fun cb_context:set_load_merge_bypass/2, JObj}
+                      ,{fun cb_context:set_method/2, ?HTTP_POST}
+                      ,{fun cb_context:set_auth_token/2, cb_context:auth_token(Context)}
+                      ,{fun cb_context:set_auth_account_id/2, cb_context:auth_account_id(Context)}
+                      ,{fun cb_context:set_auth_doc/2, cb_context:auth_doc(Context)}
+                      ,{fun cb_context:set_account_id/2, cb_context:account_id(Context)}
+                      ,{fun cb_context:set_account_db/2, cb_context:account_db(Context)}
+                      ,{fun cb_context:set_req_id/2, cb_context:req_id(Context)}
+                      ,{fun cb_context:set_query_string/2, cb_context:query_string(Context)}
+                      ,{fun cb_context:set_doc/2, JObj}
+                      ,{fun cb_context:set_req_data/2, JObj}
+                      ,{fun cb_context:set_resp_status/2, 'fatal'}
+                      ,{fun cb_context:set_load_merge_bypass/2, JObj}
                       ],
             C = cb_context:setters(cb_context:new(), Setters),
             Payload = [C, Id],
@@ -225,22 +225,22 @@ maybe_save_doc(Id, JObj, DbDoc, Context) ->
         'undefined' ->
             Details = [{'type', kz_doc:type(JObj)}],
             InterimContext = cb_context:add_system_error('invalid_bulk_type'
-							,kz_json:from_list(Details)
-							,cb_context:new()),
+                                                        ,kz_json:from_list(Details)
+                                                        ,cb_context:new()),
             import_results(Id, InterimContext, Context);
         Binding ->
             Setters = [{fun cb_context:set_req_verb/2, ?HTTP_POST}
-		      ,{fun cb_context:set_method/2, ?HTTP_POST}
-		      ,{fun cb_context:set_auth_token/2, cb_context:auth_token(Context)}
-		      ,{fun cb_context:set_auth_account_id/2, cb_context:auth_account_id(Context)}
-		      ,{fun cb_context:set_auth_doc/2, cb_context:auth_doc(Context)}
-		      ,{fun cb_context:set_account_id/2, cb_context:account_id(Context)}
-		      ,{fun cb_context:set_account_db/2, cb_context:account_db(Context)}
-		      ,{fun cb_context:set_req_id/2, cb_context:req_id(Context)}
-		      ,{fun cb_context:set_query_string/2, cb_context:query_string(Context)}
-		      ,{fun cb_context:set_doc/2, JObj}
-		      ,{fun cb_context:set_req_data/2, JObj}
-		      ,{fun cb_context:set_resp_status/2, 'success'}
+                      ,{fun cb_context:set_method/2, ?HTTP_POST}
+                      ,{fun cb_context:set_auth_token/2, cb_context:auth_token(Context)}
+                      ,{fun cb_context:set_auth_account_id/2, cb_context:auth_account_id(Context)}
+                      ,{fun cb_context:set_auth_doc/2, cb_context:auth_doc(Context)}
+                      ,{fun cb_context:set_account_id/2, cb_context:account_id(Context)}
+                      ,{fun cb_context:set_account_db/2, cb_context:account_db(Context)}
+                      ,{fun cb_context:set_req_id/2, cb_context:req_id(Context)}
+                      ,{fun cb_context:set_query_string/2, cb_context:query_string(Context)}
+                      ,{fun cb_context:set_doc/2, JObj}
+                      ,{fun cb_context:set_req_data/2, JObj}
+                      ,{fun cb_context:set_resp_status/2, 'success'}
                       ],
             C = cb_context:setters(cb_context:new(), Setters),
             Payload = [cb_context:store(C, 'db_doc', DbDoc), Id],
@@ -277,22 +277,22 @@ maybe_delete_doc(Id, JObj, DbDoc, Context) ->
         'undefined' ->
             Details = [{'type', kz_doc:type(JObj)}],
             InterimContext = cb_context:add_system_error('invalid_bulk_type'
-							,kz_json:from_list(Details)
-							,cb_context:new()
+                                                        ,kz_json:from_list(Details)
+                                                        ,cb_context:new()
                                                         ),
             import_results(Id, InterimContext, Context);
         Binding ->
             Setters = [{fun cb_context:set_req_verb/2, ?HTTP_DELETE}
-		      ,{fun cb_context:set_method/2, ?HTTP_DELETE}
-		      ,{fun cb_context:set_auth_token/2, cb_context:auth_token(Context)}
-		      ,{fun cb_context:set_auth_account_id/2, cb_context:auth_account_id(Context)}
-		      ,{fun cb_context:set_auth_doc/2, cb_context:auth_doc(Context)}
-		      ,{fun cb_context:set_account_id/2, cb_context:account_id(Context)}
-		      ,{fun cb_context:set_account_db/2, cb_context:account_db(Context)}
-		      ,{fun cb_context:set_req_id/2, cb_context:req_id(Context)}
-		      ,{fun cb_context:set_query_string/2, cb_context:query_string(Context)}
-		      ,{fun cb_context:set_doc/2, JObj}
-		      ,{fun cb_context:set_req_data/2, JObj}
+                      ,{fun cb_context:set_method/2, ?HTTP_DELETE}
+                      ,{fun cb_context:set_auth_token/2, cb_context:auth_token(Context)}
+                      ,{fun cb_context:set_auth_account_id/2, cb_context:auth_account_id(Context)}
+                      ,{fun cb_context:set_auth_doc/2, cb_context:auth_doc(Context)}
+                      ,{fun cb_context:set_account_id/2, cb_context:account_id(Context)}
+                      ,{fun cb_context:set_account_db/2, cb_context:account_db(Context)}
+                      ,{fun cb_context:set_req_id/2, cb_context:req_id(Context)}
+                      ,{fun cb_context:set_query_string/2, cb_context:query_string(Context)}
+                      ,{fun cb_context:set_doc/2, JObj}
+                      ,{fun cb_context:set_req_data/2, JObj}
                       ],
             C = cb_context:setters(cb_context:new(), Setters),
             Payload = [cb_context:store(C, 'db_doc', DbDoc), Id],
@@ -322,15 +322,15 @@ import_results_success(Id, C, Context) ->
     DbDoc = select_doc(Id, cb_context:fetch(Context, 'db_doc')),
     Resp = kz_json:from_list([{<<"status">>, <<"success">>}]),
     cb_context:setters(Context
-		      ,[{fun cb_context:set_resp_data/2, kz_json:set_value(Id, Resp, JObj)}
-		       ,{fun cb_context:set_doc/2
-			,[kz_json:from_list([{<<"doc">>, Doc}
-					    ,{<<"db_doc">>, DbDoc}
-					    ])
-			  | Docs
-			 ]
-			}
-		       ]).
+                      ,[{fun cb_context:set_resp_data/2, kz_json:set_value(Id, Resp, JObj)}
+                       ,{fun cb_context:set_doc/2
+                        ,[kz_json:from_list([{<<"doc">>, Doc}
+                                            ,{<<"db_doc">>, DbDoc}
+                                            ])
+                          | Docs
+                         ]
+                        }
+                       ]).
 
 -spec import_results_error(ne_binary(), cb_context:context(), cb_context:context()) ->
                                   cb_context:context().
@@ -341,9 +341,9 @@ import_results_error(Id, C, Context) ->
     Errors    = cb_context:resp_data(C),
     JObj      = cb_context:resp_data(Context),
     Resp = kz_json:from_list([{<<"status">>, Status}
-			     ,{<<"error">>, ErrorCode}
-			     ,{<<"message">>, ErrorMsg}
-			     ,{<<"data">>, Errors}
+                             ,{<<"error">>, ErrorCode}
+                             ,{<<"message">>, ErrorMsg}
+                             ,{<<"data">>, Errors}
                              ]),
     cb_context:set_resp_data(Context, kz_json:set_value(Id, Resp, JObj)).
 

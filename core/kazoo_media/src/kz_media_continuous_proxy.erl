@@ -10,8 +10,8 @@
 -module(kz_media_continuous_proxy).
 
 -export([init/3
-	,terminate/3
-	,handle/2
+        ,terminate/3
+        ,handle/2
         ]).
 
 -include("kazoo_media.hrl").
@@ -63,21 +63,21 @@ handle(Req0, {Meta, Bin}) ->
                    Req1 = set_resp_headers(Req0, ChunkSize, ContentType, MediaName, Url),
                    cowboy_req:set_resp_body_fun(
                      Size
-					       ,fun(Socket, Transport) ->
-							lager:debug("ready to stream file using transport ~p to socket ~p", [Transport, Socket]),
-							kz_media_proxy_util:stream(Socket, Transport, ChunkSize, Bin
-										  ,kz_media_proxy_util:get_shout_header(MediaName, Url)
-										  , 'true')
-						end
-					       ,Req1);
+                                               ,fun(Socket, Transport) ->
+                                                        lager:debug("ready to stream file using transport ~p to socket ~p", [Transport, Socket]),
+                                                        kz_media_proxy_util:stream(Socket, Transport, ChunkSize, Bin
+                                                                                  ,kz_media_proxy_util:get_shout_header(MediaName, Url)
+                                                                                  , 'true')
+                                                end
+                                               ,Req1);
                CT ->
                    cowboy_req:set_resp_body_fun(
                      Size
-					       ,fun(Socket, Transport) ->
-							lager:debug("ready to stream file using transport ~p to socket ~p", [Transport, Socket]),
-							kz_media_proxy_util:stream(Socket, Transport, ChunkSize, Bin, 'undefined', 'false')
-						end
-					       ,set_resp_headers(Req0, CT))
+                                               ,fun(Socket, Transport) ->
+                                                        lager:debug("ready to stream file using transport ~p to socket ~p", [Transport, Socket]),
+                                                        kz_media_proxy_util:stream(Socket, Transport, ChunkSize, Bin, 'undefined', 'false')
+                                                end
+                                               ,set_resp_headers(Req0, CT))
            end,
 
     {'ok', Req3} = cowboy_req:reply(200, Req2),
@@ -93,7 +93,7 @@ set_resp_headers(Req, ContentType) ->
     lists:foldl(fun({K,V}, Req0Acc) ->
                         cowboy_req:set_resp_header(K, V, Req0Acc)
                 end, Req, [{<<"Server">>, list_to_binary([?APP_NAME, "/", ?APP_VERSION])}
-			  ,{<<"Content-Type">>, ContentType}
+                          ,{<<"Content-Type">>, ContentType}
                           ]
                ).
 
@@ -103,14 +103,14 @@ set_resp_headers(Req, ChunkSize, ContentType, MediaName, Url) ->
     lists:foldl(fun({K,V}, Req0Acc) ->
                         cowboy_req:set_resp_header(K, V, Req0Acc)
                 end, Req, [{<<"Server">>, list_to_binary([?APP_NAME, "/", ?APP_VERSION])}
-			  ,{<<"Content-Type">>, ContentType}
-			  ,{<<"icy-notice1">>, <<"MediaMgr">>}
-			  ,{<<"icy-name">>, MediaName}
-			  ,{<<"icy-genre">>, <<"Kazoo Media">>}
-			  ,{<<"icy-url">>, Url}
-			  ,{<<"content-type">>, ContentType}
-			  ,{<<"icy-pub">>, <<"1">>}
-			  ,{<<"icy-metaint">>, kz_util:to_binary(ChunkSize)}
-			  ,{<<"icy-br">>, <<"8">>}
+                          ,{<<"Content-Type">>, ContentType}
+                          ,{<<"icy-notice1">>, <<"MediaMgr">>}
+                          ,{<<"icy-name">>, MediaName}
+                          ,{<<"icy-genre">>, <<"Kazoo Media">>}
+                          ,{<<"icy-url">>, Url}
+                          ,{<<"content-type">>, ContentType}
+                          ,{<<"icy-pub">>, <<"1">>}
+                          ,{<<"icy-metaint">>, kz_util:to_binary(ChunkSize)}
+                          ,{<<"icy-br">>, <<"8">>}
                           ]
                ).

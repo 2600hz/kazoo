@@ -17,7 +17,7 @@
         ,read/1
         ,all/0, all/1
         ,remove/1
-	]).
+        ]).
 
 %%% API used by workers
 -export([worker_finished/4
@@ -982,7 +982,7 @@ find_API_errors(API, Fields, HasInputData) ->
                  case Mandatory -- Fields of
                      [] -> Errors;
                      Missing -> Errors#{?KZ_TASKS_INPUT_ERROR_MMF => Missing}
-		 end
+                 end
          end
         ,fun (Errors) ->
                  case Fields -- (Mandatory ++ optional(API)) of

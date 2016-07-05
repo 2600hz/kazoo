@@ -10,17 +10,17 @@
 
 %% DB operations
 -export([db_compact/2
-	,db_create/2
-	,db_create/3
-	,db_delete/2
-	,db_replicate/2
-	,db_view_cleanup/2
-	,db_view_update/4
-	,db_info/1
-	,db_info/2
-	,db_exists/2, db_exists_all/2
-	,db_archive/3
-	,db_list/2
+        ,db_create/2
+        ,db_create/3
+        ,db_delete/2
+        ,db_replicate/2
+        ,db_view_cleanup/2
+        ,db_view_update/4
+        ,db_info/1
+        ,db_info/2
+        ,db_exists/2, db_exists_all/2
+        ,db_archive/3
+        ,db_list/2
         ]).
 
 -include("kz_data.hrl").
@@ -65,8 +65,8 @@ do_db_delete(#{server := {App, Conn}}, DbName) ->
     App:db_delete(Conn, DbName).
 
 -spec db_replicate(map(), kz_json:object() | kz_proplist()) ->
-			  {'ok', kz_json:object()} |
-			  data_error().
+                          {'ok', kz_json:object()} |
+                          data_error().
 db_replicate(#{server := {App, Conn}}, Prop) ->
     App:db_replicate(Conn,Prop).
 

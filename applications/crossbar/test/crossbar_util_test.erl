@@ -24,10 +24,10 @@ change_in_servers_test_() ->
     Servers = kz_json:get_value(<<"servers">>, JObj, []),
 
     Keys = [[<<"auth">>, <<"auth_method">>]
-	   ,[<<"auth">>, <<"ip">>]
-	   ,[<<"auth">>, <<"auth_user">>]
-	   ,[<<"auth">>, <<"auth_password">>]
-	   ,[<<"options">>, <<"enabled">>]
+           ,[<<"auth">>, <<"ip">>]
+           ,[<<"auth">>, <<"auth_user">>]
+           ,[<<"auth">>, <<"auth_password">>]
+           ,[<<"options">>, <<"enabled">>]
            ],
 
     [{"Verifying multiple changes results in a change required"
@@ -50,8 +50,8 @@ change_server_keys(Ks, Servers) ->
     lists:foldl(fun(K, Acc) ->
                         change_server(K, Acc)
                 end
-	       ,Servers
-	       ,Ks
+               ,Servers
+               ,Ks
                ).
 
 change_server([<<"options">>, <<"enabled">>] = Key, Servers) ->

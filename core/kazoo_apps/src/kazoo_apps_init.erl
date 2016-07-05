@@ -9,7 +9,7 @@
 -module(kazoo_apps_init).
 
 -export([start_link/0
-	,init/0
+        ,init/0
         ]).
 
 -include("kazoo_apps.hrl").

@@ -45,9 +45,9 @@ url(TransactionId) ->
 
 url(TransactionId, Options) ->
     lists:append(["/transactions/"
-		 ,kz_util:to_list(TransactionId)
-		 ,"/"
-		 ,kz_util:to_list(Options)
+                 ,kz_util:to_list(TransactionId)
+                 ,"/"
+                 ,kz_util:to_list(Options)
                  ]).
 
 %%--------------------------------------------------------------------
@@ -82,14 +82,14 @@ find_by_customer(CustomerId) ->
 find_by_customer(CustomerId, Min, Max) ->
     Url = url(<<"advanced_search">>),
     Props = [{'customer_id', [{'is', CustomerId}]}
-	    ,{'created_at', [{'checked', <<"created">>}
-			    ,{'min', Min}
-			    ,{'min_hour', 0}
-			    ,{'min_minute', 0}
-			    ,{'max', Max}
-			    ,{'max_hour', 23}
-			    ,{'max_minute', 59}
-			    ]}
+            ,{'created_at', [{'checked', <<"created">>}
+                            ,{'min', Min}
+                            ,{'min_hour', 0}
+                            ,{'min_minute', 0}
+                            ,{'max', Max}
+                            ,{'max_hour', 23}
+                            ,{'max_minute', 59}
+                            ]}
             ],
     Request = braintree_util:make_doc_xml(Props, 'search'),
     Xml = braintree_request:post(Url, Request),
@@ -135,7 +135,7 @@ sale(Transaction) ->
 
 sale(CustomerId, Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_SALE
-				     ,customer_id=CustomerId
+                                     ,customer_id=CustomerId
                                      }).
 
 -spec quick_sale(ne_binary(), number() | ne_binary()) -> bt_transaction().
@@ -167,14 +167,14 @@ credit(Transaction) ->
 
 credit(CustomerId, Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_CREDIT
-				     ,customer_id=CustomerId
+                                     ,customer_id=CustomerId
                                      }).
 
 -spec quick_credit(ne_binary(), ne_binary()) -> bt_transaction().
 quick_credit(CustomerId, Amount) ->
     credit(CustomerId, #bt_transaction{amount=kz_util:to_binary(Amount)
-				      ,settle='false'
-				      ,tax_exempt='false'
+                                      ,settle='false'
+                                      ,tax_exempt='false'
                                       }).
 
 %%--------------------------------------------------------------------
@@ -282,8 +282,8 @@ get_status_history(Xml, Base) ->
                              (_) -> 'false'
                           end, Sources ++ Users)}
     ,{'is_recurring', lists:any(fun(<<"recurring">>) -> 'true';
-				   (_) -> 'false'
-				end, Sources)}
+                                   (_) -> 'false'
+                                end, Sources)}
     ].
 
 -spec get_users(bt_xml(), api_binaries()) -> api_binaries().
@@ -312,15 +312,15 @@ record_to_xml(Transaction) ->
 
 record_to_xml(#bt_transaction{}=Transaction, ToString) ->
     Props = [{'type', Transaction#bt_transaction.type}
-	    ,{'amount', Transaction#bt_transaction.amount}
-	    ,{'customer-id', Transaction#bt_transaction.customer_id}
-	    ,{'merchant-account-id', Transaction#bt_transaction.merchant_account_id}
-	    ,{'order-id', Transaction#bt_transaction.order_id}
-	    ,{'purchase-order-number', Transaction#bt_transaction.purchase_order}
-	    ,{'payment-method-token', Transaction#bt_transaction.payment_token}
-	    ,{'shipping-address-id', Transaction#bt_transaction.shipping_address_id}
-	    ,{'tax-amount', Transaction#bt_transaction.tax_amount}
-	    ,{'tax-exempt', Transaction#bt_transaction.tax_exempt}
+            ,{'amount', Transaction#bt_transaction.amount}
+            ,{'customer-id', Transaction#bt_transaction.customer_id}
+            ,{'merchant-account-id', Transaction#bt_transaction.merchant_account_id}
+            ,{'order-id', Transaction#bt_transaction.order_id}
+            ,{'purchase-order-number', Transaction#bt_transaction.purchase_order}
+            ,{'payment-method-token', Transaction#bt_transaction.payment_token}
+            ,{'shipping-address-id', Transaction#bt_transaction.shipping_address_id}
+            ,{'tax-amount', Transaction#bt_transaction.tax_amount}
+            ,{'tax-exempt', Transaction#bt_transaction.tax_exempt}
             ],
     Conditionals = [fun(#bt_transaction{billing_address='undefined'}, P) -> P;
                        (#bt_transaction{billing_address=BA}, P) ->
@@ -401,45 +401,45 @@ record_to_xml(#bt_transaction{}=Transaction, ToString) ->
 -spec record_to_json(bt_transaction()) -> kz_json:object().
 record_to_json(#bt_transaction{}=Transaction) ->
     Props = [{<<"id">>, Transaction#bt_transaction.id}
-	    ,{<<"status">>, Transaction#bt_transaction.status}
-	    ,{<<"type">>, Transaction#bt_transaction.type}
-	    ,{<<"currency_code">>, Transaction#bt_transaction.currency_code}
-	    ,{<<"amount">>, Transaction#bt_transaction.amount}
-	    ,{<<"merchant_account_id">>, Transaction#bt_transaction.merchant_account_id}
-	    ,{<<"order_id">>, Transaction#bt_transaction.order_id}
-	    ,{<<"purchase_order">>, Transaction#bt_transaction.purchase_order}
-	    ,{<<"created_at">>, Transaction#bt_transaction.created_at}
-	    ,{<<"update_at">>, Transaction#bt_transaction.update_at}
-	    ,{<<"refund_id">>, Transaction#bt_transaction.refund_id}
-	    ,{<<"refunded_transaction">>, Transaction#bt_transaction.refunded_transaction}
-	    ,{<<"settlement_batch">>, Transaction#bt_transaction.settlement_batch}
-	    ,{<<"avs_error_code">>, Transaction#bt_transaction.avs_error_code}
-	    ,{<<"avs_postal_response">>, Transaction#bt_transaction.avs_postal_response}
-	    ,{<<"avs_street_response">>, Transaction#bt_transaction.avs_street_response}
-	    ,{<<"ccv_response_code">>, Transaction#bt_transaction.ccv_response_code}
-	    ,{<<"gateway_rejection">>, Transaction#bt_transaction.gateway_rejection}
-	    ,{<<"processor_authorization_code">>, Transaction#bt_transaction.processor_authorization_code}
-	    ,{<<"processor_response_code">>, Transaction#bt_transaction.processor_response_code}
-	    ,{<<"processor_response_text">>, Transaction#bt_transaction.processor_response_text}
-	    ,{<<"tax_amount">>, Transaction#bt_transaction.tax_amount}
-	    ,{<<"tax_exempt">>, Transaction#bt_transaction.tax_exempt}
-	    ,{<<"billing_address">>, braintree_address:record_to_json(Transaction#bt_transaction.billing_address)}
-	    ,{<<"shipping_address_id">>, Transaction#bt_transaction.shipping_address_id}
-	    ,{<<"shipping_address">>, braintree_address:record_to_json(Transaction#bt_transaction.shipping_address)}
-	    ,{<<"customer_id">>, Transaction#bt_transaction.customer_id}
-	    ,{<<"customer">>, braintree_customer:record_to_json(Transaction#bt_transaction.customer)}
-	    ,{<<"payment_token">>, Transaction#bt_transaction.payment_token}
-	    ,{<<"card">>, braintree_card:record_to_json(Transaction#bt_transaction.card)}
-	    ,{<<"subscription_id">>, Transaction#bt_transaction.subscription_id}
-	    ,{<<"add_ons">>, [braintree_addon:record_to_json(Addon)
-			      || Addon <- Transaction#bt_transaction.add_ons
-			     ]}
-	    ,{<<"discounts">>, [braintree_discount:record_to_json(Discounts)
-				|| Discounts <- Transaction#bt_transaction.discounts
-			       ]}
-	    ,{<<"is_api">>, Transaction#bt_transaction.is_api}
-	    ,{<<"is_automatic">>, Transaction#bt_transaction.is_automatic}
-	    ,{<<"is_recurring">>, Transaction#bt_transaction.is_recurring}
+            ,{<<"status">>, Transaction#bt_transaction.status}
+            ,{<<"type">>, Transaction#bt_transaction.type}
+            ,{<<"currency_code">>, Transaction#bt_transaction.currency_code}
+            ,{<<"amount">>, Transaction#bt_transaction.amount}
+            ,{<<"merchant_account_id">>, Transaction#bt_transaction.merchant_account_id}
+            ,{<<"order_id">>, Transaction#bt_transaction.order_id}
+            ,{<<"purchase_order">>, Transaction#bt_transaction.purchase_order}
+            ,{<<"created_at">>, Transaction#bt_transaction.created_at}
+            ,{<<"update_at">>, Transaction#bt_transaction.update_at}
+            ,{<<"refund_id">>, Transaction#bt_transaction.refund_id}
+            ,{<<"refunded_transaction">>, Transaction#bt_transaction.refunded_transaction}
+            ,{<<"settlement_batch">>, Transaction#bt_transaction.settlement_batch}
+            ,{<<"avs_error_code">>, Transaction#bt_transaction.avs_error_code}
+            ,{<<"avs_postal_response">>, Transaction#bt_transaction.avs_postal_response}
+            ,{<<"avs_street_response">>, Transaction#bt_transaction.avs_street_response}
+            ,{<<"ccv_response_code">>, Transaction#bt_transaction.ccv_response_code}
+            ,{<<"gateway_rejection">>, Transaction#bt_transaction.gateway_rejection}
+            ,{<<"processor_authorization_code">>, Transaction#bt_transaction.processor_authorization_code}
+            ,{<<"processor_response_code">>, Transaction#bt_transaction.processor_response_code}
+            ,{<<"processor_response_text">>, Transaction#bt_transaction.processor_response_text}
+            ,{<<"tax_amount">>, Transaction#bt_transaction.tax_amount}
+            ,{<<"tax_exempt">>, Transaction#bt_transaction.tax_exempt}
+            ,{<<"billing_address">>, braintree_address:record_to_json(Transaction#bt_transaction.billing_address)}
+            ,{<<"shipping_address_id">>, Transaction#bt_transaction.shipping_address_id}
+            ,{<<"shipping_address">>, braintree_address:record_to_json(Transaction#bt_transaction.shipping_address)}
+            ,{<<"customer_id">>, Transaction#bt_transaction.customer_id}
+            ,{<<"customer">>, braintree_customer:record_to_json(Transaction#bt_transaction.customer)}
+            ,{<<"payment_token">>, Transaction#bt_transaction.payment_token}
+            ,{<<"card">>, braintree_card:record_to_json(Transaction#bt_transaction.card)}
+            ,{<<"subscription_id">>, Transaction#bt_transaction.subscription_id}
+            ,{<<"add_ons">>, [braintree_addon:record_to_json(Addon)
+                              || Addon <- Transaction#bt_transaction.add_ons
+                             ]}
+            ,{<<"discounts">>, [braintree_discount:record_to_json(Discounts)
+                                || Discounts <- Transaction#bt_transaction.discounts
+                               ]}
+            ,{<<"is_api">>, Transaction#bt_transaction.is_api}
+            ,{<<"is_automatic">>, Transaction#bt_transaction.is_automatic}
+            ,{<<"is_recurring">>, Transaction#bt_transaction.is_recurring}
             ],
     kz_json:from_list(props:filter_undefined(Props)).
 
@@ -448,49 +448,49 @@ json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_transaction{
        id = kz_doc:id(JObj)
-		   ,status = kz_json:get_binary_value(<<"status">>, JObj)
-		   ,type = kz_json:get_binary_value(<<"type">>, JObj)
-		   ,currency_code = kz_json:get_binary_value(<<"currency_code">>, JObj)
-		   ,amount = kz_json:get_binary_value(<<"amount">>, JObj)
-		   ,merchant_account_id = kz_json:get_binary_value(<<"merchant_account_id">>, JObj)
-		   ,order_id = kz_json:get_binary_value(<<"order_id">>, JObj)
-		   ,purchase_order = kz_json:get_binary_value(<<"purchase_order">>, JObj)
-		   ,created_at = kz_json:get_binary_value(<<"created_at">>, JObj)
-		   ,update_at = kz_json:get_binary_value(<<"update_at">>, JObj)
-		   ,refund_id = kz_json:get_binary_value(<<"refund_id">>, JObj)
-		   ,refund_ids = kz_json:get_binary_value(<<"refund_ids">>, JObj)
-		   ,refunded_transaction = kz_json:get_binary_value(<<"refunded_transaction">>, JObj)
-		   ,settlement_batch = kz_json:get_binary_value(<<"settlement_batch">>, JObj)
-		   ,avs_error_code = kz_json:get_binary_value(<<"avs_error_code">>, JObj)
-		   ,avs_postal_response = kz_json:get_binary_value(<<"avs_postal_response">>, JObj)
-		   ,avs_street_response = kz_json:get_binary_value(<<"avs_street_response">>, JObj)
-		   ,ccv_response_code = kz_json:get_binary_value(<<"ccv_response_code">>, JObj)
-		   ,gateway_rejection = kz_json:get_binary_value(<<"gateway_rejection">>, JObj)
-		   ,processor_authorization_code = kz_json:get_binary_value(<<"processor_authorization_code">>, JObj)
-		   ,processor_response_code = kz_json:get_binary_value(<<"processor_response_code">>, JObj)
-		   ,processor_response_text = kz_json:get_binary_value(<<"processor_response_text">>, JObj)
-		   ,tax_amount = kz_json:get_binary_value(<<"tax_amount">>, JObj)
-		   ,tax_exempt = kz_json:get_value(<<"tax_exempt">>, JObj, 'false')
-		   ,billing_address = braintree_address:json_to_record(kz_json:get_value(<<"billing_address">>, JObj))
-		   ,shipping_address_id  = kz_json:get_binary_value(<<"shipping_address_id">>, JObj)
-		   ,shipping_address = braintree_address:json_to_record(kz_json:get_value(<<"shipping_address">>, JObj))
-		   ,customer_id = kz_json:get_binary_value(<<"customer_id">>, JObj)
-		   ,customer = braintree_customer:json_to_record(kz_json:get_value(<<"customer">>, JObj))
-		   ,payment_token = kz_json:get_binary_value(<<"payment_token">>, JObj)
-		   ,card = braintree_card:json_to_record(kz_json:get_value(<<"customer">>, JObj))
-		   ,subscription_id = kz_json:get_binary_value(<<"subscription_id">>, JObj)
-		   ,add_ons = [braintree_addon:json_to_record(Addon)
-			       || Addon <- kz_json:get_value(<<"add_ons">>, JObj, [])
-			      ]
-		   ,discounts = [braintree_discount:json_to_record(Discount)
-				 || Discount <- kz_json:get_value(<<"discounts">>, JObj, [])
-				]
-		   ,descriptor = kz_json:get_binary_value(<<"descriptor">>, JObj)
-		   ,store_in_vault = kz_json:get_value(<<"store_in_vault">>, JObj, 'false')
-		   ,store_on_success = kz_json:get_value(<<"store_on_success">>, JObj, 'false')
-		   ,change_billing_address = kz_json:get_value(<<"change_billing_address">>, JObj, 'false')
-		   ,store_shipping_address = kz_json:get_value(<<"store_shipping_address">>, JObj, 'false')
-		   ,is_api = kz_json:is_true(<<"is_api">>, JObj)
-		   ,is_automatic = kz_json:is_true(<<"is_automatic">>, JObj)
-		   ,is_recurring = kz_json:is_true(<<"is_recurring">>, JObj)
+                   ,status = kz_json:get_binary_value(<<"status">>, JObj)
+                   ,type = kz_json:get_binary_value(<<"type">>, JObj)
+                   ,currency_code = kz_json:get_binary_value(<<"currency_code">>, JObj)
+                   ,amount = kz_json:get_binary_value(<<"amount">>, JObj)
+                   ,merchant_account_id = kz_json:get_binary_value(<<"merchant_account_id">>, JObj)
+                   ,order_id = kz_json:get_binary_value(<<"order_id">>, JObj)
+                   ,purchase_order = kz_json:get_binary_value(<<"purchase_order">>, JObj)
+                   ,created_at = kz_json:get_binary_value(<<"created_at">>, JObj)
+                   ,update_at = kz_json:get_binary_value(<<"update_at">>, JObj)
+                   ,refund_id = kz_json:get_binary_value(<<"refund_id">>, JObj)
+                   ,refund_ids = kz_json:get_binary_value(<<"refund_ids">>, JObj)
+                   ,refunded_transaction = kz_json:get_binary_value(<<"refunded_transaction">>, JObj)
+                   ,settlement_batch = kz_json:get_binary_value(<<"settlement_batch">>, JObj)
+                   ,avs_error_code = kz_json:get_binary_value(<<"avs_error_code">>, JObj)
+                   ,avs_postal_response = kz_json:get_binary_value(<<"avs_postal_response">>, JObj)
+                   ,avs_street_response = kz_json:get_binary_value(<<"avs_street_response">>, JObj)
+                   ,ccv_response_code = kz_json:get_binary_value(<<"ccv_response_code">>, JObj)
+                   ,gateway_rejection = kz_json:get_binary_value(<<"gateway_rejection">>, JObj)
+                   ,processor_authorization_code = kz_json:get_binary_value(<<"processor_authorization_code">>, JObj)
+                   ,processor_response_code = kz_json:get_binary_value(<<"processor_response_code">>, JObj)
+                   ,processor_response_text = kz_json:get_binary_value(<<"processor_response_text">>, JObj)
+                   ,tax_amount = kz_json:get_binary_value(<<"tax_amount">>, JObj)
+                   ,tax_exempt = kz_json:get_value(<<"tax_exempt">>, JObj, 'false')
+                   ,billing_address = braintree_address:json_to_record(kz_json:get_value(<<"billing_address">>, JObj))
+                   ,shipping_address_id  = kz_json:get_binary_value(<<"shipping_address_id">>, JObj)
+                   ,shipping_address = braintree_address:json_to_record(kz_json:get_value(<<"shipping_address">>, JObj))
+                   ,customer_id = kz_json:get_binary_value(<<"customer_id">>, JObj)
+                   ,customer = braintree_customer:json_to_record(kz_json:get_value(<<"customer">>, JObj))
+                   ,payment_token = kz_json:get_binary_value(<<"payment_token">>, JObj)
+                   ,card = braintree_card:json_to_record(kz_json:get_value(<<"customer">>, JObj))
+                   ,subscription_id = kz_json:get_binary_value(<<"subscription_id">>, JObj)
+                   ,add_ons = [braintree_addon:json_to_record(Addon)
+                               || Addon <- kz_json:get_value(<<"add_ons">>, JObj, [])
+                              ]
+                   ,discounts = [braintree_discount:json_to_record(Discount)
+                                 || Discount <- kz_json:get_value(<<"discounts">>, JObj, [])
+                                ]
+                   ,descriptor = kz_json:get_binary_value(<<"descriptor">>, JObj)
+                   ,store_in_vault = kz_json:get_value(<<"store_in_vault">>, JObj, 'false')
+                   ,store_on_success = kz_json:get_value(<<"store_on_success">>, JObj, 'false')
+                   ,change_billing_address = kz_json:get_value(<<"change_billing_address">>, JObj, 'false')
+                   ,store_shipping_address = kz_json:get_value(<<"store_shipping_address">>, JObj, 'false')
+                   ,is_api = kz_json:is_true(<<"is_api">>, JObj)
+                   ,is_automatic = kz_json:is_true(<<"is_automatic">>, JObj)
+                   ,is_recurring = kz_json:is_true(<<"is_recurring">>, JObj)
       }.

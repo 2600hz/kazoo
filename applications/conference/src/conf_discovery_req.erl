@@ -39,7 +39,7 @@ welcome_to_conference(Call, Srv, DiscoveryJObj) ->
         'undefined' -> kapps_call_command:prompt(<<"conf-welcome">>, Call);
         Media -> kapps_call_command:play(
                    kz_media_util:media_path(Media, kapps_call:account_id(Call))
-					,Call
+                                        ,Call
                   )
     end,
     maybe_collect_conference_id(Call, Srv, DiscoveryJObj).
@@ -69,13 +69,13 @@ collect_conference_id(Call, Srv, DiscoveryJObj) ->
     end.
 
 -spec maybe_set_conference_tones(kapps_conference:conference(), kz_json:object()) ->
-					kapps_conference:conference().
+                                        kapps_conference:conference().
 maybe_set_conference_tones(Conference, JObj) ->
     ShouldPlayOnEntry = kz_json:get_ne_value(<<"Play-Entry-Tone">>, JObj, kapps_conference:play_entry_tone(Conference)),
     ShouldPlayOnExit = kz_json:get_ne_value(<<"Play-Exit-Tone">>, JObj, kapps_conference:play_exit_tone(Conference)),
     kapps_conference:set_play_entry_tone(ShouldPlayOnEntry
-					,kapps_conference:set_play_exit_tone(ShouldPlayOnExit, Conference)
-					).
+                                        ,kapps_conference:set_play_exit_tone(ShouldPlayOnExit, Conference)
+                                        ).
 
 -spec maybe_collect_conference_pin(kapps_conference:conference(), kapps_call:call(), pid()) -> 'ok'.
 maybe_collect_conference_pin(Conference, Call, Srv) ->
@@ -132,8 +132,8 @@ collect_conference_pin(Type, Conference, Call, Srv) ->
 -spec prepare_kapps_conference(kapps_conference:conference(), kapps_call:call(), pid()) -> 'ok'.
 prepare_kapps_conference(Conference, Call, Srv) ->
     Routines = [{fun kapps_conference:set_application_version/2, ?APP_VERSION}
-	       ,{fun kapps_conference:set_application_name/2, ?APP_NAME}
-	       ,{fun maybe_set_as_moderator/2, Srv}
+               ,{fun kapps_conference:set_application_name/2, ?APP_NAME}
+               ,{fun maybe_set_as_moderator/2, Srv}
                ],
     C = kapps_conference:update(Routines, Conference),
     search_for_conference(C, Call, Srv).
@@ -303,7 +303,7 @@ validate_conference_id(ConferenceId, Call, Loop) ->
 validate_collected_conference_id(Call, Loop, Digits) ->
     AccountDb = kapps_call:account_db(Call),
     ViewOptions = [{'key', Digits}
-		  ,'include_docs'
+                  ,'include_docs'
                   ],
     case kz_datamgr:get_results(AccountDb, <<"conference/listing_by_number">>, ViewOptions) of
         {'ok', [JObj]} ->
@@ -353,9 +353,9 @@ validate_if_pin_is_for_moderator(Conference, Call, Loop, Digits) ->
     case {(lists:member(Digits, MemberPins)
            orelse (MemberPins =:= [] andalso Digits =:= <<>>)
           )
-	 ,(lists:member(Digits, ModeratorPins)
-	   orelse (MemberPins =:= [] andalso Digits =:= <<>>)
-	  )
+         ,(lists:member(Digits, ModeratorPins)
+           orelse (MemberPins =:= [] andalso Digits =:= <<>>)
+          )
          }
     of
         {'true', _} ->
@@ -412,7 +412,7 @@ create_conference(JObj, Digits, Call) ->
     ModeratorNumbers = kz_json:get_value([<<"moderator">>, <<"numbers">>], JObj, []),
     MemberNumbers = kz_json:get_value([<<"member">>, <<"numbers">>], JObj, []),
     case {lists:member(Digits, MemberNumbers)
-	 ,lists:member(Digits, ModeratorNumbers)
+         ,lists:member(Digits, ModeratorNumbers)
          }
     of
         {'true', 'false'} ->

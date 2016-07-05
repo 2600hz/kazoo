@@ -29,9 +29,9 @@ exec(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
     end;
 exec(Call
     ,[#xmlElement{name='Number'
-		 ,content=Number
-		 ,attributes=Attrs
-		 }
+                 ,content=Number
+                 ,attributes=Attrs
+                 }
      ]
     ,Attrs) ->
     lager:debug("single <Number>"),
@@ -51,8 +51,8 @@ exec(Call
             dial_me(Call, Attrs, DialMe)
     end;
 exec(Call, [#xmlElement{name='Conference'
-		       ,content=ConfIdTxts
-		       ,attributes=ConfAttrs
+                       ,content=ConfIdTxts
+                       ,attributes=ConfAttrs
                        }], DialAttrs) ->
     kapps_call_command:answer(Call),
 
@@ -63,15 +63,15 @@ exec(Call, [#xmlElement{name='Conference'
     DialProps = kz_xml:attributes_to_proplist(DialAttrs),
 
     gen_listener:add_binding(kzt_util:get_amqp_listener(Call)
-			    ,'conference'
-			    ,[{'restrict_to', ['config']}
-			     ,{'profile', ConfId}
-			     ]),
+                            ,'conference'
+                            ,[{'restrict_to', ['config']}
+                             ,{'profile', ConfId}
+                             ]),
 
     ConfDoc = build_conference_doc(ConfId, ConfProps),
     ConfReq = [{<<"Call">>, kapps_call:to_json(Call)}
-	      ,{<<"Conference-Doc">>, ConfDoc}
-	      ,{<<"Moderator">>, props:get_is_true('startConferenceOnEnter', ConfProps, 'true')}
+              ,{<<"Conference-Doc">>, ConfDoc}
+              ,{<<"Moderator">>, props:get_is_true('startConferenceOnEnter', ConfProps, 'true')}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kapi_conference:publish_discovery_req(ConfReq),
@@ -85,7 +85,7 @@ exec(Call, [#xmlElement{name='Conference'
     {'ok', Call1} = kzt_receiver:wait_for_conference(
                       kzt_util:update_call_status(?STATUS_ANSWERED, setup_call_for_dial(
                                                                       add_conference_profile(Call, ConfProps)
-										       ,DialProps
+                                                                                       ,DialProps
                                                                      ))
                      ),
 
@@ -95,8 +95,8 @@ exec(Call, [#xmlElement{name='Conference'
     {'stop', Call1};
 
 exec(Call, [#xmlElement{name='Queue'
-		       ,content=QueueIdTxts
-		       ,attributes=QueueAttrs
+                       ,content=QueueIdTxts
+                       ,attributes=QueueAttrs
                        }], DialAttrs) ->
     DialProps = kz_xml:attributes_to_proplist(DialAttrs),
 
@@ -109,7 +109,7 @@ exec(Call, [#xmlElement{name='Queue'
 
     Call1 = setup_call_for_dial(
               kzt_util:set_queue_sid(QueueId, Call)
-			       ,DialProps
+                               ,DialProps
              ),
 
     lager:info("dialing into queue ~s, unsupported", [QueueId]),
@@ -135,7 +135,7 @@ exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
 
             {'ok', Call2} = kzt_receiver:wait_for_offnet(
                               kzt_util:update_call_status(?STATUS_RINGING, Call1)
-							,Props
+                                                        ,Props
                              ),
             maybe_end_dial(Call2, Props)
     end.
@@ -146,28 +146,28 @@ dial_me(Call, Attrs, DialMe) ->
     Props = kz_xml:attributes_to_proplist(Attrs),
 
     Call1 = setup_call_for_dial(kapps_call:set_request(request_id(DialMe, Call), Call)
-			       ,Props
+                               ,Props
                                ),
 
     OffnetProps = [{<<"Timeout">>, kzt_util:get_call_timeout(Call1)}
-		  ,{<<"Media">>, media_processing(Call1)}
-		  ,{<<"Force-Outbound">>, force_outbound(Props)}
-		  ,{<<"Server-ID">>, kapps_call:controller_queue(Call1)}
+                  ,{<<"Media">>, media_processing(Call1)}
+                  ,{<<"Force-Outbound">>, force_outbound(Props)}
+                  ,{<<"Server-ID">>, kapps_call:controller_queue(Call1)}
                   ],
     'ok' = kzt_util:offnet_req(OffnetProps, Call1),
 
     {'ok', Call2} = kzt_receiver:wait_for_offnet(
                       kzt_util:update_call_status(?STATUS_RINGING, Call1)
-						,Props
+                                                ,Props
                      ),
     maybe_end_dial(Call2, Props).
 
 send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
     B = [{<<"Application-Name">>, <<"bridge">>}
-	,{<<"Endpoints">>, EPs}
-	,{<<"Timeout">>, Timeout}
-	,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-	,{<<"Dial-Endpoint-Method">>, Strategy}
+        ,{<<"Endpoints">>, EPs}
+        ,{<<"Timeout">>, Timeout}
+        ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+        ,{<<"Dial-Endpoint-Method">>, Strategy}
          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     kapps_call_command:send_command(B, Call).
@@ -175,10 +175,10 @@ send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
 -spec setup_call_for_dial(kapps_call:call(), kz_proplist()) -> kapps_call:call().
 setup_call_for_dial(Call, Props) ->
     Setters = [{fun kapps_call:set_caller_id_number/2, caller_id(Props, Call)}
-	      ,{fun kzt_util:set_hangup_dtmf/2, hangup_dtmf(Props)}
-	      ,{fun kzt_util:set_record_call/2, should_record_call(Props)}
-	      ,{fun kzt_util:set_call_timeout/2, kzt_twiml_util:timeout_s(Props)}
-	      ,{fun kzt_util:set_call_time_limit/2, timelimit_s(Props)}
+              ,{fun kzt_util:set_hangup_dtmf/2, hangup_dtmf(Props)}
+              ,{fun kzt_util:set_record_call/2, should_record_call(Props)}
+              ,{fun kzt_util:set_call_timeout/2, kzt_twiml_util:timeout_s(Props)}
+              ,{fun kzt_util:set_call_time_limit/2, timelimit_s(Props)}
               ],
     kapps_call:exec(Setters, Call).
 
@@ -197,7 +197,7 @@ maybe_end_dial(Call, Props, ActionUrl) ->
     Method = kzt_util:http_method(Props),
 
     Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
-	      ,{fun kzt_util:set_voice_uri/2, NewUri}
+              ,{fun kzt_util:set_voice_uri/2, NewUri}
               ],
     {'request', kapps_call:exec(Setters, Call)}.
 
@@ -225,8 +225,8 @@ xml_elements_to_endpoints(Call, EPs) ->
 
 xml_elements_to_endpoints(_, [], Acc) -> Acc;
 xml_elements_to_endpoints(Call, [#xmlElement{name='Device'
-					    ,content=DeviceIdTxt
-					    ,attributes=_DeviceAttrs
+                                            ,content=DeviceIdTxt
+                                            ,attributes=_DeviceAttrs
                                             }
                                  | EPs], Acc
                          ) ->
@@ -242,7 +242,7 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='User'
                                             ,content=UserIdTxt
                                             ,attributes=_UserAttrs
                                             }
-				 | EPs], Acc) ->
+                                 | EPs], Acc) ->
     UserId = kz_xml:texts_to_binary(UserIdTxt),
     lager:debug("maybe adding user ~s to ring group", [UserId]),
 
@@ -253,8 +253,8 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='User'
         UserEPs -> xml_elements_to_endpoints(Call, EPs, UserEPs ++ Acc)
     end;
 xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
-					    ,content=Number
-					    ,attributes=Attrs
+                                            ,content=Number
+                                            ,attributes=Attrs
                                             }
                                  | EPs], Acc) ->
     Props = kz_xml:attributes_to_proplist(Attrs),
@@ -268,8 +268,8 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
     lager:debug("maybe add number ~s: send ~s", [DialMe, SendDigits]),
 
     CallFwd = kz_json:from_list([{<<"number">>, DialMe}
-				,{<<"require_keypress">>, 'false'}
-				,{<<"substribute">>, 'true'}
+                                ,{<<"require_keypress">>, 'false'}
+                                ,{<<"substribute">>, 'true'}
                                 ]),
     Endpoint = kz_json:from_list([{<<"call_forward">>, CallFwd}]),
     EP = kz_endpoint:create_call_fwd_endpoint(Endpoint, kz_json:new(), Call),
@@ -277,8 +277,8 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
     xml_elements_to_endpoints(Call, EPs, [EP|Acc]);
 
 xml_elements_to_endpoints(Call, [#xmlElement{name='Sip'
-					    ,content=Number
-					    ,attributes=Attrs
+                                            ,content=Number
+                                            ,attributes=Attrs
                                             }
                                  | EPs], Acc) ->
     _Props = kz_xml:attributes_to_proplist(Attrs),
@@ -305,10 +305,10 @@ sip_uri(Call, URI) ->
 -spec sip_device(ne_binary()) -> kz_device:doc().
 sip_device(URI) ->
     lists:foldl(fun({F, V}, D) -> F(D, V) end
-	       ,kz_device:new()
-	       ,[{fun kz_device:set_sip_invite_format/2, <<"route">>}
-		,{fun kz_device:set_sip_route/2, knm_sip:encode(URI)}
-		]).
+               ,kz_device:new()
+               ,[{fun kz_device:set_sip_invite_format/2, <<"route">>}
+                ,{fun kz_device:set_sip_route/2, knm_sip:encode(URI)}
+                ]).
 
 request_id(N, Call) -> iolist_to_binary([N, <<"@">>, kapps_call:from_realm(Call)]).
 
@@ -363,14 +363,14 @@ build_conference_doc(ConfId, ConfProps) ->
     StartOnEnter = props:is_true('startConferenceOnEnter', ConfProps),
 
     kz_json:from_list([{<<"name">>, ConfId}
-		      ,{<<"play_welcome">>, 'false'}
-		      ,{<<"play_entry_tone">>, props:is_true('beep', ConfProps, 'true')}
-		      ,{<<"member">>, member_flags(ConfProps, StartOnEnter)}
-		      ,{<<"moderator">>, moderator_flags(ConfProps, StartOnEnter)}
-		      ,{<<"require_moderator">>, require_moderator(StartOnEnter)}
-		      ,{<<"wait_for_moderator">>, 'true'}
-		      ,{<<"max_members">>, get_max_participants(ConfProps)}
-		      ,{<<"profile">>, ConfId}
+                      ,{<<"play_welcome">>, 'false'}
+                      ,{<<"play_entry_tone">>, props:is_true('beep', ConfProps, 'true')}
+                      ,{<<"member">>, member_flags(ConfProps, StartOnEnter)}
+                      ,{<<"moderator">>, moderator_flags(ConfProps, StartOnEnter)}
+                      ,{<<"require_moderator">>, require_moderator(StartOnEnter)}
+                      ,{<<"wait_for_moderator">>, 'true'}
+                      ,{<<"max_members">>, get_max_participants(ConfProps)}
+                      ,{<<"profile">>, ConfId}
                       ]).
 
 require_moderator('undefined') -> 'false';
@@ -380,16 +380,16 @@ require_moderator('false') -> 'true'.
 member_flags(_, 'true') -> kz_json:new();
 member_flags(ConfProps, _) ->
     kz_json:from_list([{<<"join_muted">>, props:is_true('muted', ConfProps, 'false')}
-		      ,{<<"join_deaf">>, props:is_true('deaf', ConfProps, 'false')}
-		      ,{<<"play_name">>, props:is_true('play_name', ConfProps, 'false')}
-		      ,{<<"play_entry_prompt">>, props:is_true('play_entry_prompt', ConfProps, 'true')}
+                      ,{<<"join_deaf">>, props:is_true('deaf', ConfProps, 'false')}
+                      ,{<<"play_name">>, props:is_true('play_name', ConfProps, 'false')}
+                      ,{<<"play_entry_prompt">>, props:is_true('play_entry_prompt', ConfProps, 'true')}
                       ]).
 
 moderator_flags(ConfProps, 'true') ->
     kz_json:from_list([{<<"join_muted">>, props:is_true('muted', ConfProps, 'false')}
-		      ,{<<"join_deaf">>, props:is_true('deaf', ConfProps, 'false')}
-		      ,{<<"play_name">>, props:is_true('play_name', ConfProps, 'false')}
-		      ,{<<"play_entry_prompt">>, props:is_true('play_entry_prompt', ConfProps, 'true')}
+                      ,{<<"join_deaf">>, props:is_true('deaf', ConfProps, 'false')}
+                      ,{<<"play_name">>, props:is_true('play_name', ConfProps, 'false')}
+                      ,{<<"play_entry_prompt">>, props:is_true('play_entry_prompt', ConfProps, 'true')}
                       ]);
 moderator_flags(_, _) -> kz_json:new().
 
@@ -404,22 +404,22 @@ add_conference_profile(Call, ConfProps) ->
     Profile = kz_json:from_list(
                 props:filter_undefined(
                   [{<<"rate">>, props:get_integer_value('rate', ConfProps, 8000)}
-		  ,{<<"caller-controls">>, props:get_integer_value('callerControls', ConfProps, 8000)}
-		  ,{<<"interval">>, props:get_integer_value('inteval', ConfProps, 20)}
-		  ,{<<"energy-level">>, props:get_integer_value('energyLevel', ConfProps, 20)}
-		  ,{<<"member-flags">>, conference_member_flags(ConfProps)}
-		  ,{<<"conference-flags">>, conference_flags(ConfProps)}
-		  ,{<<"tts-engine">>, kzt_twiml_util:get_engine(ConfProps)}
-		  ,{<<"tts-voice">>, kzt_twiml_util:get_voice(ConfProps)}
-		  ,{<<"max-members">>, get_max_participants(ConfProps)}
-		  ,{<<"comfort-noise">>, props:get_integer_value('comfortNoise', ConfProps, 1000)}
-		  ,{<<"annouce-count">>, props:get_integer_value('announceCount', ConfProps)}
-		  ,{<<"caller-controls">>, props:get_value('callerControls', ConfProps, <<"default">>)}
-		  ,{<<"moderator-controls">>, props:get_value('callerControls', ConfProps, <<"default">>)}
-		  ,{<<"caller-id-name">>, props:get_value('callerIdName', ConfProps, kz_util:anonymous_caller_id_name())}
-		  ,{<<"caller-id-number">>, props:get_value('callerIdNumber', ConfProps, kz_util:anonymous_caller_id_number())}
-						%,{<<"suppress-events">>, <<>>} %% add events to make FS less chatty
-		  ,{<<"moh-sound">>, props:get_value('waitUrl', ConfProps, <<"http://com.twilio.music.classical.s3.amazonaws.com/Mellotroniac_-_Flight_Of_Young_Hearts_Flute.mp3">>)}
+                  ,{<<"caller-controls">>, props:get_integer_value('callerControls', ConfProps, 8000)}
+                  ,{<<"interval">>, props:get_integer_value('inteval', ConfProps, 20)}
+                  ,{<<"energy-level">>, props:get_integer_value('energyLevel', ConfProps, 20)}
+                  ,{<<"member-flags">>, conference_member_flags(ConfProps)}
+                  ,{<<"conference-flags">>, conference_flags(ConfProps)}
+                  ,{<<"tts-engine">>, kzt_twiml_util:get_engine(ConfProps)}
+                  ,{<<"tts-voice">>, kzt_twiml_util:get_voice(ConfProps)}
+                  ,{<<"max-members">>, get_max_participants(ConfProps)}
+                  ,{<<"comfort-noise">>, props:get_integer_value('comfortNoise', ConfProps, 1000)}
+                  ,{<<"annouce-count">>, props:get_integer_value('announceCount', ConfProps)}
+                  ,{<<"caller-controls">>, props:get_value('callerControls', ConfProps, <<"default">>)}
+                  ,{<<"moderator-controls">>, props:get_value('callerControls', ConfProps, <<"default">>)}
+                  ,{<<"caller-id-name">>, props:get_value('callerIdName', ConfProps, kz_util:anonymous_caller_id_name())}
+                  ,{<<"caller-id-number">>, props:get_value('callerIdNumber', ConfProps, kz_util:anonymous_caller_id_number())}
+                                                %,{<<"suppress-events">>, <<>>} %% add events to make FS less chatty
+                  ,{<<"moh-sound">>, props:get_value('waitUrl', ConfProps, <<"http://com.twilio.music.classical.s3.amazonaws.com/Mellotroniac_-_Flight_Of_Young_Hearts_Flute.mp3">>)}
                   ])),
     kzt_util:set_conference_profile(Profile, Call).
 
@@ -435,7 +435,7 @@ conference_member_flags(ConfProps) ->
         'false' -> 'undefined'
     end.
 
-						% copy of cf_user:get_endpoints/3
+                                                % copy of cf_user:get_endpoints/3
 -spec get_endpoints(api_binary(), kz_json:object(), kapps_call:call()) ->
                            kz_json:objects().
 get_endpoints('undefined', _, _) -> [];

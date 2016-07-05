@@ -26,9 +26,9 @@
 
 -define(SW_NUMBER_URL
        ,kapps_config:get_string(?KNM_SW_CONFIG_CAT
-			       ,<<"numbers_api_url">>
-			       ,<<"https://api.simwood.com/v3/numbers">>
-			       )
+                               ,<<"numbers_api_url">>
+                               ,<<"https://api.simwood.com/v3/numbers">>
+                               )
        ).
 
 -define(SW_ACCOUNT_ID, kapps_config:get_string(?KNM_SW_CONFIG_CAT, <<"simwood_account_id">>, <<>>)).
@@ -132,9 +132,9 @@ should_lookup_cnam() -> 'true'.
 query_simwood(URL, Verb) ->
     lager:debug("Querying Simwood. Verb: ~p. URL: ~p.", [Verb, URL]),
     HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}
-		  ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
-		  ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
-		  ,{'basic_auth', {?SW_AUTH_USERNAME, ?SW_AUTH_PASSWORD}}
+                  ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
+                  ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+                  ,{'basic_auth', {?SW_AUTH_USERNAME, ?SW_AUTH_PASSWORD}}
                   ],
     case kz_http:req(Verb, kz_util:to_binary(URL), [], [], HTTPOptions) of
         {'ok', _Resp, _RespHeaders, Body} ->
@@ -170,7 +170,7 @@ process_response(JObjs, Options) ->
            ]}.
 
 -spec response_jobj_to_number(kz_json:object(), api_binary()) ->
-				     knm_number:knm_number_return().
+                                     knm_number:knm_number_return().
 response_jobj_to_number(JObj, AccountId) ->
     Num = kz_json:get_value(<<"number">>, JObj),
     knm_carriers:create_found(Num, ?MODULE, AccountId, JObj).

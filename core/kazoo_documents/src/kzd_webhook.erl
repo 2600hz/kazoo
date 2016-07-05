@@ -11,18 +11,18 @@
 -module(kzd_webhook).
 
 -export([is_enabled/1, is_enabled/2
-	,is_auto_disabled/1
-	,enable/1
-	,disable/1, disable/2
-	,disabled_message/1, disabled_message/2
-	,type/0, type/1
-	,name/1, name/2, set_name/2
-	,uri/1, uri/2, set_uri/2
-	,event/1, event/2, set_event/2
-	,verb/1, verb/2, set_verb/2
-	,retries/1, retries/2, set_retries/2
-	,custom_data/1, custom_data/2, set_custom_data/2
-	,modifiers/1, modifiers/2, set_modifiers/2
+        ,is_auto_disabled/1
+        ,enable/1
+        ,disable/1, disable/2
+        ,disabled_message/1, disabled_message/2
+        ,type/0, type/1
+        ,name/1, name/2, set_name/2
+        ,uri/1, uri/2, set_uri/2
+        ,event/1, event/2, set_event/2
+        ,verb/1, verb/2, set_verb/2
+        ,retries/1, retries/2, set_retries/2
+        ,custom_data/1, custom_data/2, set_custom_data/2
+        ,modifiers/1, modifiers/2, set_modifiers/2
         ]).
 
 -include("kz_documents.hrl").
@@ -51,8 +51,8 @@ is_enabled(Hook, Default) ->
 -spec enable(doc()) -> doc().
 enable(Hook) ->
     kz_json:set_value(?IS_ENABLED
-		     ,'true'
-		     ,kz_json:delete_key(?DISABLED_MESSAGE, Hook)
+                     ,'true'
+                     ,kz_json:delete_key(?DISABLED_MESSAGE, Hook)
                      ).
 
 -spec disable(doc()) -> doc().
@@ -63,9 +63,9 @@ disable(Hook, Reason) ->
     kz_json:set_values(
       props:filter_undefined(
         [{?IS_ENABLED, 'false'}
-	,{?DISABLED_MESSAGE, Reason}
+        ,{?DISABLED_MESSAGE, Reason}
         ])
-		      ,Hook
+                      ,Hook
      ).
 
 -spec disabled_message(doc()) -> api_binary().

@@ -12,24 +12,24 @@
 -module(cb_skels).
 
 -export([init/0
-	,authenticate/1
-	,authorize/1
-	,allowed_methods/0, allowed_methods/1
-	,resource_exists/0, resource_exists/1
-	,content_types_provided/1
-	,content_types_accepted/1
-	,languages_provided/1
-	,charsets_provided/1
-	,encodings_provided/1
-	,validate/1, validate/2
-	,billing/1
-	,put/1
-	,post/2
-	,patch/2
-	,delete/2
-	,etag/1
-	,expires/1
-	,finish_request/1
+        ,authenticate/1
+        ,authorize/1
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,content_types_provided/1
+        ,content_types_accepted/1
+        ,languages_provided/1
+        ,charsets_provided/1
+        ,encodings_provided/1
+        ,validate/1, validate/2
+        ,billing/1
+        ,put/1
+        ,post/2
+        ,patch/2
+        ,delete/2
+        ,etag/1
+        ,expires/1
+        ,finish_request/1
         ]).
 
 -include("crossbar.hrl").

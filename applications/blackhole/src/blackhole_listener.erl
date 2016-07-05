@@ -10,17 +10,17 @@
 -behaviour(gen_listener).
 
 -export([start_link/0
-	,handle_amqp_event/3
-	,add_call_binding/1, remove_call_binding/1
-	,add_binding/2, remove_binding/2
+        ,handle_amqp_event/3
+        ,add_call_binding/1, remove_call_binding/1
+        ,add_binding/2, remove_binding/2
         ]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("blackhole.hrl").
@@ -33,8 +33,8 @@
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, []).
 -define(RESPONDERS, [{{?MODULE, 'handle_amqp_event'}
-		     ,[{<<"*">>, <<"*">>}]
-		     }
+                     ,[{<<"*">>, <<"*">>}]
+                     }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -50,13 +50,13 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
-			   ,?MODULE
-			   ,[{'bindings', ?BINDINGS}
-			    ,{'responders', ?RESPONDERS}
-			    ,{'queue_name', ?QUEUE_NAME}       % optional to include
-			    ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-			    ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-			    ], []).
+                           ,?MODULE
+                           ,[{'bindings', ?BINDINGS}
+                            ,{'responders', ?RESPONDERS}
+                            ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                            ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                            ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                            ], []).
 
 -spec handle_amqp_event(kz_json:object(), kz_proplist(), gen_listener:basic_deliver() | ne_binary()) -> any().
 handle_amqp_event(EventJObj, Props, #'basic.deliver'{routing_key=RoutingKey}) ->

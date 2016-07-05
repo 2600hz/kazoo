@@ -14,11 +14,11 @@
 -export([start_link/0]).
 -export([cleanup_jobs/0]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("fax.hrl").
@@ -107,8 +107,8 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info('timeout', State) ->
     ViewOptions = ['reduce'
-		  ,'group'
-		  ,{'group_level', 1}
+                  ,'group'
+                  ,{'group_level', 1}
                   ],
     case kz_datamgr:get_result_keys(?KZ_FAXES_DB, <<"faxes/schedule_accounts">>, ViewOptions) of
         {'ok', []} -> {'noreply', State, ?POLLING_INTERVAL};
@@ -162,7 +162,7 @@ maybe_start_account('true', _AccountId) -> 'ok';
 maybe_start_account('false', AccountId) ->
     lager:debug("sending start fax account jobs for ~s", [AccountId]),
     Payload = [{<<"Account-ID">>, AccountId}
-	       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:cast(Payload, fun kapi_fax:publish_start_account/1).
 

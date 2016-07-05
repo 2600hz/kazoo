@@ -12,21 +12,21 @@
 
 -export([start_link/0]).
 -export([find/0
-	,find/1
+        ,find/1
         ]).
 -export([get_channel/0
-	,get_channel/1
-	,get_channel/2
+        ,get_channel/1
+        ,get_channel/2
         ]).
 -export([request_channel/2]).
 -export([add_channel/3]).
 -export([release/1]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("amqp_util.hrl").
@@ -124,9 +124,9 @@ release(Consumer) ->
 init([]) ->
     kz_util:put_callid(?MODULE),
     _ = ets:new(?TAB, ['named_table'
-		      ,{'keypos', #kz_amqp_assignment.timestamp}
-		      ,'protected'
-		      ,'ordered_set'
+                      ,{'keypos', #kz_amqp_assignment.timestamp}
+                      ,'protected'
+                      ,'ordered_set'
                       ]),
     {'ok', #state{}}.
 
@@ -182,8 +182,8 @@ handle_cast({'maybe_reassign', Consumer}, State) ->
     _ = maybe_reassign(Consumer),
     {'noreply', State};
 handle_cast({'maybe_defer_reassign', #kz_amqp_assignment{timestamp=Timestamp
-							,consumer=Consumer
-							,type=Type
+                                                        ,consumer=Consumer
+                                                        ,type=Type
                                                         }}, State) ->
     Props = reassign_props(Type),
     ets:update_element(?TAB, Timestamp, Props),
@@ -267,26 +267,26 @@ import_pending_channels() ->
 -spec release_assignments({kz_amqp_assignments(), ets:continuation()} | '$end_of_table') -> 'ok'.
 release_assignments('$end_of_table') -> 'ok';
 release_assignments({[#kz_amqp_assignment{consumer_ref=Ref}=Assignment]
-		    ,Continuation})
+                    ,Continuation})
   when is_reference(Ref) ->
     demonitor(Ref, ['flush']),
     release_assignments({[Assignment#kz_amqp_assignment{consumer_ref='undefined'}]
-			,Continuation});
+                        ,Continuation});
 release_assignments({[#kz_amqp_assignment{channel_ref=Ref}=Assignment]
-		    ,Continuation})
+                    ,Continuation})
   when is_reference(Ref) ->
     demonitor(Ref, ['flush']),
     release_assignments({[Assignment#kz_amqp_assignment{channel_ref='undefined'}]
-			,Continuation});
+                        ,Continuation});
 release_assignments({[#kz_amqp_assignment{channel=Channel
-					 ,consumer=Consumer
+                                         ,consumer=Consumer
                                          }=Assignment
                      ], Continuation})
   when is_pid(Channel) ->
     Commands = kz_amqp_history:get(Consumer),
     _ = (catch kz_amqp_channel:close(Channel, Commands)),
     release_assignments({[Assignment#kz_amqp_assignment{channel='undefined'}]
-			,Continuation});
+                        ,Continuation});
 release_assignments({[#kz_amqp_assignment{timestamp=Timestamp
                                          ,consumer=Consumer
                                          }
@@ -310,7 +310,7 @@ maybe_reassign(Consumer) ->
         {[#kz_amqp_assignment{channel=Channel}], _}
           when is_pid(Channel) -> 'ok';
         {[#kz_amqp_assignment{type='sticky'
-			     ,broker=Broker
+                             ,broker=Broker
                              }=Assignment
          ], _} -> maybe_reassign(Assignment, Broker);
         {[#kz_amqp_assignment{type='float'}=Assignment], _} ->
@@ -341,16 +341,16 @@ maybe_reassign(#kz_amqp_assignment{consumer=_Consumer}=ConsumerAssignment
             maybe_reassign(ConsumerAssignment, ets:match_object(Continuation));
         'true' ->
             lager:debug("attempting to move consumer ~p to a channel on ~s"
-		       ,[_Consumer, _Broker]),
+                       ,[_Consumer, _Broker]),
             move_channel_to_consumer(ChannelAssignment, ConsumerAssignment)
     end;
 maybe_reassign(#kz_amqp_assignment{}=ConsumerAssignment, Broker) ->
     %% This will attempt to find a prechannel
     %% connected to the specified broker
     Pattern = #kz_amqp_assignment{consumer='undefined'
-				 ,consumer_ref='undefined'
-				 ,broker=Broker
-				 ,_='_'
+                                 ,consumer_ref='undefined'
+                                 ,broker=Broker
+                                 ,_='_'
                                  },
     maybe_reassign(ConsumerAssignment, ets:match_object(?TAB, Pattern, 1)).
 
@@ -368,9 +368,9 @@ assign_or_reserve(Consumer, 'undefined', Type) ->
 assign_or_reserve(Consumer, Broker, Type) ->
     %% This will attempt to find a prechannel
     Pattern = #kz_amqp_assignment{consumer='undefined'
-				 ,consumer_ref='undefined'
-				 ,broker=Broker
-				 ,_='_'
+                                 ,consumer_ref='undefined'
+                                 ,broker=Broker
+                                 ,_='_'
                                  },
     case ets:match_object(?TAB, Pattern, 1) of
         '$end_of_table' ->
@@ -400,7 +400,7 @@ assign_consumer(#kz_amqp_assignment{}=ChannelAssignment, Consumer, Type) ->
             %% mailbox was a prechannel that got assigned to the consumer
             %% just return the updated assignment
             lager:debug("consumer ~p already has a valid channel ~p"
-		       ,[Consumer, Channel]),
+                       ,[Consumer, Channel]),
             ConsumerAssignment;
         {[#kz_amqp_assignment{}=ConsumerAssignment], _} ->
             %% When an existing consumer requests a channel, and a
@@ -418,26 +418,26 @@ assign_consumer(#kz_amqp_assignment{}=ChannelAssignment, Consumer, Type) ->
 %%--------------------------------------------------------------------
 -spec move_channel_to_consumer(kz_amqp_assignment(), kz_amqp_assignment()) -> kz_amqp_assignment().
 move_channel_to_consumer(#kz_amqp_assignment{timestamp=Timestamp
-					    ,channel=Channel
-					    ,channel_ref=ChannelRef
-					    ,broker=Broker
-					    ,connection=Connection
+                                            ,channel=Channel
+                                            ,channel_ref=ChannelRef
+                                            ,broker=Broker
+                                            ,connection=Connection
                                             }
-			,#kz_amqp_assignment{consumer=Consumer}=ConsumerAssignment) ->
+                        ,#kz_amqp_assignment{consumer=Consumer}=ConsumerAssignment) ->
     Assignment =
         ConsumerAssignment#kz_amqp_assignment{channel=Channel
-					     ,channel_ref=ChannelRef
-					     ,connection=Connection
-					     ,assigned=kz_util:current_tstamp()
+                                             ,channel_ref=ChannelRef
+                                             ,connection=Connection
+                                             ,assigned=kz_util:current_tstamp()
                                              },
     %% Update the consumer assignment with all the channel information
     ets:insert(?TAB, Assignment#kz_amqp_assignment{reconnect='false'
-						  ,watchers=sets:new()
+                                                  ,watchers=sets:new()
                                                   }),
     %% Remove the channel assignment so it will not be given away twice
     ets:delete(?TAB, Timestamp),
     lager:debug("assigned existing consumer ~p an available channel ~p on ~s"
-	       ,[Consumer, Channel, Broker]),
+               ,[Consumer, Channel, Broker]),
 
     register_channel_handlers(Channel, Consumer),
 
@@ -452,22 +452,22 @@ move_channel_to_consumer(#kz_amqp_assignment{timestamp=Timestamp
 %%--------------------------------------------------------------------
 -spec add_consumer_to_channel(kz_amqp_assignment(), pid(), kz_amqp_type()) -> kz_amqp_assignment().
 add_consumer_to_channel(#kz_amqp_assignment{channel=Channel
-					   ,broker=_Broker
+                                           ,broker=_Broker
                                            }=ChannelAssignment
-		       ,Consumer, Type) ->
+                       ,Consumer, Type) ->
     Ref = erlang:monitor('process', Consumer),
     Assignment =
         ChannelAssignment#kz_amqp_assignment{consumer=Consumer
-					    ,consumer_ref=Ref
-					    ,assigned=kz_util:current_tstamp()
-					    ,type=Type
+                                            ,consumer_ref=Ref
+                                            ,assigned=kz_util:current_tstamp()
+                                            ,type=Type
                                             },
     %% Add the consumer to the channel assignment
     ets:insert(?TAB, Assignment#kz_amqp_assignment{reconnect='false'
-						  ,watchers=sets:new()
+                                                  ,watchers=sets:new()
                                                   }),
     lager:debug("assigned existing channel ~p on ~s to new consumer ~p"
-	       ,[Channel, _Broker, Consumer]),
+               ,[Channel, _Broker, Consumer]),
 
     register_channel_handlers(Channel, Consumer),
 
@@ -484,21 +484,21 @@ add_channel_primary_broker(Broker, Connection, Channel) ->
     %% This will find any reservations that require a channel
     %% and assign it the new channel
     MatchSpec = [{#kz_amqp_assignment{type='float'
-				     ,broker='undefined'
-				     ,channel='undefined'
-				     ,_='_'
+                                     ,broker='undefined'
+                                     ,channel='undefined'
+                                     ,_='_'
                                      },
-		  [],
-		  ['$_']
-		 }
-		,{#kz_amqp_assignment{type='sticky'
-				     ,broker=Broker
-				     ,channel='undefined'
-				     ,_='_'
-				     },
-		  [],
-		  ['$_']
-		 }],
+                  [],
+                  ['$_']
+                 }
+                ,{#kz_amqp_assignment{type='sticky'
+                                     ,broker=Broker
+                                     ,channel='undefined'
+                                     ,_='_'
+                                     },
+                  [],
+                  ['$_']
+                 }],
     case ets:select(?TAB, MatchSpec, 1) of
         '$end_of_table' -> maybe_reclaim_channel(Broker, Connection, Channel);
         {[#kz_amqp_assignment{}=Assignment], _} ->
@@ -513,12 +513,12 @@ maybe_reclaim_channel(Broker, Connection, Channel) ->
     %% NOTE: this is a relatively expensive lookup so I
     %% broke it out from the select in add_channel_primary_broker
     MatchSpec = [{#kz_amqp_assignment{type='float'
-				     ,broker='$1'
-				     ,consumer='$2'
-				     ,_='_'
+                                     ,broker='$1'
+                                     ,consumer='$2'
+                                     ,_='_'
                                      },
                   [{'andalso', {'=/=', '$1', Broker}
-		   ,{'=/=', '$2', 'undefined'}
+                   ,{'=/=', '$2', 'undefined'}
                    }],
                   ['$_']
                  }],
@@ -533,9 +533,9 @@ add_channel_alternate_broker(Broker, Connection, Channel) ->
     %% This will find any sticky reservations that require a
     %% channel from this broker and assign it the new channel
     Pattern = #kz_amqp_assignment{type='sticky'
-				 ,broker=Broker
-				 ,channel='undefined'
-				 ,_='_'
+                                 ,broker=Broker
+                                 ,channel='undefined'
+                                 ,_='_'
                                  },
     case ets:match_object(?TAB, Pattern, 1) of
         '$end_of_table' -> cache(Broker, Connection, Channel);
@@ -545,44 +545,44 @@ add_channel_alternate_broker(Broker, Connection, Channel) ->
 
 -spec assign_channel(kz_amqp_assignment(), ne_binary(), pid(), pid()) -> 'true'.
 assign_channel(#kz_amqp_assignment{channel_ref=Ref}=Assignment
-	      ,Broker, Connection, Channel)
+              ,Broker, Connection, Channel)
   when is_reference(Ref) ->
     demonitor(Ref, ['flush']),
     assign_channel(Assignment#kz_amqp_assignment{channel_ref='undefined'}
-		  ,Broker, Connection, Channel);
+                  ,Broker, Connection, Channel);
 assign_channel(#kz_amqp_assignment{channel=CurrentChannel
-				  ,broker=CurrentBroker
-				  ,consumer=Consumer
+                                  ,broker=CurrentBroker
+                                  ,consumer=Consumer
                                   }=Assignment
-	      ,Broker, Connection, Channel)
+              ,Broker, Connection, Channel)
   when is_pid(CurrentChannel) ->
     lager:debug("reassigning consumer ~p, closing current channel ~p on ~s"
-	       ,[Consumer, CurrentChannel, CurrentBroker]),
+               ,[Consumer, CurrentChannel, CurrentBroker]),
 
     Commands = kz_amqp_history:get(Consumer),
     _ = (catch kz_amqp_channel:close(CurrentChannel, Commands)),
     assign_channel(Assignment#kz_amqp_assignment{channel='undefined'
-						,reconnect='true'}
-		  ,Broker, Connection, Channel);
+                                                ,reconnect='true'}
+                  ,Broker, Connection, Channel);
 assign_channel(#kz_amqp_assignment{timestamp=Timestamp
-				  ,consumer=Consumer
+                                  ,consumer=Consumer
                                   }=ConsumerAssignment
-	      ,Broker, Connection, Channel) ->
+              ,Broker, Connection, Channel) ->
     Ref = erlang:monitor('process', Channel),
 
     Assigment
         = ConsumerAssignment#kz_amqp_assignment{channel=Channel
-					       ,channel_ref=Ref
-					       ,broker=Broker
-					       ,connection=Connection
-					       ,assigned=kz_util:current_tstamp()
+                                               ,channel_ref=Ref
+                                               ,broker=Broker
+                                               ,connection=Connection
+                                               ,assigned=kz_util:current_tstamp()
                                                },
     %% Add the new channel to the consumer assignment (reservation/wrong broker)
     ets:insert(?TAB, Assigment#kz_amqp_assignment{reconnect='false'
-						 ,watchers=sets:new()
+                                                 ,watchers=sets:new()
                                                  }),
     lager:debug("assigned consumer ~p new channel ~p on ~s after ~pus"
-	       ,[Consumer, Channel, Broker, kz_util:elapsed_us(Timestamp)]),
+               ,[Consumer, Channel, Broker, kz_util:elapsed_us(Timestamp)]),
     register_channel_handlers(Channel, Consumer),
     _ = maybe_reconnect(Assigment),
     _ = send_notifications(Assigment),
@@ -592,22 +592,22 @@ assign_channel(#kz_amqp_assignment{timestamp=Timestamp
 cache(Broker, Connection, Channel) ->
     Ref = erlang:monitor('process', Channel),
     lager:debug("added new channel ~p on ~s to available pool"
-	       ,[Channel, Broker]),
+               ,[Channel, Broker]),
     ets:insert(?TAB, #kz_amqp_assignment{channel=Channel
-					,channel_ref=Ref
-					,broker=Broker
-					,connection=Connection
+                                        ,channel_ref=Ref
+                                        ,broker=Broker
+                                        ,connection=Connection
                                         }).
 
 -spec maybe_reconnect(kz_amqp_assignment()) -> 'ok'.
 maybe_reconnect(#kz_amqp_assignment{reconnect='false'}) -> 'ok';
 maybe_reconnect(#kz_amqp_assignment{consumer=Consumer
-				   ,channel=Channel
+                                   ,channel=Channel
                                    }=Assignment) ->
     _ = kz_util:spawn(
           fun() ->
                   lager:debug("replaying previous AMQP commands from consumer ~p on channel ~p"
-			     ,[Consumer, Channel]),
+                             ,[Consumer, Channel]),
                   reconnect(Assignment, kz_amqp_history:get(Consumer))
           end),
     'ok'.
@@ -641,7 +641,7 @@ notify_connection(#kz_amqp_assignment{connection=Connection}) ->
 
 -spec notify_consumer(kz_amqp_assignment()) -> 'ok'.
 notify_consumer(#kz_amqp_assignment{consumer=Consumer
-				   ,reconnect=Reconnect}) ->
+                                   ,reconnect=Reconnect}) ->
     %% Trigger gen_server to continue with AMQP initialization
     gen_server:cast(Consumer, {'kz_amqp_assignment', {'new_channel', Reconnect}}).
 
@@ -678,7 +678,7 @@ maybe_reserve(Consumer, Broker, Type) ->
             %% but the broker was not available (or there where none for a float);
             %% however, this is not the first request so ignore the impatient bastard.
             lager:debug("consumer ~p still waiting on AMQP channel from ~s"
-		       ,[Consumer, Broker]),
+                       ,[Consumer, Broker]),
             ExistingAssignment
     end.
 
@@ -686,23 +686,23 @@ maybe_reserve(Consumer, Broker, Type) ->
 reserve(Consumer, Broker, 'sticky') when Broker =/= 'undefined' ->
     Ref = erlang:monitor('process', Consumer),
     Assignment = #kz_amqp_assignment{consumer=Consumer
-				    ,consumer_ref=Ref
-				    ,broker=Broker
-				    ,type='sticky'
+                                    ,consumer_ref=Ref
+                                    ,broker=Broker
+                                    ,type='sticky'
                                     },
     ets:insert(?TAB, Assignment),
     lager:debug("consumer ~p waiting on sticky AMQP channel from ~s"
-	       ,[Consumer, Broker]),
+               ,[Consumer, Broker]),
     Assignment;
 reserve(Consumer, _, 'float') ->
     Ref = erlang:monitor('process', Consumer),
     Assignment = #kz_amqp_assignment{consumer=Consumer
-				    ,consumer_ref=Ref
-				    ,type='float'
+                                    ,consumer_ref=Ref
+                                    ,type='float'
                                     },
     ets:insert(?TAB, Assignment),
     lager:debug("consumer ~p waiting on AMQP channel from current broker"
-	       ,[Consumer]),
+               ,[Consumer]),
     Assignment.
 
 %%--------------------------------------------------------------------
@@ -722,37 +722,37 @@ handle_down_msg([Match|Matches], Reason) ->
 
 -spec handle_down_match(down_match(), any()) -> 'ok'.
 handle_down_match({'consumer', #kz_amqp_assignment{consumer=Consumer}=Assignment}
-		 ,_Reason) ->
+                 ,_Reason) ->
     lager:debug("consumer ~p, went down without closing channel: ~p"
-	       ,[Consumer, _Reason]),
+               ,[Consumer, _Reason]),
     _ = log_short_lived(Assignment),
     Pattern = #kz_amqp_assignment{consumer=Consumer, _='_'},
     release_assignments(ets:match_object(?TAB, Pattern, 1));
 handle_down_match({'channel', #kz_amqp_assignment{timestamp=Timestamp
-						 ,channel=Channel
-						 ,broker=Broker
-						 ,consumer='undefined'}}
-		 ,Reason) ->
+                                                 ,channel=Channel
+                                                 ,broker=Broker
+                                                 ,consumer='undefined'}}
+                 ,Reason) ->
     lager:debug("unused channel ~p on ~s went down: ~p"
-	       ,[Channel, Broker, Reason]),
+               ,[Channel, Broker, Reason]),
     ets:delete(?TAB, Timestamp);
 handle_down_match({'channel', #kz_amqp_assignment{channel=Channel
-						 ,type='float'
-						 ,broker=Broker
-						 ,consumer=Consumer
+                                                 ,type='float'
+                                                 ,broker=Broker
+                                                 ,consumer=Consumer
                                                  }=Assignment}
-		 ,Reason) ->
+                 ,Reason) ->
     lager:debug("floating channel ~p on ~s went down while still assigned to consumer ~p: ~p"
-	       ,[Channel, Broker, Consumer, Reason]),
+               ,[Channel, Broker, Consumer, Reason]),
     maybe_defer_reassign(Assignment, Reason);
 handle_down_match({'channel', #kz_amqp_assignment{channel=Channel
-						 ,type='sticky'
-						 ,broker=Broker
-						 ,consumer=Consumer
+                                                 ,type='sticky'
+                                                 ,broker=Broker
+                                                 ,consumer=Consumer
                                                  }=Assignment}
-		 ,Reason) ->
+                 ,Reason) ->
     lager:debug("sticky channel ~p on ~s went down while still assigned to consumer ~p: ~p"
-	       ,[Channel, Broker, Consumer, Reason]),
+               ,[Channel, Broker, Consumer, Reason]),
     maybe_defer_reassign(Assignment, Reason).
 
 -spec maybe_defer_reassign(#kz_amqp_assignment{}, any()) -> 'ok'.
@@ -765,8 +765,8 @@ maybe_defer_reassign(#kz_amqp_assignment{}=Assignment
               gen_server:cast(?SERVER, {'maybe_defer_reassign', Assignment})
       end);
 maybe_defer_reassign(#kz_amqp_assignment{timestamp=Timestamp
-					,consumer=Consumer
-					,type=Type
+                                        ,consumer=Consumer
+                                        ,type=Type
                                         }, _) ->
     Props = reassign_props(Type),
     ets:update_element(?TAB, Timestamp, Props),
@@ -842,13 +842,13 @@ request_and_wait(Consumer, Broker, Timeout) when is_pid(Consumer) ->
 -spec find_reference(reference()) -> down_matches().
 find_reference(Ref) ->
     MatchSpec = [{#kz_amqp_assignment{channel_ref=Ref
-				     ,_='_'
+                                     ,_='_'
                                      }
                  ,[]
                  ,[{{'channel', '$_'}}]
                  }
                 ,{#kz_amqp_assignment{consumer_ref=Ref
-				     ,_='_'
+                                     ,_='_'
                                      }
                  ,[]
                  ,[{{'consumer', '$_'}}]
@@ -869,7 +869,7 @@ log_short_lived(#kz_amqp_assignment{assigned=Timestamp}=Assignment) ->
         'false' -> 'ok';
         'true' ->
             lager:warning("short lived assignment (~ps): ~p"
-			 ,[Duration, Assignment])
+                         ,[Duration, Assignment])
     end.
 
 -spec register_channel_handlers(pid(), pid()) -> 'ok'.

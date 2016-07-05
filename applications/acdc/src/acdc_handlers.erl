@@ -18,8 +18,8 @@ handle_route_req(JObj, Props) ->
     _ = kz_util:put_callid(JObj),
 
     Call = kapps_call:set_controller_queue(props:get_value('queue', Props)
-					  ,kapps_call:from_route_req(JObj)
-					  ),
+                                          ,kapps_call:from_route_req(JObj)
+                                          ),
     AcctId = kapps_call:account_id(Call),
     Id = kapps_call:request_user(Call),
     maybe_route_respond(JObj, Call, AcctId, Id).
@@ -41,21 +41,21 @@ maybe_route_respond(_ReqJObj, _Call, _AccountId, _Id, _) -> 'ok'.
 send_route_response(ReqJObj, Call, AccountId, Id, Type) ->
     lager:debug("sendig route response to park the call for ~s(~s)", [Id, AccountId]),
     CCVs = [{<<"ACDc-ID">>, Id}
-	   ,{<<"ACDc-Type">>, Type}
+           ,{<<"ACDc-Type">>, Type}
            ],
     Resp = [{?KEY_MSG_ID, kz_api:msg_id(ReqJObj)}
-	   ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
-	   ,{<<"Routes">>, []}
-	   ,{<<"Method">>, <<"park">>}
-	   ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
-	   ,{<<"From-Realm">>, kz_util:get_account_realm(AccountId)}
+           ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
+           ,{<<"Routes">>, []}
+           ,{<<"Method">>, <<"park">>}
+           ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+           ,{<<"From-Realm">>, kz_util:get_account_realm(AccountId)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     ServerId = kz_api:server_id(ReqJObj),
     Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,
     case kz_amqp_worker:call(Resp
-			    ,Publisher
-			    ,fun kapi_route:win_v/1
+                            ,Publisher
+                            ,fun kapi_route:win_v/1
                             )
     of
         {'ok', RouteWin} ->
@@ -82,8 +82,8 @@ update_agent(Call) ->
 -spec update_acdc_actor(kapps_call:call(), api_binary(), api_binary()) -> any().
 update_acdc_actor(Call) ->
     update_acdc_actor(Call
-		     ,kapps_call:custom_channel_var(<<"ACDc-ID">>, Call)
-		     ,kapps_call:custom_channel_var(<<"ACDc-Type">>, Call)
+                     ,kapps_call:custom_channel_var(<<"ACDc-ID">>, Call)
+                     ,kapps_call:custom_channel_var(<<"ACDc-Type">>, Call)
                      ).
 update_acdc_actor(_Call, 'undefined', _) -> 'ok';
 update_acdc_actor(_Call, _, 'undefined') -> 'ok';
@@ -125,11 +125,11 @@ update_acdc_agent(Call, AcctId, AgentId, Status, PubFun) ->
 -spec save_status(kapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
 save_status(Call, AgentId, Status) ->
     acdc_agent_util:update_status(kapps_call:account_id(Call)
-				 ,AgentId
-				 ,Status
-				 ,[{<<"call_id">>, kapps_call:call_id(Call)}
-				  ,{<<"method">>, <<"acdc_blf">>}
-				  ]).
+                                 ,AgentId
+                                 ,Status
+                                 ,[{<<"call_id">>, kapps_call:call_id(Call)}
+                                  ,{<<"method">>, <<"acdc_blf">>}
+                                  ]).
 
 update_agent_device(Call, AgentId, <<"login">>) ->
     lager:debug("need to set owner_id to ~s on device ~s", [AgentId, kapps_call:authorizing_id(Call)]),
@@ -169,7 +169,7 @@ move_agent_device(Call, AgentId, Device) ->
 send_new_status(AcctId, AgentId, PubFun) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
-	       ,{<<"Agent-ID">>, AgentId}
+               ,{<<"Agent-ID">>, AgentId}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     PubFun(Update).

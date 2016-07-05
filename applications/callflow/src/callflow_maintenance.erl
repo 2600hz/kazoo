@@ -10,7 +10,7 @@
 -module(callflow_maintenance).
 
 -export([lookup_endpoint/1
-	,lookup_endpoint/2
+        ,lookup_endpoint/2
         ]).
 -export([blocking_refresh/0]).
 -export([refresh/0, refresh/1]).
@@ -21,12 +21,12 @@
 -export([show_calls/0]).
 -export([flush/0]).
 -export([account_set_classifier_inherit/2
-	,account_set_classifier_deny/2
-	,all_accounts_set_classifier_inherit/1
-	,all_accounts_set_classifier_deny/1
-	,device_classifier_inherit/2
-	,device_classifier_deny/2
-	,list_account_restrictions/1
+        ,account_set_classifier_deny/2
+        ,all_accounts_set_classifier_inherit/1
+        ,all_accounts_set_classifier_deny/1
+        ,device_classifier_inherit/2
+        ,device_classifier_deny/2
+        ,list_account_restrictions/1
         ]).
 -export([update_feature_codes/0, update_feature_codes/1]).
 
@@ -229,12 +229,12 @@ do_menu_migration(Menu, Db) ->
 -spec create_media_doc(binary(), binary(), binary(), binary()) -> binary().
 create_media_doc(Name, SourceType, SourceId, Db) ->
     Props = [{<<"name">>, Name}
-	    ,{<<"description">>, <<SourceType/binary, " recorded/prompt media">>}
-	    ,{<<"source_type">>, SourceType}
-	    ,{<<"source_id">>, SourceId}
-	    ,{<<"content_type">>, <<"audio/mpeg">>}
-	    ,{<<"media_type">>, <<"mp3">>}
-	    ,{<<"streamable">>, 'true'}],
+            ,{<<"description">>, <<SourceType/binary, " recorded/prompt media">>}
+            ,{<<"source_type">>, SourceType}
+            ,{<<"source_id">>, SourceId}
+            ,{<<"content_type">>, <<"audio/mpeg">>}
+            ,{<<"media_type">>, <<"mp3">>}
+            ,{<<"streamable">>, 'true'}],
     Doc = kz_doc:update_pvt_parameters(kz_json:from_list(Props), Db, [{'type', <<"media">>}]),
     {'ok', JObj} = kz_datamgr:save_doc(Db, Doc),
     kz_doc:id(JObj).
@@ -373,7 +373,7 @@ is_classifier(Classifier) ->
         'true' -> 'true';
         'false' ->
             io:format("classifier '~s' not among configured classifiers: ~p"
-		     ,[Classifier, Classifiers]
+                     ,[Classifier, Classifiers]
                      ),
             'false'
     end.
@@ -400,7 +400,7 @@ print_call_restrictions(DbName, DocId) ->
     case kz_datamgr:open_doc(DbName, DocId) of
         {'ok', JObj} ->
             lists:foreach(fun(Classifier) ->
-				  io:format("Classifier ~p:\t\t action ~p\n",[Classifier, kz_json:get_value([<<"call_restriction">>,Classifier,<<"action">>], JObj)])
+                                  io:format("Classifier ~p:\t\t action ~p\n",[Classifier, kz_json:get_value([<<"call_restriction">>,Classifier,<<"action">>], JObj)])
                           end,
                           kz_json:get_keys(<<"call_restriction">>, JObj));
         {'error', E} ->
@@ -413,8 +413,8 @@ print_users_level_call_restrictions(DbName) ->
         {'ok', JObj} ->
             io:format("\n\nUser level classifiers:\n"),
             lists:foreach(fun(UserObj) ->
-				  io:format("\nUsername: ~s\n\n", [kz_json:get_value([<<"value">>,<<"username">>],UserObj)]),
-				  print_call_restrictions(DbName, kz_doc:id(UserObj))
+                                  io:format("\nUsername: ~s\n\n", [kz_json:get_value([<<"value">>,<<"username">>],UserObj)]),
+                                  print_call_restrictions(DbName, kz_doc:id(UserObj))
                           end,
                           JObj);
         {'error', E} ->
@@ -427,8 +427,8 @@ print_devices_level_call_restrictions(DbName) ->
         {'ok', JObj} ->
             io:format("\n\nDevice level classifiers:\n"),
             lists:foreach(fun(UserObj) ->
-				  io:format("\nDevice: ~s\n\n", [kz_json:get_value([<<"value">>,<<"name">>],UserObj)]),
-				  print_call_restrictions(DbName, kz_doc:id(UserObj))
+                                  io:format("\nDevice: ~s\n\n", [kz_json:get_value([<<"value">>,<<"name">>],UserObj)]),
+                                  print_call_restrictions(DbName, kz_doc:id(UserObj))
                           end,
                           JObj);
         {'error', E} ->
@@ -441,8 +441,8 @@ print_trunkstore_call_restrictions(DbName) ->
         {'ok', JObj} ->
             io:format("\n\nTrunkstore classifiers:\n\n"),
             lists:foreach(fun(UserObj) ->
-				  io:format("Trunk: ~s@~s\n\n", lists:reverse(kz_json:get_value(<<"key">>,UserObj))),
-				  print_call_restrictions(DbName, kz_doc:id(UserObj))
+                                  io:format("Trunk: ~s@~s\n\n", lists:reverse(kz_json:get_value(<<"key">>,UserObj))),
+                                  print_call_restrictions(DbName, kz_doc:id(UserObj))
                           end,
                           JObj);
         {'error', E} ->
@@ -491,7 +491,7 @@ maybe_update_feature_codes(Db, [Pattern|Patterns]) ->
                     io:format("successfully updated patterns for doc ~s (~p -> ~p)\n",
                               [DocId, Regex, NewRegex])
             end;
-			 _OtherRegex ->
-			       io:format("skipping pattern ~p\n", [_OtherRegex])
-		       end,
-			 maybe_update_feature_codes(Db, Patterns).
+                         _OtherRegex ->
+                               io:format("skipping pattern ~p\n", [_OtherRegex])
+                       end,
+                         maybe_update_feature_codes(Db, Patterns).

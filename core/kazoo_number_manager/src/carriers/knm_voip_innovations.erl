@@ -40,7 +40,7 @@
 -define(VI_DEFAULT_NAMESPACE, "http://tempuri.org/").
 
 -define(IS_SANDBOX_PROVISIONING_TRUE,
-	kapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"sandbox_provisioning">>, 'false')).
+        kapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"sandbox_provisioning">>, 'false')).
 -define(IS_PROVISIONING_ENABLED,
         kapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"enable_provisioning">>, 'true')).
 
@@ -51,7 +51,7 @@
 -define(VI_URL_V3_SANDBOX,
         "http://dev.voipinnovations.com/VOIP/Services/APIService.asmx").
 -define(URL_IN_USE,
-	case ?IS_SANDBOX_PROVISIONING_TRUE of 'true' -> ?VI_URL_V3_SANDBOX; 'false' -> ?VI_URL_V3 end).
+        case ?IS_SANDBOX_PROVISIONING_TRUE of 'true' -> ?VI_URL_V3_SANDBOX; 'false' -> ?VI_URL_V3 end).
 
 -define(VI_LOGIN, kapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"login">>, <<>>)).
 -define(VI_PASSWORD, kapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"password">>, <<>>)).
@@ -138,7 +138,7 @@ disconnect_number(Number) ->
         'false' when Debug ->
             lager:debug("allowing sandbox provisioning"),
             Number;
-	'false' ->
+        'false' ->
             knm_errors:unspecified('provisioning_disabled', Number);
         'true' ->
             N = 'remove +1'(
@@ -203,10 +203,10 @@ to_json('find_numbers', Quantity, {'ok', Xml}) ->
     {'ok',
      [ kz_json:from_list(
          [{<<"e164">>, knm_converters:normalize(kz_util:get_xml_value("//tn/text()", DID))}
-	 ,{<<"rate_center">>, kz_util:get_xml_value("//rateCenter/text()", DID)}
-	 ,{<<"state">>, kz_util:get_xml_value("//state/text()", DID)}
-	 ,{<<"cnam">>, kz_util:is_true(kz_util:get_xml_value("//outboundCNAM/text()", DID))}
-	 ,{<<"t38">>, kz_util:is_true(kz_util:get_xml_value("//t38/text()", DID))}
+         ,{<<"rate_center">>, kz_util:get_xml_value("//rateCenter/text()", DID)}
+         ,{<<"state">>, kz_util:get_xml_value("//state/text()", DID)}
+         ,{<<"cnam">>, kz_util:is_true(kz_util:get_xml_value("//outboundCNAM/text()", DID))}
+         ,{<<"t38">>, kz_util:is_true(kz_util:get_xml_value("//t38/text()", DID))}
          ])
        || DID=#xmlElement{} <- lists:sublist(DIDs, Quantity)
      ]
@@ -237,8 +237,8 @@ to_json('disconnect_number', _Numbers, {'ok', Xml}) ->
                    lager:debug("disconnect ~s: ~s:~s", [N, Code, Msg]),
                    kz_json:from_list(
                      [{<<"code">>, Code}
-		     ,{<<"msg">>, Msg}
-		     ,{<<"e164">>, knm_converters:normalize(N)}
+                     ,{<<"msg">>, Msg}
+                     ,{<<"e164">>, knm_converters:normalize(N)}
                      ])
                end
                || DID=#xmlElement{name = 'DID'}
@@ -303,10 +303,10 @@ body("getDIDs", Props) ->
                    ,"tier"
                    ],
     [case props:get_value(Key, Props) of
-	 'undefined' ->
-	     ["<tns:", Key, " xsi:nil='true'/>"];
-	 Value ->
-	     ["<tns:", Key, ">", Value, "</tns:", Key, ">"]
+         'undefined' ->
+             ["<tns:", Key, " xsi:nil='true'/>"];
+         Value ->
+             ["<tns:", Key, ">", Value, "</tns:", Key, ">"]
      end
      || Key <- PossibleKeys
     ];
@@ -334,9 +334,9 @@ body("releaseDID", Numbers=[_|_]) ->
 soap_request(Action, Body) ->
     Url = ?URL_IN_USE,
     Headers = [{"SOAPAction", ?VI_DEFAULT_NAMESPACE++Action}
-	      ,{"Accept", "*/*"}
-	      ,{"User-Agent", ?KNM_USER_AGENT}
-	      ,{"Content-Type", "text/xml;charset=UTF-8"}
+              ,{"Accept", "*/*"}
+              ,{"User-Agent", ?KNM_USER_AGENT}
+              ,{"Content-Type", "text/xml;charset=UTF-8"}
               ],
     HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}
                   ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}

@@ -13,11 +13,11 @@
 -include("knm.hrl").
 
 -export([find/1, find/2, find/3
-	,check/1, check/2
-	,available_carriers/1
-	,default_carriers/0, default_carrier/0
-	,acquire/1
-	,disconnect/1
+        ,check/1, check/2
+        ,available_carriers/1
+        ,default_carriers/0, default_carrier/0
+        ,acquire/1
+        ,disconnect/1
         ]).
 
 %%% For knm carriers only
@@ -27,7 +27,7 @@
 
 -ifdef(TEST).
 -export([process_carrier_results/2
-	,process_bulk_carrier_results/2
+        ,process_bulk_carrier_results/2
         ]).
 -endif.
 
@@ -160,10 +160,10 @@ transition_existing_to_discovery(Number, ExistingPhoneNumber, Acc) ->
     {'ok', PhoneNumber} =
         knm_phone_number:setters(
           ExistingPhoneNumber
-				,[{fun knm_phone_number:set_module_name/2, knm_phone_number:module_name(PhoneNumber0)}
-				 ,{fun knm_phone_number:set_carrier_data/2, knm_phone_number:carrier_data(PhoneNumber0)}
-				 ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
-				 ]
+                                ,[{fun knm_phone_number:set_module_name/2, knm_phone_number:module_name(PhoneNumber0)}
+                                 ,{fun knm_phone_number:set_carrier_data/2, knm_phone_number:carrier_data(PhoneNumber0)}
+                                 ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
+                                 ]
          ),
     case knm_number:save(knm_number:set_phone_number(Number, PhoneNumber)) of
         {'ok', SavedNumber} ->
@@ -195,8 +195,8 @@ activation_charge(_Number, _AccountId) -> 1.0.
 activation_charge(_DID, 'undefined') -> 'undefined';
 activation_charge(DID, AccountId) ->
     kz_services:activation_charges(<<"phone_numbers">>
-				  ,knm_converters:classify(DID)
-				  ,AccountId
+                                  ,knm_converters:classify(DID)
+                                  ,AccountId
                                   ).
 -endif.
 
@@ -338,8 +338,8 @@ create_found(DID=?NE_BINARY, Carrier, ?MATCH_ACCOUNT_RAW(AuthBy), Data=?JSON_WRA
             {'ok', PhoneNumber} =
                 knm_phone_number:setters(
                   knm_phone_number:new(DID, Options)
-					,[{fun knm_phone_number:set_carrier_data/2, Data}
-					 ]),
+                                        ,[{fun knm_phone_number:set_carrier_data/2, Data}
+                                         ]),
             knm_number:save(knm_number:set_phone_number(knm_number:new(), PhoneNumber))
     end.
 
@@ -399,7 +399,7 @@ log_stacktrace(ST) ->
 
 log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
     ?LOG_DEBUG("st: ~s:~s/~b at (~b)"
-	      ,[M, F, Arity, props:get_value('line', Info, 0)]
+              ,[M, F, Arity, props:get_value('line', Info, 0)]
               );
 log_stacktrace_mfa(M, F, Args, Info) ->
     ?LOG_DEBUG("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),

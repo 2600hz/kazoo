@@ -23,24 +23,24 @@
 -define(PUSH_EXCHANGE, <<"pushes">>).
 
 -define(PUSH_REQ_HEADERS, [<<"Token-ID">>
-			  ,<<"Token-Type">>, <<"Token-App">>
-			  ,[<<"Alert-Body">>,[<<"Alert-Key">>,<<"Alert-Params">>]]
+                          ,<<"Token-Type">>, <<"Token-App">>
+                          ,[<<"Alert-Body">>,[<<"Alert-Key">>,<<"Alert-Params">>]]
                           ]).
 -define(OPTIONAL_PUSH_REQ_HEADERS, [<<"Queue">>, <<"Call-ID">>
-				   ,<<"Badge">>, <<"Sound">>
-				   ,<<"Account-ID">>, <<"Endpoint-ID">>
-				   ,<<"Expires">>
-				   ,<<"Token-Reg">>
+                                   ,<<"Badge">>, <<"Sound">>
+                                   ,<<"Account-ID">>, <<"Endpoint-ID">>
+                                   ,<<"Expires">>
+                                   ,<<"Token-Reg">>
                                    ]).
 -define(PUSH_REQ_VALUES, [{<<"Event-Category">>, <<"notification">>}
-			 ,{<<"Event-Name">>, <<"push_req">>}
+                         ,{<<"Event-Name">>, <<"push_req">>}
                          ]).
 -define(PUSH_REQ_TYPES, [{<<"Expires">>, fun(V) -> is_integer(kz_util:to_integer(V)) end}]).
 
 -define(PUSH_RESP_HEADERS, [<<"Token-ID">>]).
 -define(OPTIONAL_PUSH_RESP_HEADERS, []).
 -define(PUSH_RESP_VALUES, [{<<"Event-Category">>, <<"notification">>}
-			  ,{<<"Event-Name">>, <<"push_resp">>}
+                          ,{<<"Event-Name">>, <<"push_resp">>}
                           ]).
 -define(PUSH_RESP_TYPES, []).
 

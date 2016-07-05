@@ -17,12 +17,12 @@
 -include("cf_temporal_route.hrl").
 
 -export([handle/2
-	,normalize_date/1
+        ,normalize_date/1
         ]).
 
 -ifdef(TEST).
 -export([next_rule_date/2
-	,sort_wdays/1
+        ,sort_wdays/1
         ]).
 -endif.
 
@@ -75,15 +75,15 @@ handle(Data, Call) ->
 -spec process_rules(temporal(), rules(), kapps_call:call()) ->
                            'default' | binary().
 process_rules(Temporal, [#rule{enabled='false'
-			      ,id=Id
-			      ,name=Name
+                              ,id=Id
+                              ,name=Name
                               }|Rs], Call) ->
     lager:info("time based rule ~s (~s) disabled", [Id, Name]),
     process_rules(Temporal, Rs, Call);
 process_rules(_, [#rule{enabled='true'
-		       ,id=Id
-		       ,name=Name
-		       ,rule_set=RuleSet
+                       ,id=Id
+                       ,name=Name
+                       ,rule_set=RuleSet
                        }|_], _) ->
     lager:info("time based rule ~s (~s) is forced active part of rule set? ~p", [Id, Name, RuleSet]),
     case RuleSet of
@@ -91,17 +91,17 @@ process_rules(_, [#rule{enabled='true'
         'false' -> Id
     end;
 process_rules(#temporal{local_sec=LSec
-		       ,local_date={Y, M, D}
+                       ,local_date={Y, M, D}
                        }=T
-	     ,[#rule{id=Id
-		    ,name=Name
-		    ,wtime_start=TStart
-		    ,wtime_stop=TStop
-		    ,rule_set=RuleSet
-		    }=Rule
-	       |Rules
-	      ]
-	     ,Call) ->
+             ,[#rule{id=Id
+                    ,name=Name
+                    ,wtime_start=TStart
+                    ,wtime_stop=TStop
+                    ,rule_set=RuleSet
+                    }=Rule
+               |Rules
+              ]
+             ,Call) ->
     lager:info("processing temporal rule ~s (~s) part of rule set? ~p", [Id, Name, RuleSet]),
     PrevDay = normalize_date({Y, M, D - 1}),
     BaseDate = next_rule_date(Rule, PrevDay),
@@ -133,16 +133,16 @@ process_rules(_, [], _) ->
 %%--------------------------------------------------------------------
 -spec get_temporal_rules(temporal(), kapps_call:call()) -> rules().
 get_temporal_rules(#temporal{local_sec=LSec
-			    ,routes=Routes
-			    ,timezone=TZ
-			    ,rule_set=RuleSet
+                            ,routes=Routes
+                            ,timezone=TZ
+                            ,rule_set=RuleSet
                             }, Call) ->
     get_temporal_rules(Routes, LSec, kapps_call:account_db(Call), RuleSet, TZ, []).
 
 -spec get_temporal_rules(ne_binaries(), non_neg_integer(), ne_binary(), boolean(), ne_binary(), rules()) -> rules().
 get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Rules) when is_binary(TZ) ->
     Now = localtime:utc_to_local(calendar:universal_time()
-				,kz_util:to_list(TZ)
+                                ,kz_util:to_list(TZ)
                                 ),
     get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, Rules).
 
@@ -156,37 +156,37 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, RuleSet, TZ, Now, Rules) ->
             get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, Rules);
         {'ok', JObj} ->
             Days = lists:foldr(
-		     fun(Day, Acc) ->
-			     [kz_util:to_integer(Day)|Acc]
-		     end
-			      ,[]
-			      ,kz_json:get_value(<<"days">>, JObj, ?RULE_DEFAULT_DAYS)
-		    ),
+                     fun(Day, Acc) ->
+                             [kz_util:to_integer(Day)|Acc]
+                     end
+                              ,[]
+                              ,kz_json:get_value(<<"days">>, JObj, ?RULE_DEFAULT_DAYS)
+                    ),
             Rule = #rule{id = Route
-			,enabled =
+                        ,enabled =
                              kz_json:is_true(<<"enabled">>, JObj, 'undefined')
-			,name =
+                        ,name =
                              kz_json:get_value(<<"name">>, JObj, ?RULE_DEFAULT_NAME)
-			,cycle =
+                        ,cycle =
                              kz_json:get_value(<<"cycle">>, JObj, ?RULE_DEFAULT_CYCLE)
-			,interval =
+                        ,interval =
                              kz_json:get_integer_value(<<"interval">>, JObj, ?RULE_DEFAULT_INTERVAL)
-			,days = Days
-			,wdays =
+                        ,days = Days
+                        ,wdays =
                              sort_wdays(
                                kz_json:get_value(<<"wdays">>, JObj, ?RULE_DEFAULT_WDAYS)
                               )
-			,ordinal =
+                        ,ordinal =
                              kz_json:get_value(<<"ordinal">>, JObj, ?RULE_DEFAULT_ORDINAL)
-			,month =
+                        ,month =
                              kz_json:get_integer_value(<<"month">>, JObj, ?RULE_DEFAULT_MONTH)
-			,start_date =
+                        ,start_date =
                              get_date(kz_json:get_integer_value(<<"start_date">>, JObj, LSec), TZ)
-			,wtime_start =
+                        ,wtime_start =
                              kz_json:get_integer_value(<<"time_window_start">>, JObj, ?RULE_DEFAULT_WTIME_START)
-			,wtime_stop =
+                        ,wtime_stop =
                              kz_json:get_integer_value(<<"time_window_stop">>, JObj, ?RULE_DEFAULT_WTIME_STOP)
-			,rule_set = RuleSet
+                        ,rule_set = RuleSet
                         },
             case date_difference(Now, {Rule#rule.start_date, {0,0,0}}) of
                 'future' ->
@@ -234,12 +234,12 @@ get_temporal_route(JObj, Call) ->
             RuleSet -> {'true', get_rule_set(RuleSet, Call)}
         end,
     load_current_time(#temporal{routes = Routes
-			       ,rule_set = IsRuleSet
-			       ,timezone = cf_util:get_timezone(JObj, Call)
-			       ,interdigit_timeout =
+                               ,rule_set = IsRuleSet
+                               ,timezone = cf_util:get_timezone(JObj, Call)
+                               ,interdigit_timeout =
                                     kz_json:get_integer_value(<<"interdigit_timeout">>
-							     ,JObj
-							     ,kapps_call_command:default_interdigit_timeout()
+                                                             ,JObj
+                                                             ,kapps_call_command:default_interdigit_timeout()
                                                              )
                                }).
 
@@ -270,7 +270,7 @@ get_rule_set(RuleSetId, Call) ->
 get_date(Seconds, TZ) when is_integer(Seconds) ->
     {Date, _} = localtime:utc_to_local(
                   calendar:gregorian_seconds_to_datetime(Seconds)
-				      ,kz_util:to_list(TZ)
+                                      ,kz_util:to_list(TZ)
                  ),
     Date.
 
@@ -283,23 +283,23 @@ get_date(Seconds, TZ) when is_integer(Seconds) ->
 %%--------------------------------------------------------------------
 -spec temporal_route_menu(temporal(), rules(), kapps_call:call()) -> cf_api_std_return().
 temporal_route_menu(#temporal{keys=#keys{enable=Enable
-					,disable=Disable
-					,reset=Reset
+                                        ,disable=Disable
+                                        ,reset=Reset
                                         }
-			     ,prompts=#prompts{main_menu=MainMenu}
-			     ,interdigit_timeout=Interdigit
+                             ,prompts=#prompts{main_menu=MainMenu}
+                             ,interdigit_timeout=Interdigit
                              }=Temporal
-		   ,Rules
-		   ,Call
+                   ,Rules
+                   ,Call
                    ) ->
     NoopId = kapps_call_command:prompt(MainMenu, Call),
 
     case kapps_call_command:collect_digits(1
-					  ,kapps_call_command:default_collect_timeout()
-					  ,Interdigit
-					  ,NoopId
-					  ,Call
-					  )
+                                          ,kapps_call_command:default_collect_timeout()
+                                          ,Interdigit
+                                          ,NoopId
+                                          ,Call
+                                          )
     of
         {'ok', Enable} ->
             enable_temporal_rules(Temporal, Rules, Call);
@@ -420,12 +420,12 @@ enable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
 load_current_time(#temporal{timezone=Timezone}=Temporal)->
     {LocalDate, LocalTime} = localtime:utc_to_local(
                                calendar:universal_time()
-						   ,kz_util:to_list(Timezone)
+                                                   ,kz_util:to_list(Timezone)
                               ),
     lager:info("local time for ~s is {~w,~w}", [Timezone, LocalDate, LocalTime]),
     Temporal#temporal{local_sec=calendar:datetime_to_gregorian_seconds({LocalDate, LocalTime})
-		     ,local_date=LocalDate
-		     ,local_time=LocalTime
+                     ,local_date=LocalDate
+                     ,local_time=LocalTime
                      }.
 
 %%--------------------------------------------------------------------
@@ -443,16 +443,16 @@ load_current_time(#temporal{timezone=Timezone}=Temporal)->
 %%--------------------------------------------------------------------
 -spec next_rule_date(rule(), kz_date()) -> kz_date().
 next_rule_date(#rule{cycle = <<"date">>
-		    ,start_date=Date0
+                    ,start_date=Date0
                     }
-	      ,_Date
+              ,_Date
               ) ->
     Date0;
 next_rule_date(#rule{cycle = <<"daily">>
-		    ,interval=I0
-		    ,start_date={Y0, M0, D0}
+                    ,interval=I0
+                    ,start_date={Y0, M0, D0}
                     }
-	      ,{Y1, M1, D1}
+              ,{Y1, M1, D1}
               ) ->
     %% Calculate the distance in days as a function of
     %%   the interval and fix
@@ -461,11 +461,11 @@ next_rule_date(#rule{cycle = <<"daily">>
     Offset = trunc( ( DS1 - DS0 ) / I0 ) * I0,
     normalize_date({Y0, M0, D0 + Offset + I0});
 next_rule_date(#rule{cycle = <<"weekly">>
-		    ,interval=I0
-		    ,wdays=Weekdays
-		    ,start_date={Y0, M0, D0}=_StartDate
+                    ,interval=I0
+                    ,wdays=Weekdays
+                    ,start_date={Y0, M0, D0}=_StartDate
                     }
-	      ,{Y1, M1, D1}=_PrevDate
+              ,{Y1, M1, D1}=_PrevDate
               ) ->
     DOW0 = day_of_the_week({Y1, M1, D1}),
     Distance = iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}),
@@ -488,9 +488,9 @@ next_rule_date(#rule{cycle = <<"weekly">>
     end;
 
 next_rule_date(#rule{cycle = <<"monthly">>
-		    ,interval=I0
-		    ,days=[_|_]=Days
-		    ,start_date={Y0, M0, _}
+                    ,interval=I0
+                    ,days=[_|_]=Days
+                    ,start_date={Y0, M0, _}
                     }, {Y1, M1, D1}) ->
     Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
     Offset = trunc( Distance / I0 ) * I0,
@@ -534,10 +534,10 @@ next_rule_date(#rule{cycle = <<"monthly">>
     end;
 
 next_rule_date(#rule{cycle = <<"monthly">>
-		    ,interval=I0
-		    ,ordinal = <<"last">>
-		    ,wdays=[Weekday]
-		    ,start_date={Y0, M0, _}
+                    ,interval=I0
+                    ,ordinal = <<"last">>
+                    ,wdays=[Weekday]
+                    ,start_date={Y0, M0, _}
                     }
               ,{Y1, M1, D1}) ->
     Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
@@ -561,10 +561,10 @@ next_rule_date(#rule{cycle = <<"monthly">>
 %%   of the given weekday, the calculation is incorrect.  I was told not
 %%   to worry about that now...
 next_rule_date(#rule{cycle = <<"monthly">>
-		    ,interval=I0
-		    ,ordinal=Ordinal
-		    ,wdays=[Weekday]
-		    ,start_date={Y0, M0, _}
+                    ,interval=I0
+                    ,ordinal=Ordinal
+                    ,wdays=[Weekday]
+                    ,start_date={Y0, M0, _}
                     }
               ,{Y1, M1, D1}) ->
     Distance = ( Y1 - Y0 ) * 12 - M0 + M1,
@@ -629,11 +629,11 @@ next_rule_date(#rule{cycle = <<"yearly">>
     end;
 
 next_rule_date(#rule{cycle = <<"yearly">>
-		    ,interval=I0
-		    ,ordinal = <<"every">>
-		    ,month=Month
-		    ,wdays=[Weekday]
-		    ,start_date={Y0, _, _}
+                    ,interval=I0
+                    ,ordinal = <<"every">>
+                    ,month=Month
+                    ,wdays=[Weekday]
+                    ,start_date={Y0, _, _}
                     }
               ,{Y1, M1, D1}) ->
     Distance = Y1 - Y0,
@@ -656,11 +656,11 @@ next_rule_date(#rule{cycle = <<"yearly">>
     end;
 
 next_rule_date(#rule{cycle = <<"yearly">>
-		    ,interval=I0
-		    ,ordinal = <<"last">>
-		    ,month=Month
-		    ,wdays=[Weekday]
-		    ,start_date={Y0, _, _}
+                    ,interval=I0
+                    ,ordinal = <<"last">>
+                    ,month=Month
+                    ,wdays=[Weekday]
+                    ,start_date={Y0, _, _}
                     }
               ,{Y1, M1, D1}) ->
     Distance = Y1 - Y0,
@@ -683,11 +683,11 @@ next_rule_date(#rule{cycle = <<"yearly">>
     end;
 
 next_rule_date(#rule{cycle = <<"yearly">>
-		    ,interval=I0
-		    ,ordinal=Ordinal
-		    ,month=Month
-		    ,wdays=[Weekday]
-		    ,start_date={Y0, _, _}
+                    ,interval=I0
+                    ,ordinal=Ordinal
+                    ,month=Month
+                    ,wdays=[Weekday]
+                    ,start_date={Y0, _, _}
                     }
               ,{Y1, M1, D1}) ->
     Distance = Y1 - Y0,
@@ -879,7 +879,7 @@ date_of_dow(Year, Month, Weekday, Ordinal) ->
                    RefDays + DOW + (7 - RefDOW) + (7 * Occurance);
                RefDOW ->
                    RefDays + abs(DOW - RefDOW) + (7 * Occurance)
-	   end,
+           end,
     {Y, M, D} = calendar:gregorian_days_to_date(Days),
     normalize_date({Y, M, D}).
 

@@ -8,10 +8,10 @@
 -module(whs_account_conversion).
 
 -export([promote/1
-	,force_promote/1
+        ,force_promote/1
         ]).
 -export([demote/1
-	,force_demote/1
+        ,force_demote/1
         ]).
 -export([cascade_reseller_id/2]).
 -export([set_reseller_id/2]).
@@ -94,7 +94,7 @@ cascade_reseller_id(Reseller, Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     ResellerId = kz_util:format_account_id(Reseller, 'raw'),
     ViewOptions = [{<<"startkey">>, [AccountId]}
-		  ,{<<"endkey">>, [AccountId, kz_json:new()]}
+                  ,{<<"endkey">>, [AccountId, kz_json:new()]}
                   ],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {'error', _R}=Error ->
@@ -148,9 +148,9 @@ has_reseller_descendants(AccountId) ->
     %% its very important that this check not operate against stale data!
     _ = kz_datamgr:flush_cache_docs(?KZ_SERVICES_DB),
     ViewOptions = [{<<"startkey">>, [AccountId]}
-		  ,{<<"endkey">>, [AccountId, kz_json:new()]}
+                  ,{<<"endkey">>, [AccountId, kz_json:new()]}
                   ],
     {'ok', JObjs} = kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions),
     lists:any(fun(JObj) ->
-		      kz_services:is_reseller(kz_account:id(JObj))
+                      kz_services:is_reseller(kz_account:id(JObj))
               end, JObjs).

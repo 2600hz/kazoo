@@ -9,8 +9,8 @@
 -module(kzd_schema).
 
 -export([find_schema/1
-	,properties/2
-	,max_length/2
+        ,properties/2
+        ,max_length/2
         ]).
 
 -include("kz_documents.hrl").

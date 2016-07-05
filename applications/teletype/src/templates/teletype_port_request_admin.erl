@@ -9,7 +9,7 @@
 -module(teletype_port_request_admin).
 
 -export([init/0
-	,handle_req/2
+        ,handle_req/2
         ]).
 
 -include("teletype.hrl").
@@ -19,9 +19,9 @@
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
-	  ?PORT_REQUEST_MACROS
-	  ++ ?ACCOUNT_MACROS
-	 )
+          ?PORT_REQUEST_MACROS
+          ++ ?ACCOUNT_MACROS
+         )
        ).
 
 -define(TEMPLATE_TEXT, <<"Port request submitted for {{account.name}} by {{port_request.customer_contact}}.\n\nThe account's tree:\n\n {{ account.name }} ({{ account.id }})\n{% for id, name in account_tree %} {{ name }} ({{ id }})\n{% endfor %}\n\nRequest to port numbers: {{ port_request.numbers }}.\n\nPort Details:\n\n {% for k,v in port_request %} {{ k }} : {{ v }}\n {% endfor %}\n">>).
@@ -40,16 +40,16 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-					  ,{'text', ?TEMPLATE_TEXT}
-					  ,{'html', ?TEMPLATE_HTML}
-					  ,{'subject', ?TEMPLATE_SUBJECT}
-					  ,{'category', ?TEMPLATE_CATEGORY}
-					  ,{'friendly_name', ?TEMPLATE_NAME}
-					  ,{'to', ?TEMPLATE_TO}
-					  ,{'from', ?TEMPLATE_FROM}
-					  ,{'cc', ?TEMPLATE_CC}
-					  ,{'bcc', ?TEMPLATE_BCC}
-					  ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                          ,{'text', ?TEMPLATE_TEXT}
+                                          ,{'html', ?TEMPLATE_HTML}
+                                          ,{'subject', ?TEMPLATE_SUBJECT}
+                                          ,{'category', ?TEMPLATE_CATEGORY}
+                                          ,{'friendly_name', ?TEMPLATE_NAME}
+                                          ,{'to', ?TEMPLATE_TO}
+                                          ,{'from', ?TEMPLATE_FROM}
+                                          ,{'cc', ?TEMPLATE_CC}
+                                          ,{'bcc', ?TEMPLATE_BCC}
+                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -72,8 +72,8 @@ process_req(DataJObj) ->
     {'ok', PortReqJObj} = teletype_util:open_doc(<<"port_request">>, PortReqId, DataJObj),
 
     ReqData = kz_json:set_value(<<"port_request">>
-			       ,teletype_port_utils:fix_port_request_data(PortReqJObj)
-			       ,DataJObj
+                               ,teletype_port_utils:fix_port_request_data(PortReqJObj)
+                               ,DataJObj
                                ),
 
     case teletype_util:is_preview(DataJObj) of
@@ -86,9 +86,9 @@ handle_port_request(DataJObj) ->
     Macros =
         props:filter_undefined(
           [{<<"system">>, teletype_util:system_params()}
-	  ,{<<"account">>, teletype_util:account_params(DataJObj)}
-	  ,{<<"port_request">>, port_request_data(kz_json:get_value(<<"port_request">>, DataJObj))}
-	  ,{<<"account_tree">>, account_tree(kz_json:get_value(<<"account_id">>, DataJObj))}
+          ,{<<"account">>, teletype_util:account_params(DataJObj)}
+          ,{<<"port_request">>, port_request_data(kz_json:get_value(<<"port_request">>, DataJObj))}
+          ,{<<"account_tree">>, account_tree(kz_json:get_value(<<"account_id">>, DataJObj))}
           ]),
 
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
@@ -101,7 +101,7 @@ handle_port_request(DataJObj) ->
     Subject =
         teletype_util:render_subject(
           kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
-				    ,Macros
+                                    ,Macros
          ),
 
     Emails = teletype_util:find_addresses(maybe_set_emails(DataJObj), TemplateMetaJObj, ?MOD_CONFIG_CAT),
@@ -128,11 +128,11 @@ account_tree([AncestorId | AncestorIds], KVs) ->
 
 maybe_set_emails(DataJObj) ->
     Fs = [fun maybe_set_from/1
-	 ,fun maybe_set_to/1
+         ,fun maybe_set_to/1
          ],
     lists:foldl(fun(F, Acc) -> F(Acc) end
-	       ,DataJObj
-	       ,Fs
+               ,DataJObj
+               ,Fs
                ).
 
 -spec maybe_set_from(kz_json:object()) -> kz_json:object().
@@ -174,7 +174,7 @@ find_port_authority(MasterAccountId, AccountId) ->
             ResellerId = kz_services:get_reseller_id(AccountId),
             lager:debug("failed to find whitelabel for ~s, checking ~s", [AccountId, ResellerId]),
             find_port_authority(MasterAccountId, ResellerId);
-	{'ok', JObj} ->
+        {'ok', JObj} ->
             lager:debug("using account ~s for port authority", [AccountId]),
             kz_whitelabel:port_authority(JObj)
     end.

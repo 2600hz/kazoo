@@ -17,8 +17,8 @@
 -spec listen_on_other_leg(kapps_call:call(), ne_binaries()) -> 'ok'.
 listen_on_other_leg(Call, Events) ->
     API = [{<<"Application-Name">>, <<"noop">>}
-	  ,{<<"B-Leg-Events">>, Events}
-	  ,{<<"Insert-At">>, <<"now">>}
+          ,{<<"B-Leg-Events">>, Events}
+          ,{<<"Insert-At">>, <<"now">>}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending noop for b leg events"),
@@ -27,8 +27,8 @@ listen_on_other_leg(Call, Events) ->
 -spec send_hangup_req(ne_binary()) -> 'ok'.
 send_hangup_req(CallId) ->
     API = [{<<"Call-ID">>, CallId}
-	  ,{<<"Action">>, <<"hangup">>}
-	  ,{<<"Data">>, kz_json:new()}
+          ,{<<"Action">>, <<"hangup">>}
+          ,{<<"Data">>, kz_json:new()}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("attempting to hangup ~s", [CallId]),
@@ -37,8 +37,8 @@ send_hangup_req(CallId) ->
 -spec send_break_req(ne_binary()) -> 'ok'.
 send_break_req(CallId) ->
     API = [{<<"Call-ID">>, CallId}
-	  ,{<<"Action">>, <<"break">>}
-	  ,{<<"Data">>, kz_json:new()}
+          ,{<<"Action">>, <<"break">>}
+          ,{<<"Data">>, kz_json:new()}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("attempting to break ~s", [CallId]),

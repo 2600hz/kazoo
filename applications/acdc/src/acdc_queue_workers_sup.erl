@@ -16,9 +16,9 @@
 
 %% API
 -export([start_link/0
-	,new_worker/3, new_workers/4
-	,workers/1, worker_count/1
-	,status/1
+        ,new_worker/3, new_workers/4
+        ,workers/1, worker_count/1
+        ,status/1
         ]).
 
 %% Supervisor callbacks

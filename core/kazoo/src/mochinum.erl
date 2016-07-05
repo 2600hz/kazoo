@@ -83,7 +83,7 @@ insert_decimal(0, S) ->
 insert_decimal(Place, S) when Place > 0 ->
     L = length(S),
     case Place - L of
-	0 ->
+        0 ->
             S ++ ".0";
         N when N < 0 ->
             {S0, S1} = lists:split(L + N, S),

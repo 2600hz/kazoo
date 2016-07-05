@@ -13,8 +13,8 @@
 -include("ecallmgr.hrl").
 
 -export([call_command/3
-	,unbridge/2
-	,maybe_b_leg_events/3
+        ,unbridge/2
+        ,maybe_b_leg_events/3
         ]).
 
 -define(BYPASS_MEDIA_AFTER_BRIDGE, ecallmgr_config:get_boolean(<<"use_bypass_media_after_bridge">>, 'false')).
@@ -36,19 +36,19 @@ call_command(Node, UUID, JObj) ->
             {'ok', Channel} = ecallmgr_fs_channel:fetch(UUID, 'record'),
 
             Routines = [fun handle_hold_media/5
-		       ,fun handle_secure_rtp/5
-		       ,fun maybe_handle_bypass_media/5
-		       ,fun handle_ccvs/5
-		       ,fun pre_exec/5
-		       ,fun handle_loopback/5
-		       ,fun create_command/5
-		       ,fun post_exec/5
+                       ,fun handle_secure_rtp/5
+                       ,fun maybe_handle_bypass_media/5
+                       ,fun handle_ccvs/5
+                       ,fun pre_exec/5
+                       ,fun handle_loopback/5
+                       ,fun create_command/5
+                       ,fun post_exec/5
                        ],
             lager:debug("creating bridge dialplan"),
             XferExt = lists:foldr(fun(F, DP) ->
                                           F(DP, Node, UUID, Channel, JObj)
                                   end
-				 ,[], Routines),
+                                 ,[], Routines),
             {<<"xferext">>, XferExt}
     end.
 
@@ -77,9 +77,9 @@ unbridge(UUID, JObj) ->
 -spec handle_ringback(atom(), ne_binary(), kz_json:object()) -> 'ok'.
 handle_ringback(Node, UUID, JObj) ->
     case kz_json:get_first_defined([<<"Ringback">>
-				   ,[<<"Custom-Channel-Vars">>, <<"Ringback">>]
+                                   ,[<<"Custom-Channel-Vars">>, <<"Ringback">>]
                                    ]
-				  ,JObj
+                                  ,JObj
                                   )
     of
         'undefined' -> 'ok';
@@ -111,7 +111,7 @@ handle_hold_media(DP, _Node, UUID, _Channel, JObj) ->
                     Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
                     lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
                     [{"application", <<"set hold_music=", Stream/binary>>}
-		    ,{"application", <<"set transfer_ringback=", Stream/binary>>}
+                    ,{"application", <<"set transfer_ringback=", Stream/binary>>}
                      |DP
                     ]
             end;
@@ -119,7 +119,7 @@ handle_hold_media(DP, _Node, UUID, _Channel, JObj) ->
             Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
             lager:debug("bridge has custom music-on-hold: ~s", [Stream]),
             [{"application", <<"set hold_music=", Stream/binary>>}
-	    ,{"application", <<"set transfer_ringback=", Stream/binary>>}
+            ,{"application", <<"set transfer_ringback=", Stream/binary>>}
              |DP
             ]
     end.
@@ -199,15 +199,15 @@ pre_exec(DP, _Node, _UUID, _Channel, _JObj) ->
     ,{"application", "export sip_redirect_context=context_2"}
     ,{"application", "set hangup_after_bridge=true"}
     ,{"application", lists:concat(["export "
-				  ,?CHANNEL_VAR_PREFIX, "Inception"
-				  ,"="
-				  ,"${", ?CHANNEL_VAR_PREFIX, "Inception}"
-				  ])}
+                                  ,?CHANNEL_VAR_PREFIX, "Inception"
+                                  ,"="
+                                  ,"${", ?CHANNEL_VAR_PREFIX, "Inception}"
+                                  ])}
     ,{"application", lists:concat(["export "
-				  ,?CHANNEL_VAR_PREFIX, ?CALL_INTERACTION_ID
-				  ,"="
-				  ,"${", ?CHANNEL_VAR_PREFIX, ?CALL_INTERACTION_ID, "}"
-				  ])}
+                                  ,?CHANNEL_VAR_PREFIX, ?CALL_INTERACTION_ID
+                                  ,"="
+                                  ,"${", ?CHANNEL_VAR_PREFIX, ?CALL_INTERACTION_ID, "}"
+                                  ])}
      |DP
     ].
 
@@ -218,8 +218,8 @@ create_command(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
     EPs = kz_json:get_ne_value(<<"Endpoints">>, JObj, []),
     Endpoints = maybe_bypass_after_bridge(BypassAfterBridge, BridgeProfile, ChannelProfile, EPs),
     BridgeCmd = list_to_binary(["bridge "
-			       ,build_channels_vars(Endpoints, JObj)
-			       ,try_create_bridge_string(Endpoints, JObj)
+                               ,build_channels_vars(Endpoints, JObj)
+                               ,try_create_bridge_string(Endpoints, JObj)
                                ]),
     [{"application", BridgeCmd}|DP].
 

@@ -23,18 +23,18 @@
 
 -record(keys, {menu_toggle_cf =
                    kapps_config:get_binary(?MOD_CONFIG_CAT, [<<"keys">>, <<"menu_toggle_option">>], <<"1">>)
-	      ,menu_change_number =
+              ,menu_change_number =
                    kapps_config:get_binary(?MOD_CONFIG_CAT, [<<"keys">>, <<"menu_change_number">>], <<"2">>)
               }).
 -type keys() :: #keys{}.
 
 -record(callfwd, {keys = #keys{} :: keys()
-		 ,doc_id = 'undefined' :: api_binary()
-		 ,enabled = 'false' :: boolean()
-		 ,number = <<>> :: binary()
-		 ,require_keypress = 'true' :: boolean()
-		 ,keep_caller_id = 'true' :: boolean()
-		 ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
+                 ,doc_id = 'undefined' :: api_binary()
+                 ,enabled = 'false' :: boolean()
+                 ,number = <<>> :: binary()
+                 ,require_keypress = 'true' :: boolean()
+                 ,keep_caller_id = 'true' :: boolean()
+                 ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
                  }).
 -type callfwd() :: #callfwd{}.
 
@@ -76,10 +76,10 @@ handle(Data, Call) ->
 %%--------------------------------------------------------------------
 -spec cf_menu(callfwd(), ne_binary(), kapps_call:call()) -> callfwd().
 cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle
-			   ,menu_change_number=ChangeNum
+                           ,menu_change_number=ChangeNum
                            }
-		,enabled=Enabled
-		,interdigit_timeout=Interdigit
+                ,enabled=Enabled
+                ,interdigit_timeout=Interdigit
                 }=CF, CaptureGroup, Call) ->
     lager:info("playing call forwarding menu"),
     Prompt = case Enabled of
@@ -91,11 +91,11 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle
     NoopId = kapps_call_command:play(Prompt, Call),
 
     case kapps_call_command:collect_digits(?KEY_LENGTH
-					  ,?CALLFWD_NUMBER_TIMEOUT
-					  ,Interdigit
-					  ,NoopId
-					  ,Call
-					  )
+                                          ,?CALLFWD_NUMBER_TIMEOUT
+                                          ,Interdigit
+                                          ,NoopId
+                                          ,Call
+                                          )
     of
         {'ok', Toggle} ->
             CF1 = cf_toggle(CF, CaptureGroup, Call),
@@ -118,7 +118,7 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle
 %%--------------------------------------------------------------------
 -spec cf_toggle(callfwd(), api_binary(), kapps_call:call()) -> callfwd().
 cf_toggle(#callfwd{enabled='false'
-		  ,number=Number
+                  ,number=Number
                   }=CF, _, Call) when is_binary(Number), Number =/= <<>> ->
     _ = try
             {'ok', _} = kapps_call_command:b_prompt(<<"cf-now_forwarded_to">>, Call),
@@ -189,11 +189,11 @@ cf_update_number(#callfwd{interdigit_timeout=Interdigit}=CF, CaptureGroup, Call)
     Min = ?MIN_CALLFWD_NUMBER_LENGTH,
 
     case kapps_call_command:collect_digits(?MAX_CALLFWD_NUMBER_LENGTH
-					  ,?CALLFWD_NUMBER_TIMEOUT
-					  ,Interdigit
-					  ,NoopId
-					  ,Call
-					  )
+                                          ,?CALLFWD_NUMBER_TIMEOUT
+                                          ,Interdigit
+                                          ,NoopId
+                                          ,Call
+                                          )
     of
         {'ok', Short} when byte_size(Short) < Min ->
             lager:debug("too short of input(~p): '~s'", [Min, Short]),
@@ -221,17 +221,17 @@ cf_update_number(CF, CaptureGroup, _) ->
                             {'ok', kz_json:object()} |
                             {'error', atom()}.
 update_callfwd(#callfwd{doc_id=Id
-		       ,enabled=Enabled
-		       ,number=Num
-		       ,require_keypress=_RK
-		       ,keep_caller_id=_KCI
+                       ,enabled=Enabled
+                       ,number=Num
+                       ,require_keypress=_RK
+                       ,keep_caller_id=_KCI
                        }=CF, Call) ->
     lager:info("updating call forwarding settings on ~s", [Id]),
     AccountDb = kapps_call:account_db(Call),
     {'ok', JObj} = kz_datamgr:open_doc(AccountDb, Id),
     CFObj = kz_json:get_ne_value(<<"call_forward">>, JObj, kz_json:new()),
     Updates = [fun(J) -> kz_json:set_value(<<"enabled">>, Enabled, J) end
-	      ,fun(J) -> kz_json:set_value(<<"number">>, Num, J) end
+              ,fun(J) -> kz_json:set_value(<<"number">>, Num, J) end
               ],
     CFObj1 = lists:foldl(fun(F, Acc) -> F(Acc) end, CFObj, Updates),
     case kz_datamgr:save_doc(AccountDb, kz_json:set_value(<<"call_forward">>, CFObj1, JObj)) of
@@ -276,10 +276,10 @@ maybe_get_call_forward(Call, OwnerId) ->
         {'ok', UserJObj} ->
             lager:info("loaded call forwarding object from ~s", [OwnerId]),
             #callfwd{doc_id = kz_doc:id(UserJObj)
-		    ,enabled = kz_json:is_true([<<"call_forward">>, <<"enabled">>], UserJObj)
-		    ,number = kz_json:get_ne_value([<<"call_forward">>, <<"number">>], UserJObj, <<>>)
-		    ,require_keypress = kz_json:is_true([<<"call_forward">>, <<"require_keypress">>], UserJObj, 'true')
-		    ,keep_caller_id = kz_json:is_true([<<"call_forward">>, <<"keep_caller_id">>], UserJObj, 'true')
+                    ,enabled = kz_json:is_true([<<"call_forward">>, <<"enabled">>], UserJObj)
+                    ,number = kz_json:get_ne_value([<<"call_forward">>, <<"number">>], UserJObj, <<>>)
+                    ,require_keypress = kz_json:is_true([<<"call_forward">>, <<"require_keypress">>], UserJObj, 'true')
+                    ,keep_caller_id = kz_json:is_true([<<"call_forward">>, <<"keep_caller_id">>], UserJObj, 'true')
                     };
         {'error', R} ->
             lager:info("failed to load call forwarding object from ~s, ~w", [OwnerId, R]),

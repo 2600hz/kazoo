@@ -11,36 +11,36 @@
 -module(kapi_acdc_agent).
 
 -export([sync_req/1, sync_req_v/1
-	,sync_resp/1, sync_resp_v/1
-	,stats_req/1, stats_req_v/1
-	,stats_resp/1, stats_resp_v/1
-	,login/1, login_v/1
-	,logout/1, logout_v/1
-	,pause/1, pause_v/1
-	,resume/1, resume_v/1
-	,login_queue/1, login_queue_v/1
-	,logout_queue/1, logout_queue_v/1
+        ,sync_resp/1, sync_resp_v/1
+        ,stats_req/1, stats_req_v/1
+        ,stats_resp/1, stats_resp_v/1
+        ,login/1, login_v/1
+        ,logout/1, logout_v/1
+        ,pause/1, pause_v/1
+        ,resume/1, resume_v/1
+        ,login_queue/1, login_queue_v/1
+        ,logout_queue/1, logout_queue_v/1
 
-	,login_resp/1, login_resp_v/1
+        ,login_resp/1, login_resp_v/1
         ]).
 
 -export([bind_q/2
-	,unbind_q/2
+        ,unbind_q/2
         ]).
 -export([declare_exchanges/0]).
 
 -export([publish_sync_req/1, publish_sync_req/2
-	,publish_sync_resp/2, publish_sync_resp/3
-	,publish_stats_req/1, publish_stats_req/2
-	,publish_stats_resp/2, publish_stats_resp/3
-	,publish_login/1, publish_login/2
-	,publish_logout/1, publish_logout/2
-	,publish_pause/1, publish_pause/2
-	,publish_resume/1, publish_resume/2
-	,publish_login_queue/1, publish_login_queue/2
-	,publish_logout_queue/1, publish_logout_queue/2
+        ,publish_sync_resp/2, publish_sync_resp/3
+        ,publish_stats_req/1, publish_stats_req/2
+        ,publish_stats_resp/2, publish_stats_resp/3
+        ,publish_login/1, publish_login/2
+        ,publish_logout/1, publish_logout/2
+        ,publish_pause/1, publish_pause/2
+        ,publish_resume/1, publish_resume/2
+        ,publish_login_queue/1, publish_login_queue/2
+        ,publish_logout_queue/1, publish_logout_queue/2
 
-	,publish_login_resp/2, publish_login_resp/3
+        ,publish_login_resp/2, publish_login_resp/3
         ]).
 
 -include_lib("kazoo/include/kz_api.hrl").
@@ -58,7 +58,7 @@
 -define(SYNC_REQ_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>]).
 -define(OPTIONAL_SYNC_REQ_HEADERS, [<<"Process-ID">>]).
 -define(SYNC_REQ_VALUES, [{<<"Event-Category">>, <<"agent">>}
-			 ,{<<"Event-Name">>, <<"sync_req">>}
+                         ,{<<"Event-Name">>, <<"sync_req">>}
                          ]).
 -define(SYNC_REQ_TYPES, []).
 
@@ -95,16 +95,16 @@ sync_req_routing_key(AcctId, Id) ->
 -define(SYNC_RESP_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Status">>]).
 -define(OPTIONAL_SYNC_RESP_HEADERS, [<<"Call-ID">>, <<"Time-Left">>, <<"Process-ID">>]).
 -define(SYNC_RESP_VALUES, [{<<"Event-Category">>, <<"agent">>}
-			  ,{<<"Event-Name">>, <<"sync_resp">>}
-			  ,{<<"Status">>, [<<"init">>
-					  ,<<"sync">>
-					  ,<<"ready">>
-					  ,<<"waiting">>
-					  ,<<"ringing">>
-					  ,<<"answered">>
-					  ,<<"wrapup">>
-					  ,<<"paused">>
-					  ]}
+                          ,{<<"Event-Name">>, <<"sync_resp">>}
+                          ,{<<"Status">>, [<<"init">>
+                                          ,<<"sync">>
+                                          ,<<"ready">>
+                                          ,<<"waiting">>
+                                          ,<<"ringing">>
+                                          ,<<"answered">>
+                                          ,<<"wrapup">>
+                                          ,<<"paused">>
+                                          ]}
                           ]).
 -define(SYNC_RESP_TYPES, []).
 
@@ -136,7 +136,7 @@ sync_resp_v(JObj) ->
 -define(STATS_REQ_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_STATS_REQ_HEADERS, [<<"Agent-ID">>]).
 -define(STATS_REQ_VALUES, [{<<"Event-Category">>, <<"agent">>}
-			  ,{<<"Event-Name">>, <<"stats_req">>}
+                          ,{<<"Event-Name">>, <<"stats_req">>}
                           ]).
 -define(STATS_REQ_TYPES, []).
 
@@ -172,11 +172,11 @@ stats_req_routing_key(JObj) ->
 -spec stats_req_publish_key(kz_json:object() | kz_proplist() | ne_binary()) -> ne_binary().
 stats_req_publish_key(Props) when is_list(Props) ->
     stats_req_routing_key(props:get_value(<<"Account-ID">>, Props)
-			 ,props:get_value(<<"Agent-ID">>, Props)
+                         ,props:get_value(<<"Agent-ID">>, Props)
                          );
 stats_req_publish_key(JObj) ->
     stats_req_routing_key(kz_json:get_value(<<"Account-ID">>, JObj)
-			 ,kz_json:get_value(<<"Agent-ID">>, JObj)
+                         ,kz_json:get_value(<<"Agent-ID">>, JObj)
                          ).
 
 stats_req_routing_key(Id, 'undefined') ->
@@ -188,7 +188,7 @@ stats_req_routing_key(Id, AgentId) ->
 -define(STATS_RESP_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_STATS_RESP_HEADERS, [<<"Current-Calls">>, <<"Current-Stats">>, <<"Current-Statuses">>]).
 -define(STATS_RESP_VALUES, [{<<"Event-Category">>, <<"agent">>}
-			   ,{<<"Event-Name">>, <<"stats_resp">>}
+                           ,{<<"Event-Name">>, <<"stats_resp">>}
                            ]).
 -define(STATS_RESP_TYPES, [{<<"Stats">>, fun kz_json:is_json_object/1}]).
 
@@ -214,10 +214,10 @@ stats_resp_v(JObj) ->
 
 -define(AGENT_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>]).
 -define(OPTIONAL_AGENT_HEADERS, [<<"Time-Limit">>, <<"Queue-ID">>
-				,<<"Presence-ID">>, <<"Presence-State">>
+                                ,<<"Presence-ID">>, <<"Presence-State">>
                                 ]).
 -define(AGENT_VALUES, [{<<"Event-Category">>, <<"agent">>}
-		      ,{<<"Presence-State">>, kapi_presence:presence_states()}
+                      ,{<<"Presence-State">>, kapi_presence:presence_states()}
                       ]).
 -define(AGENT_TYPES, []).
 
@@ -229,8 +229,8 @@ stats_resp_v(JObj) ->
 -define(LOGOUT_QUEUE_VALUES, [{<<"Event-Name">>, <<"logout_queue">>} | ?AGENT_VALUES]).
 
 -spec login(api_terms()) ->
-		   {'ok', iolist()} |
-		   {'error', string()}.
+                   {'ok', iolist()} |
+                   {'error', string()}.
 login(Props) when is_list(Props) ->
     case login_v(Props) of
         'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
@@ -246,8 +246,8 @@ login_v(JObj) ->
     login_v(kz_json:to_proplist(JObj)).
 
 -spec login_queue(api_terms()) ->
-			 {'ok', iolist()} |
-			 {'error', string()}.
+                         {'ok', iolist()} |
+                         {'error', string()}.
 login_queue(Props) when is_list(Props) ->
     case login_queue_v(Props) of
         'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
@@ -264,8 +264,8 @@ login_queue_v(JObj) ->
 
 
 -spec logout(api_terms()) ->
-		    {'ok', iolist()} |
-		    {'error', string()}.
+                    {'ok', iolist()} |
+                    {'error', string()}.
 logout(Props) when is_list(Props) ->
     case logout_v(Props) of
         'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
@@ -281,8 +281,8 @@ logout_v(JObj) ->
     logout_v(kz_json:to_proplist(JObj)).
 
 -spec logout_queue(api_terms()) ->
-			  {'ok', iolist()} |
-			  {'error', string()}.
+                          {'ok', iolist()} |
+                          {'error', string()}.
 logout_queue(Props) when is_list(Props) ->
     case logout_queue_v(Props) of
         'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
@@ -298,8 +298,8 @@ logout_queue_v(JObj) ->
     logout_queue_v(kz_json:to_proplist(JObj)).
 
 -spec pause(api_terms()) ->
-		   {'ok', iolist()} |
-		   {'error', string()}.
+                   {'ok', iolist()} |
+                   {'error', string()}.
 pause(Props) when is_list(Props) ->
     case pause_v(Props) of
         'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
@@ -315,8 +315,8 @@ pause_v(JObj) ->
     pause_v(kz_json:to_proplist(JObj)).
 
 -spec resume(api_terms()) ->
-		    {'ok', iolist()} |
-		    {'error', string()}.
+                    {'ok', iolist()} |
+                    {'error', string()}.
 resume(Props) when is_list(Props) ->
     case resume_v(Props) of
         'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
@@ -343,8 +343,8 @@ agent_status_routing_key(AcctId, AgentId, Status) ->
 -define(LOGIN_RESP_HEADERS, [<<"Status">>]).
 -define(OPTIONAL_LOGIN_RESP_HEADERS, []).
 -define(LOGIN_RESP_VALUES, [{<<"Event-Category">>, <<"agent">>}
-			   ,{<<"Event-Name">>, <<"login_resp">>}
-			   ,{<<"Status">>, [<<"success">>, <<"failed">>]}
+                           ,{<<"Event-Name">>, <<"login_resp">>}
+                           ,{<<"Status">>, [<<"success">>, <<"failed">>]}
                            ]).
 -define(LOGIN_RESP_TYPES, []).
 

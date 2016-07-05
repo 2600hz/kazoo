@@ -8,12 +8,12 @@
 -module(kz_hooks_util).
 
 -export([register/0, register/1, register/2
-	,registered/0, registered/1, registered/2
-	,all_registered/0
+        ,registered/0, registered/1, registered/2
+        ,all_registered/0
         ]).
 -export([register_rr/0, register_rr/1, register_rr/2
-	,registered_rr/0, registered_rr/1, registered_rr/2
-	,all_registered_rr/0
+        ,registered_rr/0, registered_rr/1, registered_rr/2
+        ,all_registered_rr/0
         ]).
 -export([lookup_account_id/1]).
 -export([handle_call_event/2]).
@@ -60,17 +60,17 @@ registered(AccountId, EventName) ->
 all_registered() ->
     lists:usort(
       lists:foldl(fun all_registered_fold/2
-		 ,[]
-		 ,[?HOOK_REG
-		  ,?HOOK_REG('_')
-		  ,?HOOK_REG('_', '_')
-		  ])
+                 ,[]
+                 ,[?HOOK_REG
+                  ,?HOOK_REG('_')
+                  ,?HOOK_REG('_', '_')
+                  ])
      ).
 
 all_registered_fold(HookPattern, Acc) ->
     Match = [{{HookPattern, '$1', '_'}
-	     ,[]
-	     ,['$1']
+             ,[]
+             ,['$1']
              }],
     gproc:select(Match) ++ Acc.
 
@@ -98,11 +98,11 @@ registered_rr(AccountId, EventName) ->
 all_registered_rr() ->
     lists:usort(
       lists:foldl(fun all_registered_fold/2
-		 ,[]
-		 ,[?HOOK_REG_RR
-		  ,?HOOK_REG_RR('_')
-		  ,?HOOK_REG_RR('_', '_')
-		  ])
+                 ,[]
+                 ,[?HOOK_REG_RR
+                  ,?HOOK_REG_RR('_')
+                  ,?HOOK_REG_RR('_', '_')
+                  ])
      ).
 
 -spec maybe_add_hook(tuple()) -> 'true'.
@@ -147,7 +147,7 @@ handle_call_event(JObj, Props) ->
     'true' = kapi_call:event_v(JObj),
     HookEvent = kz_json:get_value(<<"Event-Name">>, JObj),
     AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>
-				  ,<<"Account-ID">>
+                                  ,<<"Account-ID">>
                                   ], JObj),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
     kz_util:put_callid(CallId),
@@ -163,7 +163,7 @@ handle_call_event(JObj, 'undefined', <<"CHANNEL_CREATE">>, CallId, RR) ->
         {'ok', AccountId} ->
             lager:debug("determined account id for 'channel_create' is ~s", [AccountId]),
             J = kz_json:set_value([<<"Custom-Channel-Vars">>
-				  ,<<"Account-ID">>
+                                  ,<<"Account-ID">>
                                   ], AccountId, JObj),
             handle_call_event(J, AccountId, <<"CHANNEL_CREATE">>, CallId, RR)
     end;

@@ -15,11 +15,11 @@
 
 %% gen_server callbacks
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("acdc.hrl").
@@ -27,8 +27,8 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {table_id :: ets:tid()
-	       ,etssrv :: pid()
-	       ,give_away_ref :: reference()
+               ,etssrv :: pid()
+               ,give_away_ref :: reference()
                }).
 
 %%%===================================================================
@@ -93,7 +93,7 @@ handle_cast({'begin', TableId, TableOptions}, State) ->
 
     ets:setopts(Tbl, {'heir', self(), 'ok'}),
     {'noreply', State#state{table_id=Tbl
-			   ,give_away_ref=send_give_away_retry(Tbl, 'ok', 0)
+                           ,give_away_ref=send_give_away_retry(Tbl, 'ok', 0)
                            }};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -119,28 +119,28 @@ handle_info({'EXIT', EtsMgr, _Reason}, #state{etssrv=EtsMgr}=State) ->
     lager:debug("ets mgr ~p exited: ~p", [EtsMgr, _Reason]),
     {'noreply', State#state{etssrv='undefined'}};
 handle_info({'ETS-TRANSFER', Tbl, Etssrv, Data}, #state{table_id=Tbl
-						       ,etssrv=Etssrv
-						       ,give_away_ref='undefined'
+                                                       ,etssrv=Etssrv
+                                                       ,give_away_ref='undefined'
                                                        }=State) ->
     lager:debug("ets table ~p transferred back to ourselves", [Tbl]),
     {'noreply', State#state{etssrv='undefined'
-			   ,give_away_ref=send_give_away_retry(Tbl, Data, 0)
+                           ,give_away_ref=send_give_away_retry(Tbl, Data, 0)
                            }};
 handle_info({'give_away', Tbl, Data}, #state{table_id=Tbl
-					    ,etssrv='undefined'
-					    ,give_away_ref=Ref
+                                            ,etssrv='undefined'
+                                            ,give_away_ref=Ref
                                             }=State) when is_reference(Ref) ->
     lager:debug("give away ~p: ~p", [Tbl, Data]),
     case find_ets_mgr(Tbl, Data) of
         P when is_pid(P) ->
             lager:debug("handing tbl ~p back to ~p and then to ~p", [Tbl, self(), P]),
             {'noreply', State#state{etssrv=P
-				   ,give_away_ref='undefined'
+                                   ,give_away_ref='undefined'
                                    }};
         Ref when is_reference(Ref) ->
             lager:debug("ets mgr died already, hasn't resumed life yet; waiting"),
             {'noreply', State#state{etssrv='undefined'
-				   ,give_away_ref=Ref
+                                   ,give_away_ref=Ref
                                    }}
     end;
 handle_info({'EXIT', _Pid, _Reason}, State) ->

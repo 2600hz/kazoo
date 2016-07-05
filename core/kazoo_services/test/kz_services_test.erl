@@ -13,9 +13,9 @@
 -define(ITEM, <<"did_us">>).
 
 -record(state, {service_plan_jobj :: kzd_service_plan:plan()
-	       ,services :: kz_services:services()
-	       ,services_jobj :: kz_json:object()
-	       ,account_plan :: kzd_service_plan:plan()
+               ,services :: kz_services:services()
+               ,services_jobj :: kz_json:object()
+               ,account_plan :: kzd_service_plan:plan()
                }).
 
 services_test_() ->
@@ -31,10 +31,10 @@ services_test_() ->
 
 init() ->
     lists:foldl(fun init_fold/2
-	       ,#state{}
-	       ,[fun read_service_plan/1
-		,fun read_services/1
-		]).
+               ,#state{}
+               ,[fun read_service_plan/1
+                ,fun read_services/1
+                ]).
 
 init_fold(F, State) ->
     F(State).
@@ -59,8 +59,8 @@ read_services(#state{service_plan_jobj=ServicePlan}=State) ->
     AccountPlan = kzd_service_plan:merge_overrides(ServicePlan, Overrides),
 
     State#state{services_jobj=JObj
-	       ,services=Services
-	       ,account_plan=AccountPlan
+               ,services=Services
+               ,account_plan=AccountPlan
                }.
 
 priv_dir() ->
@@ -72,22 +72,22 @@ read_json(Path) ->
     kz_json:decode(JSON).
 
 services_json_to_record(#state{services=Services
-			      ,services_jobj=JObj
+                              ,services_jobj=JObj
                               }) ->
     [{"Verify account id is set properly"
      ,?_assertEqual(kz_doc:account_id(JObj)
-		   ,kz_services:account_id(Services)
-		   )
+                   ,kz_services:account_id(Services)
+                   )
      }
     ,{"Verify the dirty flag is set properly"
      ,?_assertEqual(kzd_services:is_dirty(JObj)
-		   ,kz_services:is_dirty(Services)
-		   )
+                   ,kz_services:is_dirty(Services)
+                   )
      }
     ,{"Verify the billing id"
      ,?_assertEqual(kzd_services:billing_id(JObj)
-		   ,kz_services:get_billing_id(Services)
-		   )
+                   ,kz_services:get_billing_id(Services)
+                   )
      }
      | quantity_checks(Services, JObj)
     ].
@@ -96,26 +96,26 @@ services_record_to_json(#state{services=Services}) ->
     JObj = kz_services:to_json(Services),
     [{"Verify account id is set properly"
      ,?_assertEqual(kz_doc:account_id(JObj)
-		   ,kz_services:account_id(Services)
-		   )
+                   ,kz_services:account_id(Services)
+                   )
      }
     ,{"Verify the dirty flag is set properly"
      ,?_assertEqual(kzd_services:is_dirty(JObj)
-		   ,kz_services:is_dirty(Services)
-		   )
+                   ,kz_services:is_dirty(Services)
+                   )
      }
     ,{"Verify the billing id"
      ,?_assertEqual(kzd_services:billing_id(JObj)
-		   ,kz_services:get_billing_id(Services)
-		   )
+                   ,kz_services:get_billing_id(Services)
+                   )
      }
      | quantity_checks(Services, JObj)
     ].
 
 quantity_checks(Services, JObj) ->
     {Tests, _} = kz_json:foldl(fun category_checks/3
-			      ,{[], Services}
-			      ,kzd_services:quantities(JObj)
+                              ,{[], Services}
+                              ,kzd_services:quantities(JObj)
                               ),
     Tests.
 
@@ -123,8 +123,8 @@ category_checks(Category, CategoryJObj, Acc) ->
     kz_json:foldl(fun(K, V, Acc1) ->
                           item_checks(Category, K, V, Acc1)
                   end
-		 ,Acc
-		 ,CategoryJObj
+                 ,Acc
+                 ,CategoryJObj
                  ).
 
 item_checks(Category, Item, Quantity, {Tests, Services}) ->
@@ -138,13 +138,13 @@ item_check(Category, Item, Quantity, Services) ->
     }.
 
 service_plan_json_to_plans(#state{service_plan_jobj=ServicePlan
-				 ,account_plan=AccountPlan
+                                 ,account_plan=AccountPlan
                                  }) ->
 
     [{"Verify plan from file matches services plan"
      ,?_assertEqual(kz_doc:account_id(ServicePlan)
-		   ,kzd_service_plan:account_id(AccountPlan)
-		   )
+                   ,kzd_service_plan:account_id(AccountPlan)
+                   )
      }
     ,{"Verify cumulative discount rate from service plan"
      ,?_assertEqual(0.5, rate(cumulative_discount(did_us_item(ServicePlan))))
@@ -164,7 +164,7 @@ rate(JObj) ->
     kz_json:get_float_value(<<"rate">>, JObj).
 
 increase_quantities(#state{account_plan=_AccountPlan
-			  ,services=Services
+                          ,services=Services
                           }) ->
     ItemQuantity = kz_services:quantity(?CAT, ?ITEM, Services),
 

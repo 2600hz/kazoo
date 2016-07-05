@@ -19,12 +19,12 @@
 
 %% gen_server callbacks
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("acdc.hrl").
@@ -33,32 +33,32 @@
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{'acdc_agent', [{'restrict_to', ['status', 'stats_req']}]}
-		  ,{'presence', [{'restrict_to', ['probe']}]}
-		  ,{'conf', [{'type', <<"user">>}
-			    ,'federate'
-			    ]}
-		  ,{'conf', [{'type', <<"device">>}
-			    ,'federate'
-			    ]}
+                  ,{'presence', [{'restrict_to', ['probe']}]}
+                  ,{'conf', [{'type', <<"user">>}
+                            ,'federate'
+                            ]}
+                  ,{'conf', [{'type', <<"device">>}
+                            ,'federate'
+                            ]}
                   ]).
 -define(RESPONDERS, [{{'acdc_agent_handler', 'handle_status_update'}
-		     ,[{<<"agent">>, <<"login">>}
-		      ,{<<"agent">>, <<"logout">>}
-		      ,{<<"agent">>, <<"pause">>}
-		      ,{<<"agent">>, <<"resume">>}
-		      ,{<<"agent">>, <<"login_queue">>}
-		      ,{<<"agent">>, <<"logout_queue">>}
-		      ]
+                     ,[{<<"agent">>, <<"login">>}
+                      ,{<<"agent">>, <<"logout">>}
+                      ,{<<"agent">>, <<"pause">>}
+                      ,{<<"agent">>, <<"resume">>}
+                      ,{<<"agent">>, <<"login_queue">>}
+                      ,{<<"agent">>, <<"logout_queue">>}
+                      ]
                      }
-		    ,{{'acdc_agent_handler', 'handle_stats_req'}
-		     ,[{<<"agent">>, <<"stats_req">>}]
-		     }
-		    ,{{'acdc_agent_handler', 'handle_presence_probe'}
-		     ,[{<<"presence">>, <<"probe">>}]
-		     }
-		    ,{{'acdc_agent_handler', 'handle_config_change'}
-		     ,[{<<"configuration">>, <<"*">>}]
-		     }
+                    ,{{'acdc_agent_handler', 'handle_stats_req'}
+                     ,[{<<"agent">>, <<"stats_req">>}]
+                     }
+                    ,{{'acdc_agent_handler', 'handle_presence_probe'}
+                     ,[{<<"presence">>, <<"probe">>}]
+                     }
+                    ,{{'acdc_agent_handler', 'handle_config_change'}
+                     ,[{<<"configuration">>, <<"*">>}]
+                     }
                     ]).
 
 %%%===================================================================
@@ -71,10 +71,10 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}, ?MODULE
-			   ,[{'bindings', ?BINDINGS}
-			    ,{'responders', ?RESPONDERS}
-			    ]
-			   ,[]
+                           ,[{'bindings', ?BINDINGS}
+                            ,{'responders', ?RESPONDERS}
+                            ]
+                           ,[]
                            ).
 
 %%%===================================================================

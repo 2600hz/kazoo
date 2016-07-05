@@ -243,8 +243,8 @@ user_summary(Context, UserId) ->
         'true' -> Context1;
         'false' ->
             get_channels(Context
-			,UserEndpoints
-			,fun kapi_call:publish_query_user_channels_req/1
+                        ,UserEndpoints
+                        ,fun kapi_call:publish_query_user_channels_req/1
                         )
     end.
 
@@ -252,7 +252,7 @@ user_summary(Context, UserId) ->
                             endpoints_return().
 user_endpoints(Context, UserId) ->
     Options = [{'key', [UserId, <<"device">>]}
-	      ,'include_docs'
+              ,'include_docs'
               ],
     Context1 = crossbar_doc:load_view(<<"kz_attributes/owned">>, Options, Context),
     {cb_context:doc(Context1), Context1}.
@@ -264,16 +264,16 @@ group_summary(Context, GroupId) ->
         'true' -> Context1;
         'false' ->
             get_channels(Context
-			,GroupEndpoints
-			,fun kapi_call:publish_query_user_channels_req/1
+                        ,GroupEndpoints
+                        ,fun kapi_call:publish_query_user_channels_req/1
                         )
     end.
 
 -spec group_endpoints(cb_context:context(), ne_binary()) -> endpoints_return().
 group_endpoints(Context, _GroupId) ->
     kz_json:foldl(fun group_endpoints_fold/3
-		 ,{[], Context}
-		 ,kz_json:get_value(<<"endpoints">>, cb_context:doc(Context), kz_json:new())
+                 ,{[], Context}
+                 ,kz_json:get_value(<<"endpoints">>, cb_context:doc(Context), kz_json:new())
                  ).
 
 -spec group_endpoints_fold(ne_binary(), kz_json:object(), endpoints_return()) ->
@@ -308,25 +308,25 @@ get_channels(Context, Devices, PublisherFun) ->
                  || JObj <- Devices,
                     (Username = kz_json:get_first_defined(
                                   [[<<"doc">>, <<"sip">>, <<"username">>]
-				  ,[<<"sip">>, <<"username">>]
+                                  ,[<<"sip">>, <<"username">>]
                                   ]
-							 ,JObj
+                                                         ,JObj
                                  )
                     )
                         =/= 'undefined'
                 ],
 
     Req = [{<<"Realm">>, Realm}
-	  ,{<<"Usernames">>, lists:usort(Usernames)} % unique list of usernames
-	  ,{<<"Account-ID">>, cb_context:account_id(Context)}
-	  ,{<<"Active-Only">>, 'false'}
-	  ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+          ,{<<"Usernames">>, lists:usort(Usernames)} % unique list of usernames
+          ,{<<"Account-ID">>, cb_context:account_id(Context)}
+          ,{<<"Active-Only">>, 'false'}
+          ,{<<"Msg-ID">>, cb_context:req_id(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
     case kz_amqp_worker:call_collect(Req
-				    ,PublisherFun
-				    ,{'ecallmgr', 'true'}
+                                    ,PublisherFun
+                                    ,{'ecallmgr', 'true'}
                                     )
     of
         {'error', _R} ->
@@ -359,26 +359,26 @@ merge_user_channels_fold(Channel, D) ->
 -spec delete_keys(kz_json:object()) -> kz_json:object().
 delete_keys(JObj) ->
     kz_json:delete_keys([<<"account_id">>
-			,<<"bridge_id">>
-			,<<"context">>
-			,<<"dialplan">>
-			,<<"handling_locally">>
-			,<<"node">>
-			,<<"precedence">>
-			,<<"profile">>
-			,<<"realm">>
-			,<<"app_name">>
-			,<<"app_version">>
-			,<<"event_category">>
-			,<<"event_name">>
-			,<<"msg_id">>
-			,<<"node">>
-			,<<"server_id">>
-			,<<"switch_hostname">>
-			,<<"switch_nodename">>
-			,<<"switch_url">>
-			,<<"media_node">>
-			,<<"fetch_id">>
+                        ,<<"bridge_id">>
+                        ,<<"context">>
+                        ,<<"dialplan">>
+                        ,<<"handling_locally">>
+                        ,<<"node">>
+                        ,<<"precedence">>
+                        ,<<"profile">>
+                        ,<<"realm">>
+                        ,<<"app_name">>
+                        ,<<"app_version">>
+                        ,<<"event_category">>
+                        ,<<"event_name">>
+                        ,<<"msg_id">>
+                        ,<<"node">>
+                        ,<<"server_id">>
+                        ,<<"switch_hostname">>
+                        ,<<"switch_nodename">>
+                        ,<<"switch_url">>
+                        ,<<"media_node">>
+                        ,<<"fetch_id">>
                         ], JObj).
 
 -spec normalize_channel(kz_json:object()) -> kz_json:object().
@@ -436,8 +436,8 @@ maybe_transfer(Context, Transferor, _Transferee, Target) ->
 -spec maybe_hangup(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_hangup(Context, CallId) ->
     API = [{<<"Call-ID">>, CallId}
-	  ,{<<"Action">>, <<"hangup">>}
-	  ,{<<"Data">>, kz_json:new()}
+          ,{<<"Action">>, <<"hangup">>}
+          ,{<<"Data">>, kz_json:new()}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("attempting to hangup ~s", [CallId]),
@@ -447,8 +447,8 @@ maybe_hangup(Context, CallId) ->
 -spec maybe_break(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_break(Context, CallId) ->
     API = [{<<"Call-ID">>, CallId}
-	  ,{<<"Action">>, <<"break">>}
-	  ,{<<"Data">>, kz_json:new()}
+          ,{<<"Action">>, <<"break">>}
+          ,{<<"Data">>, kz_json:new()}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("attempting to break ~s", [CallId]),
@@ -459,13 +459,13 @@ maybe_break(Context, CallId) ->
 maybe_callflow(Context, CallId) ->
     CallflowId = cb_context:req_value(Context, <<"id">>),
     API = [{<<"Call-ID">>, CallId}
-	  ,{<<"Action">>, <<"callflow">>}
-	  ,{<<"Data">>, kz_json:from_list(
-			  [{<<"id">>, CallflowId}
-			  ,{<<"captures">>, cb_context:req_value(Context, <<"captures">>)}
-			  ,{<<"collected">>, cb_context:req_value(Context, <<"collected">>)}
-			  ])
-	   }
+          ,{<<"Action">>, <<"callflow">>}
+          ,{<<"Data">>, kz_json:from_list(
+                          [{<<"id">>, CallflowId}
+                          ,{<<"captures">>, cb_context:req_value(Context, <<"captures">>)}
+                          ,{<<"collected">>, cb_context:req_value(Context, <<"collected">>)}
+                          ])
+           }
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 

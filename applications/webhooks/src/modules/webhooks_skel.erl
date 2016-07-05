@@ -7,8 +7,8 @@
 -module(webhooks_skel).
 
 -export([init/0
-	,bindings_and_responders/0
-	,handle_event/2
+        ,bindings_and_responders/0
+        ,handle_event/2
         ]).
 
 -include("webhooks.hrl").
@@ -18,9 +18,9 @@
 -define(DESC, <<"Example webhook module">>).
 -define(METADATA
        ,kz_json:from_list([{<<"_id">>, ?ID}
-			  ,{<<"name">>, ?NAME}
-			  ,{<<"description">>, ?DESC}
-			  ])
+                          ,{<<"name">>, ?NAME}
+                          ,{<<"description">>, ?DESC}
+                          ])
        ).
 
 -spec init() -> 'ok'.
@@ -29,7 +29,7 @@ init() ->
 
 -spec bindings_and_responders() ->
                                      {gen_listener:bindings()
-				     ,gen_listener:responders()
+                                     ,gen_listener:responders()
                                      }.
 bindings_and_responders() ->
     {[{'self', []}]

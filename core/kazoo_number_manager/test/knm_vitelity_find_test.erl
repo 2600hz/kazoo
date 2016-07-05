@@ -18,7 +18,7 @@ find_test_() ->
 
 tollfree_tests() ->
     Options = [{?KNM_ACCOUNTID_CARRIER, ?RESELLER_ACCOUNT_ID}
-	      ,{<<"carriers">>, [<<"knm_vitelity">>]}
+              ,{<<"carriers">>, [<<"knm_vitelity">>]}
               ],
     Limit = 1,
     [Result] = knm_carriers:find(?TEST_CREATE_TOLL, Limit, Options),
@@ -34,7 +34,7 @@ tollfree_tests() ->
 
 local_number_tests() ->
     Options = [{?KNM_ACCOUNTID_CARRIER, ?RESELLER_ACCOUNT_ID}
-	      ,{<<"carriers">>, [<<"knm_vitelity">>]}
+              ,{<<"carriers">>, [<<"knm_vitelity">>]}
               ],
     Limit = 1,
     Results = knm_carriers:find(<<"+19875559876">>, Limit, Options),
@@ -46,7 +46,7 @@ local_number_tests() ->
 
 local_prefix_tests() ->
     Options = [{?KNM_ACCOUNTID_CARRIER, ?RESELLER_ACCOUNT_ID}
-	      ,{<<"carriers">>, [<<"knm_vitelity">>]}
+              ,{<<"carriers">>, [<<"knm_vitelity">>]}
               ],
     Limit = 2,
     Results = knm_carriers:find(<<"987">>, Limit, Options),

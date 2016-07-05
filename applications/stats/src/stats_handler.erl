@@ -11,10 +11,10 @@
 -include("stats.hrl").
 
 -export([get_db/1
-	,handle_event/2
-	,send/1
-	,get_next/3
-	,handle_req/2
+        ,handle_event/2
+        ,send/1
+        ,get_next/3
+        ,handle_req/2
         ]).
 
 -include("stats.hrl").

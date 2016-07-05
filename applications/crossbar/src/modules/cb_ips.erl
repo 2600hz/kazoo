@@ -10,11 +10,11 @@
 -module(cb_ips).
 
 -export([init/0
-	,allowed_methods/0, allowed_methods/1
-	,resource_exists/0, resource_exists/1
-	,validate/1, validate/2
-	,post/1 ,post/2
-	,delete/2
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,validate/1, validate/2
+        ,post/1 ,post/2
+        ,delete/2
         ]).
 
 -include("crossbar.hrl").
@@ -127,7 +127,7 @@ post(Context) ->
     ReqData = cb_context:req_data(Context),
     Ips = kz_json:get_value(<<"ips">>, ReqData, []),
     Props = [{<<"type">>, <<"ips">>}
-	    ,{<<"dedicated">>, erlang:length(Ips)}
+            ,{<<"dedicated">>, erlang:length(Ips)}
             ],
     crossbar_services:maybe_dry_run(Context, Callback, Props).
 
@@ -162,13 +162,13 @@ load_available(Context) ->
         {'ok', JObjs} ->
             cb_context:set_resp_data(
               cb_context:set_resp_status(Context, 'success')
-				    ,JObjs
+                                    ,JObjs
              );
         {'error', Reason} ->
             cb_context:add_system_error(
               'datastore_fault'
-				       ,kz_json:from_list([{<<"cause">>, Reason}])
-				       ,Context
+                                       ,kz_json:from_list([{<<"cause">>, Reason}])
+                                       ,Context
              )
     end.
 
@@ -184,13 +184,13 @@ load_assigned(Context) ->
         {'ok', JObjs} ->
             cb_context:set_resp_data(
               cb_context:set_resp_status(Context, 'success')
-				    ,JObjs
+                                    ,JObjs
              );
         {'error', Reason} ->
             cb_context:add_system_error(
               'datastore_fault'
-				       ,kz_json:from_list([{<<"cause">>, Reason}])
-				       ,Context
+                                       ,kz_json:from_list([{<<"cause">>, Reason}])
+                                       ,Context
              )
     end.
 
@@ -205,13 +205,13 @@ load_zones(Context) ->
         {'ok', Zones} ->
             cb_context:set_resp_data(
               cb_context:set_resp_status(Context, 'success')
-				    ,Zones
+                                    ,Zones
              );
         {'error', Reason} ->
             cb_context:add_system_error(
               'datastore_fault'
-				       ,kz_json:from_list([{<<"cause">>, Reason}])
-				       ,Context
+                                       ,kz_json:from_list([{<<"cause">>, Reason}])
+                                       ,Context
              )
     end.
 
@@ -226,13 +226,13 @@ load_hosts(Context) ->
         {'ok', Hosts} ->
             cb_context:set_resp_data(
               cb_context:set_resp_status(Context, 'success')
-				    ,Hosts
+                                    ,Hosts
              );
         {'error', Reason} ->
             cb_context:add_system_error(
               'datastore_fault'
-				       ,kz_json:from_list([{<<"cause">>, Reason}])
-				       ,Context
+                                       ,kz_json:from_list([{<<"cause">>, Reason}])
+                                       ,Context
              )
     end.
 
@@ -248,13 +248,13 @@ load_ip(Context, Id) ->
             IPJSON = kz_ip:to_json(IP),
             cb_context:set_resp_data(
               cb_context:set_resp_status(Context, 'success')
-				    ,clean_ip(IPJSON)
+                                    ,clean_ip(IPJSON)
              );
         {'error', Reason} ->
             cb_context:add_system_error(
               'datastore_fault'
-				       ,kz_json:from_list([{<<"cause">>, Reason}])
-				       ,Context
+                                       ,kz_json:from_list([{<<"cause">>, Reason}])
+                                       ,Context
              )
     end.
 
@@ -336,7 +336,7 @@ assign_ips(Context) ->
 assign_ips(Context, [], RespData) ->
     cb_context:set_resp_data(
       cb_context:set_resp_status(Context, 'success')
-			    ,RespData
+                            ,RespData
      );
 assign_ips(Context, [Ip|Ips], RespData) ->
     AccountId = cb_context:account_id(Context),
@@ -347,8 +347,8 @@ assign_ips(Context, [Ip|Ips], RespData) ->
         {'error', Reason} ->
             cb_context:add_system_error(
               'datastore_fault'
-				       ,kz_json:from_list([{<<"cause">>, Reason}])
-				       ,Context
+                                       ,kz_json:from_list([{<<"cause">>, Reason}])
+                                       ,Context
              )
     end.
 
@@ -365,13 +365,13 @@ assign_ip(Context, Ip) ->
             IPJSON = kz_ip:to_json(IP),
             cb_context:set_resp_data(
               cb_context:set_resp_status(Context, 'success')
-				    ,clean_ip(IPJSON)
+                                    ,clean_ip(IPJSON)
              );
         {'error', Reason} ->
             cb_context:add_system_error(
               'datastore_fault'
-				       ,kz_json:from_list([{<<"cause">>, Reason}])
-				       ,Context
+                                       ,kz_json:from_list([{<<"cause">>, Reason}])
+                                       ,Context
              )
     end.
 
@@ -387,13 +387,13 @@ release_ip(Context, Id) ->
             IPJSON = kz_ip:to_json(IP),
             cb_context:set_resp_data(
               cb_context:set_resp_status(Context, 'success')
-				    ,clean_ip(IPJSON)
+                                    ,clean_ip(IPJSON)
              );
         {'error', Reason} ->
             cb_context:add_system_error(
               'datastore_fault'
-				       ,kz_json:from_list([{<<"cause">>, Reason}])
-				       ,Context
+                                       ,kz_json:from_list([{<<"cause">>, Reason}])
+                                       ,Context
              )
     end.
 
@@ -407,11 +407,11 @@ clean_ip(JObj) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"id">>, kz_doc:id(JObj)}
-	,{<<"ip">>, kz_doc:id(JObj)}
-	,{<<"zone">>, kz_json:get_value(<<"pvt_zone">>, JObj)}
-	,{<<"host">>, kz_json:get_value(<<"pvt_host">>, JObj)}
-	,{<<"status">>, kz_json:get_value(<<"pvt_status">>, JObj)}
-	,{<<"type">>, kz_doc:type(JObj)}
-	,{<<"assigned_to">>, kz_json:get_value(<<"pvt_assigned_to">>, JObj)}
+        ,{<<"ip">>, kz_doc:id(JObj)}
+        ,{<<"zone">>, kz_json:get_value(<<"pvt_zone">>, JObj)}
+        ,{<<"host">>, kz_json:get_value(<<"pvt_host">>, JObj)}
+        ,{<<"status">>, kz_json:get_value(<<"pvt_status">>, JObj)}
+        ,{<<"type">>, kz_doc:type(JObj)}
+        ,{<<"assigned_to">>, kz_json:get_value(<<"pvt_assigned_to">>, JObj)}
         ])
      ).

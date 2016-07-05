@@ -15,11 +15,11 @@
 
 -export([start_link/0]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 
@@ -132,18 +132,18 @@ handle_cast('periodic_build', #state{is_running='true'}=State) ->
 handle_cast('periodic_build', #state{is_running='false'}=State) ->
     {Pid, Monitor} = kz_util:spawn_monitor(fun build_freeswitch/1, [self()]),
     lager:debug("started new freeswitch offline configuration builder ~p"
-	       ,[Pid]),
+               ,[Pid]),
     {'noreply', State#state{is_running='true', monitor=Monitor}};
 handle_cast({'completed', File}, #state{config=Config}=State) ->
     lager:debug("created new freeswitch offline configuration ~s"
-	       ,[File]),
+               ,[File]),
     gen_server:cast(self(), {'delete', Config}),
     {'noreply', State#state{is_running='false', config=File}};
 handle_cast({'delete', 'undefined'}, State) ->
     {'noreply', State};
 handle_cast({'delete', File}, State) ->
     lager:debug("removing prior freeswitch offline configuration ~s"
-	       ,[File]),
+               ,[File]),
     kz_util:delete_file(File),
     {'noreply', State};
 handle_cast('reset', #state{config=Config}=State) ->
@@ -168,7 +168,7 @@ handle_info({'DOWN', MonitorRef, 'process', _, 'normal'}, #state{monitor=Monitor
     {'noreply', State#state{is_running='false'}};
 handle_info({'DOWN', MonitorRef, _, _Pid, _Reason}, #state{monitor=MonitorRef}=State) ->
     lager:debug("freeswitch offline configuration builder ~p died unexpectedly: ~p"
-	       ,[_Pid, _Reason]),
+               ,[_Pid, _Reason]),
     {'noreply', State#state{is_running='false'}};
 handle_info(_Info, State) ->
     {'noreply', State}.
@@ -217,13 +217,13 @@ setup_directory() ->
     WorkDir = filename:join([WorkRootDir, TopDir]),
     kz_util:make_dir(WorkDir),
     Files = [{<<"directory">>, ?FS_DIRECTORY}
-	    ,{<<"chatplan">>, ?FS_CHATPLAN}
-	    ,{<<"dialplan">>, ?FS_DIALPLAN}
+            ,{<<"chatplan">>, ?FS_CHATPLAN}
+            ,{<<"dialplan">>, ?FS_DIALPLAN}
             ],
     Filter = kapps_config:get(?MOD_CONFIG_CAT, <<"files_to_include">>, ?DEFAULT_FS_INCLUDE_DIRECTORY_FILES),
     _ = [kz_util:make_dir(filename:join([WorkDir, Dir])) || {Dir, _} <- Files],
     _ = [kz_util:write_file(filename:join([WorkDir, D, xml_file_name(T)])
-			   ,xml_file_from_config(T)
+                           ,xml_file_from_config(T)
                            )
          || {D, T} <- Files,
             lists:member(kz_util:to_binary(T), Filter)
@@ -236,8 +236,8 @@ setup_directory() ->
 process_realms() ->
     Realms = get(<<"Realms">>),
     Templates = [{<<"directory">>, ?FS_DIRECTORY_REALM}
-		,{<<"chatplan">>, ?FS_CHATPLAN_REALM}
-		,{<<"dialplan">>, ?FS_DIALPLAN_REALM}
+                ,{<<"chatplan">>, ?FS_CHATPLAN_REALM}
+                ,{<<"dialplan">>, ?FS_DIALPLAN_REALM}
                 ],
     Filter = kapps_config:get(?MOD_CONFIG_CAT, <<"realm_templates_to_process">>, ?FS_REALM_TEMPLATES),
     _ = [process_realms(Realms, D, T)
@@ -267,7 +267,7 @@ process_realm(Realm, Dir, Module) ->
             lager:debug("wrote file ~s", [XMLFile]);
         {'error', E} ->
             lager:debug("error rendering template ~s for realm ~s: ~p"
-		       ,[Module, Realm, E]
+                       ,[Module, Realm, E]
                        )
     end.
 
@@ -298,12 +298,12 @@ crawl_numbers_db(NumberDb) ->
             maybe_export_numbers(Db, Numbers);
         {'error', _R} ->
             lager:debug("error getting number docs from ~s: ~p"
-		       ,[NumberDb, _R]
+                       ,[NumberDb, _R]
                        )
     catch
-	_E:_R ->
+        _E:_R ->
             lager:debug("~s getting number docs from ~s: ~p"
-		       ,[_E, Db, _R])
+                       ,[_E, Db, _R])
     end.
 
 -spec get_numbers(kz_json:objects()) -> ne_binaries().
@@ -322,12 +322,12 @@ maybe_export_numbers(Db, [Number|Numbers]) ->
     _ = case kz_datamgr:open_doc(Db, Number) of
             {'ok', JObj} ->
                 maybe_export_number(Number
-				   ,kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)
-				   ,kz_json:get_value(?PVT_ASSIGNED_TO, JObj)
+                                   ,kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)
+                                   ,kz_json:get_value(?PVT_ASSIGNED_TO, JObj)
                                    );
             {'error', _R} ->
                 lager:debug("error fetching number ~s from ~d: ~p"
-			   ,[Number, Db, _R]
+                           ,[Number, Db, _R]
                            )
         end,
     maybe_export_numbers(Db, Numbers).
@@ -336,7 +336,7 @@ maybe_export_numbers(Db, [Number|Numbers]) ->
 maybe_export_number(Number, ?NUMBER_STATE_IN_SERVICE, AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', Number}
-		  ,'include_docs'
+                  ,'include_docs'
                   ],
     %% TODO: This is not very DB friendly as we are iterating the numbers
     %%    and the callflows.  Once possible improvement might be to walk
@@ -345,14 +345,14 @@ maybe_export_number(Number, ?NUMBER_STATE_IN_SERVICE, AccountId) ->
     case kz_datamgr:get_results(AccountDb, ?CALLFLOW_VIEW, ViewOptions) of
         {'ok', []} ->
             lager:debug("number ~s in service for account ~s but no callflows using it"
-		       ,[Number, AccountId]
+                       ,[Number, AccountId]
                        );
         {'ok', JObjs} ->
             Flows = [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
             process_callflows(Number, AccountId, Flows);
         {'error', _R} ->
             lager:debug("unable to get callflows for number ~s in account ~s"
-		       ,[Number, AccountId]
+                       ,[Number, AccountId]
                        )
     end;
 maybe_export_number(_, _, _) -> 'ok'.
@@ -363,7 +363,7 @@ process_callflows(Number, AccountId, [JObj | JObjs]) ->
     FlowId = kz_doc:id(JObj),
     Flow = kz_json:get_value(<<"flow">>, JObj),
     lager:debug("processing callflow ~s in account ~s with number ~s"
-	       ,[FlowId, AccountId, Number]),
+               ,[FlowId, AccountId, Number]),
     process_callflow(Number, AccountId, Flow),
     process_callflows(Number, AccountId, JObjs).
 
@@ -375,28 +375,28 @@ process_callflow(Number, AccountId, Flow) ->
     Children = kz_json:get_value(<<"children">>, Flow),
     process_callflow(Number, AccountId, Module, Data),
     process_callflow(Number, AccountId
-		    ,case kz_json:is_empty(Children) of
-			 'true' -> 'undefined';
-			 _ -> Children
-		     end).
+                    ,case kz_json:is_empty(Children) of
+                         'true' -> 'undefined';
+                         _ -> Children
+                     end).
 
 -spec process_callflow(ne_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
 process_callflow(_, _, _, 'undefined') -> 'ok';
 process_callflow(Number, AccountId, <<"device">>, DeviceId) ->
     lager:debug("found device ~s associated with ~s"
-	       ,[DeviceId, Number]
+               ,[DeviceId, Number]
                ),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, DeviceId) of
         {'ok', JObj } -> process_device(Number, AccountId, JObj);
         {'error', _R} ->
             lager:debug("unable to get device ~s from account ~s: ~p"
-		       ,[DeviceId, AccountId, _R]
+                       ,[DeviceId, AccountId, _R]
                        )
     end;
 process_callflow(Number, AccountId, <<"user">>, UserId) ->
     lager:debug("found user ~s associated with ~s"
-	       ,[UserId, Number]
+               ,[UserId, Number]
                ),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', UserId}],
@@ -411,7 +411,7 @@ process_callflow(Number, AccountId, <<"user">>, UserId) ->
             ];
         {'error', _R} ->
             lager:debug("unable to get user ~s from account ~s: ~p"
-		       ,[UserId, AccountId, _R]
+                       ,[UserId, AccountId, _R]
                        )
     end;
 process_callflow(_, _, _, _) -> 'ok'.
@@ -428,7 +428,7 @@ process_device(Number, AccountId, JObj) ->
             lager:debug("rendered templates");
         {'error', _R} ->
             lager:debug("unable to query registrar for credentails of ~s@~s in account ~s: ~p"
-		       ,[Username, Realm, AccountId, _R]
+                       ,[Username, Realm, AccountId, _R]
                        )
     end.
 
@@ -439,9 +439,9 @@ props_for_rendering(Number, Username, Realm, Auth) ->
         normalize(
           kz_json:set_values(
             [{<<"effective_caller_id_number">>, Number}
-	    ,{<<"username">>, Username}
-	    ,{<<"realm">>, Realm}
-	    ,{<<"number">>, Number}
+            ,{<<"username">>, Username}
+            ,{<<"realm">>, Realm}
+            ,{<<"number">>, Number}
             ], Auth)))).
 
 -spec normalize(kz_json:object()) -> kz_json:object().
@@ -455,20 +455,20 @@ normalize(JObj) ->
                  || {K, V} <- kz_json:to_proplist(JVariables)
                 ],
     kz_json:set_values([{<<"variables">>, Variables}
-		       ,{<<"headers">>, Headers}
+                       ,{<<"headers">>, Headers}
                        ],
                        kz_json:normalize(
                          kz_json:delete_keys(
                            [<<"Custom-SIP-Headers">>
-			   ,<<"Custom-Channel-Vars">>
+                           ,<<"Custom-Channel-Vars">>
                            ], JObj)
-			)).
+                        )).
 
 -spec render_templates(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
 render_templates(Number, AccountId, Username, Realm, Props) ->
     Templates = [{"directory", ?FS_DIRECTORY}
-		,{"chatplan", ?FS_CHATPLAN}
-		,{"dialplan", ?FS_DIALPLAN}
+                ,{"chatplan", ?FS_CHATPLAN}
+                ,{"dialplan", ?FS_DIALPLAN}
                 ],
     Filter = kapps_config:get(?MOD_CONFIG_CAT, <<"templates_to_process">>, ?DEFAULT_FS_TEMPLATES),
     _ = [render_template(Number, AccountId, Username, Realm, Props, D, T)
@@ -487,7 +487,7 @@ render_template(Number, AccountId, Username, Realm, Props, Dir, Module) ->
         {'ok', Result} -> kz_util:write_file(XMLFile, Result);
         {'error', _R} ->
             lager:debug("unable to render template ~s for ~s in account ~s: ~p"
-		       ,[Module, Number, AccountId, _R])
+                       ,[Module, Number, AccountId, _R])
     end.
 
 -spec maybe_accumulate_realm(boolean(), ne_binary()) -> any().
@@ -500,21 +500,21 @@ maybe_accumulate_realm('false', Realm) ->
 query_registrar(Realm, Username) ->
     FullUser = <<Username/binary, "@", Realm/binary>>,
     Req = [{<<"To">>, FullUser}
-	  ,{<<"From">>, FullUser}
-	  ,{<<"Auth-User">>, Username}
-	  ,{<<"Auth-Realm">>, Realm}
-	  ,{<<"Method">>, <<"REGISTER">>}
+          ,{<<"From">>, FullUser}
+          ,{<<"Auth-User">>, Username}
+          ,{<<"Auth-Realm">>, Realm}
+          ,{<<"Method">>, <<"REGISTER">>}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapps_util:amqp_pool_request(props:filter_undefined(Req)
-				,fun kapi_authn:publish_req/1
-				,fun kapi_authn:resp_v/1
-				,?AUTHN_TIMEOUT).
+                                ,fun kapi_authn:publish_req/1
+                                ,fun kapi_authn:resp_v/1
+                                ,?AUTHN_TIMEOUT).
 
 -spec template_file(atom()) -> string().
 template_file(Module) ->
     filename:join([code:lib_dir('crossbar', 'priv')
-		  ,"freeswitch"
+                  ,"freeswitch"
                   ,template_file_name(Module)
                   ]).
 
@@ -552,14 +552,14 @@ render(Module, Props) ->
     catch
         _E:_R ->
             lager:debug("failed to render template ~s: ~p"
-		       ,[Module, _R]),
+                       ,[Module, _R]),
             {'error', _E}
     end.
 
 -spec xml_file(atom()) -> string().
 xml_file(Module) ->
     filename:join([code:lib_dir('crossbar', 'priv')
-		  ,"freeswitch"
+                  ,"freeswitch"
                   ,xml_file_name(Module)
                   ]).
 

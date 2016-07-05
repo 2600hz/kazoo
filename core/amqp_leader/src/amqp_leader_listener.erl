@@ -12,12 +12,12 @@
 -export([is_ready/0]).
 -export([start_link/1]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("amqp_leader.hrl").
@@ -25,10 +25,10 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {self = self()           :: pid()
-	       ,name                   :: atom()
-	       ,pending = []           :: [{pid(), any()}]
-	       ,has_queue = 'false' :: boolean()
-	       ,is_consuming = 'false' :: boolean()
+               ,name                   :: atom()
+               ,pending = []           :: [{pid(), any()}]
+               ,has_queue = 'false' :: boolean()
+               ,is_consuming = 'false' :: boolean()
                }).
 
 -type state() :: #state{}.
@@ -59,10 +59,10 @@ is_ready() ->
 -spec start_link(atom()) -> startlink_ret().
 start_link(Name) ->
     gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS(Name)}
-				     ,{'responders', ?RESPONDERS}
-				     ,{'queue_name', ?QUEUE_NAME(Name)}       % optional to include
-				     ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-				     ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                                     ,{'responders', ?RESPONDERS}
+                                     ,{'queue_name', ?QUEUE_NAME(Name)}       % optional to include
+                                     ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                                     ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                       %%,{basic_qos, 1}                % only needed if prefetch controls
                                      ], [Name]).
 
@@ -226,8 +226,8 @@ ready_when_node_is_up() ->
 
 -spec maybe_ready(state()) -> state().
 maybe_ready(#state{pending = Pids
-		  ,has_queue = 'true'
-		  ,is_consuming = 'true'
+                  ,has_queue = 'true'
+                  ,is_consuming = 'true'
                   } = State) ->
     _ = [gen_server:reply(Pid, 'ready') || Pid <- Pids],
     State#state{pending = []};

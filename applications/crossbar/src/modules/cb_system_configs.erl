@@ -12,13 +12,13 @@
 -module(cb_system_configs).
 
 -export([init/0
-	,authorize/1, authorize/2, authorize/3
-	,allowed_methods/0, allowed_methods/1, allowed_methods/2
-	,resource_exists/0, resource_exists/1, resource_exists/2
-	,validate/1, validate/2, validate/3
-	,put/1
-	,post/2, post/3
-	,delete/2, delete/3
+        ,authorize/1, authorize/2, authorize/3
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,validate/1, validate/2, validate/3
+        ,put/1
+        ,post/2, post/3
+        ,delete/2, delete/3
         ]).
 
 -include("crossbar.hrl").
@@ -113,7 +113,7 @@ validate(Context) ->
     validate_system_configs(update_db(Context), cb_context:req_verb(Context)).
 validate(Context, Id) ->
     validate_system_config(update_db(Context), Id, cb_context:req_verb(Context)
-			  ,cb_context:req_value(Context, <<"node">>, <<"default">>)
+                          ,cb_context:req_value(Context, <<"node">>, <<"default">>)
                           ).
 validate(Context, Id, Node) ->
     validate_system_config(update_db(Context), Id, cb_context:req_verb(Context), Node).
@@ -181,7 +181,7 @@ delete(Context, Id, <<"default">>) ->
 delete(Context, _Id, Node) ->
     save(
       cb_context:set_doc(Context, kz_json:delete_key(Node, cb_context:doc(Context)))
-	,<<"default">>
+        ,<<"default">>
      ).
 
 -spec save(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -207,16 +207,16 @@ create(Context) ->
         'undefined' ->
             lager:debug("no id on doc ~p", [Doc]),
             cb_context:add_validation_error(
-	      <<"id">>
-					   ,<<"required">>
-					   ,kz_json:from_list([
-							       {<<"message">>, <<"id is required to create a system_config resource">>}
-							      ])
-					   ,Context
-	     );
+              <<"id">>
+                                           ,<<"required">>
+                                           ,kz_json:from_list([
+                                                               {<<"message">>, <<"id is required to create a system_config resource">>}
+                                                              ])
+                                           ,Context
+             );
         Id ->
             SysDoc = kz_json:from_list([{<<"_id">>, Id}
-				       ,{<<"default">>, kz_json:delete_key(<<"id">>, Doc)}
+                                       ,{<<"default">>, kz_json:delete_key(<<"id">>, Doc)}
                                        ]),
             lager:debug("trying to create ~s/~s: ~p", [?KZ_CONFIG_DB, Id, SysDoc]),
             cb_context:set_resp_status(cb_context:set_doc(Context, SysDoc), 'success')
@@ -233,7 +233,7 @@ create(Context) ->
 read(Id, Context, Node) ->
     Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)),
     cb_context:set_resp_data(Context1
-			    ,kz_json:get_value(Node, cb_context:doc(Context1), kz_json:new())
+                            ,kz_json:get_value(Node, cb_context:doc(Context1), kz_json:new())
                             ).
 
 -spec read_for_delete(ne_binary(), cb_context:context()) ->
@@ -262,7 +262,7 @@ update(Id, Context, Node) ->
 
 update(_Id, Node, Context, 'success') ->
     cb_context:set_doc(Context
-		      ,kz_json:set_value(Node, cb_context:req_data(Context), cb_context:doc(Context))
+                      ,kz_json:set_value(Node, cb_context:req_data(Context), cb_context:doc(Context))
                       );
 update(_Id, _Node, Context, _Status) ->
     Context.
@@ -277,9 +277,9 @@ update(_Id, _Node, Context, _Status) ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     crossbar_doc:load_view(<<"system_configs/crossbar_listing">>
-			  ,[]
-			  ,Context
-			  ,fun normalize_view_results/2
+                          ,[]
+                          ,Context
+                          ,fun normalize_view_results/2
                           ).
 
 %%--------------------------------------------------------------------
@@ -295,6 +295,6 @@ normalize_view_results(JObj, Acc) ->
 -spec update_db(cb_context:context()) -> cb_context:context().
 update_db(Context) ->
     cb_context:setters(Context
-		      ,[{fun cb_context:set_account_db/2, ?KZ_CONFIG_DB}
-		       ,{fun cb_context:set_account_id/2, cb_context:auth_account_id(Context)}
-		       ]).
+                      ,[{fun cb_context:set_account_db/2, ?KZ_CONFIG_DB}
+                       ,{fun cb_context:set_account_id/2, cb_context:auth_account_id(Context)}
+                       ]).

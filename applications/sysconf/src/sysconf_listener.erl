@@ -13,12 +13,12 @@
 %% API
 -export([start_link/0]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("sysconf.hrl").
@@ -26,8 +26,8 @@
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{'sysconf_get', [{<<"sysconf">>, <<"get_req">>}]}
-		    ,{'sysconf_set', [{<<"sysconf">>, <<"set_req">>}]}
-		    ,{'sysconf_flush', [{<<"sysconf">>, <<"flush_req">>}]}
+                    ,{'sysconf_set', [{<<"sysconf">>, <<"set_req">>}]}
+                    ,{'sysconf_flush', [{<<"sysconf">>, <<"flush_req">>}]}
                     ]).
 -define(BINDINGS, [{'sysconf', []}]).
 
@@ -45,10 +45,10 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
-				     ,{'bindings', ?BINDINGS}
-				     ,{'queue_name', ?SYSCONF_QUEUE_NAME}
-				     ,{'queue_options', ?SYSCONF_QUEUE_OPTIONS}
-				     ,{'consume_options', ?SYSCONF_CONSUME_OPTIONS}
+                                     ,{'bindings', ?BINDINGS}
+                                     ,{'queue_name', ?SYSCONF_QUEUE_NAME}
+                                     ,{'queue_options', ?SYSCONF_QUEUE_OPTIONS}
+                                     ,{'consume_options', ?SYSCONF_CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================

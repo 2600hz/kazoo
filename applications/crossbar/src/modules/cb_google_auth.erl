@@ -119,7 +119,7 @@ maybe_authenticate_user(Context) ->
         {'ok', OAuth} ->
             lager:debug("verified oauth: ~p",[OAuth]),
             Context1 = cb_context:set_doc(cb_context:set_resp_status(Context, 'success')
-					 ,OAuth),
+                                         ,OAuth),
             maybe_account_is_disabled(Context1);
         {'error', _R} ->
             lager:debug("error verifying token: ~p",[_R]),
@@ -137,10 +137,10 @@ maybe_account_is_disabled(Context) ->
                 'false' ->
                     lager:debug("account ~s is disabled", [Account]),
                     cb_context:add_system_error(
-		      'forbidden'
-					       ,kz_json:from_list([{<<"cause">>, <<"account_disabled">>}])
-					       ,Context
-		     )
+                      'forbidden'
+                                               ,kz_json:from_list([{<<"cause">>, <<"account_disabled">>}])
+                                               ,Context
+                     )
             end
     end.
 
@@ -158,7 +158,7 @@ maybe_load_username(Account, Context) ->
     Username = kz_json:get_value([<<"AuthDoc">>,<<"pvt_username">>], JObj),
     lager:debug("attempting to load username in db: ~s", [AccountDb]),
     ViewOptions = [{'key', Username}
-		  ,'include_docs'
+                  ,'include_docs'
                   ],
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
         {'ok', [User]} ->
@@ -168,40 +168,40 @@ maybe_load_username(Account, Context) ->
                     UserDoc = kz_json:get_value(<<"doc">>, User),
                     User2 =
                         kz_json:set_values(
-			  [{<<"account_id">>, kz_doc:account_id(UserDoc)}
-			  ,{<<"owner_id">>, kz_doc:id(UserDoc)}
-			  ]
-					  ,UserDoc
-			 ),
+                          [{<<"account_id">>, kz_doc:account_id(UserDoc)}
+                          ,{<<"owner_id">>, kz_doc:id(UserDoc)}
+                          ]
+                                          ,UserDoc
+                         ),
                     cb_context:setters(
-		      Context
-				      ,[{fun cb_context:set_account_db/2, Account}
-				       ,{fun cb_context:set_doc/2, kz_json:set_value(<<"User">>, User2, JObj)}
-				       ,{fun cb_context:set_resp_status/2, 'success'}
-				       ]
-		     );
+                      Context
+                                      ,[{fun cb_context:set_account_db/2, Account}
+                                       ,{fun cb_context:set_doc/2, kz_json:set_value(<<"User">>, User2, JObj)}
+                                       ,{fun cb_context:set_resp_status/2, 'success'}
+                                       ]
+                     );
                 'true' ->
                     lager:debug("the username '~s' was found but is disabled", [Username]),
                     cb_context:add_validation_error(
-		      <<"username">>
-						   ,<<"forbidden">>
-						   ,kz_json:from_list([
-								       {<<"message">>, <<"The provided user name is disabled">>}
-								      ,{<<"cause">>, Username}
-								      ])
-						   ,Context
-		     )
+                      <<"username">>
+                                                   ,<<"forbidden">>
+                                                   ,kz_json:from_list([
+                                                                       {<<"message">>, <<"The provided user name is disabled">>}
+                                                                      ,{<<"cause">>, Username}
+                                                                      ])
+                                                   ,Context
+                     )
             end;
         _ ->
             cb_context:add_validation_error(
-	      <<"username">>
-					   ,<<"not_found">>
-					   ,kz_json:from_list([
-							       {<<"message">>, <<"The provided user name was not found">>}
-							      ,{<<"cause">>, Username}
-							      ])
-					   ,Context
-	     )
+              <<"username">>
+                                           ,<<"not_found">>
+                                           ,kz_json:from_list([
+                                                               {<<"message">>, <<"The provided user name was not found">>}
+                                                              ,{<<"cause">>, Username}
+                                                              ])
+                                           ,Context
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -218,7 +218,7 @@ create_token(Context) ->
             Profile = kz_json:get_value(<<"Profile">>, JObj),
             crossbar_util:response(
               kz_json:from_list([{<<"profile">>, Profile}])
-				  ,Context
+                                  ,Context
              );
         _Else -> create_auth_token(Context)
     end.

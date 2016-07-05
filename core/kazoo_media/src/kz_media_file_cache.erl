@@ -12,17 +12,17 @@
 
 %% API
 -export([start_link/3
-	,single/1
-	,continuous/1
+        ,single/1
+        ,continuous/1
         ]).
 
 %% gen_server callbacks
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("kazoo_media.hrl").
@@ -34,14 +34,14 @@
 
 -record(state, {
           db :: ne_binary()
-	       ,doc :: ne_binary()
-	       ,attach :: ne_binary()
-	       ,meta :: kz_json:object()
-	       ,contents = <<>> :: binary()
-	       ,stream_ref :: reference()
-	       ,status :: 'streaming' | 'ready'
-	       ,reqs :: [{pid(), reference()}]
-	       ,timer_ref :: reference()
+               ,doc :: ne_binary()
+               ,attach :: ne_binary()
+               ,meta :: kz_json:object()
+               ,contents = <<>> :: binary()
+               ,stream_ref :: reference()
+               ,status :: 'streaming' | 'ready'
+               ,reqs :: [{pid(), reference()}]
+               ,timer_ref :: reference()
          }).
 -type state() :: #state{}.
 
@@ -100,14 +100,14 @@ maybe_start_file_cache(Db, Id, Attachment) ->
             Meta = kz_doc:attachment(JObj, Attachment, kz_json:new()),
             {'ok', Ref} = kz_datamgr:stream_attachment(Db, Id, Attachment),
             {'ok', #state{db=Db
-			 ,doc=Id
-			 ,attach=Attachment
-			 ,meta=Meta
-			 ,stream_ref=Ref
-			 ,status='streaming'
-			 ,contents = <<>>
-			 ,reqs = [] %% buffer requests until file has completed streaming
-			 ,timer_ref=start_timer()
+                         ,doc=Id
+                         ,attach=Attachment
+                         ,meta=Meta
+                         ,stream_ref=Ref
+                         ,status='streaming'
+                         ,contents = <<>>
+                         ,reqs = [] %% buffer requests until file has completed streaming
+                         ,timer_ref=start_timer()
                          }}
     end.
 
@@ -126,28 +126,28 @@ maybe_start_file_cache(Db, Id, Attachment) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call('single', _From, #state{meta=Meta
-				   ,contents=Contents
-				   ,status='ready'
-				   ,timer_ref=TRef
+                                   ,contents=Contents
+                                   ,status='ready'
+                                   ,timer_ref=TRef
                                    }=State) ->
     %% doesn't currently check whether we're still streaming in from the DB
     lager:debug("returning media contents"),
     _ = stop_timer(TRef),
     {'reply', {Meta, Contents}, State#state{timer_ref=start_timer()}};
 handle_call('single', From, #state{reqs=Reqs
-				  ,status='streaming'
+                                  ,status='streaming'
                                   }=State) ->
     lager:debug("file not ready for ~p, queueing", [From]),
     {'noreply', State#state{reqs=[From | Reqs]}};
 handle_call('continuous', From, #state{reqs=Reqs
-				      ,status='streaming'
+                                      ,status='streaming'
                                       }=State) ->
     lager:debug("file not ready for ~p, queueing", [From]),
     {'noreply', State#state{reqs=[From | Reqs]}};
 handle_call('continuous', _From, #state{meta=Meta
-				       ,contents=Contents
-				       ,status='ready'
-				       ,timer_ref=TRef
+                                       ,contents=Contents
+                                       ,status='ready'
+                                       ,timer_ref=TRef
                                        }=State) ->
     lager:debug("returning media contents"),
     _ = stop_timer(TRef),
@@ -180,10 +180,10 @@ handle_info({'timeout', TRef, ?TIMEOUT_MESSAGE}, #state{timer_ref=TRef}=State) -
     lager:debug("timeout expired, going down"),
     {'stop', 'normal', State};
 handle_info({Ref, 'done'}, #state{stream_ref=Ref
-				 ,reqs=Reqs
-				 ,contents=Contents
-				 ,meta=Meta
-				 ,timer_ref=TRef
+                                 ,reqs=Reqs
+                                 ,contents=Contents
+                                 ,meta=Meta
+                                 ,timer_ref=TRef
                                  }=State) ->
     _ = stop_timer(TRef),
     Res = {Meta, Contents},
@@ -191,12 +191,12 @@ handle_info({Ref, 'done'}, #state{stream_ref=Ref
 
     lager:debug("finished receiving file contents"),
     {'noreply', State#state{status='ready'
-			   ,timer_ref=start_timer()
-			   ,reqs = []
+                           ,timer_ref=start_timer()
+                           ,reqs = []
                            }
     ,'hibernate'};
 handle_info({Ref, {'ok', Bin}}, #state{stream_ref=Ref
-				      ,contents=Contents
+                                      ,contents=Contents
                                       }=State) ->
     lager:debug("recv ~b bytes", [byte_size(Bin)]),
     {'noreply', State#state{contents = <<Contents/binary, Bin/binary>>}, 'hibernate'};

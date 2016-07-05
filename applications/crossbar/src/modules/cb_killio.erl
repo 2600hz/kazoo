@@ -12,11 +12,11 @@
 -module(cb_killio).
 
 -export([init/0
-	,allowed_methods/1
-	,resource_exists/1
-	,validate/2
-	,put/2
-	,post/2
+        ,allowed_methods/1
+        ,resource_exists/1
+        ,validate/2
+        ,put/2
+        ,post/2
         ]).
 
 -include("crossbar.hrl").

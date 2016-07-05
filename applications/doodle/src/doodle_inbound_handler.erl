@@ -40,11 +40,11 @@ maybe_relay_request(JObj) ->
             'ack';
         {'ok', _, NumberProps} ->
             Routines = [fun set_account_id/3
-		       ,fun set_inception/3
-		       ,fun set_mdn/3
-		       ,fun set_static/3
-		       ,fun delete_headers/3
-		       ,fun set_realm/3
+                       ,fun set_inception/3
+                       ,fun set_mdn/3
+                       ,fun set_static/3
+                       ,fun delete_headers/3
+                       ,fun set_realm/3
                        ],
             Fun = fun(F, J) -> F(Inception, NumberProps, J) end,
             JObjReq = lists:foldl(Fun, JObj, Routines),
@@ -58,15 +58,15 @@ maybe_relay_request(JObj) ->
 -spec process_sms_req(ne_binary(), ne_binary(), kz_json:object()) -> 'ack' | 'nack'.
 process_sms_req(FetchId, CallId, JObj) ->
     Req = kz_json:set_values([{<<"Msg-ID">>, FetchId}
-			     ,{<<"Call-ID">>, CallId}
-			     ,{<<"Channel-Authorized">>, 'true'}
-			     ,{?CCV(<<"Fetch-ID">>), FetchId}
+                             ,{<<"Call-ID">>, CallId}
+                             ,{<<"Channel-Authorized">>, 'true'}
+                             ,{?CCV(<<"Fetch-ID">>), FetchId}
                               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ], JObj),
 
     ReqResp = kz_amqp_worker:call(Req
-				 ,fun kapi_route:publish_req/1
-				 ,fun kapi_route:is_actionable_resp/1
+                                 ,fun kapi_route:publish_req/1
+                                 ,fun kapi_route:is_actionable_resp/1
                                  ),
     case ReqResp of
         {'error', _R} ->
@@ -82,9 +82,9 @@ send_route_win(FetchId, CallId, JObj) ->
     ServerQ = kz_json:get_value(<<"Server-ID">>, JObj),
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     Win = [{<<"Msg-ID">>, FetchId}
-	  ,{<<"Call-ID">>, CallId}
-	  ,{<<"Control-Queue">>, <<"chatplan_ignored">>}
-	  ,{<<"Custom-Channel-Vars">>, CCVs}
+          ,{<<"Call-ID">>, CallId}
+          ,{<<"Control-Queue">>, <<"chatplan_ignored">>}
+          ,{<<"Custom-Channel-Vars">>, CCVs}
            | kz_api:default_headers(<<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sms inbound handler sending route_win to ~s", [ServerQ]),
@@ -105,10 +105,10 @@ set_account_id(_Inception, NumberProps, JObj) ->
     kz_json:set_values(
       props:filter_undefined(
         [{?CCV(<<"Account-ID">>), AccountId}
-	,{?CCV(<<"Account-Realm">>), AccountRealm}
-	,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
+        ,{?CCV(<<"Account-Realm">>), AccountRealm}
+        ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
         ])
-		      ,JObj
+                      ,JObj
      ).
 
 -spec set_inception(ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
@@ -128,14 +128,14 @@ set_mdn(<<"on-net">>, NumberProps, JObj) ->
             kz_json:set_values(
               props:filter_undefined(
                 [{?CCV(<<"Authorizing-Type">>), <<"device">>}
-		,{?CCV(<<"Authorizing-ID">>), Id}
-		,{?CCV(<<"Owner-ID">>), OwnerId}
+                ,{?CCV(<<"Authorizing-ID">>), Id}
+                ,{?CCV(<<"Owner-ID">>), OwnerId}
                 ])
-			      ,kz_json:delete_keys([?CCV(<<"Authorizing-Type">>)
-						   ,?CCV(<<"Authorizing-ID">>)
-						   ]
-						  ,JObj
-						  )
+                              ,kz_json:delete_keys([?CCV(<<"Authorizing-Type">>)
+                                                   ,?CCV(<<"Authorizing-ID">>)
+                                                   ]
+                                                  ,JObj
+                                                  )
              );
         {'error', _} -> JObj
     end;
@@ -145,10 +145,10 @@ set_mdn(_Inception, _NumberProps, JObj) -> JObj.
                         kz_json:object().
 set_static(_Inception, _, JObj) ->
     kz_json:set_values([{<<"Resource-Type">>, <<"sms">>}
-		       ,{<<"Call-Direction">>, <<"inbound">>}
-		       ,{?CCV(<<"Channel-Authorized">>), 'true'}
+                       ,{<<"Call-Direction">>, <<"inbound">>}
+                       ,{?CCV(<<"Channel-Authorized">>), 'true'}
                        ]
-		      ,JObj
+                      ,JObj
                       ).
 
 -spec delete_headers(ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->

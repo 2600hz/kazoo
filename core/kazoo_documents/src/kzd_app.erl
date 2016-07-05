@@ -11,24 +11,24 @@
 -export([fetch/2]).
 
 -export([
-	 id/1
-	,is_published/1
-	,publish/1
-	,unpublish/1
-	,name/1
-	,i18n/1
-	,tags/1
-	,icon/1
-	,api_url/1
-	,source_url/1
-	,author/1
-	,version/1
-	,license/1
-	,price/1
-	,screenshots/1
-	,urls/1
-	,account_id/1
-	]).
+         id/1
+        ,is_published/1
+        ,publish/1
+        ,unpublish/1
+        ,name/1
+        ,i18n/1
+        ,tags/1
+        ,icon/1
+        ,api_url/1
+        ,source_url/1
+        ,author/1
+        ,version/1
+        ,license/1
+        ,price/1
+        ,screenshots/1
+        ,urls/1
+        ,account_id/1
+        ]).
 
 -include("kz_documents.hrl").
 

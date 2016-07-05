@@ -12,10 +12,10 @@
 
 release_number_test_() ->
     Tests = [fun release_unknown_number/1
-	    ,fun release_available_number/1
-	    ,fun release_in_service_number/1
-	    ,fun release_with_history/1
-	    ,fun release_for_hard_delete/1
+            ,fun release_available_number/1
+            ,fun release_in_service_number/1
+            ,fun release_with_history/1
+            ,fun release_for_hard_delete/1
             ],
     lists:foldl(fun(F, Acc) ->
                         F(Acc)
@@ -25,9 +25,9 @@ release_number_test_() ->
 release_unknown_number(Tests) ->
     [{"verfiy missing numbers return errors"
      ,?_assertMatch(
-	 {'error', 'not_found'}
-		   ,knm_number:release(?TEST_CREATE_NUM)
-	)
+         {'error', 'not_found'}
+                   ,knm_number:release(?TEST_CREATE_NUM)
+        )
      }
      | Tests
     ].
@@ -50,13 +50,13 @@ release_in_service_number(Tests) ->
 
     [{"verify number state is changed"
      ,?_assertEqual(knm_config:released_state()
-		   ,knm_phone_number:state(PhoneNumber)
-		   )
+                   ,knm_phone_number:state(PhoneNumber)
+                   )
      }
     ,{"verify reserve history is empty now"
      ,?_assertEqual([]
-		   ,knm_phone_number:reserve_history(PhoneNumber)
-		   )
+                   ,knm_phone_number:reserve_history(PhoneNumber)
+                   )
      }
      | Tests
     ].
@@ -67,18 +67,18 @@ release_with_history(Tests) ->
 
     [{"verify number state is moved to RESERVED"
      ,?_assertEqual(?NUMBER_STATE_RESERVED
-		   ,knm_phone_number:state(PhoneNumber)
-		   )
+                   ,knm_phone_number:state(PhoneNumber)
+                   )
      }
     ,{"verify reserve history is unwound"
      ,?_assertEqual([?MASTER_ACCOUNT_ID]
-		   ,knm_phone_number:reserve_history(PhoneNumber)
-		   )
+                   ,knm_phone_number:reserve_history(PhoneNumber)
+                   )
      }
     ,{"verify number is assigned to prev account"
      ,?_assertEqual(?MASTER_ACCOUNT_ID
-		   ,knm_phone_number:assigned_to(PhoneNumber)
-		   )
+                   ,knm_phone_number:assigned_to(PhoneNumber)
+                   )
      }
      | Tests
     ].
@@ -89,8 +89,8 @@ release_for_hard_delete(Tests) ->
 
     [{"verify number state is moved to DELETED"
      ,?_assertEqual(?NUMBER_STATE_DELETED
-		   ,knm_phone_number:state(PhoneNumber)
-		   )
+                   ,knm_phone_number:state(PhoneNumber)
+                   )
      }
      | Tests
     ].

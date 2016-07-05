@@ -8,7 +8,7 @@
 -module(kzs_util).
 
 -export([db_classification/1
-	,map_keys_to_atoms/1
+        ,map_keys_to_atoms/1
         ]).
 
 -include("kz_data.hrl").

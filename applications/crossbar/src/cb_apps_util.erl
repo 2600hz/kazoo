@@ -183,16 +183,16 @@ filter_apps(AccountId, Apps) ->
 filter_apps(AccountId, Apps, JObj) ->
     lists:foldl(
       fun(App, Acc) ->
-	      case is_filtered(AccountId, App)
-		  orelse is_blacklisted(App, JObj)
-	      of
-		  'true' -> Acc;
-		  'false' ->
-		      [add_permissions(App, JObj)|Acc]
-	      end
+              case is_filtered(AccountId, App)
+                  orelse is_blacklisted(App, JObj)
+              of
+                  'true' -> Acc;
+                  'false' ->
+                      [add_permissions(App, JObj)|Acc]
+              end
       end
-	       ,[]
-	       ,Apps
+               ,[]
+               ,Apps
      ).
 
 %%--------------------------------------------------------------------
@@ -272,7 +272,7 @@ set_account(Account, JObj) ->
     Corrected =
         kz_json:set_values(
           [{<<"pvt_account_id">>, kz_util:format_account_id(Account, 'raw')}
-	  ,{<<"pvt_account_db">>, AccountDb}
+          ,{<<"pvt_account_db">>, AccountDb}
           ], JObj),
     case kz_datamgr:save_doc(AccountDb, Corrected) of
         {'error', _R} ->
@@ -300,8 +300,8 @@ get_plan_apps(ServicePlan) ->
 find_enabled_apps(PlanAppsJObj) ->
     kz_json:foldl(
       fun find_enabled_apps_fold/3
-		 ,[]
-		 ,PlanAppsJObj
+                 ,[]
+                 ,PlanAppsJObj
      ).
 
 %%--------------------------------------------------------------------

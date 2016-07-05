@@ -17,7 +17,7 @@
 -export([maybe_archive_modb/1]).
 -export([refresh_views/1]).
 -export([create/1
-	,add_routine/1
+        ,add_routine/1
         ]).
 -export([maybe_delete/2]).
 -export([get_range/3, get_range/4]).
@@ -195,7 +195,7 @@ get_modb(?MATCH_MODB_SUFFIX_RAW(_,_,_) = AccountMODb, _) ->
     AccountMODb;
 get_modb(Account, Props) when is_list(Props) ->
     case {props:get_value('month', Props)
-	 ,props:get_value('year', Props)
+         ,props:get_value('year', Props)
          }
     of
         {'undefined', _Year} -> get_modb(Account);
@@ -222,7 +222,7 @@ get_modb(Account, Year, Month) ->
 maybe_create(?MATCH_MODB_SUFFIX_RAW(AccountId, Year, Month) = AccountMODb) ->
     {Y, M, _} = erlang:date(),
     case is_account_deleted(AccountId) =/= 'true'
-	andalso {kz_util:to_binary(Y), kz_util:pad_month(M)}
+        andalso {kz_util:to_binary(Y), kz_util:pad_month(M)}
     of
         'false' -> 'false';
         {Year, Month} ->
@@ -372,8 +372,8 @@ get_range(Type, AccountId, From, To) ->
     {{ToYear,   ToMonth,   _}, _} = calendar:gregorian_seconds_to_datetime(To),
     [MODb
      || MODb <- get_year_month_sequence(AccountId
-				       ,{FromYear, FromMonth}
-				       ,{ToYear, ToMonth}
+                                       ,{FromYear, FromMonth}
+                                       ,{ToYear, ToMonth}
                                        ),
         kz_datamgr:db_exists(MODb, Type)
     ].

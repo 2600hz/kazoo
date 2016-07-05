@@ -18,68 +18,68 @@
 
 %% System manipulation
 -export([db_exists/1, db_exists/2, db_exists_all/1
-	,db_info/0, db_info/1
-	,db_create/1, db_create/2
-	,db_compact/1
-	,db_view_cleanup/1
-	,db_view_update/2, db_view_update/3
-	,db_delete/1
-	,db_replicate/1
-	,db_archive/1, db_archive/2
-	,db_list/0, db_list/1
+        ,db_info/0, db_info/1
+        ,db_create/1, db_create/2
+        ,db_compact/1
+        ,db_view_cleanup/1
+        ,db_view_update/2, db_view_update/3
+        ,db_delete/1
+        ,db_replicate/1
+        ,db_archive/1, db_archive/2
+        ,db_list/0, db_list/1
         ]).
 
 %% Document manipulation
 -export([save_doc/2, save_doc/3
-	,save_docs/2, save_docs/3
-	,open_cache_doc/2, open_cache_doc/3
-	,update_cache_doc/3
-	,flush_cache_doc/2, flush_cache_doc/3
-	,flush_cache_docs/0, flush_cache_docs/1
-	,add_to_doc_cache/3
-	,open_doc/2,open_doc/3
-	,del_doc/2, del_docs/2
-	,del_doc/3, del_docs/3
-	,lookup_doc_rev/2, lookup_doc_rev/3
-	,update_doc/3, update_doc/4
-	,load_doc_from_file/3
-	,update_doc_from_file/3
-	,revise_doc_from_file/3
-	,revise_docs_from_folder/3, revise_docs_from_folder/4
-	,revise_views_from_folder/2
-	,ensure_saved/2, ensure_saved/3
-	,load_fixtures_from_folder/2
-	,all_docs/1
-	,all_design_docs/1
-	,all_docs/2
-	,all_design_docs/2
-	,copy_doc/4, copy_doc/5
-	,move_doc/4, move_doc/5
+        ,save_docs/2, save_docs/3
+        ,open_cache_doc/2, open_cache_doc/3
+        ,update_cache_doc/3
+        ,flush_cache_doc/2, flush_cache_doc/3
+        ,flush_cache_docs/0, flush_cache_docs/1
+        ,add_to_doc_cache/3
+        ,open_doc/2,open_doc/3
+        ,del_doc/2, del_docs/2
+        ,del_doc/3, del_docs/3
+        ,lookup_doc_rev/2, lookup_doc_rev/3
+        ,update_doc/3, update_doc/4
+        ,load_doc_from_file/3
+        ,update_doc_from_file/3
+        ,revise_doc_from_file/3
+        ,revise_docs_from_folder/3, revise_docs_from_folder/4
+        ,revise_views_from_folder/2
+        ,ensure_saved/2, ensure_saved/3
+        ,load_fixtures_from_folder/2
+        ,all_docs/1
+        ,all_design_docs/1
+        ,all_docs/2
+        ,all_design_docs/2
+        ,copy_doc/4, copy_doc/5
+        ,move_doc/4, move_doc/5
         ]).
 
 %% attachments
 -export([fetch_attachment/3, fetch_attachment/4
-	,stream_attachment/3, stream_attachment/4, stream_attachment/5
-	,put_attachment/4, put_attachment/5
-	,delete_attachment/3, delete_attachment/4
-	,attachment_url/3, attachment_url/4
+        ,stream_attachment/3, stream_attachment/4, stream_attachment/5
+        ,put_attachment/4, put_attachment/5
+        ,delete_attachment/3, delete_attachment/4
+        ,attachment_url/3, attachment_url/4
         ]).
 
 %% Views
 -export([get_all_results/2
-	,get_results/2, get_results/3
-	,get_results_count/3
-	,get_result_keys/1, get_result_keys/3
-	,design_info/2
-	,design_compact/2
+        ,get_results/2, get_results/3
+        ,get_results_count/3
+        ,get_result_keys/1, get_result_keys/3
+        ,design_info/2
+        ,design_compact/2
         ]).
 
 -export([get_uuid/0, get_uuid/1
-	,get_uuids/1, get_uuids/2
+        ,get_uuids/1, get_uuids/2
         ]).
 -export([suppress_change_notice/0
-	,enable_change_notice/0
-	,change_notice/0
+        ,enable_change_notice/0
+        ,change_notice/0
         ]).
 
 -export_type([view_options/0]).
@@ -526,8 +526,8 @@ add_to_doc_cache(DbName, DocId, Doc) ->
     end.
 
 -spec update_cache_doc(text(), ne_binary(), fun((kz_json:object()) -> kz_json:object() | 'skip')) ->
-			      {'ok', kz_json:object()}
-				  | data_error().
+                              {'ok', kz_json:object()}
+                                  | data_error().
 update_cache_doc(DbName, DocId, Fun) when is_function(Fun, 1) ->
     case open_cache_doc(DbName, DocId) of
         {'ok', JObj} ->
@@ -539,8 +539,8 @@ update_cache_doc(DbName, DocId, Fun) when is_function(Fun, 1) ->
     end.
 
 -spec maybe_save_doc(text(), kz_json:object() | 'skip', kz_json:object()) ->
-			    {'ok', kz_json:object() | kz_json:objects()} |
-			    data_error().
+                            {'ok', kz_json:object() | kz_json:objects()} |
+                            data_error().
 maybe_save_doc(_DbName, 'skip', Jobj) ->
     {'ok', Jobj};
 maybe_save_doc(DbName, JObj, _OldJobj) ->
@@ -901,11 +901,11 @@ put_attachment(DbName, {DocType, DocId}, AName, Contents, Options) ->
 put_attachment(DbName, DocId, AName, Contents, Options) when ?VALID_DBNAME ->
     case attachment_options(DbName, DocId, Options) of
         {'ok', NewOptions} -> kzs_attachments:put_attachment(kzs_plan:plan(DbName, NewOptions)
-							    ,DbName
-							    ,DocId
-							    ,AName
-							    ,Contents
-							    ,NewOptions
+                                                            ,DbName
+                                                            ,DocId
+                                                            ,AName
+                                                            ,Contents
+                                                            ,NewOptions
                                                             );
         {'error', _} = Error -> Error
     end;
@@ -933,11 +933,11 @@ delete_attachment(DbName, DocId, AName, Options) ->
     end.
 
 -spec attachment_url(text(), docid(), ne_binary()) -> {'ok', ne_binary()}
-							  | {'proxy', tuple()}
-							  | {'error', any()}.
+                                                          | {'proxy', tuple()}
+                                                          | {'error', any()}.
 -spec attachment_url(text(), docid(), ne_binary(), kz_proplist()) -> {'ok', ne_binary()}
-									 | {'proxy', tuple()}
-									 | {'error', any()}.
+                                                                         | {'proxy', tuple()}
+                                                                         | {'error', any()}.
 
 attachment_url(DbName, DocId, AttachmentId) ->
     attachment_url(DbName, DocId, AttachmentId, []).
@@ -966,7 +966,7 @@ attachment_url(DbName, DocId, AttachmentId, Options) ->
 %%%===================================================================
 attachment_options(DbName, DocId, Options) ->
     RequiredOptions = [{'doc_type', fun kz_doc:type/1}
-		      ,{'rev', fun kz_doc:revision/1}
+                      ,{'rev', fun kz_doc:revision/1}
                       ],
     attachment_options(DbName, DocId, Options, RequiredOptions).
 
@@ -1056,7 +1056,7 @@ get_results_count(DbName, DesignDoc, Options) ->
     kzs_view:get_results_count(kzs_plan:plan(DbName, Opts), DbName, DesignDoc, Options).
 
 -spec get_result_keys(ne_binary(), ne_binary(), view_options()) ->
-			     {'ok', ne_binaries()} | data_error().
+                             {'ok', ne_binaries()} | data_error().
 get_result_keys(DbName, DesignDoc, Options) ->
     Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
     case kzs_view:get_results(kzs_plan:plan(DbName, Opts), DbName, DesignDoc, Options) of
@@ -1139,9 +1139,9 @@ copy_doc(FromDB, FromId, ToDB, ToId, Options) ->
     Src = kzs_plan:plan(FromDB, Options),
     Dst = kzs_plan:plan(ToDB, Options),
     CopySpec = #copy_doc{source_dbname=FromDB
-			,source_doc_id=FromId
-			,dest_dbname=ToDB
-			,dest_doc_id=ToId
+                        ,source_doc_id=FromId
+                        ,dest_dbname=ToDB
+                        ,dest_doc_id=ToId
                         },
     kzs_doc:copy_doc(Src, Dst, CopySpec, Options).
 
@@ -1162,9 +1162,9 @@ move_doc(FromDB, FromId, ToDB, ToId, Options) ->
     Src = kzs_plan:plan(FromDB, Options),
     Dst = kzs_plan:plan(ToDB, Options),
     CopySpec = #copy_doc{source_dbname=FromDB
-			,source_doc_id=FromId
-			,dest_dbname=ToDB
-			,dest_doc_id=ToId
+                        ,source_doc_id=FromId
+                        ,dest_dbname=ToDB
+                        ,dest_doc_id=ToId
                         },
     kzs_doc:move_doc(Src, Dst, CopySpec, Options).
 

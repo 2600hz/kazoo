@@ -83,14 +83,14 @@ handle_req(JObj, Props) ->
     lager:debug("cdr from ~s to ~s with account code ~s", [FromE164, ToE164, AccountCode]),
 
     XML = iolist_to_binary(io_lib:format(?DTH_SUBMITCALLRECORD
-					,[AccountCode
-					 ,FromE164
-					 ,ToE164
-					 ,DateTime
-					 ,kz_util:to_binary(BillingSec)
-					 ,CallID
-					 ,?DTH_CALL_TYPE_OTHER
-					 ])),
+                                        ,[AccountCode
+                                         ,FromE164
+                                         ,ToE164
+                                         ,DateTime
+                                         ,kz_util:to_binary(BillingSec)
+                                         ,CallID
+                                         ,?DTH_CALL_TYPE_OTHER
+                                         ])),
 
     lager:debug("XML to send: ~s", [XML]),
 
@@ -98,8 +98,8 @@ handle_req(JObj, Props) ->
 
 send_xml(XML, Props) ->
     Headers = [{"Content-Type", "text/xml; charset=utf-8"}
-	      ,{"Content-Length", binary:referenced_byte_size(XML)}
-	      ,{"SOAPAction", "http://tempuri.org/SubmitCallRecord"}
+              ,{"Content-Length", binary:referenced_byte_size(XML)}
+              ,{"SOAPAction", "http://tempuri.org/SubmitCallRecord"}
               ],
 
     case kz_http:post(props:get_value('cdr_url', Props), Headers, XML) of
@@ -145,9 +145,9 @@ get_from_user(JObj) ->
 -spec get_account_code(kz_json:object()) -> ne_binary().
 get_account_code(JObj) ->
     AccountID = kz_util:truncate_left_binary(
-		  kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)
-					    ,17
-		 ),
+                  kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)
+                                            ,17
+                 ),
     case kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Inception">>], JObj) of
         'undefined' -> AccountID;
         _Else -> << AccountID/binary, "-IN">>

@@ -8,15 +8,15 @@
 -module(konami_maintenance).
 
 -export([is_running/0
-	,add_default_metaflow/0
-	,add_default_account_metaflow/1
+        ,add_default_metaflow/0
+        ,add_default_account_metaflow/1
         ]).
 
 -include("konami.hrl").
 
 -record(builder_action, {module_fun_name :: atom()
-			,metaflow_key :: ne_binary()
-			,builders = [] :: [{pos_integer(), atom()}]
+                        ,metaflow_key :: ne_binary()
+                        ,builders = [] :: [{pos_integer(), atom()}]
                         }).
 -type builder_action() :: #builder_action{}.
 
@@ -51,10 +51,10 @@ intro_builder(Default, SaveFun) ->
     _ = application:ensure_started('konami'),
     io:format("The current default metaflow:~n"),
     io:format("  Binding Digit: ~s~n"
-	     ,[kz_json:get_value(<<"binding_digit">>, Default, konami_config:binding_digit())]
+             ,[kz_json:get_value(<<"binding_digit">>, Default, konami_config:binding_digit())]
              ),
     io:format("  Digit Timeout(ms): ~b~n"
-	     ,[kz_json:get_integer_value(<<"digit_timeout_ms">>, Default, konami_config:timeout())]
+             ,[kz_json:get_integer_value(<<"digit_timeout_ms">>, Default, konami_config:timeout())]
              ),
 
     io:format("  Numbers: ~s~n", [kz_json:encode(kz_json:get_value(<<"numbers">>, Default, kz_json:new()))]),
@@ -71,7 +71,7 @@ menu_builder(Default, SaveFun) ->
               "5. Show Current Defaults~n"
               "6. Save~n"
               "7. Exit~n~n"
-	     ,[]),
+             ,[]),
     {'ok', [Option]} = io:fread("Which action: ", "~d"),
     menu_builder_action(Default, SaveFun, Option).
 
@@ -107,22 +107,22 @@ menu_builder_action(Default, SaveFun, _) ->
 number_builder(Default, SaveFun) ->
     Ms = builder_modules('number_builder'),
     builder_menu(Default
-		,SaveFun
-		,#builder_action{builders=lists:zip(lists:seq(1, length(Ms)), Ms)
-				,metaflow_key = <<"numbers">>
-				,module_fun_name='number_builder'
-				}
+                ,SaveFun
+                ,#builder_action{builders=lists:zip(lists:seq(1, length(Ms)), Ms)
+                                ,metaflow_key = <<"numbers">>
+                                ,module_fun_name='number_builder'
+                                }
                 ).
 
 -spec pattern_builder(kz_json:object(), save_fun()) -> 'ok'.
 pattern_builder(Default, SaveFun) ->
     Ms = builder_modules('pattern_builder'),
     builder_menu(Default
-		,SaveFun
-		,#builder_action{builders=lists:zip(lists:seq(1, length(Ms)), Ms)
-				,metaflow_key = <<"patterns">>
-				,module_fun_name='pattern_builder'
-				}
+                ,SaveFun
+                ,#builder_action{builders=lists:zip(lists:seq(1, length(Ms)), Ms)
+                                ,metaflow_key = <<"patterns">>
+                                ,module_fun_name='pattern_builder'
+                                }
                 ).
 
 -spec print_builders(kz_proplist()) -> ['ok'].
@@ -136,7 +136,7 @@ builder_name(M) -> builder_name(kz_util:to_binary(M)).
 
 -spec builder_menu(kz_json:object(), save_fun(), builder_action()) -> 'ok'.
 builder_menu(Default, SaveFun, #builder_action{builders=Builders
-					      ,metaflow_key=Key
+                                              ,metaflow_key=Key
                                               }=BA) ->
     io:format("~s Builders:~n", [kz_util:ucfirst_binary(Key)]),
 
@@ -145,9 +145,9 @@ builder_menu(Default, SaveFun, #builder_action{builders=Builders
 
     {'ok', [Option]} = io:fread("Which builder to add: ", "~d"),
     builder_action(Default
-		  ,SaveFun
-		  ,BA
-		  ,Option
+                  ,SaveFun
+                  ,BA
+                  ,Option
                   ).
 
 -spec builder_action(kz_json:object(), save_fun(), builder_action(), non_neg_integer()) -> 'ok'.
@@ -163,12 +163,12 @@ builder_action(Default, SaveFun, #builder_action{builders=Builders}=BA, N) ->
 
 -spec execute_action(kz_json:object(), save_fun(), builder_action(), atom()) -> 'ok'.
 execute_action(Default, SaveFun, #builder_action{module_fun_name=ModuleFun
-						,metaflow_key=Key
+                                                ,metaflow_key=Key
                                                 }=BA, Module) ->
     try Module:ModuleFun(Default) of
         NewDefault ->
             io:format("  ~s: ~s~n~n", [kz_util:ucfirst_binary(Key)
-				      ,kz_json:encode(kz_json:get_value(Key, NewDefault, kz_json:new()))
+                                      ,kz_json:encode(kz_json:get_value(Key, NewDefault, kz_json:new()))
                                       ]),
             builder_menu(NewDefault, SaveFun, BA)
     catch

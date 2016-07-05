@@ -34,10 +34,10 @@ update_device(JObj, AuthToken) ->
         {'ok', Data} ->
             _ = update_account(AccountId, AuthToken),
             send_req('devices_post'
-		    ,Data
-		    ,AuthToken
-		    ,AccountId
-		    ,kz_device:mac_address(JObj)
+                    ,Data
+                    ,AuthToken
+                    ,AccountId
+                    ,kz_device:mac_address(JObj)
                     );
         {'error', Errors} ->
             handle_validation_error(Errors, AccountId)
@@ -46,10 +46,10 @@ update_device(JObj, AuthToken) ->
 -spec delete_device(kz_json:object(), ne_binary()) -> 'ok'.
 delete_device(JObj, AuthToken) ->
     send_req('devices_delete'
-	    ,'undefined'
-	    ,AuthToken
-	    ,kz_doc:account_id(JObj)
-	    ,kz_device:mac_address(JObj)
+            ,'undefined'
+            ,AuthToken
+            ,kz_doc:account_id(JObj)
+            ,kz_device:mac_address(JObj)
             ).
 
 -spec device_settings(kz_json:object()) -> kz_json:object().
@@ -105,19 +105,19 @@ get_model(JObj) ->
 -spec update_account(ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 update_account(AccountId, JObj, AuthToken) ->
     send_req('accounts_update'
-	    ,account_settings(JObj)
-	    ,AuthToken
-	    ,AccountId
-	    ,'undefined'
+            ,account_settings(JObj)
+            ,AuthToken
+            ,AccountId
+            ,'undefined'
             ).
 
 -spec delete_account(ne_binary(), ne_binary()) -> 'ok'.
 delete_account(AccountId, AuthToken) ->
     send_req('accounts_delete'
-	    ,'undefined'
-	    ,AuthToken
-	    ,AccountId
-	    ,'undefined'
+            ,'undefined'
+            ,AuthToken
+            ,AccountId
+            ,'undefined'
             ).
 -spec update_account(ne_binary(), ne_binary()) -> 'ok'.
 update_account(Account, AuthToken) ->
@@ -163,10 +163,10 @@ save_user(AccountId, JObj, AuthToken) ->
 maybe_save_device(Device, Settings, AccountId, AuthToken) ->
     Request = kz_json:from_list(
                 [{<<"brand">>, get_brand(Device)}
-		,{<<"family">>, get_family(Device)}
-		,{<<"model">>, get_model(Device)}
-		,{<<"name">>, kz_device:name(Device)}
-		,{<<"settings">>, Settings}
+                ,{<<"family">>, get_family(Device)}
+                ,{<<"model">>, get_model(Device)}
+                ,{<<"name">>, kz_device:name(Device)}
+                ,{<<"settings">>, Settings}
                 ]
                ),
     catch save_device(AccountId, Device, Request, AuthToken).
@@ -177,10 +177,10 @@ save_device(AccountId, Device, Request, AuthToken) ->
         'undefined' -> 'ok';
         MacAddress ->
             send_req('devices_post'
-		    ,Request
-		    ,AuthToken
-		    ,AccountId
-		    ,MacAddress
+                    ,Request
+                    ,AuthToken
+                    ,AccountId
+                    ,MacAddress
                     )
     end.
 
@@ -235,10 +235,10 @@ get_owner(OwnerId, AccountId) ->
 settings(JObj) ->
     Props = props:filter_empty(
               [{<<"lines">>, settings_lines(JObj)}
-	      ,{<<"codecs">>, settings_codecs(JObj)}
-	      ,{<<"datetime">>, settings_datetime(JObj)}
-	      ,{<<"feature_keys">>, settings_feature_keys(JObj)}
-	      ,{<<"line_keys">>, settings_line_keys(JObj)}
+              ,{<<"codecs">>, settings_codecs(JObj)}
+              ,{<<"datetime">>, settings_datetime(JObj)}
+              ,{<<"feature_keys">>, settings_feature_keys(JObj)}
+              ,{<<"line_keys">>, settings_line_keys(JObj)}
               ]
              ),
     kz_json:from_list(Props).
@@ -280,7 +280,7 @@ settings_basic(JObj) ->
               end,
     Props = props:filter_undefined(
               [{<<"display_name">>, kz_json:get_ne_value(<<"name">>, JObj)}
-	      ,{<<"enable">>, Enabled}
+              ,{<<"enable">>, Enabled}
               ]
              ),
     kz_json:from_list(Props).
@@ -294,8 +294,8 @@ settings_sip(JObj) ->
              ),
     Props = props:filter_undefined(
               [{<<"username">>, kz_device:sip_username(JObj)}
-	      ,{<<"password">>, kz_device:sip_password(JObj)}
-	      ,{<<"realm">>, Realm}
+              ,{<<"password">>, kz_device:sip_password(JObj)}
+              ,{<<"realm">>, Realm}
               ]
              ),
     kz_json:from_list(Props).
@@ -330,8 +330,8 @@ settings_feature_keys(JObj) ->
                   FeatureKey = get_feature_key(Type, V, Brand, Family, AccountId),
                   maybe_add_feature_key(Key, FeatureKey, Acc)
           end
-		     ,kz_json:new()
-		     ,FeatureKeys
+                     ,kz_json:new()
+                     ,FeatureKeys
          ),
     case get_line_key(Brand, Family) of
         'undefined' -> Keys;
@@ -348,9 +348,9 @@ get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId) ->
             kz_json:from_list(
               props:filter_undefined(
                 [{<<"label">>, Presence}
-		,{<<"value">>, Presence}
-		,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-		,{<<"account">>, get_line_key(Brand, Family)}
+                ,{<<"value">>, Presence}
+                ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+                ,{<<"account">>, get_line_key(Brand, Family)}
                 ])
              )
     end;
@@ -358,9 +358,9 @@ get_feature_key(<<"speed_dial">> = Type, Value, Brand, Family, _AccountId) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"label">>, Value}
-	,{<<"value">>, Value}
-	,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-	,{<<"account">>, get_line_key(Brand, Family)}
+        ,{<<"value">>, Value}
+        ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+        ,{<<"account">>, get_line_key(Brand, Family)}
         ])
      );
 get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) ->
@@ -371,9 +371,9 @@ get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) 
             kz_json:from_list(
               props:filter_undefined(
                 [{<<"label">>, <<>>}
-		,{<<"value">>, <<"*3", Presence/binary>>}
-		,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-		,{<<"account">>, get_line_key(Brand, Family)}
+                ,{<<"value">>, <<"*3", Presence/binary>>}
+                ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+                ,{<<"account">>, get_line_key(Brand, Family)}
                 ]
                )
              )
@@ -382,9 +382,9 @@ get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"label">>, <<>>}
-	,{<<"value">>, <<"*3", Value/binary>>}
-	,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-	,{<<"account">>, get_line_key(Brand, Family)}
+        ,{<<"value">>, <<"*3", Value/binary>>}
+        ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+        ,{<<"account">>, get_line_key(Brand, Family)}
         ]
        )
      ).
@@ -396,9 +396,9 @@ get_line_key(_, _) -> 'undefined'.
 -spec get_feature_key_type(ne_binary(), binary(), binary()) -> api_object().
 get_feature_key_type(Type, Brand, Family) ->
     kz_json:get_first_defined([[Brand, Family, Type]
-			      ,[Brand, <<"_">>, Type]
+                              ,[Brand, <<"_">>, Type]
                               ]
-			     ,?FEATURE_KEYS
+                             ,?FEATURE_KEYS
                              ).
 
 -spec get_user(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
@@ -412,8 +412,8 @@ maybe_add_feature_key(_Key, 'undefined', JObj) -> JObj;
 maybe_add_feature_key(Key, FeatureKey, JObj) ->
     kz_json:set_value(
       Key
-		     ,kz_json:from_list([{<<"key">>, FeatureKey}])
-		     ,JObj
+                     ,kz_json:from_list([{<<"key">>, FeatureKey}])
+                     ,JObj
      ).
 
 -spec settings_time(kz_json:object()) -> kz_json:object().
@@ -438,9 +438,9 @@ settings_codecs(JObj) ->
 settings_audio(JObj) ->
     Codecs = kz_json:get_value([<<"media">>, <<"audio">>, <<"codecs">>], JObj, []),
     Keys = [<<"primary_codec">>
-	   ,<<"secondary_codec">>
-	   ,<<"tertiary_codec">>
-	   ,<<"quaternary_codec">>
+           ,<<"secondary_codec">>
+           ,<<"tertiary_codec">>
+           ,<<"quaternary_codec">>
            ],
     settings_audio(Codecs, Keys, kz_json:new()).
 
@@ -563,11 +563,11 @@ create_alert(JObj, AccountId, AuthToken) ->
 
     {'ok', AlertJObj} =
         kapps_alert:create(<<"Provisioning Error">>
-			  ,<<"Error trying to provision device">>
-			  ,From
-			  ,To
-			  ,Props
-			  ),
+                          ,<<"Error trying to provision device">>
+                          ,From
+                          ,To
+                          ,Props
+                          ),
     kapps_alert:save(AlertJObj).
 
 -spec decode(string()) -> kz_json:object().

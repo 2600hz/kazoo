@@ -12,24 +12,24 @@
 
 %% API
 -export([start_link/0
-	,default_rate_limits/0
+        ,default_rate_limits/0
         ]).
 
 -define(ACCOUNT_RATES_SEC, [{<<"registrations">>, 20}
-			   ,{<<"invites">>, 50}
-			   ,{<<"total_packets">>, 100}
+                           ,{<<"invites">>, 50}
+                           ,{<<"total_packets">>, 100}
                            ]).
 -define(DEVICE_RATES_SEC, [{<<"registrations">>, 2}
-			  ,{<<"invites">>, 5}
-			  ,{<<"total_packets">>, 20}
+                          ,{<<"invites">>, 5}
+                          ,{<<"total_packets">>, 20}
                           ]).
 -define(ACCOUNT_RATES_MIN, [{<<"registrations">>, 100}
-			   ,{<<"invites">>, 200}
-			   ,{<<"total_packets">>, 2000}
+                           ,{<<"invites">>, 200}
+                           ,{<<"total_packets">>, 2000}
                            ]).
 -define(DEVICE_RATES_MIN, [{<<"registrations">>, 20}
-			  ,{<<"invites">>, 100}
-			  ,{<<"total_packets">>, 1000}
+                          ,{<<"invites">>, 100}
+                          ,{<<"total_packets">>, 1000}
                           ]).
 
 -spec sysconfig_default_rates() -> kz_json:object().
@@ -38,18 +38,18 @@ sysconfig_default_rates() ->
     AccountMin = kz_json:from_list(?ACCOUNT_RATES_MIN),
 
     AccountRates = kz_json:from_list([{?MINUTE, AccountMin}
-				     ,{?SECOND, AccountSec}
+                                     ,{?SECOND, AccountSec}
                                      ]),
 
     DeviceSec = kz_json:from_list(?DEVICE_RATES_SEC),
     DeviceMin = kz_json:from_list(?DEVICE_RATES_MIN),
 
     DeviceRates = kz_json:from_list([{?MINUTE, DeviceMin}
-				    ,{?SECOND, DeviceSec}
+                                    ,{?SECOND, DeviceSec}
                                     ]),
 
     kz_json:from_list([{<<"account">>, AccountRates}
-		      ,{<<"device">>, DeviceRates}
+                      ,{<<"device">>, DeviceRates}
                       ]).
 
 -spec start_link() -> 'ignore'.

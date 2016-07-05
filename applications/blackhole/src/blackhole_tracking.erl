@@ -11,21 +11,21 @@
 -behaviour(gen_listener).
 
 -export([start_link/0
-	,handle_req/2
-	,add_socket/1
-	,remove_socket/1
-	,update_socket/1
-	,get_sockets/1
-	,get_socket/1
+        ,handle_req/2
+        ,add_socket/1
+        ,remove_socket/1
+        ,update_socket/1
+        ,get_sockets/1
+        ,get_socket/1
         ]).
 
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("blackhole.hrl").
@@ -49,14 +49,14 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
-			   ,?MODULE
-			   ,[{'responders', ?RESPONDERS}
-			    ,{'bindings', ?BINDINGS}
-			    ,{'queue_name', ?BLACKHOLE_QUEUE_NAME}
-			    ,{'queue_options', ?BLACKHOLE_QUEUE_OPTIONS}
-			    ,{'consume_options', ?BLACKHOLE_CONSUME_OPTIONS}
+                           ,?MODULE
+                           ,[{'responders', ?RESPONDERS}
+                            ,{'bindings', ?BINDINGS}
+                            ,{'queue_name', ?BLACKHOLE_QUEUE_NAME}
+                            ,{'queue_options', ?BLACKHOLE_QUEUE_OPTIONS}
+                            ,{'consume_options', ?BLACKHOLE_CONSUME_OPTIONS}
                             ]
-			   ,[]
+                           ,[]
                            ).
 
 %%--------------------------------------------------------------------
@@ -72,16 +72,16 @@ handle_req(ApiJObj, _Props) ->
     Node = kz_json:get_binary_value(<<"Node">>, ApiJObj),
     RespData =
         handle_get_req_data(
-	  kz_json:get_value(<<"Account-ID">>, ApiJObj)
-			   ,kz_json:get_value(<<"Socket-ID">>, ApiJObj)
-			   ,Node
-	 ),
+          kz_json:get_value(<<"Account-ID">>, ApiJObj)
+                           ,kz_json:get_value(<<"Socket-ID">>, ApiJObj)
+                           ,Node
+         ),
     case RespData of
         'ok' -> 'ok';
         RespData ->
             RespQ = kz_json:get_value(<<"Server-ID">>, ApiJObj),
             Resp = [{<<"Data">>, RespData}
-		   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, ApiJObj)}
+                   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, ApiJObj)}
                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             lager:debug("sending reply ~p to ~s",[RespData, Node]),
@@ -152,9 +152,9 @@ init([]) ->
     process_flag('trap_exit', 'true'),
     lager:debug("starting new ~s server", [?SERVER]),
     Tab = ets:new(?SERVER, ['set'
-			   ,'protected'
-			   ,'named_table'
-			   ,{'keypos', #bh_context.websocket_session_id}
+                           ,'protected'
+                           ,'named_table'
+                           ,{'keypos', #bh_context.websocket_session_id}
                            ]),
     {'ok', Tab}.
 

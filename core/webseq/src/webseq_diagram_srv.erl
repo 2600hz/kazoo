@@ -12,30 +12,30 @@
 -behaviour(gen_server).
 
 -export([start/1
-	,stop/1
-	,evt/4
-	,title/2
-	,note/4
-	,trunc/1
-	,rotate/1
-	,process_pid/1
-	,reg_who/3
+        ,stop/1
+        ,evt/4
+        ,title/2
+        ,note/4
+        ,trunc/1
+        ,rotate/1
+        ,process_pid/1
+        ,reg_who/3
         ]).
 
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,code_change/3
-	,terminate/2
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,code_change/3
+        ,terminate/2
         ]).
 
 -include("webseq.hrl").
 
 -record(state, {type :: diagram_type()
-	       ,name :: ne_binary()
-	       ,io_device :: 'undefined' | file:io_device()
-	       ,who_registry :: dict:dict()
+               ,name :: ne_binary()
+               ,io_device :: 'undefined' | file:io_device()
+               ,who_registry :: dict:dict()
                }).
 -type state() :: #state{}.
 
@@ -107,9 +107,9 @@ init({'file', Name, PreFilename}=Type) ->
         {'ok', IO} ->
             lager:debug("webseq tracing ~s to file: ~s", [Name, Filename]),
             {'ok', #state{io_device=IO
-			 ,name=Name
-			 ,type=Type
-			 ,who_registry=dict:new()
+                         ,name=Name
+                         ,type=Type
+                         ,who_registry=dict:new()
                          }};
         {'error', 'eaccess'} ->
             lager:info("failed to open ~s, eaccess error - check permissions", [Filename]),
@@ -127,8 +127,8 @@ init({'db', Name, Database}=Type) ->
         'true' ->
             lager:debug("webseq tracing ~s to db: ~s", [Name, Database]),
             {'ok', #state{name=Name
-			 ,type=Type
-			 ,who_registry=dict:new()
+                         ,type=Type
+                         ,who_registry=dict:new()
                          }};
         'false' ->
             lager:debug("database ~s not found", [Database]),
@@ -152,7 +152,7 @@ handle_call(_,_,S) ->
     {'reply', 'ok', S}.
 
 handle_cast({'write', Str, Args}, #state{type={'file', _Name, _Filename}
-					,io_device=IO
+                                        ,io_device=IO
                                         }=State) ->
     catch file:write(IO, io_lib:format(Str, Args)),
     {'noreply', State};
@@ -161,7 +161,7 @@ handle_cast({'write', Str, Args}, #state{type={'db', Name, Database}}=State) ->
     {'noreply', State};
 
 handle_cast('trunc', #state{io_device=IO
-			   ,type={'file', _Name, _Filename}
+                           ,type={'file', _Name, _Filename}
                            }=State) ->
     catch file:truncate(IO),
     {'noreply', State};
@@ -170,7 +170,7 @@ handle_cast('trunc', #state{type={'db', Name, Database}}=State) ->
     {'noreply', State};
 
 handle_cast('rotate', #state{io_device=OldIO
-			    ,type={'file', _Name, Filename}
+                            ,type={'file', _Name, Filename}
                             }=State) ->
     _ = file:close(OldIO),
     {'ok', IO} = start_file(Filename),
@@ -206,15 +206,15 @@ terminate(_Reason, #state{io_device=IO}) ->
 webseq_doc(Name, Str, Args) ->
     Line = iolist_to_binary(io_lib:format(Str, Args)),
     kz_json:from_list([{<<"line">>, Line}
-		      ,{<<"name">>, Name}
+                      ,{<<"name">>, Name}
                       ]).
 
 -spec write_to_db(ne_binary(), ne_binary(), text(), text()) -> 'ok'.
 write_to_db(Database, Name, Str, Args) ->
     Doc = kz_doc:update_pvt_parameters(
             webseq_doc(Name, Str, Args)
-				      ,Database
-				      ,[{'type', <<"webseq">>}]
+                                      ,Database
+                                      ,[{'type', <<"webseq">>}]
            ),
     case kz_datamgr:save_doc(Database, Doc) of
         {'ok', _} -> 'ok';
@@ -279,7 +279,7 @@ rotate_db(Database, Name, Docs) ->
 -spec rotate_doc(ne_binary(), kz_json:object()) -> kz_json:object().
 rotate_doc(RotatedName, Doc) ->
     kz_json:set_value(<<"name">>, RotatedName
-		     ,kz_doc:update_pvt_parameters(Doc, 'undefined')
+                     ,kz_doc:update_pvt_parameters(Doc, 'undefined')
                      ).
 
 -spec init_db(ne_binary()) -> 'ok'.

@@ -11,10 +11,10 @@
 
 %% Attachment-related
 -export([fetch_attachment/4
-	,stream_attachment/5
-	,put_attachment/6
-	,delete_attachment/5
-	,attachment_url/6
+        ,stream_attachment/5
+        ,put_attachment/6
+        ,delete_attachment/5
+        ,attachment_url/6
         ]).
 
 
@@ -121,8 +121,8 @@ attachment_handler_jobj(Handler, Props) ->
 
 -spec handle_put_attachment(map(), kz_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()
                            , kz_proplist(), kz_proplist()) ->
-				   {'ok', kz_json:object()} |
-				   data_error().
+                                   {'ok', kz_json:object()} |
+                                   data_error().
 
 handle_put_attachment(#{att_post_handler := 'stub'
                        ,server := {App, Conn}

@@ -184,9 +184,9 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
     AccountMODb = kazoo_modb:get_modb(AccountDb, Year, Month),
     FaxMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     FaxId = <<(kz_util:to_binary(Year))/binary
-	      ,(kz_util:pad_month(Month))/binary
-	      ,"-"
-	      ,DocId/binary
+              ,(kz_util:pad_month(Month))/binary
+              ,"-"
+              ,DocId/binary
             >>,
     io:format("moving doc ~s/~s to ~s/~s~n",[AccountDb, DocId, AccountMODb, FaxId]),
     kazoo_modb:create(AccountMODb),
@@ -213,19 +213,19 @@ account_jobs(AccountId, State) ->
     io:format(FormatString, [<<"Job">>, <<"Date">>, <<"State">>, <<"Account">>, <<"Faxbox">>, <<"From">>, <<"To">>]),
     io:format("+================================+===================+=================+==================================+==================================+======================+======================+~n", []),
     ViewOptions = [{'startkey', [AccountId, State]}
-		  ,{'endkey', [AccountId, State, kz_json:new()]}
-		  ],
+                  ,{'endkey', [AccountId, State, kz_json:new()]}
+                  ],
 
     _ = case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/list_by_account_state">>, ViewOptions) of
             {'ok', Jobs} ->
                 [io:format(FormatString, [kz_json:get_value([<<"value">>, <<"id">>], JObj)
-					 ,kz_util:format_datetime(
-					    kz_json:get_value([<<"value">>, <<"modified">>], JObj))
-					 ,kz_json:get_value([<<"value">>, <<"status">>], JObj)
-					 ,kz_json:get_value([<<"value">>, <<"account_id">>], JObj)
-					 ,kz_json:get_value([<<"value">>, <<"faxbox_id">>], JObj, <<"(none)">>)
-					 ,kz_json:get_value([<<"value">>, <<"from">>], JObj)
-					 ,kz_json:get_value([<<"value">>, <<"to">>], JObj)
+                                         ,kz_util:format_datetime(
+                                            kz_json:get_value([<<"value">>, <<"modified">>], JObj))
+                                         ,kz_json:get_value([<<"value">>, <<"status">>], JObj)
+                                         ,kz_json:get_value([<<"value">>, <<"account_id">>], JObj)
+                                         ,kz_json:get_value([<<"value">>, <<"faxbox_id">>], JObj, <<"(none)">>)
+                                         ,kz_json:get_value([<<"value">>, <<"from">>], JObj)
+                                         ,kz_json:get_value([<<"value">>, <<"to">>], JObj)
                                          ]) || JObj <- Jobs];
             {'error', _Reason} ->
                 io:format("Error getting faxes\n")
@@ -242,19 +242,19 @@ faxbox_jobs(FaxboxId, State) ->
     io:format(FormatString, [<<"Job">>, <<"Date">>, <<"State">>, <<"Account">>, <<"Faxbox">>, <<"From">>, <<"To">>]),
     io:format("+================================+===================+=================+==================================+==================================+======================+======================+~n", []),
     ViewOptions = [{'startkey', [FaxboxId, State]}
-		  ,{'endkey', [FaxboxId, State, kz_json:new()]}
-		  ],
+                  ,{'endkey', [FaxboxId, State, kz_json:new()]}
+                  ],
 
     _ = case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/list_by_faxbox_state">>, ViewOptions) of
             {'ok', Jobs} ->
                 [io:format(FormatString, [kz_json:get_value([<<"value">>, <<"id">>], JObj)
-					 ,kz_util:format_datetime(
-					    kz_json:get_value([<<"value">>, <<"modified">>], JObj))
-					 ,kz_json:get_value([<<"value">>, <<"status">>], JObj)
-					 ,kz_json:get_value([<<"value">>, <<"account_id">>], JObj)
-					 ,kz_json:get_value([<<"value">>, <<"faxbox_id">>], JObj)
-					 ,kz_json:get_value([<<"value">>, <<"from">>], JObj)
-					 ,kz_json:get_value([<<"value">>, <<"to">>], JObj)
+                                         ,kz_util:format_datetime(
+                                            kz_json:get_value([<<"value">>, <<"modified">>], JObj))
+                                         ,kz_json:get_value([<<"value">>, <<"status">>], JObj)
+                                         ,kz_json:get_value([<<"value">>, <<"account_id">>], JObj)
+                                         ,kz_json:get_value([<<"value">>, <<"faxbox_id">>], JObj)
+                                         ,kz_json:get_value([<<"value">>, <<"from">>], JObj)
+                                         ,kz_json:get_value([<<"value">>, <<"to">>], JObj)
                                          ]) || JObj <- Jobs];
             {'error', _Reason} ->
                 io:format("Error getting faxes~n", [])
@@ -271,12 +271,12 @@ pending_jobs() ->
     _ = case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/jobs">>) of
             {'ok', Jobs} ->
                 [io:format(FormatString, [kz_json:get_value([<<"value">>, <<"id">>], JObj)
-					 ,kz_util:format_datetime(
-					    kz_json:get_value([<<"value">>, <<"modified">>], JObj))
-					 ,kz_json:get_value([<<"value">>, <<"account_id">>], JObj)
-					 ,kz_json:get_value([<<"value">>, <<"faxbox_id">>], JObj, <<"(none)">>)
-					 ,kz_json:get_value([<<"value">>, <<"from">>], JObj)
-					 ,kz_json:get_value([<<"value">>, <<"to">>], JObj)
+                                         ,kz_util:format_datetime(
+                                            kz_json:get_value([<<"value">>, <<"modified">>], JObj))
+                                         ,kz_json:get_value([<<"value">>, <<"account_id">>], JObj)
+                                         ,kz_json:get_value([<<"value">>, <<"faxbox_id">>], JObj, <<"(none)">>)
+                                         ,kz_json:get_value([<<"value">>, <<"from">>], JObj)
+                                         ,kz_json:get_value([<<"value">>, <<"to">>], JObj)
                                          ]) || JObj <- Jobs];
             {'error', _Reason} ->
                 io:format("Error getting faxes~n", [])
@@ -293,13 +293,13 @@ active_jobs() ->
     _ = case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/processing_by_node">>) of
             {'ok', Jobs} ->
                 [io:format(FormatString, [kz_json:get_value([<<"value">>, <<"node">>], JObj)
-					 ,kz_json:get_value([<<"value">>, <<"id">>], JObj)
-					 ,kz_util:format_datetime(
-					    kz_json:get_value([<<"value">>, <<"modified">>], JObj))
-					 ,kz_json:get_value([<<"value">>, <<"account_id">>], JObj)
-					 ,kz_json:get_value([<<"value">>, <<"faxbox_id">>], JObj, <<"(none)">>)
-					 ,kz_json:get_value([<<"value">>, <<"from">>], JObj)
-					 ,kz_json:get_value([<<"value">>, <<"to">>], JObj)
+                                         ,kz_json:get_value([<<"value">>, <<"id">>], JObj)
+                                         ,kz_util:format_datetime(
+                                            kz_json:get_value([<<"value">>, <<"modified">>], JObj))
+                                         ,kz_json:get_value([<<"value">>, <<"account_id">>], JObj)
+                                         ,kz_json:get_value([<<"value">>, <<"faxbox_id">>], JObj, <<"(none)">>)
+                                         ,kz_json:get_value([<<"value">>, <<"from">>], JObj)
+                                         ,kz_json:get_value([<<"value">>, <<"to">>], JObj)
                                          ]) || JObj <- Jobs];
             {'error', _Reason} ->
                 io:format("Error getting faxes~n", [])
@@ -334,12 +334,12 @@ update_job(JobID, State, JObj) ->
             Opts = [{'rev', kz_doc:revision(JObj)}],
             kz_datamgr:save_doc(?KZ_FAXES_DB
                                ,kz_json:set_values([{<<"pvt_job_status">>, State}
-						   ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+                                                   ,{<<"pvt_modified">>, kz_util:current_tstamp()}
                                                    ]
-						  ,JObj
+                                                  ,JObj
                                                   )
                                ,Opts
-			       ),
+                               ),
             'ok'
     end.
 
@@ -362,7 +362,7 @@ migrate_outbound_faxes(Options) ->
         {'ok', Docs} ->
             Last = migrate_outbound_faxes(Docs, 'undefined'),
             migrate_outbound_faxes([{'startkey', next_key(Last)}
-				   ,{'limit', props:get_value('limit', Options)}
+                                   ,{'limit', props:get_value('limit', Options)}
                                    ])
     end.
 

@@ -15,7 +15,7 @@
 -export([delegate/1, delegate_v/1]).
 
 -export([bind_q/2
-	,unbind_q/2
+        ,unbind_q/2
         ]).
 -export([declare_exchanges/0]).
 -export([publish_delegate/2, publish_delegate/3, publish_delegate/4]).
@@ -37,7 +37,7 @@
 -define(DELEGATE_HEADERS, [<<"Delegate-Message">>]).
 -define(OPTIONAL_DELEGATE_HEADERS, []).
 -define(DELEGATE_VALUES, [{<<"Event-Category">>, <<"delegate">>}
-			 ,{<<"Event-Name">>, <<"job">>}
+                         ,{<<"Event-Name">>, <<"job">>}
                          ]).
 -define(DELEGATE_TYPES, []).
 

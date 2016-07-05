@@ -11,9 +11,9 @@
 -module(cb_about).
 
 -export([init/0
-	,allowed_methods/0
-	,resource_exists/0
-	,validate/1
+        ,allowed_methods/0
+        ,resource_exists/0
+        ,validate/1
         ]).
 
 -include("crossbar.hrl").
@@ -77,11 +77,11 @@ display_version(Context) ->
     crossbar_util:response(
       kz_json:from_list(
         [{<<"version">>, kz_util:kazoo_version()}
-	,{<<"used_memory">>, erlang:memory('total')}
-	,{<<"processes">>, erlang:system_info('process_count')}
-	,{<<"ports">>, length(erlang:ports())}
-	,{<<"erlang_version">>, kz_util:to_binary(erlang:system_info('otp_release'))}
+        ,{<<"used_memory">>, erlang:memory('total')}
+        ,{<<"processes">>, erlang:system_info('process_count')}
+        ,{<<"ports">>, length(erlang:ports())}
+        ,{<<"erlang_version">>, kz_util:to_binary(erlang:system_info('otp_release'))}
         ]
        )
-			  ,Context
+                          ,Context
      ).

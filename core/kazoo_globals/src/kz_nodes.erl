@@ -13,29 +13,29 @@
 -export([start_link/0]).
 -export([is_up/1]).
 -export([whapp_count/1
-	,whapp_count/2
-	,whapp_oldest_node/1
-	,whapp_oldest_node/2
+        ,whapp_count/2
+        ,whapp_oldest_node/1
+        ,whapp_oldest_node/2
         ]).
 -export([status/0]).
 -export([flush/0]).
 -export([handle_advertise/2]).
 -export([notify_new/0
-	,notify_new/1
+        ,notify_new/1
         ]).
 -export([notify_expire/0
-	,notify_expire/1
+        ,notify_expire/1
         ]).
 -export([local_zone/0]).
 -export([whapp_zones/1, whapp_zone_count/1]).
 
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include_lib("kazoo/include/kz_types.hrl").
@@ -46,10 +46,10 @@
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{'nodes', ['federate']}
-		  ,{'self', []}
+                  ,{'self', []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_advertise'}
-		     ,[{<<"nodes">>, <<"advertise">>}]
+                     ,[{<<"nodes">>, <<"advertise">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -67,13 +67,13 @@
 -define(MEDIA_SERVERS_DETAIL, "~s (~s)").
 
 -record(state, {heartbeat_ref = erlang:make_ref() :: reference()
-	       ,tab :: ets:tid()
-	       ,notify_new = sets:new() :: sets:set()
-	       ,notify_expire = sets:new() :: sets:set()
-	       ,node = node() :: atom()
-	       ,zone = 'local' :: atom()
-	       ,version :: ne_binary()
-	       ,zones = [] :: kz_proplist()
+               ,tab :: ets:tid()
+               ,notify_new = sets:new() :: sets:set()
+               ,notify_expire = sets:new() :: sets:set()
+               ,node = node() :: atom()
+               ,zone = 'local' :: atom()
+               ,version :: ne_binary()
+               ,zones = [] :: kz_proplist()
                }).
 -type nodes_state() :: #state{}.
 
@@ -87,14 +87,14 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
-			   ,?MODULE
-			   ,[{'bindings', ?BINDINGS}
-			    ,{'responders', ?RESPONDERS}
-			    ,{'queue_name', ?QUEUE_NAME}
-			    ,{'queue_options', ?QUEUE_OPTIONS}
-			    ,{'consume_options', ?CONSUME_OPTIONS}
-			    ]
-			   ,[]
+                           ,?MODULE
+                           ,[{'bindings', ?BINDINGS}
+                            ,{'responders', ?RESPONDERS}
+                            ,{'queue_name', ?QUEUE_NAME}
+                            ,{'queue_options', ?QUEUE_OPTIONS}
+                            ,{'consume_options', ?CONSUME_OPTIONS}
+                            ]
+                           ,[]
                            ).
 
 -spec is_up(node()) -> boolean().
@@ -113,32 +113,32 @@ whapp_count(Whapp, Arg) when not is_atom(Arg) ->
     whapp_count(Whapp, kz_util:to_atom(Arg, 'true'));
 whapp_count(Whapp, 'false') ->
     MatchSpec = [{#kz_node{kapps='$1'
-			  ,zone = local_zone()
-			  ,_ = '_'
+                          ,zone = local_zone()
+                          ,_ = '_'
                           }
-		 ,[{'=/=', '$1', []}]
-		 ,['$1']
+                 ,[{'=/=', '$1', []}]
+                 ,['$1']
                  }],
     determine_whapp_count(kz_util:to_binary(Whapp), MatchSpec);
 whapp_count(Whapp, 'true') ->
     MatchSpec = [{#kz_node{kapps='$1'
-			  ,_ = '_'
+                          ,_ = '_'
                           }
-		 ,[{'=/=', '$1', []}]
-		 ,['$1']
+                 ,[{'=/=', '$1', []}]
+                 ,['$1']
                  }],
     determine_whapp_count(kz_util:to_binary(Whapp), MatchSpec);
 whapp_count(Whapp, 'remote') ->
     Zone = local_zone(),
     MatchSpec = [{#kz_node{kapps='$1'
-			  ,zone='$2'
-			  ,_ = '_'
+                          ,zone='$2'
+                          ,_ = '_'
                           }
-		 ,[{'andalso'
-		   ,{'=/=', '$1', []}
-		   ,{'=/=', '$2', {'const', Zone}}
-		   }]
-		 ,['$1']
+                 ,[{'andalso'
+                   ,{'=/=', '$1', []}
+                   ,{'=/=', '$2', {'const', Zone}}
+                   }]
+                 ,['$1']
                  }],
     determine_whapp_count(kz_util:to_binary(Whapp), MatchSpec);
 whapp_count(Whapp, Unhandled) ->
@@ -150,8 +150,8 @@ determine_whapp_count(Whapp, MatchSpec) ->
     lists:foldl(fun(Whapps, Acc) when is_list(Whapps) ->
                         determine_whapp_count_fold(Whapps, Acc, Whapp)
                 end
-	       ,0
-	       ,ets:select(?MODULE, MatchSpec)
+               ,0
+               ,ets:select(?MODULE, MatchSpec)
                ).
 
 -spec determine_whapp_count_fold(kapps_info(), non_neg_integer(), ne_binary()) -> non_neg_integer().
@@ -164,11 +164,11 @@ determine_whapp_count_fold(Whapps, Acc, Whapp) ->
 -spec whapp_zones(text()) -> list().
 whapp_zones(Whapp) ->
     MatchSpec = [{#kz_node{kapps='$1'
-			  ,zone='$2'
-			  ,_ = '_'
+                          ,zone='$2'
+                          ,_ = '_'
                           }
-		 ,[{'=/=', '$1', []}]
-		 ,[{{'$2', '$1'}}]
+                 ,[{'=/=', '$1', []}]
+                 ,[{{'$2', '$1'}}]
                  }],
     determine_whapp_zones(kz_util:to_binary(Whapp), MatchSpec).
 
@@ -176,8 +176,8 @@ whapp_zones(Whapp) ->
 determine_whapp_zones(Whapp, MatchSpec) ->
     {Whapp, Zones, _} =
         lists:foldl(fun determine_whapp_zones_fold/2
-		   ,{Whapp, [], 0}
-		   ,ets:select(?MODULE, MatchSpec)
+                   ,{Whapp, [], 0}
+                   ,ets:select(?MODULE, MatchSpec)
                    ),
     Zones.
 
@@ -202,7 +202,7 @@ status() ->
         Nodes = lists:sort(fun(#kz_node{node=N1}, #kz_node{node=N2}) ->
                                    N1 > N2
                            end
-			  ,ets:tab2list(?MODULE)
+                          ,ets:tab2list(?MODULE)
                           ),
         print_status(Nodes, gen_listener:call(?SERVER, 'zone'))
     catch
@@ -218,15 +218,15 @@ print_status(Nodes, Zone) ->
 
 -spec print_node_status(kz_node(), atom()) -> 'ok'.
 print_node_status(#kz_node{zone=NodeZone
-			  ,node=N
-			  ,version=Version
-			  ,processes=Processes
-			  ,ports=Ports
-			  ,used_memory=UsedMemory
-			  ,broker=Broker
-			  ,kapps=Whapps
+                          ,node=N
+                          ,version=Version
+                          ,processes=Processes
+                          ,ports=Ports
+                          ,used_memory=UsedMemory
+                          ,broker=Broker
+                          ,kapps=Whapps
                           }=Node
-		 ,Zone
+                 ,Zone
                  ) ->
     MemoryUsage = kz_network_utils:pretty_print_bytes(UsedMemory),
     io:format("Node          : ~s~n", [N]),
@@ -236,7 +236,7 @@ print_node_status(#kz_node{zone=NodeZone
     io:format("Ports         : ~B~n", [Ports]),
 
     _ = maybe_print_zone(kz_util:to_binary(NodeZone)
-			,kz_util:to_binary(Zone)
+                        ,kz_util:to_binary(Zone)
                         ),
 
     io:format("Broker        : ~s~n", [Broker]),
@@ -255,7 +255,7 @@ maybe_print_zone(NodeZone, _Zone) ->
 -spec maybe_print_kapps(kz_proplist()) -> 'ok'.
 maybe_print_kapps(Whapps) ->
     case lists:sort(fun({K1,_}, {K2,_}) -> K1 < K2 end
-		   ,Whapps
+                   ,Whapps
                    )
     of
         []-> 'ok';
@@ -266,8 +266,8 @@ maybe_print_kapps(Whapps) ->
 
 -spec maybe_print_media_servers(kz_node()) -> 'ok'.
 maybe_print_media_servers(#kz_node{media_servers=MediaServers
-				  ,registrations=Registrations
-				  ,channels=Channels
+                                  ,registrations=Registrations
+                                  ,channels=Channels
                                   }) ->
     case lists:sort(MediaServers) of
         [] when Registrations =:= 0 -> 'ok';
@@ -288,11 +288,11 @@ print_media_server(Server) ->
 -spec print_media_server(media_server(), string()) -> 'ok'.
 print_media_server({Name, JObj}, Format) ->
     io:format(lists:flatten([Format, ?MEDIA_SERVERS_DETAIL, "~n"])
-	     ,[Name
-	      ,kz_util:pretty_print_elapsed_s(
-		 kz_util:elapsed_s(kz_json:get_integer_value(<<"Startup">>, JObj))
-		)
-	      ]).
+             ,[Name
+              ,kz_util:pretty_print_elapsed_s(
+                 kz_util:elapsed_s(kz_json:get_integer_value(<<"Startup">>, JObj))
+                )
+              ]).
 
 -spec status_list(kapps_info(), 0..4) -> 'ok'.
 status_list([], _) -> io:format("~n", []);
@@ -358,14 +358,14 @@ init([]) ->
     kapi_nodes:declare_exchanges(),
     kapi_self:declare_exchanges(),
     Tab = ets:new(?MODULE, ['set'
-			   ,'protected'
-			   ,'named_table'
-			   ,{'keypos', #kz_node.node}
+                           ,'protected'
+                           ,'named_table'
+                           ,{'keypos', #kz_node.node}
                            ]),
     lager:debug("started ETS ~p", [Tab]),
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
     _ = net_kernel:monitor_nodes('true', ['nodedown_reason'
-					 ,{'node_type', 'all'}
+                                         ,{'node_type', 'all'}
                                          ]),
     lager:debug("monitoring nodes"),
     State = #state{tab=Tab, zone=get_zone()},
@@ -446,15 +446,15 @@ handle_cast(_Msg, State) ->
 handle_info('expire_nodes', #state{tab=Tab}=State) ->
     Now = kz_util:now_ms(),
     FindSpec = [{#kz_node{expires='$2'
-			 ,last_heartbeat='$3'
-			 ,_ = '_'
+                         ,last_heartbeat='$3'
+                         ,_ = '_'
                          }
-		,[{'andalso'
-		  ,{'=/=', '$2', 'undefined'}
-		  ,{'>', {'const', Now}, {'+', '$2', '$3'}}
-		  }
-		 ]
-		,['$_']
+                ,[{'andalso'
+                  ,{'=/=', '$2', 'undefined'}
+                  ,{'>', {'const', Now}, {'+', '$2', '$3'}}
+                  }
+                 ]
+                ,['$_']
                 }
                ],
     Nodes = ets:select(Tab, FindSpec),
@@ -463,7 +463,7 @@ handle_info('expire_nodes', #state{tab=Tab}=State) ->
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
     {'noreply', State};
 handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref
-				      ,tab=Tab
+                                      ,tab=Tab
                                       }=State) ->
     Heartbeat = ?HEARTBEAT,
     Reference = erlang:make_ref(),
@@ -477,11 +477,11 @@ handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref
     _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
     {'noreply', State#state{heartbeat_ref=Reference}};
 handle_info({'DOWN', Ref, 'process', Pid, _}, #state{notify_new=NewSet
-						    ,notify_expire=ExpireSet
+                                                    ,notify_expire=ExpireSet
                                                     }=State) ->
     erlang:demonitor(Ref, ['flush']),
     {'noreply', State#state{notify_new=sets:del_element(Pid, NewSet)
-			   ,notify_expire=sets:del_element(Pid, ExpireSet)
+                           ,notify_expire=sets:del_element(Pid, ExpireSet)
                            }};
 
 handle_info({'nodedown', Node, InfoList}, State) ->
@@ -542,16 +542,16 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec create_node('undefined' | 5000..15000, nodes_state()) -> kz_node().
 create_node(Heartbeat, #state{zone=Zone
-			     ,version=Version
+                             ,version=Version
                              }) ->
     add_apps_data(#kz_node{expires=Heartbeat
-			  ,broker=kz_util:normalize_amqp_uri(kz_amqp_connections:primary_broker())
-			  ,used_memory=erlang:memory('total')
-			  ,processes=erlang:system_info('process_count')
-			  ,ports=length(erlang:ports())
-			  ,version=Version
-			  ,zone=Zone
-			  }).
+                          ,broker=kz_util:normalize_amqp_uri(kz_amqp_connections:primary_broker())
+                          ,used_memory=erlang:memory('total')
+                          ,processes=erlang:system_info('process_count')
+                          ,ports=length(erlang:ports())
+                          ,version=Version
+                          ,zone=Zone
+                          }).
 
 -spec add_apps_data(kz_node()) -> kz_node().
 add_apps_data(Node) ->
@@ -585,7 +585,7 @@ kapp_data(Whapp) ->
 -spec add_kapps_data(kz_node()) -> kz_node().
 add_kapps_data(Node) ->
     Whapps = [ kapp_data(Whapp)
-	       || Whapp <- kapps_controller:list_apps(), filter_app(Whapp)
+               || Whapp <- kapps_controller:list_apps(), filter_app(Whapp)
              ] ++ Node#kz_node.kapps,
     maybe_add_ecallmgr_data(Node#kz_node{kapps=Whapps}).
 
@@ -599,19 +599,19 @@ maybe_add_ecallmgr_data(Node) ->
 -spec add_ecallmgr_data(kz_node()) -> kz_node().
 add_ecallmgr_data(#kz_node{kapps=Whapps}=Node) ->
     Servers = [{kz_util:to_binary(Server)
-	       ,kz_json:set_values(
-		  [{<<"Startup">>, Started}
-		  ,{<<"Interface">>, kz_json:from_list(ecallmgr_fs_node:interface(Server))}
-		  ]
-				  ,kz_json:new()
-		 )
+               ,kz_json:set_values(
+                  [{<<"Startup">>, Started}
+                  ,{<<"Interface">>, kz_json:from_list(ecallmgr_fs_node:interface(Server))}
+                  ]
+                                  ,kz_json:new()
+                 )
                }
                || {Server, Started} <- ecallmgr_fs_nodes:connected('true')
               ],
     Node#kz_node{media_servers=Servers
-		,kapps=[{<<"ecallmgr">>, get_whapp_info('ecallmgr')} | Whapps]
-		,channels=ecallmgr_fs_channels:count()
-		,registrations=ecallmgr_registrar:count()
+                ,kapps=[{<<"ecallmgr">>, get_whapp_info('ecallmgr')} | Whapps]
+                ,channels=ecallmgr_fs_channels:count()
+                ,registrations=ecallmgr_registrar:count()
                 }.
 
 -spec get_whapp_info(atom() | pid() | kz_proplist() | 'undefined') -> whapp_info().
@@ -650,7 +650,7 @@ is_globals_present() ->
     lists:any(fun({'kazoo_globals', _, _}) -> 'true';
                  (_) -> 'false'
               end
-	     ,application:which_applications()
+             ,application:which_applications()
              ).
 
 -spec is_kapps_present() -> boolean().
@@ -658,7 +658,7 @@ is_kapps_present() ->
     lists:any(fun({'kazoo_apps', _, _}) -> 'true';
                  (_) -> 'false'
               end
-	     ,application:which_applications()
+             ,application:which_applications()
              ).
 
 -spec is_ecallmgr_present() -> boolean().
@@ -666,20 +666,20 @@ is_ecallmgr_present() ->
     lists:any(fun({'ecallmgr', _, _}) -> 'true';
                  (_) -> 'false'
               end
-	     ,application:which_applications()
+             ,application:which_applications()
              ).
 
 -spec advertise_payload(kz_node()) -> kz_proplist().
 advertise_payload(#kz_node{expires=Expires
-			  ,kapps=Whapps
-			  ,media_servers=MediaServers
-			  ,used_memory=UsedMemory
-			  ,processes=Processes
-			  ,ports=Ports
-			  ,version=Version
-			  ,channels=Channels
-			  ,registrations=Registrations
-			  ,zone=Zone
+                          ,kapps=Whapps
+                          ,media_servers=MediaServers
+                          ,used_memory=UsedMemory
+                          ,processes=Processes
+                          ,ports=Ports
+                          ,version=Version
+                          ,channels=Channels
+                          ,registrations=Registrations
+                          ,zone=Zone
                           }) ->
     props:filter_undefined(
       [{<<"Expires">>, kz_util:to_binary(Expires)}
@@ -710,17 +710,17 @@ media_servers_from_json(Servers) ->
 from_json(JObj, State) ->
     Node = kz_json:get_value(<<"Node">>, JObj),
     #kz_node{node=kz_util:to_atom(Node, 'true')
-	    ,expires=kz_util:to_integer(kz_json:get_integer_value(<<"Expires">>, JObj, 0) * ?FUDGE_FACTOR)
-	    ,kapps=kapps_from_json(kz_json:get_value(<<"WhApps">>, JObj, []))
-	    ,media_servers=media_servers_from_json(kz_json:get_value(<<"Media-Servers">>, JObj, kz_json:new()))
-	    ,used_memory=kz_json:get_integer_value(<<"Used-Memory">>, JObj, 0)
-	    ,processes=kz_json:get_integer_value(<<"Processes">>, JObj, 0)
-	    ,ports=kz_json:get_integer_value(<<"Ports">>, JObj, 0)
-	    ,version=kz_json:get_first_defined([<<"Version">>, <<"App-Version">>], JObj, <<"unknown">>)
-	    ,channels=kz_json:get_integer_value(<<"Channels">>, JObj, 0)
-	    ,registrations=kz_json:get_integer_value(<<"Registrations">>, JObj, 0)
-	    ,broker=get_amqp_broker(JObj)
-	    ,zone=get_zone(JObj, State)
+            ,expires=kz_util:to_integer(kz_json:get_integer_value(<<"Expires">>, JObj, 0) * ?FUDGE_FACTOR)
+            ,kapps=kapps_from_json(kz_json:get_value(<<"WhApps">>, JObj, []))
+            ,media_servers=media_servers_from_json(kz_json:get_value(<<"Media-Servers">>, JObj, kz_json:new()))
+            ,used_memory=kz_json:get_integer_value(<<"Used-Memory">>, JObj, 0)
+            ,processes=kz_json:get_integer_value(<<"Processes">>, JObj, 0)
+            ,ports=kz_json:get_integer_value(<<"Ports">>, JObj, 0)
+            ,version=kz_json:get_first_defined([<<"Version">>, <<"App-Version">>], JObj, <<"unknown">>)
+            ,channels=kz_json:get_integer_value(<<"Channels">>, JObj, 0)
+            ,registrations=kz_json:get_integer_value(<<"Registrations">>, JObj, 0)
+            ,broker=get_amqp_broker(JObj)
+            ,zone=get_zone(JObj, State)
             }.
 
 -spec kapps_from_json(api_terms()) -> kapps_info().
@@ -825,21 +825,21 @@ whapp_oldest_node(Whapp) ->
 whapp_oldest_node(Whapp, 'false') ->
     Zone = gen_listener:call(?SERVER, 'zone'),
     MatchSpec = [{#kz_node{kapps='$1'
-			  ,node='$2'
-			  ,zone = Zone
-			  ,_ = '_'
+                          ,node='$2'
+                          ,zone = Zone
+                          ,_ = '_'
                           }
-		 ,[{'=/=', '$1', []}]
-		 ,[{{'$1', '$2'}}]
+                 ,[{'=/=', '$1', []}]
+                 ,[{{'$1', '$2'}}]
                  }],
     determine_whapp_oldest_node(kz_util:to_binary(Whapp), MatchSpec);
 whapp_oldest_node(Whapp, 'true') ->
     MatchSpec = [{#kz_node{kapps='$1'
-			  ,node='$2'
-			  ,_ = '_'
+                          ,node='$2'
+                          ,_ = '_'
                           }
-		 ,[{'=/=', '$1', []}]
-		 ,[{{'$1','$2'}}]
+                 ,[{'=/=', '$1', []}]
+                 ,[{{'$1','$2'}}]
                  }],
     determine_whapp_oldest_node(kz_util:to_binary(Whapp), MatchSpec);
 whapp_oldest_node(Whapp, Federated)
@@ -848,12 +848,12 @@ whapp_oldest_node(Whapp, Federated)
 whapp_oldest_node(Whapp, Zone)
   when is_atom(Zone) ->
     MatchSpec = [{#kz_node{kapps='$1'
-			  ,node='$2'
-			  ,zone = Zone
-			  ,_ = '_'
+                          ,node='$2'
+                          ,zone = Zone
+                          ,_ = '_'
                           }
-		 ,[{'=/=', '$1', []}]
-		 ,[{{'$1', '$2'}}]
+                 ,[{'=/=', '$1', []}]
+                 ,[{{'$1', '$2'}}]
                  }],
     determine_whapp_oldest_node(kz_util:to_binary(Whapp), MatchSpec).
 
@@ -862,8 +862,8 @@ determine_whapp_oldest_node(Whapp, MatchSpec) ->
     case lists:foldl(fun({Whapps, _Node}=Info, Acc) when is_list(Whapps) ->
                              determine_whapp_oldest_node_fold(Info, Acc, Whapp)
                      end
-		    ,'undefined'
-		    ,ets:select(?MODULE, MatchSpec)
+                    ,'undefined'
+                    ,ets:select(?MODULE, MatchSpec)
                     )
     of
         {Node, _Start} -> Node;
@@ -871,8 +871,8 @@ determine_whapp_oldest_node(Whapp, MatchSpec) ->
     end.
 
 -spec determine_whapp_oldest_node_fold({kapps_info(), node()}
-				      ,'undefined' | {node(), gregorian_seconds()}
-				      ,ne_binary()
+                                      ,'undefined' | {node(), gregorian_seconds()}
+                                      ,ne_binary()
                                       ) -> 'undefined' | {node(), gregorian_seconds()}.
 determine_whapp_oldest_node_fold({Whapps, Node}, 'undefined', Whapp) ->
     case props:get_value(Whapp, Whapps) of

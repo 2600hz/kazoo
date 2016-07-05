@@ -14,31 +14,31 @@
 -define(SERVER, ?MODULE).
 
 -export([start_link/1
-	,render/3
+        ,render/3
         ]).
 
 -export([log_errors/2
-	,log_warnings/2
+        ,log_warnings/2
         ]).
 
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 %% copied from erlydtl.erl
 -type position() :: non_neg_integer().
 -type location() :: 'none' | position() | {Line::position(), Column::position()}.
 -type info() :: {location()
-		,Module::atom()
-		,ErrorDesc::term()
+                ,Module::atom()
+                ,ErrorDesc::term()
                 }.
 
 -type error_info() :: {File::list()
-		      ,[info()]
+                      ,[info()]
                       }.
 -type errors() :: list(error_info()).
 -type warnings() :: list(error_info()).
@@ -53,8 +53,8 @@ start_link(Args) ->
 render(TemplateId, Template, TemplateData) ->
     Renderer = next_renderer(),
     try gen_server:call(Renderer
-		       ,{'render', TemplateId, Template, TemplateData}
-		       ,?MILLISECONDS_IN_HOUR
+                       ,{'render', TemplateId, Template, TemplateData}
+                       ,?MILLISECONDS_IN_HOUR
                        )
     catch
         _E:_R ->
@@ -71,8 +71,8 @@ next_renderer() ->
 
 next_renderer(BackoffMs) ->
     try poolboy:checkout(teletype_sup:render_farm_name()
-			,'false'
-			,2 * ?MILLISECONDS_IN_SECOND
+                        ,'false'
+                        ,2 * ?MILLISECONDS_IN_SECOND
                         )
     of
         'full' ->
@@ -106,7 +106,7 @@ init(_) ->
 
     Module = kz_util:to_atom(
                list_to_binary(["teletype_", Self, "_", kz_util:rand_hex_binary(4)])
-			    ,'true'
+                            ,'true'
               ),
     kz_util:put_callid(Module),
     lager:debug("starting template renderer, using ~s as compiled module name", [Module]),
@@ -116,54 +116,54 @@ init(_) ->
 handle_call({'render', _TemplateId, Template, TemplateData}, _From, TemplateModule) ->
     lager:debug("trying to compile template ~s as ~s for ~p", [_TemplateId, TemplateModule, _From]),
     try erlydtl:compile_template(Template
-				,TemplateModule
-				,[{'out_dir', 'false'}
-				 ,'return'
-				 ]
+                                ,TemplateModule
+                                ,[{'out_dir', 'false'}
+                                 ,'return'
+                                 ]
                                 )
     of
         {'ok', TemplateModule} ->
             {'reply'
-	    ,render_template(TemplateModule, TemplateData)
-	    ,TemplateModule
-	    ,'hibernate'
+            ,render_template(TemplateModule, TemplateData)
+            ,TemplateModule
+            ,'hibernate'
             };
         {'ok', TemplateModule, []} ->
             {'reply'
-	    ,render_template(TemplateModule, TemplateData)
-	    ,TemplateModule
-	    ,'hibernate'
+            ,render_template(TemplateModule, TemplateData)
+            ,TemplateModule
+            ,'hibernate'
             };
         {'ok', TemplateModule, Warnings} ->
             log_warnings(Warnings, Template),
             {'reply'
-	    ,render_template(TemplateModule, TemplateData)
-	    ,TemplateModule
-	    ,'hibernate'
+            ,render_template(TemplateModule, TemplateData)
+            ,TemplateModule
+            ,'hibernate'
             };
         'error' ->
             lager:debug("failed to compile template"),
             {'reply'
-	    ,{'error', 'failed_to_compile'}
-	    ,TemplateModule
-	    ,'hibernate'
+            ,{'error', 'failed_to_compile'}
+            ,TemplateModule
+            ,'hibernate'
             };
         {'error', Errors, Warnings} ->
             lager:debug("failed to compile template"),
             log_errors(Errors, Template),
             log_warnings(Warnings, Template),
             {'reply'
-	    ,{'error', 'failed_to_compile'}
-	    ,TemplateModule
-	    ,'hibernate'
+            ,{'error', 'failed_to_compile'}
+            ,TemplateModule
+            ,'hibernate'
             }
     catch
         _E:_R ->
             lager:debug("exception compiling template: ~s: ~p", [_E, _R]),
             {'reply'
-	    ,{'error', 'failed_to_compile'}
-	    ,TemplateModule
-	    ,'hibernate'
+            ,{'error', 'failed_to_compile'}
+            ,TemplateModule
+            ,'hibernate'
             }
     end;
 handle_call(_Req, _From, TemplateModule) ->

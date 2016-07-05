@@ -13,9 +13,9 @@
 -define(JSON(L), kz_json:from_list(L)).
 
 -define(DEFAULT_SERVICES, ?JSON([{<<"audio">>, ?JSON([{<<"enabled">>, 'true'}])}
-				,{<<"video">>,?JSON([{<<"enabled">>, 'true'}])}
-				,{<<"sms">>,  ?JSON([{<<"enabled">>, 'true'}])}
-				])).
+                                ,{<<"video">>,?JSON([{<<"enabled">>, 'true'}])}
+                                ,{<<"sms">>,  ?JSON([{<<"enabled">>, 'true'}])}
+                                ])).
 
 -define(DEFAULT_LANGUAGE, <<"en-US">>).
 -define(DEFAULT_UNAVAILABLE_MESSAGE, <<"sms service unavailable">>).
@@ -44,10 +44,10 @@ maybe_scheduled_delivery(_JObj, Call, DeliveryAt, Now)
   when DeliveryAt > Now ->
     lager:info("scheduling sms delivery"),
     Schedule = [{<<"rule">>, 1}
-	       ,{<<"rule_start_time">>, DeliveryAt}
-	       ,{<<"start_time">>, DeliveryAt}
-	       ,{<<"attempts">>, 0}
-	       ,{<<"total_attempts">>, 0}
+               ,{<<"rule_start_time">>, DeliveryAt}
+               ,{<<"start_time">>, DeliveryAt}
+               ,{<<"attempts">>, 0}
+               ,{<<"total_attempts">>, 0}
                ],
     Call1 = kapps_call:kvs_store(<<"flow_schedule">>, kz_json:from_list(Schedule), Call),
     doodle_util:save_sms(doodle_util:set_flow_status(<<"pending">>, Call1));
@@ -129,7 +129,7 @@ enforce_closed_groups(JObj, Call) ->
 -spec get_caller_groups(kz_json:objects(), kz_json:object(), kapps_call:call()) -> sets:set().
 get_caller_groups(Groups, JObj, Call) ->
     Ids = [kapps_call:authorizing_id(Call)
-	  ,kz_json:get_value(<<"owner_id">>, JObj)
+          ,kz_json:get_value(<<"owner_id">>, JObj)
            | kz_json:get_keys([<<"hotdesk">>, <<"users">>], JObj)
           ],
     lists:foldl(fun('undefined', Set) -> Set;
@@ -147,8 +147,8 @@ maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call) ->
             %% the owner of the device shares any groups with the caller
             UserIds = kz_attributes:owner_ids(CalleeId, Call),
             UsersGroups = lists:foldl(fun(UserId, Set) ->
-					      get_group_associations(UserId, Groups, Set)
-				      end, sets:new(), UserIds),
+                                              get_group_associations(UserId, Groups, Set)
+                                      end, sets:new(), UserIds),
             sets:size(sets:intersection(CallerGroups, UsersGroups)) =:= 0
     end.
 
@@ -192,9 +192,9 @@ get_callee_extension_info(Call) ->
 -spec bootstrap_callflow_executer(kz_json:object(), kapps_call:call()) -> {'ok', pid()}.
 bootstrap_callflow_executer(_JObj, Call) ->
     Routines = [fun store_owner_id/1
-	       ,fun update_ccvs/1
+               ,fun update_ccvs/1
                 %% all funs above here return kapps_call:call()
-	       ,fun execute_callflow/1
+               ,fun execute_callflow/1
                ],
     lists:foldl(fun(F, C) -> F(C) end, Call, Routines).
 
@@ -223,10 +223,10 @@ update_ccvs(Call) ->
                    end,
     {CIDNumber, CIDName} = kz_attributes:caller_id(CallerIdType, Call),
     lager:info("bootstrapping with caller id type ~s: \"~s\" ~s"
-	      ,[CallerIdType, CIDName, CIDNumber]),
+              ,[CallerIdType, CIDName, CIDNumber]),
     Props = props:filter_undefined(
               [{<<"Caller-ID-Name">>, CIDName}
-	      ,{<<"Caller-ID-Number">>, CIDNumber}
+              ,{<<"Caller-ID-Number">>, CIDNumber}
                | get_incoming_security(Call)
               ]),
     kapps_call:set_custom_channel_vars(Props, Call).
@@ -238,7 +238,7 @@ get_incoming_security(Call) ->
         {'ok', JObj} ->
             kz_json:to_proplist(
               kz_endpoint:encryption_method_map(kz_json:new(), JObj)
-	     )
+             )
     end.
 
 %%-----------------------------------------------------------------------------
@@ -256,10 +256,10 @@ execute_callflow(Call) ->
 -spec send_service_unavailable(kz_json:object(), kapps_call:call()) -> kapps_call:call().
 send_service_unavailable(_JObj, Call) ->
     Routines = [fun store_owner_id/1
-	       ,fun update_ccvs/1
-	       ,fun set_service_unavailable_message/1
-	       ,fun set_sms_sender/1
-	       ,fun send_reply_msg/1
+               ,fun update_ccvs/1
+               ,fun set_service_unavailable_message/1
+               ,fun set_sms_sender/1
+               ,fun send_reply_msg/1
                ],
     kapps_call:exec(Routines, Call).
 

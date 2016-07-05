@@ -23,7 +23,7 @@ make_query_string(Params) ->
 
 make_query_string(Params, EmptyQueryOpt) ->
     string:join([encode_query_term(Key, Value, EmptyQueryOpt) || {Key, Value} <-
-								     Params, Value =/= none, Value =/= undefined], "&").
+                                                                     Params, Value =/= none, Value =/= undefined], "&").
 
 value_to_string(Integer) when is_integer(Integer) -> integer_to_list(Integer);
 value_to_string(Atom) when is_atom(Atom) -> atom_to_list(Atom);
@@ -66,16 +66,16 @@ url_encode_loose([Char|String], Accum)
 
 utf8_encode_char(Char) when Char > 16#7FFF, Char =< 16#7FFFF ->
     encode_char(Char band 16#3F + 16#80)
-	++ encode_char((16#3F band (Char bsr 6)) + 16#80)
-	++ encode_char((16#3F band (Char bsr 12)) + 16#80)
-	++ encode_char((Char bsr 18) + 16#F0);
+        ++ encode_char((16#3F band (Char bsr 6)) + 16#80)
+        ++ encode_char((16#3F band (Char bsr 12)) + 16#80)
+        ++ encode_char((Char bsr 18) + 16#F0);
 utf8_encode_char(Char) when Char > 16#7FF, Char =< 16#7FFF ->
     encode_char(Char band 16#3F + 16#80)
-	++ encode_char((16#3F band (Char bsr 6)) + 16#80)
-	++ encode_char((Char bsr 12) + 16#E0);
+        ++ encode_char((16#3F band (Char bsr 6)) + 16#80)
+        ++ encode_char((Char bsr 12) + 16#E0);
 utf8_encode_char(Char) when Char > 16#7F, Char =< 16#7FF ->
     encode_char(Char band 16#3F + 16#80)
-	++ encode_char((Char bsr 6) + 16#C0);
+        ++ encode_char((Char bsr 6) + 16#C0);
 utf8_encode_char(Char) when Char =< 16#7F ->
     encode_char(Char).
 

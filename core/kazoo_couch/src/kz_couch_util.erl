@@ -12,11 +12,11 @@
 -export([retry504s/1]).
 
 -export([new_connection/1
-	,get_db/2
-	,server_url/1
-	,db_url/2
-	,server_info/1
-	,format_error/1
+        ,get_db/2
+        ,server_url/1
+        ,db_url/2
+        ,server_info/1
+        ,format_error/1
         ]).
 
 -export([maybe_add_rev/3]).
@@ -90,14 +90,14 @@ retry504s(Fun, Cnt) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec new_connection(couch_connection() | #{}) ->
-			    server() |
-			    {'error', 'timeout' | 'ehostunreach' | _}.
+                            server() |
+                            {'error', 'timeout' | 'ehostunreach' | _}.
 new_connection(#kz_couch_connection{host=Host
                                    ,port=Port
                                    ,username=User
                                    ,password=Pass
                                    ,options=Options
-				   }) ->
+                                   }) ->
     get_new_conn(Host, Port, maybe_add_auth(User, Pass, check_options(Options)));
 new_connection(#{}=Map) ->
     new_connection(maps:fold(fun connection_parse/3, #kz_couch_connection{}, Map)).
@@ -109,7 +109,7 @@ maybe_add_auth(User, Pass, Options) ->
 
 check_options(Options) ->
     Routines = [fun convert_options/1
-	       ,fun filter_options/1
+               ,fun filter_options/1
                ],
     lists:foldl(fun(Fun, Opts) -> Fun(Opts) end, Options, Routines).
 

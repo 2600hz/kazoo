@@ -26,9 +26,9 @@ start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec start_child(any(), kz_proplist(), pos_integers()) ->
-			 sup_startchild_ret().
+                         sup_startchild_ret().
 -spec start_child(any(), kz_proplist(), pos_integers(), check_fun()) ->
-			 sup_startchild_ret().
+                         sup_startchild_ret().
 start_child(Id, OriginateReq, Schedule) ->
     start_child(Id, [OriginateReq, Schedule]).
 
@@ -38,11 +38,11 @@ start_child(Id, OriginateReq, Schedule, CheckFun) ->
 -spec start_child(any(), list()) -> sup_startchild_ret().
 start_child(Id, Args) ->
     case supervisor:start_child(?SERVER, {Id
-					 ,{'ananke_callback_wrkr', 'start_link', Args}
-					 ,'transient'
-					 ,'brutal_kill'
-					 ,'worker'
-					 ,['ananke_voicemail_call_wrkr']
+                                         ,{'ananke_callback_wrkr', 'start_link', Args}
+                                         ,'transient'
+                                         ,'brutal_kill'
+                                         ,'worker'
+                                         ,['ananke_voicemail_call_wrkr']
                                          })
     of
         {'error', 'already_present'} ->
@@ -81,8 +81,8 @@ init([]) ->
 -spec delete_child_after_timeout(any(), non_neg_integer()) -> fun(() -> 'ok' | {'error', any()}).
 delete_child_after_timeout(Id, Timeout) ->
     fun() ->
-	    receive
-	    after Timeout ->
-		    delete_child(Id)
-	    end
+            receive
+            after Timeout ->
+                    delete_child(Id)
+            end
     end.

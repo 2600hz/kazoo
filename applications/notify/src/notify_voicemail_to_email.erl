@@ -12,7 +12,7 @@
 -module(notify_voicemail_to_email).
 
 -export([init/0
-	,handle_req/2
+        ,handle_req/2
         ]).
 
 -include("notify.hrl").
@@ -90,8 +90,8 @@ continue_processing(JObj, AccountDb, VMBox, Emails) ->
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
     build_and_send_email(TxtBody, HTMLBody, Subject, Emails
-			,props:filter_undefined(Props)
-			,{RespQ, MsgId}
+                        ,props:filter_undefined(Props)
+                        ,{RespQ, MsgId}
                         ).
 
 -spec maybe_add_user_email(ne_binaries(), api_binary()) -> ne_binaries().
@@ -132,22 +132,22 @@ create_template_props(Event, Timezone, Account) ->
     [{<<"account">>, notify_util:json_to_template_props(Account)}
     ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
     ,{<<"voicemail">>, props:filter_undefined(
-			 [{<<"caller_id_number">>, knm_util:pretty_print(CIDNum)}
-			  %% sometimes the name is a number...
-			 ,{<<"caller_id_name">>, knm_util:pretty_print(CIDName)}
-			 ,{<<"date_called_utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
-			 ,{<<"date_called">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
-			 ,{<<"from_user">>, knm_util:pretty_print(FromE164)}
-			 ,{<<"from_realm">>, kz_json:get_value(<<"From-Realm">>, Event)}
-			 ,{<<"to_user">>, knm_util:pretty_print(ToE164)}
-			 ,{<<"to_realm">>, kz_json:get_value(<<"To-Realm">>, Event)}
-			 ,{<<"box">>, kz_json:get_value(<<"Voicemail-Box">>, Event)}
-			 ,{<<"media">>, kz_json:get_value(<<"Voicemail-Name">>, Event)}
-			 ,{<<"length">>, preaty_print_length(Event)}
-			 ,{<<"transcription">>, kz_json:get_value([<<"Voicemail-Transcription">>, <<"text">>], Event)}
-			 ,{<<"call_id">>, kz_json:get_value(<<"Call-ID">>, Event)}
-			 ,{<<"magic_hash">>, magic_hash(Event)}
-			 ])}
+                         [{<<"caller_id_number">>, knm_util:pretty_print(CIDNum)}
+                          %% sometimes the name is a number...
+                         ,{<<"caller_id_name">>, knm_util:pretty_print(CIDName)}
+                         ,{<<"date_called_utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
+                         ,{<<"date_called">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
+                         ,{<<"from_user">>, knm_util:pretty_print(FromE164)}
+                         ,{<<"from_realm">>, kz_json:get_value(<<"From-Realm">>, Event)}
+                         ,{<<"to_user">>, knm_util:pretty_print(ToE164)}
+                         ,{<<"to_realm">>, kz_json:get_value(<<"To-Realm">>, Event)}
+                         ,{<<"box">>, kz_json:get_value(<<"Voicemail-Box">>, Event)}
+                         ,{<<"media">>, kz_json:get_value(<<"Voicemail-Name">>, Event)}
+                         ,{<<"length">>, preaty_print_length(Event)}
+                         ,{<<"transcription">>, kz_json:get_value([<<"Voicemail-Transcription">>, <<"text">>], Event)}
+                         ,{<<"call_id">>, kz_json:get_value(<<"Call-ID">>, Event)}
+                         ,{<<"magic_hash">>, magic_hash(Event)}
+                         ])}
     ,{<<"account_id">>, kz_doc:account_id(Account)}
     ].
 
@@ -158,7 +158,7 @@ magic_hash(Event) ->
     MessageId = kz_json:get_value(<<"Voicemail-Name">>, Event),
 
     try list_to_binary([<<"/v1/accounts/">>, AccountId, <<"/vmboxes/">>, VMBoxId
-		       ,<<"/messages/">>, MessageId, <<"/raw">>
+                       ,<<"/messages/">>, MessageId, <<"/raw">>
                        ])
     of
         URL -> kapps_util:to_magic_hash(URL)
@@ -200,37 +200,37 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Emails = [{T
-	      ,{<<"multipart">>, <<"mixed">>
-	       ,[{<<"From">>, From}
-		,{<<"To">>, T}
-		,{<<"Subject">>, Subject}
-		,{<<"X-Call-ID">>, props:get_value(<<"call_id">>, Voicemail)}
-		]
-	       ,ContentTypeParams
-	       ,[{<<"multipart">>, <<"alternative">>, [], []
-		 ,[{<<"text">>, <<"plain">>
-		   ,props:filter_undefined(
-		      [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}
-		      ,{<<"Content-Transfer-Encoding">>, PlainTransferEncoding}
-		      ])
-		   ,[], iolist_to_binary(TxtBody)}
-		  ,{<<"text">>, <<"html">>
-		   ,props:filter_undefined(
-		      [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}
-		      ,{<<"Content-Transfer-Encoding">>, HTMLTransferEncoding}
-		      ])
-		   ,[], iolist_to_binary(HTMLBody)}
-		  ]
-		 }
-		,{<<"audio">>, <<"mpeg">>
-		 ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
-		  ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentFileName, "\""])}
-		  ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
-		  ]
-		 ,[], AttachmentBin
-		 }
-		]
-	       }
+              ,{<<"multipart">>, <<"mixed">>
+               ,[{<<"From">>, From}
+                ,{<<"To">>, T}
+                ,{<<"Subject">>, Subject}
+                ,{<<"X-Call-ID">>, props:get_value(<<"call_id">>, Voicemail)}
+                ]
+               ,ContentTypeParams
+               ,[{<<"multipart">>, <<"alternative">>, [], []
+                 ,[{<<"text">>, <<"plain">>
+                   ,props:filter_undefined(
+                      [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}
+                      ,{<<"Content-Transfer-Encoding">>, PlainTransferEncoding}
+                      ])
+                   ,[], iolist_to_binary(TxtBody)}
+                  ,{<<"text">>, <<"html">>
+                   ,props:filter_undefined(
+                      [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}
+                      ,{<<"Content-Transfer-Encoding">>, HTMLTransferEncoding}
+                      ])
+                   ,[], iolist_to_binary(HTMLBody)}
+                  ]
+                 }
+                ,{<<"audio">>, <<"mpeg">>
+                 ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
+                  ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentFileName, "\""])}
+                  ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
+                  ]
+                 ,[], AttachmentBin
+                 }
+                ]
+               }
               }
               || T <- To
              ],
@@ -251,7 +251,7 @@ get_file_name(MediaJObj, Props) ->
     Voicemail = props:get_value(<<"voicemail">>, Props),
     CallerID =
         case {props:get_value(<<"caller_id_name">>, Voicemail)
-	     ,props:get_value(<<"caller_id_number">>, Voicemail)
+             ,props:get_value(<<"caller_id_number">>, Voicemail)
              }
         of
             {'undefined', 'undefined'} -> <<"Unknown">>;
@@ -277,8 +277,8 @@ get_extension(MediaJObj) ->
 -spec attachment_to_extension(kz_json:object()) -> ne_binary().
 attachment_to_extension(AttachmentsJObj) ->
     kz_json:get_value(<<"extension">>
-		     ,kz_json:map(fun attachment_to_extension/2, AttachmentsJObj)
-		     ,kapps_config:get(<<"callflow">>, [<<"voicemail">>, <<"extension">>], <<"mp3">>)
+                     ,kz_json:map(fun attachment_to_extension/2, AttachmentsJObj)
+                     ,kapps_config:get(<<"callflow">>, [<<"voicemail">>, <<"extension">>], <<"mp3">>)
                      ).
 
 -spec attachment_to_extension(ne_binary(), kz_json:object()) -> {ne_binary(), ne_binary()}.

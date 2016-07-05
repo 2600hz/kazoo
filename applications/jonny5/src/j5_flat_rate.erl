@@ -34,12 +34,12 @@ authorize(Request, Limits) ->
     case eligible_for_flat_rate(Request) of
         'true' ->
             lager:debug("checking if account ~s has available flat rate trunks"
-		       ,[j5_limits:account_id(Limits)]
+                       ,[j5_limits:account_id(Limits)]
                        ),
             maybe_consume_flat_rate(Request, Limits);
         'false' ->
             lager:debug("number '~s' is not eligible for flat rate trunks"
-		       ,[j5_request:number(Request)]
+                       ,[j5_request:number(Request)]
                        ),
             Request
     end.
@@ -168,12 +168,12 @@ consume_limit(Limit, Used, Type) ->
     case Used - Limit of
         Remaining when Remaining > 0 ->
             lager:debug("all ~p ~s trunks consumed leaving ~p channels unaccounted for"
-		       ,[Limit, Type, Remaining]
+                       ,[Limit, Type, Remaining]
                        ),
             Remaining;
         _Else ->
             lager:debug("account is consuming ~p/~p ~s trunks"
-		       ,[Used - 1, Limit, Type]
+                       ,[Used - 1, Limit, Type]
                        ),
             0
     end.

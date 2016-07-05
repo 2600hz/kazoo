@@ -11,9 +11,9 @@
 -module(cb_pivot).
 
 -export([init/0
-	,allowed_methods/1, allowed_methods/2
-	,resource_exists/1, resource_exists/2
-	,validate/2, validate/3
+        ,allowed_methods/1, allowed_methods/2
+        ,resource_exists/1, resource_exists/2
+        ,validate/2, validate/3
         ]).
 
 -include("crossbar.hrl").
@@ -101,14 +101,14 @@ debug_summary(Context) ->
     maybe_normalize_debug_results(
       crossbar_doc:load_view(
         ?CB_FIRST_ITERATION
-			    ,[]
-			    ,cb_context:setters(
-			       Context
-					       ,[{fun cb_context:set_account_db/2, AccountModb}
-						,fun fix_req_pagination/1
-						]
-			      )
-			    ,fun normalize_view_results/2
+                            ,[]
+                            ,cb_context:setters(
+                               Context
+                                               ,[{fun cb_context:set_account_db/2, AccountModb}
+                                                ,fun fix_req_pagination/1
+                                                ]
+                              )
+                            ,fun normalize_view_results/2
        )
      ).
 
@@ -135,12 +135,12 @@ debug_read(Context, CallId) ->
     Context1 =
         crossbar_doc:load_view(
           ?CB_DEBUG_LIST
-			      ,[{'endkey', [CallId, kz_json:new()]}
-			       ,{'startkey', [CallId]}
-			       ,'include_docs'
-			       ]
-			      ,cb_context:set_account_db(Context, AccountModb)
-			      ,fun normalize_debug_read/2
+                              ,[{'endkey', [CallId, kz_json:new()]}
+                               ,{'startkey', [CallId]}
+                               ,'include_docs'
+                               ]
+                              ,cb_context:set_account_db(Context, AccountModb)
+                              ,fun normalize_debug_read/2
          ),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -195,15 +195,15 @@ normalize_debug_results(Context) ->
     Dict =
         lists:foldl(
           fun normalize_debug_results_fold/2
-		   ,dict:new()
-		   ,lists:reverse(cb_context:resp_data(Context))
+                   ,dict:new()
+                   ,lists:reverse(cb_context:resp_data(Context))
          ),
     RespData = normalize_debug_results(Context, dict:to_list(Dict)),
     cb_context:setters(
       Context
-		      ,[{fun cb_context:set_resp_data/2, RespData}
-		       ,fun fix_page_size/1
-		       ]
+                      ,[{fun cb_context:set_resp_data/2, RespData}
+                       ,fun fix_page_size/1
+                       ]
      ).
 
 normalize_debug_results(Context, List) ->
@@ -243,7 +243,7 @@ fix_page_size(Context) ->
     Size = erlang:length(RespData),
     cb_context:set_resp_envelope(
       Context
-				,kz_json:set_value(<<"page_size">>, Size, RespEnv)
+                                ,kz_json:set_value(<<"page_size">>, Size, RespEnv)
      ).
 
 %%--------------------------------------------------------------------
@@ -263,12 +263,12 @@ normalize_debug_read(JObj, Acc) ->
 -spec leak_pvt_field(kz_json:object()) -> kz_json:object().
 leak_pvt_field(JObj) ->
     Routines = [fun leak_pvt_created/2
-	       ,fun leak_pvt_node/2
+               ,fun leak_pvt_node/2
                ],
     lists:foldl(
       fun(F, Acc) -> F(JObj, Acc) end
-	       ,JObj
-	       ,Routines
+               ,JObj
+               ,Routines
      ).
 
 -spec leak_pvt_created(kz_json:object(), kz_json:object()) -> kz_json:object().

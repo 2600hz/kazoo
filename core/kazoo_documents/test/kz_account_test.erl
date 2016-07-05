@@ -15,17 +15,17 @@
 
 -define(MASTER_ACCOUNT_ID, <<"1">>).
 -define(MASTER_ACCOUNT, kz_json:from_list([{?TREE, []}
-					  ,{?ID, ?MASTER_ACCOUNT_ID}
+                                          ,{?ID, ?MASTER_ACCOUNT_ID}
                                           ])).
 
 -define(SUB_ACCOUNT_ID, <<"2">>).
 -define(SUB_ACCOUNT, kz_json:from_list([{?TREE, [?MASTER_ACCOUNT_ID]}
-				       ,{?ID, ?SUB_ACCOUNT_ID}
+                                       ,{?ID, ?SUB_ACCOUNT_ID}
                                        ])).
 
 -define(SUB_SUB_ACCOUNT_ID, <<"2">>).
 -define(SUB_SUB_ACCOUNT, kz_json:from_list([{?TREE, [?MASTER_ACCOUNT_ID, ?SUB_ACCOUNT_ID]}
-					   ,{?ID, ?SUB_SUB_ACCOUNT_ID}
+                                           ,{?ID, ?SUB_SUB_ACCOUNT_ID}
                                            ])).
 
 parent_account_id_test_() ->

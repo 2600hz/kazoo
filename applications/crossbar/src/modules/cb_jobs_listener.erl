@@ -10,17 +10,17 @@
 -behaviour(gen_listener).
 
 -export([start_link/0
-	,publish_new_job/1
-	,handle_job/2
-	,start_recovery/0
+        ,publish_new_job/1
+        ,handle_job/2
+        ,start_recovery/0
         ]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("crossbar.hrl").
@@ -45,7 +45,7 @@
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'delegate', [{'app_name', ?APP_ROUTING}]}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_job'}
-		     ,{<<"delegate">>, <<"job">>}
+                     ,{<<"delegate">>, <<"job">>}
                      }
                     ]).
 -define(QUEUE_NAME, <<"resource_jobs_listener">>).
@@ -62,14 +62,14 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
-			   ,?MODULE
-			   ,[{'bindings', ?BINDINGS}
-			    ,{'responders', ?RESPONDERS}
-			    ,{'queue_name', ?QUEUE_NAME}       % optional to include
-			    ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-			    ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-			    ]
-			   ,[]
+                           ,?MODULE
+                           ,[{'bindings', ?BINDINGS}
+                            ,{'responders', ?RESPONDERS}
+                            ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                            ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                            ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                            ]
+                           ,[]
                            ).
 
 -spec publish_new_job(cb_context:context()) -> 'ok'.
@@ -82,13 +82,13 @@ publish_new_job(Context) ->
 -spec publish(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 publish(AccountId, JobId, ReqId) ->
     Work = kz_json:from_list([{<<"Account-ID">>, AccountId}
-			     ,{<<"Job-ID">>, JobId}
+                             ,{<<"Job-ID">>, JobId}
                              ]),
     kz_amqp_worker:cast([{<<"Delegate-Message">>, Work}
-			,{<<"Msg-ID">>, ReqId}
+                        ,{<<"Msg-ID">>, ReqId}
                          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                         ]
-		       ,fun(API) -> kapi_delegate:publish_delegate(?APP_ROUTING, API) end
+                       ,fun(API) -> kapi_delegate:publish_delegate(?APP_ROUTING, API) end
                        ).
 
 -spec handle_job(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -97,7 +97,7 @@ handle_job(JObj, _Props) ->
     kz_util:put_callid(kz_json:get_first_defined([<<"Msg-ID">>, [<<"Delegate-Message">>, <<"Job-ID">>]], JObj)),
     Job = kz_json:get_value(<<"Delegate-Message">>, JObj),
     process_job(kz_json:get_value(<<"Account-ID">>, Job)
-	       ,kz_json:get_value(<<"Job-ID">>, Job)
+               ,kz_json:get_value(<<"Job-ID">>, Job)
                ).
 
 -spec process_job(ne_binary(), ne_binary()) -> 'ok'.
@@ -113,10 +113,10 @@ maybe_start_job(_Job, <<"complete">>) ->
 maybe_start_job(Job, <<"pending">>) ->
     lager:debug("job is pending, let's execute it!"),
     start_job(update_status(Job, <<"running">>)
-	     ,kz_doc:account_id(Job)
-	     ,kz_json:get_value(<<"pvt_auth_account_id">>, Job)
-	     ,select_carrier_module(Job)
-	     ,kz_json:get_value(<<"numbers">>, Job)
+             ,kz_doc:account_id(Job)
+             ,kz_json:get_value(<<"pvt_auth_account_id">>, Job)
+             ,select_carrier_module(Job)
+             ,kz_json:get_value(<<"numbers">>, Job)
              );
 maybe_start_job(Job, <<"running">>) ->
     lager:debug("job is running, ~s is in charge", [kz_json:get_value(<<"pvt_node">>, Job)]).
@@ -135,12 +135,12 @@ select_carrier_module(Job) ->
     case kz_datamgr:open_cache_doc(?KZ_OFFNET_DB, ResourceId) of
         {'ok', _} ->
             lager:debug("found resource ~s in ~s, using ~s"
-		       ,[ResourceId, ?KZ_OFFNET_DB, ?CARRIER_OTHER]
+                       ,[ResourceId, ?KZ_OFFNET_DB, ?CARRIER_OTHER]
                        ),
             ?CARRIER_OTHER;
         {'error', _E} ->
             lager:debug("resource ~s is not a system resource(~p), using ~s"
-		       ,[ResourceId, _E, ?CARRIER_LOCAL]
+                       ,[ResourceId, _E, ?CARRIER_LOCAL]
                        ),
             ?CARRIER_LOCAL
     end.
@@ -149,7 +149,7 @@ select_carrier_module(Job) ->
                                  kz_json:object().
 maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
     case kz_json:get_first_defined([[?KEY_SUCCESS, Number]
-				   ,[<<"errors">>, Number]
+                                   ,[<<"errors">>, Number]
                                    ], Job)
     of
         'undefined' -> create_number(Job, AccountId, AuthAccountId, CarrierModule, Number);
@@ -162,36 +162,36 @@ maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
                            kz_json:object().
 create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
     Options = [{'assign_to', AccountId}
-	      ,{'auth_by', AuthAccountId}
-	      ,{'state', ?NUMBER_STATE_AVAILABLE}
-	      ,{'public_fields', build_number_properties(Job)}
-	      ,{'dry_run', 'false'}
-	      ,{'module_name', CarrierModule}
+              ,{'auth_by', AuthAccountId}
+              ,{'state', ?NUMBER_STATE_AVAILABLE}
+              ,{'public_fields', build_number_properties(Job)}
+              ,{'dry_run', 'false'}
+              ,{'module_name', CarrierModule}
               ],
     try knm_number:create(DID, Options) of
         {'ok', Number} ->
             PhoneNumber = knm_number:phone_number(Number),
             lager:debug("successfully created number ~s for account ~s"
-		       ,[knm_phone_number:number(PhoneNumber), AccountId]
+                       ,[knm_phone_number:number(PhoneNumber), AccountId]
                        ),
             update_status(kz_json:set_value([?KEY_SUCCESS, Number]
-					   ,knm_phone_number:to_public_json(PhoneNumber)
-					   ,Job
+                                           ,knm_phone_number:to_public_json(PhoneNumber)
+                                           ,Job
                                            )
-			 ,<<"running">>
+                         ,<<"running">>
                          );
         {Failure, JObj} ->
             update_with_failure(Job, AccountId, DID, Failure, JObj)
     catch
         E:_R ->
             lager:debug("exception creating number ~s for account ~s: ~s: ~p"
-		       ,[DID, AccountId, E, _R]
+                       ,[DID, AccountId, E, _R]
                        ),
             update_status(kz_json:set_value([<<"errors">>, DID]
-					   ,kz_json:from_list([{<<"reason">>, kz_util:to_binary(E)}])
-					   ,Job
+                                           ,kz_json:from_list([{<<"reason">>, kz_util:to_binary(E)}])
+                                           ,Job
                                            )
-			 ,<<"running">>
+                         ,<<"running">>
                          )
     end.
 
@@ -204,16 +204,16 @@ update_with_failure(Job, AccountId, Number, Failure, JObj) ->
     of
         {[V], [K]} ->
             update_status(kz_json:set_value([<<"errors">>, Number]
-					   ,kz_json:from_list([{<<"reason">>, K}
-							      ,{<<"message">>, V}
-							      ])
-					   ,Job
+                                           ,kz_json:from_list([{<<"reason">>, K}
+                                                              ,{<<"message">>, V}
+                                                              ])
+                                           ,Job
                                            )
-			 ,<<"running">>
+                         ,<<"running">>
                          );
         _ ->
             update_status(kz_json:set_value([<<"errors">>, Number], JObj, Job)
-			 ,<<"running">>
+                         ,<<"running">>
                          )
     end.
 
@@ -225,11 +225,11 @@ build_number_properties(JObj) ->
 update_status(Job, Status) ->
     {'ok', Job1} = kz_datamgr:save_doc(kz_doc:account_db(Job)
                                       ,kz_json:set_values([{<<"pvt_status">>, Status}
-							  ,{<<"pvt_node">>, kz_util:to_binary(node())}
+                                                          ,{<<"pvt_node">>, kz_util:to_binary(node())}
                                                           ]
-							 ,kz_doc:update_pvt_modified(Job)
+                                                         ,kz_doc:update_pvt_modified(Job)
                                                          )
-				      ),
+                                      ),
     Job1.
 
 -spec start_recovery() -> 'ok'.
@@ -248,9 +248,9 @@ maybe_recover_account_jobs(Year, Month, AccountId) ->
     Modb = kazoo_modb:get_modb(AccountId, Year, Month),
     case kz_datamgr:get_results(Modb, <<"resources/status_listing">>, [{'keys', [<<"pending">>
                                                                                 ,<<"running">>
-										]}
+                                                                                ]}
                                                                       ,'include_docs'
-								      ])
+                                                                      ])
     of
         {'ok', []} -> 'ok';
         {'ok', IncompleteJobs} ->
@@ -270,7 +270,7 @@ maybe_recover_incomplete_job(Job) ->
         'false' -> 'ok';
         'true' ->
             lager:debug("job ~s in ~s is old and incomplete, attempting to restart it"
-		       ,[kz_doc:id(Job), kz_doc:account_id(Job)]
+                       ,[kz_doc:id(Job), kz_doc:account_id(Job)]
                        ),
             recover_incomplete_job(Job)
     end.
@@ -280,7 +280,7 @@ recover_incomplete_job(Job) ->
     Db = kz_doc:account_db(Job),
     case kz_datamgr:save_doc(Db
                             ,kz_json:set_value(<<"pvt_recovering">>, 'true', kz_doc:update_pvt_modified(Job))
-			    )
+                            )
     of
         {'ok', Job1} -> republish_job(Job1);
         {'error', 'conflict'} -> lager:debug("someone updated the job while we were trying");
@@ -356,7 +356,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'timeout', Ref, ?RECOVERY_MESSAGE}
-	   ,#state{recovery_ref=Ref}=State
+           ,#state{recovery_ref=Ref}=State
            ) ->
     _Pid = kz_util:spawn(fun start_recovery/0),
     lager:debug("starting recovery walker in ~p", [_Pid]),
