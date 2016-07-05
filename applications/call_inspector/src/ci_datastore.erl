@@ -21,25 +21,25 @@
 -export([lookup_callid/1]).
 -export([callid_exists/1]).
 -export([flush/0
-	,flush/1
+        ,flush/1
         ]).
 
 %% gen_server callbacks
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -record(state, {}).
 -type state() :: #state{}.
 
 -record(object, {call_id
-		,timestamp
-		,type
-		,value
+                ,timestamp
+                ,type
+                ,value
                 }).
 -type object() :: #object{}.
 
@@ -82,10 +82,10 @@ callid_exists(CallId) ->
 -spec lookup_callid(ne_binary()) -> data().
 lookup_callid(CallId) ->
     Props = lists:foldl(fun lookup_callid_fold/2
-		       ,[{'chunks', []}
-			,{'analysis', []}
-			]
-		       ,lookup_objects(CallId)
+                       ,[{'chunks', []}
+                        ,{'analysis', []}
+                        ]
+                       ,lookup_objects(CallId)
                        ),
     Chunks = ci_chunk:reorder_dialog(props:get_value('chunks', Props)),
     props:set_value('chunks', Chunks, Props).

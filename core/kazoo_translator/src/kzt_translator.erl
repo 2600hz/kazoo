@@ -10,8 +10,8 @@
 -module(kzt_translator).
 
 -export([exec/2, exec/3
-	,get_user_vars/1
-	,set_user_vars/2
+        ,get_user_vars/1
+        ,set_user_vars/2
         ]).
 
 -include("kzt.hrl").

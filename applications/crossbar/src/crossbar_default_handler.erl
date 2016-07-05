@@ -11,16 +11,16 @@
 -behaviour(cowboy_http_handler).
 
 -export([init/3
-	,upgrade/4
-	,handle/2
-	,terminate/3
+        ,upgrade/4
+        ,handle/2
+        ,terminate/3
         ]).
 
 -include("crossbar.hrl").
 
 -define(DEFAULT_PATHS, [<<"/:version/accounts/:account_id/vmboxes/:box_id/messages/:message_id/raw">>
-		       ,<<"/:version/accounts/:account_id/faxes/:direction/:fax_id/attachment">>
-		       ,<<"/:version/accounts/:account_id/presence/:reportid">>
+                       ,<<"/:version/accounts/:account_id/faxes/:direction/:fax_id/attachment">>
+                       ,<<"/:version/accounts/:account_id/presence/:reportid">>
                        ]).
 
 -spec init({atom(), 'http'}, cowboy_req:req(), kz_proplist()) ->
@@ -54,7 +54,7 @@ path_matches_template(Path, Template) ->
     lager:debug("testing ~s against ~s", [Path, Template]),
     path_matches_template_tokens(
       binary:split(Path, <<"/">>, ['global'])
-				,binary:split(Template, <<"/">>, ['global'])
+                                ,binary:split(Template, <<"/">>, ['global'])
      ).
 
 path_matches_template_tokens([], []) -> 'true';
@@ -66,9 +66,9 @@ path_matches_template_tokens(_, _) -> 'false'.
 
 upgrade(Req, Env, _Handler, HandlerOpts) ->
     cowboy_rest:upgrade(Req
-		       ,props:set_value('handler', 'api_resource', Env)
-		       ,'api_resource'
-		       ,HandlerOpts
+                       ,props:set_value('handler', 'api_resource', Env)
+                       ,'api_resource'
+                       ,HandlerOpts
                        ).
 
 get_magic_token(Path) ->

@@ -9,7 +9,7 @@
 -module(teletype_voicemail_to_email).
 
 -export([init/0
-	,handle_new_voicemail/2
+        ,handle_new_voicemail/2
         ]).
 
 -include("teletype.hrl").
@@ -20,14 +20,14 @@
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
-	  [?MACRO_VALUE(<<"voicemail.box">>, <<"voicemail_box">>, <<"Voicemail Box">>, <<"Which voicemail box was the message left in">>)
-	  ,?MACRO_VALUE(<<"voicemail.name">>, <<"voicemail_name">>, <<"Voicemail Name">>, <<"Name of the voicemail file">>)
-	  ,?MACRO_VALUE(<<"voicemail.length">>, <<"voicemail_length">>, <<"Voicemail Length">>, <<"Length of the voicemail file">>)
-	  ,?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the caller">>)
-	  ,?MACRO_VALUE(<<"owner.first_name">>, <<"first_name">>, <<"First Name">>, <<"First name of the owner of the voicemail box">>)
-	  ,?MACRO_VALUE(<<"owner.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last name of the owner of the voicemail box">>)
-	   | ?DEFAULT_CALL_MACROS
-	  ])
+          [?MACRO_VALUE(<<"voicemail.box">>, <<"voicemail_box">>, <<"Voicemail Box">>, <<"Which voicemail box was the message left in">>)
+          ,?MACRO_VALUE(<<"voicemail.name">>, <<"voicemail_name">>, <<"Voicemail Name">>, <<"Name of the voicemail file">>)
+          ,?MACRO_VALUE(<<"voicemail.length">>, <<"voicemail_length">>, <<"Voicemail Length">>, <<"Length of the voicemail file">>)
+          ,?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the caller">>)
+          ,?MACRO_VALUE(<<"owner.first_name">>, <<"first_name">>, <<"First Name">>, <<"First name of the owner of the voicemail box">>)
+          ,?MACRO_VALUE(<<"owner.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last name of the owner of the voicemail box">>)
+           | ?DEFAULT_CALL_MACROS
+          ])
        ).
 
 -define(TEMPLATE_TEXT, <<"New Voicemail Message\n\nCaller ID: {{caller_id.number}}\nCaller Name: {{caller_id.name}}\n\nCalled To: {{to.user}}   (Originally dialed number)\nCalled On: {{date_called.local|date:\"l, F j, Y \\\\a\\\\t H:i\"}}">>).
@@ -46,16 +46,16 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-					  ,{'text', ?TEMPLATE_TEXT}
-					  ,{'html', ?TEMPLATE_HTML}
-					  ,{'subject', ?TEMPLATE_SUBJECT}
-					  ,{'category', ?TEMPLATE_CATEGORY}
-					  ,{'friendly_name', ?TEMPLATE_NAME}
-					  ,{'to', ?TEMPLATE_TO}
-					  ,{'from', ?TEMPLATE_FROM}
-					  ,{'cc', ?TEMPLATE_CC}
-					  ,{'bcc', ?TEMPLATE_BCC}
-					  ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                          ,{'text', ?TEMPLATE_TEXT}
+                                          ,{'html', ?TEMPLATE_HTML}
+                                          ,{'subject', ?TEMPLATE_SUBJECT}
+                                          ,{'category', ?TEMPLATE_CATEGORY}
+                                          ,{'friendly_name', ?TEMPLATE_NAME}
+                                          ,{'to', ?TEMPLATE_TO}
+                                          ,{'from', ?TEMPLATE_FROM}
+                                          ,{'cc', ?TEMPLATE_CC}
+                                          ,{'bcc', ?TEMPLATE_BCC}
+                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
 -spec handle_new_voicemail(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -94,11 +94,11 @@ handle_new_voicemail(JObj, _Props) ->
     ReqData =
         kz_json:set_values(
           [{<<"voicemail">>, VMBox}
-	  ,{<<"owner">>, UserJObj}
-	  ,{<<"account">>, AccountJObj}
-	  ,{<<"to">>, Emails}
+          ,{<<"owner">>, UserJObj}
+          ,{<<"account">>, AccountJObj}
+          ,{<<"to">>, Emails}
           ]
-			  ,DataJObj
+                          ,DataJObj
          ),
 
     case teletype_util:is_preview(DataJObj) of
@@ -135,7 +135,7 @@ process_req(DataJObj) ->
 
     Subject = teletype_util:render_subject(
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
-					  ,Macros
+                                          ,Macros
                ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
@@ -172,7 +172,7 @@ get_file_name(MediaJObj, Macros) ->
     %% CallerID_Date_Time.mp3
     CallerID =
         case {props:get_value([<<"caller_id">>, <<"name">>], Macros)
-	     ,props:get_value([<<"caller_id">>, <<"number">>], Macros)
+             ,props:get_value([<<"caller_id">>, <<"number">>], Macros)
              }
         of
             {'undefined', 'undefined'} -> <<"Unknown">>;

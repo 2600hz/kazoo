@@ -9,15 +9,15 @@
 -module(kz_http).
 
 -export([req/1, req/2, req/3, req/4, req/5
-	,async_req/2, async_req/3, async_req/4, async_req/5, async_req/6
-	,get/1, get/2, get/3
-	,options/1, options/2, options/3
-	,head/1, head/2, head/3
-	,trace/1, trace/2, trace/3
-	,post/1, post/2, post/3, post/4
-	,put/1, put/2, put/3, put/4
-	,delete/1, delete/2, delete/3, delete/4
-	,handle_response/1
+        ,async_req/2, async_req/3, async_req/4, async_req/5, async_req/6
+        ,get/1, get/2, get/3
+        ,options/1, options/2, options/3
+        ,head/1, head/2, head/3
+        ,trace/1, trace/2, trace/3
+        ,post/1, post/2, post/3, post/4
+        ,put/1, put/2, put/3, put/4
+        ,delete/1, delete/2, delete/3, delete/4
+        ,handle_response/1
         ]).
 
 -include("kz_web.hrl").
@@ -39,8 +39,8 @@
 -type httpc_ret() :: {'ok', httpc_result()} |
                      {'ok', 'saved_to_file'} |
                      {'error', {'connect_failed', any()} |
-		      {'send_failed', any()} |
-		      any()
+                      {'send_failed', any()} |
+                      any()
                      }.
 
 -type httpc_request() :: {string(), kz_proplist()} |
@@ -184,8 +184,8 @@ async_req(Pid, Method, Url, Hdrs, Body, Opts) ->
     {Headers, Options} = maybe_basic_auth(Hdrs, Opts),
     Request = build_request(Method, Url, Headers, Body),
     NewOptions = [{'receiver', Pid}
-		 ,{'sync', 'false'}
-		 ,{'stream', 'self'}
+                 ,{'sync', 'false'}
+                 ,{'stream', 'self'}
                   | Options
                  ],
     execute_request(Method, Request, NewOptions).
@@ -199,8 +199,8 @@ execute_request(Method, Request, Opts) ->
     HTTPOptions = get_options(?HTTP_OPTIONS, Opts),
     Opts1 = get_options(?OPTIONS, Opts),
     Options = case props:get_value('body_format', Opts1) of
-		  'undefined' -> [{'body_format', 'binary'} | Opts1];
-		  _ -> Opts1
+                  'undefined' -> [{'body_format', 'binary'} | Opts1];
+                  _ -> Opts1
               end,
     handle_response(catch httpc:request(Method, Request, HTTPOptions, Options)).
 
@@ -263,14 +263,14 @@ build_request(Method, Url, Headers, Body) when (Method == 'post');
                                                (Method == 'put');
                                                (Method == 'delete') ->
     ContentType = props:get_first_defined(["Content-Type"
-					  ,"content-type"
-					  ,'content_type'
-					  ,<<"Content-Type">>
-					  ,<<"content-type">>
-					  ,<<"content_type">>
+                                          ,"content-type"
+                                          ,'content_type'
+                                          ,<<"Content-Type">>
+                                          ,<<"content-type">>
+                                          ,<<"content_type">>
                                           ]
-					 ,Headers
-					 ,""),
+                                         ,Headers
+                                         ,""),
     {kz_util:to_list(Url), ensure_string_headers(Headers), kz_util:to_list(ContentType), Body}.
 
 ensure_string_headers(Headers) ->

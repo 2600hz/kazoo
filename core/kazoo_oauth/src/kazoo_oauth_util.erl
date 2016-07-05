@@ -7,14 +7,14 @@
 -include("kazoo_oauth.hrl").
 
 -export([get_oauth_provider/1
-	,get_oauth_app/1
-	,get_oauth_service_app/1
+        ,get_oauth_app/1
+        ,get_oauth_service_app/1
         ]).
 -export([token/1, token/2
-	,verify_token/2
-	,refresh_token/1
-	,refresh_token/4
-	,refresh_token/5
+        ,verify_token/2
+        ,refresh_token/1
+        ,refresh_token/4
+        ,refresh_token/5
         ]).
 -export([jwt/2, jwt/3]).
 -export([authorization_header/1]).
@@ -31,11 +31,11 @@ get_oauth_provider(ProviderId) ->
 
 oauth_provider_from_jobj(ProviderId, JObj) ->
     #oauth_provider{name=ProviderId
-		   ,auth_url= kz_json:get_value(<<"oauth_url">>, JObj)
-		   ,tokeninfo_url= kz_json:get_value(<<"tokeninfo_url">>, JObj)
-		   ,profile_url= kz_json:get_value(<<"profile_url">>, JObj)
-		   ,servers= kz_json:get_value(<<"servers">>, JObj)
-		   ,scopes= kz_json:get_value(<<"scopes">>, JObj)
+                   ,auth_url= kz_json:get_value(<<"oauth_url">>, JObj)
+                   ,tokeninfo_url= kz_json:get_value(<<"tokeninfo_url">>, JObj)
+                   ,profile_url= kz_json:get_value(<<"profile_url">>, JObj)
+                   ,servers= kz_json:get_value(<<"servers">>, JObj)
+                   ,scopes= kz_json:get_value(<<"scopes">>, JObj)
                    }.
 
 get_oauth_app(AppId) ->
@@ -51,10 +51,10 @@ get_oauth_app(AppId) ->
 
 oauth_app_from_jobj(AppId, Provider, JObj) ->
     #oauth_app{name = AppId
-	      ,account_id = kz_doc:account_id(JObj)
-	      ,secret = kz_json:get_first_defined([<<"pvt_secret">>, <<"client_secret">>], JObj)
-	      ,user_prefix = kz_json:get_value(<<"pvt_user_prefix">>, JObj)
-	      ,provider = Provider}.
+              ,account_id = kz_doc:account_id(JObj)
+              ,secret = kz_json:get_first_defined([<<"pvt_secret">>, <<"client_secret">>], JObj)
+              ,user_prefix = kz_json:get_value(<<"pvt_user_prefix">>, JObj)
+              ,provider = Provider}.
 
 get_oauth_service_app(AppId) ->
     case kz_datamgr:open_doc(?KZ_OAUTH_DB, AppId) of
@@ -71,10 +71,10 @@ get_oauth_service_app(AppId) ->
 
 oauth_service_from_jobj(AppId, Provider, JObj) ->
     #oauth_service_app{name = AppId
-		      ,account_id = kz_doc:account_id(JObj)
-		      ,email = kz_json:get_value(<<"email">>, JObj)
-		      ,public_key_fingerprints = kz_json:get_value(<<"public_key_fingerprints">>, JObj)
-		      ,provider = Provider}.
+                      ,account_id = kz_doc:account_id(JObj)
+                      ,email = kz_json:get_value(<<"email">>, JObj)
+                      ,public_key_fingerprints = kz_json:get_value(<<"public_key_fingerprints">>, JObj)
+                      ,provider = Provider}.
 
 -spec load_service_app_keys(oauth_service_app()) ->
                                    {'ok', oauth_service_app()} |
@@ -98,7 +98,7 @@ load_service_app_keys(#oauth_service_app{name=AppId}=App) ->
                                          oauth_service_app().
 oauth_service_app_from_keys(PublicKey, PrivateKey, App) ->
     App#oauth_service_app{public_key=pem_to_rsa(PublicKey)
-			 ,private_key=pem_to_rsa(PrivateKey)
+                         ,private_key=pem_to_rsa(PrivateKey)
                          }.
 
 -spec pem_to_rsa(binary()) -> any().
@@ -112,17 +112,17 @@ jwt(#oauth_service_app{email=AccountEmail}=App, Scope) ->
     jwt(App, Scope, AccountEmail).
 
 jwt(#oauth_service_app{private_key=PrivateKey
-		      ,public_key=PublicKey
-		      ,provider=#oauth_provider{auth_url=URL}
+                      ,public_key=PublicKey
+                      ,provider=#oauth_provider{auth_url=URL}
                       }
    ,Scope
    ,EMail
    ) ->
     JObj = kz_json:from_list([{<<"iss">>, EMail}
-			     ,{<<"aud">>, URL}
-			     ,{<<"scope">>, Scope}
-			     ,{<<"iat">>, kz_util:current_unix_tstamp()-500}
-			     ,{<<"exp">>, kz_util:current_unix_tstamp()+(2 * ?MILLISECONDS_IN_SECOND)}
+                             ,{<<"aud">>, URL}
+                             ,{<<"scope">>, Scope}
+                             ,{<<"iat">>, kz_util:current_unix_tstamp()-500}
+                             ,{<<"exp">>, kz_util:current_unix_tstamp()+(2 * ?MILLISECONDS_IN_SECOND)}
                              ]),
 
     JWT64 = base64:encode(kz_json:encode(JObj)),
@@ -164,17 +164,17 @@ token(#oauth_app{}=App, DocId) when is_binary(DocId) ->
     end;
 token(_, 'undefined') -> {'error',<<"User doesn't have RefreshToken">>};
 token(#oauth_app{name=AppId
-		,secret=Secret
-		,provider=#oauth_provider{auth_url=AUTH_URL}
+                ,secret=Secret
+                ,provider=#oauth_provider{auth_url=AUTH_URL}
                 }
      ,#oauth_refresh_token{token=RefreshToken}
      ) ->
     lager:debug("getting token : refresh ~p",[RefreshToken]),
     Headers = [{"Content-Type","application/x-www-form-urlencoded"}],
     Fields = [{"client_id", kz_util:to_list(AppId)}
-	     ,{"client_secret",kz_util:to_list(Secret)}
-	     ,{"grant_type","refresh_token"}
-	     ,{"refresh_token",kz_util:to_list(RefreshToken)}
+             ,{"client_secret",kz_util:to_list(Secret)}
+             ,{"grant_type","refresh_token"}
+             ,{"refresh_token",kz_util:to_list(RefreshToken)}
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K,V], "=")] end, Fields)), "&"),
     case kz_http:post(kz_util:to_list(AUTH_URL), Headers, Body) of
@@ -184,9 +184,9 @@ token(#oauth_app{name=AppId
             Type = kz_json:get_value(<<"token_type">>, JObj),
             Expires = kz_json:get_integer_value(<<"expires_in">>, JObj),
             {'ok', #oauth_token{token=Token
-			       ,type=Type
-			       ,expires=Expires
-			       ,issued=kz_util:current_tstamp()
+                               ,type=Type
+                               ,expires=Expires
+                               ,issued=kz_util:current_tstamp()
                                }
             };
         Else ->
@@ -237,18 +237,18 @@ refresh_token(App, Scope, AuthorizationCode, ExtraHeaders) ->
                            {'ok', api_object()} |
                            {'error', any()}.
 refresh_token(#oauth_app{name=ClientId
-			,secret=Secret
-			,provider=#oauth_provider{auth_url=URL}
+                        ,secret=Secret
+                        ,provider=#oauth_provider{auth_url=URL}
                         }
-	     ,Scope, AuthorizationCode, ExtraHeaders, RedirectURI) ->
+             ,Scope, AuthorizationCode, ExtraHeaders, RedirectURI) ->
     Headers = [{"Content-Type", "application/x-www-form-urlencoded"} | ExtraHeaders],
 
     Fields = [{"client_id", ClientId}
-	     ,{"redirect_uri", RedirectURI}
-	     ,{"client_secret", Secret}
-	     ,{"grant_type", "authorization_code"}
-	     ,{"scope", Scope}
-	     ,{"code", AuthorizationCode}
+             ,{"redirect_uri", RedirectURI}
+             ,{"client_secret", Secret}
+             ,{"grant_type", "authorization_code"}
+             ,{"scope", Scope}
+             ,{"code", AuthorizationCode}
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K, kz_util:to_list(V)], "=") ] end, Fields)),"&"),
     case kz_http:post(kz_util:to_list(URL), Headers, Body) of

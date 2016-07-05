@@ -10,7 +10,7 @@
 -module(teletype_customer_update).
 
 -export([init/0
-	,handle_req/2
+        ,handle_req/2
         ]).
 
 -include("teletype.hrl").
@@ -23,10 +23,10 @@
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
-	  [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
-	  ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
-	   | ?USER_MACROS
-	  ])
+          [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
+          ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
+           | ?USER_MACROS
+          ])
        ).
 
 -define(TEMPLATE_TEXT, <<"Dear {{user.first_name}} {{user.last_name}}.\n\nHere are some news that we have selected for you.\n\nBest regards,">>).
@@ -45,16 +45,16 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-					  ,{'text', ?TEMPLATE_TEXT}
-					  ,{'html', ?TEMPLATE_HTML}
-					  ,{'subject', ?TEMPLATE_SUBJECT}
-					  ,{'category', ?TEMPLATE_CATEGORY}
-					  ,{'friendly_name', ?TEMPLATE_NAME}
-					  ,{'to', ?TEMPLATE_TO}
-					  ,{'from', ?TEMPLATE_FROM}
-					  ,{'cc', ?TEMPLATE_CC}
-					  ,{'bcc', ?TEMPLATE_BCC}
-					  ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                          ,{'text', ?TEMPLATE_TEXT}
+                                          ,{'html', ?TEMPLATE_HTML}
+                                          ,{'subject', ?TEMPLATE_SUBJECT}
+                                          ,{'category', ?TEMPLATE_CATEGORY}
+                                          ,{'friendly_name', ?TEMPLATE_NAME}
+                                          ,{'to', ?TEMPLATE_TO}
+                                          ,{'from', ?TEMPLATE_FROM}
+                                          ,{'cc', ?TEMPLATE_CC}
+                                          ,{'bcc', ?TEMPLATE_BCC}
+                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> kz_proplist()|'ok'.
@@ -111,7 +111,7 @@ select_users_to_update(Users, DataJObj) ->
 -spec send_update_to_user(kz_json:object(), kz_json:object()) -> 'ok'.
 send_update_to_user(UserJObj, DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
-	     ,{<<"account">>, teletype_util:account_params(DataJObj)}
+             ,{<<"account">>, teletype_util:account_params(DataJObj)}
               | build_macro_data(UserJObj)
              ],
 
@@ -120,7 +120,7 @@ send_update_to_user(UserJObj, DataJObj) ->
 
     Subject = teletype_util:render_subject(
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
-					  ,Macros
+                                          ,Macros
                ),
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
     To = [kz_json:get_value(<<"email">>, UserJObj)],
@@ -134,8 +134,8 @@ build_macro_data(UserJObj) ->
     kz_json:foldl(fun(MacroKey, _V, Acc) ->
                           maybe_add_macro_key(MacroKey, Acc, UserJObj)
                   end
-		 ,[]
-		 ,?TEMPLATE_MACROS
+                 ,[]
+                 ,?TEMPLATE_MACROS
                  ).
 
 -spec maybe_add_macro_key(kz_json:key(), kz_proplist(), kz_json:object()) -> kz_proplist().

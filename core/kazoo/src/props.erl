@@ -11,26 +11,26 @@
 -module(props).
 
 -export([get_value/2, get_value/3
-	,delete/2, delete_keys/2
-	,is_defined/2
-	,get_integer_value/2, get_integer_value/3
-	,get_atom_value/2, get_atom_value/3
-	,get_binary_value/2, get_binary_value/3
-	,get_ne_binary_value/2, get_ne_binary_value/3
-	,get_is_true/2, get_is_true/3, is_true/2, is_true/3
-	,get_is_false/2, get_is_false/3, is_false/2, is_false/3
-	,get_keys/1
-	,get_first_defined/2, get_first_defined/3
-	,get_all_values/2, get_values/2
-	,set_values/2
-	,set_value/3
-	,insert_value/2, insert_value/3, insert_values/2
-	,unique/1
-	,filter/2
-	,filter_empty/1
-	,filter_undefined/1
-	,to_querystring/1
-	,to_log/1, to_log/2
+        ,delete/2, delete_keys/2
+        ,is_defined/2
+        ,get_integer_value/2, get_integer_value/3
+        ,get_atom_value/2, get_atom_value/3
+        ,get_binary_value/2, get_binary_value/3
+        ,get_ne_binary_value/2, get_ne_binary_value/3
+        ,get_is_true/2, get_is_true/3, is_true/2, is_true/3
+        ,get_is_false/2, get_is_false/3, is_false/2, is_false/3
+        ,get_keys/1
+        ,get_first_defined/2, get_first_defined/3
+        ,get_all_values/2, get_values/2
+        ,set_values/2
+        ,set_value/3
+        ,insert_value/2, insert_value/3, insert_values/2
+        ,unique/1
+        ,filter/2
+        ,filter_empty/1
+        ,filter_undefined/1
+        ,to_querystring/1
+        ,to_log/1, to_log/2
         ]).
 
 -include_lib("kazoo/include/kz_types.hrl").
@@ -52,7 +52,7 @@ set_value(K, V, Props) ->
 -spec insert_value({kz_proplist_key(), kz_proplist_value()} | kz_proplist_key(), kz_proplist()) ->
                           kz_proplist().
 -spec insert_value(kz_proplist_key(), kz_proplist_value(), kz_proplist()) ->
-			  kz_proplist().
+                          kz_proplist().
 insert_value({K, V}, Props) ->
     insert_value(K, V, Props);
 insert_value(K, Props) ->
@@ -203,7 +203,7 @@ get_binary_value(Key, Props, Default) ->
 
 -spec get_ne_binary_value(kz_proplist_key(), kz_proplist()) -> api_binary().
 -spec get_ne_binary_value(kz_proplist_key(), kz_proplist(), Default) ->
-				 ne_binary() | Default.
+                                 ne_binary() | Default.
 get_ne_binary_value(Key, Props) ->
     get_ne_binary_value(Key, Props, 'undefined').
 get_ne_binary_value(Key, Props, Default) ->
@@ -282,7 +282,7 @@ encode_kv(Prefix, K, V) when is_binary(V)
                              orelse is_number(V) ->
     encode_kv(Prefix, K, <<"=">>, kz_http_util:urlencode(V));
 
-						% key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
+                                                % key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
 %% if no prefix is present, use just key to prefix the key/value pairs in the jobj
 encode_kv(<<>>, K, [_|_]=Props) -> to_querystring(Props, [kz_util:to_binary(K)]);
 %% if a prefix is defined, nest the key in square brackets

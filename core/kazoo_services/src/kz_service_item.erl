@@ -10,67 +10,67 @@
 -export([public_json/1]).
 -export([empty/0]).
 -export([set_category/2
-	,category/1
+        ,category/1
         ]).
 -export([set_item/2
-	,item/1
+        ,item/1
         ]).
 -export([set_name/2
-	,name/1
+        ,name/1
         ]).
 -export([set_quantity/2
-	,quantity/1
+        ,quantity/1
         ]).
 -export([set_rate/2
-	,rate/1
+        ,rate/1
         ]).
 -export([set_single_discount/2
-	,single_discount/1
+        ,single_discount/1
         ]).
 -export([set_single_discount_rate/2
-	,single_discount_rate/1
+        ,single_discount_rate/1
         ]).
 -export([set_cumulative_discount/2
-	,cumulative_discount/1
+        ,cumulative_discount/1
         ]).
 -export([set_cumulative_discount_rate/2
-	,cumulative_discount_rate/1
+        ,cumulative_discount_rate/1
         ]).
 -export([set_bookkeepers/2
-	,bookkeeper/2
+        ,bookkeeper/2
         ]).
 -export([set_activation_charge/2
-	,activation_charge/1
+        ,activation_charge/1
         ]).
 -export([set_minimum/2
-	,minimum/1
+        ,minimum/1
         ]).
 -export([set_exceptions/2
-	,exceptions/1
+        ,exceptions/1
         ]).
 
 
 -include("kazoo_services.hrl").
 
 -record(kz_service_item, {category :: api_binary()
-			 ,item :: api_binary()
-			 ,name :: api_binary()
-			 ,quantity = 0 :: api_integer()
-			 ,rate = 0.0 :: api_float()
-			 ,single_discount = 'false' :: boolean()
-			 ,single_discount_rate = 0.00 :: api_float()
-			 ,cumulative_discount = 0 :: api_integer()
-			 ,cumulative_discount_rate = 0.00 :: api_float()
-			 ,bookkeepers = kz_json:new() :: kz_json:object()
-			 ,activation_charge = 0.00 :: api_float()
-			 ,minimum = 0 :: api_integer()
-			 ,exceptions = [] :: ne_binaries()
+                         ,item :: api_binary()
+                         ,name :: api_binary()
+                         ,quantity = 0 :: api_integer()
+                         ,rate = 0.0 :: api_float()
+                         ,single_discount = 'false' :: boolean()
+                         ,single_discount_rate = 0.00 :: api_float()
+                         ,cumulative_discount = 0 :: api_integer()
+                         ,cumulative_discount_rate = 0.00 :: api_float()
+                         ,bookkeepers = kz_json:new() :: kz_json:object()
+                         ,activation_charge = 0.00 :: api_float()
+                         ,minimum = 0 :: api_integer()
+                         ,exceptions = [] :: ne_binaries()
                          }).
 
 -type item() :: #kz_service_item{}.
 -type items() :: [item()].
 -export_type([item/0
-	     ,items/0
+             ,items/0
              ]).
 
 %%--------------------------------------------------------------------
@@ -82,17 +82,17 @@
 -spec public_json(item()) -> kz_json:object().
 public_json(Item) ->
     Props = [{<<"category">>, Item#kz_service_item.category}
-	    ,{<<"item">>, Item#kz_service_item.item}
-	    ,{<<"name">>, Item#kz_service_item.name}
-	    ,{<<"quantity">>, Item#kz_service_item.quantity}
-	    ,{<<"rate">>, Item#kz_service_item.rate}
-	    ,{<<"single_discount">>, Item#kz_service_item.single_discount}
-	    ,{<<"single_discount_rate">>, Item#kz_service_item.single_discount_rate}
-	    ,{<<"cumulative_discount">>, Item#kz_service_item.cumulative_discount}
-	    ,{<<"cumulative_discount_rate">>, Item#kz_service_item.cumulative_discount_rate}
-	    ,{<<"activation_charge">>, Item#kz_service_item.activation_charge}
-	    ,{<<"minimum">>, Item#kz_service_item.minimum}
-	    ,{<<"exceptions">>, Item#kz_service_item.exceptions}
+            ,{<<"item">>, Item#kz_service_item.item}
+            ,{<<"name">>, Item#kz_service_item.name}
+            ,{<<"quantity">>, Item#kz_service_item.quantity}
+            ,{<<"rate">>, Item#kz_service_item.rate}
+            ,{<<"single_discount">>, Item#kz_service_item.single_discount}
+            ,{<<"single_discount_rate">>, Item#kz_service_item.single_discount_rate}
+            ,{<<"cumulative_discount">>, Item#kz_service_item.cumulative_discount}
+            ,{<<"cumulative_discount_rate">>, Item#kz_service_item.cumulative_discount_rate}
+            ,{<<"activation_charge">>, Item#kz_service_item.activation_charge}
+            ,{<<"minimum">>, Item#kz_service_item.minimum}
+            ,{<<"exceptions">>, Item#kz_service_item.exceptions}
             ],
     kz_json:from_list(props:filter_undefined(Props)).
 
@@ -191,7 +191,7 @@ set_quantity(Q, #kz_service_item{}=ServiceItem) ->
         'false' -> ServiceItem#kz_service_item{quantity=Quantity};
         'true'->
             ServiceItem#kz_service_item{single_discount='true'
-				       ,quantity=Quantity
+                                       ,quantity=Quantity
                                        }
     end.
 

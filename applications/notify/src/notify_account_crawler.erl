@@ -13,11 +13,11 @@
 -export([check/1]).
 -export([low_balance_threshold/1]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("notify.hrl").
@@ -147,7 +147,7 @@ handle_info(_Info, State) ->
 -spec check_then_process_account(ne_binary(), {'ok', kz_account:doc()} | {'error',any()}) -> 'ok'.
 check_then_process_account(AccountId, {'ok', AccountJObj}) ->
     case kz_doc:is_soft_deleted(AccountJObj)
-	orelse not kz_account:is_enabled(AccountJObj) of
+        orelse not kz_account:is_enabled(AccountJObj) of
         'true' ->
             lager:debug("not processing account ~p (soft-destroyed)", [AccountId]);
         'false' ->
@@ -220,13 +220,13 @@ maybe_test_for_registrations(AccountId, AccountJObj) ->
 test_for_registrations(AccountId, Realm) ->
     lager:debug("looking for any registrations in realm ~s", [Realm]),
     Reg = [{<<"Realm">>, Realm}
-	  ,{<<"Fields">>, [<<"Account-ID">>]}
+          ,{<<"Fields">>, [<<"Account-ID">>]}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kapps_util:amqp_pool_collect(Reg
-				     ,fun kapi_registration:publish_query_req/1
-				     ,{'ecallmgr', fun kapi_registration:query_resp_v/1}
-				     )
+                                     ,fun kapi_registration:publish_query_req/1
+                                     ,{'ecallmgr', fun kapi_registration:query_resp_v/1}
+                                     )
     of
         {'error', _} -> 'ok';
         {_, JObjs} ->
@@ -249,9 +249,9 @@ handle_initial_registration(AccountId) ->
 -spec notify_initial_registration(kz_account:doc()) -> 'ok'.
 notify_initial_registration(AccountJObj) ->
     UpdatedAccountJObj = kz_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>]
-					  ,'true'
-					  ,AccountJObj
-					  ),
+                                          ,'true'
+                                          ,AccountJObj
+                                          ),
     kz_util:account_update(UpdatedAccountJObj),
     notify_first_occurrence:send(<<"registration">>, UpdatedAccountJObj).
 
@@ -267,7 +267,7 @@ maybe_test_for_initial_call(AccountId, AccountDb, AccountJObj) ->
 -spec test_for_initial_call(ne_binary(), ne_binary()) -> 'ok'.
 test_for_initial_call(AccountId, AccountDb) ->
     ViewOptions = [{'key', <<"cdr">>}
-		  ,{'limit', 1}
+                  ,{'limit', 1}
                   ],
     case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', [_|_]} ->
@@ -287,8 +287,8 @@ handle_initial_call(AccountId) ->
 -spec notify_initial_call(kz_account:doc()) -> any().
 notify_initial_call(AccountJObj) ->
     UpdatedAccountJObj = kz_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>]
-					  ,'true'
-					  ,AccountJObj
+                                          ,'true'
+                                          ,AccountJObj
                                           ),
     kz_util:account_update(UpdatedAccountJObj),
     notify_first_occurrence:send(<<"call">>, UpdatedAccountJObj).
@@ -396,7 +396,7 @@ update_account_low_balance_sent(AccountJObj0) ->
 notify_of_low_balance(AccountJObj, CurrentBalance) ->
     AccountId = kz_account:id(AccountJObj),
     lager:debug("sending low balance alert for account ~s with balance ~w"
-	       ,[AccountId, CurrentBalance]),
+               ,[AccountId, CurrentBalance]),
     'ok' = kz_notify:low_balance(AccountId, CurrentBalance),
     update_account_low_balance_sent(AccountJObj).
 

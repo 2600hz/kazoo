@@ -11,16 +11,16 @@
 -module(cb_webhooks).
 
 -export([init/0
-	,authorize/1
-	,authenticate/1
-	,allowed_methods/0, allowed_methods/1, allowed_methods/2
-	,resource_exists/0, resource_exists/1, resource_exists/2
-	,validate/1, validate/2, validate/3
-	,put/1
-	,post/2
-	,patch/1, patch/2
-	,delete/2, delete_account/2
-	,cleanup/1
+        ,authorize/1
+        ,authenticate/1
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,validate/1, validate/2, validate/3
+        ,put/1
+        ,post/2
+        ,patch/1, patch/2
+        ,delete/2, delete_account/2
+        ,cleanup/1
         ]).
 
 -include("crossbar.hrl").
@@ -48,16 +48,16 @@ init() ->
     maybe_revise_schema(),
 
     Bindings = [{<<"*.allowed_methods.webhooks">>, 'allowed_methods'}
-	       ,{<<"*.authorize">>, 'authorize'}
-	       ,{<<"*.authenticate">>, 'authenticate'}
-	       ,{<<"*.resource_exists.webhooks">>, 'resource_exists'}
-	       ,{<<"*.validate.webhooks">>, 'validate'}
-	       ,{<<"*.execute.put.webhooks">>, 'put'}
-	       ,{<<"*.execute.post.webhooks">>, 'post'}
-	       ,{<<"*.execute.patch.webhooks">>, 'patch'}
-	       ,{<<"*.execute.delete.webhooks">>, 'delete'}
-	       ,{<<"*.execute.delete.accounts">>, 'delete_account'}
-	       ,{crossbar_cleanup:binding_system(), 'cleanup'}
+               ,{<<"*.authorize">>, 'authorize'}
+               ,{<<"*.authenticate">>, 'authenticate'}
+               ,{<<"*.resource_exists.webhooks">>, 'resource_exists'}
+               ,{<<"*.validate.webhooks">>, 'validate'}
+               ,{<<"*.execute.put.webhooks">>, 'put'}
+               ,{<<"*.execute.post.webhooks">>, 'post'}
+               ,{<<"*.execute.patch.webhooks">>, 'patch'}
+               ,{<<"*.execute.delete.webhooks">>, 'delete'}
+               ,{<<"*.execute.delete.accounts">>, 'delete_account'}
+               ,{crossbar_cleanup:binding_system(), 'cleanup'}
                ],
     cb_modules_util:bind(?MODULE, Bindings).
 
@@ -68,7 +68,7 @@ init_master_account_db() ->
             _ = kz_datamgr:revise_doc_from_file(MasterAccountDb
                                                ,'webhooks'
                                                ,<<"webhooks.json">>
-					       ),
+                                               ),
             lager:debug("ensured view into master db");
         {'error', _E} ->
             lager:warning("master account not set yet, unable to load view: ~p", [_E])
@@ -184,7 +184,7 @@ resource_exists(_Id, ?PATH_TOKEN_ATTEMPTS) -> 'true'.
                       cb_context:context().
 validate(Context) ->
     validate_webhooks(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)
-		     ,cb_context:req_verb(Context)
+                     ,cb_context:req_verb(Context)
                      ).
 
 -spec validate_webhooks(cb_context:context(), http_method()) -> cb_context:context().
@@ -202,8 +202,8 @@ validate(Context, ?PATH_TOKEN_ATTEMPTS) ->
     summary_attempts(Context);
 validate(Context, Id) ->
     validate_webhook(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)
-		    ,Id
-		    ,cb_context:req_verb(Context)
+                    ,Id
+                    ,cb_context:req_verb(Context)
                     ).
 
 -spec validate_webhook(cb_context:context(), path_token(), http_method()) ->
@@ -265,7 +265,7 @@ delete_account_webhooks(AccountId) ->
         {'ok', []} -> 'ok';
         {'error', _E} ->
             lager:debug("failed to fetch webhooks for account ~s: ~p"
-		       ,[AccountId, _E]
+                       ,[AccountId, _E]
                        );
         {'ok', ViewJObjs} ->
             _ = delete_account_hooks(ViewJObjs),
@@ -278,10 +278,10 @@ fetch_account_hooks(AccountId) ->
     kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                           ,<<"webhooks/accounts_listing">>
                           ,[{'key', AccountId}
-			   ,{'reduce', 'false'}
-			   ,'include_docs'
+                           ,{'reduce', 'false'}
+                           ,'include_docs'
                            ]
-			  ).
+                          ).
 
 -spec delete_account_hooks(kz_json:objects()) -> any().
 delete_account_hooks(ViewJObjs) ->
@@ -289,7 +289,7 @@ delete_account_hooks(ViewJObjs) ->
                        ,[kz_json:get_value(<<"doc">>, ViewJObj)
                          || ViewJObj <- ViewJObjs
                         ]
-		       ).
+                       ).
 
 %%%===================================================================
 %%% Internal functions
@@ -314,11 +314,11 @@ validate_collection_patch(Context) ->
 validate_collection_patch(Context, 'undefined') ->
     cb_context:add_validation_error(
       ?REENABLE
-				   ,<<"required">>
-				   ,kz_json:from_list(
-				      [{<<"message">>, <<"re-enable is required to patch collections">>}]
-				     )
-				   ,Context
+                                   ,<<"required">>
+                                   ,kz_json:from_list(
+                                      [{<<"message">>, <<"re-enable is required to patch collections">>}]
+                                     )
+                                   ,Context
      );
 validate_collection_patch(Context, ReEnable) ->
     case kz_util:is_true(ReEnable) of
@@ -331,12 +331,12 @@ validate_collection_patch(Context, ReEnable) ->
 reenable_validation_error(Context) ->
     cb_context:add_validation_error(
       ?REENABLE
-				   ,<<"enum">>
-				   ,kz_json:from_list(
-				      [{<<"message">>, <<"value not found in enumerated list of values">>}
-				      ,{<<"target">>, ['true']}
-				      ])
-				   ,Context
+                                   ,<<"enum">>
+                                   ,kz_json:from_list(
+                                      [{<<"message">>, <<"value not found in enumerated list of values">>}
+                                      ,{<<"target">>, ['true']}
+                                      ])
+                                   ,Context
      ).
 
 %%--------------------------------------------------------------------
@@ -357,7 +357,7 @@ read(Id, Context) ->
 maybe_leak_pvt_fields(Context) ->
     Doc = cb_context:doc(Context),
     kz_json:set_values([{<<"disable_reason">>, kzd_webhook:disabled_message(Doc)}]
-		      ,Doc
+                      ,Doc
                       ),
     cb_context:set_doc(Context, Doc).
 
@@ -384,11 +384,11 @@ update(Id, Context) ->
 summary(Context) ->
     maybe_fix_envelope(
       crossbar_doc:load_view(?CB_LIST
-			    ,[{'startkey', [cb_context:account_id(Context), get_summary_start_key(Context)]}
-			     ,{'endkey', [cb_context:account_id(Context), kz_json:new()]}
-			     ]
-			    ,Context
-			    ,fun normalize_view_results/2
+                            ,[{'startkey', [cb_context:account_id(Context), get_summary_start_key(Context)]}
+                             ,{'endkey', [cb_context:account_id(Context), kz_json:new()]}
+                             ]
+                            ,Context
+                            ,fun normalize_view_results/2
                             )
      ).
 
@@ -403,7 +403,7 @@ maybe_fix_envelope(Context) ->
 fix_envelope(Context) ->
     UpdatedEnvelope =
         case {cb_context:doc(Context)
-	     ,cb_context:resp_envelope(Context)
+             ,cb_context:resp_envelope(Context)
              }
         of
             {[], Envelope} ->
@@ -416,8 +416,8 @@ fix_envelope(Context) ->
 -spec fix_keys(kz_json:object()) -> kz_json:object().
 fix_keys(Envelope) ->
     lists:foldl(fun fix_key_fold/2
-	       ,Envelope
-	       ,[<<"start_key">>, <<"next_start_key">>]
+               ,Envelope
+               ,[<<"start_key">>, <<"next_start_key">>]
                ).
 
 -spec fix_key_fold(kz_json:key(), kz_json:object()) -> kz_json:object().
@@ -439,9 +439,9 @@ summary_available(Context) ->
     {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
 
     crossbar_doc:load_view(?AVAILABLE_HOOKS
-			  ,['include_docs']
-			  ,cb_context:set_account_db(Context, MasterAccountDb)
-			  ,fun normalize_available/2
+                          ,['include_docs']
+                          ,cb_context:set_account_db(Context, MasterAccountDb)
+                          ,fun normalize_available/2
                           ).
 
 -spec normalize_available(kz_json:object(), kz_json:objects()) ->
@@ -463,16 +463,16 @@ summary_attempts(Context) ->
 
 summary_attempts(Context, 'undefined') ->
     ViewOptions = [{'endkey', 0}
-		  ,{'startkey', get_attempts_start_key(Context)}
-		  ,'include_docs'
-		  ,'descending'
+                  ,{'startkey', get_attempts_start_key(Context)}
+                  ,'include_docs'
+                  ,'descending'
                   ],
     summary_attempts_fetch(Context, ViewOptions, ?ATTEMPTS_BY_ACCOUNT);
 summary_attempts(Context, <<_/binary>> = HookId) ->
     ViewOptions = [{'endkey', [HookId, 0]}
-		  ,{'startkey', [HookId, get_attempts_start_key(Context)]}
-		  ,'include_docs'
-		  ,'descending'
+                  ,{'startkey', [HookId, get_attempts_start_key(Context)]}
+                  ,'include_docs'
+                  ,'descending'
                   ],
     summary_attempts_fetch(Context, ViewOptions, ?ATTEMPTS_BY_HOOK).
 
@@ -499,9 +499,9 @@ summary_attempts_fetch(Context, ViewOptions, View) ->
     lager:debug("loading view ~s with options ~p", [View, ViewOptions]),
     maybe_fix_envelope(
       crossbar_doc:load_view(View
-			    ,ViewOptions
-			    ,cb_context:set_account_db(Context, Db)
-			    ,fun normalize_attempt_results/2
+                            ,ViewOptions
+                            ,cb_context:set_account_db(Context, Db)
+                            ,fun normalize_attempt_results/2
                             )
      ).
 
@@ -510,7 +510,7 @@ summary_attempts_fetch(Context, ViewOptions, View) ->
 normalize_attempt_results(JObj, Acc) ->
     Doc = kz_json:get_value(<<"doc">>, JObj),
     [kz_json:delete_keys([<<"id">>, <<"_id">>]
-			,kz_json:set_value(<<"timestamp">>, kz_doc:created(Doc), Doc)
+                        ,kz_json:set_value(<<"timestamp">>, kz_doc:created(Doc), Doc)
                         )
      | Acc
     ].
@@ -525,11 +525,11 @@ normalize_attempt_results(JObj, Acc) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
-		      ,kz_json:set_values([{<<"pvt_type">>, kzd_webhook:type()}
-					  ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
-					  ]
-					 ,cb_context:doc(Context)
-					 )
+                      ,kz_json:set_values([{<<"pvt_type">>, kzd_webhook:type()}
+                                          ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
+                                          ]
+                                         ,cb_context:doc(Context)
+                                         )
                       );
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(kzd_webhook:type())).
@@ -566,32 +566,32 @@ maybe_update_hook(Context) ->
                             cb_context:context().
 reenable_hooks(Context) ->
     reenable_hooks(Context
-		  ,props:get_value(<<"accounts">>, cb_context:req_nouns(Context))
+                  ,props:get_value(<<"accounts">>, cb_context:req_nouns(Context))
                   ).
 
 reenable_hooks(Context, [AccountId]) ->
     handle_resp(
       Context
-	       ,send_reenable_req(Context, AccountId, <<"account">>)
+               ,send_reenable_req(Context, AccountId, <<"account">>)
      );
 reenable_hooks(Context, [AccountId, ?DESCENDANTS]) ->
     handle_resp(
       Context
-	       ,send_reenable_req(Context, AccountId, ?DESCENDANTS)
+               ,send_reenable_req(Context, AccountId, ?DESCENDANTS)
      ).
 
 -spec send_reenable_req(cb_context:context(), ne_binary(), ne_binary()) ->
                                kz_amqp_worker:request_return().
 send_reenable_req(Context, AccountId, Action) ->
     Req = [{<<"Type">>, kzd_webhook:type()}
-	  ,{<<"Action">>, Action}
-	  ,{<<"Account-ID">>, AccountId}
-	  ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+          ,{<<"Action">>, Action}
+          ,{<<"Account-ID">>, AccountId}
+          ,{<<"Msg-ID">>, cb_context:req_id(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:call(Req
-		       ,fun kapi_conf:publish_doc_type_update/1
-		       ,fun kz_util:always_true/1
+                       ,fun kapi_conf:publish_doc_type_update/1
+                       ,fun kz_util:always_true/1
                        ).
 
 -spec handle_resp(cb_context:context(), kz_amqp_worker:request_return()) ->
@@ -624,7 +624,7 @@ cleanup_orphaned_hooks() ->
     case kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                                ,<<"webhooks/accounts_listing">>
                                ,['group']
-			       )
+                               )
     of
         {'ok', []} -> lager:debug("no hooks configured");
         {'error', _E} ->

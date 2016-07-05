@@ -11,18 +11,18 @@
 -include_lib("kazoo/include/kz_api.hrl").
 
 -export([message/1, message_v/1
-	,delivery/1, delivery_v/1
-	,resume/1, resume_v/1
-	,inbound/1, inbound_v/1
-	,outbound/1, outbound_v/1
-	,bind_q/2, unbind_q/2
-	,declare_exchanges/0
-	,publish_message/1, publish_message/2
-	,publish_delivery/1, publish_delivery/2
-	,publish_targeted_delivery/2, publish_targeted_delivery/3
-	,publish_resume/1, publish_resume/2
-	,publish_inbound/1, publish_inbound/2
-	,publish_outbound/1, publish_outbound/2
+        ,delivery/1, delivery_v/1
+        ,resume/1, resume_v/1
+        ,inbound/1, inbound_v/1
+        ,outbound/1, outbound_v/1
+        ,bind_q/2, unbind_q/2
+        ,declare_exchanges/0
+        ,publish_message/1, publish_message/2
+        ,publish_delivery/1, publish_delivery/2
+        ,publish_targeted_delivery/2, publish_targeted_delivery/3
+        ,publish_resume/1, publish_resume/2
+        ,publish_inbound/1, publish_inbound/2
+        ,publish_outbound/1, publish_outbound/2
         ]).
 
 -define(LOWER(X), kz_util:to_lower_binary(X)).
@@ -34,33 +34,33 @@
 -define(SMS_REQ_HEADERS, [<<"Call-ID">>, <<"Endpoints">>, <<"Application-Name">>, <<"Body">>]).
 -define(OPTIONAL_SMS_REQ_HEADERS
        ,[<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
-	,<<"Application-Data">>, <<"Message-ID">>
-	,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
-	,<<"Outbound-Callee-ID-Name">>, <<"Outbound-Callee-ID-Number">>
-	,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-	,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-	,<<"From-User">>, <<"From-Realm">>, <<"From-URI">>
-	,<<"To-User">>, <<"To-Realm">>, <<"To-URI">>
-	,<<"Dial-Endpoint-Method">>
-	,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
-	,<<"SIP-Transport">>, <<"SIP-Headers">>
-	,<<"Route-ID">>, <<"Route-Type">>
-	     | kapi_dialplan:optional_bridge_req_headers()
-	]).
+        ,<<"Application-Data">>, <<"Message-ID">>
+        ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
+        ,<<"Outbound-Callee-ID-Name">>, <<"Outbound-Callee-ID-Number">>
+        ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+        ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+        ,<<"From-User">>, <<"From-Realm">>, <<"From-URI">>
+        ,<<"To-User">>, <<"To-Realm">>, <<"To-URI">>
+        ,<<"Dial-Endpoint-Method">>
+        ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
+        ,<<"SIP-Transport">>, <<"SIP-Headers">>
+        ,<<"Route-ID">>, <<"Route-Type">>
+             | kapi_dialplan:optional_bridge_req_headers()
+        ]).
 -define(SMS_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-			,{<<"Event-Name">>, ?SMS_REQ_EVENT_NAME}
-			,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
-			,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>]}
-			,{<<"Application-Name">>, [<<"send">>]}
-			,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
+                        ,{<<"Event-Name">>, ?SMS_REQ_EVENT_NAME}
+                        ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
+                        ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>]}
+                        ,{<<"Application-Name">>, [<<"send">>]}
+                        ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
                         ]).
 -define(SMS_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
-		       ,{<<"SIP-Headers">>, fun kz_json:is_json_object/1}
-		       ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-		       ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
-		       ,{<<"Continue-On-Fail">>, fun kz_util:is_boolean/1}
-		       ,{<<"Message-ID">>, fun is_binary/1}
-		       ,{<<"Body">>, fun is_binary/1}
+                       ,{<<"SIP-Headers">>, fun kz_json:is_json_object/1}
+                       ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                       ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                       ,{<<"Continue-On-Fail">>, fun kz_util:is_boolean/1}
+                       ,{<<"Message-ID">>, fun is_binary/1}
+                       ,{<<"Body">>, fun is_binary/1}
                        ]).
 -define(SMS_ROUTING_KEY(RouteId,CallId), <<"message.route."
                                            ,(amqp_util:encode(RouteId))/binary, "."
@@ -71,40 +71,40 @@
 -define(SMS_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
 -define(OPTIONAL_SMS_REQ_ENDPOINT_HEADERS, kapi_dialplan:optional_bridge_req_endpoint_headers()).
 -define(SMS_REQ_ENDPOINT_VALUES, [{<<"Endpoint-Type">>
-				  ,[<<"sip">>, <<"xmpp">>, <<"smpp">>, <<"http">>, <<"amqp">>]}
+                                  ,[<<"sip">>, <<"xmpp">>, <<"smpp">>, <<"http">>, <<"amqp">>]}
                                  ]).
 -define(SMS_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun kz_json:is_json_object/1}
-				,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-				,{<<"Endpoint-Options">>, fun kz_json:is_json_object/1}
+                                ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                                ,{<<"Endpoint-Options">>, fun kz_json:is_json_object/1}
                                 ]).
 
 %% Delivery
 -define(DELIVERY_REQ_EVENT_NAME, <<"delivery">>).
 -define(DELIVERY_HEADERS, [<<"Call-ID">>, <<"Message-ID">>]).
 -define(OPTIONAL_DELIVERY_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Orig-Port">>
-				   ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
-				   ,<<"From-Network-Addr">>
-				   ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
-				   ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-				   ,<<"Contact">>, <<"User-Agent">>
-				   ,<<"Contact-IP">>, <<"Contact-Port">>, <<"Contact-Username">>
-				   ,<<"To">>, <<"From">>, <<"Request">>
-				   ,<<"Body">>, <<"Account-ID">>
-				   ,<<"Delivery-Result-Code">>, <<"Delivery-Failure">>, <<"Status">>
-				   ,<<"Delivery-Result-Text">>, <<"Error-Code">>, <<"Error-Message">>
+                                   ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
+                                   ,<<"From-Network-Addr">>
+                                   ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
+                                   ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                   ,<<"Contact">>, <<"User-Agent">>
+                                   ,<<"Contact-IP">>, <<"Contact-Port">>, <<"Contact-Username">>
+                                   ,<<"To">>, <<"From">>, <<"Request">>
+                                   ,<<"Body">>, <<"Account-ID">>
+                                   ,<<"Delivery-Result-Code">>, <<"Delivery-Failure">>, <<"Status">>
+                                   ,<<"Delivery-Result-Text">>, <<"Error-Code">>, <<"Error-Message">>
                                    ]).
 -define(DELIVERY_TYPES, [{<<"To">>, fun is_binary/1}
-			,{<<"From">>, fun is_binary/1}
-			,{<<"Request">>, fun is_binary/1}
-			,{<<"Message-ID">>, fun is_binary/1}
-			,{<<"Event-Queue">>, fun is_binary/1}
-			,{<<"Caller-ID-Name">>, fun is_binary/1}
-			,{<<"Caller-ID-Number">>, fun is_binary/1}
-			,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-			,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                        ,{<<"From">>, fun is_binary/1}
+                        ,{<<"Request">>, fun is_binary/1}
+                        ,{<<"Message-ID">>, fun is_binary/1}
+                        ,{<<"Event-Queue">>, fun is_binary/1}
+                        ,{<<"Caller-ID-Name">>, fun is_binary/1}
+                        ,{<<"Caller-ID-Number">>, fun is_binary/1}
+                        ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                        ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
                         ]).
 -define(DELIVERY_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-			     ,{<<"Event-Name">>, ?DELIVERY_REQ_EVENT_NAME}
+                             ,{<<"Event-Name">>, ?DELIVERY_REQ_EVENT_NAME}
                              ]).
 -define(DELIVERY_ROUTING_KEY(CallId), <<"message.delivery.", (amqp_util:encode(CallId))/binary>>).
 
@@ -113,7 +113,7 @@
 -define(RESUME_REQ_HEADERS, [<<"SMS-ID">>]).
 -define(OPTIONAL_RESUME_REQ_HEADERS, []).
 -define(RESUME_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-			   ,{<<"Event-Name">>, ?RESUME_REQ_EVENT_NAME}
+                           ,{<<"Event-Name">>, ?RESUME_REQ_EVENT_NAME}
                            ]).
 -define(RESUME_REQ_TYPES, []).
 -define(RESUME_ROUTING_KEY(CallId), <<"message.resume.", (amqp_util:encode(CallId))/binary>>).
@@ -121,42 +121,42 @@
 %% Inbound
 -define(INBOUND_REQ_EVENT_NAME, <<"inbound">>).
 -define(INBOUND_HEADERS, [<<"Message-ID">>, <<"Body">>, <<"Route-ID">>
-			 ,<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
+                         ,<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
                          ]).
 -define(OPTIONAL_INBOUND_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Orig-Port">>
-				  ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
-				  ,<<"From-Network-Addr">>
-				  ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
-				  ,<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
-				  ,<<"Contact">>, <<"User-Agent">>
-				  ,<<"Contact-IP">>, <<"Contact-Port">>, <<"Contact-Username">>
-				  ,<<"To">>, <<"From">>, <<"Request">>
-				  ,<<"Account-ID">>
-				  ,<<"Delivery-Result-Code">>, <<"Delivery-Failure">>, <<"Status">>
-				  ,<<"Route-Type">>, <<"System-ID">>
+                                  ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
+                                  ,<<"From-Network-Addr">>
+                                  ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
+                                  ,<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
+                                  ,<<"Contact">>, <<"User-Agent">>
+                                  ,<<"Contact-IP">>, <<"Contact-Port">>, <<"Contact-Username">>
+                                  ,<<"To">>, <<"From">>, <<"Request">>
+                                  ,<<"Account-ID">>
+                                  ,<<"Delivery-Result-Code">>, <<"Delivery-Failure">>, <<"Status">>
+                                  ,<<"Route-Type">>, <<"System-ID">>
                                   ]).
 -define(INBOUND_TYPES, [{<<"To">>, fun is_binary/1}
-		       ,{<<"From">>, fun is_binary/1}
-		       ,{<<"Request">>, fun is_binary/1}
-		       ,{<<"Message-ID">>, fun is_binary/1}
-		       ,{<<"System-ID">>, fun is_binary/1}
-		       ,{<<"Event-Queue">>, fun is_binary/1}
-		       ,{<<"Caller-ID-Name">>, fun is_binary/1}
-		       ,{<<"Caller-ID-Number">>, fun is_binary/1}
-		       ,{<<"Callee-ID-Name">>, fun is_binary/1}
-		       ,{<<"Callee-ID-Number">>, fun is_binary/1}
-		       ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-		       ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
-		       ,{<<"Body">>, fun is_binary/1}
+                       ,{<<"From">>, fun is_binary/1}
+                       ,{<<"Request">>, fun is_binary/1}
+                       ,{<<"Message-ID">>, fun is_binary/1}
+                       ,{<<"System-ID">>, fun is_binary/1}
+                       ,{<<"Event-Queue">>, fun is_binary/1}
+                       ,{<<"Caller-ID-Name">>, fun is_binary/1}
+                       ,{<<"Caller-ID-Number">>, fun is_binary/1}
+                       ,{<<"Callee-ID-Name">>, fun is_binary/1}
+                       ,{<<"Callee-ID-Number">>, fun is_binary/1}
+                       ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                       ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                       ,{<<"Body">>, fun is_binary/1}
                        ]).
 -define(INBOUND_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-			    ,{<<"Event-Name">>, ?INBOUND_REQ_EVENT_NAME}
-			    ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
+                            ,{<<"Event-Name">>, ?INBOUND_REQ_EVENT_NAME}
+                            ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
                             ]).
 -define(INBOUND_ROUTING_KEY(RouteId, CallId), <<"message.inbound."
-						,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
-						,(amqp_util:encode(CallId))/binary
-					      >>).
+                                                ,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
+                                                ,(amqp_util:encode(CallId))/binary
+                                              >>).
 
 %% Outbound
 -define(OUTBOUND_REQ_EVENT_NAME, <<"outbound">>).
@@ -164,42 +164,42 @@
                           ,<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
                           ]).
 -define(OPTIONAL_OUTBOUND_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Orig-Port">>
-				   ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
-				   ,<<"From-Network-Addr">>
-				   ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
-				   ,<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
-				   ,<<"Contact">>, <<"User-Agent">>
-				   ,<<"Contact-IP">>, <<"Contact-Port">>, <<"Contact-Username">>
-				   ,<<"To">>, <<"From">>, <<"Request">>
-				   ,<<"Account-ID">>
-				   ,<<"Delivery-Result-Code">>, <<"Delivery-Failure">>, <<"Status">>
-				   ,<<"Route-Type">>, <<"System-ID">>
+                                   ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
+                                   ,<<"From-Network-Addr">>
+                                   ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
+                                   ,<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
+                                   ,<<"Contact">>, <<"User-Agent">>
+                                   ,<<"Contact-IP">>, <<"Contact-Port">>, <<"Contact-Username">>
+                                   ,<<"To">>, <<"From">>, <<"Request">>
+                                   ,<<"Account-ID">>
+                                   ,<<"Delivery-Result-Code">>, <<"Delivery-Failure">>, <<"Status">>
+                                   ,<<"Route-Type">>, <<"System-ID">>
                                    ]).
 -define(OUTBOUND_TYPES, [{<<"To">>, fun is_binary/1}
-			,{<<"From">>, fun is_binary/1}
-			,{<<"Request">>, fun is_binary/1}
-			,{<<"Message-ID">>, fun is_binary/1}
-			,{<<"System-ID">>, fun is_binary/1}
-			,{<<"Event-Queue">>, fun is_binary/1}
-			,{<<"Caller-ID-Name">>, fun is_binary/1}
-			,{<<"Caller-ID-Number">>, fun is_binary/1}
-			,{<<"Callee-ID-Name">>, fun is_binary/1}
-			,{<<"Callee-ID-Number">>, fun is_binary/1}
-			,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-			,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
-			,{<<"Body">>, fun is_binary/1}
+                        ,{<<"From">>, fun is_binary/1}
+                        ,{<<"Request">>, fun is_binary/1}
+                        ,{<<"Message-ID">>, fun is_binary/1}
+                        ,{<<"System-ID">>, fun is_binary/1}
+                        ,{<<"Event-Queue">>, fun is_binary/1}
+                        ,{<<"Caller-ID-Name">>, fun is_binary/1}
+                        ,{<<"Caller-ID-Number">>, fun is_binary/1}
+                        ,{<<"Callee-ID-Name">>, fun is_binary/1}
+                        ,{<<"Callee-ID-Number">>, fun is_binary/1}
+                        ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                        ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                        ,{<<"Body">>, fun is_binary/1}
                         ]).
 -define(OUTBOUND_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-			     ,{<<"Event-Name">>, ?OUTBOUND_REQ_EVENT_NAME}
-			     ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
+                             ,{<<"Event-Name">>, ?OUTBOUND_REQ_EVENT_NAME}
+                             ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
                              ]).
 -define(OUTBOUND_ROUTING_KEY(RouteId, CallId), <<"message.outbound."
-						 ,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
-						 ,(amqp_util:encode(CallId))/binary
-					       >>).
+                                                 ,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
+                                                 ,(amqp_util:encode(CallId))/binary
+                                               >>).
 
 -define(SMS_DEFAULT_OUTBOUND_OPTIONS, kz_json:from_list([{<<"delivery_mode">>, 2}
-							,{<<"mandatory">>, 'true'}
+                                                        ,{<<"mandatory">>, 'true'}
                                                         ])).
 -define(SMS_OUTBOUND_OPTIONS_KEY, [<<"outbound">>, <<"options">>]).
 -define(SMS_OUTBOUND_OPTIONS, kapps_config:get(<<"sms">>, ?SMS_OUTBOUND_OPTIONS_KEY, ?SMS_DEFAULT_OUTBOUND_OPTIONS)).

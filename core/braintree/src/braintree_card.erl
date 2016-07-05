@@ -17,8 +17,8 @@
 -export([update/1]).
 -export([delete/1]).
 -export([expired/0
-	,expired/1
-	,expiring/2
+        ,expired/1
+        ,expiring/2
         ]).
 -export([make_default/1, make_default/2]).
 -export([xml_to_record/1, xml_to_record/2]).
@@ -79,7 +79,7 @@ payment_token(#bt_card{token = Value}) -> Value.
 -spec find(ne_binary() | bt_card()) -> bt_card().
 find(#bt_card{token = CardId}) -> find(CardId);
 find(Token) ->
-						% github.com/braintree/braintree_php/blob/master/lib/Braintree/CreditCardGateway.php#L149
+                                                % github.com/braintree/braintree_php/blob/master/lib/Braintree/CreditCardGateway.php#L149
     Url = url(Token, ''),
     Xml = try braintree_request:get(Url)
           catch
@@ -157,9 +157,9 @@ expired(#bt_card{expired=Expired}) -> Expired.
 -spec expiring(text(), text()) -> [bt_xml()].
 expiring(Start, End) ->
     Url = lists:append(["/payment_methods/all/expiring?start="
-		       ,kz_util:to_list(Start)
-		       ,"&end="
-		       ,kz_util:to_list(End)
+                       ,kz_util:to_list(Start)
+                       ,"&end="
+                       ,kz_util:to_list(End)
                        ]),
     Xml = braintree_request:post(Url, <<>>),
     [xml_to_record(Item)
@@ -225,13 +225,13 @@ record_to_xml(Card) ->
 
 record_to_xml(#bt_card{}=Card, ToString) ->
     Props = [{'token', Card#bt_card.token}
-	    ,{'cardholder-name', Card#bt_card.cardholder_name}
-	    ,{'expiration-date', Card#bt_card.expiration_date}
-	    ,{'expiration-month', Card#bt_card.expiration_month}
-	    ,{'expiration-year', Card#bt_card.expiration_year}
-	    ,{'customer-id', Card#bt_card.customer_id}
-	    ,{'number', Card#bt_card.number}
-	    ,{'cvv', Card#bt_card.cvv}
+            ,{'cardholder-name', Card#bt_card.cardholder_name}
+            ,{'expiration-date', Card#bt_card.expiration_date}
+            ,{'expiration-month', Card#bt_card.expiration_month}
+            ,{'expiration-year', Card#bt_card.expiration_year}
+            ,{'customer-id', Card#bt_card.customer_id}
+            ,{'number', Card#bt_card.number}
+            ,{'cvv', Card#bt_card.cvv}
             ],
     Conditionals =
         [fun(#bt_card{billing_address=BA, billing_address_id=BAID}, P) ->
@@ -247,22 +247,22 @@ record_to_xml(#bt_card{}=Card, ToString) ->
                  case props:get_value('options', P) of
                      'undefined' ->
                          [{'options', [{'update-existing-token', Token}]}
-			  | props:delete('token', P)
+                          | props:delete('token', P)
                          ];
                      Options ->
                          [{'options', [{'update-existing-token', Token}|Options]}
-			  | props:delete('token', props:delete('options', P))
+                          | props:delete('token', props:delete('options', P))
                          ]
                  end;
             (#bt_card{update_existing='true'}, P) ->
                  case props:get_value('options', P) of
                      'undefined' ->
                          [{'options', [{'update-existing-token', Card#bt_card.token}]}
-			  | props:delete('token', P)
+                          | props:delete('token', P)
                          ];
                      Options ->
                          [{'options', [{'update-existing-token', Card#bt_card.token}|Options]}
-			  | props:delete('token', props:delete('options', P))
+                          | props:delete('token', props:delete('options', P))
                          ]
                  end;
             (_, P) -> P
@@ -298,18 +298,18 @@ record_to_xml(#bt_card{}=Card, ToString) ->
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_card{token = create_or_get_json_id(JObj)
-	    ,cardholder_name = kz_json:get_binary_value(<<"cardholder_name">>, JObj)
-	    ,expiration_date = kz_json:get_binary_value(<<"expiration_date">>, JObj)
-	    ,expiration_month = kz_json:get_binary_value(<<"expiration_month">>, JObj)
-	    ,expiration_year = kz_json:get_binary_value(<<"expiration_year">>, JObj)
-	    ,customer_id = kz_json:get_binary_value(<<"customer_id">>, JObj)
-	    ,number = kz_json:get_binary_value(<<"number">>, JObj)
-	    ,cvv = kz_json:get_binary_value(<<"cvv">>, JObj)
-	    ,billing_address_id = kz_json:get_binary_value(<<"billing_address_id">>, JObj)
-	    ,billing_address = braintree_address:json_to_record(kz_json:get_value(<<"billing_address">>, JObj))
-	    ,update_existing = kz_json:get_binary_value(<<"update_existing">>, JObj)
-	    ,verify = kz_json:is_true(<<"verify">>, JObj, 'true')
-	    ,make_default = kz_json:is_true(<<"make_default">>, JObj, 'true')
+            ,cardholder_name = kz_json:get_binary_value(<<"cardholder_name">>, JObj)
+            ,expiration_date = kz_json:get_binary_value(<<"expiration_date">>, JObj)
+            ,expiration_month = kz_json:get_binary_value(<<"expiration_month">>, JObj)
+            ,expiration_year = kz_json:get_binary_value(<<"expiration_year">>, JObj)
+            ,customer_id = kz_json:get_binary_value(<<"customer_id">>, JObj)
+            ,number = kz_json:get_binary_value(<<"number">>, JObj)
+            ,cvv = kz_json:get_binary_value(<<"cvv">>, JObj)
+            ,billing_address_id = kz_json:get_binary_value(<<"billing_address_id">>, JObj)
+            ,billing_address = braintree_address:json_to_record(kz_json:get_value(<<"billing_address">>, JObj))
+            ,update_existing = kz_json:get_binary_value(<<"update_existing">>, JObj)
+            ,verify = kz_json:is_true(<<"verify">>, JObj, 'true')
+            ,make_default = kz_json:is_true(<<"make_default">>, JObj, 'true')
             }.
 
 %%--------------------------------------------------------------------
@@ -321,23 +321,23 @@ json_to_record(JObj) ->
 -spec record_to_json(bt_card()) -> kz_json:object().
 record_to_json(#bt_card{}=Card) ->
     Props =[{<<"id">>, Card#bt_card.token}
-	   ,{<<"bin">>, Card#bt_card.bin}
-	   ,{<<"cardholder_name">>, Card#bt_card.cardholder_name}
-	   ,{<<"card_type">>, Card#bt_card.card_type}
-	   ,{<<"created_at">>, Card#bt_card.created_at}
-	   ,{<<"updated_at">>, Card#bt_card.updated_at}
-	   ,{<<"default">>, Card#bt_card.default}
-	   ,{<<"expiration_date">>, Card#bt_card.expiration_date}
-	   ,{<<"expiration_month">>, Card#bt_card.expiration_month}
-	   ,{<<"expiration_year">>, Card#bt_card.expiration_year}
-	   ,{<<"expired">>, Card#bt_card.expired}
-	   ,{<<"customer_location">>, Card#bt_card.customer_location}
-	   ,{<<"last_four">>, Card#bt_card.last_four}
-	   ,{<<"customer_id">>, Card#bt_card.customer_id}
-	   ,{<<"created_at">>, Card#bt_card.created_at}
-	   ,{<<"updated_at">>, Card#bt_card.updated_at}
-	   ,{<<"billing_address">>, braintree_address:record_to_json(Card#bt_card.billing_address)}
-	   ,{<<"billing_address_id">>, Card#bt_card.billing_address_id}
+           ,{<<"bin">>, Card#bt_card.bin}
+           ,{<<"cardholder_name">>, Card#bt_card.cardholder_name}
+           ,{<<"card_type">>, Card#bt_card.card_type}
+           ,{<<"created_at">>, Card#bt_card.created_at}
+           ,{<<"updated_at">>, Card#bt_card.updated_at}
+           ,{<<"default">>, Card#bt_card.default}
+           ,{<<"expiration_date">>, Card#bt_card.expiration_date}
+           ,{<<"expiration_month">>, Card#bt_card.expiration_month}
+           ,{<<"expiration_year">>, Card#bt_card.expiration_year}
+           ,{<<"expired">>, Card#bt_card.expired}
+           ,{<<"customer_location">>, Card#bt_card.customer_location}
+           ,{<<"last_four">>, Card#bt_card.last_four}
+           ,{<<"customer_id">>, Card#bt_card.customer_id}
+           ,{<<"created_at">>, Card#bt_card.created_at}
+           ,{<<"updated_at">>, Card#bt_card.updated_at}
+           ,{<<"billing_address">>, braintree_address:record_to_json(Card#bt_card.billing_address)}
+           ,{<<"billing_address_id">>, Card#bt_card.billing_address_id}
            ],
     kz_json:from_list(props:filter_undefined(Props)).
 
@@ -352,5 +352,5 @@ record_to_json(#bt_card{}=Card) ->
 create_or_get_json_id(JObj) ->
     case kz_json:get_value(<<"number">>, JObj) of
         'undefined' -> kz_doc:id(JObj);
-	_ ->          kz_doc:id(JObj, kz_util:rand_hex_binary(16))
+        _ ->          kz_doc:id(JObj, kz_util:rand_hex_binary(16))
     end.

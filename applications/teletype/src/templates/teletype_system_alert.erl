@@ -9,7 +9,7 @@
 -module(teletype_system_alert).
 
 -export([init/0
-	,handle_system_alert/2
+        ,handle_system_alert/2
         ]).
 
 -include("teletype.hrl").
@@ -19,9 +19,9 @@
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
-	  [?MACRO_VALUE(<<"message">>, <<"message">>, <<"Message">>, <<"System message">>)
-	   | ?ACCOUNT_MACROS ++ ?USER_MACROS
-	  ])
+          [?MACRO_VALUE(<<"message">>, <<"message">>, <<"Message">>, <<"System message">>)
+           | ?ACCOUNT_MACROS ++ ?USER_MACROS
+          ])
        ).
 
 -define(TEMPLATE_HTML_HEAD, "<html><head><meta charset=\"utf-8\" /></head><body>").
@@ -44,18 +44,18 @@
 -define(TEMPLATE_HTML, kz_util:to_binary(
                          lists:flatten(
                            [?TEMPLATE_HTML_HEAD
-			   ,?TEMPLATE_HTML_ALERT
-			   ,?TEMPLATE_HTML_PRODUCER
-			   ,?TEMPLATE_HTML_DETAILS
-			   ,?TEMPLATE_HTML_FLOW
-			   ,?TEMPLATE_HTML_ERROR
-			   ,?TEMPLATE_HTML_KVS
-			   ,?TEMPLATE_HTML_CCVS
-			   ,?TEMPLATE_HTML_SIPHDR
-			   ,?TEMPLATE_HTML_ACCOUNT
-			   ,?TEMPLATE_HTML_USER
-			   ,?TEMPLATE_HTML_NUMBERS
-			   ,?TEMPLATE_HTML_TAIL
+                           ,?TEMPLATE_HTML_ALERT
+                           ,?TEMPLATE_HTML_PRODUCER
+                           ,?TEMPLATE_HTML_DETAILS
+                           ,?TEMPLATE_HTML_FLOW
+                           ,?TEMPLATE_HTML_ERROR
+                           ,?TEMPLATE_HTML_KVS
+                           ,?TEMPLATE_HTML_CCVS
+                           ,?TEMPLATE_HTML_SIPHDR
+                           ,?TEMPLATE_HTML_ACCOUNT
+                           ,?TEMPLATE_HTML_USER
+                           ,?TEMPLATE_HTML_NUMBERS
+                           ,?TEMPLATE_HTML_TAIL
                            ]
                           )
                         )
@@ -80,16 +80,16 @@
 -define(TEMPLATE_TEXT, kz_util:to_binary(
                          lists:flatten(
                            [?TEMPLATE_TEXT_ALERT
-			   ,?TEMPLATE_TEXT_PRODUCER
-			   ,?TEMPLATE_TEXT_DETAILS
-			   ,?TEMPLATE_TEXT_FLOW
-			   ,?TEMPLATE_TEXT_ERROR
-			   ,?TEMPLATE_TEXT_KVS
-			   ,?TEMPLATE_TEXT_CCVS
-			   ,?TEMPLATE_TEXT_SIPHDR
-			   ,?TEMPLATE_TEXT_ACCOUNT
-			   ,?TEMPLATE_TEXT_USER
-			   ,?TEMPLATE_TEXT_NUMBERS
+                           ,?TEMPLATE_TEXT_PRODUCER
+                           ,?TEMPLATE_TEXT_DETAILS
+                           ,?TEMPLATE_TEXT_FLOW
+                           ,?TEMPLATE_TEXT_ERROR
+                           ,?TEMPLATE_TEXT_KVS
+                           ,?TEMPLATE_TEXT_CCVS
+                           ,?TEMPLATE_TEXT_SIPHDR
+                           ,?TEMPLATE_TEXT_ACCOUNT
+                           ,?TEMPLATE_TEXT_USER
+                           ,?TEMPLATE_TEXT_NUMBERS
                            ]
                           )
                         )
@@ -109,16 +109,16 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-					  ,{'text', ?TEMPLATE_TEXT}
-					  ,{'html', ?TEMPLATE_HTML}
-					  ,{'subject', ?TEMPLATE_SUBJECT}
-					  ,{'category', ?TEMPLATE_CATEGORY}
-					  ,{'friendly_name', ?TEMPLATE_NAME}
-					  ,{'to', ?TEMPLATE_TO}
-					  ,{'from', ?TEMPLATE_FROM}
-					  ,{'cc', ?TEMPLATE_CC}
-					  ,{'bcc', ?TEMPLATE_BCC}
-					  ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                          ,{'text', ?TEMPLATE_TEXT}
+                                          ,{'html', ?TEMPLATE_HTML}
+                                          ,{'subject', ?TEMPLATE_SUBJECT}
+                                          ,{'category', ?TEMPLATE_CATEGORY}
+                                          ,{'friendly_name', ?TEMPLATE_NAME}
+                                          ,{'to', ?TEMPLATE_TO}
+                                          ,{'from', ?TEMPLATE_FROM}
+                                          ,{'cc', ?TEMPLATE_CC}
+                                          ,{'bcc', ?TEMPLATE_BCC}
+                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
 -spec handle_system_alert(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -167,10 +167,10 @@ process_req(JObj) ->
     DataJObj = kz_json:normalize(JObj),
     lager:debug("template is enabled for account, fetching templates for rendering"),
     Macros = [{<<"system">>, teletype_util:system_params()}
-	     ,{<<"account">>, teletype_util:account_params(DataJObj)}
-	     ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
-	     ,{<<"request">>, request_macros(DataJObj)}
-	     ,{<<"message">>, kz_json:get_value(<<"message">>, DataJObj, <<>>)}
+             ,{<<"account">>, teletype_util:account_params(DataJObj)}
+             ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
+             ,{<<"request">>, request_macros(DataJObj)}
+             ,{<<"message">>, kz_json:get_value(<<"message">>, DataJObj, <<>>)}
               | details_macros(DataJObj)
              ],
 
@@ -179,20 +179,20 @@ process_req(JObj) ->
 
     {'ok', TemplateMetaJObj} =
         teletype_templates:fetch_notification(?TEMPLATE_ID
-					     ,teletype_util:find_account_id(DataJObj)
-					     ),
+                                             ,teletype_util:find_account_id(DataJObj)
+                                             ),
 
     Subject =
         teletype_util:render_subject(
           kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
-				    ,Macros
+                                    ,Macros
          ),
 
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     Emails = teletype_util:find_addresses(
                kz_json:set_value(<<"account_id">>, MasterAccountId, DataJObj)
-					 ,TemplateMetaJObj
-					 ,?MOD_CONFIG_CAT
+                                         ,TemplateMetaJObj
+                                         ,?MOD_CONFIG_CAT
               ),
 
     Attachments = teletype_util:maybe_get_attachments(DataJObj),
@@ -247,25 +247,25 @@ add_to_group(Group, KV, Acc) ->
 request_macros(DataJObj) ->
     kz_json:recursive_to_proplist(
       kz_json:delete_keys([<<"details">>
-			  ,<<"app_version">>
-			  ,<<"app_name">>
-			  ,<<"event_name">>
-			  ,<<"event_category">>
-			  ,<<"server_id">>
-			  ,<<"message">>
-			  ,<<"subject">>
-			  ,<<"account">>
-			  ,<<"preview">>
-			  ,<<"text">>
-			  ,<<"html">>
-			  ,<<"from">>
-			  ,<<"bcc">>
-			  ,<<"cc">>
-			  ,<<"to">>
-			  ,<<"reply_to">>
-			  ,<<"format">>
-			  ,<<"attachment_url">>
+                          ,<<"app_version">>
+                          ,<<"app_name">>
+                          ,<<"event_name">>
+                          ,<<"event_category">>
+                          ,<<"server_id">>
+                          ,<<"message">>
+                          ,<<"subject">>
+                          ,<<"account">>
+                          ,<<"preview">>
+                          ,<<"text">>
+                          ,<<"html">>
+                          ,<<"from">>
+                          ,<<"bcc">>
+                          ,<<"cc">>
+                          ,<<"to">>
+                          ,<<"reply_to">>
+                          ,<<"format">>
+                          ,<<"attachment_url">>
                           ]
-			 ,DataJObj
+                         ,DataJObj
                          )
      ).

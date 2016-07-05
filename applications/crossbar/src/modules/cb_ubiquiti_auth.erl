@@ -9,12 +9,12 @@
 -module(cb_ubiquiti_auth).
 
 -export([init/0
-	,allowed_methods/0
-	,resource_exists/0
-	,authorize/1
-	,authenticate/1
-	,validate/1
-	,put/1
+        ,allowed_methods/0
+        ,resource_exists/0
+        ,authorize/1
+        ,authenticate/1
+        ,validate/1
+        ,put/1
         ]).
 
 -include("crossbar.hrl").
@@ -137,14 +137,14 @@ maybe_authenticate_user(Context) ->
     LoginURL = crossbar_util:get_path(?SSO_URL, <<"login">>),
 
     case kz_http:post(kz_util:to_list(LoginURL)
-		     ,[{"Content-Type","application/json"}]
-		     ,kz_json:encode(login_req(Context))
+                     ,[{"Content-Type","application/json"}]
+                     ,kz_json:encode(login_req(Context))
                      )
     of
         {'ok', 200, RespHeaders, RespBody} ->
             lager:debug("successfully authenticated to '~s'", [LoginURL]),
             cb_context:setters(Context, [{fun cb_context:set_doc/2, auth_response(Context, RespHeaders, RespBody)}
-					,{fun cb_context:set_resp_status/2, 'success'}
+                                        ,{fun cb_context:set_resp_status/2, 'success'}
                                         ]);
         {'ok', _RespCode, _RespHeaders, _RespBody} ->
             lager:debug("recv non-200(~p) code from '~s': ~s", [_RespCode, LoginURL, _RespBody]),
@@ -158,8 +158,8 @@ maybe_authenticate_user(Context) ->
 login_req(Context) ->
     Data = cb_context:req_data(Context),
     kz_json:set_value(<<"user">>
-		     ,kz_json:get_value(<<"username">>, Data)
-		     ,kz_json:delete_key(<<"username">>, Data)
+                     ,kz_json:get_value(<<"username">>, Data)
+                     ,kz_json:delete_key(<<"username">>, Data)
                      ).
 
 -spec auth_response(cb_context:context(), kz_proplist(), binary()) -> kz_json:object().
@@ -168,9 +168,9 @@ auth_response(_Context, _RespHeaders, RespBody) ->
     UUID = kz_json:get_value(<<"uuid">>, RespJObj),
 
     maybe_add_account_information(UUID
-				 ,kz_json:from_list(
-				    [{<<"sso">>, kz_json:set_value(<<"provider">>, ?SSO_PROVIDER, RespJObj)}]
-				   )
+                                 ,kz_json:from_list(
+                                    [{<<"sso">>, kz_json:set_value(<<"provider">>, ?SSO_PROVIDER, RespJObj)}]
+                                   )
                                  ).
 
 -spec maybe_add_account_information(api_binary(), kz_json:object()) -> kz_json:object().
@@ -185,10 +185,10 @@ maybe_add_account_information(UUID, AuthResponse) ->
             lager:debug("found account as ~s", [AccountId]),
 
             kz_json:set_values([{<<"account_id">>, AccountId}
-			       ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}
-			       ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
+                               ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}
+                               ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
                                ]
-			      ,AuthResponse
+                              ,AuthResponse
                               );
         {'error', _E} ->
             lager:debug("failed to query accounts for uuid ~s: ~p", [UUID, _E]),
@@ -198,8 +198,8 @@ maybe_add_account_information(UUID, AuthResponse) ->
 -spec consume_tokens(cb_context:context()) -> cb_context:context().
 consume_tokens(Context) ->
     case kz_buckets:consume_tokens_until(?APP_NAME
-					,cb_modules_util:bucket_name(Context)
-					,cb_modules_util:token_cost(Context, ?UBIQUITI_AUTH_TOKENS)
+                                        ,cb_modules_util:bucket_name(Context)
+                                        ,cb_modules_util:token_cost(Context, ?UBIQUITI_AUTH_TOKENS)
                                         )
     of
         'true' -> cb_context:set_resp_status(Context, 'success');

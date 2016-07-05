@@ -63,7 +63,7 @@ handle_audio_req(Number, OffnetReq) ->
 handle_originate_req(OffnetReq) ->
     Number = stepswitch_util:get_outbound_destination(OffnetReq),
     lager:debug("received outbound audio resource request for ~s from account ~s"
-	       ,[Number, kapi_offnet_resource:account_id(OffnetReq)]
+               ,[Number, kapi_offnet_resource:account_id(OffnetReq)]
                ),
     handle_originate_req(Number, maybe_add_call_id(kz_json:get_value(<<"Outbound-Call-ID">>, OffnetReq) , OffnetReq)).
 
@@ -217,7 +217,7 @@ maybe_originate(Number, OffnetReq) ->
 local_originate(Props, JObj) ->
     Endpoints = [create_loopback_endpoint(Props, JObj)],
     J = kz_json:set_values([{<<"Simplify-Loopback">>, <<"false">>}
-			   ,{<<"Loopback-Bowout">>, <<"false">>}
+                           ,{<<"Loopback-Bowout">>, <<"false">>}
                            ], JObj),
     lager:debug("originate local request"),
     stepswitch_request_sup:originate(Endpoints, J).
@@ -225,11 +225,11 @@ local_originate(Props, JObj) ->
 -spec local_originate_caller_id(kz_json:object()) -> {api_binary(), api_binary()}.
 local_originate_caller_id(JObj) ->
     {kz_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
-			       ,<<"Emergency-Caller-ID-Number">>
+                               ,<<"Emergency-Caller-ID-Number">>
                                ], JObj)
     ,kz_json:get_first_defined([<<"Outbound-Caller-ID-Name">>
-			       ,<<"Emergency-Caller-ID-Name">>
-			       ], JObj)
+                               ,<<"Emergency-Caller-ID-Name">>
+                               ], JObj)
     }.
 
 -spec get_account_realm(ne_binary()) -> ne_binary().
@@ -247,27 +247,27 @@ create_loopback_endpoint(Props, JObj) ->
     AccountId = knm_number_options:account_id(Props),
     Realm = get_account_realm(AccountId),
     CCVs = props:filter_undefined(
-	     [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
-	     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
-	     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, "true"}
-	     ,{<<"Resource-ID">>, AccountId}
-	     ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", Realm/binary>>}
-	     ]),
+             [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, "true"}
+             ,{<<"Resource-ID">>, AccountId}
+             ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", Realm/binary>>}
+             ]),
     Endpoint = kz_json:from_list(
                  props:filter_undefined(
                    [{<<"Invite-Format">>, <<"loopback">>}
-		   ,{<<"Route">>, Number}
-		   ,{<<"To-DID">>, Number}
-		   ,{<<"To-Realm">>, Realm}
-		   ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
-		   ,{<<"Outbound-Caller-ID-Name">>, CIDName}
-		   ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
-		   ,{<<"Caller-ID-Name">>, CIDName}
-		   ,{<<"Caller-ID-Number">>, CIDNum}
-		   ,{<<"Ignore-Early-Media">>, 'true'}
-		   ,{<<"Ignore-Early-Media">>, 'true'}
-		   ,{<<"Enable-T38-Fax">>, 'false'}
-		   ,{<<"Enable-T38-Fax-Request">>, 'false'}
+                   ,{<<"Route">>, Number}
+                   ,{<<"To-DID">>, Number}
+                   ,{<<"To-Realm">>, Realm}
+                   ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+                   ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+                   ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
+                   ,{<<"Caller-ID-Name">>, CIDName}
+                   ,{<<"Caller-ID-Number">>, CIDNum}
+                   ,{<<"Ignore-Early-Media">>, 'true'}
+                   ,{<<"Ignore-Early-Media">>, 'true'}
+                   ,{<<"Enable-T38-Fax">>, 'false'}
+                   ,{<<"Enable-T38-Fax-Request">>, 'false'}
                    ])),
     Endpoint.
 %%--------------------------------------------------------------------

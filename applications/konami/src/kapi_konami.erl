@@ -11,7 +11,7 @@
 -export([transferred/1, transferred_v/1]).
 
 -export([bind_q/2, unbind_q/2
-	,declare_exchanges/0
+        ,declare_exchanges/0
         ]).
 
 -export([publish_transferred/2]).
@@ -21,7 +21,7 @@
 -define(TRANSFERRED_HEADERS, [<<"Transferee">>, <<"Target">>, <<"Call">>]).
 -define(OPTIONAL_TRANSFERRED_HEADERS, [<<"Transferor">>]).
 -define(TRANSFERRED_VALUES, [{<<"Event-Category">>, ?APP_NAME}
-			    ,{<<"Event-Name">>, <<"transferred">>}
+                            ,{<<"Event-Name">>, <<"transferred">>}
                             ]).
 -define(TRANSFERRED_TYPES, []).
 

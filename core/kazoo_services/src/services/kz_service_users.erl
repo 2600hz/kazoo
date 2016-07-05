@@ -26,7 +26,7 @@ reconcile(Services) ->
     AccountId = kz_services:account_id(Services),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = ['reduce'
-		  ,'group'
+                  ,'group'
                   ],
     case kz_datamgr:get_results(AccountDb, <<"services/users">>, ViewOptions) of
         {'error', _R} ->

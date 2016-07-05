@@ -12,17 +12,17 @@
 -behaviour(gen_listener).
 
 -export([start_link/0
-	,handle_query/2
-	,meter_resp/1
+        ,handle_query/2
+        ,meter_resp/1
         ]).
 
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("hangups.hrl").
@@ -31,7 +31,7 @@
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_query'}
-		     ,[{<<"hangups">>, <<"query_req">>}]
+                     ,[{<<"hangups">>, <<"query_req">>}]
                      }
                     ]).
 -define(BINDINGS, [{'hangups', []}]).
@@ -49,10 +49,10 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
-				     ,{'bindings', ?BINDINGS}
-				     ,{'queue_name', ?QUEUE_NAME}
-				     ,{'queue_options', ?QUEUE_OPTIONS}
-				     ,{'consume_options', ?CONSUME_OPTIONS}
+                                     ,{'bindings', ?BINDINGS}
+                                     ,{'queue_name', ?QUEUE_NAME}
+                                     ,{'queue_options', ?QUEUE_OPTIONS}
+                                     ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
 -spec handle_query(kz_json:object(), kz_proplist()) -> any().
@@ -138,13 +138,13 @@ publish_resp(JObj, Resp) ->
                          publish_to(Queue, API)
                  end,
     kapps_util:amqp_pool_send([{<<"Msg-ID">>, MsgId} | Resp]
-			     ,PublishFun
-			     ).
+                             ,PublishFun
+                             ).
 
 -spec publish_to(ne_binary(), kz_proplist()) -> 'ok'.
 publish_to(Queue, API) ->
     kapi_hangups:publish_query_resp(Queue
-				   ,kz_api:default_headers(?APP_NAME, ?APP_VERSION) ++ API
+                                   ,kz_api:default_headers(?APP_NAME, ?APP_VERSION) ++ API
                                    ).
 
 -spec get_accel(kz_proplist()) -> kz_proplist().

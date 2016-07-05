@@ -10,18 +10,18 @@
 
 %% API
 -export([get_prev_n_month_date_list/2
-	,get_prev_n_month_date_list/3
-	,get_next_n_month_date_list/2
-	,get_next_n_month_date_list/3
-	,get_prev_n_months/3
-	,get_prev_n_months/4
-	,get_next_n_months/3
-	,get_next_n_months/4
-	,prev_month/2
-	,next_month/2
-	,generate_test_accounts/3
-	,get_test_account_details/1
-	,delete_test_accounts/0
+        ,get_prev_n_month_date_list/3
+        ,get_next_n_month_date_list/2
+        ,get_next_n_month_date_list/3
+        ,get_prev_n_months/3
+        ,get_prev_n_months/4
+        ,get_next_n_months/3
+        ,get_next_n_months/4
+        ,prev_month/2
+        ,next_month/2
+        ,generate_test_accounts/3
+        ,get_test_account_details/1
+        ,delete_test_accounts/0
         ]).
 
 -include("cdr.hrl").
@@ -76,14 +76,14 @@ generate_test_accounts(NumAccounts, NumMonths, NumCdrs) ->
     CdrJObjFixture = kz_json:load_fixture_from_file('cdr', "fixtures/cdr.json"),
     lists:foreach(fun(AccountDetail) ->
                           generate_test_account(AccountDetail
-					       ,NumMonths
-					       ,NumCdrs
-					       ,CdrJObjFixture)
+                                               ,NumMonths
+                                               ,NumCdrs
+                                               ,CdrJObjFixture)
                   end, get_test_account_details(NumAccounts)).
 
 -spec generate_test_account({ne_binary(),ne_binary(), ne_binary(), ne_binary()}
-			   ,pos_integer(), pos_integer()
-			   ,kz_json:object()
+                           ,pos_integer(), pos_integer()
+                           ,kz_json:object()
                            ) -> 'ok' | {'error', any()}.
 generate_test_account({AccountName, AccountRealm, User, Pass}, NumMonths, NumCdrs, CdrJObjFixture) ->
     crossbar_maintenance:create_account(AccountName, AccountRealm, User, Pass),
@@ -125,9 +125,9 @@ generate_test_account_cdrs(AccountDb, CdrJObjFixture, Date, NumCdrs) ->
     DateTime = {Date, {random:uniform(23), random:uniform(59), random:uniform(59)}},
     CreatedAt = calendar:datetime_to_gregorian_seconds(DateTime),
     Props = [{<<"call_id">>, <<(kz_datamgr:get_uuid())/binary>>}
-	    ,{<<"timestamp">>, CreatedAt}
-	    ,{<<"pvt_created">>, CreatedAt}
-	    ,{<<"pvt_modified">>, CreatedAt}
+            ,{<<"timestamp">>, CreatedAt}
+            ,{<<"pvt_created">>, CreatedAt}
+            ,{<<"pvt_modified">>, CreatedAt}
             ],
     Doc = kz_json:set_values(Props, CdrJObjFixture),
     case kz_datamgr:save_doc(AccountDb, Doc) of

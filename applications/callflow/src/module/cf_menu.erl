@@ -19,31 +19,31 @@
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".menu">>).
 
 -record(menu_keys, {
-	  %% Record Review
-	  save = <<"1">> :: ne_binary()
-		   ,listen = <<"2">> :: ne_binary()
-		   ,record = <<"3">> :: ne_binary()
+          %% Record Review
+          save = <<"1">> :: ne_binary()
+                   ,listen = <<"2">> :: ne_binary()
+                   ,record = <<"3">> :: ne_binary()
          }).
 -type menu_keys() :: #menu_keys{}.
 -define(MENU_KEY_LENGTH, 1).
 
 -record(cf_menu_data, {
           menu_id :: api_binary()
-		      ,name = <<>> :: binary()
-		      ,retries = 3 :: pos_integer()
-		      ,timeout = 10000 :: pos_integer()
-		      ,max_length = 4 :: pos_integer()
-		      ,hunt = 'false' :: boolean()
-		      ,hunt_deny = <<>> :: binary()
-		      ,hunt_allow = <<>> :: binary()
-		      ,record_pin = <<>> :: binary()
-		      ,record_from_offnet = 'false' :: boolean()
-		      ,greeting_id :: api_binary()
-		      ,exit_media = 'true' :: boolean() | ne_binary()
-		      ,transfer_media = 'true' :: boolean() | ne_binary()
-		      ,invalid_media = 'true' :: boolean() | ne_binary()
-		      ,keys = #menu_keys{} :: menu_keys()
-		      ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
+                      ,name = <<>> :: binary()
+                      ,retries = 3 :: pos_integer()
+                      ,timeout = 10000 :: pos_integer()
+                      ,max_length = 4 :: pos_integer()
+                      ,hunt = 'false' :: boolean()
+                      ,hunt_deny = <<>> :: binary()
+                      ,hunt_allow = <<>> :: binary()
+                      ,record_pin = <<>> :: binary()
+                      ,record_from_offnet = 'false' :: boolean()
+                      ,greeting_id :: api_binary()
+                      ,exit_media = 'true' :: boolean() | ne_binary()
+                      ,transfer_media = 'true' :: boolean() | ne_binary()
+                      ,invalid_media = 'true' :: boolean() | ne_binary()
+                      ,keys = #menu_keys{} :: menu_keys()
+                      ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
          }).
 -type menu() :: #cf_menu_data{}.
 
@@ -82,8 +82,8 @@ menu_loop(#cf_menu_data{retries=Retries}=Menu, Call) when Retries =< 0 ->
             cf_exe:continue(Call)
     end;
 menu_loop(#cf_menu_data{max_length=MaxLength
-		       ,timeout=Timeout
-		       ,interdigit_timeout=Interdigit
+                       ,timeout=Timeout
+                       ,interdigit_timeout=Interdigit
                        }=Menu, Call) ->
     NoopId = kapps_call_command:play(get_prompt(Menu, Call), Call),
 
@@ -98,8 +98,8 @@ menu_loop(#cf_menu_data{max_length=MaxLength
     end.
 
 menu_handle_digits(#cf_menu_data{retries=Retries
-				,record_from_offnet=RecOffnet
-				,record_pin=RecordPin
+                                ,record_from_offnet=RecOffnet
+                                ,record_pin=RecordPin
                                 }=Menu, Call, Digits) ->
     %% this try_match_digits calls hunt_for_callflow() based on the digits dialed
     %% if it finds a callflow, the main CFPid will move on to it and try_match_digits
@@ -269,12 +269,12 @@ record_greeting(AttachmentName, #cf_menu_data{greeting_id='undefined'}=Menu, Cal
 record_greeting(AttachmentName, #cf_menu_data{greeting_id=MediaId}=Menu, Call) ->
     lager:info("recording new menu greeting"),
     _ = kapps_call_command:audio_macro([{'prompt', <<"vm-record_greeting">>}
-				       ,{'tones', [kz_json:from_list([{<<"Frequencies">>, [440]}
-								     ,{<<"Duration-ON">>, 500}
-								     ,{<<"Duration-OFF">>, 100}
-								     ])
-						  ]}
-				       ], Call),
+                                       ,{'tones', [kz_json:from_list([{<<"Frequencies">>, [440]}
+                                                                     ,{<<"Duration-ON">>, 500}
+                                                                     ,{<<"Duration-OFF">>, 100}
+                                                                     ])
+                                                  ]}
+                                       ], Call),
     case kapps_call_command:b_record(AttachmentName, Call) of
         {'error', _}=E -> E;
         {'ok', JObj} ->
@@ -373,8 +373,8 @@ store_recording(AttachmentName, MediaId, Call) ->
     CallerIdName = kapps_call:caller_id_name(Call),
     Description = <<"recorded by ", CallerIdName/binary>>,
     Updates = [{<<"content_type">>, <<"audio/mpeg">>}
-	      ,{<<"media_source">>, <<"recording">>}
-	      ,{<<"description">>, Description}
+              ,{<<"media_source">>, <<"recording">>}
+              ,{<<"description">>, Description}
               ],
     'ok' = update_doc(Updates, MediaId, Call),
     kapps_call_command:b_store(AttachmentName, get_new_attachment_url(AttachmentName, MediaId, Call), Call).
@@ -421,11 +421,11 @@ tmp_file() ->
 -spec review_recording(ne_binary(), menu(), kapps_call:call()) ->
                               {'ok', 'record' | 'save' | 'no_selection'}.
 review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey
-							 ,record=RecordKey
-							 ,save=SaveKey
+                                                         ,record=RecordKey
+                                                         ,save=SaveKey
                                                          }
-					 ,timeout=Timeout
-					 ,interdigit_timeout=Interdigit
+                                         ,timeout=Timeout
+                                         ,interdigit_timeout=Interdigit
                                          }=Menu, Call) ->
     lager:info("playing menu greeting review options"),
     _ = kapps_call_command:flush_dtmf(Call),
@@ -449,16 +449,16 @@ review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey
 %%--------------------------------------------------------------------
 -spec recording_media_doc(ne_binary(), menu(), kapps_call:call()) -> ne_binary().
 recording_media_doc(Type, #cf_menu_data{name=MenuName
-				       ,menu_id=Id
+                                       ,menu_id=Id
                                        }, Call) ->
     AccountDb = kapps_call:account_db(Call),
     Name = <<MenuName/binary, " menu ", Type/binary >>,
     Props = [{<<"name">>, Name}
-	    ,{<<"description">>, <<"menu recorded/prompt media">>}
-	    ,{<<"source_type">>, <<"menu">>}
-	    ,{<<"source_id">>, Id}
-	    ,{<<"media_source">>, <<"recording">>}
-	    ,{<<"streamable">>, 'true'}],
+            ,{<<"description">>, <<"menu recorded/prompt media">>}
+            ,{<<"source_type">>, <<"menu">>}
+            ,{<<"source_id">>, Id}
+            ,{<<"media_source">>, <<"recording">>}
+            ,{<<"streamable">>, 'true'}],
     Doc = kz_doc:update_pvt_parameters(kz_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
     {'ok', JObj} = kz_datamgr:save_doc(AccountDb, Doc),
     kz_doc:id(JObj).
@@ -516,40 +516,40 @@ get_menu_profile(Data, Call) ->
             lager:info("loaded menu route ~s", [Id]),
             Default = #cf_menu_data{},
             #cf_menu_data{menu_id = Id
-			 ,name =
+                         ,name =
                               kz_json:get_ne_value(<<"name">>, JObj, Id)
-			 ,retries =
+                         ,retries =
                               kz_json:get_integer_value(<<"retries">>, JObj, Default#cf_menu_data.retries)
-			 ,timeout =
+                         ,timeout =
                               kz_json:get_integer_value(<<"timeout">>, JObj, Default#cf_menu_data.timeout)
-			 ,max_length =
+                         ,max_length =
                               kz_json:get_integer_value(<<"max_extension_length">>, JObj, Default#cf_menu_data.max_length)
-			 ,hunt =
+                         ,hunt =
                               kz_json:is_true(<<"hunt">>, JObj, Default#cf_menu_data.hunt)
-			 ,hunt_deny =
+                         ,hunt_deny =
                               kz_json:get_value(<<"hunt_deny">>, JObj, Default#cf_menu_data.hunt_deny)
-			 ,hunt_allow =
+                         ,hunt_allow =
                               kz_json:get_value(<<"hunt_allow">>, JObj, Default#cf_menu_data.hunt_allow)
-			 ,record_pin =
+                         ,record_pin =
                               kz_json:get_value(<<"record_pin">>, JObj, Default#cf_menu_data.record_pin)
-			 ,record_from_offnet =
+                         ,record_from_offnet =
                               kz_json:is_true(<<"allow_record_from_offnet">>, JObj, Default#cf_menu_data.record_from_offnet)
-			 ,greeting_id =
+                         ,greeting_id =
                               kz_json:get_ne_value([<<"media">>, <<"greeting">>], JObj)
-			 ,exit_media =
+                         ,exit_media =
                               (not kz_json:is_false([<<"media">>, <<"exit_media">>], JObj))
                           andalso kz_json:get_ne_value([<<"media">>, <<"exit_media">>], JObj, 'true')
-			 ,transfer_media =
+                         ,transfer_media =
                               (not kz_json:is_false([<<"media">>, <<"transfer_media">>], JObj))
                           andalso kz_json:get_ne_value([<<"media">>, <<"transfer_media">>], JObj, 'true')
-			 ,invalid_media =
+                         ,invalid_media =
                               (not kz_json:is_false([<<"media">>, <<"invalid_media">>], JObj))
                           andalso kz_json:get_ne_value([<<"media">>, <<"invalid_media">>], JObj, 'true')
-			 ,interdigit_timeout =
+                         ,interdigit_timeout =
                               kz_util:to_integer(
                                 kz_json:find(<<"interdigit_timeout">>
-					    ,[JObj, Data]
-					    ,kapps_call_command:default_interdigit_timeout()
+                                            ,[JObj, Data]
+                                            ,kapps_call_command:default_interdigit_timeout()
                                             ))
                          };
         {'error', R} ->

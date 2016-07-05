@@ -30,7 +30,7 @@
         ,delete/3
         ,reserve/4
         ,add/5
-						%,update_features/5
+                                                %,update_features/5
         ]).
 
 -include("knm.hrl").

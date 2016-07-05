@@ -45,20 +45,20 @@ maybe_relay_request(JObj) ->
         {'ok', _, NumberProps} ->
             lager:debug("running routines for number ~s, fetch-id : ~s", [Number, kapi_route:fetch_id(JObj)]),
             Routines = [fun set_account_id/2
-		       ,fun set_ignore_display_updates/2
-		       ,fun set_inception/2
-		       ,fun maybe_find_resource/2
-		       ,fun maybe_format_destination/2
-		       ,fun maybe_set_ringback/2
-		       ,fun maybe_set_transfer_media/2
-		       ,fun maybe_lookup_cnam/2
-		       ,fun maybe_add_prepend/2
-		       ,fun maybe_blacklisted/2
-		       ,fun maybe_transition_port_in/2
+                       ,fun set_ignore_display_updates/2
+                       ,fun set_inception/2
+                       ,fun maybe_find_resource/2
+                       ,fun maybe_format_destination/2
+                       ,fun maybe_set_ringback/2
+                       ,fun maybe_set_transfer_media/2
+                       ,fun maybe_lookup_cnam/2
+                       ,fun maybe_add_prepend/2
+                       ,fun maybe_blacklisted/2
+                       ,fun maybe_transition_port_in/2
                        ],
             _ = lists:foldl(fun(F, J) -> F(NumberProps, J) end
-			   ,JObj
-			   ,Routines
+                           ,JObj
+                           ,Routines
                            ),
             'ok'
     end.
@@ -111,11 +111,11 @@ maybe_find_resource(_, JObj) ->
         {'error', 'not_found'} -> JObj;
         {'ok', ResourceProps} ->
             Routines = [fun add_resource_id/2
-		       ,fun maybe_add_t38_settings/2
+                       ,fun maybe_add_t38_settings/2
                        ],
             lists:foldl(fun(F, J) ->  F(J, ResourceProps) end
-		       ,JObj
-		       ,Routines
+                       ,JObj
+                       ,Routines
                        )
     end.
 
@@ -123,15 +123,15 @@ maybe_find_resource(_, JObj) ->
 add_resource_id(JObj, ResourceProps) ->
     ResourceId = props:get_value('resource_id', ResourceProps),
     kz_json:set_values([{?CCV(<<"Resource-ID">>), ResourceId}
-		       ,{?CCV(<<"Global-Resource">>), props:get_is_true('global', ResourceProps)}
-		       ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
-			%% TODO
-			%% we need to make sure that Authorizing-ID is used
-			%% with Authorizing-Type in ALL kapps
-			%% when this is done remove the comment below
-			%% ,{?CCV(<<"Authorizing-ID">>), ResourceId}
+                       ,{?CCV(<<"Global-Resource">>), props:get_is_true('global', ResourceProps)}
+                       ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
+                        %% TODO
+                        %% we need to make sure that Authorizing-ID is used
+                        %% with Authorizing-Type in ALL kapps
+                        %% when this is done remove the comment below
+                        %% ,{?CCV(<<"Authorizing-ID">>), ResourceId}
                        ]
-		      ,JObj
+                      ,JObj
                       ).
 
 -spec maybe_add_t38_settings(kz_json:object(), kz_proplist()) -> kz_json:object().
@@ -139,13 +139,13 @@ maybe_add_t38_settings(JObj, ResourceProps) ->
     case props:get_value('fax_option', ResourceProps) of
         'true' ->
             kz_json:set_value(?CCV(<<"Resource-Fax-Option">>)
-			     ,props:get_value('fax_option', ResourceProps)
-			     ,JObj
+                             ,props:get_value('fax_option', ResourceProps)
+                             ,JObj
                              );
         <<"auto">> ->
             kz_json:set_value(?CCV(<<"Resource-Fax-Option">>)
-			     ,props:get_value('fax_option', ResourceProps)
-			     ,JObj
+                             ,props:get_value('fax_option', ResourceProps)
+                             ,JObj
                              );
         _ -> JObj
     end.
@@ -334,15 +334,15 @@ get_blacklist(AccountId, Blacklists) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     lists:foldl(
       fun(BlacklistId, Acc) ->
-	      case kz_datamgr:open_cache_doc(AccountDb, BlacklistId) of
-		  {'error', _R} ->
-		      lager:error("could not open ~s in ~s: ~p", [BlacklistId, AccountDb, _R]),
-		      Acc;
-		  {'ok', Doc} ->
-		      Numbers = kz_json:get_value(<<"numbers">>, Doc, kz_json:new()),
-		      kz_json:merge_jobjs(Acc, Numbers)
-	      end
+              case kz_datamgr:open_cache_doc(AccountDb, BlacklistId) of
+                  {'error', _R} ->
+                      lager:error("could not open ~s in ~s: ~p", [BlacklistId, AccountDb, _R]),
+                      Acc;
+                  {'ok', Doc} ->
+                      Numbers = kz_json:get_value(<<"numbers">>, Doc, kz_json:new()),
+                      kz_json:merge_jobjs(Acc, Numbers)
+              end
       end
-	       ,kz_json:new()
-	       ,Blacklists
+               ,kz_json:new()
+               ,Blacklists
      ).

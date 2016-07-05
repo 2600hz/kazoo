@@ -18,8 +18,8 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE(?CACHE_NAME)
-		  ,?SUPER('pivot_calls_sup')
-		  ,?WORKER('pivot_listener')
+                  ,?SUPER('pivot_calls_sup')
+                  ,?WORKER('pivot_listener')
                   ]).
 
 %% ===================================================================

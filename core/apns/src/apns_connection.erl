@@ -52,11 +52,11 @@ start_link(Connection) ->
 -spec build_payload(apns:msg()) -> iodata().
 build_payload(Msg) ->
     #apns_msg{ alert = Alert
-	     , badge = Badge
-	     , sound = Sound
-	     , apns_extra=Apns_Extra
-	     , content_available = Content_Available
-	     , extra = Extra} = Msg,
+             , badge = Badge
+             , sound = Sound
+             , apns_extra=Apns_Extra
+             , content_available = Content_Available
+             , extra = Extra} = Msg,
     build_payload(
       [ {alert, Alert}
       , {badge, Badge}
@@ -70,105 +70,105 @@ build_payload(Msg) ->
 -spec init(apns:connection()) -> {ok, state()} | {stop, any()}.
 init(Connection) ->
     try
-	{ok, QID} = apns_queue:start_link(),
-	case open_out(Connection) of
-	    {ok, OutSocket} -> case open_feedback(Connection) of
-				   {ok, InSocket} ->
-				       {ok, #state{ out_socket = OutSocket
-						  , in_socket  = InSocket
-						  , connection = Connection
-						  , queue      = QID
-						  }};
-				   {error, Reason} -> {stop, Reason}
-			       end;
-	    {error, Reason} -> {stop, Reason}
-	end
+        {ok, QID} = apns_queue:start_link(),
+        case open_out(Connection) of
+            {ok, OutSocket} -> case open_feedback(Connection) of
+                                   {ok, InSocket} ->
+                                       {ok, #state{ out_socket = OutSocket
+                                                  , in_socket  = InSocket
+                                                  , connection = Connection
+                                                  , queue      = QID
+                                                  }};
+                                   {error, Reason} -> {stop, Reason}
+                               end;
+            {error, Reason} -> {stop, Reason}
+        end
     catch
-	_:{error, Reason2} -> {stop, Reason2}
+        _:{error, Reason2} -> {stop, Reason2}
     end.
 
 %% @hidden
 ssl_opts(Connection) ->
     Opts = case Connection#apns_connection.key_file of
-	       undefined -> [];
-	       KeyFile -> [{keyfile, filename:absname(KeyFile)}]
-	   end ++
-	case Connection#apns_connection.cert_file of
-	    undefined -> [];
-	    CertFile -> [{certfile, filename:absname(CertFile)}]
-	end ++
-	case Connection#apns_connection.key of
-	    undefined -> [];
-	    Key -> [{key, Key}]
-	end ++
-	case Connection#apns_connection.cert of
-	    undefined -> [];
-	    Cert -> [{cert, Cert}]
-	end ++
-	case Connection#apns_connection.cert_password of
-	    undefined -> [];
-	    Password -> [{password, Password}]
-	end,
+               undefined -> [];
+               KeyFile -> [{keyfile, filename:absname(KeyFile)}]
+           end ++
+        case Connection#apns_connection.cert_file of
+            undefined -> [];
+            CertFile -> [{certfile, filename:absname(CertFile)}]
+        end ++
+        case Connection#apns_connection.key of
+            undefined -> [];
+            Key -> [{key, Key}]
+        end ++
+        case Connection#apns_connection.cert of
+            undefined -> [];
+            Cert -> [{cert, Cert}]
+        end ++
+        case Connection#apns_connection.cert_password of
+            undefined -> [];
+            Password -> [{password, Password}]
+        end,
     [{mode, binary} | Opts].
 
 %% @hidden
 open_out(Connection) ->
     case ssl:connect(
-	   Connection#apns_connection.apple_host,
-	   Connection#apns_connection.apple_port,
-	   ssl_opts(Connection),
-	   Connection#apns_connection.timeout
-	  ) of
-	{ok, _OutSocket} = OK -> OK;
-	{error, _Reason} = Er -> Er
+           Connection#apns_connection.apple_host,
+           Connection#apns_connection.apple_port,
+           ssl_opts(Connection),
+           Connection#apns_connection.timeout
+          ) of
+        {ok, _OutSocket} = OK -> OK;
+        {error, _Reason} = Er -> Er
     end.
 
 %% @hidden
 open_feedback(Connection) ->
     case ssl:connect(
-	   Connection#apns_connection.feedback_host,
-	   Connection#apns_connection.feedback_port,
-	   ssl_opts(Connection),
-	   Connection#apns_connection.timeout
-	  ) of
-	{ok, _InSocket} = OK -> OK;
-	{error, _Reason} = E -> E
+           Connection#apns_connection.feedback_host,
+           Connection#apns_connection.feedback_port,
+           ssl_opts(Connection),
+           Connection#apns_connection.timeout
+          ) of
+        {ok, _InSocket} = OK -> OK;
+        {error, _Reason} = E -> E
     end.
 
 %% @hidden
 -spec handle_call(X, {pid(), reference()}, state()) ->
-			 {stop, Unknown, Unknown, state()} when Unknown :: {'unknown_request', X}.
+                         {stop, Unknown, Unknown, state()} when Unknown :: {'unknown_request', X}.
 handle_call(Request, _From, State) ->
     Unknown = {unknown_request, Request},
     {stop, Unknown, Unknown, State}.
 
 %% @hidden
 -spec handle_cast(stop | apns:msg(), state()) ->
-			 {noreply, state()} | {stop, normal | {error, any()}, state()}.
+                         {noreply, state()} | {stop, normal | {error, any()}, state()}.
 handle_cast(Msg, State=#state{ out_socket = undefined
                              , connection = Connection}) ->
     try
-	error_logger:info_msg("Reconnecting to APNS...~n"),
-	case open_out(Connection) of
-	    {ok, Socket} -> handle_cast(Msg, State#state{out_socket=Socket});
-	    {error, Reason} -> {stop, Reason}
-	end
+        error_logger:info_msg("Reconnecting to APNS...~n"),
+        case open_out(Connection) of
+            {ok, Socket} -> handle_cast(Msg, State#state{out_socket=Socket});
+            {error, Reason} -> {stop, Reason}
+        end
     catch
-	_:{error, Reason2} -> {stop, Reason2}
+        _:{error, Reason2} -> {stop, Reason2}
     end;
 
 handle_cast(#apns_msg{device_token = DeviceToken, expiry = Expiry,
-		      id = Id, priority = Priority} = Msg,
-	    #state{out_socket = Socket, queue = Queue} = State) ->
+                      id = Id, priority = Priority} = Msg,
+            #state{out_socket = Socket, queue = Queue} = State) ->
     Payload = build_payload(Msg),
     BinToken = hexstr_to_bin(DeviceToken),
     apns_queue:in(Queue, Msg),
     case send_payload(Socket, Id, Expiry, BinToken, Payload, Priority) of
-	ok ->
-	    {noreply, State};
-	{error, _Reason} = Error ->
-	    apns_queue:fail(Queue, Id),
-	    {stop, Error, State}
+        ok ->
+            {noreply, State};
+        {error, _Reason} = Error ->
+            apns_queue:fail(Queue, Id),
+            {stop, Error, State}
     end;
 
 handle_cast(stop, State) ->
@@ -176,66 +176,66 @@ handle_cast(stop, State) ->
 
 %% @hidden
 -spec handle_info(
-	{ssl, tuple(), binary()} | {ssl_closed, tuple()} | X, state()) ->
-			 {noreply, state()} | {stop, ssl_closed | {unknown_request, X}, state()}.
+        {ssl, tuple(), binary()} | {ssl_closed, tuple()} | X, state()) ->
+                         {noreply, state()} | {stop, ssl_closed | {unknown_request, X}, state()}.
 handle_info( {ssl, SslSocket, Data}
            , State = #state{ out_socket = SslSocket
                            , connection = #apns_connection{error_fun = Error}
                            , out_buffer = CurrentBuffer
-			   , queue = Queue
+                           , queue = Queue
                            }) ->
     case <<CurrentBuffer/binary, Data/binary>> of
-	<<Command:1/unit:8, StatusCode:1/unit:8, MsgId:4/binary, Rest/binary>> ->
-	    case Command of
-		8 -> %% Error
-		    Status = parse_status(StatusCode),
-		    {_MsgFailed, RestMsg} = apns_queue:fail(Queue, MsgId),
-		    _ = [send_message(self(), M) || M <- RestMsg],
-		    try Error(MsgId, Status) of
-			stop -> throw({stop, {msg_error, MsgId, Status}, State});
-			_ -> noop
-		    catch
-			_:ErrorResult ->
-			    error_logger:error_msg(
-			      "Error trying to inform error (~p) msg ~p:~n\t~p~n",
-			      [Status, MsgId, ErrorResult])
-		    end,
-		    case byte_size(Rest) of
-			0 -> %% It was a whole package
-			    {noreply, State#state{out_buffer = <<>>}};
-			_ ->
-			    handle_info(
-			      {ssl, SslSocket, Rest}, State#state{out_buffer = <<>>})
-		    end;
-		Command ->
-		    throw({stop, {unknown_command, Command}, State})
-	    end;
-	NextBuffer -> %% We need to wait for the rest of the message
-	    {noreply, State#state{out_buffer = NextBuffer}}
+        <<Command:1/unit:8, StatusCode:1/unit:8, MsgId:4/binary, Rest/binary>> ->
+            case Command of
+                8 -> %% Error
+                    Status = parse_status(StatusCode),
+                    {_MsgFailed, RestMsg} = apns_queue:fail(Queue, MsgId),
+                    _ = [send_message(self(), M) || M <- RestMsg],
+                    try Error(MsgId, Status) of
+                        stop -> throw({stop, {msg_error, MsgId, Status}, State});
+                        _ -> noop
+                    catch
+                        _:ErrorResult ->
+                            error_logger:error_msg(
+                              "Error trying to inform error (~p) msg ~p:~n\t~p~n",
+                              [Status, MsgId, ErrorResult])
+                    end,
+                    case byte_size(Rest) of
+                        0 -> %% It was a whole package
+                            {noreply, State#state{out_buffer = <<>>}};
+                        _ ->
+                            handle_info(
+                              {ssl, SslSocket, Rest}, State#state{out_buffer = <<>>})
+                    end;
+                Command ->
+                    throw({stop, {unknown_command, Command}, State})
+            end;
+        NextBuffer -> %% We need to wait for the rest of the message
+            {noreply, State#state{out_buffer = NextBuffer}}
     end;
 handle_info( {ssl, SslSocket, Data}
            , State = #state{ in_socket  = SslSocket
                            , connection =
-				 #apns_connection{feedback_fun = Feedback}
+                                 #apns_connection{feedback_fun = Feedback}
                            , in_buffer  = CurrentBuffer
                            }) ->
     case <<CurrentBuffer/binary, Data/binary>> of
-	<<TimeT:4/big-unsigned-integer-unit:8,
-	  Length:2/big-unsigned-integer-unit:8,
-	  Token:Length/binary,
-	  Rest/binary>> ->
-	    try Feedback({apns:timestamp(TimeT), bin_to_hexstr(Token)})
-	    catch
-		_:Error ->
-		    error_logger:error_msg(
-		      "Error trying to inform feedback token ~p:~n\t~p~n", [Token, Error])
-	    end,
-	    case byte_size(Rest) of
-		0 -> {noreply, State#state{in_buffer = <<>>}}; %% It was a whole package
-		_ -> handle_info({ssl, SslSocket, Rest}, State#state{in_buffer = <<>>})
-	    end;
-	NextBuffer -> %% We need to wait for the rest of the message
-	    {noreply, State#state{in_buffer = NextBuffer}}
+        <<TimeT:4/big-unsigned-integer-unit:8,
+          Length:2/big-unsigned-integer-unit:8,
+          Token:Length/binary,
+          Rest/binary>> ->
+            try Feedback({apns:timestamp(TimeT), bin_to_hexstr(Token)})
+            catch
+                _:Error ->
+                    error_logger:error_msg(
+                      "Error trying to inform feedback token ~p:~n\t~p~n", [Token, Error])
+            end,
+            case byte_size(Rest) of
+                0 -> {noreply, State#state{in_buffer = <<>>}}; %% It was a whole package
+                _ -> handle_info({ssl, SslSocket, Rest}, State#state{in_buffer = <<>>})
+            end;
+        NextBuffer -> %% We need to wait for the rest of the message
+            {noreply, State#state{in_buffer = NextBuffer}}
     end;
 
 handle_info({ssl_closed, SslSocket}, State = #state{in_socket = SslSocket,
@@ -244,15 +244,15 @@ handle_info({ssl_closed, SslSocket}, State = #state{in_socket = SslSocket,
       "Feedback server disconnected. Waiting ~p millis to connect again...~n",
       [Connection#apns_connection.feedback_timeout]),
     _Timer =
-	erlang:send_after(
-	  Connection#apns_connection.feedback_timeout, self(), reconnect),
+        erlang:send_after(
+          Connection#apns_connection.feedback_timeout, self(), reconnect),
     {noreply, State#state{in_socket = undefined}};
 
 handle_info(reconnect, State = #state{connection = Connection}) ->
     error_logger:info_msg("Reconnecting the Feedback server...~n"),
     case open_feedback(Connection) of
-	{ok, InSocket} -> {noreply, State#state{in_socket = InSocket}};
-	{error, Reason} -> {stop, {in_closed, Reason}, State}
+        {ok, InSocket} -> {noreply, State#state{in_socket = InSocket}};
+        {error, Reason} -> {stop, {in_closed, Reason}, State}
     end;
 
 handle_info({ssl_closed, SslSocket}, State = #state{out_socket = SslSocket}) ->
@@ -285,45 +285,45 @@ do_build_payload(Params, false) ->
 
 do_build_payload([{Key, Value} | Params], Payload) ->
     case Value of
-	Value when is_list(Value); is_binary(Value) ->
-	    do_build_payload(
-	      Params,
-	      [ {atom_to_binary(Key, utf8), unicode:characters_to_binary(Value)}
-		| Payload]);
-	Value when is_integer(Value) ->
-	    do_build_payload(Params, [{atom_to_binary(Key, utf8), Value} | Payload]);
-	#loc_alert{action = Action,
-		   args   = Args,
-		   body   = Body,
-		   image  = Image,
-		   key    = LocKey} ->
-	    Json = {case Body of
-			none -> [];
-			Body -> [{<<"body">>, unicode:characters_to_binary(Body)}]
-		    end ++ case Action of
-			       none -> [];
-			       Action ->
-				   [{<<"action-loc-key">>,
-				     unicode:characters_to_binary(Action)}]
-			   end ++ case Image of
-				      none -> [];
-				      Image ->
-					  [{<<"launch-image">>,
-					    unicode:characters_to_binary(Image)}]
-				  end ++
-			[{<<"loc-key">>, unicode:characters_to_binary(LocKey)},
-			 {<<"loc-args">>,
-			  [unicode:characters_to_binary(A) || A <- Args]}
-			]},
-	    do_build_payload(Params, [{atom_to_binary(Key, utf8), Json} | Payload]);
-	_ ->
-	    do_build_payload(Params, Payload)
+        Value when is_list(Value); is_binary(Value) ->
+            do_build_payload(
+              Params,
+              [ {atom_to_binary(Key, utf8), unicode:characters_to_binary(Value)}
+                | Payload]);
+        Value when is_integer(Value) ->
+            do_build_payload(Params, [{atom_to_binary(Key, utf8), Value} | Payload]);
+        #loc_alert{action = Action,
+                   args   = Args,
+                   body   = Body,
+                   image  = Image,
+                   key    = LocKey} ->
+            Json = {case Body of
+                        none -> [];
+                        Body -> [{<<"body">>, unicode:characters_to_binary(Body)}]
+                    end ++ case Action of
+                               none -> [];
+                               Action ->
+                                   [{<<"action-loc-key">>,
+                                     unicode:characters_to_binary(Action)}]
+                           end ++ case Image of
+                                      none -> [];
+                                      Image ->
+                                          [{<<"launch-image">>,
+                                            unicode:characters_to_binary(Image)}]
+                                  end ++
+                        [{<<"loc-key">>, unicode:characters_to_binary(LocKey)},
+                         {<<"loc-args">>,
+                          [unicode:characters_to_binary(A) || A <- Args]}
+                        ]},
+            do_build_payload(Params, [{atom_to_binary(Key, utf8), Json} | Payload]);
+        _ ->
+            do_build_payload(Params, Payload)
     end;
 do_build_payload([], Payload) ->
     {Payload}.
 
 -spec send_payload(tuple(), binary(), non_neg_integer(), binary(), binary(), integer()) ->
-			  ok | {error, any()}.
+                          ok | {error, any()}.
 send_payload(Socket, MsgId, Expiry, BinToken, Payload, Priority) ->
     Frame = build_frame(MsgId, Expiry, BinToken, Payload, Priority),
     FrameLength = byte_size(Frame),
@@ -331,7 +331,7 @@ send_payload(Socket, MsgId, Expiry, BinToken, Payload, Priority) ->
                 FrameLength:32/big,
                 Frame/binary>>],
     error_logger:info_msg("Sending msg ~p (expires on ~p)~n",
-			  [MsgId, Expiry]),
+                          [MsgId, Expiry]),
     ssl:send(Socket, Packet).
 
 hexstr_to_bin(S) ->
@@ -362,7 +362,7 @@ parse_status(7) -> missing_payload_size;
 parse_status(8) -> invalid_token;
 parse_status(10) -> shutdown;
 parse_status(_) -> unknown.
-						%
+                                                %
 build_frame(MsgId, Expiry, BinToken, Payload, Priority) ->
     PayloadLength = byte_size(Payload),
     <<1:8, 32:16/big, BinToken/binary,

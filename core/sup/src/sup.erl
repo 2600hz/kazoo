@@ -84,7 +84,7 @@ get_target(Options, Verbose) ->
     case net_adm:ping(Target) of
         'pong' ->
             Verbose
-		andalso stdout("Connected to service ~s with cookie ~s", [Target, Cookie]),
+                andalso stdout("Connected to service ~s with cookie ~s", [Target, Cookie]),
             Target;
         'pang' ->
             stderr("Connection to service failed!", []),

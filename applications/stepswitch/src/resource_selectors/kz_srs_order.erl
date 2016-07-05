@@ -18,7 +18,7 @@
 -define(DEFAULT_ASC_WEIGHT, 9999).
 
 -spec handle_req(stepswitch_resources:resources(), ne_binary(), kapi_offnet_resource:req(), ne_binary(), kz_json:object()) ->
-			stepswitch_resources:resources().
+                        stepswitch_resources:resources().
 handle_req([], _Number, _OffnetJObj, _DB, _Params) ->
     lager:warning("empty resource list", []),
     [];
@@ -34,7 +34,7 @@ handle_req(Resources, Number, OffnetJObj, DB, Params) ->
     order_by(Resources, Values, SortOrder).
 
 -spec order_by(stepswitch_resources:resources(), kz_json:object(), ne_binary()) ->
-		      stepswitch_resources:resources().
+                      stepswitch_resources:resources().
 order_by(Resources, Values, SortOrder) ->
     lists:sort(fun(R1, R2) ->
                        Id1 = stepswitch_resources:get_resrc_id(R1),
@@ -43,7 +43,7 @@ order_by(Resources, Values, SortOrder) ->
                        Weight2 = kz_json:get_value(Id2, Values, default_weight(SortOrder)),
                        sort(Weight1, Weight2, SortOrder)
                end
-	      ,Resources
+              ,Resources
               ).
 
 -spec default_weight(ne_binary()) -> integer().

@@ -9,31 +9,31 @@
 -module(webhooks_util).
 
 -export([from_json/1
-	,to_json/1
+        ,to_json/1
         ]).
 -export([find_webhooks/2]).
 -export([fire_hooks/2]).
 -export([init_webhooks/0
-	,init_webhook_db/0
-	,jobj_to_rec/1
-	,hook_event_lowered/1
-	,hook_event/1
-	,load_hooks/1
-	,load_hook/2
-	,hook_id/1
-	,hook_id/2
+        ,init_webhook_db/0
+        ,jobj_to_rec/1
+        ,hook_event_lowered/1
+        ,hook_event/1
+        ,load_hooks/1
+        ,load_hook/2
+        ,hook_id/1
+        ,hook_id/2
 
-	,account_expires_time/1
-	,system_expires_time/0
+        ,account_expires_time/1
+        ,system_expires_time/0
 
-	,reenable/2
-	,init_metadata/2
+        ,reenable/2
+        ,init_metadata/2
         ]).
 
 %% ETS Management
 -export([table_id/0
-	,table_options/0
-	,gift_data/0
+        ,table_options/0
+        ,gift_data/0
         ]).
 
 -include("webhooks.hrl").
@@ -51,17 +51,17 @@
 
 -define(HTTP_REQ_HEADERS(Hook)
        ,[{"X-Hook-ID", Hook#webhook.hook_id}
-	,{"X-Account-ID", Hook#webhook.account_id}
-	]).
+        ,{"X-Account-ID", Hook#webhook.account_id}
+        ]).
 
 -spec table_id() -> ?TABLE.
 table_id() -> ?TABLE.
 
 -spec table_options() -> list().
 table_options() -> ['set'
-		   ,'protected'
-		   ,{'keypos', #webhook.id}
-		   ,'named_table'
+                   ,'protected'
+                   ,{'keypos', #webhook.id}
+                   ,'named_table'
                    ].
 
 -spec gift_data() -> 'ok'.
@@ -87,17 +87,17 @@ to_json(Hook) ->
 find_webhooks(_HookEvent, 'undefined') -> [];
 find_webhooks(HookEvent, AccountId) ->
     MatchSpec = [{#webhook{account_id = '$1'
-			  ,hook_event = '$2'
-			  ,_='_'
+                          ,hook_event = '$2'
+                          ,_='_'
                           }
-		 ,[{'andalso'
-		   ,{'=:=', '$1', {'const', AccountId}}
-		   ,{'orelse'
-		    ,{'=:=', '$2', {'const', HookEvent}}
-		    ,{'=:=', '$2', {'const', <<"all">>}}
-		    }
-		   }]
-		 ,['$_']
+                 ,[{'andalso'
+                   ,{'=:=', '$1', {'const', AccountId}}
+                   ,{'orelse'
+                    ,{'=:=', '$2', {'const', HookEvent}}
+                    ,{'=:=', '$2', {'const', <<"all">>}}
+                    }
+                   }]
+                 ,['$_']
                  }],
     ets:select(table_id(), MatchSpec).
 
@@ -114,8 +114,8 @@ maybe_fire_hook(JObj, #webhook{modifiers=Modifiers}=Hook) ->
     {ShouldFireHook, _} =
         kz_json:foldl(
           fun maybe_fire_foldl/3
-		     ,{'true', JObj}
-		     ,Modifiers
+                     ,{'true', JObj}
+                     ,Modifiers
          ),
     case ShouldFireHook of
         'false' -> 'ok';
@@ -144,26 +144,26 @@ maybe_fire_foldl(Key, Value, {_ShouldFire, JObj}) ->
 -spec fire_hook(kz_json:object(), webhook()) -> 'ok'.
 -spec fire_hook(kz_json:object(), webhook(), string(), http_verb(), 0 | hook_retries()) -> 'ok'.
 fire_hook(JObj, #webhook{uri=URI
-			,http_verb=Method
-			,retries=Retries
-			,custom_data='undefined'
+                        ,http_verb=Method
+                        ,retries=Retries
+                        ,custom_data='undefined'
                         }=Hook) ->
     fire_hook(JObj
-	     ,Hook
-	     ,kz_util:to_list(URI)
-	     ,Method
-	     ,Retries
+             ,Hook
+             ,kz_util:to_list(URI)
+             ,Method
+             ,Retries
              );
 fire_hook(JObj, #webhook{uri=URI
-			,http_verb=Method
-			,retries=Retries
-			,custom_data=CustomData
+                        ,http_verb=Method
+                        ,retries=Retries
+                        ,custom_data=CustomData
                         }=Hook) ->
     fire_hook(kz_json:merge_jobjs(CustomData, JObj)
-	     ,Hook
-	     ,kz_util:to_list(URI)
-	     ,Method
-	     ,Retries
+             ,Hook
+             ,kz_util:to_list(URI)
+             ,Method
+             ,Retries
              ).
 
 fire_hook(_JObj, Hook, _URI, _Method, 0) ->
@@ -209,12 +209,12 @@ successful_hook(Hook) ->
 
 successful_hook(_Hook, 'false') -> 'ok';
 successful_hook(#webhook{hook_id=HookId
-			,account_id=AccountId
+                        ,account_id=AccountId
                         }
-	       ,'true'
+               ,'true'
                ) ->
     Attempt = kz_json:from_list([{<<"hook_id">>, HookId}
-				,{<<"result">>, <<"success">>}
+                                ,{<<"result">>, <<"success">>}
                                 ]),
     save_attempt(Attempt, AccountId).
 
@@ -222,39 +222,39 @@ successful_hook(#webhook{hook_id=HookId
 -spec failed_hook(webhook(), hook_retries(), any()) -> 'ok'.
 -spec failed_hook(webhook(), hook_retries(), ne_binary(), binary()) -> 'ok'.
 failed_hook(#webhook{hook_id=HookId
-		    ,account_id=AccountId
+                    ,account_id=AccountId
                     }) ->
     note_failed_attempt(AccountId, HookId),
     Attempt = kz_json:from_list(
                 [{<<"hook_id">>, HookId}
-		,{<<"result">>, <<"failure">>}
-		,{<<"reason">>, <<"retries exceeded">>}
+                ,{<<"result">>, <<"failure">>}
+                ,{<<"reason">>, <<"retries exceeded">>}
                 ]),
     save_attempt(Attempt, AccountId).
 
 failed_hook(#webhook{hook_id=HookId
-		    ,account_id=AccountId
+                    ,account_id=AccountId
                     }
-	   ,Retries
-	   ,RespCode
-	   ,RespBody
+           ,Retries
+           ,RespCode
+           ,RespBody
            ) ->
     note_failed_attempt(AccountId, HookId),
     Attempt = kz_json:from_list(
                 [{<<"hook_id">>, HookId}
-		,{<<"result">>, <<"failure">>}
-		,{<<"reason">>, <<"bad response code">>}
-		,{<<"response_code">>, RespCode}
-		,{<<"response_body">>, RespBody}
-		,{<<"retries_left">>, Retries - 1}
+                ,{<<"result">>, <<"failure">>}
+                ,{<<"reason">>, <<"bad response code">>}
+                ,{<<"response_code">>, RespCode}
+                ,{<<"response_body">>, RespBody}
+                ,{<<"retries_left">>, Retries - 1}
                 ]),
     save_attempt(Attempt, AccountId).
 
 failed_hook(#webhook{hook_id=HookId
-		    ,account_id=AccountId
+                    ,account_id=AccountId
                     }
-	   ,Retries
-	   ,E
+           ,Retries
+           ,E
            ) ->
     note_failed_attempt(AccountId, HookId),
     Error = try kz_util:to_binary(E) of
@@ -266,10 +266,10 @@ failed_hook(#webhook{hook_id=HookId
             end,
     Attempt = kz_json:from_list(
                 [{<<"hook_id">>, HookId}
-		,{<<"result">>, <<"failure">>}
-		,{<<"reason">>, <<"kazoo http client error">>}
-		,{<<"retries_left">>, Retries - 1}
-		,{<<"client_error">>, Error}
+                ,{<<"result">>, <<"failure">>}
+                ,{<<"reason">>, <<"kazoo http client error">>}
+                ,{<<"retries_left">>, Retries - 1}
+                ,{<<"client_error">>, Error}
                 ]),
     save_attempt(Attempt, AccountId).
 
@@ -285,12 +285,12 @@ save_attempt(Attempt, AccountId) ->
     Doc = kz_json:set_values(
             props:filter_undefined(
               [{<<"pvt_account_db">>, ModDb}
-	      ,{<<"pvt_account_id">>, AccountId}
-	      ,{<<"pvt_type">>, <<"webhook_attempt">>}
-	      ,{<<"pvt_created">>, Now}
-	      ,{<<"pvt_modified">>, Now}
+              ,{<<"pvt_account_id">>, AccountId}
+              ,{<<"pvt_type">>, <<"webhook_attempt">>}
+              ,{<<"pvt_created">>, Now}
+              ,{<<"pvt_modified">>, Now}
               ])
-			    ,Attempt
+                            ,Attempt
            ),
 
     _ = kz_datamgr:save_doc(ModDb, Doc, [{'publish_change_notice', 'false'}]),
@@ -300,11 +300,11 @@ save_attempt(Attempt, AccountId) ->
 -spec hook_id(ne_binary(), ne_binary()) -> ne_binary().
 hook_id(JObj) ->
     hook_id(kz_json:get_first_defined([<<"pvt_account_id">>
-				      ,<<"Account-ID">>
+                                      ,<<"Account-ID">>
                                       ]
-				     ,JObj
+                                     ,JObj
                                      )
-	   ,kz_json:get_first_defined([<<"_id">>, <<"ID">>], JObj)
+           ,kz_json:get_first_defined([<<"_id">>, <<"ID">>], JObj)
            ).
 
 hook_id(AccountId, Id) ->
@@ -329,7 +329,7 @@ load_hooks(Srv) ->
     case kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                                ,<<"webhooks/webhooks_listing">> %% excludes disabled
                                ,['include_docs']
-			       )
+                               )
     of
         {'ok', []} ->
             lager:debug("no configured webhooks");
@@ -362,31 +362,31 @@ load_hook(Srv, WebHook) ->
     catch
         'throw':{'bad_hook', HookEvent} ->
             lager:debug("failed to load hook ~s.~s: bad_hook: ~s"
-		       ,[kz_doc:account_id(WebHook)
-			,kz_doc:id(WebHook)
-			,HookEvent
-			]
+                       ,[kz_doc:account_id(WebHook)
+                        ,kz_doc:id(WebHook)
+                        ,HookEvent
+                        ]
                        );
         _E:_R ->
             lager:debug("failed to load hook ~s.~s: ~s: ~p"
                        ,[kz_doc:account_id(WebHook)
-			,kz_doc:id(WebHook)
-			,_E
-			,_R
+                        ,kz_doc:id(WebHook)
+                        ,_E
+                        ,_R
                         ])
     end.
 
 -spec jobj_to_rec(kz_json:object()) -> webhook().
 jobj_to_rec(Hook) ->
     #webhook{id = hook_id(Hook)
-	    ,uri = kzd_webhook:uri(Hook)
-	    ,http_verb = kzd_webhook:verb(Hook)
-	    ,hook_event = hook_event(kzd_webhook:event(Hook))
-	    ,hook_id = kz_doc:id(Hook)
-	    ,retries = kzd_webhook:retries(Hook)
-	    ,account_id = kz_doc:account_id(Hook)
-	    ,custom_data = kzd_webhook:custom_data(Hook)
-	    ,modifiers = kzd_webhook:modifiers(Hook)
+            ,uri = kzd_webhook:uri(Hook)
+            ,http_verb = kzd_webhook:verb(Hook)
+            ,hook_event = hook_event(kzd_webhook:event(Hook))
+            ,hook_id = kz_doc:id(Hook)
+            ,retries = kzd_webhook:retries(Hook)
+            ,account_id = kz_doc:account_id(Hook)
+            ,custom_data = kzd_webhook:custom_data(Hook)
+            ,modifiers = kzd_webhook:modifiers(Hook)
             }.
 
 -spec init_webhooks() -> 'ok'.
@@ -396,7 +396,7 @@ init_webhooks() ->
     case kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                                ,<<"webhooks/accounts_listing">>
                                ,[{'group_level', 1}]
-			       )
+                               )
     of
         {'ok', []} -> lager:debug("no accounts to load views into the MODs");
         {'ok', Accts} -> init_webhooks(Accts);
@@ -420,18 +420,18 @@ init_webhook(Acct, Year, Month) ->
 -spec note_failed_attempt(ne_binary(), ne_binary()) -> 'ok'.
 note_failed_attempt(AccountId, HookId) ->
     kz_cache:store_local(?CACHE_NAME
-			,?FAILURE_CACHE_KEY(AccountId, HookId, kz_util:current_tstamp())
-			,'true'
-			,[{'expires', account_expires_time(AccountId)}]
+                        ,?FAILURE_CACHE_KEY(AccountId, HookId, kz_util:current_tstamp())
+                        ,'true'
+                        ,[{'expires', account_expires_time(AccountId)}]
                         ).
 
 -spec account_expires_time(ne_binary()) -> pos_integer().
 account_expires_time(AccountId) ->
     Expiry = kapps_account_config:get_global(AccountId
-					    ,?APP_NAME
-					    ,?ATTEMPT_EXPIRY_KEY
-					    ,?MILLISECONDS_IN_MINUTE
-					    ),
+                                            ,?APP_NAME
+                                            ,?ATTEMPT_EXPIRY_KEY
+                                            ,?MILLISECONDS_IN_MINUTE
+                                            ),
     try kz_util:to_integer(Expiry) of
         I -> I
     catch
@@ -455,10 +455,10 @@ enable_account_hooks(Account) ->
     case kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                                ,<<"webhooks/accounts_listing">>
                                ,[{'key', AccountId}
-				,{'reduce', 'false'}
-				,'include_docs'
+                                ,{'reduce', 'false'}
+                                ,'include_docs'
                                 ]
-			       )
+                               )
     of
         {'ok', []} -> io:format("account ~s has no webhooks configured~n", [AccountId]);
         {'ok', Hooks} -> enable_hooks(Hooks);
@@ -490,9 +490,9 @@ enable_descendant_hooks(Account) ->
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB
                                ,<<"accounts/listing_by_descendants">>
                                ,[{'startkey', [AccountId]}
-				,{'endkey', [AccountId, kz_json:new()]}
+                                ,{'endkey', [AccountId, kz_json:new()]}
                                 ]
-			       )
+                               )
     of
         {'ok', []} ->
             maybe_enable_descendants_hooks([AccountId]);
@@ -548,7 +548,7 @@ load_metadata(MasterAccountDb, JObj) ->
             lager:debug("~s loaded elsewhere", [kz_doc:id(JObj)]);
         {'error', _E} ->
             lager:warning("failed to load metadata for ~s: ~p"
-			 ,[kz_doc:id(JObj), _E]
+                         ,[kz_doc:id(JObj), _E]
                          )
     end.
 
@@ -580,6 +580,6 @@ fetch_available_events() ->
                              kz_json:object().
 update_metadata(MasterAccountDb, JObj) ->
     kz_doc:update_pvt_parameters(JObj
-				,MasterAccountDb
-				,[{'type', <<"webhook_meta">>}]
+                                ,MasterAccountDb
+                                ,[{'type', <<"webhook_meta">>}]
                                 ).

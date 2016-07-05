@@ -33,82 +33,82 @@
 
 -define(MAILBOX_DEFAULT_SIZE
        ,kapps_config:get_integer(?CF_CONFIG_CAT
-				,[?KEY_VOICEMAIL, ?KEY_MAX_MESSAGE_COUNT]
-				,100
-				)).
+                                ,[?KEY_VOICEMAIL, ?KEY_MAX_MESSAGE_COUNT]
+                                ,100
+                                )).
 -define(MAILBOX_DEFAULT_MSG_MAX_LENGTH
        ,kapps_config:get_integer(?CF_CONFIG_CAT
-				,[?KEY_VOICEMAIL, ?KEY_MAX_MESSAGE_LENGTH]
-				,500
-				)).
+                                ,[?KEY_VOICEMAIL, ?KEY_MAX_MESSAGE_LENGTH]
+                                ,500
+                                )).
 -define(MAILBOX_DEFAULT_MSG_MIN_LENGTH
        ,kapps_config:get_integer(?CF_CONFIG_CAT
-				,[?KEY_VOICEMAIL, ?KEY_MIN_MESSAGE_SIZE]
-				,500
-				)).
+                                ,[?KEY_VOICEMAIL, ?KEY_MIN_MESSAGE_SIZE]
+                                ,500
+                                )).
 -define(MAILBOX_DEFAULT_BOX_NUMBER_LENGTH
        ,kapps_config:get_integer(?CF_CONFIG_CAT
-				,[?KEY_VOICEMAIL, ?KEY_MAX_BOX_NUMBER_LENGTH]
-				,15
-				)).
+                                ,[?KEY_VOICEMAIL, ?KEY_MAX_BOX_NUMBER_LENGTH]
+                                ,15
+                                )).
 -define(DEFAULT_VM_EXTENSION
        ,kapps_config:get(?CF_CONFIG_CAT
-			,[?KEY_VOICEMAIL, ?KEY_EXTENSION]
-			,<<"mp3">>
-			)
+                        ,[?KEY_VOICEMAIL, ?KEY_EXTENSION]
+                        ,<<"mp3">>
+                        )
        ).
 
 -define(DEFAULT_MAX_PIN_LENGTH
        ,kapps_config:get_integer(?CF_CONFIG_CAT
-				,[?KEY_VOICEMAIL, ?KEY_MAX_PIN_LENGTH]
-				,6
-				)
+                                ,[?KEY_VOICEMAIL, ?KEY_MAX_PIN_LENGTH]
+                                ,6
+                                )
        ).
 
 -define(DEFAULT_SAVE_AFTER_NOTIFY
        ,kapps_config:get(?CF_CONFIG_CAT
-			,[?KEY_VOICEMAIL, ?KEY_SAVE_AFTER_NOTIFY]
-			,'false'
-			)
+                        ,[?KEY_VOICEMAIL, ?KEY_SAVE_AFTER_NOTIFY]
+                        ,'false'
+                        )
        ).
 
 -define(DEFAULT_DELETE_AFTER_NOTIFY
        ,kapps_config:get(?CF_CONFIG_CAT
-			,[?KEY_VOICEMAIL, ?KEY_DELETE_AFTER_NOTIFY]
-			,'false'
-			)
+                        ,[?KEY_VOICEMAIL, ?KEY_DELETE_AFTER_NOTIFY]
+                        ,'false'
+                        )
        ).
 
 -record(keys, {
           %% Compose Voicemail
           operator = <<"0">>
-	      ,login = <<"*">>
+              ,login = <<"*">>
 
-	      %% Record Review
-	      ,save = <<"1">>
-	      ,listen = <<"2">>
-	      ,record = <<"3">>
+              %% Record Review
+              ,save = <<"1">>
+              ,listen = <<"2">>
+              ,record = <<"3">>
 
-	      %% Main Menu
-	      ,hear_new = <<"1">>
-	      ,hear_saved = <<"2">>
-	      ,configure = <<"5">>
-	      ,exit = <<"#">>
+              %% Main Menu
+              ,hear_new = <<"1">>
+              ,hear_saved = <<"2">>
+              ,configure = <<"5">>
+              ,exit = <<"#">>
 
-	      %% Config Menu
-	      ,rec_unavailable  = <<"1">>
-	      ,rec_name = <<"2">>
-	      ,set_pin = <<"3">>
-	      ,rec_temporary_unavailable  = <<"4">>
-	      ,del_temporary_unavailable  = <<"5">>
-	      ,return_main = <<"0">>
+              %% Config Menu
+              ,rec_unavailable  = <<"1">>
+              ,rec_name = <<"2">>
+              ,set_pin = <<"3">>
+              ,rec_temporary_unavailable  = <<"4">>
+              ,del_temporary_unavailable  = <<"5">>
+              ,return_main = <<"0">>
 
-	      %% Post playbak
-	      ,keep = <<"1">>
-	      ,replay = <<"2">>
-	      ,prev = <<"4">>
-	      ,next = <<"6">>
-	      ,delete = <<"7">>
+              %% Post playbak
+              ,keep = <<"1">>
+              ,replay = <<"2">>
+              ,prev = <<"4">>
+              ,next = <<"6">>
+              ,delete = <<"7">>
          }).
 -type vm_keys() :: #keys{}.
 
@@ -116,33 +116,33 @@
 
 -record(mailbox, {
           mailbox_id :: api_binary()
-		 ,mailbox_number = <<>> :: binary()
-		 ,exists = 'false' :: boolean()
-		 ,skip_instructions = 'false' :: boolean()
-		 ,skip_greeting = 'false' :: boolean()
-		 ,unavailable_media_id :: api_binary()
-		 ,temporary_unavailable_media_id :: api_binary()
-		 ,name_media_id :: api_binary()
-		 ,pin = <<>> :: binary()
-		 ,timezone :: ne_binary()
-		 ,max_login_attempts = 3 :: non_neg_integer()
-		 ,require_pin = 'false' :: boolean()
-		 ,check_if_owner = 'true' :: boolean()
-		 ,owner_id :: api_binary()
-		 ,is_setup = 'false' :: boolean()
-		 ,message_count = 0 :: non_neg_integer()
-		 ,max_message_count = 0 :: non_neg_integer()
-		 ,max_message_length :: pos_integer()
-		 ,min_message_length = ?MAILBOX_DEFAULT_MSG_MIN_LENGTH :: pos_integer()
-		 ,keys = #keys{} :: vm_keys()
-		 ,transcribe_voicemail = 'false' :: boolean()
-		 ,notifications :: kz_json:object()
-		 ,after_notify_action = 'nothing' :: 'nothing' | 'delete' | 'save'
-		 ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
-		 ,play_greeting_intro = 'false' :: boolean()
-		 ,use_person_not_available = 'false' :: boolean()
-		 ,not_configurable = 'false' :: boolean()
-		 ,account_db :: api_binary()
+                 ,mailbox_number = <<>> :: binary()
+                 ,exists = 'false' :: boolean()
+                 ,skip_instructions = 'false' :: boolean()
+                 ,skip_greeting = 'false' :: boolean()
+                 ,unavailable_media_id :: api_binary()
+                 ,temporary_unavailable_media_id :: api_binary()
+                 ,name_media_id :: api_binary()
+                 ,pin = <<>> :: binary()
+                 ,timezone :: ne_binary()
+                 ,max_login_attempts = 3 :: non_neg_integer()
+                 ,require_pin = 'false' :: boolean()
+                 ,check_if_owner = 'true' :: boolean()
+                 ,owner_id :: api_binary()
+                 ,is_setup = 'false' :: boolean()
+                 ,message_count = 0 :: non_neg_integer()
+                 ,max_message_count = 0 :: non_neg_integer()
+                 ,max_message_length :: pos_integer()
+                 ,min_message_length = ?MAILBOX_DEFAULT_MSG_MIN_LENGTH :: pos_integer()
+                 ,keys = #keys{} :: vm_keys()
+                 ,transcribe_voicemail = 'false' :: boolean()
+                 ,notifications :: kz_json:object()
+                 ,after_notify_action = 'nothing' :: 'nothing' | 'delete' | 'save'
+                 ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
+                 ,play_greeting_intro = 'false' :: boolean()
+                 ,use_person_not_available = 'false' :: boolean()
+                 ,not_configurable = 'false' :: boolean()
+                 ,account_db :: api_binary()
          }).
 -type mailbox() :: #mailbox{}.
 
@@ -228,18 +228,18 @@ check_mailbox(#mailbox{pin = <<>>, require_pin='true'}, 'false', Call, _) ->
     _ = kapps_call_command:b_prompt(<<"vm-no_access">>, Call),
     'ok';
 check_mailbox(#mailbox{pin=Pin
-		      ,interdigit_timeout=Interdigit
+                      ,interdigit_timeout=Interdigit
                       }=Box, IsOwner, Call, Loop) ->
     lager:info("requesting pin number to check mailbox"),
 
     NoopId = kapps_call_command:prompt(<<"vm-enter_pass">>, Call),
 
     case kapps_call_command:collect_digits(?DEFAULT_MAX_PIN_LENGTH
-					  ,kapps_call_command:default_collect_timeout()
-					  ,Interdigit
-					  ,NoopId
-					  ,Call
-					  )
+                                          ,kapps_call_command:default_collect_timeout()
+                                          ,Interdigit
+                                          ,NoopId
+                                          ,Call
+                                          )
     of
         {'ok', Pin} ->
             lager:info("caller entered a valid pin"),
@@ -271,11 +271,11 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
     NoopId = kapps_call_command:prompt(<<"vm-enter_id">>, Call),
 
     case kapps_call_command:collect_digits(?MAILBOX_DEFAULT_BOX_NUMBER_LENGTH
-					  ,kapps_call_command:default_collect_timeout()
-					  ,Interdigit
-					  ,NoopId
-					  ,Call
-					  )
+                                          ,kapps_call_command:default_collect_timeout()
+                                          ,Interdigit
+                                          ,NoopId
+                                          ,Call
+                                          )
     of
         {'ok', <<>>} ->
             find_mailbox(Box, Call, Loop + 1);
@@ -293,7 +293,7 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
                     lager:info("get profile of ~p", [JObj]),
                     ReqBox = get_mailbox_profile(
                                kz_json:from_list([{<<"id">>, kz_doc:id(JObj)}])
-						,Call
+                                                ,Call
                               ),
                     check_mailbox(ReqBox, Call, Loop);
                 {'ok', _} ->
@@ -331,24 +331,24 @@ compose_voicemail(#mailbox{exists='false'}, _, Call) ->
     _ = kapps_call_command:b_prompt(<<"vm-not_available_no_voicemail">>, Call),
     'ok';
 compose_voicemail(#mailbox{max_message_count=MaxCount
-			  ,message_count=Count
-			  ,mailbox_id=VMBId
-			  ,mailbox_number=VMBN
-			  ,keys=#keys{login=Login}
+                          ,message_count=Count
+                          ,mailbox_id=VMBId
+                          ,mailbox_number=VMBN
+                          ,keys=#keys{login=Login}
                           }=Box, _, Call) when Count >= MaxCount
                                                andalso MaxCount > 0 ->
     lager:debug("voicemail box is full, cannot hold more messages, sending notification"),
     Props = [{<<"Account-DB">>, kapps_call:account_db(Call)}
-	    ,{<<"Account-ID">>, kapps_call:account_id(Call)}
-	    ,{<<"Voicemail-Box">>, VMBId}
-	    ,{<<"Voicemail-Number">>, VMBN}
-	    ,{<<"Max-Message-Count">>, MaxCount}
-	    ,{<<"Message-Count">>, Count}
+            ,{<<"Account-ID">>, kapps_call:account_id(Call)}
+            ,{<<"Voicemail-Box">>, VMBId}
+            ,{<<"Voicemail-Number">>, VMBN}
+            ,{<<"Max-Message-Count">>, MaxCount}
+            ,{<<"Message-Count">>, Count}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     _ = kz_amqp_worker:call(Props
-			   ,fun kapi_notifications:publish_voicemail_full/1
-			   ,fun kapi_notifications:voicemail_full_v/1
+                           ,fun kapi_notifications:publish_voicemail_full/1
+                           ,fun kapi_notifications:voicemail_full_v/1
                            ),
     _ = kapps_call_command:prompt(<<"vm-mailbox_full">>, Call),
     _NoopId = kapps_call_command:noop(Call),
@@ -361,7 +361,7 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
             lager:debug("finished with call")
     end;
 compose_voicemail(#mailbox{keys=#keys{login=Login
-				     ,operator=Operator
+                                     ,operator=Operator
                                      }
                           }=Box, _, Call) ->
     lager:debug("playing mailbox greeting to caller"),
@@ -414,7 +414,7 @@ play_greeting_intro(_, _) -> 'ok'.
 -spec play_greeting(mailbox(), kapps_call:call()) -> ne_binary() | 'ok'.
 play_greeting(#mailbox{skip_greeting='true'}, _Call) -> 'ok';
 play_greeting(#mailbox{temporary_unavailable_media_id= <<_/binary>> = MediaId}
-	     ,Call
+             ,Call
              ) ->
     Corrected = kz_media_util:media_path(MediaId, Call),
     lager:info("mailbox has a temporary greeting which always overrides standard greeting: '~s', corrected to '~s'",
@@ -422,18 +422,18 @@ play_greeting(#mailbox{temporary_unavailable_media_id= <<_/binary>> = MediaId}
               ),
     kapps_call_command:play(Corrected, Call);
 play_greeting(#mailbox{use_person_not_available='true'
-		      ,unavailable_media_id='undefined'
+                      ,unavailable_media_id='undefined'
                       }, Call) ->
     lager:debug("mailbox has no greeting, playing the customized generic"),
     kapps_call_command:audio_macro([{'prompt', <<"vm-person_not_available">>}], Call);
 play_greeting(#mailbox{unavailable_media_id='undefined'
-		      ,mailbox_number=Mailbox
+                      ,mailbox_number=Mailbox
                       }, Call) ->
     lager:debug("mailbox has no greeting, playing the generic"),
     kapps_call_command:audio_macro([{'prompt', <<"vm-person">>}
-				   ,{'say', Mailbox}
-				   ,{'prompt', <<"vm-not_available">>}
-				   ], Call);
+                                   ,{'say', Mailbox}
+                                   ,{'prompt', <<"vm-not_available">>}
+                                   ], Call);
 play_greeting(#mailbox{unavailable_media_id=MediaId}, Call) ->
     Corrected = kz_media_util:media_path(MediaId, Call),
     lager:info("mailbox has a greeting: '~s', corrected to '~s'", [MediaId, Corrected]),
@@ -459,8 +459,8 @@ play_instructions(#mailbox{skip_instructions='false'}, Call) ->
 -spec record_voicemail(ne_binary(), mailbox(), kapps_call:call()) -> 'ok'.
 record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=Box, Call) ->
     Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
-			     ,{<<"Duration-ON">>, <<"500">>}
-			     ,{<<"Duration-OFF">>, <<"100">>}
+                             ,{<<"Duration-ON">>, <<"500">>}
+                             ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
     kapps_call_command:tones([Tone], Call),
     lager:info("composing new voicemail to ~s", [AttachmentName]),
@@ -541,12 +541,12 @@ main_menu(Box, Call, Loop) when Loop > 4 ->
     _ = kapps_call_command:b_prompt(<<"vm-goodbye">>, Call),
     send_mwi_update(Box, Call);
 main_menu(#mailbox{keys=#keys{hear_new=HearNew
-			     ,hear_saved=HearSaved
-			     ,exit=Exit
-			     }
-		  ,interdigit_timeout=Interdigit
-		  ,not_configurable='true'
-		  ,mailbox_id=BoxId
+                             ,hear_saved=HearSaved
+                             ,exit=Exit
+                             }
+                  ,interdigit_timeout=Interdigit
+                  ,not_configurable='true'
+                  ,mailbox_id=BoxId
                   }=Box, Call, Loop) ->
 
     lager:debug("playing mailbox main menu"),
@@ -558,16 +558,16 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
 
     lager:debug("mailbox has ~p new and ~p saved messages", [New, Saved]),
     NoopId = kapps_call_command:audio_macro(message_count_prompts(New, Saved)
-					    ++ [{'prompt', <<"vm-main_menu_not_configurable">>}]
-					   ,Call
-					   ),
+                                            ++ [{'prompt', <<"vm-main_menu_not_configurable">>}]
+                                           ,Call
+                                           ),
 
     case kapps_call_command:collect_digits(?KEY_LENGTH
-					  ,kapps_call_command:default_collect_timeout()
-					  ,Interdigit
-					  ,NoopId
-					  ,Call
-					  )
+                                          ,kapps_call_command:default_collect_timeout()
+                                          ,Interdigit
+                                          ,NoopId
+                                          ,Call
+                                          )
     of
         {'error', _} ->
             lager:info("error during mailbox main menu"),
@@ -593,13 +593,13 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
             main_menu(Box, Call, Loop + 1)
     end;
 main_menu(#mailbox{keys=#keys{hear_new=HearNew
-			     ,hear_saved=HearSaved
-			     ,configure=Configure
-			     ,exit=Exit
-			     }
-		  ,interdigit_timeout=Interdigit
-		  ,not_configurable='false'
-		  ,mailbox_id=BoxId
+                             ,hear_saved=HearSaved
+                             ,configure=Configure
+                             ,exit=Exit
+                             }
+                  ,interdigit_timeout=Interdigit
+                  ,not_configurable='false'
+                  ,mailbox_id=BoxId
                   }=Box, Call, Loop) ->
     lager:debug("playing mailbox main menu"),
     _ = kapps_call_command:b_flush(Call),
@@ -610,19 +610,19 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
 
     lager:debug("mailbox has ~p new and ~p saved messages", [New, Saved]),
     NoopId = kapps_call_command:audio_macro(message_count_prompts(New, Saved)
-					    ++ [{'prompt', <<"vm-main_menu">>}]
-					   ,Call),
+                                            ++ [{'prompt', <<"vm-main_menu">>}]
+                                           ,Call),
 
     case kapps_call_command:collect_digits(?KEY_LENGTH
-					  ,kapps_call_command:default_collect_timeout()
-					  ,Interdigit
-					  ,NoopId
-					  ,Call
-					  )
+                                          ,kapps_call_command:default_collect_timeout()
+                                          ,Interdigit
+                                          ,NoopId
+                                          ,Call
+                                          )
     of
         {'error', _} ->
             lager:info("error during mailbox main menu"),
-	    send_mwi_update(Box, Call);
+            send_mwi_update(Box, Call);
         {'ok', Exit} ->
             lager:info("user choose to exit voicemail menu"),
             send_mwi_update(Box, Call);
@@ -731,11 +731,11 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone
     Message = kz_vm_message:media_url(AccountId, H),
     lager:info("playing mailbox message ~p (~s)", [Count, Message]),
     Prompt = [{'prompt', <<"vm-message_number">>}
-	     ,{'say', kz_util:to_binary(Count - length(Messages) + 1), <<"number">>}
-	     ,{'play', Message}
-	     ,{'prompt', <<"vm-received">>}
-	     ,{'say',  get_unix_epoch(kz_json:get_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
-	     ,{'prompt', <<"vm-message_menu">>}
+             ,{'say', kz_util:to_binary(Count - length(Messages) + 1), <<"number">>}
+             ,{'play', Message}
+             ,{'prompt', <<"vm-received">>}
+             ,{'say',  get_unix_epoch(kz_json:get_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
+             ,{'prompt', <<"vm-message_menu">>}
              ],
     case message_menu(Prompt, Box, Call) of
         {'ok', 'keep'} ->
@@ -801,23 +801,23 @@ play_prev_message(Messages, [H|T], Count, Box, Call) ->
 message_menu(Box, Call) ->
     message_menu([{'prompt', <<"vm-message_menu">>}], Box, Call).
 message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
-					,keep=Keep
-					,delete=Delete
-					,prev=Prev
-					,next=Next
-					,return_main=ReturnMain
+                                        ,keep=Keep
+                                        ,delete=Delete
+                                        ,prev=Prev
+                                        ,next=Next
+                                        ,return_main=ReturnMain
                                         }
-			     ,interdigit_timeout=Interdigit
+                             ,interdigit_timeout=Interdigit
                              }=Box, Call) ->
     lager:info("playing message menu"),
     NoopId = kapps_call_command:audio_macro(Prompt, Call),
 
     case kapps_call_command:collect_digits(?KEY_LENGTH
-					  ,kapps_call_command:default_collect_timeout()
-					  ,Interdigit
-					  ,NoopId
-					  ,Call
-					  )
+                                          ,kapps_call_command:default_collect_timeout()
+                                          ,Interdigit
+                                          ,NoopId
+                                          ,Call
+                                          )
     of
         {'ok', Keep} -> {'ok', 'keep'};
         {'ok', Delete} -> {'ok', 'delete'};
@@ -845,8 +845,8 @@ config_menu(Box, Call) ->
     config_menu(Box, Call, 1).
 
 config_menu(#mailbox{interdigit_timeout=Interdigit}=Box
-	   ,Call
-	   ,Loop
+           ,Call
+           ,Loop
            ) when Loop < 4 ->
     lager:info("playing mailbox configuration menu"),
     {'ok', _} = kapps_call_command:b_flush(Call),
@@ -854,11 +854,11 @@ config_menu(#mailbox{interdigit_timeout=Interdigit}=Box
     NoopId = kapps_call_command:prompt(<<"vm-settings_menu">>, Call),
 
     case kapps_call_command:collect_digits(?KEY_LENGTH
-					  ,kapps_call_command:default_collect_timeout()
-					  ,Interdigit
-					  ,NoopId
-					  ,Call
-					  )
+                                          ,kapps_call_command:default_collect_timeout()
+                                          ,Interdigit
+                                          ,NoopId
+                                          ,Call
+                                          )
     of
         {'ok', Selection} ->
             handle_config_selection(Box, Call, Loop, Selection);
@@ -870,9 +870,9 @@ config_menu(#mailbox{interdigit_timeout=Interdigit}=Box
                                      'ok' | mailbox() |
                                      {'error', 'channel_hungup'}.
 handle_config_selection(#mailbox{keys=#keys{rec_unavailable=Selection}}=Box
-		       ,Call
-		       ,_Loop
-		       ,Selection
+                       ,Call
+                       ,_Loop
+                       ,Selection
                        ) ->
     lager:info("caller chose to record their unavailable greeting"),
     case record_unavailable_greeting(tmp_file(), Box, Call) of
@@ -880,9 +880,9 @@ handle_config_selection(#mailbox{keys=#keys{rec_unavailable=Selection}}=Box
         Else -> config_menu(Else, Call)
     end;
 handle_config_selection(#mailbox{keys=#keys{rec_name=Selection}}=Box
-		       ,Call
-		       ,_Loop
-		       ,Selection
+                       ,Call
+                       ,_Loop
+                       ,Selection
                        ) ->
     lager:info("caller chose to record their name"),
     case record_name(tmp_file(), Box, Call) of
@@ -890,9 +890,9 @@ handle_config_selection(#mailbox{keys=#keys{rec_name=Selection}}=Box
         Else -> config_menu(Else, Call)
     end;
 handle_config_selection(#mailbox{keys=#keys{set_pin=Selection}}=Box
-		       ,Call
-		       ,_Loop
-		       ,Selection
+                       ,Call
+                       ,_Loop
+                       ,Selection
                        ) ->
     lager:info("caller chose to change their pin"),
     case change_pin(Box, Call) of
@@ -906,9 +906,9 @@ handle_config_selection(#mailbox{keys=#keys{set_pin=Selection}}=Box
             config_menu(Box1, Call)
     end;
 handle_config_selection(#mailbox{keys=#keys{rec_temporary_unavailable=Selection}}=Box
-		       ,Call
-		       ,_Loop
-		       ,Selection
+                       ,Call
+                       ,_Loop
+                       ,Selection
                        ) ->
     lager:info("caller chose to record their temporary unavailable greeting"),
     case record_temporary_unavailable_greeting(tmp_file(), Box, Call) of
@@ -916,9 +916,9 @@ handle_config_selection(#mailbox{keys=#keys{rec_temporary_unavailable=Selection}
         Box1 -> config_menu(Box1, Call)
     end;
 handle_config_selection(#mailbox{keys=#keys{del_temporary_unavailable=Selection}}=Box
-		       ,Call
-		       ,_Loop
-		       ,Selection
+                       ,Call
+                       ,_Loop
+                       ,Selection
                        ) ->
     lager:info("caller chose to delete their temporary unavailable greeting"),
     case delete_temporary_unavailable_greeting(Box, Call) of
@@ -926,18 +926,18 @@ handle_config_selection(#mailbox{keys=#keys{del_temporary_unavailable=Selection}
         Box1 -> config_menu(Box1, Call)
     end;
 handle_config_selection(#mailbox{keys=#keys{return_main=Selection}}=Box
-		       ,_Call
-		       ,_Loop
-		       ,Selection
+                       ,_Call
+                       ,_Loop
+                       ,Selection
                        ) ->
     lager:info("caller chose to return to the main menu"),
     Box;
 %% Bulk delete -> delete all voicemails
 %% Reset -> delete all voicemails, greetings, name, and reset pin
 handle_config_selection(#mailbox{}=Box
-		       ,Call
-		       ,Loop
-		       ,_Selection
+                       ,Call
+                       ,Loop
+                       ,_Selection
                        ) ->
     lager:info("undefined config menu option '~s'", [_Selection]),
     config_menu(Box, Call, Loop + 1).
@@ -951,14 +951,14 @@ handle_config_selection(#mailbox{}=Box
 -spec record_temporary_unavailable_greeting(ne_binary(), mailbox(), kapps_call:call()) ->
                                                    'ok' | mailbox().
 record_temporary_unavailable_greeting(AttachmentName
-				     ,#mailbox{temporary_unavailable_media_id='undefined'}=Box
-				     ,Call
+                                     ,#mailbox{temporary_unavailable_media_id='undefined'}=Box
+                                     ,Call
                                      ) ->
     lager:info("no temporary greetings was recorded before so new media document should be created"),
     MediaId = recording_media_doc(<<"temporary unavailable greeting">>, Box, Call),
     record_temporary_unavailable_greeting(AttachmentName
-					 ,Box#mailbox{temporary_unavailable_media_id=MediaId}
-					 ,Call
+                                         ,Box#mailbox{temporary_unavailable_media_id=MediaId}
+                                         ,Call
                                          );
 record_temporary_unavailable_greeting(AttachmentName, Box, Call) ->
     lager:info("record new temporary greetings use existing media document"),
@@ -974,19 +974,19 @@ record_temporary_unavailable_greeting(AttachmentName, Box, Call) ->
 -spec overwrite_temporary_unavailable_greeting(ne_binary(), mailbox(), kapps_call:call()) ->
                                                       'ok' | mailbox().
 overwrite_temporary_unavailable_greeting(AttachmentName
-					,#mailbox{temporary_unavailable_media_id=MediaId}=Box
-					,Call
+                                        ,#mailbox{temporary_unavailable_media_id=MediaId}=Box
+                                        ,Call
                                         ) ->
     lager:info("overwriting temporary unavailable greeting  as ~s", [AttachmentName]),
     Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
-			     ,{<<"Duration-ON">>, <<"500">>}
-			     ,{<<"Duration-OFF">>, <<"100">>}
+                             ,{<<"Duration-ON">>, <<"500">>}
+                             ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
     _NoopId = kapps_call_command:audio_macro(
                 [{'prompt', <<"vm-record_temp_greeting">>}
-		,{'tones', [Tone]}
+                ,{'tones', [Tone]}
                 ]
-					    ,Call
+                                            ,Call
                ),
     case kapps_call_command:b_record(AttachmentName, Call) of
         {'ok', Msg} ->
@@ -1055,14 +1055,14 @@ check_media_source(AttachmentName, Box, Call, JObj) ->
 overwrite_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaId}=Box, Call) ->
     lager:info("overwriting unavailable greeting  as ~s", [AttachmentName]),
     Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
-			     ,{<<"Duration-ON">>, <<"500">>}
-			     ,{<<"Duration-OFF">>, <<"100">>}
+                             ,{<<"Duration-ON">>, <<"500">>}
+                             ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
     _NoopId = kapps_call_command:audio_macro([{'prompt', <<"vm-record_greeting">>}
-					     ,{'tones', [Tone]}
-					     ]
-					    ,Call
-					    ),
+                                             ,{'tones', [Tone]}
+                                             ]
+                                            ,Call
+                                            ),
     case kapps_call_command:b_record(AttachmentName, Call) of
         {'ok', Msg} ->
             case review_recording(AttachmentName, 'false', Box, Call) of
@@ -1094,19 +1094,19 @@ overwrite_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=Med
 -spec record_name(ne_binary(), mailbox(), kapps_call:call(), ne_binary()) ->
                          'ok' | mailbox().
 record_name(AttachmentName, #mailbox{owner_id='undefined'
-				    ,name_media_id='undefined'
+                                    ,name_media_id='undefined'
                                     }=Box, Call) ->
     lager:info("no recorded name media id nor owner id"),
     MediaId = recording_media_doc(<<"users name">>, Box, Call),
     lager:info("created recorded name media doc: ~s", [MediaId]),
     record_name(AttachmentName, Box#mailbox{name_media_id=MediaId}, Call);
 record_name(AttachmentName, #mailbox{owner_id='undefined'
-				    ,mailbox_id=BoxId
+                                    ,mailbox_id=BoxId
                                     }=Box, Call) ->
     lager:info("no owner_id set on mailbox, saving recorded name id into mailbox"),
     record_name(AttachmentName, Box, Call, BoxId);
 record_name(AttachmentName, #mailbox{owner_id=OwnerId
-				    ,name_media_id='undefined'
+                                    ,name_media_id='undefined'
                                     }=Box, Call) ->
     lager:info("no recorded name media id for owner"),
     MediaId = recording_media_doc(<<"users name">>, Box, Call),
@@ -1119,12 +1119,12 @@ record_name(AttachmentName, #mailbox{owner_id=OwnerId}=Box, Call) ->
 record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
     lager:info("recording name as ~s in ~s", [AttachmentName, MediaId]),
     Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
-			     ,{<<"Duration-ON">>, <<"500">>}
-			     ,{<<"Duration-OFF">>, <<"100">>}
+                             ,{<<"Duration-ON">>, <<"500">>}
+                             ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
     _NoopId = kapps_call_command:audio_macro([{'prompt',  <<"vm-record_name">>}
-					     ,{'tones', [Tone]}
-					     ], Call),
+                                             ,{'tones', [Tone]}
+                                             ], Call),
     case kapps_call_command:b_record(AttachmentName, Call) of
         {'ok', Msg} ->
             case review_recording(AttachmentName, 'false', Box, Call) of
@@ -1154,9 +1154,9 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
 -spec change_pin(mailbox(), kapps_call:call()) ->
                         mailbox() | {'error', any()}.
 change_pin(#mailbox{mailbox_id=Id
-		   ,interdigit_timeout=Interdigit
+                   ,interdigit_timeout=Interdigit
                    }=Box
-	  ,Call
+          ,Call
           ) ->
     lager:info("requesting new mailbox pin number"),
     try
@@ -1244,11 +1244,11 @@ confirm_new_pin(Interdigit, Call) ->
                          {'error', any()}.
 collect_pin(Interdigit, Call, NoopId) ->
     kapps_call_command:collect_digits(?DEFAULT_MAX_PIN_LENGTH
-				     ,kapps_call_command:default_collect_timeout()
-				     ,Interdigit
-				     ,NoopId
-				     ,Call
-				     ).
+                                     ,kapps_call_command:default_collect_timeout()
+                                     ,Interdigit
+                                     ,NoopId
+                                     ,Call
+                                     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1260,17 +1260,17 @@ new_message(_, Length, #mailbox{min_message_length=MinLength}, _)
   when Length < MinLength ->
     lager:info("attachment length is ~B and must be larger than ~B to be stored", [Length, MinLength]);
 new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
-					    ,mailbox_id=BoxId
-					    ,timezone=Timezone
-					    ,owner_id=OwnerId
-					    ,transcribe_voicemail=MaybeTranscribe
-					    ,after_notify_action=Action
+                                            ,mailbox_id=BoxId
+                                            ,timezone=Timezone
+                                            ,owner_id=OwnerId
+                                            ,transcribe_voicemail=MaybeTranscribe
+                                            ,after_notify_action=Action
                                             }=Box, Call) ->
     NewMsgProps = [{<<"Box-Id">>, BoxId}
-		  ,{<<"OwnerId">>, OwnerId}
-		  ,{<<"Length">>, Length}
-		  ,{<<"Transcribe-Voicemail">>, MaybeTranscribe}
-		  ,{<<"After-Notify-Action">>, Action}
+                  ,{<<"OwnerId">>, OwnerId}
+                  ,{<<"Length">>, Length}
+                  ,{<<"Transcribe-Voicemail">>, MaybeTranscribe}
+                  ,{<<"After-Notify-Action">>, Action}
                   ],
     case kz_vm_message:new_message(AttachmentName, BoxNum, Timezone, Call, NewMsgProps) of
         'ok' -> send_mwi_update(Box, Call);
@@ -1282,9 +1282,9 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
 system_report(Msg, Call) ->
     Notify = props:filter_undefined(
                [{<<"Subject">>, <<"failed to store voicemail recorded media">>}
-	       ,{<<"Message">>, iolist_to_binary(Msg)}
-	       ,{<<"Details">>, kapps_call:to_json(Call)}
-	       ,{<<"Account-ID">>, kapps_call:account_id(Call)}
+               ,{<<"Message">>, iolist_to_binary(Msg)}
+               ,{<<"Details">>, kapps_call:to_json(Call)}
+               ,{<<"Account-ID">>, kapps_call:account_id(Call)}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).
@@ -1320,58 +1320,58 @@ get_mailbox_profile(Data, Call) ->
             MsgCount = kz_vm_message:count(kapps_call:account_id(Call), Id),
 
             lager:info("mailbox limited to ~p voicemail messages (has ~b currently)"
-		      ,[MaxMessageCount, MsgCount]
+                      ,[MaxMessageCount, MsgCount]
                       ),
 
             AfterNotifyAction = after_notify_action(MailboxJObj),
 
             #mailbox{mailbox_id = MailboxId
-		    ,exists = 'true'
-		    ,keys = populate_keys(Call)
-		    ,skip_instructions =
+                    ,exists = 'true'
+                    ,keys = populate_keys(Call)
+                    ,skip_instructions =
                          kzd_voicemail_box:skip_instructions(MailboxJObj, Default#mailbox.skip_instructions)
-		    ,skip_greeting =
+                    ,skip_greeting =
                          kzd_voicemail_box:skip_greeting(MailboxJObj, Default#mailbox.skip_greeting)
-		    ,pin =
+                    ,pin =
                          kzd_voicemail_box:pin(MailboxJObj, <<>>)
-		    ,timezone =
+                    ,timezone =
                          kzd_voicemail_box:timezone(MailboxJObj, ?DEFAULT_TIMEZONE)
-		    ,mailbox_number =
+                    ,mailbox_number =
                          kzd_voicemail_box:mailbox_number(MailboxJObj, kapps_call:request_user(Call))
-		    ,require_pin =
+                    ,require_pin =
                          kzd_voicemail_box:pin_required(MailboxJObj)
-		    ,check_if_owner =
+                    ,check_if_owner =
                          kzd_voicemail_box:check_if_owner(MailboxJObj, CheckIfOwner)
-		    ,unavailable_media_id =
+                    ,unavailable_media_id =
                          kz_json:get_ne_value([<<"media">>, <<"unavailable">>], MailboxJObj)
-		    ,temporary_unavailable_media_id =
+                    ,temporary_unavailable_media_id =
                          kz_json:get_ne_value([<<"media">>, <<"temporary_unavailable">>], MailboxJObj)
-		    ,name_media_id =
+                    ,name_media_id =
                          NameMediaId
-		    ,owner_id =
+                    ,owner_id =
                          OwnerId
-		    ,is_setup =
+                    ,is_setup =
                          kzd_voicemail_box:is_setup(MailboxJObj, 'false')
-		    ,max_message_count =
+                    ,max_message_count =
                          kz_util:to_integer(MaxMessageCount)
-		    ,max_message_length = find_max_message_length([Data, MailboxJObj])
-		    ,min_message_length = min_recording_length(Call)
-		    ,message_count =
+                    ,max_message_length = find_max_message_length([Data, MailboxJObj])
+                    ,min_message_length = min_recording_length(Call)
+                    ,message_count =
                          MsgCount
-		    ,transcribe_voicemail =
+                    ,transcribe_voicemail =
                          kz_json:is_true(<<"transcribe">>, MailboxJObj, 'false')
-		    ,notifications =
+                    ,notifications =
                          kz_json:get_value(<<"notifications">>, MailboxJObj)
-		    ,after_notify_action = AfterNotifyAction
-		    ,interdigit_timeout =
+                    ,after_notify_action = AfterNotifyAction
+                    ,interdigit_timeout =
                          kz_json:find(<<"interdigit_timeout">>, [MailboxJObj, Data], kapps_call_command:default_interdigit_timeout())
-		    ,play_greeting_intro =
+                    ,play_greeting_intro =
                          kz_json:is_true(<<"play_greeting_intro">>, MailboxJObj, Default#mailbox.play_greeting_intro)
-		    ,use_person_not_available =
+                    ,use_person_not_available =
                          kz_json:is_true(<<"use_person_not_available">>, MailboxJObj, Default#mailbox.use_person_not_available)
-		    ,not_configurable=
+                    ,not_configurable=
                          kz_json:is_true(<<"not_configurable">>, MailboxJObj, 'false')
-		    ,account_db = AccountDb
+                    ,account_db = AccountDb
                     };
         {'error', R} ->
             lager:info("failed to load voicemail box ~s, ~p", [Id, R]),
@@ -1393,9 +1393,9 @@ after_notify_action(MailboxJObj) ->
 -spec max_message_count(kapps_call:call()) -> non_neg_integer().
 max_message_count(Call) ->
     case kapps_account_config:get(kapps_call:account_id(Call)
-				 ,?CF_CONFIG_CAT
-				 ,[?KEY_VOICEMAIL, ?KEY_MAX_MESSAGE_COUNT]
-				 )
+                                 ,?CF_CONFIG_CAT
+                                 ,[?KEY_VOICEMAIL, ?KEY_MAX_MESSAGE_COUNT]
+                                 )
     of
         'undefined' -> ?MAILBOX_DEFAULT_SIZE;
         MMC -> MMC
@@ -1432,23 +1432,23 @@ populate_keys(Call) ->
     Default = #keys{},
     JObj = kapps_account_config:get(kapps_call:account_id(Call), <<"keys">>),
     #keys{operator = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"operator">>], JObj, Default#keys.operator)
-	 ,login = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"login">>], JObj, Default#keys.login)
-	 ,save = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"save">>], JObj, Default#keys.save)
-	 ,listen = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"listen">>], JObj, Default#keys.listen)
-	 ,record = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"record">>], JObj, Default#keys.record)
-	 ,hear_new = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"hear_new">>], JObj, Default#keys.hear_new)
-	 ,hear_saved = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"hear_saved">>], JObj, Default#keys.hear_saved)
-	 ,configure = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"configure">>], JObj, Default#keys.configure)
-	 ,exit = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"exit">>], JObj, Default#keys.exit)
-	 ,rec_unavailable = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"record_unavailable">>], JObj, Default#keys.rec_unavailable)
-	 ,rec_name = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"record_name">>], JObj, Default#keys.rec_name)
-	 ,set_pin = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"set_pin">>], JObj, Default#keys.set_pin)
-	 ,return_main = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"return_main_menu">>], JObj, Default#keys.return_main)
-	 ,keep = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"keep">>], JObj, Default#keys.keep)
-	 ,replay = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"replay">>], JObj, Default#keys.replay)
-	 ,prev = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"prev">>], JObj, Default#keys.prev)
-	 ,next = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"next">>], JObj, Default#keys.next)
-	 ,delete = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"delete">>], JObj, Default#keys.delete)
+         ,login = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"login">>], JObj, Default#keys.login)
+         ,save = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"save">>], JObj, Default#keys.save)
+         ,listen = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"listen">>], JObj, Default#keys.listen)
+         ,record = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"record">>], JObj, Default#keys.record)
+         ,hear_new = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"hear_new">>], JObj, Default#keys.hear_new)
+         ,hear_saved = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"hear_saved">>], JObj, Default#keys.hear_saved)
+         ,configure = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"configure">>], JObj, Default#keys.configure)
+         ,exit = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"exit">>], JObj, Default#keys.exit)
+         ,rec_unavailable = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"record_unavailable">>], JObj, Default#keys.rec_unavailable)
+         ,rec_name = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"record_name">>], JObj, Default#keys.rec_name)
+         ,set_pin = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"set_pin">>], JObj, Default#keys.set_pin)
+         ,return_main = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"return_main_menu">>], JObj, Default#keys.return_main)
+         ,keep = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"keep">>], JObj, Default#keys.keep)
+         ,replay = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"replay">>], JObj, Default#keys.replay)
+         ,prev = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"prev">>], JObj, Default#keys.prev)
+         ,next = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"next">>], JObj, Default#keys.next)
+         ,delete = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"delete">>], JObj, Default#keys.delete)
          }.
 
 %%--------------------------------------------------------------------
@@ -1567,23 +1567,23 @@ review_recording(AttachmentName, AllowOperator, Box, Call) ->
 review_recording(_, _, _, _, Loop) when Loop > 4 ->
     {'ok', 'no_selection'};
 review_recording(AttachmentName, AllowOperator
-		,#mailbox{keys=#keys{listen=Listen
-				    ,save=Save
-				    ,record=Record
-				    ,operator=Operator
-				    }
-			 ,interdigit_timeout=Interdigit
-			 }=Box
-		,Call, Loop) ->
+                ,#mailbox{keys=#keys{listen=Listen
+                                    ,save=Save
+                                    ,record=Record
+                                    ,operator=Operator
+                                    }
+                         ,interdigit_timeout=Interdigit
+                         }=Box
+                ,Call, Loop) ->
     lager:info("playing recording review options"),
 
     NoopId = kapps_call_command:prompt(<<"vm-review_recording">>, Call),
     case kapps_call_command:collect_digits(?KEY_LENGTH
-					  ,kapps_call_command:default_collect_timeout()
-					  ,Interdigit
-					  ,NoopId
-					  ,Call
-					  )
+                                          ,kapps_call_command:default_collect_timeout()
+                                          ,Interdigit
+                                          ,NoopId
+                                          ,Call
+                                          )
     of
         {'ok', Listen} ->
             lager:info("caller chose to replay the recording"),
@@ -1659,9 +1659,9 @@ maybe_remove_attachments(AccountDb, MediaId, JObj) ->
 -spec min_recording_length(kapps_call:call()) -> integer().
 min_recording_length(Call) ->
     case kapps_account_config:get(kapps_call:account_id(Call)
-				 ,?CF_CONFIG_CAT
-				 ,[?KEY_VOICEMAIL, ?KEY_MIN_MESSAGE_SIZE]
-				 )
+                                 ,?CF_CONFIG_CAT
+                                 ,[?KEY_VOICEMAIL, ?KEY_MIN_MESSAGE_SIZE]
+                                 )
     of
         'undefined' -> ?MAILBOX_DEFAULT_MSG_MIN_LENGTH;
         MML -> kz_util:to_integer(MML)
@@ -1674,19 +1674,19 @@ min_recording_length(Call) ->
 %%--------------------------------------------------------------------
 -spec recording_media_doc(ne_binary(), mailbox(), kapps_call:call()) -> ne_binary().
 recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum
-				       ,mailbox_id=Id
-				       ,owner_id=OwnerId
+                                       ,mailbox_id=Id
+                                       ,owner_id=OwnerId
                                        }, Call) ->
     AccountDb = kapps_call:account_db(Call),
     Name = list_to_binary(["mailbox ", BoxNum, " ", Recording]),
     Props = props:filter_undefined(
               [{<<"name">>, Name}
-	      ,{<<"description">>, <<"voicemail recorded/prompt media">>}
-	      ,{<<"source_type">>, ?KEY_VOICEMAIL}
-	      ,{<<"source_id">>, Id}
-	      ,{<<"owner_id">>, OwnerId}
-	      ,{<<"media_source">>, <<"recording">>}
-	      ,{<<"streamable">>, 'true'}
+              ,{<<"description">>, <<"voicemail recorded/prompt media">>}
+              ,{<<"source_type">>, ?KEY_VOICEMAIL}
+              ,{<<"source_id">>, Id}
+              ,{<<"owner_id">>, OwnerId}
+              ,{<<"media_source">>, <<"recording">>}
+              ,{<<"streamable">>, 'true'}
               ]),
     Doc = kz_doc:update_pvt_parameters(kz_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
     {'ok', JObj} = kz_datamgr:save_doc(AccountDb, Doc),
@@ -1699,9 +1699,9 @@ recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum
 %% @end
 %%--------------------------------------------------------------------
 -spec update_doc(kz_json:key() | kz_json:keys()
-		,kz_json:json_term()
-		,mailbox() | ne_binary()
-		,kapps_call:call() | ne_binary()
+                ,kz_json:json_term()
+                ,mailbox() | ne_binary()
+                ,kapps_call:call() | ne_binary()
                 ) ->
                         'ok' |
                         {'error', atom()}.
@@ -1774,9 +1774,9 @@ is_owner(Call, OwnerId) ->
 
 -spec send_mwi_update(mailbox(), kapps_call:call()) -> 'ok'.
 send_mwi_update(#mailbox{owner_id=OwnerId
-			,mailbox_number=BoxNumber
-			,account_db=AccountDb
-			,mailbox_id=BoxId}, Call) ->
+                        ,mailbox_number=BoxNumber
+                        ,account_db=AccountDb
+                        ,mailbox_id=BoxId}, Call) ->
     _ = kz_util:spawn(fun cf_util:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
     Messages = kz_vm_message:messages(kapps_call:account_id(Call), BoxId),
     New = kzd_box_message:count_folder(Messages, ?VM_FOLDER_NEW),
@@ -1788,9 +1788,9 @@ send_mwi_update(#mailbox{owner_id=OwnerId
 send_mwi_update(New, Saved, BoxNumber, Call) ->
     Realm = kapps_call:account_realm(Call),
     Command = [{<<"To">>, <<BoxNumber/binary, "@", Realm/binary>>}
-	      ,{<<"Messages-New">>, New}
-	      ,{<<"Messages-Saved">>, Saved}
-	      ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+              ,{<<"Messages-New">>, New}
+              ,{<<"Messages-Saved">>, Saved}
+              ,{<<"Call-ID">>, kapps_call:call_id(Call)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     lager:debug("updating MWI for vmbox ~s@~s (~b/~b)", [BoxNumber, Realm, New, Saved]),

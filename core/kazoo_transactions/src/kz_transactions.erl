@@ -9,16 +9,16 @@
 -module(kz_transactions).
 
 -export([call_charges/2
-	,call_charges/3
-	,call_charges/4
+        ,call_charges/3
+        ,call_charges/4
         ]).
 -export([filter_by_reason/2
-	,filter_for_per_minute/1
+        ,filter_for_per_minute/1
         ]).
 -export([fetch_last/2
-	,fetch/3
-	,fetch_local/3
-	,fetch_bookkeeper/3
+        ,fetch/3
+        ,fetch_local/3
+        ,fetch_bookkeeper/3
         ]).
 -export([save/1]).
 -export([remove/1]).
@@ -44,10 +44,10 @@ call_charges(Ledger, CallId) ->
 call_charges(Ledger, CallId, 'true') ->
     LedgerDb = kz_util:format_account_id(Ledger, 'encoded'),
     ViewOptions = ['reduce'
-		  ,'group'
-		  ,{'group_level', 1}
-		  ,{'startkey', [CallId]}
-		  ,{'endkey', [CallId, kz_json:new()]}
+                  ,'group'
+                  ,{'group_level', 1}
+                  ,{'startkey', [CallId]}
+                  ,{'endkey', [CallId, kz_json:new()]}
                   ],
     case kz_datamgr:get_results(LedgerDb, <<"transactions/per_minute_cost">>, ViewOptions) of
         {'ok', []} -> 0;
@@ -59,10 +59,10 @@ call_charges(Ledger, CallId, 'true') ->
 call_charges(Ledger, CallId, 'false') ->
     LedgerDb = kz_util:format_account_id(Ledger, 'encoded'),
     ViewOptions = [{'reduce', 'false'}
-		  ,{'group', 'false'}
-		  ,{'startkey', [CallId]}
-		  ,{'endkey', [CallId, kz_json:new()]}
-		  ,'include_docs'
+                  ,{'group', 'false'}
+                  ,{'startkey', [CallId]}
+                  ,{'endkey', [CallId, kz_json:new()]}
+                  ,'include_docs'
                   ],
     case kz_datamgr:get_results(LedgerDb, <<"transactions/per_minute_cost">>, ViewOptions) of
         {'ok', []} -> [];
@@ -81,9 +81,9 @@ call_charges(Ledger, CallId, Event) ->
 call_charges(Ledger, CallId, Event, 'true') ->
     LedgerDb = kz_util:format_account_id(Ledger, 'encoded'),
     ViewOptions = ['reduce'
-		  ,'group'
-		  ,{'group_level', 1}
-		  ,{'key', [CallId, Event]}
+                  ,'group'
+                  ,{'group_level', 1}
+                  ,{'key', [CallId, Event]}
                   ],
     case kz_datamgr:get_results(LedgerDb, <<"transactions/per_minute_cost">>, ViewOptions) of
         {'ok', []} -> 0;
@@ -95,9 +95,9 @@ call_charges(Ledger, CallId, Event, 'true') ->
 call_charges(Ledger, CallId, Event, 'false') ->
     LedgerDb = kz_util:format_account_id(Ledger, 'encoded'),
     ViewOptions = [{'reduce', 'false'}
-		  ,{'group', 'false'}
-		  ,{'key', [CallId, Event]}
-		  ,'include_docs'
+                  ,{'group', 'false'}
+                  ,{'key', [CallId, Event]}
+                  ,'include_docs'
                   ],
     case kz_datamgr:get_results(LedgerDb, <<"transactions/per_minute_cost">>, ViewOptions) of
         {'ok', []} -> [];
@@ -183,7 +183,7 @@ is_per_minute(Transaction) ->
                         {'error', any()}.
 fetch_last(Account, Count) ->
     ViewOptions = [{'limit', Count}
-		  ,'include_docs'
+                  ,'include_docs'
                   ],
     fetch_local(Account, [ViewOptions]).
 
@@ -206,7 +206,7 @@ fetch(Account, From, To) ->
                    {'error', any()}.
 fetch(Account, ViewOptionsList) ->
     case {fetch_local(Account, ViewOptionsList)
-	 ,fetch_bookkeeper(Account, ViewOptionsList)
+         ,fetch_bookkeeper(Account, ViewOptionsList)
          }
     of
         {{'error', _R}=Error, _} -> Error;
@@ -217,15 +217,15 @@ fetch(Account, ViewOptionsList) ->
 
 %% @private
 -spec get_range(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
-		       ViewOptionsList :: kz_proplists().
+                       ViewOptionsList :: kz_proplists().
 get_range(Account, From, To) ->
     [ begin
           {Account, Year, Month} = kazoo_modb_util:split_account_mod(MODb),
           [{'startkey', From}
-	  ,{'endkey', To}
-	  ,{'year', Year}
-	  ,{'month', Month}
-	  ,'include_docs'
+          ,{'endkey', To}
+          ,{'year', Year}
+          ,{'month', Month}
+          ,'include_docs'
           ]
       end || MODb <- kazoo_modb:get_range(Account, From, To)
     ].
@@ -275,8 +275,8 @@ fetch_bookkeeper(Account, ViewOptionsList) ->
 
 %% @private
 -spec do_fetch_bookkeeper(ne_binary(), kz_proplists(), kz_json:objects()) ->
-				 {'ok', kz_transactions()} |
-				 {'error', any()}.
+                                 {'ok', kz_transactions()} |
+                                 {'error', any()}.
 do_fetch_bookkeeper(Account, [ViewOptions|ViewOptionsList], Acc) ->
     From = props:get_value('startkey', ViewOptions),
     To   = props:get_value('endkey', ViewOptions),

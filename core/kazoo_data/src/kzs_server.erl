@@ -9,16 +9,16 @@
 
 
 -export([get_db/2
-	,server_url/1
-	,db_url/2
-	,server_info/1
-	,format_error/1
+        ,server_url/1
+        ,db_url/2
+        ,server_info/1
+        ,format_error/1
         ]).
 
 -include("kz_data.hrl").
 
 -spec server_info(map() | server()) -> {'ok', kz_json:object()} |
-				       {'error', any()}.
+                                       {'error', any()}.
 server_info(#{server := {App, Conn}}) -> App:server_info(Conn);
 server_info({App, Conn}) -> App:server_info(Conn).
 

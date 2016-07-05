@@ -51,14 +51,14 @@
 start() ->
     _ = application:load(apns),
     case erlang:function_exported(application, ensure_all_started, 1) of
-	false ->
-	    _ = application:start(crypto),
-	    _ = application:start(public_key),
-	    _ = application:start(ssl),
-	    application:start(apns);
-	true ->
-	    _ = application:ensure_all_started(apns),
-	    ok
+        false ->
+            _ = application:start(crypto),
+            _ = application:start(public_key),
+            _ = application:start(ssl),
+            application:start(apns);
+        true ->
+            _ = application:ensure_all_started(apns),
+            ok
     end.
 
 %% @doc Stops the application
@@ -88,7 +88,7 @@ stop([]) -> ok.
 %%      or using the given connection() parameters
 %%      or the name and default configuration if a name is given
 -spec connect(atom() | string() | fun((string()) -> any()) | connection()) ->
-		     {ok, pid()} | {error, {already_started, pid()}} | {error, Reason::any()}.
+                     {ok, pid()} | {error, {already_started, pid()}} | {error, Reason::any()}.
 connect(Name) when is_atom(Name) ->
     connect(Name, default_connection());
 connect(#apns_connection{} = Connection) ->
@@ -102,7 +102,7 @@ connect(Fun) when is_function(Fun, 2) ->
 %%      using the given feedback or error function
 %%      or using the given connection() parameters
 -spec connect(atom(), string() | fun((string()) -> any()) | connection()) ->
-		     {ok, pid()} | {error, {already_started, pid()}} | {error, Reason::any()}.
+                     {ok, pid()} | {error, {already_started, pid()}} | {error, Reason::any()}.
 connect(Name, #apns_connection{} = Connection) ->
     apns_sup:start_connection(Name, Connection);
 connect(Name, Fun) when is_function(Fun, 1) ->
@@ -113,12 +113,12 @@ connect(Name, Fun) when is_function(Fun, 2) ->
 %% @doc Opens an connection named after the atom()
 %%      using the given feedback and error functions
 -spec connect(
-	atom(), fun((binary(), apns:status()) -> stop | any()), fun((string()) -> any())) ->
-		     {ok, pid()} | {error, {already_started, pid()}} | {error, Reason::_}.
+        atom(), fun((binary(), apns:status()) -> stop | any()), fun((string()) -> any())) ->
+                     {ok, pid()} | {error, {already_started, pid()}} | {error, Reason::_}.
 connect(Name, ErrorFun, FeedbackFun) ->
     connect(
       Name, (default_connection())#apns_connection{error_fun    = ErrorFun,
-						   feedback_fun = FeedbackFun}).
+                                                   feedback_fun = FeedbackFun}).
 
 %% @doc Closes an open connection
 -spec disconnect(conn_id()) -> ok.
@@ -134,44 +134,44 @@ send_message(ConnId, Msg) ->
 -spec send_content_available(conn_id(), string()) -> ok.
 send_content_available(ConnId, DeviceToken) ->
     send_message(ConnId, #apns_msg{device_token = DeviceToken,
-				   content_available = true,
-				   priority = 5}).
+                                   content_available = true,
+                                   priority = 5}).
 
 %% @doc Sends a message to Apple with content_available: 1 and an alert
 -spec send_content_available(conn_id(), string(), string()) -> ok.
 send_content_available(ConnId, DeviceToken, Alert) ->
     send_message(ConnId, #apns_msg{device_token = DeviceToken,
-				   content_available = true,
-				   alert = Alert}).
+                                   content_available = true,
+                                   alert = Alert}).
 
 %% @doc Sends a message to Apple with just a badge
 -spec send_badge(conn_id(), string(), integer()) -> ok.
 send_badge(ConnId, DeviceToken, Badge) ->
     send_message(ConnId, #apns_msg{device_token = DeviceToken,
-				   badge = Badge}).
+                                   badge = Badge}).
 
 %% @doc Sends a message to Apple with just an alert
 -spec send_message(conn_id(), string(), alert()) -> ok.
 send_message(ConnId, DeviceToken, Alert) ->
     send_message(ConnId, #apns_msg{device_token = DeviceToken,
-				   alert = Alert}).
+                                   alert = Alert}).
 
 %% @doc Sends a message to Apple with an alert and a badge
 -spec send_message(
-	conn_id(), Token::string(), Alert::alert(), Badge::integer()) -> ok.
+        conn_id(), Token::string(), Alert::alert(), Badge::integer()) -> ok.
 send_message(ConnId, DeviceToken, Alert, Badge) ->
     send_message(ConnId, #apns_msg{device_token = DeviceToken,
-				   badge = Badge,
-				   alert = Alert}).
+                                   badge = Badge,
+                                   alert = Alert}).
 
 %% @doc Sends a full message to Apple
 -spec send_message(conn_id(), Token::string(), Alert::alert(), Badge::integer(),
                    Sound::apns_str()) -> ok.
 send_message(ConnId, DeviceToken, Alert, Badge, Sound) ->
     send_message(ConnId, #apns_msg{alert = Alert,
-				   badge = Badge,
-				   sound = Sound,
-				   device_token = DeviceToken}).
+                                   badge = Badge,
+                                   sound = Sound,
+                                   device_token = DeviceToken}).
 
 %% @doc Predicts the number of bytes left in a message for additional data.
 -spec estimate_available_bytes(msg()) -> integer().
@@ -184,10 +184,10 @@ estimate_available_bytes(#apns_msg{} = Msg) ->
                    Sound::apns_str(), Expiry::non_neg_integer()) -> ok.
 send_message(ConnId, DeviceToken, Alert, Badge, Sound, Expiry) ->
     send_message(ConnId, #apns_msg{alert = Alert,
-				   badge = Badge,
-				   sound = Sound,
-				   expiry= Expiry,
-				   device_token = DeviceToken}).
+                                   badge = Badge,
+                                   sound = Sound,
+                                   expiry= Expiry,
+                                   device_token = DeviceToken}).
 
 %% @doc Sends a full message to Apple with expiry and extra arguments
 -spec send_message(conn_id(), Token::string(), Alert::alert(), Badge::integer(),
@@ -195,25 +195,25 @@ send_message(ConnId, DeviceToken, Alert, Badge, Sound, Expiry) ->
                    ExtraArgs::proplists:proplist()) -> ok.
 send_message(ConnId, DeviceToken, Alert, Badge, Sound, Expiry, ExtraArgs) ->
     send_message(ConnId, #apns_msg{alert = Alert,
-				   badge = Badge,
-				   sound = Sound,
-				   extra = ExtraArgs,
-				   expiry= Expiry,
-				   device_token = DeviceToken}).
+                                   badge = Badge,
+                                   sound = Sound,
+                                   extra = ExtraArgs,
+                                   expiry= Expiry,
+                                   device_token = DeviceToken}).
 
 %% @doc Sends a full message to Apple with id, expiry and extra arguments
 -spec send_message(
-	conn_id(), binary(), string(), alert(), integer(), apns_str(),
-	non_neg_integer(), proplists:proplist()) -> ok.
+        conn_id(), binary(), string(), alert(), integer(), apns_str(),
+        non_neg_integer(), proplists:proplist()) -> ok.
 send_message(
   ConnId, MsgId, DeviceToken, Alert, Badge, Sound, Expiry, ExtraArgs) ->
     send_message(ConnId, #apns_msg{id     = MsgId,
-				   alert  = Alert,
-				   badge  = Badge,
-				   sound  = Sound,
-				   extra  = ExtraArgs,
-				   expiry = Expiry,
-				   device_token = DeviceToken}).
+                                   alert  = Alert,
+                                   badge  = Badge,
+                                   sound  = Sound,
+                                   extra  = ExtraArgs,
+                                   expiry = Expiry,
+                                   device_token = DeviceToken}).
 
 %% @doc  Generates an "unique" and valid message Id
 -spec message_id() -> binary().
@@ -232,12 +232,12 @@ message_id() ->
 %%       If called with an integer, it will add that many seconds to current
 %%       time and return a valid expiry value for that date.
 -spec expiry(
-	none | {{1970..9999, 1..12, 1..31}, {0..24, 0..60, 0..60}} | non_neg_integer()) ->
-		    non_neg_integer().
+        none | {{1970..9999, 1..12, 1..31}, {0..24, 0..60, 0..60}} | non_neg_integer()) ->
+                    non_neg_integer().
 expiry(none) -> 0;
 expiry(Secs) when is_integer(Secs) ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time())
-	- ?EPOCH + Secs;
+        - ?EPOCH + Secs;
 expiry(Date) ->
     calendar:datetime_to_gregorian_seconds(Date) - ?EPOCH.
 
@@ -248,40 +248,40 @@ timestamp(Secs) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 get_env(K, Def) ->
     case application:get_env(apns, K) of
-	{ok, V} -> V;
-	_ -> Def
+        {ok, V} -> V;
+        _ -> Def
     end.
 
 -spec default_connection() -> connection().
 default_connection() ->
     DefaultConn = #apns_connection{},
     DefaultConn#apns_connection
-	{ apple_host =
-	      get_env(apple_host, DefaultConn#apns_connection.apple_host)
-	, apple_port =
-	      get_env(apple_port, DefaultConn#apns_connection.apple_port)
-	, key_file =
-	      get_env(key_file, DefaultConn#apns_connection.key_file)
-	, cert_file =
-	      get_env(cert_file, DefaultConn#apns_connection.cert_file)
-	, cert_password =
-	      get_env(cert_password, DefaultConn#apns_connection.cert_password)
-	, timeout =
-	      get_env(timeout, DefaultConn#apns_connection.timeout)
-	, error_fun =
-	      case get_env(error_fun, DefaultConn#apns_connection.error_fun) of
-		  {M, F} -> fun(I, S) -> M:F(I, S) end;
-		  Other -> Other
-	      end
-	, feedback_timeout =
-	      get_env(feedback_timeout, DefaultConn#apns_connection.feedback_timeout)
-	, feedback_fun =
-	      case get_env(feedback_fun, DefaultConn#apns_connection.feedback_fun) of
-		  {M, F} -> fun(T) -> M:F(T) end;
-		  Other -> Other
-	      end
-	, feedback_host =
-	      get_env(feedback_host, DefaultConn#apns_connection.feedback_host)
-	, feedback_port =
-	      get_env(feedback_port, DefaultConn#apns_connection.feedback_port)
-	}.
+        { apple_host =
+              get_env(apple_host, DefaultConn#apns_connection.apple_host)
+        , apple_port =
+              get_env(apple_port, DefaultConn#apns_connection.apple_port)
+        , key_file =
+              get_env(key_file, DefaultConn#apns_connection.key_file)
+        , cert_file =
+              get_env(cert_file, DefaultConn#apns_connection.cert_file)
+        , cert_password =
+              get_env(cert_password, DefaultConn#apns_connection.cert_password)
+        , timeout =
+              get_env(timeout, DefaultConn#apns_connection.timeout)
+        , error_fun =
+              case get_env(error_fun, DefaultConn#apns_connection.error_fun) of
+                  {M, F} -> fun(I, S) -> M:F(I, S) end;
+                  Other -> Other
+              end
+        , feedback_timeout =
+              get_env(feedback_timeout, DefaultConn#apns_connection.feedback_timeout)
+        , feedback_fun =
+              case get_env(feedback_fun, DefaultConn#apns_connection.feedback_fun) of
+                  {M, F} -> fun(T) -> M:F(T) end;
+                  Other -> Other
+              end
+        , feedback_host =
+              get_env(feedback_host, DefaultConn#apns_connection.feedback_host)
+        , feedback_port =
+              get_env(feedback_port, DefaultConn#apns_connection.feedback_port)
+        }.

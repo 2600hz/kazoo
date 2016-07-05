@@ -9,26 +9,26 @@
 -module(knm_errors).
 
 -export([unauthorized/0
-	,number_exists/1
-	,invalid_state_transition/3
-	,no_change_required/1
-	,service_restriction/1
-	,carrier_not_specified/1
-	,unspecified/2
-	,not_enough_credit/2
-	,invalid/2
-	,multiple_choice/2
-	,assign_failure/2
-	,database_error/2
-	,number_is_porting/1
-	,by_carrier/3
+        ,number_exists/1
+        ,invalid_state_transition/3
+        ,no_change_required/1
+        ,service_restriction/1
+        ,carrier_not_specified/1
+        ,unspecified/2
+        ,not_enough_credit/2
+        ,invalid/2
+        ,multiple_choice/2
+        ,assign_failure/2
+        ,database_error/2
+        ,number_is_porting/1
+        ,by_carrier/3
         ]).
 
 -export([to_json/1, to_json/2, to_json/3
-	,code/1
-	,error/1
-	,cause/1
-	,message/1
+        ,code/1
+        ,error/1
+        ,cause/1
+        ,message/1
         ]).
 
 -include("knm.hrl").
@@ -64,11 +64,11 @@ number_exists(DID) ->
                                       no_return().
 invalid_state_transition(Number, FromState, ToState) ->
     throw({'error'
-	  ,'invalid_state_transition'
-	  ,Number
-	  ,iolist_to_binary(["from ", FromState
-			    ," to ", ToState
-			    ])
+          ,'invalid_state_transition'
+          ,Number
+          ,iolist_to_binary(["from ", FromState
+                            ," to ", ToState
+                            ])
           }).
 
 -spec no_change_required(kn()) -> no_return().
@@ -112,9 +112,9 @@ assign_failure(PhoneNumber, E) ->
                             no_return().
 database_error(E, PhoneNumber) ->
     throw({'error'
-	  ,'database_error'
-	  ,PhoneNumber
-	  ,E
+          ,'database_error'
+          ,PhoneNumber
+          ,E
           }).
 
 -spec number_is_porting(ne_binary()) -> no_return().
@@ -185,8 +185,8 @@ build_error(Code, Error, Message, Cause) ->
       [{?CODE, kz_util:to_integer(Code)}
        | [{K, kz_util:to_binary(V)}
           || {K, V} <- [{?ERROR, Error}
-		       ,{?CAUSE, Cause}
-		       ,{?MESSAGE, Message}
+                       ,{?CAUSE, Cause}
+                       ,{?MESSAGE, Message}
                        ],
              V =/= 'undefined'
          ]

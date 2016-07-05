@@ -31,14 +31,14 @@ fetch_config(JObj, ConfigName, 'undefined') ->
 fetch_config(JObj, ConfigName, Profile) ->
     lager:debug("profile '~s' found", [ConfigName]),
     Resp = [{<<"Profiles">>, profiles(ConfigName, Profile)}
-	   ,{<<"Caller-Controls">>, caller_controls(ConfigName)}
-	   ,{<<"Advertise">>, advertise(ConfigName)}
-	   ,{<<"Chat-Permissions">>, chat_permissions(ConfigName)}
-	   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+           ,{<<"Caller-Controls">>, caller_controls(ConfigName)}
+           ,{<<"Advertise">>, advertise(ConfigName)}
+           ,{<<"Chat-Permissions">>, chat_permissions(ConfigName)}
+           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     try kapi_conference:publish_config_resp(kz_json:get_value(<<"Server-ID">>, JObj)
-					   ,props:filter_undefined(Resp)
+                                           ,props:filter_undefined(Resp)
                                            )
     of
         'ok' -> 'ok'
@@ -52,9 +52,9 @@ fetch_config(JObj, ConfigName, Profile) ->
 -spec default_profile() -> kz_json:object().
 default_profile() ->
     kapps_config:get(?CONFIG_CAT
-		    ,[<<"profiles">>, ?DEFAULT_PROFILE_NAME]
-		    ,kz_json:from_list(?DEFAULT_PROFILE_CONFIG)
-		    ).
+                    ,[<<"profiles">>, ?DEFAULT_PROFILE_NAME]
+                    ,kz_json:from_list(?DEFAULT_PROFILE_CONFIG)
+                    ).
 
 -spec profiles(ne_binary(), kz_json:object()) -> kz_json:object().
 profiles(ConfigName, Profile) ->
@@ -66,7 +66,7 @@ add_conference_params(ConfigName, Profile) ->
     Conference = get_conference(ConfigName),
     Props = props:filter_undefined(
               [{<<"max-members">>, max_participants(Conference)}
-	      ,{<<"max-members-sound">>, max_members_sound(Conference)}
+              ,{<<"max-members-sound">>, max_members_sound(Conference)}
               ]),
     kz_json:set_values(Props, Profile).
 

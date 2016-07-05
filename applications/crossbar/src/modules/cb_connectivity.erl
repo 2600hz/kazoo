@@ -12,13 +12,13 @@
 -module(cb_connectivity).
 
 -export([init/0
-	,allowed_methods/0, allowed_methods/1
-	,resource_exists/0, resource_exists/1
-	,validate/1, validate/2
-	,put/1
-	,post/2
-	,patch/2
-	,delete/2
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,validate/1, validate/2
+        ,put/1
+        ,post/2
+        ,patch/2
+        ,delete/2
         ]).
 
 -include("crossbar.hrl").
@@ -253,9 +253,9 @@ on_successful_validation(Id, Context) ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     crossbar_doc:load_view(?CB_LIST
-			  ,[{'reduce', 'false'}]
-			  ,Context
-			  ,fun normalize_view_results/2
+                          ,[{'reduce', 'false'}]
+                          ,Context
+                          ,fun normalize_view_results/2
                           ).
 
 %%--------------------------------------------------------------------

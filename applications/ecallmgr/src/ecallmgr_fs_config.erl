@@ -15,11 +15,11 @@
 -export([start_link/1, start_link/2]).
 -export([handle_config_req/4]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -define(SERVER, ?MODULE).
@@ -27,7 +27,7 @@
 -include("ecallmgr.hrl").
 
 -record(state, {node :: atom()
-	       ,options = [] :: kz_proplist()
+               ,options = [] :: kz_proplist()
                }).
 
 %%%===================================================================
@@ -244,11 +244,11 @@ default_sip_profiles(Node) ->
                        SysconfResp
                end,
     JObj = kz_json:from_list([{kz_util:to_binary(?DEFAULT_FS_PROFILE)
-			      ,kz_json:from_list(default_sip_profile())}
+                              ,kz_json:from_list(default_sip_profile())}
                              ]),
     kz_json:set_value([kz_util:to_binary(?DEFAULT_FS_PROFILE), <<"Gateways">>]
-		     ,Gateways
-		     ,JObj
+                     ,Gateways
+                     ,JObj
                      ).
 
 -spec default_sip_profile() -> kz_proplist().
@@ -368,9 +368,9 @@ compare_node_gateways(Running, New) ->
 
 kill_gateway(GatewayName, Node) ->
     Args = ["profile "
-	   ,?DEFAULT_FS_PROFILE
-	   ," killgw "
-	   ,kz_util:to_list(GatewayName)
+           ,?DEFAULT_FS_PROFILE
+           ," killgw "
+           ,kz_util:to_list(GatewayName)
            ],
     freeswitch:api(Node, 'sofia', lists:flatten(Args)).
 
@@ -406,9 +406,9 @@ maybe_fetch_conference_profile(Node, Id, Profile) ->
           ],
     lager:debug("fetching profile '~s'", [Profile]),
     XmlResp = case kz_amqp_worker:call(Cmd
-				      ,fun kapi_conference:publish_config_req/1
-				      ,fun kapi_conference:config_resp_v/1
-				      ,ecallmgr_fs_node:fetch_timeout(Node)
+                                      ,fun kapi_conference:publish_config_req/1
+                                      ,fun kapi_conference:config_resp_v/1
+                                      ,ecallmgr_fs_node:fetch_timeout(Node)
                                       )
               of
                   {'ok', Resp} ->

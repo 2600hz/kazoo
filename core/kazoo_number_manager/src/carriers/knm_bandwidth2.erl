@@ -200,7 +200,7 @@ acquire_number(Number) ->
                     OrderData = number_order_response_to_json(Response),
                     knm_number:set_phone_number(
                       Number
-					       ,knm_phone_number:update_carrier_data(PhoneNumber, OrderData)
+                                               ,knm_phone_number:update_carrier_data(PhoneNumber, OrderData)
                      )
             end
     end.

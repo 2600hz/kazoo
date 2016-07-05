@@ -31,9 +31,9 @@ start() ->
 -spec send_req(ne_binaries()) -> ne_binaries().
 send_req(Accounts) ->
     ReqResp = kz_amqp_worker:call(balance_check_req(Accounts)
-				 ,fun kapi_authz:publish_balance_check_req/1
-				 ,fun kapi_authz:balance_check_resp_v/1
-				 ,?FETCH_TIMEOUT_MS
+                                 ,fun kapi_authz:publish_balance_check_req/1
+                                 ,fun kapi_authz:balance_check_resp_v/1
+                                 ,?FETCH_TIMEOUT_MS
                                  ),
     case ReqResp of
         {'error', _R} ->
@@ -60,8 +60,8 @@ balance_check_response(JObj) ->
                   'false' -> [ Key | Acc ]
               end
       end
-		 ,[]
-		 ,Balances
+                 ,[]
+                 ,Balances
      ).
 
 -spec disconnect_accounts(ne_binaries()) -> 'ok'.

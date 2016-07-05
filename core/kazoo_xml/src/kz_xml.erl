@@ -9,8 +9,8 @@
 -module(kz_xml).
 
 -export([elements/1, elements/2
-	,texts_to_binary/1, texts_to_binary/2
-	,attributes_to_proplist/1
+        ,texts_to_binary/1, texts_to_binary/2
+        ,attributes_to_proplist/1
         ]).
 
 -include_lib("kazoo/include/kz_types.hrl").
@@ -27,8 +27,8 @@ texts_to_binary([_|_]=Vs) ->
     lists:foldl(fun(C, B) ->
                         kz_util:strip_binary(B, C)
                 end
-	       ,iolist_to_binary([kz_util:to_binary(V) || #xmlText{value=V, type='text'} <- Vs])
-	       ,[$\n, $\s, $\n, $\s]
+               ,iolist_to_binary([kz_util:to_binary(V) || #xmlText{value=V, type='text'} <- Vs])
+               ,[$\n, $\s, $\n, $\s]
                ).
 
 texts_to_binary(Vs, Size) when is_list(Vs), is_integer(Size), Size > 0 ->

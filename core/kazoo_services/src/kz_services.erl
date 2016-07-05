@@ -17,11 +17,11 @@
 -export([allow_updates/1]).
 -export([from_service_json/1, from_service_json/2]).
 -export([reconcile/1, reconcile/2
-	,reconcile_only/1, reconcile_only/2
-	,save_as_dirty/1
+        ,reconcile_only/1, reconcile_only/2
+        ,save_as_dirty/1
         ]).
 -export([fetch/1, fetch_services_doc/2
-	,flush_services/0
+        ,flush_services/0
         ]).
 -export([update/4]).
 -export([save/1]).
@@ -36,14 +36,14 @@
 -export([find_reseller_id/1]).
 
 -export([account_id/1
-	,account_name/1
-	,services_json/1
+        ,account_name/1
+        ,services_json/1
         ]).
 -export([is_dirty/1]).
 -export([quantity/3
-	,diff_quantities/1, diff_quantities/2
-	,diff_quantity/3
-	,have_quantities_changed/1
+        ,diff_quantities/1, diff_quantities/2
+        ,diff_quantity/3
+        ,have_quantities_changed/1
         ]).
 -export([updated_quantity/3]).
 -export([category_quantity/2, category_quantity/3]).
@@ -65,22 +65,22 @@
 -define(PLANS, <<"plans">>).
 
 -record(kz_services, {account_id :: api_binary()
-		     ,billing_id :: api_binary()
-		     ,current_billing_id :: api_binary()
-		     ,new_billing_id = 'false' :: boolean()
-		     ,dirty = 'false' :: boolean()
-		     ,deleted = 'false' :: boolean()
-		     ,status = ?STATUS_GOOD :: ne_binary()
-		     ,jobj = kz_json:new() :: kz_json:object()
-		     ,updates = kz_json:new() :: kz_json:object()
-		     ,cascade_quantities = kz_json:new() :: kz_json:object()
+                     ,billing_id :: api_binary()
+                     ,current_billing_id :: api_binary()
+                     ,new_billing_id = 'false' :: boolean()
+                     ,dirty = 'false' :: boolean()
+                     ,deleted = 'false' :: boolean()
+                     ,status = ?STATUS_GOOD :: ne_binary()
+                     ,jobj = kz_json:new() :: kz_json:object()
+                     ,updates = kz_json:new() :: kz_json:object()
+                     ,cascade_quantities = kz_json:new() :: kz_json:object()
                      }).
 -define(BASE_BACKOFF, 50).
 
 -type services() :: #kz_services{}.
 -type bookkeeper() :: 'kz_bookkeeper_braintree' | 'kz_bookkeeper_local'.
 -export_type([services/0
-	     ,bookkeeper/0
+             ,bookkeeper/0
              ]).
 
 %%%===================================================================
@@ -110,36 +110,36 @@ new(<<_/binary>> = AccountId) ->
     IsReseller = kzd_services:is_reseller(JObj),
 
     #kz_services{account_id = AccountId
-		,jobj = JObj
-		,cascade_quantities = cascade_quantities(AccountId, IsReseller)
-		,dirty = 'true'
-		,billing_id = BillingId
-		,current_billing_id = BillingId
-		,deleted = kz_doc:is_soft_deleted(AccountJObj)
+                ,jobj = JObj
+                ,cascade_quantities = cascade_quantities(AccountId, IsReseller)
+                ,dirty = 'true'
+                ,billing_id = BillingId
+                ,current_billing_id = BillingId
+                ,deleted = kz_doc:is_soft_deleted(AccountJObj)
                 }.
 
 -spec base_service_object(ne_binary(), kz_json:object()) -> kzd_services:doc().
 base_service_object(AccountId, AccountJObj) ->
     ResellerId = get_reseller_id(AccountId),
     BaseJObj = kz_doc:update_pvt_parameters(kz_json:new()
-					   ,kz_util:format_account_id(AccountId, 'encoded')
-					   ,[{'account_id', AccountId}
-					    ,{'crossbar_doc_vsn', <<"1">>}
-					    ,{'id', AccountId}
-					    ,{'type', kzd_services:type()}
-					    ]
+                                           ,kz_util:format_account_id(AccountId, 'encoded')
+                                           ,[{'account_id', AccountId}
+                                            ,{'crossbar_doc_vsn', <<"1">>}
+                                            ,{'id', AccountId}
+                                            ,{'type', kzd_services:type()}
+                                            ]
                                            ),
 
     lists:foldl(fun({F, V}, J) -> F(J, V) end
-	       ,BaseJObj
-	       ,[{fun kzd_services:set_status/2, ?STATUS_GOOD}
-		,{fun kzd_services:set_is_reseller/2, depreciated_is_reseller(AccountJObj)}
-		,{fun kzd_services:set_reseller_id/2, ResellerId}
-		,{fun kzd_services:set_tree/2, kz_account:tree(AccountJObj)}
-		,{fun kzd_services:set_billing_id/2, depreciated_billing_id(AccountJObj)}
-		,{fun kzd_services:set_quantities/2, kz_json:new()}
-		,{fun kzd_services:set_plans/2, populate_service_plans(AccountJObj, ResellerId)}
-		]).
+               ,BaseJObj
+               ,[{fun kzd_services:set_status/2, ?STATUS_GOOD}
+                ,{fun kzd_services:set_is_reseller/2, depreciated_is_reseller(AccountJObj)}
+                ,{fun kzd_services:set_reseller_id/2, ResellerId}
+                ,{fun kzd_services:set_tree/2, kz_account:tree(AccountJObj)}
+                ,{fun kzd_services:set_billing_id/2, depreciated_billing_id(AccountJObj)}
+                ,{fun kzd_services:set_quantities/2, kz_json:new()}
+                ,{fun kzd_services:set_plans/2, populate_service_plans(AccountJObj, ResellerId)}
+                ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -158,12 +158,12 @@ from_service_json(JObj, CalcUpdates) ->
                     'false' -> AccountId
                 end,
     Services = #kz_services{account_id = AccountId
-			   ,jobj = JObj
-			   ,status = kzd_services:status(JObj)
-			   ,billing_id = BillingId
-			   ,current_billing_id = BillingId
-			   ,deleted = kz_doc:is_soft_deleted(JObj)
-			   ,dirty = kzd_services:is_dirty(JObj)
+                           ,jobj = JObj
+                           ,status = kzd_services:status(JObj)
+                           ,billing_id = BillingId
+                           ,current_billing_id = BillingId
+                           ,deleted = kz_doc:is_soft_deleted(JObj)
+                           ,dirty = kzd_services:is_dirty(JObj)
                            },
     maybe_calc_updates(Services, CalcUpdates).
 
@@ -210,9 +210,9 @@ fetch_cached_services(AccountId) ->
 -spec cache_services(ne_binary(), services()) -> 'ok'.
 cache_services(AccountId, Services) ->
     kz_cache:store_local(?CACHE_NAME
-			,services_cache_key(AccountId)
-			,Services
-			,[{'origin', [{'db', ?KZ_SERVICES_DB, AccountId}]}]
+                        ,services_cache_key(AccountId)
+                        ,Services
+                        ,[{'origin', [{'db', ?KZ_SERVICES_DB, AccountId}]}]
                         ).
 
 -spec flush_services() -> 'ok'.
@@ -248,13 +248,13 @@ handle_fetch_result(AccountId, JObj) ->
                     'false' -> AccountId
                 end,
     #kz_services{account_id = AccountId
-		,jobj = JObj
-		,cascade_quantities = cascade_quantities(AccountId, IsReseller)
-		,status = kzd_services:status(JObj)
-		,billing_id = BillingId
-		,current_billing_id = BillingId
-		,deleted = kz_doc:is_soft_deleted(JObj)
-		,dirty = kzd_services:is_dirty(JObj)
+                ,jobj = JObj
+                ,cascade_quantities = cascade_quantities(AccountId, IsReseller)
+                ,status = kzd_services:status(JObj)
+                ,billing_id = BillingId
+                ,current_billing_id = BillingId
+                ,deleted = kz_doc:is_soft_deleted(JObj)
+                ,dirty = kzd_services:is_dirty(JObj)
                 }.
 
 %%--------------------------------------------------------------------
@@ -292,18 +292,18 @@ save_as_dirty(#kz_services{}=Services) ->
     save_as_dirty(Services, ?BASE_BACKOFF).
 
 save_as_dirty(#kz_services{jobj = JObj
-			  ,updates = _Updates
-			  ,account_id = <<_/binary>> = AccountId
+                          ,updates = _Updates
+                          ,account_id = <<_/binary>> = AccountId
                           }=Services
-	     ,BackOff
+             ,BackOff
              ) ->
     UpdatedJObj =
         lists:foldl(fun({F, V}, J) -> F(J, V) end
-		   ,JObj
-		   ,[{fun kz_doc:set_id/2, AccountId}
-		    ,{fun kzd_services:set_is_dirty/2, 'true'}
-		    ,{fun kz_doc:set_modified/2, kz_util:current_tstamp()}
-		    ]
+                   ,JObj
+                   ,[{fun kz_doc:set_id/2, AccountId}
+                    ,{fun kzd_services:set_is_dirty/2, 'true'}
+                    ,{fun kz_doc:set_modified/2, kz_util:current_tstamp()}
+                    ]
                    ),
     case kz_datamgr:save_doc(?KZ_SERVICES_DB, UpdatedJObj) of
         {'ok', SavedJObj} ->
@@ -346,9 +346,9 @@ save(#kz_services{}=Services) ->
     save(Services, ?BASE_BACKOFF).
 
 save(#kz_services{jobj = JObj
-		 ,updates = UpdatedQuantities
-		 ,account_id = AccountId
-		 ,dirty = ForceDirty
+                 ,updates = UpdatedQuantities
+                 ,account_id = AccountId
+                 ,dirty = ForceDirty
                  }=Services
     ,BackOff
     ) ->
@@ -358,9 +358,9 @@ save(#kz_services{jobj = JObj
         orelse ForceDirty,
 
     Props = [{fun kz_doc:set_id/2, AccountId}
-	    ,{fun kzd_services:set_is_dirty/2, Dirty}
-	    ,{fun kz_doc:set_modified/2, kz_util:current_tstamp()}
-	    ,{fun kzd_services:set_quantities/2, kz_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}
+            ,{fun kzd_services:set_is_dirty/2, Dirty}
+            ,{fun kz_doc:set_modified/2, kz_util:current_tstamp()}
+            ,{fun kzd_services:set_quantities/2, kz_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}
             ],
     UpdatedJObj = kz_json:set_values(props:filter_undefined(Props), JObj),
 
@@ -374,11 +374,11 @@ save(#kz_services{jobj = JObj
                             'false' -> AccountId
                         end,
             Services#kz_services{jobj = NewJObj
-				,cascade_quantities = cascade_quantities(AccountId, IsReseller)
-				,status = kzd_services:status(NewJObj)
-				,billing_id = BillingId
-				,current_billing_id = BillingId
-				,deleted = kz_doc:is_soft_deleted(NewJObj)
+                                ,cascade_quantities = cascade_quantities(AccountId, IsReseller)
+                                ,status = kzd_services:status(NewJObj)
+                                ,billing_id = BillingId
+                                ,current_billing_id = BillingId
+                                ,deleted = kz_doc:is_soft_deleted(NewJObj)
                                 };
         {'error', 'not_found'} ->
             lager:debug("service database does not exist, attempting to create"),
@@ -408,9 +408,9 @@ delete(Account) ->
             lager:debug("marking services for account ~s as deleted", [AccountId]),
             kz_datamgr:save_doc(?KZ_SERVICES_DB, kz_json:set_values([{<<"pvt_deleted">>, 'true'}
                                                                     ,{<<"pvt_dirty">>, 'true'}
-								    ]
+                                                                    ]
                                                                    ,JObj
-								   ));
+                                                                   ));
         {'error', 'not_found'} -> {'ok', kz_json:new()};
         {'error', _R}=E ->
             lager:debug("unable to mark service plan ~s as deleted: ~p", [AccountId, _R]),
@@ -428,19 +428,19 @@ set_billing_id('undefined', _) -> 'undefined';
 set_billing_id(BillingId, #kz_services{billing_id=BillingId}) ->
     'undefined';
 set_billing_id(BillingId, #kz_services{account_id=BillingId
-				      ,jobj=ServicesJObj
+                                      ,jobj=ServicesJObj
                                       }=Services) ->
     Services#kz_services{jobj=kzd_services:set_billing_id(ServicesJObj, BillingId)
-			,billing_id=BillingId
-			,dirty='true'
+                        ,billing_id=BillingId
+                        ,dirty='true'
                         };
 set_billing_id(BillingId, #kz_services{jobj=ServicesJObj}=Services) ->
     PvtTree = kz_account:tree(ServicesJObj, [BillingId]),
     try lists:last(PvtTree) of
         BillingId ->
             Services#kz_services{jobj=kzd_services:set_billing_id(ServicesJObj, BillingId)
-				,billing_id=BillingId
-				,dirty='true'
+                                ,billing_id=BillingId
+                                ,dirty='true'
                                 };
         _Else ->
             throw({'invalid_billing_id', <<"Requested billing id is not the parent of this account">>})
@@ -571,7 +571,7 @@ service_plan_json(<<_/binary>> = Account) ->
 %%--------------------------------------------------------------------
 -spec public_json(ne_binary() | services()) -> kz_json:object().
 public_json(#kz_services{jobj=ServicesJObj
-			,cascade_quantities=CascadeQuantities
+                        ,cascade_quantities=CascadeQuantities
                         }) ->
     AccountId = kz_doc:account_id(ServicesJObj),
     InGoodStanding = try maybe_follow_billing_id(AccountId, ServicesJObj) of
@@ -580,14 +580,14 @@ public_json(#kz_services{jobj=ServicesJObj
                          'throw':_ -> 'false'
                      end,
     Props = [{?QUANTITIES_ACCOUNT, kzd_services:quantities(ServicesJObj)}
-	    ,{?QUANTITIES_CASCADE, CascadeQuantities}
-	    ,{?PLANS, kz_service_plans:plan_summary(ServicesJObj)}
-	    ,{<<"billing_id">>, kzd_services:billing_id(ServicesJObj, AccountId)}
-	    ,{<<"reseller">>, kzd_services:is_reseller(ServicesJObj)}
-	    ,{<<"reseller_id">>, kzd_services:reseller_id(ServicesJObj)}
-	    ,{<<"dirty">>, kzd_services:is_dirty(ServicesJObj)}
-	    ,{<<"in_good_standing">>, InGoodStanding}
-	    ,{<<"items">>, kz_service_plans:public_json_items(ServicesJObj)}
+            ,{?QUANTITIES_CASCADE, CascadeQuantities}
+            ,{?PLANS, kz_service_plans:plan_summary(ServicesJObj)}
+            ,{<<"billing_id">>, kzd_services:billing_id(ServicesJObj, AccountId)}
+            ,{<<"reseller">>, kzd_services:is_reseller(ServicesJObj)}
+            ,{<<"reseller_id">>, kzd_services:reseller_id(ServicesJObj)}
+            ,{<<"dirty">>, kzd_services:is_dirty(ServicesJObj)}
+            ,{<<"in_good_standing">>, InGoodStanding}
+            ,{<<"items">>, kz_service_plans:public_json_items(ServicesJObj)}
             ],
     kz_json:from_list(Props);
 public_json(<<_/binary>> = Account) ->
@@ -595,13 +595,13 @@ public_json(<<_/binary>> = Account) ->
 
 -spec to_json(services()) -> kz_json:object().
 to_json(#kz_services{jobj=JObj
-		    ,updates=UpdatedQuantities
-		    ,cascade_quantities=CascadeQuantities
+                    ,updates=UpdatedQuantities
+                    ,cascade_quantities=CascadeQuantities
                     }
        ) ->
     CurrentQuantities = kzd_services:quantities(JObj),
     Props = [{fun kzd_services:set_quantities/2, kz_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}
-	    ,{<<"cascade_quantities">>, CascadeQuantities}],
+            ,{<<"cascade_quantities">>, CascadeQuantities}],
     kz_json:set_values(props:filter_undefined(Props), JObj).
 
 %%--------------------------------------------------------------------
@@ -651,7 +651,7 @@ allow_updates(<<_/binary>> = Account) ->
             maybe_follow_billing_id(AccountId, ServicesJObj)
     end;
 allow_updates(#kz_services{jobj=ServicesJObj
-			  ,account_id=AccountId
+                          ,account_id=AccountId
                           }) ->
     lager:debug("determining if account ~s is able to make updates", [AccountId]),
     maybe_follow_billing_id(AccountId, ServicesJObj).
@@ -674,7 +674,7 @@ maybe_allow_updates(AccountId, ServicesJObj) ->
     of
         'true' ->
             lager:debug("allowing request for account ~s with no service plans"
-		       ,[AccountId]
+                       ,[AccountId]
                        ),
             'true';
         StatusGood ->
@@ -682,7 +682,7 @@ maybe_allow_updates(AccountId, ServicesJObj) ->
             'true';
         Status ->
             lager:debug("checking local bookkeeper for account ~s in status ~s"
-		       ,[AccountId, Status]
+                       ,[AccountId, Status]
                        ),
             maybe_local_bookkeeper_allow_updates(AccountId, Status)
     end.
@@ -797,7 +797,7 @@ reconcile(#kz_services{}=Services, Module) ->
 %%--------------------------------------------------------------------
 -spec account_id(services()) -> ne_binary().
 account_id(#kz_services{account_id='undefined'
-		       ,jobj=JObj
+                       ,jobj=JObj
                        }) ->
     lager:debug("services has no account id, looking in ~p", [JObj]),
     kz_doc:account_id(JObj);
@@ -821,7 +821,7 @@ is_dirty(#kz_services{dirty=IsDirty}) ->
 -spec quantity(ne_binary(), ne_binary(), services()) -> integer().
 quantity(_, _, #kz_services{deleted='true'}) -> 0;
 quantity(CategoryId, ItemId, #kz_services{updates=Updates
-					 ,jobj=JObj
+                                         ,jobj=JObj
                                          }) ->
     ItemQuantity = kzd_services:item_quantity(JObj, CategoryId, ItemId),
     kz_json:get_integer_value([CategoryId, ItemId], Updates, ItemQuantity).
@@ -829,7 +829,7 @@ quantity(CategoryId, ItemId, #kz_services{updates=Updates
 -spec diff_quantities(services()) -> api_object().
 diff_quantities(#kz_services{deleted='true'}) -> 'undefined';
 diff_quantities(#kz_services{jobj=JObj
-			    ,updates=Updates
+                            ,updates=Updates
                             }) ->
     kz_json:foldl(fun diff_cat_quantities/3, Updates, kzd_services:quantities(JObj)).
 
@@ -838,26 +838,26 @@ diff_cat_quantities(CategoryId, ItemsJObj, Updates) ->
     kz_json:foldl(fun(I, Q, Acc) ->
                           diff_item_quantities(I, Q, Acc, CategoryId)
                   end
-		 ,Updates
-		 ,ItemsJObj
+                 ,Updates
+                 ,ItemsJObj
                  ).
 
 -spec diff_quantities(ne_binary(), services()) -> api_object().
 diff_quantities(_CategoryId, #kz_services{deleted='true'}) -> 'undefined';
 diff_quantities(CategoryId, #kz_services{jobj=JObj
-					,updates=Updates
+                                        ,updates=Updates
                                         }) ->
     CatQuantities = kzd_services:category_quantities(JObj, CategoryId),
     UpdateQuantities = kz_json:get_value(CategoryId, Updates, kz_json:new()),
     kz_json:foldl(fun(Id, Q, Acc) ->
                           diff_item_quantities(Id, Q, Acc, CategoryId)
                   end
-		 ,UpdateQuantities
-		 ,CatQuantities
+                 ,UpdateQuantities
+                 ,CatQuantities
                  ).
 
 -spec diff_item_quantities(ne_binary(), integer(), kz_json:object(), ne_binary()) ->
-				  kz_json:object().
+                                  kz_json:object().
 diff_item_quantities(ItemId, ItemQuantity, Updates, CategoryId) ->
     UpdateQuantity = kz_json:get_integer_value([CategoryId, ItemId], Updates),
     maybe_update_diff([CategoryId, ItemId], ItemQuantity, UpdateQuantity, Updates).
@@ -874,7 +874,7 @@ maybe_update_diff(Key, ItemQuantity, UpdateQuantity, Updates) ->
 
 diff_quantity(_, _, #kz_services{deleted='true'}) -> 0;
 diff_quantity(CategoryId, ItemId, #kz_services{jobj=JObj
-					      ,updates=Updates
+                                              ,updates=Updates
                                               }) ->
     ItemQuantity = kzd_services:item_quantity(JObj, CategoryId, ItemId),
     UpdateQuantity = kz_json:get_integer_value([CategoryId, ItemId], Updates, 0),
@@ -904,7 +904,7 @@ category_quantity(CategoryId, Services) ->
 
 category_quantity(_CategoryId, _ItemExceptions, #kz_services{deleted='true'}) -> 0;
 category_quantity(CategoryId, ItemExceptions, #kz_services{updates=UpdatedQuantities
-							  ,jobj=JObj
+                                                          ,jobj=JObj
                                                           }) ->
     CatQuantities = kzd_services:category_quantities(JObj, CategoryId),
     CatUpdates = kz_json:get_value(CategoryId, UpdatedQuantities, kz_json:new()),
@@ -918,8 +918,8 @@ category_quantity(CategoryId, ItemExceptions, #kz_services{updates=UpdatedQuanti
     kz_json:foldl(fun(_ItemId, ItemQuantity, Sum) ->
                           ItemQuantity + Sum
                   end
-		 ,0
-		 ,QsMinusEx
+                 ,0
+                 ,QsMinusEx
                  ).
 
 %%--------------------------------------------------------------------
@@ -953,8 +953,8 @@ cascade_category_quantity(CategoryId, ItemExceptions, #kz_services{cascade_quant
     kz_json:foldl(fun(_ItemId, ItemQuantity, Sum) ->
                           ItemQuantity + Sum
                   end
-		 ,category_quantity(CategoryId, ItemExceptions, Services)
-		 ,QtysMinusEx
+                 ,category_quantity(CategoryId, ItemExceptions, Services)
+                 ,QtysMinusEx
                  ).
 
 %%--------------------------------------------------------------------
@@ -1026,17 +1026,17 @@ calculate_services_charges(#kz_services{jobj=ServiceJObj}=Services) ->
     end.
 
 calculate_services_charges(#kz_services{jobj=ServiceJObj
-				       ,updates=UpdatesJObj
-				       ,cascade_quantities=CascadeQuantities
+                                       ,updates=UpdatesJObj
+                                       ,cascade_quantities=CascadeQuantities
                                        }
-			  ,ServicePlans
+                          ,ServicePlans
                           ) ->
     CurrentQuantities = kzd_services:quantities(ServiceJObj),
     UpdatesWithCascade = apply_cascade_quantities(UpdatesJObj, CascadeQuantities),
     UpdatedQuantities = kz_json:merge_jobjs(UpdatesWithCascade, CurrentQuantities),
 
     UpdatedServiceJObj = kzd_services:set_quantities(ServiceJObj
-						    ,UpdatedQuantities
+                                                    ,UpdatedQuantities
                                                     ),
 
     ExistingItems = kz_service_plans:create_items(ServiceJObj, ServicePlans),
@@ -1052,7 +1052,7 @@ apply_cascade_quantities(Quantities, CascadeQuantities) ->
     kz_json:map(fun(CategoryId, ItemsJObj) ->
                         {CategoryId, apply_cascade_categories(CategoryId, ItemsJObj, CascadeQuantities)}
                 end
-	       ,Quantities
+               ,Quantities
                ).
 
 -spec apply_cascade_categories(ne_binary(), kz_json:object(), kz_json:object()) ->
@@ -1064,7 +1064,7 @@ apply_cascade_categories(CategoryId, ItemsJObj, CascadeQuantities) ->
                         lager:debug("incrementing update ~p:~p with cascade ~p", [Key, ItemQuantity, CascadeQuantity]),
                         {ItemId, ItemQuantity + CascadeQuantity}
                 end
-	       ,ItemsJObj
+               ,ItemsJObj
                ).
 
 %%--------------------------------------------------------------------
@@ -1093,7 +1093,7 @@ calculate_transactions_charge_fold(JObj, PlanCharges) ->
             CategoryId = kz_json:get_value(<<"category">>, JObj),
             ItemId = kz_json:get_value(<<"item">>, JObj),
             Props = [{<<"activation_charges">>, Total}
-		    ,{[CategoryId, ItemId, <<"activation_charges">>], Amount}
+                    ,{[CategoryId, ItemId, <<"activation_charges">>], Amount}
                     ],
             kz_json:set_values(Props, PlanCharges)
     end.
@@ -1105,19 +1105,19 @@ calculate_transactions_charge_fold(JObj, PlanCharges) ->
 %%--------------------------------------------------------------------
 -spec dry_run_activation_charges(services()) -> kz_json:objects().
 -spec dry_run_activation_charges(ne_binary(), kz_json:object()
-				,services(), kz_json:objects()
+                                ,services(), kz_json:objects()
                                 ) -> kz_json:objects().
 -spec dry_run_activation_charges(ne_binary(), ne_binary()
-				,integer(), services()
-				,kz_json:objects()
+                                ,integer(), services()
+                                ,kz_json:objects()
                                 ) -> kz_json:objects().
 dry_run_activation_charges(#kz_services{updates=Updates}=Services) ->
     kz_json:foldl(
       fun(CategoryId, CategoryJObj, Acc) ->
               dry_run_activation_charges(CategoryId, CategoryJObj, Services, Acc)
       end
-		 ,[]
-		 ,Updates
+                 ,[]
+                 ,Updates
      ).
 
 dry_run_activation_charges(CategoryId, CategoryJObj, Services, JObjs) ->
@@ -1125,8 +1125,8 @@ dry_run_activation_charges(CategoryId, CategoryJObj, Services, JObjs) ->
       fun(ItemId, Quantity, Acc1) ->
               dry_run_activation_charges(CategoryId, ItemId, Quantity, Services, Acc1)
       end
-		 ,JObjs
-		 ,CategoryJObj
+                 ,JObjs
+                 ,CategoryJObj
      ).
 
 dry_run_activation_charges(CategoryId, ItemId, Quantity, #kz_services{jobj=JObj}=Services, JObjs) ->
@@ -1142,9 +1142,9 @@ dry_run_activation_charges(CategoryId, ItemId, Quantity, #kz_services{jobj=JObj}
 
             [kz_json:from_list(
                [{<<"category">>, CategoryId}
-	       ,{<<"item">>, kzd_item_plan:masquerade_as(ItemPlan, ItemId)}
-	       ,{<<"amount">>, Charges}
-	       ,{<<"quantity">>, Quantity-OldQuantity}
+               ,{<<"item">>, kzd_item_plan:masquerade_as(ItemPlan, ItemId)}
+               ,{<<"amount">>, Charges}
+               ,{<<"quantity">>, Quantity-OldQuantity}
                ])
              |JObjs
             ]
@@ -1250,9 +1250,9 @@ cascade_quantities(<<_/binary>> = Account, 'true') ->
 do_cascade_quantities(<<_/binary>> = Account, <<_/binary>> = View) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     ViewOptions = ['group'
-		  ,'reduce'
-		  ,{'startkey', [AccountId]}
-		  ,{'endkey', [AccountId, kz_json:new()]}
+                  ,'reduce'
+                  ,{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
                   ],
     case kz_datamgr:get_results(?KZ_SERVICES_DB, View, ViewOptions) of
         {'error', _} -> kz_json:new();
@@ -1367,8 +1367,8 @@ incorporate_depreciated_service_plans(Plans, JObj) ->
             lists:foldl(fun(PlanId, Ps) ->
                                 maybe_augment_with_plan(ResellerId, Ps, PlanId)
                         end
-		       ,Plans
-		       ,PlanIds
+                       ,Plans
+                       ,PlanIds
                        )
     end.
 
@@ -1395,7 +1395,7 @@ get_reseller_id(<<_/binary>> = Account) ->
         {'ok', AccountJObj} ->
             get_reseller_id(lists:reverse(kz_account:tree(AccountJObj)));
         {'error', _R} ->
-	    %%            lager:info("unable to open account definition for ~s: ~p", [Account, _R]),
+            %%            lager:info("unable to open account definition for ~s: ~p", [Account, _R]),
             get_reseller_id([])
     end.
 
@@ -1417,7 +1417,7 @@ get_reseller_id(Parent, Ancestors, JObj) ->
                                           {'error', 'no_change'}.
 maybe_save('false') -> 'false';
 maybe_save(#kz_services{jobj=JObj
-		       ,updates=UpdatedQuantities
+                       ,updates=UpdatedQuantities
                        }=Services) ->
     CurrentQuantities = kzd_services:quantities(JObj),
     case have_quantities_changed(UpdatedQuantities, CurrentQuantities) of
@@ -1438,7 +1438,7 @@ maybe_save(#kz_services{jobj=JObj
 -spec have_quantities_changed(services()) -> boolean().
 -spec have_quantities_changed(kz_json:object(), kz_json:object()) -> boolean().
 have_quantities_changed(#kz_services{jobj=JObj
-				    ,updates=UpdatedQuantities
+                                    ,updates=UpdatedQuantities
                                     }) ->
     CurrentQuantities = kzd_services:quantities(JObj),
     have_quantities_changed(UpdatedQuantities, CurrentQuantities).
@@ -1456,10 +1456,10 @@ have_quantities_changed(Updated, Current) ->
 -spec any_changed(changed_fun(), kz_json:object()) -> boolean().
 any_changed(KeyNotSameFun, Quantities) ->
     lists:any(KeyNotSameFun
-	     ,[[CategoryId, ItemId]
-	       || CategoryId <- kz_json:get_keys(Quantities),
-		  ItemId <- kz_json:get_keys(CategoryId, Quantities)
-	      ]).
+             ,[[CategoryId, ItemId]
+               || CategoryId <- kz_json:get_keys(Quantities),
+                  ItemId <- kz_json:get_keys(CategoryId, Quantities)
+              ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1484,12 +1484,12 @@ get_account_definition(<<_/binary>> = AccountId) ->
 %%--------------------------------------------------------------------
 -spec maybe_clean_old_billing_id(services()) -> services().
 maybe_clean_old_billing_id(#kz_services{billing_id=BillingId
-				       ,current_billing_id=BillingId
+                                       ,current_billing_id=BillingId
                                        }=Services) ->
     Services;
 maybe_clean_old_billing_id(#kz_services{current_billing_id=BillingId
-				       ,account_id=BillingId
-				       ,jobj=JObj
+                                       ,account_id=BillingId
+                                       ,jobj=JObj
                                        }=Services) ->
     case kzd_services:is_reseller(JObj) of
         'true' -> Services;

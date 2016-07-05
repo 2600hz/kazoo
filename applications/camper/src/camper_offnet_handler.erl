@@ -17,13 +17,13 @@
 
 -export([start_link/1]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
-	,handle_resource_response/2
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
+        ,handle_resource_response/2
         ]).
 
 -export([add_request/1]).
@@ -33,27 +33,27 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {exten :: api_binary()
-	       ,stored_call :: kapps_call:call()
-	       ,queue :: api_binary()
-	       ,n_try :: non_neg_integer()
-	       ,max_tries :: non_neg_integer()
-	       ,try_after :: non_neg_integer()
-	       ,stop_timer :: 'undefined' | timer:tref()
-	       ,parked_call :: api_binary()
-	       ,offnet_ctl_q :: api_binary()
-	       ,moh :: api_binary()
+               ,stored_call :: kapps_call:call()
+               ,queue :: api_binary()
+               ,n_try :: non_neg_integer()
+               ,max_tries :: non_neg_integer()
+               ,try_after :: non_neg_integer()
+               ,stop_timer :: 'undefined' | timer:tref()
+               ,parked_call :: api_binary()
+               ,offnet_ctl_q :: api_binary()
+               ,moh :: api_binary()
                }).
 -type state() :: #state{}.
 
 -define(MK_CALL_BINDING(CALLID), [{'callid', CALLID}
-				 ,{'restrict_to', [<<"CHANNEL_DESTROY">>
-						  ,<<"CHANNEL_ANSWER">>
-						  ]}
+                                 ,{'restrict_to', [<<"CHANNEL_DESTROY">>
+                                                  ,<<"CHANNEL_ANSWER">>
+                                                  ]}
                                  ]).
 
 -define(BINDINGS, [{'self', []}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_resource_response'}
-		     ,[{<<"*">>, <<"*">>}]
+                     ,[{<<"*">>, <<"*">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -66,10 +66,10 @@
 -spec start_link(list()) -> startlink_ret().
 start_link(Args) ->
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
-				     ,{'bindings', ?BINDINGS}
-				     ,{'queue_name', ?QUEUE_NAME}
-				     ,{'queue_options', ?QUEUE_OPTIONS}
-				     ,{'consume_options', ?CONSUME_OPTIONS}
+                                     ,{'bindings', ?BINDINGS}
+                                     ,{'queue_name', ?QUEUE_NAME}
+                                     ,{'queue_options', ?QUEUE_OPTIONS}
+                                     ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], Args).
 
 -spec init([kz_json:object()]) -> {'ok', state()}.
@@ -98,13 +98,13 @@ init([JObj]) ->
           end,
 
     {'ok', #state{exten = Exten
-		 ,stored_call = Call
-		 ,queue = 'undefined'
-		 ,n_try = 0
-		 ,max_tries = MaxTries
-		 ,stop_timer = StopTimerRef
-		 ,try_after = TryInterval
-		 ,moh = Moh
+                 ,stored_call = Call
+                 ,queue = 'undefined'
+                 ,n_try = 0
+                 ,max_tries = MaxTries
+                 ,stop_timer = StopTimerRef
+                 ,try_after = TryInterval
+                 ,moh = Moh
                  }}.
 
 %%--------------------------------------------------------------------
@@ -139,7 +139,7 @@ handle_cast({'gen_listener', {'created_queue', Q}}, #state{queue = 'undefined'} 
     gen_listener:cast(self(), 'count'),
     {'noreply', S#state{queue = Q}};
 handle_cast('count', #state{n_try=NTry
-			   ,max_tries=MaxTries
+                           ,max_tries=MaxTries
                            }=State) ->
     lager:debug("count"),
 
@@ -152,8 +152,8 @@ handle_cast('count', #state{n_try=NTry
             {'stop', 'normal', State}
     end;
 handle_cast('originate_park', #state{exten=Exten
-				    ,stored_call=Call
-				    ,queue=Q
+                                    ,stored_call=Call
+                                    ,queue=Q
                                     }=State) ->
     lager:debug("originate park"),
     originate_park(Exten, Call, Q),
@@ -163,27 +163,27 @@ handle_cast({'offnet_ctl_queue', CtrlQ}, State) ->
 handle_cast('hangup_parked_call', #state{parked_call='undefined'}=State) ->
     {'noreply', State};
 handle_cast('hangup_parked_call', #state{parked_call=ParkedCall
-					,queue=Queue
-					,offnet_ctl_q=CtrlQ
+                                        ,queue=Queue
+                                        ,offnet_ctl_q=CtrlQ
                                         }=State) ->
     lager:debug("hangup park"),
 
     Hangup = [{<<"Application-Name">>, <<"hangup">>}
-	     ,{<<"Insert-At">>, <<"now">>}
-	     ,{<<"Call-ID">>, ParkedCall}
+             ,{<<"Insert-At">>, <<"now">>}
+             ,{<<"Call-ID">>, ParkedCall}
               | kz_api:default_headers(Queue, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
              ],
     kapi_dialplan:publish_command(CtrlQ, props:filter_undefined(Hangup)),
     {'noreply', State#state{parked_call = 'undefined'}};
 handle_cast({'parked', <<_/binary>> = CallId}, #state{moh=MOH
-						     ,queue=Queue
-						     ,offnet_ctl_q=CtrlQ
-						     ,stored_call=Call
+                                                     ,queue=Queue
+                                                     ,offnet_ctl_q=CtrlQ
+                                                     ,stored_call=Call
                                                      }=State) ->
     Hold = [{<<"Application-Name">>, <<"hold">>}
-	   ,{<<"Insert-At">>, <<"now">>}
-	   ,{<<"Hold-Media">>, MOH}
-	   ,{<<"Call-ID">>, CallId}
+           ,{<<"Insert-At">>, <<"now">>}
+           ,{<<"Hold-Media">>, MOH}
+           ,{<<"Call-ID">>, CallId}
             | kz_api:default_headers(Queue, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
            ],
     kapi_dialplan:publish_command(CtrlQ, props:filter_undefined(Hold)),
@@ -235,7 +235,7 @@ handle_resource_response(JObj, Props) ->
     Srv = props:get_value('server', Props),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
     case {kz_json:get_value(<<"Event-Category">>, JObj)
-	 ,kz_json:get_value(<<"Event-Name">>, JObj)
+         ,kz_json:get_value(<<"Event-Name">>, JObj)
          }
     of
         {<<"resource">>, <<"offnet_resp">>} ->
@@ -249,7 +249,7 @@ handle_resource_response(JObj, Props) ->
             gen_listener:cast(Srv, 'wait');
         {<<"resource">>,<<"originate_resp">>} ->
             case {kz_json:get_value(<<"Application-Name">>, JObj)
-		 ,kz_json:get_value(<<"Application-Response">>, JObj)
+                 ,kz_json:get_value(<<"Application-Response">>, JObj)
                  }
             of
                 {<<"bridge">>, <<"SUCCESS">>} ->
@@ -297,21 +297,21 @@ build_bridge_request(ParkedCallId, Call, Q) ->
     PresenceId = kz_attributes:presence_id(Call),
     AcctId = kapps_call:account_id(Call),
     {'ok', EP} = kz_endpoint:build(kapps_call:authorizing_id(Call)
-				  ,kz_json:from_list([{<<"can_call_self">>, 'true'}])
-				  ,Call
+                                  ,kz_json:from_list([{<<"can_call_self">>, 'true'}])
+                                  ,Call
                                   ),
     props:filter_undefined([{<<"Resource-Type">>, <<"audio">>}
-			   ,{<<"Application-Name">>, <<"bridge">>}
-			   ,{<<"Existing-Call-ID">>, ParkedCallId}
-			   ,{<<"Endpoints">>, EP}
-			   ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
-			   ,{<<"Originate-Immediate">>, 'false'}
-			   ,{<<"Msg-ID">>, MsgId}
-			   ,{<<"Presence-ID">>, PresenceId}
-			   ,{<<"Account-ID">>, AcctId}
-			   ,{<<"Account-Realm">>, kapps_call:from_realm(Call)}
-			   ,{<<"Timeout">>, 10 * ?MILLISECONDS_IN_SECOND}
-			   ,{<<"From-URI-Realm">>, kapps_call:from_realm(Call)}
+                           ,{<<"Application-Name">>, <<"bridge">>}
+                           ,{<<"Existing-Call-ID">>, ParkedCallId}
+                           ,{<<"Endpoints">>, EP}
+                           ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
+                           ,{<<"Originate-Immediate">>, 'false'}
+                           ,{<<"Msg-ID">>, MsgId}
+                           ,{<<"Presence-ID">>, PresenceId}
+                           ,{<<"Account-ID">>, AcctId}
+                           ,{<<"Account-Realm">>, kapps_call:from_realm(Call)}
+                           ,{<<"Timeout">>, 10 * ?MILLISECONDS_IN_SECOND}
+                           ,{<<"From-URI-Realm">>, kapps_call:from_realm(Call)}
                             | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                            ]).
 
@@ -323,7 +323,7 @@ originate_park(<<_/binary>> = Exten, Call, <<_/binary>> = Q) ->
 handle_originate_ready(JObj, Props) ->
     Srv = props:get_value('server', Props),
     case {kz_json:get_value(<<"Event-Category">>, JObj)
-	 ,kz_json:get_value(<<"Event-Name">>, JObj)
+         ,kz_json:get_value(<<"Event-Name">>, JObj)
          }
     of
         {<<"dialplan">>, <<"originate_ready">>} ->
@@ -331,7 +331,7 @@ handle_originate_ready(JObj, Props) ->
             CallId = kz_json:get_value(<<"Call-ID">>, JObj),
             CtrlQ = kz_json:get_value(<<"Control-Queue">>, JObj),
             Prop = [{<<"Call-ID">>, CallId}
-		   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+                   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
                     | kz_api:default_headers(gen_listener:queue_name(Srv), ?APP_NAME, ?APP_VERSION)
                    ],
             gen_listener:cast(Srv, {'offnet_ctl_queue', CtrlQ}),
@@ -349,19 +349,19 @@ build_offnet_request(Exten, Call, Q) ->
     AcctId = kapps_call:account_id(Call),
     CallId = kz_util:rand_hex_binary(8),
     props:filter_undefined([{<<"Resource-Type">>, <<"originate">>}
-			   ,{<<"Application-Name">>, <<"park">>}
-			   ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
-			   ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
-			   ,{<<"Outbound-Caller-ID-Name">>, CIDName}
-			   ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
-			   ,{<<"Msg-ID">>, MsgId}
-			   ,{<<"Presence-ID">>, PresenceId}
-			   ,{<<"Account-ID">>, AcctId}
-			   ,{<<"Call-ID">>, CallId}
-			   ,{<<"Account-Realm">>, kapps_call:from_realm(Call)}
-			   ,{<<"Timeout">>, 10 * ?MILLISECONDS_IN_SECOND}
-			   ,{<<"To-DID">>, Exten}
-			   ,{<<"Format-From-URI">>, <<"true">>}
-			   ,{<<"From-URI-Realm">>, kapps_call:from_realm(Call)}
+                           ,{<<"Application-Name">>, <<"park">>}
+                           ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
+                           ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
+                           ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+                           ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
+                           ,{<<"Msg-ID">>, MsgId}
+                           ,{<<"Presence-ID">>, PresenceId}
+                           ,{<<"Account-ID">>, AcctId}
+                           ,{<<"Call-ID">>, CallId}
+                           ,{<<"Account-Realm">>, kapps_call:from_realm(Call)}
+                           ,{<<"Timeout">>, 10 * ?MILLISECONDS_IN_SECOND}
+                           ,{<<"To-DID">>, Exten}
+                           ,{<<"Format-From-URI">>, <<"true">>}
+                           ,{<<"From-URI-Realm">>, kapps_call:from_realm(Call)}
                             | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                            ]).

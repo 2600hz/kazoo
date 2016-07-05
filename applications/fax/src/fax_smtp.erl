@@ -11,20 +11,20 @@
 -behaviour(gen_smtp_server_session).
 
 -export([init/4
-	,handle_HELO/2
-	,handle_EHLO/3
-	,handle_MAIL/2
-	,handle_MAIL_extension/2
-	,handle_RCPT/2
-	,handle_RCPT_extension/2
-	,handle_DATA/4
-	,handle_RSET/1
-	,handle_VRFY/2
-	,handle_other/3
-	,handle_AUTH/4
-	,handle_STARTTLS/1
-	,code_change/3
-	,terminate/2
+        ,handle_HELO/2
+        ,handle_EHLO/3
+        ,handle_MAIL/2
+        ,handle_MAIL_extension/2
+        ,handle_RCPT/2
+        ,handle_RCPT_extension/2
+        ,handle_DATA/4
+        ,handle_RSET/1
+        ,handle_VRFY/2
+        ,handle_other/3
+        ,handle_AUTH/4
+        ,handle_STARTTLS/1
+        ,code_change/3
+        ,terminate/2
         ]).
 
 -include("fax.hrl").
@@ -36,22 +36,22 @@
 
 -record(state, {
           options = [] :: list()
-	       ,from :: binary()
-	       ,to :: binary()
-	       ,doc :: api_object()
-	       ,filename :: api_binary()
-	       ,content_type :: binary()
-	       ,peer_ip :: peer()
-	       ,owner_id :: api_binary()
-	       ,owner_email :: api_binary()
-	       ,faxbox_email :: api_binary()
-	       ,faxbox :: api_object()
-	       ,errors = [] :: ne_binaries()
-	       ,original_number :: api_binary()
-	       ,number :: api_binary()
-	       ,account_id :: api_binary()
-	       ,session_id :: api_binary()
-	       ,proxy :: api_binary()
+               ,from :: binary()
+               ,to :: binary()
+               ,doc :: api_object()
+               ,filename :: api_binary()
+               ,content_type :: binary()
+               ,peer_ip :: peer()
+               ,owner_id :: api_binary()
+               ,owner_email :: api_binary()
+               ,faxbox_email :: api_binary()
+               ,faxbox :: api_object()
+               ,errors = [] :: ne_binaries()
+               ,original_number :: api_binary()
+               ,number :: api_binary()
+               ,account_id :: api_binary()
+               ,session_id :: api_binary()
+               ,proxy :: api_binary()
          }).
 
 -type state() :: #state{}.
@@ -67,8 +67,8 @@ init(Hostname, SessionCount, Address, Options) ->
         'false' ->
             Banner = [Hostname, " Kazoo Email to Fax Server"],
             State = #state{options = Options
-			  ,peer_ip = Address
-			  ,session_id = kz_util:rand_hex_binary(16)
+                          ,peer_ip = Address
+                          ,session_id = kz_util:rand_hex_binary(16)
                           },
             kz_util:put_callid(State#state.session_id),
             {'ok', Banner, State};
@@ -96,7 +96,7 @@ handle_EHLO(Hostname, Extensions, #state{options=Options, proxy = Proxy}=State) 
                        'true' ->
                            %% auth is enabled, so advertise it
                            [{"AUTH", "PLAIN LOGIN CRAM-MD5"}
-			   ,{"STARTTLS", 'true'}
+                           ,{"STARTTLS", 'true'}
                             | Extensions
                            ]
                    end,
@@ -234,10 +234,10 @@ handle_message(#state{filename='undefined'}=State) ->
 handle_message(#state{errors=[], faxbox='undefined'}=State) ->
     maybe_faxbox_log(State#state{errors=[<<"no previous errors but no faxbox doc">>]});
 handle_message(#state{filename=Filename
-		     ,content_type=_CT
-		     ,doc=Doc
-		     ,errors=[]
-		     }=State) ->
+                     ,content_type=_CT
+                     ,doc=Doc
+                     ,errors=[]
+                     }=State) ->
     lager:debug("checking file ~s", [Filename]),
     case file:read_file(Filename) of
         {'ok', FileContents} ->
@@ -289,9 +289,9 @@ system_report(#state{errors=[Error | _]}=State) ->
     Props = to_proplist(State),
     Notify = props:filter_undefined(
                [{<<"Subject">>, <<"fax smtp error">>}
-	       ,{<<"Message">>, Error}
-	       ,{<<"Details">>, kz_json:from_list(Props)}
-	       ,{<<"Account-ID">>, props:get_value(<<"Account-ID">>, Props)}
+               ,{<<"Message">>, Error}
+               ,{<<"Details">>, kz_json:from_list(Props)}
+               ,{<<"Account-ID">>, props:get_value(<<"Account-ID">>, Props)}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).
@@ -302,10 +302,10 @@ faxbox_log(#state{account_id=AccountId}=State) ->
     Doc = kz_json:normalize(
             kz_json:from_list(
               [{<<"pvt_account_id">>, AccountId}
-	      ,{<<"pvt_account_db">>, AccountDb}
-	      ,{<<"pvt_type">>, <<"fax_smtp_log">>}
-	      ,{<<"pvt_created">>, kz_util:current_tstamp()}
-	      ,{<<"_id">>, error_doc()}
+              ,{<<"pvt_account_db">>, AccountDb}
+              ,{<<"pvt_type">>, <<"fax_smtp_log">>}
+              ,{<<"pvt_created">>, kz_util:current_tstamp()}
+              ,{<<"_id">>, error_doc()}
                | to_proplist(State)
               ]
              )
@@ -359,12 +359,12 @@ faxdoc_to_proplist(JObj) ->
 -spec reset(state()) -> state().
 reset(State) ->
     State#state{owner_id = 'undefined'
-	       ,owner_email = 'undefined'
-	       ,faxbox_email = 'undefined'
-	       ,faxbox = 'undefined'
-	       ,original_number = 'undefined'
-	       ,number = 'undefined'
-	       ,account_id = 'undefined'
+               ,owner_email = 'undefined'
+               ,faxbox_email = 'undefined'
+               ,faxbox = 'undefined'
+               ,original_number = 'undefined'
+               ,number = 'undefined'
+               ,account_id = 'undefined'
                }.
 
 -spec check_faxbox(state()) ->
@@ -376,8 +376,8 @@ check_faxbox(#state{to=To}= State) ->
             Number = fax_util:filter_numbers(FaxNumber),
             check_number(
               maybe_faxbox(State#state{faxbox_email=Domain
-				      ,original_number=FaxNumber
-				      ,number=Number
+                                      ,original_number=FaxNumber
+                                      ,number=Number
                                       }
                           )
              );
@@ -390,8 +390,8 @@ check_faxbox(#state{to=To}= State) ->
                           {'ok', state()} |
                           {'error', string(), state()}.
 check_number(#state{number= <<>>
-		   ,original_number=Number
-		   ,faxbox='undefined'
+                   ,original_number=Number
+                   ,faxbox='undefined'
                    }=State) ->
     Error = kz_util:to_binary(
               io_lib:format("fax number ~s is empty, no faxbox to report to", [Number])
@@ -399,8 +399,8 @@ check_number(#state{number= <<>>
     lager:debug(Error),
     {'error', "554 Not Found", State#state{errors=[Error]}};
 check_number(#state{number= <<>>
-		   ,original_number=Number
-		   ,errors=Errors
+                   ,original_number=Number
+                   ,errors=Errors
                    }=State) ->
     Error = kz_util:to_binary(io_lib:format("fax number ~s is empty", [Number])),
     lager:debug(Error),
@@ -417,11 +417,11 @@ check_number(#state{}=State) ->
                                {'ok', state()} |
                                {'error', string(), state()}.
 check_permissions(#state{from=_From
-			,owner_email=OwnerEmail
-			,faxbox=FaxBoxDoc
+                        ,owner_email=OwnerEmail
+                        ,faxbox=FaxBoxDoc
                         }=State) ->
     lager:debug("checking if ~s can send to ~p."
-	       ,[_From, kz_json:get_value(<<"name">>, FaxBoxDoc)]
+               ,[_From, kz_json:get_value(<<"name">>, FaxBoxDoc)]
                ),
     case kz_json:get_value(<<"smtp_permission_list">>, FaxBoxDoc, []) of
         [] when OwnerEmail =:= 'undefined' ->
@@ -431,9 +431,9 @@ check_permissions(#state{from=_From
     end.
 
 check_permissions(#state{from=From
-			,owner_email=OwnerEmail
-			,faxbox=FaxBoxDoc
-			,errors=Errors
+                        ,owner_email=OwnerEmail
+                        ,faxbox=FaxBoxDoc
+                        ,errors=Errors
                         }=State, Permissions) ->
     case lists:any(fun(A) -> match(From, A) end, Permissions)
         orelse From =:= OwnerEmail
@@ -514,7 +514,7 @@ maybe_faxbox_domain(#state{faxbox_email=Domain}=State) ->
 
 -spec maybe_faxbox_by_owner_email(ne_binary(), state()) -> state().
 maybe_faxbox_by_owner_email(AccountId, #state{errors=Errors
-					     ,from=From
+                                             ,from=From
                                              }=State) ->
     ViewOptions = [{'key', From}],
     AccountDb = kz_util:format_account_db(AccountId),
@@ -543,28 +543,28 @@ maybe_faxbox_by_owner_id(AccountId, OwnerId, #state{errors=Errors, from=From}=St
     case kz_datamgr:get_results(AccountDb, <<"faxbox/list_by_ownerid">>, ViewOptions) of
         {'ok', [JObj]} ->
             State#state{faxbox=kz_json:get_value(<<"doc">>,JObj)
-		       ,owner_id=OwnerId
-		       ,owner_email=From
-		       ,errors=[]
+                       ,owner_id=OwnerId
+                       ,owner_email=From
+                       ,errors=[]
                        };
         {'ok', [_JObj | _JObjs]} ->
             Error = kz_util:to_binary(io_lib:format("user ~s : ~s has multiples faxboxes", [OwnerId, From])),
             maybe_faxbox_by_rules(AccountId
-				 ,State#state{owner_id=OwnerId
-					     ,owner_email=From
-					     ,errors=[Error | Errors]
-					     }
+                                 ,State#state{owner_id=OwnerId
+                                             ,owner_email=From
+                                             ,errors=[Error | Errors]
+                                             }
                                  );
         _ ->
             Error = kz_util:to_binary(io_lib:format("user ~s : ~s does not have a faxbox", [OwnerId, From])),
             lager:debug("user ~s : ~s from account ~s does not have a faxbox, trying by rules"
-		       ,[OwnerId, From, AccountId]
+                       ,[OwnerId, From, AccountId]
                        ),
             maybe_faxbox_by_rules(AccountId
-				 ,State#state{owner_id=OwnerId
-					     ,owner_email=From
-					     ,errors=[Error | Errors]
-					     }
+                                 ,State#state{owner_id=OwnerId
+                                             ,owner_email=From
+                                             ,errors=[Error | Errors]
+                                             }
                                  )
     end.
 
@@ -585,8 +585,8 @@ maybe_faxbox_by_rules(AccountId, #state{errors=Errors}=State)
             State#state{errors=[Error | Errors]}
     end;
 maybe_faxbox_by_rules([], #state{account_id=AccountId
-				,from=From
-				,errors=Errors
+                                ,from=From
+                                ,errors=Errors
                                 }=State) ->
     Error = <<"no mathing rules in account ", AccountId/binary, " for ", From/binary >>,
     lager:debug(Error),
@@ -602,11 +602,11 @@ maybe_faxbox_by_rules([JObj | JObjs], #state{from=From}=State) ->
                               {'ok', state()} |
                               {'error', string(), state()}.
 add_fax_document(#state{doc='undefined'
-		       ,from=From
-		       ,owner_email=OwnerEmail
-		       ,number=FaxNumber
-		       ,faxbox=FaxBoxDoc
-		       ,session_id=Id
+                       ,from=From
+                       ,owner_email=OwnerEmail
+                       ,number=FaxNumber
+                       ,faxbox=FaxBoxDoc
+                       ,session_id=Id
                        }=State) ->
     FaxBoxId = kz_doc:id(FaxBoxDoc),
     AccountId = kz_doc:account_id(FaxBoxDoc),
@@ -617,42 +617,42 @@ add_fax_document(#state{doc='undefined'
                  end,
 
     SendToKey = [<<"notifications">>
-		,<<"outbound">>
-		,<<"email">>
-		,<<"send_to">>
+                ,<<"outbound">>
+                ,<<"email">>
+                ,<<"send_to">>
                 ],
 
     FaxBoxEmailNotify = kz_json:get_value(SendToKey, FaxBoxDoc, []),
     FaxBoxNotify = kz_json:set_value(SendToKey
-				    ,fax_util:notify_email_list(From, OwnerEmail , FaxBoxEmailNotify)
-				    ,FaxBoxDoc
+                                    ,fax_util:notify_email_list(From, OwnerEmail , FaxBoxEmailNotify)
+                                    ,FaxBoxDoc
                                     ),
     Notify = kz_json:get_value([<<"notifications">>, <<"outbound">>], FaxBoxNotify),
 
     Props = props:filter_undefined(
               [{<<"from_name">>, kz_json:get_value(<<"caller_name">>, FaxBoxDoc)}
-	      ,{<<"fax_identity_name">>, kz_json:get_value(<<"fax_header">>, FaxBoxDoc)}
-	      ,{<<"from_number">>, kz_json:get_value(<<"caller_id">>, FaxBoxDoc)}
-	      ,{<<"fax_identity_number">>, kz_json:get_value(<<"fax_identity">>, FaxBoxDoc)}
-	      ,{<<"fax_timezone">>, kzd_fax_box:timezone(FaxBoxDoc)}
-	      ,{<<"to_name">>, FaxNumber}
-	      ,{<<"to_number">>, FaxNumber}
-	      ,{<<"retries">>, kzd_fax_box:retries(FaxBoxDoc, 3)}
-	      ,{<<"notifications">>, Notify}
-	      ,{<<"faxbox_id">>, FaxBoxId}
-	      ,{<<"folder">>, <<"outbox">>}
-	      ,{<<"_id">>, Id}
+              ,{<<"fax_identity_name">>, kz_json:get_value(<<"fax_header">>, FaxBoxDoc)}
+              ,{<<"from_number">>, kz_json:get_value(<<"caller_id">>, FaxBoxDoc)}
+              ,{<<"fax_identity_number">>, kz_json:get_value(<<"fax_identity">>, FaxBoxDoc)}
+              ,{<<"fax_timezone">>, kzd_fax_box:timezone(FaxBoxDoc)}
+              ,{<<"to_name">>, FaxNumber}
+              ,{<<"to_number">>, FaxNumber}
+              ,{<<"retries">>, kzd_fax_box:retries(FaxBoxDoc, 3)}
+              ,{<<"notifications">>, Notify}
+              ,{<<"faxbox_id">>, FaxBoxId}
+              ,{<<"folder">>, <<"outbox">>}
+              ,{<<"_id">>, Id}
               ]),
 
     Doc = kz_json:set_values([{<<"pvt_type">>, <<"fax">>}
-			     ,{<<"pvt_job_status">>, <<"attaching files">>}
-			     ,{<<"pvt_created">>, kz_util:current_tstamp()}
-			     ,{<<"attempts">>, 0}
-			     ,{<<"pvt_account_id">>, AccountId}
-			     ,{<<"pvt_account_db">>, AccountDb}
-			     ,{<<"pvt_reseller_id">>, ResellerId}
+                             ,{<<"pvt_job_status">>, <<"attaching files">>}
+                             ,{<<"pvt_created">>, kz_util:current_tstamp()}
+                             ,{<<"attempts">>, 0}
+                             ,{<<"pvt_account_id">>, AccountId}
+                             ,{<<"pvt_account_db">>, AccountDb}
+                             ,{<<"pvt_reseller_id">>, ResellerId}
                              ]
-			    ,kz_json_schema:add_defaults(kz_json:from_list(Props), <<"faxes">>)
+                            ,kz_json_schema:add_defaults(kz_json:from_list(Props), <<"faxes">>)
                             ),
     lager:debug("added fax document from smtp : ~p", [Doc]),
     {'ok', State#state{doc=Doc}};
@@ -672,10 +672,10 @@ process_message(<<"multipart">>, <<"mixed">>, _Headers, _Parameters, Body, #stat
         {Type, SubType, _HeadersPart, ParametersPart, BodyPart} ->
             lager:debug("processing ~s/~s", [Type, SubType]),
             maybe_process_part(<<Type/binary, "/", SubType/binary>>
-			      ,ParametersPart
-			      ,BodyPart
-			      ,State
-			      );
+                              ,ParametersPart
+                              ,BodyPart
+                              ,State
+                              );
         [{Type, SubType, _HeadersPart, _ParametersPart, _BodyParts}|_OtherParts]=Parts ->
             lager:debug("processing multiple parts, first is ~s/~s", [Type, SubType]),
             process_parts(Parts, State);
@@ -689,7 +689,7 @@ process_message(_Type, _SubType, _Headers, _Parameters, _Body, State) ->
 
 -spec process_parts([mimemail:mimetuple()], state()) -> {'ok', state()}.
 process_parts([], #state{filename='undefined'
-			,errors=Errors
+                        ,errors=Errors
                         }=State) ->
     {'ok', State#state{errors=[<<"no valid attachment">> | Errors]}};
 process_parts([], State) ->
@@ -699,14 +699,14 @@ process_parts([{Type, SubType, _Headers, Parameters, BodyPart}
               ], State) ->
     {_ , NewState}
         = maybe_process_part(fax_util:normalize_content_type(<<Type/binary, "/", SubType/binary>>)
-			    ,Parameters
-			    ,BodyPart
-			    ,State
-			    ),
+                            ,Parameters
+                            ,BodyPart
+                            ,State
+                            ),
     process_parts(Parts, NewState).
 
 -spec maybe_process_part(ne_binary(), kz_proplist(), binary() | mimemail:mimetuple(), state()) ->
-				{'ok', state()}.
+                                {'ok', state()}.
 maybe_process_part(<<"application/octet-stream">>, Parameters, Body, State) ->
     lager:debug("part is application/octet-stream, try check attachment filename extension"),
     case props:get_value(<<"disposition">>, Parameters) of
@@ -720,7 +720,7 @@ maybe_process_part(<<"application/octet-stream">>, Parameters, Body, State) ->
                 CT ->
                     maybe_process_part(CT, Parameters, Body, State)
             end;
-	_Else ->
+        _Else ->
             lager:debug("part is not attachment"),
             {'ok', State}
     end;
@@ -743,7 +743,7 @@ process_part(CT, Body, State) ->
     Extension = kz_mime:to_extension(CT),
     {'ok', Filename} = write_tmp_file(Extension, Body),
     {'ok', State#state{filename=Filename
-		      ,content_type=CT
+                      ,content_type=CT
                       }}.
 
 -spec is_allowed_content_type(ne_binary()) -> boolean().

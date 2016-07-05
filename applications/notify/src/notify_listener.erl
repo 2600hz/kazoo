@@ -14,12 +14,12 @@
 %% API
 -export([start_link/0]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("notify.hrl").
@@ -27,43 +27,43 @@
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{'notify_voicemail_to_email', [{<<"notification">>, <<"voicemail_new">>}]}
-		    ,{'notify_voicemail_full', [{<<"notification">>, <<"voicemail_full">>}]}
-		    ,{'notify_fax_inbound_to_email', [{<<"notification">>, <<"inbound_fax">>}]}
-		    ,{'notify_fax_outbound_to_email', [{<<"notification">>, <<"outbound_fax">>}]}
-		    ,{'notify_fax_inbound_error_to_email', [{<<"notification">>, <<"inbound_fax_error">>}]}
-		    ,{'notify_fax_outbound_error_to_email', [{<<"notification">>, <<"outbound_fax_error">>}]}
-		    ,{'notify_deregister', [{<<"notification">>, <<"deregister">>}]}
-		    ,{'notify_password_recovery', [{<<"notification">>, <<"password_recovery">>}]}
-		    ,{'notify_new_account', [{<<"notification">>, <<"new_account">>}]}
-		    ,{'notify_cnam_request', [{<<"notification">>, <<"cnam_request">>}]}
-		    ,{'notify_port_request', [{<<"notification">>, <<"port_request">>}]}
-		    ,{'notify_port_cancel', [{<<"notification">>, <<"port_cancel">>}]}
-		    ,{'notify_ported', [{<<"notification">>, <<"ported">>}]}
-		    ,{'notify_low_balance', [{<<"notification">>, <<"low_balance">>}]}
-		    ,{'notify_transaction', [{<<"notification">>, <<"transaction">>}]}
-		    ,{'notify_system_alert', [{<<"notification">>, <<"system_alert">>}]}
-		    ,{'notify_topup', [{<<"notification">>, <<"topup">>}]}
+                    ,{'notify_voicemail_full', [{<<"notification">>, <<"voicemail_full">>}]}
+                    ,{'notify_fax_inbound_to_email', [{<<"notification">>, <<"inbound_fax">>}]}
+                    ,{'notify_fax_outbound_to_email', [{<<"notification">>, <<"outbound_fax">>}]}
+                    ,{'notify_fax_inbound_error_to_email', [{<<"notification">>, <<"inbound_fax_error">>}]}
+                    ,{'notify_fax_outbound_error_to_email', [{<<"notification">>, <<"outbound_fax_error">>}]}
+                    ,{'notify_deregister', [{<<"notification">>, <<"deregister">>}]}
+                    ,{'notify_password_recovery', [{<<"notification">>, <<"password_recovery">>}]}
+                    ,{'notify_new_account', [{<<"notification">>, <<"new_account">>}]}
+                    ,{'notify_cnam_request', [{<<"notification">>, <<"cnam_request">>}]}
+                    ,{'notify_port_request', [{<<"notification">>, <<"port_request">>}]}
+                    ,{'notify_port_cancel', [{<<"notification">>, <<"port_cancel">>}]}
+                    ,{'notify_ported', [{<<"notification">>, <<"ported">>}]}
+                    ,{'notify_low_balance', [{<<"notification">>, <<"low_balance">>}]}
+                    ,{'notify_transaction', [{<<"notification">>, <<"transaction">>}]}
+                    ,{'notify_system_alert', [{<<"notification">>, <<"system_alert">>}]}
+                    ,{'notify_topup', [{<<"notification">>, <<"topup">>}]}
                     ]).
 
 -define(RESTRICT_TO, ['new_voicemail'
-		     ,'voicemail_full'
-		     ,'inbound_fax'
-		     ,'inbound_fax_error'
-		     ,'outbound_fax'
-		     ,'outbound_fax_error'
-		     ,'deregister'
-		     ,'password_recovery'
-		     ,'new_account'
-		     ,'cnam_requests'
-		     ,'port_request'
-		     ,'port_cancel'
-		     ,'low_balance'
-		     ,'transaction'
-		     ,'system_alerts'
+                     ,'voicemail_full'
+                     ,'inbound_fax'
+                     ,'inbound_fax_error'
+                     ,'outbound_fax'
+                     ,'outbound_fax_error'
+                     ,'deregister'
+                     ,'password_recovery'
+                     ,'new_account'
+                     ,'cnam_requests'
+                     ,'port_request'
+                     ,'port_cancel'
+                     ,'low_balance'
+                     ,'transaction'
+                     ,'system_alerts'
                      ]).
 
 -define(BINDINGS, [{'notifications', [{'restrict_to', ?RESTRICT_TO} | ?FEDERATE_BINDING(?NOTIFY_CONFIG_CAT)]}
-		  ,{'self', []}
+                  ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"notify_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -81,10 +81,10 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
-				     ,{'bindings', ?BINDINGS}
-				     ,{'queue_name', ?QUEUE_NAME}
-				     ,{'queue_options', ?QUEUE_OPTIONS}
-				     ,{'consume_options', ?CONSUME_OPTIONS}
+                                     ,{'bindings', ?BINDINGS}
+                                     ,{'queue_name', ?QUEUE_NAME}
+                                     ,{'queue_options', ?QUEUE_OPTIONS}
+                                     ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================
@@ -214,9 +214,9 @@ should_handle(JObj) ->
 -spec should_handle_system() -> boolean().
 should_handle_system() ->
     kapps_config:get(?NOTIFY_CONFIG_CAT
-		    ,<<"notification_app">>
-		    ,?APP_NAME
-		    ) =:= ?APP_NAME.
+                    ,<<"notification_app">>
+                    ,?APP_NAME
+                    ) =:= ?APP_NAME.
 
 -spec should_handle_account(ne_binary()) -> boolean().
 should_handle_account(Account) ->

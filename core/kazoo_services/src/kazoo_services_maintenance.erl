@@ -53,7 +53,7 @@ debit(AccountId, Amount) ->
         'ok' -> lager:info("debited account ~s $~p", [AccountId, Amount]);
         {'error', _R} ->
             lager:info("failed to debit account ~s: ~p"
-		      ,[AccountId, _R]
+                      ,[AccountId, _R]
                       )
     end,
     'no_return'.
@@ -63,11 +63,11 @@ debit(AccountId, Amount) ->
                                 {'error', any()}.
 create_transaction(Transaction) ->
     Routines = [fun admin_discretion/1
-	       ,fun admin_description/1
+               ,fun admin_description/1
                ],
     T = lists:foldl(fun(F, T) -> F(T) end
-		   ,Transaction
-		   ,Routines
+                   ,Transaction
+                   ,Routines
                    ),
     case kz_transaction:save(T) of
         {'ok', _} -> 'ok';
@@ -80,7 +80,7 @@ admin_discretion(T) ->
     kz_transaction:set_reason(<<"admin_discretion">>, T).
 
 -spec admin_description(kz_transaction:kz_transaction()) ->
-			       kz_transaction:kz_transaction().
+                               kz_transaction:kz_transaction().
 admin_description(T) ->
     kz_transaction:set_description(<<"system adminstrator credit modification">>, T).
 

@@ -12,23 +12,23 @@
 -module(kapi_sysconf).
 
 -export([get_req/1, get_req_v/1
-	,get_resp/1, get_resp_v/1
-	,set_req/1, set_req_v/1
-	,set_resp/1, set_resp_v/1
-	,flush_req/1, flush_req_v/1
+        ,get_resp/1, get_resp_v/1
+        ,set_req/1, set_req_v/1
+        ,set_resp/1, set_resp_v/1
+        ,flush_req/1, flush_req_v/1
 
-	,bind_q/2, unbind_q/2
-	,declare_exchanges/0
+        ,bind_q/2, unbind_q/2
+        ,declare_exchanges/0
 
-	,publish_get_req/1, publish_get_req/2
-	,publish_get_resp/2, publish_get_resp/3
-	,publish_set_req/1, publish_set_req/2
-	,publish_set_resp/2, publish_set_resp/3
-	,publish_flush_req/1, publish_flush_req/2
+        ,publish_get_req/1, publish_get_req/2
+        ,publish_get_resp/2, publish_get_resp/3
+        ,publish_set_req/1, publish_set_req/2
+        ,publish_set_resp/2, publish_set_resp/3
+        ,publish_flush_req/1, publish_flush_req/2
 
-	,get_category/1, get_category/2
-	,get_key/1, get_key/2
-	,get_value/1, get_value/2
+        ,get_category/1, get_category/2
+        ,get_key/1, get_key/2
+        ,get_value/1, get_value/2
         ]).
 
 -include_lib("kazoo/include/kz_api.hrl").
@@ -70,8 +70,8 @@
 -define(SYSCONF_SET_RESP_VALUES, [{<<"Event-Name">>, <<"set_resp">>} | ?SYSCONF_VALUES]).
 
 -define(SYSCONF_TYPES, [{?CAT_KEY, fun is_binary/1}
-		       ,{?KEY_KEY, fun is_binary/1}
-		       ,{<<"Node">>, fun is_binary/1}
+                       ,{?KEY_KEY, fun is_binary/1}
+                       ,{<<"Node">>, fun is_binary/1}
                        ]).
 
 %%--------------------------------------------------------------------
@@ -241,7 +241,7 @@ publish_get_resp(RespQ, JObj) ->
     publish_get_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_get_resp(RespQ, Api, ContentType) ->
     PrepareOptions = [{'formatter', fun ?MODULE:get_resp/1}
-		     ,{'remove_recursive', 'false'}
+                     ,{'remove_recursive', 'false'}
                      ],
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_GET_RESP_VALUES, PrepareOptions),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).

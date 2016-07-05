@@ -11,9 +11,9 @@
 -module(ecallmgr_fs_command).
 
 -export([set/3, unset/3
-	,bg_set/3, bg_unset/3
-	,export/3, bridge_export/3
-	,record_call/3
+        ,bg_set/3, bg_unset/3
+        ,export/3, bridge_export/3
+        ,record_call/3
         ]).
 
 -include("ecallmgr.hrl").
@@ -88,8 +88,8 @@ export(Node, UUID, Props) ->
     Exports = process_fs_kv(Node, UUID, Props, 'export'),
     lager:debug("~p sendmsg export ~p ~p", [Node, UUID, Exports]),
     _ = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-				       ,{"execute-app-name", "kz_export"}
-				       ,{"execute-app-arg", fs_args_to_binary(Exports)}
+                                       ,{"execute-app-name", "kz_export"}
+                                       ,{"execute-app-arg", fs_args_to_binary(Exports)}
                                        ]),
     'ok'.
 
@@ -107,7 +107,7 @@ bridge_export(Node, UUID, Props) ->
     _ = [freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
                                         ,{"execute-app-name", "bridge_export"}
                                         ,{"execute-app-arg", AppArg}
-					]) || AppArg <- Exports],
+                                        ]) || AppArg <- Exports],
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -126,8 +126,8 @@ record_call(Node, UUID, Args) ->
         {'error', <<"-ERR ", E/binary>>} ->
             lager:debug("error executing uuid_record: ~p", [E]),
             Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
-				 ,",kazoo_application_response="
-				 ,"'",binary:replace(E, <<"\n">>, <<>>),"'"
+                                 ,",kazoo_application_response="
+                                 ,"'",binary:replace(E, <<"\n">>, <<>>),"'"
                                  ]),
             lager:debug("publishing event: ~p", [Evt]),
             _ = ecallmgr_util:send_cmd(Node, UUID, "application", Evt),
@@ -135,7 +135,7 @@ record_call(Node, UUID, Args) ->
         {'error', _Reason}=Error ->
             lager:debug("error executing uuid_record: ~p", [_Reason]),
             Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
-				 ,",kazoo_application_response=timeout"
+                                 ,",kazoo_application_response=timeout"
                                  ]),
             lager:debug("publishing event: ~p", [Evt]),
             _ = ecallmgr_util:send_cmd(Node, UUID, "application", Evt),
@@ -148,13 +148,13 @@ process_fs_kv(_, _, [], _) -> [];
 process_fs_kv(Node, UUID, [{K, V}|KVs], Action) ->
     X1 = format_fs_kv(K, V, UUID, Action),
     lists:foldl(fun(Prop, Acc) ->
-			process_fs_kv_fold(Node, UUID, Prop, Action, Acc)
+                        process_fs_kv_fold(Node, UUID, Prop, Action, Acc)
                 end, X1, KVs);
 process_fs_kv(Node, UUID, [K|KVs], 'unset'=Action)
   when is_binary(K) ->
     X1 = ecallmgr_util:get_fs_key(K),
     lists:foldl(fun(Prop, Acc) ->
-			process_fs_kv_fold(Node, UUID, Prop, Action, Acc)
+                        process_fs_kv_fold(Node, UUID, Prop, Action, Acc)
                 end, [<<X1/binary, "=">>], KVs).
 
 process_fs_kv_fold(_Node, UUID, {K, V}, Action, Acc) ->
@@ -186,10 +186,10 @@ maybe_export_vars(Node, UUID, Props) ->
     lists:foldl(fun({<<"Hold-Media">> = K, V}, Acc) ->
                         export(Node, UUID, [{K, V}]),
                         Acc;
-		   ({<<"ringback">> = K, V}, Acc) ->
+                   ({<<"ringback">> = K, V}, Acc) ->
                         export(Node, UUID, [{K, V}]),
                         Acc;
-		   (KV, Acc) -> [KV| Acc]
+                   (KV, Acc) -> [KV| Acc]
                 end, [], Props).
 
 -spec api(atom(), atom(), binary()) -> ecallmgr_util:send_cmd_ret().

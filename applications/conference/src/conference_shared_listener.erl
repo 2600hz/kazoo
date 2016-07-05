@@ -11,12 +11,12 @@
 
 -export([start_link/0]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("conference.hrl").
@@ -26,12 +26,12 @@
 -record(state, {}).
 
 -define(BINDINGS, [{'conference', [{'restrict_to', ['discovery', 'config']}]}
-		  ,{'authn', []}
-		  ,{'self', []}
+                  ,{'authn', []}
+                  ,{'self', []}
                   ]).
 -define(RESPONDERS, [{'conf_discovery_req', [{<<"conference">>, <<"discovery_req">>}]}
-		    ,{'conf_config_req', [{<<"conference">>, <<"config_req">>}]}
-		    ,{'conf_authn_req', [{<<"directory">>, <<"authn_req">>}]}
+                    ,{'conf_config_req', [{<<"conference">>, <<"config_req">>}]}
+                    ,{'conf_authn_req', [{<<"directory">>, <<"authn_req">>}]}
                     ]).
 -define(QUEUE_NAME, <<"conference_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -47,10 +47,10 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
-				     ,{'responders', ?RESPONDERS}
-				     ,{'queue_name', ?QUEUE_NAME}
-				     ,{'queue_options', ?QUEUE_OPTIONS}
-				     ,{'consume_options', ?CONSUME_OPTIONS}
+                                     ,{'responders', ?RESPONDERS}
+                                     ,{'queue_name', ?QUEUE_NAME}
+                                     ,{'queue_options', ?QUEUE_OPTIONS}
+                                     ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================

@@ -11,12 +11,12 @@
 
 -export([start_link/0]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("omnipresence.hrl").
@@ -94,7 +94,7 @@ handle_cast({'omnipresence',{'subscribe_notify', <<"message-summary">>, User,
     kz_util:put_callid(CallId),
     [Username, Realm] = binary:split(User, <<"@">>),
     Query = [{<<"Username">>, Username}
-	    ,{<<"Realm">>, Realm}
+            ,{<<"Realm">>, Realm}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     kz_amqp_worker:cast(Query, fun kapi_presence:publish_mwi_query/1),
@@ -188,20 +188,20 @@ handle_update(JObj, To) ->
     MessagesWaiting = case MessagesNew of 0 -> <<"no">>; _ -> <<"yes">> end,
     Update = props:filter_undefined(
                [{<<"To">>, <<"sip:", To/binary>>}
-	       ,{<<"To-User">>, ToUsername}
-	       ,{<<"To-Realm">>, ToRealm}
-	       ,{<<"From">>, <<"sip:", To/binary>>}
-	       ,{<<"From-User">>, ToUsername}
-	       ,{<<"From-Realm">>, ToRealm}
-	       ,{<<"Call-ID">>, ?FAKE_CALLID(To)}
-	       ,{<<"Message-Account">>, <<"sip:", To/binary>>}
-	       ,{<<"Messages-Waiting">>, MessagesWaiting}
-	       ,{<<"Messages-New">>, MessagesNew}
-	       ,{<<"Messages-Saved">>, MessagesSaved}
-	       ,{<<"Messages-Urgent">>, MessagesUrgent}
-	       ,{<<"Messages-Urgent-Saved">>, MessagesUrgentSaved}
-	       ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-	       ,{<<"Event-Package">>, <<"message-summary">>}
+               ,{<<"To-User">>, ToUsername}
+               ,{<<"To-Realm">>, ToRealm}
+               ,{<<"From">>, <<"sip:", To/binary>>}
+               ,{<<"From-User">>, ToUsername}
+               ,{<<"From-Realm">>, ToRealm}
+               ,{<<"Call-ID">>, ?FAKE_CALLID(To)}
+               ,{<<"Message-Account">>, <<"sip:", To/binary>>}
+               ,{<<"Messages-Waiting">>, MessagesWaiting}
+               ,{<<"Messages-New">>, MessagesNew}
+               ,{<<"Messages-Saved">>, MessagesSaved}
+               ,{<<"Messages-Urgent">>, MessagesUrgent}
+               ,{<<"Messages-Urgent-Saved">>, MessagesUrgentSaved}
+               ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+               ,{<<"Event-Package">>, <<"message-summary">>}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     maybe_send_update(To, Update).
@@ -219,8 +219,8 @@ maybe_send_update(User, Props) ->
 send_update(Stalkers, Props) ->
     {'ok', Worker} = kz_amqp_worker:checkout_worker(),
     _ = [kz_amqp_worker:cast(Props
-			    ,fun(P) -> kapi_omnipresence:publish_update(S, P) end
-			    ,Worker
+                            ,fun(P) -> kapi_omnipresence:publish_update(S, P) end
+                            ,Worker
                             )
          || S <- Stalkers
         ],
@@ -231,7 +231,7 @@ presence_reset(JObj) ->
     Username = kz_json:get_value(<<"Username">>, JObj),
     Realm = kz_json:get_value(<<"Realm">>, JObj),
     Query = [{<<"Username">>, Username}
-	    ,{<<"Realm">>, Realm}
+            ,{<<"Realm">>, Realm}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     kz_amqp_worker:cast(Query, fun kapi_presence:publish_mwi_query/1).

@@ -10,21 +10,21 @@
 -module(kapi_route).
 
 -export([req/1, req_v/1
-	,resp/1, resp_v/1
-	,win/1, win_v/1
-	,bind_q/2, unbind_q/2
-	,declare_exchanges/0
-	,publish_req/1, publish_req/2
-	,publish_resp/2, publish_resp/3
-	,publish_win/2, publish_win/3
-	,get_auth_realm/1
-	,get_auth_user/1
-	,req_event_type/0
-	,is_actionable_resp/1
+        ,resp/1, resp_v/1
+        ,win/1, win_v/1
+        ,bind_q/2, unbind_q/2
+        ,declare_exchanges/0
+        ,publish_req/1, publish_req/2
+        ,publish_resp/2, publish_resp/3
+        ,publish_win/2, publish_win/3
+        ,get_auth_realm/1
+        ,get_auth_user/1
+        ,req_event_type/0
+        ,is_actionable_resp/1
 
-	,call_id/1
-	,control_queue/1
-	,fetch_id/1
+        ,call_id/1
+        ,control_queue/1
+        ,fetch_id/1
         ]).
 
 -include_lib("kazoo/include/kz_api.hrl").
@@ -42,45 +42,45 @@
 
 %% Route Requests
 -define(ROUTE_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>, ?KEY_CALL_ID
-			   ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                           ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                            ]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Orig-Port">>
-				    ,<<"Max-Call-Length">>, <<"Media">>
-				    ,<<"Transcode">>, <<"Codecs">>
-				    ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
-				    ,<<"Resource-Type">>, <<"Cost-Parameters">>
-				    ,<<"From-Network-Addr">>, <<"From-Network-Port">>
-				    ,<<"User-Agent">>
-				    ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
-				    ,<<"Switch-URL">>, <<"Switch-URI">>
-				    ,<<"Ringback-Media">>, <<"Transfer-Media">>
-				    ,<<"SIP-Request-Host">>, <<"Message-ID">>
-				    ,<<"Body">>
-				    ,<<"From-Tag">>, <<"To-Tag">>
-				    ,<<"Prepend-CID-Name">>
-				    ,<<"Call-Direction">>
+                                    ,<<"Max-Call-Length">>, <<"Media">>
+                                    ,<<"Transcode">>, <<"Codecs">>
+                                    ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
+                                    ,<<"Resource-Type">>, <<"Cost-Parameters">>
+                                    ,<<"From-Network-Addr">>, <<"From-Network-Port">>
+                                    ,<<"User-Agent">>
+                                    ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
+                                    ,<<"Switch-URL">>, <<"Switch-URI">>
+                                    ,<<"Ringback-Media">>, <<"Transfer-Media">>
+                                    ,<<"SIP-Request-Host">>, <<"Message-ID">>
+                                    ,<<"Body">>
+                                    ,<<"From-Tag">>, <<"To-Tag">>
+                                    ,<<"Prepend-CID-Name">>
+                                    ,<<"Call-Direction">>
                                     ]).
 -define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-			  ,{<<"Event-Name">>, ?ROUTE_REQ_EVENT_NAME}
-			  ,{<<"Resource-Type">>, [<<"mms">>, <<"sms">>
-						 ,<<"audio">>, <<"video">>
-						 ,<<"chat">>, <<"metaflow">>
-						 ]}
-			  ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
+                          ,{<<"Event-Name">>, ?ROUTE_REQ_EVENT_NAME}
+                          ,{<<"Resource-Type">>, [<<"mms">>, <<"sms">>
+                                                 ,<<"audio">>, <<"video">>
+                                                 ,<<"chat">>, <<"metaflow">>
+                                                 ]}
+                          ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
                           ]).
 -define(ROUTE_REQ_COST_PARAMS, [<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>
-			       ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
+                               ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
                                ]).
 -define(ROUTE_REQ_TYPES, [{<<"To">>, fun is_binary/1}
-			 ,{<<"From">>, fun is_binary/1}
-			 ,{<<"Request">>, fun is_binary/1}
-			 ,{?KEY_CALL_ID, fun is_binary/1}
-			 ,{<<"Event-Queue">>, fun is_binary/1}
-			 ,{<<"Caller-ID-Name">>, fun is_binary/1}
-			 ,{<<"Caller-ID-Number">>, fun is_binary/1}
-			 ,{<<"Cost-Parameters">>, fun has_cost_parameters/1}
-			 ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-			 ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                         ,{<<"From">>, fun is_binary/1}
+                         ,{<<"Request">>, fun is_binary/1}
+                         ,{?KEY_CALL_ID, fun is_binary/1}
+                         ,{<<"Event-Queue">>, fun is_binary/1}
+                         ,{<<"Caller-ID-Name">>, fun is_binary/1}
+                         ,{<<"Caller-ID-Number">>, fun is_binary/1}
+                         ,{<<"Cost-Parameters">>, fun has_cost_parameters/1}
+                         ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                         ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
                          ]).
 
 -spec has_cost_parameters(kz_json:object()) -> boolean().
@@ -89,60 +89,60 @@ has_cost_parameters(JObj) ->
         andalso kz_json:all(fun({K, _V}) ->
                                     lists:member(K, ?ROUTE_REQ_COST_PARAMS)
                             end
-			   ,JObj
+                           ,JObj
                            ).
 
 %% Route Responses
 -define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>]).
 -define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
-					   ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
-					   ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
-					   ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
-					   ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>
-					   ,<<"Surcharge">>, <<"Rate-NoCharge-Time">>
-					   ,<<"Custom-SIP-Headers">>, <<"Custom-Channel-Vars">>
-					   ,<<"Weight-Cost">>, <<"Weight-Location">>
+                                           ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
+                                           ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
+                                           ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
+                                           ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>
+                                           ,<<"Surcharge">>, <<"Rate-NoCharge-Time">>
+                                           ,<<"Custom-SIP-Headers">>, <<"Custom-Channel-Vars">>
+                                           ,<<"Weight-Cost">>, <<"Weight-Location">>
                                            ]).
 -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
-				 ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
-				 ,?INVITE_FORMAT_TUPLE
+                                 ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
+                                 ,?INVITE_FORMAT_TUPLE
                                  ]).
 -define(ROUTE_RESP_ROUTE_TYPES, [{<<"Codecs">>, fun is_list/1}
-				,{<<"Route">>, fun is_binary/1}
-				,{<<"To-User">>, fun is_binary/1}
-				,{<<"To-Realm">>, fun is_binary/1}
-				,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
-				,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                                ,{<<"Route">>, fun is_binary/1}
+                                ,{<<"To-User">>, fun is_binary/1}
+                                ,{<<"To-Realm">>, fun is_binary/1}
+                                ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                                ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
                                 ]).
 
 %% Route Responses
 -define(ROUTE_RESP_HEADERS, [<<"Method">>]).
 -define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Routes">>
-				     ,<<"Route-Error-Code">>, <<"Route-Error-Message">>
-				     ,<<"Ringback-Media">>, <<"Transfer-Media">>
-				     ,<<"Pre-Park">>, <<"From-User">>, <<"From-Realm">>
-				     ,<<"From-URI">>
+                                     ,<<"Route-Error-Code">>, <<"Route-Error-Message">>
+                                     ,<<"Ringback-Media">>, <<"Transfer-Media">>
+                                     ,<<"Pre-Park">>, <<"From-User">>, <<"From-Realm">>
+                                     ,<<"From-URI">>
                                      ]).
 -define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-			   ,{<<"Event-Name">>, <<"route_resp">>}
-			   ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>, <<"sms">>]}
-			   ,{<<"Pre-Park">>, [<<"none">>, <<"ring_ready">>, <<"answer">>]}
+                           ,{<<"Event-Name">>, <<"route_resp">>}
+                           ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>, <<"sms">>]}
+                           ,{<<"Pre-Park">>, [<<"none">>, <<"ring_ready">>, <<"answer">>]}
                            ]).
 -define(ROUTE_RESP_TYPES, [{<<"Route-Error-Code">>, fun is_binary/1}
-			  ,{<<"Route-Error-Message">>, fun is_binary/1}
-			  ,{<<"Routes">>, fun is_list/1}
-			  ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                          ,{<<"Route-Error-Message">>, fun is_binary/1}
+                          ,{<<"Routes">>, fun is_list/1}
+                          ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
                           ]).
 
 %% Route Winner
 -define(ROUTE_WIN_HEADERS, [?KEY_CALL_ID, ?KEY_CONTROL_QUEUE]).
 -define(OPTIONAL_ROUTE_WIN_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>]).
 -define(ROUTE_WIN_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-			  ,{<<"Event-Name">>, <<"route_win">>}
+                          ,{<<"Event-Name">>, <<"route_win">>}
                           ]).
 -define(ROUTE_WIN_TYPES, [{?KEY_CALL_ID, fun is_binary/1}
-			 ,{?KEY_CONTROL_QUEUE, fun is_binary/1}
-			 ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                         ,{?KEY_CONTROL_QUEUE, fun is_binary/1}
+                         ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
                          ]).
 
 %%--------------------------------------------------------------------
@@ -199,7 +199,7 @@ resp_v(Prop) when is_list(Prop) ->
     case props:get_value(<<"Method">>, Prop) of
         <<"bridge">> when Valid->
             lists:all(fun(Route) -> resp_route_v(Route) end
-		     ,props:get_value(<<"Routes">>, Prop)
+                     ,props:get_value(<<"Routes">>, Prop)
                      );
         _ ->
             Valid

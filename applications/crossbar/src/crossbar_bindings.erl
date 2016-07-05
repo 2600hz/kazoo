@@ -22,22 +22,22 @@
 
 %% API
 -export([bind/3
-	,map/2
-	,fold/2
-	,flush/0, flush/1, flush_mod/1
-	,modules_loaded/0
+        ,map/2
+        ,fold/2
+        ,flush/0, flush/1, flush_mod/1
+        ,modules_loaded/0
         ]).
 
 -export([start_link/0
-	,init/0
+        ,init/0
         ]).
 
 %% Helper Functions for Results of a map/2
 -export([any/1
-	,all/1
-	,succeeded/1
-	,failed/1
-	,matches/2
+        ,all/1
+        ,succeeded/1
+        ,failed/1
+        ,matches/2
         ]).
 
 -include("crossbar.hrl").
@@ -66,7 +66,7 @@
 -type map_results() :: [boolean() |
                         http_methods() |
                         {boolean() | 'halt', cb_context:context()}
-		       ].
+                       ].
 -spec map(ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     lager:debug("mapping ~s", [Routing]),
@@ -201,7 +201,7 @@ init() ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
     _ = [maybe_init_mod(Mod)
          || Mod <- crossbar_config:autoload_modules(?DEFAULT_MODULES)
-	],
+        ],
     'ok'.
 
 -spec maybe_init_mod(ne_binary() | atom()) -> 'ok'.

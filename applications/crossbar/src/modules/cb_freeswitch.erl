@@ -12,12 +12,12 @@
 -module(cb_freeswitch).
 
 -export([init/0
-	,allowed_methods/0
-	,resource_exists/0
-	,validate_freeswitch/1
-	,content_types_provided/1
-	,authenticate/1
-	,authorize/1
+        ,allowed_methods/0
+        ,resource_exists/0
+        ,validate_freeswitch/1
+        ,content_types_provided/1
+        ,authenticate/1
+        ,authorize/1
         ]).
 
 -export([freeswitch_periodic_build/0]).
@@ -33,10 +33,10 @@
 -define(MIME_TYPE_TAR, {<<"application">>, <<"x-tar">>}).
 
 -define(MIME_TYPES, [?MIME_TYPE_GZIP
-		    ,?MIME_TYPE_ZIP
-		    ,?MIME_TYPE_RAR
-		    ,?MIME_TYPE_TAR
-		    ]).
+                    ,?MIME_TYPE_ZIP
+                    ,?MIME_TYPE_RAR
+                    ,?MIME_TYPE_TAR
+                    ]).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".freeswitch">>).
 
@@ -66,16 +66,16 @@ authenticate(Context) ->
 authenticate([{<<"freeswitch">>,[]}], ?HTTP_GET, Context) ->
     UserKey = kz_json:get_value(<<"key">>, cb_context:query_string(Context)),
     ServerKey = kapps_config:get_binary(?MOD_CONFIG_CAT
-				       ,<<"offline_configuration_key">>
-				       ,kz_util:rand_hex_binary(32)),
+                                       ,<<"offline_configuration_key">>
+                                       ,kz_util:rand_hex_binary(32)),
     case UserKey =:= ServerKey of
         'true' ->
             lager:debug("authenticating offline configuration request", []),
             'true';
         'false' ->
             lager:debug("request for offline configuration with invalid key ~s"
-		       ,[UserKey]),
-	    'false'
+                       ,[UserKey]),
+            'false'
     end;
 authenticate(_Nouns, _Verb, _Context) -> 'false'.
 
@@ -156,15 +156,15 @@ load_last_data(Context, File) ->
     BaseName = kz_util:to_binary(filename:basename(File)),
     cb_context:setters(
       Context,[{fun cb_context:set_resp_status/2, 'success'}
-	      ,{fun cb_context:set_resp_data/2, AttachBin}
-	      ,{fun cb_context:add_resp_headers/2,
-		[{<<"Content-Disposition">>, <<"attachment; filename=", BaseName/binary>>}
-		,{<<"Content-Type">>, extension_to_content_type(
-					kz_util:to_lower_binary(
-					  filename:extension(BaseName)))
-		 }
-		,{<<"Content-Length">>, byte_size(AttachBin)}
-		]}
+              ,{fun cb_context:set_resp_data/2, AttachBin}
+              ,{fun cb_context:add_resp_headers/2,
+                [{<<"Content-Disposition">>, <<"attachment; filename=", BaseName/binary>>}
+                ,{<<"Content-Type">>, extension_to_content_type(
+                                        kz_util:to_lower_binary(
+                                          filename:extension(BaseName)))
+                 }
+                ,{<<"Content-Length">>, byte_size(AttachBin)}
+                ]}
               ]).
 
 -spec extension_to_content_type(ne_binary()) -> ne_binary().

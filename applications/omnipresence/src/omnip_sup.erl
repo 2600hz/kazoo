@@ -10,7 +10,7 @@
 -behaviour(supervisor).
 
 -export([start_link/0
-	,start_module/1, stop_module/1
+        ,start_module/1, stop_module/1
         ]).
 -export([init/1]).
 
@@ -20,8 +20,8 @@
 
 %% Helper macro for declaring children of supervisor
 -define(DEFAULT_MODULES, [<<"omnip_dialog_amqp">>
-			 ,<<"omnip_message_summary_amqp">>
-			 ,<<"omnip_presence_amqp">>
+                         ,<<"omnip_message_summary_amqp">>
+                         ,<<"omnip_presence_amqp">>
                          ]).
 
 -define(CHILDREN, [ ?WORKER(module(Module))

@@ -36,18 +36,18 @@ maybe_consume_allotment(Allotment, Request, Limits) ->
     case allotment_consumed_so_far(Allotment, Limits) of
         {'error', _R} when GroupConsumed > (Amount - Minimum) ->
             lager:debug("account ~s has used all ~ws of their allotment"
-		       ,[AccountId, Amount]
+                       ,[AccountId, Amount]
                        ),
             Request;
         {'error', _R} -> Request;
         Consumed when (Consumed + GroupConsumed) > (Amount - Minimum) ->
             lager:debug("account ~s has used all ~ws of their allotment"
-		       ,[AccountId, Amount]
+                       ,[AccountId, Amount]
                        ),
             Request;
         Consumed ->
             lager:debug("account ~s has ~ws remaining of their allotment"
-		       ,[AccountId, Amount - Consumed - GroupConsumed]
+                       ,[AccountId, Amount - Consumed - GroupConsumed]
                        ),
             Classification = kz_json:get_value(<<"classification">>, Allotment),
             j5_request:authorize(<<"allotment_", Classification/binary>>, Request, Limits)
@@ -105,7 +105,7 @@ reconcile_allotment(Seconds, Allotment, Request, Limits) ->
     Timestamp = kz_util:current_tstamp(),
     Id = <<CallId/binary, "-allotment-consumption">>,
     lager:debug("adding allotment debit ~s to ledger ~s for ~wsec"
-	       ,[Id, LedgerDb, Seconds]
+               ,[Id, LedgerDb, Seconds]
                ),
     Props =
         props:filter_undefined(
@@ -154,7 +154,7 @@ find_allotment_by_classification(Direction, Classification, Limits) ->
 find_allotment_by_classification(Classification, Limits) ->
     Allotments = j5_limits:allotments(Limits),
     lager:debug("checking if account ~s has any allotments for ~s"
-	       ,[j5_limits:account_id(Limits), Classification]
+               ,[j5_limits:account_id(Limits), Classification]
                ),
     case kz_json:get_value(Classification, Allotments) of
         'undefined' -> 'undefined';
@@ -190,8 +190,8 @@ allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts
     AccountId = j5_limits:account_id(Limits),
     LedgerDb = kz_util:format_account_mod_id(AccountId),
     ViewOptions = [{'startkey', [Classification, CycleStart]}
-		  ,{'endkey', [Classification, CycleEnd]}
-		  ,{'reduce', 'false'}
+                  ,{'endkey', [Classification, CycleEnd]}
+                  ,{'reduce', 'false'}
                   ],
     case kz_datamgr:get_results(LedgerDb, <<"allotments/consumed">>, ViewOptions) of
         {'ok', JObjs} -> sum_allotment_consumed_so_far(JObjs, CycleStart);
@@ -199,7 +199,7 @@ allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts
             add_transactions_view(LedgerDb, CycleStart, CycleEnd, Classification, Limits, Attempts);
         {'error', _R}=Error ->
             lager:debug("unable to get consumed quanity for ~s allotment from ~s: ~p"
-		       ,[Classification, LedgerDb, _R]
+                       ,[Classification, LedgerDb, _R]
                        ),
             Error
     end.

@@ -15,24 +15,24 @@
 -define(DEFAULT_MAX_ENTRIES, 1000).
 
 -export([
-	 start_link/0,
-	 stop/1,
+         start_link/0,
+         stop/1,
 
-	 in/2,
-	 fail/2,
+         in/2,
+         fail/2,
 
-						% callbacks
-	 init/1,
-	 handle_call/3,
-	 handle_cast/2,
-	 handle_info/2,
-	 terminate/2,
-	 code_change/3]).
+                                                % callbacks
+         init/1,
+         handle_call/3,
+         handle_cast/2,
+         handle_info/2,
+         terminate/2,
+         code_change/3]).
 
 -record(state, {
-	  queue = queue:new() :: queue:queue(),
-	  max_entries = ?DEFAULT_MAX_ENTRIES :: pos_integer()
-	 }).
+          queue = queue:new() :: queue:queue(),
+          max_entries = ?DEFAULT_MAX_ENTRIES :: pos_integer()
+         }).
 
 -type state() :: #state{}.
 
@@ -74,9 +74,9 @@ handle_cast(stop, State) ->
 
 handle_cast({in, Msg}, #state{max_entries=MaxEntries,queue=OldQueue}=State) ->
     Queue = case MaxEntries =< queue:len(OldQueue) of
-		true -> queue:liat(OldQueue);
-		false -> OldQueue
-	    end,
+                true -> queue:liat(OldQueue);
+                false -> OldQueue
+            end,
     {noreply, State#state{queue = queue:in(Msg, Queue)}};
 
 handle_cast(_Msg, State) ->
@@ -110,12 +110,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 -spec recover_fail(ID::binary(), queue:queue()) -> {apns:msg(), [apns:msg()]}.
-						%@hidden
+                                                %@hidden
 recover_fail(ID, Queue) ->
     Now = apns:expiry(0),
     List = queue:to_list(queue:filter(fun
-					  (#apns_msg{expiry=Expiry}) -> Expiry > Now
-				     end, Queue)),
+                                          (#apns_msg{expiry=Expiry}) -> Expiry > Now
+                                     end, Queue)),
     DropWhile = fun(#apns_msg{id=I}) -> I =/= ID end,
     case lists:dropwhile(DropWhile, List) of
         [Failed|RestToRetry] -> {Failed, RestToRetry};

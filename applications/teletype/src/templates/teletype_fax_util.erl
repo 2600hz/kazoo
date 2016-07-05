@@ -9,8 +9,8 @@
 -module(teletype_fax_util).
 
 -export([convert/3
-	,get_fax_doc/1
-	,get_attachments/2
+        ,get_fax_doc/1
+        ,get_attachments/2
         ]).
 
 -include("teletype.hrl").
@@ -135,7 +135,7 @@ get_file_name(Macros, Ext) ->
     CallerIdMacros = props:get_value(<<"caller_id">>, Macros),
     CallerID =
         case {props:get_value(<<"name">>, CallerIdMacros)
-	     ,props:get_value(<<"number">>, CallerIdMacros)
+             ,props:get_value(<<"number">>, CallerIdMacros)
              }
         of
             {'undefined', 'undefined'} -> <<"Unknown">>;

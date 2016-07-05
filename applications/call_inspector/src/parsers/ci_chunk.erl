@@ -12,7 +12,7 @@
 -export([setters/2]).
 -export([call_id/2, call_id/1]).
 -export([append_data/2
-	,data/1, data/2
+        ,data/1, data/2
         ]).
 -export([timestamp/2, timestamp/1]).
 -export([ref_timestamp/1]).
@@ -24,11 +24,11 @@
 -export([label/2, label/1]).
 -export([c_seq/2, c_seq/1]).
 -export([to_json/1
-	,from_json/1
+        ,from_json/1
         ]).
 -export([is_chunk/1]).
 -export([sort_by_timestamp/1
-	,reorder_dialog/1
+        ,reorder_dialog/1
         ]).
 -export([get_dialog_entities/1]).
 
@@ -48,7 +48,7 @@
                   ,parser :: ne_binary()
                   ,label :: ne_binary()
                   ,c_seq :: api_binary()  %% Parsing Kamailio logs: this can be undefined (DON'T parse them)
-		  }).
+                  }).
 -type chunk() :: #ci_chunk{}.
 
 -export_type([chunk/0]).
@@ -58,12 +58,12 @@
 -define(SETTER(Field),
         Field(#ci_chunk{}=Chunk, Value) ->
                Chunk#ci_chunk{Field = Value}
-		   ).
+                   ).
 
 -define(GETTER(Field),
         Field(#ci_chunk{Field = Value}) ->
                Value
-		   ).
+                   ).
 
 %% API
 
@@ -155,16 +155,16 @@ from_json(JObj) ->
     {SrcIP, SrcPort} = src(kz_json:get_value(<<"src">>, JObj)),
     {DstIP, DstPort} = dst(kz_json:get_value(<<"dst">>, JObj)),
     #ci_chunk{src_ip = SrcIP
-	     ,dst_ip = DstIP
-	     ,src_port = SrcPort
-	     ,dst_port = DstPort
-	     ,call_id = kz_json:get_value(<<"call-id">>, JObj)
-	     ,timestamp = kz_json:get_value(<<"timestamp">>, JObj)
-	     ,ref_timestamp = kz_json:get_float_value(<<"ref_timestamp">>, JObj)
-	     ,label = kz_json:get_value(<<"label">>, JObj)
-	     ,data = kz_json:get_value(<<"raw">>, JObj)
-	     ,parser = kz_json:get_value(<<"parser">>, JObj)
-	     ,c_seq = kz_json:get_value(<<"c_seq">>, JObj)
+             ,dst_ip = DstIP
+             ,src_port = SrcPort
+             ,dst_port = DstPort
+             ,call_id = kz_json:get_value(<<"call-id">>, JObj)
+             ,timestamp = kz_json:get_value(<<"timestamp">>, JObj)
+             ,ref_timestamp = kz_json:get_float_value(<<"ref_timestamp">>, JObj)
+             ,label = kz_json:get_value(<<"label">>, JObj)
+             ,data = kz_json:get_value(<<"raw">>, JObj)
+             ,parser = kz_json:get_value(<<"parser">>, JObj)
+             ,c_seq = kz_json:get_value(<<"c_seq">>, JObj)
              }.
 
 -spec src(chunk() | ne_binary()) -> ne_binary() | {ne_binary(), pos_integer()}.
@@ -238,7 +238,7 @@ do_reorder_dialog(RefParser, Chunks) ->
                           {ReallyDone, NewRest} = second_pass(Done, Rest),
                           ReallyDone ++ NewRest
                   end
-		 ,GroupedByCSeq
+                 ,GroupedByCSeq
                  ).
 
 -spec sort_split_uniq(ne_binary(), [chunk()]) -> {[chunk()], [chunk()]}.
@@ -276,9 +276,9 @@ first_pass(Before, InOrder, [], UnMergeable) ->
 
 -spec find_previous_packet(chunk(), [chunk()]) -> chunk() | 'no_previous'.
 find_previous_packet(#ci_chunk{parser = Parser
-			      ,ref_timestamp = RefTimestamp
+                              ,ref_timestamp = RefTimestamp
                               }
-		    ,Chunks) ->
+                    ,Chunks) ->
     RightPackets = [Chunk || Chunk <- Chunks, parser(Chunk) =:= Parser],
     Compare = fun (Chunk) -> ref_timestamp(Chunk) < RefTimestamp end,
     PreviousPackets = lists:takewhile(Compare, RightPackets),
@@ -312,18 +312,18 @@ second_pass(InOrder, [], UnMergeable) ->
 -spec is_duplicate([chunk()], chunk()) -> boolean().
 %% Assumes CSeq and Callid already equal.
 is_duplicate([#ci_chunk{dst_ip = DstIP
-		       ,src_ip = SrcIP
-		       ,dst_port = DstPort
-		       ,src_port = SrcPort
-		       ,label = Label
+                       ,src_ip = SrcIP
+                       ,dst_port = DstPort
+                       ,src_port = SrcPort
+                       ,label = Label
                        }
               |_]
-	    ,#ci_chunk{dst_ip = DstIP
-		      ,src_ip = SrcIP
-		      ,dst_port = DstPort
-		      ,src_port = SrcPort
-		      ,label = Label
-		      }) ->
+            ,#ci_chunk{dst_ip = DstIP
+                      ,src_ip = SrcIP
+                      ,dst_port = DstPort
+                      ,src_port = SrcPort
+                      ,label = Label
+                      }) ->
     'true';
 is_duplicate([], _) ->
     'false';

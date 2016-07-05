@@ -20,20 +20,20 @@
 -include("kapps_speech.hrl").
 
 -export([create/1
-	,create/2
-	,create/3
-	,create/4
-	,create/5
+        ,create/2
+        ,create/3
+        ,create/4
+        ,create/5
         ]).
 -export([asr_freeform/1
-	,asr_freeform/2
-	,asr_freeform/3
-	,asr_freeform/4
+        ,asr_freeform/2
+        ,asr_freeform/3
+        ,asr_freeform/4
         ]).
 -export([asr_commands/2
-	,asr_commands/3
-	,asr_commands/4
-	,asr_commands/5
+        ,asr_commands/3
+        ,asr_commands/4
+        ,asr_commands/5
         ]).
 
 -type provider_errors() :: 'invalid_voice' | 'unknown_provider'.
@@ -80,13 +80,13 @@ create(<<"ispeech">> = Engine, Text, Voice, Format, Opts) ->
             BaseUrl = ?ISPEECH_TTS_URL,
 
             Props = [{<<"text">>, Text}
-		    ,{<<"voice">>, ISpeechVoice}
-		    ,{<<"format">>, Format}
-		    ,{<<"action">>, <<"convert">>}
-		    ,{<<"apikey">>, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>, <<>>)}
-		    ,{<<"speed">>, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_speed">>, 0)}
-		    ,{<<"startpadding">>, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_start_padding">>, 1)}
-		    ,{<<"endpadding">>, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_end_padding">>, 0)}
+                    ,{<<"voice">>, ISpeechVoice}
+                    ,{<<"format">>, Format}
+                    ,{<<"action">>, <<"convert">>}
+                    ,{<<"apikey">>, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>, <<>>)}
+                    ,{<<"speed">>, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_speed">>, 0)}
+                    ,{<<"startpadding">>, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_start_padding">>, 1)}
+                    ,{<<"endpadding">>, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_end_padding">>, 0)}
                     ],
             Headers = [{"Content-Type", "application/json; charset=UTF-8"}],
             Body = kz_json:encode(kz_json:from_list(Props)),
@@ -121,9 +121,9 @@ create_voicefabric(Engine, Text, Voice, Opts) ->
             BaseUrl = ?VOICEFABRIC_TTS_URL,
             ApiKey = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>),
             Data = [{<<"apikey">>, ApiKey}
-		   ,{<<"ttsVoice">>, VFabricVoice}
-		   ,{<<"textFormat">>, <<"text/plain">>}
-		   ,{<<"text">>, Text}
+                   ,{<<"ttsVoice">>, VFabricVoice}
+                   ,{<<"textFormat">>, <<"text/plain">>}
+                   ,{<<"text">>, Text}
                    ],
             ArgsEncode = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_args_encode">>, <<"multipart">>),
             case voicefabric_request_body(ArgsEncode, Data) of
@@ -155,11 +155,11 @@ voicefabric_request_body(<<"urlencode">>, Data) ->
     {'ok', Headers, Body};
 voicefabric_request_body(<<"multipart">>, Data) ->
     Boundary = iolist_to_binary([<<"--bound--">>
-				,kz_datamgr:get_uuid()
-				,<<"--bound--">>
+                                ,kz_datamgr:get_uuid()
+                                ,<<"--bound--">>
                                 ]),
     Headers = [{"Content-Type"
-	       ,"multipart/form-data; charset=UTF-8; boundary=" ++ erlang:binary_to_list(Boundary)
+               ,"multipart/form-data; charset=UTF-8; boundary=" ++ erlang:binary_to_list(Boundary)
                }
               ],
     Body = iolist_to_binary([[<<"--", Boundary/binary,
@@ -167,11 +167,11 @@ voicefabric_request_body(<<"multipart">>, Data) ->
                                 " name=\"", Key/binary
                                 , "\"\r\n\r\n", Val/binary, "\r\n"
                               >>
-				  || {Key, Val} <- Data
+                                  || {Key, Val} <- Data
                              ]
-			    ,"--"
-			    ,Boundary
-			    ,"--"
+                            ,"--"
+                            ,Boundary
+                            ,"--"
                             ]),
     {'ok', Headers, Body};
 voicefabric_request_body(ArgsEncode, _Data) ->
@@ -200,17 +200,17 @@ asr_freeform(Content, ContentType, Locale, Options) ->
 -spec maybe_convert_content(binary(), ne_binary(), ne_binary(), kz_proplist()) -> provider_return().
 maybe_convert_content(Content, ContentType, Locale, Options) ->
     ContentTypes = kapps_config:get(?MOD_CONFIG_CAT
-				   ,<<"asr_content_types">>
-				   ,[<<"application/mpeg">>
-				    ,<<"application/wav">>
-				    ]),
+                                   ,<<"asr_content_types">>
+                                   ,[<<"application/mpeg">>
+                                    ,<<"application/wav">>
+                                    ]),
     case lists:member(ContentType, ContentTypes) of
         'true' -> attempt_asr_freeform(Content, ContentType, Locale, Options);
         'false' ->
             ConvertTo = kapps_config:get_binary(?MOD_CONFIG_CAT
-					       ,<<"asr_prefered_content_type">>
-					       ,<<"application/mpeg">>
-					       ),
+                                               ,<<"asr_prefered_content_type">>
+                                               ,<<"application/mpeg">>
+                                               ),
             case convert_content(Content, ContentType, ConvertTo) of
                 'error' -> {'error', 'unsupported_content_type'};
                 Converted ->
@@ -227,7 +227,7 @@ attempt_asr_freeform(Content, ContentType, Locale, Options) ->
             E;
         {'http_req_id', ReqID} ->
             lager:debug("streaming response ~p to provided option: ~p"
-		       ,[ReqID, props:get_value('receiver', Options)]
+                       ,[ReqID, props:get_value('receiver', Options)]
                        ),
             {'ok', ReqID};
         {'ok', 200, _Headers, Content2} ->
@@ -244,17 +244,17 @@ attempt_asr_freeform(Content, ContentType, Locale, Options) ->
 attempt_asr_freeform(_, <<>>, _, _, _) -> {'error', 'no_content'};
 attempt_asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Opts) ->
     BaseUrl = kapps_config:get_string(?MOD_CONFIG_CAT
-				     ,<<"asr_url">>
-				     ,<<"http://api.ispeech.org/api/rest">>
-				     ),
+                                     ,<<"asr_url">>
+                                     ,<<"http://api.ispeech.org/api/rest">>
+                                     ),
     lager:debug("sending request to ~s", [BaseUrl]),
     Props = [{<<"apikey">>, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_api_key">>, <<>>)}
-	    ,{<<"action">>, <<"recognize">>}
-	    ,{<<"freeform">>, <<"1">>}
-	    ,{<<"content-type">>, ContentType}
-	    ,{<<"output">>, <<"json">>}
-	    ,{<<"locale">>, Locale}
-	    ,{<<"audio">>, base64:encode(Bin)}
+            ,{<<"action">>, <<"recognize">>}
+            ,{<<"freeform">>, <<"1">>}
+            ,{<<"content-type">>, ContentType}
+            ,{<<"output">>, <<"json">>}
+            ,{<<"locale">>, Locale}
+            ,{<<"audio">>, base64:encode(Bin)}
             ],
     Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
     Body = props:to_querystring(Props),
@@ -310,14 +310,14 @@ asr_commands(<<"ispeech">>, Bin, Commands, ContentType, Locale, Opts) ->
     lager:debug("sending request to ~s", [BaseUrl]),
 
     Props = [{<<"apikey">>, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_api_key">>, <<>>)}
-	    ,{<<"action">>, <<"recognize">>}
-	    ,{<<"alias">>, <<"command1|YESNOMAYBE">>}
-	    ,{<<"YESNOMAYBE">>, Commands1}
-	    ,{<<"command1">>, <<"say %YESNOMAYBE%">>}
-	    ,{<<"content-type">>, ContentType}
-	    ,{<<"output">>, <<"json">>}
-	    ,{<<"locale">>, Locale}
-	    ,{<<"audio">>, base64:encode(Bin)}
+            ,{<<"action">>, <<"recognize">>}
+            ,{<<"alias">>, <<"command1|YESNOMAYBE">>}
+            ,{<<"YESNOMAYBE">>, Commands1}
+            ,{<<"command1">>, <<"say %YESNOMAYBE%">>}
+            ,{<<"content-type">>, ContentType}
+            ,{<<"output">>, <<"json">>}
+            ,{<<"locale">>, Locale}
+            ,{<<"audio">>, base64:encode(Bin)}
             ],
     Headers = [{"Content-Type", "application/json"}],
 
@@ -365,9 +365,9 @@ create_response(<<"voicefabric">> = _Engine, {'ok', 200, Headers, Content}) ->
             kz_util:delete_file(WavFile),
             lager:debug("media converted"),
             NewHeaders = props:set_values([{"Content-Type", "audio/wav"}
-					  ,{"Content-Length", integer_to_list(byte_size(WavContent))}
+                                          ,{"Content-Length", integer_to_list(byte_size(WavContent))}
                                           ]
-					 ,Headers
+                                         ,Headers
                                          ),
             lager:debug("corrected headers"),
             create_response(<<"default">>, {'ok', 200, NewHeaders, WavContent});
@@ -430,6 +430,6 @@ convert_content(_, ContentType, ConvertTo) ->
 tmp_file_name(Ext) ->
     Prefix = kz_util:rand_hex_binary(10),
     Name = filename:join([?TMP_PATH
-			 ,<<Prefix/binary, "_voicemail.", Ext/binary>>
+                         ,<<Prefix/binary, "_voicemail.", Ext/binary>>
                          ]),
     kz_util:to_list(Name).

@@ -12,27 +12,27 @@
 
 %% API
 -export([start_link/0
-	,cleanup_soft_deletes/1
-	,start_cleanup_pass/1
-	,binding_account/0
-	,binding_account_mod/0
-	,binding_system/0
-	,binding_other/0
-	,binding_all_dbs/0
-	,binding_minute/0
-	,binding_hour/0
-	,binding_day/0
+        ,cleanup_soft_deletes/1
+        ,start_cleanup_pass/1
+        ,binding_account/0
+        ,binding_account_mod/0
+        ,binding_system/0
+        ,binding_other/0
+        ,binding_all_dbs/0
+        ,binding_minute/0
+        ,binding_hour/0
+        ,binding_day/0
 
-	,status/0
+        ,status/0
         ]).
 
 %% gen_server callbacks
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("crossbar.hrl").
@@ -40,9 +40,9 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {cleanup_timer_ref=start_cleanup_timer()
-	       ,minute_timer_ref=start_minute_timer()
-	       ,hour_timer_ref=start_hour_timer()
-	       ,day_timer_ref=start_day_timer()
+               ,minute_timer_ref=start_minute_timer()
+               ,hour_timer_ref=start_hour_timer()
+               ,day_timer_ref=start_day_timer()
                }).
 -type state() :: #state{}.
 
@@ -144,14 +144,14 @@ binding_all_dbs() ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call('status', _From, #state{cleanup_timer_ref=Cleanup
-				   ,minute_timer_ref=Minute
-				   ,hour_timer_ref=Hour
-				   ,day_timer_ref=Day
+                                   ,minute_timer_ref=Minute
+                                   ,hour_timer_ref=Hour
+                                   ,day_timer_ref=Day
                                    }=State) ->
     {'reply', [{'cleanup', erlang:read_timer(Cleanup)}
-	      ,{'minute', erlang:read_timer(Minute)}
-	      ,{'hour', erlang:read_timer(Hour)}
-	      ,{'day', erlang:read_timer(Day)}
+              ,{'minute', erlang:read_timer(Minute)}
+              ,{'hour', erlang:read_timer(Hour)}
+              ,{'day', erlang:read_timer(Day)}
               ]
     , State};
 handle_call(_Request, _From, State) ->
@@ -247,8 +247,8 @@ start_cleanup_pass(Ref) ->
 -spec db_routing_key(ne_binary()) -> ne_binary().
 db_routing_key(Db) ->
     Classifiers = [{fun kapps_util:is_account_db/1, fun binding_account/0}
-		  ,{fun kapps_util:is_account_mod/1, fun binding_account_mod/0}
-		  ,{fun kz_util:is_system_db/1, fun binding_system/0}
+                  ,{fun kapps_util:is_account_mod/1, fun binding_account_mod/0}
+                  ,{fun kz_util:is_system_db/1, fun binding_system/0}
                   ],
     db_routing_key(Db, Classifiers).
 db_routing_key(_Db, []) ->
@@ -262,9 +262,9 @@ db_routing_key(Db, [{Classifier, BindingFun} | Classifiers]) ->
 -spec start_timers() -> state().
 start_timers() ->
     #state{cleanup_timer_ref=start_cleanup_timer()
-	  ,minute_timer_ref=start_minute_timer()
-	  ,hour_timer_ref=start_hour_timer()
-	  ,day_timer_ref=start_day_timer()
+          ,minute_timer_ref=start_minute_timer()
+          ,hour_timer_ref=start_hour_timer()
+          ,day_timer_ref=start_day_timer()
           }.
 
 -spec stop_timer(any()) -> any().
@@ -312,7 +312,7 @@ do_cleanup(Db) ->
     case kz_datamgr:get_results(Db
                                ,<<"maintenance/soft_deletes">>
                                ,[{'limit', kz_datamgr:max_bulk_insert()}]
-			       ) of
+                               ) of
         {'ok', []} -> 'ok';
         {'ok', L} ->
             lager:debug("removing ~b soft-deleted docs from ~s", [length(L), Db]),

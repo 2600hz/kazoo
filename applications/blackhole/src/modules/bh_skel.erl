@@ -11,7 +11,7 @@
 -module(bh_skel).
 
 -export([handle_event/2
-	,add_amqp_binding/2, rm_amqp_binding/2
+        ,add_amqp_binding/2, rm_amqp_binding/2
         ]).
 
 -include("blackhole.hrl").

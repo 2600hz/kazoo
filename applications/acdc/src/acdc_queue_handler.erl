@@ -9,12 +9,12 @@
 -module(acdc_queue_handler).
 
 -export([handle_call_event/2
-	,handle_member_call/3
-	,handle_member_resp/2
-	,handle_member_accepted/2
-	,handle_member_retry/2
-	,handle_config_change/2
-	,handle_presence_probe/2
+        ,handle_member_call/3
+        ,handle_member_resp/2
+        ,handle_member_accepted/2
+        ,handle_member_retry/2
+        ,handle_config_change/2
+        ,handle_presence_probe/2
         ]).
 
 -include("acdc.hrl").
@@ -37,15 +37,15 @@ handle_call_event(Category, <<"CHANNEL_DESTROY">> = Name, JObj, Props) ->
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
     acdc_util:unbind_from_call_events(CallId, Srv),
     acdc_queue_fsm:call_event(props:get_value('fsm_pid', Props)
-			     ,Category
-			     ,Name
-			     ,JObj
+                             ,Category
+                             ,Name
+                             ,JObj
                              );
 handle_call_event(Category, Name, JObj, Props) ->
     acdc_queue_fsm:call_event(props:get_value('fsm_pid', Props)
-			     ,Category
-			     ,Name
-			     ,JObj
+                             ,Category
+                             ,Name
+                             ,JObj
                              ).
 
 -spec handle_member_call(kz_json:object(), kz_proplist(), gen_listener:basic_deliver()) -> 'ok'.
@@ -74,9 +74,9 @@ handle_config_change(JObj, _Props) ->
     'true' = kapi_conf:doc_update_v(JObj),
 
     handle_queue_change(kz_json:get_value(<<"Database">>, JObj)
-		       ,kz_json:get_value(<<"Account-ID">>, JObj)
-		       ,kz_json:get_value(<<"ID">>, JObj)
-		       ,kz_json:get_value(<<"Event-Name">>, JObj)
+                       ,kz_json:get_value(<<"Account-ID">>, JObj)
+                       ,kz_json:get_value(<<"ID">>, JObj)
+                       ,kz_json:get_value(<<"Event-Name">>, JObj)
                        ).
 
 -spec handle_queue_change(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
@@ -122,8 +122,8 @@ maybe_respond_to_presence_probe(JObj, AcctId) ->
         'undefined' -> 'ok';
         QueueId ->
             update_probe(JObj
-			,acdc_queues_sup:find_queue_supervisor(AcctId, QueueId)
-			,AcctId, QueueId
+                        ,acdc_queues_sup:find_queue_supervisor(AcctId, QueueId)
+                        ,AcctId, QueueId
                         )
     end.
 
@@ -146,8 +146,8 @@ send_probe(JObj, State) ->
            ,(kz_json:get_value(<<"Realm">>, JObj))/binary>>,
     PresenceUpdate =
         [{<<"State">>, State}
-	,{<<"Presence-ID">>, To}
-	,{<<"Call-ID">>, kz_util:to_hex_binary(crypto:hash(md5, To))}
+        ,{<<"Presence-ID">>, To}
+        ,{<<"Call-ID">>, kz_util:to_hex_binary(crypto:hash(md5, To))}
          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     kapi_presence:publish_update(PresenceUpdate).

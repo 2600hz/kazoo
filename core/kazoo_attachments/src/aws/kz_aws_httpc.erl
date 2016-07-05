@@ -52,9 +52,9 @@ request_httpc(URL, Method, Hdrs, Body, Timeout, _Config) ->
     HdrsStr = [{to_list_string(K), to_list_string(V)} || {K, V} <- Hdrs],
     {"content-type", ContentType} = lists:keyfind("content-type", 1, HdrsStr),
     response_httpc(httpc:request(Method
-				,{URL, HdrsStr, ContentType, Body}
-				,[{'timeout', Timeout}]
-				,[{'body_format', 'binary'}]
+                                ,{URL, HdrsStr, ContentType, Body}
+                                ,[{'timeout', Timeout}]
+                                ,[{'body_format', 'binary'}]
                                 )
                   ).
 

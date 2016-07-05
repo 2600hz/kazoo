@@ -14,7 +14,7 @@
 
 -export([is_authorized/1]).
 -export([maybe_add_binding_to_listener/3
-	,maybe_rm_binding_from_listener/3
+        ,maybe_rm_binding_from_listener/3
         ]).
 -export([respond_with_error/1, respond_with_error/3, respond_with_authn_failure/1]).
 -export([get_callback_module/1]).
@@ -84,21 +84,21 @@ maybe_rm_binding_from_listener(Module, Binding, Context) ->
 respond_with_error(Context) ->
     respond_with_error(
       Context
-		      ,<<"error">>
-		      ,kz_json:from_list([
-					  {<<"message">>, <<"unknown error">>}
-					 ])
+                      ,<<"error">>
+                      ,kz_json:from_list([
+                                          {<<"message">>, <<"unknown error">>}
+                                         ])
      ).
 
 respond_with_error(Context, Error, JObj) ->
     lager:debug(
       "Error: ~p for socket: ~s"
-	       ,[kz_json:get_value(<<"message">>, JObj), bh_context:websocket_session_id(Context)]
+               ,[kz_json:get_value(<<"message">>, JObj), bh_context:websocket_session_id(Context)]
      ),
     blackhole_data_emitter:emit(
       bh_context:websocket_pid(Context)
-			       ,Error
-			       ,JObj
+                               ,Error
+                               ,JObj
      ),
     Context.
 
@@ -113,11 +113,11 @@ respond_with_authn_failure(Context) ->
     lager:debug("authn failure: token ~s", [Token]),
     respond_with_error(
       Context
-		      ,<<"auth_failure">>
-		      ,kz_json:from_list([
-					  {<<"message">>, <<"invalid auth token">>}
-					 ,{<<"cause">>, Token}
-					 ])
+                      ,<<"auth_failure">>
+                      ,kz_json:from_list([
+                                          {<<"message">>, <<"invalid auth token">>}
+                                         ,{<<"cause">>, Token}
+                                         ])
      ).
 
 %%--------------------------------------------------------------------

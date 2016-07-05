@@ -14,15 +14,15 @@
 -module(kapi_money).
 
 -export([credit/1, credit_v/1
-	,debit/1, debit_v/1
-	,balance_req/1, balance_req_v/1
-	,balance_resp/1, balance_resp_v/1
-	,bind_q/2, unbind_q/2
-	,declare_exchanges/0
-	,publish_credit/1, publish_credit/2
-	,publish_debit/1, publish_debit/2
-	,publish_balance_req/1, publish_balance_req/2
-	,publish_balance_resp/2, publish_balance_resp/3
+        ,debit/1, debit_v/1
+        ,balance_req/1, balance_req_v/1
+        ,balance_resp/1, balance_resp_v/1
+        ,bind_q/2, unbind_q/2
+        ,declare_exchanges/0
+        ,publish_credit/1, publish_credit/2
+        ,publish_debit/1, publish_debit/2
+        ,publish_balance_req/1, publish_balance_req/2
+        ,publish_balance_resp/2, publish_balance_resp/3
         ]).
 
 -include_lib("kazoo/include/kz_api.hrl").
@@ -30,22 +30,22 @@
 -define(CREDIT_HEADERS, [<<"Account-ID">>, <<"Amount">>, <<"Transaction-ID">>]).
 -define(OPTIONAL_CREDIT_HEADERS, []).
 -define(CREDIT_VALUES, [{<<"Event-Category">>, <<"transaction">>}
-		       ,{<<"Event-Name">>, <<"credit">>}
-		       ]).
+                       ,{<<"Event-Name">>, <<"credit">>}
+                       ]).
 -define(CREDIT_TYPES, []).
 
 -define(DEBIT_HEADERS, [<<"Account-ID">>, <<"Amount">>, <<"Transaction-ID">>]).
 -define(OPTIONAL_DEBIT_HEADERS, []).
 -define(DEBIT_VALUES, [{<<"Event-Category">>, <<"transaction">>}
-		      ,{<<"Event-Name">>, <<"debit">>}
-		      ]).
+                      ,{<<"Event-Name">>, <<"debit">>}
+                      ]).
 -define(DEBIT_TYPES, []).
 
 -define(BALANCE_REQ_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_BALANCE_REQ_HEADERS, []).
 -define(BALANCE_REQ_VALUES, [{<<"Event-Category">>, <<"transaction">>}
-			    ,{<<"Event-Name">>, <<"balance_req">>}
-			    ]).
+                            ,{<<"Event-Name">>, <<"balance_req">>}
+                            ]).
 -define(BALANCE_REQ_TYPES, []).
 
 -define(BALANCE_RESP_HEADERS, [<<"Account-ID">>]).
@@ -55,7 +55,7 @@
                                        ]).
 -define(BALANCE_RESP_VALUES, [{<<"Event-Category">>, <<"transaction">>}
                              ,{<<"Event-Name">>, <<"balance_resp">>}
-			     ]).
+                             ]).
 -define(BALANCE_RESP_TYPES, []).
 
 %%--------------------------------------------------------------------
@@ -66,8 +66,8 @@
 -spec credit(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 credit(Prop) when is_list(Prop) ->
     case credit_v(Prop) of
-	true -> kz_api:build_message(Prop, ?CREDIT_HEADERS, ?OPTIONAL_CREDIT_HEADERS);
-	false -> {error, "Proplist failed validation for credit"}
+        true -> kz_api:build_message(Prop, ?CREDIT_HEADERS, ?OPTIONAL_CREDIT_HEADERS);
+        false -> {error, "Proplist failed validation for credit"}
     end;
 credit(JObj) ->
     credit(kz_json:to_proplist(JObj)).
@@ -86,8 +86,8 @@ credit_v(JObj) ->
 -spec debit(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 debit(Prop) when is_list(Prop) ->
     case debit_v(Prop) of
-	true -> kz_api:build_message(Prop, ?DEBIT_HEADERS, ?OPTIONAL_DEBIT_HEADERS);
-	false -> {error, "Proplist failed validation for debit"}
+        true -> kz_api:build_message(Prop, ?DEBIT_HEADERS, ?OPTIONAL_DEBIT_HEADERS);
+        false -> {error, "Proplist failed validation for debit"}
     end;
 debit(JObj) ->
     debit(kz_json:to_proplist(JObj)).
@@ -159,9 +159,9 @@ declare_exchanges() ->
 
 routing_key(Props) ->
     list_to_binary([<<"transaction.">>
-		   ,props:get_value(type, Props, <<"*">>) %% credit/debit/balance/other
-		   ,<<".">>
-		   ,props:get_value(account_id, Props, <<"*">>)
+                   ,props:get_value(type, Props, <<"*">>) %% credit/debit/balance/other
+                   ,<<".">>
+                   ,props:get_value(account_id, Props, <<"*">>)
                    ]).
 
 publish_credit(Req) ->

@@ -25,13 +25,13 @@ handle(Data, Call) ->
     lager:debug("saying '~s'", [Say]),
 
     SayCommand = kapps_call_command:say_command(Say
-					       ,kz_json:get_value(<<"type">>, Data)
-					       ,kz_json:get_value(<<"method">>, Data)
-					       ,kz_json:get_value(<<"language">>, Data)
-					       ,Call
-					       ),
+                                               ,kz_json:get_value(<<"type">>, Data)
+                                               ,kz_json:get_value(<<"method">>, Data)
+                                               ,kz_json:get_value(<<"language">>, Data)
+                                               ,Call
+                                               ),
     kapps_call_command:send_command(
       kz_json:set_value(<<"Insert-At">>, <<"now">>, SayCommand)
-				   ,Call
+                                   ,Call
      ),
     {'continue', Call}.

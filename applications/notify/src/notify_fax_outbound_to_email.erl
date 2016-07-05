@@ -92,20 +92,20 @@ create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
     [{<<"account">>, notify_util:json_to_template_props(Account)}
     ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
     ,{<<"fax">>, [{<<"caller_id_number">>, knm_util:pretty_print(CIDNum)}
-		 ,{<<"caller_id_name">>, knm_util:pretty_print(CIDName)}
-		 ,{<<"callee_id_number">>, knm_util:pretty_print(ToNum)}
-		 ,{<<"callee_id_name">>, knm_util:pretty_print(ToName)}
-		 ,{<<"date_called_utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
-		 ,{<<"date_called">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
-		 ,{<<"from_user">>, knm_util:pretty_print(FromE164)}
-		 ,{<<"from_realm">>, kz_json:get_value(<<"From-Realm">>, Event)}
-		 ,{<<"to_user">>, knm_util:pretty_print(ToE164)}
-		 ,{<<"to_realm">>, kz_json:get_value(<<"To-Realm">>, Event)}
-		 ,{<<"fax_jobid">>, kz_json:get_value(<<"Fax-JobId">>, Event)}
-		 ,{<<"fax_media">>, kz_json:get_value(<<"Fax-Name">>, Event)}
-		 ,{<<"call_id">>, kz_json:get_value(<<"Call-ID">>, Event)}
-		  | fax_values(kz_json:get_value(<<"Fax-Info">>, Event))
-		 ]}
+                 ,{<<"caller_id_name">>, knm_util:pretty_print(CIDName)}
+                 ,{<<"callee_id_number">>, knm_util:pretty_print(ToNum)}
+                 ,{<<"callee_id_name">>, knm_util:pretty_print(ToName)}
+                 ,{<<"date_called_utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
+                 ,{<<"date_called">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
+                 ,{<<"from_user">>, knm_util:pretty_print(FromE164)}
+                 ,{<<"from_realm">>, kz_json:get_value(<<"From-Realm">>, Event)}
+                 ,{<<"to_user">>, knm_util:pretty_print(ToE164)}
+                 ,{<<"to_realm">>, kz_json:get_value(<<"To-Realm">>, Event)}
+                 ,{<<"fax_jobid">>, kz_json:get_value(<<"Fax-JobId">>, Event)}
+                 ,{<<"fax_media">>, kz_json:get_value(<<"Fax-Name">>, Event)}
+                 ,{<<"call_id">>, kz_json:get_value(<<"Call-ID">>, Event)}
+                  | fax_values(kz_json:get_value(<<"Fax-Info">>, Event))
+                 ]}
     ,{<<"account_db">>, kz_doc:account_db(Account)}
     ].
 
@@ -134,24 +134,24 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
-	    ,[{<<"From">>, From}
-	     ,{<<"To">>, To}
-	     ,{<<"Subject">>, Subject}
-	     ]
-	    ,ContentTypeParams
-	    ,[{<<"multipart">>, <<"alternative">>, [], []
-	      ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}], [], iolist_to_binary(TxtBody)}
-	       ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}], [], iolist_to_binary(HTMLBody)}
-	       ]
-	      }
-	     ,{ContentTypeA, ContentTypeB
-	      ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
-	       ,{<<"Content-Type">>, list_to_binary([<<ContentType/binary, "; name=\"">>, AttachmentFileName, "\""])}
-	       ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
-	       ]
-	      ,[], AttachmentBin
-	      }
-	     ]
+            ,[{<<"From">>, From}
+             ,{<<"To">>, To}
+             ,{<<"Subject">>, Subject}
+             ]
+            ,ContentTypeParams
+            ,[{<<"multipart">>, <<"alternative">>, [], []
+              ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}], [], iolist_to_binary(TxtBody)}
+               ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}], [], iolist_to_binary(HTMLBody)}
+               ]
+              }
+             ,{ContentTypeA, ContentTypeB
+              ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
+               ,{<<"Content-Type">>, list_to_binary([<<ContentType/binary, "; name=\"">>, AttachmentFileName, "\""])}
+               ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
+               ]
+              ,[], AttachmentBin
+              }
+             ]
             },
     notify_util:send_email(From, To, Email).
 

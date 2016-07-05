@@ -11,8 +11,8 @@
 -include("callflow.hrl").
 
 -export([
-	 handle/2
-	]).
+         handle/2
+        ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -32,13 +32,13 @@ handle(Data, Call) ->
     IgnoreEarlyMedia = kz_endpoints:ignore_early_media(Endpoints),
 
     Command = [{<<"Application-Name">>, <<"bridge">>}
-	      ,{<<"Endpoints">>, Endpoints}
-	      ,{<<"Timeout">>, Timeout}
-	      ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-	      ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
-	      ,{<<"Dial-Endpoint-Method">>, Strategy}
-	      ,{<<"Ignore-Forward">>, <<"false">>}
-	      ],
+              ,{<<"Endpoints">>, Endpoints}
+              ,{<<"Timeout">>, Timeout}
+              ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+              ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
+              ,{<<"Dial-Endpoint-Method">>, Strategy}
+              ,{<<"Ignore-Forward">>, <<"false">>}
+              ],
 
     lager:info("attempting ~b user devices with strategy ~s", [length(Endpoints), Strategy]),
     case length(Endpoints) > 0

@@ -157,7 +157,7 @@ dataplan_match(Classification, Plan, AccountId) ->
     Others = [T || T <- lists:usort(fun({T1,_}, {T2, _}) -> T1 =< T2 end
                                    ,dataplan_connections(Types, GCon)
                                    ),
-		   T =/= Tag],
+                   T =/= Tag],
 
     case maps:get(<<"handler">>, CAtt, 'undefined') of
         'undefined' ->
@@ -220,8 +220,8 @@ dataplan_type_match(Classification, DocType, Plan, AccountId) ->
                                 ,<<"settings">> := AttSettings
                                 }
              } = GAtt,
-	    AttHandler = kz_util:to_atom(AttHandlerBin,'true'),
-	    Params = maps:merge(AttSettings, maps:get(<<"params">>, TypeAttMap, #{})),
+            AttHandler = kz_util:to_atom(AttHandlerBin,'true'),
+            Params = maps:merge(AttSettings, maps:get(<<"params">>, TypeAttMap, #{})),
             #{tag => Tag
              ,server => Server
              ,att_proxy => 'true'
@@ -276,7 +276,7 @@ fetch_cached_dataplan(Key, Fun) ->
             {Keys, PlanJObj} = Fun(Key),
             Plan = kz_json:to_map(PlanJObj),
             CacheProps = [{'origin', [{'db', ?KZ_DATA_DB, K } || K <- Keys]}
-			 ,{'expires','infinity'}
+                         ,{'expires','infinity'}
                          ],
             kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, PT, Plan, CacheProps),
             Plan

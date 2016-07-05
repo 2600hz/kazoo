@@ -10,14 +10,14 @@
 -include("kazoo_sip.hrl").
 
 -export([uris/1
-	,ruri/1
-	,uri/1
+        ,ruri/1
+        ,uri/1
         ]).
 
 -export_type([uri/0, uris/0]).
 
 -spec uris(binary() | string() | #uri{}) ->
-		  [#uri{}] | error.
+                  [#uri{}] | error.
 uris(Uri) -> nklib_parse_uri:uris(Uri).
 
 

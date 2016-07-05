@@ -9,12 +9,12 @@
 -module(acdc_stats_util).
 
 -export([wait_time/2
-	,pause_time/2
-	,caller_id_name/2
-	,caller_id_number/2
+        ,pause_time/2
+        ,caller_id_name/2
+        ,caller_id_number/2
 
-	,get_query_limit/1
-	,db_name/1
+        ,get_query_limit/1
+        ,db_name/1
         ]).
 
 -include("acdc.hrl").

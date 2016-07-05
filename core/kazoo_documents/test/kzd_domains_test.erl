@@ -51,8 +51,8 @@ domains_test_() ->
 -define(HOSTS_SCHEMA, <<"domain_hosts">>).
 
 -record(state, {domains
-	       ,domain_hosts
-	       ,loader_fun
+               ,domain_hosts
+               ,loader_fun
                }).
 
 init() ->
@@ -65,17 +65,17 @@ init() ->
                     A(?HOSTS_SCHEMA) -> DomainHostsSchema;
                     A(X) when not is_binary(X) -> A(kz_util:to_binary(X));
                     A(X) -> io:format("error: schema ~p not found", [X]),
-			    'undefined'
+                            'undefined'
                 end,
 
     #state{domains=DomainsSchema
-	  ,domain_hosts=DomainHostsSchema
-	  ,loader_fun=LoaderFun
+          ,domain_hosts=DomainHostsSchema
+          ,loader_fun=LoaderFun
           }.
 
 load(AppPath, Filename) ->
     SchemaPath = filename:join([AppPath, "priv", "couchdb", "schemas"
-			       ,<<Filename/binary, ".json">>
+                               ,<<Filename/binary, ".json">>
                                ]),
     {'ok', SchemaFile} = file:read_file(SchemaPath),
 
@@ -86,16 +86,16 @@ stop(_) -> 'ok'.
 format_host(_) ->
     [{"Verify host replacement happens"
      ,?_assertEqual(<<"api.", (?DOMAIN)/binary>>
-		   ,kzd_domains:format_host(<<"api.{{domain}}">>
-					   ,?DOMAIN
-					   )
-		   )
+                   ,kzd_domains:format_host(<<"api.{{domain}}">>
+                                           ,?DOMAIN
+                                           )
+                   )
      }
     ].
 
 cname(#state{domains=DomainsSchema
             ,loader_fun=LoaderFun
-	    }
+            }
      ) ->
     CNAME = kz_json:decode(?CNAME),
 
@@ -103,18 +103,18 @@ cname(#state{domains=DomainsSchema
 
     [{"Validate cname property in domains object"
      ,?_assertEqual({'ok', CNAME}
-		   ,kz_json_schema:validate(DomainsSchema
-					   ,CNAME
-					   ,[{'schema_loader_fun', LoaderFun}]
-					   )
-		   )
+                   ,kz_json_schema:validate(DomainsSchema
+                                           ,CNAME
+                                           ,[{'schema_loader_fun', LoaderFun}]
+                                           )
+                   )
      }
     ,{"Validate list of hosts"
      ,?_assertEqual([<<"portal.{{domain}}">>
-		    ,<<"api.{{domain}}">>
-		    ]
-		   ,Hosts
-		   )
+                    ,<<"api.{{domain}}">>
+                    ]
+                   ,Hosts
+                   )
      }
      | validate_cname_hosts(CNAME, Hosts)
     ].
@@ -122,7 +122,7 @@ cname(#state{domains=DomainsSchema
 validate_cname_hosts(CNAME, Hosts) ->
     lists:flatten(
       lists:map(fun(H) -> validate_cname_host(CNAME, H) end
-	       ,Hosts
+               ,Hosts
                )
      ).
 
@@ -137,39 +137,39 @@ validate_cname_host(CNAME, Host) ->
 
 fail_cname(#state{domains=DomainsSchema
                  ,loader_fun=LoaderFun
-		 }
-	  ) ->
+                 }
+          ) ->
     CNAME = kz_json:decode(?FAIL_CNAME),
 
     Hosts = kzd_domains:cname_hosts(CNAME),
 
     [{"Validate badly formed host fails domains validation"
      ,?_assertMatch({'error'
-		    ,[{'data_invalid'
-		      ,_
-		      ,'no_extra_properties_allowed'
-		      ,_
-		      ,_
-		      }
-		     ]
-		    }
-		   ,kz_json_schema:validate(DomainsSchema
-					   ,CNAME
-					   ,[{'schema_loader_fun', LoaderFun}]
-					   )
-		   )
+                    ,[{'data_invalid'
+                      ,_
+                      ,'no_extra_properties_allowed'
+                      ,_
+                      ,_
+                      }
+                     ]
+                    }
+                   ,kz_json_schema:validate(DomainsSchema
+                                           ,CNAME
+                                           ,[{'schema_loader_fun', LoaderFun}]
+                                           )
+                   )
      }
     ,{"Validate list of hosts"
      ,?_assertEqual([<<"portal.{{wrong}}">>
-		    ,<<"api.{{still_wrong}}">>
-		    ]
-		   ,Hosts
-		   )
+                    ,<<"api.{{still_wrong}}">>
+                    ]
+                   ,Hosts
+                   )
      }
     ].
 
 a_record(#state{domains=DomainsSchema
-	       ,loader_fun=LoaderFun
+               ,loader_fun=LoaderFun
                }) ->
     A_RECORD = kz_json:decode(?A_RECORD),
 
@@ -177,19 +177,19 @@ a_record(#state{domains=DomainsSchema
 
     [{"Validate a_record property in domains object"
      ,?_assertEqual({'ok', A_RECORD}
-		   ,kz_json_schema:validate(DomainsSchema
-					   ,A_RECORD
-					   ,[{'schema_loader_fun', LoaderFun}]
-					   )
-		   )
+                   ,kz_json_schema:validate(DomainsSchema
+                                           ,A_RECORD
+                                           ,[{'schema_loader_fun', LoaderFun}]
+                                           )
+                   )
      }
     ,{"Validate list of hosts"
      ,?_assertEqual([<<"us-east.{{domain}}">>
-		    ,<<"us-central.{{domain}}">>
-		    ,<<"us-west.{{domain}}">>
-		    ]
-		   ,Hosts
-		   )
+                    ,<<"us-central.{{domain}}">>
+                    ,<<"us-west.{{domain}}">>
+                    ]
+                   ,Hosts
+                   )
      }
      | validate_a_record_hosts(A_RECORD, Hosts)
     ].
@@ -197,7 +197,7 @@ a_record(#state{domains=DomainsSchema
 validate_a_record_hosts(A_RECORD, Hosts) ->
     lists:flatten(
       lists:map(fun(H) -> validate_a_record_host(A_RECORD, H) end
-	       ,Hosts
+               ,Hosts
                )
      ).
 
@@ -211,7 +211,7 @@ validate_a_record_host(A_RECORD, Host) ->
     ].
 
 naptr(#state{domains=DomainsSchema
-	    ,loader_fun=LoaderFun
+            ,loader_fun=LoaderFun
             }) ->
     NAPTR = kz_json:decode(?NAPTR),
 
@@ -219,19 +219,19 @@ naptr(#state{domains=DomainsSchema
 
     [{"Validate naptr property in domains object"
      ,?_assertEqual({'ok', NAPTR}
-		   ,kz_json_schema:validate(DomainsSchema
-					   ,NAPTR
-					   ,[{'schema_loader_fun', LoaderFun}]
-					   )
-		   )
+                   ,kz_json_schema:validate(DomainsSchema
+                                           ,NAPTR
+                                           ,[{'schema_loader_fun', LoaderFun}]
+                                           )
+                   )
      }
     ,{"Validate list of hosts"
      ,?_assertEqual([<<"proxy-east.{{domain}}">>
-		    ,<<"proxy-central.{{domain}}">>
-		    ,<<"proxy-west.{{domain}}">>
-		    ]
-		   ,Hosts
-		   )
+                    ,<<"proxy-central.{{domain}}">>
+                    ,<<"proxy-west.{{domain}}">>
+                    ]
+                   ,Hosts
+                   )
      }
      | validate_naptr_hosts(NAPTR, Hosts)
     ].
@@ -239,7 +239,7 @@ naptr(#state{domains=DomainsSchema
 validate_naptr_hosts(NAPTR, Hosts) ->
     lists:flatten(
       lists:map(fun(H) -> validate_naptr_host(NAPTR, H) end
-	       ,Hosts
+               ,Hosts
                )
      ).
 
@@ -264,24 +264,24 @@ validate_mapping(Mapping, Type) ->
     }.
 
 srv(#state{domains=DomainsSchema
-	  ,loader_fun=LoaderFun
-	  }) ->
+          ,loader_fun=LoaderFun
+          }) ->
     SRV = kz_json:decode(?SRV),
 
     Hosts = kzd_domains:srv_hosts(SRV),
 
     [{"Validate srv property in domains object"
      ,?_assertEqual({'ok', SRV}
-		   ,kz_json_schema:validate(DomainsSchema
-					   ,SRV
-					   ,[{'schema_loader_fun', LoaderFun}]
-					   )
-		   )
+                   ,kz_json_schema:validate(DomainsSchema
+                                           ,SRV
+                                           ,[{'schema_loader_fun', LoaderFun}]
+                                           )
+                   )
      }
     ,{"Validate list of SRV hosts"
      ,?_assertEqual([<<"_sip._udp.proxy-east.{{domain}}">>]
-		   ,Hosts
-		   )
+                   ,Hosts
+                   )
      }
      | validate_srv_hosts(SRV, Hosts)
     ].
@@ -289,7 +289,7 @@ srv(#state{domains=DomainsSchema
 validate_srv_hosts(SRV, Hosts) ->
     lists:flatten(
       lists:map(fun(H) -> validate_srv_host(SRV, H) end
-	       ,Hosts
+               ,Hosts
                )
      ).
 
@@ -311,13 +311,13 @@ label(Format, Args) ->
     lists:flatten(io_lib:format(Format, Args)).
 
 default(#state{domains=DomainsSchema
-	      ,loader_fun=LoaderFun
+              ,loader_fun=LoaderFun
               }) ->
     Default = kzd_domains:default(),
 
     case kz_json_schema:validate(DomainsSchema
-				,Default
-				,[{'schema_loader_fun', LoaderFun}]
+                                ,Default
+                                ,[{'schema_loader_fun', LoaderFun}]
                                 )
     of
         {'ok', _} ->

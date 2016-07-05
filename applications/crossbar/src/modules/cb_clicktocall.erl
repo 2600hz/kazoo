@@ -18,16 +18,16 @@
 -module(cb_clicktocall).
 
 -export([init/0
-	,allowed_methods/0, allowed_methods/1, allowed_methods/2
-	,resource_exists/0, resource_exists/1, resource_exists/2
-	,validate/1, validate/2, validate/3
-	,authenticate/1
-	,authorize/1
-	,put/1
-	,post/2, post/3
-	,patch/2
-	,delete/2
-	,maybe_migrate_history/1
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,validate/1, validate/2, validate/3
+        ,authenticate/1
+        ,authorize/1
+        ,put/1
+        ,post/2, post/3
+        ,patch/2
+        ,delete/2
+        ,maybe_migrate_history/1
         ]).
 
 -include("crossbar.hrl").
@@ -98,12 +98,12 @@ resource_exists(_, ?HISTORY) ->
 -spec authenticate(cb_context:context()) -> 'true'.
 authenticate(Context) ->
     is_c2c_url(Context, cb_context:req_nouns(Context))
-	andalso maybe_authenticate(Context).
+        andalso maybe_authenticate(Context).
 
 -spec authorize(cb_context:context()) -> 'true'.
 authorize(Context) ->
     is_c2c_url(Context, cb_context:req_nouns(Context))
-	andalso maybe_authorize(Context).
+        andalso maybe_authorize(Context).
 
 -spec maybe_authenticate(cb_context:context()) -> boolean().
 maybe_authenticate(Context) ->
@@ -213,9 +213,9 @@ normalize_history_results(JObj, Acc) ->
 -spec load_c2c_summary(cb_context:context()) -> cb_context:context().
 load_c2c_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST
-			  ,[]
-			  ,Context
-			  ,fun normalize_view_results/2
+                          ,[]
+                          ,Context
+                          ,fun normalize_view_results/2
                           ).
 
 -spec load_c2c(ne_binary(), cb_context:context()) -> cb_context:context().
@@ -225,9 +225,9 @@ load_c2c(C2CId, Context) ->
 -spec load_c2c_history(ne_binary(), cb_context:context()) -> cb_context:context().
 load_c2c_history(_C2CId, Context) ->
     crossbar_doc:load_view(?HISTORY_LIST
-			  ,['include_docs']
-			  ,cb_context:set_account_db(Context, cb_context:account_modb(Context))
-			  ,fun normalize_history_results/2
+                          ,['include_docs']
+                          ,cb_context:set_account_db(Context, cb_context:account_modb(Context))
+                          ,fun normalize_history_results/2
                           ).
 
 -spec create_c2c(cb_context:context()) -> cb_context:context().
@@ -276,8 +276,8 @@ migrate_history(AccountId, AccountDb, C2C) ->
             _ = [save_history_item(AccountId, HistoryItem, Id) || HistoryItem <- History],
             _Resp = kz_datamgr:ensure_saved(AccountDb, kz_json:delete_key(<<"pvt_history">>, C2C)),
             lager:debug("removed history from c2c ~s in ~s: ~p", [Id
-								 ,AccountId
-								 ,_Resp
+                                                                 ,AccountId
+                                                                 ,_Resp
                                                                  ])
     end.
 
@@ -286,20 +286,20 @@ save_history_item(AccountId, HistoryItem, C2CId) ->
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, HistoryItem, kz_util:current_tstamp()),
     AccountModb = kz_util:format_account_mod_id(AccountId, Timestamp),
     JObj = kz_doc:update_pvt_parameters(kz_json:set_value(<<"pvt_clicktocall_id">>, C2CId, HistoryItem)
-				       ,AccountModb
-				       ,[{'type', <<"c2c_history">>}
-					,{'account_id', AccountId}
-					,{'created', Timestamp}
-					]),
+                                       ,AccountModb
+                                       ,[{'type', <<"c2c_history">>}
+                                        ,{'account_id', AccountId}
+                                        ,{'created', Timestamp}
+                                        ]),
     kz_datamgr:save_doc(AccountModb, JObj).
 
 -spec clear_history_set_type(cb_context:context()) -> cb_context:context().
 clear_history_set_type(Context) ->
     cb_context:set_doc(Context
-		      ,kz_doc:update_pvt_parameters(cb_context:doc(Context)
-						   ,cb_context:account_db(Context)
-						   ,[{'type', ?PVT_TYPE}]
-						   )
+                      ,kz_doc:update_pvt_parameters(cb_context:doc(Context)
+                                                   ,cb_context:account_db(Context)
+                                                   ,[{'type', ?PVT_TYPE}]
+                                                   )
                       ).
 
 %%--------------------------------------------------------------------
@@ -318,9 +318,9 @@ originate_call(_C2CId, Context, 'undefined') ->
     Message = <<"The contact extension for this click to call has not been set">>,
     cb_context:add_validation_error(
       <<"contact">>
-				   ,<<"required">>
-				   ,kz_json:from_list([{<<"message">>, Message}])
-				   ,Context
+                                   ,<<"required">>
+                                   ,kz_json:from_list([{<<"message">>, Message}])
+                                   ,Context
      );
 originate_call(C2CId, Context, Contact) ->
     JObj = cb_context:doc(Context),
@@ -349,10 +349,10 @@ originate_call(C2CId, Context, Contact, 'true') ->
                              ),
                      HistoryItem =
                          kz_doc:update_pvt_parameters(JObj
-						     ,AccountModb
-						     ,[{'account_id', AccountId}
-						      ,{'type', <<"c2c_history">>}
-						      ]),
+                                                     ,AccountModb
+                                                     ,[{'account_id', AccountId}
+                                                      ,{'type', <<"c2c_history">>}
+                                                      ]),
                      kazoo_modb:save_doc(AccountId, HistoryItem)
              end),
     JObj = kz_json:normalize(kz_json:from_list(kz_api:remove_defaults(Request))),
@@ -373,9 +373,9 @@ match_regexps([], _Number) -> 'false'.
 exec_originate(Request) ->
     handle_originate_resp(
       kz_amqp_worker:call_collect(Request
-				 ,fun kapi_resource:publish_originate_req/1
-				 ,fun is_resp/1
-				 ,20 * ?MILLISECONDS_IN_SECOND
+                                 ,fun kapi_resource:publish_originate_req/1
+                                 ,fun is_resp/1
+                                 ,20 * ?MILLISECONDS_IN_SECOND
                                  )
      ).
 
@@ -388,8 +388,8 @@ exec_originate(Request) ->
                                    {'error', ne_binary()}.
 handle_originate_resp({'ok', [Resp|_]}) ->
     AppResponse = kz_json:get_first_defined([<<"Application-Response">>
-					    ,<<"Hangup-Cause">>
-					    ,<<"Error-Message">>
+                                            ,<<"Hangup-Cause">>
+                                            ,<<"Error-Message">>
                                             ], Resp),
     case lists:member(AppResponse, ?SUCCESSFUL_HANGUP_CAUSES) of
         'true' ->
@@ -402,7 +402,7 @@ handle_originate_resp({'ok', [Resp|_]}) ->
     end;
 handle_originate_resp({'returned', _JObj, Return}) ->
     case {kz_json:get_value(<<"code">>, Return)
-	 ,kz_json:get_value(<<"message">>, Return)
+         ,kz_json:get_value(<<"message">>, Return)
          }
     of
         {312, _Msg} ->
@@ -431,32 +431,32 @@ build_originate_req(Contact, Context) ->
     OutboundNumber = kz_json:get_value(<<"caller_id_number">>, JObj, Contact),
     AutoAnswer = kz_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'true'),
     {Caller, Callee} = get_caller_callee(kz_json:get_value(<<"dial_first">>, JObj, <<"extension">>)
-					,#contact{number = OutboundNumber
-						 ,name = FriendlyName
-						 ,route = Contact}
-					,#contact{number = CalleeNumber
-						 ,name = CalleeName
-						 ,route = Exten}),
+                                        ,#contact{number = OutboundNumber
+                                                 ,name = FriendlyName
+                                                 ,route = Contact}
+                                        ,#contact{number = CalleeNumber
+                                                 ,name = CalleeName
+                                                 ,route = Exten}),
 
     lager:debug("attempting clicktocall ~s in account ~s", [FriendlyName, AccountId]),
     {'ok', AccountDoc} = kz_account:fetch(AccountId),
 
     CCVs = [{<<"Account-ID">>, AccountId}
-	   ,{<<"Auto-Answer-Loopback">>, AutoAnswer}
-	   ,{<<"Authorizing-ID">>, kz_doc:id(JObj)}
-	   ,{<<"Inherit-Codec">>, <<"false">>}
-	   ,{<<"Authorizing-Type">>, <<"device">>}
-	   ,{<<"Loopback-Request-URI">>, <<OutboundNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
-	   ,{<<"From-URI">>, <<CalleeNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
-	   ,{<<"Request-URI">>, <<OutboundNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
+           ,{<<"Auto-Answer-Loopback">>, AutoAnswer}
+           ,{<<"Authorizing-ID">>, kz_doc:id(JObj)}
+           ,{<<"Inherit-Codec">>, <<"false">>}
+           ,{<<"Authorizing-Type">>, <<"device">>}
+           ,{<<"Loopback-Request-URI">>, <<OutboundNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
+           ,{<<"From-URI">>, <<CalleeNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
+           ,{<<"Request-URI">>, <<OutboundNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
            ],
 
 
     Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
-	       ,{<<"Route">>,  Callee#contact.route}
-	       ,{<<"To-DID">>, Callee#contact.route}
-	       ,{<<"To-Realm">>, kz_account:realm(AccountDoc)}
-	       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+               ,{<<"Route">>,  Callee#contact.route}
+               ,{<<"To-DID">>, Callee#contact.route}
+               ,{<<"To-Realm">>, kz_account:realm(AccountDoc)}
+               ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
                ],
 
     MsgId = kz_json:get_value(<<"msg_id">>, JObj, kz_util:rand_hex_binary(16)),
@@ -482,9 +482,9 @@ build_originate_req(Contact, Context) ->
       ,{<<"Custom-SIP-Headers">>, kz_json:get_value(<<"custom_sip_headers">>, JObj)}
       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
       ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>
-					  ,<<"Auto-Answer-Loopback">>, <<"Loopback-Request-URI">>
-					  ,<<"From-URI">>, <<"Request-URI">>
-					  ]}
+                                          ,<<"Auto-Answer-Loopback">>, <<"Loopback-Request-URI">>
+                                          ,<<"From-URI">>, <<"Request-URI">>
+                                          ]}
       ,{<<"Simplify-Loopback">>, <<"false">>}
       ,{<<"Loopback-Bowout">>, <<"false">>}
       ,{<<"Start-Control-Process">>, <<"false">>}

@@ -26,26 +26,26 @@
 -export([sip_external_ip/1]).
 -export([summary/0]).
 -export([details/0
-	,details/1
+        ,details/1
         ]).
 
 -export([has_capability/2
-	,set_capability/3
-	,add_capability/2
-	,get_capability/2, get_capabilities/1, get_capabilities/2
-	,remove_capabilities/1, remove_capability/2
-	,flush/0, flush/2
+        ,set_capability/3
+        ,add_capability/2
+        ,get_capability/2, get_capabilities/1, get_capabilities/2
+        ,remove_capabilities/1, remove_capability/2
+        ,flush/0, flush/2
         ]).
 
 -export([handle_fs_xml_flush/2]).
 
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("ecallmgr.hrl").
@@ -53,11 +53,11 @@
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_fs_xml_flush'}
-		     ,[{<<"switch_event">>, <<"fs_xml_flush">>}]
+                     ,[{<<"switch_event">>, <<"fs_xml_flush">>}]
                      }
                     ]).
 -define(BINDINGS, [{'switch', [{'restrict_to', ['fs_xml_flush']}
-			      ,'federate'
+                              ,'federate'
                               ]}
                   ]).
 -define(QUEUE_NAME, <<"fs_nodes_shared_listener">>).
@@ -67,18 +67,18 @@
 -define(EXPIRE_CHECK, 60 * ?MILLISECONDS_IN_SECOND).
 
 -record(node, {node :: atom()
-	      ,cookie :: atom()
-	      ,connected = 'false' :: boolean()
-	      ,started = kz_util:current_tstamp() :: gregorian_seconds()
-	      ,client_version :: api_binary()
-	      ,options = [] :: kz_proplist()
+              ,cookie :: atom()
+              ,connected = 'false' :: boolean()
+              ,started = kz_util:current_tstamp() :: gregorian_seconds()
+              ,client_version :: api_binary()
+              ,options = [] :: kz_proplist()
               }).
 -type fs_node() :: #node{}.
 
 -record(capability, {node :: atom() | '$1' | '_'
-		    ,name :: ne_binary() | '$1' | '$2' | '_'
-		    ,module :: ne_binary() | '_'
-		    ,is_loaded = 'false' :: boolean() | '$3' | '_'
+                    ,name :: ne_binary() | '$1' | '$2' | '_'
+                    ,module :: ne_binary() | '_'
+                    ,is_loaded = 'false' :: boolean() | '$3' | '_'
                     }).
 -type capability() :: #capability{}.
 -type capabilities() :: [capability()].
@@ -86,8 +86,8 @@
 -define(CAPABILITY_TBL, 'ecallmgr_fs_node_capabilities').
 
 -record(state, {nodes = dict:new() :: dict:dict() %fs_nodes()
-	       ,self = self() :: pid()
-	       ,init_pidref :: pid_ref() | 'undefined'
+               ,self = self() :: pid()
+               ,init_pidref :: pid_ref() | 'undefined'
                }).
 -type state() :: #state{}.
 
@@ -117,14 +117,14 @@ add(Node, Cookie) when is_atom(Cookie) -> add(Node, Cookie, [{'cookie', Cookie}]
 
 add(Node, Cookie, Opts) ->
     gen_server:call(?SERVER
-		   ,{'add_fs_node'
-		    ,Node
-		    ,Cookie
-		    ,[{'cookie', Cookie}
-		      | props:delete('cookie', Opts)
-		     ]
-		    }
-		   ,60 * ?MILLISECONDS_IN_SECOND
+                   ,{'add_fs_node'
+                    ,Node
+                    ,Cookie
+                    ,[{'cookie', Cookie}
+                      | props:delete('cookie', Opts)
+                     ]
+                    }
+                   ,60 * ?MILLISECONDS_IN_SECOND
                    ).
 
 -spec nodeup(atom()) -> 'ok'.
@@ -218,14 +218,14 @@ details(NodeName) ->
 -spec has_capability(atom(), ne_binary() | kz_json:object()) -> boolean().
 has_capability(Node, Capability) when is_binary(Capability) ->
     MatchSpec = [{#capability{node='$1'
-			     ,name='$2'
-			     ,is_loaded='$3'
-			     ,_='_'
+                             ,name='$2'
+                             ,is_loaded='$3'
+                             ,_='_'
                              }
-		 ,[{'=:=', '$1', Node}
-		  ,{'=:=', '$2', Capability}
-		  ]
-		 ,['$3']
+                 ,[{'=:=', '$1', Node}
+                  ,{'=:=', '$2', Capability}
+                  ]
+                 ,['$3']
                  }],
     case ets:select(?CAPABILITY_TBL, MatchSpec) of
         [] -> 'false';
@@ -237,23 +237,23 @@ has_capability(Node, Capability) ->
 -spec remove_capabilities(atom()) -> non_neg_integer().
 remove_capabilities(Node) ->
     MatchSpec = [{#capability{node='$1'
-			     ,_='_'
+                             ,_='_'
                              }
-		 ,[{'=:=', '$1', Node}]
-		 ,['true']
+                 ,[{'=:=', '$1', Node}]
+                 ,['true']
                  }],
     ets:select_delete(?CAPABILITY_TBL, MatchSpec).
 
 -spec remove_capability(atom(), ne_binary()) -> non_neg_integer().
 remove_capability(Node, Name) ->
     MatchSpec = [{#capability{node='$1'
-			     ,name='$2'
-			     ,_='_'
+                             ,name='$2'
+                             ,_='_'
                              }
-		 ,[{'=:=', '$1', Node}
-		  ,{'=:=', '$2', Name}
-		  ]
-		 ,['true']
+                 ,[{'=:=', '$1', Node}
+                  ,{'=:=', '$2', Name}
+                  ]
+                 ,['true']
                  }],
     ets:select_delete(?CAPABILITY_TBL, MatchSpec).
 
@@ -265,13 +265,13 @@ get_capability(Node, Capability) ->
     get_capability(Node, Capability, 'json').
 get_capability(Node, Capability, Format) ->
     MatchSpec = [{#capability{node='$1'
-			     ,name='$2'
-			     ,_='_'
+                             ,name='$2'
+                             ,_='_'
                              }
-		 ,[{'=:=', '$1', Node}
-		  ,{'=:=', '$2', Capability}
-		  ]
-		 ,['$_']
+                 ,[{'=:=', '$1', Node}
+                  ,{'=:=', '$2', Capability}
+                  ]
+                 ,['$_']
                  }],
     format_capability(Format, ets:select(?CAPABILITY_TBL, MatchSpec)).
 
@@ -284,10 +284,10 @@ get_capabilities(Node) ->
 
 get_capabilities(Node, Format) ->
     MatchSpec = [{#capability{node='$1'
-			     ,_='_'
+                             ,_='_'
                              }
-		 ,[{'=:=', '$1', Node}]
-		 ,['$_']
+                 ,[{'=:=', '$1', Node}]
+                 ,['$_']
                  }],
     format_capabilities(Format, ets:select(?CAPABILITY_TBL, MatchSpec)).
 
@@ -313,14 +313,14 @@ add_capability(Node, Capability) ->
     end.
 
 capability_to_json(#capability{node=Node
-			      ,name=Capability
-			      ,module=Module
-			      ,is_loaded=IsLoaded
+                              ,name=Capability
+                              ,module=Module
+                              ,is_loaded=IsLoaded
                               }) ->
     kz_json:from_list([{<<"node">>, kz_util:to_binary(Node)}
-		      ,{<<"capability">>, Capability}
-		      ,{<<"module">>, Module}
-		      ,{<<"is_loaded">>, IsLoaded}
+                      ,{<<"capability">>, Capability}
+                      ,{<<"module">>, Module}
+                      ,{<<"is_loaded">>, IsLoaded}
                       ]).
 
 -spec handle_fs_xml_flush(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -379,21 +379,21 @@ handle_call({'is_node_up', Node}, _From, #state{nodes=Nodes}=State) ->
     {'reply', Resp, State};
 handle_call({'connected_nodes', 'false'}, _From, #state{nodes=Nodes}=State) ->
     Resp = [Node
-	    || {_, #node{node=Node
-			,connected=IsConnected
-			}
-	       } <- dict:to_list(Nodes),
-	       IsConnected
+            || {_, #node{node=Node
+                        ,connected=IsConnected
+                        }
+               } <- dict:to_list(Nodes),
+               IsConnected
            ],
     {'reply', Resp, State};
 handle_call({'connected_nodes', 'true'}, _From, #state{nodes=Nodes}=State) ->
     Resp = [{Node, Started}
-	    || {_, #node{node=Node
-			,connected=Connected
-			,started=Started
-			}
-	       } <- dict:to_list(Nodes),
-	       Connected
+            || {_, #node{node=Node
+                        ,connected=Connected
+                        ,started=Started
+                        }
+               } <- dict:to_list(Nodes),
+               Connected
            ],
     {'reply', Resp, State};
 handle_call({'add_fs_node', NodeName, Cookie, Options}, From, State) ->
@@ -418,9 +418,9 @@ handle_call({'node', Node}, _From, #state{nodes=Nodes}=State) ->
     end;
 handle_call({'add_capability', Node, Capability}, _, State) ->
     ets:insert(?CAPABILITY_TBL, #capability{node=Node
-					   ,name=kz_json:get_value(<<"capability">>, Capability)
-					   ,module=kz_json:get_value(<<"module">>, Capability)
-					   ,is_loaded=kz_json:is_true(<<"is_loaded">>, Capability)
+                                           ,name=kz_json:get_value(<<"capability">>, Capability)
+                                           ,module=kz_json:get_value(<<"module">>, Capability)
+                                           ,is_loaded=kz_json:is_true(<<"is_loaded">>, Capability)
                                            }),
     {'reply', 'ok', State};
 handle_call({'set_capability', Node, Name, Toggle}, _, State) ->
@@ -449,7 +449,7 @@ handle_cast({'fs_nodeup', NodeName}, State) ->
     _ = kz_util:spawn(fun maybe_handle_nodeup/2, [NodeName, State]),
     {'noreply', State};
 handle_cast({'update_node', #node{node=NodeName, connected=Connected}=Node}
-	   ,#state{nodes=Nodes}=State) ->
+           ,#state{nodes=Nodes}=State) ->
     erlang:monitor_node(NodeName, Connected),
     {'noreply', State#state{nodes=dict:store(NodeName, Node, Nodes)}};
 handle_cast({'remove_node', #node{node=NodeName}}, #state{nodes=Nodes}=State) ->
@@ -646,7 +646,7 @@ maybe_connect_to_node(#node{node=NodeName}=Node) ->
 
 -spec maybe_ping_node(fs_node()) -> 'ok' | {'error', any()}.
 maybe_ping_node(#node{node=NodeName
-		     ,cookie=Cookie
+                     ,cookie=Cookie
                      }=Node) ->
     erlang:set_cookie(NodeName, Cookie),
     case net_adm:ping(NodeName) of
@@ -660,12 +660,12 @@ maybe_ping_node(#node{node=NodeName
 
 -spec maybe_start_node_handlers(fs_node()) -> 'ok' | {'error', any()}.
 maybe_start_node_handlers(#node{node=NodeName
-			       ,client_version=Version
-			       ,cookie=Cookie
-			       ,options=Props
+                               ,client_version=Version
+                               ,cookie=Cookie
+                               ,options=Props
                                }=Node) ->
     try ecallmgr_fs_sup:add_node(NodeName, [{'cookie', Cookie}
-					   ,{'client_version', Version}
+                                           ,{'client_version', Version}
                                             | props:delete('cookie', Props)
                                            ])
     of
@@ -720,9 +720,9 @@ create_node(NodeName, Cookie, Options) when not is_atom(Cookie) ->
     create_node(NodeName, kz_util:to_atom(Cookie, 'true'), Options);
 create_node(NodeName, Cookie, Options) ->
     #node{node=NodeName
-	 ,cookie=get_fs_cookie(Cookie, Options)
-	 ,client_version=get_fs_client_version(NodeName)
-	 ,options=Options
+         ,cookie=get_fs_cookie(Cookie, Options)
+         ,client_version=get_fs_client_version(NodeName)
+         ,options=Options
          }.
 
 -spec get_fs_cookie(atom(), kz_proplist()) -> atom().
@@ -836,8 +836,8 @@ print_capability(Capability) ->
                    'false' -> <<" not">>
                end,
     io:format("  ~-12s provided by ~s, is~s available~n", [kz_json:get_value(<<"capability">>, Capability)
-							  ,kz_json:get_value(<<"module">>, Capability)
-							  ,IsLoaded
+                                                          ,kz_json:get_value(<<"module">>, Capability)
+                                                          ,IsLoaded
                                                           ]).
 
 print_summary([]) ->
@@ -853,9 +853,9 @@ print_summary([], Count) ->
     io:format("Found ~p nodes~n", [Count]);
 print_summary([{_, Node}|Nodes], Count) ->
     io:format("| ~-50s | ~-9s | ~-32s | ~-20s |~n"
-	     ,[Node#node.node
-	      ,Node#node.connected
-	      ,Node#node.cookie
-	      ,Node#node.client_version
-	      ]),
+             ,[Node#node.node
+              ,Node#node.connected
+              ,Node#node.cookie
+              ,Node#node.client_version
+              ]),
     print_summary(Nodes, Count + 1).

@@ -19,11 +19,11 @@
 
 simple_task() ->
     receive
-	'go' ->
-	    'ok'
+        'go' ->
+            'ok'
     after
-	1000 ->
-	    'ok'
+        1000 ->
+            'ok'
     end.
 
 dying_task(TimeToLiveMillis) ->
@@ -34,10 +34,10 @@ all_test_() ->
     {'foreach',
      fun() ->
              amqp_cron:start_link([node()]),
-	     Tasks = amqp_cron:task_list(),
-	     lists:foreach(fun({_, Pid, _, _}) ->
-				   'ok' = amqp_cron:cancel_task(Pid)
-			   end, Tasks)
+             Tasks = amqp_cron:task_list(),
+             lists:foreach(fun({_, Pid, _, _}) ->
+                                   'ok' = amqp_cron:cancel_task(Pid)
+                           end, Tasks)
      end,
      [fun test_single_node_task/0
      ,fun test_dying_task/0
@@ -65,7 +65,7 @@ test_single_node_task_() ->
 test_dying_task_() ->
     Schedule = {'sleeper', 100000},
     {'ok', SchedulerPid} = amqp_cron:schedule_task(
-			     Schedule, {'amqp_cron', 'dying_task', [100]}),
+                             Schedule, {'amqp_cron', 'dying_task', [100]}),
     [?_assertMatch({'running', _, _TPid}, amqp_cron:task_status(SchedulerPid))
     ,?_assertEqual('ok', timer:sleep(200))
     ,?_assertMatch({'waiting', _, _TPid}, amqp_cron:task_status(SchedulerPid))

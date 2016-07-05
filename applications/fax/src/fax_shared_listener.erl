@@ -15,12 +15,12 @@
 
 %% gen_listener callbacks
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("fax.hrl").
@@ -29,55 +29,55 @@
 -define(SERVER, ?MODULE).
 
 -define(NOTIFY_RESTRICT, ['outbound_fax'
-			 ,'outbound_fax_error'
+                         ,'outbound_fax_error'
                          ]).
 
 -define(FAXBOX_RESTRICT, [{'db', <<"faxes">>}
-			 ,{'doc_type', <<"faxbox">>}
+                         ,{'doc_type', <<"faxbox">>}
                          ]).
 
 -define(RESPONDERS, [{{'fax_cloud', 'handle_job_notify'}
-		     ,[{<<"notification">>, <<"outbound_fax">>}]
+                     ,[{<<"notification">>, <<"outbound_fax">>}]
                      }
-		    ,{{'fax_cloud', 'handle_job_notify'}
-		     ,[{<<"notification">>, <<"outbound_fax_error">>}]
-		     }
-		    ,{{'fax_cloud', 'handle_push'}
-		     ,[{<<"xmpp_event">>, <<"push">>}]
-		     }
-		    ,{{'fax_cloud', 'handle_faxbox_created'}
-		     ,[{<<"configuration">>, ?DOC_CREATED}]
-		     }
-		    ,{{'fax_cloud', 'handle_faxbox_edited'}
-		     ,[{<<"configuration">>, ?DOC_EDITED}]
-		     }
-		    ,{{'fax_cloud', 'handle_faxbox_deleted'}
-		     ,[{<<"configuration">>, ?DOC_DELETED}]
-		     }
-		    ,{{'fax_request', 'new_request'}
-		     ,[{<<"dialplan">>, <<"fax_req">>}]
-		     }
-		    ,{{'fax_jobs', 'handle_start_account'}
-		     ,[{<<"start">>, <<"account">>}]
-		     }
-		    ,{{'fax_worker', 'handle_start_job'}
-		     ,[{<<"start">>, <<"job">>}]
-		     }
-		    ,{{'fax_xmpp', 'handle_printer_start'}
-		     ,[{<<"xmpp_event">>, <<"start">>}]
+                    ,{{'fax_cloud', 'handle_job_notify'}
+                     ,[{<<"notification">>, <<"outbound_fax_error">>}]
                      }
-		    ,{{'fax_xmpp', 'handle_printer_stop'}
-		     ,[{<<"xmpp_event">>, <<"stop">>}]
-		     }
+                    ,{{'fax_cloud', 'handle_push'}
+                     ,[{<<"xmpp_event">>, <<"push">>}]
+                     }
+                    ,{{'fax_cloud', 'handle_faxbox_created'}
+                     ,[{<<"configuration">>, ?DOC_CREATED}]
+                     }
+                    ,{{'fax_cloud', 'handle_faxbox_edited'}
+                     ,[{<<"configuration">>, ?DOC_EDITED}]
+                     }
+                    ,{{'fax_cloud', 'handle_faxbox_deleted'}
+                     ,[{<<"configuration">>, ?DOC_DELETED}]
+                     }
+                    ,{{'fax_request', 'new_request'}
+                     ,[{<<"dialplan">>, <<"fax_req">>}]
+                     }
+                    ,{{'fax_jobs', 'handle_start_account'}
+                     ,[{<<"start">>, <<"account">>}]
+                     }
+                    ,{{'fax_worker', 'handle_start_job'}
+                     ,[{<<"start">>, <<"job">>}]
+                     }
+                    ,{{'fax_xmpp', 'handle_printer_start'}
+                     ,[{<<"xmpp_event">>, <<"start">>}]
+                     }
+                    ,{{'fax_xmpp', 'handle_printer_stop'}
+                     ,[{<<"xmpp_event">>, <<"stop">>}]
+                     }
                     ]).
 
 -define(BINDINGS, [{'notifications', [{'restrict_to', ?NOTIFY_RESTRICT}]}
-		  ,{'xmpp',[{'restrict_to',['push']}]}
-		  ,{'xmpp', [{'restrict_to', ['start']}, 'federate']}
-		  ,{'conf',?FAXBOX_RESTRICT}
-		  ,{'fax', [{'restrict_to', ['req']}]}
-		  ,{'fax', [{'restrict_to', ['start']}, 'federate']}
-		  ,{'self', []}
+                  ,{'xmpp',[{'restrict_to',['push']}]}
+                  ,{'xmpp', [{'restrict_to', ['start']}, 'federate']}
+                  ,{'conf',?FAXBOX_RESTRICT}
+                  ,{'fax', [{'restrict_to', ['req']}]}
+                  ,{'fax', [{'restrict_to', ['start']}, 'federate']}
+                  ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"fax_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -93,10 +93,10 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
-				     ,{'responders', ?RESPONDERS}
-				     ,{'queue_name', ?QUEUE_NAME}       % optional to include
-				     ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-				     ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                                     ,{'responders', ?RESPONDERS}
+                                     ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                                     ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                                     ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], []).
 
 %%%===================================================================

@@ -9,7 +9,7 @@
 -module(ts_route_req).
 
 -export([init/0
-	,handle_req/2
+        ,handle_req/2
         ]).
 
 -include("ts.hrl").
@@ -23,7 +23,7 @@ handle_req(ApiJObj, _Options) ->
     CallID = kz_json:get_value(<<"Call-ID">>, ApiJObj),
     lager:info("received request ~s asking if trunkstore can route this call", [kapi_route:fetch_id(ApiJObj)]),
     case {kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], ApiJObj)
-	 ,kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], ApiJObj)
+         ,kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], ApiJObj)
          }
     of
         {AcctID, 'undefined'} when is_binary(AcctID) ->

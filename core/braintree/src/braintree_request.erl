@@ -137,9 +137,9 @@ request(Method, Path, Body) ->
 -spec build_url(text()) -> text().
 build_url(Path) ->
     lists:flatten(["https://"
-		  ,braintree_server_url(?BT_DEFAULT_ENVIRONMENT)
-		  ,"/merchants/", ?BT_DEFAULT_MERCHANT_ID
-		  ,Path
+                  ,braintree_server_url(?BT_DEFAULT_ENVIRONMENT)
+                  ,"/merchants/", ?BT_DEFAULT_MERCHANT_ID
+                  ,Path
                   ]).
 
 -spec request_headers() -> [{string(), string()}].
@@ -157,8 +157,8 @@ request_headers() ->
 http_options() ->
     [{'ssl',[{'verify', 'verify_none'}]}
     ,{'basic_auth', {?BT_DEFAULT_PUBLIC_KEY
-		    ,?BT_DEFAULT_PRIVATE_KEY
-		    }
+                    ,?BT_DEFAULT_PRIVATE_KEY
+                    }
      }
     , {'body_format', 'string'}
     ].
@@ -204,31 +204,31 @@ verify_response(Xml) ->
 error_response(Xml) ->
     lager:debug("braintree api error response"),
     Errors = [#bt_error{code = kz_util:get_xml_value("/error/code/text()", Error)
-		       ,message = kz_util:get_xml_value("/error/message/text()", Error)
-		       ,attribute = kz_util:get_xml_value("/error/attribute/text()", Error)
+                       ,message = kz_util:get_xml_value("/error/message/text()", Error)
+                       ,attribute = kz_util:get_xml_value("/error/attribute/text()", Error)
                        }
               || Error <- xmerl_xpath:string("/api-error-response/errors//errors/error", Xml)
              ],
     Verif = #bt_verification{verification_status =
                                  kz_util:get_xml_value("/api-error-response/verification/status/text()", Xml)
-			    ,processor_response_code =
+                            ,processor_response_code =
                                  kz_util:get_xml_value("/api-error-response/verification/processor-response-code/text()", Xml)
-			    ,processor_response_text =
+                            ,processor_response_text =
                                  kz_util:get_xml_value("/api-error-response/verification/processor-response-text/text()", Xml)
-			    ,cvv_response_code =
+                            ,cvv_response_code =
                                  kz_util:get_xml_value("/api-error-response/verification/cvv-response-code/text()", Xml)
-			    ,avs_response_code =
+                            ,avs_response_code =
                                  kz_util:get_xml_value("/api-error-response/verification/avs-error-response-code/text()", Xml)
-			    ,postal_response_code =
+                            ,postal_response_code =
                                  kz_util:get_xml_value("/api-error-response/verification/avs-postal-code-response-code/text()", Xml)
-			    ,street_response_code =
+                            ,street_response_code =
                                  kz_util:get_xml_value("/api-error-response/verification/avs-street-address-response-code/text()", Xml)
-			    ,gateway_rejection_reason =
+                            ,gateway_rejection_reason =
                                  kz_util:get_xml_value("/api-error-response/verification/gateway-rejection-reason/text()", Xml)
                             },
     braintree_util:error_api(
       #bt_api_error{errors=Errors
-		   ,verification=Verif
-		   ,message=kz_util:get_xml_value("/api-error-response/message/text()", Xml)
+                   ,verification=Verif
+                   ,message=kz_util:get_xml_value("/api-error-response/message/text()", Xml)
                    }
      ).

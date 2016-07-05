@@ -10,7 +10,7 @@
 -include("kazoo_ips.hrl").
 
 -export([refresh_database/0
-	,refresh_database/1
+        ,refresh_database/1
         ]).
 
 %%--------------------------------------------------------------------
@@ -25,7 +25,7 @@ refresh_database() ->
     _ = kz_datamgr:revise_docs_from_folder(?KZ_DEDICATED_IP_DB
                                           ,'kazoo_ips'
                                           ,"views"
-					  ),
+                                          ),
     'ok'.
 
 -spec refresh_database(function()) -> any().

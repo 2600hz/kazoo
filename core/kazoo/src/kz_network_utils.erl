@@ -15,12 +15,12 @@
         ,is_ip/1
         ]).
 -export([to_cidr/1
-	,to_cidr/2
-	,verify_cidr/2
-	,expand_cidr/1
+        ,to_cidr/2
+        ,verify_cidr/2
+        ,expand_cidr/1
         ]).
 -export([find_nameservers/1
-	,find_nameservers/2
+        ,find_nameservers/2
         ]).
 -export([resolve/1
         ,resolve/2
@@ -34,21 +34,21 @@
 -export([pretty_print_bytes/1]).
 
 -export([lookup_dns/2
-	,lookup_dns/3
+        ,lookup_dns/3
         ]).
 
 -export([lookup_timeout/0]).
 -export([new_options/0
-	,default_options/0
-	,set_option_alt_nameservers/2
-	,set_option_edns/2
-	,set_option_inet6/2
-	,set_option_nameservers/2
-	,set_option_recurse/2
-	,set_option_retry/2
-	,set_option_timeout/2
-	,set_option_udp_payload_size/2
-	,set_option_usevc/2
+        ,default_options/0
+        ,set_option_alt_nameservers/2
+        ,set_option_edns/2
+        ,set_option_inet6/2
+        ,set_option_nameservers/2
+        ,set_option_recurse/2
+        ,set_option_retry/2
+        ,set_option_timeout/2
+        ,set_option_udp_payload_size/2
+        ,set_option_usevc/2
         ]).
 
 -include_lib("kernel/include/inet.hrl").
@@ -65,9 +65,9 @@
 -type mxtuple() :: {integer(), string()}.
 -type options() :: [inet_res:req_option()].
 -export_type([srvtuple/0
-	     ,naptrtuple/0
-	     ,mxtuple/0
-	     ,options/0
+             ,naptrtuple/0
+             ,mxtuple/0
+             ,options/0
              ]).
 
 %%--------------------------------------------------------------------
@@ -209,7 +209,7 @@ find_nameservers(Domain, Options) ->
         [] ->
             find_nameservers_parent(
               binary:split(Domain, <<".">>, ['global'])
-				   ,Options
+                                   ,Options
              );
         Nameservers -> Nameservers
     end.
@@ -267,7 +267,7 @@ maybe_resolve_srv_records(Address, Options) ->
 -spec maybe_resolve_a_records(ne_binaries(), options()) -> ne_binaries().
 maybe_resolve_a_records(Domains, Options) ->
     lists:foldr(fun(Domain, IPs) ->
-			maybe_resolve_fold(Domain, IPs, Options)
+                        maybe_resolve_fold(Domain, IPs, Options)
                 end, [], Domains).
 
 -spec maybe_resolve_fold(ne_binary(), ne_binaries(), options()) -> ne_binaries().
@@ -436,6 +436,6 @@ maybe_resolve_nameservers([Domain|Values], Nameservers) ->
         Addresses ->
             maybe_resolve_nameservers(
               Values
-				     ,[{Address, 53} || Address <- Addresses] ++ Nameservers
+                                     ,[{Address, 53} || Address <- Addresses] ++ Nameservers
              )
     end.

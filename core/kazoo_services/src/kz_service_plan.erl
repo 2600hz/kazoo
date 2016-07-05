@@ -55,7 +55,7 @@ activation_charges(CategoryId, ItemId, ServicePlan) ->
 -spec create_items(kzd_service_plan:doc(), kz_service_items:items(), kz_services:services()) ->
                           kz_service_items:items().
 -spec create_items(kzd_service_plan:doc(), kz_service_items:items(), kz_services:services()
-		  ,ne_binary(), ne_binary()
+                  ,ne_binary(), ne_binary()
                   ) ->
                           kz_service_items:items().
 create_items(ServicePlan, ServiceItems, Services) ->
@@ -66,8 +66,8 @@ create_items(ServicePlan, ServiceItems, Services) ->
     lists:foldl(fun({CategoryId, ItemId}, SIs) ->
                         create_items(ServicePlan, SIs, Services, CategoryId, ItemId)
                 end
-	       ,ServiceItems
-	       ,Plans
+               ,ServiceItems
+               ,Plans
                ).
 
 create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId) ->
@@ -94,19 +94,19 @@ create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId, ItemPlan) 
     lager:debug("item ~s masquerades as ~s", [ItemId, As]),
 
     Routines = [fun(I) -> kz_service_item:set_category(CategoryId, I) end
-	       ,fun(I) -> kz_service_item:set_item(As, I) end
-	       ,fun(I) -> kz_service_item:set_name(Name, I) end
-	       ,fun(I) -> kz_service_item:set_quantity(Quantity, I) end
-	       ,fun(I) -> kz_service_item:set_rate(Rate, I) end
-	       ,fun(I) -> maybe_set_discounts(I, ItemPlan) end
-	       ,fun(I) -> kz_service_item:set_bookkeepers(bookkeeper_jobj(CategoryId, As, ServicePlan), I) end
-	       ,fun(I) -> kz_service_item:set_activation_charge(Charge, I) end
-	       ,fun(I) -> kz_service_item:set_minimum(Min, I) end
-	       ,fun(I) -> kz_service_item:set_exceptions(Exc, I) end
+               ,fun(I) -> kz_service_item:set_item(As, I) end
+               ,fun(I) -> kz_service_item:set_name(Name, I) end
+               ,fun(I) -> kz_service_item:set_quantity(Quantity, I) end
+               ,fun(I) -> kz_service_item:set_rate(Rate, I) end
+               ,fun(I) -> maybe_set_discounts(I, ItemPlan) end
+               ,fun(I) -> kz_service_item:set_bookkeepers(bookkeeper_jobj(CategoryId, As, ServicePlan), I) end
+               ,fun(I) -> kz_service_item:set_activation_charge(Charge, I) end
+               ,fun(I) -> kz_service_item:set_minimum(Min, I) end
+               ,fun(I) -> kz_service_item:set_exceptions(Exc, I) end
                ],
     ServiceItem = lists:foldl(fun(F, I) -> F(I) end
-			     ,kz_service_items:find(CategoryId, As, ServiceItems)
-			     ,Routines
+                             ,kz_service_items:find(CategoryId, As, ServiceItems)
+                             ,Routines
                              ),
     kz_service_items:update(ServiceItem, ServiceItems).
 
@@ -114,10 +114,10 @@ create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId, ItemPlan) 
                                  kz_service_item:item().
 maybe_set_discounts(Item, ItemPlan) ->
     lists:foldl(fun(F, I) -> F(I, ItemPlan) end
-	       ,Item
-	       ,[fun maybe_set_single_discount/2
-		,fun maybe_set_cumulative_discount/2
-		]
+               ,Item
+               ,[fun maybe_set_single_discount/2
+                ,fun maybe_set_cumulative_discount/2
+                ]
                ).
 
 -spec maybe_set_single_discount(kz_service_item:item(), kzd_item_plan:doc()) ->
@@ -162,11 +162,11 @@ cumulative_quantity(Item, CumulativeDiscount, Quantity) ->
     case kz_json:get_integer_value(<<"maximum">>, CumulativeDiscount, 0) of
         Max when Max < Quantity ->
             lager:debug("item '~s/~s' quantity ~p exceeds cumulative discount max, using ~p"
-		       ,[kz_service_item:category(Item)
-			,kz_service_item:item(Item)
-			,Quantity
-			,Max
-			]
+                       ,[kz_service_item:category(Item)
+                        ,kz_service_item:item(Item)
+                        ,Quantity
+                        ,Max
+                        ]
                        ),
             Max;
         _ -> Quantity
@@ -182,13 +182,13 @@ cumulative_quantity(Item, CumulativeDiscount, Quantity) ->
 bookkeeper_jobj(CategoryId, ItemId, ServicePlan) ->
     lists:foldl(fun(Bookkeeper, J) ->
                         Mapping = kz_json:get_value([CategoryId, ItemId]
-						   ,kzd_service_plan:bookkeeper(ServicePlan, Bookkeeper)
-						   ,kz_json:new()
+                                                   ,kzd_service_plan:bookkeeper(ServicePlan, Bookkeeper)
+                                                   ,kz_json:new()
                                                    ),
                         kz_json:set_value(Bookkeeper, Mapping, J)
                 end
-	       ,kz_json:new()
-	       ,kzd_service_plan:bookkeeper_ids(ServicePlan)
+               ,kz_json:new()
+               ,kzd_service_plan:bookkeeper_ids(ServicePlan)
                ).
 
 %%--------------------------------------------------------------------
@@ -219,7 +219,7 @@ get_quantity(CategoryId, ItemId, ItemPlan, Services) ->
     case kzd_item_plan:minimum(ItemPlan) of
         Min when Min > ItemQuantity ->
             lager:debug("minimum '~s/~s' not met with ~p, enforcing quantity ~p"
-		       ,[CategoryId, ItemId, ItemQuantity, Min]
+                       ,[CategoryId, ItemId, ItemQuantity, Min]
                        ),
             Min;
         _ -> ItemQuantity

@@ -37,11 +37,11 @@ new_siblings(Module) ->
     Existing = deps_on_path(),
     SiblingEbin = filelib:wildcard(local_path(["deps", "*", "ebin"], Module)),
     Siblings = [filename:dirname(X) || X <- SiblingEbin,
-				       ordsets:is_element(
-					 filename:basename(filename:dirname(X)),
-					 Existing) =:= false],
+                                       ordsets:is_element(
+                                         filename:basename(filename:dirname(X)),
+                                         Existing) =:= false],
     [F || F <- lists:append([[filename:join([X, "ebin"]),
-			      filename:join([X, "include"])] || X <- Siblings]),
+                              filename:join([X, "include"])] || X <- Siblings]),
           filelib:is_dir(F)].
 
 %% @spec ensure(Module) -> ok

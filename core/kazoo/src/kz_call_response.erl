@@ -54,57 +54,57 @@ send(_, _, 'undefined', 'undefined', 'undefined') ->
 send(CallId, CtrlQ, 'undefined', 'undefined', Media) ->
     NoopId = kz_datamgr:get_uuid(),
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
-				  ,{<<"Msg-ID">>, NoopId}
-				  ,{<<"Call-ID">>, CallId}
+                                  ,{<<"Msg-ID">>, NoopId}
+                                  ,{<<"Call-ID">>, CallId}
                                   ])
-	       ,kz_json:from_list([{<<"Application-Name">>, <<"play">>}
-				  ,{<<"Msg-ID">>, NoopId}
-				  ,{<<"Media-Name">>, Media}
-				  ,{<<"Call-ID">>, CallId}
-				  ])
-	       ,kz_json:from_list([{<<"Application-Name">>, <<"progress">>}
-				  ,{<<"Msg-ID">>, NoopId}
-				  ,{<<"Call-ID">>, CallId}
-				  ])
+               ,kz_json:from_list([{<<"Application-Name">>, <<"play">>}
+                                  ,{<<"Msg-ID">>, NoopId}
+                                  ,{<<"Media-Name">>, Media}
+                                  ,{<<"Call-ID">>, CallId}
+                                  ])
+               ,kz_json:from_list([{<<"Application-Name">>, <<"progress">>}
+                                  ,{<<"Msg-ID">>, NoopId}
+                                  ,{<<"Call-ID">>, CallId}
+                                  ])
                ],
     do_send(CallId, CtrlQ, Commands),
     {'ok', NoopId};
 send(CallId, CtrlQ, Code, Cause, 'undefined') ->
     NoopId = kz_datamgr:get_uuid(),
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
-				  ,{<<"Msg-ID">>, NoopId}
-				  ,{<<"Call-ID">>, CallId}
+                                  ,{<<"Msg-ID">>, NoopId}
+                                  ,{<<"Call-ID">>, CallId}
                                   ])
-	       ,kz_json:from_list([{<<"Application-Name">>, <<"respond">>}
-				  ,{<<"Msg-ID">>, NoopId}
-				  ,{<<"Response-Code">>, Code}
-				  ,{<<"Response-Message">>, Cause}
-				  ,{<<"Call-ID">>, CallId}
-				  ])
+               ,kz_json:from_list([{<<"Application-Name">>, <<"respond">>}
+                                  ,{<<"Msg-ID">>, NoopId}
+                                  ,{<<"Response-Code">>, Code}
+                                  ,{<<"Response-Message">>, Cause}
+                                  ,{<<"Call-ID">>, CallId}
+                                  ])
                ],
     do_send(CallId, CtrlQ, Commands),
     {'ok', NoopId};
 send(CallId, CtrlQ, Code, Cause, Media) ->
     NoopId = kz_datamgr:get_uuid(),
     Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
-				  ,{<<"Msg-ID">>, NoopId}
-				  ,{<<"Call-ID">>, CallId}
+                                  ,{<<"Msg-ID">>, NoopId}
+                                  ,{<<"Call-ID">>, CallId}
                                   ])
-	       ,kz_json:from_list([{<<"Application-Name">>, <<"respond">>}
-				  ,{<<"Response-Code">>, Code}
-				  ,{<<"Response-Message">>, Cause}
-				  ,{<<"Msg-ID">>, NoopId}
-				  ,{<<"Call-ID">>, CallId}
-				  ])
-	       ,kz_json:from_list([{<<"Application-Name">>, <<"play">>}
-				  ,{<<"Media-Name">>, Media}
-				  ,{<<"Msg-ID">>, NoopId}
-				  ,{<<"Call-ID">>, CallId}
-				  ])
-	       ,kz_json:from_list([{<<"Application-Name">>, <<"progress">>}
-				  ,{<<"Msg-ID">>, NoopId}
-				  ,{<<"Call-ID">>, CallId}
-				  ])
+               ,kz_json:from_list([{<<"Application-Name">>, <<"respond">>}
+                                  ,{<<"Response-Code">>, Code}
+                                  ,{<<"Response-Message">>, Cause}
+                                  ,{<<"Msg-ID">>, NoopId}
+                                  ,{<<"Call-ID">>, CallId}
+                                  ])
+               ,kz_json:from_list([{<<"Application-Name">>, <<"play">>}
+                                  ,{<<"Media-Name">>, Media}
+                                  ,{<<"Msg-ID">>, NoopId}
+                                  ,{<<"Call-ID">>, CallId}
+                                  ])
+               ,kz_json:from_list([{<<"Application-Name">>, <<"progress">>}
+                                  ,{<<"Msg-ID">>, NoopId}
+                                  ,{<<"Call-ID">>, CallId}
+                                  ])
                ],
     do_send(CallId, CtrlQ, Commands),
     {'ok', NoopId}.
@@ -112,16 +112,16 @@ send(CallId, CtrlQ, Code, Cause, Media) ->
 -spec do_send(ne_binary(), ne_binary(), kz_json:objects()) -> 'ok'.
 do_send(CallId, CtrlQ, Commands) ->
     Command = [{<<"Application-Name">>, <<"queue">>}
-	      ,{<<"Call-ID">>, CallId}
-	      ,{<<"Commands">>, Commands}
-	      ,{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
+              ,{<<"Call-ID">>, CallId}
+              ,{<<"Commands">>, Commands}
+              ,{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
                | kz_api:default_headers(<<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)
               ],
     kz_amqp_worker:cast(Command
-		       ,fun(C) ->
-				{'ok', Payload} = kapi_dialplan:queue(C),
-				kapi_dialplan:publish_action(CtrlQ, Payload)
-			end
+                       ,fun(C) ->
+                                {'ok', Payload} = kapi_dialplan:queue(C),
+                                kapi_dialplan:publish_action(CtrlQ, Payload)
+                        end
                        ).
 
 %%--------------------------------------------------------------------
@@ -152,10 +152,10 @@ send_default_response(Call, Response) ->
     Media = kz_json:get_value(<<"Media">>, Response),
 
     send(kapps_call:call_id(Call)
-	,kapps_call:control_queue(Call)
-	,kz_json:get_value(<<"Code">>, Response)
-	,kz_json:get_value(<<"Message">>, Response)
-	,kz_media_util:get_prompt(Media, Call)
+        ,kapps_call:control_queue(Call)
+        ,kz_json:get_value(<<"Code">>, Response)
+        ,kz_json:get_value(<<"Message">>, Response)
+        ,kz_media_util:get_prompt(Media, Call)
         ).
 
 %%--------------------------------------------------------------------

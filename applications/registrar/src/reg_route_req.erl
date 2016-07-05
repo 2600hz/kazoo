@@ -9,7 +9,7 @@
 -module(reg_route_req).
 
 -export([init/0
-	,handle_route_req/2
+        ,handle_route_req/2
         ]).
 
 -include("reg.hrl").
@@ -41,8 +41,8 @@ maybe_replay_route_req(JObj, CCVs, IP) ->
             lager:debug("route req was missing account information, loading from IP ~s and replaying", [IP]),
             kapi_route:publish_req(
               kz_json:set_value(<<"Custom-Channel-Vars">>
-			       ,kz_json:set_values(AccountCCVs, CCVs)
-			       ,JObj
+                               ,kz_json:set_values(AccountCCVs, CCVs)
+                               ,JObj
                                )
              );
         {'error', _E} ->

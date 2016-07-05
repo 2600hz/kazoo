@@ -15,10 +15,10 @@
        ).
 
 -export([init/2
-	,renderer_name/2
-	,render/2, render/3, render/4
-	,preview/3
-	,fetch_notification/2
+        ,renderer_name/2
+        ,render/2, render/3, render/4
+        ,preview/3
+        ,fetch_notification/2
         ]).
 -export([doc_id/1]).
 
@@ -59,7 +59,7 @@ build_renderer(TemplateId, ContentType, Template) ->
                                  ,[{'out_dir', 'false'}
                                   ,'return'
                                   ,'report'
-				  ,{'auto_escape', 'false'}
+                                  ,{'auto_escape', 'false'}
                                   ]
                                  )
     of
@@ -95,8 +95,8 @@ fetch_attachments(TemplateId, Account) ->
             kz_json:foldl(fun(AttachmentName, AttachmentProps, Acc) ->
                                   fetch_attachment(AttachmentName, AttachmentProps, Acc, AccountDb, DocId)
                           end
-			 ,[]
-			 ,kz_doc:attachments(TemplateDoc)
+                         ,[]
+                         ,kz_doc:attachments(TemplateDoc)
                          );
         {'error', _E} ->
             lager:error("failed to open ~s:~s: ~p", [AccountDb, DocId, _E]),
@@ -223,8 +223,8 @@ master_content_types(TemplateId) ->
     case fetch_notification(TemplateId, ?KZ_CONFIG_DB) of
         {'ok', NotificationJObj} ->
             kz_json:foldl(fun master_content_type/3
-			 ,[]
-			 ,kz_doc:attachments(NotificationJObj)
+                         ,[]
+                         ,kz_doc:attachments(NotificationJObj)
                          );
         {'error', _E} ->
             lager:warning("failed to find master notification ~s", [TemplateId]),
@@ -313,11 +313,11 @@ create(DocId, Params) ->
     TemplateJObj =
         kz_doc:update_pvt_parameters(
           kz_json:from_list([{<<"_id">>, DocId}])
-				    ,?KZ_CONFIG_DB
-				    ,[{'account_db', ?KZ_CONFIG_DB}
-				     ,{'account_id', ?KZ_CONFIG_DB}
-				     ,{'type', kz_notification:pvt_type()}
-				     ]
+                                    ,?KZ_CONFIG_DB
+                                    ,[{'account_db', ?KZ_CONFIG_DB}
+                                     ,{'account_id', ?KZ_CONFIG_DB}
+                                     ,{'type', kz_notification:pvt_type()}
+                                     ]
          ),
     {'ok', UpdatedTemplateJObj} = save(TemplateJObj),
     lager:debug("created base template ~s(~s)", [DocId, kz_doc:revision(UpdatedTemplateJObj)]),
@@ -373,7 +373,7 @@ save(TemplateJObj) ->
     case kz_datamgr:save_doc(?KZ_CONFIG_DB, SaveJObj) of
         {'ok', _JObj}=OK ->
             lager:debug("saved updated template ~s(~s) to ~s"
-		       ,[kz_doc:id(_JObj), kz_doc:revision(_JObj), ?KZ_CONFIG_DB]
+                       ,[kz_doc:id(_JObj), kz_doc:revision(_JObj), ?KZ_CONFIG_DB]
                        ),
             OK;
         {'error', _E}=E ->
@@ -393,8 +393,8 @@ save(TemplateJObj) ->
 update_from_params(TemplateJObj, Params) ->
     lists:foldl(
       fun update_from_param/2
-	       ,{'false', TemplateJObj}
-	       ,Params
+               ,{'false', TemplateJObj}
+               ,Params
      ).
 
 %%--------------------------------------------------------------------
@@ -435,63 +435,63 @@ update_from_param({'reply_to', ReplyTo}, Acc) ->
                              update_acc().
 update_category(Category, Acc) ->
     update_field(Category
-		,Acc
-		,fun kz_notification:category/1
-		,fun kz_notification:set_category/2
+                ,Acc
+                ,fun kz_notification:category/1
+                ,fun kz_notification:set_category/2
                 ).
 
 -spec update_name(ne_binary(), update_acc()) ->
                          update_acc().
 update_name(Name, Acc) ->
     update_field(Name
-		,Acc
-		,fun kz_notification:name/1
-		,fun kz_notification:set_name/2
+                ,Acc
+                ,fun kz_notification:name/1
+                ,fun kz_notification:set_name/2
                 ).
 
 -spec update_from(ne_binary(), update_acc()) ->
                          update_acc().
 update_from(From, Acc) ->
     update_field(From
-		,Acc
-		,fun kz_notification:from/1
-		,fun kz_notification:set_from/2
+                ,Acc
+                ,fun kz_notification:from/1
+                ,fun kz_notification:set_from/2
                 ).
 
 -spec update_reply_to(ne_binary(), update_acc()) ->
                              update_acc().
 update_reply_to(ReplyTo, Acc) ->
     update_field(ReplyTo
-		,Acc
-		,fun kz_notification:reply_to/1
-		,fun kz_notification:set_reply_to/2
+                ,Acc
+                ,fun kz_notification:reply_to/1
+                ,fun kz_notification:set_reply_to/2
                 ).
 
 -spec update_to(kz_json:object(), update_acc()) ->
                        update_acc().
 update_to(To, Acc) ->
     update_field(To
-		,Acc
-		,fun kz_notification:to/1
-		,fun kz_notification:set_to/2
+                ,Acc
+                ,fun kz_notification:to/1
+                ,fun kz_notification:set_to/2
                 ).
 
 -spec update_cc(kz_json:object(), update_acc()) ->
                        update_acc().
 update_cc(CC, Acc) ->
     update_field(CC
-		,Acc
-		,fun kz_notification:cc/1
-		,fun kz_notification:set_cc/2
+                ,Acc
+                ,fun kz_notification:cc/1
+                ,fun kz_notification:set_cc/2
                 ).
 
 -spec update_bcc(kz_json:object(), update_acc()) ->
                         update_acc().
 update_bcc(Bcc, Acc) ->
     update_field(Bcc
-		,Acc
-		,fun kz_notification:bcc/1
-		,fun kz_notification:set_bcc/2
+                ,Acc
+                ,fun kz_notification:bcc/1
+                ,fun kz_notification:set_bcc/2
                 ).
 
 -spec update_field(api_object() | ne_binary(), update_acc(), fun(), fun()) ->
@@ -501,7 +501,7 @@ update_field(Value, {_IsUpdated, TemplateJObj}=Acc, GetFun, SetFun) ->
     case GetFun(TemplateJObj) of
         'undefined' ->
             lager:debug("updating field to ~p: ~p on ~s"
-		       ,[Value, GetFun, kz_doc:revision(TemplateJObj)]
+                       ,[Value, GetFun, kz_doc:revision(TemplateJObj)]
                        ),
             {'true', SetFun(TemplateJObj, Value)};
         _V -> Acc
@@ -511,9 +511,9 @@ update_field(Value, {_IsUpdated, TemplateJObj}=Acc, GetFun, SetFun) ->
                             update_acc().
 update_subject(Subject, Acc) ->
     update_field(Subject
-		,Acc
-		,fun kz_notification:subject/1
-		,fun kz_notification:set_subject/2
+                ,Acc
+                ,fun kz_notification:subject/1
+                ,fun kz_notification:set_subject/2
                 ).
 
 -spec update_html_attachment(binary(), update_acc()) -> update_acc().
@@ -610,10 +610,10 @@ save_attachment(DocId, AName, ContentType, Contents) ->
     case
         kz_datamgr:put_attachment(
           ?KZ_CONFIG_DB
-				 ,DocId
-				 ,AName
-				 ,Contents
-				 ,[{'content_type', kz_util:to_list(ContentType)}]
+                                 ,DocId
+                                 ,AName
+                                 ,Contents
+                                 ,[{'content_type', kz_util:to_list(ContentType)}]
          )
     of
         {'ok', _UpdatedJObj}=OK ->

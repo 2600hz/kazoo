@@ -58,18 +58,18 @@ format(Msg,[], Colors) ->
     format(Msg, [{eol, "\n"}], Colors);
 format(Msg,[{eol, EOL}], Colors) ->
     format(Msg,
-	   [date, " ", time, " ", color, "[", severity, "] ",
+           [date, " ", time, " ", color, "[", severity, "] ",
             {pid, ""},
             {module, [
-		      {pid, ["@"], ""},
-		      module,
-		      {function, [":", function], ""},
-		      {line, [":",line], ""}], ""},
+                      {pid, ["@"], ""},
+                      module,
+                      {function, [":", function], ""},
+                      {line, [":",line], ""}], ""},
             " ", message, EOL], Colors);
 format(Message,Config,Colors) ->
     [ case V of
-	  color -> output_color(Message,Colors);
-	  _ -> output(V,Message)
+          color -> output_color(Message,Colors);
+          _ -> output(V,Message)
       end || V <- Config ].
 
 -spec format(lager_msg:lager_msg(),list()) -> any().
@@ -142,51 +142,51 @@ basic_test_() ->
     {Date, Time, Now} = date_time_now(),
     [{"Default formatting test",
       ?_assertEqual(iolist_to_binary([Date, " ", Time,  " [error] ", pid_to_list(self()), " Message\n"]),
-		    iolist_to_binary(format(lager_msg:new("Message",
-							  Now,
-							  error,
-							  [{pid, self()}],
-							  []),
-					    [])))
+                    iolist_to_binary(format(lager_msg:new("Message",
+                                                          Now,
+                                                          error,
+                                                          [{pid, self()}],
+                                                          []),
+                                            [])))
      },
      {"Basic Formatting",
       ?_assertEqual(<<"Simplist Format">>,
-		    iolist_to_binary(format(lager_msg:new("Message",
-							  Now,
-							  error,
-							  [{pid, self()}],
-							  []),
-					    ["Simplist Format"])))
+                    iolist_to_binary(format(lager_msg:new("Message",
+                                                          Now,
+                                                          error,
+                                                          [{pid, self()}],
+                                                          []),
+                                            ["Simplist Format"])))
      },
      {"Default equivalent formatting test",
       ?_assertEqual(iolist_to_binary([Date, " ", Time, " [error] ", pid_to_list(self()), " Message\n"]),
-		    iolist_to_binary(format(lager_msg:new("Message",
-							  Now,
-							  error,
-							  [{pid, self()}],
-							  []),
-					    [date, " ", time," [",severity,"] ",pid, " ", message, "\n"]
-					   )))
+                    iolist_to_binary(format(lager_msg:new("Message",
+                                                          Now,
+                                                          error,
+                                                          [{pid, self()}],
+                                                          []),
+                                            [date, " ", time," [",severity,"] ",pid, " ", message, "\n"]
+                                           )))
      },
      {"Non existant metadata can default to string",
       ?_assertEqual(iolist_to_binary([Date, " ", Time, " [error] Fallback Message\n"]),
-		    iolist_to_binary(format(lager_msg:new("Message",
-							  Now,
-							  error,
-							  [{pid, self()}],
-							  []),
-					    [date, " ", time," [",severity,"] ",{does_not_exist,"Fallback"}, " ", message, "\n"]
-					   )))
+                    iolist_to_binary(format(lager_msg:new("Message",
+                                                          Now,
+                                                          error,
+                                                          [{pid, self()}],
+                                                          []),
+                                            [date, " ", time," [",severity,"] ",{does_not_exist,"Fallback"}, " ", message, "\n"]
+                                           )))
      },
      {"Non existant metadata can default to other metadata",
       ?_assertEqual(iolist_to_binary([Date, " ", Time, " [error] Fallback Message\n"]),
-		    iolist_to_binary(format(lager_msg:new("Message",
-							  Now,
-							  error,
-							  [{pid, "Fallback"}],
-							  []),
-					    [date, " ", time," [",severity,"] ",{does_not_exist,pid}, " ", message, "\n"]
-					   )))
+                    iolist_to_binary(format(lager_msg:new("Message",
+                                                          Now,
+                                                          error,
+                                                          [{pid, "Fallback"}],
+                                                          []),
+                                            [date, " ", time," [",severity,"] ",{does_not_exist,pid}, " ", message, "\n"]
+                                           )))
      }
     ].
 

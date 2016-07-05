@@ -14,18 +14,18 @@
 
 -export([create_user/1]).
 -export([init/0
-	,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-	,content_types_provided/1, content_types_provided/2, content_types_provided/3, content_types_provided/4
-	,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-	,validate_resource/1, validate_resource/2, validate_resource/3, validate_resource/4
-	,authenticate/1
-	,authorize/1
-	,billing/1
-	,validate/1, validate/2, validate/3, validate/4
-	,put/1
-	,post/2, post/3
-	,delete/2
-	,patch/2
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+        ,content_types_provided/1, content_types_provided/2, content_types_provided/3, content_types_provided/4
+        ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+        ,validate_resource/1, validate_resource/2, validate_resource/3, validate_resource/4
+        ,authenticate/1
+        ,authorize/1
+        ,billing/1
+        ,validate/1, validate/2, validate/3, validate/4
+        ,put/1
+        ,post/2, post/3
+        ,delete/2
+        ,patch/2
         ]).
 
 -include("crossbar.hrl").
@@ -107,7 +107,7 @@ content_types_provided(Context, _) ->
     Context.
 content_types_provided(Context, _, ?VCARD) ->
     cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"text">>, <<"x-vcard">>}
-								  ,{<<"text">>, <<"directory">>}]}]);
+                                                                  ,{<<"text">>, <<"directory">>}]}]);
 content_types_provided(Context, _, _) ->
     Context.
 content_types_provided(Context, _, _, _) ->
@@ -157,10 +157,10 @@ validate_user_id(UserId, Context) ->
         {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
         {'error', 'not_found'} ->
             cb_context:add_system_error(
-	      'bad_identifier'
-				       ,kz_json:from_list([{<<"cause">>, UserId}])
-				       ,Context
-	     );
+              'bad_identifier'
+                                       ,kz_json:from_list([{<<"cause">>, UserId}])
+                                       ,Context
+             );
         {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
 
@@ -168,15 +168,15 @@ validate_user_id(UserId, Context, Doc) ->
     case kz_doc:is_soft_deleted(Doc) of
         'true' ->
             cb_context:add_system_error(
-	      'bad_identifier'
-				       ,kz_json:from_list([{<<"cause">>, UserId}])
-				       ,Context
-	     );
+              'bad_identifier'
+                                       ,kz_json:from_list([{<<"cause">>, UserId}])
+                                       ,Context
+             );
         'false'->
             cb_context:setters(Context
-			      ,[{fun cb_context:set_user_id/2, UserId}
-			       ,{fun cb_context:set_resp_status/2, 'success'}
-			       ])
+                              ,[{fun cb_context:set_user_id/2, UserId}
+                               ,{fun cb_context:set_resp_status/2, 'success'}
+                               ])
     end.
 
 %%--------------------------------------------------------------------
@@ -243,7 +243,7 @@ validate(Context, UserId) ->
     validate_user(Context, UserId, cb_context:req_verb(Context)).
 validate(Context, UserId, ?CHANNELS) ->
     Options = [{'key', [UserId, <<"device">>]}
-	      ,'include_docs'
+              ,'include_docs'
               ],
     Context1 = crossbar_doc:load_view(<<"kz_attributes/owned">>, Options, Context),
     case cb_context:has_errors(Context1) of
@@ -326,13 +326,13 @@ get_channels(Context) ->
                         =/= 'undefined'
                 ],
     Req = [{<<"Realm">>, Realm}
-	  ,{<<"Usernames">>, Usernames}
+          ,{<<"Usernames">>, Usernames}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kapps_util:amqp_pool_collect(Req
-				     ,fun kapi_call:publish_query_user_channels_req/1
-				     ,{'ecallmgr', 'true'}
-				     )
+                                     ,fun kapi_call:publish_query_user_channels_req/1
+                                     ,{'ecallmgr', 'true'}
+                                     )
     of
         {'error', _R} ->
             lager:error("could not reach ecallmgr channels: ~p", [_R]),
@@ -355,21 +355,21 @@ convert_to_vcard(Context) ->
     %% TODO add SOUND, AGENT (X-ASSISTANT), X-MANAGER
     Fields = [
               <<"BEGIN">>
-	     ,<<"VERSION">>
-	     ,<<"FN">>
-	     ,<<"N">>
-	     ,<<"ORG">>
-	     ,<<"PHOTO">>
-	     ,<<"EMAIL">>
-	     ,<<"BDAY">>
-	     ,<<"NOTE">>
-	     ,<<"TITLE">>
-	     ,<<"ROLE">>
-	     ,<<"TZ">>
-	     ,<<"NICKNAME">>
-	     ,<<"TEL">>
-	     ,<<"ADR">>
-	     ,<<"END">>
+             ,<<"VERSION">>
+             ,<<"FN">>
+             ,<<"N">>
+             ,<<"ORG">>
+             ,<<"PHOTO">>
+             ,<<"EMAIL">>
+             ,<<"BDAY">>
+             ,<<"NOTE">>
+             ,<<"TITLE">>
+             ,<<"ROLE">>
+             ,<<"TZ">>
+             ,<<"NICKNAME">>
+             ,<<"TEL">>
+             ,<<"ADR">>
+             ,<<"END">>
              ],
     NotEmptyFields = lists:foldl(fun vcard_fields_acc/2, [], [card_field(Key, JObj3) || Key <- Fields]),
     PackedFields = lists:reverse([iolist_join(<<":">>, [X, Y]) || {X, Y} <- NotEmptyFields]),
@@ -386,19 +386,19 @@ set_photo(JObj, Context) ->
         'success' ->
             Data = cb_context:resp_data(Attach),
             CT = kz_json:get_value(<<"content_type">>
-				  ,kz_json:get_value(?PHOTO
-						    ,kz_json:get_value(<<"_attachments">>
-								      ,cb_context:doc(Context)
-								      ))),
+                                  ,kz_json:get_value(?PHOTO
+                                                    ,kz_json:get_value(<<"_attachments">>
+                                                                      ,cb_context:doc(Context)
+                                                                      ))),
             kz_json:set_value(?PHOTO, kz_json:from_list([{CT, Data}]), JObj)
     end.
 
 -spec set_org(kz_json:object(), cb_context:context()) -> kz_json:object().
 set_org(JObj, Context) ->
     case kz_json:get_value(<<"org">>
-			  ,cb_context:doc(crossbar_doc:load(cb_context:account_id(Context)
-							   ,Context
-							   ,?TYPE_CHECK_OPTION(kzd_user:type()))))
+                          ,cb_context:doc(crossbar_doc:load(cb_context:account_id(Context)
+                                                           ,Context
+                                                           ,?TYPE_CHECK_OPTION(kzd_user:type()))))
     of
         'undefined' -> JObj;
         Val -> kz_json:set_value(<<"org">>, Val, JObj)
@@ -434,7 +434,7 @@ vcard_normalize_type(T) when is_list(T) -> iolist_join(<<";">>, [vcard_normalize
 vcard_normalize_type({T, V}) -> iolist_join(<<"=">>, [T, V]);
 vcard_normalize_type(T) -> T.
 
-						%-spec card_field(ne_binary(), kz_json:object()) -> {vcard_type_spec(), vcard_val()}.
+                                                %-spec card_field(ne_binary(), kz_json:object()) -> {vcard_type_spec(), vcard_val()}.
 card_field(Key, _)
   when Key =:= <<"BEGIN">> ->
     {Key, <<"VCARD">>};
@@ -591,14 +591,14 @@ check_user_name(UserId, Context) ->
         'false' ->
             Context1 =
                 cb_context:add_validation_error(
-		  [<<"username">>]
-					       ,<<"unique">>
-					       ,kz_json:from_list([
-								   {<<"message">>, <<"User name already in use">>}
-								  ,{<<"cause">>, UserName}
-								  ])
-					       ,Context
-		 ),
+                  [<<"username">>]
+                                               ,<<"unique">>
+                                               ,kz_json:from_list([
+                                                                   {<<"message">>, <<"User name already in use">>}
+                                                                  ,{<<"cause">>, UserName}
+                                                                  ])
+                                               ,Context
+                 ),
             lager:error("user name ~p is already used", [UserName]),
             check_emergency_caller_id(UserId, Context1)
     end.
@@ -628,9 +628,9 @@ check_user_schema(UserId, Context) ->
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"user">>}],
     maybe_import_credintials('undefined'
-			    ,cb_context:set_doc(Context
-					       ,kz_json:set_values(Props, cb_context:doc(Context))
-					       )
+                            ,cb_context:set_doc(Context
+                                               ,kz_json:set_values(Props, cb_context:doc(Context))
+                                               )
                             );
 on_successful_validation(UserId, Context) ->
     maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type()))).
@@ -643,10 +643,10 @@ maybe_import_credintials(UserId, Context) ->
         Creds ->
             RemoveKeys = [<<"credentials">>, <<"pvt_sha1_auth">>],
             C = cb_context:set_doc(Context
-				  ,kz_json:set_value(<<"pvt_md5_auth">>, Creds
-						    ,kz_json:delete_keys(RemoveKeys, JObj)
-						    )
-				  ),
+                                  ,kz_json:set_value(<<"pvt_md5_auth">>, Creds
+                                                    ,kz_json:delete_keys(RemoveKeys, JObj)
+                                                    )
+                                  ),
             maybe_validate_username(UserId, C)
     end.
 
@@ -670,14 +670,14 @@ maybe_validate_username(UserId, Context) ->
         %% updated user name to existing, collect any further errors...
         _Else ->
             C = cb_context:add_validation_error(
-		  <<"username">>
-					       ,<<"unique">>
-					       ,kz_json:from_list([
-								   {<<"message">>, <<"User name is not unique for this account">>}
-								  ,{<<"cause">>, NewUsername}
-								  ])
-					       ,Context
-		 ),
+                  <<"username">>
+                                               ,<<"unique">>
+                                               ,kz_json:from_list([
+                                                                   {<<"message">>, <<"User name is not unique for this account">>}
+                                                                  ,{<<"cause">>, NewUsername}
+                                                                  ])
+                                               ,Context
+                 ),
             manditory_rehash_creds(UserId, NewUsername, C)
     end.
 
@@ -700,13 +700,13 @@ manditory_rehash_creds(UserId, Username, Context) ->
     case kz_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
         'undefined' ->
             cb_context:add_validation_error(
-	      <<"password">>
-					   ,<<"required">>
-					   ,kz_json:from_list([
-							       {<<"message">>, <<"The password must be provided when updating the user name">>}
-							      ])
-					   ,Context
-	     );
+              <<"password">>
+                                           ,<<"required">>
+                                           ,kz_json:from_list([
+                                                               {<<"message">>, <<"The password must be provided when updating the user name">>}
+                                                              ])
+                                           ,Context
+             );
         Password -> rehash_creds(UserId, Username, Password, Context)
     end.
 
@@ -715,17 +715,17 @@ manditory_rehash_creds(UserId, Username, Context) ->
 rehash_creds(_UserId, 'undefined', _Password, Context) ->
     cb_context:add_validation_error(
       <<"username">>
-				   ,<<"required">>
-				   ,kz_json:from_list([
-						       {<<"message">>, <<"The user name must be provided when updating the password">>}
-						      ])
-				   ,Context
+                                   ,<<"required">>
+                                   ,kz_json:from_list([
+                                                       {<<"message">>, <<"The user name must be provided when updating the password">>}
+                                                      ])
+                                   ,Context
      );
 rehash_creds(_UserId, Username, Password, Context) ->
     lager:debug("password set on doc, updating hashes for ~s", [Username]),
     {MD5, SHA1} = cb_modules_util:pass_hashes(Username, Password),
     JObj1 = kz_json:set_values([{<<"pvt_md5_auth">>, MD5}
-			       ,{<<"pvt_sha1_auth">>, SHA1}
+                               ,{<<"pvt_sha1_auth">>, SHA1}
                                ], cb_context:doc(Context)),
     cb_context:set_doc(Context, kz_json:delete_key(<<"password">>, JObj1)).
 

@@ -10,7 +10,7 @@
 -module(sysconf_set).
 
 -export([init/0
-	,handle_req/2
+        ,handle_req/2
         ]).
 
 -include("sysconf.hrl").
@@ -31,19 +31,19 @@ handle_req(ApiJObj, _Props) ->
                     'true' ->
                         Node = kz_json:get_value(<<"Node">>, ApiJObj),
                         lager:debug("received sysconf node specific setting for ~s[~s.~s]"
-				   ,[Category, Node, Key]),
+                                   ,[Category, Node, Key]),
                         kapps_config:set_node(Category, Key, Value, Node);
                     'false' ->
                         lager:debug("received sysconf setting for ~s[~s.~s]"
-				   ,[Category, <<"default">>, Key]),
+                                   ,[Category, <<"default">>, Key]),
                         kapps_config:set(Category, Key, Value, <<"default">>)
                 end,
 
     RespQ =  kz_json:get_value(<<"Server-ID">>, ApiJObj),
     Resp = [{<<"Category">>, Category}
-	   ,{<<"Key">>, Key}
-	   ,{<<"Value">>, Value}
-	   ,{<<"Msg-ID">>,  kz_json:get_value(<<"Msg-ID">>, ApiJObj)}
+           ,{<<"Key">>, Key}
+           ,{<<"Value">>, Value}
+           ,{<<"Msg-ID">>,  kz_json:get_value(<<"Msg-ID">>, ApiJObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_sysconf:publish_set_resp(RespQ, Resp).

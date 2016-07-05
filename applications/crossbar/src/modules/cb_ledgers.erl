@@ -10,11 +10,11 @@
 -module(cb_ledgers).
 
 -export([init/0
-	,allowed_methods/0, allowed_methods/1, allowed_methods/2
-	,resource_exists/0, resource_exists/1, resource_exists/2
-	,authorize/1, authorize/2, authorize/3
-	,validate/1, validate/2, validate/3
-	,put/2
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,authorize/1, authorize/2, authorize/3
+        ,validate/1, validate/2, validate/3
+        ,put/2
         ]).
 
 -include("crossbar.hrl").
@@ -231,7 +231,7 @@ credit_or_debit(Context, Action) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec process_action(ne_binary(), ne_binary(), ne_binary()
-		    ,ne_binary(), kz_proplist(), kz_proplist()) ->
+                    ,ne_binary(), kz_proplist(), kz_proplist()) ->
                             {'ok', kz_json:object()} |
                             {'error', any()}.
 process_action(?CREDIT, SrcService, SrcId, AccountId, Usage, Props) ->

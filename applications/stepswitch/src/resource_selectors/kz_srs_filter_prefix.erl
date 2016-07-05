@@ -13,12 +13,12 @@
 
 -define(MOD_NAME, <<"filter_prefix">>).
 -define(ALLOWED_FILTER_MODES, [<<"empty_ok">>
-			      ,<<"empty_fail">>
+                              ,<<"empty_fail">>
                               ]).
 -define(DEFAULT_FILTER_MODE, <<"empty_fail">>).
 
 -spec handle_req(stepswitch_resources:resources(), ne_binary(), kapi_offnet_resource:req(), ne_binary(), kz_json:object()) ->
-			stepswitch_resources:resources().
+                        stepswitch_resources:resources().
 handle_req(Resources, Number, OffnetJObj, DB, Params) ->
     SourceA = kz_srs_util:get_source(kz_json:get_value(<<"value_a">>, Params)),
     ValueA = kz_srs_util:get_value(SourceA, Resources, Number, OffnetJObj, DB, <<>>),
@@ -39,7 +39,7 @@ filter_by_db_prefix(Resources, Result, Action, PrefixMode) ->
                          Value = props:get_value(Id, Result),
                          match_db_prefixes(Id, Value, Action, PrefixMode)
                  end
-		,Resources
+                ,Resources
                 ).
 
 filter_by_prefix(Resources, ValueA, ValueB, Action, PrefixMode) ->
@@ -49,7 +49,7 @@ filter_by_prefix(Resources, ValueA, ValueB, Action, PrefixMode) ->
                          SetB = sets:from_list(props:get_value(Id, ValueB, [])),
                          match_prefixes(Id, sets:intersection(SetA, SetB), Action, PrefixMode)
                  end
-		,Resources
+                ,Resources
                 ).
 
 maybe_db_type({'database', SelectorName}, Resources, PrefixSrc) ->

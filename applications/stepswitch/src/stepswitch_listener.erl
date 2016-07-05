@@ -12,12 +12,12 @@
 %% API
 -export([start_link/0]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -define(SERVER, ?MODULE).
@@ -25,15 +25,15 @@
 -record(state, {}).
 
 -define(BINDINGS, [{'route', [{'restrict_to', ?RESOURCE_TYPES_HANDLED}]}
-		  ,{'offnet_resource', []}
-		  ,{'authn', []}
+                  ,{'offnet_resource', []}
+                  ,{'authn', []}
                   ]).
 -define(RESPONDERS, [{'stepswitch_inbound'
-		     ,[{<<"dialplan">>, <<"route_req">>}]}
-		    ,{'stepswitch_outbound'
-		     ,[{<<"resource">>, <<"offnet_req">>}]}
-		    ,{'stepswitch_authn_req'
-		     ,[{<<"directory">>, <<"authn_req">>}]}
+                     ,[{<<"dialplan">>, <<"route_req">>}]}
+                    ,{'stepswitch_outbound'
+                     ,[{<<"resource">>, <<"offnet_req">>}]}
+                    ,{'stepswitch_authn_req'
+                     ,[{<<"directory">>, <<"authn_req">>}]}
                     ]).
 -define(QUEUE_NAME, <<"stepswitch_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -49,10 +49,10 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'bindings', ?BINDINGS}
-							 ,{'responders', ?RESPONDERS}
-							 ,{'queue_name', ?QUEUE_NAME}
-							 ,{'queue_options', ?QUEUE_OPTIONS}
-							 ,{'consume_options', ?CONSUME_OPTIONS}
+                                                         ,{'responders', ?RESPONDERS}
+                                                         ,{'queue_name', ?QUEUE_NAME}
+                                                         ,{'queue_options', ?QUEUE_OPTIONS}
+                                                         ,{'consume_options', ?CONSUME_OPTIONS}
                                                          ], []).
 
 %%%===================================================================

@@ -11,8 +11,8 @@
 -include("kzt.hrl").
 
 -export([exec/2
-	,parse_cmds/1
-	,req_params/1
+        ,parse_cmds/1
+        ,req_params/1
         ]).
 
 -spec parse_cmds(iolist()) -> {'ok', xml_els()} |
@@ -75,23 +75,23 @@ exec_elements(Call, [El|Els]) ->
                           {'stop', kapps_call:call()} |
                           {'error', kapps_call:call()}.
 exec_element(Call, #xmlElement{name='Dial'
-			      ,content=Endpoints
-			      ,attributes=Attrs
+                              ,content=Endpoints
+                              ,attributes=Attrs
                               }) ->
     kzt_twiml_dial:exec(Call, Endpoints, Attrs);
 exec_element(Call, #xmlElement{name='Record'
-			      ,content=[] % nothing inside the tags please
-			      ,attributes=Attrs
+                              ,content=[] % nothing inside the tags please
+                              ,attributes=Attrs
                               }) ->
     record_call(Call, Attrs);
 exec_element(Call, #xmlElement{name='Gather'
-			      ,content=SubActions
-			      ,attributes=Attrs
+                              ,content=SubActions
+                              ,attributes=Attrs
                               }) ->
     gather(Call, SubActions, Attrs);
 exec_element(Call, #xmlElement{name='Play'
-			      ,content=ToPlay
-			      ,attributes=Attrs
+                              ,content=ToPlay
+                              ,attributes=Attrs
                               }) ->
     case play(Call, ToPlay, Attrs) of
         {'ok', _}=OK -> OK;
@@ -100,8 +100,8 @@ exec_element(Call, #xmlElement{name='Play'
             {'error', Call1}
     end;
 exec_element(Call, #xmlElement{name='Say'
-			      ,content=ToSay
-			      ,attributes=Attrs
+                              ,content=ToSay
+                              ,attributes=Attrs
                               }) ->
     case kzt_twiml_say:exec(Call, ToSay, Attrs) of
         {'ok', _}=OK -> OK;
@@ -110,32 +110,32 @@ exec_element(Call, #xmlElement{name='Say'
             {'error', Call1}
     end;
 exec_element(Call, #xmlElement{name='Redirect'
-			      ,content=Url
-			      ,attributes=Attrs
+                              ,content=Url
+                              ,attributes=Attrs
                               }) ->
     redirect(Call, Url, Attrs);
 exec_element(Call, #xmlElement{name='Pause'
-			      ,content=[]
-			      ,attributes=Attrs
+                              ,content=[]
+                              ,attributes=Attrs
                               }) ->
     pause(Call, Attrs);
 exec_element(Call, #xmlElement{name='Set'
-			      ,content=Els
+                              ,content=Els
                               }) ->
     set_variables(Call, Els);
 exec_element(Call, #xmlElement{name='Hangup'
-			      ,content=[]
-			      ,attributes=[]
+                              ,content=[]
+                              ,attributes=[]
                               }) ->
     hangup(Call);
 exec_element(Call, #xmlElement{name='Reject'
-			      ,content=[]
-			      ,attributes=Attrs
+                              ,content=[]
+                              ,attributes=Attrs
                               }) ->
     reject(Call, Attrs);
 exec_element(_Call, #xmlElement{name=Unknown
-			       ,content=_Content
-			       ,attributes=_Attrs
+                               ,content=_Content
+                               ,attributes=_Attrs
                                }) ->
     throw({'unknown_element', Unknown});
 exec_element(Call, _Xml) ->
@@ -206,13 +206,13 @@ set_variable(Call, Attrs) ->
     Props = kz_xml:attributes_to_proplist(Attrs),
     {'ok', kzt_translator:set_user_vars(
              [{props:get_binary_value('key', Props), props:get_binary_value('value', Props)}]
-				       ,Call
+                                       ,Call
             )}.
 
 -spec set_variables(kapps_call:call(), xml_els()) -> kapps_call:call().
 set_variables(Call, Els) when is_list(Els) ->
     lists:foldl(fun(#xmlElement{name='Variable'
-			       ,attributes=Attrs
+                               ,attributes=Attrs
                                }, C) ->
                         set_variable(C, Attrs);
                    (_, C) -> C
@@ -254,7 +254,7 @@ redirect(Call, XmlText, Attrs) ->
     Method = kzt_util:http_method(Props),
 
     Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
-	      ,{fun kzt_util:set_voice_uri/2, NewUri}
+              ,{fun kzt_util:set_voice_uri/2, NewUri}
               ],
     {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call1, Setters)}.
 
@@ -285,7 +285,7 @@ gather(Call, [], Attrs) -> gather(Call, Attrs);
 gather(Call, SubActions, Attrs) ->
     lager:info("GATHER: exec sub actions"),
     {'ok', C} = exec_gather_els(kzt_util:clear_digits_collected(Call)
-			       ,kz_xml:elements(SubActions)
+                               ,kz_xml:elements(SubActions)
                                ),
     gather(C, Attrs).
 
@@ -339,7 +339,7 @@ gather_finished(Call, Props) ->
             Method = kzt_util:http_method(Props),
 
             Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
-		      ,{fun kzt_util:set_voice_uri/2, NewUri}
+                      ,{fun kzt_util:set_voice_uri/2, NewUri}
                       ],
             {'request', kapps_call:exec(Setters, Call)}
     end.
@@ -377,7 +377,7 @@ finish_record_call(Call, Props, MediaName) ->
     lager:info("recording of ~s finished; using method '~s' to ~s from ~s", [MediaName, Method, NewUri, CurrentUri]),
 
     Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
-	      ,{fun kzt_util:set_voice_uri/2, NewUri}
+              ,{fun kzt_util:set_voice_uri/2, NewUri}
               ],
 
     RecordingUrl = props:get_value('recordingUrl', Props, NewUri),
@@ -418,8 +418,8 @@ should_store_recording(Url) ->
 
 play_beep(Call) ->
     Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
-			     ,{<<"Duration-ON">>, <<"500">>}
-			     ,{<<"Duration-OFF">>, <<"100">>}
+                             ,{<<"Duration-ON">>, <<"500">>}
+                             ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
     kapps_call_command:tones([Tone], Call).
 

@@ -27,19 +27,19 @@
                      ]).
 
 -define(SMTP_ARGS, ['fax_smtp' ,[[{'port', ?SMTP_PORT}
-				  %% in case we want to make the settings constant per execution
-				  %%                                  ,{'sessionoptions', [?SMTP_CALLBACK_OPTIONS]}
-				 ]]]).
+                                  %% in case we want to make the settings constant per execution
+                                  %%                                  ,{'sessionoptions', [?SMTP_CALLBACK_OPTIONS]}
+                                 ]]]).
 
 -define(CHILDREN, [?WORKER('fax_init')
-		  ,?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
-		  ,?SUPER('fax_requests_sup')
-		  ,?SUPER('fax_xmpp_sup')
-		  ,?SUPER('fax_jobs_sup')
-		  ,?SUPER('fax_worker_sup')
-		  ,?WORKER('fax_shared_listener')
-		  ,?WORKER('fax_monitor')
-		  ,?WORKER_ARGS('gen_smtp_server', ?SMTP_ARGS)
+                  ,?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
+                  ,?SUPER('fax_requests_sup')
+                  ,?SUPER('fax_xmpp_sup')
+                  ,?SUPER('fax_jobs_sup')
+                  ,?SUPER('fax_worker_sup')
+                  ,?WORKER('fax_shared_listener')
+                  ,?WORKER('fax_monitor')
+                  ,?WORKER_ARGS('gen_smtp_server', ?SMTP_ARGS)
                   ]).
 
 %% ===================================================================

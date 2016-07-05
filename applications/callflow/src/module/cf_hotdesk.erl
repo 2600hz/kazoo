@@ -23,15 +23,15 @@
 -define(HOTDESK_ID_LENGTH, kapps_config:get_integer(?HD_CONFIG_CAT, <<"max_hotdesk_id_length">>, 10)).
 
 -record(hotdesk, {enabled = 'false' :: boolean()
-		 ,hotdesk_id :: api_binary()
-		 ,pin :: api_binary()
-		 ,require_pin = 'false' :: boolean()
-		 ,keep_logged_in_elsewhere = 'false' :: boolean()
-		 ,owner_id :: api_binary()
-		 ,endpoint_ids = [] :: ne_binaries()
-		 ,jobj = kz_json:new() :: kz_json:object()
-		 ,account_db :: ne_binary()
-		 ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
+                 ,hotdesk_id :: api_binary()
+                 ,pin :: api_binary()
+                 ,require_pin = 'false' :: boolean()
+                 ,keep_logged_in_elsewhere = 'false' :: boolean()
+                 ,owner_id :: api_binary()
+                 ,endpoint_ids = [] :: ne_binaries()
+                 ,jobj = kz_json:new() :: kz_json:object()
+                 ,account_db :: ne_binary()
+                 ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
                  }).
 -type hotdesk() :: #hotdesk{}.
 
@@ -150,19 +150,19 @@ require_login_pin(_, Call, Max, Loop) when Loop > Max ->
     kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
     kapps_call_command:b_prompt(<<"vm-goodbye">>, Call);
 require_login_pin(#hotdesk{require_pin='true'
-			  ,pin=Pin
-			  ,interdigit_timeout=Interdigit
+                          ,pin=Pin
+                          ,interdigit_timeout=Interdigit
                           }=Hotdesk, Call, Max, Loop) ->
     _ = kapps_call_command:answer(Call),
 
     NoopId = kapps_call_command:prompt(<<"hotdesk-enter_pin">>, Call),
 
     case kapps_call_command:collect_digits(?PIN_LENGTH
-					  ,kapps_call_command:default_collect_timeout()
-					  ,Interdigit
-					  ,NoopId
-					  ,Call
-					  )
+                                          ,kapps_call_command:default_collect_timeout()
+                                          ,Interdigit
+                                          ,NoopId
+                                          ,Call
+                                          )
     of
         {'ok', Pin} ->
             maybe_logout_elsewhere(Hotdesk, Call);
@@ -228,7 +228,7 @@ logout(Hotdesk, Call) -> maybe_keep_logged_in_elsewhere(Hotdesk, Call).
 -spec maybe_keep_logged_in_elsewhere(hotdesk(), kapps_call:call()) ->
                                             kapps_api_std_return().
 maybe_keep_logged_in_elsewhere(#hotdesk{keep_logged_in_elsewhere='true'}=Hotdesk
-			      ,Call) ->
+                              ,Call) ->
     keep_logged_in_elsewhere(kapps_call:authorizing_id(Call), Hotdesk, Call);
 maybe_keep_logged_in_elsewhere(Hotdesk, Call) ->
     H = remove_from_endpoints(Hotdesk, Call),
@@ -239,7 +239,7 @@ maybe_keep_logged_in_elsewhere(Hotdesk, Call) ->
 keep_logged_in_elsewhere('undefined', Hotdesk, Call) ->
     logged_out(Hotdesk, Call);
 keep_logged_in_elsewhere(AuthorizingId, #hotdesk{endpoint_ids=EndpointIds
-						,owner_id=OwnerId
+                                                ,owner_id=OwnerId
                                                 }=Hotdesk, Call) ->
     AccountDb = kapps_call:account_db(Call),
     Fun = fun(JObj) ->
@@ -295,11 +295,11 @@ find_hotdesk_profile(Call, Data, Max, Loop) ->
     Interdigit = kz_json:get_integer_value(<<"interdigit_timeout">>, Data, kapps_call_command:default_interdigit_timeout()),
 
     case kapps_call_command:collect_digits(?HOTDESK_ID_LENGTH
-					  ,kapps_call_command:default_collect_timeout()
-					  ,Interdigit
-					  ,NoopId
-					  ,Call
-					  )
+                                          ,kapps_call_command:default_collect_timeout()
+                                          ,Interdigit
+                                          ,NoopId
+                                          ,Call
+                                          )
     of
         {'ok', <<>>} ->
             find_hotdesk_profile(Call, Data, Max, Loop + 1);
@@ -321,7 +321,7 @@ find_hotdesk_profile(Call, Data, Max, Loop) ->
 lookup_hotdesk_id(HotdeskId, Data, Call) ->
     AccountDb = kapps_call:account_db(Call),
     ViewOptions = [{'key', HotdeskId}
-		  ,'include_docs'
+                  ,'include_docs'
                   ],
     case kz_datamgr:get_results(AccountDb, <<"kz_attributes/hotdesk_id">>, ViewOptions) of
         {'ok', [JObj]} ->
@@ -339,19 +339,19 @@ from_json(JObj, Data, Call) ->
     Hotdesk =  kz_json:get_value(<<"hotdesk">>, JObj),
     lager:info("creating hotdesk profile from ~s", [OwnerId]),
     #hotdesk{hotdesk_id = kz_doc:id(Hotdesk)
-	    ,enabled = kz_json:is_true(<<"enabled">>, Hotdesk)
-	    ,pin = kz_json:get_binary_value(<<"pin">>, Hotdesk)
-	    ,require_pin = kz_json:is_true(<<"require_pin">>, Hotdesk)
-	    ,keep_logged_in_elsewhere = kz_json:is_true(<<"keep_logged_in_elsewhere">>, Hotdesk)
-	    ,endpoint_ids = get_endpoint_ids(OwnerId, Call)
-	    ,owner_id = OwnerId
-	    ,interdigit_timeout = kz_json:find(<<"interdigit_timeout">>, [JObj, Data], kapps_call_command:default_interdigit_timeout())
+            ,enabled = kz_json:is_true(<<"enabled">>, Hotdesk)
+            ,pin = kz_json:get_binary_value(<<"pin">>, Hotdesk)
+            ,require_pin = kz_json:is_true(<<"require_pin">>, Hotdesk)
+            ,keep_logged_in_elsewhere = kz_json:is_true(<<"keep_logged_in_elsewhere">>, Hotdesk)
+            ,endpoint_ids = get_endpoint_ids(OwnerId, Call)
+            ,owner_id = OwnerId
+            ,interdigit_timeout = kz_json:find(<<"interdigit_timeout">>, [JObj, Data], kapps_call_command:default_interdigit_timeout())
             }.
 
 -spec remove_from_endpoints(hotdesk(), kapps_call:call()) -> hotdesk().
 remove_from_endpoints(#hotdesk{endpoint_ids=[]}=Hotdesk, _) -> Hotdesk;
 remove_from_endpoints(#hotdesk{endpoint_ids=[EndpointId|Endpoints]
-			      ,owner_id=OwnerId
+                              ,owner_id=OwnerId
                               }=Hotdesk, Call) ->
     AccountDb = kapps_call:account_db(Call),
     Fun = fun(JObj) ->

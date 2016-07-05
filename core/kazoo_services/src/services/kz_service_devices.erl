@@ -26,7 +26,7 @@ reconcile(Services) ->
     AccountId = kz_services:account_id(Services),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = ['reduce'
-		  ,'group'
+                  ,'group'
                   ],
     case kz_datamgr:get_results(AccountDb, <<"services/devices">>, ViewOptions) of
         {'error', _R} ->
@@ -38,8 +38,8 @@ reconcile(Services) ->
         {'ok', JObjs} ->
             lager:debug("reconciling ~p devices in ~s: ~p", [length(JObjs), AccountId, JObjs]),
             lists:foldl(fun reconcile_device/2
-		       ,kz_services:reset_category(?CATEGORY, Services)
-		       ,JObjs
+                       ,kz_services:reset_category(?CATEGORY, Services)
+                       ,JObjs
                        )
     end.
 

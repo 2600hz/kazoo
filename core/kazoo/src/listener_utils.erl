@@ -9,7 +9,7 @@
 -module(listener_utils).
 
 -export([add_responder/3
-	,rm_responder/3
+        ,rm_responder/3
         ]).
 
 -include_lib("kazoo/include/kz_log.hrl").
@@ -21,7 +21,7 @@
 -type responder() :: {{binary(), binary()}, responder_callback()}.
 -type responders() :: [responder()].
 -export_type([responder/0
-	     ,responders/0
+             ,responders/0
              ]).
 
 -spec add_responder(responders(), responder_callback(), kz_json:json_proplist()) -> responders().

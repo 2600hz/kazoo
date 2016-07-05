@@ -8,21 +8,21 @@
 -module(notify_util).
 
 -export([send_email/3
-	,send_update/3, send_update/4
-	,render_template/3
-	,normalize_proplist/1
-	,json_to_template_props/1
-	,get_service_props/2, get_service_props/3
-	,get_rep_email/1
-	,compile_default_text_template/2
-	,compile_default_html_template/2
-	,compile_default_subject_template/2
-	,compile_default_template/3
-	,find_admin/1
-	,get_account_doc/1
-	,qr_code_image/1
-	,get_charset_params/1
-	,post_json/3
+        ,send_update/3, send_update/4
+        ,render_template/3
+        ,normalize_proplist/1
+        ,json_to_template_props/1
+        ,get_service_props/2, get_service_props/3
+        ,get_rep_email/1
+        ,compile_default_text_template/2
+        ,compile_default_html_template/2
+        ,compile_default_subject_template/2
+        ,compile_default_template/3
+        ,find_admin/1
+        ,get_account_doc/1
+        ,qr_code_image/1
+        ,get_charset_params/1
+        ,post_json/3
         ]).
 
 -include("notify.hrl").
@@ -51,17 +51,17 @@ send_email(From, To, Email) ->
     Self = self(),
 
     gen_smtp_client:send({From, [To], Encoded}
-			,[{'relay', Relay}
-			 ,{'username', Username}
-			 ,{'password', Password}
-			 ,{'port', Port}
-			 ,{'auth', Auth}
-			 ]
-			,fun(X) ->
-				 kz_util:put_callid(ReqId),
-				 lager:debug("email relay responded: ~p, send to ~p", [X, Self]),
-				 Self ! {'relay_response', X}
-			 end),
+                        ,[{'relay', Relay}
+                         ,{'username', Username}
+                         ,{'password', Password}
+                         ,{'port', Port}
+                         ,{'auth', Auth}
+                         ]
+                        ,fun(X) ->
+                                 kz_util:put_callid(ReqId),
+                                 lager:debug("email relay responded: ~p, send to ~p", [X, Self]),
+                                 Self ! {'relay_response', X}
+                         end),
     %% The callback will receive either `{ok, Receipt}' where Receipt is the SMTP server's receipt
     %% identifier,  `{error, Type, Message}' or `{exit, ExitReason}', as the single argument.
     receive
@@ -79,8 +79,8 @@ send_update('undefined', _, _, _) -> lager:debug("no response queue to send upda
 send_update(RespQ, MsgId, Status, Msg) ->
     Prop = props:filter_undefined(
              [{<<"Status">>, Status}
-	     ,{<<"Failure-Message">>, Msg}
-	     ,{<<"Msg-ID">>, MsgId}
+             ,{<<"Failure-Message">>, Msg}
+             ,{<<"Msg-ID">>, MsgId}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("notification update (~s) sending to ~s", [Status, RespQ]),
@@ -158,7 +158,7 @@ get_default_template(Category, Key) ->
                     _ = kapps_config:set(Category, Key, Template),
                     Template
             end;
-	{'error', _R} ->
+        {'error', _R} ->
             lager:warning("failed to find default template for ~s/~s: ~p", [Category, Key, _R]),
             'undefined'
     end.
@@ -170,8 +170,8 @@ get_default_template(Category, Key) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec render_template(api_binary(), atom(), kz_proplist()) ->
-			     {'ok', string()} |
-			     {'error', any()}.
+                             {'ok', string()} |
+                             {'error', any()}.
 render_template(Template, DefaultTemplate, Props) ->
     case do_render_template(Template, DefaultTemplate, Props) of
         {'ok', R} -> {'ok', binary_to_list(iolist_to_binary(R))};
@@ -179,8 +179,8 @@ render_template(Template, DefaultTemplate, Props) ->
     end.
 
 -spec do_render_template(api_binary(), atom(), kz_proplist()) ->
-				{'ok', string()} |
-				{'error', any()}.
+                                {'ok', string()} |
+                                {'error', any()}.
 do_render_template('undefined', DefaultTemplate, Props) ->
     lager:debug("rendering default ~s template", [DefaultTemplate]),
     DefaultTemplate:render(Props);
@@ -190,7 +190,7 @@ do_render_template(Template, DefaultTemplate, Props) ->
         CustomTemplate = kz_util:to_atom(list_to_binary([kz_datamgr:get_uuid(), "_"
                                                         ,kz_util:to_binary(DefaultTemplate)
                                                         ])
-					,'true'),
+                                        ,'true'),
         lager:debug("compiling custom ~s template", [DefaultTemplate]),
         {'ok', CustomTemplate} = erlydtl:compile_template(Template, CustomTemplate, [{'out_dir', 'false'}]),
 
@@ -221,23 +221,23 @@ get_service_props(Account, ConfigCat) ->
 
 get_service_props(Request, Account, ConfigCat) ->
     DefaultUrl = kz_json:get_ne_value(<<"service_url">>, Request
-				     ,kapps_config:get(ConfigCat, <<"default_service_url">>, <<"http://apps.2600hz.com">>)),
+                                     ,kapps_config:get(ConfigCat, <<"default_service_url">>, <<"http://apps.2600hz.com">>)),
     DefaultName = kz_json:get_ne_value(<<"service_name">>, Request
-				      ,kapps_config:get(ConfigCat, <<"default_service_name">>, <<"VOIP Services">>)),
+                                      ,kapps_config:get(ConfigCat, <<"default_service_name">>, <<"VOIP Services">>)),
     DefaultProvider = kz_json:get_ne_value(<<"service_provider">>, Request
-					  ,kapps_config:get(ConfigCat, <<"default_service_provider">>, <<"2600hz">>)),
+                                          ,kapps_config:get(ConfigCat, <<"default_service_provider">>, <<"2600hz">>)),
     DefaultNumber = kz_json:get_ne_value(<<"support_number">>, Request
-					,kapps_config:get(ConfigCat, <<"default_support_number">>, <<"(415) 886-7900">>)),
+                                        ,kapps_config:get(ConfigCat, <<"default_support_number">>, <<"(415) 886-7900">>)),
     DefaultEmail = kz_json:get_ne_value(<<"support_email">>, Request
-				       ,kapps_config:get(ConfigCat, <<"default_support_email">>, <<"support@2600hz.com">>)),
+                                       ,kapps_config:get(ConfigCat, <<"default_support_email">>, <<"support@2600hz.com">>)),
     UnconfiguredFrom = list_to_binary([<<"no_reply@">>, kz_util:to_binary(net_adm:localhost())]),
     DefaultFrom = kz_json:get_ne_value(<<"send_from">>, Request
-				      ,kapps_config:get(ConfigCat, <<"default_from">>, UnconfiguredFrom)),
+                                      ,kapps_config:get(ConfigCat, <<"default_from">>, UnconfiguredFrom)),
     DefaultCharset = kz_json:get_ne_value(<<"template_charset">>, Request
-					 ,kapps_config:get(ConfigCat, <<"default_template_charset">>, <<>>)),
+                                         ,kapps_config:get(ConfigCat, <<"default_template_charset">>, <<>>)),
     JObj = find_notification_settings(
              binary:split(ConfigCat, <<".">>)
-				     ,kz_account:tree(Account)
+                                     ,kz_account:tree(Account)
             ),
     [{<<"url">>, kz_json:get_value(<<"service_url">>, JObj, DefaultUrl)}
     ,{<<"name">>, kz_json:get_value(<<"service_name">>, JObj, DefaultName)}
@@ -258,7 +258,7 @@ find_notification_settings([_, Module], Tree) ->
         {'error', _} -> kz_json:new();
         {'ok', JObj} ->
             lager:debug("looking for notifications '~s' service info in: ~s"
-		       ,[Module, kz_doc:id(JObj)]),
+                       ,[Module, kz_doc:id(JObj)]),
             case kz_json:get_ne_value([<<"notifications">>, Module], JObj) of
                 'undefined' -> maybe_find_deprecated_settings(Module, JObj);
                 Settings -> Settings
@@ -266,7 +266,7 @@ find_notification_settings([_, Module], Tree) ->
     end;
 find_notification_settings(_ConfigCat, _) ->
     lager:debug("unable to get service props, unexpected configuration category: ~p"
-	       ,[_ConfigCat]),
+               ,[_ConfigCat]),
     kz_json:new().
 
 -spec maybe_find_deprecated_settings(ne_binary(), kz_json:object()) -> kz_json:object().
@@ -328,7 +328,7 @@ find_admin(Account) when is_binary(Account) ->
 find_admin([AcctId|Tree]) ->
     AccountDb = kz_util:format_account_id(AcctId, 'encoded'),
     ViewOptions = [{'key', <<"user">>}
-		  ,'include_docs'
+                  ,'include_docs'
                   ],
     case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', Users} ->
@@ -362,7 +362,7 @@ find_admin(Account) ->
                              'undefined'.
 get_account_doc(JObj) ->
     case kz_json:get_first_defined([<<"Account-DB">>
-				   ,<<"Account-ID">>
+                                   ,<<"Account-ID">>
                                    ], JObj)
     of
         'undefined' -> 'undefined';
@@ -430,12 +430,12 @@ qr_code_image(Text) ->
 -spec get_charset_params(proplist()) -> {proplist(), binary()}.
 get_charset_params(Service) ->
     case props:get_value(<<"template_charset">>, Service) of
-	<<>> -> {[], <<>>};
-	<<_/binary>> = Charset ->
-	    {[{<<"content-type-params">>,[{<<"charset">>,Charset}]}]
-	    ,iolist_to_binary([<<";charset=">>, Charset])
-	    };
-	_ -> {[], <<>>}
+        <<>> -> {[], <<>>};
+        <<_/binary>> = Charset ->
+            {[{<<"content-type-params">>,[{<<"charset">>,Charset}]}]
+            ,iolist_to_binary([<<";charset=">>, Charset])
+            };
+        _ -> {[], <<>>}
     end.
 
 -spec post_json(ne_binary(), kz_json:object(), fun((kz_json:object()) -> 'ok')) -> 'ok'.

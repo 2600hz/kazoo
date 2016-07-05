@@ -12,7 +12,7 @@
 -include("ecallmgr.hrl").
 
 -export([start_link/2
-	,add_child/2
+        ,add_child/2
         ]).
 -export([init/1]).
 
@@ -33,8 +33,8 @@ start_link(Node, Options) ->
 
 sup_name(Node) ->
     Name = iolist_to_binary([kz_util:to_binary(?MODULE)
-			    ,"_"
-			    ,kz_util:to_binary(Node)
+                            ,"_"
+                            ,kz_util:to_binary(Node)
                             ]),
     kz_util:to_atom(Name, 'true').
 

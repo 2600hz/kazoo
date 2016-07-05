@@ -24,7 +24,7 @@
 -include("callflow.hrl").
 
 -export([handle/2
-	,get_target_for_extension/2
+        ,get_target_for_extension/2
         ]).
 
 -export_type([target/0]).
@@ -47,8 +47,8 @@ handle(Data, Call) ->
     of
         'true' ->
             Flow = kz_json:from_list([{<<"data">>, build_data(Target, Call)}
-				     ,{<<"module">>, <<"eavesdrop">>}
-				     ,{<<"children">>, kz_json:new()}
+                                     ,{<<"module">>, <<"eavesdrop">>}
+                                     ,{<<"children">>, kz_json:new()}
                                      ]),
             cf_exe:branch(Flow, Call);
         'false' ->

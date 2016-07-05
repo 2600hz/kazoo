@@ -18,51 +18,51 @@
 -export([declare_exchanges/0]).
 
 -export([account_id/1, account_id/2
-	,account_realm/1, account_realm/2
-	,b_leg_events/1, b_leg_events/2
-	,body/1, body/2
-	,bypass_e164/1, bypass_e164/2
-	,call_id/1, call_id/2
-	,control_queue/1, control_queue/2
-	,custom_channel_vars/1, custom_channel_vars/2
-	,custom_sip_headers/1, custom_sip_headers/2
-	,emergency_caller_id_name/1, emergency_caller_id_name/2
-	,emergency_caller_id_number/1, emergency_caller_id_number/2
-	,fax_identity_name/1, fax_identity_name/2
-	,fax_identity_number/1, fax_identity_number/2
-	,flags/1, flags/2
-	,force_outbound/1, force_outbound/2
-	,format_from_uri/1, format_from_uri/2
-	,from_uri_realm/1, from_uri_realm/2
-	,hold_media/1, hold_media/2
-	,hunt_account_id/1, hunt_account_id/2
-	,ignore_early_media/1, ignore_early_media/2
-	,media/1, media/2
-	,message_id/1, message_id/2
-	,outbound_call_id/1, outbound_call_id/2
-	,outbound_callee_id_name/1, outbound_callee_id_name/2
-	,outbound_callee_id_number/1, outbound_callee_id_number/2
-	,outbound_caller_id_name/1, outbound_caller_id_name/2
-	,outbound_caller_id_number/1, outbound_caller_id_number/2
-	,presence_id/1, presence_id/2
-	,resource_type/1, resource_type/2
-	,ringback/1, ringback/2
-	,timeout/1, timeout/2
-	,t38_enabled/1, t38_enabled/2
-	,to_did/1, to_did/2
+        ,account_realm/1, account_realm/2
+        ,b_leg_events/1, b_leg_events/2
+        ,body/1, body/2
+        ,bypass_e164/1, bypass_e164/2
+        ,call_id/1, call_id/2
+        ,control_queue/1, control_queue/2
+        ,custom_channel_vars/1, custom_channel_vars/2
+        ,custom_sip_headers/1, custom_sip_headers/2
+        ,emergency_caller_id_name/1, emergency_caller_id_name/2
+        ,emergency_caller_id_number/1, emergency_caller_id_number/2
+        ,fax_identity_name/1, fax_identity_name/2
+        ,fax_identity_number/1, fax_identity_number/2
+        ,flags/1, flags/2
+        ,force_outbound/1, force_outbound/2
+        ,format_from_uri/1, format_from_uri/2
+        ,from_uri_realm/1, from_uri_realm/2
+        ,hold_media/1, hold_media/2
+        ,hunt_account_id/1, hunt_account_id/2
+        ,ignore_early_media/1, ignore_early_media/2
+        ,media/1, media/2
+        ,message_id/1, message_id/2
+        ,outbound_call_id/1, outbound_call_id/2
+        ,outbound_callee_id_name/1, outbound_callee_id_name/2
+        ,outbound_callee_id_number/1, outbound_callee_id_number/2
+        ,outbound_caller_id_name/1, outbound_caller_id_name/2
+        ,outbound_caller_id_number/1, outbound_caller_id_number/2
+        ,presence_id/1, presence_id/2
+        ,resource_type/1, resource_type/2
+        ,ringback/1, ringback/2
+        ,timeout/1, timeout/2
+        ,t38_enabled/1, t38_enabled/2
+        ,to_did/1, to_did/2
 
-	,msg_id/1
-	,server_id/1
+        ,msg_id/1
+        ,server_id/1
 
-	,set_outbound_call_id/2
-	,delete_keys/2
-	,set_values/2
+        ,set_outbound_call_id/2
+        ,delete_keys/2
+        ,set_values/2
         ]).
 
 %% helpers for working with opaque object
 -export([jobj_to_req/1
-	,req_to_jobj/1
-	,put_callid/1
+        ,req_to_jobj/1
+        ,put_callid/1
         ]).
 
 -include_lib("kazoo/include/kz_api.hrl").
@@ -70,7 +70,7 @@
 -include_lib("kazoo/include/kapi_offnet_resource.hrl").
 
 -export_type([req/0
-	     ,resp/0
+             ,resp/0
              ]).
 
 -define(REQ_TYPE(JObj), JObj).
@@ -81,92 +81,92 @@
 
 %% Offnet Resource Request
 -define(OFFNET_RESOURCE_REQ_HEADERS, [?KEY_APPLICATION_NAME
-				     ,?KEY_RESOURCE_TYPE
-				     ,?KEY_TO_DID
+                                     ,?KEY_RESOURCE_TYPE
+                                     ,?KEY_TO_DID
                                      ]).
 -define(OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS
        ,[?KEY_ACCOUNT_ID
-	,?KEY_ACCOUNT_REALM
-	,?KEY_APPLICATION_DATA
-	,?KEY_B_LEG_EVENTS
-	,?KEY_BODY
-	,?KEY_BYPASS_E164
-	,?KEY_CALL_ID
-	,?KEY_CALL_ID
-	,?KEY_CONTROL_QUEUE
-	,?KEY_CCVS
-	,?KEY_CSHS
-	,?KEY_E_CALLER_ID_NAME
-	,?KEY_E_CALLER_ID_NUMBER
-	,?KEY_ENABLE_T38
-	,?KEY_ENABLE_T38_REQUEST
-	,?KEY_ENABLE_T38_GATEWAY
-	,?KEY_ENABLE_T38_PASSTHROUGH
-	,?KEY_FAX_IDENTITY_NAME
-	,?KEY_FAX_IDENTITY_NUMBER
-	,?KEY_FAX_TIMEZONE
-	,?KEY_T38_ENABLED
-	,?KEY_FLAGS
-	,?KEY_FORCE_FAX
-	,?KEY_FORCE_OUTBOUND
-	,?KEY_FORMAT_FROM_URI
-	,?KEY_FROM_URI_REALM
-	,?KEY_GROUP_ID
-	,?KEY_HOLD_MEDIA
-	,?KEY_HUNT_ACCOUNT_ID
-	,?KEY_IGNORE_EARLY_MEDIA
-	,?KEY_INCEPTION
-	,?KEY_MEDIA
-	,?KEY_MESSAGE_ID
-	,?KEY_MODE
-	,?KEY_OUTBOUND_CALL_ID
-	,?KEY_OUTBOUND_CALLER_ID_NAME
-	,?KEY_OUTBOUND_CALLER_ID_NUMBER
-	,?KEY_PRESENCE_ID
-	,?KEY_RINGBACK
-	,?KEY_TIMEOUT
-	]).
+        ,?KEY_ACCOUNT_REALM
+        ,?KEY_APPLICATION_DATA
+        ,?KEY_B_LEG_EVENTS
+        ,?KEY_BODY
+        ,?KEY_BYPASS_E164
+        ,?KEY_CALL_ID
+        ,?KEY_CALL_ID
+        ,?KEY_CONTROL_QUEUE
+        ,?KEY_CCVS
+        ,?KEY_CSHS
+        ,?KEY_E_CALLER_ID_NAME
+        ,?KEY_E_CALLER_ID_NUMBER
+        ,?KEY_ENABLE_T38
+        ,?KEY_ENABLE_T38_REQUEST
+        ,?KEY_ENABLE_T38_GATEWAY
+        ,?KEY_ENABLE_T38_PASSTHROUGH
+        ,?KEY_FAX_IDENTITY_NAME
+        ,?KEY_FAX_IDENTITY_NUMBER
+        ,?KEY_FAX_TIMEZONE
+        ,?KEY_T38_ENABLED
+        ,?KEY_FLAGS
+        ,?KEY_FORCE_FAX
+        ,?KEY_FORCE_OUTBOUND
+        ,?KEY_FORMAT_FROM_URI
+        ,?KEY_FROM_URI_REALM
+        ,?KEY_GROUP_ID
+        ,?KEY_HOLD_MEDIA
+        ,?KEY_HUNT_ACCOUNT_ID
+        ,?KEY_IGNORE_EARLY_MEDIA
+        ,?KEY_INCEPTION
+        ,?KEY_MEDIA
+        ,?KEY_MESSAGE_ID
+        ,?KEY_MODE
+        ,?KEY_OUTBOUND_CALL_ID
+        ,?KEY_OUTBOUND_CALLER_ID_NAME
+        ,?KEY_OUTBOUND_CALLER_ID_NUMBER
+        ,?KEY_PRESENCE_ID
+        ,?KEY_RINGBACK
+        ,?KEY_TIMEOUT
+        ]).
 -define(OFFNET_RESOURCE_REQ_VALUES
        ,[{?KEY_EVENT_CATEGORY, ?CATEGORY_REQ}
-	,{?KEY_EVENT_NAME, ?EVENT_REQ}
-	,{?KEY_RESOURCE_TYPE, [?RESOURCE_TYPE_AUDIO, ?RESOURCE_TYPE_VIDEO, ?RESOURCE_TYPE_ORIGINATE, ?RESOURCE_TYPE_SMS]}
-	,{?KEY_APPLICATION_NAME, [?APPLICATION_BRIDGE
-				 ,?APPLICATION_EAVESDROP
-				 ,?APPLICATION_FAX
-				 ,?APPLICATION_PARK
-				 ,?APPLICATION_SMS
-				 ,?APPLICATION_TRANSFER
-				 ]}
-	,{?KEY_MEDIA, [?MEDIA_PROCESS, ?MEDIA_BYPASS, ?MEDIA_AUTO]}
-	 %% Eavesdrop
-	,{?KEY_MODE, [?MODE_FULL     % talk to both sides
-		     ,?MODE_LISTEN  % hear both sides - default
-		     ,?MODE_WHISPER % talk to one side
-		     ]}
-	]).
+        ,{?KEY_EVENT_NAME, ?EVENT_REQ}
+        ,{?KEY_RESOURCE_TYPE, [?RESOURCE_TYPE_AUDIO, ?RESOURCE_TYPE_VIDEO, ?RESOURCE_TYPE_ORIGINATE, ?RESOURCE_TYPE_SMS]}
+        ,{?KEY_APPLICATION_NAME, [?APPLICATION_BRIDGE
+                                 ,?APPLICATION_EAVESDROP
+                                 ,?APPLICATION_FAX
+                                 ,?APPLICATION_PARK
+                                 ,?APPLICATION_SMS
+                                 ,?APPLICATION_TRANSFER
+                                 ]}
+        ,{?KEY_MEDIA, [?MEDIA_PROCESS, ?MEDIA_BYPASS, ?MEDIA_AUTO]}
+         %% Eavesdrop
+        ,{?KEY_MODE, [?MODE_FULL     % talk to both sides
+                     ,?MODE_LISTEN  % hear both sides - default
+                     ,?MODE_WHISPER % talk to one side
+                     ]}
+        ]).
 -define(OFFNET_RESOURCE_REQ_TYPES
        ,[{?KEY_ACCOUNT_ID, fun is_binary/1}
-	,{?KEY_B_LEG_EVENTS, fun kapi_dialplan:b_leg_events_v/1}
-	,{?KEY_CALL_ID, fun is_binary/1}
-	,{?KEY_CONTROL_QUEUE, fun is_binary/1}
-	,{?KEY_CCVS, fun kz_json:is_json_object/1}
-	,{?KEY_CSHS, fun kz_json:is_json_object/1}
-	,{?KEY_ENABLE_T38_GATEWAY, fun is_binary/1}
-	,{?KEY_FLAGS, fun is_list/1}
-	,{?KEY_FORCE_FAX, fun kz_util:is_boolean/1}
-	,{?KEY_FORCE_OUTBOUND, fun kz_util:is_boolean/1}
-	,{?KEY_TO_DID, fun is_binary/1}
-	,{?KEY_BYPASS_E164, fun kz_util:is_boolean/1}
-	]).
+        ,{?KEY_B_LEG_EVENTS, fun kapi_dialplan:b_leg_events_v/1}
+        ,{?KEY_CALL_ID, fun is_binary/1}
+        ,{?KEY_CONTROL_QUEUE, fun is_binary/1}
+        ,{?KEY_CCVS, fun kz_json:is_json_object/1}
+        ,{?KEY_CSHS, fun kz_json:is_json_object/1}
+        ,{?KEY_ENABLE_T38_GATEWAY, fun is_binary/1}
+        ,{?KEY_FLAGS, fun is_list/1}
+        ,{?KEY_FORCE_FAX, fun kz_util:is_boolean/1}
+        ,{?KEY_FORCE_OUTBOUND, fun kz_util:is_boolean/1}
+        ,{?KEY_TO_DID, fun is_binary/1}
+        ,{?KEY_BYPASS_E164, fun kz_util:is_boolean/1}
+        ]).
 
 %% Offnet Resource Response
 -define(OFFNET_RESOURCE_RESP_HEADERS, [<<"Response-Message">>]).
 -define(OPTIONAL_OFFNET_RESOURCE_RESP_HEADERS, [<<"Error-Message">>, <<"Response-Code">>
-					       ,?KEY_CALL_ID, <<"Resource-Response">>
-					       ,?KEY_CONTROL_QUEUE
+                                               ,?KEY_CALL_ID, <<"Resource-Response">>
+                                               ,?KEY_CONTROL_QUEUE
                                                ]).
 -define(OFFNET_RESOURCE_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
-				     ,{<<"Event-Name">>, <<"offnet_resp">>}
+                                     ,{<<"Event-Name">>, <<"offnet_resp">>}
                                      ]).
 -define(OFFNET_RESOURCE_RESP_TYPES, []).
 

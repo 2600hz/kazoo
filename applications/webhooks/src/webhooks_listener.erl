@@ -11,15 +11,15 @@
 -behaviour(gen_listener).
 
 -export([start_link/0
-	,handle_config/2
+        ,handle_config/2
         ]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("webhooks.hrl").
@@ -31,15 +31,15 @@
 -type state() :: #state{}.
 
 -define(BINDINGS, [{'conf', [{'action', <<"*">>}
-			    ,{'db', ?KZ_WEBHOOKS_DB}
-			    ,{'type', <<"webhook">>}
-			    ,{'id', <<"*">>}
-			    ,'federate'
+                            ,{'db', ?KZ_WEBHOOKS_DB}
+                            ,{'type', <<"webhook">>}
+                            ,{'id', <<"*">>}
+                            ,'federate'
                             ]}
                   ]).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_config'}
-		     ,[{<<"configuration">>, <<"*">>}]
+                     ,[{<<"configuration">>, <<"*">>}]
                      }
                     ]).
 
@@ -53,10 +53,10 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER
-			   ,[{'bindings', ?BINDINGS}
-			    ,{'responders', ?RESPONDERS}
-			    ]
-			   ,[]
+                           ,[{'bindings', ?BINDINGS}
+                            ,{'responders', ?RESPONDERS}
+                            ]
+                           ,[]
                            ).
 
 -spec handle_config(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -64,8 +64,8 @@ start_link() ->
 handle_config(JObj, Props) ->
     'true' = kapi_conf:doc_update_v(JObj),
     handle_config(JObj
-		 ,props:get_value('server', Props)
-		 ,kz_api:event_name(JObj)
+                 ,props:get_value('server', Props)
+                 ,kz_api:event_name(JObj)
                  ).
 
 handle_config(JObj, Srv, ?DOC_CREATED) ->
@@ -95,7 +95,7 @@ handle_config(JObj, Srv, ?DOC_DELETED) ->
         Hook ->
             gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)}),
             webhooks_disabler:flush_failures(kapi_conf:get_account_id(JObj)
-					    ,kz_doc:id(JObj)
+                                            ,kz_doc:id(JObj)
                                             )
     end.
 
@@ -127,7 +127,7 @@ find_and_remove_hook(JObj, Srv) ->
 find_hook(JObj) ->
     kz_datamgr:open_cache_doc(?KZ_WEBHOOKS_DB
                              ,kapi_conf:get_id(JObj)
-			     ).
+                             ).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -266,7 +266,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec maybe_add_shared_bindings(webhook()) -> 'ok'.
 maybe_add_shared_bindings(#webhook{hook_event = <<"object">>
-				  ,account_id=AccountId
+                                  ,account_id=AccountId
                                   }) ->
     lager:debug("adding doc bindings for ~s", [AccountId]),
     webhooks_shared_listener:add_object_bindings(AccountId);
@@ -283,11 +283,11 @@ maybe_remove_shared_bindings(Id) ->
 
 -spec remove_shared_bindings(webhook()) -> 'ok'.
 remove_shared_bindings(#webhook{account_id = AccountId
-			       ,id = Id
+                               ,id = Id
                                }
                       ) ->
     lager:debug("account ~s removed an doc hook, seeing if others exist"
-	       ,[AccountId]
+               ,[AccountId]
                ),
     case ets:select(webhooks_util:table_id(), object_account_ms(AccountId, Id)) of
         [] ->
@@ -300,9 +300,9 @@ remove_shared_bindings(#webhook{account_id = AccountId
 -spec object_account_ms(ne_binary(), ne_binary()) -> ets:match_spec().
 object_account_ms(AccountId, Id) ->
     [{#webhook{account_id=AccountId
-	      ,hook_event='$1'
-	      ,hook_id=Id
-	      ,_='_'
+              ,hook_event='$1'
+              ,hook_id=Id
+              ,_='_'
               }
      ,[{'=:=', '$1', {'const', <<"object">>}}]
      ,['$_']

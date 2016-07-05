@@ -61,8 +61,8 @@ get_value({'database', View, Options}, _Resources, _Number, _OffnetJObj, DB, Def
                                 OldValue = props:get_value(ID, Acc, Default),
                                 props:set_value(ID, [Value | OldValue], Acc)
                         end
-		       ,[]
-		       ,Rows
+                       ,[]
+                       ,Rows
                        );
         {'error', E} ->
             throw({database_error, E})

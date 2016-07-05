@@ -13,12 +13,12 @@
 -export([start_listener/0]).
 
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("omnipresence.hrl").
@@ -27,62 +27,62 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {subs_pid :: pid()
-	       ,subs_ref :: reference()
+               ,subs_ref :: reference()
                }).
 
 -define(BINDINGS, [{'self', []}
                    %% channel events that toggle presence lights
-		  ,{'call', [{'restrict_to', ['CHANNEL_CREATE'
-					     ,'CHANNEL_ANSWER'
-					     ,'CHANNEL_DESTROY'
-					     ,'CHANNEL_CONNECTED'
-					     ,'CHANNEL_DISCONNECTED'
-					     ]
-			     }
-			    ,'federate'
-			    ]}
-		  ,{'presence', [{'restrict_to', ['update'
-						 ,'mwi_update'
-						 ,'reset'
-						 ,'flush'
-						 ,'search_req'
-						 ]
-				 }
-				,'federate'
-				]}
-		  ,{'omnipresence', [{'restrict_to', ['subscribe']}]}
+                  ,{'call', [{'restrict_to', ['CHANNEL_CREATE'
+                                             ,'CHANNEL_ANSWER'
+                                             ,'CHANNEL_DESTROY'
+                                             ,'CHANNEL_CONNECTED'
+                                             ,'CHANNEL_DISCONNECTED'
+                                             ]
+                             }
+                            ,'federate'
+                            ]}
+                  ,{'presence', [{'restrict_to', ['update'
+                                                 ,'mwi_update'
+                                                 ,'reset'
+                                                 ,'flush'
+                                                 ,'search_req'
+                                                 ]
+                                 }
+                                ,'federate'
+                                ]}
+                  ,{'omnipresence', [{'restrict_to', ['subscribe']}]}
                   ]).
 -define(RESPONDERS, [{{'omnip_subscriptions', 'handle_channel_event'}
-		     ,[{<<"call_event">>, <<"*">>}]
+                     ,[{<<"call_event">>, <<"*">>}]
                      }
-		    ,{{'omnip_subscriptions', 'handle_presence_update'}
-		     ,[{<<"presence">>, <<"update">>}]
-		     }
-		    ,{{'omnip_subscriptions', 'handle_mwi_update'}
-		     ,[{<<"presence">>, <<"mwi_update">>}]
-		     }
-		    ,{{'omnip_subscriptions', 'handle_reset'}
-		     ,[{<<"presence">>, <<"reset">>}]
-		     }
-		    ,{{'omnip_subscriptions', 'handle_flush'}
-		     ,[{<<"presence">>, <<"flush">>}]
-		     }
-		    ,{{'omnip_subscriptions', 'handle_kamailio_subscribe'}
-		     ,[{<<"presence">>, <<"subscription">>}]
-		     }
-		    ,{{'omnip_subscriptions', 'handle_search_req'}
-		     ,[{<<"presence">>, <<"search_req">>}]
-		     }
+                    ,{{'omnip_subscriptions', 'handle_presence_update'}
+                     ,[{<<"presence">>, <<"update">>}]
+                     }
+                    ,{{'omnip_subscriptions', 'handle_mwi_update'}
+                     ,[{<<"presence">>, <<"mwi_update">>}]
+                     }
+                    ,{{'omnip_subscriptions', 'handle_reset'}
+                     ,[{<<"presence">>, <<"reset">>}]
+                     }
+                    ,{{'omnip_subscriptions', 'handle_flush'}
+                     ,[{<<"presence">>, <<"flush">>}]
+                     }
+                    ,{{'omnip_subscriptions', 'handle_kamailio_subscribe'}
+                     ,[{<<"presence">>, <<"subscription">>}]
+                     }
+                    ,{{'omnip_subscriptions', 'handle_search_req'}
+                     ,[{<<"presence">>, <<"search_req">>}]
+                     }
                     ]).
 -define(QUEUE_NAME, <<"omnip_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -define(LISTENER_PARAMS, [{'bindings', ?BINDINGS}
-			 ,{'responders', ?RESPONDERS}
-			 ,{'queue_name', ?QUEUE_NAME}
-			 ,{'queue_options', ?QUEUE_OPTIONS}
-			 ,{'consume_options', ?CONSUME_OPTIONS}
+                         ,{'responders', ?RESPONDERS}
+                         ,{'queue_name', ?QUEUE_NAME}
+                         ,{'queue_options', ?QUEUE_OPTIONS}
+                         ,{'consume_options', ?CONSUME_OPTIONS}
                          ]).
 
 %%%===================================================================
@@ -157,7 +157,7 @@ handle_cast('find_subscriptions_srv', #state{subs_pid=_Pid}=State) ->
         P when is_pid(P) ->
             lager:debug("new subs pid: ~p", [P]),
             {'noreply', State#state{subs_pid=P
-				   ,subs_ref=erlang:monitor('process', P)
+                                   ,subs_ref=erlang:monitor('process', P)
                                    }}
     end;
 handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
@@ -182,11 +182,11 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
-						     ,subs_ref=Ref
+                                                     ,subs_ref=Ref
                                                      }=State) ->
     gen_listener:cast(self(), 'find_subscriptions_srv'),
     {'noreply', State#state{subs_pid='undefined'
-			   ,subs_ref='undefined'
+                           ,subs_ref='undefined'
                            }};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),

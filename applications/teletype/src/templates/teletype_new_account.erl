@@ -9,7 +9,7 @@
 -module(teletype_new_account).
 
 -export([init/0
-	,handle_new_account/2
+        ,handle_new_account/2
         ]).
 
 -include("teletype.hrl").
@@ -19,66 +19,66 @@
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
-	  [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
-	  ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
-	  ,?MACRO_VALUE(<<"user.password">>, <<"password">>, <<"Password">>, <<"Password">>)
-	   | ?ACCOUNT_MACROS
-	  ])
+          [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
+          ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
+          ,?MACRO_VALUE(<<"user.password">>, <<"password">>, <<"Password">>, <<"Password">>)
+           | ?ACCOUNT_MACROS
+          ])
        ).
 
 -define(TEMPLATE_TEXT, <<"Thank you for registering!
 Your account is ready to use, here are some details to help get you started!
 
-			 Account ID: {{account.id}}
-			 Account Name: {{account.name}}
-			 Account Realm: {{account.realm}}
+                         Account ID: {{account.id}}
+                         Account Name: {{account.name}}
+                         Account Realm: {{account.realm}}
 
-			 {% if admin %}Admin
-			   First Name: {{admin.first_name}}
-			   Last Name: {{admin.last_name}}
-			   Email: {{admin.email}}
-			   Timezone: {{admin.timezone}}
+                         {% if admin %}Admin
+                           First Name: {{admin.first_name}}
+                           Last Name: {{admin.last_name}}
+                           Email: {{admin.email}}
+                           Timezone: {{admin.timezone}}
 
-			   {% endif %}{% if devices %}SIP Credentials
-			     {% for device in devices %}User: {{device.user.first_name}} {{device.user.last_name}}
-			       Email: {{device.user.email|default:\"\"}}
+                           {% endif %}{% if devices %}SIP Credentials
+                             {% for device in devices %}User: {{device.user.first_name}} {{device.user.last_name}}
+                               Email: {{device.user.email|default:\"\"}}
 SIP Username: {{device.sip.username}}
-					SIP Password: {{device.sip.password}}
-					SIP Realm: {{account.realm}}
+                                        SIP Password: {{device.sip.password}}
+                                        SIP Realm: {{account.realm}}
 
-					{% endfor %}{% endif %}
+                                        {% endfor %}{% endif %}
 
-					  Sent from {{system.hostname}}">>).
+                                          Sent from {{system.hostname}}">>).
 -define(TEMPLATE_HTML, <<"<html><head><meta charset=\"utf-8\" /></head>
 <body>
-			 <h3>Thank you for registering!</h3>
-			 <h2>Welcome</h2>
-			 <p>Your account is ready to use, here are some details to help get you started!</p>
-			 <h2>Account</h2>
-			 <table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">
+                         <h3>Thank you for registering!</h3>
+                         <h2>Welcome</h2>
+                         <p>Your account is ready to use, here are some details to help get you started!</p>
+                         <h2>Account</h2>
+                         <table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">
 <tr><td>Account ID: </td><td>{{account.pvt_account_id}}</td></tr>
-			 <tr><td>Account Name: </td><td>{{account.name}}</td></tr>
-			 <tr><td>Account Realm: </td><td>{{account.realm}}</td></tr>
-			 </table>
-			 {% if admin %}
-			   <h2>Admin</h2>
-			       <table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">
+                         <tr><td>Account Name: </td><td>{{account.name}}</td></tr>
+                         <tr><td>Account Realm: </td><td>{{account.realm}}</td></tr>
+                         </table>
+                         {% if admin %}
+                           <h2>Admin</h2>
+                               <table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">
 <tr><td>Name: </td><td>{{admin.first_name}} {{admin.last_name}}</td></tr>
-			       <tr><td>Email: </td><td>{{admin.email}}</td></tr>
-			       <tr><td>Timezone: </td><td>{{admin.timezone}}</td></tr>
-			       </table>
-			       {% endif %}
-				 {% if devices %}
-				   <h2>SIP Credentials</h2>
-				       <table cellpadding=\"4\" cellspacing=\"0\" border=\"1\">
+                               <tr><td>Email: </td><td>{{admin.email}}</td></tr>
+                               <tr><td>Timezone: </td><td>{{admin.timezone}}</td></tr>
+                               </table>
+                               {% endif %}
+                                 {% if devices %}
+                                   <h2>SIP Credentials</h2>
+                                       <table cellpadding=\"4\" cellspacing=\"0\" border=\"1\">
 <tr><th>User</th><th>Email</th><th>SIP Username</th><th>SIP Password</th><th>SIP Realm</th></tr>
-				       {% for device in devices %}
-					 <tr><td>{{device.user.first_name}}{{device.user.last_name}}</td><td>{{device.user.email|default:\"\"}}</td><td>{{device.sip.username}}</td><td>{{device.sip.password}}</td><td>{{account.realm}}</td></tr>
+                                       {% for device in devices %}
+                                         <tr><td>{{device.user.first_name}}{{device.user.last_name}}</td><td>{{device.user.email|default:\"\"}}</td><td>{{device.sip.username}}</td><td>{{device.sip.password}}</td><td>{{account.realm}}</td></tr>
 {% endfor %}
   </table>
       {% endif %}
       <p style='font-size:9pt;color:#CCCCCC'>Sent from {{system.hostname}}</p>
-	  </body></html>">>).
+          </body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Your new VoIP services Account">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"New Account">>).
@@ -93,16 +93,16 @@ SIP Username: {{device.sip.username}}
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-					  ,{'text', ?TEMPLATE_TEXT}
-					  ,{'html', ?TEMPLATE_HTML}
-					  ,{'subject', ?TEMPLATE_SUBJECT}
-					  ,{'category', ?TEMPLATE_CATEGORY}
-					  ,{'friendly_name', ?TEMPLATE_NAME}
-					  ,{'to', ?TEMPLATE_TO}
-					  ,{'from', ?TEMPLATE_FROM}
-					  ,{'cc', ?TEMPLATE_CC}
-					  ,{'bcc', ?TEMPLATE_BCC}
-					  ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                          ,{'text', ?TEMPLATE_TEXT}
+                                          ,{'html', ?TEMPLATE_HTML}
+                                          ,{'subject', ?TEMPLATE_SUBJECT}
+                                          ,{'category', ?TEMPLATE_CATEGORY}
+                                          ,{'friendly_name', ?TEMPLATE_NAME}
+                                          ,{'to', ?TEMPLATE_TO}
+                                          ,{'from', ?TEMPLATE_FROM}
+                                          ,{'cc', ?TEMPLATE_CC}
+                                          ,{'bcc', ?TEMPLATE_BCC}
+                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
 -spec handle_new_account(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -122,8 +122,8 @@ handle_new_account(JObj, _Props) ->
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
-	     ,{<<"account">>, teletype_util:account_params(DataJObj)}
-	     ,{<<"admin">>, admin_user_properties(DataJObj)}
+             ,{<<"account">>, teletype_util:account_params(DataJObj)}
+             ,{<<"admin">>, admin_user_properties(DataJObj)}
              ],
 
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),

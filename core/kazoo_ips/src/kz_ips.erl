@@ -10,8 +10,8 @@
 -include("kazoo_ips.hrl").
 
 -export([available/0
-	,available/1
-	,available/2
+        ,available/1
+        ,available/2
         ]).
 -export([assigned/1]).
 -export([zones/0]).
@@ -129,12 +129,12 @@ zones() ->
                    {'error', any()}.
 hosts() ->
     ViewOptions = [{'group', 'true'}
-		  ,{'group_level', 1}
+                  ,{'group_level', 1}
                   ],
     case kz_datamgr:get_results(?KZ_DEDICATED_IP_DB
                                ,<<"dedicated_ips/host_listing">>
                                ,ViewOptions
-			       )
+                               )
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
@@ -163,7 +163,7 @@ summary(Host) ->
     case kz_datamgr:get_results(?KZ_DEDICATED_IP_DB
                                ,<<"dedicated_ips/summary_listing">>
                                ,ViewOptions
-			       )
+                               )
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(

@@ -16,11 +16,11 @@
 
 -export([start_link/0]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("amqp_util.hrl").
@@ -196,14 +196,14 @@ import_zone(ZoneName, [{'amqp_uri', URI}|Props], Dict) ->
     case dict:find(ZoneName, Dict) of
         'error' ->
             import_zone(ZoneName, Props, dict:store(ZoneName, [URI], Dict));
-	_ ->
+        _ ->
             import_zone(ZoneName, Props, dict:append(ZoneName, URI, Dict))
     end;
 import_zone(ZoneName, [{'uri', URI}|Props], Dict) ->
     case dict:find(ZoneName, Dict) of
         'error' ->
             import_zone(ZoneName, Props, dict:store(ZoneName, [URI], Dict));
-	_ ->
+        _ ->
             import_zone(ZoneName, Props, dict:append(ZoneName, URI, Dict))
     end;
 import_zone(ZoneName, [_|Props], Dict) -> import_zone(ZoneName, Props, Dict).

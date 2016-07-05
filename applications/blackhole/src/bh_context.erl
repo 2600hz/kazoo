@@ -9,25 +9,25 @@
 -module(bh_context).
 
 -export([new/0, new/2
-	,from_json/1, from_json/2
-	,to_json/1
-	,is_context/1
+        ,from_json/1, from_json/2
+        ,to_json/1
+        ,is_context/1
         ]).
 
 -export([setters/2
-	,auth_token/1, set_auth_token/2
-	,auth_account_id/1, set_auth_account_id/2
-	,account_id/1, set_account_id/2
-	,bindings/1, set_bindings/2
-	,bindings_from_json/1, add_binding/2, remove_binding/2, is_bound/2
-	,websocket_session_id/1, set_websocket_session_id/2
-	,websocket_pid/1, set_websocket_pid/2
-	,timestamp/1, set_timestamp/2
-	,name/1, set_name/2
-	,metadata/1, set_metadata/2
-	,destination/1, set_destination/2
-	,source/1, set_source/2
-	,req_id/1
+        ,auth_token/1, set_auth_token/2
+        ,auth_account_id/1, set_auth_account_id/2
+        ,account_id/1, set_account_id/2
+        ,bindings/1, set_bindings/2
+        ,bindings_from_json/1, add_binding/2, remove_binding/2, is_bound/2
+        ,websocket_session_id/1, set_websocket_session_id/2
+        ,websocket_pid/1, set_websocket_pid/2
+        ,timestamp/1, set_timestamp/2
+        ,name/1, set_name/2
+        ,metadata/1, set_metadata/2
+        ,destination/1, set_destination/2
+        ,source/1, set_source/2
+        ,req_id/1
         ]).
 
 -include("blackhole.hrl").
@@ -53,16 +53,16 @@
 -spec new(pid(), ne_binary()) -> context().
 new()->
     Setters = [
-	       fun put_reqid/1
-	      ,{fun set_timestamp/2, kz_util:current_tstamp()}
-	      ],
+               fun put_reqid/1
+              ,{fun set_timestamp/2, kz_util:current_tstamp()}
+              ],
     setters(#bh_context{}, Setters).
 
 new(SessionPid, SessionId) ->
     Setters = [
-	       {fun set_websocket_session_id/2, SessionId}
-	      ,{fun set_websocket_pid/2, SessionPid}
-	      ],
+               {fun set_websocket_session_id/2, SessionId}
+              ,{fun set_websocket_pid/2, SessionPid}
+              ],
     setters(new(), Setters).
 
 %%--------------------------------------------------------------------
@@ -77,11 +77,11 @@ from_json(JObj) ->
 
 from_json(Context, JObj) ->
     Setters = [
-	       {fun set_account_id/2, kz_json:get_value(<<"account_id">>, JObj)}
-	      ,{fun set_auth_token/2,kz_json:get_value(<<"auth_token">>, JObj)}
-	      ,{fun set_name/2, kz_json:get_value(<<"name">>, JObj)}
-	      ,{fun set_metadata/2, kz_json:get_value(<<"metadata">>, JObj)}
-	      ],
+               {fun set_account_id/2, kz_json:get_value(<<"account_id">>, JObj)}
+              ,{fun set_auth_token/2,kz_json:get_value(<<"auth_token">>, JObj)}
+              ,{fun set_name/2, kz_json:get_value(<<"name">>, JObj)}
+              ,{fun set_metadata/2, kz_json:get_value(<<"metadata">>, JObj)}
+              ],
     setters(Context, Setters).
 
 %%--------------------------------------------------------------------
@@ -93,18 +93,18 @@ from_json(Context, JObj) ->
 to_json(Context) ->
     kz_json:from_list(
       props:filter_undefined([
-			      {<<"account_id">>, account_id(Context)}
-			     ,{<<"auth_token">>, auth_token(Context)}
-			     ,{<<"auth_account_id">>, auth_account_id(Context)}
-			     ,{<<"bindings">>, bindings(Context)}
-			     ,{<<"websocket_session_id">>, websocket_session_id(Context)}
-			     ,{<<"timestamp">>, timestamp(Context)}
-			     ,{<<"name">>, name(Context)}
-			     ,{<<"metadata">>, metadata(Context)}
-			     ,{<<"destination">>, destination(Context)}
-			     ,{<<"source">>, source(Context)}
-			     ,{<<"req_id">>, req_id(Context)}
-			     ])
+                              {<<"account_id">>, account_id(Context)}
+                             ,{<<"auth_token">>, auth_token(Context)}
+                             ,{<<"auth_account_id">>, auth_account_id(Context)}
+                             ,{<<"bindings">>, bindings(Context)}
+                             ,{<<"websocket_session_id">>, websocket_session_id(Context)}
+                             ,{<<"timestamp">>, timestamp(Context)}
+                             ,{<<"name">>, name(Context)}
+                             ,{<<"metadata">>, metadata(Context)}
+                             ,{<<"destination">>, destination(Context)}
+                             ,{<<"source">>, source(Context)}
+                             ,{<<"req_id">>, req_id(Context)}
+                             ])
      ).
 
 %%--------------------------------------------------------------------
@@ -177,7 +177,7 @@ bindings(#bh_context{bindings=Bds}) ->
 bindings_from_json(JObj) ->
     case kz_json:get_value(<<"binding">>, JObj) of
         'undefined' ->
-	    kz_json:get_value(<<"bindings">>, JObj, []);
+            kz_json:get_value(<<"bindings">>, JObj, []);
         Binding -> [Binding]
     end.
 

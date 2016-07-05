@@ -12,7 +12,7 @@
 -include("stepswitch.hrl").
 
 -spec handle_req(stepswitch_resources:resources(), ne_binary(), kapi_offnet_resource:req(), ne_binary(), kz_proplist()) ->
-			stepswitch_resources:resources().
+                        stepswitch_resources:resources().
 handle_req(Resources, _Number, OffnetJObj, _DB, _Params) ->
     NewResources = case kapi_offnet_resource:hunt_account_id(OffnetJObj) of
                        'undefined' -> get_resources('undefined');
@@ -27,7 +27,7 @@ maybe_get_local_resources(HuntAccount, AccountId) ->
     case kz_util:is_in_account_hierarchy(HuntAccount, AccountId, 'true') of
         'false' ->
             lager:info("account ~s attempted to use local resources of ~s, but it is not allowed"
-		      ,[AccountId, HuntAccount]
+                      ,[AccountId, HuntAccount]
                       ),
             [];
         'true' ->

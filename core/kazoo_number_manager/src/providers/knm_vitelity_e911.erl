@@ -126,7 +126,7 @@ get_location(Number) ->
                                knm_number:knm_number().
 maybe_update_e911(Number) ->
     maybe_update_e911(Number
-		     ,knm_phone_number:dry_run(knm_number:phone_number(Number))
+                     ,knm_phone_number:dry_run(knm_number:phone_number(Number))
                      ).
 
 maybe_update_e911(Number, 'true') ->
@@ -172,8 +172,8 @@ maybe_update_e911(Number, 'false') ->
             case update_e911(Number1, E911) of
                 {'ok', Data} ->
                     knm_phone_number:set_feature(knm_number:phone_number(Number1)
-						,?VITELITY_KEY
-						,Data
+                                                ,?VITELITY_KEY
+                                                ,Data
                                                 );
                 {'error', E} ->
                     lager:error("vitelity e911 information update failed: ~p", [E]),
@@ -210,8 +210,8 @@ remove_number(Number) ->
                                  knm_vitelity_util:query_options().
 remove_e911_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
-	    ,{'xml', <<"yes">>}
-	    ,{'cmd', <<"e911delete">>}
+            ,{'xml', <<"yes">>}
+            ,{'cmd', <<"e911delete">>}
              | knm_vitelity_util:default_options()
             ]}
     ,{'uri', knm_vitelity_util:api_uri()}
@@ -227,8 +227,8 @@ remove_e911_options(DID) ->
                                   knm_vitelity_util:query_options().
 get_location_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
-	    ,{'xml', <<"yes">>}
-	    ,{'cmd', <<"e911getinfo">>}
+            ,{'xml', <<"yes">>}
+            ,{'cmd', <<"e911getinfo">>}
              | knm_vitelity_util:default_options()
             ]}
     ,{'uri', knm_vitelity_util:api_uri()}
@@ -268,15 +268,15 @@ e911_options(Number, AddressJObj) ->
     {UnitType, UnitNumber} = get_unit(kz_json:get_value(<<"extended_address">>, AddressJObj)),
     [{'qs', props:filter_undefined(
               [{'did', knm_converters:to_npan(DID)}
-	      ,{'name', kz_json:get_value(<<"customer_name">>, AddressJObj, get_account_name(AccountId))}
-	      ,{'address', kz_json:get_value(<<"street_address">>, AddressJObj)}
-	      ,{'unittype', UnitType}
-	      ,{'unitnumber', UnitNumber}
-	      ,{'city', kz_json:get_value(<<"locality">>, AddressJObj)}
-	      ,{'state', State}
-	      ,{'zip', kz_json:get_value(<<"postal_code">>, AddressJObj)}
-	      ,{'xml', <<"yes">>}
-	      ,{'cmd', <<"e911send">>}
+              ,{'name', kz_json:get_value(<<"customer_name">>, AddressJObj, get_account_name(AccountId))}
+              ,{'address', kz_json:get_value(<<"street_address">>, AddressJObj)}
+              ,{'unittype', UnitType}
+              ,{'unitnumber', UnitNumber}
+              ,{'city', kz_json:get_value(<<"locality">>, AddressJObj)}
+              ,{'state', State}
+              ,{'zip', kz_json:get_value(<<"postal_code">>, AddressJObj)}
+              ,{'xml', <<"yes">>}
+              ,{'cmd', <<"e911send">>}
                | knm_vitelity_util:default_options()
               ])
      }
@@ -323,12 +323,12 @@ get_account_name(AccountId) ->
 location_options(AddressJObj) ->
     State = knm_vitelity_util:get_short_state(kz_json:get_value(<<"region">>, AddressJObj)),
     [{'qs', [{'name', kz_json:get_value(<<"customer_name">>, AddressJObj)}
-	    ,{'address', kz_json:get_value(<<"street_address">>, AddressJObj)}
-	    ,{'city', kz_json:get_value(<<"locality">>, AddressJObj)}
-	    ,{'state', State}
-	    ,{'zip', kz_json:get_value(<<"postal_code">>, AddressJObj)}
-	    ,{'xml', <<"yes">>}
-	    ,{'cmd', <<"e911checkaddress">>}
+            ,{'address', kz_json:get_value(<<"street_address">>, AddressJObj)}
+            ,{'city', kz_json:get_value(<<"locality">>, AddressJObj)}
+            ,{'state', State}
+            ,{'zip', kz_json:get_value(<<"postal_code">>, AddressJObj)}
+            ,{'xml', <<"yes">>}
+            ,{'cmd', <<"e911checkaddress">>}
              | knm_vitelity_util:default_options()
             ]}
     ,{'uri', knm_vitelity_util:api_uri()}
@@ -363,7 +363,7 @@ process_xml_resp(RespXML) ->
                                      {'ok', kz_json:object() | ne_binary()} |
                                      {'error', ne_binary()}.
 process_xml_content_tag(#xmlElement{name='content'
-				   ,content=Children
+                                   ,content=Children
                                    }) ->
     Els = kz_xml:elements(Children),
     case knm_vitelity_util:xml_resp_status_msg(Els) of
@@ -382,14 +382,14 @@ process_xml_content_tag(#xmlElement{name='content'
 -spec xml_resp(xml_els()) -> kz_json:object() | ne_binary().
 xml_resp([#xmlElement{name='info'
                      ,content=Content
-		     }
+                     }
           |_]) ->
     kz_json:from_list(
       knm_vitelity_util:xml_els_to_proplist(
         kz_xml:elements(Content)
        ));
 xml_resp([#xmlElement{name='response'
-		     ,content=Content
+                     ,content=Content
                      }
           |_]) ->
     kz_xml:texts_to_binary(Content);

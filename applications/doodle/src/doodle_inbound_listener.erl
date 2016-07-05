@@ -11,14 +11,14 @@
 
 -export([start_link/1]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
-	,format_status/2
-	,handle_debug/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
+        ,format_status/2
+        ,handle_debug/3
         ]).
 
 -include("doodle.hrl").
@@ -28,24 +28,24 @@
 -record(state, {connection :: amqp_listener_connection()}).
 
 -define(BINDINGS(Ex), [{'sms', [{'exchange', Ex}
-			       ,{'restrict_to', ['inbound']}
+                               ,{'restrict_to', ['inbound']}
                                ]}
-		      ,{'self', []}
+                      ,{'self', []}
                       ]).
 -define(RESPONDERS, [{'doodle_inbound_handler'
-		     ,[{<<"message">>, <<"inbound">>}]
+                     ,[{<<"message">>, <<"inbound">>}]
                      }
                     ]).
 
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}
-		       ,{'durable', 'true'}
-		       ,{'auto_delete', 'false'}
-		       ,{'arguments', [{<<"x-message-ttl">>, 'infinity'}
-				      ,{<<"x-max-length">>, 'infinity'}
-				      ]}
+                       ,{'durable', 'true'}
+                       ,{'auto_delete', 'false'}
+                       ,{'arguments', [{<<"x-message-ttl">>, 'infinity'}
+                                      ,{<<"x-max-length">>, 'infinity'}
+                                      ]}
                        ]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}
-			 ,{'no_ack', 'false'}
+                         ,{'no_ack', 'false'}
                          ]).
 
 %%%===================================================================
@@ -57,25 +57,25 @@
 %%--------------------------------------------------------------------
 -spec start_link(amqp_listener_connection()) -> startlink_ret().
 start_link(#amqp_listener_connection{broker=Broker
-				    ,exchange=Exchange
-				    ,type=Type
-				    ,queue=Queue
-				    ,options=Options
+                                    ,exchange=Exchange
+                                    ,type=Type
+                                    ,queue=Queue
+                                    ,options=Options
                                     }=C) ->
     Exchanges = [{Exchange, Type, Options}],
     gen_listener:start_link(?SERVER
-			   ,[{'bindings', ?BINDINGS(Exchange)}
-			    ,{'responders', ?RESPONDERS}
-			    ,{'queue_name', Queue}       % optional to include
-			    ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-			    ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-			    ,{'declare_exchanges', Exchanges}
-			    ,{'broker', Broker}
-			    ]
-			   ,[C]
-			   ,[{'debug', [{'install', {fun handle_debug/3, 'mystate'}}]
-			     }
-			    ]
+                           ,[{'bindings', ?BINDINGS(Exchange)}
+                            ,{'responders', ?RESPONDERS}
+                            ,{'queue_name', Queue}       % optional to include
+                            ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                            ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                            ,{'declare_exchanges', Exchanges}
+                            ,{'broker', Broker}
+                            ]
+                           ,[C]
+                           ,[{'debug', [{'install', {fun handle_debug/3, 'mystate'}}]
+                             }
+                            ]
                            ).
 
 %%%===================================================================

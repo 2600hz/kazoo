@@ -18,29 +18,29 @@
 
 
 -spec parse_transform(forms(), options()) ->
-			     forms().
+                             forms().
 parse_transform(Forms, Options) ->
     Trace = kz_trace_opt(Options, Forms),
     case parse_trans:depth_first(fun(T,F,C,A) ->
-					 xform_fun(T,F,C,A,Forms, Trace)
-				 end, [], Forms, Options) of
-	{error, Es} ->
-	    Es ++ Forms;
-	{NewForms, _} ->
-	    parse_trans:revert(NewForms)
+                                         xform_fun(T,F,C,A,Forms, Trace)
+                                 end, [], Forms, Options) of
+        {error, Es} ->
+            Es ++ Forms;
+        {NewForms, _} ->
+            parse_trans:revert(NewForms)
     end.
 
 kz_trace_opt(Options, Forms) ->
     case proplists:get_value(kz_expand_trace, Options) of
-	undefined ->
-	    case [Opt || {attribute,_,kz_expand_trace,Opt} <- Forms] of
-		[] ->
-		    [];
-		[_|_] = L ->
-		    lists:last(L)
-	    end;
-	Flags when is_list(Flags) ->
-	    Flags
+        undefined ->
+            case [Opt || {attribute,_,kz_expand_trace,Opt} <- Forms] of
+                [] ->
+                    [];
+                [_|_] = L ->
+                    lists:last(L)
+            end;
+        Flags when is_list(Flags) ->
+            Flags
     end.
 
 

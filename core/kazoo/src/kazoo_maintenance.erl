@@ -10,16 +10,16 @@
 
 -export([nodes/0]).
 -export([hotload/1
-	,hotload_app/1
+        ,hotload_app/1
         ]).
 -export([syslog_level/1
-	,error_level/1
-	,console_level/1
+        ,error_level/1
+        ,console_level/1
         ]).
 -export([gc_all/0, gc_pids/1
-	,gc_top_mem_consumers/0, gc_top_mem_consumers/1
-	,top_mem_consumers/0, top_mem_consumers/1
-	,etop/0
+        ,gc_top_mem_consumers/0, gc_top_mem_consumers/1
+        ,top_mem_consumers/0, top_mem_consumers/1
+        ,etop/0
         ]).
 
 -include("include/kz_types.hrl").

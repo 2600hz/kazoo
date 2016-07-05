@@ -12,48 +12,48 @@
 -include_lib("kazoo/include/kz_types.hrl"). % get the kazoo types
 
 -export([update_pvt_parameters/2, update_pvt_parameters/3
-	,public_fields/1
-	,private_fields/1
+        ,public_fields/1
+        ,private_fields/1
 
-	,attachments/1, attachments/2
-	,stub_attachments/1, stub_attachments/2
-	,external_attachments/1, external_attachments/2
-	,attachment_names/1
-	,attachment/1, attachment/2, attachment/3
-	,latest_attachment_id/1
+        ,attachments/1, attachments/2
+        ,stub_attachments/1, stub_attachments/2
+        ,external_attachments/1, external_attachments/2
+        ,attachment_names/1
+        ,attachment/1, attachment/2, attachment/3
+        ,latest_attachment_id/1
 
-	,attachment_revision/1
-	,compare_attachments/2
+        ,attachment_revision/1
+        ,compare_attachments/2
 
-	,attachment_length/2
-	,attachment_content_type/1, attachment_content_type/2, attachment_content_type/3
-	,attachment_property/3
-	,delete_attachments/1, delete_attachment/2
-	,maybe_remove_attachments/1, maybe_remove_attachments/2
+        ,attachment_length/2
+        ,attachment_content_type/1, attachment_content_type/2, attachment_content_type/3
+        ,attachment_property/3
+        ,delete_attachments/1, delete_attachment/2
+        ,maybe_remove_attachments/1, maybe_remove_attachments/2
 
-	,type/1, type/2, set_type/2
-	,id/1, id/2, set_id/2
-	,revision/1, set_revision/2, delete_revision/1
-	,created/1, created/2, set_created/2
-	,modified/1, modified/2, set_modified/2
-	,vsn/1, vsn/2, set_vsn/2
-	,set_soft_deleted/2, is_soft_deleted/1
-	,set_deleted/1, set_deleted/2, is_deleted/1
+        ,type/1, type/2, set_type/2
+        ,id/1, id/2, set_id/2
+        ,revision/1, set_revision/2, delete_revision/1
+        ,created/1, created/2, set_created/2
+        ,modified/1, modified/2, set_modified/2
+        ,vsn/1, vsn/2, set_vsn/2
+        ,set_soft_deleted/2, is_soft_deleted/1
+        ,set_deleted/1, set_deleted/2, is_deleted/1
 
-	,account_id/1, account_id/2, set_account_id/2
-	,account_db/1, account_db/2, set_account_db/2
+        ,account_id/1, account_id/2, set_account_id/2
+        ,account_db/1, account_db/2, set_account_db/2
         ]).
 
 -export([update_pvt_modified/1]).
 
 -define(PVT_FUNS, [fun add_pvt_vsn/3
-		  ,fun add_pvt_account_id/3
-		  ,fun add_pvt_account_db/3
-		  ,fun add_pvt_created/3
-		  ,fun add_pvt_modified/3
-		  ,fun add_pvt_type/3
-		  ,fun add_pvt_node/3
-		  ,fun add_id/3
+                  ,fun add_pvt_account_id/3
+                  ,fun add_pvt_account_db/3
+                  ,fun add_pvt_created/3
+                  ,fun add_pvt_modified/3
+                  ,fun add_pvt_type/3
+                  ,fun add_pvt_node/3
+                  ,fun add_id/3
                   ]).
 
 %% CouchDB Keys
@@ -146,8 +146,8 @@ add_pvt_created(JObj, _, Opts) ->
     case kz_json:get_value(?KEY_REV, JObj) of
         'undefined' ->
             kz_json:set_value(?KEY_CREATED
-			     ,props:get_value('now', Opts, kz_util:current_tstamp())
-			     ,JObj
+                             ,props:get_value('now', Opts, kz_util:current_tstamp())
+                             ,JObj
                              );
         _ -> JObj
     end.
@@ -279,7 +279,7 @@ attachment(JObj) ->
     case kz_json:get_values(attachments(JObj, kz_json:new())) of
         {[], []} -> 'undefined';
         {[Attachment|_], [AttachmentName|_]} ->
-	    kz_json:from_list([{AttachmentName, Attachment}])
+            kz_json:from_list([{AttachmentName, Attachment}])
     end.
 
 attachment(JObj, AName) ->
@@ -355,9 +355,9 @@ id(JObj) ->
 
 id(JObj, Default) ->
     Id = kz_json:get_first_defined([?KEY_ID
-				   ,<<"id">>
-				   ,<<"ID">>
-				   ,[<<"value">>, <<"id">>]
+                                   ,<<"id">>
+                                   ,<<"ID">>
+                                   ,[<<"value">>, <<"id">>]
                                    ]
                                   ,JObj
                                   ,Default

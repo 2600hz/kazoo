@@ -30,9 +30,9 @@ handle(Data, Call1) ->
            end,
     case kapps_util:amqp_pool_request(
            build_offnet_request(Data, Call)
-				     ,fun kapi_offnet_resource:publish_req/1
-				     ,fun kapi_offnet_resource:resp_v/1
-				     ,30 * ?MILLISECONDS_IN_SECOND
+                                     ,fun kapi_offnet_resource:publish_req/1
+                                     ,fun kapi_offnet_resource:resp_v/1
+                                     ,30 * ?MILLISECONDS_IN_SECOND
           )
     of
         {'ok', Res} ->
@@ -50,8 +50,8 @@ handle_result(JObj, Call) ->
     handle_result(Message, Code, Response, JObj, Call).
 
 -spec handle_result(binary(), binary()
-		   ,kz_json:object(), kz_json:object()
-		   ,kapps_call:call()
+                   ,kz_json:object(), kz_json:object()
+                   ,kapps_call:call()
                    ) -> 'ok'.
 handle_result(_Message, <<"sip:200">>, Response, _JObj, Call1) ->
     Status = doodle_util:sms_status(Response),
@@ -186,11 +186,11 @@ get_sip_headers(Data, Call) ->
 -spec get_flags(kz_json:object(), kapps_call:call()) -> 'undefined' | ne_binaries().
 get_flags(Data, Call) ->
     Routines = [fun get_endpoint_flags/3
-	       ,fun get_flow_flags/3
-	       ,fun get_flow_dynamic_flags/3
-	       ,fun get_endpoint_dynamic_flags/3
-	       ,fun get_account_dynamic_flags/3
-	       ,fun get_resource_flags/3
+               ,fun get_flow_flags/3
+               ,fun get_flow_dynamic_flags/3
+               ,fun get_endpoint_dynamic_flags/3
+               ,fun get_account_dynamic_flags/3
+               ,fun get_resource_flags/3
                ],
     lists:foldl(fun(F, A) -> F(Data, Call, A) end, [], Routines).
 
@@ -234,7 +234,7 @@ get_endpoint_dynamic_flags(_, Call, Flags) ->
         {'ok', JObj} ->
             case kz_json:get_value(<<"dynamic_flags">>, JObj) of
                 'undefined' -> Flags;
-		DynamicFlags ->
+                DynamicFlags ->
                     process_dynamic_flags(DynamicFlags, Flags, Call)
             end
     end.
@@ -242,10 +242,10 @@ get_endpoint_dynamic_flags(_, Call, Flags) ->
 -spec get_account_dynamic_flags(kz_json:object(), kapps_call:call(), ne_binaries()) -> ne_binaries().
 get_account_dynamic_flags(_, Call, Flags) ->
     DynamicFlags = kapps_account_config:get(kapps_call:account_id(Call)
-					   ,<<"callflow">>
-					   ,<<"dynamic_flags">>
-					   ,[]
-					   ),
+                                           ,<<"callflow">>
+                                           ,<<"dynamic_flags">>
+                                           ,[]
+                                           ),
     process_dynamic_flags(DynamicFlags, Flags, Call).
 
 -spec process_dynamic_flags(ne_binaries(), ne_binaries(), kapps_call:call()) -> ne_binaries().

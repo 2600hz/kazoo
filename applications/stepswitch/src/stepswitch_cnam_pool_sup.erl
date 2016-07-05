@@ -18,10 +18,10 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILDREN, [?WORKER_NAME_ARGS('poolboy', ?STEPSWITCH_CNAM_POOL, [[{'name', {'local', ?STEPSWITCH_CNAM_POOL}}
-									,{'worker_module', 'stepswitch_cnam'}
-									,{'size', 10}
-									,{'max_overflow', 50}
-									,{'neg_resp_threshold', 1}
+                                                                        ,{'worker_module', 'stepswitch_cnam'}
+                                                                        ,{'size', 10}
+                                                                        ,{'max_overflow', 50}
+                                                                        ,{'neg_resp_threshold', 1}
                                                                         ]
                                                                        ]
                                     )

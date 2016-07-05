@@ -23,12 +23,12 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {cache = [] :: cache_objs()
-	       ,now_ms = 0 :: pos_integer()
+               ,now_ms = 0 :: pos_integer()
                }).
 
 correct() ->
     ?FORALL(Cmds
-	   ,commands(?MODULE)
+           ,commands(?MODULE)
            ,?TRAPEXIT(
                begin
                    kz_util:put_callid(?MODULE),
@@ -47,7 +47,7 @@ correct() ->
 
 correct_parallel() ->
     ?FORALL(Cmds
-	   ,parallel_commands(?MODULE),
+           ,parallel_commands(?MODULE),
             begin
                 kz_cache:stop_local(?SERVER),
                 {'ok', P} = kz_cache:start_link(?SERVER, [{'origin_bindings', [[]]}]),

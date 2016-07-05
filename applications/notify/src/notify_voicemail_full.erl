@@ -77,7 +77,7 @@ send(JObj, Account) ->
 
     BoxEmails = kzd_voicemail_box:notification_emails(VMBox),
     Emails = maybe_add_user_email(BoxEmails
-				 ,get_user_email(UserJObj, Account)
+                                 ,get_user_email(UserJObj, Account)
                                  ),
 
     build_and_send_email(TxtBody, HTMLBody, Subject, Emails, Props).
@@ -128,11 +128,11 @@ create_template_props(JObj) ->
 
     [{<<"service">>, notify_util:get_service_props(JObj, AccountJObj, ?MOD_CONFIG_CAT)}
     ,{<<"voicemail">>, [{<<"name">>, get_vm_name(JObj)}
-		       ,{<<"box">>, kz_json:get_value(<<"Voicemail-Box">>, JObj)}
-		       ,{<<"number">>, kz_json:get_value(<<"Voicemail-Number">>, JObj)}
-		       ,{<<"max_message_count">>, kz_json:get_value(<<"Max-Message-Count">>, JObj)}
-		       ,{<<"message_count">>, kz_json:get_value(<<"Message-Count">>, JObj)}
-		       ]}
+                       ,{<<"box">>, kz_json:get_value(<<"Voicemail-Box">>, JObj)}
+                       ,{<<"number">>, kz_json:get_value(<<"Voicemail-Number">>, JObj)}
+                       ,{<<"max_message_count">>, kz_json:get_value(<<"Max-Message-Count">>, JObj)}
+                       ,{<<"message_count">>, kz_json:get_value(<<"Message-Count">>, JObj)}
+                       ]}
     ,{<<"custom">>, notify_util:json_to_template_props(JObj)}
     ].
 
@@ -170,25 +170,25 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
-	    ,[{<<"From">>, From}
-	     ,{<<"To">>, To}
-	     ,{<<"Subject">>, Subject}
-	     ]
-	    ,[]
-	    ,[{<<"multipart">>, <<"alternative">>, [], []
-	      ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
-	       ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
-	       ]
-	      }
-	     ]
+            ,[{<<"From">>, From}
+             ,{<<"To">>, To}
+             ,{<<"Subject">>, Subject}
+             ]
+            ,[]
+            ,[{<<"multipart">>, <<"alternative">>, [], []
+              ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
+               ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
+               ]
+              }
+             ]
             },
     notify_util:send_email(From, To, Email).
 
 -spec is_notice_enabled(kz_json:object()) -> boolean().
 is_notice_enabled(JObj) ->
     case  kz_json:get_value([<<"notifications">>
-			    ,<<"voicemail_full">>
-			    ,<<"enabled">>
+                            ,<<"voicemail_full">>
+                            ,<<"enabled">>
                             ], JObj)
     of
         'undefined' -> is_notice_enabled_default();

@@ -13,12 +13,12 @@
 -module(cb_rate_limits).
 
 -export([init/0
-	,allowed_methods/0
-	,authorize/1
-	,resource_exists/0
-	,validate/1
-	,post/1
-	,delete/1
+        ,allowed_methods/0
+        ,authorize/1
+        ,resource_exists/0
+        ,validate/1
+        ,post/1
+        ,delete/1
         ]).
 
 -include("crossbar.hrl").
@@ -161,7 +161,7 @@ validate_get_rate_limits(Context, ThingId) ->
         [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context, ?TYPE_CHECK_OPTION(<<"rate_limits">>));
         RateLimitsIds ->
             lager:error("Found more than one result, please check ids(from db ~s): ~p"
-		       ,[cb_context:account_db(Context), RateLimitsIds]
+                       ,[cb_context:account_db(Context), RateLimitsIds]
                        ),
             crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
     end.
@@ -176,15 +176,15 @@ validate_delete_rate_limits(Context, ThingId) ->
         [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context, ?TYPE_CHECK_OPTION(<<"rate_limits">>));
         RateLimitsIds ->
             lager:error("Found more than one result, please check ids(from db ~s): ~p"
-		       ,[cb_context:account_db(Context), RateLimitsIds]
+                       ,[cb_context:account_db(Context), RateLimitsIds]
                        ),
             crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
     end.
 
 -spec validate_set_rate_limits(cb_context:context()) ->
-				      cb_context:context().
+                                      cb_context:context().
 -spec validate_set_rate_limits(cb_context:context(), api_binary()) ->
-				      cb_context:context().
+                                      cb_context:context().
 validate_set_rate_limits(Context) ->
     lager:debug("rate limits data is valid, setting on thing"),
     validate_set_rate_limits(Context, thing_id(Context)).
@@ -199,7 +199,7 @@ validate_set_rate_limits(Context, ThingId) ->
         [RateLimitsId] -> crossbar_doc:load_merge(RateLimitsId, Context, ?TYPE_CHECK_OPTION(<<"rate_limits">>));
         RateLimitsIds ->
             lager:error("Found more than one result, please check ids(from db ~s): ~p"
-		       ,[cb_context:account_db(Context), RateLimitsIds]
+                       ,[cb_context:account_db(Context), RateLimitsIds]
                        ),
             crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
     end.
@@ -211,9 +211,9 @@ set_pvt_fields(Context) ->
     ThingType = kz_doc:type(JObj),
 
     Props = [{<<"pvt_type">>, <<"rate_limits">>}
-	    ,{<<"pvt_owner_id">>, ThingId}
-	    ,{<<"pvt_owner_type">>, ThingType}
-	    ,{<<"pvt_queryname">>, query_name(ThingType, JObj)}
+            ,{<<"pvt_owner_id">>, ThingId}
+            ,{<<"pvt_owner_type">>, ThingType}
+            ,{<<"pvt_queryname">>, query_name(ThingType, JObj)}
             ],
     cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context))).
 

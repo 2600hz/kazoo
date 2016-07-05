@@ -34,7 +34,7 @@ handle(Data, Call) ->
     AccountDb = kapps_call:account_db(Call),
     lager:debug("comparing caller id ~s with match list ~s entries in ~s", [CallerIdNumber, ListId, AccountDb]),
     case is_matching_prefix(AccountDb, ListId, CallerIdNumber)
-	orelse is_matching_regexp(AccountDb, ListId, CallerIdNumber)
+        orelse is_matching_regexp(AccountDb, ListId, CallerIdNumber)
     of
         'true' -> handle_match(Call);
         'false' -> handle_no_match(Call)

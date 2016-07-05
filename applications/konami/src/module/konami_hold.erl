@@ -15,7 +15,7 @@
 -module(konami_hold).
 
 -export([handle/2
-	,number_builder/1
+        ,number_builder/1
         ]).
 
 -include("konami.hrl").
@@ -38,8 +38,8 @@ handle(Data, Call) ->
     lager:debug("leg ~s is putting ~s on hold", [RequestingLeg, hold_leg(Call, RequestingLeg)]),
 
     kapps_call_command:send_command(props:set_value(<<"Insert-At">>, <<"now">>, HoldCommand)
-				   ,Call
-				   ),
+                                   ,Call
+                                   ),
     {'continue', Call}.
 
 -spec hold_leg(kapps_call:call(), ne_binary()) -> ne_binary().
@@ -94,7 +94,7 @@ metaflow_jobj(NumberJObj, "h") ->
     number_builder_moh(NumberJObj);
 metaflow_jobj(NumberJObj, MOH) ->
     kz_json:set_values([{<<"module">>, <<"hold">>}
-		       ,{<<"data">>, moh_data(MOH)}
+                       ,{<<"data">>, moh_data(MOH)}
                        ], NumberJObj).
 
 -spec moh_data(string()) -> kz_json:object().

@@ -11,12 +11,12 @@
 
 -export([start_link/0]).
 -export([init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("skel.hrl").
@@ -27,7 +27,7 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'route', []}
-		  ,{'self', []}
+                  ,{'self', []}
                   ]).
 -define(RESPONDERS, [
                      %% Received because of our route binding
@@ -35,7 +35,7 @@
 
                      %% Received because of our self binding (route_wins are sent to the route_resp's Server-ID
                      %% which is usually populated with the listener's queue name
-		    ,{{'skel_handlers', 'handle_route_win'}, [{<<"dialplan">>, <<"route_win">>}]}
+                    ,{{'skel_handlers', 'handle_route_win'}, [{<<"dialplan">>, <<"route_win">>}]}
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -52,10 +52,10 @@
 start_link() ->
     gen_listener:start_link(?SERVER, [
                                       {'bindings', ?BINDINGS}
-				     ,{'responders', ?RESPONDERS}
-				     ,{'queue_name', ?QUEUE_NAME}       % optional to include
-				     ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-				     ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                                     ,{'responders', ?RESPONDERS}
+                                     ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                                     ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                                     ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                       %%,{basic_qos, 1}                % only needed if prefetch controls
                                      ], []).
 

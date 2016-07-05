@@ -17,76 +17,76 @@
 -export([optional_bridge_req_endpoint_headers/0]).
 
 -export([bridge/1, bridge_v/1, bridge_endpoint/1, bridge_endpoint_v/1
-	,unbridge/1, unbridge_v/1
-	,page/1, page_v/1
-	,store/1, store_v/1, store_amqp_resp/1, store_amqp_resp_v/1
-	,store_http_resp/1, store_http_resp_v/1
-	,noop/1, noop_v/1
-	,fetch/1, fetch_v/1
-	,respond/1, respond_v/1
-	,redirect/1, redirect_v/1
-	,progress/1, progress_v/1
-	,ring/1, ring_v/1
-	,receive_fax/1, receive_fax_v/1
-	,store_fax/1, store_fax_v/1
-	,execute_extension/1, execute_extension_v/1
-	,break/1, break_v/1
-	,play/1, play_v/1, playstop/1, playstop_v/1
-	,tts/1, tts_v/1
-	,record/1, record_v/1
-	,record_call/1, record_call_v/1
-	,answer/1, answer_v/1
-	,echo/1, echo_v/1
-	,privacy/1, privacy_v/1
-	,hold/1, hold_v/1
-	,soft_hold/1, soft_hold_v/1
-	,park/1, park_v/1
-	,play_and_collect_digits/1, play_and_collect_digits_v/1
-	,call_pickup/1, call_pickup_v/1
-	,connect_leg/1, connect_leg_v/1
-	,eavesdrop/1, eavesdrop_v/1
-	,hangup/1, hangup_v/1
-	,say/1, say_v/1
-	,sleep/1, sleep_v/1
-	,tone_detect/1, tone_detect_v/1
-	,set/1, set_v/1
-	,set_terminators/1, set_terminators_v/1
-	,send_dtmf/1, send_dtmf_v/1
-	,tones/1, tones_req_tone/1, tones_v/1, tones_req_tone_v/1
-	,tones_req_tone_headers/1
-	,conference/1, conference_v/1
-	,originate_ready/1, originate_ready_v/1
-	,originate_execute/1, originate_execute_v/1
-	,metaflow/1, metaflow_v/1
-	,fax_detection/1, fax_detection_v/1
-	,store_vm/1, store_vm_v/1
-	,b_leg_events_v/1
-	,audio_level/1
+        ,unbridge/1, unbridge_v/1
+        ,page/1, page_v/1
+        ,store/1, store_v/1, store_amqp_resp/1, store_amqp_resp_v/1
+        ,store_http_resp/1, store_http_resp_v/1
+        ,noop/1, noop_v/1
+        ,fetch/1, fetch_v/1
+        ,respond/1, respond_v/1
+        ,redirect/1, redirect_v/1
+        ,progress/1, progress_v/1
+        ,ring/1, ring_v/1
+        ,receive_fax/1, receive_fax_v/1
+        ,store_fax/1, store_fax_v/1
+        ,execute_extension/1, execute_extension_v/1
+        ,break/1, break_v/1
+        ,play/1, play_v/1, playstop/1, playstop_v/1
+        ,tts/1, tts_v/1
+        ,record/1, record_v/1
+        ,record_call/1, record_call_v/1
+        ,answer/1, answer_v/1
+        ,echo/1, echo_v/1
+        ,privacy/1, privacy_v/1
+        ,hold/1, hold_v/1
+        ,soft_hold/1, soft_hold_v/1
+        ,park/1, park_v/1
+        ,play_and_collect_digits/1, play_and_collect_digits_v/1
+        ,call_pickup/1, call_pickup_v/1
+        ,connect_leg/1, connect_leg_v/1
+        ,eavesdrop/1, eavesdrop_v/1
+        ,hangup/1, hangup_v/1
+        ,say/1, say_v/1
+        ,sleep/1, sleep_v/1
+        ,tone_detect/1, tone_detect_v/1
+        ,set/1, set_v/1
+        ,set_terminators/1, set_terminators_v/1
+        ,send_dtmf/1, send_dtmf_v/1
+        ,tones/1, tones_req_tone/1, tones_v/1, tones_req_tone_v/1
+        ,tones_req_tone_headers/1
+        ,conference/1, conference_v/1
+        ,originate_ready/1, originate_ready_v/1
+        ,originate_execute/1, originate_execute_v/1
+        ,metaflow/1, metaflow_v/1
+        ,fax_detection/1, fax_detection_v/1
+        ,store_vm/1, store_vm_v/1
+        ,b_leg_events_v/1
+        ,audio_level/1
         ]).
 
 -export([queue/1, queue_v/1
-	,error/1, error_v/1
+        ,error/1, error_v/1
         ]).
 
 %% API Helpers
 -export([dial_method_single/0
-	,dial_method_simultaneous/0
-	,terminators/1, terminators_v/1
-	,offsite_store_url/2
+        ,dial_method_simultaneous/0
+        ,terminators/1, terminators_v/1
+        ,offsite_store_url/2
         ]).
 
 -export([bind_q/2
-	,unbind_q/2
+        ,unbind_q/2
         ]).
 
 -export([declare_exchanges/0]).
 
 -export([publish_action/2, publish_action/3
-	,publish_error/2, publish_error/3
-	,publish_command/2, publish_command/3
-	,publish_metaflow/1, publish_metaflow/2
-	,publish_originate_ready/2, publish_originate_ready/3
-	,publish_originate_execute/2, publish_originate_execute/3
+        ,publish_error/2, publish_error/3
+        ,publish_command/2, publish_command/3
+        ,publish_metaflow/1, publish_metaflow/2
+        ,publish_originate_ready/2, publish_originate_ready/3
+        ,publish_originate_execute/2, publish_originate_execute/3
         ]).
 
 -include_lib("kazoo/include/kz_api.hrl").
@@ -706,8 +706,8 @@ park_v(JObj) ->
 -spec audio_level(api_terms()) -> api_formatter_return().
 audio_level(Prop) when is_list(Prop) ->
     case audio_level_v(Prop) of
-	'true' -> kz_api:build_message(Prop, ?AUDIO_REQ_HEADERS, ?OPTIONAL_AUDIO_REQ_HEADERS);
-	'false' -> {'error', "Proplist failed validation for audio_level_req"}
+        'true' -> kz_api:build_message(Prop, ?AUDIO_REQ_HEADERS, ?OPTIONAL_AUDIO_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for audio_level_req"}
     end;
 audio_level(JObj) ->
     audio_level(kz_json:to_proplist(JObj)).
@@ -1047,11 +1047,11 @@ error(JObj) -> error(kz_json:to_proplist(JObj)).
 -spec error_v(api_terms()) -> boolean().
 error_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop
-		   ,?ERROR_RESP_HEADERS
-		   ,[{<<"Event-Name">>, <<"dialplan">>}
-		     | ?ERROR_RESP_VALUES
-		    ]
-		   ,?ERROR_RESP_TYPES
+                   ,?ERROR_RESP_HEADERS
+                   ,[{<<"Event-Name">>, <<"dialplan">>}
+                     | ?ERROR_RESP_VALUES
+                    ]
+                   ,?ERROR_RESP_TYPES
                    );
 error_v(JObj) -> error_v(kz_json:to_proplist(JObj)).
 
@@ -1223,8 +1223,8 @@ fax_detection_v(Prop) when is_list(Prop) ->
 fax_detection_v(JObj) -> fax_detection_v(kz_json:to_proplist(JObj)).
 
 -spec store_vm(api_terms()) ->
-		      {'ok', kz_proplist()} |
-		      {'error', string()}.
+                      {'ok', kz_proplist()} |
+                      {'error', string()}.
 store_vm(Prop) when is_list(Prop) ->
     case store_vm_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?STORE_VM_REQ_HEADERS, ?OPTIONAL_STORE_VM_REQ_HEADERS);

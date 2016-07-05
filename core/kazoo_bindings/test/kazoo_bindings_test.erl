@@ -31,27 +31,27 @@
 binding_matches(B, R) when erlang:byte_size(B) > 0 andalso erlang:byte_size(R) > 0 ->
     kazoo_bindings:matches(
       lists:reverse(binary:split(B, <<".">>, ['global']))
-			  ,lists:reverse(binary:split(R, <<".">>, ['global']))
+                          ,lists:reverse(binary:split(R, <<".">>, ['global']))
      ).
 
 -define(ROUTINGS, [<<"foo.bar.zot">>
-		  ,<<"foo.quux.zot">>
-		  ,<<"foo.bar.quux.zot">>
-		  ,<<"foo.zot">>
-		  ,<<"foo">>
-		  ,<<"xap">>
+                  ,<<"foo.quux.zot">>
+                  ,<<"foo.bar.quux.zot">>
+                  ,<<"foo.zot">>
+                  ,<<"foo">>
+                  ,<<"xap">>
                   ]).
 
 -define(BINDINGS, [{<<"#">>, ['true', 'true', 'true', 'true', 'true', 'true']}
-		  ,{<<"foo.*.zot">>, ['true', 'true', 'false', 'false', 'false', 'false']}
-		  ,{<<"foo.#.zot">>, ['true', 'true', 'true', 'true', 'false', 'false']}
-		  ,{<<"*.bar.#">>, ['true', 'false', 'true', 'false', 'false', 'false']}
-		  ,{<<"*">>, ['false', 'false', 'false', 'false', 'true', 'true']}
-		  ,{<<"#.tow">>, ['false', 'false', 'false', 'false', 'false', 'false']}
-		  ,{<<"#.quux.zot">>, ['false', 'true', 'true', 'false', 'false', 'false']}
-		  ,{<<"xap.#">>, ['false', 'false', 'false', 'false', 'false', 'true']}
-		  ,{<<"#.*">>, ['true', 'true', 'true', 'true', 'true', 'true']}
-		  ,{<<"#.bar.*">>, ['true', 'false', 'false', 'false', 'false', 'false']}
+                  ,{<<"foo.*.zot">>, ['true', 'true', 'false', 'false', 'false', 'false']}
+                  ,{<<"foo.#.zot">>, ['true', 'true', 'true', 'true', 'false', 'false']}
+                  ,{<<"*.bar.#">>, ['true', 'false', 'true', 'false', 'false', 'false']}
+                  ,{<<"*">>, ['false', 'false', 'false', 'false', 'true', 'true']}
+                  ,{<<"#.tow">>, ['false', 'false', 'false', 'false', 'false', 'false']}
+                  ,{<<"#.quux.zot">>, ['false', 'true', 'true', 'false', 'false', 'false']}
+                  ,{<<"xap.#">>, ['false', 'false', 'false', 'false', 'false', 'true']}
+                  ,{<<"#.*">>, ['true', 'true', 'true', 'true', 'true', 'true']}
+                  ,{<<"#.bar.*">>, ['true', 'false', 'false', 'false', 'false', 'false']}
                   ]).
 
 bindings_match_test() ->
@@ -79,21 +79,21 @@ expands_test_() ->
     ,{'timeout'
      ,50000
      ,?_assertEqual('true'
-		   ,proper:quickcheck(?MODULE:prop_expands()
-				     ,[{'numtests', 10000}]
-				     )
-		   )
+                   ,proper:quickcheck(?MODULE:prop_expands()
+                                     ,[{'numtests', 10000}]
+                                     )
+                   )
      }
     }.
 
 prop_expands() ->
     ?FORALL(Paths
-	   ,expanded_paths(),
+           ,expanded_paths(),
             ?WHENFAIL(io:format("Failed on ~p~n", [Paths])
-		     ,lists:all(fun kz_util:identity/1,
-				[binding_matches(Pattern, Expanded) =:= Expected
-				 || {Pattern, Expanded, Expected} <- Paths
-				])
+                     ,lists:all(fun kz_util:identity/1,
+                                [binding_matches(Pattern, Expanded) =:= Expected
+                                 || {Pattern, Expanded, Expected} <- Paths
+                                ])
                      )
            ).
 

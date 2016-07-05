@@ -13,8 +13,8 @@
 find_local_test_() ->
     [{"Finding local numbers not supported"
      ,?_assertMatch({'error', 'not_available'}
-		   ,knm_local:find_numbers(<<"415">>, 1, [])
-		   )
+                   ,knm_local:find_numbers(<<"415">>, 1, [])
+                   )
      }
     ,{"Finding local numbers returns empty list"
      ,?_assertEqual([], knm_carriers:find(<<"415">>))
@@ -37,9 +37,9 @@ find_no_phonebook() ->
 
 find_blocks() ->
     Options = [{<<"phonebook_url">>, ?BLOCK_PHONEBOOK_URL}
-	      ,{<<"blocks">>, 'true'}
-	      ,{?KNM_ACCOUNTID_CARRIER, ?RESELLER_ACCOUNT_ID}
-	      ,{<<"carriers">>, [?CARRIER_OTHER]}
+              ,{<<"blocks">>, 'true'}
+              ,{?KNM_ACCOUNTID_CARRIER, ?RESELLER_ACCOUNT_ID}
+              ,{<<"carriers">>, [?CARRIER_OTHER]}
               ],
     Limit = 10,
 
@@ -90,8 +90,8 @@ verify_block(PhoneNumber, JObj, DID, Activation) ->
 
 find_numbers() ->
     Options = [{<<"phonebook_url">>, ?NUMBER_PHONEBOOK_URL}
-	      ,{?KNM_ACCOUNTID_CARRIER, ?MASTER_ACCOUNT_ID}
-	      ,{<<"carriers">>, [?CARRIER_OTHER]}
+              ,{?KNM_ACCOUNTID_CARRIER, ?MASTER_ACCOUNT_ID}
+              ,{<<"carriers">>, [?CARRIER_OTHER]}
               ],
     Limit = 10,
     Results = knm_carriers:find(<<"415">>, Limit, Options),
@@ -105,16 +105,16 @@ find_numbers() ->
 verify_number_results(Results) ->
     {Tests, _} =
         lists:foldl(fun verify_number_result/2
-		   ,{[], 0}
-		   ,lists:reverse(Results)
+                   ,{[], 0}
+                   ,lists:reverse(Results)
                    ),
     Tests.
 
 verify_number_result(Result, {Tests, N}) ->
     {[{"Verify result DID"
       ,?_assertEqual(<<"+1415886790", (N+$0)>>
-		    ,kz_json:get_value(<<"number">>, Result)
-		    )
+                    ,kz_json:get_value(<<"number">>, Result)
+                    )
       }
      ,{"Verify result activation charge"
       ,activation_charge_test(Result, <<"+1415886790", (N+$0)>>)

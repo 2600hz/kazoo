@@ -9,10 +9,10 @@
 -module(kzd_media).
 
 -export([new/0
-	,type/0
-	,prompt_id/1, prompt_id/2
-	,is_prompt/1
-	,language/1, language/2
+        ,type/0
+        ,prompt_id/1, prompt_id/2
+        ,is_prompt/1
+        ,language/1, language/2
         ]).
 
 -include("kz_documents.hrl").

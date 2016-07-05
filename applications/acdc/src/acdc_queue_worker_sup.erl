@@ -17,11 +17,11 @@
 
 %% API
 -export([start_link/3
-	,stop/1
-	,listener/1
-	,shared_queue/1, start_shared_queue/5
-	,fsm/1, start_fsm/3
-	,status/1
+        ,stop/1
+        ,listener/1
+        ,shared_queue/1, start_shared_queue/5
+        ,fsm/1, start_fsm/3
+        ,status/1
         ]).
 
 %% Supervisor callbacks

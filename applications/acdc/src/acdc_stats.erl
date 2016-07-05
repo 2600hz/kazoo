@@ -13,48 +13,48 @@
 
 %% Public API
 -export([call_waiting/6
-	,call_abandoned/4
-	,call_handled/4
-	,call_missed/5
-	,call_processed/5
+        ,call_abandoned/4
+        ,call_handled/4
+        ,call_missed/5
+        ,call_processed/5
 
-	,find_call/1
-	,call_stat_to_json/1
-	,agent_ready/2
-	,agent_logged_in/2
-	,agent_logged_out/2
-	,agent_connecting/3, agent_connecting/5
-	,agent_connected/3, agent_connected/5
-	,agent_wrapup/3
-	,agent_paused/3
-	,agent_outbound/3
+        ,find_call/1
+        ,call_stat_to_json/1
+        ,agent_ready/2
+        ,agent_logged_in/2
+        ,agent_logged_out/2
+        ,agent_connecting/3, agent_connecting/5
+        ,agent_connected/3, agent_connected/5
+        ,agent_wrapup/3
+        ,agent_paused/3
+        ,agent_outbound/3
 
-	,agent_statuses/0
+        ,agent_statuses/0
         ]).
 
 %% ETS config
 -export([call_table_id/0
-	,call_key_pos/0
-	,call_table_opts/0
+        ,call_key_pos/0
+        ,call_table_opts/0
 
-	,init_db/1
-	,archive_call_data/2
+        ,init_db/1
+        ,archive_call_data/2
         ]).
 
 %% AMQP Callbacks
 -export([handle_call_stat/2
-	,handle_call_query/2
+        ,handle_call_query/2
         ]).
 
 %% gen_listener functions
 -export([start_link/0
-	,init/1
-	,handle_call/3
-	,handle_cast/2
-	,handle_info/2
-	,handle_event/2
-	,terminate/2
-	,code_change/3
+        ,init/1
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("acdc.hrl").
@@ -64,21 +64,21 @@
 
 %% Public API
 -spec call_waiting(api_binary()
-		  ,api_binary()
-		  ,api_binary()
-		  ,api_binary()
-		  ,api_binary()
-		  ,api_binary()
+                  ,api_binary()
+                  ,api_binary()
+                  ,api_binary()
+                  ,api_binary()
+                  ,api_binary()
                   ) -> 'ok' | {'error', any()}.
 call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPriority) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
-	     ,{<<"Queue-ID">>, QueueId}
-	     ,{<<"Call-ID">>, CallId}
-	     ,{<<"Caller-ID-Name">>, CallerIdName}
-	     ,{<<"Caller-ID-Number">>, CallerIdNumber}
-	     ,{<<"Entered-Timestamp">>, kz_util:current_tstamp()}
-	     ,{<<"Caller-Priority">>, CallerPriority}
+             ,{<<"Queue-ID">>, QueueId}
+             ,{<<"Call-ID">>, CallId}
+             ,{<<"Caller-ID-Name">>, CallerIdName}
+             ,{<<"Caller-ID-Number">>, CallerIdNumber}
+             ,{<<"Entered-Timestamp">>, kz_util:current_tstamp()}
+             ,{<<"Caller-Priority">>, CallerPriority}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_waiting/1).
@@ -86,10 +86,10 @@ call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPri
 call_abandoned(AccountId, QueueId, CallId, Reason) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
-	     ,{<<"Queue-ID">>, QueueId}
-	     ,{<<"Call-ID">>, CallId}
-	     ,{<<"Abandon-Reason">>, Reason}
-	     ,{<<"Abandon-Timestamp">>, kz_util:current_tstamp()}
+             ,{<<"Queue-ID">>, QueueId}
+             ,{<<"Call-ID">>, CallId}
+             ,{<<"Abandon-Reason">>, Reason}
+             ,{<<"Abandon-Timestamp">>, kz_util:current_tstamp()}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_abandoned/1).
@@ -97,10 +97,10 @@ call_abandoned(AccountId, QueueId, CallId, Reason) ->
 call_handled(AccountId, QueueId, CallId, AgentId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
-	     ,{<<"Queue-ID">>, QueueId}
-	     ,{<<"Call-ID">>, CallId}
-	     ,{<<"Agent-ID">>, AgentId}
-	     ,{<<"Handled-Timestamp">>, kz_util:current_tstamp()}
+             ,{<<"Queue-ID">>, QueueId}
+             ,{<<"Call-ID">>, CallId}
+             ,{<<"Agent-ID">>, AgentId}
+             ,{<<"Handled-Timestamp">>, kz_util:current_tstamp()}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_handled/1).
@@ -108,11 +108,11 @@ call_handled(AccountId, QueueId, CallId, AgentId) ->
 call_missed(AccountId, QueueId, AgentId, CallId, ErrReason) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
-	     ,{<<"Queue-ID">>, QueueId}
-	     ,{<<"Call-ID">>, CallId}
-	     ,{<<"Agent-ID">>, AgentId}
-	     ,{<<"Miss-Reason">>, ErrReason}
-	     ,{<<"Miss-Timestamp">>, kz_util:current_tstamp()}
+             ,{<<"Queue-ID">>, QueueId}
+             ,{<<"Call-ID">>, CallId}
+             ,{<<"Agent-ID">>, AgentId}
+             ,{<<"Miss-Reason">>, ErrReason}
+             ,{<<"Miss-Timestamp">>, kz_util:current_tstamp()}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_missed/1).
@@ -120,11 +120,11 @@ call_missed(AccountId, QueueId, AgentId, CallId, ErrReason) ->
 call_processed(AccountId, QueueId, AgentId, CallId, Initiator) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
-	     ,{<<"Queue-ID">>, QueueId}
-	     ,{<<"Call-ID">>, CallId}
-	     ,{<<"Agent-ID">>, AgentId}
-	     ,{<<"Processed-Timestamp">>, kz_util:current_tstamp()}
-	     ,{<<"Hung-Up-By">>, Initiator}
+             ,{<<"Queue-ID">>, QueueId}
+             ,{<<"Call-ID">>, CallId}
+             ,{<<"Agent-ID">>, AgentId}
+             ,{<<"Processed-Timestamp">>, kz_util:current_tstamp()}
+             ,{<<"Hung-Up-By">>, Initiator}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_processed/1).
@@ -132,9 +132,9 @@ call_processed(AccountId, QueueId, AgentId, CallId, Initiator) ->
 agent_ready(AcctId, AgentId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
-	     ,{<<"Agent-ID">>, AgentId}
-	     ,{<<"Timestamp">>, kz_util:current_tstamp()}
-	     ,{<<"Status">>, <<"ready">>}
+             ,{<<"Agent-ID">>, AgentId}
+             ,{<<"Timestamp">>, kz_util:current_tstamp()}
+             ,{<<"Status">>, <<"ready">>}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_ready/1).
@@ -142,9 +142,9 @@ agent_ready(AcctId, AgentId) ->
 agent_logged_in(AcctId, AgentId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
-	     ,{<<"Agent-ID">>, AgentId}
-	     ,{<<"Timestamp">>, kz_util:current_tstamp()}
-	     ,{<<"Status">>, <<"logged_in">>}
+             ,{<<"Agent-ID">>, AgentId}
+             ,{<<"Timestamp">>, kz_util:current_tstamp()}
+             ,{<<"Status">>, <<"logged_in">>}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_logged_in/1).
@@ -152,9 +152,9 @@ agent_logged_in(AcctId, AgentId) ->
 agent_logged_out(AcctId, AgentId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
-	     ,{<<"Agent-ID">>, AgentId}
-	     ,{<<"Timestamp">>, kz_util:current_tstamp()}
-	     ,{<<"Status">>, <<"logged_out">>}
+             ,{<<"Agent-ID">>, AgentId}
+             ,{<<"Timestamp">>, kz_util:current_tstamp()}
+             ,{<<"Status">>, <<"logged_out">>}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_logged_out/1).
@@ -164,12 +164,12 @@ agent_connecting(AcctId, AgentId, CallId) ->
 agent_connecting(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
-	     ,{<<"Agent-ID">>, AgentId}
-	     ,{<<"Timestamp">>, kz_util:current_tstamp()}
-	     ,{<<"Status">>, <<"connecting">>}
-	     ,{<<"Call-ID">>, CallId}
-	     ,{<<"Caller-ID-Name">>, CallerIDName}
-	     ,{<<"Caller-ID-Number">>, CallerIDNumber}
+             ,{<<"Agent-ID">>, AgentId}
+             ,{<<"Timestamp">>, kz_util:current_tstamp()}
+             ,{<<"Status">>, <<"connecting">>}
+             ,{<<"Call-ID">>, CallId}
+             ,{<<"Caller-ID-Name">>, CallerIDName}
+             ,{<<"Caller-ID-Number">>, CallerIDNumber}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_connecting/1).
@@ -179,12 +179,12 @@ agent_connected(AcctId, AgentId, CallId) ->
 agent_connected(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
-	     ,{<<"Agent-ID">>, AgentId}
-	     ,{<<"Timestamp">>, kz_util:current_tstamp()}
-	     ,{<<"Status">>, <<"connected">>}
-	     ,{<<"Call-ID">>, CallId}
-	     ,{<<"Caller-ID-Name">>, CallerIDName}
-	     ,{<<"Caller-ID-Number">>, CallerIDNumber}
+             ,{<<"Agent-ID">>, AgentId}
+             ,{<<"Timestamp">>, kz_util:current_tstamp()}
+             ,{<<"Status">>, <<"connected">>}
+             ,{<<"Call-ID">>, CallId}
+             ,{<<"Caller-ID-Name">>, CallerIDName}
+             ,{<<"Caller-ID-Number">>, CallerIDNumber}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_connected/1).
@@ -192,10 +192,10 @@ agent_connected(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
 agent_wrapup(AcctId, AgentId, WaitTime) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
-	     ,{<<"Agent-ID">>, AgentId}
-	     ,{<<"Timestamp">>, kz_util:current_tstamp()}
-	     ,{<<"Status">>, <<"wrapup">>}
-	     ,{<<"Wait-Time">>, WaitTime}
+             ,{<<"Agent-ID">>, AgentId}
+             ,{<<"Timestamp">>, kz_util:current_tstamp()}
+             ,{<<"Status">>, <<"wrapup">>}
+             ,{<<"Wait-Time">>, WaitTime}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_wrapup/1).
@@ -205,10 +205,10 @@ agent_paused(AcctId, AgentId, 'undefined') ->
 agent_paused(AcctId, AgentId, PauseTime) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
-	     ,{<<"Agent-ID">>, AgentId}
-	     ,{<<"Timestamp">>, kz_util:current_tstamp()}
-	     ,{<<"Status">>, <<"paused">>}
-	     ,{<<"Pause-Time">>, PauseTime}
+             ,{<<"Agent-ID">>, AgentId}
+             ,{<<"Timestamp">>, kz_util:current_tstamp()}
+             ,{<<"Status">>, <<"paused">>}
+             ,{<<"Pause-Time">>, PauseTime}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_paused/1).
@@ -216,10 +216,10 @@ agent_paused(AcctId, AgentId, PauseTime) ->
 agent_outbound(AcctId, AgentId, CallId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
-	     ,{<<"Agent-ID">>, AgentId}
-	     ,{<<"Timestamp">>, kz_util:current_tstamp()}
-	     ,{<<"Status">>, <<"outbound">>}
-	     ,{<<"Call-ID">>, CallId}
+             ,{<<"Agent-ID">>, AgentId}
+             ,{<<"Timestamp">>, kz_util:current_tstamp()}
+             ,{<<"Status">>, <<"outbound">>}
+             ,{<<"Call-ID">>, CallId}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_outbound/1).
@@ -237,45 +237,45 @@ call_table_opts() ->
     ].
 
 -define(BINDINGS, [{'self', []}
-		  ,{'acdc_stats', []}
+                  ,{'acdc_stats', []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_call_stat'}
-		     ,[{<<"acdc_call_stat">>, <<"waiting">>}
-		      ,{<<"acdc_call_stat">>, <<"missed">>}
-		      ,{<<"acdc_call_stat">>, <<"abandoned">>}
-		      ,{<<"acdc_call_stat">>, <<"handled">>}
-		      ,{<<"acdc_call_stat">>, <<"processed">>}
-		      ,{<<"acdc_call_stat">>, <<"flush">>}
-		      ]
+                     ,[{<<"acdc_call_stat">>, <<"waiting">>}
+                      ,{<<"acdc_call_stat">>, <<"missed">>}
+                      ,{<<"acdc_call_stat">>, <<"abandoned">>}
+                      ,{<<"acdc_call_stat">>, <<"handled">>}
+                      ,{<<"acdc_call_stat">>, <<"processed">>}
+                      ,{<<"acdc_call_stat">>, <<"flush">>}
+                      ]
                      }
-		    ,{{'acdc_agent_stats', 'handle_status_stat'}
-		     ,[{<<"acdc_status_stat">>, <<"ready">>}
-		      ,{<<"acdc_status_stat">>, <<"logged_in">>}
-		      ,{<<"acdc_status_stat">>, <<"logged_out">>}
-		      ,{<<"acdc_status_stat">>, <<"pending_logged_out">>}
-		      ,{<<"acdc_status_stat">>, <<"connecting">>}
-		      ,{<<"acdc_status_stat">>, <<"connected">>}
-		      ,{<<"acdc_status_stat">>, <<"wrapup">>}
-		      ,{<<"acdc_status_stat">>, <<"paused">>}
-		      ,{<<"acdc_status_stat">>, <<"outbound">>}
-		      ]
-		     }
-		    ,{{?MODULE, 'handle_call_query'}
-		     ,[{<<"acdc_stat">>, <<"current_calls_req">>}]
-		     }
-		    ,{{'acdc_agent_stats', 'handle_status_query'}
-		     ,[{<<"acdc_stat">>, <<"status_req">>}]
-		     }
+                    ,{{'acdc_agent_stats', 'handle_status_stat'}
+                     ,[{<<"acdc_status_stat">>, <<"ready">>}
+                      ,{<<"acdc_status_stat">>, <<"logged_in">>}
+                      ,{<<"acdc_status_stat">>, <<"logged_out">>}
+                      ,{<<"acdc_status_stat">>, <<"pending_logged_out">>}
+                      ,{<<"acdc_status_stat">>, <<"connecting">>}
+                      ,{<<"acdc_status_stat">>, <<"connected">>}
+                      ,{<<"acdc_status_stat">>, <<"wrapup">>}
+                      ,{<<"acdc_status_stat">>, <<"paused">>}
+                      ,{<<"acdc_status_stat">>, <<"outbound">>}
+                      ]
+                     }
+                    ,{{?MODULE, 'handle_call_query'}
+                     ,[{<<"acdc_stat">>, <<"current_calls_req">>}]
+                     }
+                    ,{{'acdc_agent_stats', 'handle_status_query'}
+                     ,[{<<"acdc_stat">>, <<"status_req">>}]
+                     }
                     ]).
 -define(QUEUE_NAME, <<>>).
 
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER
-			   ,[{'bindings', ?BINDINGS}
-			    ,{'responders', ?RESPONDERS}
-			    ,{'queue_name', ?QUEUE_NAME}
-			    ],
+                           ,[{'bindings', ?BINDINGS}
+                            ,{'responders', ?RESPONDERS}
+                            ,{'queue_name', ?QUEUE_NAME}
+                            ],
                             []).
 
 -spec handle_call_stat(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -305,10 +305,10 @@ handle_call_query(JObj, _Prop) ->
 
 find_call(CallId) ->
     MS = [{#call_stat{call_id=CallId
-		     ,_ = '_'
+                     ,_ = '_'
                      }
-	  ,[]
-	  ,['$_']
+          ,[]
+          ,['$_']
           }],
     case ets:select(call_table_id(), MS) of
         [] -> 'undefined';
@@ -317,9 +317,9 @@ find_call(CallId) ->
 
 -record(state, {
           archive_ref :: reference()
-	       ,cleanup_ref :: reference()
-	       ,call_table_id :: ets:tid()
-	       ,status_table_id :: ets:tid()
+               ,cleanup_ref :: reference()
+               ,call_table_id :: ets:tid()
+               ,status_table_id :: ets:tid()
          }).
 
 -spec init([]) -> {'ok', #state{}}.
@@ -329,7 +329,7 @@ init([]) ->
     lager:debug("started new acdc stats collector"),
 
     {'ok', #state{archive_ref=start_archive_timer()
-		 ,cleanup_ref=start_cleanup_timer()
+                 ,cleanup_ref=start_cleanup_timer()
                  }}.
 
 -spec start_archive_timer() -> reference().
@@ -413,7 +413,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 publish_query_errors(RespQ, MsgId, Errors) ->
     API = [{<<"Error-Reason">>, Errors}
-	  ,{<<"Msg-ID">>, MsgId}
+          ,{<<"Msg-ID">>, MsgId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("responding with errors to req ~s: ~p", [MsgId, Errors]),
@@ -425,8 +425,8 @@ call_build_match_spec(JObj) ->
             {'error', kz_json:from_list([{<<"Account-ID">>, <<"missing but required">>}])};
         AccountId ->
             AccountMatch = {#call_stat{account_id='$1', _='_'}
-			   ,[{'=:=', '$1', {'const', AccountId}}]
-			   },
+                           ,[{'=:=', '$1', {'const', AccountId}}]
+                           },
             call_build_match_spec(JObj, AccountMatch)
     end.
 
@@ -452,7 +452,7 @@ call_match_builder_fold(<<"Status">>, Status, {CallStat, Contstraints}) ->
     case is_valid_call_status(Status) of
         {'true', Normalized} ->
             {CallStat#call_stat{status='$4'}
-	    ,[{'=:=', '$4', {'const', Normalized}} | Contstraints]
+            ,[{'=:=', '$4', {'const', Normalized}} | Contstraints]
             };
         'false' ->
             {'error', kz_json:from_list([{<<"Status">>, <<"unknown status supplied">>}])}
@@ -464,17 +464,17 @@ call_match_builder_fold(<<"Start-Range">>, Start, {CallStat, Contstraints}) ->
     try kz_util:to_integer(Start) of
         N when N < Past ->
             {'error', kz_json:from_list([{<<"Start-Range">>, <<"supplied value is too far in the past">>}
-					,{<<"Window-Size">>, ?CLEANUP_WINDOW}
-					,{<<"Current-Timestamp">>, Now}
-					,{<<"Past-Timestamp">>, Past}
+                                        ,{<<"Window-Size">>, ?CLEANUP_WINDOW}
+                                        ,{<<"Current-Timestamp">>, Now}
+                                        ,{<<"Past-Timestamp">>, Past}
                                         ])};
         N when N > Now ->
             {'error', kz_json:from_list([{<<"Start-Range">>, <<"supplied value is in the future">>}
-					,{<<"Current-Timestamp">>, Now}
+                                        ,{<<"Current-Timestamp">>, Now}
                                         ])};
         N ->
             {CallStat#call_stat{entered_timestamp='$5'}
-	    ,[{'>=', '$5', N} | Contstraints]
+            ,[{'>=', '$5', N} | Contstraints]
             }
     catch
         _:_ ->
@@ -487,16 +487,16 @@ call_match_builder_fold(<<"End-Range">>, End, {CallStat, Contstraints}) ->
     try kz_util:to_integer(End) of
         N when N < Past ->
             {'error', kz_json:from_list([{<<"End-Range">>, <<"supplied value is too far in the past">>}
-					,{<<"Window-Size">>, ?CLEANUP_WINDOW}
-					,{<<"Current-Timestamp">>, Now}
+                                        ,{<<"Window-Size">>, ?CLEANUP_WINDOW}
+                                        ,{<<"Current-Timestamp">>, Now}
                                         ])};
         N when N > Now ->
             {'error', kz_json:from_list([{<<"End-Range">>, <<"supplied value is in the future">>}
-					,{<<"Current-Timestamp">>, Now}
+                                        ,{<<"Current-Timestamp">>, Now}
                                         ])};
         N ->
             {CallStat#call_stat{entered_timestamp='$5'}
-	    ,[{'=<', '$5', N} | Contstraints]
+            ,[{'=<', '$5', N} | Contstraints]
             }
     catch
         _:_ ->
@@ -517,24 +517,24 @@ query_calls(RespQ, MsgId, Match, _Limit) ->
         [] ->
             lager:debug("no stats found, sorry ~s", [RespQ]),
             Resp = [{<<"Query-Time">>, kz_util:current_tstamp()}
-		   ,{<<"Msg-ID">>, MsgId}
+                   ,{<<"Msg-ID">>, MsgId}
                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             kapi_acdc_stats:publish_current_calls_resp(RespQ, Resp);
         Stats ->
             Dict = dict:from_list([{<<"waiting">>, []}
-				  ,{<<"handled">>, []}
-				  ,{<<"abandoned">>, []}
-				  ,{<<"processed">>, []}
+                                  ,{<<"handled">>, []}
+                                  ,{<<"abandoned">>, []}
+                                  ,{<<"processed">>, []}
                                   ]),
 
             QueryResult = lists:foldl(fun query_call_fold/2, Dict, Stats),
             Resp = [{<<"Waiting">>, dict:fetch(<<"waiting">>, QueryResult)}
-		   ,{<<"Handled">>, dict:fetch(<<"handled">>, QueryResult)}
-		   ,{<<"Abandoned">>, dict:fetch(<<"abandoned">>, QueryResult)}
-		   ,{<<"Processed">>, dict:fetch(<<"processed">>, QueryResult)}
-		   ,{<<"Query-Time">>, kz_util:current_tstamp()}
-		   ,{<<"Msg-ID">>, MsgId}
+                   ,{<<"Handled">>, dict:fetch(<<"handled">>, QueryResult)}
+                   ,{<<"Abandoned">>, dict:fetch(<<"abandoned">>, QueryResult)}
+                   ,{<<"Processed">>, dict:fetch(<<"processed">>, QueryResult)}
+                   ,{<<"Query-Time">>, kz_util:current_tstamp()}
+                   ,{<<"Msg-ID">>, MsgId}
                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
 
@@ -559,31 +559,31 @@ cleanup_data(Srv) ->
     PastConstraint = {'=<', '$1', Past},
 
     TypeConstraints = [{'=/=', '$2', {'const', <<"waiting">>}}
-		      ,{'=/=', '$2', {'const', <<"handled">>}}
+                      ,{'=/=', '$2', {'const', <<"handled">>}}
                       ],
 
     CallMatch = [{#call_stat{entered_timestamp='$1', status='$2', _='_'}
-		 ,[PastConstraint | TypeConstraints]
-		 ,['$_']
+                 ,[PastConstraint | TypeConstraints]
+                 ,['$_']
                  }],
     gen_listener:cast(Srv, {'remove_call', CallMatch}),
 
     StatusMatch = [{#status_stat{timestamp='$1', _='_'}
-		   ,[{'=<', '$1', Past}]
-		   ,['$_']
+                   ,[{'=<', '$1', Past}]
+                   ,['$_']
                    }],
     gen_listener:cast(Srv, {'remove_status', StatusMatch}),
 
     case ets:select(?MODULE:call_table_id()
-		   ,[{#call_stat{entered_timestamp='$1', status= <<"waiting">>, _='_'}
-		     ,[PastConstraint]
-		     ,['$_']
-		     }
-		    ,{#call_stat{entered_timestamp='$1', status= <<"handled">>, _='_'}
-		     ,[PastConstraint]
-		     ,['$_']
-		     }
-		    ])
+                   ,[{#call_stat{entered_timestamp='$1', status= <<"waiting">>, _='_'}
+                     ,[PastConstraint]
+                     ,['$_']
+                     }
+                    ,{#call_stat{entered_timestamp='$1', status= <<"handled">>, _='_'}
+                     ,[PastConstraint]
+                     ,['$_']
+                     }
+                    ])
     of
         [] -> 'ok';
         Unfinished -> cleanup_unfinished(Unfinished)
@@ -596,14 +596,14 @@ archive_call_data(Srv, 'true') ->
     kz_util:put_callid(<<"acdc_stats.force_call_archiver">>),
 
     Match = [{#call_stat{status='$1'
-			,is_archived='$2'
-			,_='_'
+                        ,is_archived='$2'
+                        ,_='_'
                         }
-	     ,[{'=/=', '$1', {'const', <<"waiting">>}}
-	      ,{'=/=', '$1', {'const', <<"handled">>}}
-	      ,{'=:=', '$2', 'false'}
-	      ]
-	     ,['$_']
+             ,[{'=/=', '$1', {'const', <<"waiting">>}}
+              ,{'=/=', '$1', {'const', <<"handled">>}}
+              ,{'=:=', '$2', 'false'}
+              ]
+             ,['$_']
              }],
     maybe_archive_call_data(Srv, Match);
 archive_call_data(Srv, 'false') ->
@@ -611,16 +611,16 @@ archive_call_data(Srv, 'false') ->
 
     Past = kz_util:current_tstamp() - ?ARCHIVE_WINDOW,
     Match = [{#call_stat{entered_timestamp='$1'
-			,status='$2'
-			,is_archived='$3'
-			, _='_'
+                        ,status='$2'
+                        ,is_archived='$3'
+                        , _='_'
                         }
-	     ,[{'=<', '$1', Past}
-	      ,{'=/=', '$2', {'const', <<"waiting">>}}
-	      ,{'=/=', '$2', {'const', <<"handled">>}}
-	      ,{'=:=', '$3', 'false'}
-	      ]
-	     ,['$_']
+             ,[{'=<', '$1', Past}
+              ,{'=/=', '$2', {'const', <<"waiting">>}}
+              ,{'=/=', '$2', {'const', <<"handled">>}}
+              ,{'=:=', '$3', 'false'}
+              ]
+             ,['$_']
              }],
     maybe_archive_call_data(Srv, Match).
 
@@ -650,84 +650,84 @@ archive_call_fold(#call_stat{account_id=AccountId}=Stat, Acc) ->
 
 -spec call_stat_to_doc(call_stat()) -> kz_json:object().
 call_stat_to_doc(#call_stat{id=Id
-			   ,call_id=CallId
-			   ,account_id=AccountId
-			   ,queue_id=QueueId
-			   ,agent_id=AgentId
-			   ,entered_timestamp=EnteredT
-			   ,abandoned_timestamp=AbandonedT
-			   ,handled_timestamp=HandledT
-			   ,processed_timestamp=ProcessedT
-			   ,hung_up_by=HungUpBy
-			   ,abandoned_reason=AbandonedR
-			   ,misses=Misses
-			   ,status=Status
-			   ,caller_id_name=CallerIdName
-			   ,caller_id_number=CallerIdNumber
-			   ,caller_priority=CallerPriority
+                           ,call_id=CallId
+                           ,account_id=AccountId
+                           ,queue_id=QueueId
+                           ,agent_id=AgentId
+                           ,entered_timestamp=EnteredT
+                           ,abandoned_timestamp=AbandonedT
+                           ,handled_timestamp=HandledT
+                           ,processed_timestamp=ProcessedT
+                           ,hung_up_by=HungUpBy
+                           ,abandoned_reason=AbandonedR
+                           ,misses=Misses
+                           ,status=Status
+                           ,caller_id_name=CallerIdName
+                           ,caller_id_number=CallerIdNumber
+                           ,caller_priority=CallerPriority
                            }) ->
     kz_doc:update_pvt_parameters(
       kz_json:from_list(
         props:filter_undefined(
           [{<<"_id">>, Id}
-	  ,{<<"call_id">>, CallId}
-	  ,{<<"queue_id">>, QueueId}
-	  ,{<<"agent_id">>, AgentId}
-	  ,{<<"entered_timestamp">>, EnteredT}
-	  ,{<<"abandoned_timestamp">>, AbandonedT}
-	  ,{<<"handled_timestamp">>, HandledT}
-	  ,{<<"processed_timestamp">>, ProcessedT}
-	  ,{<<"hung_up_by">>, HungUpBy}
-	  ,{<<"abandoned_reason">>, AbandonedR}
-	  ,{<<"misses">>, misses_to_docs(Misses)}
-	  ,{<<"status">>, Status}
-	  ,{<<"caller_id_name">>, CallerIdName}
-	  ,{<<"caller_id_number">>, CallerIdNumber}
-	  ,{<<"caller_priority">>, CallerPriority}
-	  ,{<<"wait_time">>, wait_time(EnteredT, AbandonedT, HandledT)}
-	  ,{<<"talk_time">>, talk_time(HandledT, ProcessedT)}
+          ,{<<"call_id">>, CallId}
+          ,{<<"queue_id">>, QueueId}
+          ,{<<"agent_id">>, AgentId}
+          ,{<<"entered_timestamp">>, EnteredT}
+          ,{<<"abandoned_timestamp">>, AbandonedT}
+          ,{<<"handled_timestamp">>, HandledT}
+          ,{<<"processed_timestamp">>, ProcessedT}
+          ,{<<"hung_up_by">>, HungUpBy}
+          ,{<<"abandoned_reason">>, AbandonedR}
+          ,{<<"misses">>, misses_to_docs(Misses)}
+          ,{<<"status">>, Status}
+          ,{<<"caller_id_name">>, CallerIdName}
+          ,{<<"caller_id_number">>, CallerIdNumber}
+          ,{<<"caller_priority">>, CallerPriority}
+          ,{<<"wait_time">>, wait_time(EnteredT, AbandonedT, HandledT)}
+          ,{<<"talk_time">>, talk_time(HandledT, ProcessedT)}
           ]))
-				,acdc_stats_util:db_name(AccountId)
-				,[{'account_id', AccountId}
-				 ,{'type', <<"call_stat">>}
-				 ]).
+                                ,acdc_stats_util:db_name(AccountId)
+                                ,[{'account_id', AccountId}
+                                 ,{'type', <<"call_stat">>}
+                                 ]).
 
 -spec call_stat_to_json(call_stat()) -> kz_json:object().
 call_stat_to_json(#call_stat{id=Id
-			    ,call_id=CallId
-			    ,account_id=AccountId
-			    ,queue_id=QueueId
-			    ,agent_id=AgentId
-			    ,entered_timestamp=EnteredT
-			    ,abandoned_timestamp=AbandonedT
-			    ,handled_timestamp=HandledT
-			    ,processed_timestamp=ProcessedT
-			    ,hung_up_by=HungUpBy
-			    ,abandoned_reason=AbandonedR
-			    ,misses=Misses
-			    ,status=Status
-			    ,caller_id_name=CallerIdName
-			    ,caller_id_number=CallerIdNumber
+                            ,call_id=CallId
+                            ,account_id=AccountId
+                            ,queue_id=QueueId
+                            ,agent_id=AgentId
+                            ,entered_timestamp=EnteredT
+                            ,abandoned_timestamp=AbandonedT
+                            ,handled_timestamp=HandledT
+                            ,processed_timestamp=ProcessedT
+                            ,hung_up_by=HungUpBy
+                            ,abandoned_reason=AbandonedR
+                            ,misses=Misses
+                            ,status=Status
+                            ,caller_id_name=CallerIdName
+                            ,caller_id_number=CallerIdNumber
                             }) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"Id">>, Id}
-	,{<<"Call-ID">>, CallId}
-	,{<<"Queue-ID">>, QueueId}
-	,{<<"Agent-ID">>, AgentId}
-	,{<<"Account-ID">>, AccountId}
-	,{<<"Entered-Timestamp">>, EnteredT}
-	,{<<"Abandoned-Timestamp">>, AbandonedT}
-	,{<<"Handled-Timestamp">>, HandledT}
-	,{<<"Processed-Timestamp">>, ProcessedT}
-	,{<<"Hung-Up-By">>, HungUpBy}
-	,{<<"Abandoned-Reason">>, AbandonedR}
-	,{<<"Misses">>, misses_to_docs(Misses)}
-	,{<<"Status">>, Status}
-	,{<<"Caller-ID-Name">>, CallerIdName}
-	,{<<"Caller-ID-Number">>, CallerIdNumber}
-	,{<<"Wait-Time">>, wait_time(EnteredT, AbandonedT, HandledT)}
-	,{<<"Talk-Time">>, talk_time(HandledT, ProcessedT)}
+        ,{<<"Call-ID">>, CallId}
+        ,{<<"Queue-ID">>, QueueId}
+        ,{<<"Agent-ID">>, AgentId}
+        ,{<<"Account-ID">>, AccountId}
+        ,{<<"Entered-Timestamp">>, EnteredT}
+        ,{<<"Abandoned-Timestamp">>, AbandonedT}
+        ,{<<"Handled-Timestamp">>, HandledT}
+        ,{<<"Processed-Timestamp">>, ProcessedT}
+        ,{<<"Hung-Up-By">>, HungUpBy}
+        ,{<<"Abandoned-Reason">>, AbandonedR}
+        ,{<<"Misses">>, misses_to_docs(Misses)}
+        ,{<<"Status">>, Status}
+        ,{<<"Caller-ID-Name">>, CallerIdName}
+        ,{<<"Caller-ID-Number">>, CallerIdNumber}
+        ,{<<"Wait-Time">>, wait_time(EnteredT, AbandonedT, HandledT)}
+        ,{<<"Talk-Time">>, talk_time(HandledT, ProcessedT)}
         ])).
 
 wait_time(E, _, H) when is_integer(E), is_integer(H) -> H - E;
@@ -741,12 +741,12 @@ talk_time(_, _) -> 'undefined'.
 -spec miss_to_doc(agent_miss()) -> kz_json:object().
 misses_to_docs(Misses) -> [miss_to_doc(Miss) || Miss <- Misses].
 miss_to_doc(#agent_miss{agent_id=AgentId
-		       ,miss_reason=Reason
-		       ,miss_timestamp=T
+                       ,miss_reason=Reason
+                       ,miss_timestamp=T
                        }) ->
     kz_json:from_list([{<<"agent_id">>, AgentId}
-		      ,{<<"reason">>, Reason}
-		      ,{<<"timestamp">>, T}
+                      ,{<<"reason">>, Reason}
+                      ,{<<"timestamp">>, T}
                       ]).
 
 -spec init_db(ne_binary()) -> 'ok'.
@@ -765,8 +765,8 @@ maybe_created_db(DbName, 'true') ->
 -spec call_stat_id(ne_binary(), ne_binary()) -> ne_binary().
 call_stat_id(JObj) ->
     call_stat_id(kz_json:get_value(<<"Call-ID">>, JObj)
-		,kz_json:get_value(<<"Queue-ID">>, JObj)
-		).
+                ,kz_json:get_value(<<"Queue-ID">>, JObj)
+                ).
 call_stat_id(CallId, QueueId) -> <<CallId/binary, "::", QueueId/binary>>.
 
 -spec handle_waiting_stat(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -779,7 +779,7 @@ handle_waiting_stat(JObj, Props) ->
         _Stat ->
             Updates = props:filter_undefined(
                         [{#call_stat.caller_id_name, kz_json:get_value(<<"Caller-ID-Name">>, JObj)}
-			,{#call_stat.caller_id_number, kz_json:get_value(<<"Caller-ID-Number">>, JObj)}
+                        ,{#call_stat.caller_id_number, kz_json:get_value(<<"Caller-ID-Number">>, JObj)}
                         ]),
             update_call_stat(Id, Updates, Props)
     end.
@@ -800,8 +800,8 @@ handle_missed_stat(JObj, Props) ->
 create_miss(JObj) ->
     #agent_miss{
        agent_id = kz_json:get_value(<<"Agent-ID">>, JObj)
-	       ,miss_reason = kz_json:get_value(<<"Miss-Reason">>, JObj)
-	       ,miss_timestamp = kz_json:get_value(<<"Miss-Timestamp">>, JObj)
+               ,miss_reason = kz_json:get_value(<<"Miss-Reason">>, JObj)
+               ,miss_timestamp = kz_json:get_value(<<"Miss-Timestamp">>, JObj)
       }.
 
 -spec handle_abandoned_stat(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -811,8 +811,8 @@ handle_abandoned_stat(JObj, Props) ->
     Id = call_stat_id(JObj),
     Updates = props:filter_undefined(
                 [{#call_stat.abandoned_reason, kz_json:get_value(<<"Abandon-Reason">>, JObj)}
-		,{#call_stat.abandoned_timestamp, kz_json:get_value(<<"Abandon-Timestamp">>, JObj)}
-		,{#call_stat.status, <<"abandoned">>}
+                ,{#call_stat.abandoned_timestamp, kz_json:get_value(<<"Abandon-Timestamp">>, JObj)}
+                ,{#call_stat.status, <<"abandoned">>}
                 ]),
     update_call_stat(Id, Updates, Props).
 
@@ -823,8 +823,8 @@ handle_handled_stat(JObj, Props) ->
     Id = call_stat_id(JObj),
     Updates = props:filter_undefined(
                 [{#call_stat.agent_id, kz_json:get_value(<<"Agent-ID">>, JObj)}
-		,{#call_stat.handled_timestamp, kz_json:get_value(<<"Handled-Timestamp">>, JObj)}
-		,{#call_stat.status, <<"handled">>}
+                ,{#call_stat.handled_timestamp, kz_json:get_value(<<"Handled-Timestamp">>, JObj)}
+                ,{#call_stat.status, <<"handled">>}
                 ]),
     update_call_stat(Id, Updates, Props).
 
@@ -835,9 +835,9 @@ handle_processed_stat(JObj, Props) ->
     Id = call_stat_id(JObj),
     Updates = props:filter_undefined(
                 [{#call_stat.agent_id, kz_json:get_value(<<"Agent-ID">>, JObj)}
-		,{#call_stat.processed_timestamp, kz_json:get_value(<<"Processed-Timestamp">>, JObj)}
-		,{#call_stat.hung_up_by, kz_json:get_value(<<"Hung-Up-By">>, JObj)}
-		,{#call_stat.status, <<"processed">>}
+                ,{#call_stat.processed_timestamp, kz_json:get_value(<<"Processed-Timestamp">>, JObj)}
+                ,{#call_stat.hung_up_by, kz_json:get_value(<<"Hung-Up-By">>, JObj)}
+                ,{#call_stat.status, <<"processed">>}
                 ]),
     update_call_stat(Id, Updates, Props).
 
@@ -850,7 +850,7 @@ flush_call_stat(JObj, Props) ->
     lager:debug("flushing ~s: ~p", [Id, JObj]),
 
     gen_listener:cast(props:get_value('server', Props)
-		     ,{'flush_call', Id}
+                     ,{'flush_call', Id}
                      ).
 
 -spec find_call_stat(ne_binary()) -> 'undefined' | call_stat().
@@ -863,22 +863,22 @@ find_call_stat(Id) ->
 -spec create_call_stat(ne_binary(), kz_json:object(), kz_proplist()) -> 'ok'.
 create_call_stat(Id, JObj, Props) ->
     gen_listener:cast(props:get_value('server', Props)
-		     ,{'create_call', #call_stat{
-					 id = Id
-						,call_id = kz_json:get_value(<<"Call-ID">>, JObj)
-						,account_id = kz_json:get_value(<<"Account-ID">>, JObj)
-						,queue_id = kz_json:get_value(<<"Queue-ID">>, JObj)
-						,entered_timestamp = kz_json:get_value(<<"Entered-Timestamp">>, JObj)
-						,misses = []
-						,status = <<"waiting">>
-						,caller_id_name = kz_json:get_value(<<"Caller-ID-Name">>, JObj)
-						,caller_id_number = kz_json:get_value(<<"Caller-ID-Number">>, JObj)
-						,caller_priority = kz_json:get_integer_value(<<"Caller-Priority">>, JObj)
-					}
-		      }).
+                     ,{'create_call', #call_stat{
+                                         id = Id
+                                                ,call_id = kz_json:get_value(<<"Call-ID">>, JObj)
+                                                ,account_id = kz_json:get_value(<<"Account-ID">>, JObj)
+                                                ,queue_id = kz_json:get_value(<<"Queue-ID">>, JObj)
+                                                ,entered_timestamp = kz_json:get_value(<<"Entered-Timestamp">>, JObj)
+                                                ,misses = []
+                                                ,status = <<"waiting">>
+                                                ,caller_id_name = kz_json:get_value(<<"Caller-ID-Name">>, JObj)
+                                                ,caller_id_number = kz_json:get_value(<<"Caller-ID-Number">>, JObj)
+                                                ,caller_priority = kz_json:get_integer_value(<<"Caller-Priority">>, JObj)
+                                        }
+                      }).
 
 -spec update_call_stat(ne_binary(), kz_proplist(), kz_proplist()) -> 'ok'.
 update_call_stat(Id, Updates, Props) ->
     gen_listener:cast(props:get_value('server', Props)
-		     ,{'update_call', Id, Updates}
+                     ,{'update_call', Id, Updates}
                      ).

@@ -7,7 +7,7 @@
 -module(registrar_init).
 
 -export([start_link/0
-	,init/0
+        ,init/0
         ]).
 
 -include("reg.hrl").

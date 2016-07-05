@@ -25,72 +25,72 @@ is_json_object_proper_test_() ->
 
 prop_is_object() ->
     ?FORALL(JObj
-	   ,object()
-	   ,?WHENFAIL(io:format("Failed is_json_object with ~p~n", [JObj])
-		     ,kz_json:is_json_object(JObj)
-		     )
+           ,object()
+           ,?WHENFAIL(io:format("Failed is_json_object with ~p~n", [JObj])
+                     ,kz_json:is_json_object(JObj)
+                     )
            ).
 
 prop_from_list() ->
     ?FORALL(Prop
-	   ,json_proplist()
-	   ,?WHENFAIL(io:format("Failed prop_from_list with ~p~n", [Prop])
-		     ,kz_json:is_json_object(kz_json:from_list(Prop))
-		     )
+           ,json_proplist()
+           ,?WHENFAIL(io:format("Failed prop_from_list with ~p~n", [Prop])
+                     ,kz_json:is_json_object(kz_json:from_list(Prop))
+                     )
            ).
 
 prop_get_value() ->
     ?FORALL(Prop
-	   ,json_proplist()
-	   ,?WHENFAIL(io:format("Failed prop_get_value with ~p~n", [Prop])
-		     ,begin
-			  JObj = kz_json:from_list(Prop),
-			  case length(Prop) > 0 andalso hd(Prop) of
-			      {K,V} ->
-				  V =:= kz_json:get_value([K], JObj);
-			      'false' -> kz_json:new() =:= JObj
-			  end
-		      end)
+           ,json_proplist()
+           ,?WHENFAIL(io:format("Failed prop_get_value with ~p~n", [Prop])
+                     ,begin
+                          JObj = kz_json:from_list(Prop),
+                          case length(Prop) > 0 andalso hd(Prop) of
+                              {K,V} ->
+                                  V =:= kz_json:get_value([K], JObj);
+                              'false' -> kz_json:new() =:= JObj
+                          end
+                      end)
            ).
 
 prop_set_value() ->
     ?FORALL({JObj, Key, Value}
-	   ,{object(), keys(), json_term()}
-	   ,?WHENFAIL(io:format("Failed prop_set_value with ~p:~p -> ~p~n", [Key, Value, JObj]),
-		      begin
-			  JObj1 = kz_json:set_value(Key, Value, JObj),
-			  Value =:= kz_json:get_value(Key, JObj1)
-		      end)
+           ,{object(), keys(), json_term()}
+           ,?WHENFAIL(io:format("Failed prop_set_value with ~p:~p -> ~p~n", [Key, Value, JObj]),
+                      begin
+                          JObj1 = kz_json:set_value(Key, Value, JObj),
+                          Value =:= kz_json:get_value(Key, JObj1)
+                      end)
            ).
 
 prop_to_proplist() ->
     ?FORALL(Prop, json_proplist(),
-	    ?WHENFAIL(io:format("Failed prop_to_proplist ~p~n", [Prop]),
-		      begin
-			  JObj = kz_json:from_list(Prop),
-			  lists:all(fun(K) -> props:get_value(K, Prop) =/= 'undefined' end, kz_json:get_keys(JObj))
-		      end)
+            ?WHENFAIL(io:format("Failed prop_to_proplist ~p~n", [Prop]),
+                      begin
+                          JObj = kz_json:from_list(Prop),
+                          lists:all(fun(K) -> props:get_value(K, Prop) =/= 'undefined' end, kz_json:get_keys(JObj))
+                      end)
            ).
 
 -endif.
 
 -define(D1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}
-			  ,{<<"d1k2">>, 'd1v2'}
-			  ,{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}
+                          ,{<<"d1k2">>, 'd1v2'}
+                          ,{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}
                           ])).
 -define(D2, ?JSON_WRAPPER([{<<"d2k1">>, 1}
-			  ,{<<"d2k2">>, 3.14}
-			  ,{<<"sub_d1">>, ?D1}
+                          ,{<<"d2k2">>, 3.14}
+                          ,{<<"sub_d1">>, ?D1}
                           ])).
 -define(D3, ?JSON_WRAPPER([{<<"d3k1">>, <<"d3v1">>}
-			  ,{<<"d3k2">>, []}
-			  ,{<<"sub_docs">>, [?D1, ?D2]}
+                          ,{<<"d3k2">>, []}
+                          ,{<<"sub_docs">>, [?D1, ?D2]}
                           ])).
 -define(D4, [?D1, ?D2, ?D3]).
 
 -define(D6, ?JSON_WRAPPER([{<<"d2k1">>, 1}
-			  ,{<<"d2k2">>, 3.14}
-			  ,{<<"sub_d1">>, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}])}
+                          ,{<<"d2k2">>, 3.14}
+                          ,{<<"sub_d1">>, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}])}
                           ]
                          )).
 -define(D7, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}])).
@@ -211,12 +211,12 @@ is_json_object_test_() ->
 -define(D1_AFTER_K3_V2, ?JSON_WRAPPER([{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.3">>]}, {<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, 'd1v2'}])).
 
 -define(D6_AFTER_SUB, ?JSON_WRAPPER([{<<"sub_d1">>, ?EMPTY_JSON_OBJECT}
-				    ,{<<"d2k1">>, 1}
-				    ,{<<"d2k2">>, 3.14}
+                                    ,{<<"d2k1">>, 1}
+                                    ,{<<"d2k2">>, 3.14}
                                     ]
                                    )).
 -define(D6_AFTER_SUB_PRUNE, ?JSON_WRAPPER([{<<"d2k1">>, 1}
-					  ,{<<"d2k2">>, 3.14}
+                                          ,{<<"d2k2">>, 3.14}
                                           ]
                                          )).
 
@@ -375,15 +375,15 @@ set_value_normalizer_test_() ->
 
 to_querystring_test_() ->
     Tests = [{<<"{}">>, <<>>}
-	    ,{<<"{\"foo\":\"bar\"}">>, <<"foo=bar">>}
-	    ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\"}">>, <<"foo=bar&fizz=buzz">>}
-	    ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\",\"arr\":[1,3,5]}">>, <<"foo=bar&fizz=buzz&arr[]=1&arr[]=3&arr[]=5">>}
-	    ,{<<"{\"Msg-ID\":\"123-abc\"}">>, <<"Msg-ID=123-abc">>}
-	    ,{<<"{\"url\":\"http://user:pass@host:port/\"}">>, <<"url=http%3A%2F%2Fuser%3Apass%40host%3Aport%2F">>}
-	    ,{<<"{\"topkey\":{\"subkey1\":\"v1\",\"subkey2\":\"v2\",\"subkey3\":[\"v31\",\"v32\"]}}">>
-	     ,<<"topkey[subkey1]=v1&topkey[subkey2]=v2&topkey[subkey3][]=v31&topkey[subkey3][]=v32">>}
-	    ,{<<"{\"topkey\":{\"subkey1\":\"v1\",\"subkey2\":{\"k3\":\"v3\"}}}">>
-	     ,<<"topkey[subkey1]=v1&topkey[subkey2][k3]=v3">>}
+            ,{<<"{\"foo\":\"bar\"}">>, <<"foo=bar">>}
+            ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\"}">>, <<"foo=bar&fizz=buzz">>}
+            ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\",\"arr\":[1,3,5]}">>, <<"foo=bar&fizz=buzz&arr[]=1&arr[]=3&arr[]=5">>}
+            ,{<<"{\"Msg-ID\":\"123-abc\"}">>, <<"Msg-ID=123-abc">>}
+            ,{<<"{\"url\":\"http://user:pass@host:port/\"}">>, <<"url=http%3A%2F%2Fuser%3Apass%40host%3Aport%2F">>}
+            ,{<<"{\"topkey\":{\"subkey1\":\"v1\",\"subkey2\":\"v2\",\"subkey3\":[\"v31\",\"v32\"]}}">>
+             ,<<"topkey[subkey1]=v1&topkey[subkey2]=v2&topkey[subkey3][]=v31&topkey[subkey3][]=v32">>}
+            ,{<<"{\"topkey\":{\"subkey1\":\"v1\",\"subkey2\":{\"k3\":\"v3\"}}}">>
+             ,<<"topkey[subkey1]=v1&topkey[subkey2][k3]=v3">>}
             ],
     [?_assertEqual(QS, kz_util:to_binary(
                          kz_json:to_querystring(
@@ -399,9 +399,9 @@ get_values_test() ->
 
 -define(K3_JOBJ, ?JSON_WRAPPER([{<<"k3.1">>, <<"v3.1">>}])).
 -define(CODEC_JOBJ, ?JSON_WRAPPER([{<<"k1">>, <<"v1">>}
-				  ,{<<"k2">>, ?EMPTY_JSON_OBJECT}
-				  ,{<<"k3">>, ?K3_JOBJ}
-				  ,{<<"k4">>, [1,2,3]}
+                                  ,{<<"k2">>, ?EMPTY_JSON_OBJECT}
+                                  ,{<<"k3">>, ?K3_JOBJ}
+                                  ,{<<"k4">>, [1,2,3]}
                                   ])).
 codec_test() ->
     ?assertEqual(?CODEC_JOBJ, kz_json:decode(kz_json:encode(?CODEC_JOBJ))).
