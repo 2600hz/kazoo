@@ -7,7 +7,6 @@
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(knm_port_request_crawler).
-
 -behaviour(gen_server).
 
 %% API
@@ -66,6 +65,7 @@ cleanup_timer() ->
 %%--------------------------------------------------------------------
 init([]) ->
     kz_util:put_callid(?MODULE),
+    knm_port_request:init(),
     lager:debug("started ~s", [?MODULE]),
     {'ok', #state{cleanup_ref=cleanup_timer()}}.
 

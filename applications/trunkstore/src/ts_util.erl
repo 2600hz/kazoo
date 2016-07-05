@@ -185,7 +185,7 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
                                 ,kz_util:to_lower_binary(Name)
                                ]
                        }],
-            case kz_datamgr:get_results(AccountDb, <<"trunkstore/LookUpUserFlags">>, Options) of
+            case kz_datamgr:get_results(AccountDb, <<"trunkstore/lookup_user_flags">>, Options) of
                 {'error', _}=E ->
                     lager:info("cache miss for ~s@~s, err: ~p", [Name, Realm, E]),
                     E;

@@ -1,5 +1,5 @@
 {
-    "_id": "_design/selectors",
+    "_id": "_design/resource_selectors",
     "language": "javascript",
     "views": {
         "name_listing": {

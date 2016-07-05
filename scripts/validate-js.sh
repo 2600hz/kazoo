@@ -1,6 +1,5 @@
 #!/usr/bin/env python2
-
-# print 'Usage: ' + sys.argv[0] + ' file.json+'
+# -*- coding: utf-8 -*-
 
 import sys
 import json
@@ -8,7 +7,8 @@ from subprocess import call
 import os
 
 if len(sys.argv) < 2:
-    pass
+    print 'Usage: ' + sys.argv[0] + ' file.json+'
+    exit(1)
 
 def fmap(F, data):
     if isinstance(data, dict):
@@ -27,6 +27,7 @@ def fmap(F, data):
     elif isinstance(data, int):
         pass
 
+
 def couchjs((field, js)):
     TMP = '_'
     with open(TMP, 'w') as wd:
@@ -37,13 +38,29 @@ def couchjs((field, js)):
             print 'Key:', field
             print 'Code:', js
             exit(1)
-        else:
-            print field, 'passed'
     finally:
         os.remove(TMP)
 
+
+def basename2(file_name):
+    ## http://stackoverflow.com/a/678242/1418165
+    return os.path.splitext(os.path.basename(file_name))[0]
+
+def check_name(file_name, JSON_name):
+    fname = basename2(file_name)
+    jname = JSON_name.split('/')[-1]
+    if fname != jname:
+        print 'File name does not match _id field!'
+        print '\t', fname, u' ≠ ', jname
+        exit(1)
+
+
 for fn in sys.argv[1:]:
+    exploded = fn.split(os.sep)
+    if (not 'couchdb' in exploded) or 'fixtures' in exploded or 'swagger.json' in exploded:
+        continue
     print 'checking ' + fn
     with open(fn) as rd:
         data = json.load(rd)
+        check_name(fn, data['_id'])
         fmap(couchjs, data)

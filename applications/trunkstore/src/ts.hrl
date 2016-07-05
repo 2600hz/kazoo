@@ -16,16 +16,16 @@
 -define(CACHE_NAME, 'trunkstore_cache').
 
 %% cdr doc store
--define(TS_CDR_PREFIX, <<"ts_cdr">>).
+-define(TS_CDR_PREFIX, <<"failures">>).
 
 %% Account views
--define(TS_VIEW_DIDLOOKUP, <<"trunkstore/LookUpDID">>).
+-define(TS_VIEW_DIDLOOKUP, <<"trunkstore/lookup_did">>).
 
--define(TS_VIEW_IPAUTH, <<"LookUpIPAuth/LookUpIPAuth">>).
--define(TS_VIEW_USERAUTH, <<"LookUpUserAuth/LookUpUserAuth">>).
--define(TS_VIEW_USERAUTHREALM, <<"LookUpUserAuth/LookUpUserAuthRealm">>).
+-define(TS_VIEW_IPAUTH, <<"lookup_ip_auth/lookup_ip_auth">>).
+-define(TS_VIEW_USERAUTH, <<"lookup_user_auth/lookup_user_auth">>).
+-define(TS_VIEW_USERAUTHREALM, <<"lookup_user_auth/lookup_user_auth_realm">>).
 
--define(TS_VIEW_CARRIERIP, <<"LookUpCarrierIP/LookUpCarrierIP">>).
+-define(TS_VIEW_CARRIERIP, <<"lookup_carrier_ip/lookup_carrier_ip">>).
 
 -define(EOD, 'end_of_day').
 
@@ -86,7 +86,7 @@
          }).
 
 
--define(TS_COUCH_DESIGN_DOCS, ["filter.json", "lookupuserauth.json", "lookupmonitor.json", "lookupipauth.json", "lookupdid.json", "lookupuser.json", "ts_cdr.json"]).
+-define(TS_COUCH_DESIGN_DOCS, ["filter.json", "lookup_user_auth.json", "lookup_monitor.json", "lookup_ip_auth.json", "lookup_did.json", "lookup_user.json", "failures.json"]).
 -define(TS_COUCH_BASE_DOCS, ["carriers.json"]).
 
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).

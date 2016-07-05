@@ -24,8 +24,8 @@
 
 -include("crossbar.hrl").
 
--define(SRS_LIST, <<"selectors/resource_listing">>).
--define(SRS_SEARCH, <<"selectors/crossbar_search">>).
+-define(SRS_LIST, <<"resource_selectors/resource_listing">>).
+-define(SRS_SEARCH, <<"resource_selectors/crossbar_search">>).
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".resource_selectors">>).
 -define(SUPPRESS_SRS_NOTICE, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"suppress_selectors_change_notice">>, 'false')).
 -define(UPLOAD_MIME_TYPES, [{<<"text">>, <<"csv">>}
@@ -194,7 +194,7 @@ validate(Context, ?NAME, SelectorName, ?RESOURCE, ResourceId) ->
 -spec set_selectors_db(cb_context:context()) -> cb_context:context().
 set_selectors_db(Context) ->
     case is_global_request(Context) of
-        'true' -> 
+        'true' ->
             {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
             MasterSelectorsDb = kz_util:format_resource_selectors_db(MasterAccountId),
             cb_context:set_account_db(Context, MasterSelectorsDb);
@@ -337,7 +337,7 @@ bulk_delete_selectors(Context, ResourceId, SelectorName, DelKeys) ->
     DelIDs = lists:foldl(fun(Block, AccIDs) ->
                                  Keys = [ [ResourceId, SelectorName, K ] || K <- Block ],
                                  Options = [{'keys', Keys}],
-                                 {'ok', Result} = kz_datamgr:get_results(Db, <<"selectors/resource_name_selector_listing">>, Options),
+                                 {'ok', Result} = kz_datamgr:get_results(Db, <<"resource_selectors/resource_name_selector_listing">>, Options),
                                  lists:foldl(fun(R, Acc) ->
                                                      ID = kz_json:get_ne_value(<<"id">>, R, []),
                                                      [ ID |  Acc ]
@@ -376,7 +376,7 @@ do_bulk_delete_all_selectors(Context, ResourceId, SelectorName) ->
     kz_proplist().
 do_delete_all_selectors(Db, Options, AccStats) ->
     maybe_suppress_change_notice(),
-    {'ok', SearchResult}  = kz_datamgr:get_results(Db, <<"selectors/resource_name_listing">>, Options),
+    {'ok', SearchResult}  = kz_datamgr:get_results(Db, <<"resource_selectors/resource_name_listing">>, Options),
     Stats = case [ kz_json:get_ne_value(<<"id">>, R, []) || R <- SearchResult ] of
                 [] -> AccStats;
                 [[]] -> AccStats;
@@ -405,7 +405,7 @@ split_keys(Keys, Acc, BlockSize) ->
 -spec refresh_selectors_index(ne_binary()) -> 'ok'.
 refresh_selectors_index(Db) ->
     %% {'ok', _} = kz_datamgr:all_docs(Db, [{limit, 1}]),
-    {'ok', _} = kz_datamgr:get_results(Db, ?SRS_LIST, [{limit, 1}]),
+    {'ok', _} = kz_datamgr:get_results(Db, ?SRS_LIST, [{'limit', 1}]),
     'ok'.
 
 -spec get_stat_from_result(kz_json:objects(), kz_proplist()) -> kz_proplist().
@@ -477,28 +477,28 @@ load_rules(Context) ->
 summary_resource(Context) ->
     Fun = fun normalize_view_results/2,
     Options = ['group'],
-    crossbar_doc:load_view(<<"selectors/resource_listing">>, Options, Context, Fun).
+    crossbar_doc:load_view(<<"resource_selectors/resource_listing">>, Options, Context, Fun).
 summary_resource(Context, ResourceId) ->
     Fun = fun normalize_resource_result/2,
     Options = [{'startkey', [ResourceId]}
                ,{'endkey', [ResourceId, "{}"]}
                ,'group'
               ],
-    crossbar_doc:load_view(<<"selectors/resource_name_listing">>, Options, Context, Fun).
+    crossbar_doc:load_view(<<"resource_selectors/resource_name_listing">>, Options, Context, Fun).
 
 -spec summary_selector(cb_context:context()) -> cb_context:context().
 -spec summary_selector(cb_context:context(), path_token()) -> cb_context:context().
 summary_selector(Context) ->
     Fun = fun normalize_view_results/2,
     Options = ['group'],
-    crossbar_doc:load_view(<<"selectors/name_listing">>, Options, Context, Fun).
+    crossbar_doc:load_view(<<"resource_selectors/name_listing">>, Options, Context, Fun).
 summary_selector(Context, SelectorName) ->
     Fun = fun normalize_selector_result/2,
     Options = [{'startkey', [SelectorName]}
                ,{'endkey', [SelectorName, "{}"]}
                ,'group'
               ],
-    crossbar_doc:load_view(<<"selectors/name_resource_listing">>, Options, Context, Fun).
+    crossbar_doc:load_view(<<"resource_selectors/name_resource_listing">>, Options, Context, Fun).
 
 -spec summary_resource_selector(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 summary_resource_selector(Context, ResourceId, SelectorName) ->
@@ -506,7 +506,7 @@ summary_resource_selector(Context, ResourceId, SelectorName) ->
     Options = [{'key', [ResourceId, SelectorName]}
                ,{'reduce', 'false'}
               ],
-    crossbar_doc:load_view(<<"selectors/resource_name_listing">>, Options, Context, Fun).
+    crossbar_doc:load_view(<<"resource_selectors/resource_name_listing">>, Options, Context, Fun).
 
 %%--------------------------------------------------------------------
 %% @private

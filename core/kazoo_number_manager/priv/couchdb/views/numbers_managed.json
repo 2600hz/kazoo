@@ -1,5 +1,5 @@
 {
-    "_id": "_design/numbers",
+    "_id": "_design/numbers_managed",
     "language": "javascript",
     "views": {
         "status": {
