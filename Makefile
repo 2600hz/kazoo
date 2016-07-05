@@ -5,7 +5,7 @@ FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright
 
 all: compile rel/dev-vm.args
 
@@ -163,6 +163,9 @@ ci: clean compile xref build-plt diff sup_completion build-ci-release compile-te
 
 diff: export TO_DIALYZE = $(shell git diff --name-only master... -- $(ROOT)/applications/ $(ROOT)/core/)
 diff: dialyze-it
+
+bump-copyright:
+	@$(ROOT)/scripts/bump-copyright-year.sh $(shell find applications core -iname '*.erl' -or -iname '*.hrl')
 
 $(FMT):
 	wget 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' -O - | tar xvz -C make/
