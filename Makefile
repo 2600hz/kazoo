@@ -169,3 +169,4 @@ $(FMT):
 
 fmt: $(FMT)
 	$(FMT) $(shell find applications core -iname '*.erl' -or -iname '*.hrl')
+	find applications core -iname '*.erl' -or -iname '*.hrl' -exec sed -i 's/\t/        /g' {} +
