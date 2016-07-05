@@ -218,7 +218,7 @@ log_warnings(Ws, Template) ->
 -spec log_infos(string(), string(), [info()], binary()) -> 'ok'.
 log_infos(Type, Module, Errors, Template) ->
     lager:info("~s in module ~s", [Type, Module]),
-    [catch log_info(Error, Template) || Error <- Errors],
+    _ = [catch log_info(Error, Template) || Error <- Errors],
     'ok'.
 
 -spec log_info(info(), binary()) -> 'ok'.
