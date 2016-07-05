@@ -31,7 +31,7 @@
 
 -define(RECOVERY, <<"recovery">>).
 -define(RESET_ID, <<"reset_id">>).
--define(RESET_ID_SIZE_DEFAULT, 137).
+-define(RESET_ID_SIZE_DEFAULT, 138).
 -define(RESET_ID_SIZE,
         case kapps_config:get_integer(?CONFIG_CAT, <<"reset_id_size">>, ?RESET_ID_SIZE_DEFAULT) of
             _TooBig when _TooBig >= 180 -> ?RESET_ID_SIZE_DEFAULT;
