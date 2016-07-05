@@ -31,12 +31,11 @@
 
 -define(RECOVERY, <<"recovery">>).
 -define(RESET_ID, <<"reset_id">>).
--define(RESET_ID_SIZE_DEFAULT, 138).
+-define(RESET_ID_SIZE_DEFAULT, 137).
 -define(RESET_ID_SIZE,
         case kapps_config:get_integer(?CONFIG_CAT, <<"reset_id_size">>, ?RESET_ID_SIZE_DEFAULT) of
             _TooBig when _TooBig >= 180 -> ?RESET_ID_SIZE_DEFAULT;
             _TooSmall when _TooSmall =< 60 -> ?RESET_ID_SIZE_DEFAULT;
-            Odd when Odd rem 2 =/= 0 -> Odd + 1;
             Ok -> Ok
         end).
 -define(RESET_PVT_TYPE, <<"password_reset">>).
@@ -478,16 +477,11 @@ maybe_load_user_doc_via_reset_id(Context) ->
 
 %% @private
 -spec reset_id(ne_binary()) -> ne_binary().
-reset_id(AccountOrResetId) ->
-    ResetIdSize = ?RESET_ID_SIZE,
-    case AccountOrResetId of
-        ?MATCH_ACCOUNT_ENCODED(A,B,Rest) ->
-            Noise = kz_util:rand_hex_binary((ResetIdSize - 32) / 2),
-            <<(?MATCH_ACCOUNT_RAW(A,B,Rest))/binary, Noise/binary>>;
-        <<ResetId:ResetIdSize/binary>> ->
-            <<Account:32/binary, _Noise/binary>> = ResetId,
-            kz_util:format_account_db(kz_util:to_lower_binary(Account))
-    end.
+reset_id(?MATCH_ACCOUNT_ENCODED(A, B, Rest)) ->
+    Noise = kz_util:rand_hex_binary((?RESET_ID_SIZE - 32) / 2),
+    <<(?MATCH_ACCOUNT_RAW(A,B,Rest))/binary, Noise/binary>>;
+reset_id(<<(?MATCH_ACCOUNT_RAW(ResetId))/binary, _Noi:8, _se/binary>>) ->
+    kz_util:format_account_db(kz_util:to_lower_binary(ResetId)).
 
 %% @private
 -spec reset_link(kz_json:object(), ne_binary()) -> ne_binary().
