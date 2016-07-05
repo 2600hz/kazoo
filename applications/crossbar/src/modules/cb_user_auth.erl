@@ -10,14 +10,14 @@
 -module(cb_user_auth).
 
 -export([init/0
-	,allowed_methods/0, allowed_methods/1 %% only accept 0 or 1 path token
-	,resource_exists/0, resource_exists/1
-	,authorize/1
-	,authenticate/1
-	,validate/1, validate/2
-	,put/1, put/2
-	,post/2
-	,cleanup_reset_ids/1
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,authorize/1
+        ,authenticate/1
+        ,validate/1, validate/2
+        ,put/1, put/2
+        ,post/2
+        ,cleanup_reset_ids/1
         ]).
 
 -include("crossbar.hrl").
@@ -156,7 +156,13 @@ put(Context, ?RECOVERY) ->
 post(Context, ?RECOVERY) ->
     _ = cb_context:put_reqid(Context),
     Context1 = crossbar_doc:save(Context),
-    crossbar_util:create_auth_token(Context1, ?MODULE).
+    DocForCreation =
+        kz_json:from_list(
+          [{<<"account_id">>, kz_util:format_account_id(cb_context:account_db(Context1))}
+          ,{<<"owner_id">>, cb_context:fetch(Context1, 'owner_id')}
+          ]),
+    Context2 = cb_context:set_doc(Context1, DocForCreation),
+    crossbar_util:create_auth_token(Context2, ?MODULE).
 
 %%%===================================================================
 %%% Internal functions
@@ -458,6 +464,7 @@ maybe_load_user_doc_via_reset_id(Context) ->
             cb_context:setters(Context1, [{fun cb_context:set_account_db/2, AccountDb}
                                          ,{fun cb_context:set_resp_status/2, 'success'}
                                          ,{fun cb_context:set_doc/2, NewUserDoc}
+                                         ,{fun cb_context:store/3, 'owner_id', UserId}
                                          ]);
         _ ->
             Msg = kz_json:from_list(
@@ -470,16 +477,11 @@ maybe_load_user_doc_via_reset_id(Context) ->
 
 %% @private
 -spec reset_id(ne_binary()) -> ne_binary().
-reset_id(AccountOrResetId) ->
-    ResetIdSize = ?RESET_ID_SIZE,
-    case AccountOrResetId of
-        ?MATCH_ACCOUNT_ENCODED(A,B,Rest) ->
-            Noise = kz_util:rand_hex_binary((ResetIdSize - 32) / 2),
-            <<(?MATCH_ACCOUNT_RAW(A,B,Rest))/binary, Noise/binary>>;
-        <<ResetId:ResetIdSize/binary>> ->
-            <<Account:32/binary, _Noise/binary>> = ResetId,
-            kz_util:format_account_db(kz_util:to_lower_binary(Account))
-    end.
+reset_id(?MATCH_ACCOUNT_ENCODED(A, B, Rest)) ->
+    Noise = kz_util:rand_hex_binary((?RESET_ID_SIZE - 32) / 2),
+    <<(?MATCH_ACCOUNT_RAW(A,B,Rest))/binary, Noise/binary>>;
+reset_id(<<ResetId:32/binary, _Noi:8, _se/binary>>) ->
+    kz_util:format_account_db(kz_util:to_lower_binary(ResetId)).
 
 %% @private
 -spec reset_link(kz_json:object(), ne_binary()) -> ne_binary().
