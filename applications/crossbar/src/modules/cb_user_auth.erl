@@ -10,14 +10,14 @@
 -module(cb_user_auth).
 
 -export([init/0
-	,allowed_methods/0, allowed_methods/1 %% only accept 0 or 1 path token
-	,resource_exists/0, resource_exists/1
-	,authorize/1
-	,authenticate/1
-	,validate/1, validate/2
-	,put/1, put/2
-	,post/2
-	,cleanup_reset_ids/1
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,authorize/1
+        ,authenticate/1
+        ,validate/1, validate/2
+        ,put/1, put/2
+        ,post/2
+        ,cleanup_reset_ids/1
         ]).
 
 -include("crossbar.hrl").
@@ -36,6 +36,7 @@
         case kapps_config:get_integer(?CONFIG_CAT, <<"reset_id_size">>, ?RESET_ID_SIZE_DEFAULT) of
             _TooBig when _TooBig >= 180 -> ?RESET_ID_SIZE_DEFAULT;
             _TooSmall when _TooSmall =< 60 -> ?RESET_ID_SIZE_DEFAULT;
+            Odd when Odd rem 2 =/= 0 -> Odd + 1;
             Ok -> Ok
         end).
 -define(RESET_PVT_TYPE, <<"password_reset">>).
