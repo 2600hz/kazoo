@@ -30,7 +30,7 @@ test:
     - ./scripts/code_checks.bash
     - |
       if [[ ! -z "$($CHANGED)" ]]; then
-        TO_FMT="$($CHANGED)" make fmt
+        TO_FMT="$(echo $CHANGED)" make fmt
       fi
     - make bump-copyright
     - . ~/.kerl/$OTP_VERSION/activate && make
@@ -47,7 +47,7 @@ test:
       . ~/.kerl/$OTP_VERSION/activate
       if [[ ! -z "$($CHANGED)" ]]; then
         make build-plt
-        TO_DIALYZE="$($CHANGED)" make dialyze
+        TO_DIALYZE="$(echo $CHANGED)" make dialyze
       fi
     - . ~/.kerl/$OTP_VERSION/activate && make build-ci-release
     - . ~/.kerl/$OTP_VERSION/activate && ./scripts/check-release-startup.sh
