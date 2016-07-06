@@ -25,7 +25,7 @@ dependencies:
 
 test:
   pre:
-    - git diff --name-only $CMP_BASE applications core
+    - git --no-pager diff --name-only $CMP_BASE applications core
     - ./scripts/validate-js.sh $(find applications core -iname '*.json')
     - ./scripts/code_checks.bash
     - |
