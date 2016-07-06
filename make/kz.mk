@@ -109,3 +109,13 @@ REBAR=$(ROOT)/deps/.erlang.mk/rebar/rebar
 xref: TO_XREF = ebin/  #FIXME: set TO_XREF to an app's dependencies' ebin/ directories
 xref: compile
 	@ERL_LIBS=$(ELIBS) $(REBAR) xref skip_deps=true -C $(ROOT)/make/xref.local.config
+
+
+FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
+$(FMT):
+	wget 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' -O - | tar xvz -C $(ROOT)/make/
+
+fmt: TO_FMT = $(shell find src include -iname '*.erl' -or -iname '*.hrl')
+fmt: $(FMT)
+	@$(FMT) $(TO_FMT)
+	@echo $(TO_FMT) | xargs sed -i 's/\t/        /g'
