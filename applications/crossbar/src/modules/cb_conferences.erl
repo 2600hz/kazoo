@@ -114,7 +114,7 @@ validate_conferences_uri(?HTTP_PUT, Context) ->
 -spec validate_conference_uri(http_method(), cb_context:context(), ne_binary()) -> cb_context:context().
 validate_conference_uri(?HTTP_GET, Context, ConfId) ->
     AccountDb = cb_context:account_db(Context),
-    {ok, Conference} = load_conference(AccountDb, ConfId),
+    {'ok', Conference} = load_conference(AccountDb, ConfId),
     handle_response(Context, enrich_conference(Conference));
 validate_conference_uri(?HTTP_POST, Context, ConfId) ->
     load_conference_into_context(Context, ConfId);
@@ -127,7 +127,7 @@ validate_conference_uri(?HTTP_DELETE, Context, ConfId) ->
 validate_participants_uri(?HTTP_GET, Context, ConfId) ->
     AccountDb = cb_context:account_db(Context),
     AccountId = cb_context:account_id(Context),
-    {ok, _Conference} = load_conference(AccountDb, ConfId), % check ownership
+    {'ok', _Conference} = load_conference(AccountDb, ConfId), % check ownership
     handle_response(Context, load_enriched_participants(AccountId, ConfId));
 validate_participants_uri(?HTTP_POST, Context, ConfId) ->
     load_conference_into_context(Context, ConfId).
@@ -150,7 +150,7 @@ post(Context, ConfId, <<"participants">>, ParticipantId) ->
     Conference = kapps_conference:set_id(ConfId, kapps_conference:new()),
     Action = cb_context:req_value(Context, <<"Action">>),
     perform_conference_action(Conference, Action, erlang:binary_to_integer(ParticipantId)),
-    handle_response(Context, {response, ok}).
+    handle_response(Context, {'response', 'ok'}).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _) ->
@@ -174,21 +174,21 @@ load_conference_into_context(Context, ConfId) ->
     handle_response(Context, load_conference(AccountDb, ConfId)).
 
 -spec handle_response(cb_context:context(), any()) -> cb_context:context().
-handle_response(Context, {response, Response}) ->
+handle_response(Context, {'response', Response}) ->
     cb_context:setters(Context, [
                                  {fun cb_context:set_resp_status/2, 'success'}
                                 ,{fun cb_context:set_resp_data/2, Response}
                                 ]);
-handle_response(Context, {ok, Response}) ->
+handle_response(Context, {'ok', Response}) ->
     crossbar_doc:handle_json_success(Response, Context);
-handle_response(Context, {error, Error}) ->
+handle_response(Context, {'error', Error}) ->
     cb_context:add_system_error(Error, Context).
 
 %%%===================================================================
 %%% REST API Actions
 %%%===================================================================
 
--spec handle_participants_action(ne_binary(), ne_binary(), ne_binary()) -> {response, [integer()]}.
+-spec handle_participants_action(ne_binary(), ne_binary(), ne_binary()) -> {'response', [integer()]}.
 handle_participants_action(AccountId, ConfId, Action=?MUTE) ->
     handle_participants_action(AccountId, ConfId, Action,
                                fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_true(<<"Speak">>, P) end);
@@ -210,18 +210,18 @@ handle_participants_action(_AccountId, ConfId, Action) ->
 -spec handle_conference_action(ne_binary(), ne_binary()) -> {'response', 'ok'} | {'error', 'unhandled_conference_action'}.
 handle_conference_action(ConfId, <<"lock">>) ->
     lock_conference(ConfId),
-    {response, ok};
+    {'response', 'ok'};
 handle_conference_action(ConfId, <<"unlock">>) ->
     unlock_conference(ConfId),
-    {response, ok};
+    {'response', 'ok'};
 handle_conference_action(ConfId, Action) ->
     lager:error("Unhandled conference id:~p action:~p", [ConfId, Action]),
     {'error', 'unhandled_conference_action'}.
 
-                                                % action applicable to conference participants selected by selector function
--spec handle_participants_action(ne_binary(), ne_binary(), ne_binary(), function()) -> {response, [integer()]}.
+%% action applicable to conference participants selected by selector function
+-spec handle_participants_action(ne_binary(), ne_binary(), ne_binary(), function()) -> {'response', [integer()]}.
 handle_participants_action(AccountId, ConfId, Action, Selector) ->
-    {ok, JObjs} = request_conference_details(AccountId, ConfId),
+    {'ok', JObjs} = request_conference_details(AccountId, ConfId),
     JObj = latest_details(JObjs),
     Participants = extract_participants(JObj),
     Conference = kapps_conference:set_id(ConfId, kapps_conference:new()),
@@ -229,7 +229,7 @@ handle_participants_action(AccountId, ConfId, Action, Selector) ->
                  perform_conference_action(Conference, Action, kz_json:get_value(<<"Participant-ID">>, P))
                  || P <- Participants, Selector(P)
                 ],
-    {response, Commanded}.
+    {'response', Commanded}.
 
 %%%===================================================================
 %%% Internal functions
@@ -239,16 +239,16 @@ handle_participants_action(AccountId, ConfId, Action, Selector) ->
 load_conference(AccountDb, ConfId) ->
     load_typed_document(AccountDb, ConfId, <<"conference">>).
 
--spec load_participants(ne_binary(), ne_binary()) -> {ok, kz_json:objects()}.
+-spec load_participants(ne_binary(), ne_binary()) -> {'ok', kz_json:objects()}.
 load_participants(AccountId, ConfId) ->
-    {ok, JObjs} = request_conference_details(AccountId, ConfId),
+    {'ok', JObjs} = request_conference_details(AccountId, ConfId),
     JObj = latest_details(JObjs),
-    {ok, extract_participants(JObj)}.
+    {'ok', extract_participants(JObj)}.
 
--spec load_enriched_participants(ne_binary(), ne_binary()) -> {ok, kz_json:objects()}.
+-spec load_enriched_participants(ne_binary(), ne_binary()) -> {'ok', kz_json:objects()}.
 load_enriched_participants(AccountId, ConfId) ->
-    {ok, Participants} = load_participants(AccountId, ConfId),
-    {ok, request_participants_details(Participants)}.
+    {'ok', Participants} = load_participants(AccountId, ConfId),
+    {'ok', request_participants_details(Participants)}.
 
 %%%===================================================================
 %%% Utility functions
@@ -261,15 +261,15 @@ owner_id(Conf) -> kz_json:get_value(<<"owner_id">>, Conf).
 -spec run_time(kz_json:object()) -> integer().
 run_time(Conf) -> kz_json:get_value(<<"Run-Time">>, Conf, 0).
 
--spec ensure_equal(any(), any(), atom()) -> ok.
+-spec ensure_equal(any(), any(), atom()) -> 'ok'.
 ensure_equal(Type, Type, _) -> ok;
 ensure_equal(_, _, Error) -> erlang:error(Error).
 
--spec load_typed_document(ne_binary(), ne_binary(), ne_binary()) -> {ok, kz_json:object()}.
+-spec load_typed_document(ne_binary(), ne_binary(), ne_binary()) -> {'ok', kz_json:object()}.
 load_typed_document(AccountDb, DocId, Type) ->
-    {ok, JObj} = kz_datamgr:open_doc(AccountDb, DocId, [{'doc_type', Type}]),
+    {'ok', JObj} = kz_datamgr:open_doc(AccountDb, DocId, [{'doc_type', Type}]),
     ensure_equal(kz_doc:type(JObj), Type, 'wrong_document_type'),
-    {ok, JObj}.
+    {'ok', JObj}.
 
 %%%===================================================================
 %%% Other functions
@@ -364,17 +364,17 @@ update_conference(DocId, Context) ->
 patch_conference(DocId, Context) ->
     crossbar_doc:patch_and_validate(DocId, Context, fun update_conference/2).
 
--spec lock_conference(ne_binary()) -> ok.
+-spec lock_conference(ne_binary()) -> 'ok'.
 lock_conference(ConfId) ->
     Conference = kapps_conference:set_id(ConfId, kapps_conference:new()),
     kapps_conference_command:lock(Conference),
-    ok.
+    'ok'.
 
--spec unlock_conference(ne_binary()) -> ok.
+-spec unlock_conference(ne_binary()) -> 'ok'.
 unlock_conference(ConfId) ->
     Conference = kapps_conference:set_id(ConfId, kapps_conference:new()),
     kapps_conference_command:unlock(Conference),
-    ok.
+    'ok'.
 
 -spec request_conference_details(kz_json:object()) -> kz_json:objects().
 -spec request_conference_details(ne_binary(), ne_binary()) -> kz_json:objects().
@@ -461,7 +461,7 @@ normalize_view_results(JObj, Acc) ->
 
 -spec enrich_conference(kz_json:object()) -> kz_json:object().
 enrich_conference(Conf) ->
-    {ok, JObjs} = request_conference_details(Conf),
+    {'ok', JObjs} = request_conference_details(Conf),
     JObj = latest_details(JObjs),
     Participants = extract_participants(JObj),
     Enriched = kz_json:insert_values([{<<"members">>, count_members(Participants)}
@@ -469,7 +469,7 @@ enrich_conference(Conf) ->
                                      ,{<<"duration">>, run_time(JObj)}
                                      ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, JObj, false)}
                                      ], Conf),
-    {ok, Enriched}.
+    {'ok', Enriched}.
 
 -spec count_admins(kz_json:objects()) -> integer().
 count_admins(Participants) ->
