@@ -331,6 +331,7 @@ save_an_audit_log(Context, Services) ->
         'false' ->
             (catch save_subaccount_audit_log(Context, BaseAuditLog))
     end,
+    maybe_notify_reseller(Context, Services, BaseAuditLog),
     kzd_audit_log:save(Services, BaseAuditLog).
 
 -spec save_subaccount_audit_log(cb_context:context(), kzd_audit_log:doc()) -> 'ok'.
@@ -338,3 +339,17 @@ save_subaccount_audit_log(Context, BaseAuditLog) ->
     MODb = cb_context:account_modb(Context),
     {'ok', _Saved} = kazoo_modb:save_doc(MODb, BaseAuditLog),
     lager:debug("saved sub account ~s's audit log", [cb_context:account_id(Context)]).
+
+-spec maybe_notify_reseller(cb_context:context(), kz_services:services(), kz_json:object()) -> 'ok'.
+maybe_notify_reseller(Context, Services, AuditLog) ->
+    ResellerId = kzd_services:reseller_id(kz_services:services_json(Services)),
+    case ResellerId =:= kzd_audit_log:authenticating_user_account_id(AuditLog) of
+        'true' -> 'ok';
+        'false' ->
+            Props = [{<<"Account-ID">>, cb_context:account_id(Context)}
+                    ,{<<"Audit-Log">>, AuditLog}
+                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ],
+            kapi_notifications:publish_service_added(Props),
+            lager:debug("published service_added to reseller account ~s~n", [ResellerId])
+  end.
