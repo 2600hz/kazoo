@@ -358,16 +358,16 @@ set_reason(BTTransaction, Transaction, 'undefined') ->
     IsApi = kz_json:is_true(<<"is_api">>, BTTransaction),
     IsRecurring = kz_json:is_true(<<"is_recurring">>, BTTransaction),
     IsProrated = transaction_is_prorated(BTTransaction),
-    if
-        IsProrated, IsRecurring ->
+    case {IsProrated, IsRecurring, IsApi} of
+        {'true', 'true', _} ->
             kz_transaction:set_reason(<<"recurring_prorate">>, Transaction);
-        IsApi, IsRecurring ->
+        {_, 'true', 'true'} ->
             kz_transaction:set_reason(<<"recurring_prorate">>, Transaction);
-        IsRecurring ->
+        {_, 'true', _} ->
             kz_transaction:set_reason(<<"monthly_recurring">>, Transaction);
-        IsApi ->
+        {_, _, 'true'} ->
             kz_transaction:set_reason(<<"manual_addition">>, Transaction);
-        'true' ->
+        _ ->
             kz_transaction:set_reason(<<"unknown">>, Transaction)
     end;
 set_reason(_BTTransaction, Transaction, Code) ->

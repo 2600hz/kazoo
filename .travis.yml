@@ -29,7 +29,6 @@ before_install:
 
 script:
   - make compile-test
-  - make elvis
   - make eunit
   - # ERL_LIBS="$HOME/proper" ERLC_OPTS='-DPROPER' make compile-test
   - # ERL_LIBS="$HOME/proper" make eunit

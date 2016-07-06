@@ -1166,7 +1166,8 @@ change_pin(#mailbox{mailbox_id=Id
         {'ok', Pin} = confirm_new_pin(Interdigit, Call),
         lager:info("collected second pin"),
 
-        if Pin =:= <<>> -> throw('pin_empty'); 'true' -> 'ok' end,
+        Pin =:= <<>>
+            andalso throw('pin_empty'),
         lager:info("entered pin is not empty"),
 
         AccountDb = kapps_call:account_db(Call),

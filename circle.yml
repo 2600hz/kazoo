@@ -39,6 +39,7 @@ test:
         git diff
         exit 1
       fi
+    - . ~/.kerl/$OTP_VERSION/activate && make elvis
     - . ~/.kerl/$OTP_VERSION/activate && make xref
     - . ~/.kerl/$OTP_VERSION/activate && make sup_completion
     - |
