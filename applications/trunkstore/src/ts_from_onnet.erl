@@ -207,7 +207,7 @@ maybe_fix_request({Username, Realm}, JObj) ->
         _ -> JObj
     end.
 
--spec fix_request_values(binary(), binary()) -> kz_proplist().
+-spec fix_request_values(binary(), binary()) -> wh_proplist().
 fix_request_values(Username, Realm) ->
     [{[<<"Custom-Channel-Vars">>, <<"Username">>], Username}
      ,{[<<"Custom-Channel-Vars">>, <<"Realm">>], Realm}
