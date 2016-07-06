@@ -108,7 +108,7 @@
                     ,switch_url :: api_binary() | '_'
                     ,switch_external_ip :: api_binary() | '_'
                     ,account_id :: api_binary() | '_'
-                   }).
+                    }).
 
 -type conference() :: #conference{}.
 -type conferences() :: [conference()].
@@ -131,7 +131,7 @@
                      ,video = 'false' :: boolean() | '_'
                      ,is_moderator = 'false' :: boolean() | '_'
                      ,join_time = kz_util:current_tstamp() :: non_neg_integer() | '_'
-                    }).
+                     }).
 -type participant() :: #participant{}.
 -type participants() :: [participant()].
 

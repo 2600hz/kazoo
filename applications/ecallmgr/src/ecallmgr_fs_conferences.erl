@@ -214,7 +214,7 @@ handle_search_req(JObj, _Props) ->
                    ,{<<"Switch-External-IP">>, ExternalIP}
                    ,{<<"Participant-Count">>, length(Participants)}
                    ,{<<"Participants">>, participants_to_json(Participants)}
-                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             kapi_conference:publish_search_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp);
         [] ->
@@ -462,40 +462,40 @@ participant_to_json(#participant{}=Participant) ->
 
 -spec participant_to_props(participant()) -> kz_proplist().
 participant_to_props(#participant{uuid=UUID
-                                  ,conference_name=ConfName
-                                  ,conference_uuid=ConfUUID
-                                  ,floor=Floor
-                                  ,hear=Hear
-                                  ,speak=Speak
-                                  ,talking=Talking
-                                  ,mute_detect=MuteDetect
-                                  ,member_id=MemberId
-                                  ,member_type=MemberType
-                                  ,energy_level=EnergyLevel
-                                  ,current_energy=CurrentEnergy
-                                  ,video=Video
-                                  ,is_moderator=IsMod
-                                  ,node=Node
-                                  ,join_time=JoinTime
+                                 ,conference_name=ConfName
+                                 ,conference_uuid=ConfUUID
+                                 ,floor=Floor
+                                 ,hear=Hear
+                                 ,speak=Speak
+                                 ,talking=Talking
+                                 ,mute_detect=MuteDetect
+                                 ,member_id=MemberId
+                                 ,member_type=MemberType
+                                 ,energy_level=EnergyLevel
+                                 ,current_energy=CurrentEnergy
+                                 ,video=Video
+                                 ,is_moderator=IsMod
+                                 ,node=Node
+                                 ,join_time=JoinTime
                                  }) ->
-      props:filter_undefined(
-        [{<<"Call-ID">>, UUID}
-         ,{<<"Conference-Name">>, ConfName}
-         ,{<<"Conference-UUID">>, ConfUUID}
-         ,{<<"Switch-Hostname">>, Node}
-         ,{<<"Floor">>, Floor}
-         ,{<<"Hear">>, Hear}
-         ,{<<"Speak">>, Speak}
-         ,{<<"Talking">>, Talking}
-         ,{<<"Mute-Detect">>, MuteDetect}
-         ,{<<"Participant-ID">>, MemberId}
-         ,{<<"Participant-Type">>, MemberType}
-         ,{<<"Energy-Level">>, EnergyLevel}
-         ,{<<"Current-Energy">>, CurrentEnergy}
-         ,{<<"Video">>, Video}
-         ,{<<"Is-Moderator">>, IsMod}
-         ,{<<"Join-Time">>, JoinTime}
-        ]).
+    props:filter_undefined(
+      [{<<"Call-ID">>, UUID}
+      ,{<<"Conference-Name">>, ConfName}
+      ,{<<"Conference-UUID">>, ConfUUID}
+      ,{<<"Switch-Hostname">>, Node}
+      ,{<<"Floor">>, Floor}
+      ,{<<"Hear">>, Hear}
+      ,{<<"Speak">>, Speak}
+      ,{<<"Talking">>, Talking}
+      ,{<<"Mute-Detect">>, MuteDetect}
+      ,{<<"Participant-ID">>, MemberId}
+      ,{<<"Participant-Type">>, MemberType}
+      ,{<<"Energy-Level">>, EnergyLevel}
+      ,{<<"Current-Energy">>, CurrentEnergy}
+      ,{<<"Video">>, Video}
+      ,{<<"Is-Moderator">>, IsMod}
+      ,{<<"Join-Time">>, JoinTime}
+      ]).
 
 -spec conference_to_props(conference()) -> kz_proplist().
 conference_to_props(#conference{name=Name

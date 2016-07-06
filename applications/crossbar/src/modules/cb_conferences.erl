@@ -5,28 +5,28 @@
 %%%
 %%% Handle client requests for conference documents
 %%%
+%%% URI schema:
+%%% /v2/accounts/{AccountId}/conferences
+%%% /v2/accounts/{AccountId}/conferences/{ConferenceID}
+%%% /v2/accounts/{AccountId}/conferences/{ConferenceID}/participants
+%%% /v2/accounts/{AccountId}/conferences/{ConferenceID}/participants/{ParticipantId}
+%%%
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
 %%%   Roman Galeev
-%%%-------------------------------------------------------------------
+
 -module(cb_conferences).
 
-% URI schema
-% /v2/accounts/{AccountId}/conferences
-% /v2/accounts/{AccountId}/conferences/{ConferenceID}
-% /v2/accounts/{AccountId}/conferences/{ConferenceID}/participants
-% /v2/accounts/{AccountId}/conferences/{ConferenceID}/participants/{ParticipantId}
-
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-         ,validate/1, validate/2, validate/3, validate/4
-         ,post/2, post/3, post/4
-         ,put/1
-         ,patch/2
-         ,delete/2
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+        ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+        ,validate/1, validate/2, validate/3, validate/4
+        ,post/2, post/3, post/4
+        ,put/1
+        ,patch/2
+        ,delete/2
         ]).
 
 -include("crossbar.hrl").
@@ -61,7 +61,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.conferences">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.conferences">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.conferences">>, ?MODULE, 'validate'),
-   _ = crossbar_bindings:bind(<<"*.execute.put.conferences">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.conferences">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.conferences">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.conferences">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.conferences">>, ?MODULE, 'delete').
@@ -176,9 +176,9 @@ load_conference_into_context(Context, ConfId) ->
 -spec handle_response(cb_context:context(), any()) -> cb_context:context().
 handle_response(Context, {response, Response}) ->
     cb_context:setters(Context, [
-         {fun cb_context:set_resp_status/2, 'success'}
-        ,{fun cb_context:set_resp_data/2, Response}
-    ]);
+                                 {fun cb_context:set_resp_status/2, 'success'}
+                                ,{fun cb_context:set_resp_data/2, Response}
+                                ]);
 handle_response(Context, {ok, Response}) ->
     crossbar_doc:handle_json_success(Response, Context);
 handle_response(Context, {error, Error}) ->
@@ -191,16 +191,16 @@ handle_response(Context, {error, Error}) ->
 -spec handle_participants_action(ne_binary(), ne_binary(), ne_binary()) -> {response, [integer()]}.
 handle_participants_action(AccountId, ConfId, Action=?MUTE) ->
     handle_participants_action(AccountId, ConfId, Action,
-        fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_true(<<"Speak">>, P) end);
+                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_true(<<"Speak">>, P) end);
 handle_participants_action(AccountId, ConfId, Action=?UNMUTE) ->
     handle_participants_action(AccountId, ConfId, Action,
-        fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_false(<<"Speak">>, P) end);
+                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_false(<<"Speak">>, P) end);
 handle_participants_action(AccountId, ConfId, Action=?DEAF) ->
     handle_participants_action(AccountId, ConfId, Action,
-        fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_true(<<"Hear">>, P) end);
+                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_true(<<"Hear">>, P) end);
 handle_participants_action(AccountId, ConfId, Action=?UNDEAF) ->
     handle_participants_action(AccountId, ConfId, Action,
-        fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_false(<<"Hear">>, P) end);
+                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_false(<<"Hear">>, P) end);
 handle_participants_action(AccountId, ConfId, Action=?KICK) ->
     handle_participants_action(AccountId, ConfId, Action, fun(_) -> true end);
 handle_participants_action(_AccountId, ConfId, Action) ->
@@ -218,7 +218,7 @@ handle_conference_action(ConfId, Action) ->
     lager:error("Unhandled conference id:~p action:~p", [ConfId, Action]),
     {'error', 'unhandled_conference_action'}.
 
-% action applicable to conference participants selected by selector function
+                                                % action applicable to conference participants selected by selector function
 -spec handle_participants_action(ne_binary(), ne_binary(), ne_binary(), function()) -> {response, [integer()]}.
 handle_participants_action(AccountId, ConfId, Action, Selector) ->
     {ok, JObjs} = request_conference_details(AccountId, ConfId),
@@ -226,9 +226,9 @@ handle_participants_action(AccountId, ConfId, Action, Selector) ->
     Participants = extract_participants(JObj),
     Conference = kapps_conference:set_id(ConfId, kapps_conference:new()),
     Commanded = [
-        perform_conference_action(Conference, Action, kz_json:get_value(<<"Participant-ID">>, P))
-            || P <- Participants, Selector(P)
-    ],
+                 perform_conference_action(Conference, Action, kz_json:get_value(<<"Participant-ID">>, P))
+                 || P <- Participants, Selector(P)
+                ],
     {response, Commanded}.
 
 %%%===================================================================
@@ -289,7 +289,7 @@ create_conference(Context) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
-                       ,kz_doc:set_type(cb_context:doc(Context), <<"conference">>)
+                      ,kz_doc:set_type(cb_context:doc(Context), <<"conference">>)
                       );
 on_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"conference">>)).
@@ -317,14 +317,14 @@ maybe_create_conference(Context) ->
                 {'true', Number} ->
                     lager:error("number ~s is already used", [Number]),
                     cb_context:add_validation_error(
-                        [<<"numbers">>]
-                        ,<<"unique">>
-                        ,kz_json:from_list([
-                            {<<"message">>, <<"Number already in use">>}
-                            ,{<<"cause">>, Number}
-                         ])
-                        ,Context
-                    )
+                      [<<"numbers">>]
+                                                   ,<<"unique">>
+                                                   ,kz_json:from_list([
+                                                                       {<<"message">>, <<"Number already in use">>}
+                                                                      ,{<<"cause">>, Number}
+                                                                      ])
+                                                   ,Context
+                     )
             end
     end.
 
@@ -383,8 +383,8 @@ request_conference_details(Conf) ->
 request_conference_details(AccountId, ConfId) ->
     Realm = kz_util:get_account_realm(AccountId),
     Req = [{<<"Realm">>, Realm}
-           ,{<<"Fields">>, []}
-           ,{<<"Conference-ID">>, ConfId}
+          ,{<<"Fields">>, []}
+          ,{<<"Conference-ID">>, ConfId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapps_util:amqp_pool_collect(Req, fun kapi_conference:publish_search_req/1, {'ecallmgr', 'true'}).
@@ -399,9 +399,9 @@ request_participants_details([{H}|T], Acc) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kapps_util:amqp_pool_request(Req
-                                       ,fun kapi_call:publish_channel_status_req/1
-                                       ,fun kapi_call:channel_status_resp_v/1
-                                      ) of
+                                     ,fun kapi_call:publish_channel_status_req/1
+                                     ,fun kapi_call:channel_status_resp_v/1
+                                     ) of
         {'error', E} ->
             lager:debug("error fetching channel status for ~s (~p)", [CallId, E]),
             request_participants_details(T, Acc);
@@ -447,7 +447,7 @@ perform_conference_action(Conference, ?DEAF, ParticipantId) ->
     kapps_conference_command:prompt(<<"conf-deaf">>, ParticipantId, Conference),
     ParticipantId;
 perform_conference_action(Conference, ?UNDEAF, ParticipantId) ->
-kapps_conference_command:undeaf_participant(ParticipantId, Conference),
+    kapps_conference_command:undeaf_participant(ParticipantId, Conference),
     kapps_conference_command:prompt(<<"conf-undeaf">>, ParticipantId, Conference),
     ParticipantId;
 perform_conference_action(Conference, ?KICK, ParticipantId) ->
@@ -465,10 +465,10 @@ enrich_conference(Conf) ->
     JObj = latest_details(JObjs),
     Participants = extract_participants(JObj),
     Enriched = kz_json:insert_values([{<<"members">>, count_members(Participants)}
-        ,{<<"admins">>, count_admins(Participants)}
-        ,{<<"duration">>, run_time(JObj)}
-        ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, JObj, false)}
-    ], Conf),
+                                     ,{<<"admins">>, count_admins(Participants)}
+                                     ,{<<"duration">>, run_time(JObj)}
+                                     ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, JObj, false)}
+                                     ], Conf),
     {ok, Enriched}.
 
 -spec count_admins(kz_json:objects()) -> integer().
