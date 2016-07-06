@@ -144,12 +144,21 @@ initialize_kapps() ->
 
 -spec start_which_kapps() -> [ne_binary() | atom()].
 start_which_kapps() ->
-    case os:getenv("KAZOO_APPS", "noenv") of
-        "noenv" ->
-            kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS);
-        KAZOO_APPS ->
-            string:tokens(KAZOO_APPS, ", ")
+    KApp = kapp_from_node_name(),
+    case code:where_is_file(kz_util:to_list(KApp) ++ ".app") of
+        'non_existing' ->
+            case os:getenv("KAZOO_APPS", "noenv") of
+                "noenv" ->
+                    kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS);
+                KAZOO_APPS ->
+                    string:tokens(KAZOO_APPS, ", ")
+            end;
+        _Found -> [KApp]
     end.
+
+-spec kapp_from_node_name() -> atom().
+kapp_from_node_name() ->
+    kz_util:to_atom(hd(binary:split(kz_util:to_binary(node()), <<$@>>)), 'true').
 
 -spec sysconf_first(atom(), atom()) -> boolean().
 sysconf_first('sysconf', _) -> 'true';
