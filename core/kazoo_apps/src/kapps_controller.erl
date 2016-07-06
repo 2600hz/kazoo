@@ -138,9 +138,11 @@ initialize_kapps() ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
     kz_datamgr:db_exists(?KZ_ACCOUNTS_DB)
         orelse kapps_maintenance:refresh(),
-    KApps = [kz_util:to_atom(KApp, 'true') || KApp <- start_which_kapps()],
-    _ = [start_app(A) || A <- lists:sort(fun sysconf_first/2, KApps)],
-    lager:notice("auto-started kapps ~p", [KApps]).
+    ToStart = [kz_util:to_atom(KApp, 'true') || KApp <- start_which_kapps()],
+    Started = [KApp || KApp <- lists:sort(fun sysconf_first/2, ToStart),
+                       {'ok',_} <- [start_app(KApp)]
+              ],
+    lager:notice("auto-started kapps ~p", [Started]).
 
 -spec start_which_kapps() -> [ne_binary() | atom()].
 start_which_kapps() ->
