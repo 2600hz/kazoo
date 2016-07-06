@@ -43,7 +43,7 @@
         ,'webseq'
         ,'kazoo','kazoo_amqp','kazoo_apps','kazoo_config'
         ,'kazoo_couch','kazoo_media'
-        ,'kazoo_services','kazoo_stats','kazoo_transactions'
+        ,'kazoo_services','kazoo_stats','kazoo_tasks','kazoo_transactions'
         ,'xmerl'
         ,'zucchini'
         ]).
