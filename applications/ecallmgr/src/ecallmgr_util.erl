@@ -384,13 +384,13 @@ process_fs_kv(_, _, [], _) -> [];
 process_fs_kv(Node, UUID, [{K, V}|KVs], Action) ->
     X1 = format_fs_kv(K, V, UUID, Action),
     lists:foldl(fun(Prop, Acc) ->
-                    process_fs_kv_fold(Node, UUID, Prop, Action, Acc)
+                        process_fs_kv_fold(Node, UUID, Prop, Action, Acc)
                 end, X1, KVs);
 process_fs_kv(Node, UUID, [K|KVs], 'unset'=Action)
   when is_binary(K) ->
     X1 = ecallmgr_util:get_fs_key(K),
     lists:foldl(fun(Prop, Acc) ->
-                    process_fs_kv_fold(Node, UUID, Prop, Action, Acc)
+                        process_fs_kv_fold(Node, UUID, Prop, Action, Acc)
                 end, [<<X1/binary, "=">>], KVs).
 
 process_fs_kv_fold(_Node, UUID, {K, V}, Action, Acc) ->
