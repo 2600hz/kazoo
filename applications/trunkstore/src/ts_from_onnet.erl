@@ -213,8 +213,8 @@ maybe_fix_request({Username, Realm}, JObj) ->
 -spec fix_request_values(binary(), binary()) -> kz_proplist().
 fix_request_values(Username, Realm) ->
     [{[<<"Custom-Channel-Vars">>, <<"Username">>], Username}
-     ,{[<<"Custom-Channel-Vars">>, <<"Realm">>], Realm}
-     ,{[<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], <<"sys_info">>}
+    ,{[<<"Custom-Channel-Vars">>, <<"Realm">>], Realm}
+    ,{[<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], <<"sys_info">>}
     ].
 
 -spec get_referred_by(kz_json:object()) -> api_binary().

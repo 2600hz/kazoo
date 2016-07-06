@@ -24,7 +24,7 @@ handle_req(ApiJObj, _Options) ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, ApiJObj, kz_json:new()),
     lager:info("received request ~s asking if trunkstore can route this call", [kapi_route:fetch_id(ApiJObj)]),
     case {kz_json:get_value(<<"Account-ID">>, CCVs)
-          ,kz_json:get_first_defined([<<"Authorizing-ID">>, <<"Referred-By">>, <<"Redirected-By">>], CCVs)
+         ,kz_json:get_first_defined([<<"Authorizing-ID">>, <<"Referred-By">>, <<"Redirected-By">>], CCVs)
          }
     of
         {AcctID, 'undefined'} when is_binary(AcctID) ->

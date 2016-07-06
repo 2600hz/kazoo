@@ -249,7 +249,7 @@ get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps) ->
                                                                   ])
                     }
                    ,{<<"Custom-SIP-Headers">>, kz_json:from_list([{<<"X-KAZOO-AOR">>, <<"sip:", AuthUser/binary, "@", AuthRealm/binary>>}
-                                                      ])
+                                                                 ])
                     }
                     | Invite
                    ])
