@@ -29,9 +29,8 @@ test:
     - ./scripts/validate-js.sh $(find applications core -iname '*.json')
     - ./scripts/code_checks.bash
     - |
-      files="$($CHANGED)" || true
-      if [[ ! -z "$files" ]]; then
-        TO_FMT="$(echo $files)" make fmt
+      if [[ ! -z "$($CHANGED)" ]]; then
+        TO_FMT="$($CHANGED)" make fmt
       fi
     - make bump-copyright
     - . ~/.kerl/$OTP_VERSION/activate && make
@@ -46,10 +45,9 @@ test:
     - . ~/.kerl/$OTP_VERSION/activate && make sup_completion
     - |
       . ~/.kerl/$OTP_VERSION/activate
-      files="$($CHANGED)" || true
-      if [[ ! -z "$files" ]]; then
+      if [[ ! -z "$($CHANGED)" ]]; then
         make build-plt
-        TO_DIALYZE="$(echo $files)" make dialyze
+        TO_DIALYZE="$($CHANGED)" make dialyze
       fi
     - . ~/.kerl/$OTP_VERSION/activate && make build-ci-release
     - . ~/.kerl/$OTP_VERSION/activate && ./scripts/check-release-startup.sh
