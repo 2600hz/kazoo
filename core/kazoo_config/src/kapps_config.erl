@@ -16,6 +16,10 @@
         ,get_all_kvs/1
         ,get_current/2, get_current/3, get_current/4
         ]).
+-export([get_node_value/2
+        ,get_node_value/3
+        ,get_node_value/4
+        ]).
 -export([get_string/2, get_string/3, get_string/4]).
 -export([get_binary/2, get_binary/3, get_binary/4]).
 -export([get_atom/2, get_atom/3, get_atom/4]).
@@ -206,6 +210,41 @@ get_ne_binary(Category, Key, Default, Node) ->
     case kz_util:is_empty(Value) of
         'true' -> Default;
         'false' -> kz_util:to_binary(Value)
+    end.
+
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get a configuration key for a given category but only if its configured
+%%  explicitly for the node
+%%
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_node_value(config_category(), config_key()) -> any() | 'undefined'.
+-spec get_node_value(config_category(), config_key(), Default) -> any() | Default.
+-spec get_node_value(config_category(), config_key(), Default, ne_binary() | atom()) -> any() | Default.
+
+get_node_value(Category, Key) ->
+    get_node_value(Category, Key, 'undefined').
+
+get_node_value(Category, Key, Default) ->
+    get_node_value(Category, Key, Default, node()).
+
+get_node_value(Category, Key, Default, Node) when not is_list(Key) ->
+    get_node_value(Category, [kz_util:to_binary(Key)], Default, Node);
+get_node_value(Category, Keys, Default, Node) when not is_binary(Category) ->
+    get_node_value(kz_util:to_binary(Category), Keys, Default, Node);
+get_node_value(Category, Keys, Default, Node) when not is_binary(Node) ->
+    get_node_value(Category, Keys, Default, kz_util:to_binary(Node));
+get_node_value(Category, Keys, Default, Node) ->
+    case get_category(Category) of
+        {'ok', JObj} ->
+            Node = kz_util:to_binary(node()),
+            kz_json:get_value([Node | Keys], JObj);
+        {'error', 'not_found'} ->
+            lager:debug("missing category ~s ~p: ~p", [Category, Keys, Default]),
+            Default
     end.
 
 %%-----------------------------------------------------------------------------
