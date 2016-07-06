@@ -34,6 +34,7 @@
 -export([migrate_ring_group_callflow/1]).
 
 -export([init_apps/2, init_app/2]).
+-export([init_apps/1, init_app/1]).
 
 -include("crossbar.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
@@ -764,7 +765,11 @@ save_old_ring_group(JObj, NewCallflow) ->
             io:format("  saved ring group callflow: ~s~n", [kz_json:encode(_OldJObj)])
     end.
 
--spec init_apps(filelib:dirname(), ne_binary()) -> 'ok'.
+-spec init_apps(filelib:dirname()) -> 'ok'.
+init_apps(AppsPath) ->
+    init_apps(AppsPath, 'undefined').
+
+-spec init_apps(filelib:dirname(), api_binary()) -> 'ok'.
 init_apps(AppsPath, AppUrl) ->
     Apps = find_apps(AppsPath),
     InitApp = fun(App) -> init_app(App, AppUrl) end,
@@ -780,12 +785,16 @@ find_apps(AppsPath) ->
         end,
     filelib:fold_files(AppsPath, "app\\.json", 'true', AccFun, []).
 
--spec init_app(file:filename(), ne_binary()) -> 'ok'.
+-spec init_app(file:filename()) -> 'ok'.
+init_app(AppPath) ->
+    init_app(AppPath, 'undefined').
+
+-spec init_app(file:filename(), api_binary()) -> 'ok'.
 init_app(AppPath, AppUrl) ->
     io:format("trying to init app from ~s~n", [AppPath]),
     try find_metadata(AppPath) of
         {'ok', MetaData} ->
-            maybe_create_app(AppPath, kz_json:set_value(<<"api_url">>, AppUrl, MetaData));
+            maybe_create_app(AppPath, maybe_set_api_url(AppUrl, MetaData));
         {'invalid_data', _E} ->
             io:format("  failed to validate app data ~s: ~p~n", [AppPath, _E])
     catch
@@ -796,6 +805,12 @@ init_app(AppPath, AppUrl) ->
         'error':_E ->
             io:format("  failed to find metadata in ~s: ~p~n", [AppPath, _E])
     end.
+
+-spec maybe_set_api_url(api_binary(), kz_json:object()) -> kz_json:object().
+maybe_set_api_url('undefined', MetaData) ->
+    kz_json:delete_key(<<"api_url">>, MetaData);
+maybe_set_api_url(AppUrl, MetaData) ->
+    kz_json:set_value(<<"api_url">>, AppUrl, MetaData).
 
 -spec maybe_create_app(file:filename(), kz_json:object()) -> 'ok'.
 -spec maybe_create_app(file:filename(), kz_json:object(), ne_binary()) -> 'ok'.
