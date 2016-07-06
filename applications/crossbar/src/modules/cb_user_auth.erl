@@ -159,7 +159,7 @@ post(Context, ?RECOVERY) ->
     DocForCreation =
         kz_json:from_list(
           [{<<"account_id">>, kz_util:format_account_id(cb_context:account_db(Context1))}
-          ,{<<"owner_id">>, cb_context:fetch(Context1, 'owner_id')}
+          ,{<<"owner_id">>, kz_doc:id(cb_context:doc(Context1))}
           ]),
     Context2 = cb_context:set_doc(Context1, DocForCreation),
     crossbar_util:create_auth_token(Context2, ?MODULE).
