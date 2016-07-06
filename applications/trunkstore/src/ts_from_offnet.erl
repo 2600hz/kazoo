@@ -54,11 +54,13 @@ proceed_with_endpoint(State, Endpoint, JObj) ->
                         'true' -> <<"process">>; %% bypass media is false, process media
                         'false' -> <<"bypass">>
                     end,
+    Id = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], Endpoint),
     Command = [{<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Endpoints">>, [Endpoint]}
-               ,{<<"Media">>, MediaHandling}
-               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
-               ,{<<"Call-ID">>, CallID}
+              ,{<<"Endpoints">>, [Endpoint]}
+              ,{<<"Media">>, MediaHandling}
+              ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+              ,{<<"Call-ID">>, CallID}
+              ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Trunkstore-ID">>, Id}])}
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     State1 = ts_callflow:set_failover(State, wh_json:get_value(<<"Failover">>, Endpoint, wh_json:new())),
