@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (c) 2010-2014, 2600Hz
+%%% @copyright (c) 2010-2016, 2600Hz
 %%% @doc
 %%% Utility module for CDR operations
 %%% @end

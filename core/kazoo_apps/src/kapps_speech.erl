@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%% For TTS (Text To Speech), use the create/* methods
 %%% To do ASR (Automatic Speech Recognition), there are two options:

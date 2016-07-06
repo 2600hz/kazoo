@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz Inc
+%%% @copyright (C) 2016, 2600Hz Inc
 %%% @doc
 %%% Periodically checks the hangup stats for anomalies
 %%%

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2015 2600Hz Inc
+%%% @copyright (C) 2013-2016 2600Hz Inc
 %%% @doc
 %%% Conference participant process
 %%% @end
