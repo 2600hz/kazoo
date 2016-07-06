@@ -2,7 +2,7 @@ machine:
   environment:
     OTP_VERSION: 18.2
     PATH: ${HOME}/.kerl/$OTP_VERSION/bin:${PATH}
-    CMP_BASE: master..
+    CMP_BASE: 'HEAD origin/master --'
   services:
     - rabbitmq-server
 #    - couchdb-server
