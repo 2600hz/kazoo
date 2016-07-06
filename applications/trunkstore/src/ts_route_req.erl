@@ -21,9 +21,10 @@ handle_req(ApiJObj, _Options) ->
     wh_util:put_callid(ApiJObj),
     'true' = wapi_route:req_v(ApiJObj),
     CallID = wh_json:get_value(<<"Call-ID">>, ApiJObj),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, ApiJObj, wh_json:new()),
     lager:info("received request ~s asking if trunkstore can route this call", [wapi_route:fetch_id(ApiJObj)]),
-    case {wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], ApiJObj)
-          ,wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], ApiJObj)
+    case {wh_json:get_value(<<"Account-ID">>, CCVs)
+          ,wh_json:get_first_defined([<<"Authorizing-ID">>, <<"Referred-By">>, <<"Redirected-By">>], CCVs)
          }
     of
         {AcctID, 'undefined'} when is_binary(AcctID) ->
