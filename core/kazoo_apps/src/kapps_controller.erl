@@ -136,20 +136,20 @@ running_apps_list() ->
 -spec initialize_kapps() -> 'ok'.
 initialize_kapps() ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
-    case kz_datamgr:db_exists(?KZ_ACCOUNTS_DB) of
-        'false' -> kapps_maintenance:refresh();
-        'true' -> 'ok'
-    end,
-    KApps = case os:getenv("KAZOO_APPS", "noenv") of
-                "noenv" ->
-                    kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS);
-                KAZOO_APPS ->
-                    string:tokens(KAZOO_APPS, ", ")
-            end,
-    StartKApps = [kz_util:to_atom(KApp, 'true') || KApp <- KApps],
+    kz_datamgr:db_exists(?KZ_ACCOUNTS_DB)
+        orelse kapps_maintenance:refresh(),
+    KApps = [kz_util:to_atom(KApp, 'true') || KApp <- start_which_kapps()],
+    _ = [start_app(A) || A <- lists:sort(fun sysconf_first/2, KApps)],
+    lager:notice("auto-started kapps ~p", [KApps]).
 
-    _ = [start_app(A) || A <- lists:sort(fun sysconf_first/2, StartKApps)],
-    lager:notice("auto-started kapps ~p", [StartKApps]).
+-spec start_which_kapps() -> [ne_binary() | atom()].
+start_which_kapps() ->
+    case os:getenv("KAZOO_APPS", "noenv") of
+        "noenv" ->
+            kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS);
+        KAZOO_APPS ->
+            string:tokens(KAZOO_APPS, ", ")
+    end.
 
 -spec sysconf_first(atom(), atom()) -> boolean().
 sysconf_first('sysconf', _) -> 'true';
