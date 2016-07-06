@@ -167,6 +167,7 @@ diff: dialyze-it
 $(FMT):
 	wget 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' -O - | tar xvz -C make/
 
+fmt: TO_FMT ?= $(shell find applications core -iname '*.erl' -or -iname '*.hrl')
 fmt: $(FMT)
-	$(FMT) $(shell find applications core -iname '*.erl' -or -iname '*.hrl')
-	find applications core -iname '*.erl' -or -iname '*.hrl' | xargs sed -i 's/\t/        /g'
+	@$(FMT) $(TO_FMT)
+	@echo $(TO_FMT) | xargs sed -i 's/\t/        /g'

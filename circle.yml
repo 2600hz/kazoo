@@ -24,9 +24,14 @@ dependencies:
 
 test:
   pre:
+    - git diff --name-only master... applications core
     - ./scripts/validate-js.sh $(find applications core -iname '*.json')
     - ./scripts/code_checks.bash
-    - make fmt
+    - |
+      files="$(git diff --name-only master... applications core)" || true
+      if [[ ! -z "$files" ]]; then
+        TO_FMT="$files" make fmt
+      fi
     - . ~/.kerl/$OTP_VERSION/activate && make
     - |
       if [[ 0 -ne `git status --porcelain | wc -l` ]]; then
@@ -39,10 +44,9 @@ test:
     - |
       . ~/.kerl/$OTP_VERSION/activate
       files="$(git diff --name-only master... applications core)" || true
-      echo .$files.
       if [[ ! -z "$files" ]]; then
         make build-plt
-        ./scripts/check-dialyzer.escript .kazoo.plt $files
+        TO_DIALYZE="$files" make dialyze
       fi
     - . ~/.kerl/$OTP_VERSION/activate && make build-ci-release
     - . ~/.kerl/$OTP_VERSION/activate && ./scripts/check-release-startup.sh
