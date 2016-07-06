@@ -2,7 +2,7 @@ machine:
   environment:
     OTP_VERSION: 18.2
     PATH: ${HOME}/.kerl/$OTP_VERSION/bin:${PATH}
-    CMP_BASE: 'HEAD origin/master --'
+    CHANGED: 'git --no-pager diff HEAD origin/master --name-only'
   services:
     - rabbitmq-server
 #    - couchdb-server
@@ -25,11 +25,11 @@ dependencies:
 
 test:
   pre:
-    - git --no-pager diff --name-only $CMP_BASE applications core
+    - $CHANGED
     - ./scripts/validate-js.sh $(find applications core -iname '*.json')
     - ./scripts/code_checks.bash
     - |
-      files="$(git diff --name-only $CMP_BASE applications core)" || true
+      files="$($CHANGED)" || true
       if [[ ! -z "$files" ]]; then
         TO_FMT="$(echo $files)" make fmt
       fi
@@ -46,7 +46,7 @@ test:
     - . ~/.kerl/$OTP_VERSION/activate && make sup_completion
     - |
       . ~/.kerl/$OTP_VERSION/activate
-      files="$(git diff --name-only $CMP_BASE applications core)" || true
+      files="$($CHANGED)" || true
       if [[ ! -z "$files" ]]; then
         make build-plt
         TO_DIALYZE="$(echo $files)" make dialyze
