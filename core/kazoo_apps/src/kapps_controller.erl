@@ -22,28 +22,67 @@
 -include("kazoo_apps.hrl").
 
 -define(HIDDEN_APPS
-       ,['amqp_client','apns','asn1'
-        ,'bear','braintree'
-        ,'certifi','compiler','cowboy','cowlib','couchbeam','crypto'
-        ,'eflame','escalus','exml'
+       ,['amqp_client'
+        ,'apns'
+        ,'asn1'
+        ,'bear'
+        ,'braintree'
+        ,'certifi'
+        ,'compiler'
+        ,'cowboy'
+        ,'cowlib'
+        ,'couchbeam'
+        ,'crypto'
+        ,'eflame'
+        ,'escalus'
+        ,'exml'
         ,'folsom'
-        ,'gcm','gen_smtp','goldrush','gproc'
+        ,'gcm'
+        ,'gen_smtp'
+        ,'goldrush'
+        ,'gproc'
         ,'hackney'
-        ,'idna','inets'
-        ,'kazoo_bindings','kazoo_caches','kazoo_couch','kazoo_data'
-        ,'kazoo_documents','kazoo_endpoint','kazoo_etsmgr','kazoo_globals'
-        ,'kazoo_modb','kazoo_number_manager','kazoo_oauth','kazoo_token_buckets'
-        ,'kazoo_voicemail','kazoo_web','kazoo_xml','kernel'
-        ,'lager','lager_syslog'
+        ,'idna'
+        ,'inets'
+        ,'kazoo'
+        ,'kazoo_amqp'
+        ,'kazoo_apps'
+        ,'kazoo_bindings'
+        ,'kazoo_caches'
+        ,'kazoo_config'
+        ,'kazoo_couch'
+        ,'kazoo_data'
+        ,'kazoo_documents'
+        ,'kazoo_endpoint'
+        ,'kazoo_etsmgr'
+        ,'kazoo_globals'
+        ,'kazoo_media'
+        ,'kazoo_modb'
+        ,'kazoo_number_manager'
+        ,'kazoo_oauth'
+        ,'kazoo_services'
+        ,'kazoo_stats'
+        ,'kazoo_tasks'
+        ,'kazoo_transactions'
+        ,'kazoo_token_buckets'
+        ,'kazoo_voicemail'
+        ,'kazoo_web'
+        ,'kazoo_xml'
+        ,'kernel'
+        ,'lager'
+        ,'lager_syslog'
         ,'mimerl'
         ,'nksip'
-        ,'poolboy','public_key'
-        ,'rabbit_common','ranch'
-        ,'sasl','ssl','stdlib','syntax_tools','syslog'
+        ,'poolboy'
+        ,'public_key'
+        ,'rabbit_common'
+        ,'ranch'
+        ,'sasl'
+        ,'ssl'
+        ,'stdlib'
+        ,'syntax_tools'
+        ,'syslog'
         ,'webseq'
-        ,'kazoo','kazoo_amqp','kazoo_apps','kazoo_config'
-        ,'kazoo_couch','kazoo_media'
-        ,'kazoo_services','kazoo_stats','kazoo_tasks','kazoo_transactions'
         ,'xmerl'
         ,'zucchini'
         ]).
@@ -146,17 +185,59 @@ initialize_kapps() ->
 
 -spec start_which_kapps() -> [ne_binary() | atom()].
 start_which_kapps() ->
-    KApp = kapp_from_node_name(),
-    case code:where_is_file(kz_util:to_list(KApp) ++ ".app") of
-        'non_existing' ->
-            case os:getenv("KAZOO_APPS", "noenv") of
-                "noenv" ->
-                    kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS);
-                KAZOO_APPS ->
-                    string:tokens(KAZOO_APPS, ", ")
-            end;
-        _Found -> [KApp]
+    Routines = [fun maybe_start_from_env/0
+               ,fun maybe_start_from_node_config/0
+               ,fun maybe_start_from_node_name/0
+               ,fun start_from_default_config/0
+               ],
+    lists:foldl(fun(F, 'false') ->
+                        F();
+                   (_, Apps) ->
+                        Apps
+                end
+               ,'false'
+               ,Routines
+               ).
+
+-spec maybe_start_from_env() -> 'false' | [ne_binary() | atom()].
+maybe_start_from_env() ->
+    case os:getenv("KAZOO_APPS", "noenv") of
+        "noenv" -> 'false';
+        KazooApps ->
+            lager:info("starting applications specified in environment variable KAZOO_APPS: ~s"
+                      ,[KazooApps]
+                      ),
+            string:tokens(KazooApps, ", ")
     end.
+
+-spec maybe_start_from_node_name() -> 'false' | [ne_binary() | atom()].
+maybe_start_from_node_name() ->
+    KApp = kapp_from_node_name(),
+    case not lists:member(KApp, ?HIDDEN_APPS)
+        andalso code:where_is_file(kz_util:to_list(KApp) ++ ".app")
+    of
+        'false' -> 'false';
+        'non_existing' -> 'false';
+        _Else ->
+            lager:info("starting application based on node name: ~s", [KApp]),
+            [KApp]
+    end.
+
+-spec maybe_start_from_node_config() -> 'false' | [ne_binary() | atom()].
+maybe_start_from_node_config() ->
+    case kapps_config:get_node_value(?MODULE, <<"kapps">>) of
+        'undefined' -> 'false';
+        KazooApps ->
+            lager:info("starting applications configured specifically for this node: ~s"
+                       ,[kz_util:join_binary(KazooApps, <<", ">>)]
+                      ),
+            KazooApps
+    end.
+
+-spec start_from_default_config() -> 'false' | [ne_binary() | atom()].
+start_from_default_config() ->
+    lager:info("starting applications from default configuration"),
+    kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS).
 
 -spec kapp_from_node_name() -> atom().
 kapp_from_node_name() ->
@@ -171,8 +252,9 @@ sysconf_first(_, _) -> 'true'.
 list_apps() ->
     case get_running_apps() of
         [] ->
-            KApps = kapps_config:get(?MODULE, <<"kapps">>, ?DEFAULT_KAPPS),
-            [kz_util:to_atom(KApp, 'true') || KApp <- KApps];
+            [kz_util:to_atom(KApp, 'true')
+             || KApp <- start_which_kapps()
+            ];
         Resp -> [App || {App, _, _} <- Resp]
     end.
 
