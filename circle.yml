@@ -26,7 +26,7 @@ dependencies:
 test:
   pre:
     - $CHANGED
-    - ./scripts/validate-js.sh $(find applications core -iname '*.json')
+    - ./scripts/validate-js.sh $($CHANGED)
     - ./scripts/code_checks.bash
     - |
       if [[ ! -z "$($CHANGED)" ]]; then

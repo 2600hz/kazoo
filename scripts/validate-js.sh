@@ -56,8 +56,14 @@ def check_name(file_name, JSON_name):
 
 
 for fn in sys.argv[1:]:
+    if not fn.endswith('.json'):
+        continue
     exploded = fn.split(os.sep)
-    if (not 'couchdb' in exploded) or 'fixtures' in exploded or 'swagger.json' in exploded:
+    if not 'couchdb' in exploded:
+        continue
+    if 'fixtures' in exploded:
+        continue
+    if 'swagger.json' in exploded:
         continue
     print 'checking ' + fn
     with open(fn) as rd:
