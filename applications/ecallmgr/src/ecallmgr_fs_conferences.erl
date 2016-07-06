@@ -195,6 +195,7 @@ handle_search_req(JObj, _Props) ->
         %% TODO: this ignores conferences on multiple nodes until big-conferences
         [#conference{uuid=UUID
                     ,start_time=StartTime
+                    ,locked=Locked
                     ,switch_hostname=Hostname
                     ,switch_url=SwitchURL
                     ,switch_external_ip=ExternalIP
@@ -207,6 +208,7 @@ handle_search_req(JObj, _Props) ->
                    ,{<<"UUID">>, UUID}
                    ,{<<"Run-Time">>, kz_util:current_tstamp() - StartTime}
                    ,{<<"Start-Time">>, StartTime}
+                   ,{<<"Locked">>, Locked}
                    ,{<<"Switch-Hostname">>, Hostname}
                    ,{<<"Switch-URL">>, SwitchURL}
                    ,{<<"Switch-External-IP">>, ExternalIP}
@@ -445,6 +447,7 @@ participant_from_props(Props, Node, CallId, Participant) ->
                            ,energy_level=props:get_integer_value(<<"Energy-Level">>, Props, 0)
                            ,current_energy=props:get_integer_value(<<"Current-Energy">>, Props, 0)
                            ,video=props:get_is_true(<<"Video">>, Props, 'false')
+                           ,join_time=props:get_integer_value(<<"Join-Time">>, Props, kz_util:current_tstamp())
                            }.
 
 -spec participants_to_json(participants(), kz_json:objects()) -> kz_json:objects().
@@ -473,6 +476,7 @@ participant_to_props(#participant{uuid=UUID
                                  ,video=Video
                                  ,is_moderator=IsMod
                                  ,node=Node
+                                 ,join_time=JoinTime
                                  }) ->
     props:filter_undefined(
       [{<<"Call-ID">>, UUID}
@@ -490,6 +494,7 @@ participant_to_props(#participant{uuid=UUID
       ,{<<"Current-Energy">>, CurrentEnergy}
       ,{<<"Video">>, Video}
       ,{<<"Is-Moderator">>, IsMod}
+      ,{<<"Join-Time">>, JoinTime}
       ]).
 
 -spec conference_to_props(conference()) -> kz_proplist().
@@ -599,6 +604,8 @@ xml_attr_to_conference(Conference, 'uuid', Value) ->
     Conference#conference{uuid=kz_util:to_binary(Value)};
 xml_attr_to_conference(Conference, 'running', Value) ->
     Conference#conference{running=kz_util:is_true(Value)};
+xml_attr_to_conference(Conference, 'locked', Value) ->
+    Conference#conference{locked=kz_util:is_true(Value)};
 xml_attr_to_conference(Conference, 'answered', Value) ->
     Conference#conference{answered=kz_util:is_true(Value)};
 xml_attr_to_conference(Conference, 'enforce_min', Value) ->
