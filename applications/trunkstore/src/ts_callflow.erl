@@ -312,6 +312,10 @@ is_trunkstore_acct(JObj, [Type|Types]) ->
         'false' -> is_trunkstore_acct(JObj, Types)
     end;
 is_trunkstore_acct(_JObj, []) -> 'false';
+is_trunkstore_acct(JObj, <<"sys_info">> = Type) ->
+    Type =:= wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj) andalso
+             (wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Referred-By">>], JObj) =/= 'undefined' orelse
+                  wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Redirected-By">>], JObj) =/= 'undefined');
 is_trunkstore_acct(JObj, Type) ->
     Type =:= wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj).
 

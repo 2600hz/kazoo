@@ -22,7 +22,11 @@ start_link(RouteReqJObj) ->
 
 init(Parent, RouteReqJObj) ->
     proc_lib:init_ack(Parent, {'ok', self()}),
-    start_amqp(ts_callflow:init(RouteReqJObj, <<"sys_info">>)).
+    Funs = [fun maybe_referred_call/1
+           ,fun maybe_redirected_call/1
+           ],
+    JObj = wh_json:exec(Funs, RouteReqJObj),
+    start_amqp(ts_callflow:init(JObj, <<"sys_info">>)).
 
 start_amqp({'error', 'not_ts_account'}) -> 'ok';
 start_amqp(State) ->
@@ -184,4 +188,47 @@ wait_for_bridge(CtlQ, State1) ->
             lager:info("responding to aleg ~s with 686", [CallId]),
             wh_call_response:send(CallId, CtlQ, <<"686">>),
             ts_callflow:send_hangup(State2, <<"686">>)
+    end.
+
+-spec maybe_referred_call(wh_json:object()) -> wh_json:object().
+maybe_referred_call(JObj) ->
+    maybe_fix_request(get_referred_by(JObj), JObj).
+
+-spec maybe_redirected_call(wh_json:object()) -> wh_json:object().
+maybe_redirected_call(JObj) ->
+    maybe_fix_request(get_redirected_by(JObj), JObj).
+
+-spec maybe_fix_request({binary(), binary()} | 'undefined', wh_json:object()) -> wh_json:object().
+maybe_fix_request('undefined', JObj) -> JObj;
+maybe_fix_request({Username, Realm}, JObj) ->
+    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    case ts_util:lookup_user_flags(Username, Realm, AccountId) of
+        {'ok', _Opts} -> wh_json:set_values(fix_request_values(Username, Realm), JObj);
+        _ -> JObj
+    end.
+
+-spec fix_request_values(binary(), binary()) -> wh_proplist().
+fix_request_values(Username, Realm) ->
+    [{[<<"Custom-Channel-Vars">>, <<"Username">>], Username}
+     ,{[<<"Custom-Channel-Vars">>, <<"Realm">>], Realm}
+     ,{[<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], <<"sys_info">>}
+    ].
+
+-spec get_referred_by(wh_json:object()) -> api_binary().
+get_referred_by(JObj) ->
+    ReferredBy = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Referred-By">>], JObj),
+    extract_sip_username(ReferredBy).
+
+-spec get_redirected_by(wh_json:object()) -> api_binary().
+get_redirected_by(JObj) ->
+    RedirectedBy = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Redirected-By">>], JObj),
+    extract_sip_username(RedirectedBy).
+
+-spec extract_sip_username(api_binary()) -> api_binary().
+extract_sip_username('undefined') -> 'undefined';
+extract_sip_username(Contact) ->
+    ReOptions = [{'capture', 'all_but_first', 'binary'}],
+    case catch(re:run(Contact, <<".*sip:(.*)@(.*)">>, ReOptions)) of
+        {'match', [User, Realm]} -> {User, Realm};
+        _ -> 'undefined'
     end.

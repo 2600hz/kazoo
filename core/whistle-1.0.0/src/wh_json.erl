@@ -47,6 +47,7 @@
          ,find_value/3, find_value/4
          ,foreach/2
          ,all/2, any/2
+         ,exec/2
         ]).
 
 -export([get_ne_value/2, get_ne_value/3]).
@@ -998,3 +999,18 @@ flatten(Value, Acc, [K | Keys], Depth) ->
         'true' ->
             [{K, Value} | Acc]
     end.
+
+-type exec_fun_1() :: fun((object()) -> object()).
+-type exec_fun_2() :: {fun((_, object()) -> object()), _}.
+-type exec_fun_3() :: {fun((_, _, object()) -> object()), _, _}.
+-type exec_fun() :: exec_fun_1() | exec_fun_2() | exec_fun_3().
+-type exec_funs() :: [exec_fun(),...].
+
+-spec exec(exec_funs(), object()) -> object().
+exec(Funs, ?JSON_WRAPPER(_)=JObj) ->
+    lists:foldl(fun exec_fold/2, JObj, Funs).
+
+-spec exec_fold(exec_fun(), object()) -> object().
+exec_fold({F, K, V}, C) when is_function(F, 3) -> F(K, V, C);
+exec_fold({F, V}, C) when is_function(F, 2) -> F(V, C);
+exec_fold(F, C) when is_function(F, 1) -> F(C).
