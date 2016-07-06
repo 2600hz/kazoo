@@ -21,9 +21,10 @@ handle_req(ApiJObj, _Options) ->
     kz_util:put_callid(ApiJObj),
     'true' = kapi_route:req_v(ApiJObj),
     CallID = kz_json:get_value(<<"Call-ID">>, ApiJObj),
+    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, ApiJObj, kz_json:new()),
     lager:info("received request ~s asking if trunkstore can route this call", [kapi_route:fetch_id(ApiJObj)]),
-    case {kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], ApiJObj)
-         ,kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], ApiJObj)
+    case {kz_json:get_value(<<"Account-ID">>, CCVs)
+          ,kz_json:get_first_defined([<<"Authorizing-ID">>, <<"Referred-By">>, <<"Redirected-By">>], CCVs)
          }
     of
         {AcctID, 'undefined'} when is_binary(AcctID) ->
