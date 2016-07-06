@@ -14,6 +14,7 @@
 -export([send_cmd/4]).
 -export([get_fs_kv/2, get_fs_kv/3, get_fs_key_and_value/3]).
 -export([get_fs_key/1]).
+-export([process_fs_kv/4, format_fs_kv/4, fs_args_to_binary/1]).
 -export([get_expires/1]).
 -export([get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, get_orig_port/1]).
@@ -46,6 +47,9 @@
 -include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
 -define(HTTP_GET_PREFIX, "http_cache://").
+
+-define(FS_MULTI_VAR_SEP, ";").
+-define(FS_MULTI_VAR_SEP_PREFIX, "^^").
 
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
 -export_type([send_cmd_ret/0]).
@@ -368,6 +372,51 @@ is_node_up(Node, UUID) ->
 %% set channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
+-spec fs_args_to_binary(list()) -> binary().
+fs_args_to_binary([_]=Args) ->
+    list_to_binary(Args);
+fs_args_to_binary(Args) ->
+    Bins = [list_to_binary([?FS_MULTI_VAR_SEP, Arg]) || Arg <- Args],
+    list_to_binary([?FS_MULTI_VAR_SEP_PREFIX, Bins]).
+
+-spec process_fs_kv(atom(), ne_binary(), kz_proplist(), atom()) -> [binary()].
+process_fs_kv(_, _, [], _) -> [];
+process_fs_kv(Node, UUID, [{K, V}|KVs], Action) ->
+    X1 = format_fs_kv(K, V, UUID, Action),
+    lists:foldl(fun(Prop, Acc) ->
+                        process_fs_kv_fold(Node, UUID, Prop, Action, Acc)
+                end, X1, KVs);
+process_fs_kv(Node, UUID, [K|KVs], 'unset'=Action)
+  when is_binary(K) ->
+    X1 = ecallmgr_util:get_fs_key(K),
+    lists:foldl(fun(Prop, Acc) ->
+                        process_fs_kv_fold(Node, UUID, Prop, Action, Acc)
+                end, [<<X1/binary, "=">>], KVs).
+
+process_fs_kv_fold(_Node, UUID, {K, V}, Action, Acc) ->
+    [format_fs_kv(K, V, UUID, Action) | Acc];
+process_fs_kv_fold(_Node, _UUID, K, 'unset', Acc)
+  when is_binary(K) ->
+    Key = ecallmgr_util:get_fs_key(K),
+    [<<Key/binary, "=">> | Acc];
+process_fs_kv_fold(_, _, _, _, Acc) ->
+    Acc.
+
+-spec format_fs_kv(ne_binary(), binary(), ne_binary(), atom()) -> [binary()].
+format_fs_kv(Key, Value, UUID, 'unset') ->
+    case ecallmgr_util:get_fs_key_and_value(Key, Value, UUID) of
+        'skip' -> [];
+        {K, _V} -> [<<K/binary, "=">>];
+        KVs -> [<<K/binary, "=">> || {K,_V} <- KVs]
+    end;
+format_fs_kv(_Key, 'undefined', _UUID, _) -> [];
+format_fs_kv(Key, Value, UUID, _) ->
+    case ecallmgr_util:get_fs_key_and_value(Key, Value, UUID) of
+        'skip' -> [];
+        {K, V} -> [<<K/binary, "=", V/binary>>];
+        KVs -> [<<K/binary, "=", V/binary>> || {K,V} <- KVs]
+    end.
+
 -spec get_fs_kv(ne_binary(), ne_binary()) -> binary().
 -spec get_fs_kv(ne_binary(), ne_binary(), api_binary()) -> binary().
 get_fs_kv(Key, Value) ->

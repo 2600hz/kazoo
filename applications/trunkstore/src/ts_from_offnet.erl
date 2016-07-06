@@ -66,11 +66,13 @@ proceed_with_endpoint(State, Endpoint, JObj) ->
                         'true' -> <<"process">>; %% bypass media is false, process media
                         'false' -> <<"bypass">>
                     end,
+    Id = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], Endpoint),
     Command = [{<<"Application-Name">>, <<"bridge">>}
               ,{<<"Endpoints">>, [Endpoint]}
               ,{<<"Media">>, MediaHandling}
               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
               ,{<<"Call-ID">>, CallID}
+              ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Trunkstore-ID">>, Id}])}
                | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     State1 = ts_callflow:set_failover(State, kz_json:get_value(<<"Failover">>, Endpoint, kz_json:new())),
@@ -245,6 +247,9 @@ get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps) ->
                                                                   ,{<<"Authorizing-ID">>, AuthzId}
                                                                   ,{<<"Authorizing-Type">>, <<"sys_info">>}
                                                                   ])
+                    }
+                   ,{<<"Custom-SIP-Headers">>, kz_json:from_list([{<<"X-KAZOO-AOR">>, <<"sip:", AuthUser/binary, "@", AuthRealm/binary>>}
+                                                                 ])
                     }
                     | Invite
                    ])

@@ -165,13 +165,13 @@ maybe_bypass_endpoint_media(_, _, _, DP) ->
     DP.
 
 -spec handle_ccvs(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
-handle_ccvs(DP, _Node, _UUID, _Channel, JObj) ->
+handle_ccvs(DP, Node, UUID, _Channel, JObj) ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj),
     case kz_json:is_json_object(CCVs) of
         'true' ->
-            [{"application", <<"set ", Var/binary, "=", (kz_util:to_binary(V))/binary>>}
-             || {K, V} <- kz_json:to_proplist(CCVs),
-                (Var = props:get_value(K, ?SPECIAL_CHANNEL_VARS)) =/= 'undefined'
+            Args = ecallmgr_util:process_fs_kv(Node, UUID, kz_json:to_proplist(CCVs), 'set'),
+            AppArgs = ecallmgr_util:fs_args_to_binary(Args),
+            [{"application", <<"kz_multiset ", AppArgs/binary>>}
             ] ++ DP;
         _ ->
             DP
