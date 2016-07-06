@@ -165,7 +165,7 @@ diff: export TO_DIALYZE = $(shell git diff --name-only master... -- $(ROOT)/appl
 diff: dialyze-it
 
 $(FMT):
-	wget 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' -O - | tar xvz -C make/
+	wget 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' -O - | tar xvz -C $(ROOT)/make/
 
 fmt: TO_FMT ?= $(shell find applications core -iname '*.erl' -or -iname '*.hrl')
 fmt: $(FMT)
