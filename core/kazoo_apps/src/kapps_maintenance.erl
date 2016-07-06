@@ -187,7 +187,7 @@ refresh(?KZ_SERVICES_DB) ->
 refresh(?KZ_SIP_DB) ->
     kz_datamgr:db_create(?KZ_SIP_DB),
     Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
-            ,kapps_util:get_view_json('registrar', <<"auth.json">>)
+            ,kapps_util:get_view_json('registrar', <<"credentials.json">>)
             ,kapps_util:get_view_json('crossbar', <<"views/resources.json">>)
             ],
     kapps_util:update_views(?KZ_SIP_DB, Views, 'true');
