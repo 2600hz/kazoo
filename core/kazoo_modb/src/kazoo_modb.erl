@@ -299,12 +299,23 @@ run_routine(AccountMODb, Routine) ->
 add_routine(Module) ->
     Routine = kz_util:to_binary(Module),
     Routines = kapps_config:get(?CONFIG_CAT, <<"routines">>, []),
-    case lists:member(Routine, Routines) of
-        'true' -> 'ok';
-        'false' ->
-            kapps_config:set_default(?CONFIG_CAT, <<"routines">>, [Routine | Routines]),
+    case add_migrate_routines(Routines, Routine) of
+        Routines -> 'ok';
+        NewRoutines ->
+            kapps_config:set_default(?CONFIG_CAT, <<"routines">>, NewRoutines),
             'ok'
     end.
+
+-spec add_migrate_routines(ne_binaries(), ne_binary()) -> ne_binaries().
+add_migrate_routines(Routines, Module) ->
+    lists:usort([Module | migrate_routines(Routines, [])]).
+
+-spec migrate_routines(ne_binaries(), ne_binaries()) -> ne_binaries().
+migrate_routines([], Acc) -> Acc;
+migrate_routines([<<"wh_", Rest/binary>> | Rs], Acc) ->
+    migrate_routines(Rs, [<<"kz_", Rest/binary>> | Acc]);
+migrate_routines([R | Rs], Acc) ->
+    migrate_routines(Rs, [R | Acc]).
 
 %%--------------------------------------------------------------------
 %% @public
