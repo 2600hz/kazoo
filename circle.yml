@@ -31,7 +31,7 @@ test:
     - |
       files="$(git diff --name-only $CMP_BASE applications core)" || true
       if [[ ! -z "$files" ]]; then
-        TO_FMT="$files" make fmt
+        TO_FMT="$(echo $files)" make fmt
       fi
     - . ~/.kerl/$OTP_VERSION/activate && make
     - |
@@ -48,7 +48,7 @@ test:
       files="$(git diff --name-only $CMP_BASE applications core)" || true
       if [[ ! -z "$files" ]]; then
         make build-plt
-        TO_DIALYZE="$files" make dialyze
+        TO_DIALYZE="$(echo $files)" make dialyze
       fi
     - . ~/.kerl/$OTP_VERSION/activate && make build-ci-release
     - . ~/.kerl/$OTP_VERSION/activate && ./scripts/check-release-startup.sh
