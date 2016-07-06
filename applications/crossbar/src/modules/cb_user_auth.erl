@@ -457,14 +457,15 @@ maybe_load_user_doc_via_reset_id(Context) ->
     case kz_datamgr:open_cache_doc(AccountDb, ResetId) of
         {'ok', ResetIdDoc} ->
             lager:debug("found password reset doc"),
-            UserId = kz_json:get_value(<<"pvt_userid">>, ResetIdDoc),
-            Context1 = crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type())),
-            NewUserDoc = kz_json:set_value(<<"require_password_update">>, 'true', cb_context:doc(Context1)),
+            Context1 = crossbar_doc:load(kz_json:get_value(<<"pvt_userid">>, ResetIdDoc)
+                                        ,cb_context:set_account_db(Context, AccountDb)
+                                        ,?TYPE_CHECK_OPTION(kzd_user:type())
+                                        ),
+            NewUserDoc =
+                kz_json:set_value(<<"require_password_update">>, 'true', cb_context:doc(Context1)),
             _ = kz_datamgr:del_doc(AccountDb, ResetId),
-            cb_context:setters(Context1, [{fun cb_context:set_account_db/2, AccountDb}
-                                         ,{fun cb_context:set_resp_status/2, 'success'}
+            cb_context:setters(Context1, [{fun cb_context:set_resp_status/2, 'success'}
                                          ,{fun cb_context:set_doc/2, NewUserDoc}
-                                         ,{fun cb_context:store/3, 'owner_id', UserId}
                                          ]);
         _ ->
             Msg = kz_json:from_list(
