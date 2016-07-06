@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% Handle offnet requests, including rating them
 %%% @end

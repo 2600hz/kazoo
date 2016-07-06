@@ -33,6 +33,7 @@ test:
       if [[ ! -z "$files" ]]; then
         TO_FMT="$(echo $files)" make fmt
       fi
+    - make bump-copyright
     - . ~/.kerl/$OTP_VERSION/activate && make
     - |
       if [[ 0 -ne `git status --porcelain | wc -l` ]]; then

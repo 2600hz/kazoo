@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (c) 2010-2013, 2600Hz
+%%% @copyright (c) 2010-2016, 2600Hz
 %%% @doc
 %%% Utility module for V3 Kazoo Migration
 %%% @end

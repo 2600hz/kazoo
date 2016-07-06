@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%% Tracks the agent's state, responds to messages from the corresponding
 %%% acdc_agent gen_listener process.

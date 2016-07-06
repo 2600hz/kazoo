@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% Handles authentication requests, responses, queue bindings
 %%% @end

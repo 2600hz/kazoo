@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%%
 %%%  Delegate job from one app to another app.

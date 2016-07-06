@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%% set [park|transfer|hangup]_after_bridge variable
 %%%

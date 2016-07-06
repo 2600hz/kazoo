@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz INC
+%%% @copyright (C) 2016, 2600Hz INC
 %%% @doc
 %%% Intercept a call in the specified device/user/extension
 %%%

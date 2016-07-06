@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz INC
+%%% @copyright (C) 2013-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Provides a similar interface to the SUP command-line utility. Maps to SUP

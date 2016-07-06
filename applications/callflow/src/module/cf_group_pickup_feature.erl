@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz INC
+%%% @copyright (C) 2016, 2600Hz INC
 %%% @doc
 %%% Pickup a call in the specified group/device/user/extension
 %%%

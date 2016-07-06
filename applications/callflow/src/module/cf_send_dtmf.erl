@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz INC
+%%% @copyright (C) 2016, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "digits":"#123" // what sequence to send

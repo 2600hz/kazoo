@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz Inc
+%%% @copyright (C) 2012-2016, 2600Hz Inc
 %%% @doc
 %%% Supervisor for running conference participant processes
 %%% @end

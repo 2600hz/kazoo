@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%% Domains document for white-label
 %%% @end

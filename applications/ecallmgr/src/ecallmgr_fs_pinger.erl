@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% When connecting to a FreeSWITCH node, we create three processes: one to

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%% Manage the ETS table lookup for token server to account/client IP
 %%% @end

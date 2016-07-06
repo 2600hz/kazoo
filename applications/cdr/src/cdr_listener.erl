@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%% Listen for CDR events and record them to the database
 %%% @end
