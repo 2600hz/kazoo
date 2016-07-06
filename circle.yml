@@ -24,9 +24,14 @@ dependencies:
 
 test:
   pre:
+    - git diff --name-only master... applications core
     - ./scripts/validate-js.sh $(find applications core -iname '*.json')
     - ./scripts/code_checks.bash
-    - make fmt
+    - |
+      files="$(git diff --name-only master... applications core)" || true
+      if [[ ! -z "$files" ]]; then
+        TO_FMT="$files" make fmt
+      fi
     - . ~/.kerl/$OTP_VERSION/activate && make
     - |
       if [[ 0 -ne `git status --porcelain | wc -l` ]]; then
