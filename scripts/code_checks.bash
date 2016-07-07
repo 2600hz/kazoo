@@ -1,20 +1,12 @@
 #!/bin/bash
 
-pushd $(dirname $0) > /dev/null
-
-RAW_ROOT=$(pwd -P)/..
-ROOT=$(realpath $RAW_ROOT)
+[[ $# -eq 0 ]] && echo "Usage: $0  ‹path to check›+" && exit 1
 
 function check_andalso_orelse {
-    # check for andalso/orelse dropped lines
-    BOOLS=$(grep -Elr '[a-zA-Z\)] (andalso|orelse)' $ROOT/{applications,core})
-
-    if [ ${#BOOLS[@]} -ge 0 ]; then
-        echo "check for andalso/orelse formatting issues in:"
-        grep -Elr '[a-zA-Z\)] (andalso|orelse)' $ROOT/{applications,core}
-    fi
+    # Check for andalso/orelse dropped lines
+    grep -Ern '[a-zA-Z\)] +(andalso|orelse)' "$@"
+    [[ $? -eq 1 ]] && return 0
+    return 1
 }
 
-check_andalso_orelse
-
-popd > /dev/null
+check_andalso_orelse "$@"
