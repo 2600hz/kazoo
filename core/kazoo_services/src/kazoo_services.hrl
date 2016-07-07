@@ -1,10 +1,12 @@
 -ifndef(KAZOO_SERVICES_HRL).
+
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 
 -include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
+-define(APP, 'kazoo_services').
 -define(APP_NAME, <<"kazoo_services">>).
 -define(APP_VERSION, <<"4.0.0">>).
 
