@@ -31,15 +31,17 @@ curl -v -X GET \
 
 #### Fetch recording media
 
-> GET /v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}/attachment
+> GET /v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
 
 gets a specific recording document attachment if available.
+mind `Accept` header in example below.
+for clients that do not support setting the `Accept` header, a querystring parameter can be included: ?accept=text/html
 
 optional parameter `inline` true|false
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}/attachment
+    -H "Accept: audio/mpeg" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
 ```
-
