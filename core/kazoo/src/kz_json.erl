@@ -908,7 +908,7 @@ load_fixture_from_file(App, File) ->
 
 load_fixture_from_file(App, Dir, File) ->
     Path = list_to_binary([code:priv_dir(App), "/", kz_util:to_list(Dir), "/", kz_util:to_list(File)]),
-    lager:debug("read fixture from filesystem whapp ~s from JSON file: ~s", [App, Path]),
+    lager:debug("read fixture for kapp ~s from JSON file: ~s", [App, Path]),
     try
         {'ok', Bin} = file:read_file(Path),
         decode(Bin)
