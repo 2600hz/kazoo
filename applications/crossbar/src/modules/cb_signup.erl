@@ -38,7 +38,7 @@
 -define(VIEW_ACTIVATION_REALM, <<"signups/listing_by_realm">>).
 -define(VIEW_ACTIVATION_CREATED, <<"signups/listing_by_created">>).
 
--define(SIGNUP_CONF, [code:lib_dir('crossbar', 'priv'), "/signup/signup.conf"]).
+-define(SIGNUP_CONF, [code:priv_dir('crossbar'), "/signup/signup.conf"]).
 
 -record(state, {cleanup_interval = 5 * ?SECONDS_IN_HOUR :: integer() %% once every 5 hours (in seconds)
                ,signup_lifespan = ?SECONDS_IN_DAY :: integer() %% 24 hours (in seconds)
@@ -593,13 +593,12 @@ get_configs() ->
                               'undefined' | template_name().
 compile_template('undefined', _) -> 'undefined';
 compile_template(Template, Name) when not is_binary(Template) ->
-    Path = case string:substr(Template, 1, 1) of
-               "/" ->
-                   Template;
-               _ ->
-                   BasePath = code:lib_dir('crossbar', 'priv'),
-                   lists:concat([BasePath, "/signup/", Template])
-           end,
+    Path =
+        case string:substr(Template, 1, 1) of
+            "/" -> Template;
+            _ ->
+                lists:concat([code:priv_dir('crossbar'), "/signup/", Template])
+        end,
     lager:debug("sourcing template from file at ~s", [Path]),
     do_compile_template(Path, Name);
 compile_template(Template, Name) ->

@@ -146,11 +146,12 @@
 
 -define(SANITY_CHECK_PERIOD, 300 * ?MILLISECONDS_IN_SECOND).
 
+-define(APP, 'ecallmgr').
 -define(APP_NAME, <<"ecallmgr">>).
 -define(APP_VERSION, <<"4.0.0">>).
 
--define(STARTUP_FILE, [code:lib_dir('ecallmgr', 'priv'), "/startup.config"]).
--define(SETTINGS_FILE, [code:lib_dir('ecallmgr', 'priv'), "/settings.config"]).
+-define(STARTUP_FILE, [code:priv_dir(?APP), "/startup.config"]).
+-define(SETTINGS_FILE, [code:priv_dir(?APP), "/settings.config"]).
 
 -define(AUTHZ_RESPONSE_KEY(CallId), {'authz_response', CallId}).
 

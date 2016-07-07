@@ -11,6 +11,7 @@
 
 -define(APP_VERSION, <<"4.0.0">>).
 -define(APP_NAME, <<"notify">>).
+-define(APP, 'notify').
 
 -define(NOTIFY_HRL, true).
 -endif.

@@ -23,7 +23,7 @@
         ,configure_smtp_port/1
         ]).
 
--define(TEMPLATE_PATH, code:lib_dir('notify', 'priv')).
+-define(TEMPLATE_PATH, code:priv_dir(?APP)).
 -define(SYSTEM_CONFIG_DB, <<"system_config">>).
 -define(SMTP_CLIENT_DOC, <<"smtp_client">>).
 
