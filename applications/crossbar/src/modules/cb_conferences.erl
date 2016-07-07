@@ -23,8 +23,8 @@
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
         ,validate/1, validate/2, validate/3, validate/4
-        ,post/2, post/3, post/4
-        ,put/1
+        ,post/2
+        ,put/1, put/2, put/3, put/4
         ,patch/2
         ,delete/2
         ]).
@@ -40,6 +40,8 @@
 -define(DEAF, <<"deaf">>).
 -define(UNDEAF, <<"undeaf">>).
 -define(KICK, <<"kick">>).
+
+-define(PUT_ACTION, <<"action">>).
 
 -define(PARTICIPANT_INFO_FIELDS, [<<"Is-Moderator">>
                                  ,<<"Video">>
@@ -76,9 +78,9 @@ init() ->
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() -> [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(_ConferenceId) -> [?HTTP_GET, ?HTTP_PATCH, ?HTTP_DELETE, ?HTTP_POST].
-allowed_methods(_ConferenceId, ?PARTICIPANTS) -> [?HTTP_GET, ?HTTP_POST].
-allowed_methods(_ConferenceId, ?PARTICIPANTS, _ParticipantId) -> [?HTTP_POST].
+allowed_methods(_ConferenceId) -> [?HTTP_GET, ?HTTP_PATCH, ?HTTP_DELETE, ?HTTP_POST, ?HTTP_PUT].
+allowed_methods(_ConferenceId, ?PARTICIPANTS) -> [?HTTP_GET, ?HTTP_PUT].
+allowed_methods(_ConferenceId, ?PARTICIPANTS, _ParticipantId) -> [?HTTP_PUT].
 
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
@@ -119,10 +121,9 @@ validate_conference(?HTTP_GET, Context0, ConferenceId) ->
         _Else -> Context1
     end;
 validate_conference(?HTTP_POST, Context, ConferenceId) ->
-    case cb_context:req_value(Context, <<"action">>) of
-        'undefined' -> update_conference(ConferenceId, Context);
-        _Else -> load_conference(ConferenceId, Context)
-    end;
+    update_conference(ConferenceId, Context);
+validate_conference(?HTTP_PUT, Context, ConferenceId) ->
+    load_conference(ConferenceId, Context);
 validate_conference(?HTTP_PATCH, Context, ConferenceId) ->
     patch_conference(ConferenceId, Context);
 validate_conference(?HTTP_DELETE, Context, ConferenceId) ->
@@ -135,36 +136,40 @@ validate_participants(?HTTP_GET, Context0, ConferenceId) ->
         'success' -> enrich_participants(ConferenceId, Context1);
         _Else -> Context1
     end;
-validate_participants(?HTTP_POST, Context, ConferenceId) ->
+validate_participants(?HTTP_PUT, Context, ConferenceId) ->
     load_conference(ConferenceId, Context).
 
 -spec validate_participant(http_method(), cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
-validate_participant(?HTTP_POST, Context, ConferenceId, _ParticipantId) ->
+validate_participant(?HTTP_PUT, Context, ConferenceId, _ParticipantId) ->
     load_conference(ConferenceId, Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-post(Context, ConferenceId) ->
-    case cb_context:req_value(Context, <<"action">>) of
-        'undefined' -> crossbar_doc:save(Context);
-        Action -> handle_conference_action(Context, ConferenceId, Action)
-    end.
-post(Context, ConferenceId, ?PARTICIPANTS) ->
-    Action = cb_context:req_value(Context, <<"action">>),
+post(Context, _ConferenceId) ->
+    crossbar_doc:save(Context).
+
+-spec put(cb_context:context()) -> cb_context:context().
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+put(Context) ->
+    crossbar_doc:save(Context).
+
+put(Context, ConferenceId) ->
+    Action = cb_context:req_value(Context, ?PUT_ACTION),
+    handle_conference_action(Context, ConferenceId, Action).
+
+put(Context, ConferenceId, ?PARTICIPANTS) ->
+    Action = cb_context:req_value(Context, ?PUT_ACTION),
     handle_participants_action(Context, ConferenceId, Action).
-post(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
+
+put(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
+    Action = cb_context:req_value(Context, ?PUT_ACTION),
     Conference = kapps_conference:set_id(ConferenceId, kapps_conference:new()),
-    Action = cb_context:req_value(Context, <<"action">>),
     perform_participant_action(Conference, Action, kz_util:to_integer(ParticipantId)),
     crossbar_util:response_202(<<"ok">>, Context).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _) ->
-    crossbar_doc:save(Context).
-
--spec put(cb_context:context()) -> cb_context:context().
-put(Context) ->
     crossbar_doc:save(Context).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
@@ -206,7 +211,7 @@ normalize_view_results(JObj, Acc) ->
 
 -spec normalize_view_result(kz_json:object()) -> kz_json:object().
 normalize_view_result(JObj) ->
-    ConferenceId = kz_json:get_value(<<"id">>, JObj),
+    ConferenceId = kz_doc:id(JObj),
     ConferenceDetails = request_conference_details(ConferenceId),
     Participants = extract_participants(ConferenceDetails),
     kz_json:set_values(
@@ -240,15 +245,8 @@ maybe_create_conference(Context) ->
                     create_conference(Context);
                 {'true', Number} ->
                     lager:error("number ~s is already used", [Number]),
-                    cb_context:add_validation_error(
-                      [<<"numbers">>]
-                                                   ,<<"unique">>
-                                                   ,kz_json:from_list([
-                                                                       {<<"message">>, <<"Number already in use">>}
-                                                                      ,{<<"cause">>, Number}
-                                                                      ])
-                                                   ,Context
-                     )
+                    Error = kz_json:from_list([{<<"message">>, <<"Number already in use">>},{<<"cause">>, Number}]),
+                    cb_context:add_validation_error([<<"numbers">>], <<"unique">>, Error, Context)
             end
     end.
 
