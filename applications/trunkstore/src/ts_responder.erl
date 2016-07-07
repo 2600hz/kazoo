@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%% Trunk-Store responder waits for Auth and Route requests on the broadcast
 %%% Exchange, and delievers the requests to the corresponding handler.

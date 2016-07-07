@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% Builder and validator, much like kz_api.erl, of the AMQP APIs
 %%% exposed by this WhApp

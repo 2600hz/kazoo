@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, 2600Hz
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%%
 %%% Handle client requests for template documents
