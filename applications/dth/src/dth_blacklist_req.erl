@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, James Aimonetti
 %%% @doc
 %%% Handle requests from WhApps for the blacklist
 %%% @end
