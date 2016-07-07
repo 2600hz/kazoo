@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012, 2600Hz
 %%% @doc
 %%% XML-formatter for FreeSWITCH XML responses
 %%% Copy of xmerl/src/xmerl_xml.erl

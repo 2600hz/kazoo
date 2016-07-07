@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012, 2600Hz
 %%% @doc
 %%%
 %%% Common functions for the provisioner modules

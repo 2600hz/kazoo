@@ -41,7 +41,7 @@
 %%%   Luis Azedo  <luis.azedo@factorlusitano.com>
 %%%-------------------------------------------------------------------
 %%% @author Luis Azedo
-%%% @copyright (C) 2013, VoIP INC
+%%% @copyright (C) 2013, 2600Hz
 %%% @doc
 %%%
 %%% @end

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011, 2600Hz
 %%% @doc
 %%%
 %%% Handle client requests for onboard documents
