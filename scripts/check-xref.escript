@@ -68,9 +68,6 @@ all_paths(Paths) ->
 
 filter('undefined_function_calls', Results) ->
     ToKeep = fun
-                 %% apns:start/0 calls the fun only if it exists
-                 ({{apns,start,0}, {application,ensure_all_started,1}}) -> 'false';
-
                  %% OTP Xref errors
                  ({{eunit_test,_,_}, {_,_,_}}) -> 'false';
                  ({{cerl_to_icode,_,_}, {_,_,_}}) -> 'false';

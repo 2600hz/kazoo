@@ -47,19 +47,10 @@
 -export_type([msg/0]).
 
 %% @doc Starts the application
--spec start() -> ok | {error, {already_started, apns}}.
+-spec start() -> 'ok'.
 start() ->
-    _ = application:load(apns),
-    case erlang:function_exported(application, ensure_all_started, 1) of
-        false ->
-            _ = application:start(crypto),
-            _ = application:start(public_key),
-            _ = application:start(ssl),
-            application:start(apns);
-        true ->
-            _ = application:ensure_all_started(apns),
-            ok
-    end.
+    _ = application:ensure_all_started('apns'),
+    'ok'.
 
 %% @doc Stops the application
 -spec stop() -> ok.
