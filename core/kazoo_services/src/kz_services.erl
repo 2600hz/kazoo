@@ -63,6 +63,7 @@
 -define(QUANTITIES_ACCOUNT, <<"account_quantities">>).
 -define(QUANTITIES_CASCADE, <<"cascade_quantities">>).
 -define(PLANS, <<"plans">>).
+-define(SERVICE_MODULE_PREFIX, "kz_service_").
 
 -record(kz_services, {account_id :: api_binary()
                      ,billing_id :: api_binary()
@@ -1214,7 +1215,7 @@ get_default_service_modules() ->
 -spec get_service_module(text()) -> atom() | 'false'.
 get_service_module(Module) when not is_binary(Module) ->
     get_service_module(kz_util:to_binary(Module));
-get_service_module(<<"kz_service_", _/binary>> = Module) ->
+get_service_module(<<?SERVICE_MODULE_PREFIX, _/binary>> = Module) ->
     ServiceModules = get_service_modules(),
     case [M
           || M <- ServiceModules,
@@ -1225,7 +1226,7 @@ get_service_module(<<"kz_service_", _/binary>> = Module) ->
         _Else -> 'false'
     end;
 get_service_module(Module) ->
-    get_service_module(<<"kz_service_", Module/binary>>).
+    get_service_module(<<?SERVICE_MODULE_PREFIX, Module/binary>>).
 
 %%--------------------------------------------------------------------
 %% @private
