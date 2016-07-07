@@ -1,5 +1,5 @@
 %%==============================================================================
-%% Copyright 2012 Jeremy Raymond
+%% @copyright (C) 2012, Jeremy Raymond
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 %%%-------------------------------------------------------------------
 %%% @author Jeremy Raymond <jeraymond@gmail.com>
-%%% @copyright (C) 2012, Jeremy Raymond
 %%% @doc
 %%% The {@link amqp_cron} supervisor.
 %%% @see amqp_cron

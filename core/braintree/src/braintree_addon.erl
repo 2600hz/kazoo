@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2016, 2600Hz
+%%% @author Karl Anderson <karl@2600hz.org>
 %%% @doc
 %%%
 %%% @end

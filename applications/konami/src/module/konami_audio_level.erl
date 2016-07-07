@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @author Vladimir Ralev
 %%% @copyright (C) 2016, Vladimir Ralev
+%%% @author Vladimir Ralev
 %%% @doc
 %%% Allow to change volume for channels, mute and unmute.
 %%% Data = {
