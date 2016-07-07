@@ -109,7 +109,9 @@ validate(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
 %%%===================================================================
 -spec validate_conferences(http_method(), cb_context:context()) -> cb_context:context().
 validate_conferences(?HTTP_GET, Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
+    Context1 = crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2),
+    EnrichedDocs = [ enrich_conference(JObj) || JObj <- cb_context:doc(Context1)],
+    cb_context:set_resp_data(Context1, EnrichedDocs);
 validate_conferences(?HTTP_PUT, Context) ->
     maybe_create_conference(Context).
 
@@ -207,21 +209,7 @@ on_successful_validation(ConferenceId, Context) ->
 
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [normalize_view_result(kz_json:get_value(<<"value">>, JObj)) | Acc].
-
--spec normalize_view_result(kz_json:object()) -> kz_json:object().
-normalize_view_result(JObj) ->
-    ConferenceId = kz_doc:id(JObj),
-    ConferenceDetails = request_conference_details(ConferenceId),
-    Participants = extract_participants(ConferenceDetails),
-    kz_json:set_values(
-      [{<<"members">>, count_members(Participants)}
-      ,{<<"admins">>, count_admins(Participants)}
-      ,{<<"duration">>, run_time(ConferenceDetails)}
-      ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, ConferenceDetails, 'false')}
-      ]
-                      ,JObj
-     ).
+    [kz_json:get_value(<<"value">>, JObj) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -329,21 +317,14 @@ perform_participant_action(Conference, ?UNDEAF, ParticipantId) ->
 perform_participant_action(Conference, ?KICK, ParticipantId) ->
     kapps_conference_command:kick(ParticipantId, Conference).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+%% add real-time call-info to participants
 -spec enrich_participants(ne_binary(), cb_context:context()) -> cb_context:context().
 enrich_participants(ConferenceId, Context) ->
     Participants = extract_participants(
                      request_conference_details(ConferenceId)
                     ),
-    crossbar_util:response(
-      [kz_json:normalize_jobj(JObj) || JObj <- request_call_details(Participants)]
-                          ,Context
-     ).
+    Normalized = [kz_json:normalize_jobj(JObj) || JObj <- request_call_details(Participants)],
+    crossbar_util:response(Normalized, Context).
 
 -spec enrich_conference(ne_binary(), cb_context:context()) -> cb_context:context().
 enrich_conference(ConferenceId, Context) ->
@@ -360,16 +341,26 @@ enrich_conference(ConferenceId, Context) ->
     Response = kz_json:set_value(<<"_read_only">>, Enriched, cb_context:resp_data(Context)),
     cb_context:set_resp_data(Context, Response).
 
+-spec enrich_conference(kz_json:object()) -> kz_json:object().
+enrich_conference(JObj) ->
+    ConferenceId = kz_doc:id(JObj),
+    ConferenceDetails = request_conference_details(ConferenceId),
+    Participants = extract_participants(ConferenceDetails),
+    Enriched = kz_json:from_list(
+                 [{<<"members">>, count_members(Participants)}
+                 ,{<<"admins">>, count_admins(Participants)}
+                 ,{<<"duration">>, run_time(ConferenceDetails)}
+                 ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, ConferenceDetails, 'false')}
+                 ]),
+    kz_json:set_value(<<"_read_only">>, Enriched, JObj).
+
+
 -spec request_conference_details(ne_binary()) -> kz_json:object().
 request_conference_details(ConferenceId) ->
     Req = [{<<"Conference-ID">>, ConferenceId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_collect(
-           Req
-                                     ,fun kapi_conference:publish_search_req/1
-                                     ,{'ecallmgr', 'true'})
-    of
+    case kapps_util:amqp_pool_collect(Req, fun kapi_conference:publish_search_req/1, {'ecallmgr', 'true'}) of
         {'error', _E} ->
             lager:debug("unable to lookup conference details: ~p", [_E]),
             kz_json:new();
