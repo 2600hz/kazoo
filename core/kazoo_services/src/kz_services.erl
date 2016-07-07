@@ -1166,45 +1166,40 @@ get_item_plan(CategoryId, ItemId, ServicePlan) ->
 %%--------------------------------------------------------------------
 -spec get_service_modules() -> atoms().
 get_service_modules() ->
-    case kapps_config:get(?WHS_CONFIG_CAT, <<"modules">>) of
-        'undefined' -> get_filesystem_service_modules();
-        Modules ->
-            lager:debug("configured service modules: ~p", [Modules]),
-            [Module || M <- Modules,
-                       (Module = kz_util:try_load_module(M)) =/= 'false'
-            ]
+    UnfilteredModules =
+        case kapps_config:get(?WHS_CONFIG_CAT, <<"modules">>) of
+            'undefined' -> get_modules();
+            ConfModules ->
+                lager:debug("configured service modules: ~p", [ConfModules]),
+                [kz_util:to_atom(Mod, 'true') || Mod <- ConfModules]
+        end,
+    Modules =
+        [Module ||
+            Module <- UnfilteredModules,
+            <<?SERVICE_MODULE_PREFIX,_/binary>> <- [kz_util:to_binary(Module)],
+            erlang:function_exported(Module, 'reconcile', 1)
+        ],
+    lager:debug("got service modules ~p", [Modules]),
+    Modules.
+
+-spec get_modules() -> atoms().
+get_modules() ->
+    case application:get_key(?APP, 'modules') of
+        {'ok', AllModules=[_|_]} -> AllModules;
+        _ -> default_service_modules()
     end.
 
--spec get_filesystem_service_modules() -> atoms().
-get_filesystem_service_modules() ->
-    get_filesystem_service_modules(filelib:wildcard([code:lib_dir('kazoo_services'), "/src/services/*.erl"])).
-
--spec get_filesystem_service_modules([file:filename()]) -> atoms().
-get_filesystem_service_modules([]) ->
-    get_default_service_modules();
-get_filesystem_service_modules(Files) ->
-    Mods = [Mod
-            || P <- Files,
-               begin
-                   Name = kz_util:to_binary(filename:rootname(filename:basename(P))),
-                   (Mod = kz_util:try_load_module(Name)) =/= 'false'
-               end
-           ],
-    lager:debug("found filesystem service modules: ~p", [Mods]),
-    Mods.
-
--spec get_default_service_modules() -> atoms().
-get_default_service_modules() ->
-    Modules = [<<"kz_service_devices">>
-              ,<<"kz_service_ips">>
-              ,<<"kz_service_ledgers">>
-              ,<<"kz_service_limits">>
-              ,<<"kz_service_phone_numbers">>
-              ,<<"kz_service_ui_apps">>
-              ,<<"kz_service_users">>
-              ,<<"kz_service_whitelabel">>
-              ],
-    [Mod || Module <- Modules, (Mod = kz_util:try_load_module(Module)) =/= 'false'].
+-spec default_service_modules() -> atoms().
+default_service_modules() ->
+    ['kz_service_devices'
+    ,'kz_service_ips'
+    ,'kz_service_ledgers'
+    ,'kz_service_limits'
+    ,'kz_service_phone_numbers'
+    ,'kz_service_ui_apps'
+    ,'kz_service_users'
+    ,'kz_service_whitelabel'
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
