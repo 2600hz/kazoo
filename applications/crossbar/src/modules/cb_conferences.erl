@@ -34,6 +34,7 @@
 -define(CB_LIST, <<"conferences/crossbar_listing">>).
 -define(CB_LIST_BY_NUMBER, <<"conference/listing_by_number">>).
 
+-define(PARTICIPANTS, <<"participants">>).
 -define(MUTE, <<"mute">>).
 -define(UNMUTE, <<"unmute">>).
 -define(DEAF, <<"deaf">>).
@@ -76,8 +77,8 @@ init() ->
 -spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() -> [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_ConferenceId) -> [?HTTP_GET, ?HTTP_PATCH, ?HTTP_DELETE, ?HTTP_POST].
-allowed_methods(_ConferenceId, <<"participants">>) -> [?HTTP_GET, ?HTTP_POST].
-allowed_methods(_ConferenceId, <<"participants">>, _ParticipantId) -> [?HTTP_POST].
+allowed_methods(_ConferenceId, ?PARTICIPANTS) -> [?HTTP_GET, ?HTTP_POST].
+allowed_methods(_ConferenceId, ?PARTICIPANTS, _ParticipantId) -> [?HTTP_POST].
 
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
@@ -89,68 +90,74 @@ resource_exists(_, _) -> 'true'.
 resource_exists(_, _, _) -> 'true'.
 
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), ConfId::path_token()) -> cb_context:context().
--spec validate(cb_context:context(), ConfId::path_token(), Section::path_token()) -> cb_context:context().
--spec validate(cb_context:context(), ConfId::path_token(), Section::path_token(), SectionId::path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), ConferenceId::path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), ConferenceId::path_token(), Section::path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), ConferenceId::path_token(), Section::path_token(), SectionId::path_token()) -> cb_context:context().
 validate(Context) ->
-    validate_conferences_uri(cb_context:req_verb(Context), Context).
-validate(Context, ConfId) ->
-    validate_conference_uri(cb_context:req_verb(Context), Context, ConfId).
-validate(Context, ConfId, <<"participants">>) ->
-    validate_participants_uri(cb_context:req_verb(Context), Context, ConfId).
-validate(Context, ConfId, <<"participants">>, ParticipantId) ->
-    validate_participant_uri(cb_context:req_verb(Context), Context, ConfId, ParticipantId).
+    validate_conferences(cb_context:req_verb(Context), Context).
+validate(Context, ConferenceId) ->
+    validate_conference(cb_context:req_verb(Context), Context, ConferenceId).
+validate(Context, ConferenceId, ?PARTICIPANTS) ->
+    validate_participants(cb_context:req_verb(Context), Context, ConferenceId).
+validate(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
+    validate_participant(cb_context:req_verb(Context), Context, ConferenceId, ParticipantId).
 
 %%%===================================================================
-%%% URI/Method validators
+%%% Request object validators
 %%%===================================================================
-
--spec validate_conferences_uri(http_method(), cb_context:context()) -> cb_context:context().
-validate_conferences_uri(?HTTP_GET, Context) ->
+-spec validate_conferences(http_method(), cb_context:context()) -> cb_context:context().
+validate_conferences(?HTTP_GET, Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
-validate_conferences_uri(?HTTP_PUT, Context) ->
+validate_conferences(?HTTP_PUT, Context) ->
     maybe_create_conference(Context).
 
--spec validate_conference_uri(http_method(), cb_context:context(), ne_binary()) -> cb_context:context().
-validate_conference_uri(?HTTP_GET, Context, ConfId) ->
-    AccountDb = cb_context:account_db(Context),
-    {'ok', Conference} = load_conference(AccountDb, ConfId),
-    handle_response(Context, enrich_conference(Conference));
-validate_conference_uri(?HTTP_POST, Context, ConfId) ->
-    load_conference_into_context(Context, ConfId);
-validate_conference_uri(?HTTP_PATCH, Context, ConfId) ->
-    patch_conference(ConfId, Context);
-validate_conference_uri(?HTTP_DELETE, Context, ConfId) ->
-    load_conference_into_context(Context, ConfId).
+-spec validate_conference(http_method(), cb_context:context(), ne_binary()) -> cb_context:context().
+validate_conference(?HTTP_GET, Context0, ConferenceId) ->
+    Context1 = load_conference(ConferenceId, Context0),
+    case cb_context:resp_status(Context1) of
+        'success' -> enrich_conference(ConferenceId, Context1);
+        _Else -> Context1
+    end;
+validate_conference(?HTTP_POST, Context, ConferenceId) ->
+    case cb_context:req_value(Context, <<"action">>) of
+        'undefined' -> update_conference(ConferenceId, Context);
+        _Else -> load_conference(ConferenceId, Context)
+    end;
+validate_conference(?HTTP_PATCH, Context, ConferenceId) ->
+    patch_conference(ConferenceId, Context);
+validate_conference(?HTTP_DELETE, Context, ConferenceId) ->
+    load_conference(ConferenceId, Context).
 
--spec validate_participants_uri(http_method(), cb_context:context(), ne_binary()) -> cb_context:context().
-validate_participants_uri(?HTTP_GET, Context, ConfId) ->
-    AccountDb = cb_context:account_db(Context),
-    AccountId = cb_context:account_id(Context),
-    {'ok', _Conference} = load_conference(AccountDb, ConfId), % check ownership
-    handle_response(Context, load_enriched_participants(AccountId, ConfId));
-validate_participants_uri(?HTTP_POST, Context, ConfId) ->
-    load_conference_into_context(Context, ConfId).
+-spec validate_participants(http_method(), cb_context:context(), ne_binary()) -> cb_context:context().
+validate_participants(?HTTP_GET, Context0, ConferenceId) ->
+    Context1 = load_conference(ConferenceId, Context0),
+    case cb_context:resp_status(Context1) of
+        'success' -> enrich_participants(ConferenceId, Context1);
+        _Else -> Context1
+    end;
+validate_participants(?HTTP_POST, Context, ConferenceId) ->
+    load_conference(ConferenceId, Context).
 
--spec validate_participant_uri(http_method(), cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
-validate_participant_uri(?HTTP_POST, Context, ConfId, _ParticipantId) ->
-    load_conference_into_context(Context, ConfId).
+-spec validate_participant(http_method(), cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+validate_participant(?HTTP_POST, Context, ConferenceId, _ParticipantId) ->
+    load_conference(ConferenceId, Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-post(Context, ConfId) ->
-    Action = cb_context:req_value(Context, <<"Action">>),
-    handle_response(Context, handle_conference_action(ConfId, Action)).
-post(Context, ConfId, <<"participants">>) ->
-    AccountId = cb_context:account_id(Context),
-    Action = cb_context:req_value(Context, <<"Action">>),
-    handle_response(Context, handle_participants_action(AccountId, ConfId, Action)).
-post(Context, ConfId, <<"participants">>, ParticipantId) ->
-    Conference = kapps_conference:set_id(ConfId, kapps_conference:new()),
-    Action = cb_context:req_value(Context, <<"Action">>),
-    perform_conference_action(Conference, Action, erlang:binary_to_integer(ParticipantId)),
-    handle_response(Context, {'response', 'ok'}).
+post(Context, ConferenceId) ->
+    case cb_context:req_value(Context, <<"action">>) of
+        'undefined' -> crossbar_doc:save(Context);
+        Action -> handle_conference_action(Context, ConferenceId, Action)
+    end.
+post(Context, ConferenceId, ?PARTICIPANTS) ->
+    Action = cb_context:req_value(Context, <<"action">>),
+    handle_participants_action(Context, ConferenceId, Action).
+post(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
+    Conference = kapps_conference:set_id(ConferenceId, kapps_conference:new()),
+    Action = cb_context:req_value(Context, <<"action">>),
+    perform_participant_action(Conference, Action, kz_util:to_integer(ParticipantId)),
+    crossbar_util:response_202(<<"ok">>, Context).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _) ->
@@ -165,134 +172,51 @@ delete(Context, _) ->
     crossbar_doc:delete(Context).
 
 %%%===================================================================
-%%% REST API Helpers
+%%% Conference validation helpers
 %%%===================================================================
+-spec load_conference(ne_binary(), cb_context:context()) -> kz_json:object().
+load_conference(ConferenceId, Context) ->
+    crossbar_doc:load(ConferenceId, Context).
 
--spec load_conference_into_context(cb_context:context(), ne_binary()) -> cb_context:context().
-load_conference_into_context(Context, ConfId) ->
-    AccountDb = cb_context:account_db(Context),
-    handle_response(Context, load_conference(AccountDb, ConfId)).
-
--spec handle_response(cb_context:context(), any()) -> cb_context:context().
-handle_response(Context, {'response', Response}) ->
-    cb_context:setters(Context, [
-                                 {fun cb_context:set_resp_status/2, 'success'}
-                                ,{fun cb_context:set_resp_data/2, Response}
-                                ]);
-handle_response(Context, {'ok', Response}) ->
-    crossbar_doc:handle_json_success(Response, Context);
-handle_response(Context, {'error', Error}) ->
-    cb_context:add_system_error(Error, Context).
-
-%%%===================================================================
-%%% REST API Actions
-%%%===================================================================
-
--spec handle_participants_action(ne_binary(), ne_binary(), ne_binary()) -> {'response', [integer()]}.
-handle_participants_action(AccountId, ConfId, Action=?MUTE) ->
-    handle_participants_action(AccountId, ConfId, Action,
-                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_true(<<"Speak">>, P) end);
-handle_participants_action(AccountId, ConfId, Action=?UNMUTE) ->
-    handle_participants_action(AccountId, ConfId, Action,
-                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_false(<<"Speak">>, P) end);
-handle_participants_action(AccountId, ConfId, Action=?DEAF) ->
-    handle_participants_action(AccountId, ConfId, Action,
-                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_true(<<"Hear">>, P) end);
-handle_participants_action(AccountId, ConfId, Action=?UNDEAF) ->
-    handle_participants_action(AccountId, ConfId, Action,
-                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_false(<<"Hear">>, P) end);
-handle_participants_action(AccountId, ConfId, Action=?KICK) ->
-    handle_participants_action(AccountId, ConfId, Action, fun(_) -> true end);
-handle_participants_action(_AccountId, ConfId, Action) ->
-    lager:error("Unhandled conference id:~p participants action:~p", [ConfId, Action]),
-    {'error', 'unhandled_conference_participants_action'}.
-
--spec handle_conference_action(ne_binary(), ne_binary()) -> {'response', 'ok'} | {'error', 'unhandled_conference_action'}.
-handle_conference_action(ConfId, <<"lock">>) ->
-    lock_conference(ConfId),
-    {'response', 'ok'};
-handle_conference_action(ConfId, <<"unlock">>) ->
-    unlock_conference(ConfId),
-    {'response', 'ok'};
-handle_conference_action(ConfId, Action) ->
-    lager:error("Unhandled conference id:~p action:~p", [ConfId, Action]),
-    {'error', 'unhandled_conference_action'}.
-
-%% action applicable to conference participants selected by selector function
--spec handle_participants_action(ne_binary(), ne_binary(), ne_binary(), function()) -> {'response', [integer()]}.
-handle_participants_action(AccountId, ConfId, Action, Selector) ->
-    {'ok', JObjs} = request_conference_details(AccountId, ConfId),
-    JObj = latest_details(JObjs),
-    Participants = extract_participants(JObj),
-    Conference = kapps_conference:set_id(ConfId, kapps_conference:new()),
-    Commanded = [
-                 perform_conference_action(Conference, Action, kz_json:get_value(<<"Participant-ID">>, P))
-                 || P <- Participants, Selector(P)
-                ],
-    {'response', Commanded}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-
--spec load_conference(ne_binary(), ne_binary()) -> kz_json:object().
-load_conference(AccountDb, ConfId) ->
-    load_typed_document(AccountDb, ConfId, <<"conference">>).
-
--spec load_participants(ne_binary(), ne_binary()) -> {'ok', kz_json:objects()}.
-load_participants(AccountId, ConfId) ->
-    {'ok', JObjs} = request_conference_details(AccountId, ConfId),
-    JObj = latest_details(JObjs),
-    {'ok', extract_participants(JObj)}.
-
--spec load_enriched_participants(ne_binary(), ne_binary()) -> {'ok', kz_json:objects()}.
-load_enriched_participants(AccountId, ConfId) ->
-    {'ok', Participants} = load_participants(AccountId, ConfId),
-    {'ok', request_participants_details(Participants)}.
-
-%%%===================================================================
-%%% Utility functions
-%%%===================================================================
-
--spec conf_id(kz_json:object()) -> ne_binary().
-conf_id(Conf) -> kz_json:get_value(<<"id">>, Conf).
--spec owner_id(kz_json:object()) -> ne_binary().
-owner_id(Conf) -> kz_json:get_value(<<"owner_id">>, Conf).
--spec run_time(kz_json:object()) -> integer().
-run_time(Conf) -> kz_json:get_value(<<"Run-Time">>, Conf, 0).
-
--spec ensure_equal(any(), any(), atom()) -> 'ok'.
-ensure_equal(Type, Type, _) -> ok;
-ensure_equal(_, _, Error) -> erlang:error(Error).
-
--spec load_typed_document(ne_binary(), ne_binary(), ne_binary()) -> {'ok', kz_json:object()}.
-load_typed_document(AccountDb, DocId, Type) ->
-    {'ok', JObj} = kz_datamgr:open_doc(AccountDb, DocId, [{'doc_type', Type}]),
-    ensure_equal(kz_doc:type(JObj), Type, 'wrong_document_type'),
-    {'ok', JObj}.
-
-%%%===================================================================
-%%% Other functions
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new conference document with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
 -spec create_conference(cb_context:context()) -> cb_context:context().
 create_conference(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"conferences">>, Context, OnSuccess).
+
+-spec update_conference(ne_binary(), cb_context:context()) -> cb_context:context().
+update_conference(ConferenceId, Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(ConferenceId, C) end,
+    cb_context:validate_request_data(<<"conferences">>, Context, OnSuccess).
+
+-spec patch_conference(ne_binary(), cb_context:context()) -> cb_context:context().
+patch_conference(ConferenceId, Context) ->
+    crossbar_doc:patch_and_validate(ConferenceId, Context, fun update_conference/2).
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
                       ,kz_doc:set_type(cb_context:doc(Context), <<"conference">>)
                       );
-on_successful_validation(DocId, Context) ->
-    crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"conference">>)).
+on_successful_validation(ConferenceId, Context) ->
+    crossbar_doc:load_merge(ConferenceId, Context, ?TYPE_CHECK_OPTION(<<"conference">>)).
+
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_view_results(JObj, Acc) ->
+    [normalize_view_result(kz_json:get_value(<<"value">>, JObj)) | Acc].
+
+-spec normalize_view_result(kz_json:object()) -> kz_json:object().
+normalize_view_result(JObj) ->
+    ConferenceId = kz_json:get_value(<<"id">>, JObj),
+    ConferenceDetails = request_conference_details(ConferenceId),
+    Participants = extract_participants(ConferenceDetails),
+    kz_json:set_values(
+      [{<<"members">>, count_members(Participants)}
+      ,{<<"admins">>, count_admins(Participants)}
+      ,{<<"duration">>, run_time(ConferenceDetails)}
+      ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, ConferenceDetails, 'false')}
+      ]
+      ,JObj
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -341,60 +265,138 @@ is_number_already_used(Numbers, [Number|NewNumbers], Acc) ->
             is_number_already_used(Numbers, NewNumbers, Acc)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing conference document with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec update_conference(ne_binary(), cb_context:context()) -> cb_context:context().
-update_conference(DocId, Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
-    cb_context:validate_request_data(<<"conferences">>, Context, OnSuccess).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update-merge an existing conference document partially with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec patch_conference(ne_binary(), cb_context:context()) -> cb_context:context().
-patch_conference(DocId, Context) ->
-    crossbar_doc:patch_and_validate(DocId, Context, fun update_conference/2).
-
--spec lock_conference(ne_binary()) -> 'ok'.
-lock_conference(ConfId) ->
-    Conference = kapps_conference:set_id(ConfId, kapps_conference:new()),
+%%%===================================================================
+%%% Conterence Actions
+%%%===================================================================
+-spec handle_conference_action(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+handle_conference_action(Context, ConferenceId, <<"lock">>) ->
+    Conference = kapps_conference:set_id(ConferenceId, kapps_conference:new()),
     kapps_conference_command:lock(Conference),
-    'ok'.
-
--spec unlock_conference(ne_binary()) -> 'ok'.
-unlock_conference(ConfId) ->
-    Conference = kapps_conference:set_id(ConfId, kapps_conference:new()),
+    crossbar_util:response_202(<<"ok">>, Context);
+handle_conference_action(Context, ConferenceId, <<"unlock">>) ->
+    Conference = kapps_conference:set_id(ConferenceId, kapps_conference:new()),
     kapps_conference_command:unlock(Conference),
-    'ok'.
+    crossbar_util:response_202(<<"ok">>, Context);
+handle_conference_action(Context, ConferenceId, Action) ->
+    lager:error("unhandled conference id ~p action: ~p", [ConferenceId, Action]),
+    cb_context:add_system_error('faulty_request', Context).
 
--spec request_conference_details(kz_json:object()) -> kz_json:objects().
--spec request_conference_details(ne_binary(), ne_binary()) -> kz_json:objects().
-request_conference_details(Conf) ->
-    request_conference_details(owner_id(Conf), conf_id(Conf)).
-request_conference_details(AccountId, ConfId) ->
-    Realm = kz_util:get_account_realm(AccountId),
-    Req = [{<<"Realm">>, Realm}
-          ,{<<"Fields">>, []}
-          ,{<<"Conference-ID">>, ConfId}
+%%%===================================================================
+%%% Participant Actions
+%%%===================================================================
+-spec handle_participants_action(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+handle_participants_action(Context, ConferenceId, Action=?MUTE) ->
+    handle_participants_action(Context, ConferenceId, Action,
+                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_true(<<"Speak">>, P) end);
+handle_participants_action(Context, ConferenceId, Action=?UNMUTE) ->
+    handle_participants_action(Context, ConferenceId, Action,
+                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_false(<<"Speak">>, P) end);
+handle_participants_action(Context, ConferenceId, Action=?DEAF) ->
+    handle_participants_action(Context, ConferenceId, Action,
+                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_true(<<"Hear">>, P) end);
+handle_participants_action(Context, ConferenceId, Action=?UNDEAF) ->
+    handle_participants_action(Context, ConferenceId, Action,
+                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_false(<<"Hear">>, P) end);
+handle_participants_action(Context, ConferenceId, Action=?KICK) ->
+    handle_participants_action(Context, ConferenceId, Action, fun(_) -> true end);
+handle_participants_action(Context, _ConferenceId, _Action) ->
+    lager:error("unhandled conference id ~p participants action: ~p", [_ConferenceId, _Action]),
+    cb_context:add_system_error('faulty_request', Context).
+
+%% action applicable to conference participants selected by selector function
+-spec handle_participants_action(cb_context:context(), ne_binary(), ne_binary(), function()) -> cb_context:context().
+handle_participants_action(Context, ConferenceId, Action, Selector) ->
+    Participants = extract_participants(
+                     request_conference_details(ConferenceId)
+                    ),
+    Conference = kapps_conference:set_id(ConferenceId, kapps_conference:new()),
+    _ = [perform_participant_action(Conference, Action, kz_json:get_value(<<"Participant-ID">>, P))
+         || P <- Participants, Selector(P)
+        ],
+    enrich_participants(ConferenceId, Context).
+
+-spec perform_participant_action(kapps_conference:conference(), ne_binary(), api_integer()) -> 'ok'.
+perform_participant_action(Conference, ?MUTE, ParticipantId) ->
+    kapps_conference_command:mute_participant(ParticipantId, Conference),
+    kapps_conference_command:prompt(<<"conf-muted">>, ParticipantId, Conference);
+perform_participant_action(Conference, ?UNMUTE, ParticipantId) ->
+    kapps_conference_command:unmute_participant(ParticipantId, Conference),
+    kapps_conference_command:prompt(<<"conf-unmuted">>, ParticipantId, Conference);
+perform_participant_action(Conference, ?DEAF, ParticipantId) ->
+    kapps_conference_command:deaf_participant(ParticipantId, Conference),
+    kapps_conference_command:prompt(<<"conf-deaf">>, ParticipantId, Conference);
+perform_participant_action(Conference, ?UNDEAF, ParticipantId) ->
+    kapps_conference_command:undeaf_participant(ParticipantId, Conference),
+    kapps_conference_command:prompt(<<"conf-undeaf">>, ParticipantId, Conference);
+perform_participant_action(Conference, ?KICK, ParticipantId) ->
+    kapps_conference_command:kick(ParticipantId, Conference).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec enrich_participants(ne_binary(), cb_context:context()) -> cb_context:context().
+enrich_participants(ConferenceId, Context) ->
+    Participants = extract_participants(
+                     request_conference_details(ConferenceId)
+                    ),
+    crossbar_util:response(
+      [kz_json:normalize_jobj(JObj) || JObj <- request_call_details(Participants)]
+      ,Context
+     ).
+
+-spec enrich_conference(ne_binary(), cb_context:context()) -> cb_context:context().
+enrich_conference(ConferenceId, Context) ->
+    JObj = request_conference_details(ConferenceId),
+    Participants = extract_participants(JObj),
+    Enriched = kz_json:from_list(
+                 [{<<"members">>, count_members(Participants)}
+                 ,{<<"admins">>, count_admins(Participants)}
+                 ,{<<"duration">>, run_time(JObj)}
+                 ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, JObj, 'false')}
+                 ,{<<"participants">>, [kz_json:normalize_jobj(Participant) || Participant <- Participants]}
+                 ]
+                ),
+    Response = kz_json:set_value(<<"_read_only">>, Enriched, cb_context:resp_data(Context)),
+    cb_context:set_resp_data(Context, Response).
+
+-spec request_conference_details(ne_binary()) -> kz_json:object().
+request_conference_details(ConferenceId) ->
+    Req = [{<<"Conference-ID">>, ConferenceId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapps_util:amqp_pool_collect(Req, fun kapi_conference:publish_search_req/1, {'ecallmgr', 'true'}).
+    case kapps_util:amqp_pool_collect(
+           Req
+          ,fun kapi_conference:publish_search_req/1
+          ,{'ecallmgr', 'true'})
+    of
+        {'error', _E} ->
+            lager:debug("unable to lookup conference details: ~p", [_E]),
+            kz_json:new();
+        {_, JObjs} -> find_conference_details(JObjs)
+    end.
 
--spec request_participants_details(kz_json:objects()) -> kz_json:objects().
--spec request_participants_details(kz_json:objects(), kz_json:obejcts()) -> kz_json:objects().
-request_participants_details(Participants) -> request_participants_details(Participants, []).
-request_participants_details([], Acc) -> Acc;
-request_participants_details([{H}|T], Acc) ->
-    CallId = kz_json:get_value(<<"Call-ID">>, {H}),
+-spec find_conference_details(kz_json:objects()) -> kz_json:object().
+find_conference_details(JObjs) ->
+    ValidRespones = [JObj || JObj <- JObjs, kapi_conference:search_resp_v(JObj)],
+    case lists:sort(fun(A, B) ->
+                            run_time(A) > run_time(B)
+                    end
+                   ,ValidRespones
+                   )
+    of
+        [Latest|_] -> Latest;
+        _Else -> kz_json:new()
+    end.
+
+-spec request_call_details(kz_json:objects()) -> kz_json:objects().
+-spec request_call_details(kz_json:objects(), kz_json:obejcts()) -> kz_json:objects().
+request_call_details(Participants) -> request_call_details(Participants, []).
+request_call_details([], JObjs) -> JObjs;
+request_call_details([Participant | Participants], JObjs) ->
+    CallId = kz_json:get_value(<<"Call-ID">>, Participant),
     Req = [{<<"Call-ID">>, CallId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
@@ -402,13 +404,19 @@ request_participants_details([{H}|T], Acc) ->
                                      ,fun kapi_call:publish_channel_status_req/1
                                      ,fun kapi_call:channel_status_resp_v/1
                                      ) of
-        {'error', E} ->
-            lager:debug("error fetching channel status for ~s (~p)", [CallId, E]),
-            request_participants_details(T, Acc);
+        {'error', _E} ->
+            lager:debug("error fetching channel status for ~s (~p)", [CallId, _E]),
+            request_call_details(Participants, [filter_fields(Participant) | JObjs]);
         {'ok', Resp} ->
-            Participant = kz_json:set_values(filter_fields(H), Resp),
-            request_participants_details(T, [Participant | Acc])
+            JObj = kz_json:set_value(<<"channel">>, Resp, filter_fields(Participant)),
+            request_call_details(Participants, [JObj | JObjs])
     end.
+
+%%%===================================================================
+%%% Utility functions
+%%%===================================================================
+-spec run_time(kz_json:object()) -> integer().
+run_time(Conf) -> kz_json:get_value(<<"Run-Time">>, Conf, 0).
 
 -spec extract_participants(kz_json:object()) -> kz_json:objects().
 extract_participants(JObj) ->
@@ -417,59 +425,20 @@ extract_participants(JObj) ->
 -spec calc_duration(kz_json:object()) -> integer().
 calc_duration(Participant) ->
     Stamp = kz_util:current_tstamp(),
-    JoinTime = props:get_value(<<"Join-Time">>, Participant),
+    JoinTime = kz_json:get_value(<<"Join-Time">>, Participant),
     Stamp - JoinTime.
 
 -spec add_duration_to_participants(kz_json:objects()) -> kz_json:objects().
 add_duration_to_participants(Participants) ->
-    [ {[{<<"Duration">>, calc_duration(P)} | P]} || {P} <- Participants ].
-
--spec latest_details(kz_json:obejcts()) -> kz_json:object().
-latest_details(JObjs) ->
-    [Latest|_] = lists:sort(fun(A, B) -> run_time(A) > run_time(B) end, JObjs),
-    Latest.
+    [kz_json:set_value(<<"Duration">>, calc_duration(Participant), Participant)
+     || Participant <- Participants
+    ].
 
 -spec filter_fields(kz_json:object()) -> kz_json:object().
-filter_fields(ParticipantInfo) ->
-    [ {K, V} || {K, V} <- ParticipantInfo, lists:member(K, ?PARTICIPANT_INFO_FIELDS) ].
-
--spec perform_conference_action(kapps_conference:conference(), ne_binary(), api_integer()) -> integer().
-perform_conference_action(Conference, ?MUTE, ParticipantId) ->
-    kapps_conference_command:mute_participant(ParticipantId, Conference),
-    kapps_conference_command:prompt(<<"conf-muted">>, ParticipantId, Conference),
-    ParticipantId;
-perform_conference_action(Conference, ?UNMUTE, ParticipantId) ->
-    kapps_conference_command:unmute_participant(ParticipantId, Conference),
-    kapps_conference_command:prompt(<<"conf-unmuted">>, ParticipantId, Conference),
-    ParticipantId;
-perform_conference_action(Conference, ?DEAF, ParticipantId) ->
-    kapps_conference_command:deaf_participant(ParticipantId, Conference),
-    kapps_conference_command:prompt(<<"conf-deaf">>, ParticipantId, Conference),
-    ParticipantId;
-perform_conference_action(Conference, ?UNDEAF, ParticipantId) ->
-    kapps_conference_command:undeaf_participant(ParticipantId, Conference),
-    kapps_conference_command:prompt(<<"conf-undeaf">>, ParticipantId, Conference),
-    ParticipantId;
-perform_conference_action(Conference, ?KICK, ParticipantId) ->
-    kapps_conference_command:kick(ParticipantId, Conference),
-    ParticipantId.
-
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    Conf = kz_json:get_value(<<"value">>, JObj),
-    [Conf | Acc].
-
--spec enrich_conference(kz_json:object()) -> kz_json:object().
-enrich_conference(Conf) ->
-    {'ok', JObjs} = request_conference_details(Conf),
-    JObj = latest_details(JObjs),
-    Participants = extract_participants(JObj),
-    Enriched = kz_json:insert_values([{<<"members">>, count_members(Participants)}
-                                     ,{<<"admins">>, count_admins(Participants)}
-                                     ,{<<"duration">>, run_time(JObj)}
-                                     ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, JObj, false)}
-                                     ], Conf),
-    {'ok', Enriched}.
+filter_fields(Participant) ->
+    kz_json:filter(fun({Key, _}) ->
+                           lists:member(Key, ?PARTICIPANT_INFO_FIELDS)
+                   end, Participant).
 
 -spec count_admins(kz_json:objects()) -> integer().
 count_admins(Participants) ->
