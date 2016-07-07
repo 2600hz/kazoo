@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016, VoIP, INC
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%% Ecallmgr module (FSM) for disconnect calls when account
 %%% balance drops below zero

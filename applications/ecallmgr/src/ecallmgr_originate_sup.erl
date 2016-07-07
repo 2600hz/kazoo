@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% Simple-One-For-One strategy for restarting call event processes
 %%% @end

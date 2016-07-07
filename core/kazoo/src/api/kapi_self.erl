@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% For gen_listeners that bind to targeted for direct messaging
 %%% @end

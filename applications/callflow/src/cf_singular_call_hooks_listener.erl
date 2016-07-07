@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014
+%%% @copyright (C) 2014-2016, 2600Hz
 %%% @doc
 %%% This listener handles call CHANNEL_DESTROY events.
 %%% It is started by cf_singular_call_hooks and will

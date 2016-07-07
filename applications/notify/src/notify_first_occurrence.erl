@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%% Craws accounts and triggers 'first' registration and call emails
 %%% @end

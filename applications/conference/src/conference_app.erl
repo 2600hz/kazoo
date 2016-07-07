@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%%
 %%% @end

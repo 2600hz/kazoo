@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @author Manuel Rubio <manuel@altenwald.com>
 %%% @copyright (C) 2014 Altenwald Solutions, S.L.
+%%% @author Manuel Rubio <manuel@altenwald.com>
 %%% @doc apns4erl queue for recover in failure
 %%% @end
 %%%-------------------------------------------------------------------

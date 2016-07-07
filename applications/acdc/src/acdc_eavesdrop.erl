@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @author James Aimonetti <>
-%%% @copyright (C) 2012, James Aimonetti
 %%% @doc
 %%%
 %%% @end

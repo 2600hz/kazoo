@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%% Renders a custom account email template, or the system default,
 %%% @end
