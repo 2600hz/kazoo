@@ -34,8 +34,7 @@
                   ]
        ).
 
--define(DISPATCH_FILE, [code:lib_dir('crossbar', 'priv'), "/dispatch.conf"]).
--define(DEFAULT_LOG_DIR, kz_util:to_binary(code:lib_dir('crossbar', 'log'))).
+-define(DISPATCH_FILE, [code:priv_dir('crossbar'), "/dispatch.conf"]).
 
 %% ===================================================================
 %% API functions

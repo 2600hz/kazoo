@@ -371,43 +371,43 @@ get_account_doc(JObj) ->
 
 -spec category_to_file(ne_binary()) -> iolist() | 'undefined'.
 category_to_file(<<"notify.voicemail_to_email">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_voicemail_to_email.config"];
+    [code:priv_dir(?APP), "/notify_voicemail_to_email.config"];
 category_to_file(<<"notify.voicemail_full">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_voicemail_full.config"];
+    [code:priv_dir(?APP), "/notify_voicemail_full.config"];
 category_to_file(<<"notify.fax_to_email">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_fax_to_email.config"];
+    [code:priv_dir(?APP), "/notify_fax_to_email.config"];
 category_to_file(<<"notify.fax_inbound_to_email">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_fax_inbound_to_email.config"];
+    [code:priv_dir(?APP), "/notify_fax_inbound_to_email.config"];
 category_to_file(<<"notify.fax_outbound_to_email">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_fax_outbound_to_email.config"];
+    [code:priv_dir(?APP), "/notify_fax_outbound_to_email.config"];
 category_to_file(<<"notify.fax_inbound_error_to_email">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_fax_inbound_error_to_email.config"];
+    [code:priv_dir(?APP), "/notify_fax_inbound_error_to_email.config"];
 category_to_file(<<"notify.fax_outbound_error_to_email">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_fax_outbound_error_to_email.config"];
+    [code:priv_dir(?APP), "/notify_fax_outbound_error_to_email.config"];
 category_to_file(<<"notify.deregister">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_deregister.config"];
+    [code:priv_dir(?APP), "/notify_deregister.config"];
 category_to_file(<<"notify.password_recovery">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_password_recovery.config"];
+    [code:priv_dir(?APP), "/notify_password_recovery.config"];
 category_to_file(<<"notify.new_account">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_new_account.config"];
+    [code:priv_dir(?APP), "/notify_new_account.config"];
 category_to_file(<<"notify.first_occurrence">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_first_occurrence.config"];
+    [code:priv_dir(?APP), "/notify_first_occurrence.config"];
 category_to_file(<<"notify.cnam_request">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_cnam_request.config"];
+    [code:priv_dir(?APP), "/notify_cnam_request.config"];
 category_to_file(<<"notify.port_request">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_port_request.config"];
+    [code:priv_dir(?APP), "/notify_port_request.config"];
 category_to_file(<<"notify.port_cancel">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_port_cancel.config"];
+    [code:priv_dir(?APP), "/notify_port_cancel.config"];
 category_to_file(<<"notify.ported">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_ported.config"];
+    [code:priv_dir(?APP), "/notify_ported.config"];
 category_to_file(<<"notify.low_balance">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_low_balance.config"];
+    [code:priv_dir(?APP), "/notify_low_balance.config"];
 category_to_file(<<"notify.system_alert">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_system_alert.config"];
+    [code:priv_dir(?APP), "/notify_system_alert.config"];
 category_to_file(<<"notify.transaction">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_transaction.config"];
+    [code:priv_dir(?APP), "/notify_transaction.config"];
 category_to_file(<<"notify.topup">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_topup.config"];
+    [code:priv_dir(?APP), "/notify_topup.config"];
 category_to_file(_) ->
     'undefined'.
 

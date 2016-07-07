@@ -513,7 +513,7 @@ query_registrar(Realm, Username) ->
 
 -spec template_file(atom()) -> string().
 template_file(Module) ->
-    filename:join([code:lib_dir('crossbar', 'priv')
+    filename:join([code:priv_dir('crossbar')
                   ,"freeswitch"
                   ,template_file_name(Module)
                   ]).
@@ -558,7 +558,7 @@ render(Module, Props) ->
 
 -spec xml_file(atom()) -> string().
 xml_file(Module) ->
-    filename:join([code:lib_dir('crossbar', 'priv')
+    filename:join([code:priv_dir('crossbar')
                   ,"freeswitch"
                   ,xml_file_name(Module)
                   ]).
