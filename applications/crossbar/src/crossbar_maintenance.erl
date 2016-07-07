@@ -437,7 +437,7 @@ validate_account(JObj, Context) ->
     case cb_context:resp_status(Context1) of
         'success' -> {'ok', Context1};
         _Status ->
-            lager:debug("used request data: ~s", [kz_json:encode(JObj)]),
+            lager:notice("used request data: ~s", [kz_json:encode(JObj)]),
             Errors = cb_context:resp_data(Context1),
             io:format("failed to validate account properties(~p): '~s'~n", [_Status, kz_json:encode(Errors)]),
             {'error', Errors}
