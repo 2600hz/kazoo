@@ -10,7 +10,7 @@ rel=${REL:-kazoo_apps}  # kazoo_apps | ecallmgr | ...
 [[ $rel != kazoo_apps* ]] && export KAZOO_APPS='ecallmgr'
 
 function stuff() {
-    erl -noshell -setcookie change_me -name doer@${rel##*@} -eval "ok = rpc:call('$rel', crossbar_maintenance, create_account, [<<\"compte_maitre\">>, <<\"roy@au.me\">>, <<\"superduperuser\">>, <<\"pwd!\">>])." -s init stop
+    erl -noshell -setcookie change_me -name doer@${rel##*@} -eval "ok = rpc:call('$rel', crossbar_maintenance, create_account, [<<\"compte_maitre\">>, <<\"royaume\">>, <<\"superduperuser\">>, <<\"pwd!\">>])." -s init stop
 }
 
 function stop() {
