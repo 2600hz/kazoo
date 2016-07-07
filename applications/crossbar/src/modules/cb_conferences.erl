@@ -328,32 +328,27 @@ enrich_participants(ConferenceId, Context) ->
 
 -spec enrich_conference(ne_binary(), cb_context:context()) -> cb_context:context().
 enrich_conference(ConferenceId, Context) ->
-    JObj = request_conference_details(ConferenceId),
-    Participants = extract_participants(JObj),
-    Enriched = kz_json:from_list(
-                 [{<<"members">>, count_members(Participants)}
-                 ,{<<"admins">>, count_admins(Participants)}
-                 ,{<<"duration">>, run_time(JObj)}
-                 ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, JObj, 'false')}
-                 ,{<<"participants">>, [kz_json:normalize_jobj(Participant) || Participant <- Participants]}
-                 ]
-                ),
-    Response = kz_json:set_value(<<"_read_only">>, Enriched, cb_context:resp_data(Context)),
+    RealtimeData = conference_realtime_data(ConferenceId),
+    Response = kz_json:set_value(<<"_read_only">>, RealtimeData, cb_context:resp_data(Context)),
     cb_context:set_resp_data(Context, Response).
 
 -spec enrich_conference(kz_json:object()) -> kz_json:object().
 enrich_conference(JObj) ->
     ConferenceId = kz_doc:id(JObj),
+    RealtimeData = conference_realtime_data(ConferenceId),
+    kz_json:set_value(<<"_read_only">>, kz_json:delete_key(<<"participants">>, RealtimeData), JObj).
+
+-spec conference_realtime_data(ne_binary()) -> kz_json:object().
+conference_realtime_data(ConferenceId) ->
     ConferenceDetails = request_conference_details(ConferenceId),
     Participants = extract_participants(ConferenceDetails),
-    Enriched = kz_json:from_list(
-                 [{<<"members">>, count_members(Participants)}
-                 ,{<<"admins">>, count_admins(Participants)}
-                 ,{<<"duration">>, run_time(ConferenceDetails)}
-                 ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, ConferenceDetails, 'false')}
-                 ]),
-    kz_json:set_value(<<"_read_only">>, Enriched, JObj).
-
+    kz_json:from_list(
+      [{<<"members">>, count_members(Participants)}
+      ,{<<"admins">>, count_admins(Participants)}
+      ,{<<"duration">>, run_time(ConferenceDetails)}
+      ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, ConferenceDetails, 'false')}
+      ,{<<"participants">>, [kz_json:normalize_jobj(Participant) || Participant <- Participants]}
+      ]).
 
 -spec request_conference_details(ne_binary()) -> kz_json:object().
 request_conference_details(ConferenceId) ->
