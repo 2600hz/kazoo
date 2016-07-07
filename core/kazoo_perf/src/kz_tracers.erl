@@ -32,8 +32,8 @@ add_trace(Pid, CollectFor) ->
 gen_load(N) ->
     gen_load(N, 1000).
 gen_load(N, D) ->
-    {A1, A2, A3} = Start = os:timestamp(),
-    _ = random:seed(A1, A2, A3),
+    Start = os:timestamp(),
+    _ = rand:seed(exsplus, Start),
 
     {PointerTab, MonitorTab} = gen_listener:call(?CACHE_NAME, {'tables'}),
     Tables = [?CACHE_NAME, PointerTab, MonitorTab],
@@ -81,10 +81,10 @@ do_load_gen(Ds) ->
 
     Docs = [new_doc(AccountDb, Doc) || Doc <- lists:seq(1,Ds)],
 
-    {A1, A2, A3} = Start = os:timestamp(),
-    _ = random:seed(A1, A2, A3),
+    Start = os:timestamp(),
+    _ = rand:seed(exsplus, Start),
 
-    case random:uniform(100) of
+    case rand:uniform(100) of
         42 ->
             io:format("unlucky account ~s getting deleted early: ", [AccountDb]);
         _N ->
@@ -185,7 +185,7 @@ perform_op({'noop', Doc}, Acc, _AccountDb) ->
     [Doc | Acc].
 
 op() ->
-    case random:uniform(3) of
+    case rand:uniform(3) of
         1 -> 'edit';
         2 -> 'delete';
         3 -> 'noop'

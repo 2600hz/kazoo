@@ -122,7 +122,7 @@ get_account_by_realm(AccountRealm) ->
 -spec generate_test_account_cdrs(ne_binary(), kz_json:object(), kz_date(), pos_integer()) -> 'ok'.
 generate_test_account_cdrs(_, _, _, 0) -> 'ok';
 generate_test_account_cdrs(AccountDb, CdrJObjFixture, Date, NumCdrs) ->
-    DateTime = {Date, {random:uniform(23), random:uniform(59), random:uniform(59)}},
+    DateTime = {Date, {rand:uniform(23), rand:uniform(59), rand:uniform(59)}},
     CreatedAt = calendar:datetime_to_gregorian_seconds(DateTime),
     Props = [{<<"call_id">>, <<(kz_datamgr:get_uuid())/binary>>}
             ,{<<"timestamp">>, CreatedAt}

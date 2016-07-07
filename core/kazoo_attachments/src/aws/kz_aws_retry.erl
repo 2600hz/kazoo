@@ -29,7 +29,7 @@ no_retry(Request) ->
 -spec backoff(pos_integer()) -> ok.
 backoff(1) -> ok;
 backoff(Attempt) ->
-    timer:sleep(random:uniform((1 bsl (Attempt - 1)) * 100)).
+    timer:sleep(rand:uniform((1 bsl (Attempt - 1)) * 100)).
 
 %% Currently matches DynamoDB retry
 %% It's likely this is too many retries for other services

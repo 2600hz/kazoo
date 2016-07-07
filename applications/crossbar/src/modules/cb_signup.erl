@@ -270,8 +270,7 @@ validate_user(User, Context) ->
 %%--------------------------------------------------------------------
 -spec create_activation_key() -> ne_binary().
 create_activation_key() ->
-    ActivationKey =
-        kz_util:to_hex_binary(crypto:rand_bytes(32)),
+    ActivationKey = kz_util:to_hex_binary(crypto:strong_rand_bytes(32)),
     lager:debug("created new activation key ~s", [ActivationKey]),
     ActivationKey.
 

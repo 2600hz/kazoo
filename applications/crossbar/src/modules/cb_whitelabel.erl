@@ -843,7 +843,7 @@ update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
 attachment_name(Filename, CT) ->
     Generators = [fun(A) ->
                           case kz_util:is_empty(A) of
-                              'true' -> kz_util:to_hex_binary(crypto:rand_bytes(16));
+                              'true' -> kz_util:to_hex_binary(crypto:strong_rand_bytes(16));
                               'false' -> A
                           end
                   end

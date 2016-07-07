@@ -98,7 +98,7 @@ next_backoff(BackoffMs) ->
 -spec backoff_fudge() -> pos_integer().
 backoff_fudge() ->
     Fudge = kapps_config:get_integer(?NOTIFY_CONFIG_CAT, <<"backoff_fudge_ms">>, 5000),
-    random:uniform(Fudge).
+    rand:uniform(Fudge).
 
 -spec init(list()) -> {'ok', atom()}.
 init(_) ->
@@ -218,8 +218,7 @@ log_warnings(Ws, Template) ->
 -spec log_infos(string(), string(), [info()], binary()) -> 'ok'.
 log_infos(Type, Module, Errors, Template) ->
     lager:info("~s in module ~s", [Type, Module]),
-    _ = [catch log_info(Error, Template) || Error <- Errors],
-    'ok'.
+    lists:foreach(fun (Error) -> catch log_info(Error, Template) end, Errors).
 
 -spec log_info(info(), binary()) -> 'ok'.
 log_info({{Row, Column}, _ErlydtlModule, Msg}, Template) ->

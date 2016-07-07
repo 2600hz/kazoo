@@ -272,7 +272,7 @@ create_group_member(Key, Endpoint, GroupWeight, Member) ->
 
 -spec weighted_random_sort(kz_proplist()) -> kz_json:objects().
 weighted_random_sort(Endpoints) ->
-    _ = random:seed(os:timestamp()),
+    _ = rand:seed(exsplus),
     WeightSortedEndpoints = lists:sort(Endpoints),
     weighted_random_sort(WeightSortedEndpoints, []).
 
@@ -304,7 +304,7 @@ weighted_random_get_element(List, Pivot) ->
 
 -spec random_integer(integer()) -> integer().
 random_integer(I) ->
-    random:uniform(I).
+    rand:uniform(I).
 
 -spec repeats(kz_json:object()) -> pos_integer().
 repeats(Data) ->

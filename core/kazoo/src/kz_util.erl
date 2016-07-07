@@ -745,7 +745,7 @@ shuffle_list(List) when is_list(List) ->
 -spec randomize_list(pos_integer(), list()) -> list().
 
 randomize_list(List) ->
-    D = lists:keysort(1, [{random:uniform(), A} || A <- List]),
+    D = lists:keysort(1, [{rand:uniform(), A} || A <- List]),
     {_, D1} = lists:unzip(D),
     D1.
 
@@ -943,10 +943,7 @@ rand_hex_binary(Size) when is_integer(Size)
 
 -spec rand_hex(pos_integer()) -> ne_binary().
 rand_hex(Size) ->
-    try crypto:strong_rand_bytes(Size)
-    catch
-        _:'low_entropy' -> crypto:rand_bytes(Size)
-    end.
+    crypto:strong_rand_bytes(Size).
 
 -spec binary_to_hex_char(pos_integer()) -> pos_integer().
 binary_to_hex_char(N) when N < 10 -> $0 + N;

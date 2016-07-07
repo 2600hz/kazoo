@@ -1147,7 +1147,7 @@ maybe_add_pvt_api_key(Context) ->
     JObj = cb_context:doc(Context),
     case kz_account:api_key(JObj) of
         'undefined' ->
-            APIKey = kz_util:to_hex_binary(crypto:rand_bytes(32)),
+            APIKey = kz_util:to_hex_binary(crypto:strong_rand_bytes(32)),
             cb_context:set_doc(Context, kz_account:set_api_key(JObj, APIKey));
         _Else -> Context
     end.

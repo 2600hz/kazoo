@@ -1734,7 +1734,7 @@ update_doc(Key, Value, Id, Call) ->
 -spec tmp_file() -> ne_binary().
 tmp_file() ->
     Ext = ?DEFAULT_VM_EXTENSION,
-    <<(kz_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".", Ext/binary>>.
+    <<(kz_util:to_hex_binary(crypto:strong_rand_bytes(16)))/binary, ".", Ext/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private

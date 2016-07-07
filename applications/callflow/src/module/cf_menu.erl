@@ -410,7 +410,7 @@ maybe_delete_attachments(AccountDb, _MediaId, JObj) ->
 %%--------------------------------------------------------------------
 -spec tmp_file() -> ne_binary().
 tmp_file() ->
-    <<(kz_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>.
+    <<(kz_util:to_hex_binary(crypto:strong_rand_bytes(16)))/binary, ".mp3">>.
 
 %%--------------------------------------------------------------------
 %% @private
