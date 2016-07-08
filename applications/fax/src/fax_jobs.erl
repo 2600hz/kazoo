@@ -177,7 +177,7 @@ handle_info('timeout', #state{account_id=AccountId
                              }=State) ->
     Upto = kz_util:current_tstamp(),
     ViewOptions = [{'limit', 100}
-                  ,{'startkey', [AccountId, 0]}
+                  ,{'startkey', [AccountId]}
                   ,{'endkey', [AccountId, Upto]}
                   ],
     case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/jobs_by_account">>, ViewOptions) of
