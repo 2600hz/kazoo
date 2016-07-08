@@ -6,11 +6,12 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(ecallmgr_fs_route).
+-module(ecallmgr_fs_router_call).
 
 -behaviour(gen_server).
 
 -export([start_link/1, start_link/2]).
+
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -19,9 +20,13 @@
         ,code_change/3
         ]).
 
+-include_lib("kazoo_sip/include/kzsip_uri.hrl").
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
+-define(FETCH_SECTION, 'dialplan').
+-define(BINDINGS_CFG_KEY, <<"call_routing_bindings">>).
+-define(DEFAULT_BINDINGS, [?DEFAULT_FREESWITCH_CONTEXT]).
 
 -record(state, {node = 'undefined' :: atom()
                ,options = [] :: kz_proplist()
@@ -59,7 +64,6 @@ init([Node, Options]) ->
     kz_util:put_callid(Node),
     lager:info("starting new fs route listener for ~s", [Node]),
     gen_server:cast(self(), 'bind_to_dialplan'),
-    gen_server:cast(self(), 'bind_to_chatplan'),
     {'ok', #state{node=Node, options=Options}}.
 
 %%--------------------------------------------------------------------
@@ -90,18 +94,12 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast('bind_to_dialplan', #state{node=Node}=State) ->
-    case freeswitch:bind(Node, 'dialplan') of
-        'ok' -> {'noreply', State};
-        {'error', Reason} ->
-            lager:critical("unable to establish dialplan route bindings: ~p", [Reason]),
-            {'stop', Reason, State}
-    end;
-handle_cast('bind_to_chatplan', #state{node=Node}=State) ->
-    case freeswitch:bind(Node, 'chatplan') of
-        'ok' -> {'noreply', State};
-        {'error', Reason} ->
-            lager:critical("unable to establish chatplan route bindings: ~p", [Reason]),
-            {'stop', Reason, State}
+    Bindings = ecallmgr_config:get(?BINDINGS_CFG_KEY, ?DEFAULT_BINDINGS, Node),
+    case ecallmgr_fs_router_util:register_bindings(Node, ?FETCH_SECTION, Bindings) of
+        'true' -> {'noreply', State};
+        'false' ->
+            lager:critical("unable to establish route bindings : ~p", [Bindings]),
+            {'stop', 'no_binding', State}
     end;
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -117,13 +115,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}, #state{node=Node}=State) ->
-    EventName = props:get_value(<<"Event-Name">>, FSData),
-    SubClass = props:get_value(<<"Event-Subclass">>, FSData),
-    Context = props:get_value(<<"Hunt-Context">>, FSData),
-    Msg = {'route', Section, EventName, SubClass, Context, FSId, CallId, FSData},
-    _ = gproc:send({'p', 'l', ?FS_ROUTE_MSG(Node, Section, Context)}, Msg),
-    _ = gproc:send({'p', 'l', ?FS_ROUTE_MSG(Node, Section, <<"*">>)}, Msg),
+handle_info({'route', Section, _EventName, _SubClass, _Context, Id, 'undefined', _FSData}, #state{node=Node}=State) ->
+    lager:warning("fetch unknown callid from ~s: Ev: ~p Sc: ~p, Ctx: ~p Id: ~s"
+                 ,[Node, _EventName, _SubClass, _Context, Id]),
+    {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
+    _ = freeswitch:fetch_reply(Node, Id, Section, Resp),
+    {'noreply', State};
+handle_info({'route', Section, <<"REQUEST_PARAMS">>, _SubClass, _Context, FSId, CallId, FSData}, #state{node=Node}=State) ->
+    _ = kz_util:spawn(fun process_route_req/5, [Section, Node, FSId, CallId, FSData]),
     {'noreply', State, 'hibernate'};
 handle_info(_Other, State) ->
     lager:debug("unhandled msg: ~p", [_Other]),
@@ -153,3 +152,56 @@ terminate(_Reason, #state{node=Node}) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+-spec process_route_req(atom(), atom(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
+process_route_req(Section, Node, FetchId, CallId, Props) ->
+    kz_util:put_callid(CallId),
+    case kz_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
+        'false' -> do_process_route_req(Section, Node, FetchId, CallId, Props);
+        'true' ->
+            lager:debug("recovered channel already exists on ~s, park it", [Node]),
+            JObj = kz_json:from_list([{<<"Routes">>, []}
+                                     ,{<<"Method">>, <<"park">>}
+                                     ]),
+            ecallmgr_fs_router_util:reply_affirmative(Section, Node, FetchId, CallId, JObj, Props)
+    end.
+
+-spec do_process_route_req(atom(), atom(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
+do_process_route_req(Section, Node, FetchId, CallId, Props) ->
+    Filtered = ecallmgr_fs_loopback:filter(Node, CallId, Props),
+    case ecallmgr_fs_router_util:search_for_route(Section, Node, FetchId, CallId, Filtered) of
+	'ok' ->
+            lager:debug("xml fetch dialplan ~s finished without success", [FetchId]);
+	{'ok', JObj} ->
+            ecallmgr_fs_channels:update(CallId, #channel.handling_locally, 'true'),
+            maybe_start_call_handling(Node, FetchId, CallId, JObj)
+    end.
+
+-spec maybe_start_call_handling(atom(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+maybe_start_call_handling(Node, FetchId, CallId, JObj) ->
+    case kz_json:get_value(<<"Method">>, JObj) of
+        <<"error">> -> lager:debug("sent error response to ~s, not starting call handling", [Node]);
+        _Else -> start_call_handling(Node, FetchId, CallId, JObj)
+    end.
+
+-spec start_call_handling(atom(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+start_call_handling(Node, FetchId, CallId, JObj) ->
+    ServerQ = kz_json:get_value(<<"Server-ID">>, JObj),
+    CCVs =
+        kz_json:set_values(
+          [{<<"Application-Name">>, kz_json:get_value(<<"App-Name">>, JObj)}
+          ,{<<"Application-Node">>, kz_json:get_value(<<"Node">>, JObj)}
+          ]
+                          ,kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())
+         ),
+    _Evt = ecallmgr_call_sup:start_event_process(Node, CallId),
+    _Ctl = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs),
+
+    lager:debug("started event ~p and control ~p processes", [_Evt, _Ctl]),
+
+    _ = ecallmgr_fs_command:set(Node, CallId, kz_json:to_proplist(CCVs)),
+    lager:debug("xml fetch dialplan ~s finished with success", [FetchId]).

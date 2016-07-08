@@ -447,6 +447,8 @@
        ,{'n', 'l', {'call_events_process', Node, CallId}}
        ).
 
+-define(FS_ROUTE_MSG(Node, Section, Context), {'route', Node, Section, Context}).
+
 -define(FS_CARRIER_ACL_LIST, <<"trusted">>).
 -define(FS_SBC_ACL_LIST, <<"authoritative">>).
 

@@ -50,39 +50,55 @@
 start_link(Node, Options) ->
     supervisor:start_link({'local', Node}, ?MODULE, [Node, Options]).
 
+-spec node_srv(pid()) -> api_pid().
 node_srv(Supervisor) ->
     srv(supervisor:which_children(Supervisor), "edon_").
 
+-spec authn_srv(pid()) -> api_pid().
 authn_srv(Supervisor) ->
     srv(supervisor:which_children(Supervisor), "nhtua_").
 
-route_srv(Supervisor) ->
-    srv(supervisor:which_children(Supervisor), "etuor_").
+-spec route_sup_srv(pid()) -> api_pid().
+route_sup_srv(Supervisor) ->
+    srv(supervisor:which_children(Supervisor), "pus_etuor_").
 
+-spec route_srv(pid()) -> api_pid().
+route_srv(Supervisor) ->
+    srv(supervisor:which_children(route_sup_srv(Supervisor)), "etuor_").
+
+-spec channel_srv(pid()) -> api_pid().
 channel_srv(Supervisor) ->
     srv(supervisor:which_children(Supervisor), "lennahc_").
 
+-spec config_srv(pid()) -> api_pid().
 config_srv(Supervisor) ->
     srv(supervisor:which_children(Supervisor), "gifnoc_").
 
+-spec resource_srv(pid()) -> api_pid().
 resource_srv(Supervisor) ->
     srv(supervisor:which_children(Supervisor), "ecruoser_").
 
+-spec notify_srv(pid()) -> api_pid().
 notify_srv(Supervisor) ->
     srv(supervisor:which_children(Supervisor), "yfiton_").
 
+-spec authz_srv(pid()) -> api_pid().
 authz_srv(Supervisor) ->
     srv(supervisor:which_children(Supervisor), "zhtua_").
 
+-spec cdr_srv(pid()) -> api_pid().
 cdr_srv(Supervisor) ->
     srv(supervisor:which_children(Supervisor), "rdc_").
 
+-spec conference_srv(pid()) -> api_pid().
 conference_srv(Supervisor) ->
     srv(supervisor:which_children(Supervisor), "ecnerefnoc_").
 
+-spec event_stream_sup(pid()) -> api_pid().
 event_stream_sup(Supervisor) ->
     srv(supervisor:which_children(Supervisor), "pus_maerts_tneve_").
 
+-spec msg_srv(pid()) -> api_pid().
 msg_srv(Supervisor) ->
     srv(supervisor:which_children(Supervisor), "gsm_").
 
@@ -123,6 +139,12 @@ child_name(NodeB, Args, {<<"worker">>, Module}) ->
     Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?WORKER_NAME_ARGS(Mod, Name, Args);
 child_name(NodeB, Args, <<"event_stream_sup">>=Module) ->
+    Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    ?SUPER_NAME_ARGS(Mod, Name, Args);
+child_name(NodeB, Args, <<"route">>) ->
+    child_name(NodeB, Args, <<"route_sup">>);
+child_name(NodeB, Args, <<"route_sup">>=Module) ->
     Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
     Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?SUPER_NAME_ARGS(Mod, Name, Args);
