@@ -177,15 +177,18 @@ save_doc(JObj) ->
                         knm_number:knm_number().
 update_doc(Number, UpdateProps) ->
     PhoneNumber = knm_number:phone_number(Number),
-    Doc = knm_phone_number:doc(PhoneNumber),
-    case kz_datamgr:update_doc(?KZ_INUM, kz_doc:id(Doc), UpdateProps) of
+    Num = knm_phone_number:number(PhoneNumber),
+    case kz_datamgr:update_doc(?KZ_INUM, Num, [{?PVT_DB_NAME, ?KZ_INUM}
+                                              ,{?PVT_MODULE_NAME, kz_util:to_binary(?MODULE)}
+                                               | UpdateProps
+                                              ])
+    of
         {'error', Reason} ->
             knm_errors:database_error(Reason, PhoneNumber);
         {'ok', UpdatedDoc} ->
-            knm_number:set_phone_number(
-              Number
+            knm_number:set_phone_number(Number
                                        ,knm_phone_number:from_json(UpdatedDoc)
-             )
+                                       )
     end.
 
 %%--------------------------------------------------------------------
