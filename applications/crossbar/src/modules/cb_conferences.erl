@@ -23,8 +23,8 @@
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
         ,validate/1, validate/2, validate/3, validate/4
-        ,post/2, post/3, post/4
-        ,put/1
+        ,post/2
+        ,put/1, put/2, put/3, put/4
         ,patch/2
         ,delete/2
         ]).
@@ -40,6 +40,8 @@
 -define(DEAF, <<"deaf">>).
 -define(UNDEAF, <<"undeaf">>).
 -define(KICK, <<"kick">>).
+
+-define(PUT_ACTION, <<"action">>).
 
 -define(PARTICIPANT_INFO_FIELDS, [<<"Is-Moderator">>
                                  ,<<"Video">>
@@ -76,9 +78,9 @@ init() ->
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() -> [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(_ConferenceId) -> [?HTTP_GET, ?HTTP_PATCH, ?HTTP_DELETE, ?HTTP_POST].
-allowed_methods(_ConferenceId, ?PARTICIPANTS) -> [?HTTP_GET, ?HTTP_POST].
-allowed_methods(_ConferenceId, ?PARTICIPANTS, _ParticipantId) -> [?HTTP_POST].
+allowed_methods(_ConferenceId) -> [?HTTP_GET, ?HTTP_PATCH, ?HTTP_DELETE, ?HTTP_POST, ?HTTP_PUT].
+allowed_methods(_ConferenceId, ?PARTICIPANTS) -> [?HTTP_GET, ?HTTP_PUT].
+allowed_methods(_ConferenceId, ?PARTICIPANTS, _ParticipantId) -> [?HTTP_PUT].
 
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
@@ -119,10 +121,9 @@ validate_conference(?HTTP_GET, Context0, ConferenceId) ->
         _Else -> Context1
     end;
 validate_conference(?HTTP_POST, Context, ConferenceId) ->
-    case cb_context:req_value(Context, <<"action">>) of
-        'undefined' -> update_conference(ConferenceId, Context);
-        _Else -> load_conference(ConferenceId, Context)
-    end;
+    update_conference(ConferenceId, Context);
+validate_conference(?HTTP_PUT, Context, ConferenceId) ->
+    load_conference(ConferenceId, Context);
 validate_conference(?HTTP_PATCH, Context, ConferenceId) ->
     patch_conference(ConferenceId, Context);
 validate_conference(?HTTP_DELETE, Context, ConferenceId) ->
@@ -135,36 +136,39 @@ validate_participants(?HTTP_GET, Context0, ConferenceId) ->
         'success' -> enrich_participants(ConferenceId, Context1);
         _Else -> Context1
     end;
-validate_participants(?HTTP_POST, Context, ConferenceId) ->
+validate_participants(?HTTP_PUT, Context, ConferenceId) ->
     load_conference(ConferenceId, Context).
 
 -spec validate_participant(http_method(), cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
-validate_participant(?HTTP_POST, Context, ConferenceId, _ParticipantId) ->
+validate_participant(?HTTP_PUT, Context, ConferenceId, _ParticipantId) ->
     load_conference(ConferenceId, Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-post(Context, ConferenceId) ->
-    case cb_context:req_value(Context, <<"action">>) of
-        'undefined' -> crossbar_doc:save(Context);
-        Action -> handle_conference_action(Context, ConferenceId, Action)
-    end.
-post(Context, ConferenceId, ?PARTICIPANTS) ->
-    Action = cb_context:req_value(Context, <<"action">>),
+post(Context, _ConferenceId) ->
+    crossbar_doc:save(Context).
+
+-spec put(cb_context:context()) -> cb_context:context().
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+put(Context) ->
+    crossbar_doc:save(Context).
+
+put(Context, ConferenceId) ->
+    Action = cb_context:req_value(Context, ?PUT_ACTION),
+    handle_conference_action(Context, ConferenceId, Action).
+
+put(Context, ConferenceId, ?PARTICIPANTS) ->
+    Action = cb_context:req_value(Context, ?PUT_ACTION),
     handle_participants_action(Context, ConferenceId, Action).
-post(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
-    Conference = kapps_conference:set_id(ConferenceId, kapps_conference:new()),
-    Action = cb_context:req_value(Context, <<"action">>),
-    perform_participant_action(Conference, Action, kz_util:to_integer(ParticipantId)),
+
+put(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
+    Action = cb_context:req_value(Context, ?PUT_ACTION),
+    perform_participant_action(conference(ConferenceId), Action, kz_util:to_integer(ParticipantId)),
     crossbar_util:response_202(<<"ok">>, Context).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _) ->
-    crossbar_doc:save(Context).
-
--spec put(cb_context:context()) -> cb_context:context().
-put(Context) ->
     crossbar_doc:save(Context).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
@@ -202,21 +206,7 @@ on_successful_validation(ConferenceId, Context) ->
 
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [normalize_view_result(kz_json:get_value(<<"value">>, JObj)) | Acc].
-
--spec normalize_view_result(kz_json:object()) -> kz_json:object().
-normalize_view_result(JObj) ->
-    ConferenceId = kz_json:get_value(<<"id">>, JObj),
-    ConferenceDetails = request_conference_details(ConferenceId),
-    Participants = extract_participants(ConferenceDetails),
-    kz_json:set_values(
-      [{<<"members">>, count_members(Participants)}
-      ,{<<"admins">>, count_admins(Participants)}
-      ,{<<"duration">>, run_time(ConferenceDetails)}
-      ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, ConferenceDetails, 'false')}
-      ]
-                      ,JObj
-     ).
+    [enrich_conference(kz_json:get_value(<<"value">>, JObj)) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -240,15 +230,9 @@ maybe_create_conference(Context) ->
                     create_conference(Context);
                 {'true', Number} ->
                     lager:error("number ~s is already used", [Number]),
-                    cb_context:add_validation_error(
-                      [<<"numbers">>]
-                                                   ,<<"unique">>
-                                                   ,kz_json:from_list([
-                                                                       {<<"message">>, <<"Number already in use">>}
-                                                                      ,{<<"cause">>, Number}
-                                                                      ])
-                                                   ,Context
-                     )
+                    Error = kz_json:from_list([{<<"message">>, <<"Number already in use">>}
+                                              ,{<<"cause">>, Number}]),
+                    cb_context:add_validation_error([<<"numbers">>], <<"unique">>, Error, Context)
             end
     end.
 
@@ -270,12 +254,10 @@ is_number_already_used(Numbers, [Number|NewNumbers], Acc) ->
 %%%===================================================================
 -spec handle_conference_action(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 handle_conference_action(Context, ConferenceId, <<"lock">>) ->
-    Conference = kapps_conference:set_id(ConferenceId, kapps_conference:new()),
-    kapps_conference_command:lock(Conference),
+    kapps_conference_command:lock(conference(ConferenceId)),
     crossbar_util:response_202(<<"ok">>, Context);
 handle_conference_action(Context, ConferenceId, <<"unlock">>) ->
-    Conference = kapps_conference:set_id(ConferenceId, kapps_conference:new()),
-    kapps_conference_command:unlock(Conference),
+    kapps_conference_command:unlock(conference(ConferenceId)),
     crossbar_util:response_202(<<"ok">>, Context);
 handle_conference_action(Context, ConferenceId, Action) ->
     lager:error("unhandled conference id ~p action: ~p", [ConferenceId, Action]),
@@ -309,7 +291,7 @@ handle_participants_action(Context, ConferenceId, Action, Selector) ->
     Participants = extract_participants(
                      request_conference_details(ConferenceId)
                     ),
-    Conference = kapps_conference:set_id(ConferenceId, kapps_conference:new()),
+    Conference = conference(ConferenceId),
     _ = [perform_participant_action(Conference, Action, kz_json:get_value(<<"Participant-ID">>, P))
          || P <- Participants, Selector(P)
         ],
@@ -331,47 +313,45 @@ perform_participant_action(Conference, ?UNDEAF, ParticipantId) ->
 perform_participant_action(Conference, ?KICK, ParticipantId) ->
     kapps_conference_command:kick(ParticipantId, Conference).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+%% add real-time call-info to participants
 -spec enrich_participants(ne_binary(), cb_context:context()) -> cb_context:context().
 enrich_participants(ConferenceId, Context) ->
     Participants = extract_participants(
                      request_conference_details(ConferenceId)
                     ),
-    crossbar_util:response(
-      [kz_json:normalize_jobj(JObj) || JObj <- request_call_details(Participants)]
-                          ,Context
-     ).
+    Normalized = [kz_json:normalize_jobj(JObj) || JObj <- request_call_details(Participants)],
+    crossbar_util:response(Normalized, Context).
 
 -spec enrich_conference(ne_binary(), cb_context:context()) -> cb_context:context().
 enrich_conference(ConferenceId, Context) ->
-    JObj = request_conference_details(ConferenceId),
-    Participants = extract_participants(JObj),
-    Enriched = kz_json:from_list(
-                 [{<<"members">>, count_members(Participants)}
-                 ,{<<"admins">>, count_admins(Participants)}
-                 ,{<<"duration">>, run_time(JObj)}
-                 ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, JObj, 'false')}
-                 ,{<<"participants">>, [kz_json:normalize_jobj(Participant) || Participant <- Participants]}
-                 ]
-                ),
-    Response = kz_json:set_value(<<"_read_only">>, Enriched, cb_context:resp_data(Context)),
+    RealtimeData = conference_realtime_data(ConferenceId),
+    Response = kz_json:set_value(<<"_read_only">>, RealtimeData, cb_context:resp_data(Context)),
     cb_context:set_resp_data(Context, Response).
+
+-spec enrich_conference(kz_json:object()) -> kz_json:object().
+enrich_conference(JObj) ->
+    ConferenceId = kz_doc:id(JObj),
+    RealtimeData = conference_realtime_data(ConferenceId),
+    kz_json:merge_jobjs(kz_json:delete_key(<<"participants">>, RealtimeData), JObj).
+
+-spec conference_realtime_data(ne_binary()) -> kz_json:object().
+conference_realtime_data(ConferenceId) ->
+    ConferenceDetails = request_conference_details(ConferenceId),
+    Participants = extract_participants(ConferenceDetails),
+    kz_json:from_list(
+      [{<<"members">>, count_members(Participants)}
+      ,{<<"moderators">>, count_admins(Participants)}
+      ,{<<"duration">>, run_time(ConferenceDetails)}
+      ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, ConferenceDetails, 'false')}
+      ,{<<"participants">>, [kz_json:normalize_jobj(Participant) || Participant <- Participants]}
+      ]).
 
 -spec request_conference_details(ne_binary()) -> kz_json:object().
 request_conference_details(ConferenceId) ->
     Req = [{<<"Conference-ID">>, ConferenceId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case kapps_util:amqp_pool_collect(
-           Req
-                                     ,fun kapi_conference:publish_search_req/1
-                                     ,{'ecallmgr', 'true'})
-    of
+    case kapps_util:amqp_pool_collect(Req, fun kapi_conference:publish_search_req/1, {'ecallmgr', 'true'}) of
         {'error', _E} ->
             lager:debug("unable to lookup conference details: ~p", [_E]),
             kz_json:new();
@@ -415,6 +395,10 @@ request_call_details([Participant | Participants], JObjs) ->
 %%%===================================================================
 %%% Utility functions
 %%%===================================================================
+-spec conference(ne_binary()) -> kz_json:object().
+conference(ConferenceId) ->
+    kapps_conference:set_id(ConferenceId, kapps_conference:new()).
+
 -spec run_time(kz_json:object()) -> integer().
 run_time(Conf) -> kz_json:get_value(<<"Run-Time">>, Conf, 0).
 
