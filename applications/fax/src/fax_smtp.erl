@@ -151,8 +151,8 @@ handle_DATA(From, To, <<>>, State) ->
     {'error', "552 Message too small", State};
 handle_DATA(From, To, Data, #state{from='undefined'}=State) ->
     handle_DATA(From, To, Data, State#state{from=From});
-handle_DATA(From, To, Data, #state{to='undefined'}=State) ->
-    handle_DATA(From, To, Data, State#state{to=To});
+handle_DATA(From, [To|_]=ToList, Data, #state{to='undefined'}=State) ->
+    handle_DATA(From, ToList, Data, State#state{to=To});
 handle_DATA(From, To, Data, #state{doc='undefined'}=State) ->
     case check_faxbox(State) of
         {'ok', #state{doc='undefined'}=NewState} ->
