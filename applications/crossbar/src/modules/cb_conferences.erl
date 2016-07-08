@@ -166,8 +166,7 @@ put(Context, ConferenceId, ?PARTICIPANTS) ->
 
 put(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
     Action = cb_context:req_value(Context, ?PUT_ACTION),
-    Conference = kapps_conference:set_id(ConferenceId, kapps_conference:new()),
-    perform_participant_action(Conference, Action, kz_util:to_integer(ParticipantId)),
+    perform_participant_action(conference(ConferenceId), Action, kz_util:to_integer(ParticipantId)),
     crossbar_util:response_202(<<"ok">>, Context).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
@@ -233,7 +232,8 @@ maybe_create_conference(Context) ->
                     create_conference(Context);
                 {'true', Number} ->
                     lager:error("number ~s is already used", [Number]),
-                    Error = kz_json:from_list([{<<"message">>, <<"Number already in use">>},{<<"cause">>, Number}]),
+                    Error = kz_json:from_list([{<<"message">>, <<"Number already in use">>}
+                                              ,{<<"cause">>, Number}]),
                     cb_context:add_validation_error([<<"numbers">>], <<"unique">>, Error, Context)
             end
     end.
@@ -256,12 +256,10 @@ is_number_already_used(Numbers, [Number|NewNumbers], Acc) ->
 %%%===================================================================
 -spec handle_conference_action(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 handle_conference_action(Context, ConferenceId, <<"lock">>) ->
-    Conference = kapps_conference:set_id(ConferenceId, kapps_conference:new()),
-    kapps_conference_command:lock(Conference),
+    kapps_conference_command:lock(conference(ConferenceId)),
     crossbar_util:response_202(<<"ok">>, Context);
 handle_conference_action(Context, ConferenceId, <<"unlock">>) ->
-    Conference = kapps_conference:set_id(ConferenceId, kapps_conference:new()),
-    kapps_conference_command:unlock(Conference),
+    kapps_conference_command:unlock(conference(ConferenceId)),
     crossbar_util:response_202(<<"ok">>, Context);
 handle_conference_action(Context, ConferenceId, Action) ->
     lager:error("unhandled conference id ~p action: ~p", [ConferenceId, Action]),
@@ -295,7 +293,7 @@ handle_participants_action(Context, ConferenceId, Action, Selector) ->
     Participants = extract_participants(
                      request_conference_details(ConferenceId)
                     ),
-    Conference = kapps_conference:set_id(ConferenceId, kapps_conference:new()),
+    Conference = conference(ConferenceId),
     _ = [perform_participant_action(Conference, Action, kz_json:get_value(<<"Participant-ID">>, P))
          || P <- Participants, Selector(P)
         ],
@@ -399,6 +397,10 @@ request_call_details([Participant | Participants], JObjs) ->
 %%%===================================================================
 %%% Utility functions
 %%%===================================================================
+-spec conference(ne_binary()) -> kz_json:object().
+conference(ConferenceId) ->
+    kapps_conference:set_id(ConferenceId, kapps_conference:new()).
+
 -spec run_time(kz_json:object()) -> integer().
 run_time(Conf) -> kz_json:get_value(<<"Run-Time">>, Conf, 0).
 
