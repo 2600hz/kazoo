@@ -407,6 +407,8 @@ on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
                       ,kz_json:set_values([{<<"pvt_type">>, <<"fax">>}
                                           ,{<<"pvt_job_status">>, JobStatus}
+                                          ,{<<"pvt_created">>, kz_util:current_tstamp()}
+                                          ,{<<"pvt_modified">>, kz_util:current_tstamp()}
                                           ,{<<"attempts">>, 0}
                                           ,{<<"pvt_account_id">>, AccountId}
                                           ,{<<"pvt_account_db">>, AccountDb}
@@ -415,29 +417,11 @@ on_successful_validation('undefined', Context) ->
                                           ]
                                          ,cb_context:doc(Context)
                                          )
-                      );
-on_successful_validation(DocId, Context) ->
-    maybe_reset_job(crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"fax">>))
-                   ,cb_context:resp_status(Context)).
+                      ).
 
 -spec initial_job_status(req_files()) -> ne_binary().
 initial_job_status([]) -> <<"pending">>;
 initial_job_status(_) -> <<"attaching_files">>.
-
--spec maybe_reset_job(cb_context:context(), crossbar_status()) -> cb_context:context().
-maybe_reset_job(Context, 'success') ->
-    JObj = cb_context:doc(Context),
-    case kz_json:get_value(<<"pvt_job_status">>, JObj) of
-        'undefined' -> Context;
-        _Else ->
-            cb_context:set_doc(Context
-                              ,kz_json:set_values([{<<"pvt_job_status">>, <<"pending">>}
-                                                  ,{<<"attempts">>, 0}
-                                                  ]
-                                                 ,JObj
-                                                 ))
-    end;
-maybe_reset_job(Context, _Status) -> Context.
 
 -spec get_filter_doc(cb_context:context()) -> kz_json:object().
 get_filter_doc(Context) ->
@@ -622,5 +606,7 @@ save_attachment(Context, Filename, FileJObj) ->
 -spec set_pending(cb_context:context(), binary()) -> cb_context:context().
 set_pending(Context, DocId) ->
     Ctx1 = crossbar_doc:load(DocId, Context),
-    KVs = [{<<"pvt_job_status">>, <<"pending">>}],
+    KVs = [{<<"pvt_job_status">>, <<"pending">>}
+          ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+          ],
     crossbar_doc:save(cb_context:set_doc(Ctx1, kz_json:set_values(KVs, cb_context:doc(Ctx1)))).
