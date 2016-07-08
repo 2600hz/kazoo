@@ -264,7 +264,8 @@ is_flag_exported(Flag) ->
 
 is_flag_exported(_, []) -> 'false';
 is_flag_exported(Flag, [{F, 1}|Funs]) ->
-    kz_util:to_binary(F) =:= Flag orelse is_flag_exported(Flag, Funs);
+    kz_util:to_binary(F) =:= Flag
+        orelse is_flag_exported(Flag, Funs);
 is_flag_exported(Flag, [_|Funs]) -> is_flag_exported(Flag, Funs).
 
 -spec get_inception(kapps_call:call()) -> api_binary().

@@ -298,7 +298,8 @@ get_failover(#ts_callflow_state{failover=Fail}) -> Fail.
 
 -spec is_trunkstore_acct(kz_json:object(), api_binary() | api_binaries()) -> boolean().
 is_trunkstore_acct(JObj, [Type|Types]) ->
-    is_trunkstore_acct(JObj, Type) orelse is_trunkstore_acct(JObj, Types);
+    is_trunkstore_acct(JObj, Type)
+        orelse is_trunkstore_acct(JObj, Types);
 is_trunkstore_acct(_JObj, []) -> 'false';
 is_trunkstore_acct(JObj, <<"sys_info">> = Type) ->
     Type =:= kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj)

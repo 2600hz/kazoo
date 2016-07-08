@@ -492,7 +492,10 @@ run_start_cmds(Node, Options, Parent, 'false') ->
 run_start_cmds(Node, Options, Parent, Cmds) ->
     Res = process_cmds(Node, Options, Cmds),
 
-    case is_list(Res) andalso [R || R <- Res, was_not_successful_cmd(R)] of
+    case
+        is_list(Res)
+        andalso [R || R <- Res, was_not_successful_cmd(R)]
+    of
         [] -> sync(Parent);
         'false' ->
             lager:debug("failed to run start commands, retrying"),

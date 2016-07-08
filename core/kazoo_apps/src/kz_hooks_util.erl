@@ -136,7 +136,8 @@ maybe_add_hook(Hook) ->
     end.
 
 maybe_add_hook(Hook, Pids) ->
-    lists:member(self(), Pids) orelse hook_it_up(Hook).
+    lists:member(self(), Pids)
+        orelse hook_it_up(Hook).
 
 -spec hook_it_up(tuple()) -> 'true'.
 hook_it_up(Hook) ->

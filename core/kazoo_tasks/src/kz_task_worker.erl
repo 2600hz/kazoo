@@ -57,8 +57,8 @@ start(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
                                                                                   {'error', any()}.
 init(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
     case
-        kz_util:try_load_module(Module) =:= Module andalso
-        kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, ?KZ_TASKS_ATTACHMENT_NAME_IN)
+        kz_util:try_load_module(Module) =:= Module
+        andalso kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, ?KZ_TASKS_ATTACHMENT_NAME_IN)
     of
         'false' ->
             lager:error("failed loading module '~p' for task ~s", [Module, TaskId]),

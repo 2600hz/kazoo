@@ -973,7 +973,8 @@ find_API_errors(API, Fields, HasInputData) ->
 -spec are_mandatories_unset(nonempty_list(boolean()), nonempty_list(ne_binary())) -> boolean().
 are_mandatories_unset(IsMandatory, Row) ->
     MapF = fun (Mandatory, Value) ->
-                   Mandatory andalso 'undefined' == Value
+                   Mandatory
+                       andalso 'undefined' == Value
            end,
     RedF = fun erlang:'or'/2,
     lists:foldl(RedF, 'false', lists:zipwith(MapF, IsMandatory, Row)).

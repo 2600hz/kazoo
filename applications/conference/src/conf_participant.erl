@@ -452,13 +452,17 @@ code_change(_OldVsn, Participant, _Extra) ->
 -spec join_conference(boolean(), ne_binary(), kapps_conference:conference()) -> ok.
 join_conference('true'=_Moderator, ParticipantId, Conference) ->
     lager:debug("caller has joined the local conference as moderator ~p", [ParticipantId]),
-    kapps_conference:moderator_join_muted(Conference) andalso gen_listener:cast(self(), 'mute'),
-    kapps_conference:moderator_join_deaf(Conference) andalso gen_listener:cast(self(), 'deaf'),
+    kapps_conference:moderator_join_muted(Conference)
+        andalso gen_listener:cast(self(), 'mute'),
+    kapps_conference:moderator_join_deaf(Conference)
+        andalso gen_listener:cast(self(), 'deaf'),
     ok;
 join_conference('false'=_Moderator, ParticipantId, Conference) ->
     lager:debug("caller has joined the local conference as member ~p", [ParticipantId]),
-    kapps_conference:member_join_muted(Conference) andalso gen_listener:cast(self(), 'mute'),
-    kapps_conference:member_join_deaf(Conference) andalso gen_listener:cast(self(), 'deaf'),
+    kapps_conference:member_join_muted(Conference)
+        andalso gen_listener:cast(self(), 'mute'),
+    kapps_conference:member_join_deaf(Conference)
+        andalso gen_listener:cast(self(), 'deaf'),
     ok.
 
 -spec sync_participant(kz_json:objects(), kapps_call:call(), participant()) ->
