@@ -11,7 +11,7 @@
 -module(ecallmgr_fs_xml).
 
 -export([get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
-        ,route_resp_xml/2 ,authn_resp_xml/1, reverse_authn_resp_xml/1
+        ,route_resp_xml/3 ,authn_resp_xml/1, reverse_authn_resp_xml/1
         ,acl_xml/1, not_found/0, empty_response/0
         ,sip_profiles_xml/1, sofia_gateways_xml_to_json/1
         ,sip_channel_xml/1
@@ -214,13 +214,13 @@ conference_profile_xml(Name, Params) ->
     ParamEls = [param_el(K, V) || {K, V} <- kz_json:to_proplist(Params)],
     profile_el(Name, ParamEls).
 
--spec route_resp_xml(api_terms(), kz_proplist()) -> {'ok', iolist()}.
-route_resp_xml([_|_]=RespProp, Props) -> route_resp_xml(kz_json:from_list(RespProp), Props);
-route_resp_xml(RespJObj, Props) ->
+-spec route_resp_xml(atom(), api_terms(), kz_proplist()) -> {'ok', iolist()}.
+route_resp_xml(Section, [_|_]=RespProp, Props) -> route_resp_xml(Section, kz_json:from_list(RespProp), Props);
+route_resp_xml(Section, RespJObj, Props) ->
     route_resp_xml(kz_json:get_value(<<"Method">>, RespJObj)
                   ,kz_json:get_value(<<"Routes">>, RespJObj, [])
-                  ,RespJObj
-                  , Props
+                  ,kz_json:set_value(<<"Fetch-Section">>, kz_util:to_binary(Section), RespJObj)
+                  ,Props
                   ).
 
 %% Prop = Route Response

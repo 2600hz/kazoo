@@ -56,8 +56,11 @@ node_srv(Supervisor) ->
 authn_srv(Supervisor) ->
     srv(supervisor:which_children(Supervisor), "nhtua_").
 
+route_sup_srv(Supervisor) ->
+    srv(supervisor:which_children(Supervisor), "pus_etuor_").
+
 route_srv(Supervisor) ->
-    srv(supervisor:which_children(Supervisor), "etuor_").
+    srv(supervisor:which_children(route_sup_srv(Supervisor)), "etuor_").
 
 channel_srv(Supervisor) ->
     srv(supervisor:which_children(Supervisor), "lennahc_").
@@ -123,6 +126,12 @@ child_name(NodeB, Args, {<<"worker">>, Module}) ->
     Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?WORKER_NAME_ARGS(Mod, Name, Args);
 child_name(NodeB, Args, <<"event_stream_sup">>=Module) ->
+    Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    ?SUPER_NAME_ARGS(Mod, Name, Args);
+child_name(NodeB, Args, <<"route">>) ->
+    child_name(NodeB, Args, <<"route_sup">>);
+child_name(NodeB, Args, <<"route_sup">>=Module) ->
     Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
     Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?SUPER_NAME_ARGS(Mod, Name, Args);
