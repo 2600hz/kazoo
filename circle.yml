@@ -34,7 +34,7 @@ test:
     - $CHANGED
     - ./scripts/state-of-docs.sh || true
     - ./scripts/validate-js.sh $($CHANGED)
-    - ./scripts/code_checks.bash $($CHANGED)
+    - ./scripts/code_checks.bash "$(echo $($CHANGED))"
     - |
       if [[ ! -z "$($CHANGED)" ]]; then
         TO_FMT="$(echo $($CHANGED))" make fmt
