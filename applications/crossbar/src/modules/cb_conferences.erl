@@ -342,7 +342,7 @@ conference_realtime_data(ConferenceId) ->
     Participants = extract_participants(ConferenceDetails),
     kz_json:from_list(
       [{<<"members">>, count_members(Participants)}
-      ,{<<"admins">>, count_admins(Participants)}
+      ,{<<"moderators">>, count_admins(Participants)}
       ,{<<"duration">>, run_time(ConferenceDetails)}
       ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, ConferenceDetails, 'false')}
       ,{<<"participants">>, [kz_json:normalize_jobj(Participant) || Participant <- Participants]}
