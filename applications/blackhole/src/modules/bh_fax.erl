@@ -50,6 +50,7 @@ rm_amqp_binding(<<"fax.status.", FaxId/binary>>, Context) ->
     blackhole_listener:remove_binding('fax', [{'restrict_to', ['status']}
                                              ,{'account_id', bh_context:account_id(Context)}
                                              ,{'fax_id', FaxId}
+                                             ,'federate'
                                              ]);
 rm_amqp_binding(_Binding, _Context) ->
     lager:debug("unmatched binding ~s", [_Binding]).

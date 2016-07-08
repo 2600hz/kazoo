@@ -25,22 +25,42 @@ handle_event(Context, EventJObj) ->
                                ).
 
 -spec add_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
-add_amqp_binding(<<"conference.event.", ConfId/binary>>, _Context) ->
-    blackhole_listener:add_binding('conference', [{'conference', ConfId}, {'restrict_to', ['event']}]);
 add_amqp_binding(<<"conference.command.", ConfId/binary>>, _Context) ->
-    blackhole_listener:add_binding('conference', [{'conference', ConfId}, {'restrict_to', ['command']}]);
+    blackhole_listener:add_binding('conference', [{'conference', ConfId}
+                                                 ,{'restrict_to', ['command']}
+                                                 ,'federate'
+                                                 ]);
+add_amqp_binding(<<"conference.event.", Binding/binary>>, _Context) ->
+    case binary:split(Binding, <<".">>, ['global']) of
+        [ConfId, CallId] ->
+            blackhole_listener:add_binding('conference', [{'conference', {ConfId, CallId}}
+                                                         ,{'restrict_to', ['event']}
+                                                         ,'federate'
+                                                         ]);
+        _Else -> lager:debug("invalid conference event bind: ~s", [Binding])
+    end;
 add_amqp_binding(Binding, _Context) ->
-    lager:debug("unmatched binding ~p", [Binding]),
-    'ok'.
+    lager:debug("unmatched binding ~p", [Binding]).
 
 -spec rm_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
-rm_amqp_binding(<<"conference.event.", ConfId/binary>>, _Context) ->
-    blackhole_listener:remove_binding('conference', [{'conference', ConfId}, {'restrict_to', ['event']}]);
 rm_amqp_binding(<<"conference.command.", ConfId/binary>>, _Context) ->
-    blackhole_listener:remove_binding('conference', [{'conference', ConfId}, {'restrict_to', ['command']}]);
+    blackhole_listener:remove_binding('conference',
+                                      [{'conference', ConfId}
+                                      ,{'restrict_to', ['command']}
+                                      ,'federate'
+                                      ]);
+rm_amqp_binding(<<"conference.event.", Binding/binary>>, _Context) ->
+    case binary:split(Binding, <<".">>, ['global']) of
+        [ConfId, CallId] ->
+            blackhole_listener:add_binding('conference',
+                                           [{'conference', {ConfId, CallId}}
+                                           ,{'restrict_to', ['event']}
+                                           ,'federate'
+                                           ]);
+        _Else -> lager:debug("invalid conference event unbind: ~s", [Binding])
+    end;
 rm_amqp_binding(Binding, _Context) ->
-    lager:debug("unmatched binding ~p", [Binding]),
-    'ok'.
+    lager:debug("unmatched binding ~p", [Binding]).
 
 %%%===================================================================
 %%% Internal functions

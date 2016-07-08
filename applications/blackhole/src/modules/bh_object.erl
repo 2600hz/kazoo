@@ -44,8 +44,7 @@ add_amqp_binding(Binding, Context) ->
         andalso lists:member(Type, ?DOC_TYPES)
     of
         'false' -> lager:debug("unmatched binding ~s", [Binding]);
-        'true' ->
-            add_amqp_binding(Binding, Context, Action, Type)
+        'true' -> add_amqp_binding(Binding, Context, Action, Type)
     end.
 
 add_amqp_binding(_Binding, Context, Action, Type) ->
@@ -53,14 +52,12 @@ add_amqp_binding(_Binding, Context, Action, Type) ->
     AccountId = bh_context:account_id(Context),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Keys = [[{'action', Action}, {'db', AccountDb}, {'doc_type', Type}]],
-    blackhole_listener:add_binding(
-      'conf'
+    blackhole_listener:add_binding('conf'
                                   ,[{'restrict_to', ['doc_updates']}
                                    ,{'account_id', AccountId}
                                    ,{'keys', Keys}
                                    ,'federate'
-                                   ]
-     ).
+                                   ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -74,14 +71,12 @@ rm_amqp_binding(Binding, Context) ->
     AccountId = bh_context:account_id(Context),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Keys = [[{'action', Action}, {'db', AccountDb}, {'doc_type', Type}]],
-    blackhole_listener:remove_binding(
-      'conf'
+    blackhole_listener:remove_binding('conf'
                                      ,[{'restrict_to', ['doc_updates']}
                                       ,{'account_id', AccountId}
                                       ,{'keys', Keys}
                                       ,'federate'
-                                      ]
-     ).
+                                      ]).
 
 %%--------------------------------------------------------------------
 %% @public
