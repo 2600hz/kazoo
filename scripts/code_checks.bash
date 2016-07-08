@@ -4,9 +4,7 @@
 
 function check_andalso_orelse {
     # Check for andalso/orelse dropped lines
-    grep -Ern '[a-zA-Z\)] +(andalso|orelse)' "$@"
-    [[ $? -eq 1 ]] && return 0
-    return 1
+    ! grep -Ern '[a-zA-Z\)] +(andalso|orelse)' -- $@
 }
 
 check_andalso_orelse "$@"
