@@ -117,10 +117,9 @@ update_services(Number) -> Number.
 -spec update_services(knm_number:knm_number(), boolean()) ->
                              knm_number:knm_number().
 update_services(Number) ->
-    update_services(
-      Number
+    update_services(Number
                    ,knm_phone_number:dry_run(knm_number:phone_number(Number))
-     ).
+                   ).
 
 update_services(Number, 'true') ->
     JObj = knm_phone_number:to_json(knm_number:phone_number(Number)),
