@@ -156,6 +156,49 @@ Actions are JSON objects in format:
 
 ### Web-socket events
 
-A client may subscribe to conference event using websocket connection.
+A client may subscribe to conference event using websocket connection. Participant events are published as
+amqp conference.event.{conference_id}.{call_id}, where call_id is participant's call. 
 
-####
+The list of published events is determined by *publish_participant_event* parameter of ecallmgr configuration,
+if parameter is unset, then all events are published.
+
+#### Participant events
+
+    add-member
+    del-member
+    stop-talking
+    start-talking
+    mute-member
+    unmute-member
+    deaf-member
+    undeaf-member
+
+#### Example event
+```json
+{
+  'Custom-Channel-Vars': {},
+  'Channel-Presence-ID': 'sip1@kamailio.kazoo',
+  'Caller-ID-Number': 'sip1',
+  'Caller-ID-Name': 'sip1',
+  'Mute-Detect': false,
+  'Video': false,
+  'Energy-Level': 0,
+  'Current-Energy': 1452,
+  'Talking': true,
+  'Speak': true,
+  'Hear': false,
+  'Floor': true,
+  'Participant-ID': 1,
+  'Instance-ID': '981c98fe-964c-4a82-a06d-128ead6cf77c',
+  'Conference-ID': '58cd77f988191a314ceb821e7f9d6a35',
+  'Focus': 'freeswitch@freeswitch.kazoo',
+  'Call-ID': '899417183',
+  'Event': 'start-talking',
+  'Node': 'kazoo_apps@jh460',
+  'Msg-ID': '78bb6cd5dba480ee',
+  'Event-Name': 'participant_event',
+  'Event-Category': 'conference',
+  'App-Version': '4.0.0',
+  'App-Name': 'ecallmgr',
+  'routing_key': 'participant_event
+```
