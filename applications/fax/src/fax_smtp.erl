@@ -108,10 +108,14 @@ filter_extensions(BuilIn, Options) ->
     lists:filter(fun({N,_}) -> not props:is_defined(N, Extensions) end, BuilIn) ++ Extensions.
 
 -spec handle_MAIL(binary(), state()) -> {'ok', state()}.
+handle_MAIL(FromHeader, #state{to='undefined'}=State) ->
+    From = kz_util:to_lower_binary(FromHeader),
+    lager:debug("Mail from ~s", [From]),
+    {'ok', State#state{from=From}};
 handle_MAIL(FromHeader, State) ->
     From = kz_util:to_lower_binary(FromHeader),
     lager:debug("Checking Mail from ~s", [From]),
-    {'ok', State#state{from=From}}.
+    check_faxbox((reset(State))#state{from=From}).
 
 -spec handle_MAIL_extension(binary(), state()) ->
                                    'error'.
@@ -123,6 +127,10 @@ handle_MAIL_extension(Extension, _State) ->
 -spec handle_RCPT(binary(), state()) ->
                          {'ok', state()} |
                          {'error', string(), state()}.
+handle_RCPT(ToHeader, #state{from='undefined'}=State) ->
+    To = kz_util:to_lower_binary(ToHeader),
+    lager:debug("Mail to ~s", [To]),
+    {'ok', State#state{to=To}};
 handle_RCPT(ToHeader, State) ->
     To = kz_util:to_lower_binary(ToHeader),
     lager:debug("Checking Mail to ~s", [To]),
@@ -141,6 +149,18 @@ handle_RCPT_extension(Extension, _State) ->
 handle_DATA(From, To, <<>>, State) ->
     lager:debug("552 Message too small. From ~p to ~p", [From,To]),
     {'error', "552 Message too small", State};
+handle_DATA(From, To, Data, #state{from='undefined'}=State) ->
+    handle_DATA(From, To, Data, State#state{from=From});
+handle_DATA(From, To, Data, #state{to='undefined'}=State) ->
+    handle_DATA(From, To, Data, State#state{to=To});
+handle_DATA(From, To, Data, #state{doc='undefined'}=State) ->
+    case check_faxbox(State) of
+        {'ok', #state{doc='undefined'}=NewState} ->
+            lager:error("check_faxbox returned no error but also no doc : ~p", [NewState]),
+            {'error', "552 unable to process", NewState};
+        {'ok', NewState} -> handle_DATA(From, To, Data, NewState);
+        Error -> Error
+    end;
 handle_DATA(From, To, Data, #state{options=Options}=State) ->
     lager:debug("Handle Data From ~p to ~p", [From,To]),
 
@@ -647,6 +667,7 @@ add_fax_document(#state{doc='undefined'
     Doc = kz_json:set_values([{<<"pvt_type">>, <<"fax">>}
                              ,{<<"pvt_job_status">>, <<"attaching files">>}
                              ,{<<"pvt_created">>, kz_util:current_tstamp()}
+                             ,{<<"pvt_modified">>, kz_util:current_tstamp()}
                              ,{<<"attempts">>, 0}
                              ,{<<"pvt_account_id">>, AccountId}
                              ,{<<"pvt_account_db">>, AccountDb}

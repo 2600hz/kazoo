@@ -141,7 +141,10 @@ check_fax_attachment(DocId, Name) ->
                                     {'error', any()}.
 save_fax_doc_completed(JObj)->
     DocId = kz_doc:id(JObj),
-    case kz_datamgr:save_doc(?KZ_FAXES_DB, kz_json:set_values([{<<"pvt_job_status">>, <<"pending">>}], JObj)) of
+    Updates = [{<<"pvt_job_status">>, <<"pending">>}
+              ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+              ],
+    case kz_datamgr:save_doc(?KZ_FAXES_DB, kz_json:set_values(Updates, JObj)) of
         {'ok', Doc} ->
             lager:debug("fax jobid ~s set to pending", [DocId]),
             {'ok', Doc};
