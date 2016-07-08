@@ -198,7 +198,7 @@ handle_info({'event', [CallId | Props]}, #state{node=Node, publish_participant_e
             'continue' ->
                 Event = make_participant_event(Action, CallId, Props, Node),
                 send_participant_event(Event, Props),
-                publish_participant_event(lists:member(Event, EventsToPublish), Event, CallId, Props);
+                publish_participant_event(lists:member(Action, EventsToPublish), Event, CallId, Props);
             {'continue', CustomProps} ->
                 Event = make_participant_event(Action, CallId, Props, Node),
                 send_participant_event(Event, Props, CustomProps)
