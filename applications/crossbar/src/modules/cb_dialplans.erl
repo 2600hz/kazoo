@@ -74,12 +74,16 @@ maybe_add_name(KVs) ->
 
 -spec maybe_add_name(kz_proplist(), kz_json:object()) -> kz_json:object().
 maybe_add_name([], Acc) -> Acc;
+maybe_add_name([{K, V} | KVs], Acc0)
+  when is_list(V) ->
+    Acc = lists:foldl(fun(V1, Acc1) -> maybe_add_name([{K, V1}], Acc1) end, Acc0, V),
+    maybe_add_name(KVs, Acc);
 maybe_add_name([{K, V} | KVs], Acc0) ->
     Acc = case kz_json:get_ne_binary_value(<<"name">>, V) of
               'undefined' ->
                   JObj = kz_json:set_value(<<"name">>, K, V),
                   kz_json:set_value(K, JObj, Acc0);
-              _Other ->
-                  kz_json:set_value(K, V, Acc0)
+              Name ->
+                  kz_json:set_value(Name, kz_json:set_value(<<"regex">>, K, V), Acc0)
           end,
     maybe_add_name(KVs, Acc).
