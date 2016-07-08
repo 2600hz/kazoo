@@ -109,9 +109,7 @@ validate(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
 %%%===================================================================
 -spec validate_conferences(http_method(), cb_context:context()) -> cb_context:context().
 validate_conferences(?HTTP_GET, Context) ->
-    Context1 = crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2),
-    EnrichedDocs = [ enrich_conference(JObj) || JObj <- cb_context:doc(Context1)],
-    cb_context:set_resp_data(Context1, EnrichedDocs);
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
 validate_conferences(?HTTP_PUT, Context) ->
     maybe_create_conference(Context).
 
@@ -208,7 +206,7 @@ on_successful_validation(ConferenceId, Context) ->
 
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj) | Acc].
+    [enrich_conference(kz_json:get_value(<<"value">>, JObj)) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -334,7 +332,7 @@ enrich_conference(ConferenceId, Context) ->
 enrich_conference(JObj) ->
     ConferenceId = kz_doc:id(JObj),
     RealtimeData = conference_realtime_data(ConferenceId),
-    kz_json:set_value(<<"_read_only">>, kz_json:delete_key(<<"participants">>, RealtimeData), JObj).
+    kz_json:merge_jobjs(kz_json:delete_key(<<"participants">>, RealtimeData), JObj).
 
 -spec conference_realtime_data(ne_binary()) -> kz_json:object().
 conference_realtime_data(ConferenceId) ->
