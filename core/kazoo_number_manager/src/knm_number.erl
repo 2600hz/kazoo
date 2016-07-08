@@ -366,10 +366,9 @@ save(Number) ->
             'false' ->
                 knm_services:update_services(Number)
         end,
-    wrap_phone_number_return(
-      knm_phone_number:save(phone_number(Num))
+    wrap_phone_number_return(knm_phone_number:save(phone_number(Num))
                             ,Num
-     ).
+                            ).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -70,7 +70,7 @@ find_numbers_in_account(Number, Quantity, AccountId) ->
                                         {'error', any()}.
 do_find_numbers_in_account(Number, Quantity, AccountId) ->
     ViewOptions = [{'startkey', [AccountId, ?NUMBER_STATE_AVAILABLE, Number]}
-                  ,{'endkey', [AccountId, ?NUMBER_STATE_AVAILABLE, <<Number/binary, "\ufff0">>]}
+                  ,{'endkey', [AccountId, ?NUMBER_STATE_AVAILABLE, <<Number/binary,"\ufff0">>]}
                   ,{'limit', Quantity}
                   ,'include_docs'
                   ],
@@ -115,10 +115,9 @@ is_number_billable(_Number) -> 'false'.
                             knm_number:knm_number().
 acquire_number(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
-    Num = knm_phone_number:number(PhoneNumber),
     AssignTo = knm_phone_number:assigned_to(PhoneNumber),
     State = knm_phone_number:state(PhoneNumber),
-    lager:debug("acquiring number ~s in ~s provider", [Num, ?MODULE]),
+    lager:debug("acquiring number ~s", [knm_phone_number:number(PhoneNumber)]),
     update_doc(Number, [{?PVT_STATE, State}
                        ,{?PVT_ASSIGNED_TO, AssignTo}
                        ]).
@@ -132,8 +131,8 @@ acquire_number(Number) ->
 -spec disconnect_number(knm_number:knm_number()) ->
                                knm_number:knm_number().
 disconnect_number(Number) ->
-    Num = knm_phone_number:number(knm_number:phone_number(Number)),
-    lager:debug("disconnect number ~s in managed provider", [Num]),
+    lager:debug("disconnecting number ~s"
+               ,[knm_phone_number:number(knm_number:phone_number(Number))]),
     update_doc(Number, [{?PVT_STATE, ?NUMBER_STATE_RELEASED}
                        ,{?PVT_ASSIGNED_TO, <<>>}
                        ]).
@@ -148,8 +147,8 @@ generate_numbers(?MATCH_ACCOUNT_RAW(AccountId), Number, Quantity)
     generate_numbers(AccountId, Number+1, Quantity-1).
 
 -spec import_numbers(ne_binary(), ne_binaries()) -> kz_json:object().
-import_numbers(_AccountId, Numbers) ->
-    import_numbers(_AccountId, Numbers, kz_json:new()).
+import_numbers(AccountId, Numbers) ->
+    import_numbers(AccountId, Numbers, kz_json:new()).
 
 -spec import_numbers(ne_binary(), ne_binaries(), kz_json:object()) -> kz_json:object().
 import_numbers(_AccountId, [], JObj) -> JObj;
