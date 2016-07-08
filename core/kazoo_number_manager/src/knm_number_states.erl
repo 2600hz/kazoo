@@ -288,15 +288,9 @@ apply_transitions(Number, Routines) ->
 
 -spec is_authorized_operation(ne_binary(), ne_binary()) -> boolean().
 is_authorized_operation(CheckFor, InAccount) ->
-    kz_util:is_in_account_hierarchy(
-      CheckFor
-                                   ,InAccount
-     ).
+    kz_util:is_in_account_hierarchy(CheckFor, InAccount).
 
 -spec number_state(kn()) -> ne_binary().
 number_state(Number) ->
     knm_phone_number:state(
-      knm_number:phone_number(
-        Number
-       )
-     ).
+      knm_number:phone_number(Number)).

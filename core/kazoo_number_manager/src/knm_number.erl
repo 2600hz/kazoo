@@ -354,11 +354,8 @@ update_phone_number(Number, Routines) ->
 %%--------------------------------------------------------------------
 -spec save(knm_number()) -> knm_number_return().
 save(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
     Num =
-        case 'undefined' == knm_phone_number:assigned_to(PhoneNumber)
-            andalso ?NUMBER_STATE_DISCOVERY == knm_phone_number:state(PhoneNumber)
-        of
+        case is_carrier_search_result(Number) of
             'true' ->
                 %% Number was created as a result of carrier search
                 %%  thus has no services associated with it
@@ -366,10 +363,20 @@ save(Number) ->
             'false' ->
                 knm_services:update_services(Number)
         end,
-    wrap_phone_number_return(
-      knm_phone_number:save(phone_number(Num))
+    wrap_phone_number_return(knm_phone_number:save(phone_number(Num))
                             ,Num
-     ).
+                            ).
+
+%% @private
+-spec is_carrier_search_result(knm_number()) -> boolean().
+is_carrier_search_result(Number) ->
+    PhoneNumber = phone_number(Number),
+    SearchableStates = [?NUMBER_STATE_DISCOVERY
+                       ,?NUMBER_STATE_AVAILABLE
+                       ,?NUMBER_STATE_RESERVED
+                       ],
+    'undefined' == knm_phone_number:assigned_to(PhoneNumber)
+        andalso lists:member(knm_phone_number:state(PhoneNumber), SearchableStates).
 
 %%--------------------------------------------------------------------
 %% @public

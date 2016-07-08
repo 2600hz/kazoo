@@ -71,7 +71,7 @@ find_numbers_in_account(Number, Quantity, AccountId) ->
                                         {'error', any()}.
 do_find_numbers_in_account(Number, Quantity, AccountId) ->
     ViewOptions = [{'startkey', [AccountId, ?NUMBER_STATE_AVAILABLE, Number]}
-                  ,{'endkey', [AccountId, ?NUMBER_STATE_AVAILABLE, <<Number/binary, "\ufff0">>]}
+                  ,{'endkey', [AccountId, ?NUMBER_STATE_AVAILABLE, <<Number/binary,"\ufff0">>]}
                   ,{'limit', Quantity}
                   ,'include_docs'
                   ],
@@ -116,8 +116,7 @@ is_number_billable(_Number) -> 'false'.
                             knm_number:knm_number().
 acquire_number(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
-    Num = knm_phone_number:number(PhoneNumber),
-    lager:debug("acquiring number ~s in ~s provider", [Num, ?MODULE]),
+    lager:debug("acquiring number ~s", [knm_phone_number:number(PhoneNumber)]),
     update_doc(Number, [{?PVT_STATE, knm_phone_number:state(PhoneNumber)}
                        ,{?PVT_ASSIGNED_TO, knm_phone_number:assigned_to(PhoneNumber)}
                        ]).
@@ -131,8 +130,8 @@ acquire_number(Number) ->
 -spec disconnect_number(knm_number:knm_number()) ->
                                knm_number:knm_number().
 disconnect_number(Number) ->
-    Num = knm_phone_number:number(knm_number:phone_number(Number)),
-    lager:debug("disconnect number ~s in managed provider", [Num]),
+    lager:debug("disconnect number ~s in managed provider"
+               ,[knm_phone_number:number(knm_number:phone_number(Number))]),
     update_doc(Number, [{?PVT_STATE, ?NUMBER_STATE_RELEASED}
                        ,{?PVT_ASSIGNED_TO, 'undefined'}
                        ,{?PVT_RESERVE_HISTORY, []}
@@ -148,7 +147,7 @@ generate_numbers(AccountId, Number, Quantity)
        is_integer(Quantity),
        Quantity > 0 ->
     _R = save_doc(AccountId, kz_util:to_binary(Number)),
-    lager:info("Number ~p/~p/~p", [Number, Quantity, _R]),
+    lager:info("number ~p/~p/~p", [Number, Quantity, _R]),
     generate_numbers(AccountId, Number+1, Quantity-1).
 
 
@@ -168,7 +167,7 @@ save_doc(JObj) ->
     case kz_datamgr:save_doc(?KZ_INUM, JObj) of
         {'error', 'not_found'} ->
             'true' = kz_datamgr:db_create(?KZ_INUM),
-            {'ok', _View} = kz_datamgr:revise_doc_from_file(?KZ_INUM, kz_util:to_atom(?APP_NAME), ?INUM_VIEW_FILE),
+            {'ok', _View} = kz_datamgr:revise_doc_from_file(?KZ_INUM, ?APP, ?INUM_VIEW_FILE),
             save_doc(JObj);
         Result -> Result
     end.
@@ -177,15 +176,18 @@ save_doc(JObj) ->
                         knm_number:knm_number().
 update_doc(Number, UpdateProps) ->
     PhoneNumber = knm_number:phone_number(Number),
-    Doc = knm_phone_number:doc(PhoneNumber),
-    case kz_datamgr:update_doc(?KZ_INUM, kz_doc:id(Doc), UpdateProps) of
+    Num = knm_phone_number:number(PhoneNumber),
+    case kz_datamgr:update_doc(?KZ_INUM, Num, [{?PVT_DB_NAME, ?KZ_INUM}
+                                              ,{?PVT_MODULE_NAME, kz_util:to_binary(?MODULE)}
+                                               | UpdateProps
+                                              ])
+    of
         {'error', Reason} ->
             knm_errors:database_error(Reason, PhoneNumber);
         {'ok', UpdatedDoc} ->
-            knm_number:set_phone_number(
-              Number
+            knm_number:set_phone_number(Number
                                        ,knm_phone_number:from_json(UpdatedDoc)
-             )
+                                       )
     end.
 
 %%--------------------------------------------------------------------
