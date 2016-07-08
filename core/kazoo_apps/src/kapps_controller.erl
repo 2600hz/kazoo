@@ -183,7 +183,7 @@ initialize_kapps() ->
               ],
     lager:notice("auto-started kapps ~p", [Started]).
 
--spec start_which_kapps() -> [ne_binary() | atom()].
+-spec start_which_kapps() -> [ne_binary() | atom() | nonempty_string()].
 start_which_kapps() ->
     Routines = [fun maybe_start_from_env/0
                ,fun maybe_start_from_node_config/0
@@ -199,18 +199,17 @@ start_which_kapps() ->
                ,Routines
                ).
 
--spec maybe_start_from_env() -> 'false' | [ne_binary() | atom()].
+-spec maybe_start_from_env() -> 'false' | [nonempty_string()].
 maybe_start_from_env() ->
     case os:getenv("KAZOO_APPS", "noenv") of
         "noenv" -> 'false';
         KazooApps ->
             lager:info("starting applications specified in environment variable KAZOO_APPS: ~s"
-                      ,[KazooApps]
-                      ),
+                      ,[KazooApps]),
             string:tokens(KazooApps, ", ")
     end.
 
--spec maybe_start_from_node_name() -> 'false' | [ne_binary() | atom()].
+-spec maybe_start_from_node_name() -> 'false' | atoms().
 maybe_start_from_node_name() ->
     KApp = kapp_from_node_name(),
     case not lists:member(KApp, ?HIDDEN_APPS)
@@ -229,8 +228,7 @@ maybe_start_from_node_config() ->
         'undefined' -> 'false';
         KazooApps ->
             lager:info("starting applications configured specifically for this node: ~s"
-                       ,[kz_util:join_binary(KazooApps, <<", ">>)]
-                      ),
+                      ,[kz_util:join_binary(KazooApps, <<", ">>)]),
             KazooApps
     end.
 

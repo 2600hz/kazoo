@@ -115,6 +115,6 @@ FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
 $(FMT):
 	wget 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' -O - | tar xvz -C $(ROOT)/make/
 
-fmt: TO_FMT = $(shell find src include -iname '*.erl' -or -iname '*.hrl')
+fmt: TO_FMT = $(shell find src include -iname '*.erl' -or -iname '*.hrl' -or -iname '*.app.src')
 fmt: $(FMT)
 	@$(FMT) $(TO_FMT)

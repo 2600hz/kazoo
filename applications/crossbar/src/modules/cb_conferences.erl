@@ -215,7 +215,7 @@ normalize_view_result(JObj) ->
       ,{<<"duration">>, run_time(ConferenceDetails)}
       ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, ConferenceDetails, 'false')}
       ]
-      ,JObj
+                      ,JObj
      ).
 
 %%--------------------------------------------------------------------
@@ -344,7 +344,7 @@ enrich_participants(ConferenceId, Context) ->
                     ),
     crossbar_util:response(
       [kz_json:normalize_jobj(JObj) || JObj <- request_call_details(Participants)]
-      ,Context
+                          ,Context
      ).
 
 -spec enrich_conference(ne_binary(), cb_context:context()) -> cb_context:context().
@@ -369,8 +369,8 @@ request_conference_details(ConferenceId) ->
           ],
     case kapps_util:amqp_pool_collect(
            Req
-          ,fun kapi_conference:publish_search_req/1
-          ,{'ecallmgr', 'true'})
+                                     ,fun kapi_conference:publish_search_req/1
+                                     ,{'ecallmgr', 'true'})
     of
         {'error', _E} ->
             lager:debug("unable to lookup conference details: ~p", [_E]),

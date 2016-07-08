@@ -1,20 +1,20 @@
 {application, kazoo_documents
- ,[
-   {description, "Kazoo Document helper modules"}
-   ,{vsn, "4.0.0"}
-   ,{modules, []}
-   ,{registered, [ ]}
-   ,{applications, [ kernel
-                   , stdlib
-                   , crypto
+,[
+  {description, "Kazoo Document helper modules"}
+ ,{vsn, "4.0.0"}
+ ,{modules, []}
+ ,{registered, [ ]}
+ ,{applications, [ kernel
+                 , stdlib
+                 , crypto
 
-                   , kazoo
-                   , kazoo_data
-                   , kazoo_config
-                   , kazoo_services
-                   , kazoo_modb
+                 , kazoo
+                 , kazoo_data
+                 , kazoo_config
+                 , kazoo_services
+                 , kazoo_modb
 
-                   , cowboy
-                   , lager
-                   ]}
+                 , cowboy
+                 , lager
+                 ]}
  ]}.
