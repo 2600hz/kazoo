@@ -9,16 +9,17 @@ rel=${REL:-kazoo_apps}  # kazoo_apps | ecallmgr | ...
 
 [[ $rel != kazoo_apps* ]] && export KAZOO_APPS='ecallmgr'
 
-function stuff() {
-    erl -noshell -setcookie change_me -name doer@${rel##*@} -eval "ok = rpc:call('$rel', crossbar_maintenance, create_account, [<<\"compte_maitre\">>, <<\"royaume\">>, <<\"superduperuser\">>, <<\"pwd!\">>])." -s init stop
+function sup_() {
+    local M=$1; shift
+    local F=$1; shift
+    declare -a a=()
+    for arg in "$@"; do a+=( '<<"'"$arg"'">>' ); done
+    IFS=, eval 'A=${a[*]}'
+    erl -noshell -setcookie change_me -name sup_$RANDOM@${rel##*@} -eval "ok = rpc:call('$rel', $M, $F, [$A])." -s init stop
 }
 
-function stop() {
-    erl -noshell -setcookie change_me -name stopper@${rel##*@} -eval "ok = rpc:call('$rel', init, stop, [])." -s init stop
-}
-
-sleep 180 && stuff &
-sleep 220 && stop &
+sleep 180 && sup_ crossbar_maintenance create_account 'compte_maitre' 'royaume' 'superduperuser' 'pwd!' &
+sleep 220 && sup_ init stop &
 
 export KAZOO_CONFIG=rel/ci-config.ini
 REL=$rel make release
