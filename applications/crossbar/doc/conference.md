@@ -109,7 +109,7 @@ The last field, **play_entry_tone**, is at the root of the document: meaning thi
 URI: v2/accounts/{AccountId}/conferences
 
     GET: list of conferences with realtime data
-    POST: create new conference
+    PUT: create new conference
 
 URI: v2/accounts/{AccountId}/conferences/{ConferenceID}
 
