@@ -1,36 +1,172 @@
+### Conferences
 
-### Conference
+#### About Conferences
 
-Conference documents are enriched with realtime information, namely: number of members, number of moderators, duration of the conference,
+Conferences documents are enriched with realtime information, namely: number of members, number of moderators, duration of the conference,
 conference locked status. The realtime information is added to conference document under _read_only key (to avoid accident document update).
 
-#### List of conferences
+#### Schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`conference_numbers` | Defines conference numbers that can be used by members or moderators | `array(string)` | `[]` | `false`
+`conference_numbers.[]` |   | `string` |   | `false`
+`focus` | This is a read-only property indicating the media server hosting the conference | `string` |   | `false`
+`member` | Defines the discovery properties for a member | `object` | `{}` | `false`
+`member.join_deaf` | Determines if a member will join deaf | `boolean` | `false` | `false`
+`member.join_muted` | Determines if a member will join muted | `boolean` | `true` | `false`
+`member.numbers` | Defines the conference number(s) for members | `array(string)` | `[]` | `false`
+`member.numbers.[]` |   | `string` |   | `false`
+`member.pins` | Defines the pin number(s) for members | `array(string)` | `[]` | `false`
+`member.pins.[]` |   | `string` |   | `false`
+`moderator` | Defines the discovery properties for a moderator | `object` | `{}` | `false`
+`moderator.join_deaf` | Determines if a moderator will join deaf | `boolean` | `false` | `false`
+`moderator.join_muted` | Determines if a moderator will join muted | `boolean` | `false` | `false`
+`moderator.numbers` | Defines the conference number(s) for moderators | `array(string)` | `[]` | `false`
+`moderator.numbers.[]` |   | `string` |   | `false`
+`moderator.pins` | Defines the pin number(s) for moderators | `array(string)` | `[]` | `false`
+`moderator.pins.[]` |   | `string` |   | `false`
+`name` | A friendly name for the conference | `string(1..128)` |   | `false`
+`owner_id` | The user ID who manages this conference | `string(32)` |   | `false`
+`play_name` | Do we need to announce new conference members? | `boolean` | `false` | `false`
+`profile` | The XML profile name used to configure the conference | `string` |   | `false`
+
+
+#### Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/conferences
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences
+```
+
+#### Create
+
+> PUT /v2/accounts/{ACCOUNT_ID}/conferences
+
+```curl
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+
+```curl
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+```
+
+#### Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+```
+
+#### Patch
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+
+```curl
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+```
+
+#### Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+
+```curl
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+```
+
+#### Perform an action on conference
+
+> PUT /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+
+```curl
+curl -v -X PUT \
+    -d '{"data": {"action": {CONFERENCE_ACTION}}}' \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+```
+
+CONFERENCE_ACTION: lock, unlock
+
+#### Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants
+```
+
+#### Perform an action on participants
+
+> PUT /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants
+
+```curl
+curl -v -X PUT \
+    -d '{"data": {"action": {PARTICIPANTS_ACTION}}}' \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants
+```
+
+PARTICIPANTS_ACTION: mute/unmute/deaf/undeaf/kick
+
+#### Perform an action on participant
+
+> PUT /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}
+
+```curl
+curl -v -X PUT \
+    -d '{"data": {"action": {PARTICIPANT_ACTION}}}' \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}
+```
+
+PARTICIPANT_ACTION: mute/unmute/deaf/undeaf/kick
+
+#### List of conferences example
 
 ```json
-[{
-  "id": "",
-  "name": "",
-  "owner_id": "",
-  "member": {
-    "join_muted": false,
-    "join_deaf": false,
-    "numbers": [],
-    "pins": []
-  },
-  "moderator": {
-    "join_deaf": false,
-    "join_muted": false,
-    "numbers": [],
-    "pins": []
-  },
-  "_read_only": {
+[
+  {
+    "id": "",
+    "name": "",
+    "owner_id": "",
+    "member": {
+      "join_muted": false,
+      "join_deaf": false,
+      "numbers": [],
+      "pins": []
+    },
+    "moderator": {
+      "join_deaf": false,
+      "join_muted": false,
+      "numbers": [],
+      "pins": []
+    },
     "members": 0,
     "admins": 0,
     "duration": 0,
     "is_locked": false
-  }
-},
-...
+  },
+  ...
 ]
 ```
 
@@ -102,31 +238,6 @@ The last field, **play_entry_tone**, is at the root of the document: meaning thi
     * `true` means play the default tone when someone joins (or leaves) the conference
     * `false` disables the tone from being played
     * A string like a *tone string* or a *URI to a media file* can be inputed.
-
-
-### URI Schema
-
-URI: v2/accounts/{AccountId}/conferences
-
-    GET: list of conferences with realtime data
-    PUT: create new conference
-
-URI: v2/accounts/{AccountId}/conferences/{ConferenceID}
-
-    GET: a conference with realtime data (participants)
-    POST: set conference
-    PATCH: update conference
-    DELETE: delete conference
-    PUT: perform an action on conference
-
-URI: v2/accounts/{AccountId}/conferences/{ConferenceID}/participants
-
-    GET: a list of conference participants
-    PUT: perform an action on conference participants
-
-URI: v2/accounts/{AccountId}/conferences/{ConferenceID}/participants/{ParticipantId}
-
-    PUT: perform an action on conference participant
 
 #### Actions
 
