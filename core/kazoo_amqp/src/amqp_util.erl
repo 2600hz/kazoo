@@ -79,7 +79,7 @@
 -export([new_conference_queue/0, new_conference_queue/1]).
 -export([delete_conference_queue/1]).
 -export([bind_q_to_conference/2, bind_q_to_conference/3, bind_q_to_conference/4]).
--export([unbind_q_from_conference/2, unbind_q_from_conference/3]).
+-export([unbind_q_from_conference/2, unbind_q_from_conference/3, unbind_q_from_conference/4]).
 -export([conference_publish/2, conference_publish/3, conference_publish/4, conference_publish/5, conference_publish/6]).
 
 -export([presence_exchange/0]).
@@ -1001,11 +1001,14 @@ unbind_q_from_conference(Queue, 'event') ->
 unbind_q_from_conference(Queue, 'discovery', _) ->
     unbind_q_from_exchange(Queue, ?KEY_CONFERENCE_DISCOVERY, ?EXCHANGE_CONFERENCE);
 unbind_q_from_conference(Queue, 'event', ConfId) ->
-    unbind_q_from_exchange(Queue, <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE);
+    unbind_q_from_conference(Queue, 'event', ConfId, <<"*">>);
 unbind_q_from_conference(Queue, 'config', ConfProfile) ->
     unbind_q_from_exchange(Queue, <<?KEY_CONFERENCE_CONFIG/binary, ConfProfile/binary>>, ?EXCHANGE_CONFERENCE);
 unbind_q_from_conference(Queue, 'command', ConfId) ->
     unbind_q_from_exchange(Queue, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE).
+
+unbind_q_from_conference(Queue, 'event', ConfId, CallId) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary, ".", CallId/binary>>, ?EXCHANGE_CONFERENCE).
 
 unbind_q_from_callctl(Queue) ->
     unbind_q_from_exchange(Queue, Queue, ?EXCHANGE_CALLCTL).

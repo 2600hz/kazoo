@@ -38,12 +38,12 @@ event_name(JObj) ->
 
 -spec add_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
 add_amqp_binding(<<"call.", _/binary>>, Context) ->
-    blackhole_listener:add_call_binding(bh_context:account_id(Context), ['federate']);
+    blackhole_listener:add_call_binding(bh_context:account_id(Context));
 add_amqp_binding(_Binding, _Context) ->
     lager:debug("unmatched binding ~s", [_Binding]).
 
 -spec rm_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
 rm_amqp_binding(<<"call.", _/binary>>, Context) ->
-    blackhole_listener:remove_call_binding(bh_context:account_id(Context), ['federate']);
+    blackhole_listener:remove_call_binding(bh_context:account_id(Context));
 rm_amqp_binding(_Binding, _Context) ->
     lager:debug("unmatched binding ~s", [_Binding]).
