@@ -1,6 +1,6 @@
 #!/bin/bash
 
-[[ $# -eq 0 ]] && echo "Usage: $0  ‹path to check›+" && exit 1
+[[ $# -eq 0 ]] && echo "Usage: $0  ‹path to check›+" && exit 0
 
 function check_andalso_orelse {
     # Check for andalso/orelse dropped lines
