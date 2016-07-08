@@ -173,4 +173,3 @@ $(FMT):
 fmt: TO_FMT ?= $(shell find applications core -iname '*.erl' -or -iname '*.hrl')
 fmt: $(FMT)
 	@$(FMT) $(TO_FMT)
-	@echo $(TO_FMT) | xargs sed -i 's/\t/        /g'
