@@ -56,6 +56,8 @@ def check_name(file_name, JSON_name):
 
 
 for fn in sys.argv[1:]:
+    if not os.path.isfile(fn):
+        continue
     if not fn.endswith('.json'):
         continue
     exploded = fn.split(os.sep)
