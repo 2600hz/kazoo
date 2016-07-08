@@ -950,8 +950,9 @@ bind_to_q(Q, ['config'|T], Props) ->
     Profile = props:get_value('profile', Props, <<"*">>),
     'ok' = amqp_util:bind_q_to_conference(Q, 'config', Profile),
     bind_to_q(Q, T, Props);
-bind_to_q(Q, [{'conference', {ConfId,CallId}}|T], Props) ->
-    'ok' = amqp_util:bind_q_to_conference(Q, 'event', ConfId, CallId),
+bind_to_q(Q, [{'conference', {ConfId, CallId}}|T], Props) ->
+    EncodedCallId = amqp_util:encode(CallId),
+    'ok' = amqp_util:bind_q_to_conference(Q, 'event', ConfId, EncodedCallId),
     bind_to_q(Q, T, Props);
 bind_to_q(Q, [{'conference', ConfId}|T], Props) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'event', ConfId),
@@ -980,12 +981,16 @@ unbind_from_q(Q, ['command'|T], Props) ->
 unbind_from_q(Q, ['event'|T], Props) ->
     'ok' = amqp_util:unbind_q_from_conference(Q, 'event'),
     unbind_from_q(Q, T, Props);
-unbind_from_q(Q, [{'conference', ConfId}|T], Props) ->
-    'ok' = amqp_util:unbind_q_from_conference(Q, 'event', ConfId),
-    unbind_from_q(Q, T, Props);
 unbind_from_q(Q, ['config'|T], Props) ->
     Profile = props:get_value('profile', Props, <<"*">>),
     'ok' = amqp_util:unbind_q_from_conference(Q, 'config', Profile),
+    unbind_from_q(Q, T, Props);
+unbind_from_q(Q, [{conference, {ConfId, CallId}}|T], Props) ->
+    EncodedCallId = amqp_util:encode(CallId),
+    'ok' = amqp_util:unbind_q_from_conference(Q, 'event', ConfId, EncodedCallId),
+    unbind_from_q(Q, T, Props);
+unbind_from_q(Q, [{'conference', ConfId}|T], Props) ->
+    'ok' = amqp_util:unbind_q_from_conference(Q, 'event', ConfId),
     unbind_from_q(Q, T, Props);
 unbind_from_q(_Q, [], _) -> 'ok'.
 
@@ -1295,7 +1300,7 @@ publish_participant_event(ConferenceId, CallId, JObj) ->
     publish_participant_event(ConferenceId, CallId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_participant_event(ConferenceId, CallId, Event, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Event, ?PARTICIPANT_EVENT_VALUES, fun ?MODULE:participant_event/1),
-    amqp_util:conference_publish(Payload, 'event', ConferenceId, CallId, [], ContentType).
+    amqp_util:conference_publish(Payload, 'event', ConferenceId, amqp_util:encode(CallId), [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc
