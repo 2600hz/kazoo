@@ -1,20 +1,20 @@
 {application, media_mgr,
  [
   {description, "Media Manager - Stream media via Shout from Couch"}
-  ,{vsn, "4.0.0"}
-  ,{modules, []}
-  ,{registered, [media_mgr_sup]}
-  ,{applications, [ kernel
-                  , stdlib
-                  , crypto
+ ,{vsn, "4.0.0"}
+ ,{modules, []}
+ ,{registered, [media_mgr_sup]}
+ ,{applications, [ kernel
+                 , stdlib
+                 , crypto
 
-                  , kazoo_apps
-                  , kazoo_amqp
-                  , kazoo_data
+                 , kazoo_apps
+                 , kazoo_amqp
+                 , kazoo_data
 
-                  , lager
-                  , cowlib
-                  , cowboy
-		  ]}
-  ,{mod, {media_mgr_app, []}}
+                 , lager
+                 , cowlib
+                 , cowboy
+                 ]}
+ ,{mod, {media_mgr_app, []}}
  ]}.
