@@ -181,7 +181,7 @@ save_doc(JObj) ->
     case kz_datamgr:save_doc(?KZ_MANAGED, JObj) of
         {'error', 'not_found'} ->
             'true' = kz_datamgr:db_create(?KZ_MANAGED),
-            {'ok', _View} = kz_datamgr:revise_doc_from_file(?KZ_MANAGED, kz_util:to_atom(?APP_NAME), ?MANAGED_VIEW_FILE),
+            {'ok', _View} = kz_datamgr:revise_doc_from_file(?KZ_MANAGED, ?APP, ?MANAGED_VIEW_FILE),
             save_doc(JObj);
         Result -> Result
     end.
