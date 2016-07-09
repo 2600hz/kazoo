@@ -38,6 +38,7 @@
          ,system_alert/1, system_alert_v/1
          ,webhook/1, webhook_v/1
          ,webhook_disabled/1, webhook_disabled_v/1
+         ,service_added/1, service_added_v/1
          %% published on completion of notification
          ,notify_update/1, notify_update_v/1
          ,denied_emergency_bridge/1, denied_emergency_bridge_v/1
@@ -69,6 +70,7 @@
          ,publish_low_balance/1, publish_low_balance/2
          ,publish_topup/1, publish_topup/2
          ,publish_transaction/1, publish_transaction/2
+         ,publish_service_added/1, publish_service_added/2
          ,publish_system_alert/1, publish_system_alert/2
          ,publish_webhook/1, publish_webhook/2
          ,publish_webhook_disabled/1, publish_webhook_disabled/2
@@ -114,6 +116,7 @@
 -define(NOTIFY_LOW_BALANCE, <<"notifications.account.low_balance">>).
 -define(NOTIFY_TOPUP, <<"notifications.account.topup">>).
 -define(NOTIFY_TRANSACTION, <<"notifications.account.transaction">>).
+-define(NOTIFY_SERVICE_ADDED, <<"notifications.account.service_added">>).
 -define(NOTIFY_SYSTEM_ALERT, <<"notifications.system.alert">>).
 -define(NOTIFY_WEBHOOK_CALLFLOW, <<"notifications.webhook.callflow">>).
 -define(NOTIFY_WEBHOOK_DISABLED, <<"notifications.webhook.disabled">>).
@@ -396,6 +399,14 @@
                             ]).
 -define(TRANSACTION_TYPES, []).
 
+%% Notify New Service Addition (from service audit log)
+-define(SERVICE_ADDED_HEADERS, [<<"Account-ID">>, <<"Audit-Log">>]).
+-define(OPTIONAL_SERVICE_ADDED_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
+-define(SERVICE_ADDED_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                               ,{<<"Event-Name">>, <<"service_added">>}
+                              ]).
+-define(SERVICE_ADDED_TYPES, []).
+
 %% Notify System Alert
 -define(SYSTEM_ALERT_HEADERS, [<<"Subject">>, <<"Message">>]).
 -define(OPTIONAL_SYSTEM_ALERT_HEADERS, [<<"Pid">>, <<"Module">>, <<"Line">>, <<"Request-ID">>, <<"Section">>
@@ -490,6 +501,8 @@ headers(<<"deregister">>) ->
     ?DEREGISTER_HEADERS ++ ?OPTIONAL_DEREGISTER_HEADERS;
 headers(<<"transaction">>) ->
     ?TRANSACTION_HEADERS ++ ?OPTIONAL_TRANSACTION_HEADERS;
+headers(<<"service_added">>) ->
+    ?SERVICE_ADDED_HEADERS ++ ?OPTIONAL_SERVICE_ADDED_HEADERS;
 headers(<<"password_recovery">>) ->
     ?PWD_RECOVERY_HEADERS ++ ?OPTIONAL_PWD_RECOVERY_HEADERS;
 headers(<<"system_alert">>) ->
@@ -917,6 +930,23 @@ transaction_v(Prop) when is_list(Prop) ->
 transaction_v(JObj) -> transaction_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc New service adition notification for reseller - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+service_added(Prop) when is_list(Prop) ->
+    case service_added_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?SERVICE_ADDED_HEADERS, ?OPTIONAL_SERVICE_ADDED_HEADERS);
+        'false' -> {'error', "Proplist failed validation for service_added"}
+    end;
+service_added(JObj) -> service_added(kz_json:to_proplist(JObj)).
+
+-spec service_added_v(api_terms()) -> boolean().
+service_added_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?SERVICE_ADDED_HEADERS, ?SERVICE_ADDED_VALUES, ?SERVICE_ADDED_TYPES);
+service_added_v(JObj) -> service_added_v(kz_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc System alert notification - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -1065,6 +1095,7 @@ skel_v(JObj) -> skel_v(kz_json:to_proplist(JObj)).
                        'webhook_disabled' |
                        'denied_emergency_bridge' |
                        'customer_update' |
+                       'service_added' |
                        'skel'.
 -type restrictions() :: [restriction()].
 -type option() :: {'restrict_to', restrictions()}.
@@ -1172,6 +1203,9 @@ bind_to_q(Q, ['customer_update'|T]) ->
 bind_to_q(Q, ['skel'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_SKEL),
     bind_to_q(Q, T);
+bind_to_q(Q, ['service_added'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_SERVICE_ADDED),
+    bind_to_q(Q, T);
 bind_to_q(_Q, []) ->
     'ok'.
 
@@ -1274,6 +1308,9 @@ unbind_q_from(Q, ['customer_update'|T]) ->
 unbind_q_from(Q, ['skel'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_SKEL),
     unbind_q_from(Q, T);
+unbind_q_from(Q, ['service_added'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_SERVICE_ADDED),
+    unbind_q_from(Q, T);
 unbind_q_from(_Q, []) ->
     'ok'.
 
@@ -1291,10 +1328,7 @@ declare_exchanges() ->
 publish_voicemail_saved(JObj) -> publish_voicemail_saved(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_voicemail_saved(Voicemail, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Voicemail, ?VOICEMAIL_SAVED_VALUES, fun ?MODULE:voicemail_saved/1),
-    amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_SAVED
-                                    ,Payload
-                                    ,ContentType
-                                   ).
+    amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_SAVED, Payload, ContentType).
 
 -spec publish_voicemail(api_terms()) -> 'ok'.
 -spec publish_voicemail(api_terms(), ne_binary()) -> 'ok'.
@@ -1450,6 +1484,13 @@ publish_transaction(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?TRANSACTION_VALUES, fun ?MODULE:transaction/1),
     amqp_util:notifications_publish(?NOTIFY_TRANSACTION, Payload, ContentType).
 
+-spec publish_service_added(api_terms()) -> 'ok'.
+-spec publish_service_added(api_terms(), ne_binary()) -> 'ok'.
+publish_service_added(JObj) -> publish_service_added(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_service_added(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?SERVICE_ADDED_VALUES, fun ?MODULE:service_added/1),
+    amqp_util:notifications_publish(?NOTIFY_SERVICE_ADDED, Payload, ContentType).
+
 -spec publish_system_alert(api_terms()) -> 'ok'.
 -spec publish_system_alert(api_terms(), ne_binary()) -> 'ok'.
 publish_system_alert(JObj) -> publish_system_alert(JObj, ?DEFAULT_CONTENT_TYPE).
@@ -1470,7 +1511,6 @@ publish_webhook_disabled(JObj) -> publish_webhook_disabled(JObj, ?DEFAULT_CONTEN
 publish_webhook_disabled(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?WEBHOOK_DISABLED_VALUES, fun ?MODULE:webhook_disabled/1),
     amqp_util:notifications_publish(?NOTIFY_WEBHOOK_DISABLED, Payload, ContentType).
-
 
 -spec publish_notify_update(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_notify_update(ne_binary(), api_terms(), ne_binary()) -> 'ok'.

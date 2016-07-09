@@ -107,6 +107,9 @@
                      ,{'teletype_denied_emergency_bridge'
                        ,[{<<"notification">>, <<"denied_emergency_bridge">>}]
                       }
+                     ,{'teletype_service_added'
+                       ,[{<<"notification">>, <<"service_added">>}]
+                      }
                     ]).
 
 -define(RESTRICT_TO, ['cnam_requests'
@@ -134,6 +137,7 @@
                       ,'voicemail_full'
                       ,'webhook_disabled'
                       ,'customer_update'
+                      ,'service_added'
                       %%,'skel'
                      ]).
 
