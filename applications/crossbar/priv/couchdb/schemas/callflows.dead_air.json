@@ -1,0 +1,8 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.dead_air",
+    "description": "Validator for the dead_air callflow's data object",
+    "properties": {},
+    "required": true,
+    "type": "object"
+}

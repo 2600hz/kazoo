@@ -1,0 +1,8 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.callflow",
+    "description": "Validator for the callflow callflow's data object",
+    "properties": {},
+    "required": true,
+    "type": "object"
+}

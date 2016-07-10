@@ -1,0 +1,8 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.call_forward",
+    "description": "Validator for the call_forward callflow's data object",
+    "properties": {},
+    "required": true,
+    "type": "object"
+}
