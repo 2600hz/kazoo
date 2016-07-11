@@ -950,29 +950,10 @@ find_input_errors(API, Input=?NE_BINARY) ->
     end;
 
 find_input_errors(API, InputRecord=[_|_]) ->
-    %%NOTE: assumes first record has all the fields that all the other records will ever need set
+    %%NOTE: assumes first record has all the fields that all the other records will ever need set,
+    %%NOTE: assumes all records have all the same fields defined.
     Fields = kz_json:get_keys(hd(InputRecord)),
-    Errors = find_API_errors(API, Fields, 'true'),
-    %% Stop here if there is no Mandatory fields to check against.
-    case mandatory(API) of
-        [] -> Errors;
-        Mandatory ->
-            CheckJObjValues =
-                fun (JObj, Es) ->
-                        IsUnset = ['undefined' == kz_json:get_ne_binary_value(Key, JObj)
-                                   || Key <- kz_json:get_keys(JObj),
-                                      lists:member(Key, Mandatory)
-                                  ],
-                        case lists:foldl(fun erlang:'or'/2, 'false', IsUnset) of
-                            'false' -> Es;
-                            'true' -> [JObj | Es]
-                        end
-                end,
-            case lists:foldl(CheckJObjValues, [], InputRecord) of
-                [] -> Errors;
-                MMVs -> Errors#{?KZ_TASKS_INPUT_ERROR_MMV => lists:reverse(MMVs)}
-            end
-    end.
+    find_API_errors(API, Fields, 'true').
 
 -spec find_API_errors(kz_json:object(), ne_binaries(), boolean()) -> map().
 find_API_errors(API, Fields, HasInputData) ->
