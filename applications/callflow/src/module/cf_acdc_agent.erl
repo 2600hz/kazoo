@@ -17,6 +17,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_acdc_agent).
 
+-behaviour(gen_cf_action).
+
 -export([handle/2
         ,find_agent/1
         ,find_agent_status/2
