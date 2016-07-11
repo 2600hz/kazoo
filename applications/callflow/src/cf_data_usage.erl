@@ -50,6 +50,8 @@ process_handle2(Fs, [Clause|Clauses], Usages) ->
                    ,process_handle2_clause(Fs, Clause, Usages)
                    ).
 
+process_handle2_clause(_Fs, [?CLAUSE([?VAR('_Data'), _Call], _Guards, _Body)], Usages) ->
+    Usages;
 process_handle2_clause(Fs
                       ,[?CLAUSE([?VAR('Data'), ?VAR('Call')]
                                ,_Guards
