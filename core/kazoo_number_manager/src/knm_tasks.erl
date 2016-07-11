@@ -30,7 +30,6 @@
         ,delete/3
         ,reserve/4
         ,add/5
-                                                %,update_features/5
         ]).
 
 -include("knm.hrl").
@@ -139,19 +138,6 @@ help() ->
                                           ]}
                         ])
      }
-
-     %% ,{<<"update_features">>
-     %%  ,kz_json:from_list([{<<"description">>, <<"Bulk-update features of numbers">>}
-     %%                     ,{<<"expected_content">>, <<"text/csv">>}
-     %%                     ,{<<"mandatory">>, [<<"number">>
-     %%                                        ]}
-     %%                     ,{<<"optional">>, [<<"cnam.inbound">>
-     %%                                       ,<<"cnam.outbound">>
-     %%                                       ,<<"e911.street_address">>
-     %%                                            %%TODO: exhaustive list
-     %%                                       ]}
-     %%                     ])
-     %%  }
     ].
 
 %%% Verifiers
@@ -277,9 +263,6 @@ add(Props, Number, AccountId, AuthBy, ModuleName0) ->
               ,{'module_name', ModuleName0}
               ],
     handle_result(knm_number:create(Number, Options)).
-
-%% -spec update_features(kz_proplist(), ne_binary(), api_binary(), ...) -> any().
-%% update_features(Props, Number, CNAMInbound0, ...) ->
 
 
 %%%===================================================================
