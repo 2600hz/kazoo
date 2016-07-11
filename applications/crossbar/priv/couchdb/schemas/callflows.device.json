@@ -2,7 +2,56 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "callflows.device",
     "description": "Validator for the device callflow's data object",
-    "properties": {},
+    "properties": {
+        "id":{
+            "type":"string",
+            "maxLength":32,
+            "minLength":32,
+            "required":true,
+            "description":"The device ID"
+        },
+        "fail_on_single_reject":{
+            "type":"boolean",
+            "required":false,
+            "descripption":"Should the call be ended on first REJECT (when multiple endpoints are being tried"
+        },
+        "timeout":{
+            "type":"integer",
+            "required":false,
+            "description":"How long, in seconds, to ring the endpoint(s)"
+        },
+        "can_call_self":{
+            "type":"boolean",
+            "required":false,
+            "default":false,
+            "description":"Permits a user to call from one self-owned device to another"
+        },
+        "can_text_self":{
+            "type":"boolean",
+            "required":false,
+            "default":false,
+            "description":"Permits a user to send a text from one self-owned device to another"
+        },
+        "suppress_clid":{
+            "type":"boolean",
+            "required":false,
+            "description":"If true, does not set Caller ID attributes on the endpoint"
+        },
+        "skype":{
+            "type":"object",
+            "required":false,
+            "description":"Skype configuration options",
+            "properties":{
+            }
+        },
+        "static_invite":{
+            "type":"string",
+            "required":false,
+            "description":"Override SIP To header with this value"
+        },
+
+
+    },
     "required": true,
     "type": "object"
 }
