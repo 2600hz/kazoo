@@ -21,7 +21,7 @@ handle_event(Context, EventJObj) ->
     lager:debug("handling conference event ~s", [get_response_key(EventJObj)]),
     blackhole_data_emitter:emit(bh_context:websocket_pid(Context)
                                ,get_response_key(EventJObj)
-                               ,EventJObj
+                               ,kz_json:normalize_jobj(EventJObj)
                                ).
 
 -spec add_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
