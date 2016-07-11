@@ -8,14 +8,25 @@
 -include_lib("kazoo/include/kz_ast.hrl").
 
 process() ->
-    'ok'.
+    {'ok', Data} = application:get_all_key('callflow'),
+    Modules = props:get_value('modules', Data),
+    [{Module, Usages} ||
+        Module <- Modules,
+        (Usages = process(Module)) =/= 'undefined'
+    ].
 
 process(Module) ->
+    io:format("  ~s: ", [Module]),
     Beam = module_to_beam(Module),
+    io:format("beam: ~s ", [Beam]),
+
     case is_action_module(Beam) of
-        'true' -> process_action(Beam);
+        'true' ->
+            io:format("processing~n", []),
+            process_action(Beam);
         'false' ->
-            lager:info("~s doesn't implement the gen_cf_action behaviour")
+            io:format("doesn't implement the gen_cf_action behaviour~n", []),
+            'undefined'
     end.
 
 process_action(Beam) ->
