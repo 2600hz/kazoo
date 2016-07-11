@@ -131,6 +131,8 @@
                      ,video = 'false' :: boolean() | '_'
                      ,is_moderator = 'false' :: boolean() | '_'
                      ,join_time = kz_util:current_tstamp() :: non_neg_integer() | '_'
+                     ,caller_id_name :: api_binary()
+                     ,caller_id_number :: api_binary()
                      }).
 -type participant() :: #participant{}.
 -type participants() :: [participant()].
