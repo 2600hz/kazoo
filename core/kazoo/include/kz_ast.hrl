@@ -6,15 +6,24 @@
         ,{'clause', _, Args, Guards, Body}
        ).
 
--define(VAR(Name), {'var', _, Name}).
+-define(VAR(Line, Name), {'var', Line, Name}).
+-define(VAR(Name), ?VAR(_, Name)).
 
 -define(MATCH(Left, Right), {'match',_, Left, Right}).
 
+-define(EMPTY_LIST, {'nil',_}).
+-define(LIST(Head, Tail)
+        ,{'cons', _Line, Head, Tail}
+       ).
+
 -define(ATOM(Value), {'atom', _, Value}).
+-define(INTEGER(I), {'integer', _, I}).
 
 -define(MOD_FUN(Module, Function), {'remote',_,?ATOM(Module),?ATOM(Function)}).
 
 -define(FUN_ARGS(Function, Args), {'call', _, ?ATOM(Function), Args}).
+-define(DYN_FUN_ARGS(Function, Args), {'call', _, ?VAR(Function), Args}).
+-define(MFA(M, F, A), {'fun', _, {'function', ?ATOM(M), ?ATOM(F), ?INTEGER(A)}}).
 
 -define(MOD_FUN_ARGS(Module, Function, Args)
        ,{'call',_
