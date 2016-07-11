@@ -7,6 +7,12 @@
 -include("callflow.hrl").
 -include_lib("kazoo/include/kz_ast.hrl").
 
+-record(usage, {usages = []
+               ,data_var_name = 'Data'
+               ,current_module
+               ,functions = []
+               }).
+
 process() ->
     {'ok', Data} = application:get_all_key('callflow'),
     Modules = props:get_value('modules', Data),
@@ -16,92 +22,194 @@ process() ->
     ].
 
 process(Module) ->
-    io:format("  ~s: ", [Module]),
     Beam = module_to_beam(Module),
-    io:format("beam: ~s ", [Beam]),
 
     case is_action_module(Beam) of
+        'false' -> 'undefined';
         'true' ->
-            io:format("processing~n", []),
-            process_action(Beam);
-        'false' ->
-            io:format("doesn't implement the gen_cf_action behaviour~n", []),
-            'undefined'
+            io:format("~s processing~n", [Module]),
+            process_action(Module)
     end.
 
-process_action(Beam) ->
-    {'ok', {Module, [{'abstract_code', AST}]}} = beam_lib:chunks(Beam, ['abstract_code']),
-    io:format("processing ~p(~p)~n", [Module, Beam]),
-    process_action_ast(Module, AST).
+process_action(Module) ->
+    #usage{usages=Us} = process_mfa_call(#usage{current_module=Module}
+                                        ,Module, 'handle', [?VAR(0, 'Data'), ?VAR(0, 'Call')]
+                                        ),
+    Us.
 
-process_action_ast(Module, {'raw_abstract_v1', Attributes}) ->
-    Fs = [{Module, F, A, Clauses} || {'function', _Line, F, A, Clauses} <- Attributes],
-    Handle2Clauses = [Clauses || {_Module, 'handle', 2, Clauses} <- Fs],
-
-    process_handle2(Fs, Handle2Clauses).
-
-process_handle2(Fs, Cs) ->
-    process_handle2(Fs, Cs, []).
-
-process_handle2(_Fs, [], Usages) -> Usages;
-process_handle2(Fs, [Clause|Clauses], Usages) ->
-    process_handle2(Fs
-                   ,Clauses
-                   ,process_handle2_clause(Fs, Clause, Usages)
-                   ).
-
-process_handle2_clause(_Fs, [?CLAUSE([?VAR('_Data'), _Call], _Guards, _Body)], Usages) ->
-    Usages;
-process_handle2_clause(Fs
-                      ,[?CLAUSE([?VAR('Data'), ?VAR('Call')]
-                               ,_Guards
-                               ,Body
-                               )
-                       ]
-                      ,Usages) ->
-    {_, U} =
-        lists:foldl(fun(Expression, Acc) -> process_clause_expression(Fs, Expression, Acc) end
-                   ,{'Data', Usages}
-                   ,Body
-                   ),
-    U.
-
-process_clause_expression(Fs, ?MATCH(Left, Right), Usages) ->
-    process_match(Fs, Left, Right, Usages);
-process_clause_expression(Fs, ?MOD_FUN_ARGS(Module, Function, Args), Usages) ->
-    process_mfa(Fs, Module, Function, Args, Usages);
-process_clause_expression(_Fs, ?VAR(_Name), Usages) ->
+process_expression(Acc, ?TUPLE(Elements)) ->
+    process_tuple(Acc, Elements);
+process_expression(Acc, ?CLAUSE([Expr], _Guards, Body)) ->
+    process_clause_body(process_expression(Acc, Expr), Body);
+process_expression(Acc, ?MATCH(Left, Right)) ->
+    process_match(Acc, Left, Right);
+process_expression(#usage{current_module=Module}=Acc, ?FUN_ARGS(Function, Args)) ->
+    process_mfa(Acc, Module, Function, Args);
+process_expression(Acc, ?DYN_FUN_ARGS(_Function, Args)) ->
+    process_expressions(Acc, Args);
+process_expression(Acc, ?MOD_FUN_ARGS(Module, Function, Args)) ->
+    process_mfa(Acc, Module, Function, Args);
+process_expression(Acc, ?MFA(_M, _F, _Arity)) ->
+    Acc;
+process_expression(Acc, ?VAR(_Name)) ->
     %% Last expression is a variable to return to caller
-    Usages;
-process_clause_expression(_Fs, ?LAGER, Usages) -> Usages;
-process_clause_expression(Fs, ?CASE(Expression, Clauses), Usages) ->
+    Acc;
+process_expression(Acc, ?LAGER) -> Acc;
+process_expression(Acc, ?CASE(Expression, Clauses)) ->
     lists:foldl(fun(Clause, UsagesAcc) ->
-                        process_clause_expression(Fs, Clause, UsagesAcc)
+                        process_expression(UsagesAcc, Clause)
                 end
-                ,process_clause_expression(Fs, Expression, Usages)
-                ,Clauses
+               ,process_expression(Acc, Expression)
+               ,Clauses
                );
-process_clause_expression(_Fs, _Expression, Usages) ->
+process_expression(Acc, ?ATOM(_)) ->
+    Acc;
+process_expression(Acc, ?BINARY_MATCH(_)) ->
+    Acc;
+process_expression(Acc, ?EMPTY_LIST) ->
+    Acc;
+process_expression(Acc, ?LIST(Head, Tail)) ->
+    process_list(Acc, Head, Tail);
+process_expression(Acc, _Expression) ->
     io:format("skipping expression ~p~n", [_Expression]),
-    Usages.
+    Acc.
 
-process_match(Fs, ?VAR(_Name), ?MOD_FUN_ARGS(Module, Function, Args), Usages) ->
-    process_mfa(Fs, Module, Function, Args, Usages);
-process_match(_Fs, _Left, _Right, Usages) ->
-    io:format("not processing match ~p = ~p~n", [_Left, _Right]),
-    Usages.
+process_list(Acc, Head, Tail) ->
+    process_expression(process_expression(Acc, Head)
+                       ,Tail
+                      ).
 
-process_mfa(_Fs, M, F, [?BINARY_MATCH(Key), ?VAR(DataName)], {DataName, Usages}) ->
-    {DataName, [{M, F, binary_match_to_binary(Key), 'undefined'} | Usages]};
-process_mfa(_Fs, M, F, [?BINARY_MATCH(Key), ?VAR(DataName), ?BINARY_MATCH(Default)], {DataName, Usages}) ->
-    {DataName, [{M, F, binary_match_to_binary(Key), binary_match_to_binary(Default)} | Usages]};
-process_mfa(Fs, _M, _F, As, Usages) ->
-    lists:foldl(fun(Arg, U) ->
-                        process_clause_expression(Fs, Arg, U)
+process_tuple(Acc, Elements) ->
+    process_expressions(Acc, Elements).
+
+process_expressions(Acc, Expressions) ->
+    lists:foldl(fun(E, UsageAcc) ->
+                        process_expression(UsageAcc, E)
                 end
-                ,Usages
-                ,As
+                ,Acc
+                ,Expressions
                ).
+
+process_clause_body(Acc, Body) ->
+    lists:foldl(fun(Expression, UsagesAcc) ->
+                        process_expression(UsagesAcc, Expression)
+                end
+               ,Acc
+               ,Body
+               ).
+
+process_match(#usage{current_module=Module}=Acc, ?VAR(_Name), ?FUN_ARGS(Function, Args)) ->
+    process_mfa(Acc, Module, Function, Args);
+process_match(Acc, ?VAR(_Name), ?MOD_FUN_ARGS(Module, Function, Args)) ->
+    process_mfa(Acc, Module, Function, Args);
+process_match(Acc, ?VAR(_Name), ?CASE(_Expr, _Clauses)=Case) ->
+    process_expression(Acc, Case);
+process_match(Acc, _Left, _Right) ->
+    io:format("not processing match ~p = ~p~n", [_Left, _Right]),
+    Acc.
+
+process_mfa(#usage{data_var_name=DataName
+                    ,usages=Usages
+                   }=Acc
+           ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName)]
+           ) ->
+    Acc#usage{usages=
+                  [{M, F, binary_match_to_binary(Key), DataName, 'undefined'} | Usages]
+             };
+process_mfa(#usage{data_var_name=DataName
+                  ,usages=Usages
+                  }=Acc
+           ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName), ?BINARY_MATCH(Default)]
+           ) ->
+    Acc#usage{usages=
+                  [{M, F, binary_match_to_binary(Key), DataName, binary_match_to_binary(Default)}
+                   | Usages
+                  ]
+             };
+process_mfa(#usage{data_var_name=DataName
+                   ,usages=Usages
+                   }=Acc
+            ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName), ?MOD_FUN_ARGS(Mod, Fun, Args)]
+           ) ->
+    Acc#usage{usages=[{M, F, binary_match_to_binary(Key), DataName, {Mod, Fun, length(Args)}}
+                      | Usages
+                     ]};
+process_mfa(#usage{data_var_name=DataName}=Acc, M, F, As) ->
+    case lists:any(fun(?VAR(N)) -> N =:= DataName;
+                      (_Arg) -> 'false'
+                   end
+                  ,As
+                  )
+    of
+        'true' ->
+            process_mfa_call(Acc, M, F, As);
+        'false' ->
+            lists:foldl(fun(Arg, UsageAcc) ->
+                                process_expression(UsageAcc, Arg)
+                        end
+                       ,Acc
+                       ,As
+                       )
+    end.
+
+process_mfa_call(#usage{data_var_name=DataName}=Acc, M, F, As) ->
+    case mfa_clauses(Acc, M, F, length(As)) of
+        [] -> maybe_add_module_ast(Acc, M, F, As);
+        [Clauses] ->
+            DataIndex = data_index(DataName, As),
+            process_mfa_clauses(Acc, Clauses, DataIndex)
+    end.
+
+process_mfa_clauses(Acc, Clauses, DataIndex) ->
+    lists:foldl(fun(Clause, UsagesAcc) ->
+                        process_mfa_clause(UsagesAcc, Clause, DataIndex)
+                end
+               ,Acc
+               ,Clauses
+               ).
+
+process_mfa_clause(#usage{data_var_name=DataName}=Acc
+                  ,?CLAUSE(Args, _Guards, Body)
+                  ,DataIndex
+                  ) ->
+    case lists:nth(DataIndex, Args) of
+        ?VAR(DataName) -> process_clause_body(Acc, Body);
+        ?VAR(NewName) -> process_clause_body(Acc#usage{data_var_name=NewName}, Body);
+        _Unexpected ->
+            io:format("unexpected arg at ~p in ~p~n", [DataIndex, Args]),
+            Acc
+    end.
+
+mfa_clauses(#usage{functions=Fs}, Module, Function, Arity) ->
+    [Cs || {M, F, A, Cs} <- Fs,
+           Module =:= M,
+           Function =:= F,
+           Arity =:= A
+    ].
+
+maybe_add_module_ast(#usage{functions=Fs}=Acc, M, F, As) ->
+    case code:which(M) of
+        'non_existing' ->
+            io:format("failed to find module ~p~n", [M]),
+            Acc;
+        Beam ->
+            {'ok', {Module, [{'abstract_code', AST}]}} = beam_lib:chunks(Beam, ['abstract_code']),
+            process_mfa_call(Acc#usage{functions=add_module_ast(Fs, Module, AST)}
+                            ,M, F, As
+                            )
+    end.
+
+ast_functions(Module, {'raw_abstract_v1', Attributes}) ->
+    [{Module, F, Arity, Clauses} || {'function', _Line, F, Arity, Clauses} <- Attributes].
+
+add_module_ast(Fs, Module, AST) ->
+    ast_functions(Module, AST) ++ Fs.
+
+data_index(DataName, Args) ->
+    data_index(DataName, Args, 1).
+data_index(DataName, [?VAR(DataName)|_As], Index) -> Index;
+data_index(DataName, [_|As], Index) ->
+    data_index(DataName, As, Index+1).
 
 binary_match_to_binary(Match) ->
     iolist_to_binary(
