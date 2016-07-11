@@ -75,7 +75,7 @@
                                       ]}
                         ]).
 
--define(RECORDING_ARGS(Call, Data), [kapps_call:clear_helpers(Call) , Data]).
+-define(RECORDING_ARGS(Call, Data), [kapps_call:clear_helpers(Call), Data]).
 
 -type sms_route() :: {binary(), kz_proplist()}.
 -type sms_routes() :: [sms_route(), ...].
@@ -588,7 +588,7 @@ should_create_endpoint([Routine|Routines], Endpoint, Properties, Call) when is_f
 -spec maybe_missing_resource_type(api_binary()) ->
                                          'ok' |
                                          {'error', 'no_resource_type'}.
-maybe_missing_resource_type(_, _, Call) ->
+maybe_missing_resource_type(_Endpoint, _Properties, Call) ->
     maybe_missing_resource_type(kapps_call:resource_type(Call)).
 
 maybe_missing_resource_type('undefined') ->
@@ -680,7 +680,7 @@ maybe_endpoint_called_self(Endpoint, Properties, <<"sms">>, Call) ->
 -spec maybe_endpoint_disabled(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                      'ok' |
                                      {'error', 'endpoint_disabled'}.
-maybe_endpoint_disabled(Endpoint, _, _) ->
+maybe_endpoint_disabled(Endpoint, _Properties, _Call) ->
     case kz_json:is_false(<<"enabled">>, Endpoint) of
         'false' -> 'ok';
         'true' ->
@@ -691,7 +691,7 @@ maybe_endpoint_disabled(Endpoint, _, _) ->
 -spec maybe_do_not_disturb(kz_json:object(), kz_json:object(),  kapps_call:call()) ->
                                   'ok' |
                                   {'error', 'do_not_disturb'}.
-maybe_do_not_disturb(Endpoint, _, _) ->
+maybe_do_not_disturb(Endpoint, _Properties, _Call) ->
     DND = kz_json:get_ne_value(<<"do_not_disturb">>, Endpoint, kz_json:new()),
     case kz_json:is_true(<<"enabled">>, DND) of
         'false' -> 'ok';
@@ -703,7 +703,7 @@ maybe_do_not_disturb(Endpoint, _, _) ->
 -spec maybe_exclude_from_queues(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                        'ok' |
                                        {'error', 'exclude_from_queues'}.
-maybe_exclude_from_queues(Endpoint, _, Call) ->
+maybe_exclude_from_queues(Endpoint, _Properties, Call) ->
     case is_binary(kapps_call:custom_channel_var(<<"Queue-ID">>, Call))
         andalso kz_json:is_true(<<"exclude_from_queues">>, Endpoint)
     of
@@ -856,7 +856,9 @@ maybe_create_mobile_endpoint(Endpoint, Properties, Call) ->
 get_endpoint_type(Endpoint) ->
     Type = kz_json:get_first_defined([<<"endpoint_type">>
                                      ,<<"device_type">>
-                                     ], Endpoint),
+                                     ]
+                                    ,Endpoint
+                                    ),
     case convert_endpoint_type(Type) of
         'undefined' -> maybe_guess_endpoint_type(Endpoint);
         Else -> Else
@@ -884,10 +886,13 @@ maybe_guess_endpoint_type(Endpoint) ->
 
 -spec guess_endpoint_type(kz_json:object()) -> ne_binary().
 guess_endpoint_type(Endpoint) ->
-    guess_endpoint_type(Endpoint, [<<"mobile">>
-                                  ,<<"sip">>
-                                  ,<<"skype">>
-                                  ]).
+    guess_endpoint_type(Endpoint
+                       ,[<<"mobile">>
+                        ,<<"sip">>
+                        ,<<"skype">>
+                        ]
+                       ).
+
 -spec guess_endpoint_type(kz_json:object(), ne_binaries()) -> ne_binary().
 guess_endpoint_type(Endpoint, [Type|Types]) ->
     case kz_json:get_ne_value(Type, Endpoint) of
@@ -1634,12 +1639,15 @@ create_mobile_sms_endpoint(Endpoint, Properties, Call) ->
 -spec create_mobile_sms_endpoint_failover(kz_proplist(), sms_routes()) -> kz_proplist().
 create_mobile_sms_endpoint_failover(Endpoint, []) -> Endpoint;
 create_mobile_sms_endpoint_failover(Endpoint, [{Route, Options} | Failover]) ->
-    EP = props:set_values(
-           [{<<"Route">>, Route}
-           ,{<<"Endpoint-Options">>, kz_json:from_list(Options)}
-           ], Endpoint),
-    props:set_value(<<"Failover">>, kz_json:from_list(create_mobile_sms_endpoint_failover(EP, Failover)), Endpoint).
-
+    EP = props:set_values([{<<"Route">>, Route}
+                          ,{<<"Endpoint-Options">>, kz_json:from_list(Options)}
+                          ]
+                         ,Endpoint
+                         ),
+    props:set_value(<<"Failover">>
+                   ,kz_json:from_list(create_mobile_sms_endpoint_failover(EP, Failover))
+                   ,Endpoint
+                   ).
 
 -spec maybe_build_mobile_sms_route(kz_json:object()) ->
                                           ne_binary() |
