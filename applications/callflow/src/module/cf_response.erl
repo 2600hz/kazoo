@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_response).
 
+-behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 
 -export([handle/2]).
