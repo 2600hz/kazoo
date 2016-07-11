@@ -460,14 +460,19 @@ handle_call({'start_task', TaskId}, _From, State) ->
 %% This used to be cast but would race with worker process' EXIT signal.
 handle_call({'worker_finished', TaskId, TaskRev, TotalSucceeded, TotalFailed}, _From, State) ->
     lager:debug("worker finished ~s: ~p/~p", [TaskId, TotalSucceeded, TotalFailed]),
-    [Task] = task_by_id(TaskId, State),
-    Task1 = Task#{ finished => kz_util:current_tstamp()
-                 , total_rows_failed => TotalFailed
-                 , total_rows_succeeded => TotalSucceeded
-                 },
-    {'ok', _JObj} = update_task(Task1, TaskRev),
-    State1 = remove_task(TaskId, State),
-    ?REPLY(State1, 'ok');
+    case task_by_id(TaskId, State) of
+        [Task] ->
+            Task1 = Task#{ finished => kz_util:current_tstamp()
+                         , total_rows_failed => TotalFailed
+                         , total_rows_succeeded => TotalSucceeded
+                         },
+            {'ok', _JObj} = update_task(Task1, TaskRev),
+            State1 = remove_task(TaskId, State),
+            ?REPLY(State1, 'ok');
+        _ ->
+            %% Assuming Task has already been saved.
+            ?REPLY(State, 'ok')
+    end;
 
 handle_call({'remove_task', TaskId}, _From, State) ->
     lager:debug("attempting to remove ~s", [TaskId]),
