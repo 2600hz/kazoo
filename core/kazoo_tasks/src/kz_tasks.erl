@@ -460,14 +460,19 @@ handle_call({'start_task', TaskId}, _From, State) ->
 %% This used to be cast but would race with worker process' EXIT signal.
 handle_call({'worker_finished', TaskId, TaskRev, TotalSucceeded, TotalFailed}, _From, State) ->
     lager:debug("worker finished ~s: ~p/~p", [TaskId, TotalSucceeded, TotalFailed]),
-    [Task] = task_by_id(TaskId, State),
-    Task1 = Task#{ finished => kz_util:current_tstamp()
-                 , total_rows_failed => TotalFailed
-                 , total_rows_succeeded => TotalSucceeded
-                 },
-    {'ok', _JObj} = update_task(Task1, TaskRev),
-    State1 = remove_task(TaskId, State),
-    ?REPLY(State1, 'ok');
+    case task_by_id(TaskId, State) of
+        [Task] ->
+            Task1 = Task#{ finished => kz_util:current_tstamp()
+                         , total_rows_failed => TotalFailed
+                         , total_rows_succeeded => TotalSucceeded
+                         },
+            {'ok', _JObj} = update_task(Task1, TaskRev),
+            State1 = remove_task(TaskId, State),
+            ?REPLY(State1, 'ok');
+        _ ->
+            %% Assuming Task has already been saved.
+            ?REPLY(State, 'ok')
+    end;
 
 handle_call({'remove_task', TaskId}, _From, State) ->
     lager:debug("attempting to remove ~s", [TaskId]),
@@ -950,29 +955,10 @@ find_input_errors(API, Input=?NE_BINARY) ->
     end;
 
 find_input_errors(API, InputRecord=[_|_]) ->
-    %%NOTE: assumes first record has all the fields that all the other records will ever need set
+    %%NOTE: assumes first record has all the fields that all the other records will ever need set,
+    %%NOTE: assumes all records have all the same fields defined.
     Fields = kz_json:get_keys(hd(InputRecord)),
-    Errors = find_API_errors(API, Fields, 'true'),
-    %% Stop here if there is no Mandatory fields to check against.
-    case mandatory(API) of
-        [] -> Errors;
-        Mandatory ->
-            CheckJObjValues =
-                fun (JObj, Es) ->
-                        IsUnset = ['undefined' == kz_json:get_ne_binary_value(Key, JObj)
-                                   || Key <- kz_json:get_keys(JObj),
-                                      lists:member(Key, Mandatory)
-                                  ],
-                        case lists:foldl(fun erlang:'or'/2, 'false', IsUnset) of
-                            'false' -> Es;
-                            'true' -> [JObj | Es]
-                        end
-                end,
-            case lists:foldl(CheckJObjValues, [], InputRecord) of
-                [] -> Errors;
-                MMVs -> Errors#{?KZ_TASKS_INPUT_ERROR_MMV => lists:reverse(MMVs)}
-            end
-    end.
+    find_API_errors(API, Fields, 'true').
 
 -spec find_API_errors(kz_json:object(), ne_binaries(), boolean()) -> map().
 find_API_errors(API, Fields, HasInputData) ->
