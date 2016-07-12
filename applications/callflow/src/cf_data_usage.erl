@@ -231,12 +231,12 @@ process_mfa(#usage{data_var_name=DataName
              };
 
 process_mfa(#usage{data_var_name=DataName}=Acc
-           ,_M, _F, [?VAR(_Name), ?VAR(DataName)]=_Args
+           ,'kz_json'=_M, _F, [?VAR(_Name), ?VAR(DataName)]=_Args
            ) ->
     ?DEBUG("  skipping usage ~p:~p(~p)~n", [_M, _F, _Args]),
     Acc;
 process_mfa(#usage{data_var_name=DataName}=Acc
-           ,_M, _F, [?VAR(_Name), ?VAR(DataName), _Default]=_Args
+           ,'kz_json'=_M, _F, [?VAR(_Name), ?VAR(DataName), _Default]=_Args
            ) ->
     ?DEBUG("  skipping usage ~p:~p(~p)~n", [_M, _F, _Args]),
     Acc;
