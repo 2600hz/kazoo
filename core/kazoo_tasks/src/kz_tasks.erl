@@ -20,11 +20,10 @@
         ]).
 
 %%% API used by workers
--export([worker_finished/3
+-export([worker_finished/4
         ,worker_error/1
         ,worker_pause/0
         ,worker_maybe_send_update/3
-        ,worker_upload_result/2
         ,get_output_header/2
         ]).
 
@@ -256,16 +255,6 @@ remove(TaskId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_finished(task_id(), non_neg_integer(), non_neg_integer()) -> 'ok'.
-worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed)
-  when is_integer(TotalSucceeded), is_integer(TotalFailed) ->
-    gen_server:call(?SERVER, {'worker_finished', TaskId, TotalSucceeded, TotalFailed}).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec worker_error(task_id()) -> 'ok'.
 worker_error(TaskId=?NE_BINARY) ->
     gen_server:cast(?SERVER, {'worker_error', TaskId}).
@@ -299,9 +288,11 @@ worker_maybe_send_update(TaskId, TotalSucceeded, TotalFailed) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_upload_result(task_id(), ne_binary()) -> 'ok' |
-                                                      {'error', any()}.
-worker_upload_result(TaskId=?NE_BINARY, CSVOut=?NE_BINARY) ->
+-spec worker_finished(task_id(), non_neg_integer(), non_neg_integer(), file:filename_all()) -> 'ok'.
+worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed, Output=?NE_BINARY)
+  when is_integer(TotalSucceeded), is_integer(TotalFailed) ->
+    _ = gen_server:call(?SERVER, {'worker_finished', TaskId, TotalSucceeded, TotalFailed}),
+    {'ok', CSVOut} = file:read_file(Output),
     case kz_datamgr:put_attachment(?KZ_TASKS_DB
                                   ,TaskId
                                   ,?KZ_TASKS_ATTACHMENT_NAME_OUT
@@ -311,6 +302,7 @@ worker_upload_result(TaskId=?NE_BINARY, CSVOut=?NE_BINARY) ->
     of
         {'ok', _TaskJObj} ->
             lager:debug("saved ~s", [?KZ_TASKS_ATTACHMENT_NAME_OUT]),
+            kz_util:delete_file(Output),
             'ok';
         {'error', _R}=Error ->
             lager:error("failed saving ~s/~s: ~p"
@@ -464,7 +456,7 @@ handle_call({'worker_finished', TaskId, TotalSucceeded, TotalFailed}, _From, Sta
                          , total_rows_failed => TotalFailed
                          , total_rows_succeeded => TotalSucceeded
                          },
-            %% {'ok', _Doc} = kz_datamgr:ensure_saved(?KZ_TASKS_DB, to_json(Task1)),
+            %% This MUST happen before put_attachment or conflicts won't be resolved.
             {'ok', _JObj} = update_task(Task1),
             State1 = remove_task(TaskId, State),
             ?REPLY(State1, 'ok');
