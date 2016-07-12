@@ -32,6 +32,7 @@
 -define(FUN_ARGS(Function, Args), {'call', _, ?ATOM(Function), Args}).
 -define(DYN_FUN_ARGS(Function, Args), {'call', _, ?VAR(Function), Args}).
 -define(MFA(M, F, A), {'fun', _, {'function', ?ATOM(M), ?ATOM(F), ?INTEGER(A)}}).
+-define(ANON(Clauses), {'fun', _, {'clauses', Clauses}}).
 
 -define(MOD_FUN_ARGS(Module, Function, Args)
        ,{'call',_

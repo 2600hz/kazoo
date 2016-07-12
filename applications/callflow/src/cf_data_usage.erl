@@ -53,6 +53,8 @@ process_expression(Acc, ?DYN_FUN_ARGS(_Function, Args)) ->
     process_expressions(Acc, Args);
 process_expression(Acc, ?MOD_FUN_ARGS(Module, Function, Args)) ->
     process_mfa(Acc, Module, Function, Args);
+process_expression(Acc, ?ANON(Clauses)) ->
+    process_expressions(Acc, Clauses);
 process_expression(Acc, ?MFA(_M, _F, _Arity)) ->
     Acc;
 process_expression(Acc, ?VAR(_Name)) ->
@@ -62,12 +64,9 @@ process_expression(Acc, ?CATCH(Expression)) ->
     process_expression(Acc, Expression);
 process_expression(Acc, ?LAGER) -> Acc;
 process_expression(Acc, ?CASE(Expression, Clauses)) ->
-    lists:foldl(fun(Clause, UsagesAcc) ->
-                        process_expression(UsagesAcc, Clause)
-                end
-               ,process_expression(Acc, Expression)
-               ,Clauses
-               );
+    process_expressions(process_expression(Acc, Expression)
+                        ,Clauses
+                       );
 process_expression(Acc, ?ATOM(_)) ->
     Acc;
 process_expression(Acc, ?INTEGER(_)) ->
@@ -122,6 +121,8 @@ process_match(Acc, ?TUPLE(_Elements), Right) ->
     process_expression(Acc, Right);
 process_match(Acc, ?RECORD(_Name, _Fields), Right) ->
     process_expression(Acc, Right);
+process_match(Acc, ?VAR(_Name), Right) ->
+    process_expression(Acc, Right);
 process_match(Acc, _Left, _Right) ->
     io:format("not processing match ~p = ~p~n", [_Left, _Right]),
     Acc.
@@ -138,6 +139,14 @@ process_mfa(#usage{data_var_name=DataName
            ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName), ?BINARY_MATCH(Default)]
            ) ->
     Acc#usage{usages=maybe_add_usage(Usages, {M, F, binary_match_to_binary(Key), DataName, binary_match_to_binary(Default)})};
+
+process_mfa(#usage{data_var_name=DataName
+                  ,usages=Usages
+                  }=Acc
+           ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName), ?ATOM(Default)]
+           ) ->
+    Acc#usage{usages=maybe_add_usage(Usages, {M, F, binary_match_to_binary(Key), DataName, Default})};
+
 process_mfa(#usage{data_var_name=DataName
                    ,usages=Usages
                    }=Acc
@@ -150,6 +159,18 @@ process_mfa(#usage{data_var_name=DataName
             ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName), ?VAR(Default)]
            ) ->
     Acc#usage{usages=maybe_add_usage(Usages, {M, F, binary_match_to_binary(Key), DataName, Default})};
+
+process_mfa(#usage{data_var_name=DataName
+                   ,usages=Usages
+                   }=Acc
+            ,M, F, [?LIST(Head, Tail), ?VAR(DataName)]
+            ) ->
+    Acc#usage{usages=maybe_add_usage(Usages, {M, F, list_of_keys_to_binary(Head, Tail)
+                                             ,DataName, 'undefined'
+                                             }
+                                    )
+             };
+
 process_mfa(#usage{data_var_name=DataName
                    ,usages=Usages
                    }=Acc
@@ -199,15 +220,16 @@ list_of_keys_to_binary(?LIST(SubHead, SubTail), ?LIST(Head, Tail), Path) ->
     Key = list_of_keys_to_binary(SubHead, SubTail),
     list_of_keys_to_binary(Head, Tail, [Key | Path]).
 
-
 maybe_add_usage(Usages, Call) ->
     case lists:member(Call, Usages) of
         'true' -> Usages;
-        'false' -> [Call | Usages]
+        'false' ->
+            io:format("adding usage: ~p~n", [Call]),
+            [Call | Usages]
     end.
 
 process_mfa_call(Acc, M, F, As) ->
-    %% io:format("~ncalling ~p:~p(~p)~n", [M, F, As]),
+    io:format("~ncalling ~p:~p(~p)~n", [M, F, As]),
     process_mfa_call(Acc, M, F, As, 'true').
 
 process_mfa_call(#usage{data_var_name=DataName
