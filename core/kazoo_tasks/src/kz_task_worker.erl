@@ -112,8 +112,8 @@ loop(State=#state{task_id = TaskId
                  }) ->
     case kz_csv:take_row(get(?IN)) of
         'eof' ->
-            TaskRev = upload_output(TaskId),
-            _ = kz_tasks:worker_finished(TaskId, TaskRev, TotalSucceeded, TotalFailed),
+            _ = kz_tasks:worker_finished(TaskId, TotalSucceeded, TotalFailed),
+            _ = upload_output(TaskId),
             _ = erase(?IN),
             'stop';
         {Row, CSVRest} ->
@@ -175,12 +175,11 @@ reason(?NE_BINARY=Reason) ->
 reason(_) -> <<>>.
 
 %% @private
--spec upload_output(kz_tasks:task_id()) -> ne_binary().
+-spec upload_output(kz_tasks:task_id()) -> 'ok'.
 upload_output(TaskId) ->
     {'ok', Out} = file:read_file(?OUT(TaskId)),
-    {'ok', TaskRev} = kz_tasks:worker_upload_result(TaskId, Out),
-    kz_util:delete_file(?OUT(TaskId)),
-    TaskRev.
+    _ = kz_tasks:worker_upload_result(TaskId, Out),
+    kz_util:delete_file(?OUT(TaskId)).
 
 %% @private
 -spec write_output_csv_header(kz_tasks:task_id(), module(), atom(), kz_csv:row()) -> 'ok' |
