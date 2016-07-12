@@ -16,6 +16,16 @@
         ,{'cons', _Line, Head, Tail}
        ).
 
+-define(LC(Expr, Qualifiers)
+        ,{'lc', _, Expr, Qualifiers}
+       ).
+-define(LC_GENERATOR(Pattern, Expr)
+        ,{'generate', _, Pattern, Expr}
+       ).
+-define(LC_BIN_GENERATOR(Pattern, Expr)
+        ,{'b_generate', _, Pattern, Expr}
+       ).
+
 -define(ATOM(Value), {'atom', _, Value}).
 -define(INTEGER(I), {'integer', _, I}).
 -define(STRING(Value), {'string', _, Value}).

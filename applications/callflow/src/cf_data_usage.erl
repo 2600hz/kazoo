@@ -10,11 +10,12 @@
 %% -define(DEBUG(_Fmt, _Args), 'ok').
 -define(DEBUG(Fmt, Args), io:format(Fmt, Args)).
 
--record(usage, {usages = []
-               ,data_var_name = 'Data'
-               ,data_var_aliases = []
-               ,current_module
-               ,functions = []
+-record(usage, {usages = [] %% places the Data is accessed
+               ,data_var_name = 'Data' %% Tracks current var name
+               ,data_var_aliases = [] %% typically when kz_json:set_value is used
+               ,current_module %% what module are we currently in
+               ,functions = [] %% AST functions loaded
+               ,visited = [] %% MFAs visited (to stop recursion)
                }).
 
 process() ->
@@ -105,6 +106,16 @@ process_expression(Acc, ?TRY_EXPR(Exprs, Clauses, CatchClauses)) ->
        )
                        ,CatchClauses
      );
+
+process_expression(Acc, ?LC(Expr, Qualifiers)) ->
+    process_expressions(process_expression(Acc, Expr)
+                        ,Qualifiers
+                       );
+process_expression(Acc, ?LC_GENERATOR(Pattern, Expr)) ->
+    process_expressions(Acc, [Pattern, Expr]);
+process_expression(Acc, ?LC_BIN_GENERATOR(Pattern, Expr)) ->
+    process_expressions(Acc, [Pattern, Expr]);
+
 process_expression(#usage{current_module=_M}=Acc, _Expression) ->
     io:format("~nskipping expression in ~p: ~p~n", [_M, _Expression]),
     Acc.
@@ -161,86 +172,15 @@ process_match_mfa(Acc, _VarName, M, F, As) ->
 process_mfa(#usage{data_var_name=DataName
                   ,usages=Usages
                   }=Acc
-           ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName)]
+           ,'kz_json'=M, F, [Key, ?VAR(DataName)]
            ) ->
-    Acc#usage{usages=maybe_add_usage(Usages, {M, F, binary_match_to_binary(Key), DataName, 'undefined'})};
+    Acc#usage{usages=maybe_add_usage(Usages, {M, F, arg_to_key(Key), DataName, 'undefined'})};
 process_mfa(#usage{data_var_name=DataName
                   ,usages=Usages
                   }=Acc
-           ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName), ?BINARY_MATCH(Default)]
+           ,'kz_json'=M, F, [Key, ?VAR(DataName), Default]
            ) ->
-    Acc#usage{usages=maybe_add_usage(Usages, {M, F, binary_match_to_binary(Key), DataName, binary_match_to_binary(Default)})};
-
-process_mfa(#usage{data_var_name=DataName
-                  ,usages=Usages
-                  }=Acc
-           ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName), ?ATOM(Default)]
-           ) ->
-    Acc#usage{usages=maybe_add_usage(Usages, {M, F, binary_match_to_binary(Key), DataName, Default})};
-
-process_mfa(#usage{data_var_name=DataName
-                   ,usages=Usages
-                   }=Acc
-            ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName), ?MOD_FUN_ARGS(Mod, Fun, Args)]
-           ) ->
-    Acc#usage{usages=maybe_add_usage(Usages, {M, F, binary_match_to_binary(Key), DataName, {Mod, Fun, length(Args)}})};
-process_mfa(#usage{data_var_name=DataName
-                   ,usages=Usages
-                   }=Acc
-            ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName), ?VAR(Default)]
-           ) ->
-    Acc#usage{usages=maybe_add_usage(Usages, {M, F, binary_match_to_binary(Key), DataName, Default})};
-
-process_mfa(#usage{data_var_name=DataName
-                   ,usages=Usages
-                   }=Acc
-            ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName), ?INTEGER(Default)]
-           ) ->
-    Acc#usage{usages=maybe_add_usage(Usages, {M, F, binary_match_to_binary(Key), DataName, Default})};
-
-process_mfa(#usage{data_var_name=DataName
-                   ,usages=Usages
-                   }=Acc
-            ,M, F, [?LIST(Head, Tail), ?VAR(DataName)]
-            ) ->
-    Acc#usage{usages=maybe_add_usage(Usages, {M, F, list_of_keys_to_binary(Head, Tail)
-                                             ,DataName, 'undefined'
-                                             }
-                                    )
-             };
-
-process_mfa(#usage{data_var_name=DataName
-                   ,usages=Usages
-                   }=Acc
-            ,M, F, [?LIST(Head, Tail), ?VAR(DataName), ?VAR(Default)]
-            ) ->
-    Acc#usage{usages=maybe_add_usage(Usages, {M, F, list_of_keys_to_binary(Head, Tail)
-                                             ,DataName, Default
-                                             }
-                                    )
-             };
-process_mfa(#usage{data_var_name=DataName
-                   ,usages=Usages
-                   }=Acc
-            ,M, F, [?LIST(Head, Tail), ?VAR(DataName), ?ATOM(Default)]
-            ) ->
-    Acc#usage{usages=maybe_add_usage(Usages, {M, F, list_of_keys_to_binary(Head, Tail)
-                                             ,DataName, Default
-                                             }
-                                    )
-             };
-
-process_mfa(#usage{data_var_name=DataName}=Acc
-           ,'kz_json'=_M, _F, [?VAR(_Name), ?VAR(DataName)]=_Args
-           ) ->
-    ?DEBUG("  skipping usage ~p:~p(~p)~n", [_M, _F, _Args]),
-    Acc;
-process_mfa(#usage{data_var_name=DataName}=Acc
-           ,'kz_json'=_M, _F, [?VAR(_Name), ?VAR(DataName), _Default]=_Args
-           ) ->
-    ?DEBUG("  skipping usage ~p:~p(~p)~n", [_M, _F, _Args]),
-    Acc;
-
+    Acc#usage{usages=maybe_add_usage(Usages, {M, F, arg_to_key(Key), DataName, arg_to_key(Default)})};
 process_mfa(#usage{data_var_name=DataName
                    ,data_var_aliases=Aliases
                   }=Acc
@@ -259,7 +199,7 @@ process_mfa(#usage{data_var_name=DataName
                    )
     of
         DataName ->
-            ?DEBUG("  processing call ~p:~p(~p)~n", [M, F, As]),
+            ?DEBUG("  found ~p in args of ~p:~p~n", [DataName, M, F]),
             process_mfa_call(Acc, M, F, As);
         'undefined' ->
             lists:foldl(fun(Arg, UsageAcc) ->
@@ -273,24 +213,29 @@ process_mfa(#usage{data_var_name=DataName
             process_mfa_call(Acc#usage{data_var_name=Alias}, M, F, As)
     end.
 
+
+arg_to_key(?BINARY_MATCH(Arg)) ->
+    binary_match_to_binary(Arg);
+arg_to_key(?ATOM(Arg)) ->
+    Arg;
+arg_to_key(?MOD_FUN_ARGS(M, F, As)) ->
+    {M, F, length(As)};
+arg_to_key(?VAR(Arg)) ->
+    Arg;
+arg_to_key(?INTEGER(I)) ->
+    I;
+arg_to_key(?EMPTY_LIST) ->
+    <<"[]">>;
+arg_to_key(?LIST(Head, Tail)) ->
+    list_of_keys_to_binary(Head, Tail).
+
 list_of_keys_to_binary(Head, Tail) ->
     list_of_keys_to_binary(Head, Tail, []).
 
-list_of_keys_to_binary(?BINARY_MATCH(Key), ?EMPTY_LIST, Path) ->
-    lists:reverse([binary_match_to_binary(Key) | Path]);
-list_of_keys_to_binary(?VAR(Name), ?EMPTY_LIST, Path) ->
-    lists:reverse([Name | Path]);
-list_of_keys_to_binary(?LIST(SubHead, SubTail), ?EMPTY_LIST, Path) ->
-    Key = list_of_keys_to_binary(SubHead, SubTail),
-    lists:reverse([Key | Path]);
-
-list_of_keys_to_binary(?BINARY_MATCH(Key), ?LIST(Head, Tail), Path) ->
-    list_of_keys_to_binary(Head, Tail, [binary_match_to_binary(Key) | Path]);
-list_of_keys_to_binary(?VAR(Name), ?LIST(Head, Tail), Path) ->
-    list_of_keys_to_binary(Head, Tail, [Name, Path]);
-list_of_keys_to_binary(?LIST(SubHead, SubTail), ?LIST(Head, Tail), Path) ->
-    Key = list_of_keys_to_binary(SubHead, SubTail),
-    list_of_keys_to_binary(Head, Tail, [Key | Path]).
+list_of_keys_to_binary(Arg, ?EMPTY_LIST, Path) ->
+    lists:reverse([arg_to_key(Arg) | Path]);
+list_of_keys_to_binary(Arg, ?LIST(Head, Tail), Path) ->
+    list_of_keys_to_binary(Head, Tail, [arg_to_key(Arg) | Path]).
 
 maybe_add_usage(Usages, Call) ->
     case lists:member(Call, Usages) of
@@ -321,39 +266,57 @@ process_mf_arity(#usage{usages=Usages}=Acc, M, F, Arity) ->
     end.
 
 process_mfa_call(Acc, M, F, As) ->
-    ?DEBUG("~n  calling ~p:~p(~p)~n", [M, F, As]),
-    process_mfa_call(Acc, M, F, As, 'true').
+    case have_visited(Acc, M, F, As) of
+        'true' ->
+            ?DEBUG("  already visited ~p:~p(~p)~n", [M, F, As]),
+            Acc;
+        'false' ->
+            ?DEBUG("~n  calling ~p:~p(~p)~n", [M, F, As]),
+            process_mfa_call(Acc, M, F, As, 'true')
+    end.
+
+have_visited(#usage{visited=Vs}, M, F, As) ->
+    lists:member({M, F, As}, Vs).
 
 process_mfa_call(#usage{data_var_name=DataName
                        ,usages=Usages
                        ,functions=Fs
                        ,current_module=_CM
+                       ,visited=Vs
                        }=Acc
                 ,M, F, As, ShouldAddAST) ->
         case mfa_clauses(Acc, M, F, length(As)) of
             [] when ShouldAddAST ->
                 case module_ast(M) of
-                    'undefined' -> Acc;
+                    'undefined' ->
+                        ?DEBUG("  failed to find AST for ~p~n", [M]),
+                        Acc#usage{visited=lists:usort([{M, F, As} | Vs])};
                     {M, AST} ->
                         process_mfa_call(Acc#usage{functions=add_module_ast(Fs, M, AST)}
                                         ,M, F, As, 'false'
                                         )
                 end;
-            [] -> Acc;
+            [] ->
+                ?DEBUG("  no clauses for ~p:~p~n", [M, F]),
+                Acc#usage{visited=lists:usort([{M, F, As} | Vs])};
             [Clauses] ->
                 #usage{usages=ModuleUsages
                       ,functions=NewFs
                       ,current_module=_MCM
+                      ,visited=ModuleVisited
                       } =
                     process_mfa_clauses(Acc#usage{current_module=M
                                                  ,usages=[]
                                                  ,data_var_aliases=[]
+                                                 ,visited=lists:usort([{M, F, As} | Vs])
                                                  }
                                        ,Clauses
                                        ,data_index(DataName, As)
                                        ),
+                ?DEBUG("  visited ~p:~p(~p)~n", [M, F, As]),
                 Acc#usage{usages=lists:usort(ModuleUsages ++ Usages)
                          ,functions=NewFs
+                         ,visited=ModuleVisited
                          }
         end.
 
@@ -389,9 +352,11 @@ process_mfa_clause(#usage{data_var_name=DataName
             ?DEBUG("  data name changed from ~p to ~p~n", [DataName, NewName]),
             #usage{usages=ClauseUsages
                   ,functions=ClauseFs
+                  ,visited=Vs
                   } = process_clause_body(Acc#usage{data_var_name=NewName}, Body),
             Acc#usage{usages=lists:usort(ClauseUsages ++ Us)
                      ,functions=ClauseFs
+                     ,visited=Vs
                      };
         ?ATOM('undefined') -> Acc;
         _Unexpected ->
