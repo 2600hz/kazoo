@@ -30,6 +30,9 @@
 -define(RECORD(Name, Fields), {'record', _, Name, Fields}).
 
 -define(CATCH(Expr), {'catch', _, Expr}).
+-define(TRY_BODY(Body, CatchClauses)
+        ,{'try', _, Body, [], CatchClauses}
+       ).
 
 -define(MOD_FUN(Module, Function), {'remote',_,?ATOM(Module),?ATOM(Function)}).
 
@@ -46,6 +49,7 @@
        ).
 
 -define(OP(Name, First, Second), {'op', _, Name, First, Second}).
+-define(APPEND(First, Second), ?OP('++', First, Second)).
 -define(ORELSE(First, Second), ?OP('orelse', First, Second)).
 -define(ANDALSO(First, Second), ?OP('andalso', First, Second)).
 

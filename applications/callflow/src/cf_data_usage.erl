@@ -9,6 +9,7 @@
 
 -record(usage, {usages = []
                ,data_var_name = 'Data'
+               ,data_var_aliases = []
                ,current_module
                ,functions = []
                }).
@@ -85,6 +86,10 @@ process_expression(Acc, ?OP(_, First, Second)) ->
     process_expressions(Acc, [First, Second]);
 process_expression(Acc, ?STRING(_Value)) ->
     Acc;
+process_expression(Acc, ?TRY_BODY(Body, CatchClauses)) ->
+    process_expressions(process_expressions(Acc, Body)
+                       ,CatchClauses
+                       );
 process_expression(#usage{current_module=_M}=Acc, _Expression) ->
     io:format("~nskipping expression in ~p: ~p~n", [_M, _Expression]),
     Acc.
@@ -122,14 +127,25 @@ process_clause_body(Acc, Body) ->
 
 process_match(#usage{current_module=Module}=Acc, ?VAR(_Name), ?FUN_ARGS(Function, Args)) ->
     process_mfa(Acc, Module, Function, Args);
-process_match(Acc, ?VAR(_Name), ?MOD_FUN_ARGS(Module, Function, Args)) ->
-    process_mfa(Acc, Module, Function, Args);
+process_match(Acc, ?VAR(Name), ?MOD_FUN_ARGS(Module, Function, Args)) ->
+    process_match_mfa(Acc, Name, Module, Function, Args);
 process_match(Acc, _Left, Right) ->
     process_expression(Acc, Right).
 
+process_match_mfa(#usage{data_var_name=DataName
+                         ,data_var_aliases=Aliases
+                        }=Acc
+                 ,VarName
+                 ,_M, _F, [?BINARY_MATCH(_Key), _Value, ?VAR(DataName)]
+                 ) ->
+    io:format("adding alias ~p~n", [VarName]),
+    Acc#usage{data_var_aliases=[VarName|Aliases]};
+process_match_mfa(Acc, _VarName, M, F, As) ->
+    process_mfa(Acc, M, F, As).
+
 process_mfa(#usage{data_var_name=DataName
-                    ,usages=Usages
-                   }=Acc
+                  ,usages=Usages
+                  }=Acc
            ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName)]
            ) ->
     Acc#usage{usages=maybe_add_usage(Usages, {M, F, binary_match_to_binary(Key), DataName, 'undefined'})};
@@ -157,6 +173,13 @@ process_mfa(#usage{data_var_name=DataName
                    ,usages=Usages
                    }=Acc
             ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName), ?VAR(Default)]
+           ) ->
+    Acc#usage{usages=maybe_add_usage(Usages, {M, F, binary_match_to_binary(Key), DataName, Default})};
+
+process_mfa(#usage{data_var_name=DataName
+                   ,usages=Usages
+                   }=Acc
+            ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName), ?INTEGER(Default)]
            ) ->
     Acc#usage{usages=maybe_add_usage(Usages, {M, F, binary_match_to_binary(Key), DataName, Default})};
 
@@ -192,23 +215,36 @@ process_mfa(#usage{data_var_name=DataName
                                     )
              };
 
-process_mfa(#usage{data_var_name=DataName}=Acc, M, F, As) ->
-    case lists:any(fun(?VAR(N)) -> N =:= DataName;
-                      (_Arg) -> 'false'
-                   end
-                  ,As
-                  )
+process_mfa(#usage{data_var_name=DataName
+                   ,data_var_aliases=Aliases
+                  }=Acc
+           ,M, F, As) ->
+    case lists:foldl(fun(?VAR(N), _) when N =:= DataName ->
+                            DataName;
+                       (?VAR(N), Action) ->
+                            case lists:member(N, Aliases) of
+                                'true' -> N;
+                                'false' -> Action
+                            end;
+                       (_Arg, Action) -> Action
+                    end
+                   ,'undefined'
+                   ,As
+                   )
     of
-        'true' ->
-            lager:debug("  processing call ~p:~p(~p)~n", [M, F, As]),
+        DataName ->
+            io:format("  processing call ~p:~p(~p)~n", [M, F, As]),
             process_mfa_call(Acc, M, F, As);
-        'false' ->
+        'undefined' ->
             lists:foldl(fun(Arg, UsageAcc) ->
                                 process_expression(UsageAcc, Arg)
                         end
                        ,Acc
                        ,As
-                       )
+                       );
+        Alias ->
+            io:format("  processing call with alias ~p: ~p:~p(~p)~n", [Alias, M, F, As]),
+            process_mfa_call(Acc#usage{data_var_name=Alias}, M, F, As)
     end.
 
 list_of_keys_to_binary(Head, Tail) ->
@@ -234,12 +270,12 @@ maybe_add_usage(Usages, Call) ->
     case lists:member(Call, Usages) of
         'true' -> Usages;
         'false' ->
-            %% io:format("adding usage: ~p~n", [Call]),
+            io:format("adding usage: ~p~n", [Call]),
             [Call | Usages]
     end.
 
 process_mfa_call(Acc, M, F, As) ->
-    %% io:format("~ncalling ~p:~p(~p)~n", [M, F, As]),
+    io:format("~n  calling ~p:~p(~p)~n", [M, F, As]),
     process_mfa_call(Acc, M, F, As, 'true').
 
 process_mfa_call(#usage{data_var_name=DataName
@@ -265,6 +301,7 @@ process_mfa_call(#usage{data_var_name=DataName
                       } =
                     process_mfa_clauses(Acc#usage{current_module=M
                                                  ,usages=[]
+                                                 ,data_var_aliases=[]
                                                  }
                                        ,Clauses
                                        ,data_index(DataName, As)
@@ -282,15 +319,29 @@ process_mfa_clauses(Acc, Clauses, DataIndex) ->
                ,Clauses
                ).
 
-process_mfa_clause(#usage{data_var_name=DataName}=Acc
+process_mfa_clause(#usage{data_var_name=DataName
+                         ,usages=Us
+                         }=Acc
                   ,?CLAUSE(Args, _Guards, Body)
                   ,DataIndex
                   ) ->
+    io:format("  processing mfa clause for ~p(~p)~n", [DataName, DataIndex]),
     case lists:nth(DataIndex, Args) of
+        ?VAR('_') -> Acc;
         ?VAR(DataName) -> process_clause_body(Acc, Body);
-        ?VAR(NewName) -> process_clause_body(Acc#usage{data_var_name=NewName}, Body);
+        ?VAR(NewName) ->
+            io:format("  data name changed from ~p to ~p~n", [DataName, NewName]),
+            #usage{usages=ClauseUsages
+                  ,functions=ClauseFs
+                  } = process_clause_body(Acc#usage{data_var_name=NewName}, Body),
+            Acc#usage{usages=lists:usort(ClauseUsages ++ Us)
+                     ,functions=ClauseFs
+                     };
+        ?ATOM('undefined') -> Acc;
         _Unexpected ->
-            io:format("unexpected arg at ~p in ~p~n", [DataIndex, Args]),
+            io:format("unexpected arg(~p) at ~p in ~p, expected ~p~n"
+                     ,[_Unexpected, DataIndex, Args, DataName]
+                     ),
             Acc
     end.
 
