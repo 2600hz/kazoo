@@ -541,10 +541,16 @@ build(EndpointId, 'undefined', Call) when is_binary(EndpointId) ->
     build(EndpointId, kz_json:new(), Call);
 build(EndpointId, Properties, Call) when is_binary(EndpointId) ->
     case ?MODULE:get(EndpointId, Call) of
-        {'ok', Endpoint} -> build(Endpoint, Properties, Call);
+        {'ok', Endpoint} -> build_endpoint(Endpoint, Properties, Call);
         {'error', _}=E -> E
     end;
 build(Endpoint, Properties, Call) ->
+    build_endpoint(Endpoint, Properties, Call).
+
+-spec build_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
+                            {'ok', kz_json:objects()} |
+                            {'error', build_errors()}.
+build_endpoint(Endpoint, Properties, Call) ->
     Call1 = maybe_rewrite_caller_id(Endpoint, Call),
     case should_create_endpoint(Endpoint, Properties, Call1) of
         'ok' -> create_endpoints(Endpoint, Properties, Call1);
@@ -569,18 +575,26 @@ should_create_endpoint(Endpoint, Properties, Call) ->
                ,fun maybe_do_not_disturb/3
                ,fun maybe_exclude_from_queues/3
                ],
-    should_create_endpoint(Routines, Endpoint, Properties, Call).
-
--type ep_routine_v() :: fun((kz_json:object(), kz_json:object(), kapps_call:call()) -> 'ok' | _).
--type ep_routines_v() :: [ep_routine_v()].
--spec should_create_endpoint(ep_routines_v(), kz_json:object(), kz_json:object(),  kapps_call:call()) ->
-                                    'ok' | {'error', any()}.
-should_create_endpoint([], _, _, _) -> 'ok';
-should_create_endpoint([Routine|Routines], Endpoint, Properties, Call) when is_function(Routine, 3) ->
-    case Routine(Endpoint, Properties, Call) of
-        'ok' -> should_create_endpoint(Routines, Endpoint, Properties, Call);
-        Else -> Else
+    case lists:foldl(fun should_create_endpoint_fold/2
+                    ,{Endpoint, Properties, Call}
+                    ,Routines
+                    )
+    of
+        {Endpoint, Properties, Call} -> 'ok';
+        Error -> Error
     end.
+
+-type create_ep_acc() :: {kz_json:object(), kz_json:object(), kapps_call:call()} |
+                         {'error', any()}.
+-type ep_routine_v() :: fun((kz_json:object(), kz_json:object(), kapps_call:call()) -> 'ok' | _).
+
+-spec should_create_endpoint_fold(ep_routine_v(), create_ep_acc()) -> create_ep_acc().
+should_create_endpoint_fold(Routine, {Endpoint, Properties, Call}=Acc) when is_function(Routine, 3) ->
+    case Routine(Endpoint, Properties, Call) of
+        'ok' -> Acc;
+        Error -> Error
+    end;
+should_create_endpoint_fold(_Routine, Error) -> Error.
 
 -spec maybe_missing_resource_type(kz_json:object(), kz_json:object(),  kapps_call:call()) ->
                                          'ok' |
