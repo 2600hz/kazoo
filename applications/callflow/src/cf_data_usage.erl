@@ -7,8 +7,8 @@
 -include("callflow.hrl").
 -include_lib("kazoo/include/kz_ast.hrl").
 
-%% -define(DEBUG(_Fmt, _Args), 'ok').
--define(DEBUG(Fmt, Args), io:format(Fmt, Args)).
+-define(DEBUG(_Fmt, _Args), 'ok').
+%% -define(DEBUG(Fmt, Args), io:format(Fmt, Args)).
 
 -record(usage, {usages = [] %% places the Data is accessed
                ,data_var_name = 'Data' %% Tracks current var name
