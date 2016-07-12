@@ -16,10 +16,14 @@
 process() ->
     {'ok', Data} = application:get_all_key('callflow'),
     Modules = props:get_value('modules', Data),
-    [{Module, Usages} ||
-        Module <- Modules,
-        (Usages = process(Module)) =/= 'undefined'
-    ].
+
+    io:format("processing "),
+    Usages = [{Module, Usages} ||
+                 Module <- Modules,
+                 (Usages = process(Module)) =/= 'undefined'
+             ],
+    io:format(" done~n~n"),
+    Usages.
 
 process(Module) ->
     Beam = module_to_beam(Module),
@@ -27,7 +31,7 @@ process(Module) ->
     case is_action_module(Beam) of
         'false' -> 'undefined';
         'true' ->
-            io:format("~s processing~n", [Module]),
+            io:format("."),
             process_action(Module)
     end.
 
@@ -70,8 +74,8 @@ process_expression(Acc, ?EMPTY_LIST) ->
     Acc;
 process_expression(Acc, ?LIST(Head, Tail)) ->
     process_list(Acc, Head, Tail);
-process_expression(Acc, _Expression) ->
-    io:format("skipping expression ~p~n", [_Expression]),
+process_expression(#usage{current_module=_M}=Acc, _Expression) ->
+    io:format("~nskipping expression in ~p: ~p~n", [_M, _Expression]),
     Acc.
 
 process_list(Acc, Head, Tail) ->
@@ -113,27 +117,36 @@ process_mfa(#usage{data_var_name=DataName
                    }=Acc
            ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName)]
            ) ->
-    Acc#usage{usages=
-                  [{M, F, binary_match_to_binary(Key), DataName, 'undefined'} | Usages]
-             };
+    Acc#usage{usages=maybe_add_usage(Usages, {M, F, binary_match_to_binary(Key), DataName, 'undefined'})};
 process_mfa(#usage{data_var_name=DataName
                   ,usages=Usages
                   }=Acc
            ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName), ?BINARY_MATCH(Default)]
            ) ->
-    Acc#usage{usages=
-                  [{M, F, binary_match_to_binary(Key), DataName, binary_match_to_binary(Default)}
-                   | Usages
-                  ]
-             };
+    Acc#usage{usages=maybe_add_usage(Usages, {M, F, binary_match_to_binary(Key), DataName, binary_match_to_binary(Default)})};
 process_mfa(#usage{data_var_name=DataName
                    ,usages=Usages
                    }=Acc
             ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName), ?MOD_FUN_ARGS(Mod, Fun, Args)]
            ) ->
-    Acc#usage{usages=[{M, F, binary_match_to_binary(Key), DataName, {Mod, Fun, length(Args)}}
-                      | Usages
-                     ]};
+    Acc#usage{usages=maybe_add_usage(Usages, {M, F, binary_match_to_binary(Key), DataName, {Mod, Fun, length(Args)}})};
+process_mfa(#usage{data_var_name=DataName
+                   ,usages=Usages
+                   }=Acc
+            ,M, F, [?BINARY_MATCH(Key), ?VAR(DataName), ?VAR(Default)]
+           ) ->
+    Acc#usage{usages=maybe_add_usage(Usages, {M, F, binary_match_to_binary(Key), DataName, Default})};
+process_mfa(#usage{data_var_name=DataName
+                   ,usages=Usages
+                   }=Acc
+            ,M, F, [?LIST(Head, Tail), ?VAR(DataName), ?VAR(Default)]
+            ) ->
+    Acc#usage{usages=maybe_add_usage(Usages, {M, F, list_of_keys_to_binary(Head, Tail)
+                                             ,DataName, Default
+                                             }
+                                    )
+             };
+
 process_mfa(#usage{data_var_name=DataName}=Acc, M, F, As) ->
     case lists:any(fun(?VAR(N)) -> N =:= DataName;
                       (_Arg) -> 'false'
@@ -142,6 +155,7 @@ process_mfa(#usage{data_var_name=DataName}=Acc, M, F, As) ->
                   )
     of
         'true' ->
+            lager:debug("  processing call ~p:~p(~p)~n", [M, F, As]),
             process_mfa_call(Acc, M, F, As);
         'false' ->
             lists:foldl(fun(Arg, UsageAcc) ->
@@ -152,13 +166,69 @@ process_mfa(#usage{data_var_name=DataName}=Acc, M, F, As) ->
                        )
     end.
 
-process_mfa_call(#usage{data_var_name=DataName}=Acc, M, F, As) ->
-    case mfa_clauses(Acc, M, F, length(As)) of
-        [] -> maybe_add_module_ast(Acc, M, F, As);
-        [Clauses] ->
-            DataIndex = data_index(DataName, As),
-            process_mfa_clauses(Acc, Clauses, DataIndex)
+list_of_keys_to_binary(Head, Tail) ->
+    list_of_keys_to_binary(Head, Tail, []).
+
+list_of_keys_to_binary(?BINARY_MATCH(Key), ?EMPTY_LIST, Path) ->
+    lists:reverse([binary_match_to_binary(Key) | Path]);
+list_of_keys_to_binary(?VAR(Name), ?EMPTY_LIST, Path) ->
+    lists:reverse([Name | Path]);
+list_of_keys_to_binary(?LIST(SubHead, SubTail), ?EMPTY_LIST, Path) ->
+    Key = list_of_keys_to_binary(SubHead, SubTail),
+    lists:reverse([Key | Path]);
+
+list_of_keys_to_binary(?BINARY_MATCH(Key), ?LIST(Head, Tail), Path) ->
+    list_of_keys_to_binary(Head, Tail, [binary_match_to_binary(Key) | Path]);
+list_of_keys_to_binary(?VAR(Name), ?LIST(Head, Tail), Path) ->
+    list_of_keys_to_binary(Head, Tail, [Name, Path]);
+list_of_keys_to_binary(?LIST(SubHead, SubTail), ?LIST(Head, Tail), Path) ->
+    Key = list_of_keys_to_binary(SubHead, SubTail),
+    list_of_keys_to_binary(Head, Tail, [Key | Path]).
+
+
+maybe_add_usage(Usages, Call) ->
+    case lists:member(Call, Usages) of
+        'true' -> Usages;
+        'false' ->
+            io:format("adding usage ~p~n", [Call]),
+            [Call | Usages]
     end.
+
+process_mfa_call(Acc, M, F, As) ->
+    io:format("~ncalling ~p:~p(~p)~n", [M, F, As]),
+    process_mfa_call(Acc, M, F, As, 'true').
+
+process_mfa_call(#usage{data_var_name=DataName
+                       ,usages=Usages
+                       ,functions=Fs
+                       ,current_module=_CM
+                       }=Acc
+                ,M, F, As, ShouldAddAST) ->
+        case mfa_clauses(Acc, M, F, length(As)) of
+            [] when ShouldAddAST ->
+                case module_ast(M) of
+                    'undefined' -> Acc;
+                    {M, AST} ->
+                        process_mfa_call(Acc#usage{functions=add_module_ast(Fs, M, AST)}
+                                        ,M, F, As, 'false'
+                                        )
+                end;
+            [] -> Acc;
+            [Clauses] ->
+                #usage{usages=ModuleUsages
+                      ,functions=NewFs
+                      ,current_module=_MCM
+                      } =
+                    process_mfa_clauses(Acc#usage{current_module=M
+                                                 ,usages=[]
+                                                 }
+                                       ,Clauses
+                                       ,data_index(DataName, As)
+                                       ),
+                Acc#usage{usages=lists:usort(ModuleUsages ++ Usages)
+                         ,functions=NewFs
+                         }
+        end.
 
 process_mfa_clauses(Acc, Clauses, DataIndex) ->
     lists:foldl(fun(Clause, UsagesAcc) ->
@@ -187,16 +257,12 @@ mfa_clauses(#usage{functions=Fs}, Module, Function, Arity) ->
            Arity =:= A
     ].
 
-maybe_add_module_ast(#usage{functions=Fs}=Acc, M, F, As) ->
+module_ast(M) ->
     case code:which(M) of
-        'non_existing' ->
-            io:format("failed to find module ~p~n", [M]),
-            Acc;
+        'non_existing' -> 'undefined';
         Beam ->
             {'ok', {Module, [{'abstract_code', AST}]}} = beam_lib:chunks(Beam, ['abstract_code']),
-            process_mfa_call(Acc#usage{functions=add_module_ast(Fs, Module, AST)}
-                            ,M, F, As
-                            )
+            {Module, AST}
     end.
 
 ast_functions(Module, {'raw_abstract_v1', Attributes}) ->
@@ -231,7 +297,7 @@ module_to_beam(Module) ->
                   ,module_to_filename(Module)
                   ]).
 
--spec module_to_filename(ne_binary() | atom()) -> ne_binary().
+-spec module_to_filename(ne_binary() | string() | atom()) -> string().
 module_to_filename(<<_/binary>> = Mod) ->
     case filename:extension(Mod) of
         <<>> -> module_to_filename(<<Mod/binary, ".beam">>);
