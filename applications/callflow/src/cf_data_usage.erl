@@ -7,6 +7,9 @@
 -include("callflow.hrl").
 -include_lib("kazoo/include/kz_ast.hrl").
 
+%% -define(DEBUG(_Fmt, _Args), 'ok').
+-define(DEBUG(Fmt, Args), io:format(Fmt, Args)).
+
 -record(usage, {usages = []
                ,data_var_name = 'Data'
                ,data_var_aliases = []
@@ -150,7 +153,7 @@ process_match_mfa(#usage{data_var_name=DataName
                  ,VarName
                  ,_M, _F, [?BINARY_MATCH(_Key), _Value, ?VAR(DataName)]
                  ) ->
-    io:format("adding alias ~p~n", [VarName]),
+    ?DEBUG("adding alias ~p~n", [VarName]),
     Acc#usage{data_var_aliases=[VarName|Aliases]};
 process_match_mfa(Acc, _VarName, M, F, As) ->
     process_mfa(Acc, M, F, As).
@@ -245,7 +248,7 @@ process_mfa(#usage{data_var_name=DataName
                    )
     of
         DataName ->
-            io:format("  processing call ~p:~p(~p)~n", [M, F, As]),
+            ?DEBUG("  processing call ~p:~p(~p)~n", [M, F, As]),
             process_mfa_call(Acc, M, F, As);
         'undefined' ->
             lists:foldl(fun(Arg, UsageAcc) ->
@@ -255,7 +258,7 @@ process_mfa(#usage{data_var_name=DataName
                        ,As
                        );
         Alias ->
-            io:format("  processing call with alias ~p: ~p:~p(~p)~n", [Alias, M, F, As]),
+            ?DEBUG("  processing call with alias ~p: ~p:~p(~p)~n", [Alias, M, F, As]),
             process_mfa_call(Acc#usage{data_var_name=Alias}, M, F, As)
     end.
 
@@ -282,10 +285,9 @@ maybe_add_usage(Usages, Call) ->
     case lists:member(Call, Usages) of
         'true' -> Usages;
         'false' ->
-            io:format("adding usage: ~p~n", [Call]),
+            ?DEBUG("adding usage: ~p~n", [Call]),
             [Call | Usages]
     end.
-
 
 process_mf_arity(#usage{usages=Usages}=Acc, M, F, Arity) ->
     case mfa_clauses(Acc, M, F, Arity) of
@@ -308,9 +310,8 @@ process_mf_arity(#usage{usages=Usages}=Acc, M, F, Arity) ->
     end.
 
 process_mfa_call(Acc, M, F, As) ->
-    io:format("~n  calling ~p:~p(~p)~n", [M, F, As]),
+    ?DEBUG("~n  calling ~p:~p(~p)~n", [M, F, As]),
     process_mfa_call(Acc, M, F, As, 'true').
-
 
 process_mfa_call(#usage{data_var_name=DataName
                        ,usages=Usages
@@ -357,9 +358,9 @@ process_mfa_clause(#usage{data_var_name=DataName}=Acc
                   ,?CLAUSE(Args, _Guards, _Body)=Clause
                   ,0
                   ) ->
-    io:format("  guessing index for ~p from ~p~n", [DataName, Args]),
+    ?DEBUG("  guessing index for ~p from ~p~n", [DataName, Args]),
     DataIndex = data_index(DataName, Args),
-    io:format("  guessed data index of ~p as ~p~n", [DataName, DataIndex]),
+    ?DEBUG("  guessed data index of ~p as ~p~n", [DataName, DataIndex]),
     process_mfa_clause(Acc, Clause, DataIndex);
 process_mfa_clause(Acc, _Clause, 'undefined') ->
     Acc;
@@ -369,12 +370,12 @@ process_mfa_clause(#usage{data_var_name=DataName
                   ,?CLAUSE(Args, _Guards, Body)
                   ,DataIndex
                   ) ->
-    io:format("  processing mfa clause for ~p(~p)~n", [DataName, DataIndex]),
+    ?DEBUG("  processing mfa clause for ~p(~p)~n", [DataName, DataIndex]),
     case lists:nth(DataIndex, Args) of
         ?VAR('_') -> Acc;
         ?VAR(DataName) -> process_clause_body(Acc, Body);
         ?VAR(NewName) ->
-            io:format("  data name changed from ~p to ~p~n", [DataName, NewName]),
+            ?DEBUG("  data name changed from ~p to ~p~n", [DataName, NewName]),
             #usage{usages=ClauseUsages
                   ,functions=ClauseFs
                   } = process_clause_body(Acc#usage{data_var_name=NewName}, Body),
