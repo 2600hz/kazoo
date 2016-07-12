@@ -25,6 +25,8 @@
                                   }).
 -define(RECORD(Name, Fields), {'record', _, Name, Fields}).
 
+-define(CATCH(Expr), {'catch', _, Expr}).
+
 -define(MOD_FUN(Module, Function), {'remote',_,?ATOM(Module),?ATOM(Function)}).
 
 -define(FUN_ARGS(Function, Args), {'call', _, ?ATOM(Function), Args}).

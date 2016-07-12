@@ -58,6 +58,8 @@ process_expression(Acc, ?MFA(_M, _F, _Arity)) ->
 process_expression(Acc, ?VAR(_Name)) ->
     %% Last expression is a variable to return to caller
     Acc;
+process_expression(Acc, ?CATCH(Expression)) ->
+    process_expression(Acc, Expression);
 process_expression(Acc, ?LAGER) -> Acc;
 process_expression(Acc, ?CASE(Expression, Clauses)) ->
     lists:foldl(fun(Clause, UsagesAcc) ->
