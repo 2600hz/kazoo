@@ -13,6 +13,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_acdc_queue).
 
+-behaviour(gen_cf_action).
+
 -export([handle/2]).
 
 -include("callflow.hrl").
