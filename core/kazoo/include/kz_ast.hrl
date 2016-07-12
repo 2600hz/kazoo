@@ -33,12 +33,17 @@
 -define(TRY_BODY(Body, CatchClauses)
         ,{'try', _, Body, [], CatchClauses}
        ).
+-define(TRY_EXPR(Expr, Clauses, CatchClauses)
+        ,{'try', _, Expr, Clauses, CatchClauses, []}
+       ).
 
 -define(MOD_FUN(Module, Function), {'remote',_,?ATOM(Module),?ATOM(Function)}).
 
 -define(FUN_ARGS(Function, Args), {'call', _, ?ATOM(Function), Args}).
 -define(DYN_FUN_ARGS(Function, Args), {'call', _, ?VAR(Function), Args}).
 -define(MFA(M, F, A), {'fun', _, {'function', ?ATOM(M), ?ATOM(F), ?INTEGER(A)}}).
+-define(FA(F, A), {'fun', _, {'function', F, A}}).
+
 -define(ANON(Clauses), {'fun', _, {'clauses', Clauses}}).
 
 -define(MOD_FUN_ARGS(Module, Function, Args)
@@ -48,10 +53,14 @@
         }
        ).
 
--define(OP(Name, First, Second), {'op', _, Name, First, Second}).
--define(APPEND(First, Second), ?OP('++', First, Second)).
--define(ORELSE(First, Second), ?OP('orelse', First, Second)).
--define(ANDALSO(First, Second), ?OP('andalso', First, Second)).
+-define(UNARY_OP(Name, Operand), {'op', _, Name, Operand}).
+-define(BINARY_OP(Name, First, Second), {'op', _, Name, First, Second}).
+
+-define(NOT(Operand), ?UNARY_OP('not', Operand)).
+
+-define(APPEND(First, Second), ?BINARY_OP('++', First, Second)).
+-define(ORELSE(First, Second), ?BINARY_OP('orelse', First, Second)).
+-define(ANDALSO(First, Second), ?BINARY_OP('andalso', First, Second)).
 
 -define(BINARY_STRING(Value)
         ,{'bin_element', _, {'string', _, Value}, 'default', 'default'}

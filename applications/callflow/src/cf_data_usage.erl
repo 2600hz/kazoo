@@ -44,8 +44,8 @@ process_action(Module) ->
 
 process_expression(Acc, ?TUPLE(Elements)) ->
     process_tuple(Acc, Elements);
-process_expression(Acc, ?CLAUSE([Expr], _Guards, Body)) ->
-    process_clause_body(process_expression(Acc, Expr), Body);
+process_expression(Acc, ?CLAUSE(Exprs, _Guards, Body)) ->
+    process_clause_body(process_expressions(Acc, Exprs), Body);
 process_expression(Acc, ?MATCH(Left, Right)) ->
     process_match(Acc, Left, Right);
 process_expression(#usage{current_module=Module}=Acc, ?FUN_ARGS(Function, Args)) ->
@@ -58,6 +58,8 @@ process_expression(Acc, ?ANON(Clauses)) ->
     process_expressions(Acc, Clauses);
 process_expression(Acc, ?MFA(_M, _F, _Arity)) ->
     Acc;
+process_expression(#usage{current_module=M}=Acc, ?FA(F, Arity)) ->
+    process_mf_arity(Acc, M, F, Arity);
 process_expression(Acc, ?VAR(_Name)) ->
     %% Last expression is a variable to return to caller
     Acc;
@@ -82,14 +84,24 @@ process_expression(Acc, ?RECORD(_Name, Fields)) ->
     process_record_fields(Acc, Fields);
 process_expression(Acc, ?RECORD_FIELD_ACCESS(_RecordName, _Name, _Value)) ->
     Acc;
-process_expression(Acc, ?OP(_, First, Second)) ->
+process_expression(Acc, ?BINARY_OP(_, First, Second)) ->
     process_expressions(Acc, [First, Second]);
+process_expression(Acc, ?UNARY_OP(_, Operand)) ->
+    process_expression(Acc, Operand);
 process_expression(Acc, ?STRING(_Value)) ->
     Acc;
 process_expression(Acc, ?TRY_BODY(Body, CatchClauses)) ->
     process_expressions(process_expressions(Acc, Body)
                        ,CatchClauses
                        );
+process_expression(Acc, ?TRY_EXPR(Exprs, Clauses, CatchClauses)) ->
+    process_expressions(
+      process_expressions(
+        process_expressions(Acc, Exprs)
+                         ,Clauses
+       )
+                       ,CatchClauses
+     );
 process_expression(#usage{current_module=_M}=Acc, _Expression) ->
     io:format("~nskipping expression in ~p: ~p~n", [_M, _Expression]),
     Acc.
@@ -274,9 +286,31 @@ maybe_add_usage(Usages, Call) ->
             [Call | Usages]
     end.
 
+
+process_mf_arity(#usage{usages=Usages}=Acc, M, F, Arity) ->
+    case mfa_clauses(Acc, M, F, Arity) of
+        [] -> Acc;
+        [Clauses] ->
+            #usage{usages=ModuleUsages
+                  ,functions=NewFs
+                  ,current_module=_MCM
+                  } =
+                process_mfa_clauses(Acc#usage{current_module=M
+                                             ,usages=[]
+                                             ,data_var_aliases=[]
+                                             }
+                                   ,Clauses
+                                   ,0
+                                   ),
+            Acc#usage{usages=lists:usort(ModuleUsages ++ Usages)
+                     ,functions=NewFs
+                     }
+    end.
+
 process_mfa_call(Acc, M, F, As) ->
     io:format("~n  calling ~p:~p(~p)~n", [M, F, As]),
     process_mfa_call(Acc, M, F, As, 'true').
+
 
 process_mfa_call(#usage{data_var_name=DataName
                        ,usages=Usages
@@ -319,6 +353,16 @@ process_mfa_clauses(Acc, Clauses, DataIndex) ->
                ,Clauses
                ).
 
+process_mfa_clause(#usage{data_var_name=DataName}=Acc
+                  ,?CLAUSE(Args, _Guards, _Body)=Clause
+                  ,0
+                  ) ->
+    io:format("  guessing index for ~p from ~p~n", [DataName, Args]),
+    DataIndex = data_index(DataName, Args),
+    io:format("  guessed data index of ~p as ~p~n", [DataName, DataIndex]),
+    process_mfa_clause(Acc, Clause, DataIndex);
+process_mfa_clause(Acc, _Clause, 'undefined') ->
+    Acc;
 process_mfa_clause(#usage{data_var_name=DataName
                          ,usages=Us
                          }=Acc
@@ -368,6 +412,8 @@ add_module_ast(Fs, Module, AST) ->
 
 data_index(DataName, Args) ->
     data_index(DataName, Args, 1).
+
+data_index(_DataName, [], _Index) -> 'undefined';
 data_index(DataName, [?VAR(DataName)|_As], Index) -> Index;
 data_index(DataName, [_|As], Index) ->
     data_index(DataName, As, Index+1).
