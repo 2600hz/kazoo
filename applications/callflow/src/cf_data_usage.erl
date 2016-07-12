@@ -27,13 +27,11 @@ process() ->
                  Module <- Modules,
                  (Usages = process(Module)) =/= 'undefined'
              ],
-    io:format(" done~n~n"),
+    io:format(" done~n~n~n"),
     Usages.
 
-process(Module) ->
-    Beam = module_to_beam(Module),
-
-    case is_action_module(Beam) of
+process(Module) when is_atom(Module) ->
+    case is_action_module(Module) of
         'false' -> 'undefined';
         'true' ->
             io:format("."),
@@ -403,22 +401,8 @@ binary_match_to_binary(Match) ->
 binary_part_to_binary(?BINARY_STRING(V)) -> V;
 binary_part_to_binary(?BINARY_VAR(N)) -> [${, N, $}].
 
--spec is_action_module(file:filename_all()) -> boolean().
-is_action_module(Beam) ->
-    {'ok', {_Module, [{'attributes', Attributes}]}} =
-        beam_lib:chunks(Beam, ['attributes']),
+-spec is_action_module(atom()) -> boolean().
+is_action_module(Module) ->
+    Attributes = Module:module_info('attributes'),
     Behaviours = props:get_value('behaviour', Attributes, []),
     lists:member('gen_cf_action', Behaviours).
-
-module_to_beam(Module) ->
-    filename:join([code:lib_dir('callflow', 'ebin')
-                  ,module_to_filename(Module)
-                  ]).
-
--spec module_to_filename(ne_binary() | string() | atom()) -> string().
-module_to_filename(<<_/binary>> = Mod) ->
-    case filename:extension(Mod) of
-        <<>> -> module_to_filename(<<Mod/binary, ".beam">>);
-        <<".beam">> -> kz_util:to_list(Mod)
-    end;
-module_to_filename(Mod) -> module_to_filename(kz_util:to_binary(Mod)).
