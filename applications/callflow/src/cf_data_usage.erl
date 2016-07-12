@@ -79,6 +79,8 @@ process_expression(Acc, ?LIST(Head, Tail)) ->
     process_list(Acc, Head, Tail);
 process_expression(Acc, ?RECORD(_Name, Fields)) ->
     process_record_fields(Acc, Fields);
+process_expression(Acc, ?OP(_, First, Second)) ->
+    process_expressions(Acc, [First, Second]);
 process_expression(#usage{current_module=_M}=Acc, _Expression) ->
     io:format("~nskipping expression in ~p: ~p~n", [_M, _Expression]),
     Acc.
@@ -224,12 +226,12 @@ maybe_add_usage(Usages, Call) ->
     case lists:member(Call, Usages) of
         'true' -> Usages;
         'false' ->
-            io:format("adding usage: ~p~n", [Call]),
+            %% io:format("adding usage: ~p~n", [Call]),
             [Call | Usages]
     end.
 
 process_mfa_call(Acc, M, F, As) ->
-    io:format("~ncalling ~p:~p(~p)~n", [M, F, As]),
+    %% io:format("~ncalling ~p:~p(~p)~n", [M, F, As]),
     process_mfa_call(Acc, M, F, As, 'true').
 
 process_mfa_call(#usage{data_var_name=DataName

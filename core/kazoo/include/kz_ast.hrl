@@ -41,6 +41,10 @@
         }
        ).
 
+-define(OP(Name, First, Second), {'op', _, Name, First, Second}).
+-define(ORELSE(First, Second), ?OP('orelse', First, Second)).
+-define(ANDALSO(First, Second), ?OP('andalso', First, Second)).
+
 -define(BINARY_STRING(Value)
         ,{'bin_element', _, {'string', _, Value}, 'default', 'default'}
        ).
