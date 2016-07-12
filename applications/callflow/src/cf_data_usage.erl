@@ -79,8 +79,12 @@ process_expression(Acc, ?LIST(Head, Tail)) ->
     process_list(Acc, Head, Tail);
 process_expression(Acc, ?RECORD(_Name, Fields)) ->
     process_record_fields(Acc, Fields);
+process_expression(Acc, ?RECORD_FIELD_ACCESS(_RecordName, _Name, _Value)) ->
+    Acc;
 process_expression(Acc, ?OP(_, First, Second)) ->
     process_expressions(Acc, [First, Second]);
+process_expression(Acc, ?STRING(_Value)) ->
+    Acc;
 process_expression(#usage{current_module=_M}=Acc, _Expression) ->
     io:format("~nskipping expression in ~p: ~p~n", [_M, _Expression]),
     Acc.
@@ -91,8 +95,11 @@ process_list(Acc, Head, Tail) ->
                       ).
 
 process_record_fields(Acc, Fields) ->
-    Values = [Value || ?RECORD_FIELD(_Key, Value) <- Fields],
+    Values = [record_field_value(Field) || Field <- Fields],
     process_expressions(Acc, Values).
+
+record_field_value(?RECORD_FIELD_ACCESS(_RecordName, _Name, Value)) -> Value;
+record_field_value(?RECORD_FIELD_BIND(_Key, Value)) -> Value.
 
 process_tuple(Acc, Elements) ->
     process_expressions(Acc, Elements).

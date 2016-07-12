@@ -18,11 +18,15 @@
 
 -define(ATOM(Value), {'atom', _, Value}).
 -define(INTEGER(I), {'integer', _, I}).
+-define(STRING(Value), {'string', _, Value}).
 
--define(RECORD_FIELD(Key, Value), {'record_field', _
+-define(RECORD_FIELD_BIND(Key, Value), {'record_field', _
                                    ,?ATOM(Key)
                                    ,Value
                                   }).
+-define(RECORD_FIELD_ACCESS(RecordName, Name, Value)
+        ,{'record_field', _, ?VAR(Name), RecordName, Value}
+       ).
 -define(RECORD(Name, Fields), {'record', _, Name, Fields}).
 
 -define(CATCH(Expr), {'catch', _, Expr}).
