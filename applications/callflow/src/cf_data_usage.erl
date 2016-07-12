@@ -68,12 +68,16 @@ process_expression(Acc, ?CASE(Expression, Clauses)) ->
                );
 process_expression(Acc, ?ATOM(_)) ->
     Acc;
+process_expression(Acc, ?INTEGER(_)) ->
+    Acc;
 process_expression(Acc, ?BINARY_MATCH(_)) ->
     Acc;
 process_expression(Acc, ?EMPTY_LIST) ->
     Acc;
 process_expression(Acc, ?LIST(Head, Tail)) ->
     process_list(Acc, Head, Tail);
+process_expression(Acc, ?RECORD(_Name, Fields)) ->
+    process_record_fields(Acc, Fields);
 process_expression(#usage{current_module=_M}=Acc, _Expression) ->
     io:format("~nskipping expression in ~p: ~p~n", [_M, _Expression]),
     Acc.
@@ -82,6 +86,10 @@ process_list(Acc, Head, Tail) ->
     process_expression(process_expression(Acc, Head)
                        ,Tail
                       ).
+
+process_record_fields(Acc, Fields) ->
+    Values = [Value || ?RECORD_FIELD(_Key, Value) <- Fields],
+    process_expressions(Acc, Values).
 
 process_tuple(Acc, Elements) ->
     process_expressions(Acc, Elements).
@@ -108,6 +116,8 @@ process_match(Acc, ?VAR(_Name), ?MOD_FUN_ARGS(Module, Function, Args)) ->
     process_mfa(Acc, Module, Function, Args);
 process_match(Acc, ?VAR(_Name), ?CASE(_Expr, _Clauses)=Case) ->
     process_expression(Acc, Case);
+process_match(Acc, ?TUPLE(_Elements), Right) ->
+    process_expression(Acc, Right);
 process_match(Acc, _Left, _Right) ->
     io:format("not processing match ~p = ~p~n", [_Left, _Right]),
     Acc.
@@ -189,13 +199,11 @@ list_of_keys_to_binary(?LIST(SubHead, SubTail), ?LIST(Head, Tail), Path) ->
 maybe_add_usage(Usages, Call) ->
     case lists:member(Call, Usages) of
         'true' -> Usages;
-        'false' ->
-            io:format("adding usage ~p~n", [Call]),
-            [Call | Usages]
+        'false' -> [Call | Usages]
     end.
 
 process_mfa_call(Acc, M, F, As) ->
-    io:format("~ncalling ~p:~p(~p)~n", [M, F, As]),
+    %% io:format("~ncalling ~p:~p(~p)~n", [M, F, As]),
     process_mfa_call(Acc, M, F, As, 'true').
 
 process_mfa_call(#usage{data_var_name=DataName

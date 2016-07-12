@@ -19,6 +19,12 @@
 -define(ATOM(Value), {'atom', _, Value}).
 -define(INTEGER(I), {'integer', _, I}).
 
+-define(RECORD_FIELD(Key, Value), {'record_field', _
+                                   ,?ATOM(Key)
+                                   ,Value
+                                  }).
+-define(RECORD(Name, Fields), {'record', _, Name, Fields}).
+
 -define(MOD_FUN(Module, Function), {'remote',_,?ATOM(Module),?ATOM(Function)}).
 
 -define(FUN_ARGS(Function, Args), {'call', _, ?ATOM(Function), Args}).
