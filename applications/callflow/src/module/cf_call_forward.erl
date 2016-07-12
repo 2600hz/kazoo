@@ -10,6 +10,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_call_forward).
 
+-behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 
 -export([handle/2]).
