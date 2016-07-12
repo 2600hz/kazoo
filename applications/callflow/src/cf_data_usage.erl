@@ -7,8 +7,8 @@
 -include("callflow.hrl").
 -include_lib("kazoo/include/kz_ast.hrl").
 
--define(DEBUG(_Fmt, _Args), 'ok').
-%% -define(DEBUG(Fmt, Args), io:format(Fmt, Args)).
+%% -define(DEBUG(_Fmt, _Args), 'ok').
+-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
 
 -record(usage, {usages = [] %% places the Data is accessed
                ,data_var_name = 'Data' %% Tracks current var name
@@ -179,23 +179,30 @@ process_mfa(#usage{data_var_name=DataName
            ,'kz_json'=M, F, [Key, ?VAR(DataName), Default]
            ) ->
     Acc#usage{usages=maybe_add_usage(Usages, {M, F, arg_to_key(Key), DataName, arg_to_key(Default)})};
+
+process_mfa(#usage{data_var_name=DataName
+                   ,data_var_aliases=Aliases
+                  ,usages=Usages
+                  }=Acc
+           ,'kz_json'=M, 'find'=F, [Key, ?LIST(_Head, _Tail)=L, Default]
+           ) ->
+    case arg_list_has_data_var(DataName, Aliases, L) of
+        'undefined' -> Acc;
+        DataName ->
+            Acc#usage{usages=
+                          maybe_add_usage(Usages, {M, F, arg_to_key(Key), DataName, arg_to_key(Default)})
+                     };
+        Alias ->
+            Acc#usage{usages=
+                          maybe_add_usage(Usages, {M, F, arg_to_key(Key), Alias, arg_to_key(Default)})
+                     }
+    end;
+
 process_mfa(#usage{data_var_name=DataName
                    ,data_var_aliases=Aliases
                   }=Acc
            ,M, F, As) ->
-    case lists:foldl(fun(?VAR(N), _) when N =:= DataName ->
-                            DataName;
-                       (?VAR(N), Action) ->
-                            case lists:member(N, Aliases) of
-                                'true' -> N;
-                                'false' -> Action
-                            end;
-                       (_Arg, Action) -> Action
-                    end
-                   ,'undefined'
-                   ,As
-                   )
-    of
+    case arg_list_has_data_var(DataName, Aliases, As) of
         DataName ->
             ?DEBUG("  found ~p in args of ~p:~p~n", [DataName, M, F]),
             process_mfa_call(Acc, M, F, As);
@@ -211,6 +218,26 @@ process_mfa(#usage{data_var_name=DataName
             process_mfa_call(Acc#usage{data_var_name=Alias}, M, F, As)
     end.
 
+arg_list_has_data_var(DataName, _Aliases, ?LIST(?VAR(DataName), _Tail)) ->
+    DataName;
+arg_list_has_data_var(_DataName, _Aliases, ?EMPTY_LIST) ->
+    'undefined';
+arg_list_has_data_var(DataName, Aliases, ?LIST(?VAR(Name), Tail)) ->
+    case lists:member(Name, Aliases) of
+        'true' -> Name;
+        'false' -> arg_list_has_data_var(DataName, Aliases, Tail)
+    end;
+arg_list_has_data_var(DataName, _Aliases, [?VAR(DataName)|_]) ->
+    DataName;
+arg_list_has_data_var(DataName, Aliases, [?VAR(Name)|T]) ->
+    case lists:member(Name, Aliases) of
+        'true' -> Name;
+        'false' -> arg_list_has_data_var(DataName, Aliases, T)
+    end;
+arg_list_has_data_var(_DataName, _Aliases, []) ->
+    'undefined';
+arg_list_has_data_var(DataName, Aliases, [_H|T]) ->
+    arg_list_has_data_var(DataName, Aliases, T).
 
 arg_to_key(?BINARY_MATCH(Arg)) ->
     binary_match_to_binary(Arg);
@@ -283,7 +310,7 @@ process_mfa_call(#usage{data_var_name=DataName
                        ,visited=Vs
                        }=Acc
                 ,M, F, As, ShouldAddAST) ->
-        case mfa_clauses(Acc, M, F, length(As)) of
+    case mfa_clauses(Acc, M, F, length(As)) of
             [] when ShouldAddAST ->
                 case module_ast(M) of
                     'undefined' ->
@@ -300,7 +327,6 @@ process_mfa_call(#usage{data_var_name=DataName
             [Clauses] ->
                 #usage{usages=ModuleUsages
                       ,functions=NewFs
-                      ,current_module=_MCM
                       ,visited=ModuleVisited
                       } =
                     process_mfa_clauses(Acc#usage{current_module=M
@@ -336,9 +362,7 @@ process_mfa_clause(#usage{data_var_name=DataName}=Acc
     process_mfa_clause(Acc, Clause, DataIndex);
 process_mfa_clause(Acc, _Clause, 'undefined') ->
     Acc;
-process_mfa_clause(#usage{data_var_name=DataName
-                         ,usages=Us
-                         }=Acc
+process_mfa_clause(#usage{data_var_name=DataName}=Acc
                   ,?CLAUSE(Args, _Guards, Body)
                   ,DataIndex
                   ) ->
@@ -352,7 +376,7 @@ process_mfa_clause(#usage{data_var_name=DataName
                   ,functions=ClauseFs
                   ,visited=Vs
                   } = process_clause_body(Acc#usage{data_var_name=NewName}, Body),
-            Acc#usage{usages=lists:usort(ClauseUsages ++ Us)
+            Acc#usage{usages=lists:usort(ClauseUsages)
                      ,functions=ClauseFs
                      ,visited=Vs
                      };
