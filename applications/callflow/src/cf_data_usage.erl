@@ -120,6 +120,8 @@ process_match(Acc, ?VAR(_Name), ?CASE(_Expr, _Clauses)=Case) ->
     process_expression(Acc, Case);
 process_match(Acc, ?TUPLE(_Elements), Right) ->
     process_expression(Acc, Right);
+process_match(Acc, ?RECORD(_Name, _Fields), Right) ->
+    process_expression(Acc, Right);
 process_match(Acc, _Left, _Right) ->
     io:format("not processing match ~p = ~p~n", [_Left, _Right]),
     Acc.
