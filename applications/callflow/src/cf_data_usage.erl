@@ -174,6 +174,16 @@ process_mfa(#usage{data_var_name=DataName
                                              }
                                     )
              };
+process_mfa(#usage{data_var_name=DataName
+                   ,usages=Usages
+                   }=Acc
+            ,M, F, [?LIST(Head, Tail), ?VAR(DataName), ?ATOM(Default)]
+            ) ->
+    Acc#usage{usages=maybe_add_usage(Usages, {M, F, list_of_keys_to_binary(Head, Tail)
+                                             ,DataName, Default
+                                             }
+                                    )
+             };
 
 process_mfa(#usage{data_var_name=DataName}=Acc, M, F, As) ->
     case lists:any(fun(?VAR(N)) -> N =:= DataName;
