@@ -137,10 +137,11 @@ start_builder(EndpointId, Member, Call) ->
 resolve_endpoint_ids(Data, Call) ->
     Members = kz_json:get_value(<<"endpoints">>, Data, []),
     ResolvedEndpoints = resolve_endpoint_ids(Members, [], Data, Call),
+
     FilteredEndpoints = [{Weight, {Id, kz_json:set_value(<<"source">>, ?MODULE, Member)}}
-                         || {Type, Id, Weight, Member} <- ResolvedEndpoints
-                                ,Type =:= <<"device">>
-                                ,Id =/= kapps_call:authorizing_id(Call)
+                         || {Type, Id, Weight, Member} <- ResolvedEndpoints,
+                            Type =:= <<"device">>,
+                            Id =/= kapps_call:authorizing_id(Call)
                         ],
     Strategy = strategy(Data),
     order_endpoints(Strategy, FilteredEndpoints).
@@ -158,8 +159,17 @@ order_endpoints(<<"weighted_random">>, Endpoints) ->
 
 -spec resolve_endpoint_ids(kz_json:objects(), endpoint_intermediates(), kz_json:object(), kapps_call:call()) ->
                                   endpoint_intermediates().
-resolve_endpoint_ids([], EndpointIds, _, _) -> EndpointIds;
-resolve_endpoint_ids([Member|Members], EndpointIds, Data, Call) ->
+resolve_endpoint_ids(Members, EndpointIds, Data, Call) ->
+    lists:foldl(fun(Member, Acc) ->
+                        resolve_endpoint_id(Member, Acc, Data, Call)
+                end
+                ,EndpointIds
+                ,Members
+               ).
+
+-spec resolve_endpoint_id(kz_json:object(), endpoint_intermediates(), kz_json:object(), kapps_call:call()) ->
+                                 endpoint_intermediates().
+resolve_endpoint_id(Member, EndpointIds, Data, Call) ->
     Id = kz_doc:id(Member),
     Type = kz_json:get_value(<<"endpoint_type">>, Member, <<"device">>),
     Weight = group_weight(Member, 20),
@@ -167,19 +177,17 @@ resolve_endpoint_ids([Member|Members], EndpointIds, Data, Call) ->
         orelse lists:keymember(Id, 2, EndpointIds)
         orelse Type
     of
-        'true' ->
-            resolve_endpoint_ids(Members, EndpointIds, Data, Call);
+        'true' -> EndpointIds;
         <<"group">> ->
             lager:info("member ~s is a group, merge the group's members", [Id]),
             GroupMembers = get_group_members(Member, Id, Weight, Data, Call),
             Ids = resolve_endpoint_ids(GroupMembers, EndpointIds, Data, Call),
-            resolve_endpoint_ids(Members, [{Type, Id, 'undefined'}|Ids], Data, Call);
+            [{Type, Id, 'undefined'}|Ids];
         <<"user">> ->
             lager:info("member ~s is a user, get all the user's endpoints", [Id]),
-            Ids = get_user_endpoint_ids(Member, EndpointIds, Id, Weight, Call),
-            resolve_endpoint_ids(Members, Ids, Data, Call);
+            get_user_endpoint_ids(Member, EndpointIds, Id, Weight, Call);
         <<"device">> ->
-            resolve_endpoint_ids(Members, [{Type, Id, Weight, Member}|EndpointIds], Data, Call)
+            [{Type, Id, Weight, Member}|EndpointIds]
     end.
 
 -spec get_user_endpoint_ids(kz_json:object(), endpoint_intermediates(), ne_binary(), group_weight(), kapps_call:call()) ->
