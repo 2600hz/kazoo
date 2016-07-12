@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_do_not_disturb).
 
+-behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 
 -export([handle/2]).
@@ -63,22 +65,22 @@ maybe_get_data_id(AccountDb, Data, Call) ->
     case maybe_get_doc(AccountDb, Id) of
         {'error', _} ->
             lager:info("dnd feature callflow does not specify a document", []),
-            maybe_get_owner(AccountDb, Data, Call);
+            maybe_get_owner(AccountDb, Call);
         {'ok', _}=Ok -> Ok
     end.
 
--spec maybe_get_owner(ne_binary(), kz_json:object(), kapps_call:call()) -> kz_jobj_return().
-maybe_get_owner(AccountDb, Data, Call) ->
+-spec maybe_get_owner(ne_binary(), kapps_call:call()) -> kz_jobj_return().
+maybe_get_owner(AccountDb, Call) ->
     OwnerId = kapps_call:owner_id(Call),
     case maybe_get_doc(AccountDb, OwnerId) of
         {'error', _} ->
             lager:info("dnd feature could not find the owner document", []),
-            maybe_get_authorizing_device(AccountDb, Data, Call);
+            maybe_get_authorizing_device(AccountDb, Call);
         {'ok', _}=Ok -> Ok
     end.
 
--spec maybe_get_authorizing_device(ne_binary(), kz_json:object(), kapps_call:call()) -> kz_jobj_return().
-maybe_get_authorizing_device(AccountDb, _, Call) ->
+-spec maybe_get_authorizing_device(ne_binary(), kapps_call:call()) -> kz_jobj_return().
+maybe_get_authorizing_device(AccountDb, Call) ->
     AuthorizingId = kapps_call:authorizing_id(Call),
     maybe_get_doc(AccountDb, AuthorizingId).
 
