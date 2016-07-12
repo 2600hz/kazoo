@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_hangup).
 
+-behaviour(gen_cf_action).
+
 %% API
 -export([handle/2]).
 

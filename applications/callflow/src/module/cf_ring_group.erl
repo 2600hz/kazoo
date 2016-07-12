@@ -10,6 +10,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_ring_group).
 
+-behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 -include_lib("kazoo/src/api/kapi_dialplan.hrl").
 
