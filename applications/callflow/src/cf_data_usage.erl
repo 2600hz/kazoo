@@ -167,6 +167,18 @@ process_match_mfa(#usage{data_var_name=DataName
 process_match_mfa(Acc, _VarName, M, F, As) ->
     process_mfa(Acc, M, F, As).
 
+process_mfa(#usage{data_var_name=DataName}=Acc
+            ,'kz_json', 'merge_recursive', [_Arg, ?VAR(DataName)]
+           ) ->
+    Acc;
+process_mfa(#usage{data_var_name=DataName}=Acc
+            ,'kz_json', 'merge_recursive', [?VAR(DataName), _Arg]
+           ) ->
+    Acc;
+process_mfa(#usage{data_var_name=DataName}=Acc
+            ,'kz_json', 'set_value', [_Key, _Value, ?VAR(DataName)]
+           ) ->
+    Acc;
 process_mfa(#usage{data_var_name=DataName
                   ,usages=Usages
                   }=Acc
@@ -179,10 +191,6 @@ process_mfa(#usage{data_var_name=DataName
            ,'kz_json'=M, F, [Key, ?VAR(DataName), Default]
            ) ->
     Acc#usage{usages=maybe_add_usage(Usages, {M, F, arg_to_key(Key), DataName, arg_to_key(Default)})};
-process_mfa(#usage{data_var_name=DataName}=Acc
-            ,'kz_json', 'set_value', [_Key, _Value, ?VAR(DataName)]
-           ) ->
-    Acc;
 process_mfa(#usage{data_var_name=DataName
                    ,data_var_aliases=Aliases
                   ,usages=Usages
