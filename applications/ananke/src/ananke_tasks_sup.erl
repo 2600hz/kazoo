@@ -97,8 +97,8 @@ init([]) ->
 -spec delete_child_after_timeout(any(), non_neg_integer()) -> fun(() -> 'ok' | {'error', any()}).
 delete_child_after_timeout(Id, Timeout) ->
     fun() ->
-        receive
-        after Timeout ->
-            delete_child(Id)
-        end
+            receive
+            after Timeout ->
+                    delete_child(Id)
+            end
     end.
