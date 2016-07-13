@@ -1326,10 +1326,10 @@ play(Node, UUID, JObj) ->
                           {ne_binary(), ne_binary()}.
 play_bridged(UUID, JObj, F) ->
     case kz_json:get_value(<<"Leg">>, JObj) of
-        <<"B">> ->     {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" bleg">>])};
-        <<"A">> ->     {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" aleg">>])};
-        <<"Both">> ->  {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" both">>])};
-        'undefined' -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" both">>])}
+        <<"B">> ->     {<<"broadcast">>, list_to_binary([UUID, <<" '">>, F, <<"' bleg">>])};
+        <<"A">> ->     {<<"broadcast">>, list_to_binary([UUID, <<" '">>, F, <<"' aleg">>])};
+        <<"Both">> ->  {<<"broadcast">>, list_to_binary([UUID, <<" '">>, F, <<"' both">>])};
+        'undefined' -> {<<"broadcast">>, list_to_binary([UUID, <<" '">>, F, <<"' both">>])}
     end.
 
 %%--------------------------------------------------------------------
