@@ -259,6 +259,8 @@ arg_to_key(?BINARY_MATCH(Arg)) ->
     binary_match_to_binary(Arg);
 arg_to_key(?ATOM(Arg)) ->
     Arg;
+arg_to_key(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
+    <<"{}">>;
 arg_to_key(?MOD_FUN_ARGS(M, F, As)) ->
     {M, F, length(As)};
 arg_to_key(?VAR(Arg)) ->
