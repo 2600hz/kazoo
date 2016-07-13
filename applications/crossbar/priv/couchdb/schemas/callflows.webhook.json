@@ -2,7 +2,24 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "callflows.webhook",
     "description": "Validator for the webhook callflow's data object",
-    "properties": {},
+    "properties": {
+        "custom_data": {
+            "description": "",
+            "type": "object"
+        },
+        "http_verb": {
+            "description": "",
+            "type": "string"
+        },
+        "retries": {
+            "description": "",
+            "type": "integer"
+        },
+        "uri": {
+            "description": "",
+            "type": "string"
+        }
+    },
     "required": true,
     "type": "object"
 }
