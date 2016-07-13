@@ -2,10 +2,13 @@
 
 %% module for parsing callflow actions for Data usage
 
--export([process/0, process/1]).
+-export([process/0, process/1
+         ,to_schema_docs/0, to_schema_doc/1
+        ]).
 
 -include("callflow.hrl").
 -include_lib("kazoo/include/kz_ast.hrl").
+-include_lib("kazoo/src/kz_json.hrl").
 
 -define(DEBUG(_Fmt, _Args), 'ok').
 %% -define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
@@ -17,6 +20,97 @@
                ,functions = [] %% AST functions loaded
                ,visited = [] %% MFAs visited (to stop recursion)
                }).
+
+to_schema_docs() ->
+    _ = [to_schema_doc(M, Usage) || {M, Usage} <- process()],
+    'ok'.
+
+to_schema_doc(M) ->
+    to_schema_doc(M, process(M)).
+
+to_schema_doc(M, Usage) ->
+    <<"cf_", Base/binary>> = kz_util:to_binary(M),
+    Schema = schema_path(Base),
+    ensure_file_exists(Schema),
+    update_schema(Schema, Usage).
+
+update_schema(Path, Usage) ->
+    {'ok', Bin} = file:read_file(Path),
+    Schema = kz_json:decode(Bin),
+    case augment_schema(Schema, Usage) of
+        Schema -> 'ok'; %% no change
+        Augmented ->
+            file:write_file(Path, kz_json:encode(Augmented))
+    end.
+
+augment_schema(Schema, Usage) ->
+    lists:foldl(fun augment_with_usage/2, Schema, Usage).
+
+augment_with_usage({_M, F, [_|_]=Ks, _Data, Default}, Schema) ->
+    maybe_insert_schema(F, Ks, Default, Schema);
+augment_with_usage({M, F, K, Data, Default}, Schema) ->
+    augment_with_usage({M, F, [K], Data, Default}, Schema).
+
+maybe_insert_schema(F, [K|Ks], Default, Schema) ->
+    Section = kz_json:get_value([<<"properties">>, K], Schema, kz_json:new()),
+    Updated = maybe_insert_schema(F, Ks, Default, Section),
+    kz_json:set_value([<<"properties">>, K], Updated, Schema);
+maybe_insert_schema(F, [], Default, Schema) ->
+    Updates = props:filter_undefined(
+               [{<<"type">>, guess_type(F, Default)}
+               ,{<<"default">>, Default}
+               ]
+              ),
+    kz_json:insert_values(Updates, Schema).
+
+guess_type('get_value', <<_/binary>>) ->
+    <<"string">>;
+guess_type('get_value', []) ->
+    <<"array">>;
+guess_type('get_value', ?EMPTY_JSON_OBJECT) ->
+    <<"object">>;
+guess_type('get_value', I) when is_integer(I) ->
+    <<"integer">>;
+guess_type('get_value', F) when is_float(F) ->
+    <<"float">>;
+guess_type('get_value', B) when is_boolean(B) ->
+    <<"boolean">>;
+guess_type('get_binary_value', _) ->
+    <<"string">>;
+guess_type('get_is_true', _) ->
+    <<"boolean">>;
+guess_type('is_true', _) ->
+    <<"boolean">>;
+guess_type('get_is_false', _) ->
+    <<"boolean">>;
+guess_type('is_false', _) ->
+    <<"boolean">>;
+guess_type('get_integer_value', _) ->
+    <<"integer">>;
+guess_type('get_float_value', _) ->
+    <<"float">>;
+guess_type(_F, _D) ->
+    io:format("couldn't guess ~p(~p)~n", [_F, _D]),
+    'undefined'.
+
+schema_path(Base) ->
+    filename:join([code:priv_dir('crossbar')
+                  ,<<"couchdb">>
+                  ,<<"schemas">>
+                  ,<<"callflows.", Base/binary, ".json">>
+                  ]).
+
+ensure_file_exists(Path) ->
+    case filelib:is_regular(Path) of
+        'false' -> create_schema(Path);
+        'true' -> 'ok'
+    end.
+
+create_schema(Path) ->
+    Skel = schema_path(<<"skel">>),
+    io:format("copying ~s to ~s~n", [Skel, Path]),
+    {'ok', _} = file:copy(Skel, Path),
+    io:format("  copied skel into ~s~n", [Path]).
 
 process() ->
     {'ok', Data} = application:get_all_key('callflow'),
