@@ -38,6 +38,7 @@ module() -> kz_util:to_binary(?MODULE).
 -spec output_header(atom()) -> kz_csv:row().
 output_header('descendant_quantities') ->
     [<<"account_id">>
+    ,<<"year">>
     ,<<"month">>
     ,<<"category">>
     ,<<"item">>
@@ -70,12 +71,11 @@ descendant_quantities(_, []) ->
     'stop';
 
 descendant_quantities(_, [SubAccountMoDB | DescendantsMoDBs]) ->
-    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month) = SubAccountMoDB,
+    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, YYYY, MM) = SubAccountMoDB,
     AccountId = ?MATCH_ACCOUNT_RAW(A, B, Rest),
-    YYYYMM = <<Year/binary, Month/binary>>,
     BoM = modb_service_quantities(SubAccountMoDB, ?SERVICES_BOM),
     EoM = modb_service_quantities(SubAccountMoDB, ?SERVICES_EOM),
-    case rows_for_quantities(AccountId, YYYYMM, BoM, EoM) of
+    case rows_for_quantities(AccountId, YYYY, MM, BoM, EoM) of
         [] ->
             %% No rows generated: ask worker to skip writing for this step.
             {'ok', DescendantsMoDBs};
@@ -87,21 +87,22 @@ descendant_quantities(_, [SubAccountMoDB | DescendantsMoDBs]) ->
 %%% Internal functions
 %%%===================================================================
 
--spec rows_for_quantities(ne_binary(), ne_binary(), kz_json:object(), kz_json:object()) ->
+-spec rows_for_quantities(ne_binary(), ne_binary(), ne_binary(), kz_json:object(), kz_json:object()) ->
                                  [kz_csv:row()].
-rows_for_quantities(AccountId, YYYYMM, BoM, EoM) ->
+rows_for_quantities(AccountId, YYYY, MM, BoM, EoM) ->
     lists:append(
-      [quantities_for_items(AccountId, YYYYMM, Category, BoMItem, EoMItem)
+      [quantities_for_items(AccountId, YYYY, MM, Category, BoMItem, EoMItem)
        || Category <- fields(BoM, EoM),
           BoMItem <- [kz_json:get_value(Category, BoM)],
           EoMItem <- [kz_json:get_value(Category, EoM)]
       ]).
 
--spec quantities_for_items(ne_binary(), ne_binary(), ne_binary(), api_object(), api_object()) ->
+-spec quantities_for_items(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_object(), api_object()) ->
                                   [kz_csv:row()].
-quantities_for_items(AccountId, YYYYMM, Category, BoMItem, EoMItem) ->
+quantities_for_items(AccountId, YYYY, MM, Category, BoMItem, EoMItem) ->
     [ [AccountId
-      ,YYYYMM
+      ,YYYY
+      ,MM
       ,Category
       ,Item
       ,maybe_integer_to_binary(Item, BoMItem)
