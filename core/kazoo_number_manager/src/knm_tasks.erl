@@ -16,7 +16,7 @@
         ]).
 
 %% Verifiers
--export([number/1, e164/1
+-export([e164/1
         ,account_id/1
         ,auth_by/1
         ,module_name/1, carrier_module/1
@@ -67,12 +67,35 @@ output_header('list') ->
 -spec help() -> kz_proplist().
 help() ->
     [{<<"list">>
-     ,kz_json:from_list([{<<"description">>, <<"List all numbers in the system">>}
+     ,kz_json:from_list([{<<"description">>, <<"List all numbers under the account starting the task">>}
+                        ,{<<"doc">>, <<"For each number found, returns fields:\n"
+                                       "* `e164`: phone number represented as E164 (with a leading `+` sign).\n"
+                                       "* `account_id`: account it is assigned to (32 alphanumeric characters).\n"
+                                       "* `previously_assigned_to`: account it was assigned to before being assigned to `account_id`.\n"
+                                       "* `state`: either discovery, available, reserved, in_service, released, disconnected, deleted, port_in or port_out.\n"
+                                       "* `created`: timestamp number document was created.\n"
+                                       "* `modified`: timestamp number document was last updated.\n"
+                                       "* `used_by`: Kazoo application handling this number.\n"
+                                       "* `port_in`: whether this number is linked to an ongoing port request.\n"
+                                       "* `carrier_module`: service that created the number document.\n"
+                                       "* `cnam.inbound`: \n"
+                                       "* `cnam.outbound`: \n"
+                                       "* `e911.post_code`: \n"
+                                       "* `e911.street_address`: \n"
+                                       "* `e911.extended_address`: \n"
+                                       "* `e911.locality`: \n"
+                                       "* `e911.region`: \n"
+                                     >>}
                         ])
      }
 
     ,{<<"import_list">>
      ,kz_json:from_list([{<<"description">>, <<"Import numbers that were previously listed">>}
+                        ,{<<"doc">>, <<"Creates numbers using the same fields the `list` task provides.\n"
+                                       "Note: number must be E164-formatted.\n"
+                                       "Note: number must not be in the system already.\n"
+                                       "Note: for now only the mandatory fields are taken into account.\n"
+                                     >>}
                         ,{<<"expected_content">>, <<"text/csv">>}
                         ,{<<"mandatory">>, [<<"e164">>
                                            ,<<"account_id">>
@@ -97,8 +120,15 @@ help() ->
 
     ,{<<"assign_to">>
      ,kz_json:from_list([{<<"description">>, <<"Bulk-assign numbers to the provided account">>}
+                        ,{<<"doc">>, <<"Assign existing numbers to another account.\n"
+                                       "Note: number must be E164-formatted.\n"
+                                       "Note: number must already exist.\n"
+                                       "Note: account creating the task (or `auth_by` account) must have permissions on number.\n"
+                                       "Note: target `account_id` must exist.\n"
+                                       "Note: after assignment, number state will be `in_service`.\n"
+                                     >>}
                         ,{<<"expected_content">>, <<"text/csv">>}
-                        ,{<<"mandatory">>, [<<"number">>
+                        ,{<<"mandatory">>, [<<"e164">>
                                            ,<<"account_id">>
                                            ]}
                         ,{<<"optional">>, [<<"auth_by">>
@@ -108,8 +138,13 @@ help() ->
 
     ,{<<"delete">>
      ,kz_json:from_list([{<<"description">>, <<"Bulk-remove numbers">>}
+                        ,{<<"doc">>, <<"Release numbers (removing happens if account is configured so).\n"
+                                       "Note: number must be E164-formatted.\n"
+                                       "Note: number must already exist.\n"
+                                       "Note: account creating the task (or `auth_by` account) must have permissions on number.\n"
+                                     >>}
                         ,{<<"expected_content">>, <<"text/csv">>}
-                        ,{<<"mandatory">>, [<<"number">>
+                        ,{<<"mandatory">>, [<<"e164">>
                                            ]}
                         ,{<<"optional">>, [<<"auth_by">>
                                           ]}
@@ -117,9 +152,14 @@ help() ->
      }
 
     ,{<<"reserve">>
-     ,kz_json:from_list([{<<"description">>, <<"Bulk-move numbers to reserved (adding if missing)">>}
+     ,kz_json:from_list([{<<"description">>, <<"Bulk-reserve numbers">>}
+                        ,{<<"doc">>, <<"Sets numbers to state `reserved` (creating number if it is missing).\n"
+                                       "Note: number must be E164-formatted.\n"
+                                       "Note: account creating the task (or `auth_by` account) must have permission to proceed.\n"
+                                       "Note: after transitionning state to `reserved`, number is assigned to `account_id`.\n"
+                                     >>}
                         ,{<<"expected_content">>, <<"text/csv">>}
-                        ,{<<"mandatory">>, [<<"number">>
+                        ,{<<"mandatory">>, [<<"e164">>
                                            ,<<"account_id">>
                                            ]}
                         ,{<<"optional">>, [<<"auth_by">>
@@ -129,8 +169,13 @@ help() ->
 
     ,{<<"add">>
      ,kz_json:from_list([{<<"description">>, <<"Bulk-create numbers">>}
+                        ,{<<"doc">>, <<"Adds numbers to the system, assigning them to `account_id`.\n"
+                                       "Note: number must be E164-formatted.\n"
+                                       "Note: number must not already exist.\n"
+                                       "Note: if set, carrier `module_name` will also be set on created number.\n"
+                                     >>}
                         ,{<<"expected_content">>, <<"text/csv">>}
-                        ,{<<"mandatory">>, [<<"number">>
+                        ,{<<"mandatory">>, [<<"e164">>
                                            ,<<"account_id">>
                                            ]}
                         ,{<<"optional">>, [<<"auth_by">>
@@ -142,12 +187,9 @@ help() ->
 
 %%% Verifiers
 
--spec number(ne_binary()) -> boolean().
-number(<<"+", _/binary>>) -> 'true';
-number(_) -> 'false'.
-
 -spec e164(ne_binary()) -> boolean().
-e164(Thing) -> number(Thing).
+e164(<<"+", _/binary>>) -> 'true';
+e164(_) -> 'false'.
 
 -spec account_id(ne_binary()) -> boolean().
 account_id(?MATCH_ACCOUNT_RAW(_)) -> 'true';

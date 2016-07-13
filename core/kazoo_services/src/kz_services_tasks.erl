@@ -38,6 +38,7 @@ module() -> kz_util:to_binary(?MODULE).
 -spec output_header(atom()) -> kz_csv:row().
 output_header('descendant_quantities') ->
     [<<"account_id">>
+    ,<<"year">>
     ,<<"month">>
     ,<<"category">>
     ,<<"item">>
@@ -49,6 +50,20 @@ output_header('descendant_quantities') ->
 help() ->
     [{<<"descendant_quantities">>
      ,kz_json:from_list([{<<"description">>, <<"List per-month descendant accounts quantities">>}
+                        ,{<<"doc">>, <<"Attempts to create a month-on-month listing of quantities used by descendant accounts.\n"
+                                       "This task returns the following fields:\n"
+                                       "* `account_id`: a sub-account of the creator of this task.\n"
+                                       "* `year`: integral year as 4 characters.\n"
+                                       "* `month`: integral month as 2 characters (left-padded with a zero).\n"
+                                       "* `category`: name of the quantity's category.\n"
+                                       "* `item`: name of the category's item.\n"
+                                       "* `quantity_bom`: integral quantity's value or empty.\n"
+                                       "* `quantity_eom`: integral quantity's value or empty.\n"
+                                       "Note: some beginning-of-month and end-of-month quantities documents may be missing.\n"
+                                       "Note: when both an account's BoM & EoM documents for a given month are missing, no rows are a created for this month.\n"
+                                       "Note: in all other cases the documents' value is printed verbatim: if unset the empty string is returned.\n"
+                                       "E.g.: an integer quantity (such as 1, 10 or 0 (zero)) represents was the system has. If no quantity was found, the empty value is used.\n"
+                                     >>}
                         ])
      }
     ].
@@ -70,12 +85,11 @@ descendant_quantities(_, []) ->
     'stop';
 
 descendant_quantities(_, [SubAccountMoDB | DescendantsMoDBs]) ->
-    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month) = SubAccountMoDB,
+    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, YYYY, MM) = SubAccountMoDB,
     AccountId = ?MATCH_ACCOUNT_RAW(A, B, Rest),
-    YYYYMM = <<Year/binary, Month/binary>>,
     BoM = modb_service_quantities(SubAccountMoDB, ?SERVICES_BOM),
     EoM = modb_service_quantities(SubAccountMoDB, ?SERVICES_EOM),
-    case rows_for_quantities(AccountId, YYYYMM, BoM, EoM) of
+    case rows_for_quantities(AccountId, YYYY, MM, BoM, EoM) of
         [] ->
             %% No rows generated: ask worker to skip writing for this step.
             {'ok', DescendantsMoDBs};
@@ -87,21 +101,22 @@ descendant_quantities(_, [SubAccountMoDB | DescendantsMoDBs]) ->
 %%% Internal functions
 %%%===================================================================
 
--spec rows_for_quantities(ne_binary(), ne_binary(), kz_json:object(), kz_json:object()) ->
+-spec rows_for_quantities(ne_binary(), ne_binary(), ne_binary(), kz_json:object(), kz_json:object()) ->
                                  [kz_csv:row()].
-rows_for_quantities(AccountId, YYYYMM, BoM, EoM) ->
+rows_for_quantities(AccountId, YYYY, MM, BoM, EoM) ->
     lists:append(
-      [quantities_for_items(AccountId, YYYYMM, Category, BoMItem, EoMItem)
+      [quantities_for_items(AccountId, YYYY, MM, Category, BoMItem, EoMItem)
        || Category <- fields(BoM, EoM),
           BoMItem <- [kz_json:get_value(Category, BoM)],
           EoMItem <- [kz_json:get_value(Category, EoM)]
       ]).
 
--spec quantities_for_items(ne_binary(), ne_binary(), ne_binary(), api_object(), api_object()) ->
+-spec quantities_for_items(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_object(), api_object()) ->
                                   [kz_csv:row()].
-quantities_for_items(AccountId, YYYYMM, Category, BoMItem, EoMItem) ->
+quantities_for_items(AccountId, YYYY, MM, Category, BoMItem, EoMItem) ->
     [ [AccountId
-      ,YYYYMM
+      ,YYYY
+      ,MM
       ,Category
       ,Item
       ,maybe_integer_to_binary(Item, BoMItem)
@@ -218,32 +233,32 @@ eom_1() ->
 
 rows_for_missing_eom_test() ->
     AccountId = <<"6b71cb72c876b5b1396a335f8f8a2594">>,
-    YYYYMM = <<"201504">>,
+    <<YYYY:4/binary, MM:2/binary>> = <<"201504">>,
     Expected =
-        [[AccountId, YYYYMM, <<"branding">>, <<"whitelabel">>, <<"0">>, 'undefined']
-        ,[AccountId, YYYYMM, <<"ips">>, <<"dedicated">>, <<"0">>, 'undefined']
+        [[AccountId, YYYY, MM, <<"branding">>, <<"whitelabel">>, <<"0">>, 'undefined']
+        ,[AccountId, YYYY, MM, <<"ips">>, <<"dedicated">>, <<"0">>, 'undefined']
         ],
-    ?assertEqual(Expected, rows_for_quantities(AccountId, YYYYMM, bom_2(), kz_json:new())).
+    ?assertEqual(Expected, rows_for_quantities(AccountId, YYYY, MM, bom_2(), kz_json:new())).
 
 rows_for_missing_bom_test() ->
     AccountId = <<"6b71cb72c876b5b1396a335f8f8a2594">>,
-    YYYYMM = <<"201504">>,
+    <<YYYY:4/binary, MM:2/binary>> = <<"201504">>,
     Expected =
-        [[AccountId, YYYYMM, <<"branding">>, <<"whitelabel">>, 'undefined', <<"0">>]
-        ,[AccountId, YYYYMM, <<"ips">>, <<"dedicated">>, 'undefined', <<"0">>]
+        [[AccountId, YYYY, MM, <<"branding">>, <<"whitelabel">>, 'undefined', <<"0">>]
+        ,[AccountId, YYYY, MM, <<"ips">>, <<"dedicated">>, 'undefined', <<"0">>]
         ],
-    ?assertEqual(Expected, rows_for_quantities(AccountId, YYYYMM, kz_json:new(), bom_2())).
+    ?assertEqual(Expected, rows_for_quantities(AccountId, YYYY, MM, kz_json:new(), bom_2())).
 
 rows_for_bom_and_eom_test() ->
     AccountId = <<"6b71cb72c876b5b1396a335f8f8a2594">>,
-    YYYYMM = <<"201506">>,
+    <<YYYY:4/binary, MM:2/binary>> = <<"201606">>,
     Expected =
-        [[AccountId, YYYYMM, <<"branding">>, <<"whitelabel">>, <<"0">>, <<"0">>]
-        ,[AccountId, YYYYMM, <<"ips">>, <<"dedicated">>, <<"0">>, <<"0">>]
-        ,[AccountId, YYYYMM, <<"number_services">>, <<"local">>, 'undefined', <<"130">>]
-        ,[AccountId, YYYYMM, <<"phone_numbers">>, <<"did_us">>, <<"1">>, <<"1">>]
+        [[AccountId, YYYY, MM, <<"branding">>, <<"whitelabel">>, <<"0">>, <<"0">>]
+        ,[AccountId, YYYY, MM, <<"ips">>, <<"dedicated">>, <<"0">>, <<"0">>]
+        ,[AccountId, YYYY, MM, <<"number_services">>, <<"local">>, 'undefined', <<"130">>]
+        ,[AccountId, YYYY, MM, <<"phone_numbers">>, <<"did_us">>, <<"1">>, <<"1">>]
         ],
-    ?assertEqual(Expected, rows_for_quantities(AccountId, YYYYMM, bom_1(), eom_1())).
+    ?assertEqual(Expected, rows_for_quantities(AccountId, YYYY, MM, bom_1(), eom_1())).
 
 -endif.
 

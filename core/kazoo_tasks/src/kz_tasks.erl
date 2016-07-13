@@ -24,7 +24,6 @@
         ,worker_error/1
         ,worker_pause/0
         ,worker_maybe_send_update/3
-        ,worker_upload_result/2
         ,get_output_header/2
         ]).
 
@@ -55,7 +54,6 @@
                  , worker_node => ne_binary() | 'undefined'
                  , account_id => ne_binary()
                  , id => task_id()
-                 , rev => ne_binary() | 'undefined'
                  , category => ne_binary()
                  , action => ne_binary()
                  , created => gregorian_seconds() %% Time of task creation (PUT)
@@ -257,16 +255,6 @@ remove(TaskId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_finished(task_id(), ne_binary(), non_neg_integer(), non_neg_integer()) -> 'ok'.
-worker_finished(TaskId=?NE_BINARY, TaskRev=?NE_BINARY, TotalSucceeded, TotalFailed)
-  when is_integer(TotalSucceeded), is_integer(TotalFailed) ->
-    gen_server:call(?SERVER, {'worker_finished', TaskId, TaskRev, TotalSucceeded, TotalFailed}).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec worker_error(task_id()) -> 'ok'.
 worker_error(TaskId=?NE_BINARY) ->
     gen_server:cast(?SERVER, {'worker_error', TaskId}).
@@ -300,9 +288,11 @@ worker_maybe_send_update(TaskId, TotalSucceeded, TotalFailed) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_upload_result(task_id(), ne_binary()) -> {'ok', ne_binary()} |
-                                                      {'error', any()}.
-worker_upload_result(TaskId=?NE_BINARY, CSVOut=?NE_BINARY) ->
+-spec worker_finished(task_id(), non_neg_integer(), non_neg_integer(), file:filename_all()) -> 'ok'.
+worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed, Output=?NE_BINARY)
+  when is_integer(TotalSucceeded), is_integer(TotalFailed) ->
+    _ = gen_server:call(?SERVER, {'worker_finished', TaskId, TotalSucceeded, TotalFailed}),
+    {'ok', CSVOut} = file:read_file(Output),
     case kz_datamgr:put_attachment(?KZ_TASKS_DB
                                   ,TaskId
                                   ,?KZ_TASKS_ATTACHMENT_NAME_OUT
@@ -310,9 +300,10 @@ worker_upload_result(TaskId=?NE_BINARY, CSVOut=?NE_BINARY) ->
                                   ,[{'content_type', <<"text/csv">>}]
                                   )
     of
-        {'ok', TaskJObj} ->
+        {'ok', _TaskJObj} ->
             lager:debug("saved ~s", [?KZ_TASKS_ATTACHMENT_NAME_OUT]),
-            {'ok', kz_doc:revision(TaskJObj)};
+            kz_util:delete_file(Output),
+            'ok';
         {'error', _R}=Error ->
             lager:error("failed saving ~s/~s: ~p"
                        ,[TaskId, ?KZ_TASKS_ATTACHMENT_NAME_OUT, _R]),
@@ -422,7 +413,6 @@ handle_call({'new', AccountId, Category, Action, TotalRows}, _From, State) ->
             , worker_node => 'undefined'
             , account_id => AccountId
             , id => TaskId
-            , rev => 'undefined'
             , category => Category
             , action => Action
             , created => kz_util:current_tstamp()
@@ -458,7 +448,7 @@ handle_call({'start_task', TaskId}, _From, State) ->
     end;
 
 %% This used to be cast but would race with worker process' EXIT signal.
-handle_call({'worker_finished', TaskId, TaskRev, TotalSucceeded, TotalFailed}, _From, State) ->
+handle_call({'worker_finished', TaskId, TotalSucceeded, TotalFailed}, _From, State) ->
     lager:debug("worker finished ~s: ~p/~p", [TaskId, TotalSucceeded, TotalFailed]),
     case task_by_id(TaskId, State) of
         [Task] ->
@@ -466,7 +456,8 @@ handle_call({'worker_finished', TaskId, TaskRev, TotalSucceeded, TotalFailed}, _
                          , total_rows_failed => TotalFailed
                          , total_rows_succeeded => TotalSucceeded
                          },
-            {'ok', _JObj} = update_task(Task1, TaskRev),
+            %% This MUST happen before put_attachment or conflicts won't be resolved.
+            {'ok', _JObj} = update_task(Task1),
             State1 = remove_task(TaskId, State),
             ?REPLY(State1, 'ok');
         _ ->
@@ -552,7 +543,7 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
             {'noreply', State};
         [Task=#{id := TaskId}] ->
             lager:error("worker ~p died executing ~s: ~p", [Pid, TaskId, _Reason]),
-            %% Note: this means output attachment was NOT saved to task doc.
+            %% Note: this means output attachment was MAYBE NOT saved to task doc.
             %% Note: setting total_rows_failed to undefined here will change
             %%  status to ?STATUS_BAD but will not update total_rows_failed value in doc.
             Task1 = Task#{ finished => kz_util:current_tstamp()
@@ -612,13 +603,7 @@ save_new_task(Task = #{id := _TaskId}) ->
 
 -spec update_task(task()) -> {'ok', kz_json:object()} |
                              {'error', any()}.
--spec update_task(task(), ne_binary() | 'undefined') -> {'ok', kz_json:object()} |
-                                                        {'error', any()}.
-update_task(Task) ->
-    %% "I'm feeling lucky"
-    update_task(Task, 'undefined').
-update_task(Task0 = #{id := TaskId}, Rev) ->
-    Task = Task0#{rev => Rev},
+update_task(Task = #{id := TaskId}) ->
     Updates = kz_json:to_proplist(to_json(Task)),
     case kz_datamgr:update_doc(?KZ_TASKS_DB, TaskId, Updates) of
         {'ok', Doc} -> {'ok', to_public_json(from_json(Doc))};
@@ -714,7 +699,6 @@ from_json(Doc) ->
      , worker_node => kz_json:get_value(?PVT_WORKER_NODE, Doc)
      , account_id => kz_json:get_value(?PVT_ACCOUNT_ID, Doc)
      , id => kz_doc:id(Doc)
-     , rev => kz_doc:revision(Doc)
      , category => kz_json:get_value(?PVT_CATEGORY, Doc)
      , action => kz_json:get_value(?PVT_ACTION, Doc)
      , created => kz_doc:created(Doc)
@@ -727,7 +711,6 @@ from_json(Doc) ->
 
 -spec to_json(task()) -> kz_json:object().
 to_json(#{id := TaskId
-         ,rev := Rev
          ,worker_node := Node
          ,account_id := AccountId
          ,category := Category
@@ -742,7 +725,6 @@ to_json(#{id := TaskId
     kz_json:from_list(
       props:filter_undefined(
         [{<<"_id">>, TaskId}
-        ,{<<"_rev">>, Rev} %% Set to not have conflicts (put_attachment).
         ,{?PVT_TYPE, ?KZ_TASKS_DOC_TYPE}
         ,{?PVT_WORKER_NODE, Node}
         ,{?PVT_ACCOUNT_ID, AccountId}
