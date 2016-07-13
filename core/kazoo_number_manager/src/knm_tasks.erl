@@ -16,7 +16,7 @@
         ]).
 
 %% Verifiers
--export([number/1, e164/1
+-export([e164/1
         ,account_id/1
         ,auth_by/1
         ,module_name/1, carrier_module/1
@@ -98,7 +98,7 @@ help() ->
     ,{<<"assign_to">>
      ,kz_json:from_list([{<<"description">>, <<"Bulk-assign numbers to the provided account">>}
                         ,{<<"expected_content">>, <<"text/csv">>}
-                        ,{<<"mandatory">>, [<<"number">>
+                        ,{<<"mandatory">>, [<<"e164">>
                                            ,<<"account_id">>
                                            ]}
                         ,{<<"optional">>, [<<"auth_by">>
@@ -109,7 +109,7 @@ help() ->
     ,{<<"delete">>
      ,kz_json:from_list([{<<"description">>, <<"Bulk-remove numbers">>}
                         ,{<<"expected_content">>, <<"text/csv">>}
-                        ,{<<"mandatory">>, [<<"number">>
+                        ,{<<"mandatory">>, [<<"e164">>
                                            ]}
                         ,{<<"optional">>, [<<"auth_by">>
                                           ]}
@@ -119,7 +119,7 @@ help() ->
     ,{<<"reserve">>
      ,kz_json:from_list([{<<"description">>, <<"Bulk-move numbers to reserved (adding if missing)">>}
                         ,{<<"expected_content">>, <<"text/csv">>}
-                        ,{<<"mandatory">>, [<<"number">>
+                        ,{<<"mandatory">>, [<<"e164">>
                                            ,<<"account_id">>
                                            ]}
                         ,{<<"optional">>, [<<"auth_by">>
@@ -130,7 +130,7 @@ help() ->
     ,{<<"add">>
      ,kz_json:from_list([{<<"description">>, <<"Bulk-create numbers">>}
                         ,{<<"expected_content">>, <<"text/csv">>}
-                        ,{<<"mandatory">>, [<<"number">>
+                        ,{<<"mandatory">>, [<<"e164">>
                                            ,<<"account_id">>
                                            ]}
                         ,{<<"optional">>, [<<"auth_by">>
@@ -142,12 +142,9 @@ help() ->
 
 %%% Verifiers
 
--spec number(ne_binary()) -> boolean().
-number(<<"+", _/binary>>) -> 'true';
-number(_) -> 'false'.
-
 -spec e164(ne_binary()) -> boolean().
-e164(Thing) -> number(Thing).
+e164(<<"+", _/binary>>) -> 'true';
+e164(_) -> 'false'.
 
 -spec account_id(ne_binary()) -> boolean().
 account_id(?MATCH_ACCOUNT_RAW(_)) -> 'true';
