@@ -118,7 +118,7 @@ update_services(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     update_services(Number
                    ,knm_phone_number:dry_run(PhoneNumber)
-                    orelse knm_phone_number:bulk_run(PhoneNumber)
+                    orelse knm_phone_number:batch_run(PhoneNumber)
                    ).
 
 -spec update_services(knm_number:knm_number(), boolean()) -> knm_number:knm_number().
