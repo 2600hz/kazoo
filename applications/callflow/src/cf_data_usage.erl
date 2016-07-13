@@ -237,6 +237,8 @@ process_args(Acc, As) ->
 
 arg_list_has_data_var(DataName, _Aliases, ?LIST(?VAR(DataName), Tail)) ->
     {DataName, Tail};
+arg_list_has_data_var(_DataName, _Aliases, ?MOD_FUN_ARGS(_M, _F, _As)) ->
+    'undefined';
 arg_list_has_data_var(_DataName, _Aliases, ?EMPTY_LIST) ->
     'undefined';
 arg_list_has_data_var(DataName, Aliases, ?LIST(?VAR(Name), Tail)) ->
@@ -463,6 +465,7 @@ mfa_clauses(#usage{functions=Fs}, Module, Function, Arity) ->
 module_ast(M) ->
     case code:which(M) of
         'non_existing' -> 'undefined';
+        'preloaded' -> 'undefined';
         Beam ->
             {'ok', {Module, [{'abstract_code', AST}]}} = beam_lib:chunks(Beam, ['abstract_code']),
             {Module, AST}
