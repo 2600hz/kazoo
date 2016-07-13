@@ -515,7 +515,8 @@ token_cost(Context, [_|_]=Suffix) ->
 token_cost(Context, Default) ->
     token_cost(Context, Default, []).
 
-token_cost(Context, Default, Suffix) when is_integer(Default) andalso Default >= 0 ->
+token_cost(Context, Default, Suffix) when is_integer(Default)
+                                          andalso Default >= 0 ->
     Costs = kapps_config:get(?CONFIG_CAT, <<"token_costs">>, 1),
     find_token_cost(Costs
                    ,Default
