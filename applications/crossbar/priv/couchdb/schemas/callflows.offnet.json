@@ -2,7 +2,65 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "callflows.offnet",
     "description": "Validator for the offnet callflow's data object",
-    "properties": {},
+    "properties": {
+        "bypass_e164": {
+            "description": "",
+            "type": "boolean"
+        },
+        "caller_id_type": {
+            "default": "external",
+            "description": "",
+            "type": "string"
+        },
+        "custom_sip_headers": {
+            "default": {},
+            "description": "",
+            "type": "object"
+        },
+        "do_not_normalize": {
+            "description": "",
+            "type": "boolean"
+        },
+        "dynamic_flags": {
+            "description": ""
+        },
+        "emit_account_id": {
+            "description": "",
+            "type": "boolean"
+        },
+        "format_from_uri": {
+            "description": "",
+            "type": "boolean"
+        },
+        "from_uri_realm": {
+            "description": ""
+        },
+        "hunt_account_id": {
+            "description": ""
+        },
+        "ignore_early_media": {
+            "default": false,
+            "description": "",
+            "type": "boolean"
+        },
+        "outbound_flags": {
+            "description": ""
+        },
+        "ringback": {
+            "description": ""
+        },
+        "timeout": {
+            "description": ""
+        },
+        "to_did": {
+            "description": ""
+        },
+        "use_local_resources": {
+            "default": true,
+            "description": "",
+            "type": "boolean"
+        }
+    },
     "required": true,
     "type": "object"
 }

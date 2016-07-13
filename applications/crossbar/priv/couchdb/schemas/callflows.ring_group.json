@@ -4,6 +4,7 @@
     "description": "Validator for the Ring Group callflow element",
     "properties": {
         "endpoints": {
+            "default": [],
             "description": "Endpoint IDs (devices, users, etc) included in the ring group",
             "items": {
                 "description": "ID of the endpoint (device, user, etc)",
@@ -51,6 +52,9 @@
             "required": true,
             "type": "array"
         },
+        "fail_on_single_reject": {
+            "description": ""
+        },
         "ignore_forward": {
             "default": true,
             "description": "Whether to ring forwarded endpoints",
@@ -58,6 +62,7 @@
             "type": "boolean"
         },
         "repeats": {
+            "default": 1,
             "description": "How many times to retry the ring group",
             "minimum": 1,
             "required": false,

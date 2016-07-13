@@ -2,7 +2,26 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "callflows.temporal_route",
     "description": "Validator for the temporal_route callflow's data object",
-    "properties": {},
+    "properties": {
+        "action": {
+            "description": ""
+        },
+        "interdigit_timeout": {
+            "description": "",
+            "type": "integer"
+        },
+        "rule_set": {
+            "description": ""
+        },
+        "rules": {
+            "default": [],
+            "description": "",
+            "type": "array"
+        },
+        "timezone": {
+            "description": ""
+        }
+    },
     "required": true,
     "type": "object"
 }
