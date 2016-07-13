@@ -50,6 +50,20 @@ output_header('descendant_quantities') ->
 help() ->
     [{<<"descendant_quantities">>
      ,kz_json:from_list([{<<"description">>, <<"List per-month descendant accounts quantities">>}
+                        ,{<<"doc">>, <<"Attempts to create a month-on-month listing of quantities used by descendant accounts.\n"
+                                       "This task returns the following fields:\n"
+                                       "* `account_id`: a sub-account of the creator of this task.\n"
+                                       "* `year`: integral year as 4 characters.\n"
+                                       "* `month`: integral month as 2 characters (left-padded with a zero).\n"
+                                       "* `category`: name of the quantity's category.\n"
+                                       "* `item`: name of the category's item.\n"
+                                       "* `quantity_bom`: integral quantity's value or empty.\n"
+                                       "* `quantity_eom`: integral quantity's value or empty.\n"
+                                       "Note: some beginning-of-month and end-of-month quantities documents may be missing.\n"
+                                       "Note: when both an account's BoM & EoM documents for a given month are missing, no rows are a created for this month.\n"
+                                       "Note: in all other cases the documents' value is printed verbatim: if unset the empty string is returned.\n"
+                                       "E.g.: an integer quantity (such as 1, 10 or 0 (zero)) represents was the system has. If no quantity was found, the empty value is used.\n"
+                                     >>}
                         ])
      }
     ].
