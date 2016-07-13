@@ -10,8 +10,8 @@
 -include_lib("kazoo/include/kz_ast.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 
-%% -define(DEBUG(_Fmt, _Args), 'ok').
--define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
+-define(DEBUG(_Fmt, _Args), 'ok').
+%% -define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
 
 -record(usage, {usages = [] %% places the Data is accessed
                ,data_var_name = 'Data' %% Tracks current var name
@@ -38,9 +38,9 @@ update_schema(Base, Path, Usage) ->
     {'ok', Bin} = file:read_file(Path),
     Schema = kz_json:decode(Bin),
     case augment_schema(ensure_id(Base, Schema), Usage) of
-        Schema -> ?DEBUG("unchanged ~s~n", [Base]); %% no change
+        Schema -> 'ok';
         Augmented ->
-            file:write_file(Path, kz_json:encode(Augmented))
+            'ok' = file:write_file(Path, kz_json:encode(Augmented))
     end.
 
 ensure_id(Base, Schema) ->
@@ -60,6 +60,13 @@ augment_with_usage({_M, F, [_|_]=Ks, _Data, Default}, Schema) ->
 augment_with_usage({M, F, K, Data, Default}, Schema) ->
     augment_with_usage({M, F, [K], Data, Default}, Schema).
 
+maybe_insert_schema('get_first_defined', _Ks, _Default, Schema) ->
+    Schema;
+maybe_insert_schema('get_first_defined_keys', _Ks, _Default, Schema) ->
+    Schema;
+maybe_insert_schema(_F, [[_|_]|_]=_Ks, _Default, Schema) ->
+    ?DEBUG("skipping f ~p keys ~p~n", [_F, _Ks]),
+    Schema;
 maybe_insert_schema(F, [K|Ks], Default, Schema) ->
     Section = kz_json:get_value([<<"properties">>, K], Schema, kz_json:new()),
     Updated = maybe_insert_schema(F, Ks, Default, Section),
@@ -67,11 +74,24 @@ maybe_insert_schema(F, [K|Ks], Default, Schema) ->
 maybe_insert_schema(F, [], Default, Schema) ->
     Updates = props:filter_undefined(
                [{<<"type">>, guess_type(F, Default)}
-               ,{<<"default">>, Default}
-                ,{<<"description">>, <<>>}
+               ,{<<"default">>, check_default(Default)}
+               ,{<<"description">>, <<>>}
                ]
               ),
     kz_json:insert_values(Updates, Schema).
+
+check_default({_M, _F, _A}) ->
+    'undefined';
+check_default([_|_]) ->
+    'undefined';
+check_default('undefined') ->
+    'undefined';
+check_default(D) when is_boolean(D) ->
+    D;
+check_default(A) when is_atom(A) ->
+    'undefined';
+check_default(Default) ->
+    Default.
 
 guess_type('get_value', <<_/binary>>) ->
     <<"string">>;
@@ -83,7 +103,13 @@ guess_type('get_value', I) when is_integer(I) ->
     <<"integer">>;
 guess_type('get_value', F) when is_float(F) ->
     <<"float">>;
+guess_type('get_value', 'undefined') ->
+    'undefined';
+guess_type('get_value', A) when is_atom(A) ->
+    'undefined';
 guess_type('get_value', B) when is_boolean(B) ->
+    <<"boolean">>;
+guess_type('get_binary_boolean', _) ->
     <<"boolean">>;
 guess_type('get_binary_value', _) ->
     <<"string">>;
@@ -103,6 +129,12 @@ guess_type('get_float_value', _) ->
     <<"float">>;
 guess_type('get_json_value', _) ->
     <<"object">>;
+guess_type('find', _) ->
+    'undefined';
+guess_type('get_ne_value', <<_/binary>>) ->
+    <<"string">>;
+guess_type('get_ne_value', 'undefined') ->
+    'undefined';
 guess_type(_F, _D) ->
     ?DEBUG("couldn't guess ~p(~p)~n", [_F, _D]),
     'undefined'.
