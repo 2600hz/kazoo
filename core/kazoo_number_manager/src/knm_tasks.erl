@@ -240,6 +240,7 @@ list(_, []) ->
     'stop';
 list(Props, [{E164,JObj} | E164s]) ->
     Options = [{'auth_by', auth_by('undefined', Props)}
+              ,{'batch_run', 'true'}
               ],
     {'ok', KNMNumber} = knm_number:get(E164, Options),
     PhoneNumber = knm_number:phone_number(KNMNumber),
@@ -273,6 +274,7 @@ import_list(Props, E164, AccountId, State, Carrier
            ,_E911StreetAddress, _E911ExtendedAddress, _E911Locality, _E911Region) ->
     %%TODO: use the optional fields
     Options = [{'auth_by', auth_by('undefined', Props)}
+              ,{'batch_run', 'true'}
               ,{'assign_to', AccountId}
               ,{'state', State}
               ,{'module_name', Carrier}
@@ -282,18 +284,21 @@ import_list(Props, E164, AccountId, State, Carrier
 -spec assign_to(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> task_return().
 assign_to(Props, Number, AccountId, AuthBy) ->
     Options = [{'auth_by', auth_by(AuthBy, Props)}
+              ,{'batch_run', 'true'}
               ],
     handle_result(knm_number:move(Number, AccountId, Options)).
 
 -spec delete(kz_proplist(), ne_binary(), api_binary()) -> task_return().
 delete(Props, Number, AuthBy) ->
     Options = [{'auth_by', auth_by(AuthBy, Props)}
+              ,{'batch_run', 'true'}
               ],
     handle_result(knm_number:release(Number, Options)).
 
 -spec reserve(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> task_return().
 reserve(Props, Number, AccountId, AuthBy) ->
     Options = [{'auth_by', auth_by(AuthBy, Props)}
+              ,{'batch_run', 'true'}
               ,{'assign_to', AccountId}
               ],
     handle_result(knm_number:reserve(Number, Options)).
@@ -301,6 +306,7 @@ reserve(Props, Number, AccountId, AuthBy) ->
 -spec add(kz_proplist(), ne_binary(), ne_binary(), api_binary(), api_binary()) -> task_return().
 add(Props, Number, AccountId, AuthBy, ModuleName0) ->
     Options = [{'auth_by', auth_by(AuthBy, Props)}
+              ,{'batch_run', 'true'}
               ,{'assign_to', AccountId}
               ,{'module_name', ModuleName0}
               ],
