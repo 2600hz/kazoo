@@ -3,54 +3,51 @@
     "_id": "callflows.device",
     "description": "Validator for the device callflow's data object",
     "properties": {
-        "id":{
-            "type":"string",
-            "maxLength":32,
-            "minLength":32,
-            "required":true,
-            "description":"The device ID"
+        "can_call_self": {
+            "default": false,
+            "description": "Permits a user to call from one self-owned device to another",
+            "required": false,
+            "type": "boolean"
         },
-        "fail_on_single_reject":{
-            "type":"boolean",
-            "required":false,
-            "descripption":"Should the call be ended on first REJECT (when multiple endpoints are being tried"
+        "can_text_self": {
+            "default": false,
+            "description": "Permits a user to send a text from one self-owned device to another",
+            "required": false,
+            "type": "boolean"
         },
-        "timeout":{
-            "type":"integer",
-            "required":false,
-            "description":"How long, in seconds, to ring the endpoint(s)"
+        "fail_on_single_reject": {
+            "descripption": "Should the call be ended on first REJECT (when multiple endpoints are being tried",
+            "required": false,
+            "type": "boolean"
         },
-        "can_call_self":{
-            "type":"boolean",
-            "required":false,
-            "default":false,
-            "description":"Permits a user to call from one self-owned device to another"
+        "id": {
+            "description": "The device ID",
+            "maxLength": 32,
+            "minLength": 32,
+            "required": true,
+            "type": "string"
         },
-        "can_text_self":{
-            "type":"boolean",
-            "required":false,
-            "default":false,
-            "description":"Permits a user to send a text from one self-owned device to another"
+        "skype": {
+            "description": "Skype configuration options",
+            "properties": {},
+            "required": false,
+            "type": "object"
         },
-        "suppress_clid":{
-            "type":"boolean",
-            "required":false,
-            "description":"If true, does not set Caller ID attributes on the endpoint"
+        "static_invite": {
+            "description": "Override SIP To header with this value",
+            "required": false,
+            "type": "string"
         },
-        "skype":{
-            "type":"object",
-            "required":false,
-            "description":"Skype configuration options",
-            "properties":{
-            }
+        "suppress_clid": {
+            "description": "If true, does not set Caller ID attributes on the endpoint",
+            "required": false,
+            "type": "boolean"
         },
-        "static_invite":{
-            "type":"string",
-            "required":false,
-            "description":"Override SIP To header with this value"
-        },
-
-
+        "timeout": {
+            "description": "How long, in seconds, to ring the endpoint(s)",
+            "required": false,
+            "type": "integer"
+        }
     },
     "required": true,
     "type": "object"
