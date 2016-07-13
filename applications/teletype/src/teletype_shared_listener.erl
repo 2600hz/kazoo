@@ -77,6 +77,9 @@
                      ,{{'teletype_low_balance', 'handle_low_balance'}
                        ,[{<<"notification">>, <<"low_balance">>}]
                       }
+                     ,{{'teletype_first_occurrence', 'first_occurrence'}
+                       ,[{<<"notification">>, <<"first_occurrence">>}]
+                      }
                      ,{'teletype_port_request'
                        ,[{<<"notification">>, <<"port_request">>}]
                       }
@@ -138,6 +141,7 @@
                       ,'webhook_disabled'
                       ,'customer_update'
                       ,'service_added'
+                      ,'first_occurrence'
                       %%,'skel'
                      ]).
 
