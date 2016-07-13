@@ -57,15 +57,14 @@ augment_schema(Schema, Usage) ->
 
 augment_with_usage({_M, F, [_|_]=Ks, _Data, Default}, Schema) ->
     maybe_insert_schema(F, Ks, Default, Schema);
+augment_with_usage({_M, _F, K, _Data, _Default}, Schema) when is_atom(K) ->
+    Schema;
 augment_with_usage({M, F, K, Data, Default}, Schema) ->
     augment_with_usage({M, F, [K], Data, Default}, Schema).
 
 maybe_insert_schema('get_first_defined', _Ks, _Default, Schema) ->
     Schema;
 maybe_insert_schema('get_first_defined_keys', _Ks, _Default, Schema) ->
-    Schema;
-maybe_insert_schema(_F, [[_|_]|_]=_Ks, _Default, Schema) ->
-    ?DEBUG("skipping f ~p keys ~p~n", [_F, _Ks]),
     Schema;
 maybe_insert_schema(F, [K|Ks], Default, Schema) ->
     Section = kz_json:get_value([<<"properties">>, K], Schema, kz_json:new()),
@@ -182,7 +181,9 @@ process(Module) when is_atom(Module) ->
         'false' -> 'undefined';
         'true' ->
             io:format("."),
-            process_action(Module)
+            U = process_action(Module),
+            ?DEBUG("  usage for ~p: ~p~n", [Module, U]),
+            U
     end.
 
 process_action(Module) ->
