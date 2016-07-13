@@ -104,8 +104,7 @@ attempt_endpoints(Endpoints, Data, Call) ->
 
 -spec get_endpoints(kz_json:object(), kapps_call:call()) -> kz_json:objects().
 get_endpoints(Data, Call) ->
-    Builders = start_builders(Data, Call),
-    receive_endpoints(Builders).
+    receive_endpoints(start_builders(Data, Call)).
 
 -spec receive_endpoints(pids()) -> kz_json:objects().
 receive_endpoints(Builders) ->
@@ -135,7 +134,13 @@ start_builder(EndpointId, Member, Call) ->
       end
      ).
 
--spec resolve_endpoint_ids(kz_json:object(), kapps_call:call()) -> kz_proplist().
+-type endpoint() :: {ne_binary(), kz_json:object()}.
+-type endpoints() :: [endpoint()].
+
+-type weighted_endpoint() :: {integer(), {ne_binary(), kz_json:object()}}.
+-type weighted_endpoints() :: [weighted_endpoint()].
+
+-spec resolve_endpoint_ids(kz_json:object(), kapps_call:call()) -> endpoints().
 resolve_endpoint_ids(Data, Call) ->
     Members = kz_json:get_value(<<"endpoints">>, Data, []),
     ResolvedEndpoints = resolve_endpoint_ids(Members, [], Data, Call),
@@ -148,11 +153,11 @@ resolve_endpoint_ids(Data, Call) ->
     Strategy = strategy(Data),
     order_endpoints(Strategy, FilteredEndpoints).
 
--spec order_endpoints(ne_binary(), kz_proplist()) -> kz_proplist().
+-spec order_endpoints(ne_binary(), weighted_endpoints()) -> endpoints().
 order_endpoints(Method, Endpoints)
   when Method =:= ?DIAL_METHOD_SIMUL
        orelse Method =:= ?DIAL_METHOD_SINGLE ->
-    [{Id, Endpoint} || {_, {Id, Endpoint}} <- Endpoints];
+    [{Id, Endpoint} || {_Weight, {Id, Endpoint}} <- Endpoints];
 order_endpoints(<<"weighted_random">>, Endpoints) ->
     weighted_random_sort(Endpoints).
 
@@ -280,30 +285,30 @@ create_group_member(Key, Endpoint, GroupWeight, Member) ->
                       ,Member
      ).
 
--spec weighted_random_sort(kz_proplist()) -> kz_json:objects().
+-spec weighted_random_sort(weighted_endpoints()) -> endpoints().
 weighted_random_sort(Endpoints) ->
-    _ = rand:seed(exsplus),
+    _ = rand:seed('exsplus'),
     WeightSortedEndpoints = lists:sort(Endpoints),
     weighted_random_sort(WeightSortedEndpoints, []).
 
--spec set_intervals_on_weight(kz_proplist(), kz_proplist(), integer()) ->
-                                     kz_proplist().
+-spec set_intervals_on_weight(weighted_endpoints(), weighted_endpoints(), integer()) ->
+                                     weighted_endpoints().
 set_intervals_on_weight([{Weight, _} =E | Tail], Acc, Sum) ->
     set_intervals_on_weight(Tail, [{Weight + Sum, E} | Acc], Sum + Weight);
 set_intervals_on_weight([], Acc, _Sum) ->
     Acc.
 
--spec weighted_random_sort(kz_proplist(), kz_proplists()) -> kz_proplists().
+-spec weighted_random_sort(weighted_endpoints(), endpoints()) -> endpoints().
 weighted_random_sort([_ | _] = ListWeight, Acc) ->
     [{Sum, _} | _] = ListInterval = set_intervals_on_weight(ListWeight, [], 0),
     Pivot = random_integer(Sum),
-    {_, {_, Endpoint} = Element} = weighted_random_get_element(ListInterval, Pivot),
+    {_W, {_Id, _Endpoint} = Element} = weighted_random_get_element(ListInterval, Pivot),
     ListNew = lists:delete(Element, ListWeight),
-    weighted_random_sort(ListNew, [Endpoint | Acc]);
+    weighted_random_sort(ListNew, [Element | Acc]);
 weighted_random_sort([], Acc) ->
     Acc.
 
--spec weighted_random_get_element([{integer(), {integer(), kz_proplist()}},...], integer()) -> {integer(), {integer(), kz_proplist()}}.
+-spec weighted_random_get_element(weighted_endpoints(), integer()) -> weighted_endpoint().
 weighted_random_get_element(List, Pivot) ->
     {_, {Weight, _}} = case [E || E={X, _} <- List, X =< Pivot] of
                            [] -> lists:last(List);
