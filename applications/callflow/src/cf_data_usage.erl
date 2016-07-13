@@ -10,8 +10,8 @@
 -include_lib("kazoo/include/kz_ast.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 
--define(DEBUG(_Fmt, _Args), 'ok').
-%% -define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
+%% -define(DEBUG(_Fmt, _Args), 'ok').
+-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
 
 -record(usage, {usages = [] %% places the Data is accessed
                ,data_var_name = 'Data' %% Tracks current var name
@@ -32,15 +32,24 @@ to_schema_doc(M, Usage) ->
     <<"cf_", Base/binary>> = kz_util:to_binary(M),
     Schema = schema_path(Base),
     ensure_file_exists(Schema),
-    update_schema(Schema, Usage).
+    update_schema(Base, Schema, Usage).
 
-update_schema(Path, Usage) ->
+update_schema(Base, Path, Usage) ->
     {'ok', Bin} = file:read_file(Path),
     Schema = kz_json:decode(Bin),
-    case augment_schema(Schema, Usage) of
-        Schema -> 'ok'; %% no change
+    case augment_schema(ensure_id(Base, Schema), Usage) of
+        Schema -> ?DEBUG("unchanged ~s~n", [Base]); %% no change
         Augmented ->
             file:write_file(Path, kz_json:encode(Augmented))
+    end.
+
+ensure_id(Base, Schema) ->
+    ID = <<"callflows.", Base/binary>>,
+    case kz_doc:id(Schema) of
+        ID -> Schema;
+        _Id ->
+            ?DEBUG("updating _id from ~p to ~p~n", [_Id, ID]),
+            kz_json:set_value(<<"_id">>, ID, Schema)
     end.
 
 augment_schema(Schema, Usage) ->
@@ -59,6 +68,7 @@ maybe_insert_schema(F, [], Default, Schema) ->
     Updates = props:filter_undefined(
                [{<<"type">>, guess_type(F, Default)}
                ,{<<"default">>, Default}
+                ,{<<"description">>, <<>>}
                ]
               ),
     kz_json:insert_values(Updates, Schema).
@@ -89,8 +99,10 @@ guess_type('get_integer_value', _) ->
     <<"integer">>;
 guess_type('get_float_value', _) ->
     <<"float">>;
+guess_type('get_json_value', _) ->
+    <<"object">>;
 guess_type(_F, _D) ->
-    io:format("couldn't guess ~p(~p)~n", [_F, _D]),
+    ?DEBUG("couldn't guess ~p(~p)~n", [_F, _D]),
     'undefined'.
 
 schema_path(Base) ->
@@ -108,9 +120,9 @@ ensure_file_exists(Path) ->
 
 create_schema(Path) ->
     Skel = schema_path(<<"skel">>),
-    io:format("copying ~s to ~s~n", [Skel, Path]),
+    ?DEBUG("copying ~s to ~s~n", [Skel, Path]),
     {'ok', _} = file:copy(Skel, Path),
-    io:format("  copied skel into ~s~n", [Path]).
+    ?DEBUG("  copied skel into ~s~n", [Path]).
 
 process() ->
     {'ok', Data} = application:get_all_key('callflow'),
