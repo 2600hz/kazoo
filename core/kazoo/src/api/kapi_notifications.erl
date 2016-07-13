@@ -256,8 +256,8 @@
 -define(FIRST_OCCURRENCE_HEADERS, [<<"Account-ID">>, <<"Occurrence">>]).
 -define(OPTIONAL_FIRST_OCCURRENCE_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(FIRST_OCCURRENCE_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                          ,{<<"Event-Name">>, <<"first_occurrence">>}
-                         ]).
+                                 ,{<<"Event-Name">>, <<"first_occurrence">>}
+                                 ]).
 -define(FIRST_OCCURRENCE_TYPES, []).
 
 %% Notify Password Recovery

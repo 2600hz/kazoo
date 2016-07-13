@@ -117,7 +117,7 @@ abnormal_hangup(_CDR, _Account) ->
 -spec first_call(ne_binary()) -> 'ok'.
 first_call(AccountId) ->
     Req = [{<<"Account-ID">>, AccountId}
-           ,{<<"Occurrence">>, <<"call">>}
+          ,{<<"Occurrence">>, <<"call">>}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(Req, fun kapi_notifications:publish_first_occurrence/1).
@@ -125,7 +125,7 @@ first_call(AccountId) ->
 -spec first_registration(ne_binary()) -> 'ok'.
 first_registration(AccountId) ->
     Req = [{<<"Account-ID">>, AccountId}
-           ,{<<"Occurrence">>, <<"registration">>}
+          ,{<<"Occurrence">>, <<"registration">>}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(Req, fun kapi_notifications:publish_first_occurrence/1).

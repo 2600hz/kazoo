@@ -16,7 +16,6 @@
         ,delete_child/1
         ,delete_child/2
         ]).
-% -export([workers/0, worker/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -100,6 +99,6 @@ delete_child_after_timeout(Id, Timeout) ->
     fun() ->
         receive
         after Timeout ->
-                  delete_child(Id)
+            delete_child(Id)
         end
     end.

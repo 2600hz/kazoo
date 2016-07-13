@@ -9,7 +9,7 @@
 -module(teletype_first_occurrence).
 
 -export([init/0
-         ,first_occurrence/2
+        ,first_occurrence/2
         ]).
 
 -include("teletype.hrl").
@@ -18,10 +18,10 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-        ,kz_json:from_list(
-           [?MACRO_VALUE(<<"event">>, <<"event">>, <<"Event">>, <<"Event">>)
+       ,kz_json:from_list(
+          [?MACRO_VALUE(<<"event">>, <<"event">>, <<"Event">>, <<"Event">>)
            | ?USER_MACROS ++ ?ACCOUNT_MACROS ++ ?SYSTEM_MACROS
-           ])
+          ])
        ).
 
 -define(TEMPLATE_TEXT, <<"The first {{event}} was detected on an account.\n\nAccount\nAccount ID: {{account.id}}\nAccount Name: {{account.name}}\nAccount Realm: {{account.realm}}\n\n{% if admin %}Admin\nName: {{admin.first_name}} {{admin.last_name}}\nEmail: {{admin.email}}\nTimezone: {{admin.timezone}}\n\n{% endif %}\n\nSent from {{system.host}}">>).
@@ -40,16 +40,16 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                           ,{'text', ?TEMPLATE_TEXT}
-                                           ,{'html', ?TEMPLATE_HTML}
-                                           ,{'subject', ?TEMPLATE_SUBJECT}
-                                           ,{'category', ?TEMPLATE_CATEGORY}
-                                           ,{'friendly_name', ?TEMPLATE_NAME}
-                                           ,{'to', ?TEMPLATE_TO}
-                                           ,{'from', ?TEMPLATE_FROM}
-                                           ,{'cc', ?TEMPLATE_CC}
-                                           ,{'bcc', ?TEMPLATE_BCC}
-                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                          ,{'text', ?TEMPLATE_TEXT}
+                                          ,{'html', ?TEMPLATE_HTML}
+                                          ,{'subject', ?TEMPLATE_SUBJECT}
+                                          ,{'category', ?TEMPLATE_CATEGORY}
+                                          ,{'friendly_name', ?TEMPLATE_NAME}
+                                          ,{'to', ?TEMPLATE_TO}
+                                          ,{'from', ?TEMPLATE_FROM}
+                                          ,{'cc', ?TEMPLATE_CC}
+                                          ,{'bcc', ?TEMPLATE_BCC}
+                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
 -spec first_occurrence(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -83,7 +83,7 @@ handle_req(DataJObj) ->
     Subject = teletype_util:render_subject(
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
                 ,Macros
-              ),
+               ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
