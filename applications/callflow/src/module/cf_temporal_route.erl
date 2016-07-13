@@ -13,6 +13,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_temporal_route).
 
+-behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 -include("cf_temporal_route.hrl").
 
@@ -220,25 +222,25 @@ date_difference(Date1, Date2) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_temporal_route(kz_json:object(), kapps_call:call()) -> temporal().
-get_temporal_route(JObj, Call) ->
+get_temporal_route(Data, Call) ->
     lager:info("loading temporal route"),
-    Keys = case kz_json:get_value(<<"rules">>, JObj, []) of
+    Keys = case kz_json:get_value(<<"rules">>, Data, []) of
                [] ->
                    {'branch_keys', Rules} = cf_exe:get_branch_keys(Call),
                    Rules;
                Rules -> Rules
            end,
     {IsRuleSet, Routes} =
-        case kz_json:get_value(<<"rule_set">>, JObj) of
+        case kz_json:get_value(<<"rule_set">>, Data) of
             'undefined' -> {'false', Keys};
             RuleSet -> {'true', get_rule_set(RuleSet, Call)}
         end,
     load_current_time(#temporal{routes = Routes
                                ,rule_set = IsRuleSet
-                               ,timezone = cf_util:get_timezone(JObj, Call)
+                               ,timezone = cf_util:get_timezone(Data, Call)
                                ,interdigit_timeout =
                                     kz_json:get_integer_value(<<"interdigit_timeout">>
-                                                             ,JObj
+                                                             ,Data
                                                              ,kapps_call_command:default_interdigit_timeout()
                                                              )
                                }).
