@@ -40,6 +40,7 @@
          ,region/1 ,set_region/2
          ,auth_by/1 ,set_auth_by/2, is_authorized/1
          ,dry_run/1 ,set_dry_run/2
+         ,batch_run/1, set_batch_run/2
          ,locality/1 ,set_locality/2
          ,doc/1, set_doc/2, update_doc/2
         ]).
@@ -64,6 +65,7 @@
                            ,region :: ne_binary()
                            ,auth_by :: api_binary()
                            ,dry_run = 'false' :: boolean()
+                           ,batch_run = 'false' :: boolean()
                            ,locality :: kz_json:object()
                            ,doc = kz_json:new() :: kz_json:object()
                           }).
@@ -98,6 +100,7 @@ new(DID, Options) ->
                 ,{fun set_module_name/2, knm_number_options:module_name(Options)}
                 ,{fun set_auth_by/2, knm_number_options:auth_by(Options)}
                 ,{fun set_dry_run/2, knm_number_options:dry_run(Options)}
+                ,{fun set_batch_run/2, knm_number_options:batch_run(Options)}
                 ,{fun set_doc/2, knm_number_options:public_fields(Options)}
                 ]),
     PhoneNumber.
@@ -638,6 +641,18 @@ set_dry_run(N, DryRun) when is_boolean(DryRun) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec batch_run(knm_phone_number()) -> boolean().
+batch_run(#knm_phone_number{batch_run=BatchRun}) -> BatchRun.
+
+-spec set_batch_run(knm_phone_number(), boolean()) -> knm_phone_number().
+set_batch_run(N, BatchRun) when is_boolean(BatchRun) ->
+    N#knm_phone_number{batch_run=BatchRun}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec locality(knm_phone_number()) -> kz_json:object().
 locality(#knm_phone_number{locality=Locality}) -> Locality.
 
@@ -690,8 +705,9 @@ list_attachments(PhoneNumber, AuthBy) ->
 -spec set_options(knm_phone_number(), knm_number_options:options()) -> knm_phone_number().
 set_options(Number, Options) when is_list(Options) ->
     Updates = [{fun set_assign_to/2, knm_number_options:assign_to(Options)}
-               %% See knm_number_options:default/0 for these 2.
+               %% See knm_number_options:default/0 for these 3.
               ,{fun set_dry_run/2, knm_number_options:dry_run(Options, 'false')}
+              ,{fun set_batch_run/2, knm_number_options:batch_run(Options, 'false')}
               ,{fun set_auth_by/2, knm_number_options:auth_by(Options, ?KNM_DEFAULT_AUTH_BY)}
               ],
     {'ok', PhoneNumber} = setters(Number, Updates),
