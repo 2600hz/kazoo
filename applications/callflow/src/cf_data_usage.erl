@@ -191,11 +191,11 @@ process_mfa(#usage{data_var_name=DataName
            ) ->
     case arg_list_has_data_var(DataName, Aliases, L) of
         'undefined' -> Acc;
-        DataName ->
+        {DataName, _T} ->
             Acc#usage{usages=
                           maybe_add_usage(Usages, {M, F, arg_to_key(Key), DataName, arg_to_key(Default)})
                      };
-        Alias ->
+        {Alias, _T} ->
             Acc#usage{usages=
                           maybe_add_usage(Usages, {M, F, arg_to_key(Key), Alias, arg_to_key(Default)})
                      }
@@ -206,36 +206,41 @@ process_mfa(#usage{data_var_name=DataName
                   }=Acc
            ,M, F, As) ->
     case arg_list_has_data_var(DataName, Aliases, As) of
-        DataName ->
+        {DataName, T} ->
             ?DEBUG("  found ~p in args of ~p:~p~n", [DataName, M, F]),
-            process_mfa_call(Acc, M, F, As);
+            Acc1 = process_mfa_call(Acc, M, F, As),
+            process_args(Acc1, T);
         'undefined' ->
             ?DEBUG("  no ~p in arg list, processing args directly~n", [DataName]),
-            lists:foldl(fun(Arg, UsageAcc) ->
-                                process_expression(UsageAcc, Arg)
-                        end
-                       ,Acc
-                       ,As
-                       );
-        Alias ->
+            process_args(Acc, As);
+        {Alias, T} ->
             ?DEBUG("  processing call with alias ~p: ~p:~p(~p)~n", [Alias, M, F, As]),
-            process_mfa_call(Acc#usage{data_var_name=Alias}, M, F, As)
+            Acc1 = process_mfa_call(Acc#usage{data_var_name=Alias}, M, F, As),
+            process_args(Acc1, T)
     end.
 
-arg_list_has_data_var(DataName, _Aliases, ?LIST(?VAR(DataName), _Tail)) ->
-    DataName;
+process_args(Acc, As) ->
+    lists:foldl(fun(Arg, UsageAcc) ->
+                        process_expression(UsageAcc, Arg)
+                end
+               ,Acc
+               ,As
+               ).
+
+arg_list_has_data_var(DataName, _Aliases, ?LIST(?VAR(DataName), Tail)) ->
+    {DataName, Tail};
 arg_list_has_data_var(_DataName, _Aliases, ?EMPTY_LIST) ->
     'undefined';
 arg_list_has_data_var(DataName, Aliases, ?LIST(?VAR(Name), Tail)) ->
     case lists:member(Name, Aliases) of
-        'true' -> Name;
+        'true' -> {Name, Tail};
         'false' -> arg_list_has_data_var(DataName, Aliases, Tail)
     end;
-arg_list_has_data_var(DataName, _Aliases, [?VAR(DataName)|_]) ->
-    DataName;
+arg_list_has_data_var(DataName, _Aliases, [?VAR(DataName)|T]) ->
+    {DataName, T};
 arg_list_has_data_var(DataName, Aliases, [?VAR(Name)|T]) ->
     case lists:member(Name, Aliases) of
-        'true' -> Name;
+        'true' -> {Name, T};
         'false' -> arg_list_has_data_var(DataName, Aliases, T)
     end;
 arg_list_has_data_var(_DataName, _Aliases, []) ->
@@ -247,9 +252,21 @@ arg_list_has_data_var(DataName, Aliases, [?MOD_FUN_ARGS('kz_json'
                                           | T
                                          ]) ->
     case arg_list_has_data_var(DataName, Aliases, Args) of
-        DataName -> ?DEBUG("  sublist had ~p~n", [DataName]), DataName;
+        {DataName, _} -> ?DEBUG("  sublist had ~p~n", [DataName]), {DataName, T};
         'undefined' -> arg_list_has_data_var(DataName, Aliases, T);
-        Alias -> ?DEBUG("  sublist had alias ~p~n", [Alias]), Alias
+        {Alias, _} -> ?DEBUG("  sublist had alias ~p~n", [Alias]), {Alias, T}
+    end;
+arg_list_has_data_var(DataName, Aliases, [?MOD_FUN_ARGS(_M, _F, Args)|T]=As) ->
+    case arg_list_has_data_var(DataName, Aliases, Args) of
+        {DataName, _} -> ?DEBUG("  sub-fun had ~p~n", [DataName]), {DataName, As};
+        'undefined' -> arg_list_has_data_var(DataName, Aliases, T);
+        {Alias, _} -> ?DEBUG("  sub-fun had alias ~p~n", [Alias]), {Alias, As}
+    end;
+arg_list_has_data_var(DataName, Aliases, [?FUN_ARGS(_F, Args)|T]=As) ->
+    case arg_list_has_data_var(DataName, Aliases, Args) of
+        {DataName, _} -> ?DEBUG("  sub-fun had ~p~n", [DataName]), {DataName, As};
+        'undefined' -> arg_list_has_data_var(DataName, Aliases, T);
+        {Alias, _} -> ?DEBUG("  sub-fun had alias ~p~n", [Alias]), {Alias, As}
     end;
 arg_list_has_data_var(DataName, Aliases, [_H|T]) ->
     ?DEBUG("  ignoring arg ~p~n", [_H]),
