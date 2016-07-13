@@ -2,7 +2,11 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "callflows.menu",
     "description": "Validator for the menu callflow's data object",
-    "properties": {},
+    "properties": {
+        "interdigit_timeout": {
+            "description": ""
+        }
+    },
     "required": true,
     "type": "object"
 }

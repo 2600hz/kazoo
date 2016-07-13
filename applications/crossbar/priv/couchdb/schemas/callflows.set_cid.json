@@ -2,7 +2,18 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "callflows.set_cid",
     "description": "Validator for the set_cid callflow's data object",
-    "properties": {},
+    "properties": {
+        "caller_id_name": {
+            "default": "",
+            "description": "",
+            "type": "string"
+        },
+        "caller_id_number": {
+            "default": "",
+            "description": "",
+            "type": "string"
+        }
+    },
     "required": true,
     "type": "object"
 }

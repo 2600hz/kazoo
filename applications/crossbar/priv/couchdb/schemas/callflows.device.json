@@ -15,6 +15,11 @@
             "required": false,
             "type": "boolean"
         },
+        "delay": {
+            "default": 0,
+            "description": "",
+            "type": "integer"
+        },
         "fail_on_single_reject": {
             "descripption": "Should the call be ended on first REJECT (when multiple endpoints are being tried",
             "required": false,
@@ -33,6 +38,9 @@
             "required": false,
             "type": "object"
         },
+        "source": {
+            "description": ""
+        },
         "static_invite": {
             "description": "Override SIP To header with this value",
             "required": false,
@@ -44,6 +52,7 @@
             "type": "boolean"
         },
         "timeout": {
+            "default": 0,
             "description": "How long, in seconds, to ring the endpoint(s)",
             "required": false,
             "type": "integer"

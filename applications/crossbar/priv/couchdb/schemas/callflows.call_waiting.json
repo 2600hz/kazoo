@@ -2,7 +2,18 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "callflows.call_waiting",
     "description": "Validator for the call_waiting callflow's data object",
-    "properties": {},
+    "properties": {
+        "action": {
+            "default": "toggle",
+            "description": "",
+            "type": "string"
+        },
+        "scope": {
+            "default": "device",
+            "description": "",
+            "type": "string"
+        }
+    },
     "required": true,
     "type": "object"
 }

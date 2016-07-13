@@ -2,7 +2,11 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "callflows.group_pickup_feature",
     "description": "Validator for the group_pickup_feature callflow's data object",
-    "properties": {},
+    "properties": {
+        "type": {
+            "description": ""
+        }
+    },
     "required": true,
     "type": "object"
 }

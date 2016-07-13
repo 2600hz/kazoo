@@ -2,7 +2,20 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "callflows.intercept_feature",
     "description": "Validator for the intercept_feature callflow's data object",
-    "properties": {},
+    "properties": {
+        "approved_device_id": {
+            "description": ""
+        },
+        "approved_group_id": {
+            "description": ""
+        },
+        "approved_user_id": {
+            "description": ""
+        },
+        "type": {
+            "description": ""
+        }
+    },
     "required": true,
     "type": "object"
 }

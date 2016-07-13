@@ -14,6 +14,11 @@
             "required": false,
             "type": "string"
         },
+        "callerid_match_login": {
+            "default": false,
+            "description": "",
+            "type": "boolean"
+        },
         "id": {
             "description": "The ID of the voicemail box",
             "maxLength": 32,
@@ -35,6 +40,11 @@
             "name": "Max Message Lenght",
             "required": false,
             "type": "integer"
+        },
+        "single_mailbox_login": {
+            "default": false,
+            "description": "",
+            "type": "boolean"
         }
     },
     "required": true,

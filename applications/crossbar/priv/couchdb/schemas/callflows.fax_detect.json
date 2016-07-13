@@ -2,7 +2,12 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "callflows.fax_detect",
     "description": "Validator for the fax_detect callflow's data object",
-    "properties": {},
+    "properties": {
+        "duration": {
+            "description": "",
+            "type": "integer"
+        }
+    },
     "required": true,
     "type": "object"
 }
