@@ -552,7 +552,7 @@ save_report(Context) ->
     JObj = kz_json:encode(cb_context:resp_data(Context)),
     Report = kz_util:rand_hex_binary(16),
     File = <<"/tmp/", Report/binary, ".json">>,
-    file:write_file(File, JObj),
+    'ok' = file:write_file(File, JObj),
     Args = [cb_context:api_version(Context)
            ,cb_context:account_id(Context)
            ,?MATCH_REPORT_PREFIX(Report)

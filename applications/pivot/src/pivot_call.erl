@@ -502,7 +502,7 @@ process_resp(RequesterQ, Call, CT, RespBody) ->
             {'stop', Call1};
         {'error', Call1, Errors} ->
             lager:error("validation errors in response, FAIL"),
-            debug_error(Call1, Errors, RespBody),
+            _ = debug_error(Call1, Errors, RespBody),
             {'stop', Call1}
     catch
         'throw':{'json', Msg, Before, After} ->
@@ -567,7 +567,7 @@ maybe_debug_resp('true', Call, StatusCode, RespHeaders, RespBody) ->
                 ]
                ).
 
--spec debug_error(kapps_call:call(), [jesse_error:error_reason()], iolist()) -> 'ok'.
+-spec debug_error(kapps_call:call(), [jesse_error:error_reason()], binary()) -> 'ok'.
 debug_error(Call, Errors, RespBody) ->
     JObj = lists:foldl(fun error_to_jobj/2, kz_json:new(), Errors),
     store_debug(Call

@@ -23,7 +23,7 @@
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    handle_webhook(Data, Call),
+    _ = handle_webhook(Data, Call),
     cf_exe:continue(Call).
 
 -spec handle_webhook(kz_json:object(), kapps_call:call()) -> 'ok' | {'error', any()}.
@@ -36,7 +36,7 @@ handle_webhook(Data, Call) ->
              ,{<<"Data">>, CallJObj}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    kapps_util:amqp_pool_send(JObj, fun kapi_notifications:publish_webhook/1).
+    kz_amqp_worker:send(JObj, fun kapi_notifications:publish_webhook/1).
 
 -spec format_call_data(kapps_call:call()) -> kz_json:object().
 format_call_data(Call) ->
