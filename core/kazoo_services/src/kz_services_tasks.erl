@@ -233,32 +233,32 @@ eom_1() ->
 
 rows_for_missing_eom_test() ->
     AccountId = <<"6b71cb72c876b5b1396a335f8f8a2594">>,
-    YYYYMM = <<"201504">>,
+    <<YYYY:4/binary, MM:2/binary>> = <<"201504">>,
     Expected =
-        [[AccountId, YYYYMM, <<"branding">>, <<"whitelabel">>, <<"0">>, 'undefined']
-        ,[AccountId, YYYYMM, <<"ips">>, <<"dedicated">>, <<"0">>, 'undefined']
+        [[AccountId, YYYY, MM, <<"branding">>, <<"whitelabel">>, <<"0">>, 'undefined']
+        ,[AccountId, YYYY, MM, <<"ips">>, <<"dedicated">>, <<"0">>, 'undefined']
         ],
-    ?assertEqual(Expected, rows_for_quantities(AccountId, YYYYMM, bom_2(), kz_json:new())).
+    ?assertEqual(Expected, rows_for_quantities(AccountId, YYYY, MM, bom_2(), kz_json:new())).
 
 rows_for_missing_bom_test() ->
     AccountId = <<"6b71cb72c876b5b1396a335f8f8a2594">>,
-    YYYYMM = <<"201504">>,
+    <<YYYY:4/binary, MM:2/binary>> = <<"201504">>,
     Expected =
-        [[AccountId, YYYYMM, <<"branding">>, <<"whitelabel">>, 'undefined', <<"0">>]
-        ,[AccountId, YYYYMM, <<"ips">>, <<"dedicated">>, 'undefined', <<"0">>]
+        [[AccountId, YYYY, MM, <<"branding">>, <<"whitelabel">>, 'undefined', <<"0">>]
+        ,[AccountId, YYYY, MM, <<"ips">>, <<"dedicated">>, 'undefined', <<"0">>]
         ],
-    ?assertEqual(Expected, rows_for_quantities(AccountId, YYYYMM, kz_json:new(), bom_2())).
+    ?assertEqual(Expected, rows_for_quantities(AccountId, YYYY, MM, kz_json:new(), bom_2())).
 
 rows_for_bom_and_eom_test() ->
     AccountId = <<"6b71cb72c876b5b1396a335f8f8a2594">>,
-    YYYYMM = <<"201506">>,
+    <<YYYY:4/binary, MM:2/binary>> = <<"201606">>,
     Expected =
-        [[AccountId, YYYYMM, <<"branding">>, <<"whitelabel">>, <<"0">>, <<"0">>]
-        ,[AccountId, YYYYMM, <<"ips">>, <<"dedicated">>, <<"0">>, <<"0">>]
-        ,[AccountId, YYYYMM, <<"number_services">>, <<"local">>, 'undefined', <<"130">>]
-        ,[AccountId, YYYYMM, <<"phone_numbers">>, <<"did_us">>, <<"1">>, <<"1">>]
+        [[AccountId, YYYY, MM, <<"branding">>, <<"whitelabel">>, <<"0">>, <<"0">>]
+        ,[AccountId, YYYY, MM, <<"ips">>, <<"dedicated">>, <<"0">>, <<"0">>]
+        ,[AccountId, YYYY, MM, <<"number_services">>, <<"local">>, 'undefined', <<"130">>]
+        ,[AccountId, YYYY, MM, <<"phone_numbers">>, <<"did_us">>, <<"1">>, <<"1">>]
         ],
-    ?assertEqual(Expected, rows_for_quantities(AccountId, YYYYMM, bom_1(), eom_1())).
+    ?assertEqual(Expected, rows_for_quantities(AccountId, YYYY, MM, bom_1(), eom_1())).
 
 -endif.
 
