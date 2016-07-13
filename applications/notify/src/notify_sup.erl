@@ -24,7 +24,6 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER('notify_listener')
-                  ,?WORKER('notify_account_crawler')
                   ]).
 
 %% ===================================================================

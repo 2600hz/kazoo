@@ -1,18 +1,20 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2016, 2600Hz
 %%% @doc
-%%% Craws accounts and triggers 'first' registration and call emails
+%%% Notification for 'first' registration and call
 %%% @end
 %%% @contributors
 %%%   Karl Anderson <karl@2600hz.org>
+%%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(notify_first_occurrence).
 
 -include("notify.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
 
--export([init/0]).
--export([send/2]).
+-export([init/0, send/2
+        ,handle_req/2
+        ]).
 
 -define(SERVER, ?MODULE).
 
@@ -37,12 +39,21 @@ init() ->
     {ok, _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
+-spec handle_req(kz_json:object(), kz_proplist()) -> any().
+handle_req(JObj, _Props) ->
+    'true' = kapi_notifications:first_occurrence_v(JObj),
+    {'ok', Account} = kz_account:fetch(kz_json:get_value(<<"Account-ID">>, JObj)),
+    send(kz_json:get_integer_value(<<"Occurrence">>, JObj)
+        ,Account
+        ).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% Send an email notifying that a first occurrence event has happened.
 %% @end
 %%--------------------------------------------------------------------
+-spec send(ne_binary(), kz_json:object()) -> any().
 send(Occurrence, Account) ->
     lager:debug("creating first occurrence notice"),
 

@@ -21,14 +21,17 @@
          ,code_change/3
         ]).
 
+-export([load_schedules/0]).
+
 -include("ananke.hrl").
 
 -record(state, {}).
 -type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
-%% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'notifications', [{'restrict_to', ['voicemail_saved']}]}]).
+
+-define(BINDINGS, [{'notifications', [{'restrict_to', ['voicemail_saved']}]}
+                  ]).
 
 -define(RESPONDERS, [{'ananke_vm_callback', [{<<"notification">>, <<"voicemail_saved">>}]}
                     ]).
@@ -76,10 +79,10 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:spawn(fun load_schedules/0),
     %% we should wait about 7-10 seconds before gen_leader syncronization
     %% and leader election
     %% after gen_leader syncronization this task will be scheduled only once
+    _ = kz_util:spawn(fun load_schedules/0),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -256,6 +259,8 @@ action_fun(<<"check_voicemail">>, JObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, JObj),
     VmboxId = kz_json:get_value(<<"vmbox_id">>, JObj),
     {'ananke_vm_callback', 'check', [AccountId, VmboxId]};
+action_fun(<<"account_crawl">>, _) ->
+    {'ananke_account_crawler', 'start_task', []};
 action_fun(Type, _JObj) ->
     {fun unknown_type/1, [Type]}.
 

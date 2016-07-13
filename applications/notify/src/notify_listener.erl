@@ -43,6 +43,7 @@
                     ,{'notify_transaction', [{<<"notification">>, <<"transaction">>}]}
                     ,{'notify_system_alert', [{<<"notification">>, <<"system_alert">>}]}
                     ,{'notify_topup', [{<<"notification">>, <<"topup">>}]}
+                    ,{'notify_low_balance', [{<<"notification">>, <<"low_balance">>}]}
                     ]).
 
 -define(RESTRICT_TO, ['new_voicemail'
@@ -60,6 +61,7 @@
                      ,'low_balance'
                      ,'transaction'
                      ,'system_alerts'
+                     ,'first_occurrence'
                      ]).
 
 -define(BINDINGS, [{'notifications', [{'restrict_to', ?RESTRICT_TO} | ?FEDERATE_BINDING(?NOTIFY_CONFIG_CAT)]}
