@@ -194,10 +194,9 @@ save_number(Number) ->
 
 -spec save_phone_number(knm_number()) -> knm_number().
 save_phone_number(Number) ->
-    set_phone_number(
-      Number
+    set_phone_number(Number
                     ,knm_phone_number:save(phone_number(Number))
-     ).
+                    ).
 
 -spec dry_run_or_number(knm_number()) -> knm_number() |
                                          dry_run_return().

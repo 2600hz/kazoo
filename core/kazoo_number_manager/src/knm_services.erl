@@ -114,13 +114,14 @@ deactivate_features(Number, Features) ->
 -ifdef(TEST).
 update_services(Number) -> Number.
 -else.
--spec update_services(knm_number:knm_number(), boolean()) ->
-                             knm_number:knm_number().
 update_services(Number) ->
+    PhoneNumber = knm_number:phone_number(Number),
     update_services(Number
-                   ,knm_phone_number:dry_run(knm_number:phone_number(Number))
+                   ,knm_phone_number:dry_run(PhoneNumber)
+                    orelse knm_phone_number:bulk_run(PhoneNumber)
                    ).
 
+-spec update_services(knm_number:knm_number(), boolean()) -> knm_number:knm_number().
 update_services(Number, 'true') ->
     JObj = knm_phone_number:to_json(knm_number:phone_number(Number)),
     Services = kz_service_phone_numbers:reconcile(fetch_services(Number), [JObj]),
