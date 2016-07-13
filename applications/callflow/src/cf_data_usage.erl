@@ -87,6 +87,8 @@ guess_type('get_value', B) when is_boolean(B) ->
     <<"boolean">>;
 guess_type('get_binary_value', _) ->
     <<"string">>;
+guess_type('get_ne_binary_value', _) ->
+    <<"string">>;
 guess_type('get_is_true', _) ->
     <<"boolean">>;
 guess_type('is_true', _) ->
