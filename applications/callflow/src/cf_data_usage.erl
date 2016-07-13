@@ -83,17 +83,21 @@ maybe_insert_schema(F, [], Default, Schema) ->
               ),
     kz_json:insert_values(Updates, Schema).
 
-check_default({_M, _F, _A}) ->
-    'undefined';
-check_default([_|_]) ->
-    'undefined';
-check_default('undefined') ->
-    'undefined';
-check_default(D) when is_boolean(D) ->
-    D;
-check_default(A) when is_atom(A) ->
-    'undefined';
+check_default({_M, _F, _A}) -> 'undefined';
+check_default([_|_]) -> 'undefined';
+
+check_default(<<"true">>) -> 'true';
+check_default(<<"false">>) -> 'false';
+check_default(B) when is_boolean(B) -> B;
+check_default(I) when is_integer(I) -> I;
+check_default(<<_/binary>>=B) -> B;
+check_default(A) when is_atom(A) -> 'undefined';
+
+check_default(<<"[]">>) -> [];
+check_default(<<"{}">>) -> kz_json:new();
+
 check_default(Default) ->
+    io:format("unchanged default ~p~n", [Default]),
     Default.
 
 guess_type('get_value', <<_/binary>>) ->
