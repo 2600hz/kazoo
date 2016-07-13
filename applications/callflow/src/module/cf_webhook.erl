@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_webhook).
 
+-behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 
 -export([handle/2]).
@@ -21,7 +23,7 @@
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    _ = kz_util:spawn(fun handle_webhook/2, [Data, Call]),
+    handle_webhook(Data, Call),
     cf_exe:continue(Call).
 
 -spec handle_webhook(kz_json:object(), kapps_call:call()) -> 'ok' | {'error', any()}.
