@@ -166,8 +166,7 @@ create_schema(Path) ->
     ?DEBUG("  copied skel into ~s~n", [Path]).
 
 process() ->
-    {'ok', Data} = application:get_all_key('callflow'),
-    Modules = props:get_value('modules', Data),
+    {'ok', Modules} = application:get_key('callflow', 'modules'),
 
     io:format("processing "),
     Usages = [{Module, Usages} ||
