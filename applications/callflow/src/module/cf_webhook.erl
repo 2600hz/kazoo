@@ -36,7 +36,7 @@ handle_webhook(Data, Call) ->
              ,{<<"Data">>, CallJObj}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    kz_amqp_worker:send(JObj, fun kapi_notifications:publish_webhook/1).
+    kz_amqp_worker:cast(JObj, fun kapi_notifications:publish_webhook/1).
 
 -spec format_call_data(kapps_call:call()) -> kz_json:object().
 format_call_data(Call) ->
