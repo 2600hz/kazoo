@@ -291,13 +291,6 @@ weighted_random_sort(Endpoints) ->
     WeightSortedEndpoints = lists:sort(Endpoints),
     weighted_random_sort(WeightSortedEndpoints, []).
 
--spec set_intervals_on_weight(weighted_endpoints(), weighted_endpoints(), integer()) ->
-                                     weighted_endpoints().
-set_intervals_on_weight([{Weight, _} =E | Tail], Acc, Sum) ->
-    set_intervals_on_weight(Tail, [{Weight + Sum, E} | Acc], Sum + Weight);
-set_intervals_on_weight([], Acc, _Sum) ->
-    Acc.
-
 -spec weighted_random_sort(weighted_endpoints(), endpoints()) -> endpoints().
 weighted_random_sort([_ | _] = ListWeight, Acc) ->
     [{Sum, _} | _] = ListInterval = set_intervals_on_weight(ListWeight, [], 0),
@@ -306,6 +299,13 @@ weighted_random_sort([_ | _] = ListWeight, Acc) ->
     ListNew = lists:delete(Element, ListWeight),
     weighted_random_sort(ListNew, [Element | Acc]);
 weighted_random_sort([], Acc) ->
+    Acc.
+
+-spec set_intervals_on_weight(weighted_endpoints(), weighted_endpoints(), integer()) ->
+                                     weighted_endpoints().
+set_intervals_on_weight([{Weight, _}=E | Tail], Acc, Sum) ->
+    set_intervals_on_weight(Tail, [{Weight + Sum, E} | Acc], Sum + Weight);
+set_intervals_on_weight([], Acc, _Sum) ->
     Acc.
 
 -spec weighted_random_get_element(weighted_endpoints(), integer()) -> weighted_endpoint().

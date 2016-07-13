@@ -11,13 +11,17 @@
 -include_lib("eunit/include/eunit.hrl").
 
 weighted_random_sort_test_() ->
-    EndpointsInt = [
-                    {1, <<"1">>}
-                   ,{2, <<"2">>}
-                   ,{3, <<"3">>}
+    EndpointsInt = [{1, <<"ep1">>}
+                   ,{2, <<"ep2">>}
+                   ,{3, <<"ep3">>}
                    ],
     Endpoints = cf_ring_group:weighted_random_sort(EndpointsInt),
-    [?_assertEqual(length(EndpointsInt), length(Endpoints))]
-        ++ [?_assertEqual('true', lists:keymember(X, 2, EndpointsInt))
-            || X <- Endpoints
-           ].
+
+    ?debugFmt("~ninit: ~p~nafter: ~p~n", [EndpointsInt, Endpoints]),
+
+    [?_assertEqual(length(EndpointsInt), length(Endpoints))
+     |
+     [?_assertEqual('true', lists:member(X, EndpointsInt))
+      || X <- Endpoints
+     ]
+    ].
