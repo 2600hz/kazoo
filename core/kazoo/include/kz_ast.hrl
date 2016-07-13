@@ -48,6 +48,7 @@
        ).
 
 -define(MOD_FUN(Module, Function), {'remote',_,?ATOM(Module),?ATOM(Function)}).
+-define(DYN_MOD_FUN(Module, Function), {'remote',_,?VAR(Module),?ATOM(Function)}).
 
 -define(FUN_ARGS(Function, Args), {'call', _, ?ATOM(Function), Args}).
 -define(DYN_FUN_ARGS(Function, Args), {'call', _, ?VAR(Function), Args}).
@@ -59,6 +60,13 @@
 -define(MOD_FUN_ARGS(Module, Function, Args)
        ,{'call',_
         ,?MOD_FUN(Module, Function)
+        ,Args
+        }
+       ).
+
+-define(DYN_MOD_FUN_ARGS(Module, Function, Args)
+       ,{'call',_
+        ,?DYN_MOD_FUN(Module, Function)
         ,Args
         }
        ).

@@ -7,8 +7,8 @@
 -include("callflow.hrl").
 -include_lib("kazoo/include/kz_ast.hrl").
 
-%% -define(DEBUG(_Fmt, _Args), 'ok').
--define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
+-define(DEBUG(_Fmt, _Args), 'ok').
+%% -define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
 
 -record(usage, {usages = [] %% places the Data is accessed
                ,data_var_name = 'Data' %% Tracks current var name
@@ -56,6 +56,9 @@ process_expression(Acc, ?DYN_FUN_ARGS(_Function, Args)) ->
     process_expressions(Acc, Args);
 process_expression(Acc, ?MOD_FUN_ARGS(Module, Function, Args)) ->
     process_mfa(Acc, Module, Function, Args);
+process_expression(Acc, ?DYN_MOD_FUN_ARGS(_Module, _Function, _Args)) ->
+    ?DEBUG("  skipping dyn module call~n", []),
+    Acc;
 process_expression(Acc, ?ANON(Clauses)) ->
     process_expressions(Acc, Clauses);
 process_expression(Acc, ?MFA(_M, _F, _Arity)) ->
@@ -238,6 +241,8 @@ process_args(Acc, As) ->
 arg_list_has_data_var(DataName, _Aliases, ?LIST(?VAR(DataName), Tail)) ->
     {DataName, Tail};
 arg_list_has_data_var(_DataName, _Aliases, ?MOD_FUN_ARGS(_M, _F, _As)) ->
+    'undefined';
+arg_list_has_data_var(_DataName, _Aliases, ?FUN_ARGS(_F, _As)) ->
     'undefined';
 arg_list_has_data_var(_DataName, _Aliases, ?EMPTY_LIST) ->
     'undefined';
@@ -425,6 +430,7 @@ process_mfa_clause(#usage{data_var_name=DataName}=Acc
     ?DEBUG("  processing mfa clause for ~p(~p)~n", [DataName, DataIndex]),
     case lists:nth(DataIndex, Args) of
         ?VAR('_') -> Acc;
+        ?EMPTY_LIST -> Acc;
         ?VAR(DataName) -> process_clause_body(Acc, Body);
         ?MOD_FUN_ARGS('kz_json', 'set_value', _Args) -> process_clause_body(Acc, Body);
         ?VAR(NewName) ->
@@ -497,7 +503,7 @@ data_index(DataName
            ,Index
           ) ->
     case arg_list_has_data_var(DataName, [], Args) of
-        DataName -> Index;
+        {DataName, _} -> Index;
         'undefined' -> data_index(DataName, As, Index+1)
     end;
 data_index(DataName, [_|As], Index) ->
