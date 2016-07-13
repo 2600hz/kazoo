@@ -179,7 +179,10 @@ process_mfa(#usage{data_var_name=DataName
            ,'kz_json'=M, F, [Key, ?VAR(DataName), Default]
            ) ->
     Acc#usage{usages=maybe_add_usage(Usages, {M, F, arg_to_key(Key), DataName, arg_to_key(Default)})};
-
+process_mfa(#usage{data_var_name=DataName}=Acc
+            ,'kz_json', 'set_value', [_Key, _Value, ?VAR(DataName)]
+           ) ->
+    Acc;
 process_mfa(#usage{data_var_name=DataName
                    ,data_var_aliases=Aliases
                   ,usages=Usages
@@ -207,6 +210,7 @@ process_mfa(#usage{data_var_name=DataName
             ?DEBUG("  found ~p in args of ~p:~p~n", [DataName, M, F]),
             process_mfa_call(Acc, M, F, As);
         'undefined' ->
+            ?DEBUG("  no ~p in arg list, processing args directly~n", [DataName]),
             lists:foldl(fun(Arg, UsageAcc) ->
                                 process_expression(UsageAcc, Arg)
                         end
@@ -236,7 +240,19 @@ arg_list_has_data_var(DataName, Aliases, [?VAR(Name)|T]) ->
     end;
 arg_list_has_data_var(_DataName, _Aliases, []) ->
     'undefined';
+arg_list_has_data_var(DataName, Aliases, [?MOD_FUN_ARGS('kz_json'
+                                                       ,'set_value'
+                                                       ,Args
+                                                       )
+                                          | T
+                                         ]) ->
+    case arg_list_has_data_var(DataName, Aliases, Args) of
+        DataName -> ?DEBUG("  sublist had ~p~n", [DataName]), DataName;
+        'undefined' -> arg_list_has_data_var(DataName, Aliases, T);
+        Alias -> ?DEBUG("  sublist had alias ~p~n", [Alias]), Alias
+    end;
 arg_list_has_data_var(DataName, Aliases, [_H|T]) ->
+    ?DEBUG("  ignoring arg ~p~n", [_H]),
     arg_list_has_data_var(DataName, Aliases, T).
 
 arg_to_key(?BINARY_MATCH(Arg)) ->
@@ -317,6 +333,7 @@ process_mfa_call(#usage{data_var_name=DataName
                         ?DEBUG("  failed to find AST for ~p~n", [M]),
                         Acc#usage{visited=lists:usort([{M, F, As} | Vs])};
                     {M, AST} ->
+                        ?DEBUG("  added AST for ~p~n", [M]),
                         process_mfa_call(Acc#usage{functions=add_module_ast(Fs, M, AST)}
                                         ,M, F, As, 'false'
                                         )
@@ -370,6 +387,7 @@ process_mfa_clause(#usage{data_var_name=DataName}=Acc
     case lists:nth(DataIndex, Args) of
         ?VAR('_') -> Acc;
         ?VAR(DataName) -> process_clause_body(Acc, Body);
+        ?MOD_FUN_ARGS('kz_json', 'set_value', _Args) -> process_clause_body(Acc, Body);
         ?VAR(NewName) ->
             ?DEBUG("  data name changed from ~p to ~p~n", [DataName, NewName]),
             #usage{usages=ClauseUsages
@@ -414,6 +432,18 @@ data_index(DataName, Args) ->
 
 data_index(_DataName, [], _Index) -> 'undefined';
 data_index(DataName, [?VAR(DataName)|_As], Index) -> Index;
+data_index(DataName
+          ,[?MOD_FUN_ARGS('kz_json', 'set_value'
+                         ,Args
+                         )
+            | As
+           ]
+           ,Index
+          ) ->
+    case arg_list_has_data_var(DataName, [], Args) of
+        DataName -> Index;
+        'undefined' -> data_index(DataName, As, Index+1)
+    end;
 data_index(DataName, [_|As], Index) ->
     data_index(DataName, As, Index+1).
 
