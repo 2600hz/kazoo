@@ -83,7 +83,11 @@ maybe_insert_schema(F, [], Default, Schema) ->
     kz_json:insert_values(Updates, Schema).
 
 check_default({_M, _F, _A}) -> 'undefined';
-check_default([_|_]) -> 'undefined';
+check_default([_|_]=_L) ->
+    ?DEBUG("unchanged default list ~p~n", [_L]),
+    'undefined';
+check_default([]) -> [];
+check_default(?EMPTY_JSON_OBJECT=J) -> J;
 
 check_default(<<"true">>) -> 'true';
 check_default(<<"false">>) -> 'false';
@@ -91,9 +95,6 @@ check_default(B) when is_boolean(B) -> B;
 check_default(I) when is_integer(I) -> I;
 check_default(<<_/binary>>=B) -> B;
 check_default(A) when is_atom(A) -> 'undefined';
-
-check_default(<<"[]">>) -> [];
-check_default(<<"{}">>) -> kz_json:new();
 
 check_default(Default) ->
     io:format("unchanged default ~p~n", [Default]),
@@ -450,7 +451,7 @@ arg_to_key(?BINARY_MATCH(Arg)) ->
 arg_to_key(?ATOM(Arg)) ->
     Arg;
 arg_to_key(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
-    <<"{}">>;
+    kz_json:new();
 arg_to_key(?MOD_FUN_ARGS(M, F, As)) ->
     {M, F, length(As)};
 arg_to_key(?VAR(Arg)) ->
@@ -458,7 +459,7 @@ arg_to_key(?VAR(Arg)) ->
 arg_to_key(?INTEGER(I)) ->
     I;
 arg_to_key(?EMPTY_LIST) ->
-    <<"[]">>;
+    [];
 arg_to_key(?LIST(Head, Tail)) ->
     list_of_keys_to_binary(Head, Tail).
 
