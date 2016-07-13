@@ -133,7 +133,7 @@ maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
 update_cid(Call) ->
     {CIDNum, CIDName} = kz_attributes:caller_id(<<"external">>, Call),
     Updates = [{fun kapps_call:set_caller_id_number/2, CIDNum}
-               ,{fun kapps_call:set_caller_id_name/2, CIDName}
+              ,{fun kapps_call:set_caller_id_name/2, CIDName}
               ],
     kapps_call:exec(Updates, Call).
 

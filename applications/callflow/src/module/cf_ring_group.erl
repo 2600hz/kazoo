@@ -165,8 +165,8 @@ resolve_endpoint_ids(Members, EndpointIds, Data, Call) ->
     lists:foldl(fun(Member, Acc) ->
                         resolve_endpoint_id(Member, Acc, Data, Call)
                 end
-                ,EndpointIds
-                ,Members
+               ,EndpointIds
+               ,Members
                ).
 
 -spec resolve_endpoint_id(kz_json:object(), endpoint_intermediates(), kz_json:object(), kapps_call:call()) ->

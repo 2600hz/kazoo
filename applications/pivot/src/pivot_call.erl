@@ -330,9 +330,9 @@ handle_info({'http', {ReqId, 'stream_end', FinalHeaders}}
 
 handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, RespBody}}}
            ,#state{request_id=ReqId
-                   ,requester_queue=RequesterQ
-                   ,call=Call
-                   ,debug=ShouldDebug
+                  ,requester_queue=RequesterQ
+                  ,call=Call
+                  ,debug=ShouldDebug
                   }=State)
   when (StatusCode - 400) < 100 ->
     lager:info("recv client failure status code ~p", [StatusCode]),
@@ -341,9 +341,9 @@ handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, RespBody}}}
     {'stop', 'normal', State};
 handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, RespBody}}}
            ,#state{request_id=ReqId
-                   ,requester_queue=RequesterQ
-                   ,call=Call
-                   ,debug=ShouldDebug
+                  ,requester_queue=RequesterQ
+                  ,call=Call
+                  ,debug=ShouldDebug
                   }=State)
   when (StatusCode - 500) < 100 ->
     lager:info("recv server failure status code ~p", [StatusCode]),
@@ -578,12 +578,12 @@ debug_error(Call, Errors, RespBody) ->
 
 debug_json_error(Call, Msg, Before, After, RespBody) ->
     JObj = kz_json:from_list([{<<"resp_body">>, RespBody}
-                              ,{<<"json_errors">>
-                               ,kz_json:from_list([{<<"before">>, Before}
-                                                   ,{<<"after">>, After}
-                                                   ,{<<"message">>, Msg}
-                                                  ])
-                               }
+                             ,{<<"json_errors">>
+                              ,kz_json:from_list([{<<"before">>, Before}
+                                                 ,{<<"after">>, After}
+                                                 ,{<<"message">>, Msg}
+                                                 ])
+                              }
                              ]),
     store_debug(Call, JObj).
 

@@ -832,12 +832,12 @@ add_validation_error(Property, Code, <<_/binary>> = Message, Context) ->
 add_validation_error(Property, Code, Message, Context) ->
     {ErrorCode, ErrorMessage, ErrorJObj} =
         kz_json_schema:validation_error(Property, Code, Message
-                                        ,props:filter_undefined(
-                                           [{'version', api_version(Context)}
-                                           ,{'error_code', resp_error_code(Context)}
-                                           ,{'error_message', resp_error_msg(Context)}
-                                           ]
-                                          )
+                                       ,props:filter_undefined(
+                                          [{'version', api_version(Context)}
+                                          ,{'error_code', resp_error_code(Context)}
+                                          ,{'error_message', resp_error_msg(Context)}
+                                          ]
+                                         )
                                        ),
     ErrorsJObj = cb_context:validation_errors(Context),
 

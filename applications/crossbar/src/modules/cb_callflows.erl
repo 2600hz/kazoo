@@ -522,8 +522,8 @@ create_metadata(Db, Id, JObj) ->
 create_metadata(Doc) ->
     %% list of keys to extract from documents and set on the metadata
     Funs = [fun(J) -> metadata_builder(<<"name">>, Doc, J) end
-            ,fun(J) -> metadata_builder(<<"numbers">>, Doc, J) end
-            ,fun(J) -> metadata_builder(<<"pvt_type">>, Doc, J) end
+           ,fun(J) -> metadata_builder(<<"numbers">>, Doc, J) end
+           ,fun(J) -> metadata_builder(<<"pvt_type">>, Doc, J) end
            ],
     %% do it
     lists:foldl(fun(Fun, JObj) ->

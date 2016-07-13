@@ -3,7 +3,7 @@
 %% Helper macros for processing Erlang AST forms
 
 -define(CLAUSE(Args, Guards, Body)
-        ,{'clause', _, Args, Guards, Body}
+       ,{'clause', _, Args, Guards, Body}
        ).
 
 -define(VAR(Line, Name), {'var', Line, Name}).
@@ -13,17 +13,17 @@
 
 -define(EMPTY_LIST, {'nil',_}).
 -define(LIST(Head, Tail)
-        ,{'cons', _Line, Head, Tail}
+       ,{'cons', _Line, Head, Tail}
        ).
 
 -define(LC(Expr, Qualifiers)
-        ,{'lc', _, Expr, Qualifiers}
+       ,{'lc', _, Expr, Qualifiers}
        ).
 -define(LC_GENERATOR(Pattern, Expr)
-        ,{'generate', _, Pattern, Expr}
+       ,{'generate', _, Pattern, Expr}
        ).
 -define(LC_BIN_GENERATOR(Pattern, Expr)
-        ,{'b_generate', _, Pattern, Expr}
+       ,{'b_generate', _, Pattern, Expr}
        ).
 
 -define(ATOM(Value), {'atom', _, Value}).
@@ -31,20 +31,20 @@
 -define(STRING(Value), {'string', _, Value}).
 
 -define(RECORD_FIELD_BIND(Key, Value), {'record_field', _
-                                   ,?ATOM(Key)
-                                   ,Value
-                                  }).
+                                       ,?ATOM(Key)
+                                       ,Value
+                                       }).
 -define(RECORD_FIELD_ACCESS(RecordName, Name, Value)
-        ,{'record_field', _, ?VAR(Name), RecordName, Value}
+       ,{'record_field', _, ?VAR(Name), RecordName, Value}
        ).
 -define(RECORD(Name, Fields), {'record', _, Name, Fields}).
 
 -define(CATCH(Expr), {'catch', _, Expr}).
 -define(TRY_BODY(Body, CatchClauses)
-        ,{'try', _, Body, [], CatchClauses}
+       ,{'try', _, Body, [], CatchClauses}
        ).
 -define(TRY_EXPR(Expr, Clauses, CatchClauses)
-        ,{'try', _, Expr, Clauses, CatchClauses, []}
+       ,{'try', _, Expr, Clauses, CatchClauses, []}
        ).
 
 -define(MOD_FUN(Module, Function), {'remote',_,?ATOM(Module),?ATOM(Function)}).
@@ -81,7 +81,7 @@
 -define(ANDALSO(First, Second), ?BINARY_OP('andalso', First, Second)).
 
 -define(BINARY_STRING(Value)
-        ,{'bin_element', _, {'string', _, Value}, 'default', 'default'}
+       ,{'bin_element', _, {'string', _, Value}, 'default', 'default'}
        ).
 -define(BINARY_VAR(VarName)
        ,{'bin_element',_,?VAR(VarName),'default',['binary']}
@@ -92,7 +92,7 @@
        ).
 
 -define(CASE(Expression, Clauses)
-        ,{'case',_, Expression, Clauses}
+       ,{'case',_, Expression, Clauses}
        ).
 
 -define(TUPLE(Elements), {'tuple', _, Elements}).

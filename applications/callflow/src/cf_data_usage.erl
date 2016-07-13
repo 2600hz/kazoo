@@ -3,7 +3,7 @@
 %% module for parsing callflow actions for Data usage
 
 -export([process/0, process/1
-         ,to_schema_docs/0, to_schema_doc/1
+        ,to_schema_docs/0, to_schema_doc/1
         ]).
 
 -include("callflow.hrl").
@@ -75,11 +75,11 @@ maybe_insert_schema(F, [K|Ks], Default, Schema) ->
                         );
 maybe_insert_schema(F, [], Default, Schema) ->
     Updates = props:filter_undefined(
-               [{<<"type">>, guess_type(F, Default)}
-               ,{<<"default">>, check_default(Default)}
-               ,{<<"description">>, <<>>}
-               ]
-              ),
+                [{<<"type">>, guess_type(F, Default)}
+                ,{<<"default">>, check_default(Default)}
+                ,{<<"description">>, <<>>}
+                ]
+               ),
     kz_json:insert_values(Updates, Schema).
 
 check_default({_M, _F, _A}) -> 'undefined';
@@ -222,7 +222,7 @@ process_expression(Acc, ?CATCH(Expression)) ->
 process_expression(Acc, ?LAGER) -> Acc;
 process_expression(Acc, ?CASE(Expression, Clauses)) ->
     process_expressions(process_expression(Acc, Expression)
-                        ,Clauses
+                       ,Clauses
                        );
 process_expression(Acc, ?ATOM(_)) ->
     Acc;
@@ -259,7 +259,7 @@ process_expression(Acc, ?TRY_EXPR(Exprs, Clauses, CatchClauses)) ->
 
 process_expression(Acc, ?LC(Expr, Qualifiers)) ->
     process_expressions(process_expression(Acc, Expr)
-                        ,Qualifiers
+                       ,Qualifiers
                        );
 process_expression(Acc, ?LC_GENERATOR(Pattern, Expr)) ->
     process_expressions(Acc, [Pattern, Expr]);
@@ -272,7 +272,7 @@ process_expression(#usage{current_module=_M}=Acc, _Expression) ->
 
 process_list(Acc, Head, Tail) ->
     process_expression(process_expression(Acc, Head)
-                       ,Tail
+                      ,Tail
                       ).
 
 process_record_fields(Acc, Fields) ->
@@ -289,8 +289,8 @@ process_expressions(Acc, Expressions) ->
     lists:foldl(fun(E, UsageAcc) ->
                         process_expression(UsageAcc, E)
                 end
-                ,Acc
-                ,Expressions
+               ,Acc
+               ,Expressions
                ).
 
 process_clause_body(Acc, Body) ->
@@ -309,7 +309,7 @@ process_match(Acc, _Left, Right) ->
     process_expression(Acc, Right).
 
 process_match_mfa(#usage{data_var_name=DataName
-                         ,data_var_aliases=Aliases
+                        ,data_var_aliases=Aliases
                         }=Acc
                  ,VarName
                  ,_M, _F, [?BINARY_MATCH(_Key), _Value, ?VAR(DataName)]
@@ -320,15 +320,15 @@ process_match_mfa(Acc, _VarName, M, F, As) ->
     process_mfa(Acc, M, F, As).
 
 process_mfa(#usage{data_var_name=DataName}=Acc
-            ,'kz_json', 'merge_recursive', [_Arg, ?VAR(DataName)]
+           ,'kz_json', 'merge_recursive', [_Arg, ?VAR(DataName)]
            ) ->
     Acc;
 process_mfa(#usage{data_var_name=DataName}=Acc
-            ,'kz_json', 'merge_recursive', [?VAR(DataName), _Arg]
+           ,'kz_json', 'merge_recursive', [?VAR(DataName), _Arg]
            ) ->
     Acc;
 process_mfa(#usage{data_var_name=DataName}=Acc
-            ,'kz_json', 'set_value', [_Key, _Value, ?VAR(DataName)]
+           ,'kz_json', 'set_value', [_Key, _Value, ?VAR(DataName)]
            ) ->
     Acc;
 process_mfa(#usage{data_var_name=DataName
@@ -344,7 +344,7 @@ process_mfa(#usage{data_var_name=DataName
            ) ->
     Acc#usage{usages=maybe_add_usage(Usages, {M, F, arg_to_key(Key), DataName, arg_to_key(Default)})};
 process_mfa(#usage{data_var_name=DataName
-                   ,data_var_aliases=Aliases
+                  ,data_var_aliases=Aliases
                   ,usages=Usages
                   }=Acc
            ,'kz_json'=M, 'find'=F, [Key, ?LIST(_Head, _Tail)=L, Default]
@@ -362,7 +362,7 @@ process_mfa(#usage{data_var_name=DataName
     end;
 
 process_mfa(#usage{data_var_name=DataName
-                   ,data_var_aliases=Aliases
+                  ,data_var_aliases=Aliases
                   }=Acc
            ,M, F, As) ->
     case arg_list_has_data_var(DataName, Aliases, As) of
@@ -520,39 +520,39 @@ process_mfa_call(#usage{data_var_name=DataName
                        }=Acc
                 ,M, F, As, ShouldAddAST) ->
     case mfa_clauses(Acc, M, F, length(As)) of
-            [] when ShouldAddAST ->
-                case module_ast(M) of
-                    'undefined' ->
-                        ?DEBUG("  failed to find AST for ~p~n", [M]),
-                        Acc#usage{visited=lists:usort([{M, F, As} | Vs])};
-                    {M, AST} ->
-                        ?DEBUG("  added AST for ~p~n", [M]),
-                        process_mfa_call(Acc#usage{functions=add_module_ast(Fs, M, AST)}
-                                        ,M, F, As, 'false'
-                                        )
-                end;
-            [] ->
-                ?DEBUG("  no clauses for ~p:~p~n", [M, F]),
-                Acc#usage{visited=lists:usort([{M, F, As} | Vs])};
-            [Clauses] ->
-                #usage{usages=ModuleUsages
-                      ,functions=NewFs
-                      ,visited=ModuleVisited
-                      } =
-                    process_mfa_clauses(Acc#usage{current_module=M
-                                                 ,usages=[]
-                                                 ,data_var_aliases=[]
-                                                 ,visited=lists:usort([{M, F, As} | Vs])
-                                                 }
-                                       ,Clauses
-                                       ,data_index(DataName, As)
-                                       ),
-                ?DEBUG("  visited ~p:~p(~p)~n", [M, F, As]),
-                Acc#usage{usages=lists:usort(ModuleUsages ++ Usages)
-                         ,functions=NewFs
-                         ,visited=ModuleVisited
-                         }
-        end.
+        [] when ShouldAddAST ->
+            case module_ast(M) of
+                'undefined' ->
+                    ?DEBUG("  failed to find AST for ~p~n", [M]),
+                    Acc#usage{visited=lists:usort([{M, F, As} | Vs])};
+                {M, AST} ->
+                    ?DEBUG("  added AST for ~p~n", [M]),
+                    process_mfa_call(Acc#usage{functions=add_module_ast(Fs, M, AST)}
+                                    ,M, F, As, 'false'
+                                    )
+            end;
+        [] ->
+            ?DEBUG("  no clauses for ~p:~p~n", [M, F]),
+            Acc#usage{visited=lists:usort([{M, F, As} | Vs])};
+        [Clauses] ->
+            #usage{usages=ModuleUsages
+                  ,functions=NewFs
+                  ,visited=ModuleVisited
+                  } =
+                process_mfa_clauses(Acc#usage{current_module=M
+                                             ,usages=[]
+                                             ,data_var_aliases=[]
+                                             ,visited=lists:usort([{M, F, As} | Vs])
+                                             }
+                                   ,Clauses
+                                   ,data_index(DataName, As)
+                                   ),
+            ?DEBUG("  visited ~p:~p(~p)~n", [M, F, As]),
+            Acc#usage{usages=lists:usort(ModuleUsages ++ Usages)
+                     ,functions=NewFs
+                     ,visited=ModuleVisited
+                     }
+    end.
 
 process_mfa_clauses(Acc, Clauses, DataIndex) ->
     lists:foldl(fun(Clause, UsagesAcc) ->
@@ -649,7 +649,7 @@ data_index(DataName
                          )
             | As
            ]
-           ,Index
+          ,Index
           ) ->
     case arg_list_has_data_var(DataName, [], Args) of
         {DataName, _} -> Index;

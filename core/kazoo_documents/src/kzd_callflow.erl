@@ -44,11 +44,11 @@
        ).
 
 -define(SCHEMA_KEY3
-        ,kz_json:from_list([{<<"type">>, <<"string">>}
-                            ,{<<"required">>, 'false'}
-                            ,{<<"default">>, <<"value3">>}
-                           ]
-                          )
+       ,kz_json:from_list([{<<"type">>, <<"string">>}
+                          ,{<<"required">>, 'false'}
+                          ,{<<"default">>, <<"value3">>}
+                          ]
+                         )
        ).
 
 -define(PROPERTIES_JOBJ
@@ -191,7 +191,7 @@ validate_action_schema(Module, Data, {'ok', SchemaJObj}) ->
 should_validate_strictly() -> 'false'.
 -else.
 -spec should_validate_strictly() -> boolean().
- should_validate_strictly() ->
+should_validate_strictly() ->
     kapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, 'false').
 -endif.
 
@@ -267,11 +267,11 @@ maybe_fix_index(Key) ->
 
 simple_successful_validation_test_() ->
     ChildData = kz_json:from_list([{<<"key1">>, <<"value1">>}
-                                   ,{<<"key2">>, 1}
+                                  ,{<<"key2">>, 1}
                                   ]
                                  ),
     Child = kz_json:from_list([{<<"module">>, <<"test">>}
-                               ,{<<"data">>, ChildData}
+                              ,{<<"data">>, ChildData}
                               ]
                              ),
     Doc = kz_json:from_list([{?FLOW, Child}]),
@@ -330,7 +330,7 @@ complex_failed_test_() ->
 
     {'error', Errors} = validate_flow(Doc),
     [?_assertMatch([{'data_invalid', _Key2SchemaJObj, 'wrong_type', 'true', [<<"key2">>]}
-                    ,{'data_invalid', _Key1SchemaJObj, {'missing_required_property', <<"key1">>}, _Value, []}
+                   ,{'data_invalid', _Key1SchemaJObj, {'missing_required_property', <<"key1">>}, _Value, []}
                    ]
                   ,Errors
                   )
