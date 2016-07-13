@@ -9,6 +9,7 @@ Filter = ['rabbitmq_codegen'
           ,'.settings'
           ,'skel'
           ,'parse_trans'
+          ,'sup'
          ],
 Base = lists:filter(fun(A) -> not lists:member(A, Filter) end, Apps ++ Core ++ Deps),
 Based = [{A, 'load'} || A <- lists:sort(Base) ],

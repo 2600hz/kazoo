@@ -795,8 +795,22 @@ publish_participant_event(true=_Publish, Event, CallId, Props) ->
     Ev = [{<<"Event-Category">>, <<"conference">>}
          ,{<<"Event-Name">>, <<"participant_event">>}
           | Event],
+    CCV = kz_json:get_value(<<"Custom-Channel-Vars">>, request_call_details(CallId), kz_json:new()),
     ConferenceId = props:get_value(<<"Conference-Name">>, Props),
     Publisher = fun(P) -> kapi_conference:publish_participant_event(ConferenceId, CallId, P) end,
-    kz_amqp_worker:cast(Ev, Publisher),
+    kz_amqp_worker:cast(props:set_value(<<"Custom-Channel-Vars">>, CCV, Ev), Publisher),
     ok;
 publish_participant_event(_, _, _, _) -> 'skip'.
+
+-spec request_call_details(CallId :: ne_binary()) ->  kz_json:object().
+request_call_details(CallId) ->
+    Req = [{<<"Call-ID">>, CallId}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case kapps_util:amqp_pool_request(Req
+                                     ,fun kapi_call:publish_channel_status_req/1
+                                     ,fun kapi_call:channel_status_resp_v/1
+                                     ) of
+        {'error', _E} -> kz_json:new();
+        {'ok', Resp} -> Resp
+    end.

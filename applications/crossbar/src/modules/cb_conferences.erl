@@ -55,6 +55,8 @@
                                  ,<<"Floor">>
                                  ,<<"Join-Time">>
                                  ,<<"Duration">>
+                                 ,<<"Caller-ID-Name">>
+                                 ,<<"Caller-ID-Number">>
                                  ]).
 
 %%%===================================================================
@@ -343,7 +345,7 @@ conference_realtime_data(ConferenceId) ->
       ,{<<"moderators">>, count_admins(Participants)}
       ,{<<"duration">>, run_time(ConferenceDetails)}
       ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, ConferenceDetails, 'false')}
-      ,{<<"participants">>, [kz_json:normalize_jobj(Participant) || Participant <- Participants]}
+      ,{<<"participants">>, [kz_json:normalize_jobj(filter_fields(Participant)) || Participant <- Participants]}
       ]).
 
 -spec request_conference_details(ne_binary()) -> kz_json:object().

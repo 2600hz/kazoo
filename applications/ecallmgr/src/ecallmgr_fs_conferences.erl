@@ -448,6 +448,8 @@ participant_from_props(Props, Node, CallId, Participant) ->
                            ,current_energy=props:get_integer_value(<<"Current-Energy">>, Props, 0)
                            ,video=props:get_is_true(<<"Video">>, Props, 'false')
                            ,join_time=props:get_integer_value(<<"Join-Time">>, Props, kz_util:current_tstamp())
+                           ,caller_id_number=props:get_value(<<"Caller-Caller-ID-Number">>, Props)
+                           ,caller_id_name=props:get_value(<<"Caller-Caller-ID-Name">>, Props)
                            }.
 
 -spec participants_to_json(participants(), kz_json:objects()) -> kz_json:objects().
@@ -477,6 +479,8 @@ participant_to_props(#participant{uuid=UUID
                                  ,is_moderator=IsMod
                                  ,node=Node
                                  ,join_time=JoinTime
+                                 ,caller_id_name=CallerIDName
+                                 ,caller_id_number=CallerIDNumber
                                  }) ->
     props:filter_undefined(
       [{<<"Call-ID">>, UUID}
@@ -495,6 +499,8 @@ participant_to_props(#participant{uuid=UUID
       ,{<<"Video">>, Video}
       ,{<<"Is-Moderator">>, IsMod}
       ,{<<"Join-Time">>, JoinTime}
+      ,{<<"Caller-ID-Name">>, CallerIDName}
+      ,{<<"Caller-ID-Number">>, CallerIDNumber}
       ]).
 
 -spec conference_to_props(conference()) -> kz_proplist().
