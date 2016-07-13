@@ -32,6 +32,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_nomorobo).
 
+-behaviour(gen_cf_action).
+
 -export([handle/2
         ,nomorobo_req/2
         ]).
