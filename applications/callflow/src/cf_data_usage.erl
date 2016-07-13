@@ -70,7 +70,10 @@ maybe_insert_schema(_F, [[_|_]|_]=_Ks, _Default, Schema) ->
 maybe_insert_schema(F, [K|Ks], Default, Schema) ->
     Section = kz_json:get_value([<<"properties">>, K], Schema, kz_json:new()),
     Updated = maybe_insert_schema(F, Ks, Default, Section),
-    kz_json:set_value([<<"properties">>, K], Updated, Schema);
+    kz_json:insert_value(<<"type">>
+                        ,<<"object">>
+                        ,kz_json:set_value([<<"properties">>, K], Updated, Schema)
+                        );
 maybe_insert_schema(F, [], Default, Schema) ->
     Updates = props:filter_undefined(
                [{<<"type">>, guess_type(F, Default)}
