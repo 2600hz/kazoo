@@ -219,7 +219,7 @@ process_mfa(#usage{data_var_name=DataName
             Acc1 = process_mfa_call(Acc, M, F, As),
             process_args(Acc1, T);
         'undefined' ->
-            ?DEBUG("  no ~p in arg list, processing args directly~n", [DataName]),
+            ?DEBUG("  no ~p in arg list ~p, processing args directly~n", [DataName, As]),
             process_args(Acc, As);
         {Alias, T} ->
             ?DEBUG("  processing call with alias ~p: ~p:~p(~p)~n", [Alias, M, F, As]),
@@ -244,6 +244,9 @@ arg_list_has_data_var(DataName, Aliases, ?LIST(?VAR(Name), Tail)) ->
         'true' -> {Name, Tail};
         'false' -> arg_list_has_data_var(DataName, Aliases, Tail)
     end;
+arg_list_has_data_var(DataName, Aliases, ?LIST(_Head, Tail)) ->
+    arg_list_has_data_var(DataName, Aliases, Tail);
+
 arg_list_has_data_var(DataName, _Aliases, [?VAR(DataName)|T]) ->
     {DataName, T};
 arg_list_has_data_var(DataName, Aliases, [?VAR(Name)|T]) ->
@@ -276,6 +279,13 @@ arg_list_has_data_var(DataName, Aliases, [?FUN_ARGS(_F, Args)|T]=As) ->
         'undefined' -> arg_list_has_data_var(DataName, Aliases, T);
         {Alias, _} -> ?DEBUG("  sub-fun had alias ~p~n", [Alias]), {Alias, As}
     end;
+arg_list_has_data_var(DataName, Aliases, [?LIST(_H, _T)=H|T]=As) ->
+    case arg_list_has_data_var(DataName, Aliases, H) of
+        {DataName, _} -> ?DEBUG("  sub-list had ~p~n", [DataName]), {DataName, As};
+        'undefined' -> arg_list_has_data_var(DataName, Aliases, T);
+        {Alias, _} -> ?DEBUG("  sub-list had alias ~p~n", [Alias]), {Alias, As}
+    end;
+
 arg_list_has_data_var(DataName, Aliases, [_H|T]) ->
     ?DEBUG("  ignoring arg ~p~n", [_H]),
     arg_list_has_data_var(DataName, Aliases, T).
@@ -426,6 +436,16 @@ process_mfa_clause(#usage{data_var_name=DataName}=Acc
                      ,visited=Vs
                      };
         ?ATOM('undefined') -> Acc;
+        ?LIST(?VAR(NewName), _Tail) ->
+            ?DEBUG("  data name changed from ~p to ~p~n", [DataName, NewName]),
+            #usage{usages=ClauseUsages
+                  ,functions=ClauseFs
+                  ,visited=Vs
+                  } = process_clause_body(Acc#usage{data_var_name=NewName}, Body),
+            Acc#usage{usages=lists:usort(ClauseUsages)
+                     ,functions=ClauseFs
+                     ,visited=Vs
+                     };
         _Unexpected ->
             io:format("unexpected arg(~p) at ~p in ~p, expected ~p~n"
                      ,[_Unexpected, DataIndex, Args, DataName]
@@ -458,6 +478,12 @@ data_index(DataName, Args) ->
     data_index(DataName, Args, 1).
 
 data_index(_DataName, [], _Index) -> 'undefined';
+data_index(DataName, [?LIST(?VAR(DataName), _Tail)|_], Index) ->
+    Index;
+data_index(DataName, [?LIST(_Head, Tail)|As], Index) ->
+    data_index(DataName, [Tail|As], Index);
+data_index(DataName, [?EMPTY_LIST|As], Index) ->
+    data_index(DataName, As, Index+1);
 data_index(DataName, [?VAR(DataName)|_As], Index) -> Index;
 data_index(DataName
           ,[?MOD_FUN_ARGS('kz_json', 'set_value'
