@@ -5321,7 +5321,7 @@
             "required": true,
             "type": "object"
         },
-        "resource_selector.rules": {
+        "resource_selector_rules": {
             "default": {},
             "description": "Schema for resource selector rules",
             "name": "Resource Selectord Rules",
@@ -7597,14 +7597,18 @@
             "get": {},
             "put": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/conferences/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}": {
             "delete": {},
             "get": {},
             "patch": {},
             "post": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/conferences/{ID}/details": {
-            "get": {}
+        "/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}": {
+            "post": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/configs/{ID}": {
             "delete": {},
@@ -8216,23 +8220,29 @@
             "get": {},
             "post": {}
         },
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/name": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTORNAME}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTORNAME}/resource/{RESOURCE_ID}": {
+            "delete": {},
+            "get": {},
+            "post": {},
+            "put": {}
+        },
         "/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/selector/{SELECTORNAME}": {
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTORNAME}": {
             "delete": {},
             "get": {},
             "post": {},
             "put": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/selector": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/selector/{SELECTORNAME}": {
-            "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/resource_templates": {
             "get": {},
