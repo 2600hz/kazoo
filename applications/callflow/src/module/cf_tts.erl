@@ -13,6 +13,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_tts).
 
+-behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 
 -export([handle/2]).
