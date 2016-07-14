@@ -801,15 +801,16 @@ maybe_add_default_fs() ->
         _ -> 'skip'
     end.
 
+-spec start_node_from_config(kz_json:object()|atom()) -> 'ok' | 'error' | {'error', 'no_connection'}.
 start_node_from_config(MaybeJObj) ->
     case kz_json:is_json_object(MaybeJObj) of
         'false' -> ?MODULE:add(kz_util:to_atom(MaybeJObj, 'true'));
         'true' ->
             {[Cookie], [Node]} = kz_json:get_values(MaybeJObj),
             try ?MODULE:add(kz_util:to_atom(Node, 'true'), kz_util:to_atom(Cookie, 'true')) of
-                _OK -> lager:debug("added ~s(~s) successfully: ~p", [Node, Cookie, _OK])
+                _OK -> lager:debug("added ~s(~s) successfully: ~p", [Node, Cookie, _OK]), 'ok'
             catch
-                _E:_R -> lager:debug("failed to add ~s(~s): ~s: ~p", [Node, Cookie, _E, _R])
+                _E:_R -> lager:debug("failed to add ~s(~s): ~s: ~p", [Node, Cookie, _E, _R]), 'error'
             end
     end.
 
