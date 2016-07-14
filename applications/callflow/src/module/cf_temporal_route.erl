@@ -76,10 +76,10 @@ handle(Data, Call) ->
 %%--------------------------------------------------------------------
 -spec process_rules(temporal(), rules(), kapps_call:call()) ->
                            'default' | binary().
-process_rules(Temporal, [#rule{enabled='false'
+process_rules(Temporal, [#rule{enabled=Enabled
                               ,id=Id
                               ,name=Name
-                              }|Rs], Call) ->
+                              }|Rs], Call) when Enabled == 'false'; Enabled == 'undefined' ->
     lager:info("time based rule ~s (~s) disabled", [Id, Name]),
     process_rules(Temporal, Rs, Call);
 process_rules(_, [#rule{enabled='true'
