@@ -924,12 +924,11 @@ json_to_csv(JObj) ->
 
 -spec correct_jobj(kz_json:object()) -> kz_json:object().
 correct_jobj(JObj) ->
-    Prop = kz_json:to_proplist(JObj),
-    L = [correct_proplist(P) || P <- Prop],
+    L = [correct_proplist_kv(P) || P <- kz_json:to_proplist(JObj)],
     kz_json:from_list(L).
 
-correct_proplist({K}) -> {K, <<>>};
-correct_proplist(T) -> T.
+correct_proplist_kv({K}) -> {K, <<>>};
+correct_proplist_kv(T) -> T.
 
 -spec multiple_choices(cowboy_req:req(), cb_context:context()) ->
                               {'false', cowboy_req:req(), cb_context:context()}.

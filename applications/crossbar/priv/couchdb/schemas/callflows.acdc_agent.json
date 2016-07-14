@@ -1,0 +1,31 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.acdc_agent",
+    "description": "Validator for the acdc_agent callflow's data object",
+    "properties": {
+        "action": {
+            "description": ""
+        },
+        "presence_id": {
+            "description": "",
+            "type": "string"
+        },
+        "presence_state": {
+            "description": ""
+        },
+        "sip": {
+            "properties": {
+                "username": {
+                    "description": ""
+                }
+            },
+            "type": "object"
+        },
+        "timeout": {
+            "description": "",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

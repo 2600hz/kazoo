@@ -70,7 +70,6 @@ resource_exists() -> 'true'.
 validate(Context) ->
     validate_hotdesks(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -121,11 +120,11 @@ fetch_user_hotdesks(DeviceId, Context) ->
 
 -spec fetch_users(ne_binaries(), cb_context:context()) -> cb_context:context().
 fetch_users(UserIds, Context) ->
-    ViewOptions = [{<<"keys">>, UserIds}],
+    ViewOptions = [{'keys', UserIds}],
     View = <<"users/list_by_id">>,
     crossbar_doc:load_view(View, ViewOptions, Context, fun normalize_view_results/2).
 
 -spec fetch_device_hotdesks(ne_binary(), cb_context:context()) -> cb_context:context().
 fetch_device_hotdesks(UserId, Context) ->
-    ViewOptions = [{<<"key">>, UserId}],
+    ViewOptions = [{'key', UserId}],
     crossbar_doc:load_view(?CB_LIST, ViewOptions, Context, fun normalize_view_results/2).

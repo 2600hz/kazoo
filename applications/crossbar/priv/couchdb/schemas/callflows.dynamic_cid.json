@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.dynamic_cid",
+    "description": "Validator for the dynamic_cid callflow's data object",
+    "properties": {
+        "action": {
+            "description": ""
+        },
+        "enforce_call_restriction": {
+            "default": true,
+            "description": "",
+            "type": "boolean"
+        },
+        "id": {
+            "description": ""
+        },
+        "idx_name": {
+            "description": ""
+        },
+        "interdigit_timeout": {
+            "description": "",
+            "type": "integer"
+        },
+        "media_id": {
+            "description": ""
+        }
+    },
+    "required": true,
+    "type": "object"
+}

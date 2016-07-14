@@ -168,7 +168,11 @@ do_load_recording_binary(DocId, Context) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             case kz_doc:attachment_names(cb_context:doc(Context1)) of
-                [] -> cb_context:add_system_error('bad_identifier', [{'details', DocId}], Context1);
+                [] ->
+                    cb_context:add_system_error('bad_identifier'
+                                               ,kz_json:from_list([{<<"details">>, DocId}])
+                                               ,Context1
+                                               );
                 [AName | _] ->
                     Ctx = crossbar_doc:load_attachment({<<"call_recording">>, DocId}, AName, ?TYPE_CHECK_OPTION(<<"call_recording">>), Context),
                     set_resp_headers(Ctx, AName)

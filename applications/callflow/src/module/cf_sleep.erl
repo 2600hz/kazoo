@@ -15,6 +15,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_sleep).
 
+-behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 
 -export([handle/2]).
@@ -60,8 +62,3 @@ constrain_duration(DurationMS) when DurationMS > ?MILLISECONDS_IN_DAY ->
     ?MILLISECONDS_IN_DAY;
 constrain_duration(DurationMS) ->
     DurationMS.
-
-
-
-
-

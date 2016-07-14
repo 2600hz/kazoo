@@ -14,6 +14,9 @@
 %%%-------------------------------------------------------------------
 -module(cf_disa).
 
+%% some recursion causes loops in cf_data_usage
+%% -behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 
 -export([handle/2]).
@@ -113,10 +116,7 @@ maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
                        ,list_to_binary([Number, "@", kapps_call:request_realm(Call)])
                        }
                       ,{fun kapps_call:set_to/2, list_to_binary([Number, "@", kapps_call:to_realm(Call)])}
-                      ,fun(C) when NoMatch ->
-                               {CIDNum, CIDName} = kz_attributes:caller_id(<<"external">>, C),
-                               C1 = kapps_call:set_caller_id_number(CIDNum, C),
-                               kapps_call:set_caller_id_name(CIDName, C1);
+                      ,fun(C) when NoMatch -> update_cid(C);
                           (C) -> C
                        end
                       ],
@@ -128,6 +128,14 @@ maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
             _ = kapps_call_command:b_prompt(<<"disa-invalid_extension">>, Call),
             allow_dial(Data, Call, Retries - 1, Interdigit)
     end.
+
+-spec update_cid(kapps_call:call()) -> kapps_call:call().
+update_cid(Call) ->
+    {CIDNum, CIDName} = kz_attributes:caller_id(<<"external">>, Call),
+    Updates = [{fun kapps_call:set_caller_id_number/2, CIDNum}
+              ,{fun kapps_call:set_caller_id_name/2, CIDName}
+              ],
+    kapps_call:exec(Updates, Call).
 
 %%--------------------------------------------------------------------
 %% @private

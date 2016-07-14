@@ -65,6 +65,7 @@ find_candidate_translators(_) ->
 -spec is_recognized(atom(), any()) -> {boolean(), any()}.
 is_recognized(M, Cmds) ->
     case catch M:parse_cmds(Cmds) of
+        {'json', _Msg, _B, _A}=Err -> throw(Err);
         {'error', _E} -> {'false', []};
         {'ok', Resp} -> {'true', Resp}
     end.

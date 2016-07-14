@@ -111,7 +111,7 @@ response_202(Msg, Context) ->
 response_202(Msg, JTerm, Context) ->
     create_response('success', Msg, 202, JTerm, Context).
 
--spec response_400(ne_binary(), kz_json:object(), cb_context:context()) ->
+-spec response_400(ne_binary(), kz_json:json_term(), cb_context:context()) ->
                           cb_context:context().
 response_400(Message, Data, Context) ->
     create_response('error', Message, 400, Data, Context).

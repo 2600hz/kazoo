@@ -673,16 +673,14 @@ load_summary_by_range(Context, From, To) ->
                      (?PORT_PENDING=Type, C) -> load_summary_fold(C, Type);
                      (?PORT_SCHEDULED=Type, C) -> load_summary_fold(C, Type);
                      (?PORT_REJECTED=Type, C) -> load_summary_fold(C, Type);
-                     (Type, C) ->
-                          load_summary_by_range_fold(C, Type, From, To)
-                  end,
-                  cb_context:setters(
-                    Context,
-                    [{fun cb_context:set_resp_data/2, []}
-                    ,{fun cb_context:set_resp_status/2, 'success'}
-                    ]
-                   ),
-                  ?PORT_STATES
+                     (Type, C) -> load_summary_by_range_fold(C, Type, From, To)
+                  end
+                 ,cb_context:setters(Context
+                                    ,[{fun cb_context:set_resp_data/2, []}
+                                     ,{fun cb_context:set_resp_status/2, 'success'}
+                                     ]
+                                    )
+                 ,?PORT_STATES
                  )
      ).
 
@@ -733,12 +731,11 @@ load_summary_by_number(Context, Number) ->
     ViewOptions = [{'keys', build_keys(Context, Number)}
                   ,'include_docs'
                   ],
-    crossbar_doc:load_view(
-      ?ALL_PORT_REQ_NUMBERS
+    crossbar_doc:load_view(?ALL_PORT_REQ_NUMBERS
                           ,ViewOptions
                           ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
                           ,fun normalize_view_results/2
-     ).
+                          ).
 
 -spec build_keys(cb_context:context(), ne_binary()) -> [ne_binaries()].
 build_keys(Context, Number) ->
@@ -759,7 +756,7 @@ build_keys(Context, Number) ->
             end
     end.
 
--spec load_summary(cb_context:context(), crossbar_doc:view_options()) ->
+-spec load_summary(cb_context:context(), crossbar_doc:view_options() | [{'normalize', boolean()}]) ->
                           cb_context:context().
 load_summary(Context, ViewOptions) ->
     View = case should_summarize_descendant_requests(Context) of
@@ -770,7 +767,7 @@ load_summary(Context, ViewOptions) ->
       crossbar_doc:load_view(View
                             ,['include_docs'
                              ,'descending'
-                              | ViewOptions
+                              | props:delete('normalize', ViewOptions)
                              ]
                             ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
                             ,fun normalize_view_results/2
@@ -1082,15 +1079,14 @@ maybe_move_state(Context, Id, PortState) ->
             lager:debug("loaded new port request state ~s", [PortState]),
             cb_context:set_doc(Context1, PortRequest);
         {'error', 'invalid_state_transition'} ->
-            cb_context:add_validation_error(
-              <<"port_state">>
+            cb_context:add_validation_error(<<"port_state">>
                                            ,<<"enum">>
                                            ,kz_json:from_list(
                                               [{<<"message">>, <<"Cannot move to new state from current state">>}
                                               ,{<<"cause">>, PortState}
                                               ])
                                            ,Context
-             );
+                                           );
         {'error', 'failed_to_charge'} ->
             cb_context:add_system_error('no_credit', Context);
         {'errors', Errors} ->

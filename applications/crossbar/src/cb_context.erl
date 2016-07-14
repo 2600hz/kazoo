@@ -646,8 +646,7 @@ validate_request_data(Schema, Context, OnSuccess, OnFailure) ->
         Else -> Else
     end.
 
--spec failed(context(), jesse_error:error_reasons()) -> context().
--spec failed_error(jesse_error:error_reason(), context()) -> context().
+-spec failed(context(), [jesse_error:error_reason()]) -> context().
 failed(Context, Errors) ->
     Context1 = setters(Context
                       ,[{fun set_resp_error_code/2, 400}
@@ -659,353 +658,24 @@ failed(Context, Errors) ->
                ,Errors
                ).
 
-failed_error({'data_invalid'
-             ,FailedSchemaJObj
-             ,'wrong_min_length'
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    Minimum = kz_json:get_value(<<"minLength">>, FailedSchemaJObj),
-    MinLen = kz_util:to_binary(Minimum),
-
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"minLength">>
-                        ,kz_json:from_list(
-                           [{<<"message">>, <<"String must be at least ", MinLen/binary, " characters">>}
-                           ,{<<"target">>, Minimum}
-                           ])
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,FailedSchemaJObj
-             ,'wrong_max_length'
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    Maximum = kz_json:get_value(<<"maxLength">>, FailedSchemaJObj),
-    MaxLen = kz_util:to_binary(Maximum),
-
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"maxLength">>
-                        ,kz_json:from_list(
-                           [{<<"message">>, <<"String must not be more than ", MaxLen/binary, " characters">>}
-                           ,{<<"target">>, Maximum}
-                           ])
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,FailedSchemaJObj
-             ,'not_in_enum'
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"enum">>
-                        ,kz_json:from_list(
-                           [{<<"message">>, <<"Value not found in enumerated list of values">>}
-                           ,{<<"target">>, kz_json:get_value(<<"enum">>, FailedSchemaJObj, [])}
-                           ])
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,FailedSchemaJObj
-             ,'not_minimum'
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    Minimum = kz_json:get_first_defined([<<"minimum">>, <<"exclusiveMinimum">>], FailedSchemaJObj),
-    Min = kz_util:to_binary(Minimum),
-
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"minimum">>
-                        ,kz_json:from_list(
-                           [{<<"message">>, <<"Value must be at least ", Min/binary>>}
-                           ,{<<"target">>, Minimum}
-                           ])
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,FailedSchemaJObj
-             ,'not_maximum'
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    Maximum = kz_json:get_first_defined([<<"maximum">>, <<"exclusiveMaximum">>], FailedSchemaJObj),
-    Max = kz_util:to_binary(Maximum),
-
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"maximum">>
-                        ,kz_json:from_list(
-                           [{<<"message">>, <<"Value must be at most ", Max/binary>>}
-                           ,{<<"target">>, Maximum}
-                           ])
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,FailedSchemaJObj
-             ,'wrong_size'
-             ,FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    Minimum = kz_json:get_value(<<"minItems">>, FailedSchemaJObj),
-    Maximum = kz_json:get_value(<<"maxItems">>, FailedSchemaJObj),
-
-    case length(FailedValue) of
-        N when N < Minimum ->
-            failed_error({'data_invalid'
-                         ,FailedSchemaJObj
-                         ,'wrong_min_items'
-                         ,FailedValue
-                         ,FailedKeyPath
-                         }
-                        ,Context
-                        );
-        N when N > Maximum ->
-            failed_error({'data_invalid'
-                         ,FailedSchemaJObj
-                         ,'wrong_max_items'
-                         ,FailedValue
-                         ,FailedKeyPath
-                         }
-                        ,Context
-                        )
-    end;
-failed_error({'data_invalid'
-             ,FailedSchemaJObj
-             ,'wrong_min_items'
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    Minimum = kz_json:get_value(<<"minItems">>, FailedSchemaJObj),
-    Min = kz_util:to_binary(Minimum),
-
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"minItems">>
-                        ,kz_json:from_list(
-                           [{<<"message">>, <<"The list must have at least ", Min/binary, " items">>}
-                           ,{<<"target">>, Minimum}
-                           ])
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,FailedSchemaJObj
-             ,'wrong_max_items'
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    Maximum = kz_json:get_value(<<"maxItems">>, FailedSchemaJObj),
-    Max = kz_util:to_binary(Maximum),
-
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"maxItems">>
-                        ,kz_json:from_list(
-                           [{<<"message">>, <<"The list is more than ", Max/binary, " items">>}
-                           ,{<<"target">>, Maximum}
-                           ])
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,FailedSchemaJObj
-             ,'wrong_min_properties'
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    Minimum = kz_json:get_value(<<"minProperties">>, FailedSchemaJObj),
-    Min = kz_util:to_binary(Minimum),
-
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"minProperties">>
-                        ,kz_json:from_list(
-                           [{<<"message">>, <<"The object must have at least ", Min/binary, " keys">>}
-                           ,{<<"target">>, Minimum}
-                           ])
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,FailedSchemaJObj
-             ,{'not_unique', _Item}
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    lager:debug("item ~p is not unique", [_Item]),
-    lager:debug("failed schema: ~p", [FailedSchemaJObj]),
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"uniqueItems">>
-                        ,kz_json:from_list([{<<"message">>, <<"List of items is not unique">>}])
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,_FailedSchemaJObj
-             ,'no_extra_properties_allowed'
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"additionalProperties">>
-                        ,kz_json:from_list(
-                           [{<<"message">>, <<"Strict checking of data is enabled; only include schema-defined properties">>}]
-                          )
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,_FailedSchemaJObj
-             ,'no_extra_items_allowed'
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"additionalItems">>
-                        ,kz_json:from_list(
-                           [{<<"message">>, <<"Strict checking of data is enabled; only include schema-defined items">>}]
-                          )
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,FailedSchemaJObj
-             ,'no_match'
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    Pattern = kz_json:get_value(<<"pattern">>, FailedSchemaJObj),
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"pattern">>
-                        ,kz_json:from_list(
-                           [{<<"message">>, <<"Failed to match pattern '", Pattern/binary, "'">>}
-                           ,{<<"target">>, Pattern}
-                           ])
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,_FailedSchemaJObj
-             ,'missing_required_property'
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"required">>
-                        ,kz_json:from_list(
-                           [{<<"message">>, <<"Field is required but missing">>}]
-                          )
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,_FailedSchemaJObj
-             ,'missing_dependency'
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"dependencies">>
-                        ,kz_json:from_list([{<<"message">>, <<"Dependencies were not validated">>}])
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,FailedSchemaJObj
-             ,'not_divisible'
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    DivBy = kz_json:get_binary_value(<<"divisibleBy">>, FailedSchemaJObj),
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"divisibleBy">>
-                        ,kz_json:from_list(
-                           [{<<"message">>, <<"Value not divisible by ", DivBy/binary>>}
-                           ,{<<"target">>, DivBy}
-                           ])
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,FailedSchemaJObj
-             ,'not_allowed'
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    Disallow = get_disallow(FailedSchemaJObj),
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"disallow">>
-                        ,kz_json:from_list(
-                           [{<<"message">>, <<"Value is disallowed by ", Disallow/binary>>}
-                           ,{<<"target">>, Disallow}
-                           ])
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,FailedSchemaJObj
-             ,'wrong_type'
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    Types = get_types(FailedSchemaJObj),
-    add_validation_error(
-      FailedKeyPath
-                        ,<<"type">>
-                        ,kz_json:from_list(
-                           [{<<"message">>, <<"Value did not match type(s): ", Types/binary>>}
-                           ,{<<"target">>, Types}
-                           ])
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,_FailedSchemaJObj
-             ,{'missing_required_property', FailKey}
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    add_validation_error(
-      [FailedKeyPath, FailKey]
-                        ,<<"required">>
-                        ,kz_json:from_list(
-                           [{<<"message">>, <<"Field is required but missing">>}]
-                          )
-                        ,Context
-     );
-failed_error({'data_invalid'
-             ,_FailedSchemaJObj
-             ,FailMsg
-             ,_FailedValue
-             ,FailedKeyPath
-             }, Context) ->
-    lager:debug("failed message: ~p", [FailMsg]),
-    lager:debug("failed schema: ~p", [_FailedSchemaJObj]),
-    lager:debug("failed value: ~p", [_FailedValue]),
-    lager:debug("failed keypath: ~p", [FailedKeyPath]),
-    add_validation_error(
-      FailedKeyPath
-                        ,kz_util:to_binary(FailMsg)
-                        ,kz_json:from_list([{<<"message">>, <<"failed to validate">>}])
-                        ,Context
-     ).
-
--spec get_disallow(kz_json:object()) -> ne_binary().
-get_disallow(JObj) ->
-    case kz_json:get_value(<<"disallow">>, JObj) of
-        <<_/binary>> = Disallow -> Disallow;
-        Disallows when is_list(Disallows) -> kz_util:join_binary(Disallows)
-    end.
-
--spec get_types(kz_json:object()) -> ne_binary().
-get_types(JObj) ->
-    case kz_json:get_first_defined([<<"type">>, <<"types">>], JObj) of
-        <<_/binary>> = Type -> Type;
-        Types when is_list(Types) -> kz_util:join_binary(Types);
-        _TypeSchema -> <<"type schema">>
-    end.
+-spec failed_error(jesse_error:error_reason(), context()) -> context().
+failed_error(Error, Context) ->
+    {ErrorCode, ErrorMessage, ErrorJObj} =
+        kz_json_schema:error_to_jobj(Error
+                                    ,props:filter_undefined(
+                                       [{'version', api_version(Context)}
+                                       ,{'error_code', resp_error_code(Context)}
+                                       ,{'error_message', resp_error_msg(Context)}
+                                       ]
+                                      )
+                                    ),
+    JObj = cb_context:validation_errors(Context),
+    Context#cb_context{validation_errors=kz_json:merge_jobjs(ErrorJObj, JObj)
+                      ,resp_status='error'
+                      ,resp_error_code=ErrorCode
+                      ,resp_data=kz_json:new()
+                      ,resp_error_msg=ErrorMessage
+                      }.
 
 -spec passed(context()) -> context().
 -spec passed(context(), crossbar_status()) -> context().
@@ -1136,9 +806,11 @@ add_system_error(Code, Error, JObj, Context) ->
 %%--------------------------------------------------------------------
 -spec build_system_error(integer(), atom() | ne_binary(), ne_binary() | kz_json:object(), cb_context:context()) ->
                                 cb_context:context().
+build_system_error(Code, Error, <<_/binary>> = Message, Context) ->
+    build_system_error(Code, Error, kz_json:from_list([{<<"message">>, Message}]), Context);
 build_system_error(Code, Error, JObj, Context) ->
     ApiVersion = ?MODULE:api_version(Context),
-    Message = build_error_message(ApiVersion, JObj),
+    Message = kz_json_schema:build_error_message(ApiVersion, JObj),
     Context#cb_context{resp_status='error'
                       ,resp_error_code=Code
                       ,resp_data=Message
@@ -1151,109 +823,33 @@ build_system_error(Code, Error, JObj, Context) ->
 %% Add a validation error to the list of request errors
 %% @end
 %%--------------------------------------------------------------------
-add_validation_error(Property, <<"type">>=C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-add_validation_error(Property, <<"items">>=C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-add_validation_error(Property, <<"required">>=C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-add_validation_error(Property, <<"minimum">>=C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-add_validation_error(Property, <<"maximum">>=C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-add_validation_error(Property, <<"minItems">>=C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-add_validation_error(Property, <<"maxItems">>=C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-add_validation_error(Property, <<"uniqueItems">>=C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-add_validation_error(Property, <<"pattern">>=C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-add_validation_error(Property, <<"minLength">>=C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-add_validation_error(Property, <<"maxLength">>=C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-add_validation_error(Property, <<"maxSize">>=C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-add_validation_error(Property, <<"enum">>=C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-add_validation_error(Property, <<"format">>=C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-add_validation_error(Property, <<"divisibleBy">>=C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-
-%% Not unique within the datastore
-add_validation_error(Property, <<"unique">> = C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-%% User is not authorized to update the property
-add_validation_error(Property, <<"forbidden">> = C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-%% Date range is invalid, too small, or too large
-add_validation_error(Property, <<"date_range">> = C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-%% Value was required to locate a resource, but failed (like account_name)
-add_validation_error(Property, <<"not_found">> = C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-%% Value's keys didn't match property
-add_validation_error(Property, <<"patternProperties">> = C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-add_validation_error(Property, <<"disabled">> = C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-add_validation_error(Property, <<"expired">> = C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-                                                % Generic
-add_validation_error(Property, <<"invalid">> = C, Message, Context) ->
-    add_depreciated_validation_error(Property, C, Message, Context);
-
+-spec add_validation_error(kz_json:keys(), ne_binary(), ne_binary() | kz_json:object(), context()) ->
+                                  context().
+add_validation_error(<<_/binary>> = Property, Code, Message, Context) ->
+    add_validation_error([Property], Code, Message, Context);
+add_validation_error(Property, Code, <<_/binary>> = Message, Context) ->
+    add_validation_error(Property, Code, kz_json:from_list([{<<"message">>, Message}]), Context);
 add_validation_error(Property, Code, Message, Context) ->
-    lager:warning("UNKNOWN ERROR CODE: ~p", [Code]),
-    add_depreciated_validation_error(Property, Code, Message, Context).
-
-add_depreciated_validation_error(<<"account">>, <<"expired">>, Message, Context) ->
-    add_depreciated_validation_error(<<"account">>, <<"expired">>, Message, Context, 423, <<"locked">>);
-add_depreciated_validation_error(<<"account">>, <<"disabled">>, Message, Context) ->
-    add_depreciated_validation_error(<<"account">>, <<"disabled">>, Message, Context, 423, <<"locked">>);
-add_depreciated_validation_error(Property, Code, Message, Context) ->
-    add_depreciated_validation_error(Property, Code, Message, Context, resp_error_code(Context), resp_error_msg(Context)).
-
-add_depreciated_validation_error(Property, Code, Message, Context, 'undefined', ErrMsg) ->
-    add_depreciated_validation_error(Property, Code, Message, Context, 400, ErrMsg);
-add_depreciated_validation_error(Property, Code, Message, Context, ErrorCode, 'undefined') ->
-    add_depreciated_validation_error(Property, Code, Message, Context, ErrorCode, <<"invalid request">>);
-add_depreciated_validation_error(Property, Code, Message, Context, ErrorCode, <<"init failed">>) ->
-    add_depreciated_validation_error(Property, Code, Message, Context, ErrorCode, <<"invalid request">>);
-add_depreciated_validation_error(<<_/binary>> = Property, Code, Message, Context, ErrCode, ErrMsg) ->
-    add_depreciated_validation_error([Property], Code, Message, Context, ErrCode, ErrMsg);
-add_depreciated_validation_error(Property, Code, Message, Context, ErrCode, ErrMsg) ->
-    %% Maintain the same error format we are currently using until we are ready to
-    %% convert to something that makes sense....
-    ApiVersion = ?MODULE:api_version(Context),
-
-    JObj = cb_context:validation_errors(Context),
-    Error = build_error_message(ApiVersion, Message),
+    {ErrorCode, ErrorMessage, ErrorJObj} =
+        kz_json_schema:validation_error(Property, Code, Message
+                                       ,props:filter_undefined(
+                                          [{'version', api_version(Context)}
+                                          ,{'error_code', resp_error_code(Context)}
+                                          ,{'error_message', resp_error_msg(Context)}
+                                          ]
+                                         )
+                                       ),
+    ErrorsJObj = cb_context:validation_errors(Context),
 
     Key = kz_util:join_binary(Property, <<".">>),
-    Context#cb_context{validation_errors=kz_json:set_value([Key, Code], Error, JObj)
+    Context#cb_context{validation_errors=kz_json:set_value([Key, Code], ErrorJObj, ErrorsJObj)
                       ,resp_status='error'
-                      ,resp_error_code=ErrCode
+                      ,resp_error_code=ErrorCode
                       ,resp_data=kz_json:new()
-                      ,resp_error_msg=ErrMsg
+                      ,resp_error_msg=ErrorMessage
                       }.
 
--spec build_error_message('v1', ne_binary() | kz_json:object()) ->
-                                 ne_binary();
-                         (ne_binary(), ne_binary() | kz_json:object()) ->
-                                 kz_json:object().
-build_error_message(?VERSION_1, Message) when is_binary(Message) ->
-    Message;
-build_error_message(?VERSION_1, JObj) ->
-    kz_json:get_value(<<"message">>, JObj);
-build_error_message(_Version, Message) when is_binary(Message) ->
-    kz_json:from_list([{<<"message">>, Message}]);
-build_error_message(_Version, JObj) ->
-    JObj.
-
--spec maybe_fix_js_types(cb_context:context(), kz_json:object(), jesse_error:error_reasons()) ->
+-spec maybe_fix_js_types(cb_context:context(), kz_json:object(), [jesse_error:error_reason()]) ->
                                 cb_context:context().
 maybe_fix_js_types(Context, SchemaJObj, Errors) ->
     JObj = req_data(Context),

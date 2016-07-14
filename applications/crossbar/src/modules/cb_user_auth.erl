@@ -479,13 +479,13 @@ maybe_load_user_doc_via_reset_id(Context) ->
 %% @private
 -spec reset_id(ne_binary()) -> ne_binary().
 reset_id(?MATCH_ACCOUNT_ENCODED(A, B, Rest)) ->
-    Noise = kz_util:rand_hex_binary((?RESET_ID_SIZE - 32) / 2),
+    Noise = kz_util:rand_hex_binary((?RESET_ID_SIZE - 32) div 2),
     <<(?MATCH_ACCOUNT_RAW(A,B,Rest))/binary, Noise/binary>>;
 reset_id(<<ResetId:32/binary, _Noi:8, _se/binary>>) ->
     kz_util:format_account_db(kz_util:to_lower_binary(ResetId)).
 
 %% @private
--spec reset_link(kz_json:object(), ne_binary()) -> ne_binary().
+-spec reset_link(ne_binary(), ne_binary()) -> ne_binary().
 reset_link(UIURL, ResetId) ->
     case binary:match(UIURL, <<$?>>) of
         'nomatch' -> <<UIURL/binary, "?recovery=", ResetId/binary>>;
@@ -522,15 +522,14 @@ find_account('undefined', 'undefined', AccountName, Context) ->
             lager:debug("the account name returned multiple results"),
             {'ok', AccountDbs};
         {'error', _} ->
-            C = cb_context:add_validation_error(
-                  <<"account_name">>
+            C = cb_context:add_validation_error(<<"account_name">>
                                                ,<<"not_found">>
                                                ,kz_json:from_list(
                                                   [{<<"message">>, <<"The provided account name could not be found">>}
                                                   ,{<<"cause">>, AccountName}
                                                   ])
                                                ,Context
-                 ),
+                                               ),
             find_account('undefined', 'undefined', 'undefined', C)
     end;
 find_account('undefined', AccountRealm, AccountName, Context) ->
@@ -542,15 +541,14 @@ find_account('undefined', AccountRealm, AccountName, Context) ->
             lager:debug("the account realm returned multiple results"),
             {'ok', AccountDbs};
         {'error', _} ->
-            C = cb_context:add_validation_error(
-                  <<"account_realm">>
+            C = cb_context:add_validation_error(<<"account_realm">>
                                                ,<<"not_found">>
                                                ,kz_json:from_list(
                                                   [{<<"message">>, <<"The provided account realm could not be found">>}
                                                   ,{<<"cause">>, AccountRealm}
                                                   ])
                                                ,Context
-                 ),
+                                               ),
             find_account('undefined', 'undefined', AccountName, C)
     end;
 find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
@@ -560,15 +558,14 @@ find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
             lager:debug("found account by phone number '~s': ~s", [PhoneNumber, AccountDb]),
             {'ok', AccountDb};
         {'error', _} ->
-            C = cb_context:add_validation_error(
-                  <<"phone_number">>
+            C = cb_context:add_validation_error(<<"phone_number">>
                                                ,<<"not_found">>
                                                ,kz_json:from_list(
                                                   [{<<"message">>, <<"The provided phone number could not be found">>}
                                                   ,{<<"cause">>, PhoneNumber}
                                                   ])
                                                ,Context
-                 ),
+                                               ),
             find_account('undefined', AccountRealm, AccountName, C)
     end.
 

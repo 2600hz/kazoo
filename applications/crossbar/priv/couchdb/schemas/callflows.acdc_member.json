@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.acdc_member",
+    "description": "Validator for the acdc_member callflow's data object",
+    "properties": {
+        "priority": {
+            "description": "",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

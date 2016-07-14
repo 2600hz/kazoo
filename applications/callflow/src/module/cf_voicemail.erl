@@ -15,6 +15,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_voicemail).
 
+-behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 
@@ -1777,7 +1779,9 @@ is_owner(Call, OwnerId) ->
 send_mwi_update(#mailbox{owner_id=OwnerId
                         ,mailbox_number=BoxNumber
                         ,account_db=AccountDb
-                        ,mailbox_id=BoxId}, Call) ->
+                        ,mailbox_id=BoxId
+                        }
+               ,Call) ->
     _ = kz_util:spawn(fun cf_util:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
     Messages = kz_vm_message:messages(kapps_call:account_id(Call), BoxId),
     New = kzd_box_message:count_folder(Messages, ?VM_FOLDER_NEW),

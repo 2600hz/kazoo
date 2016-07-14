@@ -24,6 +24,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_resources).
 
+-behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 -include_lib("kazoo/include/kapi_offnet_resource.hrl").
 

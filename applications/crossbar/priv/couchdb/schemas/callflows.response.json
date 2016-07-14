@@ -4,6 +4,7 @@
     "description": "Validator for the Response callflow action",
     "properties": {
         "code": {
+            "default": "486",
             "description": "The SIP Hangup code to respond with",
             "name": "Code",
             "required": true,

@@ -266,21 +266,20 @@ extract_subscription(Subscription, Acc) ->
         _Sub -> Acc
     end.
 
--spec add_subscription(kz_json:object(), kz_json:object(), kz_json:key()) ->
+-spec add_subscription(kz_json:object(), kz_json:object(), kz_json:keys()) ->
                               kz_json:object().
 add_subscription(Subscription, Acc, Key) ->
     kz_json:set_value(Key
-                     ,kz_json:delete_keys(
-                        [<<"username">>
-                        ,<<"user">>
-                        ,<<"event">>
-                        ,<<"realm">>
-                        ,<<"protocol">>
-                        ,<<"contact">>
-                        ,<<"call_id">>
-                        ]
+                     ,kz_json:delete_keys([<<"username">>
+                                          ,<<"user">>
+                                          ,<<"event">>
+                                          ,<<"realm">>
+                                          ,<<"protocol">>
+                                          ,<<"contact">>
+                                          ,<<"call_id">>
+                                          ]
                                          ,Subscription
-                       )
+                                         )
                      ,Acc
                      ).
 
@@ -480,7 +479,7 @@ publish_presence_reset(Realm, PresenceId) ->
           ],
     kz_amqp_worker:cast(API, fun kapi_presence:publish_reset/1).
 
--spec find_presence_id(kz_json:object()) -> ne_binary().
+-spec find_presence_id(kz_json:object()) -> api_binary().
 find_presence_id(JObj) ->
     case kz_device:is_device(JObj) of
         'true' -> kz_device:presence_id(JObj);
@@ -535,7 +534,7 @@ send_report(Context, Thing) ->
     Msg = io_lib:format(Format, [kz_doc:type(Thing), kz_doc:id(Thing)]),
     format_and_send_report(Context, Msg).
 
--spec format_and_send_report(cb_context:context(), ne_binary()) -> 'ok'.
+-spec format_and_send_report(cb_context:context(), iodata()) -> 'ok'.
 format_and_send_report(Context, Msg) ->
     {ReportId, URL} = save_report(Context),
     Subject = io_lib:format("presence reset for account ~s", [cb_context:account_id(Context)]),
@@ -553,7 +552,7 @@ save_report(Context) ->
     JObj = kz_json:encode(cb_context:resp_data(Context)),
     Report = kz_util:rand_hex_binary(16),
     File = <<"/tmp/", Report/binary, ".json">>,
-    file:write_file(File, JObj),
+    'ok' = file:write_file(File, JObj),
     Args = [cb_context:api_version(Context)
            ,cb_context:account_id(Context)
            ,?MATCH_REPORT_PREFIX(Report)

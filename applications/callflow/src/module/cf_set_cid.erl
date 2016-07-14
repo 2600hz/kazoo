@@ -13,6 +13,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_set_cid).
 
+-behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 
 -export([handle/2]).
@@ -24,22 +26,22 @@ handle(Data, Call) ->
 
     lager:info("update with name: ~s num: ~s", [NewCIDName, NewCIDNumber]),
 
-    Updates = [fun(C) -> set_cid_name(C, NewCIDName) end
-              ,fun(C) -> set_cid_number(C, NewCIDNumber) end
+    Updates = [{fun set_cid_name/2, NewCIDName}
+              ,{fun set_cid_number/2, NewCIDNumber}
               ],
     {'ok', Call1} = cf_exe:get_call(Call),
     cf_exe:set_call(kapps_call:exec(Updates, Call1)),
     cf_exe:continue(Call1).
 
 
--spec set_cid_name(kapps_call:call(), api_binary()) -> kapps_call:call().
-set_cid_name(Call, <<>>) ->
+-spec set_cid_name(api_binary(), kapps_call:call()) -> kapps_call:call().
+set_cid_name(<<>>, Call) ->
     kapps_call:kvs_erase('rewrite_cid_name', Call);
-set_cid_name(Call, Name) ->
+set_cid_name(Name, Call) ->
     kapps_call:kvs_store('rewrite_cid_name', Name, Call).
 
--spec set_cid_number(kapps_call:call(), api_binary()) -> kapps_call:call().
-set_cid_number(Call, <<>>) ->
+-spec set_cid_number(api_binary(), kapps_call:call()) -> kapps_call:call().
+set_cid_number(<<>>, Call) ->
     kapps_call:kvs_erase('rewrite_cid_number', Call);
-set_cid_number(Call, Number) ->
+set_cid_number(Number, Call) ->
     kapps_call:kvs_store('rewrite_cid_number', Number, Call).

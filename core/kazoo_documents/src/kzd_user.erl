@@ -19,6 +19,7 @@
         ,devices/1
         ,fetch/2
         ,fax_settings/1
+        ,name/1, first_name/1, last_name/1
         ]).
 
 -include("kz_documents.hrl").
@@ -30,6 +31,8 @@
 -define(KEY_TIMEZONE, <<"timezone">>).
 -define(KEY_PRESENCE_ID, <<"presence_id">>).
 -define(KEY_IS_ENABLED, <<"enabled">>).
+-define(KEY_FIRST_NAME, <<"first_name">>).
+-define(KEY_LAST_NAME, <<"last_name">>).
 
 -define(PVT_TYPE, <<"user">>).
 
@@ -275,3 +278,26 @@ fax_settings(JObj) ->
                       end,
     AccountFaxSettings = kz_account:fax_settings(kz_doc:account_id(JObj)),
     kz_json:merge_jobjs(UserFaxSettings, AccountFaxSettings).
+
+-spec name(doc()) -> ne_binary().
+name(Doc) ->
+    <<(first_name(Doc, <<>>))/binary
+      ," "
+      ,(last_name(Doc, <<>>))/binary
+    >>.
+
+-spec first_name(doc()) -> api_binary().
+-spec first_name(doc(), Default) -> ne_binary() | Default.
+first_name(Doc) ->
+    first_name(Doc, 'undefined').
+
+first_name(Doc, Default) ->
+    kz_json:get_binary_value(?KEY_FIRST_NAME, Doc, Default).
+
+-spec last_name(doc()) -> api_binary().
+-spec last_name(doc(), Default) -> ne_binary() | Default.
+last_name(Doc) ->
+    last_name(Doc, 'undefined').
+
+last_name(Doc, Default) ->
+    kz_json:get_binary_value(?KEY_LAST_NAME, Doc, Default).

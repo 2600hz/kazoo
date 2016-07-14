@@ -9,6 +9,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_park).
 
+-behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 
 -export([handle/2]).
@@ -669,11 +671,10 @@ unanswered_action(SlotNumber, Slot, Data, Call) ->
 presence_type(SlotNumber, Data, Call) ->
     JObj = slot_configuration(Data, SlotNumber),
     DefaultPresenceType =
-        kz_json:get_ne_binary_value(
-          <<"default_presence_type">>
+        kz_json:get_ne_binary_value(<<"default_presence_type">>
                                    ,Data
                                    ,?ACCOUNT_PARKED_TYPE(kapps_call:account_id(Call))
-         ),
+                                   ),
     kz_json:get_ne_binary_value(<<"presence_type">>, JObj, DefaultPresenceType).
 
 -spec slots_configuration(kz_json:object()) -> kz_json:object().

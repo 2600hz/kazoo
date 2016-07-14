@@ -10,6 +10,7 @@ function check_andalso_orelse {
     BOOLS=$(grep -Elr '[a-zA-Z\)] (andalso|orelse)' $ROOT/{applications,core})
 
     if [ ${#BOOLS[@]} -ge 0 ]; then
+        echo "check for andalso/orelse formatting issues in:"
         grep -Elr '[a-zA-Z\)] (andalso|orelse)' $ROOT/{applications,core}
     fi
 }

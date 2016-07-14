@@ -15,8 +15,20 @@
 
 -include("kzt.hrl").
 
--spec exec(kapps_call:call(), kz_json:object()) -> usurp_return().
+-spec exec(kapps_call:call(), kz_json:object()) -> usurp_return() |
+                                                   {'error', [jesse_error:error_return()]}.
 exec(Call, FlowJObj) ->
+    case kzd_callflow:validate_flow(
+           kzd_callflow:set_flow(kzd_callflow:new(), FlowJObj)
+          )
+    of
+        {'error', Errors} -> {'error', Call, Errors};
+        {'ok', ValidCallflow} ->
+            resume_callflow(Call, kzd_callflow:flow(ValidCallflow))
+    end.
+
+-spec resume_callflow(kapps_call:call(), kz_json:object()) -> usurp_return().
+resume_callflow(Call, FlowJObj) ->
     Prop = [{<<"Call">>, kapps_call:to_json(Call)}
            ,{<<"Flow">>, FlowJObj}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -27,10 +39,21 @@ exec(Call, FlowJObj) ->
 -spec parse_cmds(ne_binary()) ->
                         {'ok', kz_json:object()} |
                         {'error', 'not_parsed'}.
-parse_cmds(JSON) ->
-    try kz_json:decode(JSON) of
+parse_cmds(<<_/binary>> = JSON) ->
+    try kz_json:unsafe_decode(JSON) of
         JObj -> {'ok', JObj}
     catch
+        'throw':{'invalid_json',{'error',{Char,'invalid_json'}},Bin} ->
+            <<Before:Char/binary, After/binary>> = Bin,
+            lager:debug("JSON error around char ~p", [Char]),
+            lager:debug("before: ~s", [Before]),
+            lager:debug("after: ~s", [After]),
+            throw({'json', <<"invalid JSON">>, Before, After});
+        'throw':{'invalid_json',{'error',{Char,'invalid_trailing_data'}},Bin} ->
+            TrailingChar = Char-1,
+            <<Before:TrailingChar/binary, After/binary>> = Bin,
+            lager:debug("trailing data detected: '~s'", [After]),
+            throw({'json', <<"trailing data">>, Before, After});
         _E:_R ->
             lager:debug("failed to process json: ~s: ~p", [_E, _R]),
             {'error', 'not_parsed'}

@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.check_cid",
+    "description": "Validator for the check_cid callflow's data object",
+    "properties": {
+        "caller_id": {
+            "properties": {
+                "external": {
+                    "properties": {
+                        "name": {
+                            "description": ""
+                        },
+                        "number": {
+                            "description": ""
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "regex": {
+            "default": ".*",
+            "description": "",
+            "type": "string"
+        },
+        "use_absolute_mode": {
+            "default": false,
+            "description": "",
+            "type": "boolean"
+        },
+        "user_id": {
+            "description": ""
+        }
+    },
+    "required": true,
+    "type": "object"
+}

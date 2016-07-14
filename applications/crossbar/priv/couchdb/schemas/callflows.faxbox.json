@@ -1,0 +1,17 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.faxbox",
+    "description": "Validator for the faxbox callflow's data object",
+    "properties": {
+        "media": {
+            "properties": {
+                "fax_option": {
+                    "description": ""
+                }
+            },
+            "type": "object"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -34,7 +34,7 @@ parse_cmds(XMLString) ->
 exec(Call, #xmlElement{name='Response', content=Els}) ->
     exec_elements(Call, Els);
 exec(Call, Resp) ->
-    try xmerl_scan:string(Resp) of
+    try xmerl_scan:string(kz_util:to_list(Resp)) of
         {#xmlElement{name='Response', content=Els}, _} ->
             exec_elements(Call, Els);
         _Other ->

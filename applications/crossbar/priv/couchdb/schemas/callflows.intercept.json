@@ -1,0 +1,27 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.intercept",
+    "description": "Validator for the intercept callflow's data object",
+    "properties": {
+        "approved_device_id": {
+            "description": ""
+        },
+        "approved_group_id": {
+            "description": ""
+        },
+        "approved_user_id": {
+            "description": ""
+        },
+        "device_id": {
+            "description": ""
+        },
+        "group_id": {
+            "description": ""
+        },
+        "user_id": {
+            "description": ""
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -17,6 +17,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_cidlistmatch).
 
+-behaviour(gen_cf_action).
+
 -export([handle/2]).
 
 -include("callflow.hrl").

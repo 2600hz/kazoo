@@ -11,6 +11,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_manual_presence).
 
+-behaviour(gen_cf_action).
+
 -export([handle/2]).
 
 -include("callflow.hrl").

@@ -112,7 +112,7 @@ acceptable_content_types() -> ?MEDIA_MIME_TYPES.
 -spec content_types_accepted(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_accepted(Context, _VMBox, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
-    CTA = [{'from_json', <<"application/json">>}],
+    CTA = [{'from_json', ?JSON_CONTENT_TYPES}],
     cb_context:set_content_types_provided(Context, CTA).
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
@@ -371,16 +371,16 @@ filter_messages(Messages, Filters) ->
 
 filter_messages([], _Filters, Selected) ->
     Selected;
-filter_messages([Mess|Messages], <<"all">>=Filters, Selected) ->
+filter_messages([Mess|Messages], <<"all">>=Filter, Selected) ->
     Id = kzd_box_message:media_id(Mess),
-    filter_messages(Messages, Filters, [Id|Selected]);
-filter_messages([Mess|Messages], Filters, Selected) when Filters =:= ?VM_FOLDER_NEW;
-                                                         Filters =:= ?VM_FOLDER_SAVED;
-                                                         Filters =:= ?VM_FOLDER_DELETED ->
+    filter_messages(Messages, Filter, [Id|Selected]);
+filter_messages([Mess|Messages], <<_/binary>> = Filter, Selected) when Filter =:= ?VM_FOLDER_NEW;
+                                                                       Filter =:= ?VM_FOLDER_SAVED;
+                                                                       Filter =:= ?VM_FOLDER_DELETED ->
     Id = kzd_box_message:media_id(Mess),
     case kzd_box_message:folder(Mess) of
-        Filters -> filter_messages(Messages, Filters, [Id|Selected]);
-        _ -> filter_messages(Messages, Filters, Selected)
+        Filter -> filter_messages(Messages, Filter, [Id|Selected]);
+        _ -> filter_messages(Messages, Filter, Selected)
     end;
 filter_messages(_, [], Selected) ->
     Selected;

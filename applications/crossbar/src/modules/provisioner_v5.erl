@@ -637,7 +637,7 @@ get_schema() ->
             'undefined'
     end.
 
--spec handle_validation_error(jesse_error:error_reasons(), api_binary()) -> 'ok'.
+-spec handle_validation_error([jesse_error:error_reason()], api_binary()) -> 'ok'.
 handle_validation_error([], AccountId) ->
     lager:error("not sending data to provisioner, data failed to validate in ~s", [AccountId]);
 handle_validation_error([{'data_invalid', _, _Reason, _Key, _Value}|Errors], AccountId) ->

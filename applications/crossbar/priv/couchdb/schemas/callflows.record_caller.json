@@ -13,6 +13,7 @@
             "type": "string"
         },
         "method": {
+            "default": "put",
             "description": "What HTTP method to use when sending the recording",
             "enum": [
                 "put",

@@ -327,8 +327,10 @@ fetch_current_status(Context, AgentId, 'true') ->
                                      ,fun kapi_acdc_stats:status_resp_v/1
                                      )
     of
-        {'error', _}=E ->
-            crossbar_util:response('error', <<"status request contains errors">>, 400
+        {'error', E} ->
+            crossbar_util:response('error'
+                                  ,<<"status request contains errors">>
+                                  ,400
                                   ,kz_json:get_value(<<"Error-Reason">>, E)
                                   ,Context
                                   );

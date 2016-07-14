@@ -14,6 +14,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_branch_variable).
 
+-behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 
 -export([handle/2]).

@@ -115,7 +115,7 @@ format_path_tokens([Module, Function | Args]) -> [Module, Function, Args].
 %% @public
 %% @doc Initializes the bindings this module will respond to.
 %%--------------------------------------------------------------------
--spec init() -> sup_init_ret().
+-spec init() -> supervisor:startchild_ret().
 init() ->
     Ret = crossbar_module_sup:start_child(?SERVER),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.sup">>, ?MODULE, 'allowed_methods'),

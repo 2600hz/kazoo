@@ -14,6 +14,8 @@
 
 -module(cf_after_bridge).
 
+-behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 
 -export([handle/2]).

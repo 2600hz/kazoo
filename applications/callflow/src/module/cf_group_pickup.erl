@@ -24,6 +24,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_group_pickup).
 
+-behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 
 -export([handle/2]).

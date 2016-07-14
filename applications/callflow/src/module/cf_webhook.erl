@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(cf_webhook).
 
+-behaviour(gen_cf_action).
+
 -include("callflow.hrl").
 
 -export([handle/2]).
@@ -21,7 +23,7 @@
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    _ = kz_util:spawn(fun handle_webhook/2, [Data, Call]),
+    _ = handle_webhook(Data, Call),
     cf_exe:continue(Call).
 
 -spec handle_webhook(kz_json:object(), kapps_call:call()) -> 'ok' | {'error', any()}.
@@ -34,7 +36,7 @@ handle_webhook(Data, Call) ->
              ,{<<"Data">>, CallJObj}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    kapps_util:amqp_pool_send(JObj, fun kapi_notifications:publish_webhook/1).
+    kz_amqp_worker:cast(JObj, fun kapi_notifications:publish_webhook/1).
 
 -spec format_call_data(kapps_call:call()) -> kz_json:object().
 format_call_data(Call) ->
@@ -52,11 +54,11 @@ set_hook(Data, CallJObj) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"_id">>, kz_util:to_binary(Now)}
-        ,{<<"uri">>, kz_json:get_value(<<"uri">>, Data)}
+        ,{<<"uri">>, kz_json:get_binary_value(<<"uri">>, Data)}
         ,{<<"hook">>, <<"callflow">>}
-        ,{<<"http_verb">>, kz_json:get_value(<<"http_verb">>, Data)}
-        ,{<<"retries">>, kz_json:get_value(<<"retries">>, Data)}
-        ,{<<"pvt_account_id">>, kz_json:get_value(<<"account_id">>, CallJObj)}
-        ,{<<"custom_data">>, kz_json:get_value(<<"custom_data">>, Data)}
+        ,{<<"http_verb">>, kz_json:get_binary_value(<<"http_verb">>, Data)}
+        ,{<<"retries">>, kz_json:get_integer_value(<<"retries">>, Data)}
+        ,{<<"pvt_account_id">>, kz_json:get_binary_value(<<"account_id">>, CallJObj)}
+        ,{<<"custom_data">>, kz_json:get_json_value(<<"custom_data">>, Data)}
         ])
      ).

@@ -217,7 +217,7 @@ validate_webhook(Context, Id, ?HTTP_PATCH) ->
 validate_webhook(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
-validate(Context, Id, ?PATH_TOKEN_ATTEMPTS) ->
+validate(Context, <<_/binary>> = Id, ?PATH_TOKEN_ATTEMPTS) ->
     summary_attempts(Context, Id).
 
 -spec validate_patch(cb_context:context(), ne_binary()) ->

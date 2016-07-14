@@ -399,15 +399,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec get_timelimit(api_integer()) -> pos_integer().
+-spec get_timelimit(api_object() | integer()) -> pos_integer().
 get_timelimit('undefined') ->
     kapps_config:get(?CONFIG_CAT, <<"max_recording_time_limit">>, 600);
-get_timelimit(TL) ->
+get_timelimit(TL) when is_integer(TL) ->
     case (Max = kapps_config:get(?CONFIG_CAT, <<"max_recording_time_limit">>, 600)) > TL of
         'true' -> TL;
         'false' when Max > 0 -> Max;
         'false' -> Max
-    end.
+    end;
+get_timelimit(Data) ->
+    get_timelimit(kz_json:get_integer_value(<<"time_limit">>, Data)).
 
 -spec get_format(api_binary()) -> ne_binary().
 get_format('undefined') -> kapps_config:get(?CONFIG_CAT, [<<"call_recording">>, <<"extension">>], <<"mp3">>);

@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.receive_fax",
+    "description": "Validator for the receive_fax callflow's data object",
+    "properties": {
+        "media": {
+            "properties": {
+                "fax_option": {
+                    "description": ""
+                }
+            },
+            "type": "object"
+        },
+        "owner_id": {
+            "description": ""
+        }
+    },
+    "required": true,
+    "type": "object"
+}
