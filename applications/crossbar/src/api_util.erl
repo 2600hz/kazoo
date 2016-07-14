@@ -605,8 +605,8 @@ is_cb_module(Context, Elem) ->
     try (kz_util:to_atom(<<"cb_", Elem/binary>>)):module_info('exports') of
         _ -> 'true'
     catch
-        % try module_version, regardless of whether it was the atom or the
-        % module which did not exist
+        %% try module_version, regardless of whether it was the atom or the
+        %% module which did not exist
         _E:_R -> is_cb_module_version(Context, Elem)
     end.
 
