@@ -7,6 +7,12 @@ machine:
     - rabbitmq-server
 #    - couchdb-server
 
+general:
+  branches:
+    ignore:
+      - /3\.[0-9]+/
+      - 4.0
+
 dependencies:
   cache_directories:
     - ~/.kerl
