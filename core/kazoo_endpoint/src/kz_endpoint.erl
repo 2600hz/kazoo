@@ -1409,13 +1409,14 @@ maybe_retain_caller_id({Endpoint, Call, CallFwd, JObj}) ->
 
 -spec maybe_set_endpoint_id(ccv_acc()) -> ccv_acc().
 maybe_set_endpoint_id({Endpoint, Call, CallFwd, JObj}) ->
-    {Endpoint, Call, CallFwd
-    ,case kz_doc:id(Endpoint) of
-         'undefined' -> JObj;
-         EndpointId ->
-             kz_json:set_value(<<"Authorizing-ID">>, EndpointId, JObj)
-     end
-    }.
+    JObj1 = case kz_doc:id(Endpoint) of
+                'undefined' -> JObj;
+                EndpointId ->
+                    kz_json:set_values([{<<"Authorizing-ID">>, EndpointId}
+                                       ,{<<"Authorizing-Type">>, kz_json:get_value(<<"pvt_type">>, Endpoint)}
+                                       ], JObj)
+            end,
+    {Endpoint, Call, CallFwd, JObj1}.
 
 -spec maybe_set_owner_id(ccv_acc()) -> ccv_acc().
 maybe_set_owner_id({Endpoint, Call, CallFwd, JObj}) ->
