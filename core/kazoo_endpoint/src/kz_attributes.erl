@@ -539,7 +539,7 @@ owned_by_query(ViewOptions, Call) ->
     owned_by_query(ViewOptions, Call, <<"value">>).
 owned_by_query(ViewOptions, Call, ViewKey) ->
     AccountDb = kapps_call:account_db(Call),
-    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
         {'ok', JObjs} -> [kz_json:get_value(ViewKey, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find owned documents (~p) using ~p", [_R, ViewOptions]),
