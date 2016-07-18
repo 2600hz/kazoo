@@ -14,8 +14,7 @@
             "minItems": 1,
             "name": "Records",
             "required": false,
-            "type": "array",
-            "uniqueItems": true
+            "type": "array"
         }
     }
 }
