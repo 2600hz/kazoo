@@ -70,7 +70,7 @@ is_versioned_module(Module) ->
     case Mod of
         "1v_" ++ _ -> 'true';
         "2v_" ++ _ -> 'true';
-        _ -> false
+        _ -> 'false'
     end.
 
 -spec start_mod(atom() | string() | binary()) -> 'ok' | {'error', any()}.
