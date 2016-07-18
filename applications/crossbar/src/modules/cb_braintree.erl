@@ -472,7 +472,7 @@ maybe_charge_billing_id(Amount, Context) ->
                      [{<<"message">>, <<"Please contact your phone provider to add credit.">>}
                      ,{<<"cause">>, ResellerId}
                      ]),
-            cb_context:add_validation_error(<<"amount">>, <<"forbidden">>, Resp, Context)
+            cb_context:add_system_error(<<"forbidden">>, Resp, Context)
     end.
 
 -spec charge_billing_id(float(), cb_context:context()) -> cb_context:context().
