@@ -32,6 +32,6 @@ Manipulate documents in the system\_config database via Crossbar. You must be su
 
     curl -v -X DELETE -H "content-type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/system_configs/abc123/ecallmgr@server.com
 
-##### Detele the whole config
+##### Delete the whole config
 
     curl -v -X DELETE -H "content-type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/system_configs/abc123
