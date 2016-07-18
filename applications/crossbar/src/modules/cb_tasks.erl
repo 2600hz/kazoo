@@ -245,13 +245,11 @@ validate_new_attachment(Context, 'false') ->
             %% For tasks without input data.
             cb_context:set_resp_status(Context, 'success');
         'false' ->
-            Ctx = cb_context:validate_request_data(?SCHEMA_TASKS, Context),
-            case cb_context:resp_status(Ctx) of
-                'success' ->
-                    lager:debug("records validated"),
-                    cb_context:store(Ctx, 'total_rows', length(Records));
-                _ -> Ctx
-            end
+            TotalRows = length(Records),
+            lager:debug("~p records validated", [TotalRows]),
+            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
+                                        ,{fun cb_context:store/3, 'total_rows', TotalRows}
+                                        ])
     end.
 
 %%--------------------------------------------------------------------
