@@ -74,19 +74,21 @@ is_versioned_module(Module) ->
     end.
 
 -spec start_mod(atom() | string() | binary()) -> 'ok' | {'error', any()}.
-start_mod(CBMod) when not is_atom(CBMod) ->
+start_mod(CBMod) when is_binary(CBMod) ->
     case is_versioned_module(CBMod) of
         'true' -> {'error', 'version_supplied'};
         'false' -> start_mod(kz_util:to_atom(CBMod, 'true'))
     end;
-start_mod(CBMod) ->
+start_mod(CBMod) when is_atom(CBMod) ->
     try CBMod:init() of
         _ -> 'ok'
     catch
         _E:_R ->
             lager:notice("failed to initialize ~s: ~p (trying other versions)", [CBMod, _R]),
             maybe_start_mod_versions(?VERSION_SUPPORTED, CBMod)
-    end.
+    end;
+start_mod(CBMod) ->
+    start_mod(kz_util:to_binary(CBMod)).
 
 -spec maybe_start_mod_versions(ne_binaries(), ne_binary() | atom()) -> 'ok'.
 maybe_start_mod_versions(Versions, Mod) ->
