@@ -84,7 +84,7 @@ start_mod(CBMod) ->
         _ -> 'ok'
     catch
         _E:_R ->
-            lager:notice("failed to initialize ~s: ~p (trying other versions)", [CBMod, _R]),
+            lager:debug("failed to initialize ~s: ~p (trying other versions)", [CBMod, _R]),
             maybe_start_mod_versions(?VERSION_SUPPORTED, CBMod)
     end.
 
@@ -101,10 +101,9 @@ start_mod_version(Version, Mod) ->
                , "_", (kz_util:to_binary(Version))/binary
              >>,
     CBMod = kz_util:to_atom(Module, 'true'),
-    lager:notice("starting module ~s version ~s", [Mod, Version]),
     try CBMod:init() of
         _ ->
-            lager:notice("module ~s version ~s successfully loaded", [Mod, Version]),
+            lager:debug("module ~s version ~s successfully loaded", [Mod, Version]),
             'true'
     catch
         _E:_R ->
@@ -122,7 +121,7 @@ stop_mod(CBMod) ->
     case erlang:function_exported(CBMod, 'stop', 0) of
         'true' -> do_stop_mod(CBMod);
         'false' ->
-            lager:notice("failed to stop ~s (trying other versions)", [CBMod]),
+            lager:debug("failed to stop ~s (trying other versions)", [CBMod]),
             maybe_stop_mod_versions(?VERSION_SUPPORTED, CBMod)
     end.
 
