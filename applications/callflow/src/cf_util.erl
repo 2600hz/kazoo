@@ -245,7 +245,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
     ViewOptions = [{'key', [OwnerId, <<"device">>]}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
         {'ok', JObjs} ->
             {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
             AccountId = kz_util:format_account_id(AccountDb, 'raw'),
@@ -418,7 +418,7 @@ owner_ids_by_sip_username(AccountDb, Username) ->
                                            {'error', any()}.
 get_owner_ids_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
-    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/sip_username">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"attributes/sip_username">>, ViewOptions) of
         {'ok', [JObj]} ->
             EndpointId = kz_doc:id(JObj),
             OwnerIds = kz_json:get_value(<<"value">>, JObj, []),
@@ -454,7 +454,7 @@ endpoint_id_by_sip_username(AccountDb, Username) ->
                                              {'error', 'not_found'}.
 get_endpoint_id_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
-    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/sip_username">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"attributes/sip_username">>, ViewOptions) of
         {'ok', [JObj]} ->
             EndpointId = kz_doc:id(JObj),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],

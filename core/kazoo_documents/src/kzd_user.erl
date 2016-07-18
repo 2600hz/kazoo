@@ -255,7 +255,7 @@ devices(UserJObj) ->
                   ,{'endkey', [UserId, kz_json:new()]}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
         {'ok', JObjs} -> [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find documents owned by ~s: ~p", [UserId, _R]),

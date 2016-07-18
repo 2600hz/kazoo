@@ -38,7 +38,7 @@
 -spec temporal_rules(kapps_call:call()) -> kz_json:objects().
 temporal_rules(Call) ->
     AccountDb = kapps_call:account_db(Call),
-    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/temporal_rules">>, ['include_docs']) of
+    case kz_datamgr:get_results(AccountDb, <<"attributes/temporal_rules">>, ['include_docs']) of
         {'ok', JObjs} -> JObjs;
         {'error', _E} ->
             lager:debug("failed to find temporal rules: ~p", [_E]),
@@ -56,7 +56,7 @@ groups(Call) ->
     groups(Call, []).
 groups(Call, ViewOptions) ->
     AccountDb = kapps_call:account_db(Call),
-    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/groups">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"attributes/groups">>, ViewOptions) of
         {'ok', JObjs} -> JObjs;
         {'error', _} -> []
     end.
@@ -415,7 +415,7 @@ owner_id('undefined', _Call) -> 'undefined';
 owner_id(ObjectId, Call) ->
     AccountDb = kapps_call:account_db(Call),
     ViewOptions = [{'key', ObjectId}],
-    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/owner">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"attributes/owner">>, ViewOptions) of
         {'ok', [JObj]} -> kz_json:get_value(<<"value">>, JObj);
         {'ok', []} -> 'undefined';
         {'ok', [_|_]=JObjs} ->
@@ -431,7 +431,7 @@ owner_ids('undefined', _Call) -> [];
 owner_ids(ObjectId, Call) ->
     AccountDb = kapps_call:account_db(Call),
     ViewOptions = [{'key', ObjectId}],
-    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/owner">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"attributes/owner">>, ViewOptions) of
         {'ok', []} -> [];
         {'ok', [JObj]} -> [kz_json:get_value(<<"value">>, JObj)];
         {'ok', [_|_]=JObjs} ->
@@ -495,7 +495,7 @@ owned_by(OwnerId, Call) ->
     ViewOptions = [{'startkey', [OwnerId]}
                   ,{'endkey', [OwnerId, kz_json:new()]}
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
         {'ok', JObjs} -> [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),
@@ -519,7 +519,7 @@ owned_by_docs(OwnerId, Call) ->
                   ,{'endkey', [OwnerId, kz_json:new()]}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
         {'ok', JObjs} -> [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),
