@@ -204,7 +204,7 @@ send_mwi_update(New, Saved, BoxNumber, AccountId) ->
 -spec get_devices_owned_by(ne_binary(), ne_binary()) -> kz_json:objects().
 get_devices_owned_by(OwnerID, DB) ->
     case kz_datamgr:get_results(DB
-                               ,<<"kz_attributes/owned">>
+                               ,<<"attributes/owned">>
                                ,[{'key', [OwnerID, <<"device">>]}
                                 ,'include_docs'
                                 ])

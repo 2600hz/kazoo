@@ -325,7 +325,7 @@ lookup_hotdesk_id(HotdeskId, Data, Call) ->
     ViewOptions = [{'key', HotdeskId}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/hotdesk_id">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"attributes/hotdesk_id">>, ViewOptions) of
         {'ok', [JObj]} ->
             lager:info("found hotdesk id ~s", [HotdeskId]),
             from_json(kz_json:get_value(<<"doc">>, JObj), Data, Call);
@@ -389,7 +389,7 @@ update_hotdesk_endpoint(AccountDb, JObj, Fun) ->
 get_endpoint_ids(OwnerId, Call) ->
     AccountDb = kapps_call:account_db(Call),
     ViewOptions = [{'key', OwnerId}],
-    case kz_datamgr:get_results(AccountDb, <<"kz_attributes/hotdesk_users">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"attributes/hotdesk_users">>, ViewOptions) of
         {'ok', JObjs} ->
             [kz_doc:id(JObj) || JObj <- JObjs];
         {'error', _R} ->
