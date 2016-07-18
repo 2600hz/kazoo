@@ -1095,6 +1095,7 @@ calculate_transactions_charge_fold(JObj, PlanCharges) ->
             ItemId = kz_json:get_value(<<"item">>, JObj),
             Props = [{<<"activation_charges">>, Total}
                     ,{[CategoryId, ItemId, <<"activation_charges">>], Amount}
+                    ,{[CategoryId, ItemId, <<"quantity">>], Quantity}
                     ],
             kz_json:set_values(Props, PlanCharges)
     end.
