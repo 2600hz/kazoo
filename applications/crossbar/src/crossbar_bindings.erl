@@ -206,26 +206,7 @@ init() ->
 
 -spec maybe_init_mod(ne_binary() | atom()) -> 'ok'.
 maybe_init_mod(Mod) ->
-    try (kz_util:to_atom(Mod, 'true')):init() of
-        _ -> 'ok'
-    catch
-        _E:_R ->
-            lager:notice("failed to initialize ~s: ~p (trying other versions)", [Mod, _R]),
-            maybe_init_mod_versions(?VERSION_SUPPORTED, Mod)
-    end.
-
--spec maybe_init_mod_versions(ne_binaries(), ne_binary() | atom()) -> 'ok'.
-maybe_init_mod_versions([], _) -> 'ok';
-maybe_init_mod_versions([Version|Versions], Mod) ->
-    Module = <<(kz_util:to_binary(Mod))/binary
-               , "_", (kz_util:to_binary(Version))/binary
-             >>,
-    try (kz_util:to_atom(Module, 'true')):init() of
-        _ ->
-            lager:notice("module ~s version ~s successfully loaded", [Mod, Version]),
-            maybe_init_mod_versions(Versions, Mod)
-    catch
-        _E:_R ->
-            lager:warning("failed to initialize module ~s version ~s: ~p", [Mod, Version, _R]),
-            maybe_init_mod_versions(Versions, Mod)
+    case crossbar_init:start_mod(Mod) of
+        'ok' -> 'ok';
+        {'error', Error} -> lager:notice("failed to initialize ~s: ~p", [Mod, Error])
     end.

@@ -132,11 +132,9 @@ flush() ->
 %%--------------------------------------------------------------------
 -spec start_module(text()) -> 'ok'.
 start_module(Module) ->
-    try crossbar_init:start_mod(Module) of
-        _ -> maybe_autoload_module(kz_util:to_binary(Module))
-    catch
-        _E:_R ->
-            io:format("failed to start ~s: ~s: ~p~n", [Module, _E, _R])
+    case crossbar_init:start_mod(Module) of
+        'ok' -> maybe_autoload_module(kz_util:to_binary(Module));
+        {'error', Error} -> io:format("failed to start ~s: ~p~n", [Module, Error])
     end.
 
 -spec maybe_autoload_module(ne_binary()) -> 'ok'.
@@ -166,14 +164,12 @@ persist_module(Module, Mods) ->
 %%--------------------------------------------------------------------
 -spec stop_module(text()) -> 'ok'.
 stop_module(Module) ->
-    try crossbar_init:stop_mod(Module) of
-        _ ->
+    case crossbar_init:stop_mod(Module) of
+        'ok' ->
             Mods = crossbar_config:autoload_modules(),
             crossbar_config:set_default_autoload_modules(lists:delete(kz_util:to_binary(Module), Mods)),
-            io:format("stopped and removed ~s from autoloaded modules~n", [Module])
-    catch
-        _E:_R ->
-            io:format("failed to stop ~s: ~s: ~p~n", [Module, _E, _R])
+            io:format("stopped and removed ~s from autoloaded modules~n", [Module]);
+        {'error', Error} -> io:format("failed to stop ~s: ~p~n", [Module, Error])
     end.
 
 %%--------------------------------------------------------------------
