@@ -310,12 +310,12 @@ list_all(_, [{E164,JObj} | Rest]) ->
                  ,api_binary()
                  ,api_binary(), api_binary(), api_binary(), api_binary()) ->
                          task_return().
-import_list(Props, E164, AccountId, State, Carrier
+import_list(_Props, E164, AccountId, State, Carrier
            ,_PortIn, _PrevAssignedTo, _Created, _Modified, _UsedBy, _CNAMInbound, _CNAMOutbound
            ,_E911PostalCode
            ,_E911StreetAddress, _E911ExtendedAddress, _E911Locality, _E911Region) ->
     %%TODO: use the optional fields
-    Options = [{'auth_by', auth_by('undefined', Props)}
+    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'batch_run', 'true'}
               ,{'assign_to', AccountId}
               ,{'state', State}
@@ -324,30 +324,30 @@ import_list(Props, E164, AccountId, State, Carrier
     handle_result(knm_number:create(E164, Options)).
 
 -spec assign_to(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> task_return().
-assign_to(Props, Number, AccountId, AuthBy) ->
-    Options = [{'auth_by', auth_by(AuthBy, Props)}
+assign_to(_Props, Number, AccountId, AuthBy) ->
+    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'batch_run', 'true'}
               ],
     handle_result(knm_number:move(Number, AccountId, Options)).
 
 -spec delete(kz_proplist(), ne_binary(), api_binary()) -> task_return().
-delete(Props, Number, AuthBy) ->
-    Options = [{'auth_by', auth_by(AuthBy, Props)}
+delete(_Props, Number, AuthBy) ->
+    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'batch_run', 'true'}
               ],
     handle_result(knm_number:release(Number, Options)).
 
 -spec reserve(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> task_return().
-reserve(Props, Number, AccountId, AuthBy) ->
-    Options = [{'auth_by', auth_by(AuthBy, Props)}
+reserve(_Props, Number, AccountId, AuthBy) ->
+    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'batch_run', 'true'}
               ,{'assign_to', AccountId}
               ],
     handle_result(knm_number:reserve(Number, Options)).
 
 -spec add(kz_proplist(), ne_binary(), ne_binary(), api_binary(), api_binary()) -> task_return().
-add(Props, Number, AccountId, AuthBy, ModuleName0) ->
-    Options = [{'auth_by', auth_by(AuthBy, Props)}
+add(_Props, Number, AccountId, AuthBy, ModuleName0) ->
+    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'batch_run', 'true'}
               ,{'assign_to', AccountId}
               ,{'module_name', ModuleName0}
