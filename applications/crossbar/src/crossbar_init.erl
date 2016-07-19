@@ -63,10 +63,55 @@ start_link() ->
 %% @public
 %% @doc Load a crossbar module's bindings into the bindings server
 %%--------------------------------------------------------------------
--spec start_mod(atom() | string() | binary()) -> any().
-start_mod(CBMod) when not is_atom(CBMod) -> start_mod(kz_util:to_atom(CBMod, 'true'));
-start_mod(CBMod) -> CBMod:init().
 
+-spec is_versioned_module(binary()) -> boolean().
+is_versioned_module(Module) ->
+    Mod = lists:reverse(binary_to_list(Module)),
+    case Mod of
+        "1v_" ++ _ -> 'true';
+        "2v_" ++ _ -> 'true';
+        _ -> 'false'
+    end.
+
+-spec start_mod(atom() | string() | binary()) -> 'ok' | {'error', any()}.
+start_mod(CBMod) when is_binary(CBMod) ->
+    case is_versioned_module(CBMod) of
+        'true' -> {'error', 'version_supplied'};
+        'false' -> start_mod(kz_util:to_atom(CBMod, 'true'))
+    end;
+start_mod(CBMod) when is_atom(CBMod) ->
+    try CBMod:init() of
+        _ -> 'ok'
+    catch
+        _E:_R ->
+            lager:debug("failed to initialize ~s: ~p (trying other versions)", [CBMod, _R]),
+            maybe_start_mod_versions(?VERSION_SUPPORTED, CBMod)
+    end;
+start_mod(CBMod) ->
+    start_mod(kz_util:to_binary(CBMod)).
+
+-spec maybe_start_mod_versions(ne_binaries(), ne_binary() | atom()) -> 'ok'.
+maybe_start_mod_versions(Versions, Mod) ->
+    case lists:all(fun(Version) -> start_mod_version(Version, Mod) end, Versions) of
+        'true' -> 'ok';
+        'false' -> {'error', 'no_modules_started'}
+    end.
+
+-spec start_mod_version(ne_binary(), ne_binary() | atom()) -> boolean().
+start_mod_version(Version, Mod) ->
+    Module = <<(kz_util:to_binary(Mod))/binary
+               , "_", (kz_util:to_binary(Version))/binary
+             >>,
+    CBMod = kz_util:to_atom(Module, 'true'),
+    try CBMod:init() of
+        _ ->
+            lager:debug("module ~s version ~s successfully loaded", [Mod, Version]),
+            'true'
+    catch
+        _E:_R ->
+            lager:warning("failed to initialize module ~s version ~s: ~p", [Mod, Version, _R]),
+            'false'
+    end.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Load a crossbar module's bindings into the bindings server
@@ -76,8 +121,41 @@ stop_mod(CBMod) when not is_atom(CBMod) -> stop_mod(kz_util:to_atom(CBMod, 'true
 stop_mod(CBMod) ->
     crossbar_bindings:flush_mod(CBMod),
     case erlang:function_exported(CBMod, 'stop', 0) of
-        'true' -> CBMod:stop();
-        'false' -> 'ok'
+        'true' -> do_stop_mod(CBMod);
+        'false' ->
+            lager:debug("failed to stop ~s (trying other versions)", [CBMod]),
+            maybe_stop_mod_versions(?VERSION_SUPPORTED, CBMod)
+    end.
+
+-spec do_stop_mod(atom()) -> any().
+do_stop_mod(CBMod) ->
+    try CBMod:stop() of
+        _ -> 'ok'
+    catch
+        _E:_R ->
+            lager:notice("failed to stop ~s: ~p (trying other versions)", [CBMod, _R]),
+            maybe_stop_mod_versions(?VERSION_SUPPORTED, CBMod)
+    end.
+
+-spec maybe_stop_mod_versions(ne_binaries(), ne_binary() | atom()) -> 'ok'.
+maybe_stop_mod_versions(Versions, Mod) ->
+    lists:foreach(fun(Version) -> stop_mod_version(Version, Mod) end, Versions).
+
+-spec stop_mod_version(ne_binary(), ne_binary() | atom()) -> boolean().
+stop_mod_version(Version, Mod) ->
+    Module = <<(kz_util:to_binary(Mod))/binary
+               , "_", (kz_util:to_binary(Version))/binary
+             >>,
+    CBMod = kz_util:to_atom(Module, 'true'),
+    crossbar_bindings:flush_mod(CBMod),
+    try CBMod:stop() of
+        _ ->
+            lager:notice("module ~s version ~s successfully stopped", [Mod, Version]),
+            'true'
+    catch
+        _E:_R ->
+            lager:warning("failed to stop module ~s version ~s: ~p", [Mod, Version, _R]),
+            'false'
     end.
 
 %%--------------------------------------------------------------------
