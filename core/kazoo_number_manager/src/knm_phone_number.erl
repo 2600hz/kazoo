@@ -801,10 +801,11 @@ handle_assignment(PhoneNumber) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Makes sure number is assigned to assigned_to by creating number doc
+%% that may not yet exist in AssignedTo DB.
 %% @end
 %%--------------------------------------------------------------------
 -spec assign(knm_phone_number()) -> knm_phone_number().
--spec assign(knm_phone_number(), ne_binary()) -> knm_phone_number().
 assign(PhoneNumber) ->
     AssignedTo = assigned_to(PhoneNumber),
     case kz_util:is_empty(AssignedTo) of
@@ -812,6 +813,7 @@ assign(PhoneNumber) ->
         'false' -> assign(PhoneNumber, AssignedTo)
     end.
 
+-spec assign(knm_phone_number(), ne_binary()) -> knm_phone_number().
 -ifdef(TEST).
 assign(PhoneNumber, _AssignedTo) ->
     PhoneNumber.
@@ -833,10 +835,11 @@ assign(PhoneNumber, AssignedTo) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Makes sure number is unassigned from prev_assigned_to by removing
+%% number doc that may still exist in PrevAssignedTo DB.
 %% @end
 %%--------------------------------------------------------------------
 -spec unassign(knm_phone_number()) -> knm_phone_number().
--spec unassign(knm_phone_number(), ne_binary()) -> knm_phone_number().
 unassign(PhoneNumber) ->
     PrevAssignedTo = prev_assigned_to(PhoneNumber),
     case kz_util:is_empty(PrevAssignedTo) of
@@ -848,6 +851,7 @@ unassign(PhoneNumber) ->
             unassign(PhoneNumber, PrevAssignedTo)
     end.
 
+-spec unassign(knm_phone_number(), ne_binary()) -> knm_phone_number().
 -ifdef(TEST).
 unassign(PhoneNumber, _PrevAssignedTo) ->
     PhoneNumber.
@@ -857,8 +861,7 @@ unassign(PhoneNumber, PrevAssignedTo) ->
     case get_number_in_account(PrevAssignedTo, Num) of
         {'error', 'not_found'} ->
             lager:debug("number ~s was not found in ~s, no need to unassign"
-                        ,[Num, PrevAssignedTo]
-                       ),
+                       ,[Num, PrevAssignedTo]),
             PhoneNumber;
         {'ok', _} -> do_unassign(PhoneNumber, PrevAssignedTo);
         {'error', _R} -> do_unassign(PhoneNumber, PrevAssignedTo)
@@ -870,13 +873,11 @@ do_unassign(PhoneNumber, PrevAssignedTo) ->
     case kz_datamgr:del_doc(AccountDb, to_json(PhoneNumber)) of
         {'error', E} ->
             lager:error("failed to unassign number ~s from ~s"
-                        ,[number(PhoneNumber), PrevAssignedTo]
-                       ),
+                       ,[number(PhoneNumber), PrevAssignedTo]),
             knm_errors:assign_failure(PhoneNumber, E);
         {'ok', _} ->
             lager:debug("unassigned number ~s from ~s"
-                        ,[number(PhoneNumber), PrevAssignedTo]
-                       ),
+                       ,[number(PhoneNumber), PrevAssignedTo]),
             PhoneNumber
     end.
 
