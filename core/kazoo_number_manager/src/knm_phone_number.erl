@@ -856,6 +856,11 @@ unassign(PhoneNumber) ->
 unassign(PhoneNumber, _PrevAssignedTo) ->
     PhoneNumber.
 -else.
+unassign(#knm_phone_number{assigned_to = PrevAssignedTo} = PhoneNumber
+        ,PrevAssignedTo
+        ) ->
+    lager:debug("prev_assigned_to is same as assigned_to, not unassign-ing"),
+    PhoneNumber;
 unassign(PhoneNumber, PrevAssignedTo) ->
     Num = number(PhoneNumber),
     case get_number_in_account(PrevAssignedTo, Num) of
