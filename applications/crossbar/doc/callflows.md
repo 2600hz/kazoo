@@ -2,6 +2,8 @@
 
 #### About Callflows
 
+Callflows are the instructions Kazoo uses to process a call. A callflow includes a list of numbers or regex patterns used by Kazoo to determine what callflow is used when a call comes in for an account. The `flow` parameter defines the tree of actions, allowing branching (such as in the `menu` action) and chaining actions together. You can also branch to other callflows and execute its `flow` (useful to avoid recreating the same sub-flow structure).
+
 #### Schema
 
 Key | Description | Type | Default | Required
@@ -9,7 +11,7 @@ Key | Description | Type | Default | Required
 `featurecode` | When the callflow is used as a featurecode this object tracks the intended match of the pattern and name of the feature | `object` |   | `false`
 `featurecode.name` |   | `string(1..128)` |   | `false`
 `featurecode.number` |   | `string(1..30)` |   | `false`
-`flow` | A callflow node defines a module to execute, data to provide to that module, and one or more children to branch to | `object` |   | `true`
+`flow` | A callflow node defines a module to execute, data to provide to that module, and zero or more children to branch to | `object` |   | `true`
 `flow.children` | Children callflows | `object` | `{}` | `false`
 `flow.data` | The data/arguments of the callflow module | `object` | `{}` | `true`
 `flow.module` | The name of the callflow module to excute at this node | `string(1..64)` |   | `true`
@@ -19,8 +21,7 @@ Key | Description | Type | Default | Required
 `patterns` | A list of regular expressions that the callflow should execute for, with optional capture groups | `array(string(1..))` | `[]` | `false`
 `patterns.[]` |   | `string` |   | `false`
 
-
-#### Fetch
+#### Fetch an account's callflows
 
 > GET /v2/accounts/{ACCOUNT_ID}/callflows
 
@@ -30,7 +31,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows
 ```
 
-#### Create
+#### Create a new callflow
 
 > PUT /v2/accounts/{ACCOUNT_ID}/callflows
 
@@ -40,7 +41,7 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows
 ```
 
-#### Remove
+#### Remove a callflow
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/callflows/{CALLFLOW_ID}
 
@@ -50,7 +51,7 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{CALLFLOW_ID}
 ```
 
-#### Fetch
+#### Fetch a callflow's details
 
 > GET /v2/accounts/{ACCOUNT_ID}/callflows/{CALLFLOW_ID}
 
@@ -60,7 +61,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{CALLFLOW_ID}
 ```
 
-#### Patch
+#### Patch a callflow object
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/callflows/{CALLFLOW_ID}
 
@@ -70,7 +71,7 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{CALLFLOW_ID}
 ```
 
-#### Change
+#### Change a callflow object
 
 > POST /v2/accounts/{ACCOUNT_ID}/callflows/{CALLFLOW_ID}
 
@@ -79,4 +80,3 @@ curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{CALLFLOW_ID}
 ```
-
