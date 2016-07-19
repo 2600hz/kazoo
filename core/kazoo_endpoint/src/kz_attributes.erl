@@ -265,33 +265,39 @@ maybe_get_account_default_number(Number, Name, Account, Call) ->
             maybe_get_assigned_number(Number, Name, Call)
     end.
 
--spec maybe_get_assigned_number(ne_binary(), ne_binary(), kapps_call:call()) ->
+-spec maybe_get_assigned_number(ne_binary(), ne_binary(), ne_binary()|kapps_call:call()) ->
                                        {api_binary(), api_binary()}.
-maybe_get_assigned_number(_, Name, Call) ->
-    AccountDb = kapps_call:account_db(Call),
-    case kz_datamgr:open_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
-        {'error', _R} ->
-            Number = default_cid_number(),
-            lager:warning("could not open ~s doc <~s> ~s: ~p", [?KNM_PHONE_NUMBERS_DOC, Name, Number, _R]),
-            {Number, Name};
-        {'ok', JObj} ->
-            PublicJObj = kz_json:public_fields(JObj),
+maybe_get_assigned_number(CandidateNumber, Name, ?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
+    case knm_numbers:account_listing(AccountDb) of
+        [_|_] = NumbersList ->
+            AccountId = kz_util:format_account_id(AccountDb, 'raw'),
             Numbers = [Num
-                       || Num <- kz_json:get_keys(PublicJObj)
+                       || {Num,JObj} <- NumbersList
                               ,Num =/= <<"id">>
-                              ,(not kz_json:is_true([Num, <<"on_subaccount">>], JObj))
-                              ,(kz_json:get_value([Num, <<"state">>], JObj) =:= ?NUMBER_STATE_IN_SERVICE)
+                              ,(kz_json:get_value(<<"assigned_to">>, JObj) =:= AccountId)
+                              ,(kz_json:get_value(<<"state">>, JObj) =:= ?NUMBER_STATE_IN_SERVICE)
                       ],
-            maybe_get_assigned_numbers(Numbers, Name, Call)
-    end.
+            case lists:member(CandidateNumber, Numbers) of
+                'true' ->
+                    {CandidateNumber, Name};
+                'false' ->
+                    maybe_get_assigned_numbers(Numbers, Name)
+            end;
+        _ ->
+            Number = default_cid_number(),
+            lager:warning("no numbers available, proceed with <~s> ~s", [Name, Number]),
+            {Number, Name}
+    end;
+maybe_get_assigned_number(CandidateNumber, Name, Call) ->
+    AccountDb = kapps_call:account_db(Call),
+    maybe_get_assigned_number(CandidateNumber, Name, AccountDb).
 
--spec maybe_get_assigned_numbers(ne_binaries(), ne_binary(), kapps_call:call()) ->
-                                        {api_binary(), api_binary()}.
-maybe_get_assigned_numbers([], Name, _) ->
+-spec maybe_get_assigned_numbers(ne_binaries(), ne_binary()) -> {api_binary(), api_binary()}.
+maybe_get_assigned_numbers([], Name) ->
     Number = default_cid_number(),
     lager:info("failed to find any in-service numbers, using default <~s> ~s", [Name, Number]),
     {Number, Name};
-maybe_get_assigned_numbers([Number|_], Name, _) ->
+maybe_get_assigned_numbers([Number|_], Name) ->
     %% This could optionally cycle all found numbers and ensure they valid
     %% but that could be a lot of wasted db lookups...
     lager:info("using first assigned number caller id <~s> ~s", [Name, Number]),
