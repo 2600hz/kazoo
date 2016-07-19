@@ -53,7 +53,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    application:start('kazoo_media'),
+    {'ok', _} = application:ensure_all_started('kazoo_media'),
 
     _ = crossbar_bindings:bind(<<"*.content_types_provided.media">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.media">>, ?MODULE, 'content_types_accepted'),
