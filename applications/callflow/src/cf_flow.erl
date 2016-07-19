@@ -168,7 +168,7 @@ lookup_callflow_patterns(Patterns, Number, AccountId) ->
             Props = [{<<"capture_group">>, Match}
                     ,{<<"capture_groups">>, kz_json:from_list(NameMap)}
                     ],
-            return_callflow_doc(FlowId, AccountId, Props)
+            return_callflow_doc(FlowId, AccountId, props:filter_empty(Props))
     end.
 
 -spec get_captured_names(ne_binary(), pattern()) -> kz_proplist().
@@ -179,21 +179,22 @@ get_captured_names(Number, #pattern{regex=Regex, names=Names}) ->
         _ -> []
     end.
 
--type test_pattern_acc() ::  {binary(), pattern()}.
+-type test_pattern_acc() ::  {binary(), pattern() | 'undefined'}.
 
 -spec test_callflow_patterns(patterns(), ne_binary()) -> 'no_match' | test_pattern_acc().
 test_callflow_patterns(Patterns, Number) ->
-    test_callflow_patterns(Patterns, Number, {<<>>, #pattern{}}).
+    test_callflow_patterns(Patterns, Number, {<<>>, 'undefined'}).
 
 -spec test_callflow_patterns(patterns(), ne_binary(), test_pattern_acc()) ->
                                     'no_match' | test_pattern_acc().
-test_callflow_patterns([], _, {<<>>, _}) -> 'no_match';
+test_callflow_patterns([], _, {_, 'undefined'}) -> 'no_match';
 test_callflow_patterns([], _, Result) -> Result;
-test_callflow_patterns([ #pattern{regex=Regex}=Pattern |T], Number, {Matched, _}=Result) ->
+test_callflow_patterns([#pattern{regex=Regex}=Pattern |T], Number, {Matched, P}=Result) ->
     case re:run(Number, Regex, match_options(Pattern)) of
         {'match', Groups} ->
             case hd(lists:sort(fun(A, B) -> byte_size(A) >= byte_size(B) end, Groups)) of
-                Match when byte_size(Match) > byte_size(Matched) ->
+                Match when P =:= 'undefined'
+                  orelse byte_size(Match) > byte_size(Matched) ->
                     test_callflow_patterns(T, Number, {Match, Pattern});
                 _ -> test_callflow_patterns(T, Number, Result)
             end;
