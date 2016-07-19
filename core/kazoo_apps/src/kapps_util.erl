@@ -179,12 +179,12 @@ get_master_account_db() ->
     case get_master_account_id() of
         {'error', _}=E -> E;
         {'ok', AccountId} ->
-            {'ok', kz_util:format_account_id(AccountId, 'encoded')}
+            {'ok', kz_util:format_account_db(AccountId)}
     end.
 
 -spec is_master_account(ne_binary()) -> boolean().
 is_master_account(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kz_util:format_account_id(Account),
     case get_master_account_id() of
         {'ok', AccountId} -> 'true';
         _Else -> 'false'
@@ -195,7 +195,7 @@ is_master_account(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_depth(ne_binary()) -> 'undefined' | non_neg_integer().
+-spec account_depth(ne_binary()) -> api_non_neg_integer().
 account_depth(Account) ->
     {'ok', JObj} = kz_account:fetch(Account),
     length(kz_account:tree(JObj)).
@@ -207,12 +207,16 @@ account_depth(Account) ->
 %%--------------------------------------------------------------------
 -spec account_has_descendants(ne_binary()) -> boolean().
 account_has_descendants(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    View = <<"accounts/listing_by_descendants">>,
+    AccountId = kz_util:format_account_id(Account),
     ViewOptions = [{'startkey', [AccountId]}
                   ,{'endkey', [AccountId, kz_json:new()]}
                   ],
-    {'ok', JObjs} = kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions),
-    length([JObj || JObj <- JObjs, kz_account:id(JObj) =/= AccountId]) > 0.
+    {'ok', JObjs} = kz_datamgr:get_results(?KZ_ACCOUNTS_DB, View, ViewOptions),
+    [] =/=
+        [JObj || JObj <- JObjs,
+                 kz_account:id(JObj) =/= AccountId
+        ].
 
 %%--------------------------------------------------------------------
 %% @public
