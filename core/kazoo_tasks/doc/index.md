@@ -125,4 +125,4 @@ Set `tasks.send_progress_after_processed` to the rate you prefer (default: `1000
 Be careful as a rate too low may corrupt a task's state.
 
 Note: after a task's function (`TaskName`) has been called, the worker will wait a configurable number of milliseconds.
-Set `tasks.wait_after_processed` to the pause you want the system to make in between writes to output CSV (default: `500`).
+Set `tasks.wait_after_row_ms` to the pause you want the system to make in between writes to output CSV (default: `500`).

@@ -270,12 +270,9 @@ maybe_get_account_default_number(Number, Name, Account, Call) ->
 maybe_get_assigned_number(CandidateNumber, Name, ?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
     case knm_numbers:account_listing(AccountDb) of
         [_|_] = NumbersList ->
-            AccountId = kz_util:format_account_id(AccountDb, 'raw'),
             Numbers = [Num
-                       || {Num,JObj} <- NumbersList
-                              ,Num =/= <<"id">>
-                              ,(kz_json:get_value(<<"assigned_to">>, JObj) =:= AccountId)
-                              ,(kz_json:get_value(<<"state">>, JObj) =:= ?NUMBER_STATE_IN_SERVICE)
+                       || {Num,JObj} <- NumbersList,
+                          kz_json:get_value(<<"state">>, JObj) =:= ?NUMBER_STATE_IN_SERVICE
                       ],
             case lists:member(CandidateNumber, Numbers) of
                 'true' ->

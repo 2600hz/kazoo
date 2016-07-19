@@ -169,14 +169,13 @@ assign_to_app(Nums, App, Options) ->
 free(Account=?NE_BINARY) ->
     AccountDb = kz_util:format_account_db(Account),
     {Numbers, _NumbersData} = lists:unzip(account_listing(AccountDb)),
-    _ = [case Result of
-             {Num, {'ok', _PhoneNumber}} ->
-                 lager:debug("successfully released ~s from ~s", [Num, Account]);
-             {Num, {'error', _R}} ->
-                 lager:error("error when releasing ~s from ~s: ~p", [Num, Account, _R])
-         end
-         || Result <- release(Numbers)],
-    'ok'.
+    lists:foreach(fun ({Num, {'ok', _PhoneNumber}}) ->
+                          lager:debug("successfully released ~s from ~s", [Num, Account]);
+                      ({Num, {'error', _R}}) ->
+                          lager:error("error when releasing ~s from ~s: ~p", [Num, Account, _R])
+                  end
+                 ,release(Numbers)
+                 ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -185,17 +184,17 @@ free(Account=?NE_BINARY) ->
 -spec emergency_enabled(ne_binary()) -> ne_binaries().
 emergency_enabled(AccountId=?MATCH_ACCOUNT_RAW(_)) ->
     AccountDb = kz_util:format_account_db(AccountId),
-    Numbers =
-        [Num || {Num, ShortJObj} <- account_listing(AccountDb),
-                AccountId == kz_json:get_value(<<"assigned_to">>, ShortJObj)
-        ],
+    {Numbers, _NumbersData} = lists:unzip(account_listing(AccountDb)),
     [Num || {Num, {'ok', KNMNumber}} <- ?MODULE:get(Numbers),
             knm_providers:has_emergency_services(KNMNumber)
     ].
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Use a view to list an account's phone numbers & statuses
+%% @doc
+%% List an account's phone numbers & statuses.
+%% Does not go through sub accounts.
+%% @end
 %%--------------------------------------------------------------------
 -spec account_listing(ne_binary()) -> [{ne_binary(), kz_json:object()}].
 account_listing(AccountDb = ?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
@@ -204,9 +203,9 @@ account_listing(AccountDb = ?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
             lager:debug("account ~s holds no numbers", [AccountDb]),
             [];
         {'ok', JObjs} ->
-            [{kz_doc:id(JObj)
-             ,kz_json:get_value(<<"value">>, JObj)
-             } || JObj <- JObjs];
+            [{kz_doc:id(JObj), kz_json:get_value(<<"value">>, JObj)}
+             || JObj <- JObjs
+            ];
         {'error', _R} ->
             lager:debug("error listing numbers for ~s: ~p", [AccountDb, _R])
     end.
