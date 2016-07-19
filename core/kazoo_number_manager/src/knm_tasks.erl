@@ -25,6 +25,7 @@
 
 %% Appliers
 -export([list/2
+        ,list_all/2
         ,import_list/17
         ,assign_to/4
         ,delete/3
@@ -46,6 +47,12 @@ module() -> kz_util:to_binary(?MODULE).
 
 -spec output_header(atom()) -> kz_csv:row().
 output_header('list') ->
+    list_output_header();
+output_header('list_all') ->
+    list_output_header().
+
+-spec list_output_header() -> kz_csv:row().
+list_output_header() ->
     [<<"e164">>
     ,<<"account_id">>
     ,<<"previously_assigned_to">>
@@ -64,28 +71,38 @@ output_header('list') ->
     ,<<"e911.region">>
     ].
 
+-spec list_doc() -> ne_binary().
+list_doc() ->
+    <<"For each number found, returns fields:\n"
+      "* `e164`: phone number represented as E164 (with a leading `+` sign).\n"
+      "* `account_id`: account it is assigned to (32 alphanumeric characters).\n"
+      "* `previously_assigned_to`: account it was assigned to before being assigned to `account_id`.\n"
+      "* `state`: either discovery, available, reserved, in_service, released, disconnected, deleted, port_in or port_out.\n"
+      "* `created`: timestamp number document was created.\n"
+      "* `modified`: timestamp number document was last updated.\n"
+      "* `used_by`: Kazoo application handling this number.\n"
+      "* `port_in`: whether this number is linked to an ongoing port request.\n"
+      "* `carrier_module`: service that created the number document.\n"
+      "* `cnam.inbound`: \n"
+      "* `cnam.outbound`: \n"
+      "* `e911.post_code`: \n"
+      "* `e911.street_address`: \n"
+      "* `e911.extended_address`: \n"
+      "* `e911.locality`: \n"
+      "* `e911.region`: \n"
+    >>.
+
 -spec help() -> kz_proplist().
 help() ->
     [{<<"list">>
      ,kz_json:from_list([{<<"description">>, <<"List all numbers under the account starting the task">>}
-                        ,{<<"doc">>, <<"For each number found, returns fields:\n"
-                                       "* `e164`: phone number represented as E164 (with a leading `+` sign).\n"
-                                       "* `account_id`: account it is assigned to (32 alphanumeric characters).\n"
-                                       "* `previously_assigned_to`: account it was assigned to before being assigned to `account_id`.\n"
-                                       "* `state`: either discovery, available, reserved, in_service, released, disconnected, deleted, port_in or port_out.\n"
-                                       "* `created`: timestamp number document was created.\n"
-                                       "* `modified`: timestamp number document was last updated.\n"
-                                       "* `used_by`: Kazoo application handling this number.\n"
-                                       "* `port_in`: whether this number is linked to an ongoing port request.\n"
-                                       "* `carrier_module`: service that created the number document.\n"
-                                       "* `cnam.inbound`: \n"
-                                       "* `cnam.outbound`: \n"
-                                       "* `e911.post_code`: \n"
-                                       "* `e911.street_address`: \n"
-                                       "* `e911.extended_address`: \n"
-                                       "* `e911.locality`: \n"
-                                       "* `e911.region`: \n"
-                                     >>}
+                        ,{<<"doc">>, list_doc()}
+                        ])
+     }
+
+    ,{<<"list_all">>
+     ,kz_json:from_list([{<<"description">>, <<"List all numbers that exist in the system">>}
+                        ,{<<"doc">>, list_doc()}
                         ])
      }
 
@@ -234,34 +251,59 @@ state(_) -> 'false'.
 
 -spec list(kz_proplist(), task_iterator()) -> task_iterator().
 list(Props, 'init') ->
-    ForAccount = kz_util:format_account_db(auth_by('undefined', Props)),
-    {'ok', knm_numbers:account_listing(ForAccount)};
+    ForAccount = auth_by('undefined', Props),
+    Subs  = [ForAccount | get_descendants(ForAccount)],
+    lager:debug(">>>~p ~p", [length(Subs), Subs]),
+    {'ok', Subs};
 list(_, []) ->
+    lager:debug(">>>"),
     'stop';
-list(Props, [{E164,JObj} | E164s]) ->
-    Options = [{'auth_by', auth_by('undefined', Props)}
-              ,{'batch_run', 'true'}
+list(_, [?MATCH_ACCOUNT_RAW(AccountId) | Rest]) ->
+    lager:debug(">>> ~p", [AccountId]),
+    AccountDb = kz_util:format_account_db(AccountId),
+    {'ok', knm_numbers:account_listing(AccountDb) ++ Rest};
+list(Props, [{E164,JObj} | Rest]) ->
+    lager:debug(">>> ~p", [E164]),
+    AuthBy = auth_by('undefined', Props),
+    Row = list_number_row(AuthBy, E164, JObj),
+    {Row, Rest}.
+
+-spec list_number_row(ne_binary(), ne_binary(), kz_json:object()) -> kz_csv:row().
+list_number_row(AuthBy, E164, JObj) ->
+    Options = [{'auth_by', AuthBy}
               ],
     {'ok', KNMNumber} = knm_number:get(E164, Options),
     PhoneNumber = knm_number:phone_number(KNMNumber),
-    Row = [E164
-          ,knm_phone_number:assigned_to(PhoneNumber)
-          ,knm_phone_number:prev_assigned_to(PhoneNumber)
-          ,knm_phone_number:state(PhoneNumber)
-          ,integer_to_binary(kz_json:get_value(<<"created">>, JObj))
-          ,integer_to_binary(kz_json:get_value(<<"updated">>, JObj))
-          ,knm_phone_number:used_by(PhoneNumber)
-          ,kz_util:to_binary(knm_phone_number:ported_in(PhoneNumber))
-          ,knm_phone_number:module_name(PhoneNumber)
-          ,'undefined'%%TODO
-          ,'undefined'%%TODO
-          ,'undefined'%%TODO
-          ,'undefined'%%TODO
-          ,'undefined'%%TODO
-          ,'undefined'%%TODO
-          ,'undefined'%%TODO
-          ],
-    {Row, E164s}.
+    [E164
+    ,knm_phone_number:assigned_to(PhoneNumber)
+    ,knm_phone_number:prev_assigned_to(PhoneNumber)
+    ,knm_phone_number:state(PhoneNumber)
+    ,integer_to_binary(kz_json:get_value(<<"created">>, JObj))
+    ,integer_to_binary(kz_json:get_value(<<"updated">>, JObj))
+    ,knm_phone_number:used_by(PhoneNumber)
+    ,kz_util:to_binary(knm_phone_number:ported_in(PhoneNumber))
+    ,knm_phone_number:module_name(PhoneNumber)
+    ,'undefined'%%TODO
+    ,'undefined'%%TODO
+    ,'undefined'%%TODO
+    ,'undefined'%%TODO
+    ,'undefined'%%TODO
+    ,'undefined'%%TODO
+    ,'undefined'%%TODO
+    ].
+
+-spec list_all(kz_proplist(), task_iterator()) -> task_iterator().
+list_all(_, 'init') ->
+    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+    {'ok', [MasterAccountId | get_descendants(MasterAccountId)]};
+list_all(_, []) ->
+    'stop';
+list_all(_, [?MATCH_ACCOUNT_RAW(AccountId) | Rest]) ->
+    AccountDb = kz_util:format_account_db(AccountId),
+    {'ok', knm_numbers:account_listing(AccountDb) ++ Rest};
+list_all(_, [{E164,JObj} | Rest]) ->
+    Row = list_number_row(?KNM_DEFAULT_AUTH_BY, E164, JObj),
+    {Row, Rest}.
 
 -spec import_list(kz_proplist(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()
                  ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary(), api_binary()
@@ -332,5 +374,24 @@ handle_result({'error', KNMError}) ->
 -spec auth_by(api_binary(), kz_proplist()) -> api_binary().
 auth_by('undefined', Props) -> props:get_value('auth_account_id', Props);
 auth_by(AuthBy, _) -> AuthBy.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% List an account's descendants. Does not include the given AccountId.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_descendants(ne_binary()) -> ne_binaries().
+get_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    View = <<"accounts/listing_by_descendants">>,
+    ViewOptions = [{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
+                  ],
+    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, View, ViewOptions) of
+        {'ok', JObjs} -> [kz_account:id(JObj) || JObj <- JObjs];
+        {'error', _R} ->
+            lager:debug("unable to get descendants of ~s: ~p", [AccountId, _R]),
+            []
+    end.
 
 %%% End of Module.
