@@ -213,10 +213,7 @@ account_has_descendants(Account) ->
                   ,{'endkey', [AccountId, kz_json:new()]}
                   ],
     {'ok', JObjs} = kz_datamgr:get_results(?KZ_ACCOUNTS_DB, View, ViewOptions),
-    [] =/=
-        [JObj || JObj <- JObjs,
-                 kz_account:id(JObj) =/= AccountId
-        ].
+    lists:any(fun (JObj) -> kz_account:id(JObj) =/= AccountId end, JObjs).
 
 %%--------------------------------------------------------------------
 %% @public
