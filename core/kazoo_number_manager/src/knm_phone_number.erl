@@ -162,7 +162,7 @@ save(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
     PhoneNumber;
 save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
     Routines = [fun save_to_number_db/1
-                ,fun handle_assignment/1
+               ,fun handle_assignment/1
                ],
     {'ok', NewPhoneNumber} = setters(PhoneNumber, Routines),
     NewPhoneNumber.
@@ -178,7 +178,7 @@ delete(#knm_phone_number{dry_run='true'}=Number) ->
     {'ok', Number};
 delete(#knm_phone_number{dry_run='false'}=Number) ->
     Routines = [fun delete_number_doc/1
-                ,fun maybe_remove_number_from_account/1
+               ,fun maybe_remove_number_from_account/1
                ],
     {'ok', NewPhoneNumber} = setters(Number, Routines),
     NewPhoneNumber.
@@ -821,13 +821,11 @@ assign(PhoneNumber, AssignedTo) ->
     case kz_datamgr:ensure_saved(AccountDb, to_json(PhoneNumber)) of
         {'error', E} ->
             lager:error("failed to assign number ~s to ~s"
-                        ,[number(PhoneNumber), AccountDb]
-                       ),
+                       ,[number(PhoneNumber), AccountDb]),
             knm_errors:assign_failure(PhoneNumber, E);
         {'ok', JObj} ->
             lager:debug("assigned number ~s to ~s"
-                        ,[number(PhoneNumber), AccountDb]
-                       ),
+                       ,[number(PhoneNumber), AccountDb]),
             from_json(JObj)
     end.
 -endif.
@@ -844,8 +842,7 @@ unassign(PhoneNumber) ->
     case kz_util:is_empty(PrevAssignedTo) of
         'true' ->
             lager:debug("prev_assigned_to is is empty for ~s, ignoring"
-                        ,[number(PhoneNumber)]
-                       ),
+                       ,[number(PhoneNumber)]),
             PhoneNumber;
         'false' ->
             unassign(PhoneNumber, PrevAssignedTo)
