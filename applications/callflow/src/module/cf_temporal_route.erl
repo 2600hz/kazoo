@@ -92,6 +92,11 @@ process_rules(_, [#rule{enabled='true'
         'true' -> <<"rule_set">>;
         'false' -> Id
     end;
+process_rules(Temporal, [#rule{id=Id
+                              , name=Name
+                              , cycle = <<"">>}|Rs], Call) ->
+    lager:error("time based rule ~s (~s) is invalid, skipping", [Id, Name]),
+    process_rules(Temporal, Rs, Call);
 process_rules(#temporal{local_sec=LSec
                        ,local_date={Y, M, D}
                        }=T
