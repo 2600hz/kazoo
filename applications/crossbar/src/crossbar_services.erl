@@ -85,7 +85,7 @@ commit_transactions(Context, Transactions, Services, Callback) ->
     case kz_services:commit_transactions(Services, Transactions) of
         'ok' -> save_an_audit_log(Context, Services),
                 Callback();
-        'error' -> cb_context:add_system_error('datasore_fault', Context)
+        'error' -> cb_context:add_system_error('datastore_fault', Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -99,13 +99,16 @@ extract_items(JObj) ->
 
 -spec extract_items_from_category(kz_json:key(), kz_json:object(), kz_json:objects()) ->
                                          kz_json:objects().
-extract_items_from_category(_, CategoryJObj, Acc) ->
-    kz_json:foldl(fun extract_item_from_category/3, Acc, CategoryJObj).
+extract_items_from_category(CategoryKey, CategoryJObj, Acc) ->
+    Fun = fun(K, V, Acc1) -> extract_item_from_category(CategoryKey, K, V, Acc1) end,
+    kz_json:foldl(Fun, Acc, CategoryJObj).
 
--spec extract_item_from_category(kz_json:key(), kz_json:object(), kz_json:objects()) ->
+-spec extract_item_from_category(kz_json:key(), kz_json:key(), kz_json:object(), kz_json:objects()) ->
                                          kz_json:objects().
-extract_item_from_category(_, ItemJObj, Acc) ->
-    [ItemJObj|Acc].
+extract_item_from_category(CategoryKey, ItemKey, ItemJObj, Acc) ->
+    [kz_json:set_values([{<<"category">>, CategoryKey}
+                         ,{<<"item">>, ItemKey}
+                        ], ItemJObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -127,7 +130,7 @@ create_transactions(_Context, _Item, Acc, 0) -> Acc;
 create_transactions(Context, Item, Acc, Quantity) ->
     AccountId = cb_context:account_id(Context),
     Amount = kz_json:get_integer_value(<<"activation_charges">>, Item, 0),
-    Units = wht_util:dollars_to_units(Amount),
+    Units = wht_util:dollars_to_units(Amount * Quantity),
     Routines = [fun set_meta_data/3
                 ,fun set_event/3
                ],
@@ -137,7 +140,7 @@ create_transactions(Context, Item, Acc, Quantity) ->
           ,kz_transaction:debit(AccountId, Units)
           ,Routines
          ),
-    create_transactions(Context, Item, [Transaction|Acc], Quantity-1).
+    [Transaction|Acc].
 
 -spec set_meta_data(cb_context:context()
                     ,kz_json:object()
