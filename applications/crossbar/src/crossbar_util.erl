@@ -989,10 +989,7 @@ get_token_restrictions(AuthModule, AccountId, OwnerId) ->
 -spec get_priv_level(ne_binary(), ne_binary()) -> api_binary().
 %% for api_auth tokens we force "admin" priv_level
 get_priv_level(_AccountId, 'undefined') ->
-    kapps_config:get(cb_token_restrictions:config_cat()
-                    ,<<"default_priv_level">>
-                    ,<<"admin">>
-                    );
+    cb_token_restrictions:default_priv_level();
 get_priv_level(AccountId, OwnerId) ->
     AccountDB = kz_util:format_account_db(AccountId),
     {'ok', Doc} = kz_datamgr:open_cache_doc(AccountDB, OwnerId),
@@ -1000,9 +997,8 @@ get_priv_level(AccountId, OwnerId) ->
 
 -spec get_system_token_restrictions(atom()) -> api_object().
 get_system_token_restrictions(AuthModule) ->
-    case kapps_config:get(cb_token_restrictions:config_cat(), AuthModule) of
-        'undefined' ->
-            kapps_config:get(cb_token_restrictions:config_cat(), ?CATCH_ALL);
+    case cb_token_restrictions:method_restrictions(AuthModule) of
+        'undefined' -> cb_token_restrictions:default_method_restrictions();
         MethodRestrictions -> MethodRestrictions
     end.
 
@@ -1012,12 +1008,11 @@ get_account_token_restrictions(AccountId, AuthModule) ->
     case kz_datamgr:open_cache_doc(AccountDB, ?CB_ACCOUNT_TOKEN_RESTRICTIONS) of
         {'error', _} -> 'undefined';
         {'ok', RestrictionsDoc} ->
-            kz_json:get_first_defined(
-              [[<<"restrictions">>, kz_util:to_binary(AuthModule)]
-              ,[<<"restrictions">>, ?CATCH_ALL]
-              ]
+            kz_json:get_first_defined([[<<"restrictions">>, kz_util:to_binary(AuthModule)]
+                                      ,[<<"restrictions">>, ?CATCH_ALL]
+                                      ]
                                      ,RestrictionsDoc
-             )
+                                     )
     end.
 
 -spec get_priv_level_restrictions(api_object(), ne_binary()) -> api_object().

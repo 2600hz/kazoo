@@ -6,8 +6,7 @@
         ,to_schema_docs/0, to_schema_doc/1
         ]).
 
--include("callflow.hrl").
--include_lib("kazoo/include/kz_ast.hrl").
+-include_lib("kazoo_ast/include/kz_ast.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 
 -define(DEBUG(_Fmt, _Args), 'ok').
@@ -446,7 +445,7 @@ arg_list_has_data_var(DataName, Aliases, [_H|T]) ->
     arg_list_has_data_var(DataName, Aliases, T).
 
 arg_to_key(?BINARY_MATCH(Arg)) ->
-    binary_match_to_binary(Arg);
+    kz_ast_util:binary_match_to_binary(Arg);
 arg_to_key(?ATOM(Arg)) ->
     Arg;
 arg_to_key(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
@@ -520,13 +519,13 @@ process_mfa_call(#usage{data_var_name=DataName
                 ,M, F, As, ShouldAddAST) ->
     case mfa_clauses(Acc, M, F, length(As)) of
         [] when ShouldAddAST ->
-            case module_ast(M) of
+            case kz_ast_util:module_ast(M) of
                 'undefined' ->
                     ?DEBUG("  failed to find AST for ~p~n", [M]),
                     Acc#usage{visited=lists:usort([{M, F, As} | Vs])};
                 {M, AST} ->
                     ?DEBUG("  added AST for ~p~n", [M]),
-                    process_mfa_call(Acc#usage{functions=add_module_ast(Fs, M, AST)}
+                    process_mfa_call(Acc#usage{functions=kz_ast_util:add_module_ast(Fs, M, AST)}
                                     ,M, F, As, 'false'
                                     )
             end;
@@ -616,21 +615,6 @@ mfa_clauses(#usage{functions=Fs}, Module, Function, Arity) ->
            Arity =:= A
     ].
 
-module_ast(M) ->
-    case code:which(M) of
-        'non_existing' -> 'undefined';
-        'preloaded' -> 'undefined';
-        Beam ->
-            {'ok', {Module, [{'abstract_code', AST}]}} = beam_lib:chunks(Beam, ['abstract_code']),
-            {Module, AST}
-    end.
-
-ast_functions(Module, {'raw_abstract_v1', Attributes}) ->
-    [{Module, F, Arity, Clauses} || {'function', _Line, F, Arity, Clauses} <- Attributes].
-
-add_module_ast(Fs, Module, AST) ->
-    ast_functions(Module, AST) ++ Fs.
-
 data_index(DataName, Args) ->
     data_index(DataName, Args, 1).
 
@@ -656,14 +640,6 @@ data_index(DataName
     end;
 data_index(DataName, [_|As], Index) ->
     data_index(DataName, As, Index+1).
-
-binary_match_to_binary(Match) ->
-    iolist_to_binary(
-      [binary_part_to_binary(BP) || BP <- Match]
-     ).
-
-binary_part_to_binary(?BINARY_STRING(V)) -> V;
-binary_part_to_binary(?BINARY_VAR(N)) -> [${, N, $}].
 
 -spec is_action_module(atom()) -> boolean().
 is_action_module(Module) ->

@@ -5,6 +5,7 @@
 -define(CLAUSE(Args, Guards, Body)
        ,{'clause', _, Args, Guards, Body}
        ).
+-define(BEGIN_END(Exprs), {'block', _, Exprs}).
 
 -define(VAR(Line, Name), {'var', Line, Name}).
 -define(VAR(Name), ?VAR(_, Name)).
@@ -25,9 +26,14 @@
 -define(LC_BIN_GENERATOR(Pattern, Expr)
        ,{'b_generate', _, Pattern, Expr}
        ).
+-define(BC(Expr, Qualifiers)
+        ,{'bc', _, Expr, Qualifiers}
+       ).
 
 -define(ATOM(Value), {'atom', _, Value}).
 -define(INTEGER(I), {'integer', _, I}).
+-define(FLOAT(F), {'float', _, F}).
+-define(CHAR(C), {'char', _, C}).
 -define(STRING(Value), {'string', _, Value}).
 
 -define(RECORD_FIELD_BIND(Key, Value), {'record_field', _
@@ -38,6 +44,9 @@
        ,{'record_field', _, ?VAR(Name), RecordName, Value}
        ).
 -define(RECORD(Name, Fields), {'record', _, Name, Fields}).
+-define(RECORD_VAR(VarName, RecName, Fields)
+        ,{'record', _, ?VAR(VarName), RecName, Fields}
+       ).
 
 -define(CATCH(Expr), {'catch', _, Expr}).
 -define(TRY_BODY(Body, CatchClauses)
@@ -47,12 +56,31 @@
        ,{'try', _, Expr, Clauses, CatchClauses, []}
        ).
 
--define(MOD_FUN(Module, Function), {'remote',_,?ATOM(Module),?ATOM(Function)}).
--define(DYN_MOD_FUN(Module, Function), {'remote',_,?VAR(Module),?ATOM(Function)}).
+-define(GEN_MOD_FUN(MExpr, FExpr), {'remote', _, MExpr, FExpr}).
+-define(MOD_FUN(Module, Function)
+       ,?GEN_MOD_FUN(?ATOM(Module),?ATOM(Function))
+       ).
+-define(DYN_MOD_FUN(Module, Function)
+       ,?GEN_MOD_FUN(?VAR(Module),?ATOM(Function))
+       ).
+-define(MOD_DYN_FUN(Module, Function)
+       ,?GEN_MOD_FUN(?ATOM(Module),?VAR(Function))
+       ).
 
 -define(FUN_ARGS(Function, Args), {'call', _, ?ATOM(Function), Args}).
 -define(DYN_FUN_ARGS(Function, Args), {'call', _, ?VAR(Function), Args}).
--define(MFA(M, F, A), {'fun', _, {'function', ?ATOM(M), ?ATOM(F), ?INTEGER(A)}}).
+-define(DYN_MOD_FUN_ARGS(M, F, As)
+       ,{'call', _, ?DYN_MOD_FUN(M, F), As}
+       ).
+-define(MOD_DYN_FUN_ARGS(M, F, As)
+       ,{'call', _, ?MOD_DYN_FUN(M, F), As}
+       ).
+-define(GEN_MOD_FUN_ARGS(MExpr, FExpr, Args)
+        ,{'call', _, ?GEN_MOD_FUN(MExpr, FExpr), Args}
+       ).
+
+-define(GEN_MFA(M, F, A), {'fun', _, {'function', M, F, A}}).
+-define(MFA(M, F, A), ?GEN_MFA(?ATOM(M), ?ATOM(F), ?INTEGER(A))).
 -define(FA(F, A), {'fun', _, {'function', F, A}}).
 
 -define(ANON(Clauses), {'fun', _, {'clauses', Clauses}}).
@@ -60,13 +88,6 @@
 -define(MOD_FUN_ARGS(Module, Function, Args)
        ,{'call',_
         ,?MOD_FUN(Module, Function)
-        ,Args
-        }
-       ).
-
--define(DYN_MOD_FUN_ARGS(Module, Function, Args)
-       ,{'call',_
-        ,?DYN_MOD_FUN(Module, Function)
         ,Args
         }
        ).
@@ -86,6 +107,9 @@
 -define(BINARY_VAR(VarName)
        ,{'bin_element',_,?VAR(VarName),'default',['binary']}
        ).
+-define(SUB_BINARY(Value)
+        ,{'bin_element',_,?BINARY_MATCH([?BINARY_STRING(Value)]),'default',['binary']}
+       ).
 -define(BINARY(Value), {'bin',_, [?BINARY_STRING(Value)]}).
 -define(BINARY_MATCH(Matches)
        ,{'bin',_,Matches}
@@ -96,6 +120,11 @@
        ).
 
 -define(TUPLE(Elements), {'tuple', _, Elements}).
+
+-define(RECEIVE(Clauses), {'receive', _, Clauses}).
+-define(RECEIVE(Clauses, AfterExpr, AfterBody)
+        ,{'receive', _, Clauses, AfterExpr, AfterBody}
+       ).
 
 -define(LAGER, ?CASE(
                   ?TUPLE(

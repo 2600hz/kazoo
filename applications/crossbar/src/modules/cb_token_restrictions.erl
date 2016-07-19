@@ -21,7 +21,9 @@
         ,delete/1
         ,authorize/1
 
-        ,config_cat/0
+        ,default_priv_level/0
+        ,default_method_restrictions/0
+        ,method_restrictions/1
         ]).
 
 -ifdef(TEST).
@@ -42,8 +44,20 @@
 -define(PVT_TYPE, <<"token_restrictions">>).
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".token_restrictions">>).
 
-config_cat() ->
-    ?MOD_CONFIG_CAT.
+-spec default_priv_level() -> ne_binary().
+default_priv_level() ->
+    kapps_config:get_binary(?MOD_CONFIG_CAT
+                           ,<<"default_priv_level">>
+                           ,<<"admin">>
+                           ).
+
+-spec default_method_restrictions() -> kz_json:object().
+default_method_restrictions() ->
+    kapps_config:get_json(?MOD_CONFIG_CAT, ?CATCH_ALL).
+
+-spec method_restrictions(atom()) -> api_object().
+method_restrictions(AuthModule) ->
+     kapps_config:get_json(?MOD_CONFIG_CAT, AuthModule).
 
 %%%===================================================================
 %%% API
