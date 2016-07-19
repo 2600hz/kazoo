@@ -313,6 +313,60 @@ curl -v -X POST \
 }
 ```
 
+#### Patch a device
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
+
+```curl
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"presence_id":"dis_my_device"}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "call_restriction": {},
+        "caller_id": {},
+        "contact_list": {},
+        "dial_plan": {},
+        "enabled": true,
+        "exclude_from_queues": false,
+        "id": "{DEVICE_ID}",
+        "media": {
+            "audio": {
+                "codecs": [
+                    "PCMU"
+                ]
+            },
+            "encryption": {
+                "enforce_security": false,
+                "methods": []
+            },
+            "video": {
+                "codecs": []
+            }
+        },
+        "music_on_hold": {},
+        "mwi_unsolicitated_updates": true,
+        "name": "new device",
+        "presence_id":"dis_my_device",
+        "register_overwrite_notify": false,
+        "ringtones": {},
+        "sip": {
+            "invite_format": "username",
+            "method": "password",
+            "registration_expiration": 300
+        },
+        "suppress_unregister_notifications": false
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+
+```
+
+
 #### Fetch registration statuses of all devices
 
 This will fetch the current registrations of any devices. If no devices are registered, an empty list will be returned.

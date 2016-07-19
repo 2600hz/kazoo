@@ -117,6 +117,16 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 ```
 
+#### Patch
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
+
+```curl
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
+```
+
 #### Change
 
 > POST /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
