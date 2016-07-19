@@ -324,21 +324,21 @@ import_list(_Props, E164, AccountId, State, Carrier
     handle_result(knm_number:create(E164, Options)).
 
 -spec assign_to(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> task_return().
-assign_to(_Props, Number, AccountId, AuthBy) ->
+assign_to(_Props, Number, AccountId, _AuthBy) ->
     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'batch_run', 'true'}
               ],
     handle_result(knm_number:move(Number, AccountId, Options)).
 
 -spec delete(kz_proplist(), ne_binary(), api_binary()) -> task_return().
-delete(_Props, Number, AuthBy) ->
+delete(_Props, Number, _AuthBy) ->
     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'batch_run', 'true'}
               ],
     handle_result(knm_number:release(Number, Options)).
 
 -spec reserve(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> task_return().
-reserve(_Props, Number, AccountId, AuthBy) ->
+reserve(_Props, Number, AccountId, _AuthBy) ->
     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'batch_run', 'true'}
               ,{'assign_to', AccountId}
@@ -346,7 +346,7 @@ reserve(_Props, Number, AccountId, AuthBy) ->
     handle_result(knm_number:reserve(Number, Options)).
 
 -spec add(kz_proplist(), ne_binary(), ne_binary(), api_binary(), api_binary()) -> task_return().
-add(_Props, Number, AccountId, AuthBy, ModuleName0) ->
+add(_Props, Number, AccountId, _AuthBy, ModuleName0) ->
     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'batch_run', 'true'}
               ,{'assign_to', AccountId}
