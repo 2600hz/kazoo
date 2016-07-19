@@ -419,12 +419,12 @@ post_media_doc(Context, MediaId, _AccountId) ->
                    (C) -> C
                 end
                 ,fun(C) when TTS ->
-                         maybe_save_tts(C, Text, Voice, cb_context:resp_status(Context));
+                        maybe_save_tts(C, Text, Voice, cb_context:resp_status(C));
                     (C) ->
-                         case cb_context:resp_status(C) of
-                             'success' -> crossbar_doc:save(C);
-                             _Status -> Context
-                         end
+                        case cb_context:resp_status(C) of
+                            'success' -> crossbar_doc:save(C);
+                            _Status -> Context
+                        end
                  end
                ],
     lists:foldl(fun(F, C) -> F(C) end, Context, Routines).
@@ -497,7 +497,10 @@ maybe_merge_tts(Context, MediaId, Text, Voice, 'success') ->
     JObj = cb_context:doc(Context),
 
     case whapps_speech:create(Text, Voice) of
-        {'error', R} -> crossbar_util:response('error', wh_util:to_binary(R), Context);
+        {'error', R} ->
+            crossbar_util:response('error', wh_util:to_binary(R), Context);
+        {'error', 'tts_provider_failure', R} ->
+            crossbar_util:response('error', wh_util:to_binary(R), Context);
         {'ok', ContentType, Content} ->
             Headers = wh_json:from_list([{<<"content_type">>, ContentType}
                                          ,{<<"content_length">>, iolist_size(Content)}
