@@ -53,7 +53,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    application:start('kazoo_media'),
+    {'ok', _} = application:ensure_all_started('kazoo_media'),
 
     _ = crossbar_bindings:bind(<<"*.content_types_provided.media">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.media">>, ?MODULE, 'content_types_accepted'),
@@ -429,7 +429,7 @@ post_media_doc(Context, MediaId, _AccountId) ->
                    (C) -> C
                 end
                ,fun(C) when TTS ->
-                        maybe_save_tts(C, Text, Voice, cb_context:resp_status(Context));
+                        maybe_save_tts(C, Text, Voice, cb_context:resp_status(C));
                    (C) ->
                         case cb_context:resp_status(C) of
                             'success' -> crossbar_doc:save(C);
@@ -507,7 +507,10 @@ maybe_merge_tts(Context, MediaId, Text, Voice, 'success') ->
     JObj = cb_context:doc(Context),
 
     case kapps_speech:create(Text, Voice) of
-        {'error', R} -> crossbar_util:response('error', kz_util:to_binary(R), Context);
+        {'error', R} ->
+            crossbar_util:response('error', kz_util:to_binary(R), Context);
+        {'error', 'tts_provider_failure', R} ->
+            crossbar_util:response('error', kz_util:to_binary(R), Context);
         {'ok', ContentType, Content} ->
             Headers = kz_json:from_list([{<<"content_type">>, ContentType}
                                         ,{<<"content_length">>, iolist_size(Content)}
