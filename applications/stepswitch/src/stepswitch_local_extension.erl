@@ -31,7 +31,6 @@
                ,queue :: api_binary()
                ,timeout :: reference()
                ,call_id :: api_binary()
-               ,call_ids :: api_binaries()
                }).
 -type state() :: #state{}.
 
@@ -99,7 +98,6 @@ init([NumberProps, OffnetReq]) ->
                          ,response_queue=kz_api:server_id(OffnetReq)
                          ,timeout=erlang:send_after(120000, self(), 'local_extension_timeout')
                          ,call_id=kapi_offnet_resource:call_id(OffnetReq)
-                         ,call_ids=[kapi_offnet_resource:call_id(OffnetReq)]
                          }}
     end.
 
@@ -152,8 +150,8 @@ handle_cast({'bridged', CallId}, #state{timeout=TimerRef}=State) ->
     lager:debug("channel bridged to ~s, canceling timeout", [CallId]),
     _ = erlang:cancel_timer(TimerRef),
     {'noreply', State#state{timeout='undefined'}};
-handle_cast({'replaced', ReplacedBy}, #state{call_ids=CallIds}=State) ->
-    {'noreply', State#state{call_id=ReplacedBy, call_ids=[ReplacedBy | CallIds]}};
+handle_cast({'replaced', ReplacedBy}, #state{}=State) ->
+    {'noreply', State#state{call_id=ReplacedBy}};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p~n", [_Msg]),
     {'noreply', State}.
@@ -198,15 +196,11 @@ handle_event(JObj, #state{request_handler=RequestHandler
             lager:debug("channel execution error while waiting for execute extension: ~s"
                        ,[kz_util:to_binary(kz_json:encode(JObj))]),
             gen_listener:cast(RequestHandler, {'local_extension_result', local_extension_error(JObj, Request)});
-        {<<"call_event">>, <<"CHANNEL_TRANSFEREE">>, _} ->
-            Transferee = kz_call_event:other_leg_call_id(JObj),
-            gen_listener:cast(RequestHandler, {'replaced', Transferee}),
-            gen_listener:add_binding(RequestHandler, ?CALL_BINDING(Transferee));
-        {<<"call_event">>, <<"CHANNEL_TRANSFEROR">>, _} ->
+        {<<"call_event">>, <<"CHANNEL_TRANSFEROR">>, _CallId} ->
             Transferor = kz_call_event:other_leg_call_id(JObj),
             gen_listener:cast(RequestHandler, {'replaced', Transferor}),
             gen_listener:add_binding(RequestHandler, ?CALL_BINDING(Transferor));
-        {<<"call_event">>, <<"CHANNEL_REPLACED">>, _} ->
+        {<<"call_event">>, <<"CHANNEL_REPLACED">>, _CallId} ->
             ReplacedBy = kz_call_event:replaced_by(JObj),
             gen_listener:cast(RequestHandler, {'replaced', ReplacedBy}),
             gen_listener:add_binding(RequestHandler, ?CALL_BINDING(ReplacedBy));
@@ -229,9 +223,9 @@ handle_event(JObj, #state{request_handler=RequestHandler
                          'false' -> local_extension_failure(JObj, Request)
                      end,
             gen_listener:cast(RequestHandler, {'local_extension_result', Result});
-        {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
-            CallId = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
-            gen_listener:cast(RequestHandler, {'bridged', CallId});
+        {<<"call_event">>, <<"CHANNEL_BRIDGE">>, CallId} ->
+            OtherLeg = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
+            gen_listener:cast(RequestHandler, {'bridged', OtherLeg});
         _ -> 'ok'
     end,
     {'reply', []}.
