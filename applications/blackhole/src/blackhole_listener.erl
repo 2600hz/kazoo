@@ -11,7 +11,7 @@
 
 -export([start_link/0
         ,handle_amqp_event/3
-        ,add_call_binding/1, remove_call_binding/1
+        ,add_call_binding/1, add_call_binding/2, remove_call_binding/1, remove_call_binding/2
         ,add_binding/2, remove_binding/2
         ]).
 -export([init/1
@@ -69,9 +69,17 @@ handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->
 add_call_binding(AccountId) ->
     gen_listener:cast(?SERVER, {'add_call_binding', AccountId}).
 
+-spec add_call_binding(ne_binary(), ne_binary()) -> 'ok'.
+add_call_binding(AccountId, EventName) ->
+    gen_listener:cast(?SERVER, {'add_call_binding', AccountId, EventName}).
+
 -spec remove_call_binding(ne_binary()) -> 'ok'.
 remove_call_binding(AccountId) ->
     gen_listener:cast(?SERVER, {'remove_call_binding', AccountId}).
+
+-spec remove_call_binding(ne_binary(), ne_binary()) -> 'ok'.
+remove_call_binding(AccountId, Event) ->
+    gen_listener:cast(?SERVER, {'remove_call_binding', AccountId, Event}).
 
 -spec add_binding(atom(), kz_proplist()) -> 'ok'.
 add_binding(Wapi, Options) ->
@@ -128,6 +136,9 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'add_call_binding', AccountId}, State) ->
     kz_hooks:register(AccountId),
+    {'noreply', State};
+handle_cast({'add_call_binding', AccountId, EventName}, State) ->
+    kz_hooks:register(AccountId, EventName),
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};

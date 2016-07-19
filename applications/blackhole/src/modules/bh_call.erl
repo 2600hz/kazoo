@@ -16,6 +16,11 @@
 
 -include("blackhole.hrl").
 
+-define(LISTEN_TO, [
+                    <<"CHANNEL_CREATE">>, <<"CHANNEL_ANSWER">>, <<"CHANNEL_DESTROY">>, <<"CHANNEL_BRIDGE">>
+                   ,<<"PARK_PARKED">>, <<"PARK_RETRIEVED">>, <<"PARK_ABANDONED">>
+                   ]).
+
 -spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
 handle_event(Context, EventJObj) ->
     kz_util:put_callid(EventJObj),
@@ -37,13 +42,43 @@ event_name(JObj) ->
     kz_json:get_value(<<"Event-Name">>, JObj).
 
 -spec add_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
-add_amqp_binding(<<"call.", _/binary>>, Context) ->
-    blackhole_listener:add_call_binding(bh_context:account_id(Context));
+add_amqp_binding(<<"call.*.*">>, Context) ->
+    AccountId = bh_context:account_id(Context),
+    add_call_binding(AccountId, ?LISTEN_TO);
+add_amqp_binding(<<"call.", Binding/binary>>, Context) ->
+    case binary:split(Binding, <<".">>, ['global']) of
+        [Event, <<"*">>] ->
+            AccountId = bh_context:account_id(Context),
+            add_call_binding(AccountId, [Event]);
+        _ ->
+            lager:debug("unmatched call binding ~s", [Binding])
+    end;
 add_amqp_binding(_Binding, _Context) ->
     lager:debug("unmatched binding ~s", [_Binding]).
 
 -spec rm_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
-rm_amqp_binding(<<"call.", _/binary>>, Context) ->
-    blackhole_listener:remove_call_binding(bh_context:account_id(Context));
+rm_amqp_binding(<<"call.*.*">>, Context) ->
+    AccountId = bh_context:account_id(Context),
+    rm_call_binding(AccountId, ?LISTEN_TO);
+rm_amqp_binding(<<"call.", Binding/binary>>, Context) ->
+    case binary:split(Binding, <<".">>, ['global']) of
+        [Event, <<"*">>] ->
+            AccountId = bh_context:account_id(Context),
+            rm_call_binding(AccountId, [Event]);
+        _ ->
+            lager:debug("unmatched call binding ~s", [Binding])
+    end;
 rm_amqp_binding(_Binding, _Context) ->
     lager:debug("unmatched binding ~s", [_Binding]).
+
+-spec add_call_binding(ne_binary(), [ne_binary()]) -> ok.
+add_call_binding(_AccountId, []) -> ok;
+add_call_binding(AccountId, [Event | Events]) ->
+    blackhole_listener:add_call_binding(AccountId, Event),
+    add_call_binding(AccountId, Events).
+
+-spec rm_call_binding(ne_binary(), [ne_binary()]) -> ok.
+rm_call_binding(_AccountId, []) -> ok;
+rm_call_binding(AccountId, [Event | Events]) ->
+    blackhole_listener:remove_call_binding(AccountId, Event),
+    rm_call_binding(AccountId, Events).
