@@ -478,10 +478,9 @@ release_number(Number, Options) ->
     {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),
     N1 = knm_providers:delete(set_phone_number(Number, PhoneNumber)),
     N = unwind_or_disconnect(N1, Options),
-    wrap_phone_number_return(
-      knm_phone_number:save(phone_number(N))
+    wrap_phone_number_return(knm_phone_number:save(phone_number(N))
                             ,N
-     ).
+                            ).
 
 -spec unwind_or_disconnect(knm_number(), knm_number_options:options()) -> knm_number().
 unwind_or_disconnect(Number, Options) ->
@@ -525,9 +524,9 @@ delete_phone_number(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(ne_binary()) ->
-                     knm_number_return().
+                    knm_number_return().
 -spec delete(ne_binary(), knm_number_options:options()) ->
-                     knm_number_return().
+                    knm_number_return().
 delete(Num) ->
     delete(Num, knm_number_options:default()).
 
@@ -541,10 +540,9 @@ delete(Num, Options) ->
 -spec delete_number(knm_number()) -> knm_number_return().
 delete_number(Number) ->
     N = knm_providers:delete(Number),
-    wrap_phone_number_return(
-      knm_phone_number:delete(phone_number(N))
+    wrap_phone_number_return(knm_phone_number:delete(phone_number(N))
                             ,N
-     ).
+                            ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -572,10 +570,9 @@ maybe_update_assignment(Number, NewApp) ->
         NewApp -> {'ok', Number};
         _OldApp ->
             UpdatedPhoneNumber = knm_phone_number:set_used_by(PhoneNumber, NewApp),
-            wrap_phone_number_return(
-              knm_phone_number:save(UpdatedPhoneNumber)
+            wrap_phone_number_return(knm_phone_number:save(UpdatedPhoneNumber)
                                     ,Number
-             )
+                                    )
     end.
 
 %%--------------------------------------------------------------------
