@@ -1,52 +1,183 @@
-
 ### Lists
 
-#### cURL examples
+#### Schema
 
-##### Get all lists (doesn't return entries)
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`description` | A friendly list description | `string(1..128)` |   | `false`
+`name` | A friendly match list name | `string(1..128)` |   | `true`
+`org` | Full legal name of the organization | `string` |   | `false`
 
-##### Get list properties (doesn't return entries)
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 
-##### Get list entries 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+#### Get all lists (doesn't return entries)
 
-##### Add new list (beware: no entries)
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists -d '{"data": {"name": "list name"}}'
+> GET /v2/accounts/{ACCOUNT_ID}/lists
 
-##### Replacing list (without entries)
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists -d '{"data": {"name": "new list name"}}'
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists
+```
 
-##### Updating list (without entries)
-    curl -v -X PATCH -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists -d '{"data": {"description": "desc"}}'
 
-##### Delete list and its entries
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}}
+#### Add new list (beware: no entries)
 
-##### Delete all entries from list
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}}/entries
+> PUT /v2/accounts/{ACCOUNT_ID}/lists
 
-##### Add an entry to a list
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}}/entries -d '{"data": {"number": "0123", "displayname" : "List Entry"}}'
+```curl
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"name": "list name"}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists
+```
 
-##### List entry properties
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}}/entries/{ENTRY_ID}
 
-##### Replace list entry
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}}/entries/{ENTRY_ID} -d '{"data": {"number": "0123", "displayname" : "New List Entry"}}'
+#### Delete list and its entries
 
-##### Update list entry
-    curl -v -X PATCH -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}}/entries/{ENTRY_ID} -d '{"data": {"firstname" : "First name"}}'
+> DELETE /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 
-##### Delete entry from the list
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}}/entries/{ENTRY_ID}
+```curl
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+```
 
-##### List entry vcard
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}}/entries/{ENTRY_ID}/vcard
 
-##### Add photo to List entry
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}}/entries/{ENTRY_ID}/photo
+#### Get list properties (doesn't return entries)
+
+> GET /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+```
+
+
+#### Updating list (without entries)
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+
+```curl
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"description": "desc"}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+```
+
+
+#### Rewrite list
+
+> POST /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+
+```curl
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"name": "New List name"}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+```
+
+
+#### Delete all entries from list
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+
+```curl
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+```
+
+
+#### Get list entries
+
+> GET /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+```
+
+
+#### Add an entry to a list
+
+> PUT /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+
+```curl
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"number": "0123", "displayname" : "List Entry"}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+```
+
+
+#### Delete entry from the list
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+
+```curl
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+```
+
+
+#### List entry properties
+
+> GET /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+```
+
+
+#### Update list entry
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+
+```curl
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"firstname" : "First name"}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+```
+
+#### Replace list entry
+
+> POST /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+
+```curl
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"number": "0123", "displayname" : "New List Entry"}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+```
+
+
+#### Add photo to List entry
+
+> POST /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/photo
+
+```curl
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/photo
+```
+
+
+#### List entry vcard
+
+> GET /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/vcard
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/vcard
+```
+
 
 #### v1 examples.
 
@@ -61,9 +192,6 @@
 
 ##### Add new entry to list
     curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/lists/{LIST_ID} -d '{"data": {"pattern": "345"}}'
-
-##### Rewrite list
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/lists/{LIST_ID} -d '{"data": {"name": "New List name"}}'
 
 ##### Delete list
     curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
