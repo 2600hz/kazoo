@@ -8901,6 +8901,9 @@
         "/v2/accounts/{ACCOUNT_ID}/parents": {
             "get": {}
         },
+        "/v2/accounts/{ACCOUNT_ID}/parked_calls": {
+            "get": {}
+        },
         "/v2/accounts/{ACCOUNT_ID}/phone_numbers": {
             "get": {}
         },

@@ -111,6 +111,7 @@
                          ,'cb_webhooks'
                          ,'cb_websockets'
                          ,'cb_whitelabel'
+                         ,'cb_parked_calls'
                          ]).
 
 -define(DEPRECATED_MODULES, ['cb_local_resources'
