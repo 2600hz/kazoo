@@ -32,6 +32,7 @@ dependencies:
 test:
   pre:
     - $CHANGED
+    - ./scripts/state-of-docs.sh || true
     - ./scripts/validate-js.sh $($CHANGED)
     - ./scripts/code_checks.bash
     - |
