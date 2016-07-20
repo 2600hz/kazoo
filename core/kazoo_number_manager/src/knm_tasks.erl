@@ -288,25 +288,31 @@ list(Props, [{E164,JObj} | Rest]) ->
 list_number_row(AuthBy, E164, JObj) ->
     Options = [{'auth_by', AuthBy}
               ],
-    {'ok', KNMNumber} = knm_number:get(E164, Options),
-    PhoneNumber = knm_number:phone_number(KNMNumber),
-    [E164
-    ,knm_phone_number:assigned_to(PhoneNumber)
-    ,knm_phone_number:prev_assigned_to(PhoneNumber)
-    ,knm_phone_number:state(PhoneNumber)
-    ,integer_to_binary(kz_json:get_value(<<"created">>, JObj))
-    ,integer_to_binary(kz_json:get_value(<<"updated">>, JObj))
-    ,knm_phone_number:used_by(PhoneNumber)
-    ,kz_util:to_binary(knm_phone_number:ported_in(PhoneNumber))
-    ,knm_phone_number:module_name(PhoneNumber)
-    ,'undefined'%%TODO
-    ,'undefined'%%TODO
-    ,'undefined'%%TODO
-    ,'undefined'%%TODO
-    ,'undefined'%%TODO
-    ,'undefined'%%TODO
-    ,'undefined'%%TODO
-    ].
+    case knm_number:get(E164, Options) of
+        {'ok', KNMNumber} ->
+            PhoneNumber = knm_number:phone_number(KNMNumber),
+            [E164
+            ,knm_phone_number:assigned_to(PhoneNumber)
+            ,knm_phone_number:prev_assigned_to(PhoneNumber)
+            ,knm_phone_number:state(PhoneNumber)
+            ,integer_to_binary(kz_json:get_value(<<"created">>, JObj))
+            ,integer_to_binary(kz_json:get_value(<<"updated">>, JObj))
+            ,knm_phone_number:used_by(PhoneNumber)
+            ,kz_util:to_binary(knm_phone_number:ported_in(PhoneNumber))
+            ,knm_phone_number:module_name(PhoneNumber)
+            ,'undefined'%%TODO
+            ,'undefined'%%TODO
+            ,'undefined'%%TODO
+            ,'undefined'%%TODO
+            ,'undefined'%%TODO
+            ,'undefined'%%TODO
+            ,'undefined'%%TODO
+            ];
+        {'error', 'not_reconcilable'} ->
+            %% Numbers that shouldn't be in the system (e.g. '+141510010+14')
+            %% Their fields are not queriable but we return the id to show it exists.
+            [E164 | lists:duplicate(length(list_output_header()) - 1, 'undefined')]
+    end.
 
 -spec list_all(kz_proplist(), task_iterator()) -> task_iterator().
 list_all(_, 'init') ->
