@@ -103,7 +103,7 @@ to_pdf({Req, Context}) ->
     Nouns = cb_context:req_nouns(Context),
     case props:get_value(<<"directories">>, Nouns, []) of
         [] -> {Req, Context};
-        [Id|_] ->
+        [Id] ->
             Context1 = read(Id, Context),
             case cb_context:resp_status(Context1) of
                 'success' -> {Req, get_pdf(Context1)};
@@ -248,7 +248,7 @@ pdf_users(AccountId, SortBy, Users) ->
 
 pdf_users(_AccountDb, SortBy, [], Acc) ->
     Users = [{props:get_value([<<"user">>, SortBy], U), U} || U <- Acc],
-    [U || {_, U} <- lists:keysort(1, Users)];
+    [U || {_SortCriterion, U} <- lists:keysort(1, Users)];
 pdf_users(AccountDb, SortBy, [JObj|Users], Acc) ->
     UserId = kz_json:get_value(<<"user_id">>, JObj),
     CallflowId = kz_json:get_value(<<"callflow_id">>, JObj),
@@ -264,7 +264,7 @@ pdf_users(AccountDb, SortBy, [JObj|Users], Acc) ->
 %%--------------------------------------------------------------------
 -spec pdf_user(ne_binary(), ne_binary()) -> kz_proplist().
 pdf_user(AccountDb, UserId) ->
-    case kz_datamgr:open_doc(AccountDb, UserId) of
+    case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'error', _R} ->
             lager:error("failed to fetch user ~s in ~s: ~p", [UserId, AccountDb, _R]),
             [];
@@ -279,7 +279,7 @@ pdf_user(AccountDb, UserId) ->
 %%--------------------------------------------------------------------
 -spec pdf_callflow(ne_binary(), ne_binary()) -> kz_proplist().
 pdf_callflow(AccountDb, CallflowId) ->
-    case kz_datamgr:open_doc(AccountDb, CallflowId) of
+    case kz_datamgr:open_cache_doc(AccountDb, CallflowId) of
         {'error', _R} ->
             lager:error("failed to fetch callflow ~s in ~s: ~p", [CallflowId, AccountDb, _R]),
             [];

@@ -199,11 +199,18 @@ get_sip_from(Props, _) ->
                 ,(props:get_first_defined([?GET_CCV(<<"Realm">>)
                                           ,<<"variable_sip_from_host">>
                                           ,<<"sip_from_host">>
-                                          ], Props, ?DEFAULT_REALM))/binary
+                                          ]
+                                         ,Props
+                                         ,?DEFAULT_REALM
+                                         )
+                 )/binary
               >>,
     props:get_first_defined([<<"Channel-Presence-ID">>
                             ,<<"variable_sip_from_uri">>
-                            ], Props, Default).
+                            ]
+                           ,Props
+                           ,Default
+                           ).
 
 %% retrieves the sip address for the 'request' field
 -spec get_sip_request(kz_proplist()) -> ne_binary().

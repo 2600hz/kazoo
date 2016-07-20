@@ -22,6 +22,7 @@
         ,validate/1, validate/2, validate/3, validate/4
         ,put/1
         ,post/2, post/3
+        ,patch/2
         ,delete/2
         ,lookup_regs/1
         ]).
@@ -54,6 +55,7 @@ init() ->
                ,{<<"v2_resource.validate.devices">>, 'validate'}
                ,{<<"v2_resource.execute.put.devices">>, 'put'}
                ,{<<"v2_resource.execute.post.devices">>, 'post'}
+               ,{<<"v2_resource.execute.patch.devices">>, 'patch'}
                ,{<<"v2_resource.execute.delete.devices">>, 'delete'}
                ],
     cb_modules_util:bind(?MODULE, Bindings),
@@ -87,7 +89,7 @@ allowed_methods() ->
 allowed_methods(?STATUS_PATH_TOKEN) ->
     [?HTTP_GET];
 allowed_methods(_DeviceId) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_PATCH, ?HTTP_POST, ?HTTP_DELETE].
 
 allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     [?HTTP_POST].
@@ -191,13 +193,17 @@ validate_device_id(Context, DeviceId) ->
     case kz_datamgr:open_cache_doc(cb_context:account_db(Context), DeviceId) of
         {'ok', _} -> cb_context:set_device_id(Context, DeviceId);
         {'error', 'not_found'} ->
-            cb_context:add_system_error(
-              'bad_identifier'
-                                       ,kz_json:from_list([{<<"cause">>, DeviceId}])
-                                       ,Context
-             );
+            error_no_entity(Context, DeviceId);
         {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
+
+-spec error_no_entity(cb_context:context(), path_token()) ->
+                             cb_context:context().
+error_no_entity(Context, DeviceId) ->
+    cb_context:add_system_error('bad_identifier'
+                               ,kz_json:from_list([{<<"cause">>, DeviceId}])
+                               ,Context
+                               ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -229,8 +235,13 @@ validate_device(Context, DeviceId, ?HTTP_GET) ->
     load_device(DeviceId, Context);
 validate_device(Context, DeviceId, ?HTTP_POST) ->
     validate_request(DeviceId, Context);
+validate_device(Context, DeviceId, ?HTTP_PATCH) ->
+    validate_patch(Context, DeviceId);
 validate_device(Context, DeviceId, ?HTTP_DELETE) ->
     load_device(DeviceId, Context).
+
+validate_patch(Context, DeviceId) ->
+    crossbar_doc:patch_and_validate(DeviceId, Context, fun validate_request/2).
 
 validate(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     load_device(DeviceId, Context).
@@ -268,6 +279,10 @@ post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     Context1 = cb_context:store(Context, 'sync', 'force'),
     _ = provisioner_util:maybe_sync_sip_data(Context1, 'device'),
     crossbar_util:response_202(<<"sync request sent">>, Context).
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _Id) ->
+    crossbar_doc:save(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->

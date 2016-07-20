@@ -480,8 +480,8 @@ create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
 %% Flush the callflow cache
 %% @end
 %%--------------------------------------------------------------------
--spec flush_account(ne_binary()) -> any().
--spec flush(ne_binary(), ne_binary()) -> any().
+-spec flush_account(ne_binary()) -> 'ok'.
+-spec flush(ne_binary(), ne_binary()) -> 'ok'.
 flush_account(AccountDb) ->
     ToRemove =
         kz_cache:filter_local(?CACHE_NAME, fun({?MODULE, Db, _Id}, _Value) ->
@@ -508,7 +508,8 @@ flush(Db, Id) ->
     Fun = fun(P) ->
                   kapi_conf:publish_doc_update('edited', Db, kz_device:type(), Id, P)
           end,
-    kapps_util:amqp_pool_send(Props, Fun).
+
+    'ok' = kz_amqp_worker:cast(Props, Fun).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -568,6 +569,15 @@ maybe_rewrite_caller_id(Endpoint, Call) ->
 -spec should_create_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                     'ok' | {'error', any()}.
 should_create_endpoint(Endpoint, Properties, Call) ->
+    case evaluate_rules_for_creation(Endpoint, Properties, Call) of
+        {Endpoint, Properties, Call} -> 'ok';
+        {'error', _}=Error -> Error
+    end.
+
+-spec evaluate_rules_for_creation(kz_json:object(), kz_json:object(), kapps_call:call()) ->
+                                         create_ep_acc().
+
+evaluate_rules_for_creation(Endpoint, Properties, Call) ->
     Routines = [fun maybe_missing_resource_type/3
                ,fun maybe_owner_called_self/3
                ,fun maybe_endpoint_called_self/3
@@ -575,14 +585,10 @@ should_create_endpoint(Endpoint, Properties, Call) ->
                ,fun maybe_do_not_disturb/3
                ,fun maybe_exclude_from_queues/3
                ],
-    case lists:foldl(fun should_create_endpoint_fold/2
-                    ,{Endpoint, Properties, Call}
-                    ,Routines
-                    )
-    of
-        {Endpoint, Properties, Call} -> 'ok';
-        Error -> Error
-    end.
+    lists:foldl(fun should_create_endpoint_fold/2
+               ,{Endpoint, Properties, Call}
+               ,Routines
+               ).
 
 -type create_ep_acc() :: {kz_json:object(), kz_json:object(), kapps_call:call()} |
                          {'error', any()}.

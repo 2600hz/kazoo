@@ -223,11 +223,10 @@ presence_id(UserJObj, Default) ->
 
 -spec set_presence_id(doc(), ne_binary()) -> doc().
 set_presence_id(UserJObj, Id) ->
-    kz_json:set_value(
-      ?KEY_PRESENCE_ID
+    kz_json:set_value(?KEY_PRESENCE_ID
                      ,kz_util:to_binary(Id)
                      ,UserJObj
-     ).
+                     ).
 
 -spec is_enabled(doc()) -> boolean().
 -spec is_enabled(doc(), Default) -> boolean() | Default.
@@ -267,7 +266,7 @@ fetch(<<_/binary>> = AccountId, <<_/binary>> = UserId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     kz_datamgr:open_cache_doc(AccountDb, UserId);
 fetch(_, _) ->
-    {'error', 'invalid_parametres'}.
+    {'error', 'invalid_parameters'}.
 
 -spec fax_settings(doc()) -> doc().
 fax_settings(JObj) ->

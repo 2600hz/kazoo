@@ -757,6 +757,166 @@
             "required": true,
             "type": "object"
         },
+        "callflows.acdc_agent": {
+            "description": "Validator for the acdc_agent callflow's data object",
+            "properties": {
+                "action": {
+                    "description": ""
+                },
+                "presence_id": {
+                    "description": "",
+                    "type": "string"
+                },
+                "presence_state": {
+                    "description": ""
+                },
+                "sip": {
+                    "properties": {
+                        "username": {
+                            "description": ""
+                        }
+                    },
+                    "type": "object"
+                },
+                "timeout": {
+                    "description": "",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.acdc_member": {
+            "description": "Validator for the acdc_member callflow's data object",
+            "properties": {
+                "priority": {
+                    "description": "",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.acdc_queue": {
+            "description": "Validator for the acdc_queue callflow's data object",
+            "properties": {
+                "action": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.after_bridge": {
+            "description": "Validator for the after_bridge callflow's data object",
+            "properties": {
+                "action": {
+                    "description": ""
+                },
+                "data": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.branch_bnumber": {
+            "description": "Validator for the branch_bnumber callflow's data object",
+            "properties": {},
+            "required": true,
+            "type": "object"
+        },
+        "callflows.branch_variable": {
+            "description": "Validator for the branch_variable callflow's data object",
+            "properties": {
+                "variable": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.call_forward": {
+            "description": "Validator for the call_forward callflow's data object",
+            "properties": {
+                "action": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.call_waiting": {
+            "description": "Validator for the call_waiting callflow's data object",
+            "properties": {
+                "action": {
+                    "default": "toggle",
+                    "description": "",
+                    "type": "string"
+                },
+                "scope": {
+                    "default": "device",
+                    "description": "",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.callflow": {
+            "description": "Validator for the callflow callflow's data object",
+            "properties": {},
+            "required": true,
+            "type": "object"
+        },
+        "callflows.camping_feature": {
+            "description": "Validator for the camping_feature callflow's data object",
+            "properties": {},
+            "required": true,
+            "type": "object"
+        },
+        "callflows.check_cid": {
+            "description": "Validator for the check_cid callflow's data object",
+            "properties": {
+                "caller_id": {
+                    "properties": {
+                        "external": {
+                            "properties": {
+                                "name": {
+                                    "description": ""
+                                },
+                                "number": {
+                                    "description": ""
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "type": "object"
+                },
+                "regex": {
+                    "default": ".*",
+                    "description": "",
+                    "type": "string"
+                },
+                "use_absolute_mode": {
+                    "default": false,
+                    "description": "",
+                    "type": "boolean"
+                },
+                "user_id": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.cidlistmatch": {
+            "description": "Validator for the cidlistmatch callflow's data object",
+            "properties": {},
+            "required": true,
+            "type": "object"
+        },
         "callflows.collect_dtmf": {
             "description": "Validator for the Collect DTMF callflow element",
             "properties": {
@@ -908,6 +1068,320 @@
             "required": true,
             "type": "object"
         },
+        "callflows.dead_air": {
+            "description": "Validator for the dead_air callflow's data object",
+            "properties": {},
+            "required": true,
+            "type": "object"
+        },
+        "callflows.device": {
+            "description": "Validator for the device callflow's data object",
+            "properties": {
+                "can_call_self": {
+                    "default": false,
+                    "description": "Permits a user to call from one self-owned device to another",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "can_text_self": {
+                    "default": false,
+                    "description": "Permits a user to send a text from one self-owned device to another",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "delay": {
+                    "default": 0,
+                    "description": "",
+                    "type": "integer"
+                },
+                "fail_on_single_reject": {
+                    "descripption": "Should the call be ended on first REJECT (when multiple endpoints are being tried",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "id": {
+                    "description": "The device ID",
+                    "maxLength": 32,
+                    "minLength": 32,
+                    "required": true,
+                    "type": "string"
+                },
+                "skype": {
+                    "description": "Skype configuration options",
+                    "properties": {},
+                    "required": false,
+                    "type": "object"
+                },
+                "source": {
+                    "description": ""
+                },
+                "static_invite": {
+                    "description": "Override SIP To header with this value",
+                    "required": false,
+                    "type": "string"
+                },
+                "suppress_clid": {
+                    "description": "If true, does not set Caller ID attributes on the endpoint",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "timeout": {
+                    "default": 0,
+                    "description": "How long, in seconds, to ring the endpoint(s)",
+                    "required": false,
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.directory": {
+            "description": "Validator for the directory callflow's data object",
+            "properties": {},
+            "required": true,
+            "type": "object"
+        },
+        "callflows.disa": {
+            "description": "Validator for the disa callflow's data object",
+            "properties": {},
+            "required": true,
+            "type": "object"
+        },
+        "callflows.do_not_disturb": {
+            "description": "Validator for the do_not_disturb callflow's data object",
+            "properties": {
+                "action": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.dynamic_cid": {
+            "description": "Validator for the dynamic_cid callflow's data object",
+            "properties": {
+                "action": {
+                    "description": ""
+                },
+                "enforce_call_restriction": {
+                    "default": true,
+                    "description": "",
+                    "type": "boolean"
+                },
+                "id": {
+                    "description": ""
+                },
+                "idx_name": {
+                    "description": ""
+                },
+                "interdigit_timeout": {
+                    "description": "",
+                    "type": "integer"
+                },
+                "media_id": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.eavesdrop": {
+            "description": "Validator for the eavesdrop callflow's data object",
+            "properties": {
+                "device_id": {
+                    "description": ""
+                },
+                "user_id": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.eavesdrop_feature": {
+            "description": "Validator for the eavesdrop_feature callflow's data object",
+            "properties": {
+                "group_id": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.fax_detect": {
+            "description": "Validator for the fax_detect callflow's data object",
+            "properties": {
+                "duration": {
+                    "description": "",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.faxbox": {
+            "description": "Validator for the faxbox callflow's data object",
+            "properties": {
+                "media": {
+                    "properties": {
+                        "fax_option": {
+                            "description": ""
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.group": {
+            "description": "Validator for the group callflow's data object",
+            "properties": {
+                "endpoints": {
+                    "default": [],
+                    "description": "",
+                    "type": "array"
+                },
+                "fail_on_single_reject": {
+                    "description": ""
+                },
+                "ignore_forward": {
+                    "default": true,
+                    "description": "",
+                    "type": "boolean"
+                },
+                "repeats": {
+                    "default": 1,
+                    "description": "",
+                    "type": "integer"
+                },
+                "ringback": {
+                    "description": ""
+                },
+                "strategy": {
+                    "default": "simultaneous",
+                    "description": "",
+                    "type": "string"
+                },
+                "timeout": {
+                    "default": 20,
+                    "description": "",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.group_pickup": {
+            "description": "Validator for the group_pickup callflow's data object",
+            "properties": {
+                "approved_device_id": {
+                    "description": ""
+                },
+                "approved_group_id": {
+                    "description": ""
+                },
+                "approved_user_id": {
+                    "description": ""
+                },
+                "device_id": {
+                    "description": ""
+                },
+                "group_id": {
+                    "description": ""
+                },
+                "user_id": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.group_pickup_feature": {
+            "description": "Validator for the group_pickup_feature callflow's data object",
+            "properties": {
+                "type": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.hangup": {
+            "description": "Validator for the hangup callflow's data object",
+            "properties": {},
+            "required": true,
+            "type": "object"
+        },
+        "callflows.hotdesk": {
+            "description": "Validator for the hotdesk callflow's data object",
+            "properties": {
+                "action": {
+                    "description": ""
+                },
+                "interdigit_timeout": {
+                    "description": "",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.intercept": {
+            "description": "Validator for the intercept callflow's data object",
+            "properties": {
+                "approved_device_id": {
+                    "description": ""
+                },
+                "approved_group_id": {
+                    "description": ""
+                },
+                "approved_user_id": {
+                    "description": ""
+                },
+                "device_id": {
+                    "description": ""
+                },
+                "group_id": {
+                    "description": ""
+                },
+                "user_id": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.intercept_feature": {
+            "description": "Validator for the intercept_feature callflow's data object",
+            "properties": {
+                "approved_device_id": {
+                    "description": ""
+                },
+                "approved_group_id": {
+                    "description": ""
+                },
+                "approved_user_id": {
+                    "description": ""
+                },
+                "type": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.intercom": {
+            "description": "Validator for the intercom callflow's data object",
+            "properties": {
+                "barge_calls": {
+                    "description": "",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
         "callflows.language": {
             "description": "Validator for the Language callflow element",
             "properties": {
@@ -926,6 +1400,7 @@
             "description": "Validator for the Lookup callflow element",
             "properties": {
                 "lists": {
+                    "default": [],
                     "description": "Array of list ids",
                     "items": {
                         "type": "string"
@@ -963,6 +1438,22 @@
             "required": true,
             "type": "object"
         },
+        "callflows.menu": {
+            "description": "Validator for the menu callflow's data object",
+            "properties": {
+                "interdigit_timeout": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.move": {
+            "description": "Validator for the move callflow's data object",
+            "properties": {},
+            "required": true,
+            "type": "object"
+        },
         "callflows.nomorobo": {
             "description": "Validator for the NoMoRobo callflow action",
             "properties": {
@@ -981,6 +1472,116 @@
                     "name": "NoMoRobo Username",
                     "required": true,
                     "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.offnet": {
+            "description": "Validator for the offnet callflow's data object",
+            "properties": {
+                "bypass_e164": {
+                    "description": "",
+                    "type": "boolean"
+                },
+                "caller_id_type": {
+                    "default": "external",
+                    "description": "",
+                    "type": "string"
+                },
+                "custom_sip_headers": {
+                    "default": {},
+                    "description": "",
+                    "type": "object"
+                },
+                "do_not_normalize": {
+                    "description": "",
+                    "type": "boolean"
+                },
+                "dynamic_flags": {
+                    "description": ""
+                },
+                "emit_account_id": {
+                    "description": "",
+                    "type": "boolean"
+                },
+                "format_from_uri": {
+                    "description": "",
+                    "type": "boolean"
+                },
+                "from_uri_realm": {
+                    "description": ""
+                },
+                "hunt_account_id": {
+                    "description": ""
+                },
+                "ignore_early_media": {
+                    "default": false,
+                    "description": "",
+                    "type": "boolean"
+                },
+                "outbound_flags": {
+                    "description": ""
+                },
+                "ringback": {
+                    "description": ""
+                },
+                "timeout": {
+                    "description": ""
+                },
+                "to_did": {
+                    "description": ""
+                },
+                "use_local_resources": {
+                    "default": true,
+                    "description": "",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.page_group": {
+            "description": "Validator for the page_group callflow's data object",
+            "properties": {
+                "endpoints": {
+                    "default": [],
+                    "description": "",
+                    "type": "array"
+                },
+                "timeout": {
+                    "default": 5,
+                    "description": "",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.park": {
+            "description": "Validator for the park callflow's data object",
+            "properties": {
+                "action": {
+                    "default": "park",
+                    "description": "",
+                    "type": "string"
+                },
+                "default_callback_timeout": {
+                    "description": "",
+                    "type": "integer"
+                },
+                "default_presence_type": {
+                    "description": "",
+                    "type": "string"
+                },
+                "default_ringback_timeout": {
+                    "description": "",
+                    "type": "integer"
+                },
+                "slots": {
+                    "default": {},
+                    "description": "",
+                    "type": "object"
                 }
             },
             "required": true,
@@ -1031,6 +1632,61 @@
                     "name": "Script URL",
                     "required": true,
                     "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.play": {
+            "description": "Validator for the play callflow's data object",
+            "properties": {
+                "answer": {
+                    "description": "",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.prepend_cid": {
+            "description": "Validator for the prepend_cid callflow's data object",
+            "properties": {
+                "action": {
+                    "description": ""
+                },
+                "caller_id_name_prefix": {
+                    "description": ""
+                },
+                "caller_id_number_prefix": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.privacy": {
+            "description": "Validator for the privacy callflow's data object",
+            "properties": {
+                "mode": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.receive_fax": {
+            "description": "Validator for the receive_fax callflow's data object",
+            "properties": {
+                "media": {
+                    "properties": {
+                        "fax_option": {
+                            "description": ""
+                        }
+                    },
+                    "type": "object"
+                },
+                "owner_id": {
+                    "description": ""
                 }
             },
             "required": true,
@@ -1117,6 +1773,7 @@
                     "type": "string"
                 },
                 "method": {
+                    "default": "put",
                     "description": "What HTTP method to use when sending the recording",
                     "enum": [
                         "put",
@@ -1143,10 +1800,75 @@
             "required": true,
             "type": "object"
         },
+        "callflows.resources": {
+            "description": "Validator for the resources callflow's data object",
+            "properties": {
+                "bypass_e164": {
+                    "description": "",
+                    "type": "boolean"
+                },
+                "caller_id_type": {
+                    "default": "external",
+                    "description": "",
+                    "type": "string"
+                },
+                "custom_sip_headers": {
+                    "default": {},
+                    "description": "",
+                    "type": "object"
+                },
+                "do_not_normalize": {
+                    "description": "",
+                    "type": "boolean"
+                },
+                "dynamic_flags": {
+                    "description": ""
+                },
+                "emit_account_id": {
+                    "description": "",
+                    "type": "boolean"
+                },
+                "format_from_uri": {
+                    "description": "",
+                    "type": "boolean"
+                },
+                "from_uri_realm": {
+                    "description": ""
+                },
+                "hunt_account_id": {
+                    "description": ""
+                },
+                "ignore_early_media": {
+                    "default": false,
+                    "description": "",
+                    "type": "boolean"
+                },
+                "outbound_flags": {
+                    "description": ""
+                },
+                "ringback": {
+                    "description": ""
+                },
+                "timeout": {
+                    "description": ""
+                },
+                "to_did": {
+                    "description": ""
+                },
+                "use_local_resources": {
+                    "default": true,
+                    "description": "",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
         "callflows.response": {
             "description": "Validator for the Response callflow action",
             "properties": {
                 "code": {
+                    "default": "486",
                     "description": "The SIP Hangup code to respond with",
                     "name": "Code",
                     "required": true,
@@ -1172,6 +1894,7 @@
             "description": "Validator for the Ring Group callflow element",
             "properties": {
                 "endpoints": {
+                    "default": [],
                     "description": "Endpoint IDs (devices, users, etc) included in the ring group",
                     "items": {
                         "description": "ID of the endpoint (device, user, etc)",
@@ -1219,6 +1942,9 @@
                     "required": true,
                     "type": "array"
                 },
+                "fail_on_single_reject": {
+                    "description": ""
+                },
                 "ignore_forward": {
                     "default": true,
                     "description": "Whether to ring forwarded endpoints",
@@ -1226,6 +1952,7 @@
                     "type": "boolean"
                 },
                 "repeats": {
+                    "default": 1,
                     "description": "How many times to retry the ring group",
                     "minimum": 1,
                     "required": false,
@@ -1279,6 +2006,96 @@
             "required": true,
             "type": "object"
         },
+        "callflows.set": {
+            "description": "Validator for the set callflow's data object",
+            "properties": {},
+            "required": true,
+            "type": "object"
+        },
+        "callflows.set_cid": {
+            "description": "Validator for the set_cid callflow's data object",
+            "properties": {
+                "caller_id_name": {
+                    "default": "",
+                    "description": "",
+                    "type": "string"
+                },
+                "caller_id_number": {
+                    "default": "",
+                    "description": "",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.set_variable": {
+            "description": "Validator for the set_variable callflow's data object",
+            "properties": {
+                "channel": {
+                    "default": "a",
+                    "description": "",
+                    "type": "string"
+                },
+                "value": {
+                    "description": "",
+                    "type": "string"
+                },
+                "variable": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.skel": {
+            "description": "Validator for the skel callflow's data object",
+            "properties": {},
+            "required": true,
+            "type": "object"
+        },
+        "callflows.sleep": {
+            "description": "Validator for the sleep callflow's data object",
+            "properties": {
+                "duration": {
+                    "default": 0,
+                    "description": "",
+                    "type": "integer"
+                },
+                "unit": {
+                    "default": "s",
+                    "description": "",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.temporal_route": {
+            "description": "Validator for the temporal_route callflow's data object",
+            "properties": {
+                "action": {
+                    "description": ""
+                },
+                "interdigit_timeout": {
+                    "description": "",
+                    "type": "integer"
+                },
+                "rule_set": {
+                    "description": ""
+                },
+                "rules": {
+                    "default": [],
+                    "description": "",
+                    "type": "array"
+                },
+                "timezone": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
         "callflows.tts": {
             "description": "Validator for the TTS (Text-to-speech) callflow action",
             "properties": {
@@ -1318,6 +2135,49 @@
             "required": true,
             "type": "object"
         },
+        "callflows.user": {
+            "description": "Validator for the user callflow's data object",
+            "properties": {
+                "can_call_self": {
+                    "description": "",
+                    "type": "boolean"
+                },
+                "can_text_self": {
+                    "description": "",
+                    "type": "boolean"
+                },
+                "delay": {
+                    "default": 0,
+                    "description": "",
+                    "type": "integer"
+                },
+                "fail_on_single_reject": {
+                    "description": ""
+                },
+                "source": {
+                    "description": ""
+                },
+                "static_invite": {
+                    "description": ""
+                },
+                "strategy": {
+                    "default": "simultaneous",
+                    "description": "",
+                    "type": "string"
+                },
+                "suppress_clid": {
+                    "description": "",
+                    "type": "boolean"
+                },
+                "timeout": {
+                    "default": 20,
+                    "description": "",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
         "callflows.voicemail": {
             "description": "Validator for the Voicemail callflow element",
             "properties": {
@@ -1331,6 +2191,11 @@
                     "name": "Action",
                     "required": false,
                     "type": "string"
+                },
+                "callerid_match_login": {
+                    "default": false,
+                    "description": "",
+                    "type": "boolean"
                 },
                 "id": {
                     "description": "The ID of the voicemail box",
@@ -1353,6 +2218,34 @@
                     "name": "Max Message Lenght",
                     "required": false,
                     "type": "integer"
+                },
+                "single_mailbox_login": {
+                    "default": false,
+                    "description": "",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "callflows.webhook": {
+            "description": "Validator for the webhook callflow's data object",
+            "properties": {
+                "custom_data": {
+                    "description": "",
+                    "type": "object"
+                },
+                "http_verb": {
+                    "description": "",
+                    "type": "string"
+                },
+                "retries": {
+                    "description": "",
+                    "type": "integer"
+                },
+                "uri": {
+                    "description": "",
+                    "type": "string"
                 }
             },
             "required": true,
@@ -2828,6 +3721,16 @@
                     "name": "Sort By",
                     "required": false,
                     "type": "string"
+                },
+                "users": {
+                    "default": [],
+                    "description": "The list of users associated with this directory",
+                    "items": {
+                        "description": "UserId to include in the directory",
+                        "type": "string"
+                    },
+                    "required": false,
+                    "type": "array"
                 }
             },
             "required": true,
@@ -5840,8 +6743,7 @@
                     "minItems": 1,
                     "name": "Records",
                     "required": false,
-                    "type": "array",
-                    "uniqueItems": true
+                    "type": "array"
                 }
             }
         },
@@ -7527,6 +8429,12 @@
             "get": {},
             "put": {}
         },
+        "/v2/accounts/{ACCOUNT_ID}/callflows/{CALLFLOW_ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
         "/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}": {
             "delete": {},
             "get": {},
@@ -7570,17 +8478,17 @@
             "get": {},
             "put": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}": {
             "delete": {},
             "get": {},
             "patch": {},
             "post": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect": {
+        "/v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/connect": {
             "get": {},
             "post": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/history": {
+        "/v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/history": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/comments": {
@@ -7601,14 +8509,17 @@
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {},
+            "put": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants": {
             "get": {},
-            "post": {}
+            "post": {},
+            "put": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}": {
-            "post": {}
+            "post": {},
+            "put": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/configs/{ID}": {
             "delete": {},
@@ -7691,6 +8602,7 @@
                     }
                 }
             },
+            "patch": {},
             "post": {
                 "description": "Edit the device object",
                 "parameters": {
@@ -7744,7 +8656,7 @@
             "get": {},
             "put": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/directories/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}": {
             "delete": {},
             "get": {},
             "patch": {},

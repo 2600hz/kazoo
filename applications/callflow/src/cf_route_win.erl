@@ -184,11 +184,13 @@ get_callee_extension_info(Call) ->
     FirstModule = kz_json:get_value(<<"module">>, Flow),
     FirstId = kz_json:get_value([<<"data">>, <<"id">>], Flow),
     SecondModule = kz_json:get_value([<<"_">>, <<"module">>], Flow),
-    case (FirstModule =:= <<"device">> orelse FirstModule =:= <<"user">>)
-        andalso
-        (SecondModule =:= <<"voicemail">> orelse SecondModule =:= 'undefined')
-        andalso
-        FirstId =/= 'undefined'
+    case (FirstModule =:= <<"device">>
+              orelse FirstModule =:= <<"user">>
+         )
+        andalso (SecondModule =:= <<"voicemail">>
+                     orelse SecondModule =:= 'undefined'
+                )
+        andalso FirstId =/= 'undefined'
     of
         'true' -> {FirstModule, FirstId};
         'false' -> 'undefined'
@@ -206,11 +208,10 @@ bootstrap_callflow_executer(_JObj, Call) ->
                ,fun set_language/1
                ,fun update_ccvs/1
                ,fun maybe_start_recording/1
-                %% all funs above here return kapps_call:call()
                ,fun execute_callflow/1
                ,fun maybe_start_metaflow/1
                ],
-    lists:foldl(fun(F, C) -> F(C) end, Call, Routines).
+    kapps_call:exec(Routines, Call).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -254,14 +255,16 @@ update_ccvs(Call) ->
                        'undefined' -> <<"internal">>;
                        _Else -> <<"external">>
                    end,
+
     {CIDNumber, CIDName} =
-        kz_attributes:caller_id(
-          CallerIdType
+        kz_attributes:caller_id(CallerIdType
                                ,kapps_call:kvs_erase('prepend_cid_name', Call)
-         ),
+                               ),
+
     lager:info("bootstrapping with caller id type ~s: \"~s\" ~s"
               ,[CallerIdType, CIDName, CIDNumber]
               ),
+
     Props = props:filter_undefined(
               [{<<"Hold-Media">>, kz_attributes:moh_attributes(<<"media_id">>, Call)}
               ,{<<"Caller-ID-Name">>, CIDName}
