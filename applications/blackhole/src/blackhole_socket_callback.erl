@@ -133,7 +133,7 @@ subscribe(Context, _JObj, Binding, Module) ->
     Context1 = bh_context:add_binding(Context, Binding),
     _ = blackhole_tracking:update_socket(Context1),
     blackhole_util:maybe_add_binding_to_listener(Module, Binding, Context1),
-    blackhole_bindings:bind(Binding, Module, 'handle_event', Context1),
+    % blackhole_bindings:bind(Binding, Module, 'handle_event', Context1),
     {'ok', Context1}.
 
 %%--------------------------------------------------------------------

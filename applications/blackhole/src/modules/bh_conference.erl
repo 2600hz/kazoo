@@ -120,7 +120,8 @@ maybe_command_bind(AccountDb, ConfId) ->
 
 event_bind(ConfId, CallId) ->
     lager:error("bind:~p ~p", [ConfId, CallId]),
-    blackhole_listener:add_binding('conference', event_binding_options(ConfId, CallId)).
+    blackhole_listener:add_binding('conference', event_binding_options(ConfId, CallId)),
+    blackhole_bindings:bind(kz_util:join_binary([<<"conference.event">>, ConfId, CallId], <<".">>), ?MODULE, 'handle_event').
 
 event_unbind(ConfId, CallId) ->
     blackhole_listener:remove_binding('conference', event_binding_options(ConfId, CallId)).
