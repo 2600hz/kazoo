@@ -16,7 +16,7 @@
         ,move/2, move/3
         ,update/2, update/3
         ,release/1, release/2
-         %% TODO: delete/1,2 (calls knm_phone_number:delete/1
+        ,delete/1, delete/2
         ,assign_to_app/2, assign_to_app/3
         ,lookup_account/1
         ,save/1
@@ -518,6 +518,33 @@ disconnect(Number, Options) ->
 -spec delete_phone_number(knm_number()) -> knm_number().
 delete_phone_number(Number) ->
     knm_number_states:to_deleted(Number).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec delete(ne_binary()) ->
+                     knm_number_return().
+-spec delete(ne_binary(), knm_number_options:options()) ->
+                     knm_number_return().
+delete(Num) ->
+    delete(Num, knm_number_options:default()).
+
+delete(Num, Options) ->
+    case get(Num, Options) of
+        {'error', _R}=E -> E;
+        {'ok', Number} ->
+            attempt(fun delete_number/1, [Number])
+    end.
+
+-spec delete_number(knm_number()) -> knm_number_return().
+delete_number(Number) ->
+    N = knm_providers:delete(Number),
+    wrap_phone_number_return(
+      knm_phone_number:delete(phone_number(N))
+                            ,N
+     ).
 
 %%--------------------------------------------------------------------
 %% @public

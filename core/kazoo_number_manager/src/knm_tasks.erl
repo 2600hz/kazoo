@@ -29,6 +29,7 @@
         ,import_list/17
         ,assign_to/4
         ,delete/3
+        ,release/3
         ,reserve/4
         ,add/5
         ]).
@@ -155,6 +156,21 @@ help() ->
 
     ,{<<"delete">>
      ,kz_json:from_list([{<<"description">>, <<"Bulk-remove numbers">>}
+                        ,{<<"doc">>, <<"Forces numbers to be deleted from the system.\n"
+                                       "Note: number must be E164-formatted.\n"
+                                       "Note: number must already exist.\n"
+                                       "Note: account creating the task (or `auth_by` account) must have permissions on number.\n"
+                                     >>}
+                        ,{<<"expected_content">>, <<"text/csv">>}
+                        ,{<<"mandatory">>, [<<"e164">>
+                                           ]}
+                        ,{<<"optional">>, [<<"auth_by">>
+                                          ]}
+                        ])
+     }
+
+    ,{<<"release">>
+     ,kz_json:from_list([{<<"description">>, <<"Unassign numbers from accounts">>}
                         ,{<<"doc">>, <<"Release numbers (removing happens if account is configured so).\n"
                                        "Note: number must be E164-formatted.\n"
                                        "Note: number must already exist.\n"
@@ -332,6 +348,13 @@ assign_to(Props, Number, AccountId, AuthBy) ->
 
 -spec delete(kz_proplist(), ne_binary(), api_binary()) -> task_return().
 delete(Props, Number, AuthBy) ->
+    Options = [{'auth_by', auth_by(AuthBy, Props)}
+              ,{'batch_run', 'true'}
+              ],
+    handle_result(knm_number:release(Number, Options)).
+
+-spec release(kz_proplist(), ne_binary(), api_binary()) -> task_return().
+release(Props, Number, AuthBy) ->
     Options = [{'auth_by', auth_by(AuthBy, Props)}
               ,{'batch_run', 'true'}
               ],
