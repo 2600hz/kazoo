@@ -475,9 +475,9 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{stage='undefined'}) ->
-    lager:debug("fax worker ~p terminating on undefined stage: ~p", [self(), _Reason]);
+    lager:debug("fax worker ~p terminated on undefined stage: ~p", [self(), _Reason]);
 terminate('normal' = _Reason, #state{stage=Stage, job_id=JobId, controller=CtrlQ, queue_name=Q}) ->
-    lager:debug("fax worker ~p terminating on stage ~s with reason : ~p", [self(), Stage, _Reason]);
+    lager:debug("fax worker ~p terminating on stage ~s with reason : ~p", [self(), Stage, _Reason]),
     send_control_status(CtrlQ, Q, JobId, ?FAX_END),
     lager:debug("fax worker ~p terminated on stage ~s with reason : ~p", [self(), Stage, _Reason]);
 terminate(_Reason, #state{job=JObj, stage=Stage, job_id=JobId, controller=CtrlQ, queue_name=Q}) ->
