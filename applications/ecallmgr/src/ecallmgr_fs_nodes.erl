@@ -760,34 +760,63 @@ start_node_stats(#node{}) ->
 -spec start_preconfigured_servers() -> 'ok'.
 start_preconfigured_servers() ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
-    case ecallmgr_config:get(<<"fs_nodes">>) of
-        [] ->
-            lager:info("no preconfigured servers available. Is the sysconf whapp running?"),
-            timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
-            start_preconfigured_servers();
+    case get_configured_nodes() of
         Nodes when is_list(Nodes) ->
-            lager:info("successfully retrieved FreeSWITCH nodes to connect with, doing so..."),
-            _ = [kz_util:spawn(fun start_node_from_config/1, [N]) || N <- Nodes],
-            'ok';
-        'undefined' ->
-            lager:debug("failed to receive a response for node configs"),
-            timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
-            start_preconfigured_servers();
-        _E ->
-            lager:debug("received a non-list for fs_nodes: ~p", [_E]),
-            timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
-            start_preconfigured_servers()
+            _ = [kz_util:spawn(fun start_node_from_config/1, [N]) || N <- Nodes];
+        _ ->
+            case try_connect_to_default_fs() of
+                'ok' -> 'ok';
+                _ ->
+                    timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
+                    start_preconfigured_servers()
+            end
     end.
 
+-spec get_configured_nodes() -> 'ok' | [node()].
+get_configured_nodes() ->
+    case ecallmgr_config:get(<<"fs_nodes">>) of
+        [] ->
+            lager:info("no preconfigured servers available. Is the sysconf whapp running?");
+        Nodes when is_list(Nodes) ->
+            lager:info("successfully retrieved FreeSWITCH nodes to connect with, doing so..."),
+            Nodes;
+        'undefined' ->
+            lager:debug("failed to receive a response for node configs");
+        _E ->
+            lager:debug("received a non-list for fs_nodes: ~p", [_E])
+    end.
+
+-spec default_fs_host() -> list().
+default_fs_host() ->
+    Node = erlang:atom_to_list(node()),
+    case string:tokens(Node, "@") of
+        [_Name] -> "";
+        [_Name, Host] -> "@" ++ Host
+    end.
+
+-spec default_fs_node() -> atom().
+default_fs_node() ->
+    erlang:list_to_atom("freeswitch" ++ default_fs_host()).
+
+-spec try_connect_to_default_fs() -> 'skip' | 'ok' | {'error', 'no_connection'}.
+try_connect_to_default_fs() ->
+    Node = default_fs_node(),
+    lager:info("attempting to connect default freeswitch node ~p", [Node]),
+    case net_adm:ping(Node) of
+        'pong' -> add(Node);
+        _ -> 'skip'
+    end.
+
+-spec start_node_from_config(kz_json:object()|atom()) -> 'ok' | 'error' | {'error', 'no_connection'}.
 start_node_from_config(MaybeJObj) ->
     case kz_json:is_json_object(MaybeJObj) of
         'false' -> ?MODULE:add(kz_util:to_atom(MaybeJObj, 'true'));
         'true' ->
             {[Cookie], [Node]} = kz_json:get_values(MaybeJObj),
             try ?MODULE:add(kz_util:to_atom(Node, 'true'), kz_util:to_atom(Cookie, 'true')) of
-                _OK -> lager:debug("added ~s(~s) successfully: ~p", [Node, Cookie, _OK])
+                _OK -> lager:debug("added ~s(~s) successfully: ~p", [Node, Cookie, _OK]), 'ok'
             catch
-                _E:_R -> lager:debug("failed to add ~s(~s): ~s: ~p", [Node, Cookie, _E, _R])
+                _E:_R -> lager:debug("failed to add ~s(~s): ~s: ~p", [Node, Cookie, _E, _R]), 'error'
             end
     end.
 
