@@ -780,7 +780,7 @@ save_to_number_db(PhoneNumber) ->
         {'error', 'not_found'} ->
             lager:debug("creating new db '~s' for number '~s'", [NumberDb, number(PhoneNumber)]),
             'true' = kz_datamgr:db_create(NumberDb),
-            kz_datamgr:revise_views_from_folder(NumberDb, ?APP),
+            {'ok',_} = kz_datamgr:revise_doc_from_file(NumberDb, ?APP, <<"views/numbers_local.json">>),
             save_to_number_db(PhoneNumber);
         {'error', E} ->
             lager:error("failed to save ~s in ~s: ~p", [number(PhoneNumber), NumberDb, E]),
