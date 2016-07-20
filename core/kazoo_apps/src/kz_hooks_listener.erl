@@ -131,6 +131,22 @@ handle_cast({'maybe_add_binding', Event}, #state{call_events=Events}=State) ->
             gen_listener:add_binding(self(), ?CALL_BINDING([Event])),
             {'noreply', State#state{call_events=[Event | Events]}}
     end;
+handle_cast({'maybe_remove_binding', 'all'}, #state{call_events=Events}=State) ->
+    case [E || E <- ?ALL_EVENTS, lists:member(E, Events)] of
+        [] -> {'noreply', State};
+        Es ->
+            lager:debug("removing bindings for ~p", [Es]),
+            gen_listener:rm_binding(self(), ?CALL_BINDING(Es)),
+            {'noreply', State#state{call_events=Events -- Es}}
+    end;
+handle_cast({'maybe_remove_binding', Event}, #state{call_events=Events}=State) ->
+    case lists:member(Event, Events) of
+        'true' -> {'noreply', State};
+        'false' ->
+            lager:debug("removing bindings for ~s", [Event]),
+            gen_listener:rm_binding(self(), ?CALL_BINDING([Event])),
+            {'noreply', State#state{call_events=lists:delete(Event, Events)}}
+    end;
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->

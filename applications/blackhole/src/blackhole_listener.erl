@@ -140,6 +140,12 @@ handle_cast({'add_call_binding', AccountId}, State) ->
 handle_cast({'add_call_binding', AccountId, EventName}, State) ->
     kz_hooks:register(AccountId, EventName),
     {'noreply', State};
+handle_cast({'remove_call_binding', AccountId}, State) ->
+    kz_hooks:deregister(AccountId),
+    {'noreply', State};
+handle_cast({'remove_call_binding', AccountId, EventName}, State) ->
+    kz_hooks:deregister(AccountId, EventName),
+    {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
