@@ -204,7 +204,6 @@ is_auth_by_authorized(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
     AuthBy = knm_phone_number:auth_by(PhoneNumber),
-
     case is_authorized_operation(AssignedTo, AuthBy)
         orelse is_authorized_operation(AuthBy, AssignedTo)
     of
@@ -216,38 +215,31 @@ is_auth_by_authorized(Number) ->
 update_reserve_history(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     AssignTo = knm_phone_number:assign_to(PhoneNumber),
-    knm_number:set_phone_number(
-      Number
+    knm_number:set_phone_number(Number
                                ,knm_phone_number:add_reserve_history(PhoneNumber, AssignTo)
-     ).
+                               ).
 
 -spec move_to_reserved_state(kn()) -> kn().
 move_to_reserved_state(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    knm_number:set_phone_number(
-      Number
-                               ,move_phone_number_to_state(
-                                  PhoneNumber
-                                                          ,?NUMBER_STATE_RESERVED
-                                 )
-     ).
+    PhoneNumber =
+        move_phone_number_to_state(knm_number:phone_number(Number), ?NUMBER_STATE_RESERVED),
+    knm_number:set_phone_number(Number, PhoneNumber).
 
 -spec move_to_in_service_state(kn()) -> kn().
 move_to_in_service_state(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    knm_number:set_phone_number(
-      Number
-                               ,move_phone_number_to_state(
-                                  PhoneNumber
-                                                          ,?NUMBER_STATE_IN_SERVICE
-                                 )
-     ).
+    PhoneNumber =
+        move_phone_number_to_state(knm_number:phone_number(Number), ?NUMBER_STATE_IN_SERVICE),
+    knm_number:set_phone_number(Number, PhoneNumber).
+
+-spec move_to_deleted_state(kn()) -> kn().
+move_to_deleted_state(Number) ->
+    PhoneNumber =
+        move_phone_number_to_state(knm_number:phone_number(Number), ?NUMBER_STATE_DELETED),
+    knm_number:set_phone_number(Number, PhoneNumber).
 
 move_phone_number_to_state(PhoneNumber, ToState) ->
-    move_phone_number_to_state(PhoneNumber
-                              ,ToState
-                              ,knm_phone_number:assigned_to(PhoneNumber)
-                              ).
+    AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
+    move_phone_number_to_state(PhoneNumber, ToState, AssignedTo).
 
 -spec move_phone_number_to_state(knm_phone_number:knm_phone_number(), ne_binary(), api_binary()) ->
                                         knm_phone_number:knm_phone_number().
@@ -274,13 +266,6 @@ move_phone_number_to_state(PhoneNumber, ToState, AssignedTo, AssignTo) ->
               ],
     {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Setters),
     NewPhoneNumber.
-
-move_to_deleted_state(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    knm_number:set_phone_number(
-      Number
-                               ,move_phone_number_to_state(PhoneNumber, ?NUMBER_STATE_DELETED)
-     ).
 
 -type transition() :: fun((kn()) -> kn()).
 -type transitions() :: [transition()].

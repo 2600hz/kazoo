@@ -126,7 +126,9 @@ split_row(Row=?NE_BINARY) ->
 -spec pad_row_to(non_neg_integer(), row()) -> row().
 pad_row_to(N, Row)
   when N > length(Row) ->
-    Row ++ lists:duplicate(N - length(Row), ?ZILCH).
+    Row ++ lists:duplicate(N - length(Row), ?ZILCH);
+pad_row_to(_, Row) ->
+    Row.
 
 %%--------------------------------------------------------------------
 %% @public

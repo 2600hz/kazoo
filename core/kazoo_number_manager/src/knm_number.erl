@@ -16,7 +16,7 @@
         ,move/2, move/3
         ,update/2, update/3
         ,release/1, release/2
-         %% TODO: delete/1,2 (calls knm_phone_number:delete/1
+        ,delete/1, delete/2
         ,assign_to_app/2, assign_to_app/3
         ,lookup_account/1
         ,save/1
@@ -478,10 +478,9 @@ release_number(Number, Options) ->
     {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),
     N1 = knm_providers:delete(set_phone_number(Number, PhoneNumber)),
     N = unwind_or_disconnect(N1, Options),
-    wrap_phone_number_return(
-      knm_phone_number:save(phone_number(N))
+    wrap_phone_number_return(knm_phone_number:save(phone_number(N))
                             ,N
-     ).
+                            ).
 
 -spec unwind_or_disconnect(knm_number(), knm_number_options:options()) -> knm_number().
 unwind_or_disconnect(Number, Options) ->
@@ -522,6 +521,33 @@ delete_phone_number(Number) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Remove a number from the system without doing any checking.
+%% If that sounds harsh to you: you are looking for release/1,2.
+%% @end
+%%--------------------------------------------------------------------
+-spec delete(ne_binary()) ->
+                    knm_number_return().
+-spec delete(ne_binary(), knm_number_options:options()) ->
+                    knm_number_return().
+delete(Num) ->
+    delete(Num, knm_number_options:default()).
+
+delete(Num, Options) ->
+    case get(Num, Options) of
+        {'error', _R}=E -> E;
+        {'ok', Number} ->
+            attempt(fun delete_number/1, [Number])
+    end.
+
+-spec delete_number(knm_number()) -> knm_number_return().
+delete_number(Number) ->
+    N = knm_providers:delete(Number),
+    PN = knm_phone_number:delete(phone_number(N)),
+    wrap_phone_number_return(PN, N).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec assign_to_app(ne_binary(), api_binary()) ->
@@ -545,10 +571,9 @@ maybe_update_assignment(Number, NewApp) ->
         NewApp -> {'ok', Number};
         _OldApp ->
             UpdatedPhoneNumber = knm_phone_number:set_used_by(PhoneNumber, NewApp),
-            wrap_phone_number_return(
-              knm_phone_number:save(UpdatedPhoneNumber)
+            wrap_phone_number_return(knm_phone_number:save(UpdatedPhoneNumber)
                                     ,Number
-             )
+                                    )
     end.
 
 %%--------------------------------------------------------------------
