@@ -252,13 +252,13 @@ format_endpoint(Endpoint, Number, FilterFun, OffnetReq, SIPHeaders, AccountId) -
 
 -spec apply_formatters(kz_json:object(), kz_json:object(), ne_binary()) -> kz_json:object().
 apply_formatters(Endpoint, SIPHeaders, AccountId) ->
-    stepswitch_formatters:apply(maybe_add_sip_headers(Endpoint, SIPHeaders)
-                               ,props:get_value(<<"Formatters">>
-                                               ,endpoint_props(Endpoint, AccountId)
-                                               ,kz_json:new()
-                                               )
-                               ,'outbound'
-                               ).
+    kz_formatters:apply(maybe_add_sip_headers(Endpoint, SIPHeaders)
+                       ,props:get_value(<<"Formatters">>
+                                       ,endpoint_props(Endpoint, AccountId)
+                                       ,kz_json:new()
+                                       )
+                       ,'outbound'
+                       ).
 
 -spec endpoint_props(kz_json:object(), api_binary()) -> kz_proplist().
 endpoint_props(Endpoint, AccountId) ->

@@ -1,11 +1,6 @@
-/*
-Section: Stepswitch
-Title: Formatters
-Language: en-US
-Version: 3.18
-*/
+### Formatters
 
-# Formatting fields
+#### About formatters
 
 When a call enters Kazoo from a carrier, Stepswitch receives the route request first (since no account information exists to identify the context of the call). Stepswitch will process this request to figure out what account the request is destined for and will replay the route request with the associated information.
 

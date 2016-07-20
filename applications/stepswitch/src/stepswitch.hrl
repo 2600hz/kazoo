@@ -25,8 +25,6 @@
 
 -define(CCV(Key), [<<"Custom-Channel-Vars">>, Key]).
 
--type direction() :: 'inbound' | 'outbound' | 'both'.
-
 -define(DEFAULT_AMQP_EXCHANGE_OPTIONS
        ,kz_json:from_list([{'passive', 'true'}])
        ).

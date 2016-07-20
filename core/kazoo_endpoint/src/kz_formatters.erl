@@ -6,11 +6,13 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(stepswitch_formatters).
+-module(kz_formatters).
 
 -export([apply/3]).
 
--include("stepswitch.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+
+-type direction() :: 'inbound' | 'outbound' | 'both'.
 
 -spec apply(kz_json:object(), kz_json:object(), direction()) ->
                    kz_json:object().

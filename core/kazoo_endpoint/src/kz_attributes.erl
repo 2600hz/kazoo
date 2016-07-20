@@ -72,7 +72,8 @@ caller_id(Attribute, Call) ->
     CCVs = kapps_call:custom_channel_vars(Call),
     Inception = kapps_call:inception(Call),
     case (Inception =/= 'undefined'
-          andalso not kz_json:is_true(<<"Call-Forward">>, CCVs))
+          andalso not kz_json:is_true(<<"Call-Forward">>, CCVs)
+         )
         orelse kz_json:is_true(<<"Retain-CID">>, CCVs)
     of
         'true' ->
