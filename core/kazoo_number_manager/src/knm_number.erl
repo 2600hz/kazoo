@@ -530,9 +530,8 @@ delete_phone_number(Number) ->
 delete(Num) ->
     delete(Num, knm_number_options:default()).
 
-delete(Num, Options0) ->
-    Options = [{'should_delete', 'true'} | Options0],
-    case release(Num, Options) of
+delete(Num, Options) ->
+    case get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
             attempt(fun delete_number/1, [Number])
@@ -540,8 +539,9 @@ delete(Num, Options0) ->
 
 -spec delete_number(knm_number()) -> knm_number_return().
 delete_number(Number) ->
-    PhoneNumber = knm_phone_number:delete(phone_number(Number)),
-    wrap_phone_number_return(PhoneNumber, Number).
+    N = knm_providers:delete(Number),
+    PN = knm_phone_number:delete(phone_number(N)),
+    wrap_phone_number_return(PN, N).
 
 %%--------------------------------------------------------------------
 %% @public
