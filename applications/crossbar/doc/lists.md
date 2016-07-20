@@ -179,9 +179,6 @@ curl -v -X GET \
 ```
 
 
-##### Replacing list (without entries)
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists -d '{"data": {"name": "new list name"}}'
-
 #### v1 examples.
 
 ##### Get lists and their entries
