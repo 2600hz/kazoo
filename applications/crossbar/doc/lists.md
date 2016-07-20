@@ -9,6 +9,9 @@
 ##### Get list properties (doesn't return entries)
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 
+##### Get list entries 
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+
 ##### Add new list (beware: no entries)
     curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/lists -d '{"data": {"name": "list name"}}'
 
