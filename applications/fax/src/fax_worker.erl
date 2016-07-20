@@ -426,10 +426,7 @@ handle_cast({'gen_listener', {'created_queue', QueueName}}, State) ->
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     lager:debug("fax worker is consuming : ~p", [_IsConsuming]),
     {'noreply', State};
-handle_cast('stop', #state{stage='undefined'}=State) ->
-    {'stop', 'normal', State};
-handle_cast('stop', #state{job_id=JobId, controller=CtrlQ, queue_name=Q}=State) ->
-    send_control_status(CtrlQ, Q, JobId, ?FAX_END),
+handle_cast('stop', State) ->
     {'stop', 'normal', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -477,8 +474,18 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    lager:debug("fax worker ~p terminating: ~p", [self(), _Reason]).
+terminate(_Reason, #state{stage='undefined'}) ->
+    lager:debug("fax worker ~p terminating on undefined stage: ~p", [self(), _Reason]);
+terminate('normal' = _Reason, #state{stage=Stage, job_id=JobId, controller=CtrlQ, queue_name=Q}) ->
+    lager:debug("fax worker ~p terminating on stage ~s with reason : ~p", [self(), Stage, _Reason]);
+    send_control_status(CtrlQ, Q, JobId, ?FAX_END),
+    lager:debug("fax worker ~p terminated on stage ~s with reason : ~p", [self(), Stage, _Reason]);
+terminate(_Reason, #state{job=JObj, stage=Stage, job_id=JobId, controller=CtrlQ, queue_name=Q}) ->
+    lager:debug("fax worker ~p terminating on stage ~s with reason : ~p", [self(), Stage, _Reason]),
+    JObj1 = kz_json:set_value(<<"retries">>, 0, JObj),
+    _ = release_failed_job('uncontrolled_termination', 'undefined', JObj1),
+    send_control_status(CtrlQ, Q, JobId, ?FAX_END),
+    lager:debug("fax worker ~p terminated on stage ~s with reason : ~p", [self(), Stage, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -610,6 +617,15 @@ release_failed_job('invalid_cid', Number, JObj) ->
     Msg = kz_util:to_binary(io_lib:format("invalid fax cid number: ~s", [Number])),
     Result = [{<<"success">>, 'false'}
              ,{<<"result_code">>, 400}
+             ,{<<"result_text">>, Msg}
+             ,{<<"pages_sent">>, 0}
+             ,{<<"time_elapsed">>, elapsed_time(JObj)}
+             ],
+    release_job(Result, JObj);
+release_failed_job('uncontrolled_termination', _, JObj) ->
+    Msg = <<"process terminated. please contact your support for details">>,
+    Result = [{<<"success">>, 'false'}
+             ,{<<"result_code">>, 500}
              ,{<<"result_text">>, Msg}
              ,{<<"pages_sent">>, 0}
              ,{<<"time_elapsed">>, elapsed_time(JObj)}
