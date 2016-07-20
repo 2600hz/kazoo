@@ -68,7 +68,5 @@
 -define(CARRIER_RESERVED_RESELLER, <<"knm_reserved_reseller">>).
 -define(KNM_ACCOUNTID_CARRIER, <<"account_id">>).
 
--define(KNM_PHONE_NUMBERS_DOC, <<"phone_numbers">>).
-
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.

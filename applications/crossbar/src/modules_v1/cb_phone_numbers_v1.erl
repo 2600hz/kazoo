@@ -23,7 +23,6 @@
         ,post/2
         ,delete/2
         ,summary/1
-        ,populate_phone_numbers/1
         ]).
 
 -include("crossbar.hrl").
@@ -57,8 +56,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
 init() ->
-    _ = crossbar_bindings:bind(<<"account.created">>, ?MODULE, 'populate_phone_numbers'),
     _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.phone_numbers">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, 'authorize'),
@@ -69,29 +68,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.execute.put.phone_numbers">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.phone_numbers">>, ?MODULE, 'post'),
     crossbar_bindings:bind(<<"v1_resource.execute.delete.phone_numbers">>, ?MODULE, 'delete').
-
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec populate_phone_numbers(cb_context:context()) -> 'ok'.
-populate_phone_numbers(Context) ->
-    AccountDb = cb_context:account_db(Context),
-    AccountId = cb_context:account_id(Context),
-
-    PVTs = [{<<"_id">>, ?KNM_PHONE_NUMBERS_DOC}
-           ,{<<"pvt_account_db">>, AccountDb}
-           ,{<<"pvt_account_id">>, AccountId}
-           ,{<<"pvt_vsn">>, <<"1">>}
-           ,{<<"pvt_type">>, ?KNM_PHONE_NUMBERS_DOC}
-           ,{<<"pvt_modified">>, kz_util:current_tstamp()}
-           ,{<<"pvt_created">>, kz_util:current_tstamp()}
-           ],
-    _ = kz_datamgr:save_doc(AccountDb, kz_json:from_list(PVTs)),
-    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -152,9 +128,9 @@ resource_exists(_, _) -> 'false'.
 %%--------------------------------------------------------------------
 billing(Context) ->
     billing(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
-billing(Context, ?HTTP_GET, [{?KNM_PHONE_NUMBERS_DOC, _}|_]) ->
+billing(Context, ?HTTP_GET, [{<<"phone_numbers">>, _}|_]) ->
     Context;
-billing(Context, _, [{?KNM_PHONE_NUMBERS_DOC, _}|_]) ->
+billing(Context, _, [{<<"phone_numbers">>, _}|_]) ->
     try kz_services:allow_updates(cb_context:account_id(Context)) of
         'true' -> Context
     catch
@@ -176,7 +152,7 @@ billing(Context, _, _) ->
 authenticate(Context) ->
     authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-authenticate(?HTTP_GET, [{?KNM_PHONE_NUMBERS_DOC, []}]) -> 'true'.
+authenticate(?HTTP_GET, [{<<"phone_numbers">>, []}]) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -190,7 +166,7 @@ authenticate(?HTTP_GET, [{?KNM_PHONE_NUMBERS_DOC, []}]) -> 'true'.
 authorize(Context) ->
     authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-authorize(?HTTP_GET, [{?KNM_PHONE_NUMBERS_DOC,[]}]) -> 'true'.
+authorize(?HTTP_GET, [{<<"phone_numbers">>,[]}]) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -331,7 +307,7 @@ clean_summary(Context) ->
                ,fun(J) -> kz_json:set_value(<<"numbers">>, J, kz_json:new()) end
                ,fun(J) ->
                         Service =  kz_services:fetch(AccountId),
-                        Quantity = kz_services:cascade_category_quantity(?KNM_PHONE_NUMBERS_DOC, [], Service),
+                        Quantity = kz_services:cascade_category_quantity(<<"phone_numbers">>, [], Service),
                         kz_json:set_value(<<"casquade_quantity">>, Quantity, J)
                 end
                ],
@@ -439,7 +415,7 @@ get_numbers(QueryString) ->
 %%--------------------------------------------------------------------
 -spec validate_request(cb_context:context()) -> cb_context:context().
 validate_request(Context) ->
-    cb_context:validate_request_data(?KNM_PHONE_NUMBERS_DOC, Context).
+    cb_context:validate_request_data(<<"phone_numbers">>, Context).
 
 %%--------------------------------------------------------------------
 %% @private

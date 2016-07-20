@@ -66,8 +66,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
 init() ->
-    _ = crossbar_bindings:bind(<<"account.created">>, ?MODULE, 'populate_phone_numbers'),
     _ = crossbar_bindings:bind(<<"v2_resource.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"v2_resource.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"v2_resource.billing">>, ?MODULE, 'billing'),
@@ -77,27 +77,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.execute.put.phone_numbers">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.phone_numbers">>, ?MODULE, 'post'),
     crossbar_bindings:bind(<<"v2_resource.execute.delete.phone_numbers">>, ?MODULE, 'delete').
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec populate_phone_numbers(cb_context:context()) -> 'ok'.
-populate_phone_numbers(Context) ->
-    AccountDb = cb_context:account_db(Context),
-    Now = kz_util:current_tstamp(),
-    PVTs = [{<<"_id">>, ?KNM_PHONE_NUMBERS_DOC}
-           ,{<<"pvt_account_db">>, AccountDb}
-           ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
-           ,{<<"pvt_vsn">>, <<"1">>}
-           ,{<<"pvt_type">>, ?KNM_PHONE_NUMBERS_DOC}
-           ,{<<"pvt_modified">>, Now}
-           ,{<<"pvt_created">>, Now}
-           ],
-    _ = kz_datamgr:save_doc(AccountDb, kz_json:from_list(PVTs)),
-    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -113,9 +92,9 @@ authenticate(Context) ->
                       ).
 
 -spec maybe_authenticate(http_method(), req_nouns()) -> boolean().
-maybe_authenticate(?HTTP_GET, [{?KNM_PHONE_NUMBERS_DOC, []}]) ->
+maybe_authenticate(?HTTP_GET, [{<<"phone_numbers">>, []}]) ->
     'true';
-maybe_authenticate(?HTTP_GET, [{?KNM_PHONE_NUMBERS_DOC, [?PREFIX]}]) ->
+maybe_authenticate(?HTTP_GET, [{<<"phone_numbers">>, [?PREFIX]}]) ->
     'true';
 maybe_authenticate(_Verb, _Nouns) ->
     'false'.
@@ -133,9 +112,9 @@ authorize(Context) ->
                    ,cb_context:req_nouns(Context)
                    ).
 
-maybe_authorize(?HTTP_GET, [{?KNM_PHONE_NUMBERS_DOC, []}]) ->
+maybe_authorize(?HTTP_GET, [{<<"phone_numbers">>, []}]) ->
     'true';
-maybe_authorize(?HTTP_GET, [{?KNM_PHONE_NUMBERS_DOC, [?PREFIX]}]) ->
+maybe_authorize(?HTTP_GET, [{<<"phone_numbers">>, [?PREFIX]}]) ->
     'true';
 maybe_authorize(_Verb, _Nouns) ->
     'false'.
@@ -218,9 +197,9 @@ billing(Context) ->
     maybe_allow_updates(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
 -spec maybe_allow_updates(cb_context:context(), req_nouns(), http_method()) -> cb_context:context().
-maybe_allow_updates(Context, [{?KNM_PHONE_NUMBERS_DOC, _}|_], ?HTTP_GET) ->
+maybe_allow_updates(Context, [{<<"phone_numbers">>, _}|_], ?HTTP_GET) ->
     Context;
-maybe_allow_updates(Context, [{?KNM_PHONE_NUMBERS_DOC, _}|_], _Verb) ->
+maybe_allow_updates(Context, [{<<"phone_numbers">>, _}|_], _Verb) ->
     try kz_services:allow_updates(cb_context:account_id(Context)) of
         'true' -> Context
     catch
@@ -455,7 +434,7 @@ view_account_phone_numbers(Context) ->
     ListOfNumProps = cb_context:resp_data(Context1),
     NumbersJObj = lists:foldl(fun kz_json:merge_jobjs/2, kz_json:new(), ListOfNumProps),
     Service = kz_services:fetch(cb_context:account_id(Context)),
-    Quantity = kz_services:cascade_category_quantity(?KNM_PHONE_NUMBERS_DOC, [], Service),
+    Quantity = kz_services:cascade_category_quantity(<<"phone_numbers">>, [], Service),
     NewRespData = kz_json:from_list([ {<<"numbers">>, NumbersJObj}
                                     , {<<"casquade_quantity">>, Quantity}
                                     ]),
