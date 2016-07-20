@@ -233,6 +233,9 @@ ensure_account_can_create(Options) ->
        ).
 -endif.
 
+ensure_account_is_allowed_to_create(_, ?KNM_DEFAULT_AUTH_BY) ->
+    lager:info("bypassing auth"),
+    'true';
 ensure_account_is_allowed_to_create(_Options, _AccountId) ->
     {'ok', JObj} = ?LOAD_ACCOUNT(_Options, _AccountId),
     kz_account:allow_number_additions(JObj) orelse knm_errors:unauthorized().
