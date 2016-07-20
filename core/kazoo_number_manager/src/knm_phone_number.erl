@@ -172,10 +172,10 @@ save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_phone_number()) -> knm_phone_number_return().
+-spec delete(knm_phone_number()) -> knm_phone_number().
 delete(#knm_phone_number{dry_run='true'}=Number) ->
     lager:debug("dry_run-ing btw"),
-    {'ok', Number};
+    Number;
 delete(#knm_phone_number{dry_run='false'}=Number) ->
     Routines = [fun delete_number_doc/1
                ,fun maybe_remove_number_from_account/1
@@ -200,8 +200,8 @@ release(PhoneNumber, ?NUMBER_STATE_IN_SERVICE) ->
     authorize_release(PhoneNumber);
 release(PhoneNumber, FromState) ->
     knm_errors:invalid_state_transition(PhoneNumber
-                                        ,FromState
-                                        ,?NUMBER_STATE_RELEASED
+                                       ,FromState
+                                       ,?NUMBER_STATE_RELEASED
                                        ).
 
 -spec authorize_release(knm_phone_number()) -> knm_phone_number().
@@ -844,7 +844,7 @@ unassign(PhoneNumber) ->
     PrevAssignedTo = prev_assigned_to(PhoneNumber),
     case kz_util:is_empty(PrevAssignedTo) of
         'true' ->
-            lager:debug("prev_assigned_to is is empty for ~s, ignoring"
+            lager:debug("prev_assigned_to is empty for ~s, ignoring"
                        ,[number(PhoneNumber)]),
             PhoneNumber;
         'false' ->
@@ -918,7 +918,7 @@ maybe_remove_number_from_account(Number) ->
     AssignedTo = assigned_to(Number),
     case kz_util:is_empty(AssignedTo) of
         'true' ->
-            lager:debug("assigned_to is is empty for ~s, ignoring", [number(Number)]),
+            lager:debug("assigned_to is empty for ~s, ignoring", [number(Number)]),
             {'ok', Number};
         'false' ->
             case kz_datamgr:del_doc(kz_util:format_account_db(AssignedTo), to_json(Number)) of

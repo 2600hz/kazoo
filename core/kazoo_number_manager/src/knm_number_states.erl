@@ -238,10 +238,8 @@ move_to_deleted_state(Number) ->
     knm_number:set_phone_number(Number, PhoneNumber).
 
 move_phone_number_to_state(PhoneNumber, ToState) ->
-    move_phone_number_to_state(PhoneNumber
-                              ,ToState
-                              ,knm_phone_number:assigned_to(PhoneNumber)
-                              ).
+    AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
+    move_phone_number_to_state(PhoneNumber, ToState, AssignedTo).
 
 -spec move_phone_number_to_state(knm_phone_number:knm_phone_number(), ne_binary(), api_binary()) ->
                                         knm_phone_number:knm_phone_number().
