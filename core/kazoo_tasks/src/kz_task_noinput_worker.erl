@@ -87,6 +87,14 @@ loop(IterValue, State=#state{task_id = TaskId
         'stop' ->
             _ = kz_tasks:worker_finished(TaskId, TotalSucceeded, TotalFailed, ?OUT(TaskId)),
             'stop';
+        {IsSuccessful, Written, 'stop'} ->
+            NewState = state_after_writing(IsSuccessful, Written, State),
+            _ = kz_tasks:worker_finished(TaskId
+                                        ,NewState#state.total_succeeded
+                                        ,NewState#state.total_failed
+                                        ,?OUT(TaskId)
+                                        ),
+            'stop';
         {IsSuccessful, Written, {_PrevRow, NewIterValue}} ->
             NewState = state_after_writing(IsSuccessful, Written, State),
             loop(NewIterValue, NewState)
