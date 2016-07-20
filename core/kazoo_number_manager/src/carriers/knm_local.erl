@@ -67,7 +67,7 @@ do_find_numbers(<<"+",_/binary>>=Number, Quantity, AccountId)
                   ],
     case
         'undefined' /= (DB = knm_converters:to_db(Number)) andalso
-        kz_datamgr:get_results(DB, <<"numbers/status">>, ViewOptions)
+        kz_datamgr:get_results(DB, <<"numbers_local/status">>, ViewOptions)
     of
         'false' -> {'error', 'not_available'};
         {'ok', []} ->

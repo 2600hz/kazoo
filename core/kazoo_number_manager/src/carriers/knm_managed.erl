@@ -23,7 +23,7 @@
 -include("knm.hrl").
 
 -define(KZ_MANAGED, <<"numbers%2Fmanaged">>).
--define(MANAGED_VIEW_FILE, <<"views/managed.json">>).
+-define(MANAGED_VIEW_FILE, <<"views/numbers_managed.json">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -74,7 +74,7 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
                   ,{'limit', Quantity}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(?KZ_MANAGED, <<"numbers/status">>, ViewOptions) of
+    case kz_datamgr:get_results(?KZ_MANAGED, <<"numbers_managed/status">>, ViewOptions) of
         {'ok', []} ->
             lager:debug("found no available managed numbers for account ~s", [AccountId]),
             {'error', 'not_available'};
