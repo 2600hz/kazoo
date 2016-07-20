@@ -24,7 +24,7 @@
 -include("knm.hrl").
 
 -define(KZ_INUM,<<"numbers%2Finum">>).
--define(INUM_VIEW_FILE, <<"views/inum.json">>).
+-define(INUM_VIEW_FILE, <<"views/numbers_inum.json">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -75,7 +75,7 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
                   ,{'limit', Quantity}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(?KZ_INUM, <<"numbers/status">>, ViewOptions) of
+    case kz_datamgr:get_results(?KZ_INUM, <<"numbers_inum/status">>, ViewOptions) of
         {'ok', []} ->
             lager:debug("found no available inum numbers for account ~s", [AccountId]),
             {'error', 'not_available'};
