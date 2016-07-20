@@ -352,6 +352,26 @@ curl -v -X PUT \
 }
 ```
 
+####### Number does not conform to E.164 format
+
+A non-conforming `{PHONENUMBER}`: `"+141510010+15"`.
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "cause": "{PHONENUMBER}",
+        "code": 404,
+        "error": "not_reconcilable",
+        "message": "number {PHONENUMBER} is not reconcilable"
+    },
+    "error": "404",
+    "message": "not_reconcilable",
+    "request_id": "fe5547b999afe27a85a92d97f786ffa4",
+    "status": "error"
+}
+```
+
 ####### Account unauthorized
 
 ```json

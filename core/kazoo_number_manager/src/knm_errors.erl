@@ -153,7 +153,7 @@ to_json('not_found', Num=?NE_BINARY, _) ->
     build_error(404, 'not_found', Message, Num);
 to_json('not_reconcilable', Num=?NE_BINARY, _) ->
     Message = <<"number ", Num/binary, " is not reconcilable">>,
-    build_error(404, 'not_found', Message, Num);
+    build_error(404, 'not_reconcilable', Message, Num);
 to_json('unauthorized', _, Cause) ->
     Message = <<"requestor is unauthorized to perform operation">>,
     build_error(403, 'forbidden', Message, Cause);
@@ -182,15 +182,14 @@ to_json(Reason, _, Cause) ->
                          error().
 build_error(Code, Error, Message, Cause) ->
     kz_json:from_list(
-      [{?CODE, kz_util:to_integer(Code)}
-       | [{K, kz_util:to_binary(V)}
+      [{?CODE, Code}]
+      ++ [{K, kz_util:to_binary(V)}
           || {K, V} <- [{?ERROR, Error}
                        ,{?CAUSE, Cause}
                        ,{?MESSAGE, Message}
                        ],
              V =/= 'undefined'
          ]
-      ]
      ).
 
 -spec code(error()) -> api_integer().
