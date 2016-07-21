@@ -227,39 +227,44 @@ merge_attributes(Endpoint, Type, _Keys) ->
 
 -spec merge_attributes(ne_binaries(), api_object(), api_object(), api_object()) ->
                               kz_json:object().
-merge_attributes([], _AccountDoc, Endpoint, _OwnerDoc) -> Endpoint;
-merge_attributes([<<"call_restriction">>|Keys], Account, Endpoint, Owner) ->
+merge_attributes(Keys, AccountDoc, EndpointDoc, OwnerDoc) ->
+    lists:foldl(fun(Key, EP) ->
+                        merge_attribute(Key, AccountDoc, EP, OwnerDoc)
+                end
+               ,EndpointDoc
+               ,Keys
+               ).
+
+-spec merge_attribute(ne_binary(), api_object(), api_object(), api_object()) -> kz_json:object().
+merge_attribute(<<"call_restriction">>, Account, Endpoint, Owner) ->
     Classifiers = kz_json:get_keys(knm_converters:available_classifiers()),
-    Update = merge_call_restrictions(Classifiers, Account, Endpoint, Owner),
-    merge_attributes(Keys, Account, Update, Owner);
-merge_attributes([?ATTR_LOWER_KEY|Keys], Account, Endpoint, Owner) ->
+    merge_call_restrictions(Classifiers, Account, Endpoint, Owner);
+merge_attribute(?ATTR_LOWER_KEY, _Account, Endpoint, Owner) ->
     FullKey = [?ATTR_LOWER_KEY, ?ATTR_UPPER_KEY],
     OwnerAttr = kz_json:get_integer_value(FullKey, Owner, 5),
     EndpointAttr = kz_json:get_integer_value(FullKey, Endpoint, 5),
     case EndpointAttr < OwnerAttr of
-        'true' ->
-            merge_attributes(Keys, Account, Endpoint, Owner);
-        'false' ->
-            Update = kz_json:set_value(FullKey, OwnerAttr, Endpoint),
-            merge_attributes(Keys, Account, Update, Owner)
+        'true' -> Endpoint;
+        'false' -> kz_json:set_value(FullKey, OwnerAttr, Endpoint)
     end;
-merge_attributes([<<"name">> = Key|Keys], Account, Endpoint, Owner) ->
+merge_attribute(<<"name">> = Key, Account, Endpoint, Owner) ->
     Name = create_endpoint_name(kz_json:get_ne_value(<<"first_name">>, Owner)
                                ,kz_json:get_ne_value(<<"last_name">>, Owner)
                                ,kz_json:get_ne_value(Key, Endpoint)
-                               ,kz_json:get_ne_value(Key, Account)),
-    merge_attributes(Keys, Account, kz_json:set_value(Key, Name, Endpoint), Owner);
-merge_attributes([<<"call_forward">> = Key|Keys], Account, Endpoint, Owner) ->
+                               ,kz_json:get_ne_value(Key, Account)
+                               ),
+    kz_json:set_value(Key, Name, Endpoint);
+merge_attribute(<<"call_forward">> = Key, Account, Endpoint, Owner) ->
     EndpointAttr = kz_json:get_ne_value(Key, Endpoint, kz_json:new()),
     case kz_json:is_true(<<"enabled">>, EndpointAttr) of
-        'true' -> merge_attributes(Keys, Account, Endpoint, Owner);
+        'true' -> Endpoint;
         'false' ->
             AccountAttr = kz_json:get_ne_value(Key, Account, kz_json:new()),
             OwnerAttr = kz_json:get_ne_value(Key, Owner, kz_json:new()),
             Merged = kz_json:merge_recursive([AccountAttr, EndpointAttr, OwnerAttr]),
-            merge_attributes(Keys, Account, kz_json:set_value(Key, Merged, Endpoint), Owner)
+            kz_json:set_value(Key, Merged, Endpoint)
     end;
-merge_attributes([<<"call_waiting">> = Key|Keys], Account, Endpoint, Owner) ->
+merge_attribute(<<"call_waiting">> = Key, Account, Endpoint, Owner) ->
     AccountAttr = kz_json:get_ne_value(Key, Account, kz_json:new()),
     EndpointAttr = kz_json:get_ne_value(Key, Endpoint, kz_json:new()),
     OwnerAttr = kz_json:get_ne_value(Key, Owner, kz_json:new()),
@@ -267,8 +272,8 @@ merge_attributes([<<"call_waiting">> = Key|Keys], Account, Endpoint, Owner) ->
     %%  endpoints such as mobile device can disable call_waiting while sip phone
     %%  might still have it enabled
     Merged = kz_json:merge_recursive([AccountAttr, OwnerAttr, EndpointAttr]),
-    merge_attributes(Keys, Account, kz_json:set_value(Key, Merged, Endpoint), Owner);
-merge_attributes([<<"caller_id">> = Key|Keys], Account, Endpoint, Owner) ->
+    kz_json:set_value(Key, Merged, Endpoint);
+merge_attribute(<<"caller_id">> = Key, Account, Endpoint, Owner) ->
     AccountAttr = kz_json:get_ne_value(Key, Account, kz_json:new()),
     EndpointAttr = kz_json:get_ne_value(Key, Endpoint, kz_json:new()),
     OwnerAttr = caller_id_owner_attr(Owner),
@@ -276,12 +281,12 @@ merge_attributes([<<"caller_id">> = Key|Keys], Account, Endpoint, Owner) ->
     L = [<<"emergency">>, <<"number">>],
     case kz_json:get_ne_value(L, EndpointAttr) of
         'undefined' ->
-            merge_attributes(Keys, Account, kz_json:set_value(Key, Merged, Endpoint), Owner);
+            kz_json:set_value(Key, Merged, Endpoint);
         Number ->
             CallerId = kz_json:set_value(L, Number, Merged),
-            merge_attributes(Keys, Account, kz_json:set_value(Key, CallerId, Endpoint), Owner)
+            kz_json:set_value(Key, CallerId, Endpoint)
     end;
-merge_attributes([<<"do_not_disturb">> = Key|Keys], Account, Endpoint, Owner) ->
+merge_attribute(<<"do_not_disturb">> = Key, Account, Endpoint, Owner) ->
     L = [Key, <<"enabled">>],
     AccountAttr = kz_json:is_true(L, Account, 'false'),
     EndpointAttr = kz_json:is_true(L, Endpoint, 'false'),
@@ -289,25 +294,25 @@ merge_attributes([<<"do_not_disturb">> = Key|Keys], Account, Endpoint, Owner) ->
     Dnd = AccountAttr
         orelse OwnerAttr
         orelse EndpointAttr,
-    merge_attributes(Keys, Account, kz_json:set_value(L, Dnd, Endpoint), Owner);
-merge_attributes([<<"language">>|_]=Keys, Account, Endpoint, Owner) ->
-    merge_value(Keys, Account, Endpoint, Owner);
-merge_attributes([<<"presence_id">>|_]=Keys, Account, Endpoint, Owner) ->
-    merge_value(Keys, Account, Endpoint, Owner);
-merge_attributes([<<"record_call">> = Key|Keys], Account, Endpoint, Owner) ->
+    kz_json:set_value(L, Dnd, Endpoint);
+merge_attribute(<<"language">> = Key, Account, Endpoint, Owner) ->
+    merge_value(Key, Account, Endpoint, Owner);
+merge_attribute(<<"presence_id">> = Key, Account, Endpoint, Owner) ->
+    merge_value(Key, Account, Endpoint, Owner);
+merge_attribute(<<"record_call">> = Key, Account, Endpoint, Owner) ->
     EndpointAttr = get_record_call_properties(Endpoint),
     AccountAttr = get_record_call_properties(Account),
     OwnerAttr = get_record_call_properties(Owner),
     Merged = kz_json:merge_recursive([AccountAttr, OwnerAttr, EndpointAttr]),
-    merge_attributes(Keys, Account, kz_json:set_value(Key, Merged, Endpoint), Owner);
-merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
+    kz_json:set_value(Key, Merged, Endpoint);
+merge_attribute(Key, Account, Endpoint, Owner) ->
     AccountAttr = kz_json:get_ne_value(Key, Account, kz_json:new()),
     EndpointAttr = kz_json:get_ne_value(Key, Endpoint, kz_json:new()),
     OwnerAttr = kz_json:get_ne_value(Key, Owner, kz_json:new()),
     Merged = kz_json:merge_recursive([AccountAttr, EndpointAttr, OwnerAttr]
                                     ,fun(_, V) -> not kz_util:is_empty(V) end
                                     ),
-    merge_attributes(Keys, Account, kz_json:set_value(Key, Merged, Endpoint), Owner).
+    kz_json:set_value(Key, Merged, Endpoint).
 
 -spec merge_attribute_caller_id(api_object(), api_object(), api_object(), api_object()) -> api_object().
 merge_attribute_caller_id(AccountJObj, AccountJAttr, UserJAttr, EndpointJAttr) ->
@@ -335,12 +340,12 @@ get_record_call_properties(JObj) ->
             end
     end.
 
--spec merge_value(ne_binaries(), api_object(), kz_json:object(), api_object()) ->
+-spec merge_value(ne_binary(), api_object(), kz_json:object(), api_object()) ->
                          kz_json:object().
-merge_value([Key|Keys], Account, Endpoint, Owner) ->
+merge_value(Key, Account, Endpoint, Owner) ->
     case kz_json:find(Key, [Owner, Endpoint, Account], 'undefined') of
-        'undefined' -> merge_attributes(Keys, Account, Endpoint, Owner);
-        Value -> merge_attributes(Keys, Account, kz_json:set_value(Key, Value, Endpoint), Owner)
+        'undefined' -> Endpoint;
+        Value -> kz_json:set_value(Key, Value, Endpoint)
     end.
 
 -spec caller_id_owner_attr(kz_json:object()) -> kz_json:object().
