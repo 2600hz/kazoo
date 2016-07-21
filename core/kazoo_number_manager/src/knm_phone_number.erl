@@ -9,40 +9,40 @@
 -module(knm_phone_number).
 
 -export([fetch/1, fetch/2
-         ,save/1
-         ,delete/1
-         ,release/1
-         ,new/1, new/2
+        ,save/1
+        ,delete/1
+        ,release/1
+        ,new/1, new/2
         ]).
 
 -export([to_json/1
-         ,to_public_json/1
-         ,from_json/1
-         ,is_phone_number/1
+        ,to_public_json/1
+        ,from_json/1
+        ,is_phone_number/1
         ]).
 
 -export([setters/2
-         ,new/0
-         ,number/1, set_number/2
-         ,number_db/1 ,set_number_db/2
-         ,assign_to/1, set_assign_to/2
-         ,assigned_to/1 ,set_assigned_to/2
-         ,prev_assigned_to/1 ,set_prev_assigned_to/2
-         ,used_by/1 ,set_used_by/2
-         ,features/1 ,set_features/2
-         ,feature/2 ,set_feature/3
-         ,state/1 ,set_state/2
-         ,reserve_history/1 ,set_reserve_history/2
-         ,add_reserve_history/2, unwind_reserve_history/1
-         ,ported_in/1 ,set_ported_in/2
-         ,module_name/1 ,set_module_name/2
-         ,carrier_data/1, set_carrier_data/2, update_carrier_data/2
-         ,region/1 ,set_region/2
-         ,auth_by/1 ,set_auth_by/2, is_authorized/1
-         ,dry_run/1 ,set_dry_run/2
-         ,batch_run/1, set_batch_run/2
-         ,locality/1 ,set_locality/2
-         ,doc/1, set_doc/2, update_doc/2
+        ,new/0
+        ,number/1, set_number/2
+        ,number_db/1, set_number_db/2
+        ,assign_to/1, set_assign_to/2
+        ,assigned_to/1, set_assigned_to/2
+        ,prev_assigned_to/1, set_prev_assigned_to/2
+        ,used_by/1, set_used_by/2
+        ,features/1, set_features/2
+        ,feature/2, set_feature/3
+        ,state/1, set_state/2
+        ,reserve_history/1, set_reserve_history/2
+        ,add_reserve_history/2, unwind_reserve_history/1
+        ,ported_in/1, set_ported_in/2
+        ,module_name/1, set_module_name/2
+        ,carrier_data/1, set_carrier_data/2, update_carrier_data/2
+        ,region/1, set_region/2
+        ,auth_by/1, set_auth_by/2, is_authorized/1
+        ,dry_run/1, set_dry_run/2
+        ,batch_run/1, set_batch_run/2
+        ,locality/1, set_locality/2
+        ,doc/1, set_doc/2, update_doc/2
         ]).
 
 -export([list_attachments/2]).
@@ -51,32 +51,32 @@
 -include_lib("kazoo/src/kz_json.hrl").
 
 -record(knm_phone_number, {number :: ne_binary()
-                           ,number_db :: ne_binary()
-                           ,assign_to :: api_binary()
-                           ,assigned_to :: api_binary()
-                           ,prev_assigned_to :: api_binary()
-                           ,used_by :: api_binary()
-                           ,features = kz_json:new() :: kz_json:object()
-                           ,state :: ne_binary()
-                           ,reserve_history = [] :: ne_binaries()
-                           ,ported_in = 'false' :: boolean()
-                           ,module_name :: ne_binary()
-                           ,carrier_data = kz_json:new() :: kz_json:object()
-                           ,region :: ne_binary()
-                           ,auth_by :: api_binary()
-                           ,dry_run = 'false' :: boolean()
-                           ,batch_run = 'false' :: boolean()
-                           ,locality :: kz_json:object()
-                           ,doc = kz_json:new() :: kz_json:object()
+                          ,number_db :: ne_binary()
+                          ,assign_to :: api_binary()
+                          ,assigned_to :: api_binary()
+                          ,prev_assigned_to :: api_binary()
+                          ,used_by :: api_binary()
+                          ,features = kz_json:new() :: kz_json:object()
+                          ,state :: ne_binary()
+                          ,reserve_history = [] :: ne_binaries()
+                          ,ported_in = 'false' :: boolean()
+                          ,module_name :: ne_binary()
+                          ,carrier_data = kz_json:new() :: kz_json:object()
+                          ,region :: ne_binary()
+                          ,auth_by :: api_binary()
+                          ,dry_run = 'false' :: boolean()
+                          ,batch_run = 'false' :: boolean()
+                          ,locality :: kz_json:object()
+                          ,doc = kz_json:new() :: kz_json:object()
                           }).
 -opaque knm_phone_number() :: #knm_phone_number{}.
 
 -type knm_phone_numbers() :: [knm_phone_number(), ...].
 
 -export_type([knm_phone_number/0
-              ,knm_phone_numbers/0
-              ,set_function/0
-              ,set_functions/0
+             ,knm_phone_numbers/0
+             ,set_function/0
+             ,set_functions/0
              ]).
 
 %%--------------------------------------------------------------------
