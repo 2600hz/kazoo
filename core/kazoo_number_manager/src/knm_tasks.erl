@@ -227,6 +227,7 @@ carrier_module(<<"knm_reserved_reseller">>) -> 'true';
 carrier_module(<<"knm_simwood">>) -> 'true';
 carrier_module(<<"knm_vitelity">>) -> 'true';
 carrier_module(<<"knm_voip_innovations">>) -> 'true';
+carrier_module('undefined') -> 'true';
 carrier_module(_) -> 'false'.
 
 
