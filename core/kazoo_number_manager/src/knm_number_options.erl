@@ -21,7 +21,7 @@
 
         ,default/0
 
-        ,to_setters/1
+        ,to_phone_number_setters/1
         ]).
 
 -export([account_id/1, set_account_id/2
@@ -73,8 +73,8 @@ default() ->
     ,{'batch_run', 'false'}
     ].
 
--spec to_setters(options()) -> knm_phone_number:set_functions().
-to_setters(Options) ->
+-spec to_phone_number_setters(options()) -> knm_phone_number:set_functions().
+to_phone_number_setters(Options) ->
     [case Option of
          'public_fields' ->
              {fun knm_phone_number:update_doc/2, Value};

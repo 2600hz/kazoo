@@ -533,7 +533,7 @@ set_reserve_history(N, History) when is_list(History) ->
 
 -spec add_reserve_history(knm_phone_number(), ne_binary()) -> knm_phone_number().
 add_reserve_history(#knm_phone_number{reserve_history=[AccountId|_]}=PN
-                    ,AccountId=?NE_BINARY
+                   ,AccountId=?NE_BINARY
                    ) ->
     PN;
 add_reserve_history(PN, AccountId=?NE_BINARY) ->

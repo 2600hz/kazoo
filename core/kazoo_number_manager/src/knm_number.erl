@@ -135,7 +135,7 @@ create_or_load(Num, Options0) ->
 create_or_load(Num, Options, {'ok', PhoneNumber}) ->
     ensure_can_load_to_create(PhoneNumber),
     Updates = [{fun knm_phone_number:set_number/2, knm_converters:normalize(Num)}]
-        ++ knm_number_options:to_setters(Options),
+        ++ knm_number_options:to_phone_number_setters(Options),
     {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Updates),
     create_phone_number(set_phone_number(new(), NewPhoneNumber));
 create_or_load(Num, Options, {'error', 'not_found'}) ->
