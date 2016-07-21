@@ -80,8 +80,9 @@ get_client_ip(Peer, Req) ->
 -spec maybe_trace(cowboy_req:req(), boolean()) -> 'ok'.
 maybe_trace(Req) ->
     maybe_trace(Req
-                ,kapps_config:get_is_true(?CONFIG_CAT, <<"allow_tracing">>, 'false')
+               ,kapps_config:get_is_true(?CONFIG_CAT, <<"allow_tracing">>, 'false')
                ).
+
 maybe_trace(_Req, 'false') -> 'ok';
 maybe_trace(Req, 'true') ->
     case cowboy_req:header(<<"x-trace-request">>, Req) of
