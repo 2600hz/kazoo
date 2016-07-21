@@ -15,9 +15,8 @@
         ,content_types_provided/4
         ,content_types_accepted/1, content_types_accepted/2
         ,validate/1, validate/2, validate/3, validate/4
-        ,put/1, put/2
+        ,put/1, put/2, put/3
         ,delete/3, delete/4
-        ,post/3
 
         ,acceptable_content_types/0
         ]).
@@ -79,7 +78,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.faxes">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.validate.faxes">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.faxes">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.faxes">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.faxes">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -115,7 +113,7 @@ allowed_methods(?INCOMING, _FaxId) ->
 allowed_methods(?INBOX, _FaxId) ->
     [?HTTP_GET, ?HTTP_DELETE];
 allowed_methods(?OUTBOX, _FaxId) ->
-    [?HTTP_GET, ?HTTP_DELETE, ?HTTP_POST];
+    [?HTTP_GET, ?HTTP_DELETE, ?HTTP_PUT];
 allowed_methods(?OUTGOING, _FaxJobId) ->
     [?HTTP_GET].
 
@@ -277,7 +275,7 @@ validate_outgoing_fax(Context, Id, ?HTTP_GET) ->
     load_outgoing_fax_doc(Id, cb_context:set_account_db(Context, ?KZ_FAXES_DB)).
 
 -spec validate_outbox_fax(cb_context:context(), path_token(), http_method()) -> cb_context:context().
-validate_outbox_fax(Context, Id, ?HTTP_POST) ->
+validate_outbox_fax(Context, Id, ?HTTP_PUT) ->
     Action = kz_json:get_value(<<"action">>, cb_context:req_json(Context)),
     validate_outbox_fax_action(Action, Id, Context);
 validate_outbox_fax(Context, Id, _) ->
@@ -305,21 +303,15 @@ validate_outbox_fax_action(Action, Id, Context) ->
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context) ->
     maybe_save_attachment(crossbar_doc:save(Context)).
 put(Context, ?OUTGOING) ->
     maybe_save_attachment(crossbar_doc:save(Context)).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is POST, execute the actual action, usually a db save.
-%% @end
-%%--------------------------------------------------------------------
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-post(Context, ?OUTBOX, Id) ->
+put(Context, ?OUTBOX, Id) ->
     Action = kz_json:get_value(<<"action">>, cb_context:req_json(Context)),
-    do_post_action(Context, ?OUTBOX, Action, Id).
+    do_put_action(Context, ?OUTBOX, Action, Id).
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -661,8 +653,8 @@ set_pending(Context, DocId) ->
           ],
     crossbar_doc:save(cb_context:set_doc(Ctx1, kz_json:set_values(KVs, cb_context:doc(Ctx1)))).
 
--spec do_post_action(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) -> cb_context:context().
-do_post_action(Context, ?OUTBOX, ?OUTBOX_ACTION_RESUBMIT, Id) ->
+-spec do_put_action(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) -> cb_context:context().
+do_put_action(Context, ?OUTBOX, ?OUTBOX_ACTION_RESUBMIT, Id) ->
     ReqData = kz_json:public_fields(cb_context:req_data(Context)),
     Fun = fun(_Source, Target) -> set_resubmit_data(kz_json:merge_jobjs(ReqData, Target)) end,
     Options = [{'transform', Fun}],

@@ -228,10 +228,10 @@ curl -v -X GET \
 
 #### Resubmit a fax from the outbox folder
 
-> POST /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
+> PUT /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 
 ```curl
-curl -v -X POST \
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"action" : "resubmit", "data":{}}'
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}            
