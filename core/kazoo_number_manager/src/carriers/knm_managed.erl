@@ -94,8 +94,8 @@ format_numbers_resp(AccountId, JObjs) ->
 
 -spec format_number_resp(ne_binary(), kz_json:object()) -> knm_number:knm_number_return().
 format_number_resp(AccountId, JObj) ->
-    Doc = kz_json:get_value(<<"doc">>, JObj),
-    knm_carriers:create_found(kz_doc:id(Doc), ?MODULE, AccountId, Doc, ?NUMBER_STATE_AVAILABLE).
+    Num = kz_doc:id(kz_json:get_value(<<"doc">>, JObj)),
+    knm_carriers:create_found(Num, ?MODULE, AccountId, kz_json:new(), ?NUMBER_STATE_AVAILABLE).
 
 %%--------------------------------------------------------------------
 %% @public
