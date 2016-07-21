@@ -42,7 +42,7 @@
         ,dry_run/1, set_dry_run/2
         ,batch_run/1, set_batch_run/2
         ,locality/1, set_locality/2
-        ,doc/1, set_doc/2, update_doc/2
+        ,doc/1, update_doc/2
         ]).
 
 -export([list_attachments/2]).
@@ -101,7 +101,7 @@ new(DID, Options) ->
                 ,{fun set_auth_by/2, knm_number_options:auth_by(Options)}
                 ,{fun set_dry_run/2, knm_number_options:dry_run(Options)}
                 ,{fun set_batch_run/2, knm_number_options:batch_run(Options)}
-                ,{fun set_doc/2, knm_number_options:public_fields(Options)}
+                ,{fun update_doc/2, knm_number_options:public_fields(Options)}
                 ]),
     PhoneNumber.
 
