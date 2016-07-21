@@ -586,12 +586,7 @@ process_resp(_, _, [], Acc) -> Acc.
 was_bad_error(<<"[Module already loaded]">>, 'load', _) -> 'false';
 was_bad_error(_E, _, _) -> 'true'.
 
--spec was_not_successful_cmd({'ok', any()} |
-                             {'ok', any(), any()} |
-                             any()
-                            ) -> boolean().
-
-was_not_successful_cmd({'ok', _}) -> 'false';
+-spec was_not_successful_cmd(cmd_result()) -> boolean().
 was_not_successful_cmd({'ok', _, _}) -> 'false';
 was_not_successful_cmd(_) -> 'true'.
 
