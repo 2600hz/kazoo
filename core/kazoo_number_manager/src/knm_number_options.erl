@@ -20,6 +20,8 @@
         ,should_delete/1, should_delete/2
 
         ,default/0
+
+        ,to_phone_number_setters/1
         ]).
 
 -export([account_id/1, set_account_id/2
@@ -32,6 +34,10 @@
         ,should_force_outbound/1
         ,transfer_media_id/1
         ]).
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
 
 -include("knm.hrl").
 
@@ -69,6 +75,19 @@ default() ->
     [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
     ,{'dry_run', 'false'}
     ,{'batch_run', 'false'}
+    ].
+
+-spec to_phone_number_setters(options()) -> knm_phone_number:set_functions().
+to_phone_number_setters(Options) ->
+    [case Option of
+         'public_fields' ->
+             {fun knm_phone_number:update_doc/2, Value};
+         _ ->
+             FName = kz_util:to_atom("set_" ++ atom_to_list(Option)),
+             {fun knm_phone_number:FName/2, Value}
+     end
+     || {Option, Value} <- Options,
+        is_atom(Option)
     ].
 
 -spec dry_run(options()) -> boolean().
@@ -185,3 +204,26 @@ should_force_outbound(Props) when is_list(Props) ->
 transfer_media_id(Props) when is_list(Props) ->
     props:get_value('transfer_media', Props).
 %%--------------------------------------------------------------------
+
+
+-ifdef(TEST).
+
+to_phone_number_setters_test_() ->
+    A_1 = kz_json:from_list([{<<"a">>, 1}
+                            ]),
+    [?_assertEqual([{fun knm_phone_number:update_doc/2, A_1}]
+                  ,to_phone_number_setters([{'public_fields', A_1}])
+                  )
+    ,?_assertEqual([{fun knm_phone_number:set_auth_by/2, ?KNM_DEFAULT_AUTH_BY}
+                   ,{fun knm_phone_number:set_ported_in/2, 'false'}
+                   ,{fun knm_phone_number:set_dry_run/2, [[[]]]}
+                   ]
+                  ,to_phone_number_setters([{'auth_by', ?KNM_DEFAULT_AUTH_BY}
+                                           ,<<"coucou">>
+                                           ,{'ported_in', 'false'}
+                                           ,{'dry_run', [[[]]]}
+                                           ])
+                  )
+    ].
+
+-endif.
