@@ -2265,15 +2265,20 @@
                     "required": false,
                     "type": "string"
                 },
-                "outbound_cid": {
-                    "description": "CID you would like to call out with",
+                "max_concurent_calls_per_user": {
+                    "description": "Calls per user limit. Counts all user's legs and compares to max_concurent_calls_per_user multiplied by 2",
                     "required": false,
-                    "type": "string"
+                    "type": "integer"
                 },
                 "pin": {
                     "description": "PIN to authorize",
                     "required": false,
                     "type": "string"
+                },
+                "retain_cid": {
+                    "description": "Pass initial caller number to the callee",
+                    "required": false,
+                    "type": "boolean"
                 },
                 "user_id": {
                     "description": "The ID of the user object that 'owns' cid/pin",
@@ -8454,10 +8459,13 @@
         "/v2/accounts/{ACCOUNT_ID}/cdrs": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/cdrs/legs/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/cdrs/interaction": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/cdrs/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/cdrs/legs/{INTERACTION_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/channels": {

@@ -188,9 +188,11 @@ to_csv(Req, Context) ->
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
-allowed_methods(_) ->
+allowed_methods(?PATH_INTERACTION) ->
+    [?HTTP_GET];
+allowed_methods(_CDRId) ->
     [?HTTP_GET].
-allowed_methods(?PATH_LEGS, _) ->
+allowed_methods(?PATH_LEGS, _InteractionId) ->
     [?HTTP_GET];
 allowed_methods(_ , _) -> [].
 

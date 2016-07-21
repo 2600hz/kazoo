@@ -52,18 +52,58 @@ init({'tcp', 'http'}, _Req, _Opts) ->
 init({'ssl', 'http'}, _Req, _Opts) ->
     {'upgrade', 'protocol', 'cowboy_rest'}.
 
--spec rest_init(cowboy_req:req(), kz_proplist()) ->
-                       {'ok', cowboy_req:req(), cb_context:context()}.
-rest_init(Req0, Opts) ->
-    ReqId = case cowboy_req:header(<<"x-request-id">>, Req0) of
+-spec get_request_id(cowboy_req:req()) -> ne_binary().
+get_request_id(Req) ->
+    ReqId = case cowboy_req:header(<<"x-request-id">>, Req) of
                 {'undefined', _} -> kz_datamgr:get_uuid();
                 {UserReqId, _} -> kz_util:to_binary(UserReqId)
             end,
     kz_util:put_callid(ReqId),
-    ProfileId = case cowboy_req:header(<<"x-profile-id">>, Req0) of
-                    {'undefined', _} -> 'undefined';
-                    {ProfId, _} -> kz_util:to_binary(ProfId)
-                end,
+    ReqId.
+
+-spec get_profile_id(cowbow_req:req()) -> api_binary().
+get_profile_id(Req) ->
+    case cowboy_req:header(<<"x-profile-id">>, Req) of
+        {'undefined', _} -> 'undefined';
+        {ProfId, _} -> kz_util:to_binary(ProfId)
+    end.
+
+-spec get_client_ip(inet:ip_address(), cowboy_req:req()) ->
+                           ne_binary().
+get_client_ip(Peer, Req) ->
+    case cowboy_req:header(<<"x-forwarded-for">>, Req) of
+        {'undefined', _} -> kz_network_utils:iptuple_to_binary(Peer);
+        {ForwardIP, _} -> maybe_allow_proxy_req(kz_network_utils:iptuple_to_binary(Peer), ForwardIP)
+    end.
+
+-spec maybe_trace(cowboy_req:req()) -> 'ok'.
+-spec maybe_trace(cowboy_req:req(), boolean()) -> 'ok'.
+maybe_trace(Req) ->
+    maybe_trace(Req
+               ,kapps_config:get_is_true(?CONFIG_CAT, <<"allow_tracing">>, 'false')
+               ).
+
+maybe_trace(_Req, 'false') -> 'ok';
+maybe_trace(Req, 'true') ->
+    case cowboy_req:header(<<"x-trace-request">>, Req) of
+        {'undefined', _} -> 'ok';
+        {ShouldTrace, _} ->
+            maybe_start_trace(kz_util:to_boolean(ShouldTrace))
+    end.
+
+-spec maybe_start_trace(boolean()) -> 'ok'.
+maybe_start_trace('false') -> 'ok';
+maybe_start_trace('true') ->
+    'ok' = kz_tracers:add_trace(self(), 5*1000),
+    lager:info("added trace").
+
+-spec rest_init(cowboy_req:req(), kz_proplist()) ->
+                       {'ok', cowboy_req:req(), cb_context:context()}.
+rest_init(Req0, Opts) ->
+    ReqId = get_request_id(Req0),
+    ProfileId = get_profile_id(Req0),
+    maybe_trace(Req0),
+
     {HostUrl, _} = cowboy_req:host_url(Req0),
     {Host, Req1} = cowboy_req:host(Req0),
     {Port, Req2} = cowboy_req:port(Req1),
@@ -74,10 +114,7 @@ rest_init(Req0, Opts) ->
     {{Peer, _PeerPort}, Req6} = cowboy_req:peer(Req5),
     {Version, Req7} = find_version(Path, Req6),
 
-    ClientIP = case cowboy_req:header(<<"x-forwarded-for">>, Req7) of
-                   {'undefined', _} -> kz_network_utils:iptuple_to_binary(Peer);
-                   {ForwardIP, _} -> maybe_allow_proxy_req(kz_network_utils:iptuple_to_binary(Peer), ForwardIP)
-               end,
+    ClientIP = get_client_ip(Peer, Req7),
 
     {Headers, _} = cowboy_req:headers(Req7),
 
@@ -118,11 +155,15 @@ rest_init(Req0, Opts) ->
 metrics() ->
     {kz_util:bin_usage(), kz_util:mem_usage()}.
 
+-spec find_version(ne_binary()) -> ne_binary().
+-spec find_version(ne_binary(), cowboy_req:req()) ->
+                          {ne_binary(), cowboy_req:req()}.
 find_version(Path, Req) ->
     case cowboy_req:binding('version', Req) of
         {'undefined', Req1} -> {find_version(Path), Req1};
         {_Version, _Req1}=Found -> Found
     end.
+
 find_version(Path) ->
     lager:debug("find version in ~s", [Path]),
     case binary:split(Path, <<"/">>, ['global']) of
