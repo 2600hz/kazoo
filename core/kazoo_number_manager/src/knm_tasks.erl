@@ -20,17 +20,15 @@
         ,account_id/1
         ,auth_by/1
         ,module_name/1, carrier_module/1
-        ,state/1
         ]).
 
 %% Appliers
 -export([list/2
         ,list_all/2
-        ,import_list/17
+        ,import/16
         ,assign_to/4
         ,release/3
         ,reserve/4
-        ,add/5
         ,delete/3
         ]).
 
@@ -107,20 +105,21 @@ help() ->
                         ])
      }
 
-    ,{<<"import_list">>
-     ,kz_json:from_list([{<<"description">>, <<"Import numbers that were previously listed">>}
-                        ,{<<"doc">>, <<"Creates numbers using the same fields the `list` task provides.\n"
+    ,{<<"import">>
+     ,kz_json:from_list([{<<"description">>, <<"Bulk-import numbers">>}
+                        ,{<<"doc">>, <<"Creates numbers using superadmin privileges.\n"
                                        "Note: number must be E164-formatted.\n"
                                        "Note: number must not be in the system already.\n"
-                                       "Note: for now only the mandatory fields are taken into account.\n"
+                                       "If `account_id` is empty, number state will be 'available'.\n"
+                                       "Otherwise, the number will be assigned to `account_id` with state 'in_service'.\n"
+                                       "Note: `carrier_module` defaults to 'knm_local'.\n"
                                      >>}
                         ,{<<"expected_content">>, <<"text/csv">>}
                         ,{<<"mandatory">>, [<<"e164">>
-                                           ,<<"account_id">>
-                                           ,<<"state">>
-                                           ,<<"carrier_module">>
                                            ]}
-                        ,{<<"optional">>, [<<"port_in">>
+                        ,{<<"optional">>, [<<"account_id">>
+                                          ,<<"carrier_module">>
+                                          ,<<"port_in">>
                                           ,<<"previously_assigned_to">>
                                           ,<<"created">>
                                           ,<<"modified">>
@@ -143,7 +142,7 @@ help() ->
                                        "Note: number must already exist.\n"
                                        "Note: account creating the task (or `auth_by` account) must have permissions on number.\n"
                                        "Note: target `account_id` must exist.\n"
-                                       "Note: after assignment, number state will be `in_service`.\n"
+                                       "Note: after assignment, number state will be 'in_service'.\n"
                                      >>}
                         ,{<<"expected_content">>, <<"text/csv">>}
                         ,{<<"mandatory">>, [<<"e164">>
@@ -171,33 +170,16 @@ help() ->
 
     ,{<<"reserve">>
      ,kz_json:from_list([{<<"description">>, <<"Bulk-reserve numbers">>}
-                        ,{<<"doc">>, <<"Sets numbers to state `reserved` (creating number if it is missing).\n"
+                        ,{<<"doc">>, <<"Sets numbers to state 'reserved' (creating number if it is missing).\n"
                                        "Note: number must be E164-formatted.\n"
                                        "Note: account creating the task (or `auth_by` account) must have permission to proceed.\n"
-                                       "Note: after transitionning state to `reserved`, number is assigned to `account_id`.\n"
+                                       "Note: after transitionning state to 'reserved', number is assigned to `account_id`.\n"
                                      >>}
                         ,{<<"expected_content">>, <<"text/csv">>}
                         ,{<<"mandatory">>, [<<"e164">>
                                            ,<<"account_id">>
                                            ]}
                         ,{<<"optional">>, [<<"auth_by">>
-                                          ]}
-                        ])
-     }
-
-    ,{<<"add">>
-     ,kz_json:from_list([{<<"description">>, <<"Bulk-create numbers">>}
-                        ,{<<"doc">>, <<"Adds numbers to the system, assigning them to `account_id`.\n"
-                                       "Note: number must be E164-formatted.\n"
-                                       "Note: number must not already exist.\n"
-                                       "Note: if set, carrier `module_name` will also be set on created number.\n"
-                                     >>}
-                        ,{<<"expected_content">>, <<"text/csv">>}
-                        ,{<<"mandatory">>, [<<"e164">>
-                                           ,<<"account_id">>
-                                           ]}
-                        ,{<<"optional">>, [<<"auth_by">>
-                                          ,<<"module_name">>
                                           ]}
                         ])
      }
@@ -249,18 +231,6 @@ carrier_module(<<"knm_simwood">>) -> 'true';
 carrier_module(<<"knm_vitelity">>) -> 'true';
 carrier_module(<<"knm_voip_innovations">>) -> 'true';
 carrier_module(_) -> 'false'.
-
--spec state(ne_binary()) -> boolean().
-state(<<"port_in">>) -> 'true';
-state(<<"port_out">>) -> 'true';
-state(<<"discovery">>) -> 'true';
-state(<<"in_service">>) -> 'true';
-state(<<"released">>) -> 'true';
-state(<<"reserved">>) -> 'true';
-state(<<"available">>) -> 'true';
-state(<<"disconnected">>) -> 'true';
-state(<<"deleted">>) -> 'true';
-state(_) -> 'false'.
 
 
 %%% Appliers
@@ -327,21 +297,29 @@ list_all(_, [{E164,JObj} | Rest]) ->
     Row = list_number_row(?KNM_DEFAULT_AUTH_BY, E164, JObj),
     {Row, Rest}.
 
--spec import_list(kz_proplist(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()
-                 ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary(), api_binary()
-                 ,api_binary()
-                 ,api_binary(), api_binary(), api_binary(), api_binary()) ->
-                         task_return().
-import_list(Props, E164, AccountId, State, Carrier
-           ,_PortIn, _PrevAssignedTo, _Created, _Modified, _UsedBy, _CNAMInbound, _CNAMOutbound
-           ,_E911PostalCode
-           ,_E911StreetAddress, _E911ExtendedAddress, _E911Locality, _E911Region) ->
-    %%TODO: use the optional fields
-    Options = [{'auth_by', auth_by('undefined', Props)}
+-spec import(kz_proplist(), ne_binary(), api_binary(), api_binary()
+            ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary()
+            ,api_binary(), api_binary()
+            ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary()) ->
+                    task_return().
+import(_Props, E164, AccountId, Carrier
+      ,_PortIn, _PrevAssignedTo, _Created, _Modified, _UsedBy
+      ,_CNAMInbound, _CNAMOutbound
+      ,_E911PostalCode, _E911StreetAddress, _E911ExtendedAddress, _E911Locality, _E911Region) ->
+    %%TODO: use all the optional fields
+    State = case AccountId of
+                'undefined' -> ?NUMBER_STATE_AVAILABLE;
+                _ -> ?NUMBER_STATE_IN_SERVICE
+            end,
+    ModuleName = case Carrier of
+                     'undefined' -> ?CARRIER_LOCAL;
+                     _ -> Carrier
+                 end,
+    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'batch_run', 'true'}
               ,{'assign_to', AccountId}
               ,{'state', State}
-              ,{'module_name', Carrier}
+              ,{'module_name', ModuleName}
               ],
     handle_result(knm_number:create(E164, Options)).
 
@@ -366,15 +344,6 @@ reserve(Props, Number, AccountId, AuthBy) ->
               ,{'assign_to', AccountId}
               ],
     handle_result(knm_number:reserve(Number, Options)).
-
--spec add(kz_proplist(), ne_binary(), ne_binary(), api_binary(), api_binary()) -> task_return().
-add(Props, Number, AccountId, AuthBy, ModuleName0) ->
-    Options = [{'auth_by', auth_by(AuthBy, Props)}
-              ,{'batch_run', 'true'}
-              ,{'assign_to', AccountId}
-              ,{'module_name', ModuleName0}
-              ],
-    handle_result(knm_number:create(Number, Options)).
 
 -spec delete(kz_proplist(), ne_binary(), api_binary()) -> task_return().
 delete(Props, Number, AuthBy) ->
