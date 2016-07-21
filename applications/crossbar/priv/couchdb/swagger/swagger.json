@@ -8697,7 +8697,8 @@
         },
         "/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}": {
             "delete": {},
-            "get": {}
+            "get": {},
+            "put": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment": {
             "delete": {},

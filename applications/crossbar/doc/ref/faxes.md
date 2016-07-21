@@ -135,6 +135,16 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 ```
 
+#### Change
+
+> PUT /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
+
+```curl
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
+```
+
 #### Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
