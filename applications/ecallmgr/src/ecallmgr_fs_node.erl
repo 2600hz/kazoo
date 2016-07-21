@@ -492,7 +492,10 @@ run_start_cmds(Node, Options, Parent, 'false') ->
 run_start_cmds(Node, Options, Parent, Cmds) ->
     Res = process_cmds(Node, Options, Cmds),
 
-    case is_list(Res) andalso [R || R <- Res, was_not_successful_cmd(R)] of
+    case
+        is_list(Res)
+        andalso [R || R <- Res, was_not_successful_cmd(R)]
+    of
         [] -> sync(Parent);
         'false' ->
             lager:debug("failed to run start commands, retrying"),
@@ -583,12 +586,7 @@ process_resp(_, _, [], Acc) -> Acc.
 was_bad_error(<<"[Module already loaded]">>, 'load', _) -> 'false';
 was_bad_error(_E, _, _) -> 'true'.
 
--spec was_not_successful_cmd({'ok', any()} |
-                             {'ok', any(), any()} |
-                             any()
-                            ) -> boolean().
-
-was_not_successful_cmd({'ok', _}) -> 'false';
+-spec was_not_successful_cmd(cmd_result()) -> boolean().
 was_not_successful_cmd({'ok', _, _}) -> 'false';
 was_not_successful_cmd(_) -> 'true'.
 

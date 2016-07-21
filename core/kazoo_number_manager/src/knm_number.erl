@@ -242,7 +242,8 @@ ensure_account_is_allowed_to_create(_, ?KNM_DEFAULT_AUTH_BY) ->
     'true';
 ensure_account_is_allowed_to_create(_Options, _AccountId) ->
     {'ok', JObj} = ?LOAD_ACCOUNT(_Options, _AccountId),
-    kz_account:allow_number_additions(JObj) orelse knm_errors:unauthorized().
+    kz_account:allow_number_additions(JObj)
+        orelse knm_errors:unauthorized().
 
 -spec ensure_number_is_not_porting(ne_binary(), knm_number_options:options()) -> 'true'.
 -ifdef(TEST).

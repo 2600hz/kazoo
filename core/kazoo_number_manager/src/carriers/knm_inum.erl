@@ -95,8 +95,8 @@ format_numbers_resp(AccountId, JObjs) ->
 
 -spec format_number_resp(ne_binary(), kz_json:object()) -> knm_number:knm_number_return().
 format_number_resp(AccountId, JObj) ->
-    Doc = kz_json:get_value(<<"doc">>, JObj),
-    knm_carriers:create_found(kz_doc:id(Doc), ?MODULE, AccountId, Doc, ?NUMBER_STATE_AVAILABLE).
+    Num = kz_doc:id(kz_json:get_value(<<"doc">>, JObj)),
+    knm_carriers:create_found(Num, ?MODULE, AccountId, kz_json:new(), ?NUMBER_STATE_AVAILABLE).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -146,7 +146,7 @@ generate_numbers(AccountId, Number, Quantity)
   when is_integer(Number),
        is_integer(Quantity),
        Quantity > 0 ->
-    _R = save_doc(AccountId, kz_util:to_binary(Number)),
+    _R = save_doc(AccountId, <<"+",(kz_util:to_binary(Number))/binary>>),
     lager:info("number ~p/~p/~p", [Number, Quantity, _R]),
     generate_numbers(AccountId, Number+1, Quantity-1).
 
@@ -177,17 +177,13 @@ save_doc(JObj) ->
 update_doc(Number, UpdateProps) ->
     PhoneNumber = knm_number:phone_number(Number),
     Num = knm_phone_number:number(PhoneNumber),
-    case kz_datamgr:update_doc(?KZ_INUM, Num, [{?PVT_DB_NAME, ?KZ_INUM}
-                                              ,{?PVT_MODULE_NAME, kz_util:to_binary(?MODULE)}
+    case kz_datamgr:update_doc(?KZ_INUM, Num, [{?PVT_MODULE_NAME, kz_util:to_binary(?MODULE)}
                                                | UpdateProps
                                               ])
     of
+        {'ok', _UpdatedDoc} -> Number;
         {'error', Reason} ->
-            knm_errors:database_error(Reason, PhoneNumber);
-        {'ok', UpdatedDoc} ->
-            knm_number:set_phone_number(Number
-                                       ,knm_phone_number:update_carrier_data(PhoneNumber, UpdatedDoc)
-                                       )
+            knm_errors:database_error(Reason, PhoneNumber)
     end.
 
 %%--------------------------------------------------------------------

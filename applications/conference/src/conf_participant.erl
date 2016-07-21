@@ -449,17 +449,21 @@ code_change(_OldVsn, Participant, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec join_conference(boolean(), ne_binary(), kapps_conference:conference()) -> ok.
+-spec join_conference(boolean(), non_neg_integer(), kapps_conference:conference()) -> 'ok'.
 join_conference('true'=_Moderator, ParticipantId, Conference) ->
     lager:debug("caller has joined the local conference as moderator ~p", [ParticipantId]),
-    kapps_conference:moderator_join_muted(Conference) andalso gen_listener:cast(self(), 'mute'),
-    kapps_conference:moderator_join_deaf(Conference) andalso gen_listener:cast(self(), 'deaf'),
-    ok;
+    kapps_conference:moderator_join_muted(Conference)
+        andalso gen_listener:cast(self(), 'mute'),
+    kapps_conference:moderator_join_deaf(Conference)
+        andalso gen_listener:cast(self(), 'deaf'),
+    'ok';
 join_conference('false'=_Moderator, ParticipantId, Conference) ->
     lager:debug("caller has joined the local conference as member ~p", [ParticipantId]),
-    kapps_conference:member_join_muted(Conference) andalso gen_listener:cast(self(), 'mute'),
-    kapps_conference:member_join_deaf(Conference) andalso gen_listener:cast(self(), 'deaf'),
-    ok.
+    kapps_conference:member_join_muted(Conference)
+        andalso gen_listener:cast(self(), 'mute'),
+    kapps_conference:member_join_deaf(Conference)
+        andalso gen_listener:cast(self(), 'deaf'),
+    'ok'.
 
 -spec sync_participant(kz_json:objects(), kapps_call:call(), participant()) ->
                               participant().
@@ -488,7 +492,7 @@ sync_participant(JObj, _Call, #participant{in_conference='true'}=Participant) ->
                            ,deaf=(not kz_json:is_true(<<"Hear">>, JObj))
                            }.
 
--spec notify_requestor(ne_binary(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec notify_requestor(ne_binary(), non_neg_integer(), kz_json:object(), ne_binary()) -> 'ok'.
 notify_requestor(MyQ, MyId, DiscoveryEvent, ConferenceId) ->
     case kz_json:get_value(<<"Server-ID">>, DiscoveryEvent) of
         'undefined' -> 'ok';

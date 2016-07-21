@@ -57,8 +57,8 @@ start(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
                                                                                   {'error', any()}.
 init(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
     case
-        kz_util:try_load_module(Module) =:= Module andalso
-        kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, ?KZ_TASKS_ATTACHMENT_NAME_IN)
+        kz_util:try_load_module(Module) =:= Module
+        andalso kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, ?KZ_TASKS_ATTACHMENT_NAME_IN)
     of
         'false' ->
             lager:error("failed loading module '~p' for task ~s", [Module, TaskId]),
@@ -91,12 +91,16 @@ init(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
 -spec build_verifier(module()) -> kz_csv:verifier().
 build_verifier(Module) ->
     fun (Field, Value) ->
-            case Module:Field(Value) of
+            try Module:Field(Value) of
                 'true' -> 'true';
                 'false' ->
                     lager:error("'~s' failed to validate with ~s:~s/1"
                                ,[Value, Module, Field]),
                     'false'
+            catch
+                _:'undef' ->
+                    %% If a verifier does not exist then it always passes
+                    'true'
             end
     end.
 
@@ -154,7 +158,9 @@ is_task_successful(TaskId, Module, Function, ExtraArgs, FAssoc, RawRow) ->
             'false'
     catch
         _:_R ->
+            ST = erlang:get_stacktrace(),
             lager:error("verifier crashed: ~p", [_R]),
+            kz_util:log_stacktrace(ST),
             store_return(TaskId, RawRow, ?WORKER_TASK_MAYBE_OK),
             'false'
     end.

@@ -317,10 +317,11 @@ from_json(JObj) ->
                 lists:foldl(fun (FeatureKey, Acc) -> kz_json:set_value(FeatureKey, kz_json:new(), Acc) end, kz_json:new(), FeaturesList);
             FeaturesJObj -> FeaturesJObj
         end,
+    NormalizedNum = kz_doc:id(JObj),
     {'ok', PhoneNumber} =
         setters(new(),
-                [{fun set_number/2, kz_doc:id(JObj)}
-                ,{fun set_number_db/2, kz_json:get_value(?PVT_DB_NAME, JObj)}
+                [{fun set_number/2, NormalizedNum}
+                ,{fun set_number_db/2, knm_converters:to_db(NormalizedNum)}
                 ,{fun set_assigned_to/2, kz_json:get_value(?PVT_ASSIGNED_TO, JObj)}
                 ,{fun set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
                 ,{fun set_used_by/2, kz_json:get_value(?PVT_USED_BY, JObj)}
