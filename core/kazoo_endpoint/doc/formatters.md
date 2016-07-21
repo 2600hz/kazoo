@@ -156,3 +156,17 @@ The system configuration document `stepswitch` containes the property `format_fr
 ```
 sip:+14158867900@kazoo.account.realm
 ```
+
+### Caller-ID reformatting
+
+The caller ID presented to the device can be altered by creating a formatter object for `caller_id_number`. If you just want to capture the 10-digit number (in the US) for instance, the value could be:
+
+```json
+"formatters":{
+    "caller_id_number":{
+        "regex":"(\\d{10})$"
+    }
+}
+```
+
+This would match caller id numbers that end with 10 digits and capture them as the value to be used.
