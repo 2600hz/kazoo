@@ -181,12 +181,9 @@ update_doc(Number, UpdateProps) ->
                                                | UpdateProps
                                               ])
     of
+        {'ok', _UpdatedDoc} -> Number;
         {'error', Reason} ->
-            knm_errors:database_error(Reason, PhoneNumber);
-        {'ok', UpdatedDoc} ->
-            knm_number:set_phone_number(Number
-                                       ,knm_phone_number:from_json(UpdatedDoc)
-                                       )
+            knm_errors:database_error(Reason, PhoneNumber)
     end.
 
 %%--------------------------------------------------------------------
