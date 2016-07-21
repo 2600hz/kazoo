@@ -24,7 +24,7 @@
 -export([setters/2
         ,new/0
         ,number/1, set_number/2
-        ,number_db/1, set_number_db/2
+        ,number_db/1
         ,assign_to/1, set_assign_to/2
         ,assigned_to/1, set_assigned_to/2
         ,prev_assigned_to/1, set_prev_assigned_to/2
@@ -317,7 +317,7 @@ from_json(JObj) ->
                 lists:foldl(fun (FeatureKey, Acc) -> kz_json:set_value(FeatureKey, kz_json:new(), Acc) end, kz_json:new(), FeaturesList);
             FeaturesJObj -> FeaturesJObj
         end,
-    NormalizedNum = kz_doc:id(JObj),
+    NormalizedNum = knm_converters:normalize(kz_doc:id(JObj)),
     {'ok', PhoneNumber} =
         setters(new(),
                 [{fun set_number/2, NormalizedNum}
