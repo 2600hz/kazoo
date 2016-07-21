@@ -483,6 +483,7 @@ db_archive(DbName, Filename) ->
         {'error', _}=E -> E
     end.
 
+-spec db_import(ne_binary(), file:filename_all()) -> 'ok' | {'error', any()}.
 db_import(DbName, ArchiveFile) when ?VALID_DBNAME ->
     kzs_db:db_archive(kzs_plan:plan(DbName), DbName, ArchiveFile);
 db_import(DbName, ArchiveFile) ->
