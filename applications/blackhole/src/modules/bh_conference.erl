@@ -113,7 +113,7 @@ command_unbind_all(Context, AccountDb) ->
     _ = [ command_unbind(Context, ConfId) || ConfId <- all_conferences(AccountDb) ].
 
 maybe_command_bind(Context, AccountDb, ConfId) ->
-    case kz_datamgr:open_doc(AccountDb, ConfId) of 
+    case kz_datamgr:open_doc(AccountDb, ConfId) of
         {'ok', _JObj} ->
             command_bind(Context, ConfId);
         _ ->
@@ -139,7 +139,7 @@ event_unbind_all(Context, AccountDb) ->
     _ = [ event_unbind(Context, ConfId, <<"*">>) || ConfId <- all_conferences(AccountDb) ].
 
 maybe_event_bind(Context, AccountDb, ConfId, CallId) ->
-    case kz_datamgr:open_doc(AccountDb, ConfId) of 
+    case kz_datamgr:open_doc(AccountDb, ConfId) of
         {'ok', _JObj} ->
             event_bind(Context, ConfId, CallId);
         _ ->
