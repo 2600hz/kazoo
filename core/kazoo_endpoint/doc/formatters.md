@@ -2,6 +2,14 @@
 
 #### About formatters
 
+It is all about control!
+
+With [numbers])https://github.com/2600hz/kazoo/blob/master/doc/internationalization/numbers.md) controlling how Kazoo processes phone numbers into and out of the system, it only made sense to add functionality to control the format of other fields that are commonly found.
+
+Enter *formatters*!
+
+#### Carriers
+
 When a call enters Kazoo from a carrier, Stepswitch receives the route request first (since no account information exists to identify the context of the call). Stepswitch will process this request to figure out what account the request is destined for and will replay the route request with the associated information.
 
 If the call came from a known resource, you can optionally define formatters to take the route request headers and format the values before they are replayed to the call processing applications.
@@ -13,11 +21,16 @@ On the resource document, define a key `Formatters` which is a JSON object of ro
      ,"formatters":{
          "request":{...}
          ,"from":[{...},{...}]
-         ,"caller-id-number":{...}
+         ,"caller_id_number":{...}
          ...
      }
 
 In the above partial example, the resource has defined formatters for the `request` and `caller-id-number` fields, and a list of two formatters for the `from` field.
+
+#### Devices, users, accounts
+
+It can be desirable to control the format of fields going to registered devices. You can place the `formatters` object on a device, user, or account, to have it be used when processing calls to endpoints. The `formatter` object(s) will be merged before being applied to the endpoint.
+
 
 ## Formatter format
 
