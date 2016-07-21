@@ -619,8 +619,7 @@ normalize_view_results(JObj, Acc) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_modb_view_results(kz_json:object(), kz_json:objects()) ->
-                                             kz_json:objects().
+-spec normalize_modb_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_modb_view_results(JObj, Acc) ->
     Doc = kz_json:get_value(<<"doc">>, JObj),
     View = kz_json:get_value(<<"value">>, JObj),
@@ -664,7 +663,7 @@ set_pending(Context, DocId) ->
 
 -spec do_post_action(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) -> cb_context:context().
 do_post_action(Context, ?OUTBOX, ?OUTBOX_ACTION_RESUBMIT, Id) ->
-    ReqData = cb_context:req_data(Context),
+    ReqData = kz_json:public_fields(cb_context:req_data(Context)),
     Fun = fun(_Source, Target) -> set_resubmit_data(kz_json:merge_jobjs(ReqData, Target)) end,
     Options = [{'transform', Fun}],
     FromDB = cb_context:account_db(Context),
