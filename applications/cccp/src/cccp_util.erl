@@ -13,7 +13,12 @@
         ,handle_disconnect/2
         ,get_number/1
         ,store_last_dialed/2
-        ,bridge/7
+        ,build_request/10
+        ,bridge/8
+        ,verify_entered_number/3
+        ,get_last_dialed_number/1
+        ,current_account_outbound_directions/1
+        ,count_user_legs/2
         ]).
 
 -include("cccp.hrl").
@@ -53,7 +58,7 @@ handle_disconnect_cause(JObj, Call) ->
             kapps_call_command:prompt(<<"hotdesk-invalid_entry">>, Call),
             kapps_call_command:queued_hangup(Call);
         UnhandledCause ->
-            lager:debug("Unhandled disconnect cause: ~p", [UnhandledCause]),
+            lager:debug("unhandled disconnect cause: ~p", [UnhandledCause]),
             kapps_call_command:queued_hangup(Call)
     end.
 
@@ -64,49 +69,11 @@ handle_disconnect_cause(JObj, Call) ->
 authorize(Value, View) ->
     ViewOptions = [{'key', Value}],
     case kz_datamgr:get_results(?KZ_CCCPS_DB, View, ViewOptions) of
-        {'ok',[]} ->
-            lager:info("Auth by ~p failed for: ~p. No such value in Db.", [Value, View]),
-            'empty';   %%% don't change. used in cb_cccps.erl
         {'ok', [JObj]} ->
-            AccountId = kz_json:get_value([<<"value">>,<<"account_id">>], JObj),
-            OutboundCID = kz_json:get_value([<<"value">>,<<"outbound_cid">>], JObj),
-            [AccountId
-            ,legalize_outbound_cid(OutboundCID, AccountId)
-            ,kz_json:get_value([<<"value">>,<<"id">>], JObj)
-            ];
-        _E ->
-            lager:info("Auth failed for ~p. Error occurred: ~p.", [Value, _E]),
-            'error'
-    end.
-
--spec legalize_outbound_cid(ne_binary(), ne_binary()) -> ne_binary().
-legalize_outbound_cid(OutboundCID, AccountId) ->
-    case kapps_config:get_is_true(?CCCP_CONFIG_CAT, <<"ensure_valid_caller_id">>, 'true') of
-        'true' -> ensure_valid_caller_id(OutboundCID, AccountId);
-        'false' -> OutboundCID
-    end.
-
--spec ensure_valid_caller_id(ne_binary(), ne_binary()) -> ne_binary().
-ensure_valid_caller_id(OutboundCID, AccountId) ->
-    {'ok', AccountPhoneNumbersList} =
-        kz_datamgr:open_cache_doc(kz_util:format_account_id(AccountId, 'encoded')
-                                 ,?KNM_PHONE_NUMBERS_DOC
-                                 ),
-    case lists:member(knm_converters:normalize(OutboundCID)
-                     ,kz_json:get_keys(AccountPhoneNumbersList)
-                     )
-    of
-        'true' ->
-            OutboundCID;
-        'false' ->
-            DefaultCID =
-                kapps_config:get(
-                  ?CCCP_CONFIG_CAT
-                                ,<<"default_caller_id_number">>
-                                ,kz_util:anonymous_caller_id_number()
-                 ),
-            lager:debug("OutboundCID ~p is out of account's list; changing to application's default: ~p", [OutboundCID, DefaultCID]),
-            DefaultCID
+            {'ok', kz_json:get_value(<<"value">>,JObj)};
+        Reply ->
+            lager:info("auth failed for ~p with reply: ~p.", [Value, Reply]),
+            Reply
     end.
 
 -spec get_number(kapps_call:call()) ->
@@ -130,7 +97,7 @@ get_number(Call, Retries) ->
         {'ok', EnteredNumber} ->
             verify_entered_number(EnteredNumber, Call, Retries);
         _Err ->
-            lager:info("No Phone number obtained: ~p", [_Err]),
+            lager:info("no phone number obtained: ~p", [_Err]),
             kapps_call_command:prompt(<<"hotdesk-invalid_entry">>, Call),
             get_number(Call, Retries - 1)
     end.
@@ -142,7 +109,7 @@ verify_entered_number(EnteredNumber, Call, Retries) ->
         'true' ->
             check_restrictions(Number, Call);
         _ ->
-            lager:debug("Wrong number entered: ~p", [EnteredNumber]),
+            lager:debug("wrong number entered: ~p", [EnteredNumber]),
             kapps_call_command:prompt(<<"hotdesk-invalid_entry">>, Call),
             get_number(Call, Retries - 1)
     end.
@@ -152,7 +119,7 @@ verify_entered_number(EnteredNumber, Call, Retries) ->
                                     'ok'.
 get_last_dialed_number(Call) ->
     DocId = kapps_call:kvs_fetch('auth_doc_id', Call),
-    {'ok', Doc} = kz_datamgr:open_doc(<<"cccps">>, DocId),
+    {'ok', Doc} = kz_datamgr:open_doc(?KZ_CCCPS_DB, DocId),
     LastDialed = kz_json:get_value(<<"pvt_last_dialed">>, Doc),
     case cccp_allowed_callee(LastDialed) of
         'false' ->
@@ -164,7 +131,7 @@ get_last_dialed_number(Call) ->
 
 -spec store_last_dialed(ne_binary(), ne_binary()) -> 'ok'.
 store_last_dialed(Number, DocId) ->
-    {'ok', Doc} = kz_datamgr:update_doc(<<"cccps">>, DocId, [{<<"pvt_last_dialed">>, Number}]),
+    {'ok', Doc} = kz_datamgr:update_doc(?KZ_CCCPS_DB, DocId, [{<<"pvt_last_dialed">>, Number}]),
     _ = kz_datamgr:update_doc(kz_doc:account_db(Doc), DocId, [{<<"pvt_last_dialed">>, Number}]),
     'ok'.
 
@@ -173,12 +140,12 @@ store_last_dialed(Number, DocId) ->
                                 'ok'.
 check_restrictions(Number, Call) ->
     DocId = kapps_call:kvs_fetch('auth_doc_id', Call),
-    {'ok', Doc} = kz_datamgr:open_doc(<<"cccps">>, DocId),
+    {'ok', Doc} = kz_datamgr:open_doc(?KZ_CCCPS_DB, DocId),
     AccountId = kz_doc:account_id(Doc),
     AccountDb = kz_doc:account_db(Doc),
     case is_number_restricted(Number, AccountId, AccountDb) of
         'true' ->
-            lager:debug("Number ~p is restricted", [Number]),
+            lager:debug("number ~p is restricted", [Number]),
             hangup_unauthorized_call(Call);
         'false' ->
             is_user_restricted(Number, kz_json:get_value(<<"user_id">>, Doc), AccountDb, Call)
@@ -199,7 +166,7 @@ is_number_restricted(Number, DocId, AccountDb) ->
 is_user_restricted(Number, UserId, AccountDb, Call) ->
     case is_number_restricted(Number, UserId, AccountDb) of
         'true' ->
-            lager:debug("Number ~p is restricted", [Number]),
+            lager:debug("number ~p is restricted", [Number]),
             hangup_unauthorized_call(Call);
         'false' ->
             {'num_to_dial', Number}
@@ -222,80 +189,114 @@ cccp_allowed_callee(Number) ->
             'true'
     end.
 
--spec build_bridge_offnet_request(ne_binary(), ne_binary(), binary(), ne_binary(), ne_binary(), ne_binary()) -> kz_proplist().
-build_bridge_offnet_request(CallId, ToDID, Q, CtrlQ, AccountId, OutboundCID) ->
-    props:filter_undefined(
-      [{<<"Resource-Type">>, <<"audio">>}
-      ,{<<"Application-Name">>, <<"bridge">>}
-      ,{<<"Existing-Call-ID">>, CallId}
-      ,{<<"Call-ID">>, CallId}
-      ,{<<"Control-Queue">>, CtrlQ}
-      ,{<<"To-DID">>, ToDID}
-      ,{<<"Resource-Type">>, <<"originate">>}
-      ,{<<"Outbound-Caller-ID-Number">>, OutboundCID}
-      ,{<<"Outbound-Caller-ID-Name">>, OutboundCID}
-      ,{<<"Originate-Immediate">>, 'true'}
-      ,{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
-      ,{<<"Account-ID">>, AccountId}
-       | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-      ]).
-
--spec build_bridge_request(ne_binary(), ne_binary(), binary(), ne_binary(), ne_binary()) -> kz_proplist().
-build_bridge_request(CallId, ToDID, CID, CtrlQ, AccountId) ->
-    {'ok', AccountDoc} = kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId),
-    Realm = kz_json:get_value(<<"realm">>, AccountDoc),
+-spec build_request(_,ne_binary(),_,_,_,ne_binary(),_,ne_binary(),ne_binary(),ne_binary()) -> any().
+build_request(CallId, ToDID, AuthorizingId, Q, CtrlQ, AccountId, Action, RetainCID, RetainName, RetainNumber) ->
     CCVs = [{<<"Account-ID">>, AccountId}
-           ,{<<"Authorizing-ID">>, AccountId}
-           ,{<<"Authorizing-Type">>, <<"device">>}
-           ,{<<"Presence-ID">>, <<CID/binary, "@", Realm/binary>>}
+           ,{<<"Authorizing-ID">>, AuthorizingId}
+           ,{<<"Authorizing-Type">>, <<"user">>}
+           ,{<<"Retain-CID">>, RetainCID}
            ],
-
+    Diversions = case RetainCID of
+                     <<"true">> ->
+                         Realm = kz_util:get_account_realm(AccountId),
+                         AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+                         {AccountNumber,_} = kz_attributes:maybe_get_assigned_number('undefined', 'undefined', AccountDb),
+                         [{<<"Diversions">>, [<<"<sip:", AccountNumber/binary, "@", Realm/binary, ">;reason=unconditional">>]}];
+                     <<"false">> -> []
+                 end,
     Endpoint = [
                 {<<"Invite-Format">>, <<"loopback">>}
                ,{<<"Route">>,  ToDID}
                ,{<<"To-DID">>, ToDID}
                ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+               ,{<<"Custom-SIP-Headers">>,  kz_json:from_list(Diversions)}
                ],
-
+    {CIDNumber, CIDName} = compose_cid(ToDID, RetainCID, RetainNumber, RetainName, AccountId),
     props:filter_undefined(
       [{<<"Resource-Type">>, <<"audio">>}
-      ,{<<"Application-Name">>, <<"bridge">>}
+      ,{<<"Caller-ID-Name">>, maybe_cid_name(CIDName, CIDNumber)}
+      ,{<<"Caller-ID-Number">>, CIDNumber}
+      ,{<<"Application-Name">>, Action}
       ,{<<"Endpoints">>, [kz_json:from_list(Endpoint)]}
-      ,{<<"Existing-Call-ID">>, CallId}
-      ,{<<"Control-Queue">>, CtrlQ}
       ,{<<"Resource-Type">>, <<"originate">>}
-      ,{<<"Caller-ID-Number">>, CID}
-      ,{<<"Caller-ID-Name">>, CID}
-      ,{<<"Originate-Immediate">>, 'true'}
-      ,{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
+      ,{<<"Control-Queue">>, CtrlQ}
+      ,{<<"Existing-Call-ID">>, CallId}
+      ,{<<"Originate-Immediate">>, <<"true">>}
+      ,{<<"Msg-ID">>, kz_util:rand_hex_binary(8)}
       ,{<<"Account-ID">>, AccountId}
       ,{<<"Dial-Endpoint-Method">>, <<"single">>}
-      ,{<<"Continue-On-Fail">>, 'true'}
+      ,{<<"Continue-On-Fail">>, <<"true">>}
       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+      ,{<<"Custom-SIP-Headers">>,  kz_json:from_list(Diversions)}
       ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
-       | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+       | kz_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec bridge_to_offnet(ne_binary(), ne_binary(), binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-bridge_to_offnet(CallId, ToDID, Q, CtrlQ, AccountId, AccountCID) ->
-    Req = build_bridge_offnet_request(CallId, ToDID, Q, CtrlQ, AccountId, AccountCID),
-    kapi_offnet_resource:publish_req(Req).
-
--spec bridge_to_loopback(ne_binary(), binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-bridge_to_loopback(CallId, ToDID, CID,  CtrlQ, AccountId) ->
-    Req = build_bridge_request(CallId, ToDID, CID, CtrlQ, AccountId),
+-spec bridge(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+bridge(CallId, ToDID, AuthorizingId, CtrlQ, AccountId, RetainCID, RetainName, RetainNumber) ->
+    Req = build_request(CallId, ToDID, AuthorizingId, 'undefined', CtrlQ, AccountId, <<"bridge">>, RetainCID, RetainName, RetainNumber),
     kapi_resource:publish_originate_req(Req).
 
--spec bridge(ne_binary(), ne_binary(), ne_binary(), binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-bridge(CallId, ToDID, CID, Q, CtrlQ, AccountId, AccountCID) ->
+-spec compose_cid(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
+compose_cid(ToDID, RetainCID, RetainNumber, RetainName, AccountId) ->
+    case RetainCID of
+        <<"true">> ->
+            maybe_outbound_call(ToDID, RetainNumber, RetainName, AccountId);
+        _ ->
+            {'undefined','undefined'}
+    end.
+
+-spec maybe_outbound_call(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
+maybe_outbound_call(ToDID, RetainNumber, RetainName, AccountId) ->
     case knm_converters:is_reconcilable(ToDID) of
         'true' ->
-            case knm_number:lookup_account(ToDID) of
-                {'ok',_,_} ->
-                    bridge_to_loopback(CallId, ToDID, CID, CtrlQ, AccountId);
-                _ ->
-                    bridge_to_offnet(CallId, ToDID, Q, CtrlQ, AccountId, AccountCID)
+            case knm_converters:is_reconcilable(RetainNumber) of
+                'true' ->
+                    {knm_converters:normalize(RetainNumber), RetainName};
+                'false' ->
+                    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+                    kz_attributes:maybe_get_assigned_number('undefined', RetainName, AccountDb)
             end;
-        'false' ->
-            bridge_to_loopback(CallId, ToDID, CID, CtrlQ, AccountId)
+        _ ->
+            {RetainNumber, RetainName}
+    end.
+
+-spec maybe_cid_name(ne_binary(), ne_binary()) -> ne_binary().
+maybe_cid_name(<<Name/binary>>, _) -> Name;
+maybe_cid_name(_, Number) -> Number.
+
+-spec current_account_outbound_directions(ne_binary()) -> ne_binaries().
+current_account_outbound_directions(AccountId) ->
+    [kz_json:get_value(<<"destination">>, Channel) || Channel <- current_account_channels(AccountId)
+                                                          ,kz_json:get_value(<<"direction">>, Channel) == <<"outbound">>].
+
+-spec count_user_legs(ne_binary(), ne_binary()) -> integer().
+count_user_legs(UserId, AccountId) ->
+    lists:foldl(fun(Channel, Acc) -> is_user_channel(Channel, UserId) + Acc end, 0, current_account_channels(AccountId)).
+
+-spec is_user_channel(kz_json:object(), ne_binary()) -> integer().
+is_user_channel(Channel, UserId) ->
+    case kz_json:get_value(<<"authorizing_id">>, Channel) of
+        UserId -> 1;
+        _ -> 0
+    end.
+
+-spec current_account_channels(ne_binary()) -> kz_proplist().
+current_account_channels(AccountId) ->
+    Req = [{<<"Realm">>, kz_util:get_account_realm(AccountId)}
+          ,{<<"Usernames">>, []}
+          ,{<<"Account-ID">>, AccountId}
+          ,{<<"Active-Only">>, 'false'}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case kz_amqp_worker:call_collect(Req
+                                    ,fun kapi_call:publish_query_account_channels_req/1
+                                    ,{'ecallmgr', 'true'}
+                                    )
+    of
+        {'error', _R} ->
+            lager:info("cccp could not reach ecallmgr channels: ~p", [_R]),
+            [];
+        {_OK, [Resp|_]} ->
+            kz_json:get_value(<<"Channels">>, Resp, [])
     end.
