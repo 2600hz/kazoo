@@ -32,8 +32,7 @@
         ,features/1, set_features/2
         ,feature/2, set_feature/3
         ,state/1, set_state/2
-        ,reserve_history/1, set_reserve_history/2
-        ,add_reserve_history/2, unwind_reserve_history/1
+        ,reserve_history/1, add_reserve_history/2, unwind_reserve_history/1
         ,ported_in/1, set_ported_in/2
         ,module_name/1, set_module_name/2
         ,carrier_data/1, set_carrier_data/2, update_carrier_data/2
@@ -532,12 +531,14 @@ set_reserve_history(N, History) when is_list(History) ->
     N#knm_phone_number{reserve_history=History}.
 
 -spec add_reserve_history(knm_phone_number(), ne_binary()) -> knm_phone_number().
-add_reserve_history(#knm_phone_number{reserve_history=[AccountId|_]}=PN
-                   ,AccountId=?NE_BINARY
+add_reserve_history(#knm_phone_number{reserve_history=[AccountId|_]}=N
+                   ,?MATCH_ACCOUNT_RAW(AccountId)
                    ) ->
-    PN;
-add_reserve_history(PN, AccountId=?NE_BINARY) ->
-    PN#knm_phone_number{reserve_history=[AccountId | reserve_history(PN)]}.
+    N;
+add_reserve_history(#knm_phone_number{reserve_history=ReserveHistory}=N
+                   ,?MATCH_ACCOUNT_RAW(AccountId)
+                   ) ->
+    N#knm_phone_number{reserve_history=[AccountId | ReserveHistory]}.
 
 -spec unwind_reserve_history(knm_phone_number()) -> knm_phone_number().
 unwind_reserve_history(PN) ->
