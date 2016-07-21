@@ -124,7 +124,7 @@ db_archive(#{server := {App, Conn}}=Server, DbName, Filename) ->
         'false' -> 'ok'
     end.
 
--spec db_import(map(), ne_binary(), ne_binary()) -> boolean().
+-spec db_import(map(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 db_import(#{server := {App, Conn}}=Server, DbName, Filename) ->
     case db_exists(Server, DbName) of
         'true' -> App:db_import(Conn, DbName, Filename);
