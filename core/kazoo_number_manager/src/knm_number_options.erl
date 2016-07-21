@@ -215,8 +215,8 @@ to_phone_number_setters_test_() ->
                   ,to_phone_number_setters([{'public_fields', A_1}])
                   )
     ,?_assertEqual([{fun knm_phone_number:set_auth_by/2, ?KNM_DEFAULT_AUTH_BY}
-                   ,{fun knm_phone_number:ported_in/2, 'false'}
-                   ,{fun knm_phone_number:dry_run/2, [[[]]]}
+                   ,{fun knm_phone_number:set_ported_in/2, 'false'}
+                   ,{fun knm_phone_number:set_dry_run/2, [[[]]]}
                    ]
                   ,to_phone_number_setters([{'auth_by', ?KNM_DEFAULT_AUTH_BY}
                                            ,<<"coucou">>
