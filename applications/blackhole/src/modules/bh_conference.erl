@@ -29,19 +29,19 @@ add_amqp_binding(<<"conference.command.", ConfId/binary>>, Context) ->
     AccountId = bh_context:account_id(Context),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case ConfId of
-        <<"*">> -> command_bind_all(AccountDb);
-        ConfId -> maybe_command_bind(AccountDb, ConfId)
+        <<"*">> -> command_bind_all(Context, AccountDb);
+        ConfId -> maybe_command_bind(Context, AccountDb, ConfId)
     end;
 add_amqp_binding(<<"conference.event.", Binding/binary>>, Context) ->
     AccountId = bh_context:account_id(Context),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case binary:split(Binding, <<".">>, ['global']) of
         [<<"*">>, <<"*">>] ->
-            event_bind_all(AccountDb);
+            event_bind_all(Context, AccountDb);
         [<<"*">>, _CallId] ->
             lager:debug("invalid conference event bind: ~s", [Binding]);
         [ConfId, CallId] ->
-            maybe_event_bind(AccountDb, ConfId, CallId);
+            maybe_event_bind(Context, AccountDb, ConfId, CallId);
         _Else ->
             lager:debug("invalid conference event bind: ~s", [Binding])
     end;
@@ -53,19 +53,19 @@ rm_amqp_binding(<<"conference.command.", ConfId/binary>>, Context) ->
     AccountId = bh_context:account_id(Context),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case ConfId of
-        <<"*">> -> command_unbind_all(AccountDb);
-        ConfId -> command_unbind(ConfId)
+        <<"*">> -> command_unbind_all(Context, AccountDb);
+        ConfId -> command_unbind(Context, ConfId)
     end;
 rm_amqp_binding(<<"conference.event.", Binding/binary>>, Context) ->
     AccountId = bh_context:account_id(Context),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case binary:split(Binding, <<".">>, ['global']) of
         [<<"*">>, <<"*">>] ->
-            event_unbind_all(AccountDb);
+            event_unbind_all(Context, AccountDb);
         [<<"*">>, _CallId] ->
             lager:debug("invalid conference event bind: ~s", [Binding]);
         [ConfId, CallId] ->
-            event_unbind(ConfId, CallId);
+            event_unbind(Context, ConfId, CallId);
         _Else ->
             lager:debug("invalid conference event bind: ~s", [Binding])
     end;
@@ -96,46 +96,52 @@ event_binding_options(ConfId, CallId) ->
 
 %% commands
 
-command_bind(ConfId) ->
-    blackhole_listener:add_binding('conference', command_binding_options(ConfId)).
+command_bind(Context, ConfId) ->
+    BindKey = <<"conference.command.", ConfId/binary>>,
+    blackhole_listener:add_binding('conference', command_binding_options(ConfId)),
+    blackhole_bindings:bind(BindKey, ?MODULE, 'handle_event', Context).
 
-command_unbind(ConfId) ->
-    blackhole_listener:remove_binding('conference', command_binding_options(ConfId)).
+command_unbind(Context, ConfId) ->
+    BindKey = <<"conference.command.", ConfId/binary>>,
+    blackhole_listener:remove_binding('conference', command_binding_options(ConfId)),
+    blackhole_bindings:unbind(BindKey, ?MODULE, 'handle_event', Context).
 
-command_bind_all(AccountDb) ->
-    _ = [ command_bind(ConfId) || ConfId <- all_conferences(AccountDb) ].
+command_bind_all(Context, AccountDb) ->
+    _ = [ command_bind(Context, ConfId) || ConfId <- all_conferences(AccountDb) ].
 
-command_unbind_all(AccountDb) ->
-    _ = [ command_unbind(ConfId) || ConfId <- all_conferences(AccountDb) ].
+command_unbind_all(Context, AccountDb) ->
+    _ = [ command_unbind(Context, ConfId) || ConfId <- all_conferences(AccountDb) ].
 
-maybe_command_bind(AccountDb, ConfId) ->
+maybe_command_bind(Context, AccountDb, ConfId) ->
     case kz_datamgr:open_doc(AccountDb, ConfId) of 
         {'ok', _JObj} ->
-            command_bind(ConfId);
+            command_bind(Context, ConfId);
         _ ->
             lager:error("attempt to bind to non-existent conference ~p", ConfId)
     end.
 
 %% events
 
-event_bind(ConfId, CallId) ->
-    lager:error("bind:~p ~p", [ConfId, CallId]),
+event_bind(Context, ConfId, CallId) ->
+    BindKey = kz_util:join_binary([<<"conference.event">>, ConfId, CallId], <<".">>),
     blackhole_listener:add_binding('conference', event_binding_options(ConfId, CallId)),
-    blackhole_bindings:bind(kz_util:join_binary([<<"conference.event">>, ConfId, CallId], <<".">>), ?MODULE, 'handle_event').
+    blackhole_bindings:bind(BindKey, ?MODULE, 'handle_event', Context).
 
-event_unbind(ConfId, CallId) ->
-    blackhole_listener:remove_binding('conference', event_binding_options(ConfId, CallId)).
+event_unbind(Context, ConfId, CallId) ->
+    BindKey = kz_util:join_binary([<<"conference.event">>, ConfId, CallId], <<".">>),
+    blackhole_listener:remove_binding('conference', event_binding_options(ConfId, CallId)),
+    blackhole_bindings:unbind(BindKey, ?MODULE, 'handle_event', Context).
 
-event_bind_all(AccountDb) ->
-    _ = [ event_bind(ConfId, <<"*">>) || ConfId <- all_conferences(AccountDb) ].
+event_bind_all(Context, AccountDb) ->
+    _ = [ event_bind(Context, ConfId, <<"*">>) || ConfId <- all_conferences(AccountDb) ].
 
-event_unbind_all(AccountDb) ->
-    _ = [ event_unbind(ConfId, <<"*">>) || ConfId <- all_conferences(AccountDb) ].
+event_unbind_all(Context, AccountDb) ->
+    _ = [ event_unbind(Context, ConfId, <<"*">>) || ConfId <- all_conferences(AccountDb) ].
 
-maybe_event_bind(AccountDb, ConfId, CallId) ->
+maybe_event_bind(Context, AccountDb, ConfId, CallId) ->
     case kz_datamgr:open_doc(AccountDb, ConfId) of 
         {'ok', _JObj} ->
-            event_bind(ConfId, CallId);
+            event_bind(Context, ConfId, CallId);
         _ ->
             lager:error("attempt to bind to non-existent conference ~p", ConfId)
     end.
