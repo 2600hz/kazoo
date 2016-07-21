@@ -72,14 +72,7 @@ get_current_balance(DataJObj) ->
 -spec get_balance_threshold(kz_json:object()) -> ne_binary().
 get_balance_threshold(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    case kz_account:fetch(AccountId) of
-        {'error', _} ->
-            kz_account:low_balance_threshold(kz_json:new());
-        {'ok', JObj} ->
-            ConfigCat = <<(?NOTIFY_CONFIG_CAT)/binary, ".low_balance">>,
-            Default = kapps_config:get_float(ConfigCat, <<"threshold">>, 5.00),
-            wht_util:pretty_print_dollars(kz_account:low_balance_threshold(JObj, Default))
-    end.
+    wht_util:pretty_print_dollars(kz_account:low_balance_threshold(AccountId)).
 
 -spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(DataJObj) ->

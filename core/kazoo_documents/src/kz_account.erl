@@ -218,11 +218,18 @@ set_timezone(JObj, Timezone) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec low_balance_threshold(doc()) -> api_float().
-low_balance_threshold(JObj) ->
-    low_balance_threshold(JObj, 'undefined').
+-spec low_balance_threshold(ne_binary() | doc()) -> api_float().
+low_balance_threshold(Thing) ->
+    ConfigCat = <<"notify.low_balance">>,
+    Default = kapps_config:get_float(ConfigCat, <<"threshold">>, 5.00),
+    low_balance_threshold(Thing, Default).
 
--spec low_balance_threshold(doc(), Default) -> float() | Default.
+-spec low_balance_threshold(ne_binary() | doc(), Default) -> float() | Default.
+low_balance_threshold(AccountId, Default) when is_binary(AccountId) ->
+    case fetch(AccountId) of
+        {'error', _R} -> low_balance_threshold(kz_json:new(), Default);
+        {'ok', JObj} -> low_balance_threshold(JObj, Default)
+    end;
 low_balance_threshold(JObj, Default) ->
     case kz_json:get_float_value(?LOW_BALANCE_THRESHOLD, JObj) of
         'undefined' -> topup_threshold(JObj, Default);

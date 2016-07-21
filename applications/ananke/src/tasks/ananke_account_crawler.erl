@@ -12,7 +12,6 @@
 
 -export([start_link/0]).
 -export([start_task/0, check/1
-        ,low_balance_threshold/1
         ]).
 -export([init/1
         ,handle_call/3
@@ -306,7 +305,7 @@ maybe_test_for_low_balance(AccountId, AccountJObj) ->
 
 -spec test_for_low_balance(ne_binary(), kz_account:doc()) -> 'ok'.
 test_for_low_balance(AccountId, AccountJObj) ->
-    Threshold = low_balance_threshold(AccountJObj),
+    Threshold = kz_account:low_balance_threshold(AccountJObj),
     CurrentBalance = wht_util:current_balance(AccountId),
     lager:debug("checking if account ~s balance $~w is below $~w"
                ,[AccountId, wht_util:units_to_dollars(CurrentBalance), Threshold]
@@ -401,15 +400,3 @@ update_account_low_balance_sent(AccountJObj0) ->
     AccountJObj1 = kz_account:set_low_balance_sent(AccountJObj0),
     AccountJObj2 = kz_account:set_low_balance_tstamp(AccountJObj1),
     kz_util:account_update(AccountJObj2).
-
--spec low_balance_threshold(ne_binary() | kz_account:doc()) -> float().
-low_balance_threshold(AccountId) when is_binary(AccountId) ->
-    case kz_account:fetch(AccountId) of
-        {'error', _R} -> low_balance_threshold(kz_json:new());
-        {'ok', JObj} -> low_balance_threshold(JObj)
-    end;
-low_balance_threshold(AccountJObj) ->
-    ConfigCat = <<(?NOTIFY_CONFIG_CAT)/binary, ".low_balance">>,
-    Default = kapps_config:get_float(ConfigCat, <<"threshold">>, 5.00),
-    kz_account:low_balance_threshold(AccountJObj, Default).
-
