@@ -222,11 +222,12 @@ module_name(Thing) -> carrier_module(Thing).
 -spec carrier_module(ne_binary()) -> boolean().
 carrier_module(<<"knm_bandwidth2">>) -> 'true';
 carrier_module(<<"knm_bandwidth">>) -> 'true';
-carrier_module(<<"knm_carriers">>) -> 'true';
 carrier_module(<<"knm_inum">>) -> 'true';
 carrier_module(<<"knm_local">>) -> 'true';
 carrier_module(<<"knm_managed">>) -> 'true';
 carrier_module(<<"knm_other">>) -> 'true';
+carrier_module(<<"knm_reserved">>) -> 'true';
+carrier_module(<<"knm_reserved_reseller">>) -> 'true';
 carrier_module(<<"knm_simwood">>) -> 'true';
 carrier_module(<<"knm_vitelity">>) -> 'true';
 carrier_module(<<"knm_voip_innovations">>) -> 'true';
