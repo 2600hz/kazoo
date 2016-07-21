@@ -123,22 +123,24 @@ create(Num, Options) ->
             attempt(fun create_or_load/2, [Num, Options])
     end.
 
--spec create_or_load(ne_binary(), knm_number_options:options()) -> knm_number() |
-                                                                   dry_run_return().
-create_or_load(Num, Options) ->
+-spec create_or_load(ne_binary(), knm_number_options:options()) ->
+                            knm_number() | dry_run_return().
+create_or_load(Num, Options0) ->
+    State = knm_number_options:state(Options0, ?NUMBER_STATE_AVAILABLE),
+    Options = [{'state', State} | Options0],
     create_or_load(Num, Options, knm_phone_number:fetch(Num)).
 
 -spec create_or_load(ne_binary(), knm_number_options:options(), knm_phone_number_return()) ->
                             knm_number() | dry_run_return().
 create_or_load(Num, Options, {'ok', PhoneNumber}) ->
     ensure_can_load_to_create(PhoneNumber),
-    Updates = create_updaters(Num, Options),
+    Updates = [{fun knm_phone_number:set_number/2, knm_converters:normalize(Num)}]
+        ++ knm_number_options:to_setters(Options),
     {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Updates),
     create_phone_number(set_phone_number(new(), NewPhoneNumber));
 create_or_load(Num, Options, {'error', 'not_found'}) ->
     ensure_can_create(Num, Options),
-    Updates = create_updaters(Num, Options),
-    {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    PhoneNumber = knm_phone_number:new(Num, Options),
     create_phone_number(set_phone_number(new(), PhoneNumber)).
 
 -spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true'.
@@ -260,36 +262,6 @@ ensure_number_is_not_porting(Num, Options) ->
         {'error', 'not_found'} -> 'true'
     end.
 -endif.
-
--spec create_updaters(ne_binary(), knm_number_options:options()) ->
-                             knm_phone_number:set_functions().
-create_updaters(?NE_BINARY=Num, Options) when is_list(Options) ->
-    NormalizedNum = knm_converters:normalize(Num),
-    props:filter_undefined(
-      [{fun knm_phone_number:set_number/2, NormalizedNum}
-      ,{fun knm_phone_number:set_number_db/2, knm_converters:to_db(NormalizedNum)}
-      ,{fun knm_phone_number:set_state/2
-       ,knm_number_options:state(Options, ?NUMBER_STATE_AVAILABLE)
-       }
-      ,{fun knm_phone_number:set_ported_in/2
-       ,knm_number_options:ported_in(Options)
-       }
-      ,{fun knm_phone_number:set_assign_to/2
-       ,knm_number_options:assign_to(Options)
-       }
-      ,{fun knm_phone_number:set_auth_by/2
-       ,knm_number_options:auth_by(Options)
-       }
-      ,{fun knm_phone_number:set_dry_run/2
-       ,knm_number_options:dry_run(Options)
-       }
-      ,{fun knm_phone_number:set_module_name/2
-       ,knm_number_options:module_name(Options)
-       }
-      ,{fun knm_phone_number:update_doc/2
-       ,knm_number_options:public_fields(Options)
-       }
-      ]).
 
 %%--------------------------------------------------------------------
 %% @public

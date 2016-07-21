@@ -20,6 +20,8 @@
         ,should_delete/1, should_delete/2
 
         ,default/0
+
+        ,to_setters/1
         ]).
 
 -export([account_id/1, set_account_id/2
@@ -69,6 +71,18 @@ default() ->
     [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
     ,{'dry_run', 'false'}
     ,{'batch_run', 'false'}
+    ].
+
+-spec to_setters(options()) -> knm_phone_number:set_functions().
+to_setters(Options) ->
+    [case Option of
+         'public_fields' ->
+             {fun knm_phone_number:update_doc/2, Value};
+         _ ->
+             FName = kz_util:to_atom("set_" ++ atom_to_list(Option)),
+             {fun knm_phone_number:FName/2, Value}
+     end
+     || {Option, Value} <- Options
     ].
 
 -spec dry_run(options()) -> boolean().

@@ -101,6 +101,7 @@ new(DID, Options) ->
                 ,{fun set_auth_by/2, knm_number_options:auth_by(Options)}
                 ,{fun set_dry_run/2, knm_number_options:dry_run(Options)}
                 ,{fun set_batch_run/2, knm_number_options:batch_run(Options)}
+                ,{fun set_ported_in/2, knm_number_options:ported_in(Options)}
                 ,{fun update_doc/2, knm_number_options:public_fields(Options)}
                 ]),
     PhoneNumber.
