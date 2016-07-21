@@ -106,8 +106,8 @@ help() ->
      }
 
     ,{<<"import">>
-     ,kz_json:from_list([{<<"description">>, <<"Bulk-import numbers">>}
-                        ,{<<"doc">>, <<"Creates numbers using superadmin privileges.\n"
+     ,kz_json:from_list([{<<"description">>, <<"Bulk-import numbers using superadmin privileges">>}
+                        ,{<<"doc">>, <<"Creates numbers from fields similar to list tasks.\n"
                                        "Note: number must be E164-formatted.\n"
                                        "Note: number must not be in the system already.\n"
                                        "If `account_id` is empty, number state will be 'available'.\n"
