@@ -2265,15 +2265,20 @@
                     "required": false,
                     "type": "string"
                 },
-                "outbound_cid": {
-                    "description": "CID you would like to call out with",
+                "max_concurent_calls_per_user": {
+                    "description": "Calls per user limit. Counts all user's legs and compares to max_concurent_calls_per_user multiplied by 2",
                     "required": false,
-                    "type": "string"
+                    "type": "integer"
                 },
                 "pin": {
                     "description": "PIN to authorize",
                     "required": false,
                     "type": "string"
+                },
+                "retain_cid": {
+                    "description": "Pass initial caller number to the callee",
+                    "required": false,
+                    "type": "boolean"
                 },
                 "user_id": {
                     "description": "The ID of the user object that 'owns' cid/pin",
@@ -5897,6 +5902,32 @@
                     },
                     "required": true,
                     "type": "object"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "queue_update": {
+            "description": "Schema for queue update request",
+            "name": "Call Update",
+            "properties": {
+                "action": {
+                    "description": "Action to perform",
+                    "enum": [
+                        "login",
+                        "logout"
+                    ],
+                    "name": "Action",
+                    "required": true,
+                    "type": "string"
+                },
+                "queue_id": {
+                    "description": "Queue Identifier",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "name": "Queue ID",
+                    "required": true,
+                    "type": "string"
                 }
             },
             "required": true,
