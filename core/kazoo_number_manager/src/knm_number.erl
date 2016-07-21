@@ -1,4 +1,4 @@
-                                                %-------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 %%% @copyright (C) 2015-2016, 2600Hz INC
 %%% @doc
 %%%
@@ -86,7 +86,8 @@ is_number(_) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Attempts to get a number from DB.
+%% @doc
+%% Attempts to get a number from DB.
 %% Note: Number parameter has to be normalized.
 %% Note: get/1,2 should not throw, instead returns: {ok,_} | {error,_} | ...
 %% @end
@@ -112,11 +113,14 @@ get_number(Num, Options) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Attempts to create a new number in DB or modify an existing one.
+%% Note: `assign_to' number option MUST be set.
 %% @end
 %%--------------------------------------------------------------------
 -spec create(ne_binary(), knm_number_options:options()) ->
                     knm_number_return().
 create(Num, Options) ->
+    ?MATCH_ACCOUNT_RAW(_) = knm_number_options:assign_to(Options),
     case knm_converters:is_reconcilable(Num) of
         'false' -> {'error', knm_errors:to_json('not_reconcilable', Num)};
         'true' ->
@@ -561,7 +565,8 @@ maybe_update_assignment(Number, NewApp) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec lookup_account(api_binary()) -> lookup_account_return().
-lookup_account('undefined') -> {'error', 'not_reconcilable'};
+lookup_account('undefined') ->
+    {'error', 'not_reconcilable'};
 lookup_account(Num) ->
     NormalizedNum = knm_converters:normalize(Num),
     Key = {'account_lookup', NormalizedNum},
