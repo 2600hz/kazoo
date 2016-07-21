@@ -25,9 +25,13 @@
         ,version/1
         ,license/1
         ,price/1
+        ,phase/1
         ,screenshots/1
         ,urls/1
         ,account_id/1
+        ,users/1
+        ,allowed_users/1
+        ,masqueradable/1
         ]).
 
 -include("kz_documents.hrl").
@@ -43,8 +47,12 @@
 -define(VERSION, <<"version">>).
 -define(LICENSE, <<"license">>).
 -define(PRICE, <<"price">>).
+-define(PHASE, <<"phase">>).
 -define(SCREENSHOTS, <<"screenshots">>).
 -define(URLS, <<"urls">>).
+-define(USERS, <<"users">>).
+-define(ALLOWED_USERS, <<"allowed_users">>).
+-define(MASQUERADABLE, <<"masqueradable">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -181,6 +189,15 @@ price(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec phase(kz_json:object()) -> api_binary().
+phase(JObj) ->
+    kz_json:get_ne_binary_value(?PHASE, JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec screenshots(kz_json:object()) -> ne_binaries().
 screenshots(JObj) ->
     kz_json:get_list_value(?SCREENSHOTS, JObj).
@@ -202,3 +219,30 @@ urls(JObj) ->
 -spec account_id(kz_json:object()) -> ne_binary().
 account_id(JObj) ->
     kz_doc:account_id(JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec users(kz_json:object()) -> api_binaries().
+users(JObj) ->
+    kz_json:get_value(?USERS, JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec allowed_users(kz_json:object()) -> api_binaries().
+allowed_users(JObj) ->
+    kz_json:get_value(?ALLOWED_USERS, JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec masqueradable(kz_json:object()) -> boolean().
+masqueradable(JObj) ->
+    kz_json:is_true(?MASQUERADABLE, JObj, 'true').
