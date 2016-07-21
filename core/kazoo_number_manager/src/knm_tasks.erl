@@ -19,7 +19,7 @@
 -export([e164/1
         ,account_id/1
         ,auth_by/1
-        ,module_name/1, carrier_module/1
+        ,carrier_module/1
         ]).
 
 %% Appliers
@@ -214,10 +214,6 @@ account_id(_) -> 'false'.
 auth_by('undefined') -> 'true';
 auth_by(?MATCH_ACCOUNT_RAW(_)) -> 'true';
 auth_by(_) -> 'false'.
-
--spec module_name(api_binary()) -> boolean().
-module_name('undefined') -> 'true';
-module_name(Thing) -> carrier_module(Thing).
 
 -spec carrier_module(ne_binary()) -> boolean().
 carrier_module(<<"knm_bandwidth2">>) -> 'true';
