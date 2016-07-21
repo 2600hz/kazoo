@@ -229,7 +229,7 @@ carrier_module(_) -> 'false'.
 
 -spec list(kz_proplist(), task_iterator()) -> task_iterator().
 list(Props, 'init') ->
-    ForAccount = auth_account_id(Props),
+    ForAccount = props:get_value('account_id', Props),
     Subs  = [ForAccount | get_descendants(ForAccount)],
     {'ok', Subs};
 list(_, []) ->
@@ -238,7 +238,7 @@ list(_, [?MATCH_ACCOUNT_RAW(AccountId) | Rest]) ->
     AccountDb = kz_util:format_account_db(AccountId),
     {'ok', knm_numbers:account_listing(AccountDb) ++ Rest};
 list(Props, [{E164,JObj} | Rest]) ->
-    AuthBy = auth_account_id(Props),
+    AuthBy = props:get_value('auth_account_id', Props),
     Row = list_number_row(AuthBy, E164, JObj),
     {Row, Rest}.
 
@@ -313,21 +313,21 @@ import(_Props, E164, AccountId, Carrier
 
 -spec assign_to(kz_proplist(), ne_binary(), ne_binary()) -> task_return().
 assign_to(Props, Number, AccountId) ->
-    Options = [{'auth_by', auth_account_id(Props)}
+    Options = [{'auth_by', props:get_value('auth_account_id', Props)}
               ,{'batch_run', 'true'}
               ],
     handle_result(knm_number:move(Number, AccountId, Options)).
 
 -spec release(kz_proplist(), ne_binary()) -> task_return().
 release(Props, Number) ->
-    Options = [{'auth_by', auth_account_id(Props)}
+    Options = [{'auth_by', props:get_value('auth_account_id', Props)}
               ,{'batch_run', 'true'}
               ],
     handle_result(knm_number:release(Number, Options)).
 
 -spec reserve(kz_proplist(), ne_binary(), ne_binary()) -> task_return().
 reserve(Props, Number, AccountId) ->
-    Options = [{'auth_by', auth_account_id(Props)}
+    Options = [{'auth_by', props:get_value('auth_account_id', Props)}
               ,{'batch_run', 'true'}
               ,{'assign_to', AccountId}
               ],
@@ -335,7 +335,7 @@ reserve(Props, Number, AccountId) ->
 
 -spec delete(kz_proplist(), ne_binary()) -> task_return().
 delete(Props, Number) ->
-    AuthAccountId = auth_account_id(Props),
+    AuthAccountId = props:get_value('auth_account_id', Props),
     case kz_util:is_system_admin(AuthAccountId) of
         'false' -> <<"not a system admin">>;
         'true' ->
@@ -360,10 +360,6 @@ handle_result({'error', KNMError}) ->
         'undefined' -> knm_errors:error(KNMError);
         Reason -> Reason
     end.
-
--spec auth_account_id(kz_proplist()) -> api_binary().
-auth_account_id(Props) ->
-    props:get_value('auth_account_id', Props).
 
 %%--------------------------------------------------------------------
 %% @private

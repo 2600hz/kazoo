@@ -74,6 +74,7 @@ curl -v -X GET \
     "data": [
         {
             "account_id": "{ACCOUNT_ID}",
+            "auth_account_id": "{AUTH_ACCOUNT_ID}",
             "action": "add",
             "category": "number_management",
             "created": 63632526992,
@@ -83,6 +84,7 @@ curl -v -X GET \
         },
         {
             "account_id": "{ACCOUNT_ID}",
+            "auth_account_id": "{AUTH_ACCOUNT_ID}",
             "action": "add",
             "category": "number_management",
             "created": 63632526924,
@@ -142,6 +144,7 @@ curl -v -X PUT \
     "data": {
         "_read_only": {
             "account_id": "{ACCOUNT_ID}",
+            "auth_account_id": "{AUTH_ACCOUNT_ID}",
             "action": "{ACTION}",
             "category": "{CATEGORY}",
             "id": "edfb48ea9617fa6832e43ce676c53f",
@@ -305,6 +308,7 @@ curl -v -X DELETE \
     "data": {
         "_read_only": {
             "account_id": "{ACCOUNT_ID}",
+            "auth_account_id": "{AUTH_ACCOUNT_ID}",
             "action": "add",
             "category": "number_management",
             "end_timestamp": 63632524230,
@@ -374,6 +378,7 @@ curl -v -X GET \
     "data": {
         "_read_only": {
             "account_id": "{ACCOUNT_ID}",
+            "auth_account_id": "{AUTH_ACCOUNT_ID}",
             "action": "list",
             "category": "number_management",
             "created": 63633924886,
@@ -425,6 +430,7 @@ curl -v -X PATCH \
     "data": {
         "_read_only": {
             "account_id": "{ACCOUNT_ID}",
+            "auth_account_id": "{AUTH_ACCOUNT_ID}",
             "action": "add",
             "category": "number_management",
             "id": "{TASK_ID}",

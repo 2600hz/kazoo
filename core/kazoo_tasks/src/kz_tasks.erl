@@ -12,7 +12,7 @@
 %%% Public API
 -export([start_link/0]).
 -export([help/0, help/1, help/2]).
--export([new/5
+-export([new/6
         ,start/1
         ,read/1
         ,all/0, all/1
@@ -198,11 +198,12 @@ start(TaskId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary(), ne_binary(), ne_binary(), api_pos_integer(), input()) ->
+-spec new(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_pos_integer(), input()) ->
                  {'ok', kz_json:object()} |
                  help_error() |
                  {'error', kz_json:object()}.
-new(?MATCH_ACCOUNT_RAW(_)=AccountId, Category=?NE_BINARY, Action=?NE_BINARY, TotalRows, Input)
+new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
+   ,Category=?NE_BINARY, Action=?NE_BINARY, TotalRows, Input)
   when is_integer(TotalRows), TotalRows > 0;
        TotalRows == 'undefined', Input == 'undefined' ->
     case help(Category, Action) of
@@ -218,7 +219,8 @@ new(?MATCH_ACCOUNT_RAW(_)=AccountId, Category=?NE_BINARY, Action=?NE_BINARY, Tot
                                maps:to_list(Errors))),
                     {'error', JObj};
                 _ ->
-                    gen_server:call(?SERVER, {'new', AccountId, Category, Action, TotalRows})
+                    Msg = {'new', AuthAccountId, AccountId, Category, Action, TotalRows},
+                    gen_server:call(?SERVER, Msg)
             end
     end.
 
@@ -406,12 +408,14 @@ handle_call({'help', Category, Action}, _From, State=#state{apis = Categories}) 
             end
     end;
 
-handle_call({'new', AccountId, Category, Action, TotalRows}, _From, State) ->
+handle_call({'new', AuthAccountId, AccountId, Category, Action, TotalRows}, _From, State) ->
     lager:debug("creating ~s/~s task (~p)", [Category, Action, TotalRows]),
+    lager:debug("using auth ~s and account ~s", [AuthAccountId, AccountId]),
     TaskId = ?A_TASK_ID,
     Task = #{ worker_pid => 'undefined'
             , worker_node => 'undefined'
             , account_id => AccountId
+            , auth_account_id => AuthAccountId
             , id => TaskId
             , category => Category
             , action => Action
@@ -654,6 +658,7 @@ handle_call_start_task(#{ finished := Finished
     ?REPLY(State, {'error', 'already_started'});
 handle_call_start_task(Task=#{ id := TaskId
                              , account_id := AccountId
+                             , auth_account_id := AuthAccountId
                              , category := Category
                              , action := Action
                              }
@@ -667,14 +672,16 @@ handle_call_start_task(Task=#{ id := TaskId
     API = maps:get(Action, maps:get(Category, APIs)),
     lager:debug("API ~s", [kz_json:encode(API)]),
     WorkerModule = worker_module(API),
-    lager:debug("using worker type: ~s", [WorkerModule]),
+    lager:debug("worker type: ~s", [WorkerModule]),
     Node = maps:get(Category, Nodes),
     Module = maps:get(Category, Modules),
     lager:debug("app ~s module ~s node ~s", [maps:get(Category, Apps), Module, Node]),
     Function = kz_util:to_atom(Action, 'true'),
     Fields = mandatory(API) ++ optional(API),
-    ExtraArgs = [{'auth_account_id', AccountId}
+    ExtraArgs = [{'account_id', AccountId}
+                ,{'auth_account_id', AuthAccountId}
                 ],
+    lager:debug("extra args: ~p", [ExtraArgs]),
     %% Task needs to run where App is started.
     Job = fun () -> WorkerModule:start(TaskId, Module, Function, ExtraArgs, Fields) end,
     try erlang:spawn_link(kz_util:to_atom(Node, 'true'), Job) of
@@ -713,6 +720,7 @@ from_json(Doc) ->
 to_json(#{id := TaskId
          ,worker_node := Node
          ,account_id := AccountId
+         ,auth_account_id := AuthAccountId
          ,category := Category
          ,action := Action
          ,created := Created
@@ -728,6 +736,7 @@ to_json(#{id := TaskId
         ,{?PVT_TYPE, ?KZ_TASKS_DOC_TYPE}
         ,{?PVT_WORKER_NODE, Node}
         ,{?PVT_ACCOUNT_ID, AccountId}
+        ,{?PVT_AUTH_ACCOUNT_ID, AuthAccountId}
         ,{?PVT_CATEGORY, Category}
         ,{?PVT_ACTION, Action}
         ,{?PVT_CREATED, Created}

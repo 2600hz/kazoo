@@ -32,7 +32,7 @@
 Note: set timeout to 300 seconds or more when your `{CSV_FILE}` fails to upload.
 
 ```shell
-{SUP} -t 300 kazoo_tasks_maintenance add {ACCOUNT_ID} {CATEGORY} {ACTION} {CSV_FILE}
+{SUP} -t 300 kazoo_tasks_maintenance add {AUTH_ACCOUNT_ID} {ACCOUNT_ID} {CATEGORY} {ACTION} {CSV_FILE}
 ```
 
 
