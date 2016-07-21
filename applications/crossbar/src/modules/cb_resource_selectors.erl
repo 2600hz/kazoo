@@ -677,13 +677,18 @@ maybe_override_csv_config(Context, CsvConfig) ->
 
 -spec get_selector_data_from_row(strings(), integer(), integer()) -> {api_binary(), api_binary()}.
 get_selector_data_from_row(Row, SelectorCol, ValueCol)
-  when is_integer(SelectorCol) andalso is_integer(ValueCol)
-       andalso SelectorCol > 0 andalso ValueCol > 0
-       andalso length(Row) >= SelectorCol andalso length(Row) >= ValueCol
+  when is_integer(SelectorCol)
+       andalso is_integer(ValueCol)
+       andalso SelectorCol > 0
+       andalso ValueCol > 0
+       andalso length(Row) >= SelectorCol
+       andalso length(Row) >= ValueCol
        ->
     {kz_util:to_binary(lists:nth(SelectorCol, Row)), kz_util:to_binary(lists:nth(ValueCol, Row))};
 get_selector_data_from_row(Row, SelectorCol, _ValueCol)
-  when is_integer(SelectorCol) andalso SelectorCol > 0 andalso length(Row) >= SelectorCol
+  when is_integer(SelectorCol)
+       andalso SelectorCol > 0
+       andalso length(Row) >= SelectorCol
        ->
     {kz_util:to_binary(lists:nth(SelectorCol, Row)), 'undefined'};
 get_selector_data_from_row(_Row, _SelectorCol, _ValueCol) -> {'undefined', 'undefined'}.

@@ -141,7 +141,8 @@ maybe_credit_billing_id(Context) ->
     CreditAccountId = cb_context:account_id(Context),
 
     case kz_services:find_reseller_id(CreditAccountId) of
-        MasterAccountId when AuthAccountId =:= MasterAccountId andalso CreditAccountId =:= MasterAccountId ->
+        MasterAccountId when AuthAccountId =:= MasterAccountId
+                             andalso CreditAccountId =:= MasterAccountId ->
             lager:debug("master account is about to credit himself - should be always free"),
             free_credit(Context);
         MasterAccountId when AuthAccountId =:= MasterAccountId ->

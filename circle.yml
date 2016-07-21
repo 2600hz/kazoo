@@ -2,7 +2,7 @@ machine:
   environment:
     OTP_VERSION: 18.2
     PATH: ${HOME}/.kerl/$OTP_VERSION/bin:${PATH}
-    CHANGED: 'git --no-pager diff HEAD origin/master --name-only'
+    CHANGED: 'git --no-pager diff --name-only HEAD origin/master -- applications core'
   services:
     - rabbitmq-server
 #    - couchdb-server
@@ -34,7 +34,7 @@ test:
     - $CHANGED
     - ./scripts/state-of-docs.sh || true
     - ./scripts/validate-js.sh $($CHANGED)
-    - ./scripts/code_checks.bash
+    - ./scripts/code_checks.bash $($CHANGED)
     - |
       if [[ ! -z "$($CHANGED)" ]]; then
         TO_FMT="$(echo $($CHANGED))" make fmt

@@ -261,7 +261,8 @@ validate_request(DeviceId, Context) ->
 changed_mac_address(Context) ->
     NewAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
     OldAddress = kz_json:get_ne_value(?KEY_MAC_ADDRESS, cb_context:fetch(Context, 'db_doc')),
-    NewAddress =:= OldAddress orelse unique_mac_address(NewAddress, Context).
+    NewAddress =:= OldAddress
+        orelse unique_mac_address(NewAddress, Context).
 
 -spec check_mac_address(api_binary(), cb_context:context()) -> cb_context:context().
 check_mac_address(DeviceId, Context) ->

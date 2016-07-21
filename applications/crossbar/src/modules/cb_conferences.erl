@@ -271,18 +271,26 @@ handle_conference_action(Context, ConferenceId, Action) ->
 -spec handle_participants_action(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 handle_participants_action(Context, ConferenceId, Action=?MUTE) ->
     handle_participants_action(Context, ConferenceId, Action,
-                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_true(<<"Speak">>, P) end);
+                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P)
+                                             andalso kz_json:is_true(<<"Speak">>, P)
+                               end);
 handle_participants_action(Context, ConferenceId, Action=?UNMUTE) ->
     handle_participants_action(Context, ConferenceId, Action,
-                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_false(<<"Speak">>, P) end);
+                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P)
+                                             andalso kz_json:is_false(<<"Speak">>, P)
+                               end);
 handle_participants_action(Context, ConferenceId, Action=?DEAF) ->
     handle_participants_action(Context, ConferenceId, Action,
-                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_true(<<"Hear">>, P) end);
+                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P)
+                                             andalso kz_json:is_true(<<"Hear">>, P)
+                               end);
 handle_participants_action(Context, ConferenceId, Action=?UNDEAF) ->
     handle_participants_action(Context, ConferenceId, Action,
-                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P) andalso kz_json:is_false(<<"Hear">>, P) end);
+                               fun(P) -> kz_json:is_false(<<"Is-Moderator">>, P)
+                                             andalso kz_json:is_false(<<"Hear">>, P)
+                               end);
 handle_participants_action(Context, ConferenceId, Action=?KICK) ->
-    handle_participants_action(Context, ConferenceId, Action, fun(_) -> true end);
+    handle_participants_action(Context, ConferenceId, Action, fun(_) -> 'true' end);
 handle_participants_action(Context, _ConferenceId, _Action) ->
     lager:error("unhandled conference id ~p participants action: ~p", [_ConferenceId, _Action]),
     cb_context:add_system_error('faulty_request', Context).
