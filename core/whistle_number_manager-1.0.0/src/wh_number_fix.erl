@@ -136,7 +136,7 @@ get_trunkstore_numbers(AccountId) ->
 -spec get_callflow_numbers(ne_binary()) -> ne_binaries().
 get_callflow_numbers(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:get_all_results(AccountDb, <<"callflow/listing_by_number">>) of
+    case couch_mgr:get_all_results(AccountDb, <<"callflows/listing_by_number">>) of
         {'ok', JObjs} -> couch_mgr:get_result_keys(JObjs);
         {'error', _E} ->
             io:format("failed to get callflow numbers: ~p~n", [_E]),
