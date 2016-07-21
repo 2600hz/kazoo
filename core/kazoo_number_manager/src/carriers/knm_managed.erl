@@ -200,7 +200,7 @@ update_doc(Number, UpdateProps) ->
             knm_errors:database_error(Reason, PhoneNumber);
         {'ok', UpdatedDoc} ->
             knm_number:set_phone_number(Number
-                                       ,knm_phone_number:from_json(UpdatedDoc)
+                                       ,knm_phone_number:update_carrier_data(PhoneNumber, UpdatedDoc)
                                        )
     end.
 
