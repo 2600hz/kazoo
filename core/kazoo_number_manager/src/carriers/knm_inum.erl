@@ -146,7 +146,7 @@ generate_numbers(AccountId, Number, Quantity)
   when is_integer(Number),
        is_integer(Quantity),
        Quantity > 0 ->
-    _R = save_doc(AccountId, kz_util:to_binary(Number)),
+    _R = save_doc(AccountId, <<"+",(kz_util:to_binary(Number))/binary>>),
     lager:info("number ~p/~p/~p", [Number, Quantity, _R]),
     generate_numbers(AccountId, Number+1, Quantity-1).
 

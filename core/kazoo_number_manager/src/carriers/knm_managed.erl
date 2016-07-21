@@ -143,7 +143,7 @@ generate_numbers(?MATCH_ACCOUNT_RAW(AccountId), Number, Quantity)
   when Quantity > 0
        andalso is_integer(Number)
        andalso is_integer(Quantity) ->
-    {'ok', _JObj} = save_doc(AccountId, kz_util:to_binary(Number)),
+    {'ok', _JObj} = save_doc(AccountId, <<"+",(kz_util:to_binary(Number))/binary>>),
     generate_numbers(AccountId, Number+1, Quantity-1).
 
 -spec import_numbers(ne_binary(), ne_binaries()) -> kz_json:object().
