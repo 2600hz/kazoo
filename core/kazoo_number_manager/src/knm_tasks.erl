@@ -18,7 +18,6 @@
 %% Verifiers
 -export([e164/1
         ,account_id/1
-        ,auth_by/1
         ,carrier_module/1
         ]).
 
@@ -26,10 +25,10 @@
 -export([list/2
         ,list_all/2
         ,import/16
-        ,assign_to/4
-        ,release/3
-        ,reserve/4
-        ,delete/3
+        ,assign_to/3
+        ,release/2
+        ,reserve/3
+        ,delete/2
         ]).
 
 -include("knm.hrl").
@@ -148,7 +147,7 @@ help() ->
                         ,{<<"mandatory">>, [<<"e164">>
                                            ,<<"account_id">>
                                            ]}
-                        ,{<<"optional">>, [<<"auth_by">>
+                        ,{<<"optional">>, [
                                           ]}
                         ])
      }
@@ -163,7 +162,7 @@ help() ->
                         ,{<<"expected_content">>, <<"text/csv">>}
                         ,{<<"mandatory">>, [<<"e164">>
                                            ]}
-                        ,{<<"optional">>, [<<"auth_by">>
+                        ,{<<"optional">>, [
                                           ]}
                         ])
      }
@@ -179,7 +178,7 @@ help() ->
                         ,{<<"mandatory">>, [<<"e164">>
                                            ,<<"account_id">>
                                            ]}
-                        ,{<<"optional">>, [<<"auth_by">>
+                        ,{<<"optional">>, [
                                           ]}
                         ])
      }
@@ -194,7 +193,7 @@ help() ->
                         ,{<<"expected_content">>, <<"text/csv">>}
                         ,{<<"mandatory">>, [<<"e164">>
                                            ]}
-                        ,{<<"optional">>, [<<"auth_by">>
+                        ,{<<"optional">>, [
                                           ]}
                         ])
      }
@@ -209,11 +208,6 @@ e164(_) -> 'false'.
 -spec account_id(ne_binary()) -> boolean().
 account_id(?MATCH_ACCOUNT_RAW(_)) -> 'true';
 account_id(_) -> 'false'.
-
--spec auth_by(api_binary()) -> boolean().
-auth_by('undefined') -> 'true';
-auth_by(?MATCH_ACCOUNT_RAW(_)) -> 'true';
-auth_by(_) -> 'false'.
 
 -spec carrier_module(ne_binary()) -> boolean().
 carrier_module(<<"knm_bandwidth2">>) -> 'true';
@@ -235,20 +229,16 @@ carrier_module(_) -> 'false'.
 
 -spec list(kz_proplist(), task_iterator()) -> task_iterator().
 list(Props, 'init') ->
-    ForAccount = auth_by('undefined', Props),
+    ForAccount = props:get_value('account_id', Props),
     Subs  = [ForAccount | get_descendants(ForAccount)],
-    lager:debug(">>>~p ~p", [length(Subs), Subs]),
     {'ok', Subs};
 list(_, []) ->
-    lager:debug(">>>"),
     'stop';
 list(_, [?MATCH_ACCOUNT_RAW(AccountId) | Rest]) ->
-    lager:debug(">>> ~p", [AccountId]),
     AccountDb = kz_util:format_account_db(AccountId),
     {'ok', knm_numbers:account_listing(AccountDb) ++ Rest};
 list(Props, [{E164,JObj} | Rest]) ->
-    lager:debug(">>> ~p", [E164]),
-    AuthBy = auth_by('undefined', Props),
+    AuthBy = props:get_value('auth_account_id', Props),
     Row = list_number_row(AuthBy, E164, JObj),
     {Row, Rest}.
 
@@ -321,31 +311,31 @@ import(_Props, E164, AccountId, Carrier
               ],
     handle_result(knm_number:create(E164, Options)).
 
--spec assign_to(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> task_return().
-assign_to(Props, Number, AccountId, AuthBy) ->
-    Options = [{'auth_by', auth_by(AuthBy, Props)}
+-spec assign_to(kz_proplist(), ne_binary(), ne_binary()) -> task_return().
+assign_to(Props, Number, AccountId) ->
+    Options = [{'auth_by', props:get_value('auth_account_id', Props)}
               ,{'batch_run', 'true'}
               ],
     handle_result(knm_number:move(Number, AccountId, Options)).
 
--spec release(kz_proplist(), ne_binary(), api_binary()) -> task_return().
-release(Props, Number, AuthBy) ->
-    Options = [{'auth_by', auth_by(AuthBy, Props)}
+-spec release(kz_proplist(), ne_binary()) -> task_return().
+release(Props, Number) ->
+    Options = [{'auth_by', props:get_value('auth_account_id', Props)}
               ,{'batch_run', 'true'}
               ],
     handle_result(knm_number:release(Number, Options)).
 
--spec reserve(kz_proplist(), ne_binary(), ne_binary(), api_binary()) -> task_return().
-reserve(Props, Number, AccountId, AuthBy) ->
-    Options = [{'auth_by', auth_by(AuthBy, Props)}
+-spec reserve(kz_proplist(), ne_binary(), ne_binary()) -> task_return().
+reserve(Props, Number, AccountId) ->
+    Options = [{'auth_by', props:get_value('auth_account_id', Props)}
               ,{'batch_run', 'true'}
               ,{'assign_to', AccountId}
               ],
     handle_result(knm_number:reserve(Number, Options)).
 
--spec delete(kz_proplist(), ne_binary(), api_binary()) -> task_return().
-delete(Props, Number, AuthBy) ->
-    AuthAccountId = auth_by(AuthBy, Props),
+-spec delete(kz_proplist(), ne_binary()) -> task_return().
+delete(Props, Number) ->
+    AuthAccountId = props:get_value('auth_account_id', Props),
     case kz_util:is_system_admin(AuthAccountId) of
         'false' -> <<"not a system admin">>;
         'true' ->
@@ -370,10 +360,6 @@ handle_result({'error', KNMError}) ->
         'undefined' -> knm_errors:error(KNMError);
         Reason -> Reason
     end.
-
--spec auth_by(api_binary(), kz_proplist()) -> api_binary().
-auth_by('undefined', Props) -> props:get_value('auth_account_id', Props);
-auth_by(AuthBy, _) -> AuthBy.
 
 %%--------------------------------------------------------------------
 %% @private

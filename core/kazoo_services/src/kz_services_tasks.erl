@@ -75,7 +75,7 @@ help() ->
 
 -spec descendant_quantities(kz_proplist(), task_iterator()) -> task_iterator().
 descendant_quantities(Props, 'init') ->
-    Descendants = get_descendants(props:get_value('auth_account_id', Props)),
+    Descendants = get_descendants(props:get_value('account_id', Props)),
     DescendantsMoDBs = lists:flatmap(fun kapps_util:get_account_mods/1, Descendants),
     lager:debug("found ~p descendants & ~p MoDBs in total"
                ,[length(Descendants), length(DescendantsMoDBs)]),

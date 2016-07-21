@@ -268,7 +268,14 @@ put(Context) ->
     IsCSV = is_content_type_csv(Context),
     CSVorJSON = attached_data(Context, IsCSV),
     TotalRows = cb_context:fetch(Context, 'total_rows'),
-    case kz_tasks:new(cb_context:account_id(Context), Category, Action, TotalRows, CSVorJSON) of
+    case kz_tasks:new(cb_context:auth_account_id(Context)
+                     ,cb_context:account_id(Context)
+                     ,Category
+                     ,Action
+                     ,TotalRows
+                     ,CSVorJSON
+                     )
+    of
         {'ok', TaskJObj} ->
             TaskId = kz_json:get_value([<<"_read_only">>, <<"id">>], TaskJObj),
             save_attached_data(set_db(Context), TaskId, CSVorJSON, IsCSV),
