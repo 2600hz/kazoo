@@ -26,8 +26,10 @@ handle_req(JObj, _Props) ->
     'true' = kapi_route:req_v(JObj),
     case kz_json:get_ne_value(?CCV(<<"Account-ID">>), JObj) of
         'undefined' -> maybe_relay_request(JObj);
-        AccountId -> lager:debug("fetch-id ~s already has account-id ~s, skipping.",
-                                 [kapi_route:fetch_id(JObj), AccountId])
+        AccountId ->
+            lager:debug("fetch-id ~s already has account-id ~s, skipping."
+                       ,[kapi_route:fetch_id(JObj), AccountId]
+                       )
     end.
 
 %%--------------------------------------------------------------------
@@ -160,7 +162,7 @@ maybe_format_destination(_, JObj) ->
                 'undefined' -> JObj;
                 Resource ->
                     Formatters = props:get_value(<<"Formatters">>, Resource, kz_json:new()),
-                    stepswitch_formatters:apply(JObj, Formatters, 'inbound')
+                    kz_formatters:apply(JObj, Formatters, 'inbound')
             end
     end.
 

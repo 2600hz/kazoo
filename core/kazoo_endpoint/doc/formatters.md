@@ -1,11 +1,14 @@
-/*
-Section: Stepswitch
-Title: Formatters
-Language: en-US
-Version: 3.18
-*/
+### Formatters
 
-# Formatting fields
+#### About formatters
+
+It is all about control!
+
+With [numbers])https://github.com/2600hz/kazoo/blob/master/doc/internationalization/numbers.md) controlling how Kazoo processes phone numbers into and out of the system, it only made sense to add functionality to control the format of other fields that are commonly found.
+
+Enter *formatters*!
+
+#### Carriers
 
 When a call enters Kazoo from a carrier, Stepswitch receives the route request first (since no account information exists to identify the context of the call). Stepswitch will process this request to figure out what account the request is destined for and will replay the route request with the associated information.
 
@@ -18,11 +21,16 @@ On the resource document, define a key `Formatters` which is a JSON object of ro
      ,"formatters":{
          "request":{...}
          ,"from":[{...},{...}]
-         ,"caller-id-number":{...}
+         ,"caller_id_number":{...}
          ...
      }
 
 In the above partial example, the resource has defined formatters for the `request` and `caller-id-number` fields, and a list of two formatters for the `from` field.
+
+#### Devices, users, accounts
+
+It can be desirable to control the format of fields going to registered devices. You can place the `formatters` object on a device, user, or account, to have it be used when processing calls to endpoints. The `formatter` object(s) will be merged before being applied to the endpoint.
+
 
 ## Formatter format
 
@@ -148,3 +156,17 @@ The system configuration document `stepswitch` containes the property `format_fr
 ```
 sip:+14158867900@kazoo.account.realm
 ```
+
+### Caller-ID reformatting
+
+The caller ID presented to the device can be altered by creating a formatter object for `caller_id_number`. If you just want to capture the 10-digit number (in the US) for instance, the value could be:
+
+```json
+"formatters":{
+    "caller_id_number":{
+        "regex":"(\\d{10})$"
+    }
+}
+```
+
+This would match caller id numbers that end with 10 digits and capture them as the value to be used.

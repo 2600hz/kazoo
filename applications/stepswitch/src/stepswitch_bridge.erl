@@ -296,34 +296,30 @@ maybe_bridge_emergency(#state{resource_req=OffnetReq
         _Else ->
             Number = bridge_emergency_cid_number(OffnetReq),
             lager:debug("not enforcing emergency caller id validation when using resource from account ~s", [_Else]),
-            kapi_dialplan:publish_command(
-              ControlQ
+            kapi_dialplan:publish_command(ControlQ
                                          ,build_bridge(State, Number, Name)
-             ),
+                                         ),
             lager:debug("sent bridge command to ~s", [ControlQ])
     end.
 
 -spec maybe_deny_emergency_bridge(state(), api_binary(), api_binary()) -> 'ok'.
 maybe_deny_emergency_bridge(State, 'undefined', Name) ->
-    case kapps_config:get_is_true(
-           ?SS_CONFIG_CAT
+    case kapps_config:get_is_true(?SS_CONFIG_CAT
                                  ,<<"deny_invalid_emergency_cid">>
                                  ,'false'
-          )
+                                 )
     of
+        'true' -> deny_emergency_bridge(State);
         'false' ->
-            maybe_deny_emergency_bridge(
-              State
+            maybe_deny_emergency_bridge(State
                                        ,default_emergency_number(kz_util:anonymous_caller_id_number())
                                        ,Name
-             );
-        'true' -> deny_emergency_bridge(State)
+                                       )
     end;
 maybe_deny_emergency_bridge(#state{control_queue=ControlQ}=State, Number, Name) ->
-    kapi_dialplan:publish_command(
-      ControlQ
+    kapi_dialplan:publish_command(ControlQ
                                  ,build_bridge(State, Number, Name)
-     ),
+                                 ),
     lager:debug("sent bridge command to ~s", [ControlQ]).
 
 -spec build_bridge(state(), api_binary(), api_binary()) -> kz_proplist().
@@ -337,15 +333,13 @@ build_bridge(#state{endpoints=Endpoints
     lager:debug("set outbound caller id to ~s '~s'", [Number, Name]),
     AccountId = kapi_offnet_resource:account_id(OffnetReq),
     CCVs =
-        kz_json:set_values(
-          props:filter_undefined(
-            [{<<"Ignore-Display-Updates">>, <<"true">>}
-            ,{<<"Account-ID">>, AccountId}
-            ,{<<"From-URI">>, bridge_from_uri(Number, OffnetReq)}
-            ,{<<"Reseller-ID">>, kz_services:find_reseller_id(AccountId)}
-            ])
+        kz_json:set_values(props:filter_undefined([{<<"Ignore-Display-Updates">>, <<"true">>}
+                                                  ,{<<"Account-ID">>, AccountId}
+                                                  ,{<<"From-URI">>, bridge_from_uri(Number, OffnetReq)}
+                                                  ,{<<"Reseller-ID">>, kz_services:find_reseller_id(AccountId)}
+                                                  ])
                           ,kapi_offnet_resource:custom_channel_vars(OffnetReq, kz_json:new())
-         ),
+                          ),
     FmtEndpoints = stepswitch_util:format_endpoints(Endpoints, Name, Number, OffnetReq),
     IgnoreEarlyMedia = kz_json:is_true(<<"Require-Ignore-Early-Media">>, CCVs, 'false')
         orelse kapi_offnet_resource:ignore_early_media(OffnetReq, 'false'),

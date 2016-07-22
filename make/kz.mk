@@ -83,7 +83,6 @@ clean: clean-test
 clean-test: $(CLEAN_MOAR)
 	$(if $(wildcard test/$(PROJECT).app), rm test/$(PROJECT).app)
 
-
 ## Use this one when debugging
 test: compile-test
 	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
