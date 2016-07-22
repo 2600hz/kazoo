@@ -53,6 +53,7 @@
 -type task() :: #{ worker_pid => api_pid()
                  , worker_node => ne_binary() | 'undefined'
                  , account_id => ne_binary()
+                 , auth_account_id => ne_binary()
                  , id => task_id()
                  , category => ne_binary()
                  , action => ne_binary()
@@ -705,6 +706,7 @@ from_json(Doc) ->
     #{ worker_pid => 'undefined'
      , worker_node => kz_json:get_value(?PVT_WORKER_NODE, Doc)
      , account_id => kz_json:get_value(?PVT_ACCOUNT_ID, Doc)
+     , auth_account_id => kz_json:get_value(?PVT_AUTH_ACCOUNT_ID, Doc)
      , id => kz_doc:id(Doc)
      , category => kz_json:get_value(?PVT_CATEGORY, Doc)
      , action => kz_json:get_value(?PVT_ACTION, Doc)
@@ -758,6 +760,7 @@ to_public_json(Task) ->
             [{<<"id">>, kz_doc:id(Doc)}
             ,{<<"node">>, kz_json:get_value(?PVT_WORKER_NODE, Doc)}
             ,{<<"account_id">>, kz_json:get_value(?PVT_ACCOUNT_ID, Doc)}
+            ,{<<"auth_account_id">>, kz_json:get_value(?PVT_AUTH_ACCOUNT_ID, Doc)}
             ,{<<"category">>, kz_json:get_value(?PVT_CATEGORY, Doc)}
             ,{<<"action">>, kz_json:get_value(?PVT_ACTION, Doc)}
             ,{<<"created">>, kz_doc:created(Doc)}
