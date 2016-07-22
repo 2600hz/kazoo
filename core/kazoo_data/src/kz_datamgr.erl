@@ -71,6 +71,7 @@
         ,get_results/2, get_results/3
         ,get_results_count/3
         ,get_result_keys/1, get_result_keys/3
+        ,get_single_result/3
         ,design_info/2
         ,design_compact/2
         ]).
@@ -1075,10 +1076,36 @@ get_result_keys(DbName, DesignDoc, Options) ->
 
 -spec get_result_keys(kz_json:objects()) -> kz_json:keys().
 get_result_keys(JObjs) ->
-    lists:map(fun get_keys/1, JObjs).
+    [kz_json:get_value(<<"key">>, JObj)
+     || JObj <- JObjs
+    ].
 
--spec get_keys(kz_json:object()) -> kz_json:key().
-get_keys(JObj) -> kz_json:get_value(<<"key">>, JObj).
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Gets the only result of a view.
+%% If no result is found: returns `{error, not_found}'.
+%% If more than one result is found, either:
+%% - if `Options' contains `first_when_multiple'
+%%     then the first one will be returned;
+%% - otherwise `{error, multiple_results}' is returned.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_single_result(ne_binary(), ne_binary(), [view_option()|'first_when_multiple']) ->
+                               {'ok', kz_json:object()} |
+                               {'error', 'multiple_results'} |
+                               data_error().
+get_single_result(DbName, DesignDoc, Options) ->
+    case kz_datamgr:get_results(DbName, DesignDoc, Options) of
+        {'ok', [Result]} -> {'ok', Result};
+        {'ok', []} -> {'error', 'not_found'};
+        {'ok', Results} ->
+            case props:is_true('first_when_multiple', Options) of
+                'true' -> {'ok', hd(Results)};
+                'false' -> {'error', 'multiple_results'}
+            end;
+        {'error', _}=E -> E
+    end.
 
 -spec get_uuid() -> ne_binary().
 -spec get_uuid(pos_integer()) -> ne_binary().

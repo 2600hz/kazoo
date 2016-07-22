@@ -418,16 +418,13 @@ owner_ids_by_sip_username(AccountDb, Username) ->
                                            {'error', any()}.
 get_owner_ids_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
-    case kz_datamgr:get_results(AccountDb, <<"attributes/sip_username">>, ViewOptions) of
-        {'ok', [JObj]} ->
+    case kz_datamgr:get_single_result(AccountDb, <<"attributes/sip_username">>, ViewOptions) of
+        {'ok', JObj} ->
             EndpointId = kz_doc:id(JObj),
             OwnerIds = kz_json:get_value(<<"value">>, JObj, []),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],
             kz_cache:store_local(?CACHE_NAME, ?SIP_USER_OWNERS_KEY(AccountDb, Username), OwnerIds, CacheProps),
             {'ok', OwnerIds};
-        {'ok', []} ->
-            lager:debug("sip username ~s not in account db ~s", [Username, AccountDb]),
-            {'error', 'not_found'};
         {'error', _R}=E ->
             lager:warning("unable to lookup sip username ~s for owner ids: ~p", [Username, _R]),
             E
@@ -454,17 +451,14 @@ endpoint_id_by_sip_username(AccountDb, Username) ->
                                              {'error', 'not_found'}.
 get_endpoint_id_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
-    case kz_datamgr:get_results(AccountDb, <<"attributes/sip_username">>, ViewOptions) of
-        {'ok', [JObj]} ->
+    case kz_datamgr:get_single_result(AccountDb, <<"attributes/sip_username">>, ViewOptions) of
+        {'ok', JObj} ->
             EndpointId = kz_doc:id(JObj),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],
             kz_cache:store_local(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(AccountDb, Username), EndpointId, CacheProps),
             {'ok', EndpointId};
-        {'ok', []} ->
-            lager:debug("sip username ~s not in account db ~s", [Username, AccountDb]),
-            {'error', 'not_found'};
         {'error', _R} ->
-            lager:warning("unable to lookup sip username ~s for owner ids: ~p", [Username, _R]),
+            lager:warning("lookup sip username ~s for owner ids failed: ~p", [Username, _R]),
             {'error', 'not_found'}
     end.
 
@@ -477,11 +471,13 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
 -spec get_operator_callflow(ne_binary()) -> {'ok', kz_json:object()} |
                                             kz_data:data_error().
 get_operator_callflow(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    Options = [{'key', ?OPERATOR_KEY}, 'include_docs'],
-    case kz_datamgr:get_results(AccountDb, ?LIST_BY_NUMBER, Options) of
-        {'ok', []} -> {'error', 'not_found'};
-        {'ok', [JObj|_]} ->
+    AccountDb = kz_util:format_account_db(Account),
+    Options = [{'key', ?OPERATOR_KEY}
+              ,'include_docs'
+              ,'first_when_multiple'
+              ],
+    case kz_datamgr:get_single_result(AccountDb, ?LIST_BY_NUMBER, Options) of
+        {'ok', JObj} ->
             {'ok', kz_json:get_value([<<"doc">>, <<"flow">>], JObj, kz_json:new())};
         {'error', _R}=E ->
             lager:warning("unable to find operator callflow in ~s: ~p", [Account, _R]),
@@ -845,17 +841,15 @@ maybe_cached_mailbox(AccountDb, VMNumber) ->
                                              {'error', any()}.
 get_mailbox(AccountDb, VMNumber) ->
     ViewOptions = [{'key', VMNumber}, 'include_docs'],
-    case kz_datamgr:get_results(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
-        {'ok', [JObj]} ->
+    case kz_datamgr:get_single_result(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
+        {'ok', JObj} ->
             Doc = kz_json:get_value(<<"doc">>, JObj),
             EndpointId = kz_doc:id(Doc),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],
             kz_cache:store_local(?CACHE_NAME, ?VM_CACHE_KEY(AccountDb, VMNumber), Doc, CacheProps),
             {'ok', Doc};
-        {'ok', [_JObj1, _JObj2 | _]} ->
+        {'error', 'multiple_results'} ->
             lager:debug("multiple voicemail boxes with same number (~s)  in account db ~s", [VMNumber, AccountDb]),
-            {'error', 'not_found'};
-        {'ok', []} ->
             {'error', 'not_found'};
         {'error', _R}=E ->
             lager:warning("unable to lookup voicemail number ~s in account ~s: ~p", [VMNumber, AccountDb, _R]),

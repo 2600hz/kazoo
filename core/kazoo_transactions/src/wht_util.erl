@@ -263,8 +263,8 @@ get_rollup_balance(Account, Options) ->
 %%--------------------------------------------------------------------
 -spec current_account_dollars(ne_binary()) -> dollars().
 current_account_dollars(Account) ->
-    Units = ?MODULE:current_balance(Account),
-    ?MODULE:units_to_dollars(Units).
+    Units = current_balance(Account),
+    units_to_dollars(Units).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -273,15 +273,13 @@ current_account_dollars(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_balance_from_account(ne_binary(), couch_util:view_options()) -> units().
-get_balance_from_account(Account, ViewOptions) ->
+get_balance_from_account(Account, ViewOptions0) ->
     View = <<"transactions/credit_remaining">>,
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountId = kz_util:format_account_id(Account),
+    AccountDb = kz_util:format_account_db(AccountId),
+    ViewOptions = ['first_when_multiple' | ViewOptions0],
     case kz_datamgr:get_results(AccountDb, View, ViewOptions) of
-        {'ok', []} ->
-            lager:debug("no current balance for ~s", [AccountId]),
-            0;
-        {'ok', [ViewRes|_]} ->
+        {'ok', ViewRes} ->
             kz_json:get_integer_value(<<"value">>, ViewRes, 0);
         {'error', _R} ->
             lager:warning("unable to get current balance for ~s: ~p", [AccountId, _R]),
