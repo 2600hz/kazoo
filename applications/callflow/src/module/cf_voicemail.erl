@@ -279,33 +279,26 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
                                           ,Call
                                           )
     of
-        {'ok', <<>>} ->
-            find_mailbox(Box, Call, Loop + 1);
+        {'ok', <<>>} -> find_mailbox(Box, Call, Loop + 1);
         {'ok', Mailbox} ->
             BoxNum = try kz_util:to_integer(Mailbox) catch _:_ -> 0 end,
             %% find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
             %% caller is the owner, and the pin is not required then we skip requesting the pin
             ViewOptions = [{'key', BoxNum}],
             AccountDb = kapps_call:account_db(Call),
-            case kz_datamgr:get_results(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
-                {'ok', []} ->
-                    lager:info("mailbox ~s doesnt exist", [Mailbox]),
-                    find_mailbox(Box, Call, Loop + 1);
-                {'ok', [JObj]} ->
+            case kz_datamgr:get_single_result(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
+                {'ok', JObj} ->
                     lager:info("get profile of ~p", [JObj]),
-                    ReqBox = get_mailbox_profile(
-                               kz_json:from_list([{<<"id">>, kz_doc:id(JObj)}])
+                    ReqBox = get_mailbox_profile(kz_json:from_list([{<<"id">>, kz_doc:id(JObj)}])
                                                 ,Call
-                              ),
+                                                ),
                     check_mailbox(ReqBox, Call, Loop);
-                {'ok', _} ->
-                    lager:info("mailbox ~s is ambiguous", [Mailbox]),
-                    find_mailbox(Box, Call, Loop + 1);
                 _E ->
-                    lager:info("failed to find mailbox ~s: ~p", [Mailbox, _E]),
+                    lager:info("mailbox ~s lookup failed: ~p", [Mailbox, _E]),
                     find_mailbox(Box, Call, Loop + 1)
             end;
-        _E -> lager:info("recv other: ~p", [_E])
+        _E ->
+            lager:info("recv other: ~p", [_E])
     end.
 
 %%--------------------------------------------------------------------
@@ -1472,11 +1465,14 @@ get_mailbox_doc(Db, Id, Data, Call) ->
             kz_datamgr:open_doc(Db, Id);
         'true' when not CGIsEmpty ->
             lager:info("capture group not empty: ~s", [CaptureGroup]),
-            Opts = [{'key', CaptureGroup}, 'include_docs'],
-            case kz_datamgr:get_results(Db, <<"attributes/mailbox_number">>, Opts) of
-                {'ok', []} -> {'error', 'not_found'};
-                {'ok', [JObj|_]} -> {'ok', kz_json:get_value(<<"doc">>, JObj, kz_json:new())};
-                Else -> Else
+            Opts = [{'key', CaptureGroup}
+                   ,'include_docs'
+                   ,{'return', 'only_first'}
+                   ],
+            case kz_datamgr:get_single_result(Db, <<"attributes/mailbox_number">>, Opts) of
+                {'ok', JObj} ->
+                    {'ok', kz_json:get_value(<<"doc">>, JObj, kz_json:new())};
+                E -> E
             end;
         'true' ->
             get_user_mailbox_doc(Data, Call)

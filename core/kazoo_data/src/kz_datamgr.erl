@@ -1080,12 +1080,30 @@ get_result_keys(JObjs) ->
      || JObj <- JObjs
     ].
 
--spec get_single_result(ne_binary(), ne_binary(), view_options()) -> {'ok', kz_json:object()} |
-                                                                     data_error().
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Gets the only result of a view.
+%% If no result is found: returns `{error, not_found}'.
+%% If more than one result is found, either:
+%% - if `Option' contains `{return, only_first}'
+%%     then the first one will be returned;
+%% - otherwise `{error, multiple_results}' is returned.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_single_result(ne_binary(), ne_binary(), view_options()) ->
+                               {'ok', kz_json:object()} |
+                               {'error', 'multiple_results'} |
+                               data_error().
 get_single_result(DbName, DesignDoc, Options) ->
     case kz_datamgr:get_results(DbName, DesignDoc, Options) of
-        {'ok', []} -> {'error', 'not_found'};
         {'ok', [Result]} -> {'ok', Result};
+        {'ok', []} -> {'error', 'not_found'};
+        {'ok', Results} ->
+            case lists:keyfind('return', 1, Options) of
+                {_, 'only_first'} -> {'ok', hd(Results)};
+                _ -> {'error', 'multiple_results'}
+            end;
         {'error', _}=E -> E
     end.
 

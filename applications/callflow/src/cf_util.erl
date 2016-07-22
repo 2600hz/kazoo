@@ -471,11 +471,13 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
 -spec get_operator_callflow(ne_binary()) -> {'ok', kz_json:object()} |
                                             kz_data:data_error().
 get_operator_callflow(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    Options = [{'key', ?OPERATOR_KEY}, 'include_docs'],
-    case kz_datamgr:get_results(AccountDb, ?LIST_BY_NUMBER, Options) of
-        {'ok', []} -> {'error', 'not_found'};
-        {'ok', [JObj|_]} ->
+    AccountDb = kz_util:format_account_db(Account),
+    Options = [{'key', ?OPERATOR_KEY}
+              ,'include_docs'
+              ,{'return', 'only_first'}
+              ],
+    case kz_datamgr:get_single_result(AccountDb, ?LIST_BY_NUMBER, Options) of
+        {'ok', JObj} ->
             {'ok', kz_json:get_value([<<"doc">>, <<"flow">>], JObj, kz_json:new())};
         {'error', _R}=E ->
             lager:warning("unable to find operator callflow in ~s: ~p", [Account, _R]),
@@ -839,17 +841,15 @@ maybe_cached_mailbox(AccountDb, VMNumber) ->
                                              {'error', any()}.
 get_mailbox(AccountDb, VMNumber) ->
     ViewOptions = [{'key', VMNumber}, 'include_docs'],
-    case kz_datamgr:get_results(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
-        {'ok', [JObj]} ->
+    case kz_datamgr:get_single_result(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
+        {'ok', JObj} ->
             Doc = kz_json:get_value(<<"doc">>, JObj),
             EndpointId = kz_doc:id(Doc),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],
             kz_cache:store_local(?CACHE_NAME, ?VM_CACHE_KEY(AccountDb, VMNumber), Doc, CacheProps),
             {'ok', Doc};
-        {'ok', [_JObj1, _JObj2 | _]} ->
+        {'error', 'multiple_results'} ->
             lager:debug("multiple voicemail boxes with same number (~s)  in account db ~s", [VMNumber, AccountDb]),
-            {'error', 'not_found'};
-        {'ok', []} ->
             {'error', 'not_found'};
         {'error', _R}=E ->
             lager:warning("unable to lookup voicemail number ~s in account ~s: ~p", [VMNumber, AccountDb, _R]),
