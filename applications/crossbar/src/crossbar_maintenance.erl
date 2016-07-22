@@ -844,15 +844,11 @@ maybe_update_app(AppPath, MetaData, MasterAccountDb, JObj) ->
     'ok' = delete_old_images(CurrentDocId, MetaData, MasterAccountDb),
     maybe_add_images(AppPath, CurrentDocId, MetaData, MasterAccountDb).
 
--spec find_app(ne_binary(), ne_binary()) ->
-                      {'ok', kz_json:object()} |
-                      {'error', any()}.
+-spec find_app(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
+                                            {'error', any()}.
 find_app(Db, Name) ->
-    case kz_datamgr:get_results(Db, ?CB_APPS_STORE_LIST, [{'key', Name}]) of
-        {'ok', []} -> {'error', 'not_found'};
-        {'ok', [View]} -> {'ok', View};
-        {'error', _}=E -> E
-    end.
+    ViewOptions = [{'key', Name}],
+    kz_datamgr:get_result(Db, ?CB_APPS_STORE_LIST, ViewOptions).
 
 -spec create_app(file:filename(), kz_json:object(), ne_binary()) -> 'ok'.
 create_app(AppPath, MetaData, MasterAccountDb) ->

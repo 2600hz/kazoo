@@ -223,16 +223,13 @@ get_endpoint_id_from_sipdb(Realm, Username) ->
                            ,kz_util:to_lower_binary(Username)
                            ]
                    }],
-    case kz_datamgr:get_results(?KZ_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
-        {'ok', [JObj]} ->
+    case kz_datamgr:get_result(?KZ_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
+        {'ok', JObj} ->
             EndpointId = kz_doc:id(JObj),
             AccountDb = kz_json:get_value([<<"value">>, <<"account_db">>], JObj),
             CacheProps = [{'origin', {'db', ?KZ_SIP_DB, EndpointId}}],
             kz_cache:store_local(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(Realm, Username), {AccountDb, EndpointId}, CacheProps),
             {'ok', EndpointId};
-        {'ok', []} ->
-            lager:debug("sip username ~s not in sip_db", [Username]),
-            {'error', 'not_found'};
         {'error', _R}=E ->
             lager:warning("unable to lookup sip username ~s for owner ids: ~p", [Username, _R]),
             E

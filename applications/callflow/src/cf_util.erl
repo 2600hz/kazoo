@@ -418,16 +418,13 @@ owner_ids_by_sip_username(AccountDb, Username) ->
                                            {'error', any()}.
 get_owner_ids_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
-    case kz_datamgr:get_results(AccountDb, <<"attributes/sip_username">>, ViewOptions) of
-        {'ok', [JObj]} ->
+    case kz_datamgr:get_result(AccountDb, <<"attributes/sip_username">>, ViewOptions) of
+        {'ok', JObj} ->
             EndpointId = kz_doc:id(JObj),
             OwnerIds = kz_json:get_value(<<"value">>, JObj, []),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],
             kz_cache:store_local(?CACHE_NAME, ?SIP_USER_OWNERS_KEY(AccountDb, Username), OwnerIds, CacheProps),
             {'ok', OwnerIds};
-        {'ok', []} ->
-            lager:debug("sip username ~s not in account db ~s", [Username, AccountDb]),
-            {'error', 'not_found'};
         {'error', _R}=E ->
             lager:warning("unable to lookup sip username ~s for owner ids: ~p", [Username, _R]),
             E

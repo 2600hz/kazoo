@@ -95,15 +95,12 @@ public_fields(JObj) ->
                           {'error', 'not_found'}.
 get(DID=?NE_BINARY) ->
     ViewOptions = [{'key', DID}, 'include_docs'],
-    case
-        kz_datamgr:get_results(
-          ?KZ_PORT_REQUESTS_DB
+    case kz_datamgr:get_result(?KZ_PORT_REQUESTS_DB
                               ,<<"port_requests/port_in_numbers">>
                               ,ViewOptions
-         )
+                              )
     of
-        {'ok', []} -> {'error', 'not_found'};
-        {'ok', [Port]} -> {'ok', kz_json:get_value(<<"doc">>, Port)};
+        {'ok', Port} -> {'ok', kz_json:get_value(<<"doc">>, Port)};
         {'error', _E} ->
             lager:debug("failed to query for port number '~s': ~p", [DID, _E]),
             {'error', 'not_found'}
@@ -117,7 +114,9 @@ get(DID=?NE_BINARY) ->
 -spec account_active_ports(ne_binary()) -> {'ok', kz_json:object()} |
                                            {'error', 'not_found'}.
 account_active_ports(AccountId) ->
-    ViewOptions = [{'key', AccountId}, 'include_docs'],
+    ViewOptions = [{'key', AccountId}
+                  ,'include_docs'
+                  ],
     case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?ACTIVE_PORT_LISTING, ViewOptions) of
         {'ok', []} -> {'error', 'not_found'};
         {'ok', Ports} -> {'ok', [kz_json:get_value(<<"doc">>, Doc) || Doc <- Ports]};
