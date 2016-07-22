@@ -412,9 +412,10 @@ normalize_apps_result([App|Apps], Acc) ->
                                          ,{<<"api_url">>, kzd_app:api_url(App)}
                                          ,{<<"source_url">>, kzd_app:source_url(App)}
                                          ,{<<"account_id">>, kzd_app:account_id(App)}
-                                         ,{<<"users">>, kz_json:get_value(<<"users">>, App)}
-                                         ,{<<"allowed_users">>, kz_json:get_value(<<"allowed_users">>, App)}
-                                         ,{<<"masqueradable">>, kz_json:is_true(<<"masqueradable">>, App, 'true')}
+                                         ,{<<"users">>, kzd_app:users(App)}
+                                         ,{<<"allowed_users">>, kzd_app:allowed_users(App)}
+                                         ,{<<"masqueradable">>, kzd_app:masqueradable(App)}
+                                         ,{<<"phase">>, kzd_app:phase(App)}
                                          ])
                  ),
             normalize_apps_result(Apps, [JObj|Acc])
