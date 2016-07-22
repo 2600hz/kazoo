@@ -277,7 +277,7 @@ get_balance_from_account(Account, ViewOptions0) ->
     View = <<"transactions/credit_remaining">>,
     AccountId = kz_util:format_account_id(Account),
     AccountDb = kz_util:format_account_db(AccountId),
-    ViewOptions = [{'return', 'only_first'} | ViewOptions0],
+    ViewOptions = ['return_only_first' | ViewOptions0],
     case kz_datamgr:get_results(AccountDb, View, ViewOptions) of
         {'ok', ViewRes} ->
             kz_json:get_integer_value(<<"value">>, ViewRes, 0);

@@ -1467,7 +1467,7 @@ get_mailbox_doc(Db, Id, Data, Call) ->
             lager:info("capture group not empty: ~s", [CaptureGroup]),
             Opts = [{'key', CaptureGroup}
                    ,'include_docs'
-                   ,{'return', 'only_first'}
+                   ,'return_only_first'
                    ],
             case kz_datamgr:get_single_result(Db, <<"attributes/mailbox_number">>, Opts) of
                 {'ok', JObj} ->

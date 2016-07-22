@@ -474,7 +474,7 @@ get_operator_callflow(Account) ->
     AccountDb = kz_util:format_account_db(Account),
     Options = [{'key', ?OPERATOR_KEY}
               ,'include_docs'
-              ,{'return', 'only_first'}
+              ,'return_only_first'
               ],
     case kz_datamgr:get_single_result(AccountDb, ?LIST_BY_NUMBER, Options) of
         {'ok', JObj} ->
