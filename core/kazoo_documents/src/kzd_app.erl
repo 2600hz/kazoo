@@ -5,53 +5,55 @@
 %%% @end
 %%% @contributors
 %%%   Peter Defebvre
+%%%   Karl Anderson
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(kzd_app).
 
 -export([fetch/2]).
 
--export([id/1
-        ,is_published/1
-        ,publish/1
-        ,unpublish/1
-        ,name/1
-        ,i18n/1
-        ,tags/1
-        ,icon/1
-        ,api_url/1
-        ,source_url/1
-        ,author/1
-        ,version/1
-        ,license/1
-        ,price/1
-        ,phase/1
-        ,screenshots/1
-        ,urls/1
-        ,account_id/1
-        ,users/1, users/2
+-export([account_id/1
         ,allowed_users/1, allowed_users/2
+        ,api_url/1
+        ,author/1
+        ,i18n/1
+        ,icon/1
+        ,id/1
+        ,is_published/1
+        ,license/1
         ,masqueradable/1
+        ,name/1
+        ,phase/1
+        ,price/1
+        ,publish/1
+        ,screenshots/1
+        ,source_url/1
+        ,tags/1
+        ,unpublish/1
+        ,urls/1
+        ,users/1, users/2
+        ,version/1
         ]).
 
 -include("kz_documents.hrl").
 
--define(PUBLISHED, <<"published">>).
--define(NAME, <<"name">>).
--define(I18N, <<"i18n">>).
--define(TAGS, <<"tags">>).
--define(ICON, <<"icon">>).
+-define(ALLOWED_USERS, <<"allowed_users">>).
 -define(API_URL, <<"api_url">>).
--define(SOURCE_URL, <<"source_url">>).
 -define(AUTHOR, <<"author">>).
--define(VERSION, <<"version">>).
+-define(I18N, <<"i18n">>).
+-define(ICON, <<"icon">>).
 -define(LICENSE, <<"license">>).
--define(PRICE, <<"price">>).
+-define(MASQUERADABLE, <<"masqueradable">>).
+-define(NAME, <<"name">>).
 -define(PHASE, <<"phase">>).
+-define(PRICE, <<"price">>).
+-define(PUBLISHED, <<"published">>).
 -define(SCREENSHOTS, <<"screenshots">>).
+-define(SOURCE_URL, <<"source_url">>).
+-define(TAGS, <<"tags">>).
 -define(URLS, <<"urls">>).
 -define(USERS, <<"users">>).
--define(ALLOWED_USERS, <<"allowed_users">>).
--define(MASQUERADABLE, <<"masqueradable">>).
+-define(VERSION, <<"version">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -64,8 +66,7 @@ fetch('undefined', _) ->
 fetch(_, 'undefined') ->
     {'error', 'app_id_undefined'};
 fetch(Account, Id) ->
-    AccoundDb = kz_util:format_account_id(Account, 'encoded'),
-    kz_datamgr:open_cache_doc(AccoundDb, Id).
+    kz_datamgr:open_cache_doc(kz_util:format_account_db(Account), Id).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -199,7 +200,7 @@ phase(JObj) ->
 %%--------------------------------------------------------------------
 -spec screenshots(kz_json:object()) -> ne_binaries().
 screenshots(JObj) ->
-    kz_json:get_list_value(?SCREENSHOTS, JObj).
+    kz_json:get_list_value(?SCREENSHOTS, JObj, []).
 
 %%--------------------------------------------------------------------
 %% @public

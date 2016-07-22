@@ -690,8 +690,7 @@ save_new_ring_group_callflow(JObj, NewCallflow, AccountDb) ->
     case kz_datamgr:save_doc(AccountDb, NewCallflow) of
         {'error', _M} ->
             io:format("unable to save new callflow (old:~p) in ~p aborting...~n"
-                     ,[kz_doc:id(JObj), AccountDb]
-                     );
+                     ,[kz_doc:id(JObj), AccountDb]);
         {'ok', NewJObj} ->
             io:format("  saved base group callflow: ~s~n", [kz_json:encode(NewJObj)]),
             update_old_ring_group_callflow(JObj, NewJObj)
@@ -704,12 +703,11 @@ check_if_callflow_exist(AccountDb, Name) ->
             io:format("error fetching callflows in ~p ~p~n", [AccountDb, _M]),
             'true';
         {'ok', JObjs} ->
-            lists:any(
-              fun(JObj) ->
-                      kz_json:get_value([<<"value">>, <<"name">>], JObj) =:= Name
-              end
+            lists:any(fun(JObj) ->
+                              kz_json:get_value([<<"value">>, <<"name">>], JObj) =:= Name
+                      end
                      ,JObjs
-             )
+                     )
     end.
 
 -spec update_old_ring_group_callflow(kz_json:object(), kz_json:object()) -> 'ok'.
@@ -753,13 +751,13 @@ save_old_ring_group(JObj, NewCallflow) ->
     case kz_datamgr:save_doc(AccountDb, JObj) of
         {'error', _M} ->
             io:format("unable to save callflow ~p in ~p, removing new one (~p)~n"
-                     ,[kz_doc:id(JObj), AccountDb, kz_doc:id(NewCallflow)]
-                     ),
+                     ,[kz_doc:id(JObj), AccountDb, kz_doc:id(NewCallflow)]),
             {'ok', _} = kz_datamgr:del_doc(AccountDb, NewCallflow),
             'ok';
         {'ok', _OldJObj} ->
             io:format("  saved ring group callflow: ~s~n", [kz_json:encode(_OldJObj)])
     end.
+
 
 -spec init_apps(file:name()) -> 'ok'.
 init_apps(AppsPath) ->
@@ -776,7 +774,7 @@ find_apps(AppsPath) ->
     AccFun =
         fun(AppJSONPath, Acc) ->
                 App = filename:absname(AppJSONPath),
-                %% App/metadata/app.json --> App
+                %% /.../App/metadata/app.json --> App
                 [filename:dirname(filename:dirname(App)) | Acc]
         end,
     filelib:fold_files(AppsPath, "app\\.json", 'true', AccFun, []).
@@ -796,8 +794,7 @@ init_app(AppPath, AppUrl) ->
     catch
         'error':{'badmatch', {'error', 'enoent'}} ->
             io:format("  failed to incorporate app because there was no app.json in ~s~n"
-                     ,[filename:join([AppPath, <<"metadata">>])]
-                     );
+                     ,[filename:join([AppPath, <<"metadata">>])]);
         'error':_E ->
             io:format("  failed to find metadata in ~s: ~p~n", [AppPath, _E])
     end.
@@ -815,7 +812,7 @@ maybe_create_app(AppPath, MetaData) ->
     maybe_create_app(AppPath, MetaData, MasterAccountDb).
 
 maybe_create_app(AppPath, MetaData, MasterAccountDb) ->
-    AppName = kz_json:get_value(<<"name">>, MetaData),
+    AppName = kzd_app:name(MetaData),
     case find_app(MasterAccountDb, AppName) of
         {'ok', JObj} ->
             io:format(" app ~s already loaded in system~n", [AppName]),
@@ -825,17 +822,15 @@ maybe_create_app(AppPath, MetaData, MasterAccountDb) ->
     end.
 
 -spec maybe_update_app(file:filename(), kz_json:object(), ne_binary(), kz_json:object()) -> 'ok'.
-maybe_update_app(AppPath, MetaData, MasterAccountDb, JObj) ->
-    CurrentDocId  = kz_doc:id(JObj),
+maybe_update_app(AppPath, MetaData, MasterAccountDb, AppJObj) ->
     ApiUrlKey = <<"api_url">>,
-    CurrentApiUrl = kz_json:get_value([<<"value">>, ApiUrlKey], JObj),
-
-    case kz_json:get_value(ApiUrlKey, MetaData) of
+    CurrentApiUrl = kzd_app:api_url(kz_json:get_value(<<"value">>, AppJObj)),
+    case kzd_app:api_url(MetaData) of
         'undefined'   -> io:format(" not updating ~s, it is undefined~n", [ApiUrlKey]);
         CurrentApiUrl -> io:format(" not updating ~s, it is unchanged~n", [ApiUrlKey]);
         NewApiUrl ->
             Update = [{ApiUrlKey, NewApiUrl}],
-            case kz_datamgr:update_doc(MasterAccountDb, CurrentDocId, Update) of
+            case kz_datamgr:update_doc(MasterAccountDb, kzd_app:id(AppJObj), Update) of
                 {'ok', _NJObj} -> io:format(" updated ~s to ~s~n", [ApiUrlKey, NewApiUrl]);
                 {'error', Err} -> io:format(" error updating ~s: ~p~n", [ApiUrlKey, Err])
             end
@@ -856,51 +851,44 @@ find_app(Db, Name) ->
 
 -spec create_app(file:filename(), kz_json:object(), ne_binary()) -> 'ok'.
 create_app(AppPath, MetaData, MasterAccountDb) ->
-    Doc = kz_json:delete_keys([<<"source_url">>]
-                             ,kz_doc:update_pvt_parameters(MetaData, MasterAccountDb, [{'type', <<"app">>}])
-                             ),
+    Doc0 = kz_doc:update_pvt_parameters(MetaData, MasterAccountDb, [{'type', <<"app">>}]),
+    Doc = kz_json:delete_keys([<<"source_url">>], Doc0),
     case kz_datamgr:save_doc(MasterAccountDb, Doc) of
-        {'ok', JObj} ->
-            io:format(" saved app ~s as doc ~s~n", [kz_json:get_value(<<"name">>, JObj)
-                                                   ,kz_doc:id(JObj)
-                                                   ]),
-            maybe_add_images(AppPath, kz_doc:id(JObj), MetaData, MasterAccountDb);
+        {'ok', AppJObj} ->
+            AppId = kzd_app:id(AppJObj),
+            io:format(" saved app ~s as doc ~s~n", [kzd_app:name(AppJObj), AppId]),
+            maybe_add_images(AppPath, AppId, MetaData, MasterAccountDb);
         {'error', _E} ->
             io:format(" failed to save app ~s to ~s: ~p~n"
-                     ,[kz_json:get_value(<<"name">>, MetaData), MasterAccountDb, _E]
-                     )
+                     ,[kzd_app:name(MetaData), MasterAccountDb, _E])
     end.
 
 -spec delete_old_images(ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 delete_old_images(AppId, MetaData, MasterAccountDb) ->
-    Icons       = [kz_json:get_value(<<"icon">>, MetaData)],
-    Screenshots = kz_json:get_value(<<"screenshots">>, MetaData, []),
-
-    _ = [safe_delete_image(MasterAccountDb, AppId, X) || X <- Icons],
-    _ = [safe_delete_image(MasterAccountDb, AppId, X) || X <- Screenshots],
-    'ok'.
+    F = fun (X) -> safe_delete_image(MasterAccountDb, AppId, X) end,
+    lists:foreach(F, [kzd_app:icon(MetaData)]),
+    lists:foreach(F, kzd_app:screenshots(MetaData)).
 
 -spec safe_delete_image(ne_binary(), ne_binary(), api_binary()) -> 'ok'.
 safe_delete_image(_AccountDb, _AppId, 'undefined') -> 'ok';
 safe_delete_image(AccountDb, AppId, Image) ->
     case kz_datamgr:fetch_attachment(AccountDb, AppId, Image) of
-        {'ok', _}    -> kz_datamgr:delete_attachment(AccountDb, AppId, Image);
-        {'error', _} -> 'ok'
+        {'error', _} -> 'ok';
+        {'ok', _} ->
+            kz_datamgr:delete_attachment(AccountDb, AppId, Image)
     end.
 
 -spec maybe_add_images(file:filename(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
-maybe_add_images(AppPath, <<_/binary>> = AppId, MetaData, MasterAccountDb) ->
-    Icons       = [kz_json:get_value(<<"icon">>, MetaData)],
-    Screenshots = kz_json:get_value(<<"screenshots">>, MetaData, []),
+maybe_add_images(AppPath, ?NE_BINARY=AppId, MetaData, MasterAccountDb) ->
+    Icon = kzd_app:icon(MetaData),
+    Screenshots = [kzd_app:screenshots(MetaData)],
 
-    IconPaths  = [{Icon, filename:join([AppPath, <<"metadata">>, <<"icon">>, Icon])}
-                  || Icon <- Icons
-                 ],
+    IconPath = {Icon, filename:join([AppPath, <<"metadata">>, <<"icon">>, Icon])},
     SShotPaths = [{SShot, filename:join([AppPath, <<"metadata">>, <<"screenshots">>, SShot])}
                   || SShot <- Screenshots
                  ],
 
-    _ = update_images(AppId, MasterAccountDb, IconPaths, <<"icon">>),
+    _ = update_images(AppId, MasterAccountDb, [IconPath], <<"icon">>),
     _ = update_images(AppId, MasterAccountDb, SShotPaths, <<"screenshots">>).
 
 -type image_path() :: {kz_json:object(), file:filename()}.
@@ -942,15 +930,12 @@ read_image(File) ->
     {'ok', ImageData} = file:read_file(File),
     ImageData.
 
--spec find_metadata(file:filename()) ->
-                           {'ok', kz_json:object()} |
-                           {'invalid_data', kz_proplist()}.
+-spec find_metadata(file:filename()) -> {'ok', kz_json:object()} |
+                                        {'invalid_data', kz_proplist()}.
 find_metadata(AppPath) ->
-    AppJSONPath = filename:join([AppPath, <<"metadata">>, <<"app.json">>]),
-    {'ok', JSON} = file:read_file(AppJSONPath),
-    JObj = kz_json:decode(JSON),
+    {'ok', JSON} = file:read_file(filename:join([AppPath, <<"metadata">>, <<"app.json">>])),
     {'ok', Schema} = kz_json_schema:load(<<"app">>),
-    case jesse:validate_with_schema(Schema, kz_json:public_fields(JObj)) of
+    case jesse:validate_with_schema(Schema, kz_json:public_fields(kz_json:decode(JSON))) of
         {'ok', _}=OK -> OK;
         {'error', Errors} ->
             {'invalid_data', [Error || {'data_invalid', _, Error, _, _} <- Errors]}
