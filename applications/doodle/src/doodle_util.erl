@@ -255,18 +255,15 @@ get_endpoint_from_sipdb(Realm, Username) ->
                    }
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_results(?KZ_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
-        {'ok', [JObj]} ->
+    case kz_datamgr:get_single_result(?KZ_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
+        {'ok', JObj} ->
             EndpointId = kz_doc:id(JObj),
             CacheProps = [{'origin', {'db', ?KZ_SIP_DB, EndpointId}}],
             Doc = kz_json:get_value(<<"doc">>, JObj),
             kz_cache:store_local(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(Realm, Username), Doc, CacheProps),
             {'ok', Doc};
-        {'ok', []} ->
-            lager:debug("sip username ~s not in sip_db", [Username]),
-            {'error', 'not_found'};
         {'error', _R}=E ->
-            lager:warning("unable to lookup sip username ~s in sipdb: ~p", [Username, _R]),
+            lager:warning("lookup sip username ~s in sipdb failed: ~p", [Username, _R]),
             E
     end.
 
@@ -465,14 +462,15 @@ fetch_mdn(Num) ->
 fetch_mdn_result(AccountId, Num) ->
     AccountDb = kz_util:format_account_db(AccountId),
     ViewOptions = [{'key', mdn_from_e164(Num)}],
-    case kz_datamgr:get_results(AccountDb, ?MDN_VIEW, ViewOptions) of
-        {'ok', []} -> {'error', 'not_found'};
-        {'ok', [JObj]} ->
+    case kz_datamgr:get_single_result(AccountDb, ?MDN_VIEW, ViewOptions) of
+        {'ok', JObj} ->
             Id = kz_doc:id(JObj),
             OwnerId = kz_json:get_value([<<"value">>, <<"owner_id">>], JObj),
             lager:debug("~s is associated with mobile device ~s in account ~s", [Num, Id, AccountId]),
             cache_mdn_result(AccountDb, Id, OwnerId);
-        {'error', _}=E -> E
+        {'error', _R}=E ->
+            lager:debug("coudl not fetch mdn for ~p: ~p", [Num, _R]),
+            E
     end.
 
 -spec cache_mdn_result(ne_binary(), ne_binary(), api_binary()) ->

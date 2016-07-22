@@ -263,8 +263,8 @@ get_rollup_balance(Account, Options) ->
 %%--------------------------------------------------------------------
 -spec current_account_dollars(ne_binary()) -> dollars().
 current_account_dollars(Account) ->
-    Units = ?MODULE:current_balance(Account),
-    ?MODULE:units_to_dollars(Units).
+    Units = current_balance(Account),
+    units_to_dollars(Units).
 
 %%--------------------------------------------------------------------
 %% @public

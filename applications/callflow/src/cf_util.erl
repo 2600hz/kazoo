@@ -451,17 +451,14 @@ endpoint_id_by_sip_username(AccountDb, Username) ->
                                              {'error', 'not_found'}.
 get_endpoint_id_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
-    case kz_datamgr:get_results(AccountDb, <<"attributes/sip_username">>, ViewOptions) of
-        {'ok', [JObj]} ->
+    case kz_datamgr:get_single_result(AccountDb, <<"attributes/sip_username">>, ViewOptions) of
+        {'ok', JObj} ->
             EndpointId = kz_doc:id(JObj),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],
             kz_cache:store_local(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(AccountDb, Username), EndpointId, CacheProps),
             {'ok', EndpointId};
-        {'ok', []} ->
-            lager:debug("sip username ~s not in account db ~s", [Username, AccountDb]),
-            {'error', 'not_found'};
         {'error', _R} ->
-            lager:warning("unable to lookup sip username ~s for owner ids: ~p", [Username, _R]),
+            lager:warning("lookup sip username ~s for owner ids failed: ~p", [Username, _R]),
             {'error', 'not_found'}
     end.
 
