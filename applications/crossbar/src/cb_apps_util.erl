@@ -44,8 +44,10 @@ allowed_apps(AccountId) ->
 %%--------------------------------------------------------------------
 -spec allowed_app(ne_binary(), ne_binary()) -> api_object().
 allowed_app(AccountId, AppId) ->
-    FindApp = fun(App) -> AppId == kz_doc:id(App) end,
-    case lists:filter(FindApp, allowed_apps(AccountId)) of
+    case [App || App <- allowed_app(AccountId),
+                 AppId =:= kzd_app:id(App)
+         ]
+    of
         [App] -> App;
         [] -> 'undefined'
     end.
@@ -63,10 +65,8 @@ is_authorized(AccountId, UserId, AppId) ->
             'false';
         {'ok', Doc} ->
             AppJObj = kz_json:get_value(AppId, kzd_apps_store:apps(Doc)),
-            AllowedType = kz_json:get_value(<<"allowed_users">>, AppJObj, <<"specific">>),
-            SpecificIds = get_specific_ids(
-                            kz_json:get_value(<<"users">>, AppJObj, [])
-                           ),
+            AllowedType = kzd_app:allowed_users(AppJObj, <<"specific">>),
+            SpecificIds = get_specific_ids(kzd_app:users(AppJObj, [])),
             case {AllowedType, SpecificIds} of
                 {<<"all">>, _} -> 'true';
                 {<<"specific">>, []} -> 'false';
@@ -82,15 +82,9 @@ is_authorized(AccountId, UserId, AppId) ->
 
 -spec get_specific_ids(kz_json:objects()) -> ne_binaries().
 get_specific_ids(Users) ->
-    get_specific_ids(Users, []).
-
--spec get_specific_ids(kz_json:objects(), ne_binaries()) -> ne_binaries().
-get_specific_ids([], UserIds) -> UserIds;
-get_specific_ids([User|Users], UserIds) ->
-    case kz_json:get_ne_value(<<"id">>, User) of
-        'undefined' -> get_specific_ids(Users, UserIds);
-        UserId -> get_specific_ids(Users, [UserId|UserIds])
-    end.
+    [Id || User <- Users,
+           (Id = kz_json:get_ne_value(<<"id">>, User)) =/= 'undefined'
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -101,11 +95,10 @@ get_specific_ids([User|Users], UserIds) ->
 load_default_apps() ->
     {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
     case kz_datamgr:get_results(MasterAccountDb, ?CB_APPS_STORE_LIST, ['include_docs']) of
+        {'ok', JObjs} -> [maybe_set_account(MasterAccountDb, JObj) || JObj <- JObjs];
         {'error', _E} ->
             lager:error("failed to lookup apps in ~s", [MasterAccountDb]),
             [];
-        {'ok', JObjs} ->
-            [maybe_set_account(MasterAccountDb, JObj) || JObj <- JObjs]
     end.
 
 %%--------------------------------------------------------------------
@@ -116,8 +109,7 @@ load_default_apps() ->
 -spec create_apps_store_doc(ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 create_apps_store_doc(Account) ->
     Doc = kzd_apps_store:new(Account),
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    kz_datamgr:save_doc(AccountDb, Doc).
+    kz_datamgr:save_doc(kz_util:format_account_db(Account), Doc).
 
 %%%===================================================================
 %%% Internal functions
@@ -143,7 +135,7 @@ get_apps_store_doc(Account) ->
 %%--------------------------------------------------------------------
 -spec get_user_priv_level(ne_binary(), ne_binary()) -> binary().
 get_user_priv_level(AccountId, UserId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kz_util:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'error', _R} ->
             lager:error("failed to open user ~s in ~s", [UserId, AccountDb]),
@@ -173,27 +165,18 @@ has_all_apps_in_service_plan(ServicePlan) ->
 -spec filter_apps(ne_binary(), kz_json:objects(), kz_json:object()) -> kz_json:objects().
 filter_apps(AccountId, Apps) ->
     case get_apps_store_doc(AccountId) of
+        {'ok', Doc} -> filter_apps(AccountId, Apps, Doc);
         {'error', _R} ->
             lager:error("failed to fetch apps store doc in ~s : ~p", [AccountId, _R]),
-            filter_apps(AccountId, Apps, kz_json:new());
-        {'ok', Doc} ->
-            filter_apps(AccountId, Apps, Doc)
+            filter_apps(AccountId, Apps, kz_json:new())
     end.
 
 filter_apps(AccountId, Apps, JObj) ->
-    lists:foldl(
-      fun(App, Acc) ->
-              case is_filtered(AccountId, App)
-                  orelse is_blacklisted(App, JObj)
-              of
-                  'true' -> Acc;
-                  'false' ->
-                      [add_permissions(App, JObj)|Acc]
-              end
-      end
-               ,[]
-               ,Apps
-     ).
+    [add_permissions(App, JObj)
+     || App <- Apps,
+        not is_filtered(AccountId, App)
+            andalso not is_blacklisted(App, JObj)
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -227,24 +210,23 @@ is_blacklisted(App, JObj) ->
 -spec is_filtered(ne_binary(), kz_json:object()) -> boolean().
 -spec is_filtered(ne_binary(), kz_json:object(), ne_binary()) -> boolean().
 is_filtered(AccountId, App) ->
-    is_filtered(AccountId, App, kz_json:get_value(<<"name">>, App)).
+    is_filtered(AccountId, App, kzd_app:name(App)).
 
-is_filtered(AccountId, _App, <<"port">>) ->
-    lager:debug("filtering port application"),
+is_filtered(AccountId, _App, <<"port">>=_AppName) ->
+    lager:debug("filtering '~s' application", [_AppName]),
     ResellerId = kz_services:find_reseller_id(AccountId),
     MaybeHide =
         case kz_whitelabel:fetch(ResellerId) of
+            {'ok', JObj} -> kz_whitelabel:port_hide(JObj);
             {'error', 'not_found'} -> 'false';
             {'error', _R} ->
                 lager:error("failed to load whitelabel doc for ~s: ~p", [ResellerId, _R]),
                 'true';
-            {'ok', JObj} ->
-                kz_whitelabel:port_hide(JObj)
         end,
-    lager:debug("hiding port application: ~p", [MaybeHide]),
+    lager:debug("hiding '~s' application: ~p", [_AppName, MaybeHide]),
     MaybeHide;
-is_filtered(_AccountId, _App, _Name) ->
-    lager:debug("not filtering ~s", [_Name]),
+is_filtered(_AccountId, _App, _AppName) ->
+    lager:debug("not filtering '~s'", [_AppName]),
     'false'.
 
 %%--------------------------------------------------------------------
@@ -255,10 +237,11 @@ is_filtered(_AccountId, _App, _Name) ->
 -spec maybe_set_account(ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_set_account(Account, Doc) ->
     JObj = kz_json:get_value(<<"doc">>, Doc),
-    case {kz_doc:account_db(JObj), kz_doc:account_id(JObj)} of
-        {'undefined', _} -> set_account(Account, JObj);
-        {_, 'undefined'} -> set_account(Account, JObj);
-        {_, _} -> JObj
+    case 'undefined' =:= kz_doc:account_db(JObj)
+        orelse 'undefined' =:= kz_doc:account_id(JObj)
+    of
+        'true' -> set_account(Account, JObj);
+        'false' -> JObj
     end.
 
 %%--------------------------------------------------------------------
@@ -268,17 +251,17 @@ maybe_set_account(Account, Doc) ->
 %%--------------------------------------------------------------------
 -spec set_account(ne_binary(), kz_json:object()) -> kz_json:object().
 set_account(Account, JObj) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kz_util:format_account_db(Account),
     Corrected =
         kz_json:set_values(
-          [{<<"pvt_account_id">>, kz_util:format_account_id(Account, 'raw')}
+          [{<<"pvt_account_id">>, kz_util:format_account_id(Account)}
           ,{<<"pvt_account_db">>, AccountDb}
           ], JObj),
     case kz_datamgr:save_doc(AccountDb, Corrected) of
+        {'ok', Doc} -> Doc;
         {'error', _R} ->
             lager:error("failed to correct app"),
-            Corrected;
-        {'ok', Doc} -> Doc
+            Corrected
     end.
 
 %%--------------------------------------------------------------------
@@ -298,33 +281,20 @@ get_plan_apps(ServicePlan) ->
 %%--------------------------------------------------------------------
 -spec find_enabled_apps(kz_json:object()) -> kz_json:objects().
 find_enabled_apps(PlanAppsJObj) ->
-    kz_json:foldl(
-      fun find_enabled_apps_fold/3
-                 ,[]
-                 ,PlanAppsJObj
-     ).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec find_enabled_apps_fold(ne_binary(), kzd_item_plan:doc(), kz_json:objects()) -> kz_json:objects().
-find_enabled_apps_fold(AppName, PlanApp, Acc) ->
-    AppId = kz_json:get_value(<<"app_id">>, PlanApp),
-    case (not kzd_item_plan:is_enabled(PlanApp))
-        orelse find_app(AppId, PlanApp)
-    of
-        'true' ->
-            lager:debug("excluding app ~s(~s)", [AppName, AppId]),
-            Acc;
-        'undefined' ->
-            lager:debug("excluding app ~s(~s)", [AppName, AppId]),
-            Acc;
-        AppJObj ->
-            lager:debug("including app ~s(~s) from plan", [AppName, AppId]),
-            [kz_json:delete_key(<<"published">>, AppJObj)|Acc]
-    end.
+    [kz_json:delete_key(<<"published">>, MaybeAppJObj)
+     || {AppName, PlanApp} <- kz_json:from_list(PlanAppsJObj),
+        AppId <- [kz_json:get_value(<<"app_id">>, PlanApp)],
+        MaybeAppJObj <- [kzd_item_plan:is_enabled(PlanApp)
+                         andalso find_app(AppId, PlanApp)
+                        ],
+        ShouldInclude <- [kz_json:is_json_object(MaybeAppJObj)],
+        _ <- [case ShouldInclude of
+                  'true' ->  lager:debug("including app ~s(~s) from plan", [AppName, AppId]);
+                  'false' -> lager:debug("excluding app ~s(~s) from plan", [AppName, AppId])
+              end
+             ],
+        ShouldInclude
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -333,8 +303,12 @@ find_enabled_apps_fold(AppName, PlanApp, Acc) ->
 %%--------------------------------------------------------------------
 -spec find_app(ne_binary(), kz_json:object()) -> api_object().
 find_app(AppId, PlanApp) ->
-    Account = kz_json:get_first_defined([<<"account_db">>, <<"account_id">>], PlanApp),
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    Account = kz_json:get_first_defined([<<"account_db">>
+                                        ,<<"account_id">>
+                                        ]
+                                       ,PlanApp
+                                       ),
+    AccountDb = kz_util:format_account_db(Account),
     case kz_datamgr:open_cache_doc(AccountDb, AppId) of
         {'ok', JObj} -> JObj;
         {'error', _R} ->

@@ -10,8 +10,7 @@
 
 -export([fetch/2]).
 
--export([
-         id/1
+-export([id/1
         ,is_published/1
         ,publish/1
         ,unpublish/1
@@ -29,8 +28,8 @@
         ,screenshots/1
         ,urls/1
         ,account_id/1
-        ,users/1
-        ,allowed_users/1
+        ,users/1, users/2
+        ,allowed_users/1, allowed_users/2
         ,masqueradable/1
         ]).
 
@@ -225,18 +224,26 @@ account_id(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec users(kz_json:object()) -> api_binaries().
+-spec users(kz_json:object()) -> api_objects().
 users(JObj) ->
-    kz_json:get_value(?USERS, JObj).
+    users(JObj, 'undefined').
+
+-spec users(kz_json:object(), Default) -> [kz_json:object()] | Default.
+users(JObj, Default) ->
+    kz_json:get_value(?USERS, JObj, Default).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_users(kz_json:object()) -> api_binaries().
+-spec allowed_users(kz_json:object()) -> api_binary().
 allowed_users(JObj) ->
-    kz_json:get_value(?ALLOWED_USERS, JObj).
+    allowed_users(JObj, 'undefined').
+
+-spec allowed_users(kz_json:object(), Default) -> ne_binary() | Default.
+allowed_users(JObj, Default) ->
+    kz_json:get_value(?ALLOWED_USERS, JObj, Default).
 
 %%--------------------------------------------------------------------
 %% @public
