@@ -13,11 +13,9 @@
 -include("blackhole.hrl").
 
 -export([is_authorized/1]).
--export([maybe_add_binding_to_listener/3
-        ,maybe_rm_binding_from_listener/3
-        ]).
 -export([respond_with_error/1, respond_with_error/3, respond_with_authn_failure/1]).
 -export([get_callback_module/1]).
+-export([send_error_message/3]).
 -export([remove_binding/2]).
 
 %%--------------------------------------------------------------------
@@ -48,58 +46,18 @@ is_authorized(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_add_binding_to_listener(atom(), ne_binary(), bh_context:context()) -> 'ok'.
-maybe_add_binding_to_listener(Module, Binding, Context) ->
-    try Module:add_amqp_binding(Binding, Context) of
-        _Result -> 'ok'
-    catch
-        _ ->
-            lager:debug("could not exec ~s:add_amqp_binding", [Module]),
-            'ok'
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_rm_binding_from_listener(atom(), ne_binary(), bh_context:context()) -> 'ok'.
-maybe_rm_binding_from_listener(Module, Binding, Context) ->
-    lager:debug("remove some amqp bindings for module: ~s ~s", [Module, Binding]),
-    try Module:rm_amqp_binding(Binding, Context) of
-        _ -> 'ok'
-    catch
-        _ ->
-            lager:debug("could not exec ~s:rm_amqp_binding", [Module]),
-            'ok'
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec respond_with_error(bh_context:context()) -> bh_context:context().
 -spec respond_with_error(bh_context:context(), api_binary(), kz_json:object()) -> bh_context:context().
 respond_with_error(Context) ->
-    respond_with_error(
-      Context
-                      ,<<"error">>
-                      ,kz_json:from_list([
-                                          {<<"message">>, <<"unknown error">>}
-                                         ])
-     ).
+    respond_with_error(Context, <<"error">>, kz_json:from_list([{<<"message">>, <<"unknown error">>}])).
 
 respond_with_error(Context, Error, JObj) ->
     lager:debug(
       "Error: ~p for socket: ~s"
                ,[kz_json:get_value(<<"message">>, JObj), bh_context:websocket_session_id(Context)]
      ),
-    blackhole_data_emitter:emit(
-      bh_context:websocket_pid(Context)
-                               ,Error
-                               ,JObj
-     ),
+    WsPid = bh_context:websocket_pid(Context),
+    blackhole_data_emitter:emit(WsPid, Error, JObj),
     Context.
 
 %%--------------------------------------------------------------------
@@ -161,3 +119,16 @@ remove_binding(Binding, Context) ->
             ?MODULE:maybe_rm_binding_from_listener(Module, Binding, Context),
             blackhole_bindings:unbind(Binding, Module, 'handle_event', Context)
     end.
+
+error_module(Module) ->
+    ModuleName = erlang:atom_to_binary(Module),
+    <<"Error in module ", ModuleName>>.
+
+send_error_message(Context, Module, ErrCause) when is_atom(Module) ->
+    send_error_message(Context, error_module(Module), ErrCause);
+send_error_message(Context, ErrMsg, ErrCause) ->
+    ErrorJObj = kz_json:from_list([
+                                   {<<"message">>, ErrMsg}
+                                  ,{<<"cause">>, ErrCause}
+                                  ]),
+    respond_with_error(Context, <<"error">>, ErrorJObj).

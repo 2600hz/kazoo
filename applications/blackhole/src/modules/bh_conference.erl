@@ -11,7 +11,7 @@
 -module(bh_conference).
 
 -export([handle_event/2
-        ,add_amqp_binding/2, rm_amqp_binding/2
+        ,subscribe/2, unsubscribe/2
         ]).
 
 -include("blackhole.hrl").
@@ -24,53 +24,59 @@ handle_event(Context, EventJObj) ->
                                ,kz_json:normalize_jobj(EventJObj)
                                ).
 
--spec add_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
-add_amqp_binding(<<"conference.command.", ConfId/binary>>, Context) ->
+-spec subscribe(ne_binary(), bh_context:context()) -> {'ok', bh_context:context()}.
+subscribe(Context, <<"conference.command.", ConfId/binary>>) ->
     AccountId = bh_context:account_id(Context),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case ConfId of
         <<"*">> -> command_bind_all(Context, AccountDb);
         ConfId -> maybe_command_bind(Context, AccountDb, ConfId)
-    end;
-add_amqp_binding(<<"conference.event.", Binding/binary>>, Context) ->
+    end,
+    {'ok', Context};
+subscribe(Context, <<"conference.event.", Binding/binary>>) ->
     AccountId = bh_context:account_id(Context),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case binary:split(Binding, <<".">>, ['global']) of
         [<<"*">>, <<"*">>] ->
             event_bind_all(Context, AccountDb);
         [<<"*">>, _CallId] ->
-            lager:debug("invalid conference event bind: ~s", [Binding]);
+            blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding);
         [ConfId, CallId] ->
             maybe_event_bind(Context, AccountDb, ConfId, CallId);
         _Else ->
-            lager:debug("invalid conference event bind: ~s", [Binding])
-    end;
-add_amqp_binding(Binding, _Context) ->
-    lager:debug("unmatched binding ~p", [Binding]).
+            blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding)
+    end,
+    {'ok', Context};
+subscribe(Binding, Context) ->
+    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
+    {'ok', Context}.
 
--spec rm_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
-rm_amqp_binding(<<"conference.command.", ConfId/binary>>, Context) ->
+-spec unsubscribe(bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
+unsubscribe(<<"conference.command.", ConfId/binary>>, Context) ->
     AccountId = bh_context:account_id(Context),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case ConfId of
         <<"*">> -> command_unbind_all(Context, AccountDb);
         ConfId -> command_unbind(Context, ConfId)
-    end;
-rm_amqp_binding(<<"conference.event.", Binding/binary>>, Context) ->
+    end,
+    {'ok', Context};
+unsubscribe(<<"conference.event.", Binding/binary>>, Context) ->
     AccountId = bh_context:account_id(Context),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case binary:split(Binding, <<".">>, ['global']) of
         [<<"*">>, <<"*">>] ->
             event_unbind_all(Context, AccountDb);
         [<<"*">>, _CallId] ->
-            lager:debug("invalid conference event bind: ~s", [Binding]);
+            blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding);
         [ConfId, CallId] ->
             event_unbind(Context, ConfId, CallId);
         _Else ->
-            lager:debug("invalid conference event bind: ~s", [Binding])
-    end;
-rm_amqp_binding(Binding, _Context) ->
-    lager:debug("unmatched binding ~p", [Binding]).
+            blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding)
+    end,
+    {'ok', Context};
+unsubscribe(Binding, Context) ->
+    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
+    {'ok', Context}.
 
 %%%===================================================================
 %%% Internal functions
@@ -117,7 +123,7 @@ maybe_command_bind(Context, AccountDb, ConfId) ->
         {'ok', _JObj} ->
             command_bind(Context, ConfId);
         _ ->
-            lager:error("attempt to bind to non-existent conference ~p", ConfId)
+            blackhole_util:send_error_message(Context, <<"attempt to bind to non-existent conference">>, ConfId)
     end.
 
 %% events
@@ -143,7 +149,7 @@ maybe_event_bind(Context, AccountDb, ConfId, CallId) ->
         {'ok', _JObj} ->
             event_bind(Context, ConfId, CallId);
         _ ->
-            lager:error("attempt to bind to non-existent conference ~p", ConfId)
+            blackhole_util:send_error_message(Context, <<"attempt to bind to non-existent conference">>, ConfId)
     end.
 
 %% other

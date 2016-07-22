@@ -116,11 +116,8 @@ check_bindings(Context, JObj, [Binding|Bds]) ->
 check_binding(Context, JObj, Binding) ->
     case bh_context:is_bound(Context, Binding) of
         'true' ->
-            ErrorJObj = kz_json:from_list([
-                                           {<<"message">>, <<"binding already in use">>}
-                                          ,{<<"cause">>, Binding}
-                                          ]),
-            {'ok', blackhole_util:respond_with_error(Context, <<"error">>, ErrorJObj)};
+            blackhole_util:send_error_message(Context, <<"binding already in use">>, Binding),
+            {'ok', Context};
         'false' ->
             Module = blackhole_util:get_callback_module(Binding),
             subscribe(Context, JObj, Binding, Module)
@@ -130,10 +127,16 @@ check_binding(Context, JObj, Binding) ->
 subscribe(Context, _JObj, _Binding, 'undefined') ->
     {'ok', blackhole_util:respond_with_error(Context)};
 subscribe(Context, _JObj, Binding, Module) ->
-    Context1 = bh_context:add_binding(Context, Binding),
-    _ = blackhole_tracking:update_socket(Context1),
-    blackhole_util:maybe_add_binding_to_listener(Module, Binding, Context1),
-    {'ok', Context1}.
+    try Module:subscribe(Context, Binding) of
+        {'ok', Context1} ->
+            Context2 = bh_context:add_binding(Context1, Binding),
+            _ = blackhole_tracking:update_socket(Context2),
+            {'ok', Context2}
+    catch
+        Error:_ ->
+            blackhole_util:send_error_message(Context, Module, Error),
+            {'ok', Context}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -196,11 +199,13 @@ unsubscribe_for_account(Context, _JObj, AccountId, Binding, Module) ->
     Context1 = bh_context:remove_binding(Context, Binding),
     _ = blackhole_tracking:update_socket(Context1),
     lager:debug("remove binding for account_id: ~p", [AccountId]),
-    blackhole_bindings:unbind(Binding, Module, 'handle_event', Context),
-    blackhole_util:maybe_rm_binding_from_listener(Module, Binding, Context),
-    {'ok', Context1}.
-
-
+    try Module:unsubscribe(Context1, Binding) of
+        Result -> {'ok', Result}
+    catch
+        Error:_ ->
+            blackhole_util:send_error_message(Context1, Module, Error),
+            {'ok', Context1}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
