@@ -824,18 +824,18 @@ maybe_create_app(AppPath, MetaData, MasterAccountDb) ->
 -spec maybe_update_app(file:filename(), kz_json:object(), ne_binary(), kz_json:object()) -> 'ok'.
 maybe_update_app(AppPath, MetaData, MasterAccountDb, AppJObj) ->
     ApiUrlKey = <<"api_url">>,
+    CurrentDocId = kzd_app:id(AppJObj),
     CurrentApiUrl = kzd_app:api_url(kz_json:get_value(<<"value">>, AppJObj)),
     case kzd_app:api_url(MetaData) of
         'undefined'   -> io:format(" not updating ~s, it is undefined~n", [ApiUrlKey]);
         CurrentApiUrl -> io:format(" not updating ~s, it is unchanged~n", [ApiUrlKey]);
         NewApiUrl ->
             Update = [{ApiUrlKey, NewApiUrl}],
-            case kz_datamgr:update_doc(MasterAccountDb, kzd_app:id(AppJObj), Update) of
+            case kz_datamgr:update_doc(MasterAccountDb, CurrentDocId, Update) of
                 {'ok', _NJObj} -> io:format(" updated ~s to ~s~n", [ApiUrlKey, NewApiUrl]);
                 {'error', Err} -> io:format(" error updating ~s: ~p~n", [ApiUrlKey, Err])
             end
     end,
-
     'ok' = delete_old_images(CurrentDocId, MetaData, MasterAccountDb),
     maybe_add_images(AppPath, CurrentDocId, MetaData, MasterAccountDb).
 
