@@ -28,7 +28,7 @@ handle_req(JObj, _Props) ->
         'undefined' -> maybe_relay_request(JObj);
         AccountId ->
             lager:debug("fetch-id ~s already has account-id ~s, skipping."
-                        ,[kapi_route:fetch_id(JObj), AccountId]
+                       ,[kapi_route:fetch_id(JObj), AccountId]
                        )
     end.
 
