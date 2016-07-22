@@ -44,7 +44,7 @@ allowed_apps(AccountId) ->
 %%--------------------------------------------------------------------
 -spec allowed_app(ne_binary(), ne_binary()) -> api_object().
 allowed_app(AccountId, AppId) ->
-    case [App || App <- allowed_app(AccountId),
+    case [App || App <- allowed_apps(AccountId),
                  AppId =:= kzd_app:id(App)
          ]
     of
@@ -98,7 +98,7 @@ load_default_apps() ->
         {'ok', JObjs} -> [maybe_set_account(MasterAccountDb, JObj) || JObj <- JObjs];
         {'error', _E} ->
             lager:error("failed to lookup apps in ~s", [MasterAccountDb]),
-            [];
+            []
     end.
 
 %%--------------------------------------------------------------------
@@ -221,7 +221,7 @@ is_filtered(AccountId, _App, <<"port">>=_AppName) ->
             {'error', 'not_found'} -> 'false';
             {'error', _R} ->
                 lager:error("failed to load whitelabel doc for ~s: ~p", [ResellerId, _R]),
-                'true';
+                'true'
         end,
     lager:debug("hiding '~s' application: ~p", [_AppName, MaybeHide]),
     MaybeHide;
