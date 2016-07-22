@@ -95,10 +95,10 @@ public_fields(JObj) ->
                           {'error', 'not_found'}.
 get(DID=?NE_BINARY) ->
     ViewOptions = [{'key', DID}, 'include_docs'],
-    case kz_datamgr:get_result(?KZ_PORT_REQUESTS_DB
-                              ,<<"port_requests/port_in_numbers">>
-                              ,ViewOptions
-                              )
+    case kz_datamgr:get_single_result(?KZ_PORT_REQUESTS_DB
+                                     ,<<"port_requests/port_in_numbers">>
+                                     ,ViewOptions
+                                     )
     of
         {'ok', Port} -> {'ok', kz_json:get_value(<<"doc">>, Port)};
         {'error', _E} ->

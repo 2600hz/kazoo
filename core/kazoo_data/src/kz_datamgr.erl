@@ -71,7 +71,7 @@
         ,get_results/2, get_results/3
         ,get_results_count/3
         ,get_result_keys/1, get_result_keys/3
-        ,get_result/3
+        ,get_single_result/3
         ,design_info/2
         ,design_compact/2
         ]).
@@ -1080,9 +1080,9 @@ get_result_keys(JObjs) ->
      || JObj <- JObjs
     ].
 
--spec get_result(ne_binary(), ne_binary(), view_options()) -> {'ok', kz_json:object()} |
-                                                              data_error().
-get_result(DbName, DesignDoc, Options) ->
+-spec get_single_result(ne_binary(), ne_binary(), view_options()) -> {'ok', kz_json:object()} |
+                                                                     data_error().
+get_single_result(DbName, DesignDoc, Options) ->
     case kz_datamgr:get_results(DbName, DesignDoc, Options) of
         {'ok', []} -> {'error', 'not_found'};
         {'ok', [Result]} -> {'ok', Result};

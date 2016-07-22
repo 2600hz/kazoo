@@ -223,7 +223,7 @@ get_endpoint_id_from_sipdb(Realm, Username) ->
                            ,kz_util:to_lower_binary(Username)
                            ]
                    }],
-    case kz_datamgr:get_result(?KZ_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
+    case kz_datamgr:get_single_result(?KZ_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {'ok', JObj} ->
             EndpointId = kz_doc:id(JObj),
             AccountDb = kz_json:get_value([<<"value">>, <<"account_db">>], JObj),

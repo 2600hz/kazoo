@@ -848,7 +848,7 @@ maybe_update_app(AppPath, MetaData, MasterAccountDb, JObj) ->
                                             {'error', any()}.
 find_app(Db, Name) ->
     ViewOptions = [{'key', Name}],
-    kz_datamgr:get_result(Db, ?CB_APPS_STORE_LIST, ViewOptions).
+    kz_datamgr:get_single_result(Db, ?CB_APPS_STORE_LIST, ViewOptions).
 
 -spec create_app(file:filename(), kz_json:object(), ne_binary()) -> 'ok'.
 create_app(AppPath, MetaData, MasterAccountDb) ->
