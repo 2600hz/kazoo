@@ -167,7 +167,10 @@ refresh([Database|Databases], Pause, Total) ->
 -spec get_databases() -> ne_binaries().
 get_databases() ->
     {'ok', Databases} = kz_datamgr:db_info(),
-    ?KZ_SYSTEM_DBS ++ [Db || Db <- Databases, (not lists:member(Db, ?KZ_SYSTEM_DBS))].
+    ?KZ_SYSTEM_DBS
+        ++ [Db || Db <- Databases,
+                  not lists:member(Db, ?KZ_SYSTEM_DBS)
+           ].
 
 refresh(?KZ_CONFIG_DB) ->
     kz_datamgr:db_create(?KZ_CONFIG_DB),
@@ -246,6 +249,10 @@ refresh(?KZ_TOKEN_DB) ->
 refresh(?KZ_ALERTS_DB) ->
     _ = kz_datamgr:db_create(?KZ_ALERTS_DB),
     kz_datamgr:revise_doc_from_file(?KZ_ALERTS_DB, 'crossbar', "views/alerts.json"),
+    'ok';
+refresh(?KZ_TASKS_DB) ->
+    _ = kz_datamgr:db_create(?KZ_TASKS_DB),
+    _ = kz_datamgr:revise_views_from_folder(?KZ_TASKS_DB, 'kazoo_tasks'),
     'ok';
 refresh(Database) when is_binary(Database) ->
     case kz_datamgr:db_classification(Database) of

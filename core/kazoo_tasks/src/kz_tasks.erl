@@ -351,7 +351,7 @@ init([]) ->
     _ = process_flag('trap_exit', 'true'),
     lager:info("ensuring db ~s exists", [?KZ_TASKS_DB]),
     'true' = kz_datamgr:db_create(?KZ_TASKS_DB),
-    kz_datamgr:revise_views_from_folder(?KZ_TASKS_DB, kz_util:to_atom(?APP_NAME)),
+    kz_datamgr:revise_views_from_folder(?KZ_TASKS_DB, ?APP),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------

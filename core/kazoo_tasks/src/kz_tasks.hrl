@@ -6,6 +6,7 @@
 -include_lib("kazoo_tasks/include/kazoo_tasks.hrl").
 
 -define(CONFIG_CAT, <<"tasks">>).
+-define(APP, 'kazoo_tasks').
 -define(APP_NAME, <<"kazoo_tasks">>).
 -define(APP_VERSION, <<"4.0.0">> ).
 
