@@ -66,7 +66,7 @@ is_authorized(AccountId, UserId, AppId) ->
         {'ok', Doc} ->
             AppJObj = kz_json:get_value(AppId, kzd_apps_store:apps(Doc)),
             AllowedType = kzd_app:allowed_users(AppJObj, <<"specific">>),
-            SpecificIds = get_specific_ids(kzd_app:users(AppJObj, [])),
+            SpecificIds = get_specific_ids(kzd_app:users(AppJObj)),
             case {AllowedType, SpecificIds} of
                 {<<"all">>, _} -> 'true';
                 {<<"specific">>, []} -> 'false';

@@ -31,7 +31,7 @@
         ,tags/1
         ,unpublish/1
         ,urls/1
-        ,users/1, users/2
+        ,users/1
         ,version/1
         ]).
 
@@ -225,13 +225,9 @@ account_id(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec users(kz_json:object()) -> api_objects().
+-spec users(kz_json:object()) -> ne_binaries().
 users(JObj) ->
-    users(JObj, 'undefined').
-
--spec users(kz_json:object(), Default) -> [kz_json:object()] | Default.
-users(JObj, Default) ->
-    kz_json:get_value(?USERS, JObj, Default).
+    kz_json:get_list_value(?USERS, JObj, []).
 
 %%--------------------------------------------------------------------
 %% @public

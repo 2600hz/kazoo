@@ -62,7 +62,7 @@ reconcile(Services, AppName) ->
 -spec is_in_use(kz_json:object()) -> boolean().
 is_in_use(AppJObj) ->
     Allowed = kzd_app:allowed_users(AppJObj, <<"specific">>),
-    Users = kzd_app:users(AppJObj, []),
+    Users = kzd_app:users(AppJObj),
     case {Allowed, Users} of
         {<<"all">>, _} -> 'true';
         {<<"specific">>, []} -> 'false';
