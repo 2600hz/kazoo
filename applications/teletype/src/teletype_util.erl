@@ -402,7 +402,10 @@ find_account_id(JObj) ->
                               ,<<"pvt_account_id">>
                               ,<<"_id">>, <<"id">>
                               ,<<"Account-ID">>
+                              ,[<<"details">>, <<"account_id">>]
                               ,[<<"Details">>, <<"Account-ID">>]
+                              ,[<<"details">>, <<"custom_channel_vars">>, <<"account_id">>]
+                              ,[<<"Details">>, <<"Custom-Channel-Vars">>, <<"Account-ID">>]
                               ]
                              ,JObj
                              ).

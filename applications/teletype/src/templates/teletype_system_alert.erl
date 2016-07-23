@@ -175,7 +175,7 @@ process_req(JObj) ->
              ],
 
     %% Populate templates
-    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, JObj),
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
     {'ok', TemplateMetaJObj} =
         teletype_templates:fetch_notification(?TEMPLATE_ID
