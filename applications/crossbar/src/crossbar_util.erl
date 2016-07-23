@@ -756,31 +756,29 @@ filter_apps(Apps, AccountId, UserId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_apps(kz_json:objects() | ne_binary(), ne_binary(), kz_json:objects()) ->
-                         kz_json:objects().
-format_apps([], _, Acc) -> Acc;
-format_apps(AccountId, UserId, JObjs) when is_binary(AccountId) ->
+-spec format_apps(ne_binary(), ne_binary(), kz_json:objects()) -> kz_json:objects().
+format_apps(AccountId=?NE_BINARY, UserId, AppJObjs) ->
     Lang = get_language(AccountId, UserId),
-    format_apps(JObjs, Lang, []);
-format_apps([JObj|JObjs], Lang, Acc) ->
-    FormatedApp = format_app(JObj, Lang),
-    format_apps(JObjs, Lang, [FormatedApp|Acc]).
+    [format_app(Lang, AppJObj)
+     || AppJObj <- AppJObjs
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_app(kz_json:object(), ne_binary()) -> kz_json:object().
-format_app(JObj, Lang) ->
-    DefaultLabel = kz_json:get_value([<<"i18n">>, ?DEFAULT_LANGUAGE, <<"label">>], JObj),
+-spec format_app(ne_binary(), kz_json:object()) -> kz_json:object().
+format_app(Lang, AppJObj) ->
+    I18N = kzd_app:i18n(AppJObj),
+    DefaultLabel = kz_json:get_value([?DEFAULT_LANGUAGE, <<"label">>], I18N),
     kz_json:from_list(
       props:filter_undefined(
-        [{<<"id">>, kz_doc:id(JObj)}
-        ,{<<"name">>, kz_json:get_value(<<"name">>, JObj)}
-        ,{<<"api_url">>, kz_json:get_value(<<"api_url">>, JObj)}
-        ,{<<"source_url">>, kz_json:get_value(<<"source_url">>, JObj)}
-        ,{<<"label">>, kz_json:get_value([<<"i18n">>, Lang, <<"label">>], JObj, DefaultLabel)}
+        [{<<"id">>, kzd_app:id(AppJObj)}
+        ,{<<"name">>, kzd_app:name(AppJObj)}
+        ,{<<"api_url">>, kzd_app:api_url(AppJObj)}
+        ,{<<"source_url">>, kzd_app:source_url(AppJObj)}
+        ,{<<"label">>, kz_json:get_value([Lang, <<"label">>], I18N, DefaultLabel)}
         ]
        )
      ).
