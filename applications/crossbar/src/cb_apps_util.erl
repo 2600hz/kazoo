@@ -281,26 +281,23 @@ get_plan_apps(ServicePlan) ->
 %%--------------------------------------------------------------------
 -spec find_enabled_apps(kz_json:object()) -> kz_json:objects().
 find_enabled_apps(PlanAppsJObj) ->
-    [kz_json:delete_key(<<"published">>, MaybeAppJObj)
-     || {AppName, PlanApp} <- kz_json:from_list(PlanAppsJObj),
-        AppId <- [kz_json:get_value(<<"app_id">>, PlanApp)],
-        MaybeAppJObj <- [kzd_item_plan:is_enabled(PlanApp)
-                         andalso find_app(AppId, PlanApp)
-                        ],
-        ShouldInclude <- [kz_json:is_json_object(MaybeAppJObj)],
-        _ <- [case ShouldInclude of
-                  'true' ->  lager:debug("including app ~s(~s) from plan", [AppName, AppId]);
-                  'false' -> lager:debug("excluding app ~s(~s) from plan", [AppName, AppId])
-              end
-             ],
-        ShouldInclude
-    ].
+    kz_json:foldl(fun find_enabled_apps_fold/3, [], PlanAppsJObj).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
+-spec find_enabled_apps_fold(ne_binary(), kzd_item_plan:doc(), kz_json:objects()) -> kz_json:objects().
+find_enabled_apps_fold(AppName, PlanApp, Acc) ->
+    AppId = kz_json:get_value(<<"app_id">>, PlanApp),
+    case kzd_item_plan:is_enabled(PlanApp)
+        andalso find_app(AppId, PlanApp)
+    of
+        TrueOrUndefined when TrueOrUndefined =:= 'true';
+                             TrueOrUndefined =:= 'undefined' ->
+            lager:debug("excluding app ~s(~s)", [AppName, AppId]),
+            Acc;
+        AppJObj ->
+            lager:debug("including app ~s(~s) from plan", [AppName, AppId]),
+            [kz_json:delete_key(<<"published">>, AppJObj) | Acc]
+    end.
+
 -spec find_app(ne_binary(), kz_json:object()) -> api_object().
 find_app(AppId, PlanApp) ->
     Account = kz_json:get_first_defined([<<"account_db">>
@@ -308,10 +305,9 @@ find_app(AppId, PlanApp) ->
                                         ]
                                        ,PlanApp
                                        ),
-    AccountDb = kz_util:format_account_db(Account),
-    case kz_datamgr:open_cache_doc(AccountDb, AppId) of
+    case kzd_app:fetch(Account, AppId) of
         {'ok', JObj} -> JObj;
         {'error', _R} ->
-            lager:error("failed to get ~s in ~s: ~p", [AppId, AccountDb, _R]),
+            lager:error("failed to get ~s in ~s: ~p", [AppId, Account, _R]),
             'undefined'
     end.
