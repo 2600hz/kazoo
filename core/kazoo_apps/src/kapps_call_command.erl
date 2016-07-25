@@ -195,6 +195,12 @@
 -export([audio_level/4]).
 -export([store_file/3, store_file/4]).
 
+-export([attended_transfer/2, attended_transfer/3
+        ,blind_transfer/2, blind_transfer/3
+        ,transfer/3, transfer/4
+        ,transfer_command/3, transfer_command/4
+        ]).
+
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), binaries()} |
                               {'prompt', binary()} | {'prompt', binary(), ne_binaries()} |
                               {'say', binary()} | {'say', binary(), binary()} |
@@ -3025,3 +3031,42 @@ retry_store_file(Tries, Timeout, API, Msg, Error, Call) ->
     lager:critical("~s : ~s", [Msg, Error]),
     timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
     do_store_file(Tries, Timeout, API, Msg, Call).
+
+-spec attended_transfer(ne_binary(), kapps_call:call()) -> 'ok'.
+-spec attended_transfer(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+attended_transfer(To, Call) ->
+    attended_transfer(To, 'undefined', Call).
+attended_transfer(To, TransferLeg, Call) ->
+    Command = transfer_command(<<"attended">>, To, TransferLeg, Call),
+    send_command(Command, Call).
+
+-spec blind_transfer(ne_binary(), kapps_call:call()) -> 'ok'.
+-spec blind_transfer(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+blind_transfer(To, Call) ->
+    blind_transfer(To, 'undefined', Call).
+blind_transfer(To, TransferLeg, Call) ->
+    Command = transfer_command(<<"blind">>, To, TransferLeg, Call),
+    send_command(Command, Call).
+
+-spec transfer(ne_binary(), ne_binary(), kapps_call:call()) -> 'ok'.
+-spec transfer(ne_binary(), ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
+transfer(TransferType, To, Call) ->
+    transfer(TransferType, To, 'undefined', Call).
+transfer(TransferType, To, TransferLeg, Call) ->
+    Command = transfer_command(TransferType, To, TransferLeg, Call),
+    send_command(Command, Call).
+
+-spec transfer_command(ne_binary(), ne_binary(), kapps_call:call()) -> api_terms().
+-spec transfer_command(ne_binary(), ne_binary(), api_binary(), kapps_call:call()) -> api_terms().
+transfer_command(TransferType, TransferTo, Call) ->
+    transfer_command(TransferType, TransferTo, 'undefined', Call).
+transfer_command(TransferType, TransferTo, TransferLeg, Call) ->
+    kz_json:from_list(
+      props:filter_undefined(
+        [{<<"Application-Name">>, <<"transfer">>}
+        ,{<<"Transfer-Type">>, TransferType}
+        ,{<<"Transfer-To">>, TransferTo}
+        ,{<<"Transfer-Leg">>, TransferLeg}
+        ,{<<"Insert-At">>, <<"now">>}
+        ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+        ])).
