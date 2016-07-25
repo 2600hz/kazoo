@@ -24,6 +24,13 @@
 -export([params_el/1, param_el/2, maybe_param_el/2]).
 -export([xml_attrib/2]).
 
+-export([action_el/1, action_el/2, action_el/3]).
+-export([condition_el/1, condition_el/3]).
+-export([extension_el/1, extension_el/3]).
+-export([context_el/2]).
+-export([variables_el/1, variable_el/2]).
+-export([hunt_context/1, context/1, context/2]).
+
 -include("ecallmgr.hrl").
 
 -define(DEFAULT_USER_CACHE_TIME_IN_MS, ?MILLISECONDS_IN_HOUR). %% 1 hour
@@ -301,7 +308,7 @@ route_resp_xml(<<"error">>, _Routes, JObj, Props) ->
     Section = kz_json:get_value(<<"Fetch-Section">>, JObj, <<"dialplan">>),
     route_resp_xml(<<Section/binary, "_error">>,_Routes, JObj, Props);
 
-route_resp_xml(<<"dialplan_error">>, _Routes, JObj, _Props) ->
+route_resp_xml(<<"dialplan_error">>, _Routes, JObj, Props) ->
     ErrCode = kz_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", kz_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
     Exten = [route_resp_log_winning_node()
@@ -312,7 +319,8 @@ route_resp_xml(<<"dialplan_error">>, _Routes, JObj, _Props) ->
             ,action_el(<<"respond">>, [ErrCode, ErrMsg])
             ],
     ErrExtEl = extension_el([condition_el(Exten)]),
-    ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ErrExtEl]),
+    Context = kz_json:get_value(<<"Context">>, JObj, hunt_context(Props)),
+    ContextEl = context_el(Context, [ErrExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Error Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
@@ -344,7 +352,19 @@ route_resp_xml(<<"sms_error">>, _Routes, JObj, _Props) ->
     ErrExtEl = extension_el([condition_el(Exten)]),
     ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ErrExtEl]),
     SectionEl = section_el(<<"chatplan">>, <<"Route Error Response">>, ContextEl),
-    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+    {'ok', xmerl:export([SectionEl], 'fs_xml')};
+
+route_resp_xml(Method, Routes, JObj, Props) ->
+    lager:debug("trying fun for ~p", [Method]),
+    Fun = props:get_value(<<"Route-Resp-Xml-Fun">>, Props),
+    maybe_route_resp_xml_fun(Fun, Method, Routes, JObj, Props).
+
+maybe_route_resp_xml_fun(Fun, Method, Routes, JObj, Props)
+  when is_function(Fun, 4) ->
+    Fun(Method, Routes, JObj, Props);
+maybe_route_resp_xml_fun(_Fun, Method, Routes, JObj, Props) ->
+    lager:error("route resp xml method ~p not handled, reverting to error", [Method]),
+    route_resp_xml(<<"error">>, Routes, JObj, Props).
 
 route_resp_bridge_id() ->
     Action = action_el(<<"export">>, [?SET_CCV(<<"Bridge-ID">>, <<"${UUID}">>)], 'true'),
@@ -635,6 +655,14 @@ arrange_acl_node({_, JObj}, Dict) ->
 -spec hunt_context(kz_proplist()) -> api_binary().
 hunt_context(Props) ->
     props:get_value(<<"Hunt-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT).
+
+-spec context(kz_json:object()) -> api_binary().
+context(JObj) ->
+    kz_json:get_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT).
+
+-spec context(kz_json:object(), kz_proplist()) -> api_binary().
+context(JObj, Props) ->
+    kz_json:get_value(<<"Context">>, JObj, hunt_context(Props)).
 
 %%%-------------------------------------------------------------------
 %% XML record creators and helpers
