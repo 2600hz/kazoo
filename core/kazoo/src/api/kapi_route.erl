@@ -123,10 +123,14 @@ has_cost_parameters(JObj) ->
                                      ,<<"Ringback-Media">>, <<"Transfer-Media">>
                                      ,<<"Pre-Park">>, <<"From-User">>, <<"From-Realm">>
                                      ,<<"From-URI">>
+                                     ,<<"Plan-Data">>, <<"Application-Data">>
                                      ]).
 -define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, <<"route_resp">>}
-                           ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>, <<"sms">>]}
+                           ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>, <<"sms">>
+                                           ,<<"plan">>, <<"application">>
+                                           ]
+                            }
                            ,{<<"Pre-Park">>, [<<"none">>, <<"ring_ready">>, <<"answer">>]}
                            ]).
 -define(ROUTE_RESP_TYPES, [{<<"Route-Error-Code">>, fun is_binary/1}
@@ -213,6 +217,8 @@ is_actionable_resp(Prop) when is_list(Prop) ->
         <<"bridge">> -> 'true';
         <<"park">> -> 'true';
         <<"sms">> -> 'true';
+        <<"plan">> -> 'true';
+        <<"application">> -> 'true';
         <<"error">> ->
             kz_util:is_true(props:get_value(<<"Defer-Response">>, Prop));
         _ -> 'false'
