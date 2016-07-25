@@ -1563,10 +1563,7 @@ transfer(Node, UUID, <<"attended">>, TransferTo, JObj) ->
                    lists:member(K, CCVList)
             ]  ++ Vars,
     [Export | Exports] = ecallmgr_util:process_fs_kv(Node, UUID, Props, 'set'),
-    Arg = list_to_binary([Export
-                         ,[[",", Exported] || Exported <- Exports]
-                         ]
-                        ),
+    Arg = [Export, [[",", Exported] || Exported <- Exports] ],
     {<<"att_xfer">>, list_to_binary(["{", Arg, "}loopback/", TransferTo, <<"/">>, transfer_context(JObj)])};
 transfer(_Node, _UUID, <<"blind">>, TransferTo, JObj) ->
     {<<"transfer">>, list_to_binary([transfer_leg(JObj), " ", TransferTo, <<" XML ">>, transfer_context(JObj)])}.
