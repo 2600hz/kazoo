@@ -321,8 +321,7 @@ transition_numbers(PortReq) ->
     lager:debug("creating local numbers for port ~s", [PortReqId]),
     Numbers = kz_json:get_keys(?NUMBERS_KEY, PortReq),
     Results = knm_numbers:create(Numbers, Options),
-    IsOK = fun ({_Num, {'ok',_}}) -> 'true'; ({_Num, _}) -> 'false' end,
-    {_OK, Errored} = lists:partition(IsOK, Results),
+    {_OK, Errored} = lists:partition(fun was_number_operation_successul/1, Results),
     case Errored of
         [] ->
             lager:debug("all numbers ported, removing from port request"),
@@ -330,10 +329,17 @@ transition_numbers(PortReq) ->
             {'ok', ClearedPortRequest};
         _ ->
             lager:debug("failed to transition ~p/~p numbers", [length(Errored), length(_OK)]),
-            _ = [lager:debug("~s error: ~p", [Num, Error]) || {Num,Error} <- Errored],
-            _ = [lager:debug("~s success", [Num]) || {Num,_} <- _OK],
             {'error', PortReq}
     end.
+
+%% @private
+-spec was_number_operation_successul(knm_numbers:number_return()) -> boolean().
+was_number_operation_successul({_Num, {'ok', _}}) ->
+    lager:debug("~s success", [_Num]),
+    'true';
+was_number_operation_successul({_Num, _Error}) ->
+    lager:debug("~s error: ~p", [_Num, _Error]),
+    'false'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -529,7 +535,8 @@ migrate_docs(Docs) ->
 -spec prepare_docs_for_migrate(kz_json:objects()) -> kz_json:objects().
 prepare_docs_for_migrate(Docs) ->
     [UpdatedDoc || Doc <- Docs,
-                   (UpdatedDoc = migrate_doc(kz_json:get_value(<<"doc">>, Doc))) =/= 'undefined'
+                   (UpdatedDoc = migrate_doc(kz_json:get_value(<<"doc">>, Doc)))
+                       =/= 'undefined'
     ].
 
 -spec migrate_doc(kz_json:object()) -> api_object().

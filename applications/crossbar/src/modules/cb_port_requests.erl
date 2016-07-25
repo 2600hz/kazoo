@@ -359,12 +359,9 @@ update_port_request_for_save(Context, Doc) ->
 
 put(Context, Id, ?PORT_ATTACHMENT) ->
     [{Filename, FileJObj}] = cb_context:req_files(Context),
-
     Contents = kz_json:get_value(<<"contents">>, FileJObj),
-
     CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"port_request">>)],
-
     crossbar_doc:save_attachment(Id
                                 ,cb_modules_util:attachment_name(Filename, CT)
                                 ,Contents
@@ -406,17 +403,15 @@ patch_then_notify(Context, PortId, PortState) ->
 -spec do_patch(cb_context:context()) -> cb_context:context().
 do_patch(Context) ->
     UpdatedDoc =
-        kz_json:merge_recursive(
-          cb_context:doc(Context)
+        kz_json:merge_recursive(cb_context:doc(Context)
                                ,kz_json:public_fields(cb_context:req_data(Context))
-         ),
+                               ),
     Context1 = crossbar_doc:save(update_port_request_for_save(Context, UpdatedDoc)),
     case cb_context:resp_status(Context1) of
         'success' ->
-            cb_context:set_resp_data(
-              Context1
+            cb_context:set_resp_data(Context1
                                     ,knm_port_request:public_fields(cb_context:doc(Context1))
-             );
+                                    );
         _Status ->
             Context1
     end.
@@ -1165,7 +1160,6 @@ has_new_comment(_, []) -> 'false';
 has_new_comment(OldComments, NewComments) ->
     OldTime = kz_json:get_value(<<"timestamp">>, lists:last(OldComments)),
     NewTime = kz_json:get_value(<<"timestamp">>, lists:last(NewComments)),
-
     OldTime < NewTime.
 
 %%--------------------------------------------------------------------
@@ -1174,9 +1168,7 @@ has_new_comment(OldComments, NewComments) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec send_port_notification(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec send_port_notification(cb_context:context(), path_token(), path_token(), function()) -> cb_context:context().
 send_port_notification(Context, Id, ?PORT_SUBMITTED=State) ->
-    _  = add_to_phone_numbers_doc(Context),
     send_port_notification(Context, Id, State, fun send_port_request_notification/2);
 send_port_notification(Context, Id, ?PORT_PENDING=State) ->
     send_port_notification(Context, Id, State, fun send_port_pending_notification/2);
@@ -1187,23 +1179,24 @@ send_port_notification(Context, Id, ?PORT_COMPLETED=State) ->
 send_port_notification(Context, Id, ?PORT_REJECTED=State) ->
     send_port_notification(Context, Id, State, fun send_port_rejected_notification/2);
 send_port_notification(Context, Id, ?PORT_CANCELED=State) ->
-    _ = remove_from_phone_numbers_doc(Context),
     send_port_notification(Context, Id, State, fun send_port_cancel_notification/2).
 
+-spec send_port_notification(cb_context:context(), path_token(), path_token(), function()) ->
+                                    cb_context:context().
 send_port_notification(Context, Id, State, Fun) ->
-    try Fun(Context, Id) of
-        _ ->
-            lager:debug("port ~s notification sent", [State]),
-            Context
+    try
+        Fun(Context, Id),
+        lager:debug("port ~s notification sent", [State]),
+        Context
     catch
         _E:_R ->
             lager:debug("failed to send the  port ~s notification: ~s:~p", [State, _E, _R]),
             _ = revert_patch(Context),
-            cb_context:add_system_error(
-              'bad_gateway'
-                                       ,kz_json:from_list([{<<"message">>, <<"failed to send port ", State/binary,  " email">>}])
+            Msg = <<"failed to send port ", State/binary, " email">>,
+            cb_context:add_system_error('bad_gateway'
+                                       ,kz_json:from_list([{<<"message">>, Msg}])
                                        ,Context
-             )
+                                       )
     end.
 
 %%--------------------------------------------------------------------
@@ -1215,11 +1208,8 @@ send_port_notification(Context, Id, State, Fun) ->
 revert_patch(Context) ->
     Doc = cb_context:doc(Context),
     DBDoc = cb_context:fetch(Context, 'db_doc'),
-
     Rev = kz_doc:revision(Doc),
-
     RevertedDoc = kz_doc:set_revision(DBDoc, Rev),
-
     crossbar_doc:save(cb_context:set_doc(Context, RevertedDoc)).
 
 %%--------------------------------------------------------------------
@@ -1322,123 +1312,6 @@ send_port_scheduled_notification(Context, Id) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(Req, fun kapi_notifications:publish_port_scheduled/1).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec add_to_phone_numbers_doc(cb_context:context()) -> 'ok' | 'error'.
--spec add_to_phone_numbers_doc(cb_context:context(), kz_json:object()) -> 'ok' | 'error'.
-add_to_phone_numbers_doc(Context) ->
-    case get_phone_numbers_doc(Context) of
-        {'error', _R} -> 'error';
-        {'ok', JObj} ->
-            add_to_phone_numbers_doc(Context, JObj)
-    end.
-
-add_to_phone_numbers_doc(Context, JObj) ->
-    AccountId = cb_context:account_id(Context),
-    Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-
-    PhoneNumbersJObj =
-        kz_json:foldl(
-          fun(Number, _, Acc) ->
-                  NumberJObj = build_number_properties(AccountId, Now),
-                  kz_json:set_value(Number, NumberJObj, Acc)
-          end
-                     ,JObj
-                     ,kz_json:get_value(<<"numbers">>, cb_context:doc(Context), kz_json:new())
-         ),
-    save_phone_numbers_doc(Context, PhoneNumbersJObj).
-
--spec build_number_properties(ne_binary(), gregorian_seconds()) -> kz_json:object().
-build_number_properties(AccountId, Now) ->
-    kz_json:from_list(
-      [{<<"state">>, ?NUMBER_STATE_PORT_IN}
-      ,{<<"features">>, kz_json:new()}
-      ,{<<"assigned_to">>, AccountId}
-      ,{<<"created">>, Now}
-      ,{<<"updated">>, Now}
-      ]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec remove_from_phone_numbers_doc(cb_context:context()) -> 'ok' | 'error'.
--spec remove_from_phone_numbers_doc(cb_context:context(), kz_json:object()) -> 'ok' | 'error'.
-remove_from_phone_numbers_doc(Context) ->
-    case get_phone_numbers_doc(Context) of
-        {'error', _R}-> 'ok';
-        {'ok', JObj} ->
-            remove_from_phone_numbers_doc(Context, JObj)
-    end.
-
-remove_from_phone_numbers_doc(Context, JObj) ->
-    {Updated, PhoneNumbersJObj} =
-        kz_json:foldl(fun remove_phone_number/3
-                     ,{'false', JObj}
-                     ,kz_json:get_value(<<"numbers">>, cb_context:doc(Context), kz_json:new())
-                     ),
-    case Updated of
-        'true' ->
-            save_phone_numbers_doc(Context, PhoneNumbersJObj);
-        'false' ->
-            lager:debug("no numbers removed, not updating")
-    end.
-
--spec remove_phone_number(kz_json:key(), kz_json:json_term(), {boolean(), kz_json:object()}) ->
-                                 {'true', kz_json:object()}.
-remove_phone_number(Number, _, {_, Acc}) ->
-    {'true', kz_json:delete_key(Number, Acc)}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec get_phone_numbers_doc(cb_context:context()) ->
-                                   {'ok', kz_json:object()} |
-                                   {'error', any()}.
-get_phone_numbers_doc(Context) ->
-    AccountId = cb_context:account_id(Context),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    Context1 = crossbar_doc:load(?KNM_PHONE_NUMBERS_DOC
-                                ,cb_context:set_account_db(Context, AccountDb)
-                                ,?TYPE_CHECK_OPTION(<<"phone_numbers">>)),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            {'ok', cb_context:doc(Context1)};
-        Status ->
-            lager:error("failed to open ~s doc in ~s : ~p", [?KNM_PHONE_NUMBERS_DOC, AccountId, Status]),
-            {'error', Status}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec save_phone_numbers_doc(cb_context:context(), kz_json:object()) -> 'ok' | 'error'.
-save_phone_numbers_doc(Context, JObj) ->
-    AccountId = cb_context:account_id(Context),
-    Context1 =
-        cb_context:setters(
-          Context
-                          ,[{fun cb_context:set_doc/2, JObj}
-                           ,{fun cb_context:set_account_db/2, kz_util:format_account_id(AccountId, 'encoded')}
-                           ]
-         ),
-
-    case cb_context:resp_status(crossbar_doc:save(Context1)) of
-        'success' -> 'ok';
-        _Status ->
-            lager:error("failed to save ~s doc in ~s : ~p"
-                       ,[?KNM_PHONE_NUMBERS_DOC, AccountId, _Status]),
-            'error'
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
