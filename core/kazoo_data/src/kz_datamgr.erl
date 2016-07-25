@@ -201,15 +201,43 @@ do_revise_docs_from_folder(_, _, []) -> 'ok';
 do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
     try
         {'ok', Bin} = file:read_file(H),
-        JObj = kz_json:decode(Bin),
+        JObj = maybe_adapt_multilines(kz_json:decode(Bin)),
         Sleep
             andalso timer:sleep(250),
         _ = ensure_saved(DbName, JObj),
         do_revise_docs_from_folder(DbName, Sleep, T)
     catch
         _:_ ->
+            kz_util:log_stacktrace(),
             do_revise_docs_from_folder(DbName, Sleep, T)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Replaces multiline Javascript into single line, on the fly
+%% while loading views from files.
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_adapt_multilines(kz_json:object()) -> kz_json:object().
+maybe_adapt_multilines(JObj) ->
+    case kz_json:get_value(<<"views">>, JObj) of
+        'undefined' -> JObj;
+        Views ->
+            NewViews =
+                [{View, kz_json:foldl(fun inline_js_fun/3, kz_json:new(), Pairs)}
+                 || {View, Pairs} <- kz_json:to_proplist(Views)
+                ],
+            kz_json:set_value(<<"views">>, NewViews, JObj)
+    end.
+
+%% @private
+-spec inline_js_fun(ne_binary(), ne_binaries() | kz_json:json_term(), kz_json:object()) ->
+                           kz_json:object().
+inline_js_fun(Type, Code=[<<"function(",_/binary>>|_], Acc) ->
+    kz_json:set_value(Type, iolist_to_binary(Code), Acc);
+inline_js_fun(Type, Code, Acc) ->
+    kz_json:set_value(Type, Code, Acc).
 
 %%--------------------------------------------------------------------
 %% @public
