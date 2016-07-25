@@ -73,6 +73,8 @@
         ,<<"SIP-Transport">>
         ,<<"Secure-RTP">>
         ,<<"Timeout">>
+        ,<<"Simplify-Loopback">>
+        ,<<"Loopback-Bowout">>
         ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                            ,{<<"Event-Name">>, <<"command">>}
@@ -137,6 +139,8 @@
         ,<<"To-URI">>
         ,<<"To-User">>
         ,<<"To-Username">>
+        ,<<"Simplify-Loopback">>
+        ,<<"Loopback-Bowout">>
         ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                     ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>, <<"skype">>]}
@@ -774,6 +778,24 @@
 -define(STORE_VM_REQ_TYPES, [{<<"Additional-Headers">>, fun is_list/1}
                             ,{<<"Suppress-Error-Report">>, fun kz_util:is_boolean/1}
                             ]).
+
+%% Transfer
+-define(TRANSFER_HEADERS, [<<"Application-Name">>, <<"Call-ID">>
+                          ,<<"Transfer-Type">>, <<"Transfer-To">>
+                          ]).
+-define(OPTIONAL_TRANSFER_HEADERS, [<<"Insert-At">>
+                                   ,<<"Transfer-Leg">>
+                                   ,<<"Transfer-Context">>
+                                   ]).
+-define(TRANSFER_VALUES, [{<<"Event-Category">>, <<"call">>}
+                         ,{<<"Event-Name">>, <<"command">>}
+                         ,{<<"Application-Name">>, <<"transfer">>}
+                         ,{<<"Transfer-Type">>, [<<"blind">>, <<"attended">>]}
+                         ,?INSERT_AT_TUPLE
+                         ]).
+-define(TRANSFER_TYPES, [{<<"Call-ID">>, fun is_binary/1}
+                        ,{<<"Transfer-Leg">>, fun(T) -> lists:member(T, [<<"bleg">>, <<"both">>]) end}
+                        ]).
 
 -define(KAPI_DIALPLAN_HRL, 'true').
 -endif.

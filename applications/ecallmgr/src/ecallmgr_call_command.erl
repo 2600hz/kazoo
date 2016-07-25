@@ -12,6 +12,7 @@
 -module(ecallmgr_call_command).
 
 -export([exec_cmd/4]).
+-export([get_fs_app/4]).
 
 -ifdef(TEST).
 -export([get_conference_flags/1
@@ -542,6 +543,12 @@ get_fs_app(_Node, _UUID, JObj, <<"fax_detection">>) ->
                 <<"stop">> ->
                     {<<"spandsp_stop_fax_detect">>, <<>>}
             end
+    end;
+
+get_fs_app(Node, UUID, JObj, <<"transfer">>) ->
+    case kapi_dialplan:transfer_v(JObj) of
+        'false' -> {'error', <<"transfer failed to execute as JObj did not validate">>};
+        'true' -> transfer(Node, UUID, JObj)
     end;
 
 get_fs_app(_Node, _UUID, _JObj, _App) ->
@@ -1529,3 +1536,45 @@ tone_duration_on(Tone) ->
 -spec tone_duration_off(kz_json:object()) -> ne_binary().
 tone_duration_off(Tone) ->
     kz_json:get_binary_value(<<"Duration-OFF">>, Tone).
+
+-spec transfer(atom(), ne_binary(), kz_json:object()) -> {ne_binary(), ne_binary()}.
+transfer(Node, UUID, JObj) ->
+    TransferType = kz_json:get_value(<<"Transfer-Type">>, JObj),
+    TransferTo = kz_json:get_value(<<"Transfer-To">>, JObj),
+    transfer(Node, UUID, TransferType, TransferTo, JObj).
+
+-spec transfer(atom(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> {ne_binary(), ne_binary()}.
+transfer(Node, UUID, <<"attended">>, TransferTo, JObj) ->
+    CCVs = kz_json:to_proplist(kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
+    CCVList = [<<"Account-ID">>
+              ,<<"Authorizing-ID">>
+              ,<<"Authorizing-Type">>
+              ,<<"Channel-Authorized">>
+              ],
+    Realm = props:get_value(<<"Account-Realm">>, CCVs),
+    ReqURI = <<TransferTo/binary, "@", Realm/binary>>,
+    Vars = [{<<"Ignore-Early-Media">>, <<"ring_ready">>}
+           ,{<<"Simplify-Loopback">>, <<"false">>}
+           ,{<<"Loopback-Bowout">>, <<"true">>}
+           ,{<<"Loopback-Request-URI">>, ReqURI}
+           ,{<<"SIP-Invite-Domain">>, Realm}
+           ],
+    Props = [KV || {K,_V} = KV <- CCVs,
+                   lists:member(K, CCVList)
+            ]  ++ Vars,
+    [Export | Exports] = ecallmgr_util:process_fs_kv(Node, UUID, Props, 'set'),
+    Arg = [Export, [[",", Exported] || Exported <- Exports] ],
+    {<<"att_xfer">>, list_to_binary(["{", Arg, "}loopback/", TransferTo, <<"/">>, transfer_context(JObj)])};
+transfer(_Node, _UUID, <<"blind">>, TransferTo, JObj) ->
+    {<<"transfer">>, list_to_binary([transfer_leg(JObj), " ", TransferTo, <<" XML ">>, transfer_context(JObj)])}.
+
+-spec transfer_leg(kz_json:object()) -> binary().
+transfer_leg(JObj) ->
+    case kz_json:get_value(<<"Transfer-Leg">>, JObj) of
+        'undefined' -> <<>>;
+        TransferLeg -> <<"-", TransferLeg/binary>>
+    end.
+
+-spec transfer_context(kz_json:object()) -> binary().
+transfer_context(JObj) ->
+    kz_json:get_value(<<"Transfer-Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT).

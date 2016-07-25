@@ -61,7 +61,8 @@
         ,fax_detection/1, fax_detection_v/1
         ,store_vm/1, store_vm_v/1
         ,b_leg_events_v/1
-        ,audio_level/1
+        ,audio_level/1, audio_level_v/1
+        ,transfer/1, transfer_v/1
         ]).
 
 -export([queue/1, queue_v/1
@@ -1236,3 +1237,17 @@ store_vm(JObj) -> store_vm(kz_json:to_proplist(JObj)).
 store_vm_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?STORE_VM_REQ_HEADERS, ?STORE_VM_REQ_VALUES, ?STORE_VM_REQ_TYPES);
 store_vm_v(JObj) -> store_vm_v(kz_json:to_proplist(JObj)).
+
+-spec transfer(api_terms()) -> api_formatter_return().
+transfer(Prop) when is_list(Prop) ->
+    case transfer_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?TRANSFER_HEADERS, ?OPTIONAL_TRANSFER_HEADERS);
+        'false' -> {'error', "Proplist failed validation for conference_req"}
+    end;
+transfer(JObj) -> transfer(kz_json:to_proplist(JObj)).
+
+-spec transfer_v(api_terms()) -> boolean().
+transfer_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?TRANSFER_HEADERS, ?TRANSFER_VALUES, ?TRANSFER_TYPES);
+transfer_v(JObj) -> transfer_v(kz_json:to_proplist(JObj)).
+

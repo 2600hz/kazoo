@@ -134,7 +134,15 @@ child_name(NodeB, Args, {<<"supervisor">>, Module}) ->
     Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
     Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?SUPER_NAME_ARGS(Mod, Name, Args);
+child_name(NodeB, Args, {[{<<"supervisor">>, Module}]}) ->
+    Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    ?SUPER_NAME_ARGS(Mod, Name, Args);
 child_name(NodeB, Args, {<<"worker">>, Module}) ->
+    Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    ?WORKER_NAME_ARGS(Mod, Name, Args);
+child_name(NodeB, Args, {[{<<"worker">>, Module}]}) ->
     Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
     Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?WORKER_NAME_ARGS(Mod, Name, Args);
@@ -151,7 +159,9 @@ child_name(NodeB, Args, <<"route_sup">>=Module) ->
 child_name(NodeB, Args, <<_/binary>>=Module) ->
     Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
     Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
-    ?WORKER_NAME_ARGS(Mod, Name, Args).
+    ?WORKER_NAME_ARGS(Mod, Name, Args);
+child_name(_NodeB, _Args, _Module) ->
+    lager:error("error determining child type : ~p : ~p", [_Module, _Args]).
 
 -spec srv([{atom(), pid(), any(), any()}], list()) -> api_pid().
 srv([], _) -> 'undefined';
