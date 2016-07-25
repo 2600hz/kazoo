@@ -28,6 +28,8 @@
 -include("crossbar.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
+-define(CB_LIST, <<"phone_numbers/crossbar_listing">>).
+
 -define(ACTIVATE, <<"activate">>).
 -define(RESERVE, <<"reserve">>).
 
@@ -284,35 +286,39 @@ delete(Context, Number) ->
 
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Context1 = crossbar_doc:load(?KNM_PHONE_NUMBERS_DOC, Context, ?TYPE_CHECK_OPTION(?KNM_PHONE_NUMBERS_DOC)),
-    case cb_context:resp_error_code(Context1) of
-        404 -> crossbar_util:response(kz_json:new(), Context1);
-        _ -> cb_context:set_resp_data(Context1, clean_summary(Context1))
-    end.
+    Context1 = crossbar_doc:load_view(?CB_LIST, [], rename_qs_filters(Context), fun normalize_view_results/2),
+    ListOfNumProps = cb_context:resp_data(Context1),
+    NumbersJObj = lists:foldl(fun kz_json:merge_jobjs/2, kz_json:new(), ListOfNumProps),
+    Service = kz_services:fetch(cb_context:account_id(Context)),
+    Quantity = kz_services:cascade_category_quantity(<<"phone_numbers">>, [], Service),
+    NewRespData = kz_json:from_list([{<<"numbers">>, NumbersJObj}
+                                    ,{<<"casquade_quantity">>, Quantity}
+                                    ]),
+    cb_context:set_resp_data(Context1, NewRespData).
+
+%% @private
+-spec rename_qs_filters(cb_context:context()) -> cb_context:context().
+rename_qs_filters(Context) ->
+    Renamer = fun (<<"filter_state">>, Value)       -> {<<"filter_pvt_state">>, Value};
+                  (<<"filter_assigned_to">>, Value) -> {<<"filter_pvt_assigned_to">>, Value};
+                  (<<"filter_locality">>, Value)    -> {<<"filter_pvt_locality">>, Value};
+                  (K, V) -> {K, V}
+              end,
+    NewQS = kz_json:map(Renamer, cb_context:query_string(Context)),
+    cb_context:set_query_string(Context, NewQS).
+
+%% @private
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_view_results(JObj, Acc) ->
+    Number = kz_json:get_value(<<"key">>, JObj),
+    Properties = kz_json:get_value(<<"value">>, JObj),
+    [kz_json:set_value(Number, Properties, kz_json:new())
+     | Acc
+    ].
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% resource.
-%% @end
-%%--------------------------------------------------------------------
--spec clean_summary(cb_context:context()) -> kz_json:object().
-clean_summary(Context) ->
-    JObj = cb_context:resp_data(Context),
-    AccountId = cb_context:account_id(Context),
-    Routines = [fun(J) -> kz_json:delete_key(<<"id">>, J) end
-               ,fun(J) -> kz_json:set_value(<<"numbers">>, J, kz_json:new()) end
-               ,fun(J) ->
-                        Service =  kz_services:fetch(AccountId),
-                        Quantity = kz_services:cascade_category_quantity(<<"phone_numbers">>, [], Service),
-                        kz_json:set_value(<<"casquade_quantity">>, Quantity, J)
-                end
-               ],
-    lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
-
 
 %%--------------------------------------------------------------------
 %% @private
