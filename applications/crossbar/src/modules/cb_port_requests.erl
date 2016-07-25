@@ -405,7 +405,7 @@ do_patch(Context) ->
     UpdatedDoc =
         kz_json:merge_recursive(cb_context:doc(Context)
                                ,kz_json:public_fields(cb_context:req_data(Context))
-         ),
+                               ),
 
     Context1  = crossbar_doc:save(update_port_request_for_save(Context, UpdatedDoc)),
     RespData1 = knm_port_request:public_fields(cb_context:doc(Context1)),
