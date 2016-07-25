@@ -318,17 +318,8 @@ read_swagger_json() ->
         {'error', 'enoent'} -> kz_json:new()
     end.
 
--define(FORMAT_JSON, filename:join([code:lib_dir('crossbar')
-                                    ,".."
-                                    ,".."
-                                    ,"scripts"
-                                    ,"format-json.sh"
-                                   ])
-       ).
-
 write_swagger_json(Swagger) ->
-    'ok' = file:write_file(?SWAGGER_JSON, kz_json:encode(Swagger)),
-    os:cmd([?FORMAT_JSON, " ", ?SWAGGER_JSON]).
+    file:write_file(?SWAGGER_JSON, kz_json:encode(Swagger)).
 
 to_swagger_paths(Paths, BasePaths) ->
     kz_json:foldl(fun to_swagger_path/3, BasePaths, Paths).
