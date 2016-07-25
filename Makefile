@@ -5,7 +5,7 @@ FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis
 
 all: compile rel/dev-vm.args
 
@@ -173,3 +173,7 @@ $(FMT):
 fmt: TO_FMT ?= $(shell find applications core -iname '*.erl' -or -iname '*.hrl' -or -iname '*.app.src')
 fmt: $(FMT)
 	@$(FMT) $(TO_FMT)
+
+apis:
+	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-api-endpoints.escript
+	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/couchdb/swagger/swagger.json

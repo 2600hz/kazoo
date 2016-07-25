@@ -1,7 +1,13 @@
--module(cb_api_endpoints).
--compile([debug_info]).
+#!/usr/bin/env escript
+%%! -sname kazoo_xref
+%% -*- coding: utf-8 -*-
 
+-module(cb_api_endpoints).
+-mode('compile').
+-compile([debug_info]).
 -compile({'no_auto_import', [get/0]}).
+
+-export([main/1]).
 
 -export([get/0
          ,to_swagger_json/0
@@ -10,7 +16,7 @@
          ,schema_to_table/1
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 
 -define(REF_PATH(Module)
@@ -22,6 +28,10 @@
        ).
 
 -define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
+
+main(_) ->
+    to_ref_doc(),
+    to_swagger_json().
 
 to_ref_doc() ->
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
@@ -61,7 +71,7 @@ api_path_to_section(_MOdule, _Paths, Acc) -> Acc.
 %% curl -v http://{SERVER}:8000/Path
 %% ```
 methods_to_section('undefined', _Path, Acc) ->
-    lager:debug("skipping path ~p", [_Path]),
+    io:format("skipping path ~p\n", [_Path]),
     Acc;
 methods_to_section(ModuleName, {Path, Methods}, Acc) ->
     APIPath = path_name(Path, ModuleName),
@@ -308,17 +318,8 @@ read_swagger_json() ->
         {'error', 'enoent'} -> kz_json:new()
     end.
 
--define(FORMAT_JSON, filename:join([code:lib_dir('crossbar')
-                                    ,".."
-                                    ,".."
-                                    ,"scripts"
-                                    ,"format-json.sh"
-                                   ])
-       ).
-
 write_swagger_json(Swagger) ->
-    'ok' = file:write_file(?SWAGGER_JSON, kz_json:encode(Swagger)),
-    os:cmd([?FORMAT_JSON, " ", ?SWAGGER_JSON]).
+    file:write_file(?SWAGGER_JSON, kz_json:encode(Swagger)).
 
 to_swagger_paths(Paths, BasePaths) ->
     kz_json:foldl(fun to_swagger_path/3, BasePaths, Paths).
@@ -382,7 +383,7 @@ format_pc_module(_MC, Acc) ->
     Acc.
 
 format_pc_config(_ConfigData, Acc, _Module, 'undefined') ->
-    lager:debug("skipping module ~p", [_Module]),
+    io:format("skipping module ~p\n", [_Module]),
     Acc;
 format_pc_config({Callback, Paths}, Acc, Module, ModuleName) ->
     lists:foldl(fun(Path, Acc1) ->
@@ -486,7 +487,7 @@ path_name(<<_/binary>>=Module) ->
         {'match', [Name, ?CURRENT_VERSION]} ->
             <<?CURRENT_VERSION/binary, "/accounts/{ACCOUNT_ID}/", Name/binary>>;
         {'match', _M} ->
-            lager:debug("skipping '~s' for not being in the current version", [Module]),
+            io:format("skipping '~s' for not being in the current version\n", [Module]),
             'undefined'
     end.
 
@@ -527,8 +528,8 @@ process_api_module(File, Module) ->
     catch
         _E:_R ->
             ST = erlang:get_stacktrace(),
-            lager:error("failed to process ~p(~p): ~s: ~p", [File, Module, _E, _R]),
-            kz_util:log_stacktrace(ST),
+            io:format("failed to process ~p(~p): ~s: ~p\n", [File, Module, _E, _R]),
+            io:format("~p\n", [ST]),
             'undefined'
     end.
 

@@ -135,7 +135,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 ```
 
-#### Change
+#### Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 
