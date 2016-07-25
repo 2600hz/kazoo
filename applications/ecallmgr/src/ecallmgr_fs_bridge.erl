@@ -189,7 +189,7 @@ handle_loopback_key(Key, JObj) ->
     Exists = kz_json:get_value(Key, JObj) =/= 'undefined',
     handle_loopback_key(Exists, Key, JObj).
 
--spec handle_loopback_keys(ne_binary(), kz_json:object(), kz_proplist()) -> kz_proplist().
+-spec handle_loopback_keys(ne_binaries(), kz_json:object(), kz_proplist()) -> kz_proplist().
 handle_loopback_keys([], _JObj, Acc) -> Acc;
 handle_loopback_keys([Key | Keys], JObj, Acc) ->
     handle_loopback_keys(Keys, JObj, Acc ++ handle_loopback_key(Key, JObj)).
