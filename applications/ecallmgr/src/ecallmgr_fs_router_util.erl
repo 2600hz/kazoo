@@ -104,7 +104,7 @@ reply_forbidden(Section, Node, FetchId) ->
 -spec reply_affirmative(atom(), atom(), ne_binary(), ne_binary(), kz_json:object(), kz_proplist()) -> search_ret().
 reply_affirmative(Section, Node, FetchId, _CallId, JObj, Props) ->
     lager:info("received affirmative route response for request ~s", [FetchId]),
-    {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(Section, JObj, Props),
+    {'ok', XML} = route_resp_xml(Section, JObj, Props),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
         {'error', _Reason} -> lager:debug("node ~s rejected our ~s route response: ~p", [Node, Section, _Reason]);
@@ -112,6 +112,15 @@ reply_affirmative(Section, Node, FetchId, _CallId, JObj, Props) ->
             lager:info("node ~s accepted ~s route response for request ~s", [Node, Section, FetchId]),
             {'ok', JObj}
     end.
+
+route_resp_xml(Section, JObj, Props) ->
+    route_resp_xml(props:get_value(<<"Route-Resp-Fun">>, Props), Section, JObj, Props).
+
+route_resp_xml(Fun, Section, JObj, Props)
+  when is_function(Fun, 3) ->
+    Fun(Section, JObj, Props);
+route_resp_xml(_, Section, JObj, Props) ->
+    ecallmgr_fs_xml:route_resp_xml(Section, JObj, Props).
 
 -spec route_req(ne_binary(), ne_binary(), kz_proplist(), atom()) -> kz_proplist().
 route_req(CallId, FetchId, Props, Node) ->
