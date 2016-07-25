@@ -316,7 +316,7 @@ transition_numbers(PortReq) ->
               ,{'module_name', ?CARRIER_LOCAL}
               ,{'ported_in', 'true'}
               ,{'public_fields', kz_json:from_list([{<<"port_id">>, PortReqId}])}
-              ,{'state', ?NUMBER_STATE_IN_SERVICE}
+              ,{'state', ?NUMBER_STATE_AVAILABLE}
               ],
     lager:debug("creating local numbers for port ~s", [PortReqId]),
     Numbers = kz_json:get_keys(?NUMBERS_KEY, PortReq),
