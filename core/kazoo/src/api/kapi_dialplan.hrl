@@ -73,6 +73,8 @@
         ,<<"SIP-Transport">>
         ,<<"Secure-RTP">>
         ,<<"Timeout">>
+        ,<<"Simplify-Loopback">>
+        ,<<"Loopback-Bowout">>
         ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                            ,{<<"Event-Name">>, <<"command">>}
@@ -137,6 +139,8 @@
         ,<<"To-URI">>
         ,<<"To-User">>
         ,<<"To-Username">>
+        ,<<"Simplify-Loopback">>
+        ,<<"Loopback-Bowout">>
         ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                     ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>, <<"skype">>]}
