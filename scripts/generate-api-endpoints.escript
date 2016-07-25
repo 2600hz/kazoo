@@ -1,7 +1,13 @@
--module(cb_api_endpoints).
--compile([debug_info]).
+#!/usr/bin/env escript
+%%! -sname kazoo_xref
+%% -*- coding: utf-8 -*-
 
+-module(cb_api_endpoints).
+-mode('compile').
+-compile([debug_info]).
 -compile({'no_auto_import', [get/0]}).
+
+-export([main/1]).
 
 -export([get/0
          ,to_swagger_json/0
@@ -10,7 +16,7 @@
          ,schema_to_table/1
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 
 -define(REF_PATH(Module)
@@ -22,6 +28,10 @@
        ).
 
 -define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
+
+main(_) ->
+    to_ref_doc(),
+    to_swagger_json().
 
 to_ref_doc() ->
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
