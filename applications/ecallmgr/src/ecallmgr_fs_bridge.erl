@@ -177,16 +177,22 @@ handle_ccvs(DP, Node, UUID, _Channel, JObj) ->
             DP
     end.
 
--spec handle_loopback_key(ne_binary(), kz_json:object()) -> kz_proplist().
-handle_loopback_key(Key, JObj) ->
+-spec handle_loopback_key(boolean(), ne_binary(), kz_json:object()) -> kz_proplist().
+handle_loopback_key('false', _Key, _JObj) -> [];
+handle_loopback_key('true', Key, JObj) ->
     V = kz_util:to_binary(kz_json:is_false(Key, JObj, 'false')),
     K = ecallmgr_util:get_fs_key(Key),
     [{"application", <<"export ", K/binary, "=", V/binary>>}].
 
+-spec handle_loopback_key(ne_binary(), kz_json:object()) -> kz_proplist().
+handle_loopback_key(Key, JObj) ->
+    Exists = kz_json:get_value(Key, JObj) =/= 'undefined',
+    handle_loopback_key(Exists, Key, JObj).
+
 -spec handle_loopback_keys(ne_binary(), kz_json:object(), kz_proplist()) -> kz_proplist().
 handle_loopback_keys([], _JObj, Acc) -> Acc;
 handle_loopback_keys([Key | Keys], JObj, Acc) ->
-    handle_loopback_keys(Keys, JObj, handle_loopback_key(Key, JObj) ++ Acc).
+    handle_loopback_keys(Keys, JObj, Acc ++ handle_loopback_key(Key, JObj)).
 
 -spec handle_loopback(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
 handle_loopback(DP, _Node, _UUID, _Channel, JObj) ->
