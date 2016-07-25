@@ -320,7 +320,7 @@ transition_numbers(PortReq) ->
               ],
     lager:debug("creating local numbers for port ~s", [PortReqId]),
     Numbers = kz_json:get_keys(?NUMBERS_KEY, PortReq),
-    Results = knm_numbers:create(Numbers, Options),
+    Results = create_and_activate(Numbers, Options),
     {_OK, Errored} = lists:partition(fun was_number_operation_successul/1, Results),
     case Errored of
         [] ->
@@ -330,6 +330,19 @@ transition_numbers(PortReq) ->
         _ ->
             lager:debug("failed to transition ~p/~p numbers", [length(Errored), length(_OK)]),
             {'error', PortReq}
+    end.
+
+-spec create_and_activate(ne_binaries(), knm_number_options:options()) -> knm_numbers:knm_numbers_return().
+create_and_activate(Numbers, Options) ->
+    CreationResults = knm_numbers:create(Numbers, Options),
+    {_OK, Errored} = lists:partition(fun was_number_operation_successul/1, CreationResults),
+    case Errored of
+        [] ->
+            lager:debug("all numbers created, activating numbers"),
+            knm_numbers:move(Numbers, knm_number_options:assign_to(Options), Options);
+        _ ->
+            lager:debug("failed to create ~p/~p numbers", [length(Errored), length(_OK)]),
+            CreationResults
     end.
 
 %% @private
