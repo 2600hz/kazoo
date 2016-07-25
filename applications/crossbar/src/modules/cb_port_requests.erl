@@ -405,13 +405,16 @@ do_patch(Context) ->
     UpdatedDoc =
         kz_json:merge_recursive(cb_context:doc(Context)
                                ,kz_json:public_fields(cb_context:req_data(Context))
-                               ),
-    Context1 = crossbar_doc:save(update_port_request_for_save(Context, UpdatedDoc)),
+         ),
+
+    Context1  = crossbar_doc:save(update_port_request_for_save(Context, UpdatedDoc)),
+    RespData1 = knm_port_request:public_fields(cb_context:doc(Context1)),
+    RespData2 = filter_private_comments(Context1, RespData1),
+
     case cb_context:resp_status(Context1) of
         'success' ->
-            cb_context:set_resp_data(Context1
-                                    ,knm_port_request:public_fields(cb_context:doc(Context1))
-                                    );
+            cb_context:set_resp_data(Context1, RespData2);
+
         _Status ->
             Context1
     end.
@@ -612,8 +615,9 @@ read(Context, Id) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             PubDoc = knm_port_request:public_fields(cb_context:doc(Context1)),
-            cb_context:set_resp_data(cb_context:set_doc(Context1, PubDoc)
-                                    ,PubDoc
+            UseDoc = filter_private_comments(Context1, PubDoc),
+            cb_context:set_resp_data(cb_context:set_doc(Context1, UseDoc)
+                                    ,UseDoc
                                     );
         _ -> Context1
     end.
@@ -778,12 +782,34 @@ maybe_normalize_summary_results(Context, 'true') ->
         _Else -> Context
     end.
 
+-spec private_comment_filter(kz_json:object(), list()) -> list().
+private_comment_filter(Comment, Acc) ->
+    case kz_json:get_value(<<"superduper_comment">>, Comment, false) of
+        true  -> Acc;
+        false -> [Comment|Acc]
+    end.
+
+-spec filter_private_comments(cb_context:context(), kz_json:object()) -> kz_json:object().
+filter_private_comments(Context, JObj) ->
+    case cb_modules_util:is_superduper_admin(Context) of
+        'false' -> run_comment_filter(JObj);
+        'true'  -> JObj
+    end.
+
+-spec run_comment_filter(kz_json:object()) -> kz_json:object().
+run_comment_filter(JObj) ->
+    Comments = kz_json:get_value(<<"comments">>, JObj, []),
+    Filtered = lists:foldl(fun private_comment_filter/2, [], Comments),
+
+    kz_json:set_value(<<"comments">>, Filtered, JObj).
+
 -spec normalize_summary_results(cb_context:context()) -> cb_context:context().
 normalize_summary_results(Context) ->
     Dict = lists:foldl(
              fun(JObj, D) ->
                      AccountId = kz_json:get_value(<<"account_id">>, JObj),
-                     dict:append_list(AccountId, [JObj], D)
+                     NewJObj   = filter_private_comments(Context, JObj),
+                     dict:append_list(AccountId, [NewJObj], D)
              end, dict:new(), cb_context:resp_data(Context)),
     Names = get_account_names(dict:fetch_keys(Dict)),
     cb_context:set_resp_data(
