@@ -146,7 +146,7 @@ api_url(JObj) ->
 %%--------------------------------------------------------------------
 -spec source_url(kz_json:object()) -> ne_binary().
 source_url(JObj) ->
-    kz_json:get_ne_binary_value(?API_URL, JObj).
+    kz_json:get_ne_binary_value(?SOURCE_URL, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
