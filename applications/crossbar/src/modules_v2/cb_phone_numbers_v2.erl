@@ -22,7 +22,6 @@
         ,put/2, put/3
         ,post/2
         ,delete/2
-        ,populate_phone_numbers/1
         ]).
 
 -include("crossbar.hrl").
@@ -660,7 +659,7 @@ update_context_locality_fold(Key, Value, JObj) ->
                                            {'error', any()}.
 update_phone_numbers_locality(Context, Localities) ->
     AccountDb = cb_context:account_db(Context),
-    DocId = kz_doc:id(cb_context:doc(Context), ?KNM_PHONE_NUMBERS_DOC),
+    DocId = kz_doc:id(cb_context:doc(Context)),
     case kz_datamgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
             J = kz_json:foldl(fun update_phone_numbers_locality_fold/3, JObj, Localities),
