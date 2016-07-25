@@ -137,6 +137,8 @@
         ,<<"To">>
         ,<<"To-Tag">>
         ,<<"To-Uri">>
+        ,<<"Transfer-Type">>
+        ,<<"Transfer-To">>
         ,<<"Transfer-History">>
         ,<<"User-Agent">>
         ]).

@@ -811,10 +811,23 @@ specific_call_event_props(<<"CHANNEL_FAX_STATUS">>, <<"txfax", Event/binary>>, P
     ];
 specific_call_event_props(<<"CHANNEL_INTERCEPTED">>, _, Props) ->
     [{<<"Intercepted-By">>, props:get_value(<<"intercepted_by">>, Props)}];
+specific_call_event_props(<<"CHANNEL_TRANSFEROR">>, _, Props) ->
+    {Type, To} = transfer_to(Props),
+    [{<<"Transfer-Type">>, Type}
+    ,{<<"Transfer-To">>, To}
+    ];
 specific_call_event_props(_Evt, Application, Props) ->
     [{<<"Application-Name">>, props:get_value(Application, ?FS_APPLICATION_NAMES)}
     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
     ].
+
+-spec transfer_to(kz_proplist() | api_binary()) -> {api_binary(), api_binary()}.
+transfer_to(Props)
+  when is_list(Props) ->
+    transfer_to(props:get_value(<<"variable_transfer_to">>, Props));
+transfer_to(<<"att:", TransferTo/binary>>) -> {<<"attended">>, TransferTo};
+transfer_to(<<"blind:", TransferTo/binary>>) -> {<<"blind">>, TransferTo};
+transfer_to(_) -> {'undefined', 'undefined'}.
 
 -spec page_specific(kz_proplist()) -> kz_proplist().
 page_specific(Props) ->
