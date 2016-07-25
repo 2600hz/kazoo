@@ -1537,21 +1537,19 @@ tone_duration_on(Tone) ->
 tone_duration_off(Tone) ->
     kz_json:get_binary_value(<<"Duration-OFF">>, Tone).
 
--spec transfer(atom(), ne_binary(), kz_json:object()) ->
-                  {ne_binary(), ne_binary()}.
+-spec transfer(atom(), ne_binary(), kz_json:object()) -> {ne_binary(), ne_binary()}.
 transfer(Node, UUID, JObj) ->
     TransferType = kz_json:get_value(<<"Transfer-Type">>, JObj),
     TransferTo = kz_json:get_value(<<"Transfer-To">>, JObj),
     transfer(Node, UUID, TransferType, TransferTo, JObj).
 
--spec transfer(atom(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) ->
-                  {ne_binary(), ne_binary()}.
+-spec transfer(atom(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> {ne_binary(), ne_binary()}.
 transfer(Node, UUID, <<"attended">>, TransferTo, JObj) ->
     CCVs = kz_json:to_proplist(kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
     CCVList = [<<"Account-ID">>
-               ,<<"Authorizing-ID">>
-               ,<<"Authorizing-Type">>
-               ,<<"Channel-Authorized">>
+              ,<<"Authorizing-ID">>
+              ,<<"Authorizing-Type">>
+              ,<<"Channel-Authorized">>
               ],
     Realm = props:get_value(<<"Account-Realm">>, CCVs),
     ReqURI = <<TransferTo/binary, "@", Realm/binary>>,
