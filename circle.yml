@@ -41,7 +41,7 @@ test:
       fi
     - make bump-copyright
     - . ~/.kerl/$OTP_VERSION/activate && make
-    - . ~/.kerl/$OTP_VERSION/activate && ERL_LIBS=deps/:core/:applications/ ./scripts/generate-api-endpoints.escript
+    - . ~/.kerl/$OTP_VERSION/activate && make apis
     - |
       if [[ 0 -ne `git status --porcelain | wc -l` ]]; then
         echo Unstaged changes!
