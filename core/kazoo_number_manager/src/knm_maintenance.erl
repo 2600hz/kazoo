@@ -11,8 +11,10 @@
 
 -include("knm.hrl").
 
--export([ fix_account_numbers/1
-        , fix_accounts_numbers/1
+-define(KNM_PHONE_NUMBERS_DOC, <<"phone_numbers">>).
+
+-export([fix_account_numbers/1
+        ,fix_accounts_numbers/1
 
         ,generate_numbers/3
         ]).
