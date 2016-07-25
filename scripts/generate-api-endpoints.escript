@@ -71,7 +71,7 @@ api_path_to_section(_MOdule, _Paths, Acc) -> Acc.
 %% curl -v http://{SERVER}:8000/Path
 %% ```
 methods_to_section('undefined', _Path, Acc) ->
-    lager:debug("skipping path ~p", [_Path]),
+    io:format("skipping path ~p\n", [_Path]),
     Acc;
 methods_to_section(ModuleName, {Path, Methods}, Acc) ->
     APIPath = path_name(Path, ModuleName),
@@ -392,7 +392,7 @@ format_pc_module(_MC, Acc) ->
     Acc.
 
 format_pc_config(_ConfigData, Acc, _Module, 'undefined') ->
-    lager:debug("skipping module ~p", [_Module]),
+    io:format("skipping module ~p\n", [_Module]),
     Acc;
 format_pc_config({Callback, Paths}, Acc, Module, ModuleName) ->
     lists:foldl(fun(Path, Acc1) ->
@@ -496,7 +496,7 @@ path_name(<<_/binary>>=Module) ->
         {'match', [Name, ?CURRENT_VERSION]} ->
             <<?CURRENT_VERSION/binary, "/accounts/{ACCOUNT_ID}/", Name/binary>>;
         {'match', _M} ->
-            lager:debug("skipping '~s' for not being in the current version", [Module]),
+            io:format("skipping '~s' for not being in the current version\n", [Module]),
             'undefined'
     end.
 
@@ -537,8 +537,8 @@ process_api_module(File, Module) ->
     catch
         _E:_R ->
             ST = erlang:get_stacktrace(),
-            lager:error("failed to process ~p(~p): ~s: ~p", [File, Module, _E, _R]),
-            kz_util:log_stacktrace(ST),
+            io:format("failed to process ~p(~p): ~s: ~p\n", [File, Module, _E, _R]),
+            io:format("~p\n", [ST]),
             'undefined'
     end.
 
