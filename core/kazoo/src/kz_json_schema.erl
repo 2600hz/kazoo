@@ -155,7 +155,7 @@ error_to_jobj(Error) ->
 error_to_jobj({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_min_length'
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
@@ -168,13 +168,14 @@ error_to_jobj({'data_invalid'
                     ,kz_json:from_list(
                        [{<<"message">>, <<"String must be at least ", MinLen/binary, " characters">>}
                        ,{<<"target">>, Minimum}
+                       ,{<<"cause">>, FailedValue}
                        ])
                     ,Options
                     );
 error_to_jobj({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_max_length'
-              ,_FailedValue
+              ,FailedValue
               ,FailedKeyPath
               }
              ,Options
@@ -187,9 +188,43 @@ error_to_jobj({'data_invalid'
                     ,kz_json:from_list(
                        [{<<"message">>, <<"String must not be more than ", MaxLen/binary, " characters">>}
                        ,{<<"target">>, Maximum}
+                       ,{<<"cause">>, FailedValue}
                        ])
                     ,Options
                     );
+error_to_jobj({'data_invalid'
+              ,FailedSchemaJObj
+              ,'wrong_length'
+              ,FailedValue
+              ,FailedKeyPath
+              }
+             ,Options
+             ) ->
+    Min = kz_json:get_integer_value(<<"minLength">>, FailedSchemaJObj),
+    FailedLength = byte_size(FailedValue),
+
+    case is_integer(Min)
+        andalso Min > FailedLength
+    of
+        'true' ->
+            error_to_jobj({'data_invalid'
+                          ,FailedSchemaJObj
+                          ,'wrong_min_length'
+                          ,FailedValue
+                          ,FailedKeyPath
+                          }
+                         ,Options
+                         );
+        'false' ->
+            error_to_jobj({'data_invalid'
+                          ,FailedSchemaJObj
+                          ,'wrong_max_length'
+                          ,FailedValue
+                          ,FailedKeyPath
+                          }
+                         ,Options
+                         )
+    end;
 error_to_jobj({'data_invalid'
               ,FailedSchemaJObj
               ,'not_in_range'
@@ -200,7 +235,9 @@ error_to_jobj({'data_invalid'
              ) ->
     Min = kz_json:get_integer_value(<<"minimum">>, FailedSchemaJObj),
 
-    case is_integer(Min) andalso Min > FailedValue of
+    case is_integer(Min)
+        andalso Min > FailedValue
+    of
         'true' ->
             error_to_jobj({'data_invalid'
                           ,FailedSchemaJObj
@@ -656,7 +693,7 @@ build_validate_error(Property, Code, Message, Options) ->
 
     {props:get_value('error_code', Options)
     ,props:get_value('error_message', Options)
-    ,kz_json:from_list([{[Key, Code], Error}])
+    ,kz_json:set_values([{[Key, Code], Error}], kz_json:new())
     }.
 
 -spec build_error_message(ne_binary(), kz_json:object()) -> kz_json:object() | ne_binary().

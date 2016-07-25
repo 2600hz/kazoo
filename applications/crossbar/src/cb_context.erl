@@ -841,13 +841,17 @@ add_validation_error(Property, Code, Message, Context) ->
                                        ),
     ErrorsJObj = cb_context:validation_errors(Context),
 
-    Key = kz_util:join_binary(Property, <<".">>),
-    Context#cb_context{validation_errors=kz_json:set_value([Key, Code], ErrorJObj, ErrorsJObj)
+    Context#cb_context{validation_errors=kz_json:merge_jobjs(ErrorJObj, ErrorsJObj)
                       ,resp_status='error'
                       ,resp_error_code=ErrorCode
                       ,resp_data=kz_json:new()
-                      ,resp_error_msg=ErrorMessage
+                      ,resp_error_msg=maybe_update_error_message(resp_error_msg(Context), ErrorMessage)
                       }.
+
+-spec maybe_update_error_message(ne_binary(), ne_binary()) -> ne_binary().
+maybe_update_error_message(_Old, <<"init failed">>) -> <<"validation error">>;
+maybe_update_error_message(Msg, Msg) -> Msg;
+maybe_update_error_message(_Old, New) -> New.
 
 -spec maybe_fix_js_types(cb_context:context(), kz_json:object(), [jesse_error:error_reason()]) ->
                                 cb_context:context().
