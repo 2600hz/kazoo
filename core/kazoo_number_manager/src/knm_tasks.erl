@@ -272,8 +272,9 @@ list_number_row(AuthBy, E164, JObj) ->
 
 -spec list_all(kz_proplist(), task_iterator()) -> task_iterator().
 list_all(_, 'init') ->
-    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
-    {'ok', [MasterAccountId | get_descendants(MasterAccountId)]};
+    ForAccount = props:get_value('account_id', Props),
+    Subs = get_descendants(ForAccount),
+    {'ok', [ForAccount|Subs]};
 list_all(_, []) ->
     'stop';
 list_all(_, [?MATCH_ACCOUNT_RAW(AccountId) | Rest]) ->
