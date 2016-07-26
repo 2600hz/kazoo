@@ -271,7 +271,7 @@ list_number_row(AuthBy, E164, JObj) ->
     end.
 
 -spec list_all(kz_proplist(), task_iterator()) -> task_iterator().
-list_all(_, 'init') ->
+list_all(Props, 'init') ->
     ForAccount = props:get_value('account_id', Props),
     Subs = get_descendants(ForAccount),
     {'ok', [ForAccount|Subs]};
