@@ -157,16 +157,14 @@ ensure_state(PhoneNumber, ExpectedState) ->
         ExpectedState -> 'true';
         _State ->
             lager:debug("wrong state: expected ~s, got ~s", [ExpectedState, _State]),
-            knm_errors:number_exists(
-              knm_phone_number:number(PhoneNumber)
-             )
+            knm_errors:number_exists(knm_phone_number:number(PhoneNumber))
     end.
 
 -spec create_phone_number(knm_number()) -> knm_number() |
                                            dry_run_return().
 create_phone_number(Number) ->
-    ensure_state(phone_number(Number), ?NUMBER_STATE_AVAILABLE),
-    Routines = [fun knm_number_states:to_reserved/1
+    TargetState = knm_phone_number:state(phone_number(Number)),
+    Routines = [fun (N) -> knm_number_states:to_state(N, TargetState) end
                ,fun save_number/1
                ,fun dry_run_or_number/1
                ],
