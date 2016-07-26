@@ -504,7 +504,7 @@ delete_phone_number(Number) ->
 %% @public
 %% @doc
 %% Remove a number from the system without doing any checking.
-%% If that sounds harsh to you: you are looking for release/1,2.
+%% Sounds too harsh for you? you are looking for release/1,2.
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(ne_binary()) ->
