@@ -233,10 +233,10 @@ authorized_release(PhoneNumber) ->
     ReleasedState = knm_config:released_state(?NUMBER_STATE_AVAILABLE),
     Routines =
         [{fun set_features/2, kz_json:new()}
-         ,{fun set_doc/2, kz_json:private_fields(doc(PhoneNumber))}
-         ,{fun set_prev_assigned_to/2, assigned_to(PhoneNumber)}
-         ,{fun set_assigned_to/2, 'undefined'}
-         ,{fun set_state/2, ReleasedState}
+        ,{fun set_doc/2, kz_json:private_fields(doc(PhoneNumber))}
+        ,{fun set_prev_assigned_to/2, assigned_to(PhoneNumber)}
+        ,{fun set_assigned_to/2, 'undefined'}
+        ,{fun set_state/2, ReleasedState}
         ],
     {'ok', NewPhoneNumber} = setters(PhoneNumber, Routines),
     NewPhoneNumber.
