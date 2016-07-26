@@ -40,7 +40,7 @@
 -export([attempt/2]).
 -export([ensure_can_load_to_create/1]).
 -export([ensure_can_create/2]).
--export([create_or_load/3]).
+-export([create_or_load/4]).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
@@ -134,17 +134,19 @@ create_or_load(Num, Options0) ->
     Options = [{'state', ToState} | Options0],
     create_or_load(Num, Options, ToState, knm_phone_number:fetch(Num)).
 
--spec create_or_load(ne_binary(), knm_number_options:options(), knm_phone_number_return()) ->
+-spec create_or_load(ne_binary(), knm_number_options:options(), ne_binary(), knm_phone_number_return()) ->
                             knm_number() | dry_run_return().
-create_or_load(_Num, Options, {'ok', PhoneNumber}) ->
+create_or_load(_Num, Options, ToState, {'ok', PhoneNumber}) ->
     ensure_can_load_to_create(PhoneNumber),
-    Sets = knm_number_options:to_phone_number_setters(Options),
-    {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Sets),
-    create_phone_number(set_phone_number(new(), NewPhoneNumber));
-create_or_load(Num, Options, {'error', 'not_found'}) ->
+    Updates = knm_number_options:to_phone_number_setters(
+                [Option || Option <- Options, element(1,Option) =/= 'state']
+               ),
+    {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Updates),
+    create_phone_number(ToState, set_phone_number(new(), NewPhoneNumber));
+create_or_load(Num, Options, ToState, {'error', 'not_found'}) ->
     ensure_can_create(Num, Options),
     PhoneNumber = knm_phone_number:new(Num, Options),
-    create_phone_number(set_phone_number(new(), PhoneNumber)).
+    create_phone_number(ToState, set_phone_number(new(), PhoneNumber)).
 
 -spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true'.
 ensure_can_load_to_create(PhoneNumber) ->
@@ -159,10 +161,9 @@ ensure_state(PhoneNumber, ExpectedState) ->
             knm_errors:number_exists(knm_phone_number:number(PhoneNumber))
     end.
 
--spec create_phone_number(knm_number()) -> knm_number() |
-                                           dry_run_return().
-create_phone_number(Number) ->
-    TargetState = knm_phone_number:state(phone_number(Number)),
+-spec create_phone_number(ne_binary(), knm_number()) ->
+                                 knm_number() | dry_run_return().
+create_phone_number(TargetState, Number) ->
     Routines = [fun (N) -> knm_number_states:to_state(N, TargetState) end
                ,fun save_number/1
                ,fun dry_run_or_number/1

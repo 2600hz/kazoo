@@ -86,8 +86,12 @@ create_existing_in_service_test_() ->
              }
             ],
 
-    Resp = knm_number:attempt(fun knm_number:create_or_load/3
-                             ,[?TEST_AVAILABLE_NUM, Props, {'ok', InServicePN}]
+    Resp = knm_number:attempt(fun knm_number:create_or_load/4
+                             ,[?TEST_AVAILABLE_NUM
+                              ,Props
+                              ,?NUMBER_STATE_IN_SERVICE
+                              ,{'ok', InServicePN}
+                              ]
                              ),
 
     [{"Verifying that IN SERVICE numbers can't be created"
