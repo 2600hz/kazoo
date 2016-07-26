@@ -59,6 +59,18 @@ respond_with_error(Context, Error, JObj) ->
     blackhole_data_emitter:emit(WsPid, Error, JObj),
     Context.
 
+-spec error_module(atom()) -> ne_binary().
+error_module(Module) ->
+    ModuleName = erlang:atom_to_binary(Module),
+    <<"Error in module ", ModuleName>>.
+
+-spec send_error_message(bh_context:context(), atom() | ne_binary(), ne_binary()) -> bh_context:context().
+send_error_message(Context, Module, ErrCause) when is_atom(Module) ->
+    send_error_message(Context, error_module(Module), ErrCause);
+send_error_message(Context, ErrMsg, ErrCause) ->
+    ErrorJObj = kz_json:from_list([{<<"message">>, ErrMsg}, {<<"cause">>, ErrCause}]),
+    respond_with_error(Context, <<"error">>, ErrorJObj).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -68,14 +80,8 @@ respond_with_error(Context, Error, JObj) ->
 respond_with_authn_failure(Context) ->
     Token = bh_context:auth_token(Context),
     lager:debug("authn failure: token ~s", [Token]),
-    respond_with_error(
-      Context
-                      ,<<"auth_failure">>
-                      ,kz_json:from_list([
-                                          {<<"message">>, <<"invalid auth token">>}
-                                         ,{<<"cause">>, Token}
-                                         ])
-     ).
+    Error = kz_json:from_list([{<<"message">>, <<"invalid auth token">>}, {<<"cause">>, Token}]),
+    respond_with_error(Context, <<"auth_failure">>, Error).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -104,16 +110,3 @@ special_bindings(<<"doc_edited">>) -> <<"object">>;
 special_bindings(<<"doc_created">>) -> <<"object">>;
 special_bindings(<<"doc_deleted">>) -> <<"object">>;
 special_bindings(M) -> M.
-
-error_module(Module) ->
-    ModuleName = erlang:atom_to_binary(Module),
-    <<"Error in module ", ModuleName>>.
-
-send_error_message(Context, Module, ErrCause) when is_atom(Module) ->
-    send_error_message(Context, error_module(Module), ErrCause);
-send_error_message(Context, ErrMsg, ErrCause) ->
-    ErrorJObj = kz_json:from_list([
-                                   {<<"message">>, ErrMsg}
-                                  ,{<<"cause">>, ErrCause}
-                                  ]),
-    respond_with_error(Context, <<"error">>, ErrorJObj).
