@@ -487,8 +487,8 @@ disconnect(Number, Options) ->
                     ),
     lager:debug("will delete permanently: ~p", [ShouldDelete]),
     try knm_carriers:disconnect(Number) of
-        N when not ShouldDelete -> N;
-        N when     ShouldDelete -> delete_phone_number(N)
+        N when ShouldDelete -> delete_phone_number(N);
+        N -> N
     catch
         _E:_R when ShouldDelete ->
             ?LOG_WARN("failed to disconnect number: ~s: ~p", [_E, _R]),
