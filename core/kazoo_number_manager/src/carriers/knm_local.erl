@@ -2,7 +2,8 @@
 %%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
-%%% Find manually-added `available' numbers.
+%%% Allow resellers directly below the master account to find
+%%  manually-added `available' numbers.
 %%%
 %%% @end
 %%% @contributors
