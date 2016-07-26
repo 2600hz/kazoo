@@ -928,11 +928,14 @@ reset_category(CategoryId, #wh_services{updates=JObj}=Services) ->
 %% Helper function to know if an account is a reseller or not.
 %% @end
 %%--------------------------------------------------------------------
--spec is_reseller(ne_binary() | services()) -> boolean().
+-spec is_reseller(ne_binary() | services() | wh_json:object()) -> boolean().
 is_reseller(#wh_services{jobj=ServicesJObj}) ->
     kzd_services:is_reseller(ServicesJObj);
 is_reseller(<<_/binary>> = Account) ->
-    is_reseller(fetch(Account)).
+    {'ok', ServicesJObj} = fetch_services_doc(Account),
+    is_reseller(ServicesJObj);
+is_reseller(ServicesJObj) ->
+    kzd_services:is_reseller(ServicesJObj).
 
 %%--------------------------------------------------------------------
 %% @public
