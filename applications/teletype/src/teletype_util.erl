@@ -467,17 +467,18 @@ find_account_rep_email(AccountJObj) ->
      ).
 
 -spec find_account_admin_email(api_binary()) -> api_binaries().
--spec find_account_admin_email(ne_binary(), api_binary()) -> api_binaries().
+-spec find_account_admin_email(api_binary(), api_binary()) -> api_binaries().
 find_account_admin_email('undefined') -> 'undefined';
 find_account_admin_email(AccountId) ->
     find_account_admin_email(AccountId, wh_services:find_reseller_id(AccountId)).
 
+find_account_admin_email('undefined', _Id) ->
+    'undefined';
 find_account_admin_email(AccountId, AccountId) ->
     case query_account_for_admin_emails(AccountId) of
         [] -> 'undefined';
         Emails -> Emails
     end;
-
 find_account_admin_email(AccountId, ResellerId) ->
     case query_account_for_admin_emails(AccountId) of
         [] -> find_account_admin_email(get_parent_account_id(AccountId), ResellerId);
@@ -485,7 +486,7 @@ find_account_admin_email(AccountId, ResellerId) ->
     end.
 
 -spec query_account_for_admin_emails(ne_binary()) -> ne_binaries().
-query_account_for_admin_emails(AccountId) ->
+query_account_for_admin_emails(<<_/binary>> = AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', <<"user">>}
                    ,'include_docs'
