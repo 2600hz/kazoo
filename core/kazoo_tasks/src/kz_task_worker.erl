@@ -214,7 +214,7 @@ is_task_successful(TaskId, Module, Function, ExtraArgs, FAssoc, RawRow, IterValu
     end.
 
 %% @private
--spec store_return(kz_tasks:task_id(), kz_csv:row(), task_return()) -> 'ok'.
+-spec store_return(kz_tasks:task_id(), kz_csv:row(), task_return()) -> pos_integer().
 store_return(TaskId, Row, Rows=[_List|_]) when is_list(_List) ->
     lists:sum([store_return(TaskId, Row, R) || R <- Rows]);
 store_return(TaskId, Row, Reason) ->
