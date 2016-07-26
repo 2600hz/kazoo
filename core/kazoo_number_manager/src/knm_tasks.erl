@@ -51,9 +51,12 @@ output_header('list_all') ->
     list_output_header().
 
 -spec cleanup(atom(), any()) -> any().
-cleanup('import', _IterValue) ->
-    %%TODO
-    'ok'.
+cleanup('import', AccountIds) ->
+    F = fun (AccountId) ->
+                lager:debug("reconciling account ~s", [AccountId]),
+                kz_services:reconcile(AccountId, <<"phone_numbers">>)
+        end,
+    lists:foreach(F, sets:to_list(AccountIds)).
 
 -spec list_output_header() -> kz_csv:row().
 list_output_header() ->
@@ -297,7 +300,10 @@ list_all(_, [{E164,JObj} | Rest]) ->
             ,api_binary(), api_binary()
             ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary()) ->
                     task_return().
-import(Props, _IterValue
+import(Props, 'init', _1,_2,_3, _4,_5,_6, _7,_8,_9, _10,_11,_12, _13,_14,_15) ->
+    IterValue = sets:new(),
+    import(Props, IterValue, _1,_2,_3, _4,_5,_6, _7,_8,_9, _10,_11,_12, _13,_14,_15);
+import(Props, AccountIds
       ,E164, AccountId0, Carrier
       ,_PortIn, _PrevAssignedTo, _Created, _Modified, _UsedBy
       ,_CNAMInbound, _CNAMOutbound
@@ -321,7 +327,9 @@ import(Props, _IterValue
               ,{'state', State}
               ,{'module_name', ModuleName}
               ],
-    {handle_result(knm_number:create(E164, Options)), #{}}.
+    {handle_result(knm_number:create(E164, Options))
+    ,sets:add_element(AccountId, AccountIds)
+    }.
 
 -spec assign_to(kz_proplist(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
 assign_to(Props, _IterValue, Number, AccountId) ->
