@@ -485,10 +485,9 @@ find_numbers(Context) ->
 -spec get_find_numbers_req(cb_context:context()) -> kz_json:object().
 get_find_numbers_req(Context) ->
     JObj = cb_context:query_string(Context),
-    AccountId = cb_context:auth_account_id(Context),
     Quantity = kz_util:to_integer(cb_context:req_value(Context, <<"quantity">>, 1)),
     kz_json:set_values([{<<"quantity">>, Quantity}
-                       ,{?KNM_ACCOUNTID_CARRIER, AccountId}
+                       ,{?KNM_ACCOUNTID_CARRIER, cb_context:account_id(Context)}
                        ], JObj).
 
 %%--------------------------------------------------------------------
