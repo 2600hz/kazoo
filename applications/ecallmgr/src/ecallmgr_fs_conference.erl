@@ -193,16 +193,16 @@ handle_info({'event', ['undefined' | Props]}, #state{node=Node}=State) ->
     {'noreply', State};
 handle_info({'event', [CallId | Props]}, #state{node=Node, publish_participant_event=EventsToPublish}=State) ->
     Action = props:get_value(<<"Action">>, Props),
+    Event = make_participant_event(Action, CallId, Props, Node),
     _ = case process_participant_event(Action, Props, Node, CallId) of
             'stop' -> 'ok';
             'continue' ->
-                Event = make_participant_event(Action, CallId, Props, Node),
                 send_participant_event(Event, Props),
                 publish_participant_event(lists:member(Action, EventsToPublish), Event, CallId, Props);
             {'continue', CustomProps} ->
-                Event = make_participant_event(Action, CallId, Props, Node),
                 send_participant_event(Event, Props, CustomProps)
         end,
+    finalize_processing(Action, CallId),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -248,15 +248,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec finalize_processing(ne_binary(), ne_binary()) -> 'ok'.
+finalize_processing(<<"del-member">>, CallId) ->
+    ecallmgr_fs_conferences:participant_destroy(CallId),
+    'ok';
+finalize_processing(_, _) -> 'skip'.
+
 -spec process_participant_event(ne_binary(), kz_proplist(), atom(), ne_binary()) ->
                                        {'continue', kz_proplist()} |
                                        'continue' |
                                        'stop'.
 process_participant_event(<<"add-member">>, Props, Node, CallId) ->
-    _ = ecallmgr_fs_conferences:participant_create(Props, Node, CallId),
+    CallInfo = request_call_details(CallId),
+    _ = ecallmgr_fs_conferences:participant_create(Props, Node, CallInfo),
     'continue';
-process_participant_event(<<"del-member">>, _Props, _Node, CallId) ->
-    _ = ecallmgr_fs_conferences:participant_destroy(CallId),
+process_participant_event(<<"del-member">>, _Props, _Node, _CallId) ->
     'continue';
 process_participant_event(<<"stop-talking">>, _, _, _) -> 'continue';
 process_participant_event(<<"start-talking">>, _, _, _) -> 'continue';
@@ -795,8 +801,10 @@ publish_participant_event(true=_Publish, Event, CallId, Props) ->
     Ev = [{<<"Event-Category">>, <<"conference">>}
          ,{<<"Event-Name">>, <<"participant_event">>}
           | Event],
-    CCV = kz_json:get_value(<<"Custom-Channel-Vars">>, request_call_details(CallId), kz_json:new()),
+    #participant{call_info=CCV} = ecallmgr_fs_conferences:participant_get(CallId),
     ConferenceId = props:get_value(<<"Conference-Name">>, Props),
+    AccountId = kz_json:get_value(<<"Account-ID">>, CCV),
+    lager:error("AccountID:~p", [AccountId]),
     Publisher = fun(P) -> kapi_conference:publish_participant_event(ConferenceId, CallId, P) end,
     kz_amqp_worker:cast(props:set_value(<<"Custom-Channel-Vars">>, CCV, Ev), Publisher),
     ok;

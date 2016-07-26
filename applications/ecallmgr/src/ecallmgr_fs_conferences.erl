@@ -27,6 +27,7 @@
 -export([participant_update/2]).
 -export([participant_destroy/1]).
 -export([participant_callid/2]).
+-export([participant_get/1]).
 -export([sync_node/1]).
 -export([flush_node/1]).
 -export([handle_search_req/2]).
@@ -147,12 +148,21 @@ participants_to_json(Participants) ->
     participants_to_json(Participants, []).
 
 -spec participant_create(kz_proplist(), atom(), ne_binary()) -> participant().
-participant_create(Props, Node, CallId) ->
-    gen_server:call(?SERVER, {'participant_create', Props, Node, CallId}).
+participant_create(Props, Node, CallInfo) ->
+    gen_server:call(?SERVER, {'participant_create', Props, Node, CallInfo}).
 
 -spec participant_update(ne_binary(), kz_proplist()) -> 'ok'.
 participant_update(CallId, Update) ->
     gen_server:call(?SERVER, {'participant_update', CallId, Update}).
+
+-spec participant_get(ne_binary()) -> participant().
+participant_get(CallId) ->
+    case ets:lookup(?PARTICIPANTS_TBL, CallId) of
+        [Participant=#participant{}] ->
+            Participant;
+        _ ->
+            lager:error("No participant data by call-id ~p", [CallId])
+    end.
 
 -spec participant_destroy(ne_binary()) -> 'ok'.
 participant_destroy(CallId) ->
@@ -267,8 +277,8 @@ handle_call({'conference_destroy', UUID}, _, State) ->
     MatchSpecP = [{#participant{conference_uuid=UUID, _ = '_'}, [], ['true']}],
     _ = ets:select_delete(?PARTICIPANTS_TBL, MatchSpecP),
     {'reply', 'ok', State};
-handle_call({'participant_create', Props, Node, CallId}, _, State) ->
-    Participant = participant_from_props(Props, Node, CallId),
+handle_call({'participant_create', Props, Node, CallInfo}, _, State) ->
+    Participant = participant_from_props(Props, Node, CallInfo),
     _ = ets:insert_new(?PARTICIPANTS_TBL, Participant),
     UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
     _ = case ets:lookup(?CONFERENCES_TBL, UUID) of
@@ -404,13 +414,13 @@ conference_from_props(Props, Node, Conference) ->
                          }.
 
 -spec participant_from_props(kz_proplist(), atom(), ne_binary()) -> participant().
-participant_from_props(Props, Node, CallId) ->
-    participant_from_props(Props, Node, CallId, #participant{}).
+participant_from_props(Props, Node, CallInfo) ->
+    participant_from_props(Props, Node, CallInfo, #participant{}).
 
 -spec participant_from_props(kz_proplist(), atom(), ne_binary(), participant()) -> participant().
-participant_from_props(Props, Node, CallId, Participant) ->
+participant_from_props(Props, Node, CallInfo, Participant) ->
     Participant#participant{node=Node
-                           ,uuid=CallId
+                           ,uuid=kz_json:get_value(<<"Call-ID">>, CallInfo)
                            ,conference_uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
                            ,conference_name=props:get_value(<<"Conference-Name">>, Props)
                            ,floor=props:get_is_true(<<"Floor">>, Props, 'false')
@@ -426,6 +436,7 @@ participant_from_props(Props, Node, CallId, Participant) ->
                            ,join_time=props:get_integer_value(<<"Join-Time">>, Props, kz_util:current_tstamp())
                            ,caller_id_number=props:get_value(<<"Caller-Caller-ID-Number">>, Props)
                            ,caller_id_name=props:get_value(<<"Caller-Caller-ID-Name">>, Props)
+                           ,call_info=kz_json:get_value(<<"Custom-Channel-Vars">>, CallInfo)
                            }.
 
 -spec participants_to_json(participants(), kz_json:objects()) -> kz_json:objects().
