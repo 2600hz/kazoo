@@ -181,17 +181,14 @@ update_e911(Number, Address, JObj, 'false') ->
     Location = json_address_to_xml_location(Address),
     CallerName = kz_json:get_ne_value(<<"caller_name">>, Address, <<"Valued Customer">>),
     case add_location(Num, Location, CallerName) of
-        {'error', E} ->
-            lager:debug("error provisioning dash e911 address: ~p", [E]),
-            knm_errors:unspecified(E, Number);
-        {'invalid', E} ->
-            lager:debug("invalid provisioning dash e911 address: ~p", [E]),
-            knm_errors:unspecified(E, Number);
         {'provisioned', E911} ->
             lager:debug("provisioned dash e911 address"),
             kz_json:set_value(?DASH_KEY, E911, JObj);
         {'geocoded', E911} ->
-            provision_geocoded(JObj, E911)
+            provision_geocoded(JObj, E911);
+        {_E, Reason} ->
+            lager:debug("~s provisioning dash e911 address: ~p", [_E, Reason]),
+            knm_errors:unspecified(Reason, Number)
     end.
 
 -spec provision_geocoded(kz_json:object(), kz_json:object()) ->
