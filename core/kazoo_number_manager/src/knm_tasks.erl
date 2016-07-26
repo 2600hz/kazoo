@@ -296,7 +296,7 @@ import(Props, E164, AccountId0, Carrier
       ,_E911PostalCode, _E911StreetAddress, _E911ExtendedAddress, _E911Locality, _E911Region) ->
     %%TODO: use all the optional fields
     State = case AccountId0 of
-                'undefined' -> ?NUMBER_STATE_AVAILABLE;
+                'undefined' -> ?NUMBER_STATE_RESERVED;
                 _ -> ?NUMBER_STATE_IN_SERVICE
             end,
     AccountId = case AccountId0 of
