@@ -136,11 +136,10 @@ create_or_load(Num, Options0) ->
 
 -spec create_or_load(ne_binary(), knm_number_options:options(), knm_phone_number_return()) ->
                             knm_number() | dry_run_return().
-create_or_load(Num, Options, {'ok', PhoneNumber}) ->
+create_or_load(_Num, Options, {'ok', PhoneNumber}) ->
     ensure_can_load_to_create(PhoneNumber),
-    Updates = [{fun knm_phone_number:set_number/2, knm_converters:normalize(Num)}]
-        ++ knm_number_options:to_phone_number_setters(Options),
-    {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Updates),
+    Sets = knm_number_options:to_phone_number_setters(Options),
+    {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Sets),
     create_phone_number(set_phone_number(new(), NewPhoneNumber));
 create_or_load(Num, Options, {'error', 'not_found'}) ->
     ensure_can_create(Num, Options),
