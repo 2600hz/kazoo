@@ -61,8 +61,8 @@ respond_with_error(Context, Error, JObj) ->
 
 -spec error_module(atom()) -> ne_binary().
 error_module(Module) ->
-    ModuleName = erlang:atom_to_binary(Module),
-    <<"Error in module ", ModuleName>>.
+    ModuleName = erlang:atom_to_binary(Module, 'utf8'),
+    <<"Error in module ", ModuleName/binary>>.
 
 -spec send_error_message(bh_context:context(), atom() | ne_binary(), ne_binary()) -> bh_context:context().
 send_error_message(Context, Module, ErrCause) when is_atom(Module) ->
