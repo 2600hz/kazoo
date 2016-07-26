@@ -206,6 +206,7 @@ is_auth_by_authorized(Number) ->
     AuthBy = knm_phone_number:auth_by(PhoneNumber),
     Sudo = ?KNM_DEFAULT_AUTH_BY =:= AuthBy,
     case Sudo
+        orelse 'undefined' =:= AssignedTo
         orelse is_authorized_operation(AssignedTo, AuthBy)
         orelse is_authorized_operation(AuthBy, AssignedTo)
     of
