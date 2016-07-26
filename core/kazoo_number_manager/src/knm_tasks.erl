@@ -109,7 +109,7 @@ help() ->
                         ,{<<"doc">>, <<"Creates numbers from fields similar to list tasks.\n"
                                        "Note: number must be E164-formatted.\n"
                                        "Note: number must not be in the system already.\n"
-                                       "If `account_id` is empty, number state will be 'available'.\n"
+                                       "If `account_id` is empty, number will be assigned to account creating task, with state 'available'.\n"
                                        "Otherwise, the number will be assigned to `account_id` with state 'in_service'.\n"
                                        "Note: `carrier_module` defaults to 'knm_local'.\n"
                                      >>}
@@ -290,15 +290,19 @@ list_all(_, [{E164,JObj} | Rest]) ->
             ,api_binary(), api_binary()
             ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary()) ->
                     task_return().
-import(_Props, E164, AccountId, Carrier
+import(Props, E164, AccountId0, Carrier
       ,_PortIn, _PrevAssignedTo, _Created, _Modified, _UsedBy
       ,_CNAMInbound, _CNAMOutbound
       ,_E911PostalCode, _E911StreetAddress, _E911ExtendedAddress, _E911Locality, _E911Region) ->
     %%TODO: use all the optional fields
-    State = case AccountId of
+    State = case AccountId0 of
                 'undefined' -> ?NUMBER_STATE_AVAILABLE;
                 _ -> ?NUMBER_STATE_IN_SERVICE
             end,
+    AccountId = case AccountId0 of
+                    'undefined' -> props:get_value('account_id', Props);
+                    _ -> AccountId0
+                end,
     ModuleName = case Carrier of
                      'undefined' -> ?CARRIER_LOCAL;
                      _ -> Carrier
