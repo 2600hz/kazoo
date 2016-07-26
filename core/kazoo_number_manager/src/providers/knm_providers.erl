@@ -56,8 +56,8 @@ has_emergency_services(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-ifndef(TEST).
 -spec provider_module(ne_binary()) -> ne_binary().
--spec provider_modules(knm_number:knm_number()) -> ne_binaries().
 provider_module(<<"inbound_cnam">>) ->
     <<"knm_cnam_notifier">>;
 provider_module(<<"outbound_cnam">>) ->
@@ -73,7 +73,9 @@ provider_module(<<"failover">>) ->
 provider_module(Other) ->
     lager:debug("unmatched feature provider '~s', allowing", [Other]),
     Other.
+-endif.
 
+-spec provider_modules(knm_number:knm_number()) -> ne_binaries().
 -ifdef(TEST).
 provider_modules(_Number) ->
     ?DEFAULT_PROVIDER_MODULES.
