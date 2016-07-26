@@ -30,9 +30,7 @@
 -include("knm.hrl").
 
 -type number_return() :: {ne_binary(), knm_number:knm_number_return()}.
--type knm_numbers_return() :: [number_return()].
-
--export_type([knm_numbers_return/0]).
+-type numbers_return() :: [number_return()].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -40,9 +38,9 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec get(ne_binaries()) ->
-                 knm_numbers_return().
+                 numbers_return().
 -spec get(ne_binaries(), knm_number_options:options()) ->
-                 knm_numbers_return().
+                 numbers_return().
 get(Nums) ->
     get(Nums, knm_number_options:default()).
 
@@ -54,7 +52,7 @@ get(Nums, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create(ne_binaries(), knm_number_options:options()) -> knm_numbers_return().
+-spec create(ne_binaries(), knm_number_options:options()) -> numbers_return().
 create(Nums, Options) ->
     [{Num, knm_number:create(Num, Options)} || Num <- Nums].
 
@@ -64,9 +62,9 @@ create(Nums, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec move(ne_binaries(), ne_binary()) ->
-                  knm_numbers_return().
+                  numbers_return().
 -spec move(ne_binaries(), ne_binary(), knm_number_options:options()) ->
-                  knm_numbers_return().
+                  numbers_return().
 move(Nums, MoveTo) ->
     move(Nums, MoveTo, knm_number_options:default()).
 
@@ -79,9 +77,9 @@ move(Nums, MoveTo, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update(ne_binaries(), knm_phone_number:set_functions()) ->
-                    knm_numbers_return().
+                    numbers_return().
 -spec update(ne_binaries(), knm_phone_number:set_functions(), knm_number_options:options()) ->
-                    knm_numbers_return().
+                    numbers_return().
 update(Nums, Routines) ->
     update(Nums, Routines, knm_number_options:default()).
 
@@ -94,9 +92,9 @@ update(Nums, Routines, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec release(ne_binaries()) ->
-                     knm_numbers_return().
+                     numbers_return().
 -spec release(ne_binaries(), knm_number_options:options()) ->
-                     knm_numbers_return().
+                     numbers_return().
 release(Nums) ->
     release(Nums, knm_number_options:default()).
 
@@ -109,9 +107,9 @@ release(Nums, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(ne_binaries()) ->
-                    knm_numbers_return().
+                    numbers_return().
 -spec delete(ne_binaries(), knm_number_options:options()) ->
-                    knm_numbers_return().
+                    numbers_return().
 delete(Nums) ->
     delete(Nums, knm_number_options:default()).
 
@@ -124,7 +122,7 @@ delete(Nums, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(ne_binaries(), knm_number_options:options()) ->
-                       knm_numbers_return().
+                       numbers_return().
 reconcile(Nums, Options) ->
     [{Num, knm_number:reconcile(Num, Options)} || Num <- Nums].
 
@@ -134,7 +132,7 @@ reconcile(Nums, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec reserve(ne_binaries(), knm_number_options:options()) ->
-                     knm_numbers_return().
+                     numbers_return().
 reserve(Nums, Options) ->
     [{Num, knm_number:reserve(Num, Options)} || Num <- Nums].
 
@@ -144,9 +142,9 @@ reserve(Nums, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec to_state(ne_binaries(), ne_binary()) ->
-                      knm_numbers_return().
+                      numbers_return().
 -spec to_state(ne_binaries(), ne_binary(), knm_number_options:options()) ->
-                      knm_numbers_return().
+                      numbers_return().
 to_state(Nums, ToState) ->
     to_state(Nums, ToState, knm_number_options:default()).
 
@@ -169,9 +167,9 @@ change_state(Num, ToState, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec assign_to_app(ne_binaries(), api_binary()) ->
-                           knm_numbers_return().
+                           numbers_return().
 -spec assign_to_app(ne_binaries(), api_binary(), knm_number_options:options()) ->
-                           knm_numbers_return().
+                           numbers_return().
 assign_to_app(Nums, App) ->
     assign_to_app(Nums, App, knm_number_options:default()).
 
