@@ -212,14 +212,8 @@ unsubscribe_for_account(Context, _JObj, AccountId, Binding, Module) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-filter_bindings(SessionPid, Binding, _Module, _Function, Context) ->
+filter_bindings(SessionPid, _Binding, _Module, _Function, Context) ->
     case bh_context:is_context(Context) of
         'false' -> 'true';
-        'true' ->
-            case bh_context:websocket_pid(Context) =:= SessionPid of
-                'false' -> 'true';
-                'true' ->
-                    _ = kz_util:spawn(fun blackhole_util:remove_binding/2, [Binding, Context]),
-                    'false'
-            end
+        'true' -> bh_context:websocket_pid(Context) =/= SessionPid
     end.

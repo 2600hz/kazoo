@@ -16,7 +16,6 @@
 -export([respond_with_error/1, respond_with_error/3, respond_with_authn_failure/1]).
 -export([get_callback_module/1]).
 -export([send_error_message/3]).
--export([remove_binding/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -105,20 +104,6 @@ special_bindings(<<"doc_edited">>) -> <<"object">>;
 special_bindings(<<"doc_created">>) -> <<"object">>;
 special_bindings(<<"doc_deleted">>) -> <<"object">>;
 special_bindings(M) -> M.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec remove_binding(ne_binary(), bh_context:context()) -> 'ok'.
-remove_binding(Binding, Context) ->
-    case ?MODULE:get_callback_module(Binding) of
-        'undefined' -> 'ok';
-        Module ->
-            ?MODULE:maybe_rm_binding_from_listener(Module, Binding, Context),
-            blackhole_bindings:unbind(Binding, Module, 'handle_event', Context)
-    end.
 
 error_module(Module) ->
     ModuleName = erlang:atom_to_binary(Module),
