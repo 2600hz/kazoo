@@ -169,7 +169,8 @@ in_service_from_reserved_authorize(Number) ->
     of
         'false' -> knm_errors:unauthorized();
         'true' ->
-            Sudo andalso lager:info("bypassing auth"),
+            Sudo
+                andalso lager:info("bypassing auth"),
             Number
     end.
 
@@ -185,7 +186,8 @@ in_service_from_in_service_authorize(Number) ->
     of
         'false' -> knm_errors:unauthorized();
         'true' ->
-            Sudo andalso lager:info("bypassing auth"),
+            Sudo
+                andalso lager:info("bypassing auth"),
             Number
     end.
 
