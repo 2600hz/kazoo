@@ -78,7 +78,7 @@
 -export([conference_exchange/0]).
 -export([new_conference_queue/0, new_conference_queue/1]).
 -export([delete_conference_queue/1]).
--export([bind_q_to_conference/2, bind_q_to_conference/3, bind_q_to_conference/4]).
+-export([bind_q_to_conference/2, bind_q_to_conference/3, bind_q_to_conference/4, bind_q_to_conference/5]).
 -export([unbind_q_from_conference/2, unbind_q_from_conference/3, unbind_q_from_conference/4]).
 -export([conference_publish/2, conference_publish/3, conference_publish/4, conference_publish/5, conference_publish/7]).
 
