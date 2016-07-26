@@ -130,9 +130,9 @@ create(Num, Options) ->
 -spec create_or_load(ne_binary(), knm_number_options:options()) ->
                             knm_number() | dry_run_return().
 create_or_load(Num, Options0) ->
-    State = knm_number_options:state(Options0, ?NUMBER_STATE_AVAILABLE),
-    Options = [{'state', State} | Options0],
-    create_or_load(Num, Options, knm_phone_number:fetch(Num)).
+    ToState = knm_number_options:state(Options0, ?NUMBER_STATE_RESERVED),
+    Options = [{'state', ToState} | Options0],
+    create_or_load(Num, Options, ToState, knm_phone_number:fetch(Num)).
 
 -spec create_or_load(ne_binary(), knm_number_options:options(), knm_phone_number_return()) ->
                             knm_number() | dry_run_return().
