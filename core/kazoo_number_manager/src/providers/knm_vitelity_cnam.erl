@@ -49,13 +49,12 @@ save(Number, _State) ->
 -spec delete(knm_number:knm_number()) ->
                     knm_number:knm_number().
 delete(Number) ->
-    knm_services:deactivate_features(
-      Number
+    knm_services:deactivate_features(Number
                                     ,[?FEATURE_INBOUND_CNAM
                                      ,?FEATURE_OUTBOUND_CNAM
                                      ,?FEATURE_CNAM
                                      ]
-     ).
+                                    ).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -132,7 +132,7 @@ publish_port_update(Number, Port) ->
 -spec publish_ported(knm_number:knm_number(), kz_json:object()) -> 'ok'.
 publish_ported(Number, Port) ->
     PhoneNumber = knm_number:phone_number(Number),
-    Notify = [{<<"Account-ID">>,  knm_phone_number:assigned_to(PhoneNumber)}
+    Notify = [{<<"Account-ID">>, knm_phone_number:assigned_to(PhoneNumber)}
              ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
              ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL}
              ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}

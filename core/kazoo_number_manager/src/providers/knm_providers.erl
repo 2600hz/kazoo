@@ -70,16 +70,15 @@ exec(Number, Action) ->
     exec(Number, Action, provider_modules()).
 
 exec(Num, Action, Providers) ->
-    lists:foldl(
-      fun (Provider, Number) ->
-              case apply_action(Number, Action, Provider) of
-                  {'true', Ret} -> Ret;
-                  'false' -> Number
-              end
-      end
+    lists:foldl(fun (Provider, Number) ->
+                        case apply_action(Number, Action, Provider) of
+                            {'true', Ret} -> Ret;
+                            'false' -> Number
+                        end
+                end
                ,Num
                ,Providers
-     ).
+               ).
 
 -spec apply_action(knm_number:knm_number(), exec_action(), ne_binary()) ->
                           {'true', any()} | 'false'.
