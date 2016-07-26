@@ -924,28 +924,32 @@ unbind_q_from_monitor(Queue, Routing) ->
 
 -spec bind_q_to_conference(ne_binary(), conf_routing_type()) -> 'ok'.
 -spec bind_q_to_conference(ne_binary(), conf_routing_type(), api_binary()) -> 'ok'.
--spec bind_q_to_conference(ne_binary(), conf_routing_type(), api_binary(), api_binary()) -> 'ok'.
+-spec bind_q_to_conference(ne_binary(), conf_routing_type(), api_binary(), api_binary(), api_binary()) -> 'ok'.
 
 bind_q_to_conference(Queue, 'discovery') ->
     bind_q_to_conference(Queue, 'discovery', 'undefined');
 bind_q_to_conference(Queue, 'command') ->
     bind_q_to_conference(Queue, 'command', <<"*">>);
 bind_q_to_conference(Queue, 'event') ->
-    bind_q_to_conference(Queue, 'event', <<"*">>, <<"*">>);
+    bind_q_to_conference(Queue, 'event', <<"*">>, <<"*">>, <<"*">>);
 bind_q_to_conference(Queue, 'config') ->
     bind_q_to_conference(Queue, 'config', <<"*">>).
 
 bind_q_to_conference(Queue, 'discovery', _) ->
     bind_q_to_exchange(Queue, ?KEY_CONFERENCE_DISCOVERY, ?EXCHANGE_CONFERENCE);
-bind_q_to_conference(Queue, 'event', ConfId) ->
-    bind_q_to_conference(Queue, 'event', ConfId, <<"*">>);
+bind_q_to_conference(Queue, 'event', AccountId) ->
+    bind_q_to_conference(Queue, 'event', AccountId, <<"*">>, <<"*">>);
 bind_q_to_conference(Queue, 'command', ConfId) ->
     bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE);
 bind_q_to_conference(Queue, 'config', ConfProfile) ->
     bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_CONFIG/binary, ConfProfile/binary>>, ?EXCHANGE_CONFERENCE).
 
-bind_q_to_conference(Queue, 'event', ConfId, CallId) ->
-    bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary, ".", CallId/binary>>, ?EXCHANGE_CONFERENCE).
+bind_q_to_conference(Queue, 'event', AccountId, ConfId) ->
+    bind_q_to_conference(Queue, 'event', AccountId, ConfId, <<"*">>).
+
+bind_q_to_conference(Queue, 'event', AccountId, ConfId, CallId) ->
+    BindKey = <<?KEY_CONFERENCE_EVENT/binary, AccountId/binary, ".", ConfId/binary, ".", CallId/binary>>,
+    bind_q_to_exchange(Queue, BindKey, ?EXCHANGE_CONFERENCE).
 
 -spec bind_q_to_leader(ne_binary(), ne_binary()) -> 'ok'.
 bind_q_to_leader(Queue, Bind) ->
