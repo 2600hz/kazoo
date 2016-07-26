@@ -207,6 +207,7 @@ e164(_) -> 'false'.
 
 -spec account_id(ne_binary()) -> boolean().
 account_id(?MATCH_ACCOUNT_RAW(_)) -> 'true';
+account_id('undefined') -> 'true';
 account_id(_) -> 'false'.
 
 -spec carrier_module(ne_binary()) -> boolean().
