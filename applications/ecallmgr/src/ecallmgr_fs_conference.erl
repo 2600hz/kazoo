@@ -804,8 +804,7 @@ publish_participant_event(true=_Publish, Event, CallId, Props) ->
     #participant{call_info=CCV} = ecallmgr_fs_conferences:participant_get(CallId),
     ConferenceId = props:get_value(<<"Conference-Name">>, Props),
     AccountId = kz_json:get_value(<<"Account-ID">>, CCV),
-    lager:error("AccountID:~p", [AccountId]),
-    Publisher = fun(P) -> kapi_conference:publish_participant_event(ConferenceId, CallId, P) end,
+    Publisher = fun(P) -> kapi_conference:publish_participant_event(AccountId, ConferenceId, CallId, P) end,
     kz_amqp_worker:cast(props:set_value(<<"Custom-Channel-Vars">>, CCV, Ev), Publisher),
     ok;
 publish_participant_event(_, _, _, _) -> 'skip'.
