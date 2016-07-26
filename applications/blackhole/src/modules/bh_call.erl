@@ -11,7 +11,7 @@
 -module(bh_call).
 
 -export([handle_event/2
-        ,add_amqp_binding/2, rm_amqp_binding/2
+        ,subscribe/2, unsubscribe/2
         ]).
 
 -include("blackhole.hrl").
@@ -41,35 +41,35 @@ is_account_event(Context, EventJObj) ->
 event_name(JObj) ->
     kz_json:get_value(<<"Event-Name">>, JObj).
 
--spec add_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
-add_amqp_binding(<<"call.*.*">>, Context) ->
+-spec subscribe(bh_context:context(), ne_binary()) -> 'ok'.
+subscribe(Context, <<"call.*.*">>) ->
     AccountId = bh_context:account_id(Context),
     add_call_binding(AccountId, ?LISTEN_TO);
-add_amqp_binding(<<"call.", Binding/binary>>, Context) ->
+subscribe(Context, <<"call.", Binding/binary>>) ->
     case binary:split(Binding, <<".">>, ['global']) of
         [Event, <<"*">>] ->
             AccountId = bh_context:account_id(Context),
             add_call_binding(AccountId, [Event]);
         _ ->
-            lager:debug("unmatched call binding ~s", [Binding])
+            blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding)
     end;
-add_amqp_binding(_Binding, _Context) ->
-    lager:debug("unmatched binding ~s", [_Binding]).
+subscribe(Context, Binding) ->
+    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding).
 
--spec rm_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
-rm_amqp_binding(<<"call.*.*">>, Context) ->
+-spec unsubscribe(bh_context:context(), ne_binary()) -> 'ok'.
+unsubscribe(Context, <<"call.*.*">>) ->
     AccountId = bh_context:account_id(Context),
     rm_call_binding(AccountId, ?LISTEN_TO);
-rm_amqp_binding(<<"call.", Binding/binary>>, Context) ->
+unsubscribe(Context, <<"call.", Binding/binary>>) ->
     case binary:split(Binding, <<".">>, ['global']) of
         [Event, <<"*">>] ->
             AccountId = bh_context:account_id(Context),
             rm_call_binding(AccountId, [Event]);
         _ ->
-            lager:debug("unmatched call binding ~s", [Binding])
+            blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding)
     end;
-rm_amqp_binding(_Binding, _Context) ->
-    lager:debug("unmatched binding ~s", [_Binding]).
+unsubscribe(Context, Binding) ->
+    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding).
 
 -spec add_call_binding(ne_binary(), [ne_binary()]) -> ok.
 add_call_binding(_AccountId, []) -> ok;
