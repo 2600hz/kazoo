@@ -204,10 +204,15 @@ is_auth_by_authorized(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
     AuthBy = knm_phone_number:auth_by(PhoneNumber),
-    case is_authorized_operation(AssignedTo, AuthBy)
+    Sudo = ?KNM_DEFAULT_AUTH_BY =:= AuthBy,
+    case Sudo
+        orelse is_authorized_operation(AssignedTo, AuthBy)
         orelse is_authorized_operation(AuthBy, AssignedTo)
     of
-        'true' -> Number;
+        'true' ->
+            Sudo
+                andalso lager:info("bypassing auth"),
+            Number;
         'false' -> knm_errors:unauthorized()
     end.
 
@@ -276,12 +281,6 @@ apply_transitions(Number, Routines) ->
     lists:foldl(fun(F, N) -> F(N) end, Number, Routines).
 
 -spec is_authorized_operation(ne_binary(), ne_binary()) -> boolean().
-is_authorized_operation(?KNM_DEFAULT_AUTH_BY, _) ->
-    lager:info("bypassing auth"),
-    'true';
-is_authorized_operation(_, ?KNM_DEFAULT_AUTH_BY) ->
-    lager:info("bypassing auth"),
-    'true';
 is_authorized_operation(CheckFor, InAccount) ->
     kz_util:is_in_account_hierarchy(CheckFor, InAccount).
 
