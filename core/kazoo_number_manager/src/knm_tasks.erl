@@ -229,9 +229,7 @@ carrier_module(_) -> 'false'.
 
 -spec list(kz_proplist(), task_iterator()) -> task_iterator().
 list(Props, 'init') ->
-    ForAccount = props:get_value('account_id', Props),
-    Subs  = [ForAccount | get_descendants(ForAccount)],
-    {'ok', Subs};
+    {'ok', [props:get_value('account_id', Props)]};
 list(_, []) ->
     'stop';
 list(_, [?MATCH_ACCOUNT_RAW(AccountId) | Rest]) ->
