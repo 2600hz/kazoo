@@ -50,7 +50,7 @@
                   {'ok', reference()} |
                   reference().
 
--type ret() :: {'ok', pos_integer(), kz_proplist(), string() | binary()} |
+-type ret() :: {'ok', pos_integer(), kz_proplist(), text()} |
                {'ok', 'saved_to_file'} |
                {'error', any()} |
                req_id().
@@ -167,11 +167,11 @@ req(Method, Url, Hdrs, Body, Opts) ->
 %% @public
 %% @doc Send an asynchronous HTTP request
 %%--------------------------------------------------------------------
--spec async_req(pid(), string()) -> ret().
--spec async_req(pid(), method(), string()) -> ret().
--spec async_req(pid(), method(), string(), kz_proplist()) -> ret().
--spec async_req(pid(), method(), string(), kz_proplist(), http_body()) -> ret().
--spec async_req(pid(), method(), string(), kz_proplist(), http_body(), kz_proplist()) -> ret().
+-spec async_req(pid(), text()) -> ret().
+-spec async_req(pid(), method(), text()) -> ret().
+-spec async_req(pid(), method(), text(), kz_proplist()) -> ret().
+-spec async_req(pid(), method(), text(), kz_proplist(), http_body()) -> ret().
+-spec async_req(pid(), method(), text(), kz_proplist(), http_body(), kz_proplist()) -> ret().
 async_req(Pid, Url) ->
     async_req(Pid, 'get', Url, [], [], []).
 async_req(Pid, Method, Url) ->
@@ -251,7 +251,7 @@ maybe_basic_auth(Headers, Options) ->
 %% @private
 %% @doc Build httpc request argument based on method
 %%--------------------------------------------------------------------
--spec build_request(method(), string(), kz_proplist(), http_body()) -> httpc_request().
+-spec build_request(method(), text(), kz_proplist(), http_body()) -> httpc_request().
 build_request(Method, Url, Headers, _Body) when (Method == 'options');
                                                 (Method == 'get');
                                                 (Method == 'head');

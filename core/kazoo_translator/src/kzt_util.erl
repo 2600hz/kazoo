@@ -265,8 +265,8 @@ get_dequeued_call_duration(Call) -> kapps_call:kvs_fetch(<<"dequeued_call_durati
 set_media_meta(DCS, Call) -> kapps_call:kvs_store(<<"media_meta">>, DCS, Call).
 get_media_meta(Call) -> kapps_call:kvs_fetch(<<"media_meta">>, Call).
 
--spec set_amqp_listener(ne_binary(), kapps_call:call()) -> kapps_call:call().
--spec get_amqp_listener(kapps_call:call()) -> api_binary().
+-spec set_amqp_listener(pid(), kapps_call:call()) -> kapps_call:call().
+-spec get_amqp_listener(kapps_call:call()) -> api_pid().
 set_amqp_listener(Pid, Call) -> kapps_call:kvs_store(<<"amqp_listener">>, Pid, Call).
 get_amqp_listener(Call) -> kapps_call:kvs_fetch(<<"amqp_listener">>, Call).
 
