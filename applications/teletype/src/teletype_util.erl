@@ -474,17 +474,18 @@ find_account_rep_email(AccountJObj) ->
      ).
 
 -spec find_account_admin_email(api_binary()) -> api_binaries().
--spec find_account_admin_email(ne_binary(), api_binary()) -> api_binaries().
+-spec find_account_admin_email(api_binary(), api_binary()) -> api_binaries().
 find_account_admin_email('undefined') -> 'undefined';
 find_account_admin_email(AccountId) ->
     find_account_admin_email(AccountId, kz_services:find_reseller_id(AccountId)).
 
+find_account_admin_email('undefined', _Id) ->
+    'undefined';
 find_account_admin_email(AccountId, AccountId) ->
     case query_account_for_admin_emails(AccountId) of
         [] -> 'undefined';
         Emails -> Emails
     end;
-
 find_account_admin_email(AccountId, ResellerId) ->
     case query_account_for_admin_emails(AccountId) of
         [] -> find_account_admin_email(get_parent_account_id(AccountId), ResellerId);
@@ -492,22 +493,25 @@ find_account_admin_email(AccountId, ResellerId) ->
     end.
 
 -spec query_account_for_admin_emails(ne_binary()) -> ne_binaries().
-query_account_for_admin_emails(AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+query_account_for_admin_emails(<<_/binary>> = AccountId) ->
+    AccountDb = kz_util:format_account_db(AccountId),
     ViewOptions = [{'key', <<"user">>}
                   ,'include_docs'
                   ],
     case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', []} -> [];
-        {'ok', Users} ->
-            [Email
-             || Admin <- filter_for_admins(Users),
-                (Email = kz_json:get_ne_value([<<"doc">>, <<"email">>], Admin)) =/= 'undefined'
-            ];
+        {'ok', Users} -> extract_admin_emails(Users);
         {'error', _E} ->
             lager:debug("failed to find users in ~s: ~p", [AccountId, _E]),
             []
     end.
+
+-spec extract_admin_emails(kz_json:objects()) -> ne_binaries().
+extract_admin_emails(Users) ->
+    [Email
+     || Admin <- filter_for_admins(Users),
+        (Email = kz_json:get_ne_value([<<"doc">>, <<"email">>], Admin)) =/= 'undefined'
+    ].
 
 -spec find_account_admin(api_binary()) -> api_object().
 -spec find_account_admin(ne_binary(), ne_binary()) -> api_object().
