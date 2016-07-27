@@ -316,38 +316,20 @@ transition_numbers(PortReq) ->
               ,{'module_name', ?CARRIER_LOCAL}
               ,{'ported_in', 'true'}
               ,{'public_fields', kz_json:from_list([{<<"port_id">>, PortReqId}])}
-              ,{'state', ?NUMBER_STATE_AVAILABLE}
+              ,{'state', ?NUMBER_STATE_IN_SERVICE}
               ],
     lager:debug("creating local numbers for port ~s", [PortReqId]),
     Numbers = kz_json:get_keys(?NUMBERS_KEY, PortReq),
-    case create_and_activate(Numbers, Options) of
-        {_, 0} ->
+    Results = knm_numbers:create(Numbers, Options),
+    case lists:partition(fun was_number_operation_successul/1, Results) of
+        {_, []} ->
             lager:debug("all numbers ported, removing from port request"),
             ClearedPortRequest = clear_numbers_from_port(PortReq),
             {'ok', ClearedPortRequest};
         {_OK, _Errored} ->
-            lager:debug("failed to transition ~p/~p numbers", [_Errored, _OK]),
+            lager:debug("failed to transition ~p/~p numbers", [length(_Errored), length(_OK)]),
             {'error', PortReq}
     end.
-
--spec create_and_activate(ne_binaries(), knm_number_options:options()) ->
-                                 {non_neg_integer(), non_neg_integer()}.
-create_and_activate(Numbers, Options) ->
-    AssignTo = knm_number_options:assign_to(Options),
-    case check_operation_results(knm_numbers:create(Numbers, Options)) of
-        {_, 0} ->
-            lager:debug("all numbers created, activating numbers"),
-            check_operation_results(knm_numbers:move(Numbers, AssignTo, Options));
-        {OK, Errored} ->
-            lager:debug("failed to create ~p/~p numbers", [Errored, OK]),
-            {OK, Errored}
-    end.
-
--spec check_operation_results(knm_numbers:numbers_return()) ->
-                                     {non_neg_integer(), non_neg_integer()}.
-check_operation_results(Results) ->
-    {OK, Errored} = lists:partition(fun was_number_operation_successul/1, Results),
-    {length(OK), length(Errored)}.
 
 %% @private
 -spec was_number_operation_successul(knm_numbers:number_return()) -> boolean().
