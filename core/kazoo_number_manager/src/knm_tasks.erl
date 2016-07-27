@@ -370,7 +370,7 @@ delete(Props, _IterValue, Number) ->
 %%%===================================================================
 
 -spec handle_result(knm_number_return()) -> task_return().
-handle_result({'ok', _KNMNumber}) -> 'ok';
+handle_result({'ok', _KNMNumber}) -> [];
 handle_result({'dry_run', _Services, _Charges}) -> <<"accept_charges">>;
 handle_result({'error', Reason})
   when is_atom(Reason) ->
