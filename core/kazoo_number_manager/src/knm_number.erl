@@ -40,7 +40,7 @@
 -export([attempt/2]).
 -export([ensure_can_load_to_create/1]).
 -export([ensure_can_create/2]).
--export([create_or_load/3]).
+-export([create_or_load/4]).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
@@ -62,6 +62,8 @@
              ,knm_number_return/0
              ,dry_run_return/0
              ]).
+
+-type dry_run_or_number_return() :: knm_number() | dry_run_return().
 
 -type lookup_error() :: 'not_reconcilable' |
                         'not_found' |
@@ -128,24 +130,26 @@ create(Num, Options) ->
     end.
 
 -spec create_or_load(ne_binary(), knm_number_options:options()) ->
-                            knm_number() | dry_run_return().
+                            dry_run_or_number_return().
 create_or_load(Num, Options0) ->
-    State = knm_number_options:state(Options0, ?NUMBER_STATE_AVAILABLE),
-    Options = [{'state', State} | Options0],
-    create_or_load(Num, Options, knm_phone_number:fetch(Num)).
+    ToState = knm_number_options:state(Options0, ?NUMBER_STATE_RESERVED),
+    Options = [{'state', ToState} | Options0],
+    create_or_load(Num, Options, ToState, knm_phone_number:fetch(Num)).
 
--spec create_or_load(ne_binary(), knm_number_options:options(), knm_phone_number_return()) ->
-                            knm_number() | dry_run_return().
-create_or_load(Num, Options, {'ok', PhoneNumber}) ->
+-spec create_or_load(ne_binary(), knm_number_options:options(), ne_binary()
+                    ,knm_phone_number_return()) ->
+                            dry_run_or_number_return().
+create_or_load(_Num, Options, ToState, {'ok', PhoneNumber}) ->
     ensure_can_load_to_create(PhoneNumber),
-    Updates = [{fun knm_phone_number:set_number/2, knm_converters:normalize(Num)}]
-        ++ knm_number_options:to_phone_number_setters(Options),
+    Updates = knm_number_options:to_phone_number_setters(
+                [Option || Option <- Options, element(1,Option) =/= 'state']
+               ),
     {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Updates),
-    create_phone_number(set_phone_number(new(), NewPhoneNumber));
-create_or_load(Num, Options, {'error', 'not_found'}) ->
+    create_phone_number(ToState, set_phone_number(new(), NewPhoneNumber));
+create_or_load(Num, Options, ToState, {'error', 'not_found'}) ->
     ensure_can_create(Num, Options),
     PhoneNumber = knm_phone_number:new(Num, Options),
-    create_phone_number(set_phone_number(new(), PhoneNumber)).
+    create_phone_number(ToState, set_phone_number(new(), PhoneNumber)).
 
 -spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true'.
 ensure_can_load_to_create(PhoneNumber) ->
@@ -157,16 +161,13 @@ ensure_state(PhoneNumber, ExpectedState) ->
         ExpectedState -> 'true';
         _State ->
             lager:debug("wrong state: expected ~s, got ~s", [ExpectedState, _State]),
-            knm_errors:number_exists(
-              knm_phone_number:number(PhoneNumber)
-             )
+            knm_errors:number_exists(knm_phone_number:number(PhoneNumber))
     end.
 
--spec create_phone_number(knm_number()) -> knm_number() |
-                                           dry_run_return().
-create_phone_number(Number) ->
-    ensure_state(phone_number(Number), ?NUMBER_STATE_AVAILABLE),
-    Routines = [fun knm_number_states:to_reserved/1
+-spec create_phone_number(ne_binary(), knm_number()) ->
+                                 dry_run_or_number_return().
+create_phone_number(TargetState, Number) ->
+    Routines = [fun (N) -> knm_number_states:to_state(N, TargetState) end
                ,fun save_number/1
                ,fun dry_run_or_number/1
                ],
@@ -204,12 +205,10 @@ save_number(Number) ->
 
 -spec save_phone_number(knm_number()) -> knm_number().
 save_phone_number(Number) ->
-    set_phone_number(Number
-                    ,knm_phone_number:save(phone_number(Number))
-                    ).
+    PhoneNumber = knm_phone_number:save(phone_number(Number)),
+    set_phone_number(Number, PhoneNumber).
 
--spec dry_run_or_number(knm_number()) -> knm_number() |
-                                         dry_run_return().
+-spec dry_run_or_number(knm_number()) -> dry_run_or_number_return().
 dry_run_or_number(Number) ->
     case knm_phone_number:dry_run(phone_number(Number)) of
         'false' -> Number;
@@ -324,10 +323,9 @@ update_phone_number(Number, Routines) ->
     case knm_phone_number:setters(PhoneNumber, Routines) of
         {'error', _R}=Error -> Error;
         {'ok', UpdatedPhoneNumber} ->
-            wrap_phone_number_return(
-              knm_phone_number:save(UpdatedPhoneNumber)
+            wrap_phone_number_return(knm_phone_number:save(UpdatedPhoneNumber)
                                     ,Number
-             )
+                                    )
     end.
 
 %%--------------------------------------------------------------------
@@ -339,16 +337,14 @@ update_phone_number(Number, Routines) ->
 save(Number) ->
     Num =
         case is_carrier_search_result(Number) of
+            'false' -> knm_services:update_services(Number);
             'true' ->
                 %% Number was created as a result of carrier search
                 %%  thus has no services associated with it
-                Number;
-            'false' ->
-                knm_services:update_services(Number)
+                Number
         end,
-    wrap_phone_number_return(knm_phone_number:save(phone_number(Num))
-                            ,Num
-                            ).
+    PhoneNumber = knm_phone_number:save(phone_number(Num)),
+    wrap_phone_number_return(PhoneNumber, Num).
 
 %% @private
 -spec is_carrier_search_result(knm_number()) -> boolean().
@@ -490,8 +486,8 @@ disconnect(Number, Options) ->
                     ),
     lager:debug("will delete permanently: ~p", [ShouldDelete]),
     try knm_carriers:disconnect(Number) of
-        N when not ShouldDelete -> N;
-        N when     ShouldDelete -> delete_phone_number(N)
+        N when ShouldDelete -> delete_phone_number(N);
+        N -> N
     catch
         _E:_R when ShouldDelete ->
             ?LOG_WARN("failed to disconnect number: ~s: ~p", [_E, _R]),
@@ -506,7 +502,7 @@ delete_phone_number(Number) ->
 %% @public
 %% @doc
 %% Remove a number from the system without doing any checking.
-%% If that sounds harsh to you: you are looking for release/1,2.
+%% Sounds too harsh for you? you are looking for release/1,2.
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(ne_binary()) ->
@@ -886,12 +882,9 @@ num_to_did(#knm_number{}=Number) ->
 num_to_did(PhoneNumber) ->
     knm_phone_number:number(PhoneNumber).
 
--type number_routine() :: fun((knm_number()) ->
-                                     knm_number() | dry_run_return()
-                                         ).
+-type number_routine() :: fun((knm_number()) -> dry_run_or_number_return()).
 -type number_routines() :: [number_routine()].
 -spec apply_number_routines(knm_number(), number_routines()) ->
-                                   knm_number() |
-                                   dry_run_return().
+                                   dry_run_or_number_return().
 apply_number_routines(Number, Routines) ->
     lists:foldl(fun(F, N) -> F(N) end, Number, Routines).

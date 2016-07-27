@@ -49,10 +49,12 @@ save(Number, _State) ->
 -spec delete(knm_number:knm_number()) ->
                     knm_number:knm_number().
 delete(Number) ->
-    knm_services:deactivate_features(Number, [?FEATURE_INBOUND_CNAM
-                                             ,?FEATURE_OUTBOUND_CNAM
-                                             ,?FEATURE_CNAM
-                                             ]).
+    knm_services:deactivate_features(Number
+                                    ,[?FEATURE_INBOUND_CNAM
+                                     ,?FEATURE_OUTBOUND_CNAM
+                                     ,?FEATURE_CNAM
+                                     ]
+                                    ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -106,7 +108,7 @@ handle_inbound_cnam(Number) ->
     Number1 =
         case kz_json:is_true([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_INBOUND_LOOKUP], Doc) of
             'false' -> knm_services:deactivate_feature(Number, ?KEY_INBOUND_LOOKUP);
-            'true' ->  knm_services:activate_feature(Number, ?FEATURE_INBOUND_CNAM)
+            'true' -> knm_services:activate_feature(Number, ?FEATURE_INBOUND_CNAM)
         end,
     support_depreciated_cnam(Number1).
 

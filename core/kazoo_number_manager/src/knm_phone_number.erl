@@ -29,7 +29,7 @@
         ,assigned_to/1, set_assigned_to/2
         ,prev_assigned_to/1, set_prev_assigned_to/2
         ,used_by/1, set_used_by/2
-        ,features/1, set_features/2
+        ,features/1, features_list/1, set_features/2
         ,feature/2, set_feature/3
         ,state/1, set_state/2
         ,reserve_history/1, add_reserve_history/2, unwind_reserve_history/1
@@ -145,7 +145,7 @@ fetch(Num, Options) ->
 -spec handle_fetched_result(kz_json:object(), knm_number_options:options()) ->
                                    {'ok', knm_phone_number()}.
 handle_fetched_result(JObj, Options) ->
-    PhoneNumber = set_options(from_json(JObj), Options),
+    PhoneNumber = from_json_with_options(JObj, Options),
     case is_authorized(PhoneNumber) of
         'true' -> {'ok', PhoneNumber};
         'false' -> knm_errors:unauthorized()
@@ -160,7 +160,7 @@ handle_fetched_result(JObj, Options) ->
 save(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
     lager:debug("dry_run-ing btw"),
     PhoneNumber;
-save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
+save(PhoneNumber) ->
     Routines = [fun save_to_number_db/1
                ,fun handle_assignment/1
                ],
@@ -173,14 +173,15 @@ save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(knm_phone_number()) -> knm_phone_number().
-delete(#knm_phone_number{dry_run='true'}=Number) ->
+delete(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
     lager:debug("dry_run-ing btw"),
-    Number;
-delete(#knm_phone_number{dry_run='false'}=Number) ->
+    PhoneNumber;
+delete(PhoneNumber) ->
     Routines = [fun delete_number_doc/1
                ,fun maybe_remove_number_from_account/1
+               ,{fun set_state/2, ?NUMBER_STATE_DELETED}
                ],
-    {'ok', NewPhoneNumber} = setters(Number, Routines),
+    {'ok', NewPhoneNumber} = setters(PhoneNumber, Routines),
     NewPhoneNumber.
 
 -spec release(knm_phone_number()) -> knm_phone_number().
@@ -233,10 +234,10 @@ authorized_release(PhoneNumber) ->
     ReleasedState = knm_config:released_state(?NUMBER_STATE_AVAILABLE),
     Routines =
         [{fun set_features/2, kz_json:new()}
-         ,{fun set_doc/2, kz_json:private_fields(doc(PhoneNumber))}
-         ,{fun set_prev_assigned_to/2, assigned_to(PhoneNumber)}
-         ,{fun set_assigned_to/2, 'undefined'}
-         ,{fun set_state/2, ReleasedState}
+        ,{fun set_doc/2, kz_json:private_fields(doc(PhoneNumber))}
+        ,{fun set_prev_assigned_to/2, assigned_to(PhoneNumber)}
+        ,{fun set_assigned_to/2, 'undefined'}
+        ,{fun set_state/2, ReleasedState}
         ],
     {'ok', NewPhoneNumber} = setters(PhoneNumber, Routines),
     NewPhoneNumber.
@@ -250,7 +251,7 @@ to_public_json(Number) ->
     JObj = to_json(Number),
     State = {<<"state">>, state(Number)},
     UsedBy = {<<"used_by">>, used_by(Number)},
-    Features = {<<"features">>, sets:to_list(sets:from_list(kz_json:get_keys(features(Number))))},
+    Features = {<<"features">>, features_list(Number)},
     ReadOnly =
         kz_json:from_list(
           props:filter_empty(
@@ -336,6 +337,30 @@ from_json(JObj) ->
                 ,{fun set_doc/2, kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))}
                 ]),
     PhoneNumber.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec from_json_with_options(kz_json:object(), knm_phone_number() | knm_number_options:options()) ->
+                                    knm_phone_number().
+from_json_with_options(JObj, Options)
+  when is_list(Options) ->
+    Updates = [{fun set_assign_to/2, knm_number_options:assign_to(Options)}
+               %% See knm_number_options:default/0 for these 3.
+              ,{fun set_dry_run/2, knm_number_options:dry_run(Options, 'false')}
+              ,{fun set_batch_run/2, knm_number_options:batch_run(Options, 'false')}
+              ,{fun set_auth_by/2, knm_number_options:auth_by(Options, ?KNM_DEFAULT_AUTH_BY)}
+              ],
+    {'ok', PhoneNumber} = setters(from_json(JObj), Updates),
+    PhoneNumber;
+from_json_with_options(JObj, PhoneNumber) ->
+    from_json_with_options(JObj
+                          ,[{'dry_run', dry_run(PhoneNumber)}
+                           ,{'batch_run', batch_run(PhoneNumber)}
+                           ]
+                          ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -485,6 +510,10 @@ set_used_by(N, UsedBy=?NE_BINARY) ->
 %%--------------------------------------------------------------------
 -spec features(knm_phone_number()) -> kz_json:object().
 features(#knm_phone_number{features=Features}) -> Features.
+
+-spec features_list(knm_phone_number()) -> ne_binaries().
+features_list(#knm_phone_number{features=Features}) ->
+    sets:to_list(sets:from_list(kz_json:get_keys(Features))).
 
 -spec set_features(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 set_features(N, Features=?JSON_WRAPPER(_)) ->
@@ -705,22 +734,6 @@ list_attachments(PhoneNumber, AuthBy) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_options(knm_phone_number(), knm_number_options:options()) -> knm_phone_number().
-set_options(Number, Options) when is_list(Options) ->
-    Updates = [{fun set_assign_to/2, knm_number_options:assign_to(Options)}
-               %% See knm_number_options:default/0 for these 3.
-              ,{fun set_dry_run/2, knm_number_options:dry_run(Options, 'false')}
-              ,{fun set_batch_run/2, knm_number_options:batch_run(Options, 'false')}
-              ,{fun set_auth_by/2, knm_number_options:auth_by(Options, ?KNM_DEFAULT_AUTH_BY)}
-              ],
-    {'ok', PhoneNumber} = setters(Number, Updates),
-    PhoneNumber.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec is_authorized(knm_phone_number()) -> boolean().
 -ifdef(TEST).
 is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) -> 'true';
@@ -779,7 +792,7 @@ save_to_number_db(PhoneNumber) ->
     NumberDb = number_db(PhoneNumber),
     JObj = to_json(PhoneNumber),
     case kz_datamgr:ensure_saved(NumberDb, JObj) of
-        {'ok', Doc} -> from_json(Doc);
+        {'ok', Doc} -> from_json_with_options(Doc, PhoneNumber);
         {'error', 'not_found'} ->
             lager:debug("creating new db '~s' for number '~s'", [NumberDb, number(PhoneNumber)]),
             'true' = kz_datamgr:db_create(NumberDb),
@@ -799,7 +812,7 @@ save_to_number_db(PhoneNumber) ->
 -spec handle_assignment(knm_phone_number()) -> knm_phone_number().
 handle_assignment(PhoneNumber) ->
     ?LOG_DEBUG("handling assignment for ~s", [number(PhoneNumber)]),
-    unassign(assign(PhoneNumber)).
+    unassign_from_prev(assign(PhoneNumber)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -831,7 +844,7 @@ assign(PhoneNumber, AssignedTo) ->
         {'ok', JObj} ->
             lager:debug("assigned number ~s to ~s"
                        ,[number(PhoneNumber), AccountDb]),
-            from_json(JObj)
+            from_json_with_options(JObj, PhoneNumber)
     end.
 -endif.
 
@@ -842,8 +855,8 @@ assign(PhoneNumber, AssignedTo) ->
 %% number doc that may still exist in PrevAssignedTo DB.
 %% @end
 %%--------------------------------------------------------------------
--spec unassign(knm_phone_number()) -> knm_phone_number().
-unassign(PhoneNumber) ->
+-spec unassign_from_prev(knm_phone_number()) -> knm_phone_number().
+unassign_from_prev(PhoneNumber) ->
     PrevAssignedTo = prev_assigned_to(PhoneNumber),
     case kz_util:is_empty(PrevAssignedTo) of
         'true' ->
@@ -851,40 +864,40 @@ unassign(PhoneNumber) ->
                        ,[number(PhoneNumber)]),
             PhoneNumber;
         'false' ->
-            unassign(PhoneNumber, PrevAssignedTo)
+            unassign_from_prev(PhoneNumber, PrevAssignedTo)
     end.
 
--spec unassign(knm_phone_number(), ne_binary()) -> knm_phone_number().
+-spec unassign_from_prev(knm_phone_number(), ne_binary()) -> knm_phone_number().
 -ifdef(TEST).
-unassign(PhoneNumber, _PrevAssignedTo) ->
+unassign_from_prev(PhoneNumber, _PrevAssignedTo) ->
     PhoneNumber.
 -else.
-unassign(#knm_phone_number{assigned_to = PrevAssignedTo} = PhoneNumber
+unassign_from_prev(#knm_phone_number{assigned_to = PrevAssignedTo} = PhoneNumber
         ,PrevAssignedTo
         ) ->
-    lager:debug("prev_assigned_to is same as assigned_to, not unassign-ing"),
+    lager:debug("prev_assigned_to is same as assigned_to, not unassign-ing from prev"),
     PhoneNumber;
-unassign(PhoneNumber, PrevAssignedTo) ->
+unassign_from_prev(PhoneNumber, PrevAssignedTo) ->
     Num = number(PhoneNumber),
     case get_number_in_account(PrevAssignedTo, Num) of
         {'error', 'not_found'} ->
-            lager:debug("number ~s was not found in ~s, no need to unassign"
+            lager:debug("number ~s was not found in ~s, no need to unassign from prev"
                        ,[Num, PrevAssignedTo]),
             PhoneNumber;
-        {'ok', _} -> do_unassign(PhoneNumber, PrevAssignedTo);
-        {'error', _R} -> do_unassign(PhoneNumber, PrevAssignedTo)
+        {'ok', _} -> do_unassign_from_prev(PhoneNumber, PrevAssignedTo);
+        {'error', _R} -> do_unassign_from_prev(PhoneNumber, PrevAssignedTo)
     end.
 
--spec do_unassign(knm_phone_number(), ne_binary()) -> knm_phone_number().
-do_unassign(PhoneNumber, PrevAssignedTo) ->
+-spec do_unassign_from_prev(knm_phone_number(), ne_binary()) -> knm_phone_number().
+do_unassign_from_prev(PhoneNumber, PrevAssignedTo) ->
     AccountDb = kz_util:format_account_db(PrevAssignedTo),
     case kz_datamgr:del_doc(AccountDb, to_json(PhoneNumber)) of
         {'error', E} ->
-            lager:error("failed to unassign number ~s from ~s"
+            lager:error("failed to unassign from prev number ~s from ~s"
                        ,[number(PhoneNumber), PrevAssignedTo]),
             knm_errors:assign_failure(PhoneNumber, E);
         {'ok', _} ->
-            lager:debug("unassigned number ~s from ~s"
+            lager:debug("successfully unassign_from_prev number ~s from ~s"
                        ,[number(PhoneNumber), PrevAssignedTo]),
             PhoneNumber
     end.

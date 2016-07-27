@@ -169,7 +169,8 @@ in_service_from_reserved_authorize(Number) ->
     of
         'false' -> knm_errors:unauthorized();
         'true' ->
-            Sudo andalso lager:info("bypassing auth"),
+            Sudo
+                andalso lager:info("bypassing auth"),
             Number
     end.
 
@@ -185,7 +186,8 @@ in_service_from_in_service_authorize(Number) ->
     of
         'false' -> knm_errors:unauthorized();
         'true' ->
-            Sudo andalso lager:info("bypassing auth"),
+            Sudo
+                andalso lager:info("bypassing auth"),
             Number
     end.
 
@@ -204,10 +206,16 @@ is_auth_by_authorized(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
     AuthBy = knm_phone_number:auth_by(PhoneNumber),
-    case is_authorized_operation(AssignedTo, AuthBy)
+    Sudo = ?KNM_DEFAULT_AUTH_BY =:= AuthBy,
+    case Sudo
+        orelse 'undefined' =:= AssignedTo
+        orelse is_authorized_operation(AssignedTo, AuthBy)
         orelse is_authorized_operation(AuthBy, AssignedTo)
     of
-        'true' -> Number;
+        'true' ->
+            Sudo
+                andalso lager:info("bypassing auth"),
+            Number;
         'false' -> knm_errors:unauthorized()
     end.
 

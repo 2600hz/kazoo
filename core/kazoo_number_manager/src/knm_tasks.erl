@@ -13,6 +13,7 @@
         ,category/0
         ,module/0
         ,output_header/1
+        ,cleanup/2
         ]).
 
 %% Verifiers
@@ -24,11 +25,11 @@
 %% Appliers
 -export([list/2
         ,list_all/2
-        ,import/16
-        ,assign_to/3
-        ,release/2
-        ,reserve/3
-        ,delete/2
+        ,import/17
+        ,assign_to/4
+        ,release/3
+        ,reserve/4
+        ,delete/3
         ]).
 
 -include("knm.hrl").
@@ -48,6 +49,14 @@ output_header('list') ->
     list_output_header();
 output_header('list_all') ->
     list_output_header().
+
+-spec cleanup(atom(), any()) -> any().
+cleanup('import', AccountIds) ->
+    F = fun (AccountId) ->
+                lager:debug("reconciling account ~s", [AccountId]),
+                kz_services:reconcile(AccountId, <<"phone_numbers">>)
+        end,
+    lists:foreach(F, sets:to_list(AccountIds)).
 
 -spec list_output_header() -> kz_csv:row().
 list_output_header() ->
@@ -109,7 +118,7 @@ help() ->
                         ,{<<"doc">>, <<"Creates numbers from fields similar to list tasks.\n"
                                        "Note: number must be E164-formatted.\n"
                                        "Note: number must not be in the system already.\n"
-                                       "If `account_id` is empty, number state will be 'available'.\n"
+                                       "If `account_id` is empty, number will be assigned to account creating task, with state 'available'.\n"
                                        "Otherwise, the number will be assigned to `account_id` with state 'in_service'.\n"
                                        "Note: `carrier_module` defaults to 'knm_local'.\n"
                                      >>}
@@ -207,6 +216,7 @@ e164(_) -> 'false'.
 
 -spec account_id(ne_binary()) -> boolean().
 account_id(?MATCH_ACCOUNT_RAW(_)) -> 'true';
+account_id('undefined') -> 'true';
 account_id(_) -> 'false'.
 
 -spec carrier_module(ne_binary()) -> boolean().
@@ -229,9 +239,7 @@ carrier_module(_) -> 'false'.
 
 -spec list(kz_proplist(), task_iterator()) -> task_iterator().
 list(Props, 'init') ->
-    ForAccount = props:get_value('account_id', Props),
-    Subs  = [ForAccount | get_descendants(ForAccount)],
-    {'ok', Subs};
+    {'ok', [props:get_value('account_id', Props)]};
 list(_, []) ->
     'stop';
 list(_, [?MATCH_ACCOUNT_RAW(AccountId) | Rest]) ->
@@ -273,9 +281,10 @@ list_number_row(AuthBy, E164, JObj) ->
     end.
 
 -spec list_all(kz_proplist(), task_iterator()) -> task_iterator().
-list_all(_, 'init') ->
-    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
-    {'ok', [MasterAccountId | get_descendants(MasterAccountId)]};
+list_all(Props, 'init') ->
+    ForAccount = props:get_value('account_id', Props),
+    Subs = get_descendants(ForAccount),
+    {'ok', [ForAccount|Subs]};
 list_all(_, []) ->
     'stop';
 list_all(_, [?MATCH_ACCOUNT_RAW(AccountId) | Rest]) ->
@@ -285,20 +294,30 @@ list_all(_, [{E164,JObj} | Rest]) ->
     Row = list_number_row(?KNM_DEFAULT_AUTH_BY, E164, JObj),
     {Row, Rest}.
 
--spec import(kz_proplist(), ne_binary(), api_binary(), api_binary()
+-spec import(kz_proplist(), task_iterator()
+            ,ne_binary(), api_binary(), api_binary()
             ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary()
             ,api_binary(), api_binary()
             ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary()) ->
                     task_return().
-import(_Props, E164, AccountId, Carrier
+import(Props, 'init', _1,_2,_3, _4,_5,_6, _7,_8,_9, _10,_11,_12, _13,_14,_15) ->
+    kz_datamgr:suppress_change_notice(),
+    IterValue = sets:new(),
+    import(Props, IterValue, _1,_2,_3, _4,_5,_6, _7,_8,_9, _10,_11,_12, _13,_14,_15);
+import(Props, AccountIds
+      ,E164, AccountId0, Carrier
       ,_PortIn, _PrevAssignedTo, _Created, _Modified, _UsedBy
       ,_CNAMInbound, _CNAMOutbound
       ,_E911PostalCode, _E911StreetAddress, _E911ExtendedAddress, _E911Locality, _E911Region) ->
     %%TODO: use all the optional fields
-    State = case AccountId of
-                'undefined' -> ?NUMBER_STATE_AVAILABLE;
+    State = case AccountId0 of
+                'undefined' -> ?NUMBER_STATE_RESERVED;
                 _ -> ?NUMBER_STATE_IN_SERVICE
             end,
+    AccountId = case AccountId0 of
+                    'undefined' -> props:get_value('account_id', Props);
+                    _ -> AccountId0
+                end,
     ModuleName = case Carrier of
                      'undefined' -> ?CARRIER_LOCAL;
                      _ -> Carrier
@@ -309,32 +328,34 @@ import(_Props, E164, AccountId, Carrier
               ,{'state', State}
               ,{'module_name', ModuleName}
               ],
-    handle_result(knm_number:create(E164, Options)).
+    {handle_result(knm_number:create(E164, Options))
+    ,sets:add_element(AccountId, AccountIds)
+    }.
 
--spec assign_to(kz_proplist(), ne_binary(), ne_binary()) -> task_return().
-assign_to(Props, Number, AccountId) ->
+-spec assign_to(kz_proplist(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
+assign_to(Props, _IterValue, Number, AccountId) ->
     Options = [{'auth_by', props:get_value('auth_account_id', Props)}
               ,{'batch_run', 'true'}
               ],
     handle_result(knm_number:move(Number, AccountId, Options)).
 
--spec release(kz_proplist(), ne_binary()) -> task_return().
-release(Props, Number) ->
+-spec release(kz_proplist(), task_iterator(), ne_binary()) -> task_return().
+release(Props, _IterValue, Number) ->
     Options = [{'auth_by', props:get_value('auth_account_id', Props)}
               ,{'batch_run', 'true'}
               ],
     handle_result(knm_number:release(Number, Options)).
 
--spec reserve(kz_proplist(), ne_binary(), ne_binary()) -> task_return().
-reserve(Props, Number, AccountId) ->
+-spec reserve(kz_proplist(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
+reserve(Props, _IterValue, Number, AccountId) ->
     Options = [{'auth_by', props:get_value('auth_account_id', Props)}
               ,{'batch_run', 'true'}
               ,{'assign_to', AccountId}
               ],
     handle_result(knm_number:reserve(Number, Options)).
 
--spec delete(kz_proplist(), ne_binary()) -> task_return().
-delete(Props, Number) ->
+-spec delete(kz_proplist(), task_iterator(), ne_binary()) -> task_return().
+delete(Props, _IterValue, Number) ->
     AuthAccountId = props:get_value('auth_account_id', Props),
     case kz_util:is_system_admin(AuthAccountId) of
         'false' -> <<"not a system admin">>;
@@ -350,7 +371,7 @@ delete(Props, Number) ->
 %%%===================================================================
 
 -spec handle_result(knm_number_return()) -> task_return().
-handle_result({'ok', _KNMNumber}) -> 'ok';
+handle_result({'ok', _KNMNumber}) -> [];
 handle_result({'dry_run', _Services, _Charges}) -> <<"accept_charges">>;
 handle_result({'error', Reason})
   when is_atom(Reason) ->

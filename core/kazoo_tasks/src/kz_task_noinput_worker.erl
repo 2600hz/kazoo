@@ -9,11 +9,12 @@
 -module(kz_task_noinput_worker).
 
 %% API
--export([start/5]).
+-export([start/6]).
 
 -include("kz_tasks.hrl").
 
 -record(state, { task_id :: kz_tasks:task_id()
+               , api :: kz_json:object()
                , module :: module()
                , function :: atom()
                , fassoc :: kz_csv:fassoc()
@@ -35,10 +36,11 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec start(kz_tasks:task_id(), module(), atom(), kz_proplist(), ne_binaries()) -> 'ok'.
-start(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
+-spec start(kz_tasks:task_id(), kz_json:object(), module(), atom(), kz_proplist(), ne_binaries()) ->
+                   'ok'.
+start(TaskId, API, Module, Function, ExtraArgs, OrderedFields) ->
     _ = kz_util:put_callid(TaskId),
-    case init(TaskId, Module, Function, ExtraArgs, OrderedFields) of
+    case init(TaskId, API, Module, Function, ExtraArgs, OrderedFields) of
         {'ok', State} ->
             lager:debug("worker for ~s started", [TaskId]),
             loop('init', State);
@@ -52,9 +54,10 @@ start(TaskId, Module, Function, ExtraArgs, OrderedFields) ->
 %%%===================================================================
 
 %% @private
--spec init(kz_tasks:task_id(), module(), atom(), kz_proplist(), ne_binaries()) -> {'ok', state()} |
-                                                                                  {'error', any()}.
-init(TaskId, Module, Function, ExtraArgs, _) ->
+-spec init(kz_tasks:task_id(), kz_json:object(), module(), atom(), kz_proplist(), ne_binaries()) ->
+                  {'ok', state()} |
+                  {'error', any()}.
+init(TaskId, API, Module, Function, ExtraArgs, _) ->
     case
         kz_util:try_load_module(Module) =:= Module
         andalso write_output_csv_header(TaskId, Module, Function)
@@ -67,6 +70,7 @@ init(TaskId, Module, Function, ExtraArgs, _) ->
             Error;
         'ok' ->
             State = #state{ task_id = TaskId
+                          , api = API
                           , module = Module
                           , function = Function
                           , extra_args = ExtraArgs
@@ -151,7 +155,7 @@ store_return(TaskId, Rows=[_List|_]) when is_list(_List) ->
     lists:sum([store_return(TaskId, Row) || Row <- Rows]);
 store_return(TaskId, Reason) ->
     Data = [reason(Reason), $\n],
-    _ = kz_util:write_file(?OUT(TaskId), Data, ['append']),
+    kz_util:write_file(?OUT(TaskId), Data, ['append']),
     1.
 
 %% @private
@@ -163,8 +167,8 @@ reason(?NE_BINARY=Reason) ->
 reason(_) -> <<>>.
 
 %% @private
--spec write_output_csv_header(kz_tasks:task_id(), module(), atom()) -> 'ok' |
-                                                                       {'error', any()}.
+-spec write_output_csv_header(kz_tasks:task_id(), module(), atom()) ->
+                                     'ok' | {'error', any()}.
 write_output_csv_header(TaskId, Module, Function) ->
     HeaderRHS = kz_tasks:get_output_header(Module, Function),
     Data = [kz_csv:row_to_iolist(HeaderRHS), $\n],

@@ -25,6 +25,7 @@
         ,worker_pause/0
         ,worker_maybe_send_update/3
         ,get_output_header/2
+        ,cleanup_task/3
         ]).
 
 %%% gen_server callbacks
@@ -330,6 +331,25 @@ get_output_header(Module, Function) ->
             lager:debug("output_header not found for ~s:~s (~p:~p), using default"
                        ,[Module, Function, _E, _R]),
             ?OUTPUT_CSV_HEADER_ROW
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec cleanup_task(module(), kz_json:object(), any()) -> 'ok'.
+cleanup_task(Module, API, Data) ->
+    lager:debug("cleaning up after task"),
+    Action = kz_util:to_atom(kz_json:get_value(<<"action">>, API), 'true'),
+    try
+        Module:cleanup(Action, Data),
+        lager:debug("cleanup completed")
+    catch
+        'error':'function_clause' ->
+            lager:debug("skipped cleanup");
+        _E:_R ->
+            lager:debug("cleanup ~p: ~p", [_E, _R])
     end.
 
 
@@ -670,7 +690,7 @@ handle_call_start_task(Task=#{ id := TaskId
                                    }
                       ) ->
     lager:info("about to start task ~s: ~s ~s", [TaskId, Category, Action]),
-    API = maps:get(Action, maps:get(Category, APIs)),
+    API = task_api(Category, Action, APIs),
     lager:debug("API ~s", [kz_json:encode(API)]),
     WorkerModule = worker_module(API),
     lager:debug("worker type: ~s", [WorkerModule]),
@@ -684,8 +704,12 @@ handle_call_start_task(Task=#{ id := TaskId
                 ],
     lager:debug("extra args: ~p", [ExtraArgs]),
     %% Task needs to run where App is started.
-    Job = fun () -> WorkerModule:start(TaskId, Module, Function, ExtraArgs, Fields) end,
-    try erlang:spawn_link(kz_util:to_atom(Node, 'true'), Job) of
+    try erlang:spawn_link(kz_util:to_atom(Node, 'true')
+                         ,WorkerModule
+                         ,'start'
+                         ,[TaskId, API, Module, Function, ExtraArgs, Fields]
+                         )
+    of
         Pid ->
             Task1 = Task#{ started => kz_util:current_tstamp()
                          , worker_pid => Pid
@@ -785,6 +809,14 @@ remove_task(TaskId, State) ->
 add_task(Task, State) ->
     Tasks = [Task | State#state.tasks],
     State#state{tasks = Tasks}.
+
+-spec task_api(ne_binary(), ne_binary(), kz_json:objects()) -> kz_json:object().
+task_api(Category, Action, APIs) ->
+    kz_json:set_values([{<<"category">>, Category}
+                       ,{<<"action">>, Action}
+                       ]
+                      ,maps:get(Action, maps:get(Category, APIs))
+                      ).
 
 %%--------------------------------------------------------------------
 %% @private

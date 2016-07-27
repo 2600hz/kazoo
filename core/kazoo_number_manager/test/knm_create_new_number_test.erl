@@ -75,10 +75,9 @@ create_existing_number_test_() ->
 
 create_existing_in_service_test_() ->
     InServicePN =
-        knm_phone_number:set_state(
-          knm_phone_number:from_json(?AVAILABLE_NUMBER)
+        knm_phone_number:set_state(knm_phone_number:from_json(?AVAILABLE_NUMBER)
                                   ,?NUMBER_STATE_IN_SERVICE
-         ),
+                                  ),
     Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
@@ -87,8 +86,12 @@ create_existing_in_service_test_() ->
              }
             ],
 
-    Resp = knm_number:attempt(fun knm_number:create_or_load/3
-                             ,[?TEST_AVAILABLE_NUM, Props, {'ok', InServicePN}]
+    Resp = knm_number:attempt(fun knm_number:create_or_load/4
+                             ,[?TEST_AVAILABLE_NUM
+                              ,Props
+                              ,?NUMBER_STATE_IN_SERVICE
+                              ,{'ok', InServicePN}
+                              ]
                              ),
 
     [{"Verifying that IN SERVICE numbers can't be created"
