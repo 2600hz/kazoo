@@ -213,7 +213,7 @@ associator_verify_test() ->
     CSVHeader = [<<"A">>, <<"E">>, <<"C">>, <<"B">>],
     CSVRow    = [<<"1">>, <<"5">>, <<"3">>, <<"2">>],
     Verify = fun (_Cell) -> 'false' end,
-    Verifier = fun ('B', Cell) -> Verify(Cell); (_Field, _Cell) -> 'true' end,
+    Verifier = fun (<<"B">>, Cell) -> Verify(Cell); (_Field, _Cell) -> 'true' end,
     FAssoc = ?MODULE:associator(CSVHeader, OrderedFields, Verifier),
     ?assertEqual('false', FAssoc(CSVRow)).
 
