@@ -63,6 +63,8 @@
              ,dry_run_return/0
              ]).
 
+-type dry_run_or_number_return() :: knm_number() | dry_run_return().
+
 -type lookup_error() :: 'not_reconcilable' |
                         'not_found' |
                         'unassigned' |
@@ -128,14 +130,15 @@ create(Num, Options) ->
     end.
 
 -spec create_or_load(ne_binary(), knm_number_options:options()) ->
-                            knm_number() | dry_run_return().
+                            dry_run_or_number_return().
 create_or_load(Num, Options0) ->
     ToState = knm_number_options:state(Options0, ?NUMBER_STATE_RESERVED),
     Options = [{'state', ToState} | Options0],
     create_or_load(Num, Options, ToState, knm_phone_number:fetch(Num)).
 
--spec create_or_load(ne_binary(), knm_number_options:options(), ne_binary(), knm_phone_number_return()) ->
-                            knm_number() | dry_run_return().
+-spec create_or_load(ne_binary(), knm_number_options:options(), ne_binary()
+                    ,knm_phone_number_return()) ->
+                            dry_run_or_number_return().
 create_or_load(_Num, Options, ToState, {'ok', PhoneNumber}) ->
     ensure_can_load_to_create(PhoneNumber),
     Updates = knm_number_options:to_phone_number_setters(
@@ -162,7 +165,7 @@ ensure_state(PhoneNumber, ExpectedState) ->
     end.
 
 -spec create_phone_number(ne_binary(), knm_number()) ->
-                                 knm_number() | dry_run_return().
+                                 dry_run_or_number_return().
 create_phone_number(TargetState, Number) ->
     Routines = [fun (N) -> knm_number_states:to_state(N, TargetState) end
                ,fun save_number/1
@@ -205,8 +208,7 @@ save_phone_number(Number) ->
     PhoneNumber = knm_phone_number:save(phone_number(Number)),
     set_phone_number(Number, PhoneNumber).
 
--spec dry_run_or_number(knm_number()) ->
-                               knm_number() | dry_run_return().
+-spec dry_run_or_number(knm_number()) -> dry_run_or_number_return().
 dry_run_or_number(Number) ->
     case knm_phone_number:dry_run(phone_number(Number)) of
         'false' -> Number;
@@ -880,12 +882,9 @@ num_to_did(#knm_number{}=Number) ->
 num_to_did(PhoneNumber) ->
     knm_phone_number:number(PhoneNumber).
 
--type number_routine() :: fun((knm_number()) ->
-                                     knm_number() | dry_run_return()
-                                         ).
+-type number_routine() :: fun((knm_number()) -> dry_run_or_number_return()).
 -type number_routines() :: [number_routine()].
 -spec apply_number_routines(knm_number(), number_routines()) ->
-                                   knm_number() |
-                                   dry_run_return().
+                                   dry_run_or_number_return().
 apply_number_routines(Number, Routines) ->
     lists:foldl(fun(F, N) -> F(N) end, Number, Routines).
