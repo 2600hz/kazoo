@@ -216,7 +216,6 @@ e164(_) -> 'false'.
 
 -spec account_id(ne_binary()) -> boolean().
 account_id(?MATCH_ACCOUNT_RAW(_)) -> 'true';
-account_id('undefined') -> 'true';
 account_id(_) -> 'false'.
 
 -spec carrier_module(ne_binary()) -> boolean().
@@ -231,7 +230,6 @@ carrier_module(<<"knm_reserved_reseller">>) -> 'true';
 carrier_module(<<"knm_simwood">>) -> 'true';
 carrier_module(<<"knm_vitelity">>) -> 'true';
 carrier_module(<<"knm_voip_innovations">>) -> 'true';
-carrier_module('undefined') -> 'true';
 carrier_module(_) -> 'false'.
 
 
