@@ -15,8 +15,9 @@
 
 -include("kzt.hrl").
 
--spec exec(kapps_call:call(), kz_json:object()) -> usurp_return() |
-                                                   {'error', [jesse_error:error_return()]}.
+-spec exec(kapps_call:call(), kz_json:object()) ->
+                  usurp_return() |
+                  {'error', [jesse_error:error_return()]}.
 exec(Call, FlowJObj) ->
     case kzd_callflow:validate_flow(
            kzd_callflow:set_flow(kzd_callflow:new(), FlowJObj)

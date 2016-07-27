@@ -65,17 +65,21 @@
 start_link(Call, JObj) ->
     CallId = kapps_call:call_id(Call),
 
-    gen_listener:start_link(?SERVER, [{'bindings', [{'call', [{'callid', CallId}]}
-                                                   ,{'self', []}
-                                                   ]}
-                                     ,{'responders', [{{?MODULE, 'maybe_relay_event'}
-                                                      ,[{<<"conference">>, <<"config_req">>}
-                                                       ,{<<"resource">>, <<"offnet_resp">>}
-                                                       ,{<<"call_event">>, <<"*">>}
-                                                       ]
-                                                      }
-                                                     ]}
-                                     ], [Call, JObj]).
+    Bindings = {'bindings', [{'call', [{'callid', CallId}]}
+                            ,{'self', []}
+                            ]},
+    Responders = {'responders', [{{?MODULE, 'maybe_relay_event'}
+                                 ,[{<<"conference">>, <<"config_req">>}
+                                  ,{<<"resource">>, <<"offnet_resp">>}
+                                  ,{<<"call_event">>, <<"*">>}
+                                  ]
+                                 }
+                                ]},
+
+    gen_listener:start_link(?SERVER
+                           ,[Bindings, Responders]
+                           ,[Call, JObj]
+                           ).
 
 -spec stop_call(pid(), kapps_call:call()) -> 'ok'.
 stop_call(Srv, Call) -> gen_listener:cast(Srv, {'stop', Call}).
@@ -145,7 +149,6 @@ init([Call, JObj]) ->
     ?MODULE:new_request(self(), VoiceUri, Method, BaseParams),
 
     {'ok'
-
     ,#state{cdr_uri=kz_json:get_value(<<"CDR-URI">>, JObj)
            ,call=kzt_util:increment_iteration(Call)
            ,request_format=ReqFormat
@@ -188,27 +191,31 @@ handle_call(_Request, _From, State) ->
 handle_cast('usurp', State) ->
     lager:debug("terminating pivot call because of usurp"),
     {'stop', 'normal', State#state{call='undefined'}};
-handle_cast({'request', Uri, Method}, #state{call=Call
-                                            ,request_format=ReqFormat
-                                            }=State) ->
+handle_cast({'request', Uri, Method}
+           ,#state{call=Call
+                  ,request_format=ReqFormat
+                  }=State) ->
     handle_cast({'request', Uri, Method, req_params(ReqFormat, Call)}, State);
-handle_cast({'request', Uri, Method, Params}, #state{call=Call
-                                                    ,debug=Debug
-                                                    ,requester_queue=Q
-                                                    }=State) ->
+handle_cast({'request', Uri, Method, Params}
+           ,#state{call=Call
+                  ,debug=Debug
+                  ,requester_queue=Q
+                  }=State) ->
     Call1 = kzt_util:set_voice_uri(Uri, Call),
 
     case send_req(Call1, Uri, Method, Params, Debug) of
         {'ok', ReqId, Call2} ->
             lager:debug("sent request ~p to '~s' via '~s'", [ReqId, Uri, Method]),
-            {'noreply', State#state{request_id=ReqId
-                                   ,request_params=Params
-                                   ,response_content_type = <<>>
-                                   ,response_body = <<>>
-                                   ,method=Method
-                                   ,voice_uri=Uri
-                                   ,call=Call2
-                                   }};
+            {'noreply'
+            ,State#state{request_id=ReqId
+                        ,request_params=Params
+                        ,response_content_type = <<>>
+                        ,response_body = <<>>
+                        ,method=Method
+                        ,voice_uri=Uri
+                        ,call=Call2
+                        }
+            };
         _ ->
             kapi_pivot:publish_failed(Q, [{<<"Call-ID">>, kapps_call:call_id(Call)}
                                           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -217,28 +224,32 @@ handle_cast({'request', Uri, Method, Params}, #state{call=Call
     end;
 
 handle_cast({'updated_call', Call}, State) ->
-
     {'noreply', State#state{call=Call}};
 
-handle_cast({'gen_listener', {'created_queue', Q}}, #state{call=Call}=State) ->
+handle_cast({'gen_listener', {'created_queue', Q}}
+           ,#state{call=Call}=State
+           ) ->
     %% TODO: Block on waiting for controller queue
     {'noreply', State#state{call=kapps_call:set_controller_queue(Q, Call)}};
 
-handle_cast({'stop', Call}, #state{cdr_uri='undefined'}=State) ->
+handle_cast({'stop', Call}
+           ,#state{cdr_uri='undefined'}=State) ->
     lager:debug("no cdr callback, terminating call"),
     kapps_call_command:hangup(Call),
     {'stop', 'normal', State};
 
-handle_cast({'cdr', _JObj}, #state{cdr_uri='undefined'
-                                  ,call=Call
-                                  }=State) ->
+handle_cast({'cdr', _JObj}
+           ,#state{cdr_uri='undefined'
+                  ,call=Call
+                  }=State) ->
     lager:debug("recv cdr for call, no cdr uri though"),
     erlang:send_after(3000, self(), {'stop', Call}),
     {'noreply', State};
-handle_cast({'cdr', JObj}, #state{cdr_uri=Url
-                                 ,call=Call
-                                 ,debug=Debug
-                                 }=State) ->
+handle_cast({'cdr', JObj}
+           ,#state{cdr_uri=Url
+                  ,call=Call
+                  ,debug=Debug
+                  }=State) ->
     JObj1 = kz_json:delete_key(<<"Custom-Channel-Vars">>, JObj),
     Body =  kz_json:to_querystring(kz_api:remove_defaults(JObj1)),
     Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
@@ -256,10 +267,12 @@ handle_cast({'cdr', JObj}, #state{cdr_uri=Url
     erlang:send_after(3000, self(), {'stop', Call}),
     {'noreply', State};
 
-handle_cast({'add_event_handler', {Pid, _Ref}}, #state{response_event_handlers=Pids}=State) ->
+handle_cast({'add_event_handler', {Pid, _Ref}}
+           ,#state{response_event_handlers=Pids}=State) ->
     lager:debug("adding event handler ~p", [Pid]),
     {'noreply', State#state{response_event_handlers=[Pid | Pids]}};
-handle_cast({'add_event_handler', Pid}, #state{response_event_handlers=Pids}=State) when is_pid(Pid) ->
+handle_cast({'add_event_handler', Pid}
+           ,#state{response_event_handlers=Pids}=State) when is_pid(Pid) ->
     lager:debug("adding event handler ~p", [Pid]),
     {'noreply', State#state{response_event_handlers=[Pid | Pids]}};
 
@@ -319,14 +332,16 @@ handle_info({'http', {ReqId, 'stream_end', FinalHeaders}}
                  ],
     {Pid, Ref} = kz_util:spawn_monitor(fun handle_resp/4, HandleArgs),
     lager:debug("processing resp with ~p(~p)", [Pid, Ref]),
-    {'noreply', State#state{request_id = 'undefined'
-                           ,request_params = kz_json:new()
-                           ,response_body = <<>>
-                           ,response_content_type = <<>>
-                           ,response_pid = Pid
-                           ,response_ref = Ref
-                           }
-    ,'hibernate'};
+    {'noreply'
+    ,State#state{request_id = 'undefined'
+                ,request_params = kz_json:new()
+                ,response_body = <<>>
+                ,response_content_type = <<>>
+                ,response_pid = Pid
+                ,response_ref = Ref
+                }
+    ,'hibernate'
+    };
 
 handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, RespBody}}}
            ,#state{request_id=ReqId
@@ -465,7 +480,7 @@ handle_resp(RequesterQ, Call, CT, <<_/binary>> = RespBody) ->
         {'ok', Call1} -> ?MODULE:stop_call(Srv, Call1);
         {'usurp', _Call1} -> ?MODULE:usurp_executor(Srv);
         {'request', Call1} ->
-            ?MODULE:updated_call(Srv, Call1),
+            ?MODULE:updated_call(Srv, kzt_util:increment_iteration(Call1)),
             ?MODULE:new_request(Srv
                                ,kzt_util:get_voice_uri(Call1)
                                ,kzt_util:get_voice_uri_method(Call1)
@@ -528,11 +543,12 @@ publish_failed(Call, RequesterQ) ->
 
 -spec uri(ne_binary(), iolist()) -> ne_binary().
 uri(URI, QueryString) ->
+    SuppliedQS = iolist_to_binary(QueryString),
     case kz_http_util:urlsplit(URI) of
         {Scheme, Host, Path, <<>>, Fragment} ->
-            kz_http_util:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
+            kz_http_util:urlunsplit({Scheme, Host, Path, SuppliedQS, Fragment});
         {Scheme, Host, Path, QS, Fragment} ->
-            kz_http_util:urlunsplit({Scheme, Host, Path, <<QS/binary, "&", QueryString/binary>>, Fragment})
+            kz_http_util:urlunsplit({Scheme, Host, Path, <<QS/binary, "&", SuppliedQS/binary>>, Fragment})
     end.
 
 -spec req_params(ne_binary(), kapps_call:call()) -> kz_proplist().

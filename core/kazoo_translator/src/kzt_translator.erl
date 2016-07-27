@@ -16,8 +16,8 @@
 
 -include("kzt.hrl").
 
--spec exec(kapps_call:call(), list()) -> exec_return().
--spec exec(kapps_call:call(), list(), api_binary() | list()) -> exec_return().
+-spec exec(kapps_call:call(), binary()) -> exec_return().
+-spec exec(kapps_call:call(), binary(), api_binary() | list()) -> exec_return().
 exec(Call, Cmds) ->
     exec(Call, Cmds, <<"text/xml">>).
 
@@ -62,7 +62,7 @@ find_candidate_translators(<<"application/json">>) ->
 find_candidate_translators(_) ->
     ['kzt_twiml', 'kzt_kazoo'].
 
--spec is_recognized(atom(), any()) -> {boolean(), any()}.
+-spec is_recognized(atom(), binary()) -> {boolean(), any()}.
 is_recognized(M, Cmds) ->
     case catch M:parse_cmds(Cmds) of
         {'json', _Msg, _B, _A}=Err -> throw(Err);
