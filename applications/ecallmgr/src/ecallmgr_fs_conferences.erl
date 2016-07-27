@@ -88,38 +88,26 @@ start_link() ->
 
 -spec summary() -> 'ok'.
 summary() ->
-    MatchSpec = [{#conference{_ = '_'}
-                 ,[]
-                 ,['$_']
-                 }],
+    MatchSpec = [{#conference{_ = '_'}, [], ['$_']}],
     print_summary(ets:select(?CONFERENCES_TBL, MatchSpec, 1)).
 
 -spec summary(text()) -> 'ok'.
 summary(Node) when not is_atom(Node) ->
     summary(kz_util:to_atom(Node, 'true'));
 summary(Node) ->
-    MatchSpec = [{#conference{node='$1', _ = '_'}
-                 ,[{'=:=', '$1', {'const', Node}}]
-                 ,['$_']
-                 }],
+    MatchSpec = [{#conference{node=Node, _ = '_'}, [], ['$_']}],
     print_summary(ets:select(?CONFERENCES_TBL, MatchSpec, 1)).
 
 -spec details() -> 'ok'.
 details() ->
-    MatchSpec = [{#conference{_ = '_'}
-                 ,[]
-                 ,['$_']
-                 }],
+    MatchSpec = [{#conference{_ = '_'}, [], ['$_']}],
     print_details(ets:select(?CONFERENCES_TBL, MatchSpec, 1)).
 
 -spec details(text()) -> 'ok'.
 details(UUID) when not is_binary(UUID) ->
     details(kz_util:to_binary(UUID));
 details(UUID) ->
-    MatchSpec = [{#conference{uuid=UUID, _ = '_'}
-                 ,[{'=:=', '$1', {'const', UUID}}]
-                 ,['$_']
-                 }],
+    MatchSpec = [{#conference{uuid=UUID, _ = '_'}, [], ['$_']}],
     print_details(ets:select(?CONFERENCES_TBL, MatchSpec, 1)).
 
 -spec create(kz_proplist(), atom()) -> conference().
@@ -274,15 +262,9 @@ handle_call({'conference_update', UUID, Update}, _, State) ->
     _ = ets:update_element(?CONFERENCES_TBL, UUID, Update),
     {'reply', 'ok', State};
 handle_call({'conference_destroy', UUID}, _, State) ->
-    MatchSpecC = [{#conference{uuid='$1', _ = '_'}
-                  ,[{'=:=', '$1', {'const', UUID}}]
-                  ,['true']
-                  }],
+    MatchSpecC = [{#conference{uuid=UUID, _ = '_'}, [], ['true']}],
     _ = ets:select_delete(?CONFERENCES_TBL, MatchSpecC),
-    MatchSpecP = [{#participant{conference_uuid='$1', _ = '_'}
-                  ,[{'=:=', '$1', {'const', UUID}}]
-                  ,['true']
-                  }],
+    MatchSpecP = [{#participant{conference_uuid=UUID, _ = '_'}, [], ['true']}],
     _ = ets:select_delete(?PARTICIPANTS_TBL, MatchSpecP),
     {'reply', 'ok', State};
 handle_call({'participant_create', Props, Node, CallId}, _, State) ->
@@ -338,15 +320,9 @@ handle_cast({'sync_node', Node}, State) ->
     {'noreply', State};
 handle_cast({'flush_node', Node}, State) ->
     lager:debug("flushing all conferences in cache associated to node ~s", [Node]),
-    MatchSpecC = [{#conference{node = '$1', _ = '_'}
-                  ,[{'=:=', '$1', {'const', Node}}]
-                  ,['true']}
-                 ],
+    MatchSpecC = [{#conference{node = Node, _ = '_'}, [], ['true']}],
     _ = ets:select_delete(?CONFERENCES_TBL, MatchSpecC),
-    MatchSpecP = [{#participant{node = '$1', _ = '_'}
-                  ,[{'=:=', '$1', {'const', Node}}]
-                  ,['true']}
-                 ],
+    MatchSpecP = [{#participant{node = Node, _ = '_'}, [], ['true']}],
     _ = ets:select_delete(?PARTICIPANTS_TBL, MatchSpecP),
     {'noreply', State};
 handle_cast({'gen_listener',{'created_queue',_QueueName}}, State) ->
@@ -770,10 +746,7 @@ get_participant_dictionary([_|Participants], Dictionary) ->
 
 -spec sync_conferences(dict:dict(), atom()) -> 'ok'.
 sync_conferences(Conferences, Node) ->
-    MatchSpec = [{#conference{uuid = '$1', node = '$2', _ = '_'}
-                 ,[{'=:=', '$2', {'const', Node}}]
-                 ,['$1']}
-                ],
+    MatchSpec = [{#conference{uuid = '$1', node = Node, _ = '_'}, [], ['$1']}],
     CachedUUIDs = sets:from_list(ets:select(?CONFERENCES_TBL, MatchSpec)),
     SyncUUIDs = sets:from_list(dict:fetch_keys(Conferences)),
     _ = [begin
@@ -794,10 +767,7 @@ sync_conferences(Conferences, Node) ->
 
 -spec sync_participants(dict:dict(), atom()) -> 'ok'.
 sync_participants(Participants, Node) ->
-    MatchSpec = [{#participant{uuid = '$1', node = '$2', _ = '_'}
-                 ,[{'=:=', '$2', {'const', Node}}]
-                 ,['$1']}
-                ],
+    MatchSpec = [{#participant{uuid = '$1', node = Node, _ = '_'}, [], ['$1']}],
     CachedUUIDs = sets:from_list(ets:select(?PARTICIPANTS_TBL, MatchSpec)),
     SyncUUIDs = sets:from_list(dict:fetch_keys(Participants)),
     _ = [begin
