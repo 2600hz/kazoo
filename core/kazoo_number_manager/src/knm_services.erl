@@ -112,15 +112,17 @@ update_services(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     update_services(Number
                    ,knm_phone_number:dry_run(PhoneNumber)
-                    orelse knm_phone_number:batch_run(PhoneNumber)
+                   ,knm_phone_number:batch_run(PhoneNumber)
                    ).
 
--spec update_services(knm_number:knm_number(), boolean()) -> knm_number:knm_number().
-update_services(Number, 'true') ->
+-spec update_services(knm_number:knm_number(), boolean(), boolean()) ->
+                             knm_number:knm_number().
+update_services(Number, _, 'true') -> Number;
+update_services(Number, 'true', _) ->
     JObj = knm_phone_number:to_json(knm_number:phone_number(Number)),
     Services = kz_service_phone_numbers:reconcile(fetch_services(Number), [JObj]),
     knm_number:set_services(Number, Services);
-update_services(Number, 'false') ->
+update_services(Number, 'false', _) ->
     PhoneNumber = knm_number:phone_number(Number),
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
     _ = kz_services:reconcile(AssignedTo, <<"phone_numbers">>),
