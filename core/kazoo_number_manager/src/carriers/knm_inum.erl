@@ -48,20 +48,23 @@ is_local() -> 'true'.
                           {'error', any()}.
 find_numbers(<<"+", _/binary>>=Number, Quantity, Opts) ->
     AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Opts),
-    find_numbers_in_account(Number, Quantity, AccountId);
+    find_numbers_in_account(Number, Quantity, AccountId, Opts);
 find_numbers(Number, Quantity, Opts) ->
     find_numbers(<<"+",Number/binary>>, Quantity, Opts).
 
--spec find_numbers_in_account(ne_binary(), pos_integer(), api_binary()) ->
+-spec find_numbers_in_account(ne_binary(), pos_integer(), api_binary(), kz_proplist()) ->
                                      {'ok', knm_number:knm_numbers()} |
                                      {'error', any()}.
-find_numbers_in_account(Number, Quantity, AccountId) ->
+find_numbers_in_account(Number, Quantity, AccountId, Opts) ->
     case do_find_numbers_in_account(Number, Quantity, AccountId) of
-        {'error', 'not_available'}=E ->
-            case kz_services:find_reseller_id(AccountId) of
-                AccountId -> E;
-                ResellerId ->
-                    find_numbers_in_account(Number, Quantity, ResellerId)
+        {'error', 'not_available'}=Error ->
+            ResellerId = props:get_value(?KNM_RESELLERID_CARRIER, Opts),
+            case AccountId =:= 'undefined'
+                orelse AccountId =:= ResellerId
+            of
+                'true' -> Error;
+                'false' ->
+                    find_numbers_in_account(Number, Quantity, ResellerId, Opts)
             end;
         Result -> Result
     end.

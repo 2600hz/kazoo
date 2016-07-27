@@ -43,8 +43,8 @@ is_local() -> 'true'.
 find_numbers(Number, Quantity, Options) ->
     case props:get_value(?KNM_ACCOUNTID_CARRIER, Options) of
         'undefined' -> {'error', 'not_available'};
-        AccountId ->
-            ResellerId = kz_services:find_reseller_id(AccountId),%TODO: add it in Options
+        _AccountId ->
+            ResellerId = props:get_value(?KNM_RESELLERID_CARRIER, Options),
             case do_find_numbers(Number, Quantity, ResellerId) of
                 {'ok', Enough}=Ok when length(Enough) >= Quantity -> Ok;
                 {'error', _R}=Error -> Error;

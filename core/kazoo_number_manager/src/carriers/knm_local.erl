@@ -46,7 +46,7 @@ find_numbers(Number, Quantity, Options) ->
     case props:get_value(?KNM_ACCOUNTID_CARRIER, Options) of
         'undefined' -> {'error', 'not_available'};
         AccountId ->
-            ResellerId = kz_services:find_reseller_id(AccountId),
+            ResellerId = props:get_value(?KNM_RESELLERID_CARRIER, Options),
             {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
             case ResellerId == MasterAccountId of
                 'false' -> {'error', 'not_available'};
