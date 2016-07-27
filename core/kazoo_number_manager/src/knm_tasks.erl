@@ -301,6 +301,7 @@ list_all(_, [{E164,JObj} | Rest]) ->
             ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary()) ->
                     task_return().
 import(Props, 'init', _1,_2,_3, _4,_5,_6, _7,_8,_9, _10,_11,_12, _13,_14,_15) ->
+    kz_datamgr:suppress_change_notice(),
     IterValue = sets:new(),
     import(Props, IterValue, _1,_2,_3, _4,_5,_6, _7,_8,_9, _10,_11,_12, _13,_14,_15);
 import(Props, AccountIds
