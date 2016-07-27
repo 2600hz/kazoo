@@ -160,7 +160,7 @@ handle_fetched_result(JObj, Options) ->
 save(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
     lager:debug("dry_run-ing btw"),
     PhoneNumber;
-save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
+save(PhoneNumber) ->
     Routines = [fun save_to_number_db/1
                ,fun handle_assignment/1
                ],
@@ -173,15 +173,15 @@ save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(knm_phone_number()) -> knm_phone_number().
-delete(#knm_phone_number{dry_run='true'}=Number) ->
+delete(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
     lager:debug("dry_run-ing btw"),
-    Number;
-delete(#knm_phone_number{dry_run='false'}=Number) ->
+    PhoneNumber;
+delete(PhoneNumber) ->
     Routines = [fun delete_number_doc/1
                ,fun maybe_remove_number_from_account/1
                ,{fun set_state/2, ?NUMBER_STATE_DELETED}
                ],
-    {'ok', NewPhoneNumber} = setters(Number, Routines),
+    {'ok', NewPhoneNumber} = setters(PhoneNumber, Routines),
     NewPhoneNumber.
 
 -spec release(knm_phone_number()) -> knm_phone_number().
