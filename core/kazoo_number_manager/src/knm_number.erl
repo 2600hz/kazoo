@@ -202,12 +202,11 @@ save_number(Number) ->
 
 -spec save_phone_number(knm_number()) -> knm_number().
 save_phone_number(Number) ->
-    set_phone_number(Number
-                    ,knm_phone_number:save(phone_number(Number))
-                    ).
+    PhoneNumber = knm_phone_number:save(phone_number(Number)),
+    set_phone_number(Number, PhoneNumber).
 
--spec dry_run_or_number(knm_number()) -> knm_number() |
-                                         dry_run_return().
+-spec dry_run_or_number(knm_number()) ->
+                               knm_number() | dry_run_return().
 dry_run_or_number(Number) ->
     case knm_phone_number:dry_run(phone_number(Number)) of
         'false' -> Number;
@@ -322,10 +321,9 @@ update_phone_number(Number, Routines) ->
     case knm_phone_number:setters(PhoneNumber, Routines) of
         {'error', _R}=Error -> Error;
         {'ok', UpdatedPhoneNumber} ->
-            wrap_phone_number_return(
-              knm_phone_number:save(UpdatedPhoneNumber)
+            wrap_phone_number_return(knm_phone_number:save(UpdatedPhoneNumber)
                                     ,Number
-             )
+                                    )
     end.
 
 %%--------------------------------------------------------------------
@@ -344,9 +342,8 @@ save(Number) ->
             'false' ->
                 knm_services:update_services(Number)
         end,
-    wrap_phone_number_return(knm_phone_number:save(phone_number(Num))
-                            ,Num
-                            ).
+    PhoneNumber = knm_phone_number:save(phone_number(Num)),
+    wrap_phone_number_return(PhoneNumber, Num).
 
 %% @private
 -spec is_carrier_search_result(knm_number()) -> boolean().
