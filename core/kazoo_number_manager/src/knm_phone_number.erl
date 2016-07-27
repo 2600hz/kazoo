@@ -179,6 +179,7 @@ delete(#knm_phone_number{dry_run='true'}=Number) ->
 delete(#knm_phone_number{dry_run='false'}=Number) ->
     Routines = [fun delete_number_doc/1
                ,fun maybe_remove_number_from_account/1
+               ,{fun set_state/2, ?NUMBER_STATE_DELETED}
                ],
     {'ok', NewPhoneNumber} = setters(Number, Routines),
     NewPhoneNumber.
