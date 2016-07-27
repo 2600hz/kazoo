@@ -95,7 +95,8 @@
                ,zones = [] :: kz_proplist()
                ,queue :: api_binary()
                ,node = node() :: atom()
-               ,ready = 'false' :: boolean()
+               ,is_consuming = 'false' :: boolean()
+               ,has_ets = 'false' :: boolean()
                }).
 -type globals_state() :: #state{}.
 
@@ -273,8 +274,10 @@ handle_call({'delete', Global}, _From, State) ->
     lager:debug("deleting ~p", [Global]),
     ets:delete(?TAB_NAME, Global),
     {'reply', State};
-handle_call('is_ready', _From, #state{ready=Ready}=State) ->
-    {'reply', Ready, State};
+handle_call('is_ready', _From, #state{is_consuming='true', has_ets='true'}=State) ->
+    {'reply', 'true', State};
+handle_call('is_ready', _From, State) ->
+    {'reply', 'false', State};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -308,16 +311,16 @@ handle_cast({'add_zone', Zone}, #state{zones=Zones}=State) ->
         'false' -> {'noreply', State#state{zones=[Zone | Zones]}};
         'true' -> {'noreply', State}
     end;
-handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
-    {'noreply', State};
+handle_cast({'gen_listener', {'is_consuming', IsConsuming}}, State) ->
+    {'noreply', State#state{is_consuming=IsConsuming}};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     lager:info("globals acquired queue name ~s", [Q]),
     {'noreply', State#state{queue=Q}};
-handle_cast('stop', #state{ready='true'}=State) ->
+handle_cast('stop', #state{has_ets='true'}=State) ->
     lager:debug("instructed to stop"),
     ets:delete_all_objects(?TAB_NAME),
     {'stop', 'normal', State};
-handle_cast('stop', #state{ready='false'}=State) ->
+handle_cast('stop', #state{has_ets='false'}=State) ->
     lager:debug("want to go down, but not in control of ETS"),
     timer:sleep(50),
     ?MODULE:stop(),
@@ -349,7 +352,7 @@ handle_info({'EXIT', Pid, Reason}, State) ->
 handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
     remonitor_globals(),
     lager:info("ready to register names"),
-    {'noreply', State#state{ready='true'}};
+    {'noreply', State#state{has_ets='true'}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
