@@ -234,7 +234,7 @@ maybe_adapt_multilines(JObj) ->
 %% @private
 -spec inline_js_fun(ne_binary(), ne_binaries() | kz_json:json_term(), kz_json:object()) ->
                            kz_json:object().
-inline_js_fun(Type, Code=[<<"function(",_/binary>>|_], Acc) ->
+inline_js_fun(Type, Code=[<<"function",_/binary>>|_], Acc) ->
     kz_json:set_value(Type, iolist_to_binary(Code), Acc);
 inline_js_fun(Type, Code, Acc) ->
     kz_json:set_value(Type, Code, Acc).
