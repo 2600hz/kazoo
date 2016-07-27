@@ -117,8 +117,11 @@ update_services(Number) ->
 
 -spec update_services(knm_number:knm_number(), boolean(), boolean()) ->
                              knm_number:knm_number().
-update_services(Number, _, 'true') -> Number;
+update_services(Number, _, 'true') ->
+    lager:debug("batch_run-ing btw"),
+    Number;
 update_services(Number, 'true', _) ->
+    lager:debug("somewhat dry_run-ing btw"),
     JObj = knm_phone_number:to_json(knm_number:phone_number(Number)),
     Services = kz_service_phone_numbers:reconcile(fetch_services(Number), [JObj]),
     knm_number:set_services(Number, Services);
