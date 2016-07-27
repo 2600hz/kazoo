@@ -326,9 +326,10 @@ import(Props, AccountIds
               ,{'state', State}
               ,{'module_name', ModuleName}
               ],
-    {handle_result(knm_number:create(E164, Options))
-    ,sets:add_element(AccountId, AccountIds)
-    }.
+    case handle_result(knm_number:create(E164, Options)) of
+        [] -> {[], sets:add_element(AccountId, AccountIds)};
+        E -> {E, AccountIds}
+    end.
 
 -spec assign_to(kz_proplist(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
 assign_to(Props, _IterValue, Number, AccountId) ->
