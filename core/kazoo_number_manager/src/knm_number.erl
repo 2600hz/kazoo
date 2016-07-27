@@ -196,7 +196,7 @@ do_reserve(Number) ->
 save_number(Number) ->
     Routines = [fun knm_providers:save/1
                ,fun save_phone_number/1
-               ,fun knm_services:update_services/1
+               ,fun maybe_update_services/1
                ],
     apply_number_routines(Number, Routines).
 
@@ -215,6 +215,13 @@ dry_run_or_number(Number) ->
             ,services(Number)
             ,knm_services:phone_number_activation_charges(Number)
             }
+    end.
+
+-spec maybe_update_services(knm_number()) -> knm_number().
+maybe_update_services(Number) ->
+    case knm_phone_number:batch_run(phone_number(Number)) of
+        'false' -> knm_services:update_services(Number);
+        'true' -> Number
     end.
 
 -spec ensure_can_create(ne_binary(), knm_number_options:options()) -> 'true'.
@@ -335,12 +342,11 @@ update_phone_number(Number, Routines) ->
 save(Number) ->
     Num =
         case is_carrier_search_result(Number) of
+            'false' -> maybe_update_services(Number);
             'true' ->
                 %% Number was created as a result of carrier search
                 %%  thus has no services associated with it
-                Number;
-            'false' ->
-                knm_services:update_services(Number)
+                Number
         end,
     PhoneNumber = knm_phone_number:save(phone_number(Num)),
     wrap_phone_number_return(PhoneNumber, Num).
