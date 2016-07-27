@@ -145,7 +145,7 @@ fetch(Num, Options) ->
 -spec handle_fetched_result(kz_json:object(), knm_number_options:options()) ->
                                    {'ok', knm_phone_number()}.
 handle_fetched_result(JObj, Options) ->
-    PhoneNumber = set_options(from_json(JObj), Options),
+    PhoneNumber = from_json_with_options(JObj, Options),
     case is_authorized(PhoneNumber) of
         'true' -> {'ok', PhoneNumber};
         'false' -> knm_errors:unauthorized()
@@ -337,6 +337,30 @@ from_json(JObj) ->
                 ,{fun set_doc/2, kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))}
                 ]),
     PhoneNumber.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec from_json_with_options(kz_json:object(), knm_phone_number() | knm_number_options:options()) ->
+                                    knm_phone_number().
+from_json_with_options(JObj, Options)
+  when is_list(Options) ->
+    Updates = [{fun set_assign_to/2, knm_number_options:assign_to(Options)}
+               %% See knm_number_options:default/0 for these 3.
+              ,{fun set_dry_run/2, knm_number_options:dry_run(Options, 'false')}
+              ,{fun set_batch_run/2, knm_number_options:batch_run(Options, 'false')}
+              ,{fun set_auth_by/2, knm_number_options:auth_by(Options, ?KNM_DEFAULT_AUTH_BY)}
+              ],
+    {'ok', PhoneNumber} = setters(from_json(JObj), Updates),
+    PhoneNumber;
+from_json_with_options(JObj, PhoneNumber) ->
+    from_json_with_options(JObj
+                          ,[{'dry_run', dry_run(PhoneNumber)}
+                           ,{'batch_run', batch_run(PhoneNumber)}
+                           ]
+                          ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -710,22 +734,6 @@ list_attachments(PhoneNumber, AuthBy) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_options(knm_phone_number(), knm_number_options:options()) -> knm_phone_number().
-set_options(Number, Options) when is_list(Options) ->
-    Updates = [{fun set_assign_to/2, knm_number_options:assign_to(Options)}
-               %% See knm_number_options:default/0 for these 3.
-              ,{fun set_dry_run/2, knm_number_options:dry_run(Options, 'false')}
-              ,{fun set_batch_run/2, knm_number_options:batch_run(Options, 'false')}
-              ,{fun set_auth_by/2, knm_number_options:auth_by(Options, ?KNM_DEFAULT_AUTH_BY)}
-              ],
-    {'ok', PhoneNumber} = setters(Number, Updates),
-    PhoneNumber.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec is_authorized(knm_phone_number()) -> boolean().
 -ifdef(TEST).
 is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) -> 'true';
@@ -784,7 +792,7 @@ save_to_number_db(PhoneNumber) ->
     NumberDb = number_db(PhoneNumber),
     JObj = to_json(PhoneNumber),
     case kz_datamgr:ensure_saved(NumberDb, JObj) of
-        {'ok', Doc} -> from_json(Doc);
+        {'ok', Doc} -> from_json_with_options(Doc, PhoneNumber);
         {'error', 'not_found'} ->
             lager:debug("creating new db '~s' for number '~s'", [NumberDb, number(PhoneNumber)]),
             'true' = kz_datamgr:db_create(NumberDb),
@@ -836,7 +844,7 @@ assign(PhoneNumber, AssignedTo) ->
         {'ok', JObj} ->
             lager:debug("assigned number ~s to ~s"
                        ,[number(PhoneNumber), AccountDb]),
-            from_json(JObj)
+            from_json_with_options(JObj, PhoneNumber)
     end.
 -endif.
 
