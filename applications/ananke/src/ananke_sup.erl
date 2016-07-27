@@ -11,14 +11,15 @@
 -behaviour(supervisor).
 
 -export([start_link/0]).
--export([start_supervisor/1]).
 -export([init/1]).
 
 -include("ananke.hrl").
 
 -define(SERVER, ?MODULE).
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('ananke_listener')]).
+-define(CHILDREN, [?SUPER('ananke_tasks_sup')
+                  ,?WORKER('ananke_listener')
+                  ]).
 
 %% ===================================================================
 %% API functions
@@ -33,10 +34,6 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
-
--spec start_supervisor(any()) -> sup_startchild_ret().
-start_supervisor(Id) ->
-    supervisor:start_child(?SERVER, ?SUPER(Id)).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -60,16 +57,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    LeaderCronNodes = [node() | get_amqp_cron_nodes()],
-    lager:debug("starting leader cron on nodes ~p", [LeaderCronNodes]),
-    LeaderCron = ?WORKER_ARGS('amqp_cron', [LeaderCronNodes]),
-
-    {'ok', {SupFlags, [LeaderCron | ?CHILDREN]}}.
-
-%% This is only for simple configurations.
-%% At the first start one node will be added to config.
-%% After that all kazoo_apps nodes will try to syncronize with it.
--spec get_amqp_cron_nodes() -> atoms().
-get_amqp_cron_nodes() ->
-    [kz_util:to_atom(kz_util:to_list(X), 'true')
-     || X <- kapps_config:get(?CONFIG_CAT, <<"nodes">>, [node()])] -- [node()].
+    {'ok', {SupFlags, ?CHILDREN}}.

@@ -76,8 +76,7 @@ send(CurrentBalance, Account) ->
 %%--------------------------------------------------------------------
 -spec create_template_props(integer(), kz_json:object()) -> kz_proplist().
 create_template_props(CurrentBalance, Account) ->
-    AccountDb = kz_util:format_account_id(kz_doc:id(Account), 'encoded'),
-    Threshold = notify_account_crawler:low_balance_threshold(AccountDb),
+    Threshold = kz_account:low_balance_threshold(kz_doc:id(Account)),
     [{<<"account">>, notify_util:json_to_template_props(Account)}
     ,{<<"service">>, notify_util:get_service_props(kz_json:new(), Account, ?MOD_CONFIG_CAT)}
     ,{<<"current_balance">>, pretty_print_dollars(wht_util:units_to_dollars(CurrentBalance))}

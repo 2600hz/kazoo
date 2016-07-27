@@ -1,17 +1,18 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2016, 2600Hz INC
+%%% @copyright (C) 2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
+%%%     Hesaam Farhang
 %%%-------------------------------------------------------------------
--module(notify_account_crawler).
+-module(ananke_account_crawler).
 
 -behaviour(gen_server).
 
 -export([start_link/0]).
--export([check/1]).
--export([low_balance_threshold/1]).
+-export([start_task/0, check/1
+        ]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -20,14 +21,24 @@
         ,code_change/3
         ]).
 
--include("notify.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
+-include("ananke.hrl").
 
 -define(SERVER, ?MODULE).
 
+-define(NOTIFY_CONFIG_CAT, <<"notify">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".account_crawler">>).
 
 -record(state, {}).
+
+%%%===================================================================
+%%% amqp_cron callbacks
+%%%===================================================================
+
+-spec start_task() -> sup_startchild_ret().
+start_task() ->
+    TsTime = kz_util:to_binary(kz_util:current_tstamp()),
+    WorkerId = <<"acc_crawler_", TsTime/binary>>,
+    ananke_tasks_sup:start_task(WorkerId, ?MODULE, []).
 
 %%%===================================================================
 %%% API
@@ -68,9 +79,6 @@ check(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    %% The other modules are init'd because they are
-    %% responders for the gen_listener...
-    notify_first_occurrence:init(),
     self() ! 'crawl_accounts',
     {'ok', #state{}}.
 
@@ -114,10 +122,8 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info('next_account', []) ->
-    Cycle = kapps_config:get_integer(?MOD_CONFIG_CAT, <<"cycle_delay_time">>, 5 * ?MILLISECONDS_IN_MINUTE),
-    erlang:send_after(Cycle, self(), 'crawl_accounts'),
-    {'noreply', [], 'hibernate'};
+handle_info('next_account', State=[]) ->
+    {'stop', 'normal', State};
 handle_info('next_account', [Account|Accounts]) ->
     _ = case kz_doc:id(Account) of
             <<"_design", _/binary>> -> 'ok';
@@ -184,36 +190,35 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 -spec process_account (ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
 process_account(AccountId, AccountDb, AccountJObj) ->
-    lager:debug("notify crawler processing account ~s", [AccountId]),
+    lager:debug("account crawler processing account ~s", [AccountId]),
     _ = maybe_test_for_initial_occurrences(AccountId, AccountDb, AccountJObj),
     _ = maybe_test_for_low_balance(AccountId, AccountJObj),
     _ = doodle_maintenance:start_check_sms_by_account(AccountId, AccountJObj),
     'ok'.
+
+%%% Initial Occurrence
 
 -spec maybe_test_for_initial_occurrences(ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
 maybe_test_for_initial_occurrences(AccountId, AccountDb, AccountJObj) ->
     case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"crawl_for_first_occurrence">>, 'true') of
         'false' -> 'ok';
         'true' ->
-            test_for_initial_occurrences(AccountId, AccountDb, AccountJObj)
+            maybe_test_for_registrations(AccountId, AccountJObj),
+            maybe_test_for_initial_call(AccountId, AccountDb, AccountJObj)
     end.
 
--spec test_for_initial_occurrences(ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
-test_for_initial_occurrences(AccountId, AccountDb, AccountJObj) ->
-    _ = maybe_test_for_registrations(AccountId, AccountJObj),
-    maybe_test_for_initial_call(AccountId, AccountDb, AccountJObj).
-
+%% First registration
 -spec maybe_test_for_registrations(ne_binary(), kz_account:doc()) -> 'ok'.
 maybe_test_for_registrations(AccountId, AccountJObj) ->
     Realm = kz_account:realm(AccountJObj),
-    case kz_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>], AccountJObj)
+    case kz_account:sent_initial_registration(AccountJObj)
         orelse Realm =:= 'undefined'
     of
         'true' -> 'ok';
-        'false' ->
-            test_for_registrations(AccountId, Realm)
+        'false' -> test_for_registrations(AccountId, Realm)
     end.
 
 -spec test_for_registrations(ne_binary(), ne_binary()) -> 'ok'.
@@ -248,16 +253,14 @@ handle_initial_registration(AccountId) ->
 
 -spec notify_initial_registration(kz_account:doc()) -> 'ok'.
 notify_initial_registration(AccountJObj) ->
-    UpdatedAccountJObj = kz_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>]
-                                          ,'true'
-                                          ,AccountJObj
-                                          ),
-    kz_util:account_update(UpdatedAccountJObj),
-    notify_first_occurrence:send(<<"registration">>, UpdatedAccountJObj).
+    UpdatedAccountJObj = kz_account:set_initial_registration_sent(AccountJObj, 'true'),
+    _ = kz_util:account_update(UpdatedAccountJObj),
+    kz_notify:first_registration(kz_doc:id(AccountJObj)).
 
+%% First Call
 -spec maybe_test_for_initial_call(ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
 maybe_test_for_initial_call(AccountId, AccountDb, AccountJObj) ->
-    case kz_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>], AccountJObj) of
+    case kz_account:sent_initial_call(AccountJObj) of
         'true' -> 'ok';
         'false' ->
             lager:debug("looking for initial call in account ~s", [AccountId]),
@@ -284,14 +287,13 @@ handle_initial_call(AccountId) ->
         _ -> 'ok'
     end.
 
--spec notify_initial_call(kz_account:doc()) -> any().
+-spec notify_initial_call(kz_account:doc()) -> 'ok'.
 notify_initial_call(AccountJObj) ->
-    UpdatedAccountJObj = kz_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>]
-                                          ,'true'
-                                          ,AccountJObj
-                                          ),
-    kz_util:account_update(UpdatedAccountJObj),
-    notify_first_occurrence:send(<<"call">>, UpdatedAccountJObj).
+    UpdatedAccountJObj = kz_account:set_initial_call_sent(AccountJObj, 'true'),
+    _ = kz_util:account_update(UpdatedAccountJObj),
+    kz_notify:first_call(kz_doc:id(AccountJObj)).
+
+%%% Low balance check
 
 -spec maybe_test_for_low_balance(ne_binary(), kz_account:doc()) -> 'ok'.
 maybe_test_for_low_balance(AccountId, AccountJObj) ->
@@ -303,7 +305,7 @@ maybe_test_for_low_balance(AccountId, AccountJObj) ->
 
 -spec test_for_low_balance(ne_binary(), kz_account:doc()) -> 'ok'.
 test_for_low_balance(AccountId, AccountJObj) ->
-    Threshold = low_balance_threshold(AccountJObj),
+    Threshold = kz_account:low_balance_threshold(AccountJObj),
     CurrentBalance = wht_util:current_balance(AccountId),
     lager:debug("checking if account ~s balance $~w is below $~w"
                ,[AccountId, wht_util:units_to_dollars(CurrentBalance), Threshold]
@@ -314,6 +316,10 @@ test_for_low_balance(AccountId, AccountJObj) ->
             maybe_low_balance_notify(AccountJObj, CurrentBalance),
             maybe_topup_account(AccountJObj, CurrentBalance)
     end.
+
+-spec is_account_balance_too_low(kz_transaction:units(), number()) -> boolean().
+is_account_balance_too_low(CurrentBalance, Threshold) ->
+    CurrentBalance < wht_util:dollars_to_units(Threshold).
 
 -spec maybe_reset_low_balance_sent(kz_account:doc()) -> 'ok' |
                                                         {'error', any()}.
@@ -332,10 +338,6 @@ reset_low_balance_sent(AccountJObj0) ->
     AccountJObj1 = kz_account:reset_low_balance_sent(AccountJObj0),
     AccountJObj2 = kz_account:remove_low_balance_tstamp(AccountJObj1),
     kz_util:account_update(AccountJObj2).
-
--spec is_account_balance_too_low(kz_transaction:units(), number()) -> boolean().
-is_account_balance_too_low(CurrentBalance, Threshold) ->
-    CurrentBalance < wht_util:dollars_to_units(Threshold).
 
 -spec maybe_topup_account(kz_account:doc(), kz_transaction:units()) ->
                                  'ok' |
@@ -385,13 +387,6 @@ maybe_low_balance_notify_deprecated(AccountJObj, CurrentBalance) ->
         'false' -> notify_of_low_balance(AccountJObj, CurrentBalance)
     end.
 
--spec update_account_low_balance_sent(kz_account:doc()) -> 'ok' |
-                                                           {'error', any()}.
-update_account_low_balance_sent(AccountJObj0) ->
-    AccountJObj1 = kz_account:set_low_balance_sent(AccountJObj0),
-    AccountJObj2 = kz_account:set_low_balance_tstamp(AccountJObj1),
-    kz_util:account_update(AccountJObj2).
-
 -spec notify_of_low_balance(kz_account:doc(), kz_transaction:units()) -> 'ok'.
 notify_of_low_balance(AccountJObj, CurrentBalance) ->
     AccountId = kz_account:id(AccountJObj),
@@ -400,14 +395,8 @@ notify_of_low_balance(AccountJObj, CurrentBalance) ->
     'ok' = kz_notify:low_balance(AccountId, CurrentBalance),
     update_account_low_balance_sent(AccountJObj).
 
--spec low_balance_threshold(ne_binary() | kz_account:doc()) -> float().
-low_balance_threshold(AccountId) when is_binary(AccountId) ->
-    case kz_account:fetch(AccountId) of
-        {'error', _R} -> low_balance_threshold(kz_json:new());
-        {'ok', JObj} -> low_balance_threshold(JObj)
-    end;
-low_balance_threshold(AccountJObj) ->
-    ConfigCat = <<(?NOTIFY_CONFIG_CAT)/binary, ".low_balance">>,
-    Default = kapps_config:get_float(ConfigCat, <<"threshold">>, 5.00),
-    kz_account:low_balance_threshold(AccountJObj, Default).
-
+-spec update_account_low_balance_sent(kz_account:doc()) -> 'ok'.
+update_account_low_balance_sent(AccountJObj0) ->
+    AccountJObj1 = kz_account:set_low_balance_sent(AccountJObj0),
+    AccountJObj2 = kz_account:set_low_balance_tstamp(AccountJObj1),
+    kz_util:account_update(AccountJObj2).

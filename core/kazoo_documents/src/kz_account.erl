@@ -39,6 +39,8 @@
         ,low_balance_enabled/1, set_low_balance_enabled/1, reset_low_balance_enabled/1, low_balance_enabled_exists/1
         ,low_balance_tstamp/1, set_low_balance_tstamp/1, set_low_balance_tstamp/2, remove_low_balance_tstamp/1
         ,topup_threshold/1, topup_threshold/2, set_topup_threshold/2
+        ,sent_initial_registration/1, set_initial_registration_sent/2
+        ,sent_initial_call/1, set_initial_call_sent/2
         ]).
 
 -include("kz_documents.hrl").
@@ -65,6 +67,8 @@
 -define(LOW_BALANCE_THRESHOLD, [<<"notifications">>, <<"low_balance">>, <<"threshold">>]).
 -define(LOW_BALANCE_TSTAMP, [<<"notifications">>, <<"low_balance">>, <<"last_notification">>]).
 -define(TOPUP_THRESHOLD, [<<"topup">>, <<"threshold">>]).
+-define(SENT_INITIAL_REGISTRATION, [<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>]).
+-define(SENT_INITIAL_CALL, [<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>]).
 
 -define(PVT_TYPE, <<"account">>).
 
@@ -214,11 +218,18 @@ set_timezone(JObj, Timezone) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec low_balance_threshold(doc()) -> api_float().
-low_balance_threshold(JObj) ->
-    low_balance_threshold(JObj, 'undefined').
+-spec low_balance_threshold(ne_binary() | doc()) -> api_float().
+low_balance_threshold(Thing) ->
+    ConfigCat = <<"notify.low_balance">>,
+    Default = kapps_config:get_float(ConfigCat, <<"threshold">>, 5.00),
+    low_balance_threshold(Thing, Default).
 
--spec low_balance_threshold(doc(), Default) -> float() | Default.
+-spec low_balance_threshold(ne_binary() | doc(), Default) -> float() | Default.
+low_balance_threshold(AccountId, Default) when is_binary(AccountId) ->
+    case fetch(AccountId) of
+        {'error', _R} -> low_balance_threshold(kz_json:new(), Default);
+        {'ok', JObj} -> low_balance_threshold(JObj, Default)
+    end;
 low_balance_threshold(JObj, Default) ->
     case kz_json:get_float_value(?LOW_BALANCE_THRESHOLD, JObj) of
         'undefined' -> topup_threshold(JObj, Default);
@@ -305,6 +316,33 @@ topup_threshold(JObj, Default) ->
 -spec set_topup_threshold(doc(), float()) -> doc().
 set_topup_threshold(JObj, Threshold) ->
     kz_json:set_value(?TOPUP_THRESHOLD, Threshold, JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec sent_initial_registration(doc()) -> boolean().
+sent_initial_registration(JObj) ->
+    kz_json:is_true(?SENT_INITIAL_REGISTRATION, JObj).
+
+-spec set_initial_registration_sent(doc(), boolean()) -> doc().
+set_initial_registration_sent(JObj, Sent) ->
+    kz_json:set_value(?SENT_INITIAL_REGISTRATION, Sent, JObj).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec sent_initial_call(doc()) -> boolean().
+sent_initial_call(JObj) ->
+    kz_json:is_true(?SENT_INITIAL_CALL, JObj).
+
+-spec set_initial_call_sent(doc(), boolean()) -> doc().
+set_initial_call_sent(JObj, Sent) ->
+    kz_json:set_value(?SENT_INITIAL_CALL, Sent, JObj).
 
 %%--------------------------------------------------------------------
 %% @public

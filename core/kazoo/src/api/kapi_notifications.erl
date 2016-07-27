@@ -21,6 +21,7 @@
         ,fax_outbound_error/1, fax_outbound_error_v/1
         ,register/1, register_v/1
         ,deregister/1, deregister_v/1
+        ,first_occurrence/1, first_occurrence_v/1
         ,password_recovery/1, password_recovery_v/1
         ,new_account/1, new_account_v/1
         ,new_user/1, new_user_v/1
@@ -56,6 +57,7 @@
         ,publish_fax_outbound_error/1, publish_fax_outbound_error/2
         ,publish_register/1, publish_register/2
         ,publish_deregister/1, publish_deregister/2
+        ,publish_first_occurrence/1, publish_first_occurrence/2
         ,publish_password_recovery/1, publish_password_recovery/2
         ,publish_new_account/1, publish_new_account/2
         ,publish_new_user/1, publish_new_user/2
@@ -99,6 +101,7 @@
 -define(NOTIFY_FAX_INBOUND_ERROR, <<"notifications.fax.inbound_error">>).
 -define(NOTIFY_FAX_OUTBOUND_ERROR, <<"notifications.fax.outbound_error">>).
 -define(NOTIFY_DEREGISTER, <<"notifications.sip.deregister">>).
+-define(NOTIFY_FIRST_OCCURRENCE, <<"notifications.sip.first_occurrence">>).
 %%-define(NOTIFY_REGISTER_OVERWRITE, <<"notifications.sip.register_overwrite">>).
 -define(NOTIFY_REGISTER, <<"notifications.sip.register">>).
 -define(NOTIFY_PASSWORD_RECOVERY, <<"notifications.user.password_recovery">>).
@@ -248,6 +251,14 @@
                          ,{<<"Event-Name">>, <<"register">>}
                          ]).
 -define(REGISTER_TYPES, []).
+
+%% Notify First Occurrence
+-define(FIRST_OCCURRENCE_HEADERS, [<<"Account-ID">>, <<"Occurrence">>]).
+-define(OPTIONAL_FIRST_OCCURRENCE_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
+-define(FIRST_OCCURRENCE_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                                 ,{<<"Event-Name">>, <<"first_occurrence">>}
+                                 ]).
+-define(FIRST_OCCURRENCE_TYPES, []).
 
 %% Notify Password Recovery
 -define(PASSWORD_RECOVERY_HEADERS, [<<"Account-ID">>
@@ -503,6 +514,8 @@ headers(<<"new_user">>) ->
     ?NEW_USER_HEADERS ++ ?OPTIONAL_NEW_USER_HEADERS;
 headers(<<"deregister">>) ->
     ?DEREGISTER_HEADERS ++ ?OPTIONAL_DEREGISTER_HEADERS;
+headers(<<"first_occurrence">>) ->
+    ?FIRST_OCCURRENCE_HEADERS ++ ?OPTIONAL_FIRST_OCCURRENCE_HEADERS;
 headers(<<"transaction">>) ->
     ?TRANSACTION_HEADERS ++ ?OPTIONAL_TRANSACTION_HEADERS;
 headers(<<"service_added">>) ->
@@ -693,6 +706,23 @@ deregister(JObj) -> deregister(kz_json:to_proplist(JObj)).
 deregister_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?DEREGISTER_HEADERS, ?DEREGISTER_VALUES, ?DEREGISTER_TYPES);
 deregister_v(JObj) -> deregister_v(kz_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc First Call or registration notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+first_occurrence(Prop) when is_list(Prop) ->
+    case first_occurrence_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?FIRST_OCCURRENCE_HEADERS, ?OPTIONAL_FIRST_OCCURRENCE_HEADERS);
+        'false' -> {'error', "Proplist failed validation for first_occurrence"}
+    end;
+first_occurrence(JObj) -> first_occurrence(kz_json:to_proplist(JObj)).
+
+-spec first_occurrence_v(api_terms()) -> boolean().
+first_occurrence_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?FIRST_OCCURRENCE_HEADERS, ?FIRST_OCCURRENCE_VALUES, ?FIRST_OCCURRENCE_TYPES);
+first_occurrence_v(JObj) -> first_occurrence_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Password_Recovery (unregister is a key word) - see wiki
@@ -1081,6 +1111,7 @@ skel_v(JObj) -> skel_v(kz_json:to_proplist(JObj)).
                        'register' |
                        'deregister' |
                        'password_recovery' |
+                       'first_occurrence' |
                        'new_account' |
                        'new_user' |
                        'port_request' |
@@ -1149,6 +1180,9 @@ bind_to_q(Q, ['deregister'|T]) ->
     bind_to_q(Q, T);
 bind_to_q(Q, ['password_recovery'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PASSWORD_RECOVERY),
+    bind_to_q(Q, T);
+bind_to_q(Q, ['first_occurrence'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FIRST_OCCURRENCE),
     bind_to_q(Q, T);
 bind_to_q(Q, ['new_account'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
@@ -1254,6 +1288,9 @@ unbind_q_from(Q, ['deregister'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['password_recovery'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PASSWORD_RECOVERY),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['first_occurrence'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_FIRST_OCCURRENCE),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['new_account'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
@@ -1396,6 +1433,13 @@ publish_password_recovery(JObj) -> publish_password_recovery(JObj, ?DEFAULT_CONT
 publish_password_recovery(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?PASSWORD_RECOVERY_VALUES, fun ?MODULE:password_recovery/1),
     amqp_util:notifications_publish(?NOTIFY_PASSWORD_RECOVERY, Payload, ContentType).
+
+-spec publish_first_occurrence(api_terms()) -> 'ok'.
+-spec publish_first_occurrence(api_terms(), ne_binary()) -> 'ok'.
+publish_first_occurrence(JObj) -> publish_first_occurrence(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_first_occurrence(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?FIRST_OCCURRENCE_VALUES, fun ?MODULE:first_occurrence/1),
+    amqp_util:notifications_publish(?NOTIFY_FIRST_OCCURRENCE, Payload, ContentType).
 
 -spec publish_new_account(api_terms()) -> 'ok'.
 -spec publish_new_account(api_terms(), ne_binary()) -> 'ok'.

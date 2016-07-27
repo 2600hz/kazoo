@@ -6,7 +6,7 @@
 %%% @contributors
 %%%     SIPLABS, LLC (Ilya Ashchepkov)
 %%%-------------------------------------------------------------------
--module(ananke_callback_wrkr).
+-module(ananke_callback_worker).
 
 -behaviour(gen_server).
 
@@ -75,7 +75,7 @@ handle_info('originate', #state{request = Req} = State) ->
 terminate(_, #state{timer = Timer}) ->
     _ = stop_originate_timer(Timer),
     %% supervisor doesn't delete stopped child specification
-    ananke_callback_sup:delete_child(self(), 1 * ?MILLISECONDS_IN_SECOND),
+    ananke_tasks_sup:delete_child(self(), 1 * ?MILLISECONDS_IN_SECOND),
     'ok'.
 
 -spec code_change(any(), state(), any()) -> {'ok', state()}.

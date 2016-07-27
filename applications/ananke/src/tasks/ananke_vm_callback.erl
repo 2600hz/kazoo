@@ -28,10 +28,7 @@
               }).
 
 -spec init() -> 'ok'.
-init() ->
-    lager:debug("starting supervisor"),
-    {'ok', _} = ananke_sup:start_supervisor('ananke_callback_sup'),
-    'ok'.
+init() -> 'ok'.
 
 -spec check(ne_binary(), ne_binary()) -> any().
 check(AccountId, VMBoxId) ->
@@ -106,7 +103,7 @@ handle_req(JObj, Props) ->
 get_voicemail_number(AccountDb, Mailbox) ->
     {'ok', Callflows} = kz_datamgr:get_results(AccountDb
                                               ,<<"callflows/crossbar_listing">>
-                                              ,[{<<"include_docs">>, 'true'}]),
+                                              ,['include_docs']),
     case [Cf || Cf <- Callflows, is_voicemail_cf(Cf)] of
         [VMCallflow | _] ->
             get_callflow_number(VMCallflow, Mailbox);
@@ -164,12 +161,10 @@ start_caller(#args{callback_number = Number
     lager:info("starting caller to number ~p", [Number]),
     OriginateReq = build_originate_req(StartArgs),
     CheckFun = {?MODULE, has_unread, [AccountId, VMBoxId]},
-    case ananke_callback_sup:start_child({Number, VMBoxId}, OriginateReq, Schedule, CheckFun) of
-        {'ok', _} -> lager:debug("started");
-        {'ok', _, _} -> lager:debug("started");
-        {'error', {'already_started', _}} -> lager:info("already started");
-        {'error', Error} -> lager:warning("error: ~p", [Error])
-    end.
+
+    WorkerId = {Number, VMBoxId},
+    WorkerArgs = [OriginateReq, Schedule, CheckFun],
+    ananke_tasks_sup:start_task(WorkerId, 'ananke_callback_worker', WorkerArgs).
 
 -spec build_originate_req(#args{}) -> kz_proplist().
 build_originate_req(#args{callback_number = CallbackNumber
