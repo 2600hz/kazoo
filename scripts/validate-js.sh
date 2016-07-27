@@ -19,6 +19,9 @@ def fmap(F, data):
         if isinstance(value, basestring):
             if value.startswith('function'):
                 F(data)
+        elif isinstance(value, list):
+            if value[0].startswith('function'):
+                F(data)
         else:
             fmap(F, value)
     elif isinstance(data, list):
@@ -31,7 +34,7 @@ def fmap(F, data):
 def couchjs((field, js)):
     TMP = '_'
     with open(TMP, 'w') as wd:
-        wd.write(js + '\n')
+        wd.write(''.join(js) + '\n')
     try:
         code = call(['couchjs', TMP])
         if code != 0:
