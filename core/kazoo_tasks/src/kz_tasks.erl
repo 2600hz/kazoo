@@ -28,6 +28,11 @@
         ,cleanup_task/3
         ]).
 
+-export([mandatory/1
+        ,optional/1
+        ,input_mime/1
+        ]).
+
 %%% gen_server callbacks
 -export([init/1
         ,handle_cast/2

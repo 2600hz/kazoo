@@ -51,6 +51,9 @@ output_header('list_all') ->
     list_output_header().
 
 -spec cleanup(atom(), any()) -> any().
+cleanup('import', 'init') ->
+    %% Hit iff no rows at all succeeded.
+    'ok';
 cleanup('import', AccountIds) ->
     F = fun (AccountId) ->
                 lager:debug("reconciling account ~s", [AccountId]),
@@ -216,7 +219,6 @@ e164(_) -> 'false'.
 
 -spec account_id(ne_binary()) -> boolean().
 account_id(?MATCH_ACCOUNT_RAW(_)) -> 'true';
-account_id('undefined') -> 'true';
 account_id(_) -> 'false'.
 
 -spec carrier_module(ne_binary()) -> boolean().
@@ -231,7 +233,6 @@ carrier_module(<<"knm_reserved_reseller">>) -> 'true';
 carrier_module(<<"knm_simwood">>) -> 'true';
 carrier_module(<<"knm_vitelity">>) -> 'true';
 carrier_module(<<"knm_voip_innovations">>) -> 'true';
-carrier_module('undefined') -> 'true';
 carrier_module(_) -> 'false'.
 
 
@@ -328,9 +329,10 @@ import(Props, AccountIds
               ,{'state', State}
               ,{'module_name', ModuleName}
               ],
-    {handle_result(knm_number:create(E164, Options))
-    ,sets:add_element(AccountId, AccountIds)
-    }.
+    case handle_result(knm_number:create(E164, Options)) of
+        [] -> {[], sets:add_element(AccountId, AccountIds)};
+        E -> {E, AccountIds}
+    end.
 
 -spec assign_to(kz_proplist(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
 assign_to(Props, _IterValue, Number, AccountId) ->

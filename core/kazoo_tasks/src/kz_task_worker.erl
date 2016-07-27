@@ -77,7 +77,7 @@ init(TaskId, API, Module, Function, ExtraArgs, OrderedFields) ->
                     lager:error("failed to write CSV header in ~s", [?OUT(TaskId)]),
                     Error;
                 'ok' ->
-                    Verifier = build_verifier(Module),
+                    Verifier = build_verifier(API, Module),
                     FAssoc = kz_csv:associator(Header, OrderedFields, Verifier),
                     State = #state{ task_id = TaskId
                                   , api = API
@@ -92,10 +92,15 @@ init(TaskId, API, Module, Function, ExtraArgs, OrderedFields) ->
     end.
 
 %% @private
--spec build_verifier(module()) -> kz_csv:verifier().
-build_verifier(Module) ->
-    fun (Field, Value) ->
-            try Module:Field(Value) of
+-spec build_verifier(kz_json:object(), module()) -> kz_csv:verifier().
+build_verifier(API, Module) ->
+    fun (Field, 'undefined') ->
+            %% Always validate empty optional fields.
+            %% Always deny empty mandatory fields.
+            not lists:member(Field, kz_tasks:mandatory(API));
+        (Field, Value) ->
+            Verifier = kz_util:to_atom(Field, 'true'),
+            try Module:Verifier(Value) of
                 'true' -> 'true';
                 'false' ->
                     lager:error("'~s' failed to validate with ~s:~s/1"
