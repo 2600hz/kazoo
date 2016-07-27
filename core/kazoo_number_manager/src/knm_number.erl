@@ -41,7 +41,7 @@
 -export([attempt/2]).
 -export([ensure_can_load_to_create/1]).
 -export([ensure_can_create/2]).
--export([create_or_load/4]).
+-export([create_or_load/5]).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 

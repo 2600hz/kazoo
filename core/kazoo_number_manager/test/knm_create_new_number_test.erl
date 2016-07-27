@@ -86,8 +86,9 @@ create_existing_in_service_test_() ->
              }
             ],
 
-    Resp = knm_number:attempt(fun knm_number:create_or_load/4
+    Resp = knm_number:attempt(fun knm_number:create_or_load/5
                              ,[?TEST_AVAILABLE_NUM
+                              ,[]
                               ,Props
                               ,?NUMBER_STATE_IN_SERVICE
                               ,{'ok', InServicePN}
