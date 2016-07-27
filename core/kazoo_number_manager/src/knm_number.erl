@@ -12,7 +12,7 @@
 
 -export([new/0
         ,get/1, get/2
-        ,create/2, create/3
+        ,create/2
         ,move/2, move/3
         ,update/2, update/3
         ,release/1, release/2
@@ -22,7 +22,6 @@
         ,save/1
         ,reconcile/2
         ,reserve/2
-        ,options/1
         ]).
 
 -export([phone_number/1, set_phone_number/2
@@ -54,7 +53,6 @@
                     ,transactions = [] :: kz_transaction:transactions()
                     ,errors = [] :: list()
                     ,charges = [] :: [{ne_binary(), integer()}]
-                    ,options = [] :: knm_options:options()
                     }).
 -opaque knm_number() :: #knm_number{}.
 -type knm_numbers() :: [knm_number()].
@@ -80,10 +78,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec new() -> knm_number().
-new() -> new(knm_options:default()).
-
--spec new(knm_options:options()) -> knm_number().
-new(Options) -> #knm_number{options=Options}.
+new() -> #knm_number{}.
 
 -spec is_number(any()) -> boolean().
 is_number(#knm_number{}) -> 'true';
@@ -125,38 +120,33 @@ get_number(Num, Options) ->
 -spec create(ne_binary(), knm_number_options:options()) ->
                     knm_number_return().
 create(Num, Options) ->
-    create(Num, knm_options:default(), Options).
-
--spec create(ne_binary(), knm_options:options(), knm_number_options:options()) ->
-                    knm_number_return().
-create(Num, KNMOptions, Options) ->
     ?MATCH_ACCOUNT_RAW(_) = knm_number_options:assign_to(Options),
     case knm_converters:is_reconcilable(Num) of
         'false' -> {'error', knm_errors:to_json('not_reconcilable', Num)};
         'true' ->
-            attempt(fun create_or_load/3, [Num, KNMOptions, Options])
+            attempt(fun create_or_load/2, [Num, Options])
     end.
 
--spec create_or_load(ne_binary(), knm_options:options(), knm_number_options:options()) ->
+-spec create_or_load(ne_binary(), knm_number_options:options()) ->
                             knm_number() | dry_run_return().
-create_or_load(Num, KNMOptions, Options0) ->
+create_or_load(Num, Options0) ->
     ToState = knm_number_options:state(Options0, ?NUMBER_STATE_RESERVED),
     Options = [{'state', ToState} | Options0],
-    create_or_load(Num, KNMOptions, Options, ToState, knm_phone_number:fetch(Num)).
+    create_or_load(Num, Options, ToState, knm_phone_number:fetch(Num)).
 
--spec create_or_load(ne_binary(), knm_options:options(), knm_number_options:options(), ne_binary(), knm_phone_number_return()) ->
+-spec create_or_load(ne_binary(), knm_number_options:options(), ne_binary(), knm_phone_number_return()) ->
                             knm_number() | dry_run_return().
-create_or_load(_Num, KNMOptions, Options, ToState, {'ok', PhoneNumber}) ->
+create_or_load(_Num, Options, ToState, {'ok', PhoneNumber}) ->
     ensure_can_load_to_create(PhoneNumber),
     Updates = knm_number_options:to_phone_number_setters(
                 [Option || Option <- Options, element(1,Option) =/= 'state']
                ),
     {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Updates),
-    create_phone_number(ToState, set_phone_number(new(KNMOptions), NewPhoneNumber));
-create_or_load(Num, KNMOptions, Options, ToState, {'error', 'not_found'}) ->
+    create_phone_number(ToState, set_phone_number(new(), NewPhoneNumber));
+create_or_load(Num, Options, ToState, {'error', 'not_found'}) ->
     ensure_can_create(Num, Options),
     PhoneNumber = knm_phone_number:new(Num, Options),
-    create_phone_number(ToState, set_phone_number(new(KNMOptions), PhoneNumber)).
+    create_phone_number(ToState, set_phone_number(new(), PhoneNumber)).
 
 -spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true'.
 ensure_can_load_to_create(PhoneNumber) ->
@@ -206,21 +196,9 @@ do_reserve(Number) ->
 save_number(Number) ->
     Routines = [fun knm_providers:save/1
                ,fun save_phone_number/1
-               , fun maybe_update_services/1
+               ,fun knm_services:update_services/1
                ],
     apply_number_routines(Number, Routines).
-
--spec maybe_update_services(knm_number()) -> knm_number().
-maybe_update_services(Number) ->
-    maybe_update_services(Number
-                         ,knm_options:should_update_services(options(Number))
-                         ).
-
--spec maybe_update_services(knm_number(), boolean()) -> knm_number().
-maybe_update_services(Number, 'false') -> Number;
-maybe_update_services(Number, 'true') ->
-    knm_services:update_services(Number).
-
 
 -spec save_phone_number(knm_number()) -> knm_number().
 save_phone_number(Number) ->
@@ -915,6 +893,3 @@ num_to_did(PhoneNumber) ->
                                    dry_run_return().
 apply_number_routines(Number, Routines) ->
     lists:foldl(fun(F, N) -> F(N) end, Number, Routines).
-
--spec options(knm_number()) -> knm_options:options().
-options(#knm_number{options=Options}) -> Options.

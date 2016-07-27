@@ -327,8 +327,7 @@ import(Props, AccountIds
               ,{'state', State}
               ,{'module_name', ModuleName}
               ],
-    KNMOptions = [{'should_update_services', 'false'}],
-    {handle_result(knm_number:create(E164, KNMOptions, Options))
+    {handle_result(knm_number:create(E164, Options))
     ,sets:add_element(AccountId, AccountIds)
     }.
 
