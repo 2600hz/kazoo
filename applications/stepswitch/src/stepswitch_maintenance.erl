@@ -56,7 +56,7 @@ pretty_print_lookup([{Key, Value}|Props]) ->
 %%--------------------------------------------------------------------
 -spec number_tree(ne_binary()) -> 'ok'.
 number_tree(DID) ->
-    case stepswitch_util:lookup_number(DID) of
+    case knm_number:lookup_account(DID) of
         {'error', _} -> io:format("DID ~s was not found~n", [DID]);
         {'ok', AccountId, _Props} ->
             case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId) of
@@ -159,7 +159,7 @@ refresh() ->
 %%--------------------------------------------------------------------
 -spec lookup_number(text()) -> 'ok'.
 lookup_number(Number) ->
-    case stepswitch_util:lookup_number(Number) of
+    case knm_number:lookup_account(Number) of
         {'ok', AccountId, Props} ->
             io:format("~-19s: ~s~n", [<<"Account-ID">>, AccountId]),
             Classification = knm_converters:classify(Number),

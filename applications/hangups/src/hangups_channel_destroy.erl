@@ -83,18 +83,18 @@ maybe_add_hangup_specific(_HangupCause, JObj) ->
 -spec maybe_add_number_info(kz_json:object()) -> kz_proplist().
 maybe_add_number_info(JObj) ->
     Destination = find_destination(JObj),
-    %% TODO: decouple from stepswitch_util!
-    try stepswitch_util:lookup_number(Destination) of
+    Props = kz_json:to_proplist(JObj),
+    try knm_number:lookup_account(Destination) of
         {'ok', AccountId, _Props} ->
-            [{<<"Account-Tree">>, build_account_tree(AccountId)}
-             | kz_json:to_proplist(JObj)
-            ];
+            Tree = build_account_tree(AccountId),
+            props:set_value(<<"Account-Tree">>, Tree, Props);
         {'error', _} ->
-            [{<<"Hangups-Message">>, <<"Destination was not found in numbers DBs">>}
-             | kz_json:to_proplist(JObj)
-            ]
+            props:set_value(<<"Hangups-Message">>
+                           ,<<"Destination was not found in numbers DBs">>
+                           ,Props
+                           )
     catch
-        _:_ -> kz_json:to_proplist(JObj)
+        _:_ -> Props
     end.
 
 %%--------------------------------------------------------------------

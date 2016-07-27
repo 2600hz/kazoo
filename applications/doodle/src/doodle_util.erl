@@ -34,7 +34,6 @@
 -export([get_callee_id/2 , set_callee_id/2]).
 -export([get_caller_id/2 , get_caller_id/3]).
 -export([set_caller_id/2, set_caller_id/3]).
--export([lookup_number/1]).
 -export([get_inbound_destination/1]).
 -export([lookup_mdn/1]).
 -export([maybe_reschedule_sms/1, maybe_reschedule_sms/2, maybe_reschedule_sms/3]).
@@ -396,42 +395,6 @@ get_inbound_destination(JObj) ->
     Number = kz_json:get_first_defined(Keys, JObj),
     {knm_converters:normalize(Number), Inception}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec lookup_number(ne_binary()) -> {'ok', ne_binary(), knm_number_options:extra_options()} |
-                                    {'error', any()}.
-lookup_number(Number) ->
-    Num = knm_converters:normalize(Number),
-    case kz_cache:fetch_local(?CACHE_NAME, cache_key_number(Num)) of
-        {'ok', {AccountId, Props}} ->
-            lager:debug("cached number ~s is associated with account ~s", [Num, AccountId]),
-            {'ok', AccountId, Props};
-        {'error', 'not_found'} ->
-            fetch_number(Num)
-    end.
-
--spec fetch_number(ne_binary()) -> {'ok', ne_binary(), knm_number_options:extra_options()} |
-                                   {'error', any()}.
-fetch_number(Num) ->
-    case knm_number:lookup_account(Num) of
-        {'ok', AccountId, Props} ->
-            CacheProps = [{'origin', [{'db', knm_converters:to_db(Num), Num}, {'type', <<"number">>}]}],
-            kz_cache:store_local(?CACHE_NAME, cache_key_number(Num), {AccountId, Props}, CacheProps),
-            lager:debug("~s is associated with account ~s", [Num, AccountId]),
-            {'ok', AccountId, Props};
-        {'error', Reason}=E ->
-            lager:debug("~s is not associated with any account, ~p", [Num, Reason]),
-            E
-    end.
-
--spec cache_key_number(ne_binary()) -> {'sms_number', ne_binary()}.
-cache_key_number(Number) ->
-    {'sms_number', Number}.
-
 -spec lookup_mdn(ne_binary()) ->
                         {'ok', ne_binary(), api_binary()} |
                         {'error', any()}.
@@ -448,7 +411,7 @@ lookup_mdn(Number) ->
                        {'ok', ne_binary(), api_binary()} |
                        {'error', any()}.
 fetch_mdn(Num) ->
-    case lookup_number(Num) of
+    case knm_number:lookup_account(Num) of
         {'ok', AccountId, _Props} ->
             fetch_mdn_result(AccountId, Num);
         {'error', Reason}=E ->

@@ -9,7 +9,6 @@
 -export([get_realm/1]).
 -export([get_inbound_destination/1]).
 -export([get_outbound_destination/1]).
--export([lookup_number/1]).
 -export([correct_shortdial/2]).
 -export([get_sip_headers/1]).
 -export([format_endpoints/4]).
@@ -76,42 +75,6 @@ get_outbound_destination(OffnetReq) ->
         'false' -> knm_converters:normalize(Number);
         'true' -> Number
     end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec lookup_number(ne_binary()) -> {'ok', ne_binary(), knm_number_options:extra_options()} |
-                                    {'error', any()}.
-lookup_number(Number) ->
-    Num = knm_converters:normalize(Number),
-    case kz_cache:fetch_local(?CACHE_NAME, cache_key_number(Num)) of
-        {'ok', {AccountId, Props}} ->
-            lager:debug("found number properties in stepswitch cache"),
-            {'ok', AccountId, Props};
-        {'error', 'not_found'} ->
-            fetch_number(Num)
-    end.
-
--spec fetch_number(ne_binary()) -> {'ok', ne_binary(), knm_number_options:extra_options()} |
-                                   {'error', any()}.
-fetch_number(Num) ->
-    case knm_number:lookup_account(Num) of
-        {'ok', AccountId, Props} ->
-            CacheProps = [{'origin', [{'db', knm_converters:to_db(Num), Num}, {'type', <<"number">>}]}],
-            kz_cache:store_local(?CACHE_NAME, cache_key_number(Num), {AccountId, Props}, CacheProps),
-            lager:debug("~s is associated with account ~s", [Num, AccountId]),
-            {'ok', AccountId, Props};
-        {'error', Reason}=E ->
-            lager:debug("~s is not associated with any account, ~p", [Num, Reason]),
-            E
-    end.
-
--spec cache_key_number(ne_binary()) -> {'stepswitch_number', ne_binary()}.
-cache_key_number(Number) ->
-    {'stepswitch_number', Number}.
 
 %%--------------------------------------------------------------------
 %% @public

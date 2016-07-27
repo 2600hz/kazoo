@@ -33,7 +33,7 @@ handle_inbound_sms(JObj, Srv, Deliver) ->
 -spec maybe_relay_request(kz_json:object()) -> 'ack' | 'nack'.
 maybe_relay_request(JObj) ->
     {Number, Inception} = doodle_util:get_inbound_destination(JObj),
-    case doodle_util:lookup_number(Number) of
+    case knm_number:lookup_account(Number) of
         {'error', _R} ->
             lager:info("unable to determine account for ~s: ~p", [Number, _R]),
             %% TODO send system notify ?
