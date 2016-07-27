@@ -174,16 +174,13 @@ is_task_successful(TaskId, Module, Function, ExtraArgs, FAssoc, RawRow, IterValu
             Args = [ExtraArgs, IterValue | RowArgs],
             try apply(Module, Function, Args) of
                 'stop' -> 'stop';
-                {'ok', NewIterValue} ->
-                    %% For initialisation steps. Skeeps writing a CSV output row.
-                    {'true', 0, NewIterValue};
                 {NewRowOrRows, NewIterValue} when is_list(NewRowOrRows) ->
                     Written = store_return(TaskId, RawRow, NewRowOrRows),
                     {'true', Written, NewIterValue};
                 {Error, NewIterValue} ->
                     Written = store_return(TaskId, RawRow, Error),
                     {'false', Written, NewIterValue};
-                'ok'=NewRowOrRows=NewIterValue ->
+                NewRowOrRows=NewIterValue when is_list(NewRowOrRows) ->
                     Written = store_return(TaskId, RawRow, NewRowOrRows),
                     {'true', Written, NewIterValue};
                 NewRow=NewIterValue ->
