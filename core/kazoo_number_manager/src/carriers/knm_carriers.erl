@@ -242,7 +242,7 @@ get_available_carriers(Options) ->
         'undefined' ->
             keep_only_reachable(?CARRIER_MODULES);
         AccountId ->
-            ResellerId = kz_services:find_reseller_id(AccountId),
+            ResellerId = props:get_value(?KNM_RESELLERID_CARRIER, Options),
             lager:debug("found ~s's reseller: ~p", [AccountId, ResellerId]),
             {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
             case ResellerId == MasterAccountId of

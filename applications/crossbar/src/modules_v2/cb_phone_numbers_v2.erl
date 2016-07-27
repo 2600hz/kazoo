@@ -492,6 +492,7 @@ get_find_numbers_req(Context) ->
     Quantity = kz_util:to_integer(cb_context:req_value(Context, <<"quantity">>, 1)),
     kz_json:set_values([{<<"quantity">>, Quantity}
                        ,{?KNM_ACCOUNTID_CARRIER, AccountId}
+                       ,{?KNM_RESELLERID_CARRIER, cb_context:reseller_id(Context)}
                        ], JObj).
 
 %%--------------------------------------------------------------------
