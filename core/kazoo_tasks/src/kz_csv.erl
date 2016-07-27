@@ -141,11 +141,10 @@ pad_row_to(_, Row) ->
 -spec associator(row(), row(), verifier()) -> fassoc().
 associator(CSVHeader, OrderedFields, Verifier) ->
     Max = length(OrderedFields),
-    Indexed = lists:zip(lists:seq(1, length(CSVHeader)), CSVHeader),
-    Map = maps:from_list([{find_position(Header, OrderedFields, 1), I}
-                          || {I,Header} <- Indexed
-                         ]),
-    OrderedFieldsAtoms = [kz_util:to_atom(Field, 'true') || Field <- OrderedFields],
+    Map = maps:from_list(
+            [{find_position(Header, OrderedFields, 1), I}
+             || {I,Header} <- lists:zip(lists:seq(1, length(CSVHeader)), CSVHeader)
+            ]),
     fun (Row0) ->
             Row = pad_row_to(Max, Row0),
             ReOrdered =
@@ -154,7 +153,7 @@ associator(CSVHeader, OrderedFields, Verifier) ->
                                  'undefined' -> ?ZILCH;
                                  J -> lists:nth(J, Row)
                              end,
-                      Verifier(lists:nth(I, OrderedFieldsAtoms), Cell)
+                      Verifier(lists:nth(I, OrderedFields), Cell)
                           andalso Cell
                   end
                   || I <- lists:seq(1, Max)

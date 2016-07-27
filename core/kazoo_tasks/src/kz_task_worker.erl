@@ -95,7 +95,8 @@ init(TaskId, API, Module, Function, ExtraArgs, OrderedFields) ->
 -spec build_verifier(module()) -> kz_csv:verifier().
 build_verifier(Module) ->
     fun (Field, Value) ->
-            try Module:Field(Value) of
+            Verifier = kz_util:to_atom(Field, 'true'),
+            try Module:Verifier(Value) of
                 'true' -> 'true';
                 'false' ->
                     lager:error("'~s' failed to validate with ~s:~s/1"
