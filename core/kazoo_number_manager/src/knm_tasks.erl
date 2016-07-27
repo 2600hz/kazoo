@@ -51,6 +51,9 @@ output_header('list_all') ->
     list_output_header().
 
 -spec cleanup(atom(), any()) -> any().
+cleanup('import', 'init') ->
+    %% Hit iff no rows at all succeeded.
+    'ok';
 cleanup('import', AccountIds) ->
     F = fun (AccountId) ->
                 lager:debug("reconciling account ~s", [AccountId]),
