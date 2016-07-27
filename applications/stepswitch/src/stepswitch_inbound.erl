@@ -41,11 +41,13 @@ handle_req(JObj, _Props) ->
 -spec maybe_relay_request(kz_json:object()) -> 'ok'.
 maybe_relay_request(JObj) ->
     Number = stepswitch_util:get_inbound_destination(JObj),
-    case stepswitch_util:lookup_number(Number) of
+    case knm_number:lookup_account(Number) of
         {'error', _R} ->
-            lager:info("unable to determine account for fetch-id ~s, ~s: ~p", [kapi_route:fetch_id(JObj), Number, _R]);
+            lager:info("unable to determine account for fetch-id ~s, ~s: ~p"
+                      ,[kapi_route:fetch_id(JObj), Number, _R]);
         {'ok', _, NumberProps} ->
-            lager:debug("running routines for number ~s, fetch-id : ~s", [Number, kapi_route:fetch_id(JObj)]),
+            lager:debug("running routines for number ~s, fetch-id : ~s"
+                       ,[Number, kapi_route:fetch_id(JObj)]),
             Routines = [fun set_account_id/2
                        ,fun set_ignore_display_updates/2
                        ,fun set_inception/2

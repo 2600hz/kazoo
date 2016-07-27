@@ -609,8 +609,7 @@ check_number(PhoneNumber) ->
         'true' -> {'error', 'unassigned'};
         'false' ->
             States = [?NUMBER_STATE_PORT_IN, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_PORT_OUT],
-            State = knm_phone_number:state(PhoneNumber),
-            case lists:member(State, States) of
+            case lists:member(knm_phone_number:state(PhoneNumber), States) of
                 'false' -> {'error', {'not_in_service', AssignedTo}};
                 'true' -> check_account(PhoneNumber)
             end

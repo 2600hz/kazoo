@@ -47,9 +47,9 @@ handle_audio_req(OffnetReq) ->
     handle_audio_req(Number, OffnetReq).
 
 handle_audio_req(Number, OffnetReq) ->
-    case stepswitch_util:lookup_number(Number) of
-        {'ok', AccountId, Props} ->
-            maybe_force_outbound(knm_number_options:set_account_id(Props, AccountId), OffnetReq);
+    case knm_number:lookup_account(Number) of
+        {'ok', _AccountId, Props} ->
+            maybe_force_outbound(Props, OffnetReq);
         _ -> maybe_bridge(Number, OffnetReq)
     end.
 
@@ -69,10 +69,9 @@ handle_originate_req(OffnetReq) ->
 
 -spec handle_originate_req(ne_binary(), kz_json:object()) -> any().
 handle_originate_req(Number, JObj) ->
-    case stepswitch_util:lookup_number(Number) of
-        {'ok', AccountId, Props} ->
-            NewProps = knm_number_options:set_account_id(Props, AccountId),
-            maybe_force_originate_outbound(NewProps, JObj);
+    case knm_number:lookup_account(Number) of
+        {'ok', _AccountId, Props} ->
+            maybe_force_originate_outbound(Props, JObj);
         _ -> maybe_originate(Number, JObj)
     end.
 
@@ -100,9 +99,9 @@ maybe_force_originate_outbound(Props, JObj) ->
 handle_sms_req(OffnetReq) ->
     Number = stepswitch_util:get_outbound_destination(OffnetReq),
     lager:debug("received outbound sms resource request for ~s", [Number]),
-    case stepswitch_util:lookup_number(Number) of
-        {'ok', AccountId, Props} ->
-            maybe_force_outbound_sms(knm_number_options:set_account_id(Props, AccountId), OffnetReq);
+    case knm_number:lookup_account(Number) of
+        {'ok', _AccountId, Props} ->
+            maybe_force_outbound_sms(Props, OffnetReq);
         _ -> maybe_sms(Number, OffnetReq)
     end.
 
