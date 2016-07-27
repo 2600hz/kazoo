@@ -33,7 +33,7 @@
 -spec start_link(atom(), kz_proplist()) -> startlink_ret().
 start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
-    supervisor:start_link({'local', ?SERVER}, ?MODULE, [Node, Options]).
+    supervisor:start_link(?MODULE, [Node, Options]).
 
 %% ===================================================================
 %% Supervisor callbacks
