@@ -142,11 +142,9 @@ pad_row_to(_, Row) ->
 associator(CSVHeader, OrderedFields, Verifier) ->
     Max = length(OrderedFields),
     Indexed = lists:zip(lists:seq(1, length(CSVHeader)), CSVHeader),
-    F =
-        fun ({I,Header}, Map) ->
-                Map#{find_position(Header, OrderedFields, 1) => I}
-        end,
-    Map = lists:foldl(F, #{}, Indexed),
+    Map = maps:from_list([{find_position(Header, OrderedFields, 1), I}
+                          || {I,Header} <- Indexed
+                         ]),
     OrderedFieldsAtoms = [kz_util:to_atom(Field, 'true') || Field <- OrderedFields],
     fun (Row0) ->
             Row = pad_row_to(Max, Row0),
