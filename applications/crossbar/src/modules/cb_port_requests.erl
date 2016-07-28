@@ -381,13 +381,29 @@ patch(Context, Id, ?PORT_SUBMITTED) ->
 patch(Context, Id, ?PORT_PENDING) ->
     patch_then_notify(Context, Id, ?PORT_PENDING);
 patch(Context, Id, ?PORT_SCHEDULED) ->
-    patch_then_notify(Context, Id, ?PORT_SCHEDULED);
+    maybe_patch_to_scheduled(Context, Id);
 patch(Context, Id, ?PORT_COMPLETED) ->
     patch_then_notify(Context, Id, ?PORT_COMPLETED);
 patch(Context, Id, ?PORT_REJECTED) ->
     patch_then_notify(Context, Id, ?PORT_REJECTED);
 patch(Context, Id, ?PORT_CANCELED) ->
     patch_then_notify(Context, Id, ?PORT_CANCELED).
+
+-spec maybe_patch_to_scheduled(cb_context:context(), path_token()) -> cb_context:context().
+maybe_patch_to_scheduled(Context, Id) ->
+    JObj = cb_context:req_data(Context),
+    case kz_json:get_value(<<"scheduled_date">>, JObj) of
+        'undefined' ->
+            cb_context:add_validation_error(<<"error">>
+					   ,<<"type">>
+					   ,kz_json:from_list([{<<"message">>, <<"Schedule update missing parameters">>}
+							      ,{<<"missing">>, <<"schedule_date">>}
+							      ])
+					   ,Context);
+
+        _Scheduled ->
+            patch_then_notify(Context, Id, ?PORT_SCHEDULED)
+    end.
 
 %% @private
 -spec patch_then_notify(cb_context:context(), path_token(), path_token()) -> cb_context:context().
