@@ -133,18 +133,27 @@ create(Num, Options) ->
                             dry_run_or_number_return().
 create_or_load(Num, Options0) ->
     AccountId = knm_number_options:assign_to(Options0),
-    ToState =
-        case kz_services:is_reseller(AccountId) of
-            'false' -> ?NUMBER_STATE_IN_SERVICE;
-            'true' ->
-                case kapps_util:get_master_account_id() of
-                    {'ok', AccountId} -> ?NUMBER_STATE_AVAILABLE;
-                    {'ok', _} -> ?NUMBER_STATE_RESERVED
-                end
-        end,
+    ToState = state_for_create(AccountId),
     lager:debug("picked ~s state ~s for ~s", [Num, ToState, AccountId]),
     Options = [{'state', ToState} | Options0],
     create_or_load(Num, Options, knm_phone_number:fetch(Num)).
+
+-spec state_for_create(ne_binary()) -> ne_binary().
+-ifdef(TEST).
+state_for_create(?MASTER_ACCOUNT_ID) -> ?NUMBER_STATE_AVAILABLE;
+state_for_create(?RESELLER_ACCOUNT_ID) -> ?NUMBER_STATE_RESERVED;
+state_for_create(_AccountId) -> ?NUMBER_STATE_IN_SERVICE.
+-else.
+state_for_create(AccountId) ->
+    case kz_services:is_reseller(AccountId) of
+        'false' -> ?NUMBER_STATE_IN_SERVICE;
+        'true' ->
+            case kapps_util:get_master_account_id() of
+                {'ok', AccountId} -> ?NUMBER_STATE_AVAILABLE;
+                {'ok', _} -> ?NUMBER_STATE_RESERVED
+            end
+    end.
+-endif.
 
 -spec create_or_load(ne_binary(), knm_number_options:options(), knm_phone_number_return()) ->
                             dry_run_or_number_return().
