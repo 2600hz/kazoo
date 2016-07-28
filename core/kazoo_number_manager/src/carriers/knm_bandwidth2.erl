@@ -119,7 +119,7 @@ find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
 find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
     find_numbers(Rest, Quantity, Options);
 
-find_numbers(<<Prefix:3/binary, _/binary>>=_Num, Quantity, Options) when ?IS_US_TOLLFREE(Prefix) ->
+find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE(Prefix) ->
     <<_:1/binary, Wildcard/binary>> = Prefix,
     Params = [ "tollFreeWildCardPattern=", binary_to_list(Wildcard), "*"
                "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
