@@ -160,10 +160,12 @@ expression_to_schema(?MATCH(LHS, RHS), Schemas) ->
     expressions_to_schema([LHS, RHS], Schemas);
 expression_to_schema(?BEGIN_END(Exprs), Schemas) ->
     expressions_to_schema(Exprs, Schemas);
-expression_to_schema(?CASE(Expression, Clauses), Schema) ->
+expression_to_schema(?CASE(Expression, Clauses), Schemas) ->
     clauses_to_schema(Clauses
-                     ,expression_to_schema(Expression, Schema)
+                     ,expression_to_schema(Expression, Schemas)
                      );
+expression_to_schema(?IF(Clauses), Schemas) ->
+    clauses_to_schema(Clauses, Schemas);
 expression_to_schema(?MAP_CREATION(Exprs), Schemas) ->
     expressions_to_schema(Exprs, Schemas);
 expression_to_schema(?MAP_UPDATE(_Var, Exprs), Schemas) ->
@@ -267,7 +269,8 @@ guess_type('get_integer', _Default) -> <<"integer">>;
 guess_type('get_float', _Default) -> <<"number">>;
 guess_type('get_atom', _Default) -> <<"string">>;
 guess_type('set_default', _Default) -> 'undefined';
-guess_type('set', _Default) -> 'undefined';
+guess_type('set', Default) -> guess_type_by_default(Default);
+guess_type('update_default', Default) -> guess_type_by_default(Default);
 guess_type(_F, _Default) ->
     io:format("  no guess for ~p ~p~n", [_F, _Default]),
     'undefined'.

@@ -139,6 +139,9 @@
 -define(CASE(Expression, Clauses)
        ,{'case',_, Expression, Clauses}
        ).
+-define(IF(Clauses)
+       ,{'if',_,Clauses}
+       ).
 
 -define(TUPLE(Elements), {'tuple', _, Elements}).
 
