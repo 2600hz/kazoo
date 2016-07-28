@@ -68,13 +68,8 @@ find_numbers(Prefix, Quantity, Options) ->
 -spec acquire_number(knm_number:knm_number()) ->
                             knm_number:knm_number().
 acquire_number(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    Num =
-        case knm_phone_number:number(PhoneNumber) of
-            <<$+, N/binary>> -> N;
-            N -> N
-        end,
-    URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, kz_util:to_binary(Num)]),
+    Num = to_simwood(Number),
+    URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, Num]),
     case query_simwood(URL, 'put') of
         {'ok', _Body} -> Number;
         {'error', Error} -> knm_errors:by_carrier(?MODULE, Error, Number)
@@ -89,13 +84,8 @@ acquire_number(Number) ->
 -spec disconnect_number(knm_number:knm_number()) ->
                                knm_number:knm_number().
 disconnect_number(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    Num =
-        case knm_phone_number:number(PhoneNumber) of
-            <<$+, N/binary>> -> N;
-            N -> N
-        end,
-    URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, kz_util:to_binary(Num)]),
+    Num = to_simwood(Number),
+    URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, Num]),
     case query_simwood(URL, 'delete') of
         {'ok', _Body} -> Number;
         {'error', Error} -> knm_errors:by_carrier(?MODULE, Error, Number)
@@ -126,7 +116,19 @@ should_lookup_cnam() -> 'true'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec query_simwood(ne_binary(), 'get'|'put'|'delete') ->
+-spec to_simwood(knm_number:knm_number()) -> ne_binary().
+to_simwood(Number) ->
+    case knm_phone_number:number(knm_number:phone_number(Number)) of
+        <<$+, N/binary>> -> N;
+        N -> N
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec query_simwood(ne_binary(), 'get' | 'put' | 'delete') ->
                            {'ok', iolist()} |
                            {'error', 'not_available'}.
 query_simwood(URL, Verb) ->

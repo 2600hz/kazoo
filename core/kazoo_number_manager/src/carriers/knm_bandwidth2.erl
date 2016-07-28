@@ -177,7 +177,7 @@ acquire_number(Number) ->
             knm_errors:unspecified('provisioning_disabled', Number);
         'true' ->
             PhoneNumber = knm_number:phone_number(Number),
-            Num = reformat_number_for_acquire(knm_phone_number:number(PhoneNumber)),
+            Num = to_bandwidth2(knm_phone_number:number(PhoneNumber)),
             ON = lists:flatten([?BW2_ORDER_NAME_PREFIX, "-", integer_to_list(kz_util:current_tstamp())]),
             AuthBy = knm_phone_number:auth_by(PhoneNumber),
 
@@ -198,16 +198,14 @@ acquire_number(Number) ->
                 {'ok', Xml} ->
                     Response = xmerl_xpath:string("Order", Xml),
                     OrderData = number_order_response_to_json(Response),
-                    knm_number:set_phone_number(
-                      Number
-                                               ,knm_phone_number:update_carrier_data(PhoneNumber, OrderData)
-                     )
+                    PN = knm_phone_number:update_carrier_data(PhoneNumber, OrderData),
+                    knm_number:set_phone_number(Number, PN)
             end
     end.
 
--spec reformat_number_for_acquire(ne_binary()) -> ne_binary().
-reformat_number_for_acquire(<<"+1", Number/binary>>) -> Number;
-reformat_number_for_acquire(Number) -> Number.
+-spec to_bandwidth2(ne_binary()) -> ne_binary().
+to_bandwidth2(<<"+1", Number/binary>>) -> Number;
+to_bandwidth2(Number) -> Number.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -8,13 +8,13 @@
 %%%-------------------------------------------------------------------
 -module(knm_errors).
 
--export([unauthorized/0
+-export([unspecified/2
+        ,unauthorized/0
         ,number_exists/1
         ,invalid_state_transition/3
         ,no_change_required/1
         ,service_restriction/1
         ,carrier_not_specified/1
-        ,unspecified/2
         ,not_enough_credit/2
         ,invalid/2
         ,multiple_choice/2
@@ -52,6 +52,10 @@
              ,thrown_error/0
              ]).
 
+-spec unspecified(any(), kn() | ne_binary()) -> no_return().
+unspecified(Error, Number) ->
+    throw({'error', Error, Number}).
+
 -spec unauthorized() -> no_return().
 unauthorized() ->
     throw({'error', 'unauthorized'}).
@@ -82,11 +86,6 @@ service_restriction(Message) ->
 -spec carrier_not_specified(kn()) -> no_return().
 carrier_not_specified(Number) ->
     throw({'error', 'carrier_not_specified', Number}).
-
--spec unspecified(any(), kn() | ne_binary()) ->
-                         no_return().
-unspecified(Error, Number) ->
-    throw({'error', Error, Number}).
 
 -spec not_enough_credit(kn(), integer()) ->
                                no_return().
