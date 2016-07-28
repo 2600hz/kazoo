@@ -45,16 +45,7 @@ find_numbers(Number, Quantity, Options) ->
         'undefined' -> {'error', 'not_available'};
         _AccountId ->
             ResellerId = props:get_value(?KNM_RESELLERID_CARRIER, Options),
-            case do_find_numbers(Number, Quantity, ResellerId) of
-                {'ok', Enough}=Ok when length(Enough) >= Quantity -> Ok;
-                {'error', _R}=Error -> Error;
-                {'ok', NotEnough}=Meh ->
-                    {'ok', ResellerJObj} = kz_account:fetch(ResellerId),
-                    case kz_account:allow_number_additions(ResellerJObj) of
-                        'true' -> throw({'stopping_here', NotEnough});
-                        'false' -> Meh
-                    end
-            end
+            do_find_numbers(Number, Quantity, ResellerId)
     end.
 
 -spec do_find_numbers(ne_binary(), pos_integer(), ne_binary()) ->

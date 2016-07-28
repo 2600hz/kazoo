@@ -35,6 +35,8 @@
        ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)).
 -define(CARRIER_MODULES
        ,kapps_config:get(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES)).
+-define(CARRIER_MODULES(AccountId)
+       ,kapps_account_config:get(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -242,8 +244,9 @@ get_available_carriers(Options) ->
         'undefined' ->
             keep_only_reachable(?CARRIER_MODULES);
         _AccountId ->
+            ResellerId = props:get_value(?KNM_RESELLERID_CARRIER, Options),
             First = [?CARRIER_RESERVED, ?CARRIER_RESERVED_RESELLER, ?CARRIER_LOCAL],
-            keep_only_reachable(First ++ (?CARRIER_MODULES -- First))
+            keep_only_reachable(First ++ (?CARRIER_MODULES(ResellerId) -- First))
     end.
 
 -spec default_carriers() -> atoms().
