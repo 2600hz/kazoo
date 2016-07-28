@@ -1,0 +1,1 @@
+{"properties":{"default_reconcile_numbers":{"type":"boolean","description":"","name":"default_reconcile_numbers","default":false}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.crossbar.callflows","description":"Schema for crossbar.callflows system_config","required":true,"type":"object"}

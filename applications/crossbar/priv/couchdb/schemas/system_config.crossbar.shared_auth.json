@@ -1,0 +1,1 @@
+{"properties":{"authoritative_crossbar":{"type":"string","description":"","name":"authoritative_crossbar"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.crossbar.shared_auth","description":"Schema for crossbar.shared_auth system_config","required":true,"type":"object"}

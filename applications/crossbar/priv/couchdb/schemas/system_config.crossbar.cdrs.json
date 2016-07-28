@@ -1,0 +1,1 @@
+{"properties":{"maximum_range":{"type":"integer","description":"","name":"maximum_range","default":2682000},"maximum_bulk":{"type":"integer","description":"","name":"maximum_bulk","default":50}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.crossbar.cdrs","description":"Schema for crossbar.cdrs system_config","required":true,"type":"object"}

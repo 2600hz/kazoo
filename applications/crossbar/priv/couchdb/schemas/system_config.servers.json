@@ -1,0 +1,1 @@
+{"properties":{"clock_timezone":{"type":"string","description":"","name":"clock_timezone","default":"UTC"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.servers","description":"Schema for servers system_config","required":true,"type":"object"}

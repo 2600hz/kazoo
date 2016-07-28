@@ -1,0 +1,1 @@
+{"properties":{"crawler_delay_time_ms":{"type":"integer","description":"","name":"crawler_delay_time_ms","default":60000}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.number_manager.port_request","description":"Schema for number_manager.port_request system_config","required":true,"type":"object"}

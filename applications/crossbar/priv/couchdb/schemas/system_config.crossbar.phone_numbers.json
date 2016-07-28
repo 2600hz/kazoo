@@ -1,0 +1,1 @@
+{"properties":{"phonebook_url":{"type":"string","description":"","name":"phonebook_url"},"default_country":{"type":"string","description":"","name":"default_country","default":"US"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.crossbar.phone_numbers","description":"Schema for crossbar.phone_numbers system_config","required":true,"type":"object"}

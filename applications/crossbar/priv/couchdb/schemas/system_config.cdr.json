@@ -1,0 +1,1 @@
+{"properties":{"store_anonymous":{"type":"boolean","description":"","name":"store_anonymous","default":false},"v3_migrate_num_months":{"type":"integer","description":"","name":"v3_migrate_num_months","default":4}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.cdr","description":"Schema for cdr system_config","required":true,"type":"object"}

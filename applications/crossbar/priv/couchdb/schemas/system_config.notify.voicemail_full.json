@@ -1,0 +1,1 @@
+{"properties":{"default_to":{"description":"","name":"default_to"},"default_enabled":{"type":"boolean","description":"","name":"default_enabled","default":false}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.notify.voicemail_full","description":"Schema for notify.voicemail_full system_config","required":true,"type":"object"}

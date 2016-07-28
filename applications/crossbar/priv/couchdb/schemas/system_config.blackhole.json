@@ -1,0 +1,1 @@
+{"properties":{"autoload_modules":{"type":"array","description":"","name":"autoload_modules","default":["bh_token_auth"]},"port":{"type":"integer","description":"","name":"port","default":5555}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.blackhole","description":"Schema for blackhole system_config","required":true,"type":"object"}

@@ -1,0 +1,1 @@
+{"properties":{"iterate_over_bcc":{"type":"boolean","description":"","name":"iterate_over_bcc","default":true}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.teletype","description":"Schema for teletype system_config","required":true,"type":"object"}

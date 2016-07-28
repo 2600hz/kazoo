@@ -1,0 +1,1 @@
+{"properties":{"apple":{"description":"","name":"apple","type":"string"},"google":{"description":"","name":"google","type":"string"},"User-Agents":{"type":"object","description":"","name":"User-Agents","default":{}}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.pusher","description":"Schema for pusher system_config","required":true,"type":"object"}

@@ -1,0 +1,1 @@
+{"properties":{"maximum_range":{"type":"integer","description":"","name":"maximum_range","default":2682000}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.crossbar.services","description":"Schema for crossbar.services system_config","required":true,"type":"object"}

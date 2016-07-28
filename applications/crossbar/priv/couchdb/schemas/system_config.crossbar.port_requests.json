@@ -1,0 +1,1 @@
+{"properties":{"unfinished_port_request_lifetime_s":{"type":"integer","description":"","name":"unfinished_port_request_lifetime_s","default":2592000}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.crossbar.port_requests","description":"Schema for crossbar.port_requests system_config","required":true,"type":"object"}

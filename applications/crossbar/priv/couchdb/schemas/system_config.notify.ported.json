@@ -1,0 +1,1 @@
+{"properties":{"default_to":{"type":"string","description":"","name":"default_to","default":""},"send_from_admin_email":{"type":"boolean","description":"","name":"send_from_admin_email","default":true}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.notify.ported","description":"Schema for notify.ported system_config","required":true,"type":"object"}

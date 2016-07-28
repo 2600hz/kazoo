@@ -1,0 +1,1 @@
+{"properties":{"default_priv_level":{"type":"string","description":"","name":"default_priv_level","default":"admin"},"_":{"type":"object","description":"","name":"_"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.crossbar.token_restrictions","description":"Schema for crossbar.token_restrictions system_config","required":true,"type":"object"}

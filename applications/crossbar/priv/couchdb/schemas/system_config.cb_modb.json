@@ -1,0 +1,1 @@
+{"properties":{"maybe_archive_modbs":{"type":"boolean","description":"","name":"maybe_archive_modbs","default":false}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.cb_modb","description":"Schema for cb_modb system_config","required":true,"type":"object"}

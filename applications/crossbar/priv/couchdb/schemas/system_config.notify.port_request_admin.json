@@ -1,0 +1,1 @@
+{"properties":{"default_to":{"description":"","name":"default_to"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.notify.port_request_admin","description":"Schema for notify.port_request_admin system_config","required":true,"type":"object"}
