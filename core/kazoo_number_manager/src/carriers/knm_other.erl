@@ -129,7 +129,7 @@ acquire_number(Number) ->
     DefaultCountry = kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
     case kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
         'undefined' ->
-            knm_errors:unspecified('missing_provider_url', Number);
+            knm_errors:unspecified('missing_provider_url', Num);
         Url ->
             Hosts = case kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"endpoints">>) of
                         'undefined' -> [];
