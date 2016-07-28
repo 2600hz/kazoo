@@ -89,11 +89,9 @@ new(DID) ->
 
 -spec new(ne_binary(), knm_number_options:options()) -> knm_phone_number().
 new(DID, Options) ->
-    NormalizedNum = knm_converters:normalize(DID),
     {'ok', PhoneNumber} =
         setters(new(),
-                [{fun set_number/2, NormalizedNum}
-                ,{fun set_number_db/2, knm_converters:to_db(NormalizedNum)}
+                [{fun set_number/2, knm_converters:normalize(DID)}
                 ,{fun set_assign_to/2, knm_number_options:assign_to(Options)}
                 ,{fun set_state/2, knm_number_options:state(Options)}
                 ,{fun set_module_name/2, knm_number_options:module_name(Options)}
@@ -318,11 +316,9 @@ from_json(JObj) ->
                 lists:foldl(fun (FeatureKey, Acc) -> kz_json:set_value(FeatureKey, kz_json:new(), Acc) end, kz_json:new(), FeaturesList);
             FeaturesJObj -> FeaturesJObj
         end,
-    NormalizedNum = knm_converters:normalize(kz_doc:id(JObj)),
     {'ok', PhoneNumber} =
         setters(new(),
-                [{fun set_number/2, NormalizedNum}
-                ,{fun set_number_db/2, knm_converters:to_db(NormalizedNum)}
+                [{fun set_number/2, knm_converters:normalize(kz_doc:id(JObj))}
                 ,{fun set_assigned_to/2, kz_json:get_value(?PVT_ASSIGNED_TO, JObj)}
                 ,{fun set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
                 ,{fun set_used_by/2, kz_json:get_value(?PVT_USED_BY, JObj)}
@@ -428,8 +424,10 @@ setters_fold_apply(Fun, Args) ->
 number(#knm_phone_number{number=Num}) -> Num.
 
 -spec set_number(knm_phone_number(), ne_binary()) -> knm_phone_number().
-set_number(N, Number=?NE_BINARY) ->
-    N#knm_phone_number{number=Number}.
+set_number(N, NormalizedNum=?NE_BINARY) ->
+    N#knm_phone_number{number = NormalizedNum
+                      ,number_db = knm_converters:to_db(NormalizedNum)
+                      }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -439,10 +437,6 @@ set_number(N, Number=?NE_BINARY) ->
 -spec number_db(knm_phone_number()) -> ne_binary().
 number_db(#knm_phone_number{number_db=NumberDb}) ->
     NumberDb.
-
--spec set_number_db(knm_phone_number(), ne_binary()) -> knm_phone_number().
-set_number_db(N, NumberDb=?NE_BINARY) ->
-    N#knm_phone_number{number_db=NumberDb}.
 
 %%--------------------------------------------------------------------
 %% @public
