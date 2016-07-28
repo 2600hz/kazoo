@@ -281,6 +281,7 @@ guess_type('get_float', _Default) -> <<"number">>;
 guess_type('get_atom', _Default) -> <<"string">>;
 guess_type('set_default', _Default) -> 'undefined';
 guess_type('set', Default) -> guess_type_by_default(Default);
+guess_type('set_node', Default) -> guess_type_by_default(Default);
 guess_type('update_default', Default) -> guess_type_by_default(Default);
 guess_type(_F, _Default) ->
     io:format("  no guess for ~p ~p~n", [_F, _Default]),
@@ -305,8 +306,11 @@ guess_type_by_default(?MOD_FUN_ARGS('kapps_config', F, [_Cat, _Key, Default |_])
     guess_type(F, Default);
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'new', [])) -> <<"object">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'from_list', _Args)) -> <<"object">>;
+guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'set_value', [_K, V, _J])) ->
+    guess_type_by_default(V);
 guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_number', [])) -> <<"string">>;
-guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_name', [])) -> <<"string">>.
+guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_name', [])) -> <<"string">>;
+guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'to_integer', _Args)) -> <<"integer">>.
 
 guess_properties(<<_/binary>> = Key, Type, Default) ->
     kz_json:from_list(
