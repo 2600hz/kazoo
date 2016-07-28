@@ -12,8 +12,13 @@ process_app(App) ->
     process_app(App, kz_json:new()).
 
 process_app(App, Schemas) ->
-    {'ok', Modules} = application:get_key(App, 'modules'),
-    lists:foldl(fun module_to_schema/2, Schemas, Modules).
+    case application:get_key(App, 'modules') of
+        {'ok', Modules} ->
+            lists:foldl(fun module_to_schema/2, Schemas, Modules);
+        'undefined' ->
+            {'ok', _} = application:ensure_all_started(App),
+            process_app(App, Schemas)
+    end.
 
 process_module(Module) ->
     module_to_schema(Module, kz_json:new()).
@@ -99,6 +104,10 @@ expression_to_schema(?LC_BIN_GENERATOR(Pattern, Expr), Schemas) ->
     expressions_to_schema([Pattern, Expr], Schemas);
 expression_to_schema(?ANON(Clauses), Schemas) ->
     clauses_to_schema(Clauses, Schemas);
+expression_to_schema(?GEN_FUN_ARGS(?ANON(Clauses), Args), Schemas) ->
+    clauses_to_schema(Clauses
+                     ,expressions_to_schema(Args, Schemas)
+                     );
 expression_to_schema(?VAR(_), Schemas) ->
     Schemas;
 expression_to_schema(?BINARY_MATCH(_), Schemas) ->
@@ -111,7 +120,7 @@ expression_to_schema(?RECORD(_Name, Fields), Schemas) ->
     expressions_to_schema(Fields, Schemas);
 expression_to_schema(?RECORD_FIELD_BIND(_Key, Value), Schemas) ->
     expression_to_schema(Value, Schemas);
-expression_to_schema(?RECORD_FIELD_ACCESS(_RecordName, _Name, Value), Schemas) ->
+expression_to_schema(?GEN_RECORD_FIELD_ACCESS(_RecordName, _Name, Value), Schemas) ->
     expression_to_schema(Value, Schemas);
 expression_to_schema(?RECORD_INDEX(_Name, _Field), Schemas) ->
     Schemas;
@@ -187,7 +196,7 @@ config_key_to_schema(_F, _Document, 'undefined', _Default, Schemas) ->
 config_key_to_schema(_F, 'undefined', _Key, _Default, Schemas) ->
     Schemas;
 config_key_to_schema(F, Document, Key, Default, Schemas) ->
-    Properties = guess_properties(Key, guess_type(F), Default),
+    Properties = guess_properties(Key, guess_type(F, Default), Default),
 
     Existing = kz_json:get_json_value([Document, <<"properties">> | Key]
                                      ,Schemas
@@ -216,7 +225,7 @@ key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [Doc, Field | _]), Tail)
      ,<<"properties">>
      | key_to_key_path(Tail)
     ];
-key_to_key_path(?GEN_MOD_FUN_ARGS(_M, _F, _Args)) ->
+key_to_key_path(?GEN_FUN_ARGS(_F, _Args)) ->
     'undefined';
 
 key_to_key_path(?LIST(?VAR(Name), Tail)) ->
@@ -232,8 +241,6 @@ key_to_key_path(?LIST(Head, Tail)) ->
 key_to_key_path(?BINARY_MATCH(K)) ->
     [kz_ast_util:binary_match_to_binary(K)].
 
-guess_type(F) -> guess_type(F, 'undefined').
-
 guess_type('is_true', _Default) -><<"boolean">>;
 guess_type('get_is_true', _Default) -><<"boolean">>;
 guess_type('get_boolean', _Default) -><<"boolean">>;
@@ -246,6 +253,7 @@ guess_type('get_json', _Default) -> <<"object">>;
 guess_type('get_string', _Default) -> <<"string">>;
 guess_type('get_integer', _Default) -> <<"integer">>;
 guess_type('get_float', _Default) -> <<"number">>;
+guess_type('get_atom', _Default) -> <<"string">>;
 guess_type('set_default', _Default) -> 'undefined';
 guess_type('set', _Default) -> 'undefined';
 guess_type(_F, _Default) ->
@@ -253,8 +261,26 @@ guess_type(_F, _Default) ->
     'undefined'.
 
 guess_type_by_default('undefined') -> 'undefined';
+guess_type_by_default(?ATOM('undefined')) -> 'undefined';
+guess_type_by_default(?ATOM('true')) -> <<"boolean">>;
+guess_type_by_default(?ATOM('false')) -> <<"boolean">>;
+guess_type_by_default(?ATOM(_)) -> <<"string">>;
+guess_type_by_default(?VAR(_V)) -> 'undefined';
 guess_type_by_default(?EMPTY_LIST) -> <<"array">>;
-guess_type_by_default(?LIST(_Head, _Tail)) -> <<"array">>.
+guess_type_by_default(?LIST(_Head, _Tail)) -> <<"array">>;
+guess_type_by_default(?BINARY_MATCH(_V)) -> <<"string">>;
+guess_type_by_default(?INTEGER(_I)) -> <<"integer">>;
+guess_type_by_default(?FLOAT(_F)) -> <<"number">>;
+guess_type_by_default(?BINARY_OP(_Op, Arg1, _Arg2)) ->
+    guess_type_by_default(Arg1);
+guess_type_by_default(?MOD_FUN_ARGS('kapps_config', F, [_Cat, _Key])) ->
+    guess_type(F, 'undefined');
+guess_type_by_default(?MOD_FUN_ARGS('kapps_config', F, [_Cat, _Key, Default |_])) ->
+    guess_type(F, Default);
+guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'new', [])) -> <<"object">>;
+guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'from_list', _Args)) -> <<"object">>;
+guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_number', [])) -> <<"string">>;
+guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_name', [])) -> <<"string">>.
 
 guess_properties(<<_/binary>> = Key, Type, Default) ->
     kz_json:from_list(

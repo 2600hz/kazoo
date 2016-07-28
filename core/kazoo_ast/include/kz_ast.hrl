@@ -36,6 +36,9 @@
 -define(CHAR(C), {'char', _, C}).
 -define(STRING(Value), {'string', _, Value}).
 
+-define(GEN_RECORD_FIELD_ACCESS(RecName, FieldName, Value)
+        ,{'record_field', _, RecName, FieldName, Value}
+       ).
 -define(RECORD_FIELD_REST
        ,{'record_field', _, ?VAR('_'), ?ATOM('_')}
        ).
@@ -43,7 +46,7 @@
        ,{'record_field', _,?ATOM(Key),Value}
        ).
 -define(RECORD_FIELD_ACCESS(RecordName, Name, Value)
-       ,{'record_field', _, ?VAR(Name), RecordName, Value}
+        ,?GEN_RECORD_FIELD_ACCESS(?VAR(Name), RecordName, Value)
        ).
 -define(RECORD(Name, Fields), {'record', _, Name, Fields}).
 -define(GEN_RECORD(NameExpr, RecName, Fields)
@@ -68,7 +71,9 @@
        ,{'try',_,Body,Clauses,CatchClauses,AfterBody}
        ).
 
--define(GEN_MOD_FUN(MExpr, FExpr), {'remote', _, MExpr, FExpr}).
+-define(GEN_MOD_FUN(MExpr, FExpr)
+       ,{'remote', _, MExpr, FExpr}
+       ).
 -define(MOD_FUN(Module, Function)
        ,?GEN_MOD_FUN(?ATOM(Module),?ATOM(Function))
        ).
@@ -79,7 +84,8 @@
        ,?GEN_MOD_FUN(?ATOM(Module),?VAR(Function))
        ).
 
--define(FUN_ARGS(Function, Args), {'call', _, ?ATOM(Function), Args}).
+-define(GEN_FUN_ARGS(F, Args), {'call', _, F, Args}).
+-define(FUN_ARGS(Function, Args), ?GEN_FUN_ARGS(?ATOM(Function), Args)).
 -define(DYN_FUN_ARGS(Function, Args), {'call', _, ?VAR(Function), Args}).
 -define(DYN_MOD_FUN_ARGS(M, F, As)
        ,{'call', _, ?DYN_MOD_FUN(M, F), As}
@@ -88,7 +94,7 @@
        ,{'call', _, ?MOD_DYN_FUN(M, F), As}
        ).
 -define(GEN_MOD_FUN_ARGS(MExpr, FExpr, Args)
-        ,{'call', _, ?GEN_MOD_FUN(MExpr, FExpr), Args}
+       ,?GEN_FUN_ARGS(?GEN_MOD_FUN(MExpr, FExpr), Args)
        ).
 
 -define(GEN_MFA(M, F, A), {'fun', _, {'function', M, F, A}}).
