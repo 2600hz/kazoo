@@ -126,6 +126,11 @@
         ,{'receive', _, Clauses, AfterExpr, AfterBody}
        ).
 
+-define(MAP_CREATION(Exprs), {'map', _, Exprs}).
+-define(MAP_UPDATE(Var, Exprs), {'map', _, Var, Exprs}).
+-define(MAP_FIELD_ASSOC(K, V), {'map_field_assoc',_,K,V}).
+-define(MAP_FIELD_EXACT(K, V), {'map_field_exact',_,K,V}).
+
 -define(LAGER, ?CASE(
                   ?TUPLE(
                      [?FUN_ARGS('whereis', [?ATOM('lager_event')])
