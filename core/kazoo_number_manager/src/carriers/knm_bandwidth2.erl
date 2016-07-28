@@ -119,14 +119,10 @@ find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
 find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
     find_numbers(Rest, Quantity, Options);
 
-find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE(Prefix) ->
-    <<"8", Second:1/binary, _/binary>> = Prefix,
-    ToSearch = case knm_converters:is_reconcilable(Num) of
-                   'true' -> Num;
-                   'false' -> Second
-               end,
+find_numbers(<<Prefix:3/binary, _/binary>>=_Num, Quantity, Options) when ?IS_US_TOLLFREE(Prefix) ->
+     <<_:1/binary, Wildcard/binary>> = Prefix,
 
-    Params = [ "tollFreeWildCardPattern=8", binary_to_list(ToSearch), "*"
+    Params = [ "tollFreeWildCardPattern=", binary_to_list(Wildcard), "*"
                "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
     {'ok', Result} = search(Params),
@@ -411,7 +407,7 @@ maybe_add_us_prefix(Num) -> <<"+1", Num/binary>>.
 -spec tollfree_search_response_to_KNM(xml_el(), ne_binary()) ->
                                              knm_number:knm_number_return().
 tollfree_search_response_to_KNM(Xml, AccountId) ->
-    Num = kz_util:get_xml_value("//TelephoneNumber/text()", Xml),
+    Num = maybe_add_us_prefix(kz_util:get_xml_value("//TelephoneNumber/text()", Xml)),
     knm_carriers:create_found(Num, ?MODULE, AccountId, kz_json:new()).
 
 %%--------------------------------------------------------------------
