@@ -180,6 +180,8 @@ config_to_schema('get_all_kvs', _Args, Schemas) ->
     Schemas;
 config_to_schema('flush', _Args, Schemas) ->
     Schemas;
+config_to_schema('migrate', _Args, Schemas) ->
+    Schemas;
 config_to_schema(F, [Cat, K], Schemas) ->
     config_to_schema(F, [Cat, K, 'undefined'], Schemas);
 config_to_schema(F, [Cat, K, Default, _Node], Schemas) ->
@@ -225,6 +227,15 @@ key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [Doc, Field | _]), Tail)
      ,<<"properties">>
      | key_to_key_path(Tail)
     ];
+key_to_key_path(?LIST(?MOD_FUN_ARGS('kz_util', 'to_binary', [?VAR(Name)]), Tail)) ->
+    [iolist_to_binary([${, kz_util:to_binary(Name), $}])
+     ,<<"properties">>
+     | key_to_key_path(Tail)
+    ];
+
+key_to_key_path(?MOD_FUN_ARGS('kz_util', 'to_binary', [?VAR(Name)])) ->
+    [iolist_to_binary([${, kz_util:to_binary(Name), $}])];
+
 key_to_key_path(?GEN_FUN_ARGS(_F, _Args)) ->
     'undefined';
 
@@ -247,6 +258,7 @@ guess_type('get_boolean', _Default) -><<"boolean">>;
 guess_type('get', Default) -> guess_type_by_default(Default);
 guess_type('fetch', Default) -> guess_type_by_default(Default);
 guess_type('get_non_empty', Default) -> guess_type_by_default(Default);
+guess_type('get_node_value', Default) -> guess_type_by_default(Default);
 guess_type('get_binary', _Default) -> <<"string">>;
 guess_type('get_ne_binary', _Default) -> <<"string">>;
 guess_type('get_json', _Default) -> <<"object">>;
