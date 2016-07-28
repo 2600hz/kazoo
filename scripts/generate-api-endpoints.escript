@@ -469,7 +469,6 @@ path_name(<<_/binary>>=Module) ->
                ,[{'capture', 'all_but_first', 'binary'}]
                )
     of
-        {'match', [<<"about">>]} -> <<?CURRENT_VERSION/binary, "/about">>;
         {'match', [<<"accounts">>]} -> <<?CURRENT_VERSION/binary, "/accounts">>;
         {'match', [<<"api_auth">>]} -> <<?CURRENT_VERSION/binary, "/api_auth">>;
         {'match', [<<"basic_auth">>]} -> <<?CURRENT_VERSION/binary, "/basic_auth">>;
