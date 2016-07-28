@@ -1,1 +1,34 @@
-{"properties":{"default_twoway_trunks":{"description":"","name":"default_twoway_trunks"},"default_inbound_trunks":{"description":"","name":"default_inbound_trunks"},"flat_rate_whitelist":{"type":"string","description":"","name":"flat_rate_whitelist","default":"^\\+?1\\d{10}$"},"flat_rate_blacklist":{"type":"string","description":"","name":"flat_rate_blacklist","default":"^\\+?1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340|900|8(?:[0,2,3,4,5,6,7]{2}|8[0-9]))\\d{7}$"},"default_{Key}":{"type":"integer","description":"","name":"default_{Key}"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.jonny5","description":"Schema for jonny5 system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.jonny5",
+    "description": "Schema for jonny5 system_config",
+    "properties": {
+        "default_inbound_trunks": {
+            "description": "",
+            "name": "default_inbound_trunks"
+        },
+        "default_twoway_trunks": {
+            "description": "",
+            "name": "default_twoway_trunks"
+        },
+        "default_{Key}": {
+            "description": "",
+            "name": "default_{Key}",
+            "type": "integer"
+        },
+        "flat_rate_blacklist": {
+            "default": "^\\+?1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340|900|8(?:[0,2,3,4,5,6,7]{2}|8[0-9]))\\d{7}$",
+            "description": "",
+            "name": "flat_rate_blacklist",
+            "type": "string"
+        },
+        "flat_rate_whitelist": {
+            "default": "^\\+?1\\d{10}$",
+            "description": "",
+            "name": "flat_rate_whitelist",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -1,1 +1,175 @@
-{"properties":{"fix_media_names":{"type":"boolean","description":"","name":"fix_media_names","default":true},"proxy_port":{"type":"string","description":"","name":"proxy_port","default":24517},"use_plaintext":{"type":"boolean","description":"","name":"use_plaintext","default":true},"proxy_listeners":{"type":"integer","description":"","name":"proxy_listeners","default":25},"use_ssl_proxy":{"type":"boolean","description":"","name":"use_ssl_proxy","default":false},"ssl_cert":{"type":"string","description":"","name":"ssl_cert"},"ssl_key":{"type":"string","description":"","name":"ssl_key"},"ssl_port":{"type":"integer","description":"","name":"ssl_port","default":24518},"ssl_password":{"type":"string","description":"","name":"ssl_password","default":""},"record_min_sec":{"type":"integer","description":"","name":"record_min_sec","default":0},"max_recording_time_limit":{"type":"integer","description":"","name":"max_recording_time_limit","default":600},"call_recording":{"properties":{"extension":{"properties":{"type":"string","description":"","name":"extension","default":"mp3"}}}},"store_recordings":{"type":"boolean","description":"","name":"store_recordings","default":false},"recorder_module":{"type":"string","description":"","name":"recorder_module","default":"kz_media_recording"},"proxy_store_authenticate":{"type":"boolean","description":"","name":"proxy_store_authenticate","default":true},"proxy_username":{"type":"string","description":"","name":"proxy_username","default":""},"proxy_password":{"type":"string","description":"","name":"proxy_password","default":""},"proxy_store_acls":{"type":"array","description":"","name":"proxy_store_acls","default":["127.0.0.0/24"]},"tts_cache":{"type":"integer","description":"","name":"tts_cache","default":3600000},"normalize_source_args":{"type":"string","description":"","name":"normalize_source_args","default":""},"normalize_destination_args":{"type":"string","description":"","name":"normalize_destination_args","default":"-r 8000"},"normalize_executable":{"type":"string","description":"","name":"normalize_executable","default":"sox"},"authenticated_playback":{"type":"boolean","description":"","name":"authenticated_playback","default":false},"authenticated_store":{"type":"boolean","description":"","name":"authenticated_store","default":true},"use_https":{"type":"boolean","description":"","name":"use_https","default":false},"support_account_overrides":{"type":"boolean","description":"","name":"support_account_overrides","default":true},"default_language":{"description":"","name":"default_language"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.media","description":"Schema for media system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.media",
+    "description": "Schema for media system_config",
+    "properties": {
+        "authenticated_playback": {
+            "default": false,
+            "description": "",
+            "name": "authenticated_playback",
+            "type": "boolean"
+        },
+        "authenticated_store": {
+            "default": true,
+            "description": "",
+            "name": "authenticated_store",
+            "type": "boolean"
+        },
+        "call_recording": {
+            "properties": {
+                "extension": {
+                    "properties": {
+                        "default": "mp3",
+                        "description": "",
+                        "name": "extension",
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "default_language": {
+            "description": "",
+            "name": "default_language"
+        },
+        "fix_media_names": {
+            "default": true,
+            "description": "",
+            "name": "fix_media_names",
+            "type": "boolean"
+        },
+        "max_recording_time_limit": {
+            "default": 600,
+            "description": "",
+            "name": "max_recording_time_limit",
+            "type": "integer"
+        },
+        "normalize_destination_args": {
+            "default": "-r 8000",
+            "description": "",
+            "name": "normalize_destination_args",
+            "type": "string"
+        },
+        "normalize_executable": {
+            "default": "sox",
+            "description": "",
+            "name": "normalize_executable",
+            "type": "string"
+        },
+        "normalize_source_args": {
+            "default": "",
+            "description": "",
+            "name": "normalize_source_args",
+            "type": "string"
+        },
+        "proxy_listeners": {
+            "default": 25,
+            "description": "",
+            "name": "proxy_listeners",
+            "type": "integer"
+        },
+        "proxy_password": {
+            "default": "",
+            "description": "",
+            "name": "proxy_password",
+            "type": "string"
+        },
+        "proxy_port": {
+            "default": 24517,
+            "description": "",
+            "name": "proxy_port",
+            "type": "string"
+        },
+        "proxy_store_acls": {
+            "default": [
+                "127.0.0.0/24"
+            ],
+            "description": "",
+            "name": "proxy_store_acls",
+            "type": "array"
+        },
+        "proxy_store_authenticate": {
+            "default": true,
+            "description": "",
+            "name": "proxy_store_authenticate",
+            "type": "boolean"
+        },
+        "proxy_username": {
+            "default": "",
+            "description": "",
+            "name": "proxy_username",
+            "type": "string"
+        },
+        "record_min_sec": {
+            "default": 0,
+            "description": "",
+            "name": "record_min_sec",
+            "type": "integer"
+        },
+        "recorder_module": {
+            "default": "kz_media_recording",
+            "description": "",
+            "name": "recorder_module",
+            "type": "string"
+        },
+        "ssl_cert": {
+            "description": "",
+            "name": "ssl_cert",
+            "type": "string"
+        },
+        "ssl_key": {
+            "description": "",
+            "name": "ssl_key",
+            "type": "string"
+        },
+        "ssl_password": {
+            "default": "",
+            "description": "",
+            "name": "ssl_password",
+            "type": "string"
+        },
+        "ssl_port": {
+            "default": 24518,
+            "description": "",
+            "name": "ssl_port",
+            "type": "integer"
+        },
+        "store_recordings": {
+            "default": false,
+            "description": "",
+            "name": "store_recordings",
+            "type": "boolean"
+        },
+        "support_account_overrides": {
+            "default": true,
+            "description": "",
+            "name": "support_account_overrides",
+            "type": "boolean"
+        },
+        "tts_cache": {
+            "default": 3600000,
+            "description": "",
+            "name": "tts_cache",
+            "type": "integer"
+        },
+        "use_https": {
+            "default": false,
+            "description": "",
+            "name": "use_https",
+            "type": "boolean"
+        },
+        "use_plaintext": {
+            "default": true,
+            "description": "",
+            "name": "use_plaintext",
+            "type": "boolean"
+        },
+        "use_ssl_proxy": {
+            "default": false,
+            "description": "",
+            "name": "use_ssl_proxy",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -1,1 +1,21 @@
-{"properties":{"store_recordings":{"type":"boolean","description":"","name":"store_recordings","default":false},"tts_texts_size":{"type":"integer","description":"","name":"tts_texts_size","default":4000}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.pivot","description":"Schema for pivot system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.pivot",
+    "description": "Schema for pivot system_config",
+    "properties": {
+        "store_recordings": {
+            "default": false,
+            "description": "",
+            "name": "store_recordings",
+            "type": "boolean"
+        },
+        "tts_texts_size": {
+            "default": 4000,
+            "description": "",
+            "name": "tts_texts_size",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

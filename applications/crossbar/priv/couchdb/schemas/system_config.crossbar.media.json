@@ -1,1 +1,21 @@
-{"properties":{"normalize_media":{"type":"boolean","description":"","name":"normalize_media","default":false},"normalization_format":{"type":"string","description":"","name":"normalization_format","default":"mp3"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.crossbar.media","description":"Schema for crossbar.media system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.media",
+    "description": "Schema for crossbar.media system_config",
+    "properties": {
+        "normalization_format": {
+            "default": "mp3",
+            "description": "",
+            "name": "normalization_format",
+            "type": "string"
+        },
+        "normalize_media": {
+            "default": false,
+            "description": "",
+            "name": "normalize_media",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -1,1 +1,83 @@
-{"properties":{"tts_provider":{"type":"string","description":"","name":"tts_provider","default":"ispeech"},"tts_url":{"type":"string","description":"","name":"tts_url","default":"http://api.ispeech.org/api/json"},"tts_api_key":{"type":"string","description":"","name":"tts_api_key"},"tts_args_encode":{"type":"string","description":"","name":"tts_args_encode","default":"multipart"},"asr_provider":{"type":"string","description":"","name":"asr_provider","default":""},"asr_content_types":{"type":"array","description":"","name":"asr_content_types","default":["application/mpeg","application/wav"]},"asr_prefered_content_type":{"type":"string","description":"","name":"asr_prefered_content_type","default":"application/mpeg"},"asr_url":{"type":"string","description":"","name":"asr_url","default":"http://api.ispeech.org/api/rest"},"temporary_storage_path":{"type":"string","description":"","name":"temporary_storage_path","default":"/tmp"},"tts_language":{"type":"string","description":"","name":"tts_language","default":"en-US"},"tts_voice":{"type":"string","description":"","name":"tts_voice","default":"male"},"tts_default_voice":{"type":"string","description":"","name":"tts_default_voice","default":"female/en-US"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.speech","description":"Schema for speech system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.speech",
+    "description": "Schema for speech system_config",
+    "properties": {
+        "asr_content_types": {
+            "default": [
+                "application/mpeg",
+                "application/wav"
+            ],
+            "description": "",
+            "name": "asr_content_types",
+            "type": "array"
+        },
+        "asr_prefered_content_type": {
+            "default": "application/mpeg",
+            "description": "",
+            "name": "asr_prefered_content_type",
+            "type": "string"
+        },
+        "asr_provider": {
+            "default": "",
+            "description": "",
+            "name": "asr_provider",
+            "type": "string"
+        },
+        "asr_url": {
+            "default": "http://api.ispeech.org/api/rest",
+            "description": "",
+            "name": "asr_url",
+            "type": "string"
+        },
+        "temporary_storage_path": {
+            "default": "/tmp",
+            "description": "",
+            "name": "temporary_storage_path",
+            "type": "string"
+        },
+        "tts_api_key": {
+            "description": "",
+            "name": "tts_api_key",
+            "type": "string"
+        },
+        "tts_args_encode": {
+            "default": "multipart",
+            "description": "",
+            "name": "tts_args_encode",
+            "type": "string"
+        },
+        "tts_default_voice": {
+            "default": "female/en-US",
+            "description": "",
+            "name": "tts_default_voice",
+            "type": "string"
+        },
+        "tts_language": {
+            "default": "en-US",
+            "description": "",
+            "name": "tts_language",
+            "type": "string"
+        },
+        "tts_provider": {
+            "default": "ispeech",
+            "description": "",
+            "name": "tts_provider",
+            "type": "string"
+        },
+        "tts_url": {
+            "default": "http://api.ispeech.org/api/json",
+            "description": "",
+            "name": "tts_url",
+            "type": "string"
+        },
+        "tts_voice": {
+            "default": "male",
+            "description": "",
+            "name": "tts_voice",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

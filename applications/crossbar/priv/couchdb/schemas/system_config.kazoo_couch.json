@@ -1,1 +1,33 @@
-{"properties":{"allow_maintenance_db_delete":{"type":"boolean","description":"","name":"allow_maintenance_db_delete","default":false},"default_chunk_size":{"type":"integer","description":"","name":"default_chunk_size","default":1000},"use_bigcouch_direct":{"type":"boolean","description":"","name":"use_bigcouch_direct","default":true},"max_concurrent_docs_to_archive":{"type":"integer","description":"","name":"max_concurrent_docs_to_archive","default":500}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.kazoo_couch","description":"Schema for kazoo_couch system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.kazoo_couch",
+    "description": "Schema for kazoo_couch system_config",
+    "properties": {
+        "allow_maintenance_db_delete": {
+            "default": false,
+            "description": "",
+            "name": "allow_maintenance_db_delete",
+            "type": "boolean"
+        },
+        "default_chunk_size": {
+            "default": 1000,
+            "description": "",
+            "name": "default_chunk_size",
+            "type": "integer"
+        },
+        "max_concurrent_docs_to_archive": {
+            "default": 500,
+            "description": "",
+            "name": "max_concurrent_docs_to_archive",
+            "type": "integer"
+        },
+        "use_bigcouch_direct": {
+            "default": true,
+            "description": "",
+            "name": "use_bigcouch_direct",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

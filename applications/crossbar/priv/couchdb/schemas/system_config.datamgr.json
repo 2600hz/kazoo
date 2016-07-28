@@ -1,1 +1,46 @@
-{"properties":{"default_archive_folder":{"type":"string","description":"","name":"default_archive_folder","default":"/tmp"},"no_caching_doc_types":{"type":"array","description":"","name":"no_caching_doc_types","default":["media","private_media","call_recording","fax","mailbox_message"]},"cache_policy":{"type":"object","description":"","name":"cache_policy","default":{"system_data":"infinity","system_config":"infinity","system":900,"account":900,"modb":900,"numbers":900,"aggregate":900,"deprecated":900}},"performance":{"description":"","name":"performance"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.datamgr","description":"Schema for datamgr system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.datamgr",
+    "description": "Schema for datamgr system_config",
+    "properties": {
+        "cache_policy": {
+            "default": {
+                "account": 900,
+                "aggregate": 900,
+                "deprecated": 900,
+                "modb": 900,
+                "numbers": 900,
+                "system": 900,
+                "system_config": "infinity",
+                "system_data": "infinity"
+            },
+            "description": "",
+            "name": "cache_policy",
+            "type": "object"
+        },
+        "default_archive_folder": {
+            "default": "/tmp",
+            "description": "",
+            "name": "default_archive_folder",
+            "type": "string"
+        },
+        "no_caching_doc_types": {
+            "default": [
+                "media",
+                "private_media",
+                "call_recording",
+                "fax",
+                "mailbox_message"
+            ],
+            "description": "",
+            "name": "no_caching_doc_types",
+            "type": "array"
+        },
+        "performance": {
+            "description": "",
+            "name": "performance"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

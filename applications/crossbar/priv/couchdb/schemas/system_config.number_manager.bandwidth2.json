@@ -1,1 +1,39 @@
-{"properties":{"sandbox_provisioning":{"type":"boolean","description":"","name":"sandbox_provisioning","default":true},"enable_provisioning":{"type":"boolean","description":"","name":"enable_provisioning","default":true},"order_name_prefix":{"type":"string","description":"","name":"order_name_prefix","default":"Kazoo"},"account_id":{"type":"string","description":"","name":"account_id","default":""},"debug":{"type":"boolean","description":"","name":"debug","default":false}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.number_manager.bandwidth2","description":"Schema for number_manager.bandwidth2 system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.number_manager.bandwidth2",
+    "description": "Schema for number_manager.bandwidth2 system_config",
+    "properties": {
+        "account_id": {
+            "default": "",
+            "description": "",
+            "name": "account_id",
+            "type": "string"
+        },
+        "debug": {
+            "default": false,
+            "description": "",
+            "name": "debug",
+            "type": "boolean"
+        },
+        "enable_provisioning": {
+            "default": true,
+            "description": "",
+            "name": "enable_provisioning",
+            "type": "boolean"
+        },
+        "order_name_prefix": {
+            "default": "Kazoo",
+            "description": "",
+            "name": "order_name_prefix",
+            "type": "string"
+        },
+        "sandbox_provisioning": {
+            "default": true,
+            "description": "",
+            "name": "sandbox_provisioning",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

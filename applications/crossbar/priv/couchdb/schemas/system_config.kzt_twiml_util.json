@@ -1,1 +1,15 @@
-{"properties":{"max_length":{"type":"integer","description":"","name":"max_length","default":3600}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.kzt_twiml_util","description":"Schema for kzt_twiml_util system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.kzt_twiml_util",
+    "description": "Schema for kzt_twiml_util system_config",
+    "properties": {
+        "max_length": {
+            "default": 3600,
+            "description": "",
+            "name": "max_length",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

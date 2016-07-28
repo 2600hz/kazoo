@@ -1,1 +1,19 @@
-{"properties":{"default_enabled":{"type":"boolean","description":"","name":"default_enabled","default":true},"default_to":{"description":"","name":"default_to"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.notify.fax_outbound_error_to_email","description":"Schema for notify.fax_outbound_error_to_email system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.notify.fax_outbound_error_to_email",
+    "description": "Schema for notify.fax_outbound_error_to_email system_config",
+    "properties": {
+        "default_enabled": {
+            "default": true,
+            "description": "",
+            "name": "default_enabled",
+            "type": "boolean"
+        },
+        "default_to": {
+            "description": "",
+            "name": "default_to"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

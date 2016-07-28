@@ -1,1 +1,69 @@
-{"properties":{"production":{"properties":{"sso_url":{"properties":{"type":"string","description":"","name":"sso_url","default":"https://sso.ubnt.com/api/sso/v1/"}}}},"staging":{"properties":{"sso_url":{"properties":{"type":"string","description":"","name":"sso_url","default":"https://sso-stage.ubnt.com/api/sso/v1/"}}}},"sso_provider_id":{"description":"","name":"sso_provider_id"},"{crossbar.ubiquiti.sso_environment}":{"properties":{"sso_url":{"properties":{"description":"","name":"sso_url"}}}},"tokens_per_request":{"type":"integer","description":"","name":"tokens_per_request","default":35},"api_secret":{"description":"","name":"api_secret"},"salt_length":{"type":"integer","description":"","name":"salt_length","default":20},"api_token_expires_s":{"type":"integer","description":"","name":"api_token_expires_s","default":1800}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.crossbar.ubiquiti","description":"Schema for crossbar.ubiquiti system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.ubiquiti",
+    "description": "Schema for crossbar.ubiquiti system_config",
+    "properties": {
+        "api_secret": {
+            "description": "",
+            "name": "api_secret"
+        },
+        "api_token_expires_s": {
+            "default": 1800,
+            "description": "",
+            "name": "api_token_expires_s",
+            "type": "integer"
+        },
+        "production": {
+            "properties": {
+                "sso_url": {
+                    "properties": {
+                        "default": "https://sso.ubnt.com/api/sso/v1/",
+                        "description": "",
+                        "name": "sso_url",
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "salt_length": {
+            "default": 20,
+            "description": "",
+            "name": "salt_length",
+            "type": "integer"
+        },
+        "sso_provider_id": {
+            "description": "",
+            "name": "sso_provider_id"
+        },
+        "staging": {
+            "properties": {
+                "sso_url": {
+                    "properties": {
+                        "default": "https://sso-stage.ubnt.com/api/sso/v1/",
+                        "description": "",
+                        "name": "sso_url",
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "tokens_per_request": {
+            "default": 35,
+            "description": "",
+            "name": "tokens_per_request",
+            "type": "integer"
+        },
+        "{crossbar.ubiquiti.sso_environment}": {
+            "properties": {
+                "sso_url": {
+                    "properties": {
+                        "description": "",
+                        "name": "sso_url"
+                    }
+                }
+            }
+        }
+    },
+    "required": true,
+    "type": "object"
+}

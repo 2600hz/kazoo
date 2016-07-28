@@ -1,1 +1,43 @@
-{"properties":{"sandbox_provisioning":{"type":"boolean","description":"","name":"sandbox_provisioning","default":true},"enable_provisioning":{"type":"boolean","description":"","name":"enable_provisioning","default":true},"endpoints":{"description":"","name":"endpoints"},"order_name_prefix":{"type":"string","description":"","name":"order_name_prefix","default":"Kazoo"},"debug":{"type":"boolean","description":"","name":"debug","default":false},"numbers_api_url":{"type":"string","description":"","name":"numbers_api_url","default":"https://api.bandwidth.com/public/v2/numbers.api"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.number_manager.bandwidth","description":"Schema for number_manager.bandwidth system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.number_manager.bandwidth",
+    "description": "Schema for number_manager.bandwidth system_config",
+    "properties": {
+        "debug": {
+            "default": false,
+            "description": "",
+            "name": "debug",
+            "type": "boolean"
+        },
+        "enable_provisioning": {
+            "default": true,
+            "description": "",
+            "name": "enable_provisioning",
+            "type": "boolean"
+        },
+        "endpoints": {
+            "description": "",
+            "name": "endpoints"
+        },
+        "numbers_api_url": {
+            "default": "https://api.bandwidth.com/public/v2/numbers.api",
+            "description": "",
+            "name": "numbers_api_url",
+            "type": "string"
+        },
+        "order_name_prefix": {
+            "default": "Kazoo",
+            "description": "",
+            "name": "order_name_prefix",
+            "type": "string"
+        },
+        "sandbox_provisioning": {
+            "default": true,
+            "description": "",
+            "name": "sandbox_provisioning",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

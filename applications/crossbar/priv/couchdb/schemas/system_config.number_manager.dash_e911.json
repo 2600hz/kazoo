@@ -1,1 +1,21 @@
-{"properties":{"emergency_provisioning_url":{"type":"string","description":"","name":"emergency_provisioning_url","default":"https://service.dashcs.com/dash-api/xml/emergencyprovisioning/v1"},"debug":{"type":"boolean","description":"","name":"debug","default":false}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.number_manager.dash_e911","description":"Schema for number_manager.dash_e911 system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.number_manager.dash_e911",
+    "description": "Schema for number_manager.dash_e911 system_config",
+    "properties": {
+        "debug": {
+            "default": false,
+            "description": "",
+            "name": "debug",
+            "type": "boolean"
+        },
+        "emergency_provisioning_url": {
+            "default": "https://service.dashcs.com/dash-api/xml/emergencyprovisioning/v1",
+            "description": "",
+            "name": "emergency_provisioning_url",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

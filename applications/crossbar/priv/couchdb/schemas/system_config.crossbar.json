@@ -1,1 +1,172 @@
-{"properties":{"schema_strict_validation":{"type":"boolean","description":"","name":"schema_strict_validation","default":false},"allow_tracing":{"type":"boolean","description":"","name":"allow_tracing","default":false},"reverse_proxies":{"type":"array","description":"","name":"reverse_proxies","default":[]},"pretty_metrics":{"type":"boolean","description":"","name":"pretty_metrics","default":true},"max_upload_size":{"type":"integer","description":"","name":"max_upload_size","default":8000000},"api_auth_tokens":{"type":"integer","description":"","name":"api_auth_tokens","default":35},"maximum_range":{"type":"integer","description":"","name":"maximum_range","default":2682000},"token_costs":{"type":"integer","description":"","name":"token_costs","default":1},"trace_path":{"type":"string","description":"","name":"trace_path","default":"/tmp"},"token_auth_expiry":{"type":"integer","description":"","name":"token_auth_expiry","default":3600},"expiry_percentage":{"type":"integer","description":"","name":"expiry_percentage","default":75},"reset_id_size":{"type":"integer","description":"","name":"reset_id_size","default":137},"user_auth_tokens":{"type":"integer","description":"","name":"user_auth_tokens","default":35},"cleanup_timer":{"type":"integer","description":"","name":"cleanup_timer","default":86400},"soft_delete_pause_ms":{"type":"integer","description":"","name":"soft_delete_pause_ms","default":10000},"autoload_modules":{"description":"","name":"autoload_modules"},"magic_path_patterns":{"type":"array","description":"","name":"magic_path_patterns","default":["/:version/accounts/:account_id/vmboxes/:box_id/messages/:message_id/raw","/:version/accounts/:account_id/faxes/:direction/:fax_id/attachment","/:version/accounts/:account_id/presence/:reportid"]},"pagination_page_size":{"type":"integer","description":"","name":"pagination_page_size","default":50},"use_plaintext":{"type":"boolean","description":"","name":"use_plaintext","default":true},"port":{"type":"integer","description":"","name":"port","default":8000},"request_timeout_ms":{"type":"integer","description":"","name":"request_timeout_ms","default":10000},"workers":{"type":"integer","description":"","name":"workers","default":100},"use_ssl":{"type":"boolean","description":"","name":"use_ssl","default":false},"ssl_workers":{"type":"integer","description":"","name":"ssl_workers","default":100},"ssl_ca_cert":{"type":"string","description":"","name":"ssl_ca_cert"},"default_language":{"type":"string","description":"","name":"default_language","default":"en-US"},"default_allow_anonymous_quickcalls":{"type":"boolean","description":"","name":"default_allow_anonymous_quickcalls","default":true}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.crossbar","description":"Schema for crossbar system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar",
+    "description": "Schema for crossbar system_config",
+    "properties": {
+        "allow_tracing": {
+            "default": false,
+            "description": "",
+            "name": "allow_tracing",
+            "type": "boolean"
+        },
+        "api_auth_tokens": {
+            "default": 35,
+            "description": "",
+            "name": "api_auth_tokens",
+            "type": "integer"
+        },
+        "autoload_modules": {
+            "description": "",
+            "name": "autoload_modules"
+        },
+        "cleanup_timer": {
+            "default": 86400,
+            "description": "",
+            "name": "cleanup_timer",
+            "type": "integer"
+        },
+        "default_allow_anonymous_quickcalls": {
+            "default": true,
+            "description": "",
+            "name": "default_allow_anonymous_quickcalls",
+            "type": "boolean"
+        },
+        "default_language": {
+            "default": "en-US",
+            "description": "",
+            "name": "default_language",
+            "type": "string"
+        },
+        "expiry_percentage": {
+            "default": 75,
+            "description": "",
+            "name": "expiry_percentage",
+            "type": "integer"
+        },
+        "magic_path_patterns": {
+            "default": [
+                "/:version/accounts/:account_id/vmboxes/:box_id/messages/:message_id/raw",
+                "/:version/accounts/:account_id/faxes/:direction/:fax_id/attachment",
+                "/:version/accounts/:account_id/presence/:reportid"
+            ],
+            "description": "",
+            "name": "magic_path_patterns",
+            "type": "array"
+        },
+        "max_upload_size": {
+            "default": 8000000,
+            "description": "",
+            "name": "max_upload_size",
+            "type": "integer"
+        },
+        "maximum_range": {
+            "default": 2682000,
+            "description": "",
+            "name": "maximum_range",
+            "type": "integer"
+        },
+        "pagination_page_size": {
+            "default": 50,
+            "description": "",
+            "name": "pagination_page_size",
+            "type": "integer"
+        },
+        "port": {
+            "default": 8000,
+            "description": "",
+            "name": "port",
+            "type": "integer"
+        },
+        "pretty_metrics": {
+            "default": true,
+            "description": "",
+            "name": "pretty_metrics",
+            "type": "boolean"
+        },
+        "request_timeout_ms": {
+            "default": 10000,
+            "description": "",
+            "name": "request_timeout_ms",
+            "type": "integer"
+        },
+        "reset_id_size": {
+            "default": 137,
+            "description": "",
+            "name": "reset_id_size",
+            "type": "integer"
+        },
+        "reverse_proxies": {
+            "default": [],
+            "description": "",
+            "name": "reverse_proxies",
+            "type": "array"
+        },
+        "schema_strict_validation": {
+            "default": false,
+            "description": "",
+            "name": "schema_strict_validation",
+            "type": "boolean"
+        },
+        "soft_delete_pause_ms": {
+            "default": 10000,
+            "description": "",
+            "name": "soft_delete_pause_ms",
+            "type": "integer"
+        },
+        "ssl_ca_cert": {
+            "description": "",
+            "name": "ssl_ca_cert",
+            "type": "string"
+        },
+        "ssl_workers": {
+            "default": 100,
+            "description": "",
+            "name": "ssl_workers",
+            "type": "integer"
+        },
+        "token_auth_expiry": {
+            "default": 3600,
+            "description": "",
+            "name": "token_auth_expiry",
+            "type": "integer"
+        },
+        "token_costs": {
+            "default": 1,
+            "description": "",
+            "name": "token_costs",
+            "type": "integer"
+        },
+        "trace_path": {
+            "default": "/tmp",
+            "description": "",
+            "name": "trace_path",
+            "type": "string"
+        },
+        "use_plaintext": {
+            "default": true,
+            "description": "",
+            "name": "use_plaintext",
+            "type": "boolean"
+        },
+        "use_ssl": {
+            "default": false,
+            "description": "",
+            "name": "use_ssl",
+            "type": "boolean"
+        },
+        "user_auth_tokens": {
+            "default": 35,
+            "description": "",
+            "name": "user_auth_tokens",
+            "type": "integer"
+        },
+        "workers": {
+            "default": 100,
+            "description": "",
+            "name": "workers",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

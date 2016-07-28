@@ -1,1 +1,40 @@
-{"properties":{"rate_limits":{"description":"","name":"rate_limits","default":{"device":{"per_second":{"total_packets":20,"invites":5,"registrations":2},"per_minute":{"total_packets":1000,"invites":100,"registrations":20}},"account":{"per_second":{"total_packets":100,"invites":50,"registrations":20},"per_minute":{"total_packets":2000,"invites":200,"registrations":100}}},"type":"object"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.frontier","description":"Schema for frontier system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.frontier",
+    "description": "Schema for frontier system_config",
+    "properties": {
+        "rate_limits": {
+            "default": {
+                "account": {
+                    "per_minute": {
+                        "invites": 200,
+                        "registrations": 100,
+                        "total_packets": 2000
+                    },
+                    "per_second": {
+                        "invites": 50,
+                        "registrations": 20,
+                        "total_packets": 100
+                    }
+                },
+                "device": {
+                    "per_minute": {
+                        "invites": 100,
+                        "registrations": 20,
+                        "total_packets": 1000
+                    },
+                    "per_second": {
+                        "invites": 5,
+                        "registrations": 2,
+                        "total_packets": 20
+                    }
+                }
+            },
+            "description": "",
+            "name": "rate_limits",
+            "type": "object"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

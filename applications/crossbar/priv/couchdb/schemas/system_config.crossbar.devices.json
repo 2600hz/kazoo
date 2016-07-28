@@ -1,1 +1,24 @@
-{"properties":{"allow_aggregates":{"type":"boolean","description":"","name":"allow_aggregates","default":"true"},"provisioning_url":{"type":"string","description":"","name":"provisioning_url"},"provisioning_type":{"description":"","name":"provisioning_type"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.crossbar.devices","description":"Schema for crossbar.devices system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.devices",
+    "description": "Schema for crossbar.devices system_config",
+    "properties": {
+        "allow_aggregates": {
+            "default": "true",
+            "description": "",
+            "name": "allow_aggregates",
+            "type": "boolean"
+        },
+        "provisioning_type": {
+            "description": "",
+            "name": "provisioning_type"
+        },
+        "provisioning_url": {
+            "description": "",
+            "name": "provisioning_url",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

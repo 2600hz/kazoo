@@ -1,1 +1,15 @@
-{"properties":{"default_includes":{"type":"array","description":"","name":"default_includes","default":[]}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.crossbar.contact_list","description":"Schema for crossbar.contact_list system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.contact_list",
+    "description": "Schema for crossbar.contact_list system_config",
+    "properties": {
+        "default_includes": {
+            "default": [],
+            "description": "",
+            "name": "default_includes",
+            "type": "array"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

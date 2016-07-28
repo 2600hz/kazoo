@@ -1,1 +1,61 @@
-{"properties":{"relay":{"type":"string","description":"","name":"relay","default":"localhost"},"username":{"description":"","name":"username","default":"","type":"string"},"password":{"description":"","name":"password","default":"","type":"string"},"auth":{"type":"string","description":"","name":"auth","default":"never"},"port":{"type":"integer","description":"","name":"port","default":25},"retries":{"type":"integer","description":"","name":"retries","default":1},"no_mx_lookups":{"type":"boolean","description":"","name":"no_mx_lookups","default":true},"tls":{"description":"","name":"tls"},"use_ssl":{"type":"boolean","description":"","name":"use_ssl","default":false}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.smtp_client","description":"Schema for smtp_client system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.smtp_client",
+    "description": "Schema for smtp_client system_config",
+    "properties": {
+        "auth": {
+            "default": "never",
+            "description": "",
+            "name": "auth",
+            "type": "string"
+        },
+        "no_mx_lookups": {
+            "default": true,
+            "description": "",
+            "name": "no_mx_lookups",
+            "type": "boolean"
+        },
+        "password": {
+            "default": "",
+            "description": "",
+            "name": "password",
+            "type": "string"
+        },
+        "port": {
+            "default": 25,
+            "description": "",
+            "name": "port",
+            "type": "integer"
+        },
+        "relay": {
+            "default": "localhost",
+            "description": "",
+            "name": "relay",
+            "type": "string"
+        },
+        "retries": {
+            "default": 1,
+            "description": "",
+            "name": "retries",
+            "type": "integer"
+        },
+        "tls": {
+            "description": "",
+            "name": "tls"
+        },
+        "use_ssl": {
+            "default": false,
+            "description": "",
+            "name": "use_ssl",
+            "type": "boolean"
+        },
+        "username": {
+            "default": "",
+            "description": "",
+            "name": "username",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

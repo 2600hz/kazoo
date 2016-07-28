@@ -1,1 +1,27 @@
-{"properties":{"callfwd_number_timeout":{"type":"integer","description":"","name":"callfwd_number_timeout","default":8000},"min_callfwd_number_length":{"type":"integer","description":"","name":"min_callfwd_number_length","default":3},"max_callfwd_number_length":{"type":"integer","description":"","name":"max_callfwd_number_length","default":20}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.callflow.call_forward","description":"Schema for callflow.call_forward system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.callflow.call_forward",
+    "description": "Schema for callflow.call_forward system_config",
+    "properties": {
+        "callfwd_number_timeout": {
+            "default": 8000,
+            "description": "",
+            "name": "callfwd_number_timeout",
+            "type": "integer"
+        },
+        "max_callfwd_number_length": {
+            "default": 20,
+            "description": "",
+            "name": "max_callfwd_number_length",
+            "type": "integer"
+        },
+        "min_callfwd_number_length": {
+            "default": 3,
+            "description": "",
+            "name": "min_callfwd_number_length",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

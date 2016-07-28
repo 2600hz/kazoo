@@ -1,1 +1,15 @@
-{"properties":{"default_emit_account_id":{"type":"boolean","description":"","name":"default_emit_account_id","default":false}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.callflow.resources","description":"Schema for callflow.resources system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.callflow.resources",
+    "description": "Schema for callflow.resources system_config",
+    "properties": {
+        "default_emit_account_id": {
+            "default": false,
+            "description": "",
+            "name": "default_emit_account_id",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -1,1 +1,63 @@
-{"properties":{"allow_move":{"type":"string","description":"","name":"allow_move","default":"superduper_admin"},"account_realm_suffix":{"type":"string","description":"","name":"account_realm_suffix","default":"sip.2600hz.com"},"random_realm_strength":{"type":"integer","description":"","name":"random_realm_strength","default":3},"expose_api_key":{"type":"boolean","description":"","name":"expose_api_key","default":false},"allow_sibling_listing":{"type":"boolean","description":"","name":"allow_sibling_listing","default":true},"new_account_notify_delay_s":{"type":"integer","description":"","name":"new_account_notify_delay_s","default":30},"trial_time":{"type":"integer","description":"","name":"trial_time","default":1209600},"ensure_unique_name":{"type":"boolean","description":"","name":"ensure_unique_name","default":true},"default_parent":{"type":"string","description":"","name":"default_parent","default":""}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.crossbar.accounts","description":"Schema for crossbar.accounts system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.accounts",
+    "description": "Schema for crossbar.accounts system_config",
+    "properties": {
+        "account_realm_suffix": {
+            "default": "sip.2600hz.com",
+            "description": "",
+            "name": "account_realm_suffix",
+            "type": "string"
+        },
+        "allow_move": {
+            "default": "superduper_admin",
+            "description": "",
+            "name": "allow_move",
+            "type": "string"
+        },
+        "allow_sibling_listing": {
+            "default": true,
+            "description": "",
+            "name": "allow_sibling_listing",
+            "type": "boolean"
+        },
+        "default_parent": {
+            "default": "",
+            "description": "",
+            "name": "default_parent",
+            "type": "string"
+        },
+        "ensure_unique_name": {
+            "default": true,
+            "description": "",
+            "name": "ensure_unique_name",
+            "type": "boolean"
+        },
+        "expose_api_key": {
+            "default": false,
+            "description": "",
+            "name": "expose_api_key",
+            "type": "boolean"
+        },
+        "new_account_notify_delay_s": {
+            "default": 30,
+            "description": "",
+            "name": "new_account_notify_delay_s",
+            "type": "integer"
+        },
+        "random_realm_strength": {
+            "default": 3,
+            "description": "",
+            "name": "random_realm_strength",
+            "type": "integer"
+        },
+        "trial_time": {
+            "default": 1209600,
+            "description": "",
+            "name": "trial_time",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

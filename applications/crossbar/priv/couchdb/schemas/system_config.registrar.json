@@ -1,1 +1,33 @@
-{"properties":{"use_aggregate":{"type":"boolean","description":"","name":"use_aggregate","default":true},"device_enabled_default":{"type":"boolean","description":"","name":"device_enabled_default","default":true},"owner_enabled_default":{"type":"boolean","description":"","name":"owner_enabled_default","default":true},"listeners":{"type":"integer","description":"","name":"listeners","default":1}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.registrar","description":"Schema for registrar system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.registrar",
+    "description": "Schema for registrar system_config",
+    "properties": {
+        "device_enabled_default": {
+            "default": true,
+            "description": "",
+            "name": "device_enabled_default",
+            "type": "boolean"
+        },
+        "listeners": {
+            "default": 1,
+            "description": "",
+            "name": "listeners",
+            "type": "integer"
+        },
+        "owner_enabled_default": {
+            "default": true,
+            "description": "",
+            "name": "owner_enabled_default",
+            "type": "boolean"
+        },
+        "use_aggregate": {
+            "default": true,
+            "description": "",
+            "name": "use_aggregate",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

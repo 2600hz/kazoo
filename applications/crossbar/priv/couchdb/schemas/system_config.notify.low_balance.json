@@ -1,1 +1,15 @@
-{"properties":{"default_enabled":{"type":"boolean","description":"","name":"default_enabled","default":false}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.notify.low_balance","description":"Schema for notify.low_balance system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.notify.low_balance",
+    "description": "Schema for notify.low_balance system_config",
+    "properties": {
+        "default_enabled": {
+            "default": false,
+            "description": "",
+            "name": "default_enabled",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

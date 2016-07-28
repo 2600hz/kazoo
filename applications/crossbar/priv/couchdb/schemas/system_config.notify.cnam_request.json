@@ -1,1 +1,15 @@
-{"properties":{"default_to":{"type":"string","description":"","name":"default_to","default":""}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.notify.cnam_request","description":"Schema for notify.cnam_request system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.notify.cnam_request",
+    "description": "Schema for notify.cnam_request system_config",
+    "properties": {
+        "default_to": {
+            "default": "",
+            "description": "",
+            "name": "default_to",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

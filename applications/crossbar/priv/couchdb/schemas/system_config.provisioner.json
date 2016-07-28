@@ -1,1 +1,54 @@
-{"properties":{"provisioning_type":{"description":"","name":"provisioning_type"},"feature_keys":{"type":"object","description":"","name":"feature_keys","default":{"cisco":{"_":{"personal_parking":"","parking":"","speed_dial":"","presence":""}},"yealink":{"_":{"personal_parking":"10","parking":"10","speed_dial":"13","presence":"16"}},"polycom":{"_":{"personal_parking":"automata","parking":"automata","speed_dial":"normal","presence":"normal"}}}},"provisioning_url":{"type":"string","description":"","name":"provisioning_url"},"cluster_id":{"description":"","name":"cluster_id","type":"string"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.provisioner","description":"Schema for provisioner system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.provisioner",
+    "description": "Schema for provisioner system_config",
+    "properties": {
+        "cluster_id": {
+            "description": "",
+            "name": "cluster_id",
+            "type": "string"
+        },
+        "feature_keys": {
+            "default": {
+                "cisco": {
+                    "_": {
+                        "parking": "",
+                        "personal_parking": "",
+                        "presence": "",
+                        "speed_dial": ""
+                    }
+                },
+                "polycom": {
+                    "_": {
+                        "parking": "automata",
+                        "personal_parking": "automata",
+                        "presence": "normal",
+                        "speed_dial": "normal"
+                    }
+                },
+                "yealink": {
+                    "_": {
+                        "parking": "10",
+                        "personal_parking": "10",
+                        "presence": "16",
+                        "speed_dial": "13"
+                    }
+                }
+            },
+            "description": "",
+            "name": "feature_keys",
+            "type": "object"
+        },
+        "provisioning_type": {
+            "description": "",
+            "name": "provisioning_type"
+        },
+        "provisioning_url": {
+            "description": "",
+            "name": "provisioning_url",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

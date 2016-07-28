@@ -1,1 +1,24 @@
-{"properties":{"suppress_selectors_change_notice":{"type":"boolean","description":"","name":"suppress_selectors_change_notice","default":false},"csv_config":{"type":"object","description":"","name":"csv_config","default":{"value_column":2,"selector_column":1}}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.crossbar.resource_selectors","description":"Schema for crossbar.resource_selectors system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.resource_selectors",
+    "description": "Schema for crossbar.resource_selectors system_config",
+    "properties": {
+        "csv_config": {
+            "default": {
+                "selector_column": 1,
+                "value_column": 2
+            },
+            "description": "",
+            "name": "csv_config",
+            "type": "object"
+        },
+        "suppress_selectors_change_notice": {
+            "default": false,
+            "description": "",
+            "name": "suppress_selectors_change_notice",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

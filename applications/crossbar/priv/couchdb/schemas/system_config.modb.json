@@ -1,1 +1,21 @@
-{"properties":{"routines":{"description":"","name":"routines","default":[],"type":"array"},"active_modbs":{"type":"integer","description":"","name":"active_modbs","default":6}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.modb","description":"Schema for modb system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.modb",
+    "description": "Schema for modb system_config",
+    "properties": {
+        "active_modbs": {
+            "default": 6,
+            "description": "",
+            "name": "active_modbs",
+            "type": "integer"
+        },
+        "routines": {
+            "default": [],
+            "description": "",
+            "name": "routines",
+            "type": "array"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

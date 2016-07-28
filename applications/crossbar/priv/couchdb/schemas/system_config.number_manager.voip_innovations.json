@@ -1,1 +1,45 @@
-{"properties":{"sandbox_provisioning":{"type":"boolean","description":"","name":"sandbox_provisioning","default":false},"enable_provisioning":{"type":"boolean","description":"","name":"enable_provisioning","default":true},"login":{"type":"string","description":"","name":"login","default":""},"password":{"type":"string","description":"","name":"password","default":""},"endpoint_group":{"type":"string","description":"","name":"endpoint_group","default":""},"debug":{"type":"boolean","description":"","name":"debug","default":false}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.number_manager.voip_innovations","description":"Schema for number_manager.voip_innovations system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.number_manager.voip_innovations",
+    "description": "Schema for number_manager.voip_innovations system_config",
+    "properties": {
+        "debug": {
+            "default": false,
+            "description": "",
+            "name": "debug",
+            "type": "boolean"
+        },
+        "enable_provisioning": {
+            "default": true,
+            "description": "",
+            "name": "enable_provisioning",
+            "type": "boolean"
+        },
+        "endpoint_group": {
+            "default": "",
+            "description": "",
+            "name": "endpoint_group",
+            "type": "string"
+        },
+        "login": {
+            "default": "",
+            "description": "",
+            "name": "login",
+            "type": "string"
+        },
+        "password": {
+            "default": "",
+            "description": "",
+            "name": "password",
+            "type": "string"
+        },
+        "sandbox_provisioning": {
+            "default": false,
+            "description": "",
+            "name": "sandbox_provisioning",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

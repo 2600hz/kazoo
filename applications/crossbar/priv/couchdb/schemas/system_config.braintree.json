@@ -1,1 +1,45 @@
-{"properties":{"default_environment":{"type":"string","description":"","name":"default_environment","default":[]},"default_merchant_id":{"type":"string","description":"","name":"default_merchant_id","default":[]},"debug":{"type":"boolean","description":"","name":"debug","default":false},"should_prorate":{"type":"boolean","description":"","name":"should_prorate","default":true},"max_amount":{"type":"number","description":"","name":"max_amount","default":200.0},"min_amount":{"type":"number","description":"","name":"min_amount","default":5.0}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.braintree","description":"Schema for braintree system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.braintree",
+    "description": "Schema for braintree system_config",
+    "properties": {
+        "debug": {
+            "default": false,
+            "description": "",
+            "name": "debug",
+            "type": "boolean"
+        },
+        "default_environment": {
+            "default": [],
+            "description": "",
+            "name": "default_environment",
+            "type": "string"
+        },
+        "default_merchant_id": {
+            "default": [],
+            "description": "",
+            "name": "default_merchant_id",
+            "type": "string"
+        },
+        "max_amount": {
+            "default": 200.0,
+            "description": "",
+            "name": "max_amount",
+            "type": "number"
+        },
+        "min_amount": {
+            "default": 5.0,
+            "description": "",
+            "name": "min_amount",
+            "type": "number"
+        },
+        "should_prorate": {
+            "default": true,
+            "description": "",
+            "name": "should_prorate",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -1,1 +1,45 @@
-{"properties":{"disable_normalize":{"type":"boolean","description":"","name":"disable_normalize","default":false},"http_url":{"type":"string","description":"","name":"http_url","default":"https://api.opencnam.com/v2/phone/{{phone_number}}"},"http_body":{"type":"string","description":"","name":"http_body","default":""},"http_basic_auth_username":{"type":"string","description":"","name":"http_basic_auth_username","default":""},"http_basic_auth_password":{"type":"string","description":"","name":"http_basic_auth_password","default":""},"http_method":{"type":"string","description":"","name":"http_method","default":"get"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.stepswitch.cnam","description":"Schema for stepswitch.cnam system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.stepswitch.cnam",
+    "description": "Schema for stepswitch.cnam system_config",
+    "properties": {
+        "disable_normalize": {
+            "default": false,
+            "description": "",
+            "name": "disable_normalize",
+            "type": "boolean"
+        },
+        "http_basic_auth_password": {
+            "default": "",
+            "description": "",
+            "name": "http_basic_auth_password",
+            "type": "string"
+        },
+        "http_basic_auth_username": {
+            "default": "",
+            "description": "",
+            "name": "http_basic_auth_username",
+            "type": "string"
+        },
+        "http_body": {
+            "default": "",
+            "description": "",
+            "name": "http_body",
+            "type": "string"
+        },
+        "http_method": {
+            "default": "get",
+            "description": "",
+            "name": "http_method",
+            "type": "string"
+        },
+        "http_url": {
+            "default": "https://api.opencnam.com/v2/phone/{{phone_number}}",
+            "description": "",
+            "name": "http_url",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

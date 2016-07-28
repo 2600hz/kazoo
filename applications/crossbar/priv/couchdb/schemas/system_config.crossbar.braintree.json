@@ -1,1 +1,15 @@
-{"properties":{"max_account_credit":{"type":"number","description":"","name":"max_account_credit","default":500.0}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.crossbar.braintree","description":"Schema for crossbar.braintree system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.braintree",
+    "description": "Schema for crossbar.braintree system_config",
+    "properties": {
+        "max_account_credit": {
+            "default": 500.0,
+            "description": "",
+            "name": "max_account_credit",
+            "type": "number"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

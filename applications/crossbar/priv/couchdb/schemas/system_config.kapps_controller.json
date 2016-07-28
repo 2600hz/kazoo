@@ -1,1 +1,39 @@
-{"properties":{"kapps":{"type":"array","description":"","name":"kapps","default":["blackhole","callflow","cdr","conference","crossbar","doodle","ecallmgr","fax","hangups","hotornot","konami","jonny5","media_mgr","milliwatt","omnipresence","pivot","registrar","reorder","stepswitch","sysconf","teletype","trunkstore","webhooks"]}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.kapps_controller","description":"Schema for kapps_controller system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.kapps_controller",
+    "description": "Schema for kapps_controller system_config",
+    "properties": {
+        "kapps": {
+            "default": [
+                "blackhole",
+                "callflow",
+                "cdr",
+                "conference",
+                "crossbar",
+                "doodle",
+                "ecallmgr",
+                "fax",
+                "hangups",
+                "hotornot",
+                "konami",
+                "jonny5",
+                "media_mgr",
+                "milliwatt",
+                "omnipresence",
+                "pivot",
+                "registrar",
+                "reorder",
+                "stepswitch",
+                "sysconf",
+                "teletype",
+                "trunkstore",
+                "webhooks"
+            ],
+            "description": "",
+            "name": "kapps",
+            "type": "array"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -1,1 +1,15 @@
-{"properties":{"query_presence_timeout":{"type":"integer","description":"","name":"query_presence_timeout","default":1000}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.crossbar.presence","description":"Schema for crossbar.presence system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.presence",
+    "description": "Schema for crossbar.presence system_config",
+    "properties": {
+        "query_presence_timeout": {
+            "default": 1000,
+            "description": "",
+            "name": "query_presence_timeout",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

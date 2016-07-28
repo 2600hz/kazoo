@@ -1,1 +1,15 @@
-{"properties":{"enable":{"type":"boolean","description":"","name":"enable","default":true}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.topup","description":"Schema for topup system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.topup",
+    "description": "Schema for topup system_config",
+    "properties": {
+        "enable": {
+            "default": true,
+            "description": "",
+            "name": "enable",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

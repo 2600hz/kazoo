@@ -1,1 +1,32 @@
-{"properties":{"ring_ready_offnet":{"type":"boolean","description":"","name":"ring_ready_offnet","default":true},"default_hunt_non_reconcilable":{"type":"boolean","description":"","name":"default_hunt_non_reconcilable","default":false},"ensure_valid_caller_id":{"type":"boolean","description":"","name":"ensure_valid_caller_id","default":false},"default_caller_id_number":{"type":"string","description":"","name":"default_caller_id_number"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.trunkstore","description":"Schema for trunkstore system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.trunkstore",
+    "description": "Schema for trunkstore system_config",
+    "properties": {
+        "default_caller_id_number": {
+            "description": "",
+            "name": "default_caller_id_number",
+            "type": "string"
+        },
+        "default_hunt_non_reconcilable": {
+            "default": false,
+            "description": "",
+            "name": "default_hunt_non_reconcilable",
+            "type": "boolean"
+        },
+        "ensure_valid_caller_id": {
+            "default": false,
+            "description": "",
+            "name": "ensure_valid_caller_id",
+            "type": "boolean"
+        },
+        "ring_ready_offnet": {
+            "default": true,
+            "description": "",
+            "name": "ring_ready_offnet",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

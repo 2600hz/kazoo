@@ -1,1 +1,42 @@
-{"properties":{"notification_app":{"type":"string","description":"","name":"notification_app","default":"notify"},"search_rep_email":{"type":"boolean","description":"","name":"search_rep_email","default":true},"backoff_fudge_ms":{"type":"integer","description":"","name":"backoff_fudge_ms","default":5000},"mime-encoding":{"properties":{"{ContentType}":{"properties":{"content_transfer_encoding":{"properties":{"type":"string","description":"","name":"content_transfer_encoding"}}}}}}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.notify","description":"Schema for notify system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.notify",
+    "description": "Schema for notify system_config",
+    "properties": {
+        "backoff_fudge_ms": {
+            "default": 5000,
+            "description": "",
+            "name": "backoff_fudge_ms",
+            "type": "integer"
+        },
+        "mime-encoding": {
+            "properties": {
+                "{ContentType}": {
+                    "properties": {
+                        "content_transfer_encoding": {
+                            "properties": {
+                                "description": "",
+                                "name": "content_transfer_encoding",
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "notification_app": {
+            "default": "notify",
+            "description": "",
+            "name": "notification_app",
+            "type": "string"
+        },
+        "search_rep_email": {
+            "default": true,
+            "description": "",
+            "name": "search_rep_email",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

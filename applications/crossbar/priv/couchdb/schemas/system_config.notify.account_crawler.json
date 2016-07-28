@@ -1,1 +1,33 @@
-{"properties":{"interaccount_delay":{"type":"integer","description":"","name":"interaccount_delay","default":10000},"crawl_for_first_occurrence":{"type":"boolean","description":"","name":"crawl_for_first_occurrence","default":true},"crawl_for_low_balance":{"type":"boolean","description":"","name":"crawl_for_low_balance","default":true},"low_balance_repeat_s":{"type":"integer","description":"","name":"low_balance_repeat_s","default":86400}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.notify.account_crawler","description":"Schema for notify.account_crawler system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.notify.account_crawler",
+    "description": "Schema for notify.account_crawler system_config",
+    "properties": {
+        "crawl_for_first_occurrence": {
+            "default": true,
+            "description": "",
+            "name": "crawl_for_first_occurrence",
+            "type": "boolean"
+        },
+        "crawl_for_low_balance": {
+            "default": true,
+            "description": "",
+            "name": "crawl_for_low_balance",
+            "type": "boolean"
+        },
+        "interaccount_delay": {
+            "default": 10000,
+            "description": "",
+            "name": "interaccount_delay",
+            "type": "integer"
+        },
+        "low_balance_repeat_s": {
+            "default": 86400,
+            "description": "",
+            "name": "low_balance_repeat_s",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

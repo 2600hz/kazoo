@@ -1,1 +1,55 @@
-{"properties":{"should_save_master_audit_logs":{"type":"boolean","description":"","name":"should_save_master_audit_logs","default":false},"support_billing_id":{"type":"boolean","description":"","name":"support_billing_id","default":true},"master_account_bookkeeper":{"type":"string","description":"","name":"master_account_bookkeeper","default":"kz_bookkeeper_local"},"default_allow_updates":{"type":"boolean","description":"","name":"default_allow_updates","default":true},"modules":{"description":"","name":"modules"},"sync_services":{"type":"boolean","description":"","name":"sync_services","default":false},"scan_rate":{"type":"integer","description":"","name":"scan_rate","default":20000},"sync_buffer_period":{"type":"integer","description":"","name":"sync_buffer_period","default":600}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.services","description":"Schema for services system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.services",
+    "description": "Schema for services system_config",
+    "properties": {
+        "default_allow_updates": {
+            "default": true,
+            "description": "",
+            "name": "default_allow_updates",
+            "type": "boolean"
+        },
+        "master_account_bookkeeper": {
+            "default": "kz_bookkeeper_local",
+            "description": "",
+            "name": "master_account_bookkeeper",
+            "type": "string"
+        },
+        "modules": {
+            "description": "",
+            "name": "modules"
+        },
+        "scan_rate": {
+            "default": 20000,
+            "description": "",
+            "name": "scan_rate",
+            "type": "integer"
+        },
+        "should_save_master_audit_logs": {
+            "default": false,
+            "description": "",
+            "name": "should_save_master_audit_logs",
+            "type": "boolean"
+        },
+        "support_billing_id": {
+            "default": true,
+            "description": "",
+            "name": "support_billing_id",
+            "type": "boolean"
+        },
+        "sync_buffer_period": {
+            "default": 600,
+            "description": "",
+            "name": "sync_buffer_period",
+            "type": "integer"
+        },
+        "sync_services": {
+            "default": false,
+            "description": "",
+            "name": "sync_services",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

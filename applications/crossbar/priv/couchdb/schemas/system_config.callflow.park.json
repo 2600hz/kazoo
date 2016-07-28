@@ -1,1 +1,33 @@
-{"properties":{"db_doc_name":{"type":"string","description":"","name":"db_doc_name","default":"parked_calls"},"default_ringback_timeout":{"type":"integer","description":"","name":"default_ringback_timeout","default":120000},"default_callback_timeout":{"type":"integer","description":"","name":"default_callback_timeout","default":30000},"parked_presence_type":{"type":"string","description":"","name":"parked_presence_type","default":"early"}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.callflow.park","description":"Schema for callflow.park system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.callflow.park",
+    "description": "Schema for callflow.park system_config",
+    "properties": {
+        "db_doc_name": {
+            "default": "parked_calls",
+            "description": "",
+            "name": "db_doc_name",
+            "type": "string"
+        },
+        "default_callback_timeout": {
+            "default": 30000,
+            "description": "",
+            "name": "default_callback_timeout",
+            "type": "integer"
+        },
+        "default_ringback_timeout": {
+            "default": 120000,
+            "description": "",
+            "name": "default_ringback_timeout",
+            "type": "integer"
+        },
+        "parked_presence_type": {
+            "default": "early",
+            "description": "",
+            "name": "parked_presence_type",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

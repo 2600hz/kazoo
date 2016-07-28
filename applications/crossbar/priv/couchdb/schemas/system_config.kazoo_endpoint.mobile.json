@@ -1,1 +1,85 @@
-{"properties":{"create_sip_endpoint":{"type":"boolean","description":"","name":"create_sip_endpoint","default":false},"codecs":{"type":"array","description":"","name":"codecs","default":["PCMU"]},"custom_sip_interface":{"type":"string","description":"","name":"custom_sip_interface"},"formatter":{"type":"string","description":"","name":"formatter","default":"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$"},"prefix":{"type":"string","description":"","name":"prefix","default":""},"suffix":{"type":"string","description":"","name":"suffix","default":""},"realm":{"type":"string","description":"","name":"realm","default":"mobile.k.zswitch.net"},"path":{"type":"string","description":"","name":"path","default":""},"sms_interface":{"type":"string","description":"","name":"sms_interface","default":"amqp"},"sms":{"properties":{"connections":{"properties":{"type":"object","description":"","name":"connections","default":{"default":{"options":{"passive":true},"type":"topic","exchange":"sms","route":"sprint"}}}}}}},"$schema":"http://json-schema.org/draft-03/schema#","_id":"system_config.kazoo_endpoint.mobile","description":"Schema for kazoo_endpoint.mobile system_config","required":true,"type":"object"}
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.kazoo_endpoint.mobile",
+    "description": "Schema for kazoo_endpoint.mobile system_config",
+    "properties": {
+        "codecs": {
+            "default": [
+                "PCMU"
+            ],
+            "description": "",
+            "name": "codecs",
+            "type": "array"
+        },
+        "create_sip_endpoint": {
+            "default": false,
+            "description": "",
+            "name": "create_sip_endpoint",
+            "type": "boolean"
+        },
+        "custom_sip_interface": {
+            "description": "",
+            "name": "custom_sip_interface",
+            "type": "string"
+        },
+        "formatter": {
+            "default": "^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$",
+            "description": "",
+            "name": "formatter",
+            "type": "string"
+        },
+        "path": {
+            "default": "",
+            "description": "",
+            "name": "path",
+            "type": "string"
+        },
+        "prefix": {
+            "default": "",
+            "description": "",
+            "name": "prefix",
+            "type": "string"
+        },
+        "realm": {
+            "default": "mobile.k.zswitch.net",
+            "description": "",
+            "name": "realm",
+            "type": "string"
+        },
+        "sms": {
+            "properties": {
+                "connections": {
+                    "properties": {
+                        "default": {
+                            "default": {
+                                "exchange": "sms",
+                                "options": {
+                                    "passive": true
+                                },
+                                "route": "sprint",
+                                "type": "topic"
+                            }
+                        },
+                        "description": "",
+                        "name": "connections",
+                        "type": "object"
+                    }
+                }
+            }
+        },
+        "sms_interface": {
+            "default": "amqp",
+            "description": "",
+            "name": "sms_interface",
+            "type": "string"
+        },
+        "suffix": {
+            "default": "",
+            "description": "",
+            "name": "suffix",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}
