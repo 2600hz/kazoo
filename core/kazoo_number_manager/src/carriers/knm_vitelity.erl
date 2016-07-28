@@ -459,7 +459,7 @@ get_routesip() ->
     <<"1.2.3.4">>.
 -else.
 get_routesip() ->
-    case kapps_config:get(knm_vitelity_util:config_cat(), <<"routesip">>) of
+    case knm_vitelity_util:get_routezip() of
         [Route|_] -> Route;
         Route -> Route
     end.

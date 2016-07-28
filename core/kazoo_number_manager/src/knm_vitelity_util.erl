@@ -18,6 +18,7 @@
         ,build_uri/1
         ,query_vitelity/1
         ,get_short_state/1
+        ,get_routesip/0
 
         ,xml_resp_status_msg/1
         ,xml_resp_error_msg/1
@@ -237,3 +238,7 @@ get_short_state(FullState) ->
              ],
     State = kz_util:to_lower_binary(FullState),
     props:get_value(State, States).
+
+-spec get_routesip() -> ne_binary() | api_binaries().
+get_routesip() ->
+    kapps_config:get(?KNM_VITELITY_CONFIG_CAT, <<"routesip">>).
