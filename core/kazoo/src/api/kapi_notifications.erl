@@ -300,13 +300,13 @@
 %% Notify Port Unconfirmed
 -define(PORT_UNCONFIRMED_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORT_UNCONFIRMED_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
-                                       ,<<"Number-State">>, <<"Local-Number">>
-                                       ,<<"Number">>, <<"Port">>, <<"Version">>
-                                            | ?DEFAULT_OPTIONAL_HEADERS
-                                       ]).
+                                           ,<<"Number-State">>, <<"Local-Number">>
+                                           ,<<"Number">>, <<"Port">>, <<"Version">>
+                                                | ?DEFAULT_OPTIONAL_HEADERS
+                                           ]).
 -define(PORT_UNCONFIRMED_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                             ,{<<"Event-Name">>, <<"port_unconfirmed">>}
-                             ]).
+                                 ,{<<"Event-Name">>, <<"port_unconfirmed">>}
+                                 ]).
 -define(PORT_UNCONFIRMED_TYPES, []).
 
 %% Notify Port Request
