@@ -5,7 +5,18 @@
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 
 process_project() ->
-    'ok'.
+    Core = siblings_of('kazoo'),
+    Apps = siblings_of('sysconf'),
+    lists:foldl(fun process_app/2, kz_json:new(), Core ++ Apps).
+
+siblings_of(App) ->
+    [dir_to_app_name(Dir)
+     || Dir <- filelib:wildcard(filename:join([code:lib_dir(App), "..", "*"])),
+        filelib:is_dir(Dir)
+    ].
+
+dir_to_app_name(Dir) ->
+    kz_util:to_atom(filename:basename(Dir), 'true').
 
 -spec process_app(atom()) -> kz_json:object().
 process_app(App) ->
