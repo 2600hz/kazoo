@@ -12708,31 +12708,6 @@
         "/v2/accounts": {
             "put": {}
         },
-        "/v2/accounts/AccountId": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "accounts",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/accounts"
-                    }
-                }
-            },
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "accounts",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/accounts"
-                    }
-                }
-            }
-        },
         "/v2/accounts/{ACCOUNT_ID}": {
             "delete": {},
             "get": {},
@@ -12879,12 +12854,6 @@
             "patch": {},
             "post": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {}
-        },
         "/v2/accounts/{ACCOUNT_ID}/cccps": {
             "get": {},
             "put": {}
@@ -12909,10 +12878,6 @@
         },
         "/v2/accounts/{ACCOUNT_ID}/channels": {
             "get": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/channels/{ID}": {
-            "get": {},
-            "post": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/channels/{UUID}": {
             "get": {},
@@ -12961,11 +12926,9 @@
         },
         "/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants": {
             "get": {},
-            "post": {},
             "put": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}": {
-            "post": {},
             "put": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/configs/{ID}": {
@@ -13228,9 +13191,6 @@
         "/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{ID}": {
-            "get": {}
-        },
         "/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{_ID}": {
             "get": {}
         },
@@ -13381,29 +13341,6 @@
         "/v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {},
-            "put": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs/{ID}": {
-            "delete": {},
-            "post": {},
-            "put": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/identify": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/port": {
-            "put": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/reserve": {
-            "put": {}
-        },
         "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}": {
             "delete": {},
             "get": {},
@@ -13480,41 +13417,6 @@
             "patch": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/submitted": {
-            "patch": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}": {
-            "delete": {},
-            "get": {},
-            "post": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments": {
-            "get": {},
-            "put": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}": {
-            "delete": {},
-            "get": {},
-            "post": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/canceled": {
-            "patch": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/completed": {
-            "patch": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/loa": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/pending": {
-            "patch": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/rejected": {
-            "patch": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/scheduled": {
-            "patch": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/submitted": {
             "patch": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/presence": {
@@ -13772,9 +13674,6 @@
         "/v2/accounts/{ACCOUNT_ID}/tree": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/user_auth/{AUTH_TOKEN}": {
-            "get": {}
-        },
         "/v2/accounts/{ACCOUNT_ID}/users": {
             "get": {},
             "put": {}
@@ -13784,19 +13683,6 @@
             "get": {},
             "patch": {},
             "post": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/devices": {
-            "get": {
-                "description": "Summary listing of devices for the user",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A listing of devices created for the user"
-                    }
-                }
-            }
         },
         "/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo": {
             "delete": {},
@@ -14257,8 +14143,7 @@
         },
         "/v2/shared_auth": {
             "delete": {},
-            "get": {},
-            "put": {}
+            "get": {}
         },
         "/v2/sup/{MODULE}": {
             "get": {}
@@ -14272,34 +14157,6 @@
         "/v2/system_configs": {
             "get": {},
             "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "system_configs",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/system_configs"
-                    }
-                }
-            }
-        },
-        "/v2/system_configs/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "system_configs",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/system_configs"
-                    }
-                }
-            }
-        },
-        "/v2/system_configs/{ID}/{NODE}": {
-            "delete": {},
-            "get": {},
-            "post": {
                 "parameters": {
                     "in": "body",
                     "name": "system_configs",
@@ -14359,19 +14216,6 @@
         },
         "/v2/user_auth/{AUTHTOKEN}": {
             "get": {}
-        },
-        "/v2/webhooks": {
-            "get": {
-                "description": "Listing of installed webhooks available for subscription",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A list of objects representing the available webhooks"
-                    }
-                }
-            }
         }
     },
     "swagger": "2.0"
