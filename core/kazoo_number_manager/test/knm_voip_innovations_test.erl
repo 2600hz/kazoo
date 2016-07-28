@@ -57,6 +57,6 @@ disconnect_number() ->
     Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
     Msg = <<"Number currently available">>,
     [{"Verify cannot release number not detained"
-     ,?_assertException('throw', {'error','by_carrier',Number,{'knm_voip_innovations',Msg}}, knm_voip_innovations:disconnect_number(Number))
+     ,?_assertException('throw', {'error','by_carrier',N,{'knm_voip_innovations',Msg}}, knm_voip_innovations:disconnect_number(Number))
      }
     ].

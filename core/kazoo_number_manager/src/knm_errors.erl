@@ -120,9 +120,12 @@ database_error(E, PhoneNumber) ->
 number_is_porting(Num) ->
     throw({'error', 'number_is_porting', Num}).
 
--spec by_carrier(module(), ne_binary() | atom(), kn()) -> no_return().
+-spec by_carrier(module(), ne_binary() | atom(), ne_binary() | kn()) -> no_return().
+by_carrier(Carrier, E, Num=?NE_BINARY) ->
+    throw({'error', 'by_carrier', Num, {Carrier,E}});
 by_carrier(Carrier, E, Number) ->
-    throw({'error', 'by_carrier', Number, {Carrier,E}}).
+    Num = knm_phone_number:number(knm_number:phone_number(Number)),
+    by_carrier(Carrier, E, Num).
 
 %%--------------------------------------------------------------------
 %% @public

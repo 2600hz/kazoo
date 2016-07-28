@@ -72,7 +72,8 @@ acquire_number(Number) ->
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, Num]),
     case query_simwood(URL, 'put') of
         {'ok', _Body} -> Number;
-        {'error', Error} -> knm_errors:by_carrier(?MODULE, Error, Number)
+        {'error', Error} ->
+            knm_errors:by_carrier(?MODULE, Error, Num)
     end.
 
 %%--------------------------------------------------------------------
@@ -88,7 +89,8 @@ disconnect_number(Number) ->
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, Num]),
     case query_simwood(URL, 'delete') of
         {'ok', _Body} -> Number;
-        {'error', Error} -> knm_errors:by_carrier(?MODULE, Error, Number)
+        {'error', Error} ->
+            knm_errors:by_carrier(?MODULE, Error, Num)
     end.
 
 %%--------------------------------------------------------------------

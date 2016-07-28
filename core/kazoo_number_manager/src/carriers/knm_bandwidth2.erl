@@ -194,7 +194,7 @@ acquire_number(Number) ->
             case api_post(url(["orders"]), Body) of
                 {'error', Reason} ->
                     Error = <<"Unable to acquire number: ", (kz_util:to_binary(Reason))/binary>>,
-                    knm_errors:by_carrier(?MODULE, Error, Number);
+                    knm_errors:by_carrier(?MODULE, Error, Num);
                 {'ok', Xml} ->
                     Response = xmerl_xpath:string("Order", Xml),
                     OrderData = number_order_response_to_json(Response),
