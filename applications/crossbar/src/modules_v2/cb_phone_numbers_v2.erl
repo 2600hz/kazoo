@@ -349,7 +349,10 @@ put(Context, Number) ->
               ,{'auth_by', cb_context:auth_account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', cb_context:doc(Context)}
-              ],
+              ]
+        ++ [{'state', ?NUMBER_STATE_RESERVED}
+            || cb_context:account_id(Context) =:= cb_context:auth_account_id(Context)
+           ],
     Result = knm_number:create(Number, Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number) end,
     set_response(Result, Context, CB).
