@@ -29,8 +29,8 @@ to_schema_doc(M) ->
 
 to_schema_doc(M, Usage) ->
     <<"cf_", Base/binary>> = kz_util:to_binary(M),
-    Schema = schema_path(Base),
-    ensure_file_exists(Schema),
+    Schema = kz_ast_util:schema_path(<<"callflows.", Base/binary, ".json">>),
+    kz_ast_util:ensure_file_exists(Schema),
     update_schema(Base, Schema, Usage).
 
 update_schema(Base, Path, Usage) ->
@@ -144,25 +144,6 @@ guess_type('get_ne_value', 'undefined') ->
 guess_type(_F, _D) ->
     ?DEBUG("couldn't guess ~p(~p)~n", [_F, _D]),
     'undefined'.
-
-schema_path(Base) ->
-    filename:join([code:priv_dir('crossbar')
-                  ,<<"couchdb">>
-                  ,<<"schemas">>
-                  ,<<"callflows.", Base/binary, ".json">>
-                  ]).
-
-ensure_file_exists(Path) ->
-    case filelib:is_regular(Path) of
-        'false' -> create_schema(Path);
-        'true' -> 'ok'
-    end.
-
-create_schema(Path) ->
-    Skel = schema_path(<<"skel">>),
-    ?DEBUG("copying ~s to ~s~n", [Skel, Path]),
-    {'ok', _} = file:copy(Skel, Path),
-    ?DEBUG("  copied skel into ~s~n", [Path]).
 
 process() ->
     {'ok', Modules} = application:get_key('callflow', 'modules'),

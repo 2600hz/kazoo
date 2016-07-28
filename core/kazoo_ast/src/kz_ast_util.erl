@@ -3,7 +3,12 @@
 -export([module_ast/1
         ,add_module_ast/3
         ,binary_match_to_binary/1
+
+        ,schema_path/1
+         ,ensure_file_exists/1
+         ,create_schema/1
         ]).
+
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 
@@ -41,3 +46,20 @@ binary_part_to_binary(?BINARY_STRING(V)) -> V;
 binary_part_to_binary(?BINARY_VAR(N)) -> [${, kz_util:to_binary(N), $}];
 binary_part_to_binary(?SUB_BINARY(V)) -> V;
 binary_part_to_binary(?BINARY_MATCH(Ms)) -> binary_match_to_binary(Ms).
+
+schema_path(Base) ->
+    filename:join([code:priv_dir('crossbar')
+                  ,<<"couchdb">>
+                  ,<<"schemas">>
+                  ,Base
+                  ]).
+
+ensure_file_exists(Path) ->
+    case filelib:is_regular(Path) of
+        'false' -> create_schema(Path);
+        'true' -> 'ok'
+    end.
+
+create_schema(Path) ->
+    Skel = schema_path(<<"skel">>),
+    {'ok', _} = file:copy(Skel, Path).

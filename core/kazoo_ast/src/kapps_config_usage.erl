@@ -1,8 +1,34 @@
 -module(kapps_config_usage).
 
--export([process_project/0, process_app/1, process_module/1]).
+-export([process_project/0, process_app/1, process_module/1
+         ,to_schema_docs/0
+        ]).
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
+
+to_schema_docs() ->
+    to_schema_docs(process_project()).
+
+to_schema_docs(Schemas) ->
+    kz_json:foreach(fun update_schema/1, Schemas).
+
+update_schema({Name, AutoGenSchema}) ->
+    Path = kz_ast_util:schema_path(<<"system_config.", Name/binary, ".json">>),
+    SchemaDoc = schema_doc(Name, Path),
+    Updated = kz_json:merge_recursive(AutoGenSchema, SchemaDoc),
+    'ok' = file:write_file(Path, kz_json:encude(Updated)).
+
+schema_doc(Name, Path) ->
+    kz_ast_util:ensure_file_exists(Path),
+    {'ok', Bin} = file:read_file(Path),
+    ensure_id(Name, kz_json:decode(Bin)).
+
+ensure_id(Name, JObj) ->
+    ID = <<"system_config.", Name/binary>>,
+    case kz_doc:id(JObj) of
+        ID -> JObj;
+        _ -> kz_doc:set_id(JObj, ID)
+    end.
 
 process_project() ->
     Core = siblings_of('kazoo'),
