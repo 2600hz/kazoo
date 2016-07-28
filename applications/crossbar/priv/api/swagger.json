@@ -14142,8 +14142,8 @@
             }
         },
         "/v2/shared_auth": {
-            "delete": {},
-            "get": {}
+            "get": {},
+            "put": {}
         },
         "/v2/sup/{MODULE}": {
             "get": {}
