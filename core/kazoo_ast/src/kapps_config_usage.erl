@@ -83,6 +83,10 @@ expression_to_schema(?TRY_EXPR(Expr, Clauses, CatchClauses), Schemas) ->
     clauses_to_schema(Clauses ++ CatchClauses
                      ,expressions_to_schema(Expr, Schemas)
                      );
+expression_to_schema(?TRY_BODY_AFTER(Body, Clauses, CatchClauses, AfterBody), Schemas) ->
+    clauses_to_schema(Clauses ++ CatchClauses
+                      ,expressions_to_schema(Body ++ AfterBody, Schemas)
+                     );
 expression_to_schema(?LC(Expr, Qualifiers), Schemas) ->
     expressions_to_schema([Expr | Qualifiers], Schemas);
 expression_to_schema(?LC_GENERATOR(Pattern, Expr), Schemas) ->
@@ -107,6 +111,8 @@ expression_to_schema(?RECORD_FIELD_BIND(_Key, Value), Schemas) ->
     expression_to_schema(Value, Schemas);
 expression_to_schema(?RECORD_FIELD_ACCESS(_RecordName, _Name, Value), Schemas) ->
     expression_to_schema(Value, Schemas);
+expression_to_schema(?RECORD_FIELD_REST, Schemas) ->
+    Schemas;
 expression_to_schema(?DYN_FUN_ARGS(_F, Args), Schemas) ->
     expressions_to_schema(Args, Schemas);
 expression_to_schema(?DYN_MOD_FUN_ARGS(_M, _F, Args), Schemas) ->
@@ -208,6 +214,12 @@ key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [Doc, Field | _]), Tail)
     ];
 key_to_key_path(?GEN_MOD_FUN_ARGS(_M, _F, _Args)) ->
     'undefined';
+
+key_to_key_path(?LIST(?VAR(Name), Tail)) ->
+    [iolist_to_binary([${, kz_util:to_binary(Name), $}])
+    ,<<"properties">>
+    | key_to_key_path(Tail)
+    ];
 key_to_key_path(?LIST(Head, Tail)) ->
     [kz_ast_util:binary_match_to_binary(Head)
     ,<<"properties">>
@@ -243,7 +255,7 @@ guess_properties(<<_/binary>> = Key, Type, Default) ->
         [{<<"type">>, Type}
         ,{<<"description">>, <<>>}
         ,{<<"name">>, Key}
-        ,{<<"default">>, default_value(Default)}
+        ,{<<"default">>, try default_value(Default) catch _:_ -> 'default' end}
         ]
        )
      );
@@ -275,7 +287,9 @@ default_value(?MOD_FUN_ARGS('kz_json', 'from_list', L)) ->
     default_values_from_list(L);
 default_value(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
     kz_json:new();
-default_value(?MOD_FUN_ARGS(_M, _F, _Args)) -> 'undefined'.
+default_value(?MOD_FUN_ARGS(_M, _F, _Args)) -> 'undefined';
+default_value(?FUN_ARGS(_F, _Args)) ->
+     'undefined'.
 
 default_values_from_list(KVs) ->
     lists:foldl(fun default_value_from_kv/2

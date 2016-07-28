@@ -36,10 +36,12 @@
 -define(CHAR(C), {'char', _, C}).
 -define(STRING(Value), {'string', _, Value}).
 
--define(RECORD_FIELD_BIND(Key, Value), {'record_field', _
-                                       ,?ATOM(Key)
-                                       ,Value
-                                       }).
+-define(RECORD_FIELD_REST
+        ,{'record_field', _, ?VAR('_'), ?ATOM('_')}
+       ).
+-define(RECORD_FIELD_BIND(Key, Value)
+       ,{'record_field', _,?ATOM(Key),Value}
+       ).
 -define(RECORD_FIELD_ACCESS(RecordName, Name, Value)
        ,{'record_field', _, ?VAR(Name), RecordName, Value}
        ).
@@ -54,6 +56,9 @@
        ).
 -define(TRY_EXPR(Expr, Clauses, CatchClauses)
        ,{'try', _, Expr, Clauses, CatchClauses, []}
+       ).
+-define(TRY_BODY_AFTER(Body, Clauses, CatchClauses, AfterBody)
+       ,{'try',_,Body,Clauses,CatchClauses,AfterBody}
        ).
 
 -define(GEN_MOD_FUN(MExpr, FExpr), {'remote', _, MExpr, FExpr}).
