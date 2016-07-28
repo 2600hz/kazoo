@@ -41,9 +41,26 @@ change_state(Number, ?NUMBER_STATE_DELETED) ->
     to_deleted(Number);
 change_state(Number, ?NUMBER_STATE_IN_SERVICE) ->
     to_in_service(Number);
+change_state(Number, ?NUMBER_STATE_AVAILABLE) ->
+    to_available(Number);
 change_state(Number, _State) ->
     lager:debug("unhandled state change to ~p", [_State]),
     knm_errors:unspecified('invalid_state', Number).
+
+-spec to_available(kn()) -> kn().
+-spec to_available(kn(), ne_binary()) -> kn().
+to_available(Number) ->
+    to_available(Number, number_state(Number)).
+
+to_available(Number, ?NUMBER_STATE_AVAILABLE) ->
+    Routines = [fun authorize/1
+               ,fun update_reserve_history/1
+               ,fun move_to_available_state/1
+               ,fun knm_services:activate_phone_number/1
+               ],
+    apply_transitions(Number, Routines);
+to_available(Number, State) ->
+    knm_errors:invalid_state_transition(Number, State, ?NUMBER_STATE_AVAILABLE).
 
 -spec to_reserved(kn()) -> kn().
 -spec to_reserved(kn(), ne_binary()) -> kn().
@@ -225,6 +242,10 @@ update_reserve_history(Number) ->
     AssignTo = knm_phone_number:assign_to(PhoneNumber),
     PN = knm_phone_number:add_reserve_history(PhoneNumber, AssignTo),
     knm_number:set_phone_number(Number, PN).
+
+-spec move_to_available_state(kn()) -> kn().
+move_to_available_state(Number) ->
+    move_number_to_state(Number, ?NUMBER_STATE_AVAILABLE).
 
 -spec move_to_reserved_state(kn()) -> kn().
 move_to_reserved_state(Number) ->
