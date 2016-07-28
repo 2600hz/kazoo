@@ -311,10 +311,6 @@ import(Props, AccountIds
       ,_CNAMInbound, _CNAMOutbound
       ,_E911PostalCode, _E911StreetAddress, _E911ExtendedAddress, _E911Locality, _E911Region) ->
     %%TODO: use all the optional fields
-    State = case AccountId0 of
-                'undefined' -> ?NUMBER_STATE_RESERVED;
-                _ -> ?NUMBER_STATE_IN_SERVICE
-            end,
     AccountId = case AccountId0 of
                     'undefined' -> props:get_value('account_id', Props);
                     _ -> AccountId0
@@ -326,7 +322,6 @@ import(Props, AccountIds
     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'batch_run', 'true'}
               ,{'assign_to', AccountId}
-              ,{'state', State}
               ,{'module_name', ModuleName}
               ],
     case handle_result(knm_number:create(E164, Options)) of

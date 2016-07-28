@@ -40,7 +40,7 @@
 -export([attempt/2]).
 -export([ensure_can_load_to_create/1]).
 -export([ensure_can_create/2]).
--export([create_or_load/4]).
+-export([create_or_load/3]).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
@@ -132,24 +132,33 @@ create(Num, Options) ->
 -spec create_or_load(ne_binary(), knm_number_options:options()) ->
                             dry_run_or_number_return().
 create_or_load(Num, Options0) ->
-    ToState = knm_number_options:state(Options0, ?NUMBER_STATE_RESERVED),
+    AccountId = knm_number_options:assign_to(Options0),
+    ToState =
+        case kz_services:is_reseller(AccountId) of
+            'false' -> ?NUMBER_STATE_IN_SERVICE;
+            'true' ->
+                case kapps_util:get_master_account_id() of
+                    {'ok', AccountId} -> ?NUMBER_STATE_AVAILABLE;
+                    {'ok', _} -> ?NUMBER_STATE_RESERVED
+                end
+        end,
+    lager:debug("picked ~s state ~s for ~s", [Num, ToState, AccountId]),
     Options = [{'state', ToState} | Options0],
-    create_or_load(Num, Options, ToState, knm_phone_number:fetch(Num)).
+    create_or_load(Num, Options, knm_phone_number:fetch(Num)).
 
--spec create_or_load(ne_binary(), knm_number_options:options(), ne_binary()
-                    ,knm_phone_number_return()) ->
+-spec create_or_load(ne_binary(), knm_number_options:options(), knm_phone_number_return()) ->
                             dry_run_or_number_return().
-create_or_load(_Num, Options, ToState, {'ok', PhoneNumber}) ->
+create_or_load(_Num, Options, {'ok', PhoneNumber}) ->
     ensure_can_load_to_create(PhoneNumber),
     Updates = knm_number_options:to_phone_number_setters(
-                [Option || Option <- Options, element(1,Option) =/= 'state']
+                props:delete('state', Options)
                ),
     {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Updates),
-    create_phone_number(ToState, set_phone_number(new(), NewPhoneNumber));
-create_or_load(Num, Options, ToState, {'error', 'not_found'}) ->
+    create_phone_number(Options, set_phone_number(new(), NewPhoneNumber));
+create_or_load(Num, Options, {'error', 'not_found'}) ->
     ensure_can_create(Num, Options),
     PhoneNumber = knm_phone_number:new(Num, Options),
-    create_phone_number(ToState, set_phone_number(new(), PhoneNumber)).
+    create_phone_number(Options, set_phone_number(new(), PhoneNumber)).
 
 -spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true'.
 ensure_can_load_to_create(PhoneNumber) ->
@@ -164,9 +173,10 @@ ensure_state(PhoneNumber, ExpectedState) ->
             knm_errors:number_exists(knm_phone_number:number(PhoneNumber))
     end.
 
--spec create_phone_number(ne_binary(), knm_number()) ->
+-spec create_phone_number(knm_number_options:options(), knm_number()) ->
                                  dry_run_or_number_return().
-create_phone_number(TargetState, Number) ->
+create_phone_number(Options, Number) ->
+    TargetState = knm_number_options:state(Options),
     Routines = [fun (N) -> knm_number_states:to_state(N, TargetState) end
                ,fun save_number/1
                ,fun dry_run_or_number/1
