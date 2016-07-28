@@ -26,17 +26,17 @@ handle_event(Context, EventJObj) ->
 
 -spec subscribe(ne_binary(), bh_context:context()) -> {'ok', bh_context:context()}.
 subscribe(Context, <<"conference.command.", ConfId/binary>>) ->
-    _AccountId = bh_context:account_id(Context),
     BindKey = <<"conference.command.", ConfId/binary>>,
     blackhole_listener:add_binding('conference', command_binding_options(ConfId)),
     blackhole_bindings:bind(BindKey, ?MODULE, 'handle_event', Context),
     {'ok', Context};
 subscribe(Context, <<"conference.event.", Binding/binary>>) ->
-    AccountId = bh_context:account_id(Context),
     case binary:split(Binding, <<".">>, ['global']) of
+        [<<"*">>, _CallId] ->
+            blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding);
         [ConfId, CallId] ->
-            BindKey = kz_util:join_binary([<<"conference.event">>, AccountId, ConfId, CallId], <<".">>),
-            blackhole_listener:add_binding('conference', event_binding_options(AccountId, ConfId, CallId)),
+            BindKey = kz_util:join_binary([<<"conference.event">>, ConfId, CallId], <<".">>),
+            blackhole_listener:add_binding('conference', event_binding_options(ConfId, CallId)),
             blackhole_bindings:bind(BindKey, ?MODULE, 'handle_event', Context);
         _Else ->
             blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding)
@@ -48,17 +48,17 @@ subscribe(Binding, Context) ->
 
 -spec unsubscribe(bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
 unsubscribe(<<"conference.command.", ConfId/binary>>, Context) ->
-    _AccountId = bh_context:account_id(Context),
     BindKey = <<"conference.command.", ConfId/binary>>,
     blackhole_listener:remove_binding('conference', command_binding_options(ConfId)),
     blackhole_bindings:unbind(BindKey, ?MODULE, 'handle_event', Context),
     {'ok', Context};
 unsubscribe(<<"conference.event.", Binding/binary>>, Context) ->
-    AccountId = bh_context:account_id(Context),
     case binary:split(Binding, <<".">>, ['global']) of
+        [<<"*">>, _CallId] ->
+            blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding);
         [ConfId, CallId] ->
-            BindKey = kz_util:join_binary([<<"conference.event">>, AccountId, ConfId, CallId], <<".">>),
-            blackhole_listener:remove_binding('conference', event_binding_options(AccountId, ConfId, CallId)),
+            BindKey = kz_util:join_binary([<<"conference.event">>, ConfId, CallId], <<".">>),
+            blackhole_listener:remove_binding('conference', event_binding_options(ConfId, CallId)),
             blackhole_bindings:unbind(BindKey, ?MODULE, 'handle_event', Context);
         _Else ->
             blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding)
@@ -83,9 +83,9 @@ command_binding_options(ConfId) ->
     ,'federate'
     ].
 
--spec event_binding_options(ne_binary(), ne_binary(), ne_binary()) -> kz_proplist().
-event_binding_options(AccountId, ConfId, CallId) ->
-    [{'conference', {AccountId, ConfId, CallId}}
+-spec event_binding_options(ne_binary(), ne_binary()) -> kz_proplist().
+event_binding_options(ConfId, CallId) ->
+    [{'conference', {ConfId, CallId}}
     ,{'restrict_to', ['event']}
     ,'federate'
     ].

@@ -78,9 +78,9 @@
 -export([conference_exchange/0]).
 -export([new_conference_queue/0, new_conference_queue/1]).
 -export([delete_conference_queue/1]).
--export([bind_q_to_conference/2, bind_q_to_conference/3, bind_q_to_conference/4, bind_q_to_conference/5]).
+-export([bind_q_to_conference/2, bind_q_to_conference/3, bind_q_to_conference/4]).
 -export([unbind_q_from_conference/2, unbind_q_from_conference/3, unbind_q_from_conference/4]).
--export([conference_publish/2, conference_publish/3, conference_publish/4, conference_publish/5, conference_publish/7]).
+-export([conference_publish/2, conference_publish/3, conference_publish/4, conference_publish/5, conference_publish/6]).
 
 -export([presence_exchange/0]).
 -export([new_presence_queue/0, new_presence_queue/1]).
@@ -392,9 +392,9 @@ conference_publish(Payload, 'event', ConfId, Options, ContentType) ->
 conference_publish(Payload, 'command', ConfId, Options, ContentType) ->
     basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, Payload, ContentType, Options).
 
-conference_publish(Payload, 'event', AccountId, ConfId, CallId, Options, ContentType) ->
+conference_publish(Payload, 'event', ConfId, CallId, Options, ContentType) ->
     basic_publish(?EXCHANGE_CONFERENCE
-                 , <<?KEY_CONFERENCE_EVENT/binary, AccountId/binary, ".", ConfId/binary, ".", CallId/binary>>
+                 , <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary, ".", CallId/binary>>
                  , Payload
                  , ContentType
                  , Options).
@@ -924,31 +924,28 @@ unbind_q_from_monitor(Queue, Routing) ->
 
 -spec bind_q_to_conference(ne_binary(), conf_routing_type()) -> 'ok'.
 -spec bind_q_to_conference(ne_binary(), conf_routing_type(), api_binary()) -> 'ok'.
--spec bind_q_to_conference(ne_binary(), conf_routing_type(), api_binary(), api_binary(), api_binary()) -> 'ok'.
+-spec bind_q_to_conference(ne_binary(), conf_routing_type(), api_binary(), api_binary()) -> 'ok'.
 
 bind_q_to_conference(Queue, 'discovery') ->
     bind_q_to_conference(Queue, 'discovery', 'undefined');
 bind_q_to_conference(Queue, 'command') ->
     bind_q_to_conference(Queue, 'command', <<"*">>);
 bind_q_to_conference(Queue, 'event') ->
-    bind_q_to_conference(Queue, 'event', <<"*">>, <<"*">>, <<"*">>);
+    bind_q_to_conference(Queue, 'event', <<"*">>, <<"*">>);
 bind_q_to_conference(Queue, 'config') ->
     bind_q_to_conference(Queue, 'config', <<"*">>).
 
 bind_q_to_conference(Queue, 'discovery', _) ->
     bind_q_to_exchange(Queue, ?KEY_CONFERENCE_DISCOVERY, ?EXCHANGE_CONFERENCE);
-bind_q_to_conference(Queue, 'event', AccountId) ->
-    bind_q_to_conference(Queue, 'event', AccountId, <<"*">>, <<"*">>);
+bind_q_to_conference(Queue, 'event', ConfId) ->
+    bind_q_to_conference(Queue, 'event', ConfId, <<"*">>);
 bind_q_to_conference(Queue, 'command', ConfId) ->
     bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE);
 bind_q_to_conference(Queue, 'config', ConfProfile) ->
     bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_CONFIG/binary, ConfProfile/binary>>, ?EXCHANGE_CONFERENCE).
 
-bind_q_to_conference(Queue, 'event', AccountId, ConfId) ->
-    bind_q_to_conference(Queue, 'event', AccountId, ConfId, <<"*">>).
-
-bind_q_to_conference(Queue, 'event', AccountId, ConfId, CallId) ->
-    BindKey = <<?KEY_CONFERENCE_EVENT/binary, AccountId/binary, ".", ConfId/binary, ".", CallId/binary>>,
+bind_q_to_conference(Queue, 'event', ConfId, CallId) ->
+    BindKey = <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary, ".", CallId/binary>>,
     bind_q_to_exchange(Queue, BindKey, ?EXCHANGE_CONFERENCE).
 
 -spec bind_q_to_leader(ne_binary(), ne_binary()) -> 'ok'.
