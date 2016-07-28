@@ -14,9 +14,19 @@ to_schema_docs(Schemas) ->
 
 update_schema({Name, AutoGenSchema}) ->
     Path = kz_ast_util:schema_path(<<"system_config.", Name/binary, ".json">>),
+
+    io:format("augmenting ~s in ~s~n", [Name, Path]),
+
     SchemaDoc = schema_doc(Name, Path),
+
+    io:format("existing: ~p~n", [SchemaDoc]),
+    io:format("gen: ~p~n", [AutoGenSchema]),
+
     Updated = kz_json:merge_recursive(AutoGenSchema, SchemaDoc),
-    'ok' = file:write_file(Path, kz_json:encude(Updated)).
+
+    io:format("~nupdated: ~p~n", [Updated]),
+
+    'ok' = file:write_file(Path, kz_json:encode(Updated)).
 
 schema_doc(Name, Path) ->
     kz_ast_util:ensure_file_exists(Path),
@@ -27,7 +37,11 @@ ensure_id(Name, JObj) ->
     ID = <<"system_config.", Name/binary>>,
     case kz_doc:id(JObj) of
         ID -> JObj;
-        _ -> kz_doc:set_id(JObj, ID)
+        _ ->
+            kz_json:set_value(<<"description">>
+                             ,<<"Schema for ", Name/binary, " system_config">>
+                             ,kz_doc:set_id(JObj, ID)
+                             )
     end.
 
 process_project() ->

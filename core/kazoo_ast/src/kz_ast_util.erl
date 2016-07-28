@@ -61,5 +61,5 @@ ensure_file_exists(Path) ->
     end.
 
 create_schema(Path) ->
-    Skel = schema_path(<<"skel">>),
+    Skel = schema_path(<<"skel.json">>),
     {'ok', _} = file:copy(Skel, Path).
