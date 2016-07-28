@@ -317,6 +317,8 @@ is_trunkstore_acct(JObj, <<"sys_info">> = Type) ->
         orelse kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Trunkstore-ID">>], JObj) =/= 'undefined'
         andalso (kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Referred-By">>], JObj) =/= 'undefined'
                  orelse kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Redirected-By">>], JObj) =/= 'undefined');
+is_trunkstore_acct(JObj, Type) ->
+    Type =:= kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj).
 
 -spec pre_park_action() -> ne_binary().
 pre_park_action() ->
