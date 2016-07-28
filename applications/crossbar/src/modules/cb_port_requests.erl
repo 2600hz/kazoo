@@ -394,13 +394,12 @@ maybe_patch_to_scheduled(Context, Id) ->
     JObj = cb_context:req_data(Context),
     case kz_json:get_value(<<"scheduled_date">>, JObj) of
         'undefined' ->
-            cb_context:add_validation_error(
-                <<"error">>
-               ,<<"type">>
-               ,kz_json:from_list([
-                    {<<"message">>, <<"Schedule update missing parameters">>}
-                   ,{<<"missing">>, <<"schedule_date">>}])
-            ,Context);
+            cb_context:add_validation_error(<<"error">>
+					   ,<<"type">>
+					   ,kz_json:from_list([{<<"message">>, <<"Schedule update missing parameters">>}
+							      ,{<<"missing">>, <<"schedule_date">>}
+							      ])
+					   ,Context);
 
         _Scheduled ->
             patch_then_notify(Context, Id, ?PORT_SCHEDULED)
