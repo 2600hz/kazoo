@@ -252,7 +252,7 @@ code_change(_OldVsn, State, _Extra) ->
 finalize_processing(<<"del-member">>, CallId) ->
     ecallmgr_fs_conferences:participant_destroy(CallId),
     'ok';
-finalize_processing(_, _) -> 'skip'.
+finalize_processing(_, _) -> 'ok'.
 
 -spec process_participant_event(ne_binary(), kz_proplist(), atom(), ne_binary()) ->
                                        {'continue', kz_proplist()} |
