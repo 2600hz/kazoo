@@ -228,13 +228,20 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
+-spec filter_read(cb_context:context(), ne_binary(), kz_json:object()) -> kz_json:object().
+filter_read(Context, Node, QueryString) ->
+    case kz_json:get_value(<<"all">>, QueryString) of
+        <<"true">>  -> kz_doc:public_fields(cb_context:doc(Context));
+        _False      -> kz_json:get_value(Node, cb_context:doc(Context), kz_json:new())
+    end.
+
 -spec read(ne_binary(), cb_context:context(), ne_binary()) ->
                   cb_context:context().
 read(Id, Context, Node) ->
     Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)),
-    cb_context:set_resp_data(Context1
-                            ,kz_json:get_value(Node, cb_context:doc(Context1), kz_json:new())
-                            ).
+    Data     = filter_read(Context1, Node, cb_context:query_string(Context1)),
+
+    cb_context:set_resp_data(Context1, Data).
 
 -spec read_for_delete(ne_binary(), cb_context:context()) ->
                              cb_context:context().
