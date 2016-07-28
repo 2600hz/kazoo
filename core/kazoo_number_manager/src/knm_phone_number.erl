@@ -424,7 +424,7 @@ setters_fold_apply(Fun, Args) ->
 number(#knm_phone_number{number=Num}) -> Num.
 
 -spec set_number(knm_phone_number(), ne_binary()) -> knm_phone_number().
-set_number(N, NormalizedNum=?NE_BINARY) ->
+set_number(N, <<"+",_:8,_/binary>>=NormalizedNum) ->
     N#knm_phone_number{number = NormalizedNum
                       ,number_db = knm_converters:to_db(NormalizedNum)
                       }.
@@ -658,7 +658,9 @@ auth_by(#knm_phone_number{auth_by=AuthBy}) -> AuthBy.
 -spec set_auth_by(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_auth_by(N, AuthBy='undefined') ->
     N#knm_phone_number{auth_by=AuthBy};
-set_auth_by(N, AuthBy=?NE_BINARY) ->
+set_auth_by(N, AuthBy=?KNM_DEFAULT_AUTH_BY) ->
+    N#knm_phone_number{auth_by=AuthBy};
+set_auth_by(N, ?MATCH_ACCOUNT_RAW(AuthBy)) ->
     N#knm_phone_number{auth_by=AuthBy}.
 
 %%--------------------------------------------------------------------
