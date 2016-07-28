@@ -173,10 +173,8 @@ acquire_and_provision_number(Number) ->
         {'ok', Xml} ->
             Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
             Data = number_order_response_to_json(Response),
-            knm_number:set_phone_number(
-              Number
-                                       ,knm_phone_number:set_carrier_data(PhoneNumber, Data)
-             )
+            PN = knm_phone_number:set_carrier_data(PhoneNumber, Data),
+            knm_number:set_phone_number(Number, PN)
     end.
 
 %%--------------------------------------------------------------------

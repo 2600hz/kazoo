@@ -124,7 +124,7 @@ find_numbers(<<Prefix:3/binary, _/binary>>=_Num, Quantity, Options) when ?IS_US_
     Params = [ "tollFreeWildCardPattern=", binary_to_list(Wildcard), "*"
                "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
-    {'ok', Result} = search(Params),
+    Result = search(Num, Params),
     AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
     {'ok', [N
             || X <- xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result),
@@ -136,16 +136,14 @@ find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     Params = [ "areaCode=", binary_to_list(NPA)
              , "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
-    {'ok', Result} = search(Params),
-    {'ok', process_search_response(Result, Options)};
+    {'ok', process_search_response(search(NPA, Params), Options)};
 
 find_numbers(Search, Quantity, Options) ->
     NpaNxx = kz_util:truncate_right_binary(Search, 6),
     Params = [ "npaNxx=", binary_to_list(NpaNxx)
              , "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
-    {'ok', Result} = search(Params),
-    {'ok', process_search_response(Result, Options)}.
+    {'ok', process_search_response(search(Search, Params), Options)}.
 
 -spec process_search_response(xml_el(), kz_proplist()) -> knm_number:knm_numbers().
 process_search_response(Result, Options) ->
@@ -172,7 +170,7 @@ acquire_number(Number) ->
             knm_errors:unspecified('provisioning_disabled', Number);
         'true' ->
             PhoneNumber = knm_number:phone_number(Number),
-            Num = reformat_number_for_acquire(knm_phone_number:number(PhoneNumber)),
+            Num = to_bandwidth2(knm_phone_number:number(PhoneNumber)),
             ON = lists:flatten([?BW2_ORDER_NAME_PREFIX, "-", integer_to_list(kz_util:current_tstamp())]),
             AuthBy = knm_phone_number:auth_by(PhoneNumber),
 
@@ -189,20 +187,18 @@ acquire_number(Number) ->
             case api_post(url(["orders"]), Body) of
                 {'error', Reason} ->
                     Error = <<"Unable to acquire number: ", (kz_util:to_binary(Reason))/binary>>,
-                    knm_errors:by_carrier(?MODULE, Error, Number);
+                    knm_errors:by_carrier(?MODULE, Error, Num);
                 {'ok', Xml} ->
                     Response = xmerl_xpath:string("Order", Xml),
                     OrderData = number_order_response_to_json(Response),
-                    knm_number:set_phone_number(
-                      Number
-                                               ,knm_phone_number:update_carrier_data(PhoneNumber, OrderData)
-                     )
+                    PN = knm_phone_number:update_carrier_data(PhoneNumber, OrderData),
+                    knm_number:set_phone_number(Number, PN)
             end
     end.
 
--spec reformat_number_for_acquire(ne_binary()) -> ne_binary().
-reformat_number_for_acquire(<<"+1", Number/binary>>) -> Number;
-reformat_number_for_acquire(Number) -> Number.
+-spec to_bandwidth2(ne_binary()) -> ne_binary().
+to_bandwidth2(<<"+1", Number/binary>>) -> Number;
+to_bandwidth2(Number) -> Number.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -255,9 +251,13 @@ url(RelativePath) ->
 
 -type api_res() :: {'ok', xml_el()} | {'error', atom()}.
 
--spec search([nonempty_string()]) -> api_res().
-search(Params) ->
-    api_get(url(["availableNumbers?" | Params])).
+-spec search(ne_binary(), [nonempty_string()]) -> xml_el().
+search(Num, Params) ->
+    case api_get(url(["availableNumbers?" | Params])) of
+        {'ok', Results} -> Results;
+        {'error', Reason} ->
+            knm_errors:by_carrier(?MODULE, Reason, Num)
+    end.
 
 -spec auth() -> {'basic_auth', {ne_binary(), ne_binary()}}.
 auth() ->

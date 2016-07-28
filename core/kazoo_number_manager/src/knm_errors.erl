@@ -8,13 +8,13 @@
 %%%-------------------------------------------------------------------
 -module(knm_errors).
 
--export([unauthorized/0
+-export([unspecified/2
+        ,unauthorized/0
         ,number_exists/1
         ,invalid_state_transition/3
         ,no_change_required/1
         ,service_restriction/1
         ,carrier_not_specified/1
-        ,unspecified/2
         ,not_enough_credit/2
         ,invalid/2
         ,multiple_choice/2
@@ -52,6 +52,10 @@
              ,thrown_error/0
              ]).
 
+-spec unspecified(any(), kn() | ne_binary()) -> no_return().
+unspecified(Error, Number) ->
+    throw({'error', Error, Number}).
+
 -spec unauthorized() -> no_return().
 unauthorized() ->
     throw({'error', 'unauthorized'}).
@@ -82,11 +86,6 @@ service_restriction(Message) ->
 -spec carrier_not_specified(kn()) -> no_return().
 carrier_not_specified(Number) ->
     throw({'error', 'carrier_not_specified', Number}).
-
--spec unspecified(any(), kn() | ne_binary()) ->
-                         no_return().
-unspecified(Error, Number) ->
-    throw({'error', Error, Number}).
 
 -spec not_enough_credit(kn(), integer()) ->
                                no_return().
@@ -121,9 +120,12 @@ database_error(E, PhoneNumber) ->
 number_is_porting(Num) ->
     throw({'error', 'number_is_porting', Num}).
 
--spec by_carrier(module(), ne_binary() | atom(), kn()) -> no_return().
+-spec by_carrier(module(), ne_binary() | atom(), ne_binary() | kn()) -> no_return().
+by_carrier(Carrier, E, Num=?NE_BINARY) ->
+    throw({'error', 'by_carrier', Num, {Carrier,E}});
 by_carrier(Carrier, E, Number) ->
-    throw({'error', 'by_carrier', Number, {Carrier,E}}).
+    Num = knm_phone_number:number(knm_number:phone_number(Number)),
+    by_carrier(Carrier, E, Num).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -164,7 +166,7 @@ to_json('invalid_state_transition', _, Cause) ->
     Message = <<"invalid state transition">>,
     build_error(400, 'invalid_state_transition', Message, Cause);
 to_json('by_carrier', Num, {_Carrier,_Cause}) ->
-    lager:debug("carrier ~s fault: ~p", [_Carrier, _Cause]),
+    lager:error("carrier ~s fault: ~p", [_Carrier, _Cause]),
     build_error(500, 'unspecified_fault', <<"fault by carrier">>, Num);
 to_json(Reason, _, Cause) ->
     build_error(500, 'unspecified_fault', Reason, Cause).
