@@ -59,7 +59,7 @@
                           ,state :: ne_binary()
                           ,reserve_history = [] :: ne_binaries()
                           ,ported_in = 'false' :: boolean()
-                          ,module_name :: ne_binary()
+                          ,module_name = knm_carriers:default_carrier() :: ne_binary()
                           ,carrier_data = kz_json:new() :: kz_json:object()
                           ,region :: ne_binary()
                           ,auth_by :: api_binary()
@@ -555,7 +555,7 @@ reserve_history(#knm_phone_number{reserve_history=History}) -> History.
 -spec set_reserve_history(knm_phone_number(), ne_binaries()) -> knm_phone_number().
 set_reserve_history(N, History) when is_list(History) ->
     Cons = fun (A, PN) -> add_reserve_history(PN, A) end,
-    lists:foldr(Cons, N, History).
+    lists:foldr(Cons, N#knm_phone_number{reserve_history=[]}, History).
 
 -spec add_reserve_history(knm_phone_number(), ne_binary()) -> knm_phone_number().
 add_reserve_history(#knm_phone_number{reserve_history=[AccountId|_]}=N
