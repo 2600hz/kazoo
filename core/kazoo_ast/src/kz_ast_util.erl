@@ -28,6 +28,8 @@ ast_functions(Module, {'raw_abstract_v1', Attributes}) ->
     ].
 
 binary_match_to_binary(?ATOM(A)) -> kz_util:to_binary(A);
+binary_match_to_binary(?BINARY_STRING(V)) ->
+    kz_util:to_binary(V);
 binary_match_to_binary(?BINARY_MATCH(Match)) ->
     binary_match_to_binary(Match);
 binary_match_to_binary(Match) when is_list(Match) ->

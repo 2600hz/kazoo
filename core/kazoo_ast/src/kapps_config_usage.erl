@@ -59,6 +59,8 @@ expressions_to_schema(Expressions, Schemas) ->
 
 expression_to_schema(?MOD_FUN_ARGS('kapps_config', F, Args), Schemas) ->
     config_to_schema(F, Args, Schemas);
+expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', F, Args), Schemas) ->
+    config_to_schema(F, [?BINARY_STRING(<<"ecallmgr">>, 0) | Args], Schemas);
 expression_to_schema(?MOD_FUN_ARGS(_M, _F, Args), Schemas) ->
     expressions_to_schema(Args, Schemas);
 expression_to_schema(?DYN_MOD_FUN(_M, _F), Schemas) ->
@@ -103,7 +105,7 @@ expression_to_schema(?BINARY_MATCH(_), Schemas) ->
     Schemas;
 expression_to_schema(?STRING(_), Schemas) ->
     Schemas;
-expression_to_schema(?RECORD_VAR(_VarName, _RecName, Fields), Schemas) ->
+expression_to_schema(?GEN_RECORD(_NameExpr, _RecName, Fields), Schemas) ->
     expressions_to_schema(Fields, Schemas);
 expression_to_schema(?RECORD(_Name, Fields), Schemas) ->
     expressions_to_schema(Fields, Schemas);
@@ -111,6 +113,8 @@ expression_to_schema(?RECORD_FIELD_BIND(_Key, Value), Schemas) ->
     expression_to_schema(Value, Schemas);
 expression_to_schema(?RECORD_FIELD_ACCESS(_RecordName, _Name, Value), Schemas) ->
     expression_to_schema(Value, Schemas);
+expression_to_schema(?RECORD_INDEX(_Name, _Field), Schemas) ->
+    Schemas;
 expression_to_schema(?RECORD_FIELD_REST, Schemas) ->
     Schemas;
 expression_to_schema(?DYN_FUN_ARGS(_F, Args), Schemas) ->
@@ -230,8 +234,11 @@ key_to_key_path(?BINARY_MATCH(K)) ->
 
 guess_type(F) -> guess_type(F, 'undefined').
 
+guess_type('is_true', _Default) -><<"boolean">>;
 guess_type('get_is_true', _Default) -><<"boolean">>;
+guess_type('get_boolean', _Default) -><<"boolean">>;
 guess_type('get', Default) -> guess_type_by_default(Default);
+guess_type('fetch', Default) -> guess_type_by_default(Default);
 guess_type('get_non_empty', Default) -> guess_type_by_default(Default);
 guess_type('get_binary', _Default) -> <<"string">>;
 guess_type('get_ne_binary', _Default) -> <<"string">>;

@@ -27,7 +27,7 @@
        ,{'b_generate', _, Pattern, Expr}
        ).
 -define(BC(Expr, Qualifiers)
-        ,{'bc', _, Expr, Qualifiers}
+       ,{'bc', _, Expr, Qualifiers}
        ).
 
 -define(ATOM(Value), {'atom', _, Value}).
@@ -37,7 +37,7 @@
 -define(STRING(Value), {'string', _, Value}).
 
 -define(RECORD_FIELD_REST
-        ,{'record_field', _, ?VAR('_'), ?ATOM('_')}
+       ,{'record_field', _, ?VAR('_'), ?ATOM('_')}
        ).
 -define(RECORD_FIELD_BIND(Key, Value)
        ,{'record_field', _,?ATOM(Key),Value}
@@ -46,8 +46,15 @@
        ,{'record_field', _, ?VAR(Name), RecordName, Value}
        ).
 -define(RECORD(Name, Fields), {'record', _, Name, Fields}).
+-define(GEN_RECORD(NameExpr, RecName, Fields)
+       ,{'record', _, NameExpr, RecName, Fields}
+       ).
+
 -define(RECORD_VAR(VarName, RecName, Fields)
-        ,{'record', _, ?VAR(VarName), RecName, Fields}
+       ,?GEN_RECORD(?VAR(VarName), RecName, Fields)
+       ).
+-define(RECORD_INDEX(Name, Field)
+       ,{'record_index',_,Name,?ATOM(Field)}
        ).
 
 -define(CATCH(Expr), {'catch', _, Expr}).
@@ -106,6 +113,9 @@
 -define(ORELSE(First, Second), ?BINARY_OP('orelse', First, Second)).
 -define(ANDALSO(First, Second), ?BINARY_OP('andalso', First, Second)).
 
+-define(BINARY_STRING(Value, L)
+       ,{'bin_element', L, {'string', L, Value}, 'default', 'default'}
+       ).
 -define(BINARY_STRING(Value)
        ,{'bin_element', _, {'string', _, Value}, 'default', 'default'}
        ).
@@ -113,7 +123,7 @@
        ,{'bin_element',_,?VAR(VarName),'default',['binary']}
        ).
 -define(SUB_BINARY(Value)
-        ,{'bin_element',_,?BINARY_MATCH([?BINARY_STRING(Value)]),'default',['binary']}
+       ,{'bin_element',_,?BINARY_MATCH([?BINARY_STRING(Value)]),'default',['binary']}
        ).
 -define(BINARY(Value), {'bin',_, [?BINARY_STRING(Value)]}).
 -define(BINARY_MATCH(Matches)
@@ -128,7 +138,7 @@
 
 -define(RECEIVE(Clauses), {'receive', _, Clauses}).
 -define(RECEIVE(Clauses, AfterExpr, AfterBody)
-        ,{'receive', _, Clauses, AfterExpr, AfterBody}
+       ,{'receive', _, Clauses, AfterExpr, AfterBody}
        ).
 
 -define(MAP_CREATION(Exprs), {'map', _, Exprs}).
