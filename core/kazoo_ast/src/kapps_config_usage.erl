@@ -184,10 +184,7 @@ expression_to_schema(?MAP_UPDATE(_Var, Exprs), Schemas) ->
 expression_to_schema(?MAP_FIELD_ASSOC(K, V), Schemas) ->
     expressions_to_schema([K, V], Schemas);
 expression_to_schema(?MAP_FIELD_EXACT(K, V), Schemas) ->
-    expressions_to_schema([K, V], Schemas);
-expression_to_schema(_Expr, Schemas) ->
-    io:format("unhandled expression: ~p~n", [_Expr]),
-    Schemas.
+    expressions_to_schema([K, V], Schemas).
 
 config_to_schema('get_all_kvs', _Args, Schemas) ->
     Schemas;
@@ -282,10 +279,7 @@ guess_type('get_atom', _Default) -> <<"string">>;
 guess_type('set_default', _Default) -> 'undefined';
 guess_type('set', Default) -> guess_type_by_default(Default);
 guess_type('set_node', Default) -> guess_type_by_default(Default);
-guess_type('update_default', Default) -> guess_type_by_default(Default);
-guess_type(_F, _Default) ->
-    io:format("  no guess for ~p ~p~n", [_F, _Default]),
-    'undefined'.
+guess_type('update_default', Default) -> guess_type_by_default(Default).
 
 guess_type_by_default('undefined') -> 'undefined';
 guess_type_by_default(?ATOM('undefined')) -> 'undefined';
