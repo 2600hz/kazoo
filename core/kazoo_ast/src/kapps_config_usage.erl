@@ -15,16 +15,9 @@ to_schema_docs(Schemas) ->
 update_schema({Name, AutoGenSchema}) ->
     Path = kz_ast_util:schema_path(<<"system_config.", Name/binary, ".json">>),
 
-    io:format("augmenting ~s in ~s~n", [Name, Path]),
-
     SchemaDoc = schema_doc(Name, Path),
 
-    io:format("existing: ~p~n", [SchemaDoc]),
-    io:format("gen: ~p~n", [AutoGenSchema]),
-
     Updated = kz_json:merge_recursive(AutoGenSchema, SchemaDoc),
-
-    io:format("~nupdated: ~p~n", [Updated]),
 
     'ok' = file:write_file(Path, kz_json:encode(Updated)).
 
@@ -79,14 +72,7 @@ module_to_schema(Module, Schemas) ->
         'undefined' -> 'undefined';
         {M, AST} ->
             Fs = kz_ast_util:add_module_ast([], M, AST),
-            try functions_to_schema(Fs, Schemas)
-            catch
-                _E:_R ->
-                    ST = erlang:get_stacktrace(),
-                    io:format("failed on ~p: ~s: ~p~n", [Module, _E, _R]),
-                    [io:format("st: ~p~n", [S]) || S <- ST],
-                    Schemas
-            end
+            functions_to_schema(Fs, Schemas)
     end.
 
 functions_to_schema(Fs, Schemas) ->
