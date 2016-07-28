@@ -92,14 +92,7 @@ new(DID, Options) ->
     {'ok', PhoneNumber} =
         setters(new(),
                 [{fun set_number/2, knm_converters:normalize(DID)}
-                ,{fun set_assign_to/2, knm_number_options:assign_to(Options)}
-                ,{fun set_state/2, knm_number_options:state(Options)}
-                ,{fun set_module_name/2, knm_number_options:module_name(Options)}
-                ,{fun set_auth_by/2, knm_number_options:auth_by(Options)}
-                ,{fun set_dry_run/2, knm_number_options:dry_run(Options)}
-                ,{fun set_batch_run/2, knm_number_options:batch_run(Options)}
-                ,{fun set_ported_in/2, knm_number_options:ported_in(Options)}
-                ,{fun update_doc/2, knm_number_options:public_fields(Options)}
+                 | knm_number_options:to_phone_number_setters(Options)
                 ]),
     PhoneNumber.
 

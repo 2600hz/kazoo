@@ -42,7 +42,6 @@
 -include("knm.hrl").
 
 -type option() :: {'assign_to', ne_binary()} |
-                  {'assigned_to', ne_binary()} |
                   {'auth_by', ne_binary()} |
                   {'dry_run', boolean()} |
                   {'batch_run', boolean()} |
@@ -50,7 +49,8 @@
                   {'ported_in', boolean()} |
                   {'public_fields', kz_json:object()} |
                   {'state', ne_binary()} |
-                  {'should_delete', boolean()}.
+                  {'should_delete', boolean()} |
+                  {'assigned_to', ne_binary()}.
 
 -type options() :: [option()].
 
@@ -87,7 +87,9 @@ to_phone_number_setters(Options) ->
              {fun knm_phone_number:FName/2, Value}
      end
      || {Option, Value} <- Options,
-        is_atom(Option)
+        is_atom(Option),
+        Option =/= 'should_delete',
+        Option =/= 'assigned_to'
     ].
 
 -spec dry_run(options()) -> boolean().
