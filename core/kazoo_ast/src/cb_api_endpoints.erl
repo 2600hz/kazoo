@@ -1,13 +1,12 @@
 -module(cb_api_endpoints).
--compile([debug_info]).
 
 -compile({'no_auto_import', [get/0]}).
 
 -export([get/0
-         ,to_swagger_json/0
-         ,to_ref_doc/0
-         ,schema_to_doc/2
-         ,schema_to_table/1
+        ,to_swagger_json/0
+        ,to_ref_doc/0
+        ,schema_to_doc/2
+        ,schema_to_table/1
         ]).
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
@@ -18,11 +17,15 @@
        ,filename:join([code:lib_dir('crossbar')
                       ,"doc"
                       ,"ref"
-                       ,<<Module/binary, ".md">>
+                      ,<<Module/binary, ".md">>
                       ])
        ).
 
 -define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
+
+main(_) ->
+    to_ref_doc(),
+    to_swagger_json().
 
 to_ref_doc() ->
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
@@ -55,13 +58,14 @@ api_path_to_section(Module, {'allowed_methods', Paths}, Acc) ->
                );
 api_path_to_section(_MOdule, _Paths, Acc) -> Acc.
 
+
 %% #### Fetch/Create/Change
 %% > Verb Path
 %% ```curl
 %% curl -v http://{SERVER}:8000/Path
 %% ```
 methods_to_section('undefined', _Path, Acc) ->
-    lager:debug("skipping path ~p", [_Path]),
+    io:format("skipping path ~p\n", [_Path]),
     Acc;
 methods_to_section(ModuleName, {Path, Methods}, Acc) ->
     APIPath = path_name(Path, ModuleName),
@@ -114,10 +118,7 @@ schema_to_doc(Schema, Doc) ->
     {'ok', SchemaJObj} = kz_json_schema:load(Schema),
     Table = schema_to_table(SchemaJObj),
 
-    DocFile = filename:join([code:lib_dir('crossbar')
-                             ,"doc"
-                             ,Doc
-                            ]),
+    DocFile = filename:join([code:lib_dir('crossbar'), "doc", Doc]),
     {'ok', DocContents} = file:read_file(DocFile),
 
     case binary:split(DocContents, <<?SCHEMA_SECTION/binary, "\n">>) of
@@ -129,14 +130,14 @@ schema_to_doc(Schema, Doc) ->
 
 -define(TABLE_ROW(Key, Description, Type, Default, Required)
        ,[kz_util:join_binary([Key, Description, Type, Default, Required]
-                             ,<<" | ">>
+                            ,<<" | ">>
                             )
         ,$\n
         ]
        ).
 -define(TABLE_HEADER
        ,[?TABLE_ROW(<<"Key">>, <<"Description">>, <<"Type">>, <<"Default">>, <<"Required">>)
-         ,?TABLE_ROW(<<"---">>, <<"-----------">>, <<"----">>, <<"-------">>, <<"--------">>)
+        ,?TABLE_ROW(<<"---">>, <<"-----------">>, <<"----">>, <<"-------">>, <<"--------">>)
         ]).
 
 schema_to_table(<<_/binary>> = Schema) ->
@@ -153,14 +154,14 @@ property_to_row(Name, Settings, Acc) ->
     maybe_sub_properties_to_row(kz_json:get_value(<<"type">>, Settings)
                                ,Name
                                ,Settings
-                                ,[?TABLE_ROW(cell_wrap(kz_util:join_binary(Name, <<".">>))
-                                            ,kz_json:get_value(<<"description">>, Settings, <<" ">>)
-                                            ,cell_wrap(schema_type(Settings))
-                                            ,cell_wrap(kz_json:get_value(<<"default">>, Settings))
-                                            ,cell_wrap(kz_json:get_binary_boolean(<<"required">>, Settings, <<"false">>))
-                                            )
-                                  | Acc
-                                 ]
+                               ,[?TABLE_ROW(cell_wrap(kz_util:join_binary(Name, <<".">>))
+                                           ,kz_json:get_value(<<"description">>, Settings, <<" ">>)
+                                           ,cell_wrap(schema_type(Settings))
+                                           ,cell_wrap(kz_json:get_value(<<"default">>, Settings))
+                                           ,cell_wrap(kz_json:get_binary_boolean(<<"required">>, Settings, <<"false">>))
+                                           )
+                                 | Acc
+                                ]
                                ).
 
 schema_type(Settings) ->
@@ -190,7 +191,7 @@ schema_type(_Settings, Type) -> Type.
 
 schema_string_type(Settings) ->
     case {kz_json:get_integer_value(<<"minLength">>, Settings)
-          ,kz_json:get_integer_value(<<"maxLength">>, Settings)
+         ,kz_json:get_integer_value(<<"maxLength">>, Settings)
          }
     of
         {'undefined', 'undefined'} -> <<"string">>;
@@ -211,8 +212,8 @@ maybe_sub_properties_to_row(<<"object">>, Names, Settings, Acc0) ->
     lists:foldl(fun(Key, Acc1) ->
                         maybe_object_properties_to_row(Key, Acc1, Names, Settings)
                 end
-                ,Acc0
-                ,[<<"properties">>, <<"patternProperties">>]
+               ,Acc0
+               ,[<<"properties">>, <<"patternProperties">>]
                );
 maybe_sub_properties_to_row(<<"array">>, Names, Settings, Acc) ->
     case kz_json:get_value([<<"items">>, <<"type">>], Settings) of
@@ -223,10 +224,10 @@ maybe_sub_properties_to_row(<<"array">>, Names, Settings, Acc) ->
                                        );
         <<"string">> = Type ->
             [?TABLE_ROW(cell_wrap(kz_util:join_binary(Names ++ ["[]"], <<".">>))
-                        ,<<" ">>
-                        ,cell_wrap(Type)
-                        ,<<" ">>
-                        ,cell_wrap(kz_json:get_binary_boolean([<<"items">>, <<"required">>], Settings, <<"false">>))
+                       ,<<" ">>
+                       ,cell_wrap(Type)
+                       ,<<" ">>
+                       ,cell_wrap(kz_json:get_binary_boolean([<<"items">>, <<"required">>], Settings, <<"false">>))
                        )
              | Acc
             ];
@@ -253,11 +254,10 @@ maybe_object_properties_to_row(Key, Acc0, Names, Settings) ->
 
 to_swagger_json() ->
     BaseSwagger = read_swagger_json(),
-    BasePaths = kz_json:get_value(<<"paths">>, BaseSwagger, kz_json:new()),
 
     Paths = format_as_path_centric(get()),
 
-    Swagger = kz_json:set_values([{<<"paths">>, to_swagger_paths(Paths, BasePaths)}
+    Swagger = kz_json:set_values([{<<"paths">>, to_swagger_paths(Paths, kz_json:new())}
                                  ,{<<"definitions">>, to_swagger_definitions()}
                                  ,{<<"swagger">>, <<"2.0">>}
                                  ,{<<"info">>, ?SWAGGER_INFO}
@@ -269,7 +269,7 @@ to_swagger_json() ->
 -define(SCHEMAS_PATH(Schema), filename:join([code:priv_dir('crossbar')
                                             ,"couchdb"
                                             ,"schemas"
-                                             ,Schema
+                                            ,Schema
                                             ])
        ).
 
@@ -295,9 +295,8 @@ process_schema(SchemaJSONFile, Definitions) ->
                      ,Definitions
                      ).
 
--define(SWAGGER_JSON
-        ,filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])
-       ).
+-define(SWAGGER_JSON,
+        filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])).
 
 read_swagger_json() ->
     case file:read_file(?SWAGGER_JSON) of
@@ -305,17 +304,8 @@ read_swagger_json() ->
         {'error', 'enoent'} -> kz_json:new()
     end.
 
--define(FORMAT_JSON, filename:join([code:lib_dir('crossbar')
-                                    ,".."
-                                    ,".."
-                                    ,"scripts"
-                                    ,"format-json.sh"
-                                   ])
-       ).
-
 write_swagger_json(Swagger) ->
-    'ok' = file:write_file(?SWAGGER_JSON, kz_json:encode(Swagger)),
-    os:cmd([?FORMAT_JSON, " ", ?SWAGGER_JSON]).
+    file:write_file(?SWAGGER_JSON, kz_json:encode(Swagger)).
 
 to_swagger_paths(Paths, BasePaths) ->
     kz_json:foldl(fun to_swagger_path/3, BasePaths, Paths).
@@ -361,10 +351,7 @@ swagger_params(PathMeta) ->
     end.
 
 format_as_path_centric(Data) ->
-    lists:foldl(fun format_pc_module/2
-                ,kz_json:new()
-                ,Data
-               ).
+    lists:foldl(fun format_pc_module/2, kz_json:new(), Data).
 
 format_pc_module({Module, Config}, Acc) ->
     ModuleName = path_name(Module),
@@ -379,7 +366,7 @@ format_pc_module(_MC, Acc) ->
     Acc.
 
 format_pc_config(_ConfigData, Acc, _Module, 'undefined') ->
-    lager:debug("skipping module ~p", [_Module]),
+    io:format("skipping module ~p\n", [_Module]),
     Acc;
 format_pc_config({Callback, Paths}, Acc, Module, ModuleName) ->
     lists:foldl(fun(Path, Acc1) ->
@@ -396,16 +383,15 @@ format_pc_callback({Path, []}, Acc, _Module, ModuleName, Callback) ->
     kz_json:set_value([PathName, kz_util:to_binary(Callback)], <<"not supported">>, Acc);
 format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
     PathName = path_name(Path, ModuleName),
-    kz_json:set_values(
-      props:filter_undefined(
-        [{[PathName, kz_util:to_binary(Callback)]
-         ,[kz_util:to_lower_binary(V) || V <- Vs]
-         }
-        ,maybe_include_schema(PathName, Module)
-        ]
-       )
+    kz_json:set_values(props:filter_undefined(
+                         [{[PathName, kz_util:to_binary(Callback)]
+                          ,[kz_util:to_lower_binary(V) || V <- Vs]
+                          }
+                         ,maybe_include_schema(PathName, Module)
+                         ]
+                        )
                       ,Acc
-       ).
+                      ).
 
 maybe_include_schema(PathName, Module) ->
     M = base_module_name(Module),
@@ -465,7 +451,6 @@ path_name(<<_/binary>>=Module) ->
                ,[{'capture', 'all_but_first', 'binary'}]
                )
     of
-        {'match', [<<"about">>]} -> <<?CURRENT_VERSION/binary, "/about">>;
         {'match', [<<"accounts">>]} -> <<?CURRENT_VERSION/binary, "/accounts">>;
         {'match', [<<"api_auth">>]} -> <<?CURRENT_VERSION/binary, "/api_auth">>;
         {'match', [<<"basic_auth">>]} -> <<?CURRENT_VERSION/binary, "/basic_auth">>;
@@ -483,7 +468,7 @@ path_name(<<_/binary>>=Module) ->
         {'match', [Name, ?CURRENT_VERSION]} ->
             <<?CURRENT_VERSION/binary, "/accounts/{ACCOUNT_ID}/", Name/binary>>;
         {'match', _M} ->
-            lager:debug("skipping '~s' for not being in the current version", [Module]),
+            io:format("skipping '~s' for not being in the current version\n", [Module]),
             'undefined'
     end.
 
@@ -507,7 +492,7 @@ process_module(File, Acc) ->
     end.
 
 is_api_function({'allowed_methods', _Arity}) -> 'true';
-%is_api_function({'content_types_provided', _Arity}) -> 'true';
+%%is_api_function({'content_types_provided', _Arity}) -> 'true';
 is_api_function(_) ->  'false'.
 
 process_exports(_File, 'api_resource', _) -> [];
@@ -524,8 +509,8 @@ process_api_module(File, Module) ->
     catch
         _E:_R ->
             ST = erlang:get_stacktrace(),
-            lager:error("failed to process ~p(~p): ~s: ~p", [File, Module, _E, _R]),
-            kz_util:log_stacktrace(ST),
+            io:format("failed to process ~p(~p): ~s: ~p\n", [File, Module, _E, _R]),
+            io:format("~p\n", [ST]),
             'undefined'
     end.
 
@@ -556,8 +541,7 @@ find_http_methods_from_clause(?CLAUSE(ArgsList, _Guards, ClauseBody), Methods) -
      | Methods
     ].
 
-args_list_to_path([]) ->
-    <<"/">>;
+args_list_to_path([]) -> <<"/">>;
 args_list_to_path(Args) ->
     lists:reverse(lists:foldl(fun arg_to_path/2, [], Args)).
 
@@ -571,9 +555,7 @@ arg_to_path(?MATCH(?BINARY_MATCH(_), ?VAR(Name)), Acc) ->
     [kz_util:to_binary(Name) | Acc].
 
 binary_match_to_path(Matches) ->
-    iolist_to_binary(
-      [binary_to_path(Match) || Match <- Matches]
-     ).
+    iolist_to_binary([binary_to_path(Match) || Match <- Matches]).
 binary_to_path(?BINARY_STRING(Name)) ->
     Name;
 binary_to_path(?BINARY_VAR(VarName)) ->
@@ -584,9 +566,7 @@ find_methods(ClauseBody) ->
 find_methods(ClauseBody, Acc) ->
     lists:usort(lists:foldl(fun find_methods_in_clause/2, Acc, ClauseBody)).
 
--define(CB_CONTEXT_CALL(Fun)
-        ,?MOD_FUN('cb_context', Fun)
-       ).
+-define(CB_CONTEXT_CALL(Fun), ?MOD_FUN('cb_context', Fun)).
 
 find_methods_in_clause(?VAR('Context'), Acc) ->
     Acc;
@@ -598,15 +578,13 @@ find_methods_in_clause(?MOD_FUN_ARGS('cb_context'
                                     ,'add_content_types_provided'
                                     ,[?VAR('Context'), Args]
                                     )
-                      ,Acc
-                      ) ->
+                      ,Acc) ->
     find_methods_in_clause(Args, Acc);
 find_methods_in_clause(?MOD_FUN_ARGS('cb_context'
                                     ,'set_content_types_provided'
                                     ,[?VAR(_), Args]
                                     )
-                      ,Acc
-                      ) ->
+                      ,Acc) ->
     find_methods_in_clause(Args, Acc);
 find_methods_in_clause(?LAGER, Acc) ->
     Acc;
@@ -649,13 +627,12 @@ find_methods_in_clause(?MATCH(_Left, _Right), Acc) ->
 find_methods_in_clause(?EMPTY_LIST, Acc) ->
     [<<"nil">> | Acc];
 find_methods_in_clause(?LIST(?BINARY(Method), ?EMPTY_LIST)
-                      ,Acc
-                      ) ->
+                      ,Acc) ->
     [list_to_binary(Method) | Acc];
 find_methods_in_clause(?LIST(?BINARY(Method), Cons)
-                      ,Acc
-                      ) ->
+                      ,Acc) ->
     [list_to_binary(Method) | find_methods_in_clause(Cons, Acc)];
+
 %% Matches the content_types_provided to_json list
 find_methods_in_clause(?LIST(?TUPLE([?ATOM('to_json')
                                     ,JSONList
@@ -663,8 +640,7 @@ find_methods_in_clause(?LIST(?TUPLE([?ATOM('to_json')
                                    )
                             ,Rest
                             )
-                      ,Acc
-                      ) ->
+                      ,Acc) ->
     CTPs = find_content_types_in_clause(JSONList, Acc),
     find_methods_in_clause(Rest, CTPs);
 %% Matches the content_types_provided to_csv list
@@ -674,8 +650,7 @@ find_methods_in_clause(?LIST(?TUPLE([?ATOM('to_csv')
                                    )
                             ,Rest
                             )
-                      ,Acc
-                      ) ->
+                      ,Acc) ->
     CTPs = find_content_types_in_clause(CSVList, Acc),
     find_methods_in_clause(Rest, CTPs);
 %% Matches the content_types_provided to_binary list
@@ -685,8 +660,7 @@ find_methods_in_clause(?LIST(?TUPLE([?ATOM('to_binary')
                                    )
                             ,Rest
                             )
-                      ,Acc
-                      ) ->
+                      ,Acc) ->
     CTPs = find_content_types_in_clause(BinaryList, Acc),
     find_methods_in_clause(Rest, CTPs);
 %% Matches the content_types_provided to_pdf list
@@ -696,15 +670,11 @@ find_methods_in_clause(?LIST(?TUPLE([?ATOM('to_pdf')
                                    )
                             ,Rest
                             )
-                      ,Acc
-                      ) ->
+                      ,Acc) ->
     CTPs = find_content_types_in_clause(PDFList, Acc),
     find_methods_in_clause(Rest, CTPs);
-find_methods_in_clause(?CASE(_CaseConditional
-                            ,CaseClauses
-                            )
-                      ,Acc0
-                      ) ->
+
+find_methods_in_clause(?CASE(_CaseConditional, CaseClauses), Acc0) ->
     lists:foldl(fun(?CLAUSE(_Args, _Guards, ClauseBody), Acc1) ->
                         find_methods(ClauseBody, Acc1)
                 end
@@ -719,13 +689,11 @@ find_content_types_in_clause(?EMPTY_LIST, Acc) -> Acc;
 find_content_types_in_clause(?LIST(?TUPLE(?CONTENT_TYPE_VARS(_Type, _SubType))
                                   ,Rest
                                   )
-                            ,Acc
-                            ) ->
+                            ,Acc) ->
     find_content_types_in_clause(Rest, Acc);
 find_content_types_in_clause(?LIST(?TUPLE(?CONTENT_TYPE_BINS(Type, SubType))
                                   ,Rest
                                   )
-                            ,Acc
-                            ) ->
+                            ,Acc) ->
     CT = kz_util:join_binary([Type, SubType], <<"/">>),
     find_content_types_in_clause(Rest, [CT | Acc]).
