@@ -512,8 +512,8 @@ set_used_by(N, UsedBy=?NE_BINARY) ->
 features(#knm_phone_number{features=Features}) -> Features.
 
 -spec features_list(knm_phone_number()) -> ne_binaries().
-features_list(#knm_phone_number{features=Features}) ->
-    sets:to_list(sets:from_list(kz_json:get_keys(Features))).
+features_list(N) ->
+    sets:to_list(sets:from_list(kz_json:get_keys(features(N)))).
 
 -spec set_features(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 set_features(N, Features=?JSON_WRAPPER(_)) ->
@@ -544,7 +544,17 @@ set_feature(N, Feature=?NE_BINARY, Data) ->
 state(#knm_phone_number{state=State}) -> State.
 
 -spec set_state(knm_phone_number(), ne_binary()) -> knm_phone_number().
-set_state(N, State=?NE_BINARY) ->
+set_state(N, State)
+  when State =:= ?NUMBER_STATE_PORT_IN;
+       State =:= ?NUMBER_STATE_PORT_OUT;
+       State =:= ?NUMBER_STATE_DISCOVERY;
+       State =:= ?NUMBER_STATE_IN_SERVICE;
+       State =:= ?NUMBER_STATE_RELEASED;
+       State =:= ?NUMBER_STATE_RESERVED;
+       State =:= ?NUMBER_STATE_AVAILABLE;
+       State =:= ?NUMBER_STATE_DISCONNECTED;
+       State =:= ?NUMBER_STATE_DELETED
+       ->
     N#knm_phone_number{state=State}.
 
 %%--------------------------------------------------------------------
@@ -557,7 +567,8 @@ reserve_history(#knm_phone_number{reserve_history=History}) -> History.
 
 -spec set_reserve_history(knm_phone_number(), ne_binaries()) -> knm_phone_number().
 set_reserve_history(N, History) when is_list(History) ->
-    N#knm_phone_number{reserve_history=History}.
+    Cons = fun (A, PN) -> add_reserve_history(PN, A) end,
+    lists:foldr(Cons, N, History).
 
 -spec add_reserve_history(knm_phone_number(), ne_binary()) -> knm_phone_number().
 add_reserve_history(#knm_phone_number{reserve_history=[AccountId|_]}=N
