@@ -798,13 +798,14 @@ relay_event(UUID, Node, Props) ->
 
 -spec publish_participant_event(boolean(), kz_proplist(), ne_binary(), kz_proplist()) -> ok | skip.
 publish_participant_event(true=_Publish, Event, CallId, Props) ->
+    #participant{call_info=CCV} = ecallmgr_fs_conferences:participant_get(CallId),
     Ev = [{<<"Event-Category">>, <<"conference">>}
          ,{<<"Event-Name">>, <<"participant_event">>}
+         ,{<<"Custom-Channel-Vars">>, CCV}
           | Event],
-    #participant{call_info=CCV} = ecallmgr_fs_conferences:participant_get(CallId),
     ConferenceId = props:get_value(<<"Conference-Name">>, Props),
     Publisher = fun(P) -> kapi_conference:publish_participant_event(ConferenceId, CallId, P) end,
-    kz_amqp_worker:cast(props:set_value(<<"Custom-Channel-Vars">>, CCV, Ev), Publisher),
+    kz_amqp_worker:cast(Ev, Publisher),
     ok;
 publish_participant_event(_, _, _, _) -> 'skip'.
 
