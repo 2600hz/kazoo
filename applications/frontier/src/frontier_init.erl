@@ -32,25 +32,23 @@
                           ,{<<"total_packets">>, 1000}
                           ]).
 
--spec sysconfig_default_rates() -> kz_json:object().
-sysconfig_default_rates() ->
-    AccountSec = kz_json:from_list(?ACCOUNT_RATES_SEC),
-    AccountMin = kz_json:from_list(?ACCOUNT_RATES_MIN),
+-define(ACCOUNT_RATES
+       ,kz_json:from_list([{?MINUTE, kz_json:from_list(?ACCOUNT_RATES_MIN)}
+                          ,{?SECOND, kz_json:from_list(?ACCOUNT_RATES_SEC)}
+                          ])
+       ).
 
-    AccountRates = kz_json:from_list([{?MINUTE, AccountMin}
-                                     ,{?SECOND, AccountSec}
-                                     ]),
+-define(DEVICE_RATES
+       ,kz_json:from_list([{?MINUTE, kz_json:from_list(?DEVICE_RATES_MIN)}
+                          ,{?SECOND, kz_json:from_list(?DEVICE_RATES_SEC)}
+                          ])
+       ).
 
-    DeviceSec = kz_json:from_list(?DEVICE_RATES_SEC),
-    DeviceMin = kz_json:from_list(?DEVICE_RATES_MIN),
-
-    DeviceRates = kz_json:from_list([{?MINUTE, DeviceMin}
-                                    ,{?SECOND, DeviceSec}
-                                    ]),
-
-    kz_json:from_list([{<<"account">>, AccountRates}
-                      ,{<<"device">>, DeviceRates}
-                      ]).
+-define(DEFAULT_RATES
+       ,kz_json:from_list([{<<"account">>, ?ACCOUNT_RATES}
+                          ,{<<"device">>, ?DEVICE_RATES}
+                          ])
+       ).
 
 -spec start_link() -> 'ignore'.
 start_link() ->
@@ -59,4 +57,4 @@ start_link() ->
 
 -spec default_rate_limits() -> kz_json:object().
 default_rate_limits() ->
-    kapps_config:get(?APP_NAME, <<"rate_limits">>, sysconfig_default_rates()).
+    kapps_config:get(?APP_NAME, <<"rate_limits">>, ?DEFAULT_RATES).
