@@ -145,6 +145,14 @@ expression_to_schema(?CASE(Expression, Clauses), Schema) ->
     clauses_to_schema(Clauses
                      ,expression_to_schema(Expression, Schema)
                      );
+expression_to_schema(?MAP_CREATION(Exprs), Schemas) ->
+    expressions_to_schema(Exprs, Schemas);
+expression_to_schema(?MAP_UPDATE(_Var, Exprs), Schemas) ->
+    expressions_to_schema(Exprs, Schemas);
+expression_to_schema(?MAP_FIELD_ASSOC(K, V), Schemas) ->
+    expressions_to_schema([K, V], Schemas);
+expression_to_schema(?MAP_FIELD_EXACT(K, V), Schemas) ->
+    expressions_to_schema([K, V], Schemas);
 expression_to_schema(_Expr, Schemas) ->
     io:format("unhandled expression: ~p~n", [_Expr]),
     Schemas.
@@ -155,14 +163,18 @@ config_to_schema('flush', _Args, Schemas) ->
     Schemas;
 config_to_schema(F, [Cat, K], Schemas) ->
     config_to_schema(F, [Cat, K, 'undefined'], Schemas);
+config_to_schema(F, [Cat, K, Default, _Node], Schemas) ->
+    config_to_schema(F, [Cat, K, Default], Schemas);
 config_to_schema(F, [Cat, K, Default], Schemas) ->
-    Document = kz_ast_util:binary_match_to_binary(Cat),
+    Document = category_to_document(Cat),
 
     Key = key_to_key_path(K),
 
     config_key_to_schema(F, Document, Key, Default, Schemas).
 
 config_key_to_schema(_F, _Document, 'undefined', _Default, Schemas) ->
+    Schemas;
+config_key_to_schema(_F, 'undefined', _Key, _Default, Schemas) ->
     Schemas;
 config_key_to_schema(F, Document, Key, Default, Schemas) ->
     Properties = guess_properties(Key, guess_type(F), Default),
@@ -175,6 +187,10 @@ config_key_to_schema(F, Document, Key, Default, Schemas) ->
     Updated = kz_json:merge_jobjs(Existing, Properties),
 
     kz_json:set_value([Document, <<"properties">> | Key], Updated, Schemas).
+
+category_to_document(?VAR(_)) -> 'undefined';
+category_to_document(Cat) ->
+    kz_ast_util:binary_match_to_binary(Cat).
 
 key_to_key_path(?ATOM(A)) -> [kz_util:to_binary(A)];
 key_to_key_path(?VAR(_)) -> 'undefined';
@@ -244,6 +260,7 @@ default_value(?ATOM('false')) -> 'false';
 default_value(?ATOM('undefined')) -> 'undefined';
 default_value(?ATOM(V)) -> kz_util:to_binary(V);
 default_value(?VAR(_)) -> 'undefined';
+default_value(?STRING(S)) -> kz_util:to_binary(S);
 default_value(?INTEGER(I)) -> I;
 default_value(?FLOAT(F)) -> F;
 default_value(?BINARY_OP(Op, Arg1, Arg2)) ->
@@ -256,6 +273,8 @@ default_value(?LIST(Head, Tail)) ->
     [default_value(Head) | default_value(Tail)];
 default_value(?MOD_FUN_ARGS('kz_json', 'from_list', L)) ->
     default_values_from_list(L);
+default_value(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
+    kz_json:new();
 default_value(?MOD_FUN_ARGS(_M, _F, _Args)) -> 'undefined'.
 
 default_values_from_list(KVs) ->
