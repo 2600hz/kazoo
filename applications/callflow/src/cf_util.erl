@@ -339,7 +339,7 @@ send_mwi_update(New, Saved, Username, Realm, JObj) ->
               ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    lager:debug("updating MWI for ~s@~s (~b/~b)", [Username, Realm, New, Saved]),
+    lager:debug("updating MWI for ~s@~s (~p/~p)", [Username, Realm, New, Saved]),
     kapps_util:amqp_pool_send(Command, fun kapi_presence:publish_unsolicited_mwi_update/1).
 
 %%--------------------------------------------------------------------
@@ -646,15 +646,15 @@ index_of(Value, List) ->
 -spec start_event_listener(kapps_call:call(), atom(), list()) ->
                                   {'ok', pid()} | {'error', any()}.
 start_event_listener(Call, Mod, Args) ->
-    lager:debug("starting evt listener ~s", [Mod]),
+    lager:debug("starting evt listener ~p", [Mod]),
     Name = event_listener_name(Call, Mod),
     try cf_event_handler_sup:new(Name, Mod, [kapps_call:clear_helpers(Call) | Args]) of
         {'ok', P} -> {'ok', P};
-        _E -> lager:debug("error starting event listener ~s: ~p", [Mod, _E]),
+        _E -> lager:debug("error starting event listener ~p: ~p", [Mod, _E]),
               {'error', _E}
     catch
         _:_R ->
-            lager:info("failed to spawn ~s: ~p", [Mod, _R]),
+            lager:info("failed to spawn ~p: ~p", [Mod, _R]),
             {'error', _R}
     end.
 
@@ -707,7 +707,7 @@ find_user_endpoints(UserIds, DeviceIds, Call) ->
 -spec find_channels(ne_binaries(), kapps_call:call()) -> kz_json:objects().
 find_channels(Usernames, Call) ->
     Realm = kz_util:get_account_realm(kapps_call:account_id(Call)),
-    lager:debug("finding channels for realm ~s, usernames ~p", [Realm, Usernames]),
+    lager:debug("finding channels for realm ~p, usernames ~p", [Realm, Usernames]),
     Req = [{<<"Realm">>, Realm}
           ,{<<"Usernames">>, Usernames}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -849,10 +849,10 @@ get_mailbox(AccountDb, VMNumber) ->
             kz_cache:store_local(?CACHE_NAME, ?VM_CACHE_KEY(AccountDb, VMNumber), Doc, CacheProps),
             {'ok', Doc};
         {'error', 'multiple_results'} ->
-            lager:debug("multiple voicemail boxes with same number (~s)  in account db ~s", [VMNumber, AccountDb]),
+            lager:debug("multiple voicemail boxes with same number (~b)  in account db ~s", [VMNumber, AccountDb]),
             {'error', 'not_found'};
         {'error', _R}=E ->
-            lager:warning("unable to lookup voicemail number ~s in account ~s: ~p", [VMNumber, AccountDb, _R]),
+            lager:warning("unable to lookup voicemail number ~b in account ~s: ~p", [VMNumber, AccountDb, _R]),
             E
     end.
 
