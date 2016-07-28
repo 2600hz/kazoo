@@ -305,12 +305,8 @@ process_schema(SchemaJSONFile, Definitions) ->
                      ,Definitions
                      ).
 
--define(SWAGGER_JSON, filename:join([code:priv_dir('crossbar')
-                                    ,"couchdb"
-                                    ,"swagger"
-                                    ,"swagger.json"
-                                    ])
-       ).
+-define(SWAGGER_JSON,
+        filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])).
 
 read_swagger_json() ->
     case file:read_file(?SWAGGER_JSON) of
