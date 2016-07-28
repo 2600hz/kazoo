@@ -305,12 +305,8 @@ process_schema(SchemaJSONFile, Definitions) ->
                      ,Definitions
                      ).
 
--define(SWAGGER_JSON, filename:join([code:priv_dir('crossbar')
-                                    ,"couchdb"
-                                    ,"swagger"
-                                    ,"swagger.json"
-                                    ])
-       ).
+-define(SWAGGER_JSON,
+        filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])).
 
 read_swagger_json() ->
     case file:read_file(?SWAGGER_JSON) of
@@ -469,7 +465,6 @@ path_name(<<_/binary>>=Module) ->
                ,[{'capture', 'all_but_first', 'binary'}]
                )
     of
-        {'match', [<<"about">>]} -> <<?CURRENT_VERSION/binary, "/about">>;
         {'match', [<<"accounts">>]} -> <<?CURRENT_VERSION/binary, "/accounts">>;
         {'match', [<<"api_auth">>]} -> <<?CURRENT_VERSION/binary, "/api_auth">>;
         {'match', [<<"basic_auth">>]} -> <<?CURRENT_VERSION/binary, "/basic_auth">>;
