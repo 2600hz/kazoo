@@ -129,7 +129,7 @@ find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_T
     Params = [ "tollFreeWildCardPattern=8", binary_to_list(ToSearch), "*"
                "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
-    {'ok', Result} = search(Params),
+    Result = search(Num, Params),
     AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
     {'ok', [N
             || X <- xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result),
@@ -141,16 +141,14 @@ find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     Params = [ "areaCode=", binary_to_list(NPA)
              , "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
-    {'ok', Result} = search(Params),
-    {'ok', process_search_response(Result, Options)};
+    {'ok', process_search_response(search(NPA, Params), Options)};
 
 find_numbers(Search, Quantity, Options) ->
     NpaNxx = kz_util:truncate_right_binary(Search, 6),
     Params = [ "npaNxx=", binary_to_list(NpaNxx)
              , "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
-    {'ok', Result} = search(Params),
-    {'ok', process_search_response(Result, Options)}.
+    {'ok', process_search_response(search(Search, Params), Options)}.
 
 -spec process_search_response(xml_el(), kz_proplist()) -> knm_number:knm_numbers().
 process_search_response(Result, Options) ->
@@ -258,9 +256,13 @@ url(RelativePath) ->
 
 -type api_res() :: {'ok', xml_el()} | {'error', atom()}.
 
--spec search([nonempty_string()]) -> api_res().
-search(Params) ->
-    api_get(url(["availableNumbers?" | Params])).
+-spec search(ne_binary(), [nonempty_string()]) -> xml_el().
+search(Num, Params) ->
+    case api_get(url(["availableNumbers?" | Params])) of
+        {'ok', Results} -> Results;
+        {'error', Reason} ->
+            knm_errors:by_carrier(?MODULE, Reason, Num)
+    end.
 
 -spec auth() -> {'basic_auth', {ne_binary(), ne_binary()}}.
 auth() ->
