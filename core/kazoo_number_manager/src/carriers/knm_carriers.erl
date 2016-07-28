@@ -35,6 +35,8 @@
        ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)).
 -define(CARRIER_MODULES
        ,kapps_config:get(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES)).
+-define(CARRIER_MODULES(AccountId)
+       ,kapps_account_config:get(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -241,24 +243,10 @@ get_available_carriers(Options) ->
     case props:get_value(?KNM_ACCOUNTID_CARRIER, Options) of
         'undefined' ->
             keep_only_reachable(?CARRIER_MODULES);
-        AccountId ->
+        _AccountId ->
             ResellerId = props:get_value(?KNM_RESELLERID_CARRIER, Options),
-            lager:debug("found ~s's reseller: ~p", [AccountId, ResellerId]),
-            {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
-            case ResellerId == MasterAccountId of
-                'true' ->
-                    First = [?CARRIER_RESERVED, ?CARRIER_LOCAL],
-                    keep_only_reachable(
-                      First ++
-                          (?CARRIER_MODULES -- (First ++ [?CARRIER_RESERVED_RESELLER]))
-                     );
-                'false' ->
-                    First = [?CARRIER_RESERVED, ?CARRIER_RESERVED_RESELLER],
-                    keep_only_reachable(
-                      First ++
-                          (?CARRIER_MODULES -- (First ++ [?CARRIER_LOCAL]))
-                     )
-            end
+            First = [?CARRIER_RESERVED, ?CARRIER_RESERVED_RESELLER, ?CARRIER_LOCAL],
+            keep_only_reachable(First ++ (?CARRIER_MODULES(ResellerId) -- First))
     end.
 
 -spec default_carriers() -> atoms().
