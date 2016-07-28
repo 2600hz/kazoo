@@ -92,14 +92,12 @@ get_response_key(JObj) ->
 
 -spec command_binding_options(ne_binary()) -> kz_proplist().
 command_binding_options(ConfId) ->
-    [{'conference', ConfId}
-    ,{'restrict_to', ['command']}
+    [{'restrict_to', [{'command', ConfId}]}
     ,'federate'
     ].
 
 -spec event_binding_options(ne_binary(), ne_binary()) -> kz_proplist().
 event_binding_options(ConfId, CallId) ->
-    [{'conference', {ConfId, CallId}}
-    ,{'restrict_to', ['event']}
+    [{'restrict_to', [{'event', {ConfId, CallId}}]}
     ,'federate'
     ].
