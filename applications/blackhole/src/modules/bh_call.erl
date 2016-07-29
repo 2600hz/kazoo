@@ -25,18 +25,10 @@
 handle_event(#bh_context{binding=Binding} = Context, EventJObj) ->
     kz_util:put_callid(EventJObj),
     lager:debug("handle_event fired for ~s ~s", [bh_context:account_id(Context), bh_context:websocket_session_id(Context)]),
-    'true' = kapi_call:event_v(EventJObj)
-        andalso is_account_event(Context, EventJObj),
+    'true' = kapi_call:event_v(EventJObj),
     lager:debug("valid event and emitting to ~p: ~s", [bh_context:websocket_pid(Context), event_name(EventJObj)]),
     NormJObj = kz_json:normalize_jobj(kz_json:set_value(<<"Binding">>, Binding, EventJObj)),
     blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), NormJObj).
-
-is_account_event(Context, EventJObj) ->
-    kz_json:get_first_defined([<<"Account-ID">>
-                              ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
-                              ], EventJObj
-                             ) =:=
-        bh_context:account_id(Context).
 
 -spec event_name(kz_json:object()) -> ne_binary().
 event_name(JObj) ->
