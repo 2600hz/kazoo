@@ -41,7 +41,7 @@ is_account_event(Context, EventJObj) ->
 event_name(JObj) ->
     kz_json:get_value(<<"Event-Name">>, JObj).
 
--spec subscribe(bh_context:context(), ne_binary()) -> 'ok'.
+-spec subscribe(bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
 subscribe(Context, <<"call.*.*">>) ->
     AccountId = bh_context:account_id(Context),
     add_call_binding(AccountId, ?LISTEN_TO),
@@ -59,7 +59,7 @@ subscribe(Context, Binding) ->
     blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
     {'ok', Context}.
 
--spec unsubscribe(bh_context:context(), ne_binary()) -> 'ok'.
+-spec unsubscribe(bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
 unsubscribe(Context, <<"call.*.*">>) ->
     AccountId = bh_context:account_id(Context),
     rm_call_binding(AccountId, ?LISTEN_TO),
