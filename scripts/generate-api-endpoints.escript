@@ -8,4 +8,3 @@
 main(_) ->
     cb_api_endpoints:to_ref_doc(),
     cb_api_endpoints:to_swagger_json().
-

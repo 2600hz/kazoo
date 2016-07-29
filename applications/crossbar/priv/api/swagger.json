@@ -12702,9 +12702,6 @@
         "version": "2.0"
     },
     "paths": {
-        "/v2/about": {
-            "get": {}
-        },
         "/v2/accounts": {
             "put": {}
         },

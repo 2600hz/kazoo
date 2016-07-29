@@ -23,10 +23,6 @@
 
 -define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
 
-main(_) ->
-    to_ref_doc(),
-    to_swagger_json().
-
 to_ref_doc() ->
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
 
@@ -254,10 +250,11 @@ maybe_object_properties_to_row(Key, Acc0, Names, Settings) ->
 
 to_swagger_json() ->
     BaseSwagger = read_swagger_json(),
+    BasePaths = kz_json:get_value(<<"paths">>, BaseSwagger),
 
     Paths = format_as_path_centric(get()),
 
-    Swagger = kz_json:set_values([{<<"paths">>, to_swagger_paths(Paths, kz_json:new())}
+    Swagger = kz_json:set_values([{<<"paths">>, to_swagger_paths(Paths, BasePaths)}
                                  ,{<<"definitions">>, to_swagger_definitions()}
                                  ,{<<"swagger">>, <<"2.0">>}
                                  ,{<<"info">>, ?SWAGGER_INFO}
@@ -308,7 +305,13 @@ write_swagger_json(Swagger) ->
     file:write_file(?SWAGGER_JSON, kz_json:encode(Swagger)).
 
 to_swagger_paths(Paths, BasePaths) ->
-    kz_json:foldl(fun to_swagger_path/3, BasePaths, Paths).
+    Endpoints =
+        [{[Path,Method], kz_json:get_value([Path,Method], BasePaths, kz_json:new())}
+         || {Path,AllowedMethods} <- kz_json:to_proplist(Paths),
+            Method <- kz_json:get_list_value(<<"allowed_methods">>, AllowedMethods, [])
+        ],
+    Base = kz_json:set_values(Endpoints, kz_json:new()),
+    kz_json:foldl(fun to_swagger_path/3, Base, Paths).
 
 to_swagger_path(Path, PathMeta, Acc) ->
     Methods = kz_json:get_value(<<"allowed_methods">>, PathMeta, []),
