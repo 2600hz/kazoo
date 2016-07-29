@@ -38,36 +38,26 @@ ensure_id(Name, JObj) ->
     end.
 
 process_project() ->
-    Core = siblings_of('kazoo'),
-    Apps = siblings_of('sysconf'),
-    lists:foldl(fun process_app/2, kz_json:new(), Core ++ Apps).
-
-siblings_of(App) ->
-    [dir_to_app_name(Dir)
-     || Dir <- filelib:wildcard(filename:join([code:lib_dir(App), "..", "*"])),
-        filelib:is_dir(Dir)
-    ].
-
-dir_to_app_name(Dir) ->
-    kz_util:to_atom(filename:basename(Dir), 'true').
+    io:format("processing kapps_config usage: "),
+    Usage = lists:foldl(fun process_app/2
+                       ,kz_json:new()
+                       ,kz_ast_util:project_apps()
+                       ),
+    io:format(" done~n"),
+    Usage.
 
 -spec process_app(atom()) -> kz_json:object().
 process_app(App) ->
     process_app(App, kz_json:new()).
 
 process_app(App, Schemas) ->
-    case application:get_key(App, 'modules') of
-        {'ok', Modules} ->
-            lists:foldl(fun module_to_schema/2, Schemas, Modules);
-        'undefined' ->
-            'ok' = application:load(App),
-            process_app(App, Schemas)
-    end.
+    lists:foldl(fun module_to_schema/2, Schemas, kz_ast_util:app_modules(App)).
 
 process_module(Module) ->
     module_to_schema(Module, kz_json:new()).
 
 module_to_schema(Module, Schemas) ->
+    io:format("."),
     case kz_ast_util:module_ast(Module) of
         'undefined' -> 'undefined';
         {M, AST} ->

@@ -7,6 +7,8 @@
         ,schema_path/1
         ,ensure_file_exists/1
         ,create_schema/1
+
+        ,project_apps/0, app_modules/1
         ]).
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
@@ -62,3 +64,25 @@ ensure_file_exists(Path) ->
 create_schema(Path) ->
     Skel = schema_path(<<"skel.json">>),
     {'ok', _} = file:copy(Skel, Path).
+
+project_apps() ->
+    Core = siblings_of('kazoo'),
+    Apps = siblings_of('sysconf'),
+    Core ++ Apps.
+
+siblings_of(App) ->
+    [dir_to_app_name(Dir)
+     || Dir <- filelib:wildcard(filename:join([code:lib_dir(App), "..", "*"])),
+        filelib:is_dir(Dir)
+    ].
+
+dir_to_app_name(Dir) ->
+    kz_util:to_atom(filename:basename(Dir), 'true').
+
+app_modules(App) ->
+    case application:get_key(App, 'modules') of
+        {'ok', Modules} -> Modules;
+        'undefined' ->
+            'ok' = application:load(App),
+            app_modules(App)
+    end.

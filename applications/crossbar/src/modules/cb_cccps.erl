@@ -128,7 +128,7 @@ validate_cccp(Context, ?AUTODIAL, ?HTTP_PUT) ->
             cccp_callback_sup:new(JObj),
             cb_context:set_resp_status(Context, 'success');
         'false' ->
-            Resp = {[{<<"message">>, <<"For direct use by account holder only">>}]},
+            Resp = kz_json:from_list([{<<"message">>, <<"For direct use by account holder only">>}]),
             cb_context:add_validation_error(<<"account">>, <<"forbidden">>, Resp, Context)
     end;
 validate_cccp(Context, Id, ?HTTP_GET) ->

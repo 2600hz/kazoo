@@ -798,8 +798,10 @@ client_handle_event(JObj, {Module, Fun}, Props, BasicDeliver) ->
     end.
 
 -spec callback_handle_event(kz_json:object(), basic_deliver(), state()) ->
-                                   'ignore' | {'ignore', state()} |
-                                   kz_proplist() | {kz_proplist(), state()}.
+                                   'ignore' |
+                                   {'ignore', state()} |
+                                   kz_proplist() |
+                                   {kz_proplist(), state()}.
 callback_handle_event(JObj
                      ,BasicDeliver
                      ,#state{module=Module
@@ -807,13 +809,9 @@ callback_handle_event(JObj
                             ,queue=Queue
                             ,other_queues=OtherQueues
                             ,self=Self
-                            }) ->
-    case
-        case erlang:function_exported(Module, 'handle_event', 3) of
-            'true' -> catch Module:handle_event(JObj, BasicDeliver, ModuleState);
-            'false' -> catch Module:handle_event(JObj, ModuleState)
-        end
-    of
+                            }
+                     ) ->
+    case callback_handle_event(JObj, BasicDeliver, Module, ModuleState) of
         'ignore' -> 'ignore';
         {'ignore', _NewModuleState} = Reply -> Reply;
         {'reply', Props} when is_list(Props) ->
@@ -827,13 +825,26 @@ callback_handle_event(JObj
              ,{'queue', Queue}
              ,{'other_queues', props:get_keys(OtherQueues)}
               | Props
-             ], NewModuleState};
+             ]
+            ,NewModuleState
+            };
         {'EXIT', _Why} ->
             [{'server', Self}
             ,{'queue', Queue}
             ,{'other_queues', props:get_keys(OtherQueues)}
             ,{'state', ModuleState}
             ]
+    end.
+
+-spec callback_handle_event(kz_json:object(), basic_deliver(), atom(), module_state()) ->
+                                   'ignore' |
+                                   {'reply', kz_proplist()} |
+                                   {'reply', kz_proplist(), module_state()} |
+                                   {'EXIT', any()}.
+callback_handle_event(JObj, BasicDeliver, Module, ModuleState) ->
+    case erlang:function_exported(Module, 'handle_event', 3) of
+        'true' -> catch Module:handle_event(JObj, BasicDeliver, ModuleState);
+        'false' -> catch Module:handle_event(JObj, ModuleState)
     end.
 
 %% allow wildcard (<<"*">>) in the Key to match either (or both) Category and Name

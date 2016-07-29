@@ -172,6 +172,7 @@ $(FMT):
 
 fmt: TO_FMT ?= $(shell find applications core -iname '*.erl' -or -iname '*.hrl' -or -iname '*.app.src')
 fmt: $(FMT)
+	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
 	@$(FMT) $(TO_FMT)
 
 apis:

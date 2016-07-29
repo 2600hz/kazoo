@@ -31,11 +31,16 @@
 
 -include("ecallmgr.hrl").
 
--define(CHILDREN, [<<"node">>, <<"authn">>, <<"route">>, <<"channel">>
-                  ,<<"config">>, <<"resource">>, <<"notify">>
+-define(CHILDREN, [<<"authn">>
+                  ,<<"channel">>
                   ,<<"conference">>
+                  ,<<"config">>
                   ,<<"event_stream_sup">>
                   ,<<"msg">>
+                  ,<<"node">>
+                  ,<<"notify">>
+                  ,<<"resource">>
+                  ,<<"route">>
                   ]).
 
 %% ===================================================================
@@ -125,24 +130,19 @@ init([Node, Options]) ->
 
     NodeB = kz_util:to_binary(Node),
     Args = [Node, Options],
-    Children = [ child_name(NodeB, Args, H) || H <- ecallmgr_config:get(<<"modules">>, ?CHILDREN)],
+    Children = [child_name(NodeB, Args, H)
+                || H <- ecallmgr_config:get(<<"modules">>, ?CHILDREN)
+               ],
 
     {'ok', {SupFlags, Children}}.
 
--spec child_name(binary(), list(), binary() | tuple()) -> any().
+-spec child_name(binary(), list(), binary() | tuple() | kz_json:object()) ->
+                        supervisor:child_spec().
 child_name(NodeB, Args, {<<"supervisor">>, Module}) ->
     Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
     Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?SUPER_NAME_ARGS(Mod, Name, Args);
-child_name(NodeB, Args, {[{<<"supervisor">>, Module}]}) ->
-    Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
-    Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
-    ?SUPER_NAME_ARGS(Mod, Name, Args);
 child_name(NodeB, Args, {<<"worker">>, Module}) ->
-    Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
-    Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
-    ?WORKER_NAME_ARGS(Mod, Name, Args);
-child_name(NodeB, Args, {[{<<"worker">>, Module}]}) ->
     Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
     Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?WORKER_NAME_ARGS(Mod, Name, Args);
@@ -160,8 +160,14 @@ child_name(NodeB, Args, <<_/binary>>=Module) ->
     Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
     Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?WORKER_NAME_ARGS(Mod, Name, Args);
-child_name(_NodeB, _Args, _Module) ->
-    lager:error("error determining child type : ~p : ~p", [_Module, _Args]).
+child_name(NodeB, Args, MaybeJObj) ->
+    try kz_json:get_values(MaybeJObj) of
+        {[Module], [Type]} -> child_name(NodeB, Args, {Type, Module})
+    catch
+        _E:_R ->
+            lager:error("error determining child type : ~p : ~p", [MaybeJObj, Args])
+    end.
+
 
 -spec srv([{atom(), pid(), any(), any()}], list()) -> api_pid().
 srv([], _) -> 'undefined';

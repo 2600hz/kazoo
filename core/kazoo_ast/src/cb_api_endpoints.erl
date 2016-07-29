@@ -36,7 +36,7 @@ api_to_ref_doc(Module, Paths, ?CURRENT_VERSION) ->
     DocPath = ?REF_PATH(BaseName),
     'ok' = file:write_file(DocPath, Doc);
 api_to_ref_doc(_Module, _Paths, _Version) ->
-    io:format("skipping ~p version ~p~n", [_Module, _Version]).
+    'ok'.
 
 api_path_to_section(Module, {'allowed_methods', Paths}, Acc) ->
     ModuleName = path_name(Module),
@@ -353,9 +353,7 @@ format_pc_module({Module, Config}, Acc) ->
 format_pc_module(_MC, Acc) ->
     Acc.
 
-format_pc_config(_ConfigData, Acc, _Module, 'undefined') ->
-    io:format("skipping module ~p\n", [_Module]),
-    Acc;
+format_pc_config(_ConfigData, Acc, _Module, 'undefined') -> Acc;
 format_pc_config({Callback, Paths}, Acc, Module, ModuleName) ->
     lists:foldl(fun(Path, Acc1) ->
                         format_pc_callback(Path, Acc1, Module, ModuleName, Callback)
@@ -438,7 +436,6 @@ path_name(Module) ->
         {'match', [Name]} -> <<"accounts/{ACCOUNT_ID}/", Name/binary>>;
         {'match', [Name, ?CURRENT_VERSION]} -> <<"accounts/{ACCOUNT_ID}/", Name/binary>>;
         {'match', _M} ->
-            io:format("skipping '~s' for not being in the current version\n", [Module]),
             'undefined'
     end.
 
@@ -451,10 +448,14 @@ get() ->
 
 process_application(App) ->
     EBinDir = code:lib_dir(App, 'ebin'),
-    filelib:fold_files(EBinDir, "^cb_.*.beam\$", 'false', fun process_module/2, []).
+    io:format("processing crossbar modules: "),
+    Processed = filelib:fold_files(EBinDir, "^cb_.*.beam\$", 'false', fun process_module/2, []),
+    io:format(" done~n"),
+    Processed.
 
 process_module(File, Acc) ->
     {'ok', {Module, [{'exports', Fs}]}} = beam_lib:chunks(File, ['exports']),
+    io:format("."),
 
     case process_exports(File, Module, Fs) of
         'undefined' -> Acc;
