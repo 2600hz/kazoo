@@ -770,11 +770,11 @@ distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
                                                   }=State) ->
     Key = kz_util:get_event_type(JObj),
     _ = [kz_util:spawn(fun client_handle_event/5, [JObj
-                                                        ,ConsumerKey
-                                                        ,Callback
-                                                        ,Props
-                                                        ,BasicDeliver
-                                                        ])
+                                                  ,ConsumerKey
+                                                  ,Callback
+                                                  ,Props
+                                                  ,BasicDeliver
+                                                  ])
          || {Evt, Callback} <- Responders,
             maybe_event_matches_key(Key, Evt)
         ],
