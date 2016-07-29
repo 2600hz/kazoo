@@ -5,10 +5,9 @@
         ,binary_match_to_binary/1
 
         ,schema_path/1
-         ,ensure_file_exists/1
-         ,create_schema/1
+        ,ensure_file_exists/1
+        ,create_schema/1
         ]).
-
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 

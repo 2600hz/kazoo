@@ -37,7 +37,7 @@
 -define(STRING(Value), {'string', _, Value}).
 
 -define(GEN_RECORD_FIELD_ACCESS(RecName, FieldName, Value)
-        ,{'record_field', _, RecName, FieldName, Value}
+       ,{'record_field', _, RecName, FieldName, Value}
        ).
 -define(RECORD_FIELD_REST
        ,{'record_field', _, ?VAR('_'), ?ATOM('_')}
@@ -46,7 +46,7 @@
        ,{'record_field', _,?ATOM(Key),Value}
        ).
 -define(RECORD_FIELD_ACCESS(RecordName, Name, Value)
-        ,?GEN_RECORD_FIELD_ACCESS(?VAR(Name), RecordName, Value)
+       ,?GEN_RECORD_FIELD_ACCESS(?VAR(Name), RecordName, Value)
        ).
 -define(RECORD(Name, Fields), {'record', _, Name, Fields}).
 -define(GEN_RECORD(NameExpr, RecName, Fields)

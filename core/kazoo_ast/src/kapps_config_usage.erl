@@ -1,7 +1,7 @@
 -module(kapps_config_usage).
 
 -export([process_project/0, process_app/1, process_module/1
-         ,to_schema_docs/0
+        ,to_schema_docs/0
         ]).
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
@@ -77,8 +77,8 @@ module_to_schema(Module, Schemas) ->
 
 functions_to_schema(Fs, Schemas) ->
     lists:foldl(fun function_to_schema/2
-                ,Schemas
-                ,Fs
+               ,Schemas
+               ,Fs
                ).
 
 function_to_schema({_Module, _Function, _Arity, Clauses}, Schemas) ->
@@ -86,8 +86,8 @@ function_to_schema({_Module, _Function, _Arity, Clauses}, Schemas) ->
 
 clauses_to_schema(Clauses, Schemas) ->
     lists:foldl(fun clause_to_schema/2
-                ,Schemas
-                ,Clauses
+               ,Schemas
+               ,Clauses
                ).
 
 clause_to_schema(?CLAUSE(_Args, _Guards, Expressions), Schemas) ->
@@ -129,7 +129,7 @@ expression_to_schema(?TRY_EXPR(Expr, Clauses, CatchClauses), Schemas) ->
                      );
 expression_to_schema(?TRY_BODY_AFTER(Body, Clauses, CatchClauses, AfterBody), Schemas) ->
     clauses_to_schema(Clauses ++ CatchClauses
-                      ,expressions_to_schema(Body ++ AfterBody, Schemas)
+                     ,expressions_to_schema(Body ++ AfterBody, Schemas)
                      );
 expression_to_schema(?LC(Expr, Qualifiers), Schemas) ->
     expressions_to_schema([Expr | Qualifiers], Schemas);
@@ -254,19 +254,19 @@ key_to_key_path(?VAR(_)) -> 'undefined';
 key_to_key_path(?EMPTY_LIST) -> [];
 key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [Doc, Field | _]), Tail)) ->
     [iolist_to_binary([${
-                       ,kz_ast_util:binary_match_to_binary(Doc)
-                       ,"."
-                       ,kz_ast_util:binary_match_to_binary(Field)
-                       ,$}
+                      ,kz_ast_util:binary_match_to_binary(Doc)
+                      ,"."
+                      ,kz_ast_util:binary_match_to_binary(Field)
+                      ,$}
                       ]
                      )
-     ,<<"properties">>
-     | key_to_key_path(Tail)
+    ,<<"properties">>
+         | key_to_key_path(Tail)
     ];
 key_to_key_path(?LIST(?MOD_FUN_ARGS('kz_util', 'to_binary', [?VAR(Name)]), Tail)) ->
     [iolist_to_binary([${, kz_util:to_binary(Name), $}])
-     ,<<"properties">>
-     | key_to_key_path(Tail)
+    ,<<"properties">>
+         | key_to_key_path(Tail)
     ];
 
 key_to_key_path(?MOD_FUN_ARGS('kz_util', 'to_binary', [?VAR(Name)])) ->
@@ -278,12 +278,12 @@ key_to_key_path(?GEN_FUN_ARGS(_F, _Args)) ->
 key_to_key_path(?LIST(?VAR(Name), Tail)) ->
     [iolist_to_binary([${, kz_util:to_binary(Name), $}])
     ,<<"properties">>
-    | key_to_key_path(Tail)
+         | key_to_key_path(Tail)
     ];
 key_to_key_path(?LIST(Head, Tail)) ->
     [kz_ast_util:binary_match_to_binary(Head)
     ,<<"properties">>
-    | key_to_key_path(Tail)
+         | key_to_key_path(Tail)
     ];
 key_to_key_path(?BINARY_MATCH(K)) ->
     [kz_ast_util:binary_match_to_binary(K)].
@@ -372,7 +372,7 @@ default_value(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
     kz_json:new();
 default_value(?MOD_FUN_ARGS(_M, _F, _Args)) -> 'undefined';
 default_value(?FUN_ARGS(_F, _Args)) ->
-     'undefined'.
+    'undefined'.
 
 default_values_from_list(KVs) ->
     lists:foldl(fun default_value_from_kv/2

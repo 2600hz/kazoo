@@ -57,7 +57,7 @@ default_method_restrictions() ->
 
 -spec method_restrictions(atom()) -> api_object().
 method_restrictions(AuthModule) ->
-     kapps_config:get_json(?MOD_CONFIG_CAT, AuthModule).
+    kapps_config:get_json(?MOD_CONFIG_CAT, AuthModule).
 
 %%%===================================================================
 %%% API
