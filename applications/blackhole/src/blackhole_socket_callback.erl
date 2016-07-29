@@ -127,7 +127,7 @@ check_binding(Context, JObj, Binding) ->
 subscribe(Context, _JObj, _Binding, 'undefined') ->
     {'ok', blackhole_util:respond_with_error(Context)};
 subscribe(Context, _JObj, Binding, Module) ->
-    try Module:subscribe(Context, Binding) of
+    try Module:subscribe(Context#bh_context{binding=Binding}, Binding) of
         {'ok', Context1} ->
             Context2 = bh_context:add_binding(Context1, Binding),
             _ = blackhole_tracking:update_socket(Context2),
