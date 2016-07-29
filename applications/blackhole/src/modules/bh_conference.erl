@@ -7,6 +7,7 @@
 %%%   James Aimonetti
 %%%   Peter Defebvre
 %%%   Ben Wann
+%%%   Roman Galeev
 %%%-------------------------------------------------------------------
 -module(bh_conference).
 
