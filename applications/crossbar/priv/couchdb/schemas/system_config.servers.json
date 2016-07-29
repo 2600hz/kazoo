@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.servers",
+    "description": "Schema for servers system_config",
+    "properties": {
+        "clock_timezone": {
+            "default": "UTC",
+            "description": "",
+            "name": "clock_timezone",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

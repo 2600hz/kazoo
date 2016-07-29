@@ -1,0 +1,27 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.callflow.hotdesk",
+    "description": "Schema for callflow.hotdesk system_config",
+    "properties": {
+        "max_hotdesk_id_length": {
+            "default": 10,
+            "description": "",
+            "name": "max_hotdesk_id_length",
+            "type": "integer"
+        },
+        "max_login_attempts": {
+            "default": 3,
+            "description": "",
+            "name": "max_login_attempts",
+            "type": "integer"
+        },
+        "max_pin_length": {
+            "default": 6,
+            "description": "",
+            "name": "max_pin_length",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

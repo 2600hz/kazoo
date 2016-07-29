@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.notify.fax",
+    "description": "Schema for notify.fax system_config",
+    "properties": {
+        "attachment_format": {
+            "default": "pdf",
+            "description": "",
+            "name": "attachment_format",
+            "type": "string"
+        },
+        "tiff_to_pdf_conversion_command": {
+            "default": "tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"",
+            "description": "",
+            "name": "tiff_to_pdf_conversion_command",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

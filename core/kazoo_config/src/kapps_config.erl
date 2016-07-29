@@ -11,6 +11,7 @@
 -module(kapps_config).
 
 -include("kazoo_config.hrl").
+-include_lib("kazoo/src/kz_json.hrl").
 
 -export([get/2, get/3, get/4
         ,get_all_kvs/1
@@ -22,6 +23,7 @@
         ]).
 -export([get_string/2, get_string/3, get_string/4]).
 -export([get_binary/2, get_binary/3, get_binary/4]).
+-export([get_json/2, get_json/3, get_json/4]).
 -export([get_atom/2, get_atom/3, get_atom/4]).
 -export([get_integer/2, get_integer/3, get_integer/4]).
 -export([get_float/2, get_float/3, get_float/4]).
@@ -87,6 +89,31 @@ get_binary(Category, Key, Default) ->
     get_binary(Category, Key, Default, kz_util:to_binary(node())).
 get_binary(Category, Key, Default, Node) ->
     kz_util:to_binary(get(Category, Key, Default, Node)).
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc Get a configuration key for a given category and cast it as a json
+%%-----------------------------------------------------------------------------
+-spec get_json(config_category(), config_key()) ->
+                      api_object().
+-spec get_json(config_category(), config_key(), Default) ->
+                      kz_json:object() | Default.
+-spec get_json(config_category(), config_key(), Default, ne_binary()) ->
+                      kz_json:object() | Default.
+
+get_json(Category, Key) ->
+    case get(Category, Key) of
+        'undefined' -> 'undefined';
+        ?JSON_WRAPPER(_)=V -> V;
+        _Else -> 'undefined'
+    end.
+get_json(Category, Key, Default) ->
+    get_json(Category, Key, Default, kz_util:to_binary(node())).
+get_json(Category, Key, Default, Node) ->
+    case get(Category, Key, Default, Node) of
+        ?JSON_WRAPPER(_)=V -> V;
+        _Else -> Default
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @public

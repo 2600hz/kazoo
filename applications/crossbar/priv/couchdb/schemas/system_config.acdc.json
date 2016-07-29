@@ -1,0 +1,74 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.acdc",
+    "description": "Schema for acdc system_config",
+    "properties": {
+        "agent_info_fields": {
+            "default": [
+                "first_name",
+                "last_name",
+                "username",
+                "email"
+            ],
+            "description": "",
+            "name": "agent_info_fields",
+            "type": "array"
+        },
+        "archive_period_ms": {
+            "default": 60000,
+            "description": "",
+            "name": "archive_period_ms",
+            "type": "integer"
+        },
+        "archive_window_s": {
+            "default": 60,
+            "description": "",
+            "name": "archive_window_s",
+            "type": "integer"
+        },
+        "cleanup_period_ms": {
+            "default": 360000,
+            "description": "",
+            "name": "cleanup_period_ms",
+            "type": "integer"
+        },
+        "cleanup_window_s": {
+            "default": 86400,
+            "description": "",
+            "name": "cleanup_window_s",
+            "type": "integer"
+        },
+        "default_agent_pause_timeout": {
+            "default": 600,
+            "description": "",
+            "name": "default_agent_pause_timeout",
+            "type": "integer"
+        },
+        "max_connect_failures": {
+            "default": 3,
+            "description": "",
+            "name": "max_connect_failures",
+            "type": "integer"
+        },
+        "max_result_set": {
+            "default": 25,
+            "description": "",
+            "name": "max_result_set",
+            "type": "integer"
+        },
+        "queue_collect_resp_timeout": {
+            "default": 2000,
+            "description": "",
+            "name": "queue_collect_resp_timeout",
+            "type": "integer"
+        },
+        "queue_worker_count": {
+            "default": 5,
+            "description": "",
+            "name": "queue_worker_count",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -1,0 +1,18 @@
+{application, kazoo_ast
+,[
+  {description, "Kazoo AST parsing for introspection"}
+ ,{vsn, "4.0.0"}
+ ,{modules, []}
+ ,{registered, []}
+ ,{applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , lager
+
+                 , kazoo_config
+
+                 , crossbar
+                 , callflow
+                 ]}
+ ]}.

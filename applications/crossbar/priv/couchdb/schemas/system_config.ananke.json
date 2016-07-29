@@ -1,0 +1,51 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.ananke",
+    "description": "Schema for ananke system_config",
+    "properties": {
+        "schedules": {
+            "default": [],
+            "description": "",
+            "name": "schedules",
+            "type": "array"
+        },
+        "voicemail": {
+            "properties": {
+                "notify": {
+                    "properties": {
+                        "callback": {
+                            "properties": {
+                                "attempts": {
+                                    "properties": {
+                                        "default": 5,
+                                        "description": "",
+                                        "name": "attempts",
+                                        "type": "string"
+                                    }
+                                },
+                                "interval_s": {
+                                    "properties": {
+                                        "default": 300,
+                                        "description": "",
+                                        "name": "interval_s",
+                                        "type": "string"
+                                    }
+                                },
+                                "timeout_s": {
+                                    "properties": {
+                                        "default": 20,
+                                        "description": "",
+                                        "name": "timeout_s",
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "required": true,
+    "type": "object"
+}

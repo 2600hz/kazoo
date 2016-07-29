@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.whitelabel",
+    "description": "Schema for whitelabel system_config",
+    "properties": {
+        "domains": {
+            "description": "",
+            "name": "domains"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

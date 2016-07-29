@@ -6700,6 +6700,12 @@
             "required": true,
             "type": "object"
         },
+        "skel": {
+            "description": "Skeleton JSON schema",
+            "properties": {},
+            "required": true,
+            "type": "object"
+        },
         "sms": {
             "description": "sms document",
             "name": "sms",
@@ -6729,6 +6735,4436 @@
                     "name": "To",
                     "required": true,
                     "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.accounts": {
+            "description": "Schema for accounts system_config",
+            "properties": {
+                "allow_subaccounts_for_direct": {
+                    "default": true,
+                    "description": "",
+                    "name": "allow_subaccounts_for_direct",
+                    "type": "boolean"
+                },
+                "default_timezone": {
+                    "default": "America/Los_Angeles",
+                    "description": "",
+                    "name": "default_timezone",
+                    "type": "string"
+                },
+                "master_account_id": {
+                    "description": "",
+                    "name": "master_account_id"
+                },
+                "timezone": {
+                    "description": "",
+                    "name": "timezone",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.acdc": {
+            "description": "Schema for acdc system_config",
+            "properties": {
+                "agent_info_fields": {
+                    "default": [
+                        "first_name",
+                        "last_name",
+                        "username",
+                        "email"
+                    ],
+                    "description": "",
+                    "name": "agent_info_fields",
+                    "type": "array"
+                },
+                "archive_period_ms": {
+                    "default": 60000,
+                    "description": "",
+                    "name": "archive_period_ms",
+                    "type": "integer"
+                },
+                "archive_window_s": {
+                    "default": 60,
+                    "description": "",
+                    "name": "archive_window_s",
+                    "type": "integer"
+                },
+                "cleanup_period_ms": {
+                    "default": 360000,
+                    "description": "",
+                    "name": "cleanup_period_ms",
+                    "type": "integer"
+                },
+                "cleanup_window_s": {
+                    "default": 86400,
+                    "description": "",
+                    "name": "cleanup_window_s",
+                    "type": "integer"
+                },
+                "default_agent_pause_timeout": {
+                    "default": 600,
+                    "description": "",
+                    "name": "default_agent_pause_timeout",
+                    "type": "integer"
+                },
+                "max_connect_failures": {
+                    "default": 3,
+                    "description": "",
+                    "name": "max_connect_failures",
+                    "type": "integer"
+                },
+                "max_result_set": {
+                    "default": 25,
+                    "description": "",
+                    "name": "max_result_set",
+                    "type": "integer"
+                },
+                "queue_collect_resp_timeout": {
+                    "default": 2000,
+                    "description": "",
+                    "name": "queue_collect_resp_timeout",
+                    "type": "integer"
+                },
+                "queue_worker_count": {
+                    "default": 5,
+                    "description": "",
+                    "name": "queue_worker_count",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.alerts": {
+            "description": "Schema for alerts system_config",
+            "properties": {
+                "enabled": {
+                    "default": true,
+                    "description": "",
+                    "name": "enabled",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.ananke": {
+            "description": "Schema for ananke system_config",
+            "properties": {
+                "schedules": {
+                    "default": [],
+                    "description": "",
+                    "name": "schedules",
+                    "type": "array"
+                },
+                "voicemail": {
+                    "properties": {
+                        "notify": {
+                            "properties": {
+                                "callback": {
+                                    "properties": {
+                                        "attempts": {
+                                            "properties": {
+                                                "default": 5,
+                                                "description": "",
+                                                "name": "attempts",
+                                                "type": "string"
+                                            }
+                                        },
+                                        "interval_s": {
+                                            "properties": {
+                                                "default": 300,
+                                                "description": "",
+                                                "name": "interval_s",
+                                                "type": "string"
+                                            }
+                                        },
+                                        "timeout_s": {
+                                            "properties": {
+                                                "default": 20,
+                                                "description": "",
+                                                "name": "timeout_s",
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.blackhole": {
+            "description": "Schema for blackhole system_config",
+            "properties": {
+                "autoload_modules": {
+                    "default": [
+                        "bh_token_auth"
+                    ],
+                    "description": "",
+                    "name": "autoload_modules",
+                    "type": "array"
+                },
+                "port": {
+                    "default": 5555,
+                    "description": "",
+                    "name": "port",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.braintree": {
+            "description": "Schema for braintree system_config",
+            "properties": {
+                "debug": {
+                    "default": false,
+                    "description": "",
+                    "name": "debug",
+                    "type": "boolean"
+                },
+                "default_environment": {
+                    "default": [],
+                    "description": "",
+                    "name": "default_environment",
+                    "type": "string"
+                },
+                "default_merchant_id": {
+                    "default": [],
+                    "description": "",
+                    "name": "default_merchant_id",
+                    "type": "string"
+                },
+                "max_amount": {
+                    "default": 200.0,
+                    "description": "",
+                    "name": "max_amount",
+                    "type": "number"
+                },
+                "min_amount": {
+                    "default": 5.0,
+                    "description": "",
+                    "name": "min_amount",
+                    "type": "number"
+                },
+                "should_prorate": {
+                    "default": true,
+                    "description": "",
+                    "name": "should_prorate",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.call_command": {
+            "description": "Schema for call_command system_config",
+            "properties": {
+                "application_timeout": {
+                    "default": 500000,
+                    "description": "",
+                    "name": "application_timeout",
+                    "type": "integer"
+                },
+                "collect_timeout": {
+                    "default": 5000,
+                    "description": "",
+                    "name": "collect_timeout",
+                    "type": "integer"
+                },
+                "digit_timeout": {
+                    "default": 3000,
+                    "description": "",
+                    "name": "digit_timeout",
+                    "type": "integer"
+                },
+                "interdigit_timeout": {
+                    "default": 2000,
+                    "description": "",
+                    "name": "interdigit_timeout",
+                    "type": "integer"
+                },
+                "message_timeout": {
+                    "default": 5000,
+                    "description": "",
+                    "name": "message_timeout",
+                    "type": "integer"
+                },
+                "store_file": {
+                    "properties": {
+                        "{App}": {
+                            "properties": {
+                                "retries": {
+                                    "properties": {
+                                        "default": 5,
+                                        "description": "",
+                                        "name": "retries",
+                                        "type": "integer"
+                                    }
+                                },
+                                "save_timeout_ms": {
+                                    "properties": {
+                                        "default": 300000,
+                                        "description": "",
+                                        "name": "save_timeout_ms",
+                                        "type": "integer"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.callflow": {
+            "description": "Schema for callflow system_config",
+            "properties": {
+                "call_recording": {
+                    "properties": {
+                        "extension": {
+                            "properties": {
+                                "default": "mp3",
+                                "description": "",
+                                "name": "extension",
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "calls_consume_tokens": {
+                    "default": true,
+                    "description": "",
+                    "name": "calls_consume_tokens",
+                    "type": "boolean"
+                },
+                "default_pin_length": {
+                    "default": 10,
+                    "description": "",
+                    "name": "default_pin_length",
+                    "type": "integer"
+                },
+                "default_use_account_caller_id": {
+                    "default": true,
+                    "description": "",
+                    "name": "default_use_account_caller_id",
+                    "type": "boolean"
+                },
+                "ensure_valid_caller_id": {
+                    "default": false,
+                    "description": "",
+                    "name": "ensure_valid_caller_id",
+                    "type": "boolean"
+                },
+                "fax_detect_duration_s": {
+                    "default": 5,
+                    "description": "",
+                    "name": "fax_detect_duration_s",
+                    "type": "integer"
+                },
+                "min_bucket_cost": {
+                    "default": 5,
+                    "description": "",
+                    "name": "min_bucket_cost",
+                    "type": "integer"
+                },
+                "mwi_send_unsoliciated_updates": {
+                    "default": true,
+                    "description": "",
+                    "name": "mwi_send_unsoliciated_updates",
+                    "type": "boolean"
+                },
+                "post_answer_delay": {
+                    "default": 100,
+                    "description": "",
+                    "name": "post_answer_delay",
+                    "type": "integer"
+                },
+                "ring_ready_offnet": {
+                    "default": true,
+                    "description": "",
+                    "name": "ring_ready_offnet",
+                    "type": "boolean"
+                },
+                "route_win_timeout": {
+                    "default": 3000,
+                    "description": "",
+                    "name": "route_win_timeout",
+                    "type": "integer"
+                },
+                "singular_call_hook_url": {
+                    "default": "",
+                    "description": "",
+                    "name": "singular_call_hook_url",
+                    "type": "string"
+                },
+                "voicemail": {
+                    "properties": {
+                        "delete_after_notify": {
+                            "properties": {
+                                "default": false,
+                                "description": "",
+                                "name": "delete_after_notify",
+                                "type": "boolean"
+                            }
+                        },
+                        "extension": {
+                            "properties": {
+                                "default": "mp3",
+                                "description": "",
+                                "name": "extension",
+                                "type": "string"
+                            }
+                        },
+                        "max_box_number_length": {
+                            "properties": {
+                                "default": 15,
+                                "description": "",
+                                "name": "max_box_number_length",
+                                "type": "integer"
+                            }
+                        },
+                        "max_message_count": {
+                            "properties": {
+                                "default": 100,
+                                "description": "",
+                                "name": "max_message_count",
+                                "type": "integer"
+                            }
+                        },
+                        "max_message_length": {
+                            "properties": {
+                                "default": 500,
+                                "description": "",
+                                "name": "max_message_length",
+                                "type": "integer"
+                            }
+                        },
+                        "max_pin_length": {
+                            "properties": {
+                                "default": 6,
+                                "description": "",
+                                "name": "max_pin_length",
+                                "type": "integer"
+                            }
+                        },
+                        "message_retention_duration": {
+                            "properties": {
+                                "default": 93,
+                                "description": "",
+                                "name": "message_retention_duration",
+                                "type": "integer"
+                            }
+                        },
+                        "min_message_size": {
+                            "properties": {
+                                "default": 500,
+                                "description": "",
+                                "name": "min_message_size",
+                                "type": "integer"
+                            }
+                        },
+                        "save_after_notify": {
+                            "properties": {
+                                "default": false,
+                                "description": "",
+                                "name": "save_after_notify",
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.callflow.call_forward": {
+            "description": "Schema for callflow.call_forward system_config",
+            "properties": {
+                "callfwd_number_timeout": {
+                    "default": 8000,
+                    "description": "",
+                    "name": "callfwd_number_timeout",
+                    "type": "integer"
+                },
+                "max_callfwd_number_length": {
+                    "default": 20,
+                    "description": "",
+                    "name": "max_callfwd_number_length",
+                    "type": "integer"
+                },
+                "min_callfwd_number_length": {
+                    "default": 3,
+                    "description": "",
+                    "name": "min_callfwd_number_length",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.callflow.hotdesk": {
+            "description": "Schema for callflow.hotdesk system_config",
+            "properties": {
+                "max_hotdesk_id_length": {
+                    "default": 10,
+                    "description": "",
+                    "name": "max_hotdesk_id_length",
+                    "type": "integer"
+                },
+                "max_login_attempts": {
+                    "default": 3,
+                    "description": "",
+                    "name": "max_login_attempts",
+                    "type": "integer"
+                },
+                "max_pin_length": {
+                    "default": 6,
+                    "description": "",
+                    "name": "max_pin_length",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.callflow.menu": {
+            "description": "Schema for callflow.menu system_config",
+            "properties": {
+                "min_greeting_length": {
+                    "default": 1500,
+                    "description": "",
+                    "name": "min_greeting_length",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.callflow.park": {
+            "description": "Schema for callflow.park system_config",
+            "properties": {
+                "db_doc_name": {
+                    "default": "parked_calls",
+                    "description": "",
+                    "name": "db_doc_name",
+                    "type": "string"
+                },
+                "default_callback_timeout": {
+                    "default": 30000,
+                    "description": "",
+                    "name": "default_callback_timeout",
+                    "type": "integer"
+                },
+                "default_ringback_timeout": {
+                    "default": 120000,
+                    "description": "",
+                    "name": "default_ringback_timeout",
+                    "type": "integer"
+                },
+                "parked_presence_type": {
+                    "default": "early",
+                    "description": "",
+                    "name": "parked_presence_type",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.callflow.resources": {
+            "description": "Schema for callflow.resources system_config",
+            "properties": {
+                "default_emit_account_id": {
+                    "default": false,
+                    "description": "",
+                    "name": "default_emit_account_id",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.camper": {
+            "description": "Schema for camper system_config",
+            "properties": {
+                "stop_after": {
+                    "default": 31,
+                    "description": "",
+                    "name": "stop_after",
+                    "type": "integer"
+                },
+                "timeout": {
+                    "default": 15,
+                    "description": "",
+                    "name": "timeout",
+                    "type": "integer"
+                },
+                "tries": {
+                    "default": 10,
+                    "description": "",
+                    "name": "tries",
+                    "type": "integer"
+                },
+                "try_interval": {
+                    "default": 3,
+                    "description": "",
+                    "name": "try_interval",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.cb_modb": {
+            "description": "Schema for cb_modb system_config",
+            "properties": {
+                "maybe_archive_modbs": {
+                    "default": false,
+                    "description": "",
+                    "name": "maybe_archive_modbs",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.cccp": {
+            "description": "Schema for cccp system_config",
+            "properties": {
+                "allowed_callee_regex": {
+                    "default": "^\\+?\\d{7,}$",
+                    "description": "",
+                    "name": "allowed_callee_regex",
+                    "type": "string"
+                },
+                "callback_delay": {
+                    "default": 3,
+                    "description": "",
+                    "name": "callback_delay",
+                    "type": "integer"
+                },
+                "cccp_cb_number": {
+                    "description": "",
+                    "name": "cccp_cb_number"
+                },
+                "cccp_cc_number": {
+                    "description": "",
+                    "name": "cccp_cc_number"
+                },
+                "last_number_redial_code": {
+                    "default": "*0",
+                    "description": "",
+                    "name": "last_number_redial_code",
+                    "type": "string"
+                },
+                "prompt_delay": {
+                    "default": 1,
+                    "description": "",
+                    "name": "prompt_delay",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.cdr": {
+            "description": "Schema for cdr system_config",
+            "properties": {
+                "store_anonymous": {
+                    "default": false,
+                    "description": "",
+                    "name": "store_anonymous",
+                    "type": "boolean"
+                },
+                "v3_migrate_num_months": {
+                    "default": 4,
+                    "description": "",
+                    "name": "v3_migrate_num_months",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.conferences": {
+            "description": "Schema for conferences system_config",
+            "properties": {
+                "advertise": {
+                    "properties": {
+                        "{ConfigName}": {
+                            "properties": {
+                                "description": "",
+                                "name": "{ConfigName}"
+                            }
+                        }
+                    }
+                },
+                "caller-controls": {
+                    "properties": {
+                        "{ConfigName}": {
+                            "properties": {
+                                "default": [],
+                                "description": "",
+                                "name": "{ConfigName}",
+                                "type": "array"
+                            }
+                        }
+                    }
+                },
+                "chat-permissions": {
+                    "properties": {
+                        "{ConfigName}": {
+                            "properties": {
+                                "description": "",
+                                "name": "{ConfigName}"
+                            }
+                        }
+                    }
+                },
+                "entry_tone": {
+                    "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
+                    "description": "",
+                    "name": "entry_tone",
+                    "type": "string"
+                },
+                "exit_tone": {
+                    "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)",
+                    "description": "",
+                    "name": "exit_tone",
+                    "type": "string"
+                },
+                "moderator_entry_tone": {
+                    "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
+                    "description": "",
+                    "name": "moderator_entry_tone",
+                    "type": "string"
+                },
+                "profiles": {
+                    "properties": {
+                        "default": {
+                            "properties": {
+                                "default": {
+                                    "caller-controls": "default",
+                                    "comfort-noise": 1000,
+                                    "energy-level": 20,
+                                    "interval": 20,
+                                    "moh-sound": "$${hold_music}",
+                                    "rate": 8000
+                                },
+                                "description": "",
+                                "name": "default",
+                                "type": "object"
+                            }
+                        },
+                        "{ConfigName}": {
+                            "properties": {
+                                "description": "",
+                                "name": "{ConfigName}"
+                            }
+                        }
+                    }
+                },
+                "review_name": {
+                    "default": false,
+                    "description": "",
+                    "name": "review_name",
+                    "type": "boolean"
+                },
+                "route_win_timeout": {
+                    "default": 3000,
+                    "description": "",
+                    "name": "route_win_timeout",
+                    "type": "integer"
+                },
+                "support_name_announcement": {
+                    "default": true,
+                    "description": "",
+                    "name": "support_name_announcement",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar": {
+            "description": "Schema for crossbar system_config",
+            "properties": {
+                "allow_tracing": {
+                    "default": false,
+                    "description": "",
+                    "name": "allow_tracing",
+                    "type": "boolean"
+                },
+                "api_auth_tokens": {
+                    "default": 35,
+                    "description": "",
+                    "name": "api_auth_tokens",
+                    "type": "integer"
+                },
+                "autoload_modules": {
+                    "description": "",
+                    "name": "autoload_modules"
+                },
+                "cleanup_timer": {
+                    "default": 86400,
+                    "description": "",
+                    "name": "cleanup_timer",
+                    "type": "integer"
+                },
+                "default_allow_anonymous_quickcalls": {
+                    "default": true,
+                    "description": "",
+                    "name": "default_allow_anonymous_quickcalls",
+                    "type": "boolean"
+                },
+                "default_language": {
+                    "default": "en-US",
+                    "description": "",
+                    "name": "default_language",
+                    "type": "string"
+                },
+                "expiry_percentage": {
+                    "default": 75,
+                    "description": "",
+                    "name": "expiry_percentage",
+                    "type": "integer"
+                },
+                "magic_path_patterns": {
+                    "default": [
+                        "/:version/accounts/:account_id/vmboxes/:box_id/messages/:message_id/raw",
+                        "/:version/accounts/:account_id/faxes/:direction/:fax_id/attachment",
+                        "/:version/accounts/:account_id/presence/:reportid"
+                    ],
+                    "description": "",
+                    "name": "magic_path_patterns",
+                    "type": "array"
+                },
+                "max_upload_size": {
+                    "default": 8000000,
+                    "description": "",
+                    "name": "max_upload_size",
+                    "type": "integer"
+                },
+                "maximum_range": {
+                    "default": 2682000,
+                    "description": "",
+                    "name": "maximum_range",
+                    "type": "integer"
+                },
+                "pagination_page_size": {
+                    "default": 50,
+                    "description": "",
+                    "name": "pagination_page_size",
+                    "type": "integer"
+                },
+                "port": {
+                    "default": 8000,
+                    "description": "",
+                    "name": "port",
+                    "type": "integer"
+                },
+                "pretty_metrics": {
+                    "default": true,
+                    "description": "",
+                    "name": "pretty_metrics",
+                    "type": "boolean"
+                },
+                "request_timeout_ms": {
+                    "default": 10000,
+                    "description": "",
+                    "name": "request_timeout_ms",
+                    "type": "integer"
+                },
+                "reset_id_size": {
+                    "default": 137,
+                    "description": "",
+                    "name": "reset_id_size",
+                    "type": "integer"
+                },
+                "reverse_proxies": {
+                    "default": [],
+                    "description": "",
+                    "name": "reverse_proxies",
+                    "type": "array"
+                },
+                "schema_strict_validation": {
+                    "default": false,
+                    "description": "",
+                    "name": "schema_strict_validation",
+                    "type": "boolean"
+                },
+                "soft_delete_pause_ms": {
+                    "default": 10000,
+                    "description": "",
+                    "name": "soft_delete_pause_ms",
+                    "type": "integer"
+                },
+                "ssl_ca_cert": {
+                    "description": "",
+                    "name": "ssl_ca_cert",
+                    "type": "string"
+                },
+                "ssl_workers": {
+                    "default": 100,
+                    "description": "",
+                    "name": "ssl_workers",
+                    "type": "integer"
+                },
+                "token_auth_expiry": {
+                    "default": 3600,
+                    "description": "",
+                    "name": "token_auth_expiry",
+                    "type": "integer"
+                },
+                "token_costs": {
+                    "default": 1,
+                    "description": "",
+                    "name": "token_costs",
+                    "type": "integer"
+                },
+                "trace_path": {
+                    "default": "/tmp",
+                    "description": "",
+                    "name": "trace_path",
+                    "type": "string"
+                },
+                "use_plaintext": {
+                    "default": true,
+                    "description": "",
+                    "name": "use_plaintext",
+                    "type": "boolean"
+                },
+                "use_ssl": {
+                    "default": false,
+                    "description": "",
+                    "name": "use_ssl",
+                    "type": "boolean"
+                },
+                "user_auth_tokens": {
+                    "default": 35,
+                    "description": "",
+                    "name": "user_auth_tokens",
+                    "type": "integer"
+                },
+                "workers": {
+                    "default": 100,
+                    "description": "",
+                    "name": "workers",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.accounts": {
+            "description": "Schema for crossbar.accounts system_config",
+            "properties": {
+                "account_realm_suffix": {
+                    "default": "sip.2600hz.com",
+                    "description": "",
+                    "name": "account_realm_suffix",
+                    "type": "string"
+                },
+                "allow_move": {
+                    "default": "superduper_admin",
+                    "description": "",
+                    "name": "allow_move",
+                    "type": "string"
+                },
+                "allow_sibling_listing": {
+                    "default": true,
+                    "description": "",
+                    "name": "allow_sibling_listing",
+                    "type": "boolean"
+                },
+                "default_parent": {
+                    "default": "",
+                    "description": "",
+                    "name": "default_parent",
+                    "type": "string"
+                },
+                "ensure_unique_name": {
+                    "default": true,
+                    "description": "",
+                    "name": "ensure_unique_name",
+                    "type": "boolean"
+                },
+                "expose_api_key": {
+                    "default": false,
+                    "description": "",
+                    "name": "expose_api_key",
+                    "type": "boolean"
+                },
+                "new_account_notify_delay_s": {
+                    "default": 30,
+                    "description": "",
+                    "name": "new_account_notify_delay_s",
+                    "type": "integer"
+                },
+                "random_realm_strength": {
+                    "default": 3,
+                    "description": "",
+                    "name": "random_realm_strength",
+                    "type": "integer"
+                },
+                "trial_time": {
+                    "default": 1209600,
+                    "description": "",
+                    "name": "trial_time",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.auth": {
+            "description": "Schema for crossbar.auth system_config",
+            "properties": {
+                "basic_auth_type": {
+                    "default": "md5",
+                    "description": "",
+                    "name": "basic_auth_type",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.braintree": {
+            "description": "Schema for crossbar.braintree system_config",
+            "properties": {
+                "max_account_credit": {
+                    "default": 500.0,
+                    "description": "",
+                    "name": "max_account_credit",
+                    "type": "number"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.callflows": {
+            "description": "Schema for crossbar.callflows system_config",
+            "properties": {
+                "default_reconcile_numbers": {
+                    "default": false,
+                    "description": "",
+                    "name": "default_reconcile_numbers",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.cdrs": {
+            "description": "Schema for crossbar.cdrs system_config",
+            "properties": {
+                "maximum_bulk": {
+                    "default": 50,
+                    "description": "",
+                    "name": "maximum_bulk",
+                    "type": "integer"
+                },
+                "maximum_range": {
+                    "default": 2682000,
+                    "description": "",
+                    "name": "maximum_range",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.contact_list": {
+            "description": "Schema for crossbar.contact_list system_config",
+            "properties": {
+                "default_includes": {
+                    "default": [],
+                    "description": "",
+                    "name": "default_includes",
+                    "type": "array"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.devices": {
+            "description": "Schema for crossbar.devices system_config",
+            "properties": {
+                "allow_aggregates": {
+                    "default": "true",
+                    "description": "",
+                    "name": "allow_aggregates",
+                    "type": "boolean"
+                },
+                "provisioning_type": {
+                    "description": "",
+                    "name": "provisioning_type"
+                },
+                "provisioning_url": {
+                    "description": "",
+                    "name": "provisioning_url",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.freeswitch": {
+            "description": "Schema for crossbar.freeswitch system_config",
+            "properties": {
+                "files_to_include": {
+                    "default": [
+                        "freeswitch_dialplan",
+                        "freeswitch_chatplan"
+                    ],
+                    "description": "",
+                    "name": "files_to_include",
+                    "type": "array"
+                },
+                "offline_configuration_key": {
+                    "description": "",
+                    "name": "offline_configuration_key",
+                    "type": "string"
+                },
+                "realm_templates_to_process": {
+                    "default": [
+                        "freeswitch_directory_realm"
+                    ],
+                    "description": "",
+                    "name": "realm_templates_to_process",
+                    "type": "array"
+                },
+                "templates_to_process": {
+                    "default": [
+                        "freeswitch_directory"
+                    ],
+                    "description": "",
+                    "name": "templates_to_process",
+                    "type": "array"
+                },
+                "work_dir": {
+                    "default": "/tmp/",
+                    "description": "",
+                    "name": "work_dir",
+                    "type": "string"
+                },
+                "{Module}": {
+                    "description": "",
+                    "name": "{Module}",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.media": {
+            "description": "Schema for crossbar.media system_config",
+            "properties": {
+                "normalization_format": {
+                    "default": "mp3",
+                    "description": "",
+                    "name": "normalization_format",
+                    "type": "string"
+                },
+                "normalize_media": {
+                    "default": false,
+                    "description": "",
+                    "name": "normalize_media",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.notifications": {
+            "description": "Schema for crossbar.notifications system_config",
+            "properties": {
+                "notification_timeout_ms": {
+                    "default": 5000,
+                    "description": "",
+                    "name": "notification_timeout_ms",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.onboard": {
+            "description": "Schema for crossbar.onboard system_config",
+            "properties": {
+                "default_callflow_start_exten": {
+                    "default": 2000,
+                    "description": "",
+                    "name": "default_callflow_start_exten",
+                    "type": "integer"
+                },
+                "default_extension_callflow": {
+                    "description": "",
+                    "name": "default_extension_callflow",
+                    "type": "string"
+                },
+                "default_vm_start_exten": {
+                    "default": 3000,
+                    "description": "",
+                    "name": "default_vm_start_exten",
+                    "type": "integer"
+                },
+                "device_pwd_strength": {
+                    "default": 6,
+                    "description": "",
+                    "name": "device_pwd_strength",
+                    "type": "integer"
+                },
+                "device_username_strength": {
+                    "default": 3,
+                    "description": "",
+                    "name": "device_username_strength",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.phone_numbers": {
+            "description": "Schema for crossbar.phone_numbers system_config",
+            "properties": {
+                "default_country": {
+                    "default": "US",
+                    "description": "",
+                    "name": "default_country",
+                    "type": "string"
+                },
+                "phonebook_url": {
+                    "description": "",
+                    "name": "phonebook_url",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.port_requests": {
+            "description": "Schema for crossbar.port_requests system_config",
+            "properties": {
+                "unfinished_port_request_lifetime_s": {
+                    "default": 2592000,
+                    "description": "",
+                    "name": "unfinished_port_request_lifetime_s",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.presence": {
+            "description": "Schema for crossbar.presence system_config",
+            "properties": {
+                "query_presence_timeout": {
+                    "default": 1000,
+                    "description": "",
+                    "name": "query_presence_timeout",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.resource_selectors": {
+            "description": "Schema for crossbar.resource_selectors system_config",
+            "properties": {
+                "csv_config": {
+                    "default": {
+                        "selector_column": 1,
+                        "value_column": 2
+                    },
+                    "description": "",
+                    "name": "csv_config",
+                    "type": "object"
+                },
+                "suppress_selectors_change_notice": {
+                    "default": false,
+                    "description": "",
+                    "name": "suppress_selectors_change_notice",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.resources": {
+            "description": "Schema for crossbar.resources system_config",
+            "properties": {
+                "job_recovery_threshold_s": {
+                    "default": 3600,
+                    "description": "",
+                    "name": "job_recovery_threshold_s",
+                    "type": "integer"
+                },
+                "job_recovery_timeout_s": {
+                    "default": 21600,
+                    "description": "",
+                    "name": "job_recovery_timeout_s",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.services": {
+            "description": "Schema for crossbar.services system_config",
+            "properties": {
+                "maximum_range": {
+                    "default": 2682000,
+                    "description": "",
+                    "name": "maximum_range",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.shared_auth": {
+            "description": "Schema for crossbar.shared_auth system_config",
+            "properties": {
+                "authoritative_crossbar": {
+                    "description": "",
+                    "name": "authoritative_crossbar",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.token_restrictions": {
+            "description": "Schema for crossbar.token_restrictions system_config",
+            "properties": {
+                "_": {
+                    "description": "",
+                    "name": "_",
+                    "type": "object"
+                },
+                "default_priv_level": {
+                    "default": "admin",
+                    "description": "",
+                    "name": "default_priv_level",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.ubiquiti": {
+            "description": "Schema for crossbar.ubiquiti system_config",
+            "properties": {
+                "api_secret": {
+                    "description": "",
+                    "name": "api_secret"
+                },
+                "api_token_expires_s": {
+                    "default": 1800,
+                    "description": "",
+                    "name": "api_token_expires_s",
+                    "type": "integer"
+                },
+                "production": {
+                    "properties": {
+                        "sso_url": {
+                            "properties": {
+                                "default": "https://sso.ubnt.com/api/sso/v1/",
+                                "description": "",
+                                "name": "sso_url",
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "salt_length": {
+                    "default": 20,
+                    "description": "",
+                    "name": "salt_length",
+                    "type": "integer"
+                },
+                "sso_provider_id": {
+                    "description": "",
+                    "name": "sso_provider_id"
+                },
+                "staging": {
+                    "properties": {
+                        "sso_url": {
+                            "properties": {
+                                "default": "https://sso-stage.ubnt.com/api/sso/v1/",
+                                "description": "",
+                                "name": "sso_url",
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "tokens_per_request": {
+                    "default": 35,
+                    "description": "",
+                    "name": "tokens_per_request",
+                    "type": "integer"
+                },
+                "{crossbar.ubiquiti.sso_environment}": {
+                    "properties": {
+                        "sso_url": {
+                            "properties": {
+                                "description": "",
+                                "name": "sso_url"
+                            }
+                        }
+                    }
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.datamgr": {
+            "description": "Schema for datamgr system_config",
+            "properties": {
+                "cache_policy": {
+                    "default": {
+                        "account": 900,
+                        "aggregate": 900,
+                        "deprecated": 900,
+                        "modb": 900,
+                        "numbers": 900,
+                        "system": 900,
+                        "system_config": "infinity",
+                        "system_data": "infinity"
+                    },
+                    "description": "",
+                    "name": "cache_policy",
+                    "type": "object"
+                },
+                "default_archive_folder": {
+                    "default": "/tmp",
+                    "description": "",
+                    "name": "default_archive_folder",
+                    "type": "string"
+                },
+                "no_caching_doc_types": {
+                    "default": [
+                        "media",
+                        "private_media",
+                        "call_recording",
+                        "fax",
+                        "mailbox_message"
+                    ],
+                    "description": "",
+                    "name": "no_caching_doc_types",
+                    "type": "array"
+                },
+                "performance": {
+                    "description": "",
+                    "name": "performance"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.doodle": {
+            "description": "Schema for doodle system_config",
+            "properties": {
+                "connections": {
+                    "description": "",
+                    "name": "connections"
+                },
+                "default_test_from_number": {
+                    "default": "15552220001",
+                    "description": "",
+                    "name": "default_test_from_number",
+                    "type": "string"
+                },
+                "default_test_route_id": {
+                    "default": "syneverse",
+                    "description": "",
+                    "name": "default_test_route_id",
+                    "type": "string"
+                },
+                "inbound_broker": {
+                    "description": "",
+                    "name": "inbound_broker",
+                    "type": "string"
+                },
+                "inbound_exchange": {
+                    "default": "sms",
+                    "description": "",
+                    "name": "inbound_exchange",
+                    "type": "string"
+                },
+                "inbound_exchange_options": {
+                    "default": {
+                        "passive": true
+                    },
+                    "description": "",
+                    "name": "inbound_exchange_options",
+                    "type": "object"
+                },
+                "inbound_exchange_type": {
+                    "default": "topic",
+                    "description": "",
+                    "name": "inbound_exchange_type",
+                    "type": "string"
+                },
+                "inbound_queue_name": {
+                    "default": "default",
+                    "description": "",
+                    "name": "inbound_queue_name",
+                    "type": "string"
+                },
+                "min_bucket_cost": {
+                    "default": 1,
+                    "description": "",
+                    "name": "min_bucket_cost",
+                    "type": "integer"
+                },
+                "reschedule": {
+                    "description": "",
+                    "name": "reschedule"
+                },
+                "route_win_timeout": {
+                    "default": 3000,
+                    "description": "",
+                    "name": "route_win_timeout",
+                    "type": "integer"
+                },
+                "unavailable_message": {
+                    "default": {
+                        "en-US": "sms service unavailable"
+                    },
+                    "description": "",
+                    "name": "unavailable_message",
+                    "type": "object"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.ecallmgr": {
+            "description": "Schema for ecallmgr system_config",
+            "properties": {
+                "acls": {
+                    "default": {},
+                    "description": "",
+                    "name": "acls",
+                    "type": "object"
+                },
+                "amqp": {
+                    "description": "",
+                    "name": "amqp"
+                },
+                "authz_default_action": {
+                    "default": "deny",
+                    "description": "",
+                    "name": "authz_default_action",
+                    "type": "string"
+                },
+                "authz_dry_run": {
+                    "default": false,
+                    "description": "",
+                    "name": "authz_dry_run",
+                    "type": "boolean"
+                },
+                "authz_enabled": {
+                    "default": false,
+                    "description": "",
+                    "name": "authz_enabled",
+                    "type": "boolean"
+                },
+                "authz_local_resources": {
+                    "default": false,
+                    "description": "",
+                    "name": "authz_local_resources",
+                    "type": "boolean"
+                },
+                "balance_crawler_cycle_ms": {
+                    "default": 60000,
+                    "description": "",
+                    "name": "balance_crawler_cycle_ms",
+                    "type": "integer"
+                },
+                "balance_crawler_enabled": {
+                    "default": false,
+                    "description": "",
+                    "name": "balance_crawler_enabled",
+                    "type": "boolean"
+                },
+                "balance_crawler_fetch_timeout_ms": {
+                    "default": 10000,
+                    "description": "",
+                    "name": "balance_crawler_fetch_timeout_ms",
+                    "type": "integer"
+                },
+                "balance_crawler_interaccount_delay_ms": {
+                    "default": 10,
+                    "description": "",
+                    "name": "balance_crawler_interaccount_delay_ms",
+                    "type": "integer"
+                },
+                "call_routing_bindings": {
+                    "default": [
+                        "undefined"
+                    ],
+                    "description": "",
+                    "name": "call_routing_bindings",
+                    "type": "array"
+                },
+                "capabilities": {
+                    "default": [
+                        {
+                            "capability": "conference",
+                            "is_loaded": false,
+                            "module": "mod_conference"
+                        },
+                        {
+                            "capability": "channel_move",
+                            "is_loaded": false,
+                            "module": "mod_channel_move"
+                        },
+                        {
+                            "capability": "http_cache",
+                            "is_loaded": false,
+                            "module": "mod_http_cache"
+                        },
+                        {
+                            "capability": "dialplan",
+                            "is_loaded": false,
+                            "module": "mod_dptools"
+                        },
+                        {
+                            "capability": "sip",
+                            "is_loaded": false,
+                            "module": "mod_sofia"
+                        },
+                        {
+                            "capability": "fax",
+                            "is_loaded": false,
+                            "module": "mod_spandsp"
+                        },
+                        {
+                            "capability": "tts",
+                            "is_loaded": false,
+                            "module": "mod_flite"
+                        },
+                        {
+                            "capability": "freetdm",
+                            "is_loaded": false,
+                            "module": "mod_freetdm"
+                        },
+                        {
+                            "capability": "skype",
+                            "is_loaded": false,
+                            "module": "mod_skypopen"
+                        },
+                        {
+                            "capability": "xmpp",
+                            "is_loaded": false,
+                            "module": "mod_dingaling"
+                        },
+                        {
+                            "capability": "skinny",
+                            "is_loaded": false,
+                            "module": "mod_skinny"
+                        },
+                        {
+                            "capability": "sms",
+                            "is_loaded": false,
+                            "module": "mod_sms"
+                        }
+                    ],
+                    "description": "",
+                    "name": "capabilities",
+                    "type": "array"
+                },
+                "configuration_handlers": {
+                    "description": "",
+                    "name": "configuration_handlers"
+                },
+                "debug_channel": {
+                    "default": false,
+                    "description": "",
+                    "name": "debug_channel",
+                    "type": "boolean"
+                },
+                "default_fax_extension": {
+                    "default": ".tiff",
+                    "description": "",
+                    "name": "default_fax_extension",
+                    "type": "string"
+                },
+                "default_realm": {
+                    "default": "nodomain.com",
+                    "description": "",
+                    "name": "default_realm",
+                    "type": "string"
+                },
+                "default_recording_extension": {
+                    "default": ".mp3",
+                    "description": "",
+                    "name": "default_recording_extension",
+                    "type": "string"
+                },
+                "default_ringback": {
+                    "description": "",
+                    "name": "default_ringback"
+                },
+                "event_stream_idle_alert": {
+                    "default": 0,
+                    "description": "",
+                    "name": "event_stream_idle_alert",
+                    "type": "integer"
+                },
+                "expires_deviation_time": {
+                    "default": 0,
+                    "description": "",
+                    "name": "expires_deviation_time",
+                    "type": "integer"
+                },
+                "fax_file_path": {
+                    "default": "/tmp/",
+                    "description": "",
+                    "name": "fax_file_path",
+                    "type": "string"
+                },
+                "fetch_timeout": {
+                    "default": 2600,
+                    "description": "",
+                    "name": "fetch_timeout",
+                    "type": "integer"
+                },
+                "freeswitch_context": {
+                    "default": "context_2",
+                    "description": "",
+                    "name": "freeswitch_context",
+                    "type": "string"
+                },
+                "fs_amqp_listeners": {
+                    "default": 1,
+                    "description": "",
+                    "name": "fs_amqp_listeners",
+                    "type": "integer"
+                },
+                "fs_cmds": {
+                    "default": [
+                        {
+                            "load": "mod_sofia"
+                        },
+                        {
+                            "reloadacl": ""
+                        }
+                    ],
+                    "description": "",
+                    "name": "fs_cmds",
+                    "type": "array"
+                },
+                "fs_cmds_wait_ms": {
+                    "default": 5000,
+                    "description": "",
+                    "name": "fs_cmds_wait_ms",
+                    "type": "integer"
+                },
+                "fs_node_uptime_s": {
+                    "default": 600,
+                    "description": "",
+                    "name": "fs_node_uptime_s",
+                    "type": "integer"
+                },
+                "fs_nodes": {
+                    "default": [],
+                    "description": "",
+                    "name": "fs_nodes",
+                    "type": "array"
+                },
+                "fs_profiles": {
+                    "default": {},
+                    "description": "",
+                    "name": "fs_profiles",
+                    "type": "object"
+                },
+                "fs_reconnect_cmds": {
+                    "description": "",
+                    "name": "fs_reconnect_cmds"
+                },
+                "gateways": {
+                    "default": {},
+                    "description": "",
+                    "name": "gateways",
+                    "type": "object"
+                },
+                "insert_fetched_registration_locally": {
+                    "default": false,
+                    "description": "",
+                    "name": "insert_fetched_registration_locally",
+                    "type": "boolean"
+                },
+                "max_channel_cleanup_timeout_ms": {
+                    "default": 60000,
+                    "description": "",
+                    "name": "max_channel_cleanup_timeout_ms",
+                    "type": "integer"
+                },
+                "max_channel_uptime_s": {
+                    "default": 0,
+                    "description": "",
+                    "name": "max_channel_uptime_s",
+                    "type": "integer"
+                },
+                "max_timeout_for_node_restart": {
+                    "default": 10000,
+                    "description": "",
+                    "name": "max_timeout_for_node_restart",
+                    "type": "integer"
+                },
+                "modules": {
+                    "default": [
+                        "node",
+                        "authn",
+                        "route",
+                        "channel",
+                        "config",
+                        "resource",
+                        "notify",
+                        "conference",
+                        "event_stream_sup",
+                        "msg"
+                    ],
+                    "description": "",
+                    "name": "modules",
+                    "type": "array"
+                },
+                "network_map": {
+                    "default": {},
+                    "description": "",
+                    "name": "network_map",
+                    "type": "object"
+                },
+                "node_down_grace_period": {
+                    "default": 10000,
+                    "description": "",
+                    "name": "node_down_grace_period",
+                    "type": "integer"
+                },
+                "process_gateways": {
+                    "default": false,
+                    "description": "",
+                    "name": "process_gateways",
+                    "type": "boolean"
+                },
+                "publish_channel_reconnect": {
+                    "default": false,
+                    "description": "",
+                    "name": "publish_channel_reconnect",
+                    "type": "boolean"
+                },
+                "publish_channel_state": {
+                    "default": true,
+                    "description": "",
+                    "name": "publish_channel_state",
+                    "type": "boolean"
+                },
+                "record_sample_rate": {
+                    "default": 8000,
+                    "description": "",
+                    "name": "record_sample_rate",
+                    "type": "integer"
+                },
+                "record_stereo_sample_rate": {
+                    "default": 16000,
+                    "description": "",
+                    "name": "record_stereo_sample_rate",
+                    "type": "integer"
+                },
+                "record_waste_resources": {
+                    "default": false,
+                    "description": "",
+                    "name": "record_waste_resources",
+                    "type": "boolean"
+                },
+                "recording_file_path": {
+                    "default": "/tmp/",
+                    "description": "",
+                    "name": "recording_file_path",
+                    "type": "string"
+                },
+                "redirect_via_proxy": {
+                    "default": true,
+                    "description": "",
+                    "name": "redirect_via_proxy",
+                    "type": "boolean"
+                },
+                "restrict_channel_state_publisher": {
+                    "default": false,
+                    "description": "",
+                    "name": "restrict_channel_state_publisher",
+                    "type": "boolean"
+                },
+                "should_detect_inband_dtmf": {
+                    "description": "",
+                    "name": "should_detect_inband_dtmf",
+                    "type": "boolean"
+                },
+                "sofia_conf": {
+                    "description": "",
+                    "name": "sofia_conf"
+                },
+                "tcp_packet_type": {
+                    "default": 2,
+                    "description": "",
+                    "name": "tcp_packet_type",
+                    "type": "integer"
+                },
+                "text_routing_bindings": {
+                    "default": [
+                        "undefined"
+                    ],
+                    "description": "",
+                    "name": "text_routing_bindings",
+                    "type": "array"
+                },
+                "use_bypass_media_after_bridge": {
+                    "default": false,
+                    "description": "",
+                    "name": "use_bypass_media_after_bridge",
+                    "type": "boolean"
+                },
+                "use_http_cache": {
+                    "default": true,
+                    "description": "",
+                    "name": "use_http_cache",
+                    "type": "boolean"
+                },
+                "use_shout": {
+                    "default": false,
+                    "description": "",
+                    "name": "use_shout",
+                    "type": "boolean"
+                },
+                "use_vlc": {
+                    "default": false,
+                    "description": "",
+                    "name": "use_vlc",
+                    "type": "boolean"
+                },
+                "{Direction}_rate_required": {
+                    "default": false,
+                    "description": "",
+                    "name": "{Direction}_rate_required",
+                    "type": "boolean"
+                },
+                "{Direction}_rate_resp_timeout": {
+                    "default": 10000,
+                    "description": "",
+                    "name": "{Direction}_rate_resp_timeout",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.fax": {
+            "description": "Schema for fax system_config",
+            "properties": {
+                "allow_all_addresses_when_empty": {
+                    "default": false,
+                    "description": "",
+                    "name": "allow_all_addresses_when_empty",
+                    "type": "boolean"
+                },
+                "allowed_content_types": {
+                    "default": "default",
+                    "description": "",
+                    "name": "allowed_content_types",
+                    "type": "array"
+                },
+                "cloud_registration_pool_interval": {
+                    "default": 5000,
+                    "description": "",
+                    "name": "cloud_registration_pool_interval",
+                    "type": "integer"
+                },
+                "conversion_image_command": {
+                    "default": "convert -density 204x98 -units PixelsPerInch -size 1728x1078 ~s ~s > /dev/null && echo -n success",
+                    "description": "",
+                    "name": "conversion_image_command",
+                    "type": "string"
+                },
+                "conversion_openoffice_document_command": {
+                    "default": "unoconv -c ~s -f pdf --stdout ~s | /usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s - > /dev/null&& echo -n success",
+                    "description": "",
+                    "name": "conversion_openoffice_document_command",
+                    "type": "string"
+                },
+                "conversion_pdf_command": {
+                    "description": "",
+                    "name": "conversion_pdf_command",
+                    "type": "string"
+                },
+                "count_pages_command": {
+                    "default": "echo -n `tiffinfo ~s | grep 'Page Number' | grep -c 'P'`",
+                    "description": "",
+                    "name": "count_pages_command",
+                    "type": "string"
+                },
+                "default_compare_field": {
+                    "default": "result_cause",
+                    "description": "",
+                    "name": "default_compare_field",
+                    "type": "string"
+                },
+                "default_fax_extension": {
+                    "default": ".tiff",
+                    "description": "",
+                    "name": "default_fax_extension",
+                    "type": "string"
+                },
+                "default_retry_count": {
+                    "default": 3,
+                    "description": "",
+                    "name": "default_retry_count",
+                    "type": "integer"
+                },
+                "default_retry_period": {
+                    "default": 300,
+                    "description": "",
+                    "name": "default_retry_period",
+                    "type": "integer"
+                },
+                "delete_empty_faxes": {
+                    "default": false,
+                    "description": "",
+                    "name": "delete_empty_faxes",
+                    "type": "boolean"
+                },
+                "denied_content_types": {
+                    "default": "default",
+                    "description": "",
+                    "name": "denied_content_types",
+                    "type": "array"
+                },
+                "endpoint_timeout": {
+                    "default": 40,
+                    "description": "",
+                    "name": "endpoint_timeout",
+                    "type": "integer"
+                },
+                "ensure_valid_caller_id": {
+                    "default": true,
+                    "description": "",
+                    "name": "ensure_valid_caller_id",
+                    "type": "boolean"
+                },
+                "fax_file_path": {
+                    "default": "/tmp/",
+                    "description": "",
+                    "name": "fax_file_path",
+                    "type": "string"
+                },
+                "fax_settings": {
+                    "default": {
+                        "override_callee_number": false,
+                        "override_fax_identity": true
+                    },
+                    "description": "",
+                    "name": "fax_settings",
+                    "type": "object"
+                },
+                "file_cache_path": {
+                    "default": "/tmp/",
+                    "description": "",
+                    "name": "file_cache_path",
+                    "type": "string"
+                },
+                "ignore_early_media": {
+                    "default": false,
+                    "description": "",
+                    "name": "ignore_early_media",
+                    "type": "boolean"
+                },
+                "image_min_size": {
+                    "default": "700x10",
+                    "description": "",
+                    "name": "image_min_size",
+                    "type": "string"
+                },
+                "image_size_cmd_format": {
+                    "default": "echo -n `identify -format \"%[fx:w]x%[fx:h]\" ~s`",
+                    "description": "",
+                    "name": "image_size_cmd_format",
+                    "type": "string"
+                },
+                "inbound_t38_default": {
+                    "default": true,
+                    "description": "",
+                    "name": "inbound_t38_default",
+                    "type": "string"
+                },
+                "max_storage_retry": {
+                    "default": 5,
+                    "description": "",
+                    "name": "max_storage_retry",
+                    "type": "integer"
+                },
+                "openoffice_server": {
+                    "default": "'socket,host=localhost,port=2002;urp;StarOffice.ComponentContext'",
+                    "description": "",
+                    "name": "openoffice_server",
+                    "type": "string"
+                },
+                "port": {
+                    "default": 30950,
+                    "description": "",
+                    "name": "port",
+                    "type": "integer"
+                },
+                "report_anonymous_system_errors": {
+                    "default": false,
+                    "description": "",
+                    "name": "report_anonymous_system_errors",
+                    "type": "boolean"
+                },
+                "report_faxbox_system_errors": {
+                    "default": true,
+                    "description": "",
+                    "name": "report_faxbox_system_errors",
+                    "type": "boolean"
+                },
+                "reschedule": {
+                    "default": {},
+                    "description": "",
+                    "name": "reschedule",
+                    "type": "object"
+                },
+                "smtp_sessions": {
+                    "default": 50,
+                    "description": "",
+                    "name": "smtp_sessions",
+                    "type": "integer"
+                },
+                "wait_for_fax_timeout_ms": {
+                    "default": 3600000,
+                    "description": "",
+                    "name": "wait_for_fax_timeout_ms",
+                    "type": "integer"
+                },
+                "workers": {
+                    "default": 50,
+                    "description": "",
+                    "name": "workers",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.frontier": {
+            "description": "Schema for frontier system_config",
+            "properties": {
+                "rate_limits": {
+                    "default": {
+                        "account": {
+                            "per_minute": {
+                                "invites": 200,
+                                "registrations": 100,
+                                "total_packets": 2000
+                            },
+                            "per_second": {
+                                "invites": 50,
+                                "registrations": 20,
+                                "total_packets": 100
+                            }
+                        },
+                        "device": {
+                            "per_minute": {
+                                "invites": 100,
+                                "registrations": 20,
+                                "total_packets": 1000
+                            },
+                            "per_second": {
+                                "invites": 5,
+                                "registrations": 2,
+                                "total_packets": 20
+                            }
+                        }
+                    },
+                    "description": "",
+                    "name": "rate_limits",
+                    "type": "object"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.hangups": {
+            "description": "Schema for hangups system_config",
+            "properties": {
+                "hangups_to_monitor": {
+                    "default": [
+                        "WRONG_CALL_STATE",
+                        "NO_ROUTE_DESTINATION",
+                        "CALL_REJECT",
+                        "MANDATORY_IE_MISSING",
+                        "PROGRESS_TIMEOUT",
+                        "RECOVERY_ON_TIMER_EXPIRE"
+                    ],
+                    "description": "",
+                    "name": "hangups_to_monitor",
+                    "type": "array"
+                },
+                "ignore_hangup_causes": {
+                    "default": [
+                        "NO_ANSWER",
+                        "USER_BUSY",
+                        "NO_USER_RESPONSE",
+                        "LOSE_RACE",
+                        "ATTENDED_TRANSFER",
+                        "ORIGINATOR_CANCEL",
+                        "NORMAL_CLEARING",
+                        "ALLOTTED_TIMEOUT"
+                    ],
+                    "description": "",
+                    "name": "ignore_hangup_causes",
+                    "type": "array"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.jonny5": {
+            "description": "Schema for jonny5 system_config",
+            "properties": {
+                "default_inbound_trunks": {
+                    "description": "",
+                    "name": "default_inbound_trunks"
+                },
+                "default_twoway_trunks": {
+                    "description": "",
+                    "name": "default_twoway_trunks"
+                },
+                "default_{Key}": {
+                    "description": "",
+                    "name": "default_{Key}",
+                    "type": "integer"
+                },
+                "flat_rate_blacklist": {
+                    "default": "^\\+?1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340|900|8(?:[0,2,3,4,5,6,7]{2}|8[0-9]))\\d{7}$",
+                    "description": "",
+                    "name": "flat_rate_blacklist",
+                    "type": "string"
+                },
+                "flat_rate_whitelist": {
+                    "default": "^\\+?1\\d{10}$",
+                    "description": "",
+                    "name": "flat_rate_whitelist",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.kapps_controller": {
+            "description": "Schema for kapps_controller system_config",
+            "properties": {
+                "kapps": {
+                    "default": [
+                        "blackhole",
+                        "callflow",
+                        "cdr",
+                        "conference",
+                        "crossbar",
+                        "doodle",
+                        "ecallmgr",
+                        "fax",
+                        "hangups",
+                        "hotornot",
+                        "konami",
+                        "jonny5",
+                        "media_mgr",
+                        "milliwatt",
+                        "omnipresence",
+                        "pivot",
+                        "registrar",
+                        "reorder",
+                        "stepswitch",
+                        "sysconf",
+                        "teletype",
+                        "trunkstore",
+                        "webhooks"
+                    ],
+                    "description": "",
+                    "name": "kapps",
+                    "type": "array"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.kapps_maintenance": {
+            "description": "Schema for kapps_maintenance system_config",
+            "properties": {
+                "migrate_current_version": {
+                    "default": "3.22",
+                    "description": "",
+                    "name": "migrate_current_version",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.kazoo.pdf": {
+            "description": "Schema for kazoo.pdf system_config",
+            "properties": {
+                "html2pdf": {
+                    "default": "/usr/bin/htmldoc --quiet --webpage -f $pdf$ $html$",
+                    "description": "",
+                    "name": "html2pdf",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.kazoo_couch": {
+            "description": "Schema for kazoo_couch system_config",
+            "properties": {
+                "allow_maintenance_db_delete": {
+                    "default": false,
+                    "description": "",
+                    "name": "allow_maintenance_db_delete",
+                    "type": "boolean"
+                },
+                "default_chunk_size": {
+                    "default": 1000,
+                    "description": "",
+                    "name": "default_chunk_size",
+                    "type": "integer"
+                },
+                "max_concurrent_docs_to_archive": {
+                    "default": 500,
+                    "description": "",
+                    "name": "max_concurrent_docs_to_archive",
+                    "type": "integer"
+                },
+                "use_bigcouch_direct": {
+                    "default": true,
+                    "description": "",
+                    "name": "use_bigcouch_direct",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.kazoo_endpoint": {
+            "description": "Schema for kazoo_endpoint system_config",
+            "properties": {
+                "custom_sip_interface": {
+                    "description": "",
+                    "name": "custom_sip_interface"
+                },
+                "default_caller_id_name": {
+                    "description": "",
+                    "name": "default_caller_id_name",
+                    "type": "string"
+                },
+                "default_caller_id_number": {
+                    "description": "",
+                    "name": "default_caller_id_number",
+                    "type": "string"
+                },
+                "default_ignore_completed_elsewhere": {
+                    "default": true,
+                    "description": "",
+                    "name": "default_ignore_completed_elsewhere",
+                    "type": "boolean"
+                },
+                "restrict_to_known_types": {
+                    "default": false,
+                    "description": "",
+                    "name": "restrict_to_known_types",
+                    "type": "boolean"
+                },
+                "should_add_diversion_header": {
+                    "default": false,
+                    "description": "",
+                    "name": "should_add_diversion_header",
+                    "type": "boolean"
+                },
+                "sip_transport": {
+                    "description": "",
+                    "name": "sip_transport"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.kazoo_endpoint.mobile": {
+            "description": "Schema for kazoo_endpoint.mobile system_config",
+            "properties": {
+                "codecs": {
+                    "default": [
+                        "PCMU"
+                    ],
+                    "description": "",
+                    "name": "codecs",
+                    "type": "array"
+                },
+                "create_sip_endpoint": {
+                    "default": false,
+                    "description": "",
+                    "name": "create_sip_endpoint",
+                    "type": "boolean"
+                },
+                "custom_sip_interface": {
+                    "description": "",
+                    "name": "custom_sip_interface",
+                    "type": "string"
+                },
+                "formatter": {
+                    "default": "^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$",
+                    "description": "",
+                    "name": "formatter",
+                    "type": "string"
+                },
+                "path": {
+                    "default": "",
+                    "description": "",
+                    "name": "path",
+                    "type": "string"
+                },
+                "prefix": {
+                    "default": "",
+                    "description": "",
+                    "name": "prefix",
+                    "type": "string"
+                },
+                "realm": {
+                    "default": "mobile.k.zswitch.net",
+                    "description": "",
+                    "name": "realm",
+                    "type": "string"
+                },
+                "sms": {
+                    "properties": {
+                        "connections": {
+                            "properties": {
+                                "default": {
+                                    "default": {
+                                        "exchange": "sms",
+                                        "options": {
+                                            "passive": true
+                                        },
+                                        "route": "sprint",
+                                        "type": "topic"
+                                    }
+                                },
+                                "description": "",
+                                "name": "connections",
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "sms_interface": {
+                    "default": "amqp",
+                    "description": "",
+                    "name": "sms_interface",
+                    "type": "string"
+                },
+                "suffix": {
+                    "default": "",
+                    "description": "",
+                    "name": "suffix",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.konami": {
+            "description": "Schema for konami system_config",
+            "properties": {
+                "event_cleanup_timeout_ms": {
+                    "default": 3600000,
+                    "description": "",
+                    "name": "event_cleanup_timeout_ms",
+                    "type": "integer"
+                },
+                "transfer": {
+                    "properties": {
+                        "default_takeback_dtmf": {
+                            "properties": {
+                                "default": "*1",
+                                "description": "",
+                                "name": "default_takeback_dtmf",
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "use_fast_rearm": {
+                    "default": false,
+                    "description": "",
+                    "name": "use_fast_rearm",
+                    "type": "boolean"
+                },
+                "webseq_enabled": {
+                    "default": false,
+                    "description": "",
+                    "name": "webseq_enabled",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.kzt_twiml_util": {
+            "description": "Schema for kzt_twiml_util system_config",
+            "properties": {
+                "max_length": {
+                    "default": 3600,
+                    "description": "",
+                    "name": "max_length",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.media": {
+            "description": "Schema for media system_config",
+            "properties": {
+                "authenticated_playback": {
+                    "default": false,
+                    "description": "",
+                    "name": "authenticated_playback",
+                    "type": "boolean"
+                },
+                "authenticated_store": {
+                    "default": true,
+                    "description": "",
+                    "name": "authenticated_store",
+                    "type": "boolean"
+                },
+                "call_recording": {
+                    "properties": {
+                        "extension": {
+                            "properties": {
+                                "default": "mp3",
+                                "description": "",
+                                "name": "extension",
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "default_language": {
+                    "description": "",
+                    "name": "default_language"
+                },
+                "fix_media_names": {
+                    "default": true,
+                    "description": "",
+                    "name": "fix_media_names",
+                    "type": "boolean"
+                },
+                "max_recording_time_limit": {
+                    "default": 600,
+                    "description": "",
+                    "name": "max_recording_time_limit",
+                    "type": "integer"
+                },
+                "normalize_destination_args": {
+                    "default": "-r 8000",
+                    "description": "",
+                    "name": "normalize_destination_args",
+                    "type": "string"
+                },
+                "normalize_executable": {
+                    "default": "sox",
+                    "description": "",
+                    "name": "normalize_executable",
+                    "type": "string"
+                },
+                "normalize_source_args": {
+                    "default": "",
+                    "description": "",
+                    "name": "normalize_source_args",
+                    "type": "string"
+                },
+                "proxy_listeners": {
+                    "default": 25,
+                    "description": "",
+                    "name": "proxy_listeners",
+                    "type": "integer"
+                },
+                "proxy_password": {
+                    "default": "",
+                    "description": "",
+                    "name": "proxy_password",
+                    "type": "string"
+                },
+                "proxy_port": {
+                    "default": 24517,
+                    "description": "",
+                    "name": "proxy_port",
+                    "type": "string"
+                },
+                "proxy_store_acls": {
+                    "default": [
+                        "127.0.0.0/24"
+                    ],
+                    "description": "",
+                    "name": "proxy_store_acls",
+                    "type": "array"
+                },
+                "proxy_store_authenticate": {
+                    "default": true,
+                    "description": "",
+                    "name": "proxy_store_authenticate",
+                    "type": "boolean"
+                },
+                "proxy_username": {
+                    "default": "",
+                    "description": "",
+                    "name": "proxy_username",
+                    "type": "string"
+                },
+                "record_min_sec": {
+                    "default": 0,
+                    "description": "",
+                    "name": "record_min_sec",
+                    "type": "integer"
+                },
+                "recorder_module": {
+                    "default": "kz_media_recording",
+                    "description": "",
+                    "name": "recorder_module",
+                    "type": "string"
+                },
+                "ssl_cert": {
+                    "description": "",
+                    "name": "ssl_cert",
+                    "type": "string"
+                },
+                "ssl_key": {
+                    "description": "",
+                    "name": "ssl_key",
+                    "type": "string"
+                },
+                "ssl_password": {
+                    "default": "",
+                    "description": "",
+                    "name": "ssl_password",
+                    "type": "string"
+                },
+                "ssl_port": {
+                    "default": 24518,
+                    "description": "",
+                    "name": "ssl_port",
+                    "type": "integer"
+                },
+                "store_recordings": {
+                    "default": false,
+                    "description": "",
+                    "name": "store_recordings",
+                    "type": "boolean"
+                },
+                "support_account_overrides": {
+                    "default": true,
+                    "description": "",
+                    "name": "support_account_overrides",
+                    "type": "boolean"
+                },
+                "tts_cache": {
+                    "default": 3600000,
+                    "description": "",
+                    "name": "tts_cache",
+                    "type": "integer"
+                },
+                "use_https": {
+                    "default": false,
+                    "description": "",
+                    "name": "use_https",
+                    "type": "boolean"
+                },
+                "use_plaintext": {
+                    "default": true,
+                    "description": "",
+                    "name": "use_plaintext",
+                    "type": "boolean"
+                },
+                "use_ssl_proxy": {
+                    "default": false,
+                    "description": "",
+                    "name": "use_ssl_proxy",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.metaflows": {
+            "description": "Schema for metaflows system_config",
+            "properties": {
+                "binding_digit": {
+                    "default": "*",
+                    "description": "",
+                    "name": "binding_digit",
+                    "type": "string"
+                },
+                "default_metaflow": {
+                    "default": {},
+                    "description": "",
+                    "name": "default_metaflow",
+                    "type": "object"
+                },
+                "digit_timeout_ms": {
+                    "default": 800,
+                    "description": "",
+                    "name": "digit_timeout_ms",
+                    "type": "integer"
+                },
+                "listen_on": {
+                    "default": "a",
+                    "description": "",
+                    "name": "listen_on",
+                    "type": "string"
+                },
+                "numbers": {
+                    "default": {
+                        "2": {
+                            "data": {
+                                "text": "hi"
+                            },
+                            "module": "say"
+                        }
+                    },
+                    "description": "",
+                    "name": "numbers",
+                    "type": "object"
+                },
+                "patterns": {
+                    "default": {
+                        "^2$": {
+                            "data": {
+                                "text": "hi"
+                            },
+                            "module": "say"
+                        }
+                    },
+                    "description": "",
+                    "name": "patterns",
+                    "type": "object"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.milliwatt": {
+            "description": "Schema for milliwatt system_config",
+            "properties": {
+                "echo": {
+                    "description": "",
+                    "name": "echo"
+                },
+                "route_win_timeout": {
+                    "default": 3000,
+                    "description": "",
+                    "name": "route_win_timeout",
+                    "type": "integer"
+                },
+                "tone": {
+                    "description": "",
+                    "name": "tone"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.mobile_manager": {
+            "description": "Schema for mobile_manager system_config",
+            "properties": {
+                "url": {
+                    "description": "",
+                    "name": "url",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.modb": {
+            "description": "Schema for modb system_config",
+            "properties": {
+                "active_modbs": {
+                    "default": 6,
+                    "description": "",
+                    "name": "active_modbs",
+                    "type": "integer"
+                },
+                "routines": {
+                    "default": [],
+                    "description": "",
+                    "name": "routines",
+                    "type": "array"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify": {
+            "description": "Schema for notify system_config",
+            "properties": {
+                "backoff_fudge_ms": {
+                    "default": 5000,
+                    "description": "",
+                    "name": "backoff_fudge_ms",
+                    "type": "integer"
+                },
+                "mime-encoding": {
+                    "properties": {
+                        "{ContentType}": {
+                            "properties": {
+                                "content_transfer_encoding": {
+                                    "properties": {
+                                        "description": "",
+                                        "name": "content_transfer_encoding",
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "notification_app": {
+                    "default": "notify",
+                    "description": "",
+                    "name": "notification_app",
+                    "type": "string"
+                },
+                "search_rep_email": {
+                    "default": true,
+                    "description": "",
+                    "name": "search_rep_email",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.account_crawler": {
+            "description": "Schema for notify.account_crawler system_config",
+            "properties": {
+                "crawl_for_first_occurrence": {
+                    "default": true,
+                    "description": "",
+                    "name": "crawl_for_first_occurrence",
+                    "type": "boolean"
+                },
+                "crawl_for_low_balance": {
+                    "default": true,
+                    "description": "",
+                    "name": "crawl_for_low_balance",
+                    "type": "boolean"
+                },
+                "interaccount_delay": {
+                    "default": 10000,
+                    "description": "",
+                    "name": "interaccount_delay",
+                    "type": "integer"
+                },
+                "low_balance_repeat_s": {
+                    "default": 86400,
+                    "description": "",
+                    "name": "low_balance_repeat_s",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.cnam_request": {
+            "description": "Schema for notify.cnam_request system_config",
+            "properties": {
+                "default_to": {
+                    "default": "",
+                    "description": "",
+                    "name": "default_to",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.deregister": {
+            "description": "Schema for notify.deregister system_config",
+            "properties": {
+                "default_to": {
+                    "default": "",
+                    "description": "",
+                    "name": "default_to",
+                    "type": "string"
+                },
+                "html_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "",
+                    "name": "html_content_transfer_encoding",
+                    "type": "string"
+                },
+                "text_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "",
+                    "name": "text_content_transfer_encoding",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.fax": {
+            "description": "Schema for notify.fax system_config",
+            "properties": {
+                "attachment_format": {
+                    "default": "pdf",
+                    "description": "",
+                    "name": "attachment_format",
+                    "type": "string"
+                },
+                "tiff_to_pdf_conversion_command": {
+                    "default": "tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"",
+                    "description": "",
+                    "name": "tiff_to_pdf_conversion_command",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.fax_inbound_error_to_email": {
+            "description": "Schema for notify.fax_inbound_error_to_email system_config",
+            "properties": {
+                "default_enabled": {
+                    "default": false,
+                    "description": "",
+                    "name": "default_enabled",
+                    "type": "boolean"
+                },
+                "default_to": {
+                    "description": "",
+                    "name": "default_to"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.fax_inbound_to_email": {
+            "description": "Schema for notify.fax_inbound_to_email system_config",
+            "properties": {
+                "default_to": {
+                    "description": "",
+                    "name": "default_to"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.fax_outbound_error_to_email": {
+            "description": "Schema for notify.fax_outbound_error_to_email system_config",
+            "properties": {
+                "default_enabled": {
+                    "default": true,
+                    "description": "",
+                    "name": "default_enabled",
+                    "type": "boolean"
+                },
+                "default_to": {
+                    "description": "",
+                    "name": "default_to"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.fax_outbound_to_email": {
+            "description": "Schema for notify.fax_outbound_to_email system_config",
+            "properties": {
+                "default_to": {
+                    "description": "",
+                    "name": "default_to"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.first_occurrence": {
+            "description": "Schema for notify.first_occurrence system_config",
+            "properties": {
+                "default_to": {
+                    "default": "",
+                    "description": "",
+                    "name": "default_to",
+                    "type": "string"
+                },
+                "html_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "",
+                    "name": "html_content_transfer_encoding",
+                    "type": "string"
+                },
+                "text_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "",
+                    "name": "text_content_transfer_encoding",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.low_balance": {
+            "description": "Schema for notify.low_balance system_config",
+            "properties": {
+                "default_enabled": {
+                    "default": false,
+                    "description": "",
+                    "name": "default_enabled",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.new_account": {
+            "description": "Schema for notify.new_account system_config",
+            "properties": {
+                "default_to": {
+                    "default": "",
+                    "description": "",
+                    "name": "default_to",
+                    "type": "string"
+                },
+                "html_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "",
+                    "name": "html_content_transfer_encoding",
+                    "type": "string"
+                },
+                "text_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "",
+                    "name": "text_content_transfer_encoding",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.password_recovery": {
+            "description": "Schema for notify.password_recovery system_config",
+            "properties": {
+                "default_to": {
+                    "default": "",
+                    "description": "",
+                    "name": "default_to",
+                    "type": "string"
+                },
+                "html_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "",
+                    "name": "html_content_transfer_encoding",
+                    "type": "string"
+                },
+                "text_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "",
+                    "name": "text_content_transfer_encoding",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.port_cancel": {
+            "description": "Schema for notify.port_cancel system_config",
+            "properties": {
+                "default_from": {
+                    "description": "",
+                    "name": "default_from",
+                    "type": "string"
+                },
+                "default_to": {
+                    "default": "",
+                    "description": "",
+                    "name": "default_to",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.port_request": {
+            "description": "Schema for notify.port_request system_config",
+            "properties": {
+                "default_from": {
+                    "description": "",
+                    "name": "default_from",
+                    "type": "string"
+                },
+                "default_to": {
+                    "default": "",
+                    "description": "",
+                    "name": "default_to",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.port_request_admin": {
+            "description": "Schema for notify.port_request_admin system_config",
+            "properties": {
+                "default_to": {
+                    "description": "",
+                    "name": "default_to"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.ported": {
+            "description": "Schema for notify.ported system_config",
+            "properties": {
+                "default_to": {
+                    "default": "",
+                    "description": "",
+                    "name": "default_to",
+                    "type": "string"
+                },
+                "send_from_admin_email": {
+                    "default": true,
+                    "description": "",
+                    "name": "send_from_admin_email",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.system_alert": {
+            "description": "Schema for notify.system_alert system_config",
+            "properties": {
+                "default_to": {
+                    "default": "",
+                    "description": "",
+                    "name": "default_to",
+                    "type": "string"
+                },
+                "enable_email_alerts": {
+                    "default": true,
+                    "description": "",
+                    "name": "enable_email_alerts",
+                    "type": "boolean"
+                },
+                "html_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "",
+                    "name": "html_content_transfer_encoding",
+                    "type": "string"
+                },
+                "subscriber_url": {
+                    "description": "",
+                    "name": "subscriber_url",
+                    "type": "string"
+                },
+                "text_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "",
+                    "name": "text_content_transfer_encoding",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.topup": {
+            "description": "Schema for notify.topup system_config",
+            "properties": {
+                "default_to": {
+                    "default": "",
+                    "description": "",
+                    "name": "default_to",
+                    "type": "string"
+                },
+                "html_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "",
+                    "name": "html_content_transfer_encoding",
+                    "type": "string"
+                },
+                "text_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "",
+                    "name": "text_content_transfer_encoding",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.transaction": {
+            "description": "Schema for notify.transaction system_config",
+            "properties": {
+                "default_to": {
+                    "default": "",
+                    "description": "",
+                    "name": "default_to",
+                    "type": "string"
+                },
+                "html_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "",
+                    "name": "html_content_transfer_encoding",
+                    "type": "string"
+                },
+                "text_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "",
+                    "name": "text_content_transfer_encoding",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.voicemail_full": {
+            "description": "Schema for notify.voicemail_full system_config",
+            "properties": {
+                "default_enabled": {
+                    "default": false,
+                    "description": "",
+                    "name": "default_enabled",
+                    "type": "boolean"
+                },
+                "default_to": {
+                    "description": "",
+                    "name": "default_to"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.notify.voicemail_to_email": {
+            "description": "Schema for notify.voicemail_to_email system_config",
+            "properties": {
+                "html_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "",
+                    "name": "html_content_transfer_encoding",
+                    "type": "string"
+                },
+                "text_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "",
+                    "name": "text_content_transfer_encoding",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.number_manager": {
+            "description": "Schema for number_manager system_config",
+            "properties": {
+                "available_module_name": {
+                    "default": "knm_local",
+                    "description": "",
+                    "name": "available_module_name",
+                    "type": "string"
+                },
+                "carrier_modules": {
+                    "default": [
+                        "knm_local"
+                    ],
+                    "description": "",
+                    "name": "carrier_modules",
+                    "type": "array"
+                },
+                "classifiers": {
+                    "default": {
+                        "caribbean": {
+                            "friendly_name": "Caribbean",
+                            "pretty_print": "SS(###) ### - ####",
+                            "regex": "^\\+?1((?:684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7})$"
+                        },
+                        "did_us": {
+                            "friendly_name": "US DID",
+                            "pretty_print": "SS(###) ### - ####",
+                            "regex": "^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$"
+                        },
+                        "emergency": {
+                            "emergency": true,
+                            "friendly_name": "Emergency Dispatcher",
+                            "regex": "^(911)$"
+                        },
+                        "international": {
+                            "friendly_name": "International",
+                            "regex": "^(011\\d*)$|^(00\\d*)$"
+                        },
+                        "toll_us": {
+                            "friendly_name": "US Toll",
+                            "pretty_print": "SS(###) ### - ####",
+                            "regex": "^\\+1(900\\d{7})$"
+                        },
+                        "tollfree_us": {
+                            "friendly_name": "US TollFree",
+                            "pretty_print": "SS(###) ### - ####",
+                            "regex": "^\\+1((?:800|888|877|866|855)\\d{7})$"
+                        },
+                        "unknown": {
+                            "friendly_name": "Unknown",
+                            "regex": "^(.*)$"
+                        }
+                    },
+                    "description": "",
+                    "name": "classifiers",
+                    "type": "object"
+                },
+                "converters": {
+                    "default": [
+                        "regex"
+                    ],
+                    "description": "",
+                    "name": "converters",
+                    "type": "array"
+                },
+                "crawler_timer_ms": {
+                    "default": 86400000,
+                    "description": "",
+                    "name": "crawler_timer_ms",
+                    "type": "integer"
+                },
+                "default_force_outbound": {
+                    "default": false,
+                    "description": "",
+                    "name": "default_force_outbound",
+                    "type": "boolean"
+                },
+                "deleted_expiry_d": {
+                    "default": 90,
+                    "description": "",
+                    "name": "deleted_expiry_d",
+                    "type": "integer"
+                },
+                "discovery_expiry_d": {
+                    "default": 90,
+                    "description": "",
+                    "name": "discovery_expiry_d",
+                    "type": "integer"
+                },
+                "e164_converters": {
+                    "description": "",
+                    "name": "e164_converters"
+                },
+                "force_local_outbound": {
+                    "default": true,
+                    "description": "",
+                    "name": "force_local_outbound",
+                    "type": "boolean"
+                },
+                "force_port_in_outbound": {
+                    "default": true,
+                    "description": "",
+                    "name": "force_port_in_outbound",
+                    "type": "boolean"
+                },
+                "force_port_out_outbound": {
+                    "default": true,
+                    "description": "",
+                    "name": "force_port_out_outbound",
+                    "type": "boolean"
+                },
+                "providers": {
+                    "default": [
+                        "cnam_notifier",
+                        "port_notifier",
+                        "failover",
+                        "prepend"
+                    ],
+                    "description": "",
+                    "name": "providers",
+                    "type": "array"
+                },
+                "reconcile_regex": {
+                    "default": "^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$",
+                    "description": "",
+                    "name": "reconcile_regex",
+                    "type": "string"
+                },
+                "released_state": {
+                    "description": "",
+                    "name": "released_state",
+                    "type": "string"
+                },
+                "should_permanently_delete": {
+                    "description": "",
+                    "name": "should_permanently_delete",
+                    "type": "boolean"
+                },
+                "time_between_accounts_ms": {
+                    "default": 1000,
+                    "description": "",
+                    "name": "time_between_accounts_ms",
+                    "type": "integer"
+                },
+                "time_between_numbers_ms": {
+                    "default": 1000,
+                    "description": "",
+                    "name": "time_between_numbers_ms",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.number_manager.bandwidth": {
+            "description": "Schema for number_manager.bandwidth system_config",
+            "properties": {
+                "debug": {
+                    "default": false,
+                    "description": "",
+                    "name": "debug",
+                    "type": "boolean"
+                },
+                "enable_provisioning": {
+                    "default": true,
+                    "description": "",
+                    "name": "enable_provisioning",
+                    "type": "boolean"
+                },
+                "endpoints": {
+                    "description": "",
+                    "name": "endpoints"
+                },
+                "numbers_api_url": {
+                    "default": "https://api.bandwidth.com/public/v2/numbers.api",
+                    "description": "",
+                    "name": "numbers_api_url",
+                    "type": "string"
+                },
+                "order_name_prefix": {
+                    "default": "Kazoo",
+                    "description": "",
+                    "name": "order_name_prefix",
+                    "type": "string"
+                },
+                "sandbox_provisioning": {
+                    "default": true,
+                    "description": "",
+                    "name": "sandbox_provisioning",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.number_manager.bandwidth2": {
+            "description": "Schema for number_manager.bandwidth2 system_config",
+            "properties": {
+                "account_id": {
+                    "default": "",
+                    "description": "",
+                    "name": "account_id",
+                    "type": "string"
+                },
+                "debug": {
+                    "default": false,
+                    "description": "",
+                    "name": "debug",
+                    "type": "boolean"
+                },
+                "enable_provisioning": {
+                    "default": true,
+                    "description": "",
+                    "name": "enable_provisioning",
+                    "type": "boolean"
+                },
+                "order_name_prefix": {
+                    "default": "Kazoo",
+                    "description": "",
+                    "name": "order_name_prefix",
+                    "type": "string"
+                },
+                "sandbox_provisioning": {
+                    "default": true,
+                    "description": "",
+                    "name": "sandbox_provisioning",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.number_manager.dash_e911": {
+            "description": "Schema for number_manager.dash_e911 system_config",
+            "properties": {
+                "debug": {
+                    "default": false,
+                    "description": "",
+                    "name": "debug",
+                    "type": "boolean"
+                },
+                "emergency_provisioning_url": {
+                    "default": "https://service.dashcs.com/dash-api/xml/emergencyprovisioning/v1",
+                    "description": "",
+                    "name": "emergency_provisioning_url",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.number_manager.locality": {
+            "description": "Schema for number_manager.locality system_config",
+            "properties": {
+                "url": {
+                    "description": "",
+                    "name": "url"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.number_manager.other": {
+            "description": "Schema for number_manager.other system_config",
+            "properties": {
+                "default_country": {
+                    "default": "US",
+                    "description": "",
+                    "name": "default_country",
+                    "type": "string"
+                },
+                "endpoints": {
+                    "description": "",
+                    "name": "endpoints"
+                },
+                "phonebook_url": {
+                    "description": "",
+                    "name": "phonebook_url"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.number_manager.port_request": {
+            "description": "Schema for number_manager.port_request system_config",
+            "properties": {
+                "crawler_delay_time_ms": {
+                    "default": 60000,
+                    "description": "",
+                    "name": "crawler_delay_time_ms",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.number_manager.simwood": {
+            "description": "Schema for number_manager.simwood system_config",
+            "properties": {
+                "numbers_api_url": {
+                    "default": "https://api.simwood.com/v3/numbers",
+                    "description": "",
+                    "name": "numbers_api_url",
+                    "type": "string"
+                },
+                "simwood_account_id": {
+                    "default": "",
+                    "description": "",
+                    "name": "simwood_account_id",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.number_manager.vitelity": {
+            "description": "Schema for number_manager.vitelity system_config",
+            "properties": {
+                "api_uri": {
+                    "default": "http://api.vitelity.net/api.php",
+                    "description": "",
+                    "name": "api_uri",
+                    "type": "string"
+                },
+                "routesip": {
+                    "description": "",
+                    "name": "routesip"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.number_manager.voip_innovations": {
+            "description": "Schema for number_manager.voip_innovations system_config",
+            "properties": {
+                "debug": {
+                    "default": false,
+                    "description": "",
+                    "name": "debug",
+                    "type": "boolean"
+                },
+                "enable_provisioning": {
+                    "default": true,
+                    "description": "",
+                    "name": "enable_provisioning",
+                    "type": "boolean"
+                },
+                "endpoint_group": {
+                    "default": "",
+                    "description": "",
+                    "name": "endpoint_group",
+                    "type": "string"
+                },
+                "login": {
+                    "default": "",
+                    "description": "",
+                    "name": "login",
+                    "type": "string"
+                },
+                "password": {
+                    "default": "",
+                    "description": "",
+                    "name": "password",
+                    "type": "string"
+                },
+                "sandbox_provisioning": {
+                    "default": false,
+                    "description": "",
+                    "name": "sandbox_provisioning",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.omnipresence": {
+            "description": "Schema for omnipresence system_config",
+            "properties": {
+                "expire_check_ms": {
+                    "default": 1000,
+                    "description": "",
+                    "name": "expire_check_ms",
+                    "type": "integer"
+                },
+                "expires_fudge_s": {
+                    "default": 20,
+                    "description": "",
+                    "name": "expires_fudge_s",
+                    "type": "integer"
+                },
+                "subscriptions_sync_enabled": {
+                    "default": false,
+                    "description": "",
+                    "name": "subscriptions_sync_enabled",
+                    "type": "boolean"
+                },
+                "use_fast_pickup_cookies": {
+                    "default": true,
+                    "description": "",
+                    "name": "use_fast_pickup_cookies",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.pivot": {
+            "description": "Schema for pivot system_config",
+            "properties": {
+                "store_recordings": {
+                    "default": false,
+                    "description": "",
+                    "name": "store_recordings",
+                    "type": "boolean"
+                },
+                "tts_texts_size": {
+                    "default": 4000,
+                    "description": "",
+                    "name": "tts_texts_size",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.provisioner": {
+            "description": "Schema for provisioner system_config",
+            "properties": {
+                "cluster_id": {
+                    "description": "",
+                    "name": "cluster_id",
+                    "type": "string"
+                },
+                "feature_keys": {
+                    "default": {
+                        "cisco": {
+                            "_": {
+                                "parking": "",
+                                "personal_parking": "",
+                                "presence": "",
+                                "speed_dial": ""
+                            }
+                        },
+                        "polycom": {
+                            "_": {
+                                "parking": "automata",
+                                "personal_parking": "automata",
+                                "presence": "normal",
+                                "speed_dial": "normal"
+                            }
+                        },
+                        "yealink": {
+                            "_": {
+                                "parking": "10",
+                                "personal_parking": "10",
+                                "presence": "16",
+                                "speed_dial": "13"
+                            }
+                        }
+                    },
+                    "description": "",
+                    "name": "feature_keys",
+                    "type": "object"
+                },
+                "provisioning_type": {
+                    "description": "",
+                    "name": "provisioning_type"
+                },
+                "provisioning_url": {
+                    "description": "",
+                    "name": "provisioning_url",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.pusher": {
+            "description": "Schema for pusher system_config",
+            "properties": {
+                "User-Agents": {
+                    "default": {},
+                    "description": "",
+                    "name": "User-Agents",
+                    "type": "object"
+                },
+                "apple": {
+                    "description": "",
+                    "name": "apple",
+                    "type": "string"
+                },
+                "google": {
+                    "description": "",
+                    "name": "google",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.registrar": {
+            "description": "Schema for registrar system_config",
+            "properties": {
+                "device_enabled_default": {
+                    "default": true,
+                    "description": "",
+                    "name": "device_enabled_default",
+                    "type": "boolean"
+                },
+                "listeners": {
+                    "default": 1,
+                    "description": "",
+                    "name": "listeners",
+                    "type": "integer"
+                },
+                "owner_enabled_default": {
+                    "default": true,
+                    "description": "",
+                    "name": "owner_enabled_default",
+                    "type": "boolean"
+                },
+                "use_aggregate": {
+                    "default": true,
+                    "description": "",
+                    "name": "use_aggregate",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.reorder": {
+            "description": "Schema for reorder system_config",
+            "properties": {
+                "assume_inbound_e164": {
+                    "description": "",
+                    "name": "assume_inbound_e164",
+                    "type": "boolean"
+                },
+                "known-error-code": {
+                    "default": "686",
+                    "description": "",
+                    "name": "known-error-code",
+                    "type": "string"
+                },
+                "known-error-message": {
+                    "default": "PEBCAK",
+                    "description": "",
+                    "name": "known-error-message",
+                    "type": "string"
+                },
+                "unknown-error-code": {
+                    "default": "604",
+                    "description": "",
+                    "name": "unknown-error-code",
+                    "type": "string"
+                },
+                "unknown-error-message": {
+                    "default": "Nope Nope Nope",
+                    "description": "",
+                    "name": "unknown-error-message",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.servers": {
+            "description": "Schema for servers system_config",
+            "properties": {
+                "clock_timezone": {
+                    "default": "UTC",
+                    "description": "",
+                    "name": "clock_timezone",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.services": {
+            "description": "Schema for services system_config",
+            "properties": {
+                "default_allow_updates": {
+                    "default": true,
+                    "description": "",
+                    "name": "default_allow_updates",
+                    "type": "boolean"
+                },
+                "master_account_bookkeeper": {
+                    "default": "kz_bookkeeper_local",
+                    "description": "",
+                    "name": "master_account_bookkeeper",
+                    "type": "string"
+                },
+                "modules": {
+                    "description": "",
+                    "name": "modules"
+                },
+                "scan_rate": {
+                    "default": 20000,
+                    "description": "",
+                    "name": "scan_rate",
+                    "type": "integer"
+                },
+                "should_save_master_audit_logs": {
+                    "default": false,
+                    "description": "",
+                    "name": "should_save_master_audit_logs",
+                    "type": "boolean"
+                },
+                "support_billing_id": {
+                    "default": true,
+                    "description": "",
+                    "name": "support_billing_id",
+                    "type": "boolean"
+                },
+                "sync_buffer_period": {
+                    "default": 600,
+                    "description": "",
+                    "name": "sync_buffer_period",
+                    "type": "integer"
+                },
+                "sync_services": {
+                    "default": false,
+                    "description": "",
+                    "name": "sync_services",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.sms": {
+            "description": "Schema for sms system_config",
+            "properties": {
+                "outbound": {
+                    "properties": {
+                        "options": {
+                            "properties": {
+                                "default": {
+                                    "delivery_mode": 2,
+                                    "mandatory": true
+                                },
+                                "description": "",
+                                "name": "options",
+                                "type": "object"
+                            }
+                        }
+                    }
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.sms_command": {
+            "description": "Schema for sms_command system_config",
+            "properties": {
+                "application_timeout": {
+                    "default": 500000,
+                    "description": "",
+                    "name": "application_timeout",
+                    "type": "integer"
+                },
+                "collect_timeout": {
+                    "default": 60000,
+                    "description": "",
+                    "name": "collect_timeout",
+                    "type": "integer"
+                },
+                "message_timeout": {
+                    "default": 60000,
+                    "description": "",
+                    "name": "message_timeout",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.smtp_client": {
+            "description": "Schema for smtp_client system_config",
+            "properties": {
+                "auth": {
+                    "default": "never",
+                    "description": "",
+                    "name": "auth",
+                    "type": "string"
+                },
+                "no_mx_lookups": {
+                    "default": true,
+                    "description": "",
+                    "name": "no_mx_lookups",
+                    "type": "boolean"
+                },
+                "password": {
+                    "default": "",
+                    "description": "",
+                    "name": "password",
+                    "type": "string"
+                },
+                "port": {
+                    "default": 25,
+                    "description": "",
+                    "name": "port",
+                    "type": "integer"
+                },
+                "relay": {
+                    "default": "localhost",
+                    "description": "",
+                    "name": "relay",
+                    "type": "string"
+                },
+                "retries": {
+                    "default": 1,
+                    "description": "",
+                    "name": "retries",
+                    "type": "integer"
+                },
+                "tls": {
+                    "description": "",
+                    "name": "tls"
+                },
+                "use_ssl": {
+                    "default": false,
+                    "description": "",
+                    "name": "use_ssl",
+                    "type": "boolean"
+                },
+                "username": {
+                    "default": "",
+                    "description": "",
+                    "name": "username",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.speech": {
+            "description": "Schema for speech system_config",
+            "properties": {
+                "asr_content_types": {
+                    "default": [
+                        "application/mpeg",
+                        "application/wav"
+                    ],
+                    "description": "",
+                    "name": "asr_content_types",
+                    "type": "array"
+                },
+                "asr_prefered_content_type": {
+                    "default": "application/mpeg",
+                    "description": "",
+                    "name": "asr_prefered_content_type",
+                    "type": "string"
+                },
+                "asr_provider": {
+                    "default": "",
+                    "description": "",
+                    "name": "asr_provider",
+                    "type": "string"
+                },
+                "asr_url": {
+                    "default": "http://api.ispeech.org/api/rest",
+                    "description": "",
+                    "name": "asr_url",
+                    "type": "string"
+                },
+                "temporary_storage_path": {
+                    "default": "/tmp",
+                    "description": "",
+                    "name": "temporary_storage_path",
+                    "type": "string"
+                },
+                "tts_api_key": {
+                    "description": "",
+                    "name": "tts_api_key",
+                    "type": "string"
+                },
+                "tts_args_encode": {
+                    "default": "multipart",
+                    "description": "",
+                    "name": "tts_args_encode",
+                    "type": "string"
+                },
+                "tts_default_voice": {
+                    "default": "female/en-US",
+                    "description": "",
+                    "name": "tts_default_voice",
+                    "type": "string"
+                },
+                "tts_language": {
+                    "default": "en-US",
+                    "description": "",
+                    "name": "tts_language",
+                    "type": "string"
+                },
+                "tts_provider": {
+                    "default": "ispeech",
+                    "description": "",
+                    "name": "tts_provider",
+                    "type": "string"
+                },
+                "tts_url": {
+                    "default": "http://api.ispeech.org/api/json",
+                    "description": "",
+                    "name": "tts_url",
+                    "type": "string"
+                },
+                "tts_voice": {
+                    "default": "male",
+                    "description": "",
+                    "name": "tts_voice",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.stepswitch": {
+            "description": "Schema for stepswitch system_config",
+            "properties": {
+                "assume_inbound_e164": {
+                    "default": false,
+                    "description": "",
+                    "name": "assume_inbound_e164",
+                    "type": "boolean"
+                },
+                "cid_rules_honor_diversions": {
+                    "default": false,
+                    "description": "",
+                    "name": "cid_rules_honor_diversions",
+                    "type": "boolean"
+                },
+                "default_audio_codecs": {
+                    "default": [],
+                    "description": "",
+                    "name": "default_audio_codecs",
+                    "type": "array"
+                },
+                "default_bypass_media": {
+                    "default": false,
+                    "description": "",
+                    "name": "default_bypass_media",
+                    "type": "boolean"
+                },
+                "default_caller_id_type": {
+                    "default": "external",
+                    "description": "",
+                    "name": "default_caller_id_type",
+                    "type": "string"
+                },
+                "default_codecs": {
+                    "default": [],
+                    "description": "",
+                    "name": "default_codecs",
+                    "type": "array"
+                },
+                "default_emergency_cid_number": {
+                    "description": "",
+                    "name": "default_emergency_cid_number"
+                },
+                "default_formatters": {
+                    "description": "",
+                    "name": "default_formatters"
+                },
+                "default_prefix": {
+                    "default": "",
+                    "description": "",
+                    "name": "default_prefix",
+                    "type": "string"
+                },
+                "default_progress_timeout": {
+                    "default": 8,
+                    "description": "",
+                    "name": "default_progress_timeout",
+                    "type": "integer"
+                },
+                "default_route": {
+                    "description": "",
+                    "name": "default_route",
+                    "type": "string"
+                },
+                "default_suffix": {
+                    "default": "",
+                    "description": "",
+                    "name": "default_suffix",
+                    "type": "string"
+                },
+                "default_video_codecs": {
+                    "default": [],
+                    "description": "",
+                    "name": "default_video_codecs",
+                    "type": "array"
+                },
+                "default_weight": {
+                    "default": 3,
+                    "description": "",
+                    "name": "default_weight",
+                    "type": "integer"
+                },
+                "deny_emergency_bridge_cause": {
+                    "default": "Emergency service not configured",
+                    "description": "",
+                    "name": "deny_emergency_bridge_cause",
+                    "type": "string"
+                },
+                "deny_emergency_bridge_code": {
+                    "default": 486,
+                    "description": "",
+                    "name": "deny_emergency_bridge_code",
+                    "type": "string"
+                },
+                "deny_emergency_bridge_media": {
+                    "default": "prompt://system_media/stepswitch-emergency_not_configured/",
+                    "description": "",
+                    "name": "deny_emergency_bridge_media",
+                    "type": "string"
+                },
+                "deny_invalid_emergency_cid": {
+                    "default": false,
+                    "description": "",
+                    "name": "deny_invalid_emergency_cid",
+                    "type": "boolean"
+                },
+                "ensure_valid_emergency_cid": {
+                    "default": false,
+                    "description": "",
+                    "name": "ensure_valid_emergency_cid",
+                    "type": "boolean"
+                },
+                "format_from_uri": {
+                    "default": false,
+                    "description": "",
+                    "name": "format_from_uri",
+                    "type": "boolean"
+                },
+                "max_shortdial_correction": {
+                    "default": 5,
+                    "description": "",
+                    "name": "max_shortdial_correction",
+                    "type": "integer"
+                },
+                "min_shortdial_correction": {
+                    "default": 2,
+                    "description": "",
+                    "name": "min_shortdial_correction",
+                    "type": "integer"
+                },
+                "route_by": {
+                    "default": "stepswitch_resources",
+                    "description": "",
+                    "name": "route_by",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.stepswitch.cnam": {
+            "description": "Schema for stepswitch.cnam system_config",
+            "properties": {
+                "disable_normalize": {
+                    "default": false,
+                    "description": "",
+                    "name": "disable_normalize",
+                    "type": "boolean"
+                },
+                "http_basic_auth_password": {
+                    "default": "",
+                    "description": "",
+                    "name": "http_basic_auth_password",
+                    "type": "string"
+                },
+                "http_basic_auth_username": {
+                    "default": "",
+                    "description": "",
+                    "name": "http_basic_auth_username",
+                    "type": "string"
+                },
+                "http_body": {
+                    "default": "",
+                    "description": "",
+                    "name": "http_body",
+                    "type": "string"
+                },
+                "http_method": {
+                    "default": "get",
+                    "description": "",
+                    "name": "http_method",
+                    "type": "string"
+                },
+                "http_url": {
+                    "default": "https://api.opencnam.com/v2/phone/{{phone_number}}",
+                    "description": "",
+                    "name": "http_url",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.sysconf": {
+            "description": "Schema for sysconf system_config",
+            "properties": {
+                "acl_request_timeout_fudge_ms": {
+                    "default": 100,
+                    "description": "",
+                    "name": "acl_request_timeout_fudge_ms",
+                    "type": "integer"
+                },
+                "acl_request_timeout_ms": {
+                    "default": 2000,
+                    "description": "",
+                    "name": "acl_request_timeout_ms",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.tasks": {
+            "description": "Schema for tasks system_config",
+            "properties": {
+                "send_progress_after_processed": {
+                    "default": 1000,
+                    "description": "",
+                    "name": "send_progress_after_processed",
+                    "type": "integer"
+                },
+                "wait_after_row_ms": {
+                    "default": 500,
+                    "description": "",
+                    "name": "wait_after_row_ms",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.teletype": {
+            "description": "Schema for teletype system_config",
+            "properties": {
+                "iterate_over_bcc": {
+                    "default": true,
+                    "description": "",
+                    "name": "iterate_over_bcc",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.token_buckets": {
+            "description": "Schema for token_buckets system_config",
+            "properties": {
+                "inactivity_timeout_s": {
+                    "default": 600,
+                    "description": "",
+                    "name": "inactivity_timeout_s",
+                    "type": "integer"
+                },
+                "{App}": {
+                    "properties": {
+                        "max_bucket_tokens": {
+                            "properties": {
+                                "description": "",
+                                "name": "max_bucket_tokens",
+                                "type": "integer"
+                            }
+                        },
+                        "tokens_fill_rate": {
+                            "properties": {
+                                "description": "",
+                                "name": "tokens_fill_rate",
+                                "type": "integer"
+                            }
+                        },
+                        "tokens_fill_time": {
+                            "properties": {
+                                "description": "",
+                                "name": "tokens_fill_time",
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.topup": {
+            "description": "Schema for topup system_config",
+            "properties": {
+                "enable": {
+                    "default": true,
+                    "description": "",
+                    "name": "enable",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.trunkstore": {
+            "description": "Schema for trunkstore system_config",
+            "properties": {
+                "default_caller_id_number": {
+                    "description": "",
+                    "name": "default_caller_id_number",
+                    "type": "string"
+                },
+                "default_hunt_non_reconcilable": {
+                    "default": false,
+                    "description": "",
+                    "name": "default_hunt_non_reconcilable",
+                    "type": "boolean"
+                },
+                "ensure_valid_caller_id": {
+                    "default": false,
+                    "description": "",
+                    "name": "ensure_valid_caller_id",
+                    "type": "boolean"
+                },
+                "ring_ready_offnet": {
+                    "default": true,
+                    "description": "",
+                    "name": "ring_ready_offnet",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.webhooks": {
+            "description": "Schema for webhooks system_config",
+            "properties": {
+                "attempt_failure_count": {
+                    "description": "",
+                    "name": "attempt_failure_count"
+                },
+                "attempt_failure_expiry_ms": {
+                    "default": 60000,
+                    "description": "",
+                    "name": "attempt_failure_expiry_ms",
+                    "type": "integer"
+                },
+                "log_successful_attempts": {
+                    "default": false,
+                    "description": "",
+                    "name": "log_successful_attempts",
+                    "type": "boolean"
+                },
+                "object_types": {
+                    "default": [
+                        "undefined",
+                        "undefined",
+                        "undefined",
+                        "undefined",
+                        "undefined",
+                        "undefined",
+                        "undefined"
+                    ],
+                    "description": "",
+                    "name": "object_types",
+                    "type": "array"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.whitelabel": {
+            "description": "Schema for whitelabel system_config",
+            "properties": {
+                "domains": {
+                    "description": "",
+                    "name": "domains"
                 }
             },
             "required": true,
@@ -8266,6 +12702,9 @@
         "version": "2.0"
     },
     "paths": {
+        "/v2/about": {
+            "get": {}
+        },
         "/v2/accounts": {
             "put": {}
         },

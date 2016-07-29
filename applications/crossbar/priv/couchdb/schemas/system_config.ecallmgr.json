@@ -1,0 +1,423 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.ecallmgr",
+    "description": "Schema for ecallmgr system_config",
+    "properties": {
+        "acls": {
+            "default": {},
+            "description": "",
+            "name": "acls",
+            "type": "object"
+        },
+        "amqp": {
+            "description": "",
+            "name": "amqp"
+        },
+        "authz_default_action": {
+            "default": "deny",
+            "description": "",
+            "name": "authz_default_action",
+            "type": "string"
+        },
+        "authz_dry_run": {
+            "default": false,
+            "description": "",
+            "name": "authz_dry_run",
+            "type": "boolean"
+        },
+        "authz_enabled": {
+            "default": false,
+            "description": "",
+            "name": "authz_enabled",
+            "type": "boolean"
+        },
+        "authz_local_resources": {
+            "default": false,
+            "description": "",
+            "name": "authz_local_resources",
+            "type": "boolean"
+        },
+        "balance_crawler_cycle_ms": {
+            "default": 60000,
+            "description": "",
+            "name": "balance_crawler_cycle_ms",
+            "type": "integer"
+        },
+        "balance_crawler_enabled": {
+            "default": false,
+            "description": "",
+            "name": "balance_crawler_enabled",
+            "type": "boolean"
+        },
+        "balance_crawler_fetch_timeout_ms": {
+            "default": 10000,
+            "description": "",
+            "name": "balance_crawler_fetch_timeout_ms",
+            "type": "integer"
+        },
+        "balance_crawler_interaccount_delay_ms": {
+            "default": 10,
+            "description": "",
+            "name": "balance_crawler_interaccount_delay_ms",
+            "type": "integer"
+        },
+        "call_routing_bindings": {
+            "default": [
+                "undefined"
+            ],
+            "description": "",
+            "name": "call_routing_bindings",
+            "type": "array"
+        },
+        "capabilities": {
+            "default": [
+                {
+                    "capability": "conference",
+                    "is_loaded": false,
+                    "module": "mod_conference"
+                },
+                {
+                    "capability": "channel_move",
+                    "is_loaded": false,
+                    "module": "mod_channel_move"
+                },
+                {
+                    "capability": "http_cache",
+                    "is_loaded": false,
+                    "module": "mod_http_cache"
+                },
+                {
+                    "capability": "dialplan",
+                    "is_loaded": false,
+                    "module": "mod_dptools"
+                },
+                {
+                    "capability": "sip",
+                    "is_loaded": false,
+                    "module": "mod_sofia"
+                },
+                {
+                    "capability": "fax",
+                    "is_loaded": false,
+                    "module": "mod_spandsp"
+                },
+                {
+                    "capability": "tts",
+                    "is_loaded": false,
+                    "module": "mod_flite"
+                },
+                {
+                    "capability": "freetdm",
+                    "is_loaded": false,
+                    "module": "mod_freetdm"
+                },
+                {
+                    "capability": "skype",
+                    "is_loaded": false,
+                    "module": "mod_skypopen"
+                },
+                {
+                    "capability": "xmpp",
+                    "is_loaded": false,
+                    "module": "mod_dingaling"
+                },
+                {
+                    "capability": "skinny",
+                    "is_loaded": false,
+                    "module": "mod_skinny"
+                },
+                {
+                    "capability": "sms",
+                    "is_loaded": false,
+                    "module": "mod_sms"
+                }
+            ],
+            "description": "",
+            "name": "capabilities",
+            "type": "array"
+        },
+        "configuration_handlers": {
+            "description": "",
+            "name": "configuration_handlers"
+        },
+        "debug_channel": {
+            "default": false,
+            "description": "",
+            "name": "debug_channel",
+            "type": "boolean"
+        },
+        "default_fax_extension": {
+            "default": ".tiff",
+            "description": "",
+            "name": "default_fax_extension",
+            "type": "string"
+        },
+        "default_realm": {
+            "default": "nodomain.com",
+            "description": "",
+            "name": "default_realm",
+            "type": "string"
+        },
+        "default_recording_extension": {
+            "default": ".mp3",
+            "description": "",
+            "name": "default_recording_extension",
+            "type": "string"
+        },
+        "default_ringback": {
+            "description": "",
+            "name": "default_ringback"
+        },
+        "event_stream_idle_alert": {
+            "default": 0,
+            "description": "",
+            "name": "event_stream_idle_alert",
+            "type": "integer"
+        },
+        "expires_deviation_time": {
+            "default": 0,
+            "description": "",
+            "name": "expires_deviation_time",
+            "type": "integer"
+        },
+        "fax_file_path": {
+            "default": "/tmp/",
+            "description": "",
+            "name": "fax_file_path",
+            "type": "string"
+        },
+        "fetch_timeout": {
+            "default": 2600,
+            "description": "",
+            "name": "fetch_timeout",
+            "type": "integer"
+        },
+        "freeswitch_context": {
+            "default": "context_2",
+            "description": "",
+            "name": "freeswitch_context",
+            "type": "string"
+        },
+        "fs_amqp_listeners": {
+            "default": 1,
+            "description": "",
+            "name": "fs_amqp_listeners",
+            "type": "integer"
+        },
+        "fs_cmds": {
+            "default": [
+                {
+                    "load": "mod_sofia"
+                },
+                {
+                    "reloadacl": ""
+                }
+            ],
+            "description": "",
+            "name": "fs_cmds",
+            "type": "array"
+        },
+        "fs_cmds_wait_ms": {
+            "default": 5000,
+            "description": "",
+            "name": "fs_cmds_wait_ms",
+            "type": "integer"
+        },
+        "fs_node_uptime_s": {
+            "default": 600,
+            "description": "",
+            "name": "fs_node_uptime_s",
+            "type": "integer"
+        },
+        "fs_nodes": {
+            "default": [],
+            "description": "",
+            "name": "fs_nodes",
+            "type": "array"
+        },
+        "fs_profiles": {
+            "default": {},
+            "description": "",
+            "name": "fs_profiles",
+            "type": "object"
+        },
+        "fs_reconnect_cmds": {
+            "description": "",
+            "name": "fs_reconnect_cmds"
+        },
+        "gateways": {
+            "default": {},
+            "description": "",
+            "name": "gateways",
+            "type": "object"
+        },
+        "insert_fetched_registration_locally": {
+            "default": false,
+            "description": "",
+            "name": "insert_fetched_registration_locally",
+            "type": "boolean"
+        },
+        "max_channel_cleanup_timeout_ms": {
+            "default": 60000,
+            "description": "",
+            "name": "max_channel_cleanup_timeout_ms",
+            "type": "integer"
+        },
+        "max_channel_uptime_s": {
+            "default": 0,
+            "description": "",
+            "name": "max_channel_uptime_s",
+            "type": "integer"
+        },
+        "max_timeout_for_node_restart": {
+            "default": 10000,
+            "description": "",
+            "name": "max_timeout_for_node_restart",
+            "type": "integer"
+        },
+        "modules": {
+            "default": [
+                "node",
+                "authn",
+                "route",
+                "channel",
+                "config",
+                "resource",
+                "notify",
+                "conference",
+                "event_stream_sup",
+                "msg"
+            ],
+            "description": "",
+            "name": "modules",
+            "type": "array"
+        },
+        "network_map": {
+            "default": {},
+            "description": "",
+            "name": "network_map",
+            "type": "object"
+        },
+        "node_down_grace_period": {
+            "default": 10000,
+            "description": "",
+            "name": "node_down_grace_period",
+            "type": "integer"
+        },
+        "process_gateways": {
+            "default": false,
+            "description": "",
+            "name": "process_gateways",
+            "type": "boolean"
+        },
+        "publish_channel_reconnect": {
+            "default": false,
+            "description": "",
+            "name": "publish_channel_reconnect",
+            "type": "boolean"
+        },
+        "publish_channel_state": {
+            "default": true,
+            "description": "",
+            "name": "publish_channel_state",
+            "type": "boolean"
+        },
+        "record_sample_rate": {
+            "default": 8000,
+            "description": "",
+            "name": "record_sample_rate",
+            "type": "integer"
+        },
+        "record_stereo_sample_rate": {
+            "default": 16000,
+            "description": "",
+            "name": "record_stereo_sample_rate",
+            "type": "integer"
+        },
+        "record_waste_resources": {
+            "default": false,
+            "description": "",
+            "name": "record_waste_resources",
+            "type": "boolean"
+        },
+        "recording_file_path": {
+            "default": "/tmp/",
+            "description": "",
+            "name": "recording_file_path",
+            "type": "string"
+        },
+        "redirect_via_proxy": {
+            "default": true,
+            "description": "",
+            "name": "redirect_via_proxy",
+            "type": "boolean"
+        },
+        "restrict_channel_state_publisher": {
+            "default": false,
+            "description": "",
+            "name": "restrict_channel_state_publisher",
+            "type": "boolean"
+        },
+        "should_detect_inband_dtmf": {
+            "description": "",
+            "name": "should_detect_inband_dtmf",
+            "type": "boolean"
+        },
+        "sofia_conf": {
+            "description": "",
+            "name": "sofia_conf"
+        },
+        "tcp_packet_type": {
+            "default": 2,
+            "description": "",
+            "name": "tcp_packet_type",
+            "type": "integer"
+        },
+        "text_routing_bindings": {
+            "default": [
+                "undefined"
+            ],
+            "description": "",
+            "name": "text_routing_bindings",
+            "type": "array"
+        },
+        "use_bypass_media_after_bridge": {
+            "default": false,
+            "description": "",
+            "name": "use_bypass_media_after_bridge",
+            "type": "boolean"
+        },
+        "use_http_cache": {
+            "default": true,
+            "description": "",
+            "name": "use_http_cache",
+            "type": "boolean"
+        },
+        "use_shout": {
+            "default": false,
+            "description": "",
+            "name": "use_shout",
+            "type": "boolean"
+        },
+        "use_vlc": {
+            "default": false,
+            "description": "",
+            "name": "use_vlc",
+            "type": "boolean"
+        },
+        "{Direction}_rate_required": {
+            "default": false,
+            "description": "",
+            "name": "{Direction}_rate_required",
+            "type": "boolean"
+        },
+        "{Direction}_rate_resp_timeout": {
+            "default": 10000,
+            "description": "",
+            "name": "{Direction}_rate_resp_timeout",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

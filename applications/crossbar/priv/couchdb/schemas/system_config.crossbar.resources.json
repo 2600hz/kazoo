@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.resources",
+    "description": "Schema for crossbar.resources system_config",
+    "properties": {
+        "job_recovery_threshold_s": {
+            "default": 3600,
+            "description": "",
+            "name": "job_recovery_threshold_s",
+            "type": "integer"
+        },
+        "job_recovery_timeout_s": {
+            "default": 21600,
+            "description": "",
+            "name": "job_recovery_timeout_s",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

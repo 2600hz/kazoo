@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.notify.system_alert",
+    "description": "Schema for notify.system_alert system_config",
+    "properties": {
+        "default_to": {
+            "default": "",
+            "description": "",
+            "name": "default_to",
+            "type": "string"
+        },
+        "enable_email_alerts": {
+            "default": true,
+            "description": "",
+            "name": "enable_email_alerts",
+            "type": "boolean"
+        },
+        "html_content_transfer_encoding": {
+            "default": "7BIT",
+            "description": "",
+            "name": "html_content_transfer_encoding",
+            "type": "string"
+        },
+        "subscriber_url": {
+            "description": "",
+            "name": "subscriber_url",
+            "type": "string"
+        },
+        "text_content_transfer_encoding": {
+            "default": "7BIT",
+            "description": "",
+            "name": "text_content_transfer_encoding",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

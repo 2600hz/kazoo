@@ -33,7 +33,6 @@ test:
   pre:
     - $CHANGED
     - ./scripts/state-of-docs.sh || true
-    - ./scripts/validate-js.sh $($CHANGED)
     - ./scripts/code_checks.bash $($CHANGED)
     - |
       if [[ ! -z "$($CHANGED)" ]]; then
@@ -41,6 +40,7 @@ test:
       fi
     - make bump-copyright
     - . ~/.kerl/$OTP_VERSION/activate && make
+    - ./scripts/validate-js.sh $($CHANGED)
     - . ~/.kerl/$OTP_VERSION/activate && make apis
     - |
       if [[ 0 -ne `git status --porcelain | wc -l` ]]; then

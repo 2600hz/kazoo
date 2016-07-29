@@ -1,0 +1,14 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.mobile_manager",
+    "description": "Schema for mobile_manager system_config",
+    "properties": {
+        "url": {
+            "description": "",
+            "name": "url",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

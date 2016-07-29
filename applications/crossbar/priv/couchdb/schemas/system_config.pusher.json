@@ -1,0 +1,25 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.pusher",
+    "description": "Schema for pusher system_config",
+    "properties": {
+        "User-Agents": {
+            "default": {},
+            "description": "",
+            "name": "User-Agents",
+            "type": "object"
+        },
+        "apple": {
+            "description": "",
+            "name": "apple",
+            "type": "string"
+        },
+        "google": {
+            "description": "",
+            "name": "google",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -1,0 +1,27 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.notify.topup",
+    "description": "Schema for notify.topup system_config",
+    "properties": {
+        "default_to": {
+            "default": "",
+            "description": "",
+            "name": "default_to",
+            "type": "string"
+        },
+        "html_content_transfer_encoding": {
+            "default": "7BIT",
+            "description": "",
+            "name": "html_content_transfer_encoding",
+            "type": "string"
+        },
+        "text_content_transfer_encoding": {
+            "default": "7BIT",
+            "description": "",
+            "name": "text_content_transfer_encoding",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

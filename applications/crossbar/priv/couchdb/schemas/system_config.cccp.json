@@ -1,0 +1,41 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.cccp",
+    "description": "Schema for cccp system_config",
+    "properties": {
+        "allowed_callee_regex": {
+            "default": "^\\+?\\d{7,}$",
+            "description": "",
+            "name": "allowed_callee_regex",
+            "type": "string"
+        },
+        "callback_delay": {
+            "default": 3,
+            "description": "",
+            "name": "callback_delay",
+            "type": "integer"
+        },
+        "cccp_cb_number": {
+            "description": "",
+            "name": "cccp_cb_number"
+        },
+        "cccp_cc_number": {
+            "description": "",
+            "name": "cccp_cc_number"
+        },
+        "last_number_redial_code": {
+            "default": "*0",
+            "description": "",
+            "name": "last_number_redial_code",
+            "type": "string"
+        },
+        "prompt_delay": {
+            "default": 1,
+            "description": "",
+            "name": "prompt_delay",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

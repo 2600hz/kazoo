@@ -19,9 +19,9 @@ def fmap(F, data):
         if isinstance(value, basestring):
             if value.startswith('function'):
                 F(data)
-        elif isinstance(value, list):
-            if value[0].startswith('function'):
-                F(data)
+        elif isinstance(value, list) and len(value) > 0 \
+             and isinstance(value[0], basestring) and value[0].startswith('function'):
+            F(data)
         else:
             fmap(F, value)
     elif isinstance(data, list):

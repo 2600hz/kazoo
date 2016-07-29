@@ -1,0 +1,19 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.number_manager.vitelity",
+    "description": "Schema for number_manager.vitelity system_config",
+    "properties": {
+        "api_uri": {
+            "default": "http://api.vitelity.net/api.php",
+            "description": "",
+            "name": "api_uri",
+            "type": "string"
+        },
+        "routesip": {
+            "description": "",
+            "name": "routesip"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

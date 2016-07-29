@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.notify.fax_outbound_to_email",
+    "description": "Schema for notify.fax_outbound_to_email system_config",
+    "properties": {
+        "default_to": {
+            "description": "",
+            "name": "default_to"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

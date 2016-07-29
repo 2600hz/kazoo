@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.auth",
+    "description": "Schema for crossbar.auth system_config",
+    "properties": {
+        "basic_auth_type": {
+            "default": "md5",
+            "description": "",
+            "name": "basic_auth_type",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

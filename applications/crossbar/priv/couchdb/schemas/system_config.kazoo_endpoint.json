@@ -1,0 +1,45 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.kazoo_endpoint",
+    "description": "Schema for kazoo_endpoint system_config",
+    "properties": {
+        "custom_sip_interface": {
+            "description": "",
+            "name": "custom_sip_interface"
+        },
+        "default_caller_id_name": {
+            "description": "",
+            "name": "default_caller_id_name",
+            "type": "string"
+        },
+        "default_caller_id_number": {
+            "description": "",
+            "name": "default_caller_id_number",
+            "type": "string"
+        },
+        "default_ignore_completed_elsewhere": {
+            "default": true,
+            "description": "",
+            "name": "default_ignore_completed_elsewhere",
+            "type": "boolean"
+        },
+        "restrict_to_known_types": {
+            "default": false,
+            "description": "",
+            "name": "restrict_to_known_types",
+            "type": "boolean"
+        },
+        "should_add_diversion_header": {
+            "default": false,
+            "description": "",
+            "name": "should_add_diversion_header",
+            "type": "boolean"
+        },
+        "sip_transport": {
+            "description": "",
+            "name": "sip_transport"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

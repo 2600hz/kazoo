@@ -176,4 +176,6 @@ fmt: $(FMT)
 
 apis:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-api-endpoints.escript
+	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-schemas.escript
 	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/api/swagger.json
+	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/couchdb/schemas/*.json

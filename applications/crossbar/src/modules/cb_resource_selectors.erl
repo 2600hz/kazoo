@@ -19,7 +19,6 @@
         ,delete/5
         ]).
 
-
 -export([normalize_view_results/2]).
 
 -include("crossbar.hrl").
@@ -37,11 +36,13 @@
                     ,{'success', 0}
                     ,{'error', 0}
                     ]).
--define(DEFAULT_RULES, {[]}).
+-define(DEFAULT_RULES, kz_json:new()).
 -define(RULES_PVT_TYPE, <<"resource_selector_rules">>).
--define(DEFAULT_CSV_CONFIG, {[{<<"selector_column">>, 1}
-                             ,{<<"value_column">>, 2}
-                             ]}).
+-define(DEFAULT_CSV_CONFIG
+       ,kz_json:from_list([{<<"selector_column">>, 1}
+                          ,{<<"value_column">>, 2}
+                          ])
+       ).
 
 %%%===================================================================
 %%% API
@@ -537,7 +538,7 @@ normalize_resource_selector_result(JObj, Acc) ->
     Selector = kz_json:get_value([<<"value">>, <<"selector">>], JObj),
     case kz_json:get_value([<<"value">>, <<"value">>], JObj) of
         'undefined' -> [Selector | Acc];
-        Value -> [{[{Selector, Value}]} | Acc]
+        Value -> [kz_json:from_list([{Selector, Value}]) | Acc]
     end.
 
 %%--------------------------------------------------------------------

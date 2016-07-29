@@ -1,0 +1,39 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.konami",
+    "description": "Schema for konami system_config",
+    "properties": {
+        "event_cleanup_timeout_ms": {
+            "default": 3600000,
+            "description": "",
+            "name": "event_cleanup_timeout_ms",
+            "type": "integer"
+        },
+        "transfer": {
+            "properties": {
+                "default_takeback_dtmf": {
+                    "properties": {
+                        "default": "*1",
+                        "description": "",
+                        "name": "default_takeback_dtmf",
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "use_fast_rearm": {
+            "default": false,
+            "description": "",
+            "name": "use_fast_rearm",
+            "type": "boolean"
+        },
+        "webseq_enabled": {
+            "default": false,
+            "description": "",
+            "name": "webseq_enabled",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

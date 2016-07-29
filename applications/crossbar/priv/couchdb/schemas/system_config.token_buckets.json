@@ -1,0 +1,40 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.token_buckets",
+    "description": "Schema for token_buckets system_config",
+    "properties": {
+        "inactivity_timeout_s": {
+            "default": 600,
+            "description": "",
+            "name": "inactivity_timeout_s",
+            "type": "integer"
+        },
+        "{App}": {
+            "properties": {
+                "max_bucket_tokens": {
+                    "properties": {
+                        "description": "",
+                        "name": "max_bucket_tokens",
+                        "type": "integer"
+                    }
+                },
+                "tokens_fill_rate": {
+                    "properties": {
+                        "description": "",
+                        "name": "tokens_fill_rate",
+                        "type": "integer"
+                    }
+                },
+                "tokens_fill_time": {
+                    "properties": {
+                        "description": "",
+                        "name": "tokens_fill_time",
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "required": true,
+    "type": "object"
+}

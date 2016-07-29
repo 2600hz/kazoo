@@ -271,8 +271,8 @@ merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2, Pred, Keys) when
     foldl(fun(Key2, Value2, JObj1Acc) ->
                   merge_recursive(JObj1Acc, Value2, Pred, [Key2|Keys])
           end
-          ,JObj1
-          ,JObj2
+         ,JObj1
+         ,JObj2
          );
 merge_recursive(?JSON_WRAPPER(_)=JObj1, Value, Pred, Keys) when is_function(Pred, 2) ->
     Syek = lists:reverse(Keys),

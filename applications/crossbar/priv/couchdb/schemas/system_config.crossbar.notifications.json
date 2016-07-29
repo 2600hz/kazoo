@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.notifications",
+    "description": "Schema for crossbar.notifications system_config",
+    "properties": {
+        "notification_timeout_ms": {
+            "default": 5000,
+            "description": "",
+            "name": "notification_timeout_ms",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.onboard",
+    "description": "Schema for crossbar.onboard system_config",
+    "properties": {
+        "default_callflow_start_exten": {
+            "default": 2000,
+            "description": "",
+            "name": "default_callflow_start_exten",
+            "type": "integer"
+        },
+        "default_extension_callflow": {
+            "description": "",
+            "name": "default_extension_callflow",
+            "type": "string"
+        },
+        "default_vm_start_exten": {
+            "default": 3000,
+            "description": "",
+            "name": "default_vm_start_exten",
+            "type": "integer"
+        },
+        "device_pwd_strength": {
+            "default": 6,
+            "description": "",
+            "name": "device_pwd_strength",
+            "type": "integer"
+        },
+        "device_username_strength": {
+            "default": 3,
+            "description": "",
+            "name": "device_username_strength",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.services",
+    "description": "Schema for crossbar.services system_config",
+    "properties": {
+        "maximum_range": {
+            "default": 2682000,
+            "description": "",
+            "name": "maximum_range",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

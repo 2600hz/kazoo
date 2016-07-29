@@ -1,0 +1,45 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.number_manager.voip_innovations",
+    "description": "Schema for number_manager.voip_innovations system_config",
+    "properties": {
+        "debug": {
+            "default": false,
+            "description": "",
+            "name": "debug",
+            "type": "boolean"
+        },
+        "enable_provisioning": {
+            "default": true,
+            "description": "",
+            "name": "enable_provisioning",
+            "type": "boolean"
+        },
+        "endpoint_group": {
+            "default": "",
+            "description": "",
+            "name": "endpoint_group",
+            "type": "string"
+        },
+        "login": {
+            "default": "",
+            "description": "",
+            "name": "login",
+            "type": "string"
+        },
+        "password": {
+            "default": "",
+            "description": "",
+            "name": "password",
+            "type": "string"
+        },
+        "sandbox_provisioning": {
+            "default": false,
+            "description": "",
+            "name": "sandbox_provisioning",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

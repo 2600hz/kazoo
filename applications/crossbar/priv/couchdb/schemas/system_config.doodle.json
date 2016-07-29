@@ -1,0 +1,80 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.doodle",
+    "description": "Schema for doodle system_config",
+    "properties": {
+        "connections": {
+            "description": "",
+            "name": "connections"
+        },
+        "default_test_from_number": {
+            "default": "15552220001",
+            "description": "",
+            "name": "default_test_from_number",
+            "type": "string"
+        },
+        "default_test_route_id": {
+            "default": "syneverse",
+            "description": "",
+            "name": "default_test_route_id",
+            "type": "string"
+        },
+        "inbound_broker": {
+            "description": "",
+            "name": "inbound_broker",
+            "type": "string"
+        },
+        "inbound_exchange": {
+            "default": "sms",
+            "description": "",
+            "name": "inbound_exchange",
+            "type": "string"
+        },
+        "inbound_exchange_options": {
+            "default": {
+                "passive": true
+            },
+            "description": "",
+            "name": "inbound_exchange_options",
+            "type": "object"
+        },
+        "inbound_exchange_type": {
+            "default": "topic",
+            "description": "",
+            "name": "inbound_exchange_type",
+            "type": "string"
+        },
+        "inbound_queue_name": {
+            "default": "default",
+            "description": "",
+            "name": "inbound_queue_name",
+            "type": "string"
+        },
+        "min_bucket_cost": {
+            "default": 1,
+            "description": "",
+            "name": "min_bucket_cost",
+            "type": "integer"
+        },
+        "reschedule": {
+            "description": "",
+            "name": "reschedule"
+        },
+        "route_win_timeout": {
+            "default": 3000,
+            "description": "",
+            "name": "route_win_timeout",
+            "type": "integer"
+        },
+        "unavailable_message": {
+            "default": {
+                "en-US": "sms service unavailable"
+            },
+            "description": "",
+            "name": "unavailable_message",
+            "type": "object"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

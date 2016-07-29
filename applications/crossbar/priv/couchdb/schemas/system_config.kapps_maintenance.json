@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.kapps_maintenance",
+    "description": "Schema for kapps_maintenance system_config",
+    "properties": {
+        "migrate_current_version": {
+            "default": "3.22",
+            "description": "",
+            "name": "migrate_current_version",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

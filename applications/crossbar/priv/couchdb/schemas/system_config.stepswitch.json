@@ -1,0 +1,142 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.stepswitch",
+    "description": "Schema for stepswitch system_config",
+    "properties": {
+        "assume_inbound_e164": {
+            "default": false,
+            "description": "",
+            "name": "assume_inbound_e164",
+            "type": "boolean"
+        },
+        "cid_rules_honor_diversions": {
+            "default": false,
+            "description": "",
+            "name": "cid_rules_honor_diversions",
+            "type": "boolean"
+        },
+        "default_audio_codecs": {
+            "default": [],
+            "description": "",
+            "name": "default_audio_codecs",
+            "type": "array"
+        },
+        "default_bypass_media": {
+            "default": false,
+            "description": "",
+            "name": "default_bypass_media",
+            "type": "boolean"
+        },
+        "default_caller_id_type": {
+            "default": "external",
+            "description": "",
+            "name": "default_caller_id_type",
+            "type": "string"
+        },
+        "default_codecs": {
+            "default": [],
+            "description": "",
+            "name": "default_codecs",
+            "type": "array"
+        },
+        "default_emergency_cid_number": {
+            "description": "",
+            "name": "default_emergency_cid_number"
+        },
+        "default_formatters": {
+            "description": "",
+            "name": "default_formatters"
+        },
+        "default_prefix": {
+            "default": "",
+            "description": "",
+            "name": "default_prefix",
+            "type": "string"
+        },
+        "default_progress_timeout": {
+            "default": 8,
+            "description": "",
+            "name": "default_progress_timeout",
+            "type": "integer"
+        },
+        "default_route": {
+            "description": "",
+            "name": "default_route",
+            "type": "string"
+        },
+        "default_suffix": {
+            "default": "",
+            "description": "",
+            "name": "default_suffix",
+            "type": "string"
+        },
+        "default_video_codecs": {
+            "default": [],
+            "description": "",
+            "name": "default_video_codecs",
+            "type": "array"
+        },
+        "default_weight": {
+            "default": 3,
+            "description": "",
+            "name": "default_weight",
+            "type": "integer"
+        },
+        "deny_emergency_bridge_cause": {
+            "default": "Emergency service not configured",
+            "description": "",
+            "name": "deny_emergency_bridge_cause",
+            "type": "string"
+        },
+        "deny_emergency_bridge_code": {
+            "default": 486,
+            "description": "",
+            "name": "deny_emergency_bridge_code",
+            "type": "string"
+        },
+        "deny_emergency_bridge_media": {
+            "default": "prompt://system_media/stepswitch-emergency_not_configured/",
+            "description": "",
+            "name": "deny_emergency_bridge_media",
+            "type": "string"
+        },
+        "deny_invalid_emergency_cid": {
+            "default": false,
+            "description": "",
+            "name": "deny_invalid_emergency_cid",
+            "type": "boolean"
+        },
+        "ensure_valid_emergency_cid": {
+            "default": false,
+            "description": "",
+            "name": "ensure_valid_emergency_cid",
+            "type": "boolean"
+        },
+        "format_from_uri": {
+            "default": false,
+            "description": "",
+            "name": "format_from_uri",
+            "type": "boolean"
+        },
+        "max_shortdial_correction": {
+            "default": 5,
+            "description": "",
+            "name": "max_shortdial_correction",
+            "type": "integer"
+        },
+        "min_shortdial_correction": {
+            "default": 2,
+            "description": "",
+            "name": "min_shortdial_correction",
+            "type": "integer"
+        },
+        "route_by": {
+            "default": "stepswitch_resources",
+            "description": "",
+            "name": "route_by",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

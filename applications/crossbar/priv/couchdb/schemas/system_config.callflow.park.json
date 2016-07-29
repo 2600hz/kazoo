@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.callflow.park",
+    "description": "Schema for callflow.park system_config",
+    "properties": {
+        "db_doc_name": {
+            "default": "parked_calls",
+            "description": "",
+            "name": "db_doc_name",
+            "type": "string"
+        },
+        "default_callback_timeout": {
+            "default": 30000,
+            "description": "",
+            "name": "default_callback_timeout",
+            "type": "integer"
+        },
+        "default_ringback_timeout": {
+            "default": 120000,
+            "description": "",
+            "name": "default_ringback_timeout",
+            "type": "integer"
+        },
+        "parked_presence_type": {
+            "default": "early",
+            "description": "",
+            "name": "parked_presence_type",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

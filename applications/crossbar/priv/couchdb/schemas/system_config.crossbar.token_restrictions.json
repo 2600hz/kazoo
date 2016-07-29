@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.token_restrictions",
+    "description": "Schema for crossbar.token_restrictions system_config",
+    "properties": {
+        "_": {
+            "description": "",
+            "name": "_",
+            "type": "object"
+        },
+        "default_priv_level": {
+            "default": "admin",
+            "description": "",
+            "name": "default_priv_level",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

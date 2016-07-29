@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.kazoo.pdf",
+    "description": "Schema for kazoo.pdf system_config",
+    "properties": {
+        "html2pdf": {
+            "default": "/usr/bin/htmldoc --quiet --webpage -f $pdf$ $html$",
+            "description": "",
+            "name": "html2pdf",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}
