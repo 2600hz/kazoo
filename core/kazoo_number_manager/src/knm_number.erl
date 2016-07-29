@@ -232,10 +232,8 @@ dry_run_or_number(Number) ->
     case knm_phone_number:dry_run(phone_number(Number)) of
         'false' -> Number;
         'true' ->
-            {'dry_run'
-            ,services(Number)
-            ,knm_services:phone_number_activation_charges(Number)
-            }
+            Charges = knm_services:phone_number_activation_charges(Number),
+            {'dry_run', services(Number), Charges}
     end.
 
 -spec ensure_can_create(ne_binary(), knm_number_options:options()) -> 'true'.
