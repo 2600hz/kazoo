@@ -17,26 +17,34 @@
 -include("blackhole.hrl").
 
 -spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
-handle_event(Context, EventJObj) ->
+handle_event(#bh_context{binding=Binding} = Context, EventJObj) ->
     kz_util:put_callid(EventJObj),
     'true' = kapi_fax:status_v(EventJObj),
-    J = kz_json:normalize_jobj(EventJObj),
-    blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), J).
+    NormJObj = kz_json:normalize_jobj(kz_json:set_value(<<"Binding">>, Binding, EventJObj)),
+    blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), NormJObj).
 
 -spec event_name(kz_json:object()) -> ne_binary().
 event_name(_JObj) -> <<"fax.status">>.
 
 -spec subscribe(bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
-subscribe(Context, <<"fax.status.", FaxId/binary>>) ->
+subscribe(Context, <<"fax.status.*">> = Binding) ->
+    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
+    {'ok', Context};
+subscribe(Context, <<"fax.status.", FaxId/binary>> = Binding) ->
     blackhole_listener:add_binding('fax', fax_binding_options(bh_context:account_id(Context), FaxId)),
+    blackhole_bindings:bind(Binding, ?MODULE, 'handle_event', Context),
     {'ok', Context};
 subscribe(Context, Binding) ->
     blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
     {'ok', Context}.
 
 -spec unsubscribe(bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
-unsubscribe(<<"fax.status.", FaxId/binary>>, Context) ->
+unsubscribe(Context, <<"fax.status.*">> = Binding) ->
+    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
+    {'ok', Context};
+unsubscribe(Context, <<"fax.status.", FaxId/binary>> = Binding) ->
     blackhole_listener:remove_binding('fax', fax_binding_options(bh_context:account_id(Context), FaxId)),
+    blackhole_bindings:unbind(Binding, ?MODULE, 'handle_event', Context),
     {'ok', Context};
 unsubscribe(Context, Binding) ->
     blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
