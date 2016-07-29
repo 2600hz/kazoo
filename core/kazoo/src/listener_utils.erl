@@ -12,14 +12,10 @@
         ,rm_responder/3
         ]).
 
--include_lib("kazoo/include/kz_log.hrl").
+-include("listener_types.hrl").
 
 -define(DEFAULT_CALLBACK, 'handle_req').
 
-%% { {Event-Category, Event-Name}, CallbackModule | {CallbackModule, Function} }
--type responder_callback() :: {atom(), atom()}.
--type responder() :: {{binary(), binary()}, responder_callback()}.
--type responders() :: [responder()].
 -export_type([responder/0
              ,responders/0
              ]).
@@ -55,7 +51,9 @@ rm_responder(Responders, Responder, Keys) ->
 is_responder_known(Responders, {Responder,_}=Callback) ->
     _ = maybe_load_responder(Responder),
     erlang:function_exported(Responder, 'init', 0)
-        andalso kz_util:is_false(lists:keyfind(Callback, 2, Responders)).
+        andalso kz_util:is_false(lists:keyfind(Callback, 2, Responders));
+is_responder_known(_Responders, Callback)
+  when is_function(Callback) -> 'false'.
 
 maybe_load_responder(Responder) ->
     case erlang:module_loaded(Responder) of
@@ -86,4 +84,4 @@ maybe_init_responder({Responder, _Fun}, 'true') when is_atom(Responder) ->
             lager:debug("responder ~s crashed: ~s: ~p", [Responder, _E, _R]),
             kz_util:log_stacktrace(ST)
     end;
-maybe_init_responder({_Responder, _Fun}, 'false') -> 'ok'.
+maybe_init_responder(_, 'false') -> 'ok'.
