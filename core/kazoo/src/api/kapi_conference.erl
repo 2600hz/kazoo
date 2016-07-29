@@ -950,14 +950,18 @@ bind_to_q(Q, ['config'|T], Props) ->
     Profile = props:get_value('profile', Props, <<"*">>),
     'ok' = amqp_util:bind_q_to_conference(Q, 'config', Profile),
     bind_to_q(Q, T, Props);
-bind_to_q(Q, [{'conference', {ConfId, CallId}}|T], Props) ->
+bind_to_q(Q, [{'event', {ConfId, CallId}}|T], Props) ->
     EncodedCallId = amqp_util:encode(CallId),
     'ok' = amqp_util:bind_q_to_conference(Q, 'event', ConfId, EncodedCallId),
     bind_to_q(Q, T, Props);
-bind_to_q(Q, [{'conference', ConfId}|T], Props) ->
+bind_to_q(Q, [{'event', ConfId}|T], Props) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'event', ConfId),
     bind_to_q(Q, T, Props);
-bind_to_q(_Q, [], _) -> 'ok'.
+bind_to_q(Q, [{'command', ConfId}|T], Props) ->
+    'ok' = amqp_util:bind_q_to_conference(Q, 'command', ConfId),
+    bind_to_q(Q, T, Props);
+bind_to_q(_Q, [], _) ->
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @doc
