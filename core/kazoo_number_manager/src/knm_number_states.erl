@@ -54,7 +54,6 @@ to_available(Number) ->
 
 to_available(Number, ?NUMBER_STATE_AVAILABLE) ->
     Routines = [fun authorize/1
-               ,fun update_reserve_history/1
                ,fun move_to_available_state/1
                ,fun knm_services:activate_phone_number/1
                ],
