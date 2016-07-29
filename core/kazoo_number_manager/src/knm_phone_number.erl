@@ -59,7 +59,7 @@
                           ,state :: ne_binary()
                           ,reserve_history = [] :: ne_binaries()
                           ,ported_in = 'false' :: boolean()
-                          ,module_name :: ne_binary()
+                          ,module_name = knm_carriers:default_carrier() :: ne_binary()
                           ,carrier_data = kz_json:new() :: kz_json:object()
                           ,region :: ne_binary()
                           ,auth_by :: api_binary()
@@ -89,19 +89,10 @@ new(DID) ->
 
 -spec new(ne_binary(), knm_number_options:options()) -> knm_phone_number().
 new(DID, Options) ->
-    NormalizedNum = knm_converters:normalize(DID),
     {'ok', PhoneNumber} =
         setters(new(),
-                [{fun set_number/2, NormalizedNum}
-                ,{fun set_number_db/2, knm_converters:to_db(NormalizedNum)}
-                ,{fun set_assign_to/2, knm_number_options:assign_to(Options)}
-                ,{fun set_state/2, knm_number_options:state(Options)}
-                ,{fun set_module_name/2, knm_number_options:module_name(Options)}
-                ,{fun set_auth_by/2, knm_number_options:auth_by(Options)}
-                ,{fun set_dry_run/2, knm_number_options:dry_run(Options)}
-                ,{fun set_batch_run/2, knm_number_options:batch_run(Options)}
-                ,{fun set_ported_in/2, knm_number_options:ported_in(Options)}
-                ,{fun update_doc/2, knm_number_options:public_fields(Options)}
+                [{fun set_number/2, knm_converters:normalize(DID)}
+                 | knm_number_options:to_phone_number_setters(Options)
                 ]),
     PhoneNumber.
 
@@ -318,11 +309,9 @@ from_json(JObj) ->
                 lists:foldl(fun (FeatureKey, Acc) -> kz_json:set_value(FeatureKey, kz_json:new(), Acc) end, kz_json:new(), FeaturesList);
             FeaturesJObj -> FeaturesJObj
         end,
-    NormalizedNum = knm_converters:normalize(kz_doc:id(JObj)),
     {'ok', PhoneNumber} =
         setters(new(),
-                [{fun set_number/2, NormalizedNum}
-                ,{fun set_number_db/2, knm_converters:to_db(NormalizedNum)}
+                [{fun set_number/2, knm_converters:normalize(kz_doc:id(JObj))}
                 ,{fun set_assigned_to/2, kz_json:get_value(?PVT_ASSIGNED_TO, JObj)}
                 ,{fun set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
                 ,{fun set_used_by/2, kz_json:get_value(?PVT_USED_BY, JObj)}
@@ -428,8 +417,10 @@ setters_fold_apply(Fun, Args) ->
 number(#knm_phone_number{number=Num}) -> Num.
 
 -spec set_number(knm_phone_number(), ne_binary()) -> knm_phone_number().
-set_number(N, Number=?NE_BINARY) ->
-    N#knm_phone_number{number=Number}.
+set_number(N, <<"+",_:8,_/binary>>=NormalizedNum) ->
+    N#knm_phone_number{number = NormalizedNum
+                      ,number_db = knm_converters:to_db(NormalizedNum)
+                      }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -439,10 +430,6 @@ set_number(N, Number=?NE_BINARY) ->
 -spec number_db(knm_phone_number()) -> ne_binary().
 number_db(#knm_phone_number{number_db=NumberDb}) ->
     NumberDb.
-
--spec set_number_db(knm_phone_number(), ne_binary()) -> knm_phone_number().
-set_number_db(N, NumberDb=?NE_BINARY) ->
-    N#knm_phone_number{number_db=NumberDb}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -512,8 +499,8 @@ set_used_by(N, UsedBy=?NE_BINARY) ->
 features(#knm_phone_number{features=Features}) -> Features.
 
 -spec features_list(knm_phone_number()) -> ne_binaries().
-features_list(#knm_phone_number{features=Features}) ->
-    sets:to_list(sets:from_list(kz_json:get_keys(Features))).
+features_list(N) ->
+    sets:to_list(sets:from_list(kz_json:get_keys(features(N)))).
 
 -spec set_features(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 set_features(N, Features=?JSON_WRAPPER(_)) ->
@@ -544,7 +531,17 @@ set_feature(N, Feature=?NE_BINARY, Data) ->
 state(#knm_phone_number{state=State}) -> State.
 
 -spec set_state(knm_phone_number(), ne_binary()) -> knm_phone_number().
-set_state(N, State=?NE_BINARY) ->
+set_state(N, State)
+  when State =:= ?NUMBER_STATE_PORT_IN;
+       State =:= ?NUMBER_STATE_PORT_OUT;
+       State =:= ?NUMBER_STATE_DISCOVERY;
+       State =:= ?NUMBER_STATE_IN_SERVICE;
+       State =:= ?NUMBER_STATE_RELEASED;
+       State =:= ?NUMBER_STATE_RESERVED;
+       State =:= ?NUMBER_STATE_AVAILABLE;
+       State =:= ?NUMBER_STATE_DISCONNECTED;
+       State =:= ?NUMBER_STATE_DELETED
+       ->
     N#knm_phone_number{state=State}.
 
 %%--------------------------------------------------------------------
@@ -557,7 +554,8 @@ reserve_history(#knm_phone_number{reserve_history=History}) -> History.
 
 -spec set_reserve_history(knm_phone_number(), ne_binaries()) -> knm_phone_number().
 set_reserve_history(N, History) when is_list(History) ->
-    N#knm_phone_number{reserve_history=History}.
+    Cons = fun (A, PN) -> add_reserve_history(PN, A) end,
+    lists:foldr(Cons, N#knm_phone_number{reserve_history=[]}, History).
 
 -spec add_reserve_history(knm_phone_number(), ne_binary()) -> knm_phone_number().
 add_reserve_history(#knm_phone_number{reserve_history=[AccountId|_]}=N
@@ -653,7 +651,9 @@ auth_by(#knm_phone_number{auth_by=AuthBy}) -> AuthBy.
 -spec set_auth_by(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_auth_by(N, AuthBy='undefined') ->
     N#knm_phone_number{auth_by=AuthBy};
-set_auth_by(N, AuthBy=?NE_BINARY) ->
+set_auth_by(N, AuthBy=?KNM_DEFAULT_AUTH_BY) ->
+    N#knm_phone_number{auth_by=AuthBy};
+set_auth_by(N, ?MATCH_ACCOUNT_RAW(AuthBy)) ->
     N#knm_phone_number{auth_by=AuthBy}.
 
 %%--------------------------------------------------------------------
