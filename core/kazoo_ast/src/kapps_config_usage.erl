@@ -60,7 +60,7 @@ process_app(App, Schemas) ->
         {'ok', Modules} ->
             lists:foldl(fun module_to_schema/2, Schemas, Modules);
         'undefined' ->
-            {'ok', _} = application:ensure_all_started(App),
+            'ok' = application:load(App),
             process_app(App, Schemas)
     end.
 

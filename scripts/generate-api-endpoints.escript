@@ -10,13 +10,5 @@
 -export([main/1]).
 
 main(_) ->
-    {'ok', CWD} = file:get_cwd(),
-    Root = filename:dirname(CWD),
-    CorePAs = [filename:join([Root, "core", "kazoo", "ebin"])
-              ,filename:join([Root, "core", "kazoo_ast", "ebin"])
-              ],
-
-    'ok' = code:add_pathsa(CorePAs),
-
     cb_api_endpoints:to_ref_doc(),
     cb_api_endpoints:to_swagger_json().

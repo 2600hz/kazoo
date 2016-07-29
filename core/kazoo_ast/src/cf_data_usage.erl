@@ -146,6 +146,7 @@ guess_type(_F, _D) ->
     'undefined'.
 
 process() ->
+    _ = application:load('callflow'),
     {'ok', Modules} = application:get_key('callflow', 'modules'),
 
     io:format("processing "),
