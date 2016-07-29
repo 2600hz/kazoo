@@ -88,16 +88,11 @@
         ]).
 
 -export([federated_event/3]).
--export([handle_event/4
-        ,handle_return/4
-        ,client_handle_event/6
-        ,delayed_cast/3
+-export([delayed_cast/3
         ]).
 -export([distribute_event/3]).
 
--include_lib("kazoo/include/kz_amqp.hrl").
--include_lib("kazoo/include/kz_types.hrl").
--include_lib("kazoo/include/kz_log.hrl").
+-include("listener_types.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -129,31 +124,6 @@
 
 -type state() :: #state{}.
 
--type handle_event_return() :: {'reply', kz_proplist()} | 'ignore'.
-
--type binding_module() :: atom() | ne_binary().
--type binding() :: {binding_module(), kz_proplist()}. %% {kapi_module, options}
--type bindings() :: [binding()].
-
--type responder_callback_mod() :: atom() | {atom(), atom()}.
--type responder_callback_mapping() :: {ne_binary(), ne_binary()}.
--type responder_callback_mappings() :: [responder_callback_mapping()].
--type responder_start_params() :: [{responder_callback_mod(), responder_callback_mappings()}].
-
-%% ExchangeName, ExchangeType[, ExchangeOptions]
--type declare_exchange() :: {ne_binary(), ne_binary()} |
-                            {ne_binary(), ne_binary(), kz_proplist()}.
--type declare_exchanges() :: [declare_exchange()].
-
--type start_params() :: [{'responders', responder_start_params()} |
-                         {'bindings', bindings()} |
-                         {'queue_name', binary()} |
-                         {'queue_options', kz_proplist()} |
-                         {'consume_options', kz_proplist()} |
-                         {'basic_qos', non_neg_integer()} |
-                         {'broker' | 'broker_tag', ne_binary()} |
-                         {'declare_exchanges', declare_exchanges()}
-                        ].
 
 -export_type([handle_event_return/0
              ,binding/0
@@ -285,17 +255,17 @@ enter_loop(Module, Options, ModuleState, ServerName, Timeout) ->
     {'ok', MyState} = init_state([Module, Options, ModuleState]),
     gen_server:enter_loop(?MODULE, [], MyState, ServerName, Timeout).
 
--spec add_responder(server_ref(), responder_callback_mod(), responder_callback_mapping() | responder_callback_mappings()) -> 'ok'.
+-spec add_responder(server_ref(), responder_callback(), responder_callback_mapping() | responder_callback_mappings()) -> 'ok'.
 add_responder(Srv, Responder, Key) when not is_list(Key) ->
     add_responder(Srv, Responder, [Key]);
 add_responder(Srv, Responder, [{_,_}|_] = Keys) ->
     gen_server:cast(Srv, {'add_responder', Responder, Keys}).
 
--spec rm_responder(server_ref(), responder_callback_mod()) -> 'ok'.
+-spec rm_responder(server_ref(), responder_callback()) -> 'ok'.
 %% empty list removes all
 rm_responder(Srv, Responder) -> rm_responder(Srv, Responder, []).
 
--spec rm_responder(server_ref(), responder_callback_mod(), responder_callback_mappings()) -> 'ok'.
+-spec rm_responder(server_ref(), responder_callback(), responder_callback_mappings()) -> 'ok'.
 rm_responder(Srv, Responder, {_,_}=Key) ->
     rm_responder(Srv, Responder, [Key]);
 rm_responder(Srv, Responder, Keys) ->
@@ -799,22 +769,29 @@ distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
                                                   ,consumer_key=ConsumerKey
                                                   }=State) ->
     Key = kz_util:get_event_type(JObj),
-    _ = [proc_lib:spawn(?MODULE, 'client_handle_event', [JObj
-                                                        ,ConsumerKey
-                                                        ,Module, Fun
-                                                        ,Props
-                                                        ,BasicDeliver
-                                                        ])
-         || {Evt, {Module, Fun}} <- Responders,
+    _ = [kz_util:spawn(fun client_handle_event/5, [JObj
+                                                  ,ConsumerKey
+                                                  ,Callback
+                                                  ,Props
+                                                  ,BasicDeliver
+                                                  ])
+         || {Evt, Callback} <- Responders,
             maybe_event_matches_key(Key, Evt)
         ],
     State.
 
--spec client_handle_event(kz_json:object(), kz_amqp_channel:consumer_pid(), atom(), atom(), kz_proplist(), basic_deliver()) -> any().
-client_handle_event(JObj, ConsumerKey, Module, Fun, Props, BasicDeliver) ->
+-spec client_handle_event(kz_json:object(), kz_amqp_channel:consumer_pid(), responder_callback(), kz_proplist(), basic_deliver()) -> any().
+client_handle_event(JObj, ConsumerKey, Callback, Props, BasicDeliver) ->
     _ = kz_util:put_callid(JObj),
     _ = kz_amqp_channel:consumer_pid(ConsumerKey),
+    client_handle_event(JObj, Callback, Props, BasicDeliver).
 
+-spec client_handle_event(kz_json:object(), responder_callback(), kz_proplist(), basic_deliver()) -> any().
+client_handle_event(JObj, Fun, Props, BasicDeliver)
+  when is_function(Fun, 3) -> Fun(JObj, Props, BasicDeliver);
+client_handle_event(JObj, Fun, Props, _BasicDeliver)
+  when is_function(Fun, 2) -> Fun(JObj, Props);
+client_handle_event(JObj, {Module, Fun}, Props, BasicDeliver) ->
     case erlang:function_exported(Module, Fun, 3) of
         'true' -> Module:Fun(JObj, Props, BasicDeliver);
         'false' -> Module:Fun(JObj, Props)
