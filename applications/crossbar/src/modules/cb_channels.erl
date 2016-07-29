@@ -204,6 +204,8 @@ maybe_execute_command(Context, CallId, <<"break">>) ->
     maybe_break(Context, CallId);
 maybe_execute_command(Context, CallId, <<"callflow">>) ->
     maybe_callflow(Context, CallId);
+maybe_execute_command(Context, CallId, <<"intercept">>) ->
+    maybe_intercept(Context, CallId);
 maybe_execute_command(Context, _CallId, _Command) ->
     lager:debug("unknown command: ~s", [_Command]),
     crossbar_util:response_invalid_data(cb_context:doc(Context), Context).
@@ -472,3 +474,35 @@ maybe_callflow(Context, CallId) ->
     lager:debug("attempting to running callflow ~s on ~s", [CallflowId, CallId]),
     kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
     crossbar_util:response_202(<<"callflow initiated">>, Context).
+
+-spec maybe_intercept(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_intercept(Context, CallId) ->
+    TargetType = cb_context:req_value(Context, <<"target_type">>),
+    TargetId = cb_context:req_value(Context, <<"target_id">>),
+    maybe_intercept(Context, CallId, TargetType, TargetId).
+
+-spec maybe_intercept(cb_context:context(), ne_binary(), api_binary(), api_binary()) -> cb_context:context().
+maybe_intercept(Context, _CallId, 'undefined', _TargetId) ->
+    cb_context:add_validation_error(<<"target_type">>
+                                   ,<<"required">>
+                                   ,kz_json:from_list([{<<"message">>, <<"No target type specified">>}])
+                                   ,Context
+                                   );
+maybe_intercept(Context, _CallId, _TargetType, 'undefined') ->
+    cb_context:add_validation_error(<<"target_id">>
+                                   ,<<"required">>
+                                   ,kz_json:from_list([{<<"message">>, <<"No target id specified">>}])
+                                   ,Context
+                                   );
+maybe_intercept(Context, CallId, TargetType, TargetId) ->
+    API = [{<<"Action">>, <<"intercept">>}
+          ,{<<"Call-ID">>, CallId}
+          ,{<<"Data">>, kz_json:from_list([{<<"target_type">>, TargetType}
+                                          ,{<<"target_id">>, TargetId}
+                                          ])}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+
+    lager:debug("attempting to move ~s to ~s(~s)", [CallId, TargetId, TargetType]),
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
+    crossbar_util:response_202(<<"intercept initiated">>, Context).
