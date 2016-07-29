@@ -25,6 +25,7 @@
         ,password_recovery/1, password_recovery_v/1
         ,new_account/1, new_account_v/1
         ,new_user/1, new_user_v/1
+        ,port_unconfirmed/1, port_unconfirmed_v/1
         ,port_request/1, port_request_v/1
         ,port_pending/1, port_pending_v/1
         ,port_scheduled/1, port_scheduled_v/1
@@ -61,6 +62,7 @@
         ,publish_password_recovery/1, publish_password_recovery/2
         ,publish_new_account/1, publish_new_account/2
         ,publish_new_user/1, publish_new_user/2
+        ,publish_port_unconfirmed/1, publish_port_unconfirmed/2
         ,publish_port_request/1, publish_port_request/2
         ,publish_port_pending/1, publish_port_pending/2
         ,publish_port_scheduled/1, publish_port_scheduled/2
@@ -108,6 +110,7 @@
 -define(NOTIFY_NEW_ACCOUNT, <<"notifications.account.new">>).
 -define(NOTIFY_NEW_USER, <<"notifications.user.new">>).
 %% -define(NOTIFY_DELETE_ACCOUNT, <<"notifications.account.delete">>).
+-define(NOTIFY_PORT_UNCONFIRMED, <<"notifications.number.port_unconfirmed">>).
 -define(NOTIFY_PORT_REQUEST, <<"notifications.number.port">>).
 -define(NOTIFY_PORT_PENDING, <<"notifications.number.port_pending">>).
 -define(NOTIFY_PORT_SCHEDULED, <<"notifications.number.port_scheduled">>).
@@ -293,6 +296,18 @@
                          ,{<<"Event-Name">>, <<"new_user">>}
                          ]).
 -define(NEW_USER_TYPES, []).
+
+%% Notify Port Unconfirmed
+-define(PORT_UNCONFIRMED_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_PORT_UNCONFIRMED_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
+                                           ,<<"Number-State">>, <<"Local-Number">>
+                                           ,<<"Number">>, <<"Port">>, <<"Version">>
+                                                | ?DEFAULT_OPTIONAL_HEADERS
+                                           ]).
+-define(PORT_UNCONFIRMED_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                                 ,{<<"Event-Name">>, <<"port_unconfirmed">>}
+                                 ]).
+-define(PORT_UNCONFIRMED_TYPES, []).
 
 %% Notify Port Request
 -define(PORT_REQUEST_HEADERS, [<<"Account-ID">>]).
@@ -528,6 +543,8 @@ headers(<<"cnam_request">>) ->
     ?CNAM_REQUEST_HEADERS ++ ?OPTIONAL_CNAM_REQUEST_HEADERS;
 headers(<<"topup">>) ->
     ?TOPUP_HEADERS ++ ?OPTIONAL_TOPUP_HEADERS;
+headers(<<"port_unconfirmed">>) ->
+    ?PORT_UNCONFIRMED_HEADERS ++ ?OPTIONAL_PORT_UNCONFIRMED_HEADERS;
 headers(<<"port_request">>) ->
     ?PORT_REQUEST_HEADERS ++ ?OPTIONAL_PORT_REQUEST_HEADERS;
 headers(<<"port_pending">>) ->
@@ -774,6 +791,23 @@ new_user(JObj) -> new_user(kz_json:to_proplist(JObj)).
 new_user_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?NEW_USER_HEADERS, ?NEW_USER_VALUES, ?NEW_USER_TYPES);
 new_user_v(JObj) -> new_user_v(kz_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Port unconfirmed notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+port_unconfirmed(Prop) when is_list(Prop) ->
+    case port_unconfirmed_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?PORT_UNCONFIRMED_HEADERS, ?OPTIONAL_PORT_UNCONFIRMED_HEADERS);
+        'false' -> {'error', "Proplist failed validation for port_unconfirmed"}
+    end;
+port_unconfirmed(JObj) -> port_unconfirmed(kz_json:to_proplist(JObj)).
+
+-spec port_unconfirmed_v(api_terms()) -> boolean().
+port_unconfirmed_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?PORT_UNCONFIRMED_HEADERS, ?PORT_UNCONFIRMED_VALUES, ?PORT_UNCONFIRMED_TYPES);
+port_unconfirmed_v(JObj) -> port_unconfirmed_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Port request notification - see wiki
@@ -1114,6 +1148,7 @@ skel_v(JObj) -> skel_v(kz_json:to_proplist(JObj)).
                        'first_occurrence' |
                        'new_account' |
                        'new_user' |
+                       'port_unconfirmed' |
                        'port_request' |
                        'port_pending' |
                        'port_scheduled' |
@@ -1189,6 +1224,9 @@ bind_to_q(Q, ['new_account'|T]) ->
     bind_to_q(Q, T);
 bind_to_q(Q, ['new_user'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_NEW_USER),
+    bind_to_q(Q, T);
+bind_to_q(Q, ['port_unconfirmed'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_UNCONFIRMED),
     bind_to_q(Q, T);
 bind_to_q(Q, ['port_request'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_REQUEST),
@@ -1297,6 +1335,9 @@ unbind_q_from(Q, ['new_account'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['new_user'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_NEW_USER),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['port_unconfirmed'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_UNCONFIRMED),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['port_request'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_REQUEST),
@@ -1454,6 +1495,13 @@ publish_new_user(JObj) -> publish_new_user(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_new_user(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?NEW_USER_VALUES, fun ?MODULE:new_user/1),
     amqp_util:notifications_publish(?NOTIFY_NEW_USER, Payload, ContentType).
+
+-spec publish_port_unconfirmed(api_terms()) -> 'ok'.
+-spec publish_port_unconfirmed(api_terms(), ne_binary()) -> 'ok'.
+publish_port_unconfirmed(JObj) -> publish_port_unconfirmed(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_port_unconfirmed(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_UNCONFIRMED_VALUES, fun ?MODULE:port_unconfirmed/1),
+    amqp_util:notifications_publish(?NOTIFY_PORT_UNCONFIRMED, Payload, ContentType).
 
 -spec publish_port_request(api_terms()) -> 'ok'.
 -spec publish_port_request(api_terms(), ne_binary()) -> 'ok'.

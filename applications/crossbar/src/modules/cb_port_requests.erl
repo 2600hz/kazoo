@@ -28,6 +28,8 @@
         ,acceptable_content_types/0
         ]).
 
+-export([unconfirmed_port_reminder/1]).
+
 -include("crossbar.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 -include_lib("kazoo_number_manager/include/knm_port_request.hrl").
@@ -72,6 +74,7 @@ init() ->
     knm_port_request:init(),
 
     Bindings = [{crossbar_cleanup:binding_system(), 'cleanup'}
+               ,{crossbar_cleanup:binding_account(), 'unconfirmed_port_reminder'}
                ,{<<"*.allowed_methods.port_requests">>, 'allowed_methods'}
                ,{<<"*.resource_exists.port_requests">>, 'resource_exists'}
                ,{<<"*.content_types_provided.port_requests">>, 'content_types_provided'}
@@ -126,6 +129,27 @@ should_delete_port_request([_Modified, ?PORT_SCHEDULED]) ->
     'false';
 should_delete_port_request(_) ->
     'true'.
+
+-spec unconfirmed_port_reminder(ne_binary()) -> 'ok'.
+unconfirmed_port_reminder(AccountDb) ->
+    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    ViewOpts = [{'startkey', [AccountId, ?PORT_UNCONFIRMED, kz_json:new()]}
+               ,{'endkey', [AccountId, ?PORT_UNCONFIRMED]}
+               ,'descending'
+               ],
+    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?LISTING_BY_STATE, ViewOpts) of
+        {'ok', []} -> lager:debug("no unfinished port requests");
+        {'ok', Unfinished} -> unconfirmed_port_reminder(AccountId, Unfinished);
+        {'error', _E} -> lager:debug("failed to query old port requests: ~p", [_E])
+    end.
+
+-spec unconfirmed_port_reminder(ne_binary(), kz_json:objects()) -> 'ok'.
+unconfirmed_port_reminder(AccountId, UnfinishedPorts) ->
+    lager:debug("found ~p unfinished port requests, sending notifications", [length(UnfinishedPorts)]),
+    _ = [send_port_unconfirmed_notification(AccountId, kz_doc:id(Port))
+         || Port <- UnfinishedPorts
+        ],
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1210,6 +1234,8 @@ has_new_comment(OldComments, NewComments) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec send_port_notification(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+send_port_notification(Context, Id, ?PORT_UNCONFIRMED=State) ->
+    send_port_notification(Context, Id, State, fun send_port_unconfirmed_notification/2);
 send_port_notification(Context, Id, ?PORT_SUBMITTED=State) ->
     send_port_notification(Context, Id, State, fun send_port_request_notification/2);
 send_port_notification(Context, Id, ?PORT_PENDING=State) ->
@@ -1268,6 +1294,27 @@ send_port_comment_notification(Context, Id) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(Req, fun kapi_notifications:publish_port_comment/1).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec send_port_unconfirmed_notification(ne_binary() | cb_context:context(), ne_binary()) -> 'ok'.
+send_port_unconfirmed_notification(?NE_BINARY = AccountId, Id) ->
+    Req = [{<<"Account-ID">>, AccountId}
+          ,{<<"Port-Request-ID">>, Id}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kz_amqp_worker:cast(Req, fun kapi_notifications:publish_port_unconfirmed/1);
+send_port_unconfirmed_notification(Context, Id) ->
+    Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
+          ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
+          ,{<<"Port-Request-ID">>, Id}
+          ,{<<"Version">>, cb_context:api_version(Context)}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kz_amqp_worker:cast(Req, fun kapi_notifications:publish_port_unconfirmed/1).
 
 %%--------------------------------------------------------------------
 %% @private

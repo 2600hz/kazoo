@@ -80,6 +80,9 @@
                     ,{{'teletype_first_occurrence', 'first_occurrence'}
                      ,[{<<"notification">>, <<"first_occurrence">>}]
                      }
+                    ,{'teletype_port_unconfirmed'
+                     ,[{<<"notification">>, <<"port_unconfirmed">>}]
+                     }
                     ,{'teletype_port_request'
                      ,[{<<"notification">>, <<"port_request">>}]
                      }
@@ -134,6 +137,7 @@
                      ,'port_rejected'
                      ,'port_request'
                      ,'port_scheduled'
+                     ,'port_unconfirmed'
                      ,'system_alerts'
                      ,'topup'
                      ,'transaction'
