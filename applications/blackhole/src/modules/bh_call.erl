@@ -41,10 +41,11 @@ is_account_event(Context, EventJObj) ->
 event_name(JObj) ->
     kz_json:get_value(<<"Event-Name">>, JObj).
 
--spec subscribe(bh_context:context(), ne_binary()) -> 'ok'.
+-spec subscribe(bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
 subscribe(Context, <<"call.*.*">>) ->
     AccountId = bh_context:account_id(Context),
-    add_call_binding(AccountId, ?LISTEN_TO);
+    add_call_binding(AccountId, ?LISTEN_TO),
+    {'ok', Context};
 subscribe(Context, <<"call.", Binding/binary>>) ->
     case binary:split(Binding, <<".">>, ['global']) of
         [Event, <<"*">>] ->
@@ -52,14 +53,17 @@ subscribe(Context, <<"call.", Binding/binary>>) ->
             add_call_binding(AccountId, [Event]);
         _ ->
             blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding)
-    end;
+    end,
+    {'ok', Context};
 subscribe(Context, Binding) ->
-    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding).
+    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
+    {'ok', Context}.
 
--spec unsubscribe(bh_context:context(), ne_binary()) -> 'ok'.
+-spec unsubscribe(bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
 unsubscribe(Context, <<"call.*.*">>) ->
     AccountId = bh_context:account_id(Context),
-    rm_call_binding(AccountId, ?LISTEN_TO);
+    rm_call_binding(AccountId, ?LISTEN_TO),
+    {'ok', Context};
 unsubscribe(Context, <<"call.", Binding/binary>>) ->
     case binary:split(Binding, <<".">>, ['global']) of
         [Event, <<"*">>] ->
@@ -67,9 +71,11 @@ unsubscribe(Context, <<"call.", Binding/binary>>) ->
             rm_call_binding(AccountId, [Event]);
         _ ->
             blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding)
-    end;
+    end,
+    {'ok', Context};
 unsubscribe(Context, Binding) ->
-    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding).
+    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
+    {'ok', Context}.
 
 -spec add_call_binding(ne_binary(), [ne_binary()]) -> ok.
 add_call_binding(_AccountId, []) -> ok;
