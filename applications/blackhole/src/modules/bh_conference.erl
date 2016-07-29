@@ -7,6 +7,7 @@
 %%%   James Aimonetti
 %%%   Peter Defebvre
 %%%   Ben Wann
+%%%   Roman Galeev
 %%%-------------------------------------------------------------------
 -module(bh_conference).
 
@@ -17,11 +18,11 @@
 -include("blackhole.hrl").
 
 -spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
-handle_event(Context, EventJObj) ->
+handle_event(#bh_context{binding=Binding}=Context, EventJObj) ->
     lager:debug("handling conference event ~s", [get_response_key(EventJObj)]),
     blackhole_data_emitter:emit(bh_context:websocket_pid(Context)
                                ,get_response_key(EventJObj)
-                               ,kz_json:normalize_jobj(EventJObj)
+                               ,kz_json:normalize_jobj(kz_json:set_value(<<"Binding">>, Binding, EventJObj))
                                ).
 
 -spec subscribe(ne_binary(), bh_context:context()) -> {'ok', bh_context:context()}.
@@ -39,8 +40,8 @@ subscribe(Context, <<"conference.event.*.*">> = Binding) ->
 subscribe(Context, <<"conference.event.*.", _CallId/binary>> = Binding) ->
     blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
     {'ok', Context};
-subscribe(Context, <<"conference.event.", Binding/binary>>) ->
-    case binary:split(Binding, <<".">>, ['global']) of
+subscribe(Context, <<"conference.event.", Args/binary>> = Binding) ->
+    case binary:split(Args, <<".">>, ['global']) of
         [ConfId, CallId] ->
             BindKey = kz_util:join_binary([<<"conference.event">>, ConfId, CallId], <<".">>),
             blackhole_listener:add_binding('conference', event_binding_options(ConfId, CallId)),
