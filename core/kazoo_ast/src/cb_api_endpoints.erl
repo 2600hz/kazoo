@@ -308,7 +308,8 @@ to_swagger_paths(Paths, BasePaths) ->
     Endpoints =
         [{[Path,Method], kz_json:get_value([Path,Method], BasePaths, kz_json:new())}
          || {Path,AllowedMethods} <- kz_json:to_proplist(Paths),
-            Method <- kz_json:get_list_value(<<"allowed_methods">>, AllowedMethods, [])
+            Method <- kz_json:get_list_value(<<"allowed_methods">>, AllowedMethods, []),
+            Method =/= <<"nil">>
         ],
     Base = kz_json:set_values(Endpoints, kz_json:new()),
     kz_json:foldl(fun to_swagger_path/3, Base, Paths).
