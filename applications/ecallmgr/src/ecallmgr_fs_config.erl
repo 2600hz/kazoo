@@ -394,7 +394,7 @@ fix_conference_profile(Name, Profile) ->
 
 -spec maybe_set_verbose_events(kz_json:object()) -> kz_json:object().
 maybe_set_verbose_events(Profile) ->
-    case kz_util:is_true(ecallmgr_config:get_boolean(<<"force_conference_verbose_events">>)) of
+    case ecallmgr_config:is_true(<<"force_conference_verbose_events">>) of
         'true' -> kz_json:set_value(<<"verbose-events">>, <<"true">>, Profile);
         'false' -> Profile
     end.
