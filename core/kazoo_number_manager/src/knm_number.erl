@@ -16,7 +16,7 @@
         ,move/2, move/3
         ,update/2, update/3
         ,release/1, release/2
-        ,delete/1, delete/2
+        ,delete/2
         ,assign_to_app/2, assign_to_app/3
         ,lookup_account/1
         ,save/1
@@ -522,13 +522,8 @@ delete_phone_number(Number) ->
 %% Sounds too harsh for you? you are looking for release/1,2.
 %% @end
 %%--------------------------------------------------------------------
--spec delete(ne_binary()) ->
-                    knm_number_return().
 -spec delete(ne_binary(), knm_number_options:options()) ->
                     knm_number_return().
-delete(Num) ->
-    delete(Num, knm_number_options:default()).
-
 delete(Num, Options) ->
     case get(Num, Options) of
         {'error', _R}=E -> E;
