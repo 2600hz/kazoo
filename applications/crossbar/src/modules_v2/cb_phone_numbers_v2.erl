@@ -383,7 +383,8 @@ delete(Context, ?COLLECTION) ->
 delete(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    case knm_number:release(Number, Options) of
+    Releaser = pick_release_or_delete(Options),
+    case knm_number:Releaser(Number, Options) of
         {'error', Data}=Error ->
             case kz_json:is_json_object(Data)
                 andalso knm_errors:error(Data) == <<"invalid_state_transition">>
@@ -868,12 +869,22 @@ numbers_action(Context, ?HTTP_POST, Numbers) ->
 numbers_action(Context, ?HTTP_DELETE, Numbers) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    knm_numbers:release(Numbers, Options).
+    Releaser = pick_release_or_delete(Options),
+    knm_numbers:Releaser(Numbers, Options).
 
 -spec fold_dry_runs([kz_services:services(), ...]) -> kz_json:object().
 fold_dry_runs(ServicesList) ->
     F = fun(Services, _Acc) -> kz_services:dry_run(Services) end,
     lists:foldl(F, [], ServicesList).
+
+%% @private
+-spec pick_release_or_delete(knm_number_options:options()) -> 'release' | 'delete'.
+pick_release_or_delete(Options) ->
+    AuthBy = knm_number_options:auth_by(Options),
+    case kz_util:is_system_admin(AuthBy) of
+        'false' -> 'release';
+        'true' -> 'delete'
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
