@@ -794,6 +794,7 @@ relay_event(UUID, Node, Props) ->
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, Payload),
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)}, Payload).
 
+-spec maybe_get_ccv(ne_binary()) -> kz_json:object().
 maybe_get_ccv(CallId) ->
     case ecallmgr_fs_conferences:participant_get(CallId) of
         #participant{call_info=CCV} -> CCV;
