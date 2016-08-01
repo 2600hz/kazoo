@@ -315,7 +315,10 @@ import(Props, AccountIds
                     'undefined' -> props:get_value('account_id', Props);
                     _ -> AccountId0
                 end,
-    ModuleName = case Carrier of
+    ModuleName = case kz_util:is_system_admin(props:get_value('account_id', Props))
+                     andalso Carrier
+                 of
+                     'false' -> ?CARRIER_LOCAL;
                      'undefined' -> ?CARRIER_LOCAL;
                      _ -> Carrier
                  end,
