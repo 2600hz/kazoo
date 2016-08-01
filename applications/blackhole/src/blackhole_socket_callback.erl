@@ -200,7 +200,7 @@ unsubscribe_for_account(Context, _JObj, AccountId, Binding, Module) ->
     _ = blackhole_tracking:update_socket(Context1),
     lager:debug("remove binding for account_id: ~p", [AccountId]),
     try Module:unsubscribe(Context1, Binding) of
-        Result -> {'ok', Result}
+        {'ok', Result} -> {'ok', Result}
     catch
         Error:_ ->
             blackhole_util:send_error_message(Context1, Module, Error),
