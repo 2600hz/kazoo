@@ -369,7 +369,7 @@ compare_node_gateways(Running, New) ->
 kill_gateway(GatewayName, Node) ->
     Args = ["profile "
            ,?DEFAULT_FS_PROFILE
-           ," killgw " 
+           ," killgw "
            ,kz_util:to_list(GatewayName)
            ],
     freeswitch:api(Node, 'sofia', lists:flatten(Args)).
