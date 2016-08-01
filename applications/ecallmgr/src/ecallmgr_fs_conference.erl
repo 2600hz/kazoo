@@ -278,11 +278,9 @@ process_participant_event(<<"deaf-member">>, _, _, CallId) ->
 process_participant_event(<<"undeaf-member">>, _, _, CallId) ->
     _ = ecallmgr_fs_conferences:participant_update(CallId, [{#participant.hear, 'true'}]),
     'continue';
-process_participant_event(<<"hup-member">>, _, _, CallId) ->
-    _ = ecallmgr_fs_conferences:participant_destroy(CallId),
+process_participant_event(<<"hup-member">>, _, _, _CallId) ->
     'continue';
-process_participant_event(<<"kick-member">>, _, _, CallId) ->
-    _ = ecallmgr_fs_conferences:participant_destroy(CallId),
+process_participant_event(<<"kick-member">>, _, _, _CallId) ->
     'continue';
 process_participant_event(<<"mute-detect">>, _, _, _) -> 'stop';
 process_participant_event(<<"dtmf">>, Props, _, _) ->
