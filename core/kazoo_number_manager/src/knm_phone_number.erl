@@ -169,8 +169,24 @@ delete(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
     lager:debug("dry_run-ing btw"),
     PhoneNumber;
 delete(PhoneNumber) ->
-    Routines = [fun delete_number_doc/1
-               ,fun maybe_remove_number_from_account/1
+    Routines = [fun (PN) ->
+                        case delete_number_doc(PN) of
+                            {'ok', _}=Ok -> Ok;
+                            {'error', _R} ->
+                                lager:debug("number doc for ~s not removed: ~p"
+                                           ,[number(PN), _R]),
+                                {'ok', PN}
+                        end
+                end
+               ,fun (PN) ->
+                        case maybe_remove_number_from_account(PN) of
+                            {'ok', _}=Ok -> Ok;
+                            {'error', _R} ->
+                                lager:debug("account doc for ~s not removed: ~p"
+                                           ,[number(PN), _R]),
+                                {'ok', PN}
+                        end
+                end
                ,{fun set_state/2, ?NUMBER_STATE_DELETED}
                ],
     {'ok', NewPhoneNumber} = setters(PhoneNumber, Routines),
