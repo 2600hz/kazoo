@@ -171,9 +171,20 @@ handle_info(?HOOK_EVT(_AccountId, EventType, JObj), State) ->
 handle_info(_Info, State) ->
     {'noreply', State}.
 
+-spec get_account_id(kz_json:object()) -> ne_binary().
+get_account_id(EventJObj) ->
+    kz_json:get_first_defined([<<"Account-ID">>
+                              ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
+                              ], EventJObj).
+
+-spec get_call_id(kz_json:object()) -> ne_binary().
+get_call_id(EventJObj) ->
+    kz_json:get_value(<<"Call-ID">>, EventJObj).
+
+%% forge internal routing_key to restrict subscirber (bh_call) to specific account
 -spec call_routing(ne_binary(), kz_json:object()) -> ne_binary().
 call_routing(EventType, JObj) ->
-    kapi_call:event_routing_key(EventType, kz_json:get_value(<<"Call-ID">>, JObj)).
+    kz_util:join_binary([<<"call">>, get_account_id(JObj), EventType, get_call_id(JObj)], <<".">>).
 
 %%--------------------------------------------------------------------
 %% @private
