@@ -16,6 +16,7 @@
 -export([fix_account_numbers/1
         ,fix_accounts_numbers/1
 
+        ,generate_inum_numbers/3
         ,generate_numbers/3
         ]).
 
@@ -260,6 +261,9 @@ maybe_fix_used_by(#{ old := OldPN
             ?LOG("[~s] phone_numbers doc & number doc used_by are wrong", [Number]),
             add_fixes(['noop'], ToFix)
     end.
+
+generate_numbers(AccountId, StartingNumber, Quantity) ->
+    knm_inum:generate_numbers(AccountId, StartingNumber, Quantity).
 
 generate_numbers(AccountId, StartingNumber, Quantity) ->
     knm_managed:generate_numbers(AccountId, kz_util:to_integer(StartingNumber), kz_util:to_integer(Quantity)).
