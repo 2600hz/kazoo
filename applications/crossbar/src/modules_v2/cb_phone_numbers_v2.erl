@@ -383,7 +383,7 @@ delete(Context, ?COLLECTION) ->
 delete(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    Releaser = pick_release_or_delete(Options),
+    Releaser = pick_release_or_delete(Context, Options),
     case knm_number:Releaser(Number, Options) of
         {'error', Data}=Error ->
             case kz_json:is_json_object(Data)
@@ -869,7 +869,7 @@ numbers_action(Context, ?HTTP_POST, Numbers) ->
 numbers_action(Context, ?HTTP_DELETE, Numbers) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    Releaser = pick_release_or_delete(Options),
+    Releaser = pick_release_or_delete(Context, Options),
     knm_numbers:Releaser(Numbers, Options).
 
 -spec fold_dry_runs([kz_services:services(), ...]) -> kz_json:object().
@@ -878,13 +878,17 @@ fold_dry_runs(ServicesList) ->
     lists:foldl(F, [], ServicesList).
 
 %% @private
--spec pick_release_or_delete(knm_number_options:options()) -> 'release' | 'delete'.
-pick_release_or_delete(Options) ->
+-spec pick_release_or_delete(cb_context:context(), knm_number_options:options()) -> 'release' | 'delete'.
+pick_release_or_delete(Context, Options) ->
     AuthBy = knm_number_options:auth_by(Options),
-    case kz_util:is_system_admin(AuthBy) of
-        'false' -> 'release';
-        'true' -> 'delete'
-    end.
+    Pick = case props:is_true(<<"hard">>, kz_json:to_proplist(cb_context:query_string(Context)))
+               andalso kz_util:is_system_admin(AuthBy)
+           of
+               'false' -> 'release';
+               'true' -> 'delete'
+           end,
+    lager:debug("picked ~s", [Pick]),
+    Pick.
 
 %%--------------------------------------------------------------------
 %% @private

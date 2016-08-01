@@ -200,6 +200,37 @@ curl -v -X DELETE \
 ```
 
 
+#### Remove a number from account (admin only)
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}?hard=yes
+```
+
+##### Response
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "_read_only": {
+            "created": 63627848588,
+            "modified": 63627848588,
+            "state": "deleted"
+        },
+        "id": "{PHONENUMBER}",
+        "state": "deleted"
+    },
+    "request_id": "712f7cd2849197639efb5713f4a493fd",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+
 #### List an account's specific phone number
 
 Show the number's properties along with user-defined properties.
@@ -636,6 +667,58 @@ curl -v -X DELETE \
         }
     },
     "request_id": "144493e2280213db59b81f7377fbff48",
+    "revision": "undefined",
+    "status": "success"
+}
+```
+
+
+#### Remove a list of numbers from account (admin only)
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"numbers": ["{PHONENUMBER1}", "{PHONENUMBER2}", "{PHONENUMBER3}"]}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection?hard=please
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "success": {
+            "{PHONENUMBER1": {
+                "_read_only": {
+                    "created": 63628473168,
+                    "modified": 63628473168,
+                    "state": "deleted"
+                },
+                "id": "{PHONENUMBER1}",
+                "state": "deleted"
+            },
+            "{PHONENUMBER2}": {
+                "_read_only": {
+                    "created": 63628473168,
+                    "modified": 63628473168,
+                    "state": "deleted"
+                },
+                "id": "{PHONENUMBER2}",
+                "state": "deleted"
+            },
+            "{PHONENUMBER3}": {
+                "_read_only": {
+                    "created": 63628473168,
+                    "modified": 63628473168,
+                    "state": "deleted"
+                },
+                "id": "{PHONENUMBER3}",
+                "state": "deleted"
+            }
+        }
+    },
+    "request_id": "34cfbf7737f18b95bd3120822e3947b1",
     "revision": "undefined",
     "status": "success"
 }
