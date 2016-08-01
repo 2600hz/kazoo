@@ -826,19 +826,19 @@ collection_process(Context, Action, Numbers) ->
     lists:foldl(
       fun
           ({Number, {'ok', KNMNumber}}, {ServicesAcc, JObjAcc}) ->
-                       JObj = knm_number:to_public_json(KNMNumber),
-                       {ServicesAcc
-                       ,kz_json:set_value([<<"success">>, Number], JObj, JObjAcc)
-                       };
+              JObj = knm_number:to_public_json(KNMNumber),
+              {ServicesAcc
+              ,kz_json:set_value([<<"success">>, Number], JObj, JObjAcc)
+              };
           ({Number, {'dry_run', Services, ActivationCharges}}, {ServicesAcc, JObjAcc}) ->
-                       {[Services | ServicesAcc]
-                       ,kz_json:set_value([<<"charges">>, Number], ActivationCharges, JObjAcc)
-                       };
+              {[Services | ServicesAcc]
+              ,kz_json:set_value([<<"charges">>, Number], ActivationCharges, JObjAcc)
+              };
           ({Number, {'error', KNMError}}, {ServicesAcc, JObjAcc}) ->
-                       {ServicesAcc
-                       ,kz_json:set_value([<<"error">>, Number], KNMError, JObjAcc)
-                       }
-               end
+              {ServicesAcc
+              ,kz_json:set_value([<<"error">>, Number], KNMError, JObjAcc)
+              }
+      end
                ,{[], kz_json:new()}
                ,numbers_action(Context, Action, Numbers)
      ).
