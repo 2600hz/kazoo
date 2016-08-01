@@ -278,11 +278,9 @@ process_participant_event(<<"deaf-member">>, _, _, CallId) ->
 process_participant_event(<<"undeaf-member">>, _, _, CallId) ->
     _ = ecallmgr_fs_conferences:participant_update(CallId, [{#participant.hear, 'true'}]),
     'continue';
-process_participant_event(<<"hup-member">>, _, _, CallId) ->
-    _ = ecallmgr_fs_conferences:participant_destroy(CallId),
+process_participant_event(<<"hup-member">>, _, _, _CallId) ->
     'continue';
-process_participant_event(<<"kick-member">>, _, _, CallId) ->
-    _ = ecallmgr_fs_conferences:participant_destroy(CallId),
+process_participant_event(<<"kick-member">>, _, _, _CallId) ->
     'continue';
 process_participant_event(<<"mute-detect">>, _, _, _) -> 'stop';
 process_participant_event(<<"dtmf">>, Props, _, _) ->
@@ -796,12 +794,18 @@ relay_event(UUID, Node, Props) ->
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, Payload),
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)}, Payload).
 
+-spec maybe_get_ccv(ne_binary()) -> kz_json:object().
+maybe_get_ccv(CallId) ->
+    case ecallmgr_fs_conferences:participant_get(CallId) of
+        #participant{call_info=CCV} -> CCV;
+        _ -> kz_json:new()
+    end.
+
 -spec publish_participant_event(boolean(), kz_proplist(), ne_binary(), kz_proplist()) -> ok | skip.
 publish_participant_event(true=_Publish, Event, CallId, Props) ->
-    #participant{call_info=CCV} = ecallmgr_fs_conferences:participant_get(CallId),
     Ev = [{<<"Event-Category">>, <<"conference">>}
          ,{<<"Event-Name">>, <<"participant_event">>}
-         ,{<<"Custom-Channel-Vars">>, CCV}
+         ,{<<"Custom-Channel-Vars">>, maybe_get_ccv(CallId)}
           | Event],
     ConferenceId = props:get_value(<<"Conference-Name">>, Props),
     Publisher = fun(P) -> kapi_conference:publish_participant_event(ConferenceId, CallId, P) end,
