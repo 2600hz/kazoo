@@ -356,15 +356,10 @@ reserve(Props, _IterValue, Number, AccountId) ->
 
 -spec delete(kz_proplist(), task_iterator(), ne_binary()) -> task_return().
 delete(Props, _IterValue, Number) ->
-    AuthAccountId = props:get_value('auth_account_id', Props),
-    case kz_util:is_system_admin(AuthAccountId) of
-        'false' -> <<"not a system admin">>;
-        'true' ->
-            Options = [{'auth_by', AuthAccountId}
-                      ,{'batch_run', 'true'}
-                      ],
-            handle_result(knm_number:delete(Number, Options))
-    end.
+    Options = [{'auth_by', props:get_value('auth_account_id', Props)}
+              ,{'batch_run', 'true'}
+              ],
+    handle_result(knm_number:delete(Number, Options)).
 
 %%%===================================================================
 %%% Internal functions

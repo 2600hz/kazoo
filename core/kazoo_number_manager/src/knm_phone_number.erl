@@ -161,6 +161,7 @@ save(PhoneNumber) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% To call only from knm_number:delete/2 (only for sysadmins).
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(knm_phone_number()) -> knm_phone_number().
