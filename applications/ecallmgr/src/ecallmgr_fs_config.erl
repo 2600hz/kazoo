@@ -379,16 +379,35 @@ get_node_gateways(Node) ->
     {Xml, _} = xmerl_scan:string(kz_util:to_list(Response)),
     ecallmgr_fs_xml:sofia_gateways_xml_to_json(Xml).
 
-maybe_fix_conference_tts(Resp) ->
+-spec fix_conference_profile(kz_json:object()) -> kz_json:object().
+fix_conference_profile(Resp) ->
     Ps = kz_json:get_value(<<"Profiles">>, Resp),
-    kz_json:set_value(<<"Profiles">>, kz_json:map(fun maybe_fix_profile_tts/2, Ps), Resp).
+    JObj = kz_json:map(fun fix_conference_profile/2, Ps),
+    kz_json:set_value(<<"Profiles">>, JObj, Resp).
 
-maybe_fix_profile_tts(Name, Profile) ->
-    {Name, case kz_json:get_value(<<"tts-engine">>, Profile) of
-               'undefined' -> Profile;
-               <<"flite">> -> fix_flite_tts(Profile);
-               _ -> Profile
-           end}.
+-spec fix_conference_profile(kz_json:key(), kz_json:object()) -> {kz_json:key(), kz_json:object()}.
+fix_conference_profile(Name, Profile) ->
+    Routines = [fun maybe_fix_profile_tts/1
+                ,fun maybe_set_verbose_events/1
+               ],
+    {Name, kz_json:exec(Routines, Profile)}.
+
+-spec maybe_set_verbose_events(kz_json:object()) -> kz_json:object().
+maybe_set_verbose_events(Profile) ->
+    case kz_util:is_true(ecallmgr_config:get_boolean(<<"force_conference_verbose_events">>)) of
+        'true' -> kz_json:set_value(<<"verbose-events">>, <<"true">>, Profile);
+        'false' -> Profile
+    end.
+
+-spec maybe_fix_profile_tts(kz_json:object()) -> kz_json:object().
+maybe_fix_profile_tts(Profile) ->
+    case kz_json:get_value(<<"tts-engine">>, Profile) of
+        'undefined' -> Profile;
+        <<"flite">> -> fix_flite_tts(Profile);
+        _ -> Profile
+    end.
+
+-spec fix_flite_tts(kz_json:object()) -> kz_json:object().
 fix_flite_tts(Profile) ->
     Voice = kz_json:get_value(<<"tts-voice">>, Profile),
     kz_json:set_value(<<"tts-voice">>, ecallmgr_fs_flite:voice(Voice), Profile).
@@ -412,7 +431,7 @@ maybe_fetch_conference_profile(Node, Id, Profile) ->
                                       )
               of
                   {'ok', Resp} ->
-                      FixedTTS = maybe_fix_conference_tts(Resp),
+                      FixedTTS = fix_conference_profile(Resp),
                       {'ok', Xml} = ecallmgr_fs_xml:conference_resp_xml(FixedTTS),
                       lager:debug("replying with conference profile ~s", [Profile]),
                       Xml;
