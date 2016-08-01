@@ -145,7 +145,7 @@ generate_numbers(AccountId, <<"8835100",_/binary>> = Number, Quantity)
   when byte_size(Number) =:= 15 ->
     generate_numbers(AccountId, kz_util:to_integer(Number), kz_util:to_integer(Quantity));
 generate_numbers(_AccountId, _Number, 0) -> 'ok';
-generate_numbers(AccountId, Number, Quantity)
+generate_numbers(?MATCH_ACCOUNT_RAW(AccountId), Number, Quantity)
   when is_integer(Number),
        is_integer(Quantity),
        Quantity > 0 ->
