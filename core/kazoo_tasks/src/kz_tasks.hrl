@@ -15,6 +15,7 @@
 -define(PVT_AUTH_ACCOUNT_ID, <<"pvt_auth_account_id">>).
 -define(PVT_CATEGORY, <<"pvt_category">>).
 -define(PVT_CREATED, <<"pvt_created">>).
+-define(PVT_FILENAME, <<"pvt_file_name">>).
 -define(PVT_FINISHED_AT, <<"pvt_ended_at">>).
 -define(PVT_MODIFIED, <<"pvt_modified">>).
 -define(PVT_STARTED_AT, <<"pvt_started_at">>).

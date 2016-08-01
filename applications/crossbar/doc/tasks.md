@@ -78,6 +78,7 @@ curl -v -X GET \
             "action": "add",
             "category": "number_management",
             "created": 63632526992,
+            "file_name": "my_input_for_add.csv",
             "id": "e5c92c4b50bcec520d5d7e1ce1b869",
             "status": "pending",
             "total_count": 1

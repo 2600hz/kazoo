@@ -12,7 +12,7 @@
 %%% Public API
 -export([start_link/0]).
 -export([help/0, help/1, help/2]).
--export([new/6
+-export([new/7
         ,start/1
         ,read/1
         ,all/0, all/1
@@ -63,6 +63,7 @@
                  , id => task_id()
                  , category => ne_binary()
                  , action => ne_binary()
+                 , file_name => ne_binary() | 'undefined'
                  , created => gregorian_seconds() %% Time of task creation (PUT)
                  , started => api_seconds() %% Time of task start (PATCH)
                  , finished => api_seconds() %% Time of task finish (> started)
@@ -205,12 +206,12 @@ start(TaskId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_pos_integer(), input()) ->
+-spec new(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_pos_integer(), input(), api_binary()) ->
                  {'ok', kz_json:object()} |
                  help_error() |
                  {'error', kz_json:object()}.
 new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
-   ,Category=?NE_BINARY, Action=?NE_BINARY, TotalRows, Input)
+   ,Category=?NE_BINARY, Action=?NE_BINARY, TotalRows, Input, CSVName)
   when is_integer(TotalRows), TotalRows > 0;
        TotalRows == 'undefined', Input == 'undefined' ->
     case help(Category, Action) of
@@ -226,7 +227,11 @@ new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
                                maps:to_list(Errors))),
                     {'error', JObj};
                 _ ->
-                    Msg = {'new', AuthAccountId, AccountId, Category, Action, TotalRows},
+                    InputName = case kz_util:is_empty(CSVName) of
+                                    'true' -> 'undefined';
+                                    'false' -> kz_util:to_binary(CSVName)
+                                end,
+                    Msg = {'new', AuthAccountId, AccountId, Category, Action, TotalRows, InputName},
                     gen_server:call(?SERVER, Msg)
             end
     end.
@@ -434,7 +439,7 @@ handle_call({'help', Category, Action}, _From, State=#state{apis = Categories}) 
             end
     end;
 
-handle_call({'new', AuthAccountId, AccountId, Category, Action, TotalRows}, _From, State) ->
+handle_call({'new', AuthAccountId, AccountId, Category, Action, TotalRows, InputName}, _From, State) ->
     lager:debug("creating ~s/~s task (~p)", [Category, Action, TotalRows]),
     lager:debug("using auth ~s and account ~s", [AuthAccountId, AccountId]),
     TaskId = ?A_TASK_ID,
@@ -445,6 +450,7 @@ handle_call({'new', AuthAccountId, AccountId, Category, Action, TotalRows}, _Fro
             , id => TaskId
             , category => Category
             , action => Action
+            , file_name => InputName
             , created => kz_util:current_tstamp()
             , started => 'undefined'
             , finished => 'undefined'
@@ -739,6 +745,7 @@ from_json(Doc) ->
      , id => kz_doc:id(Doc)
      , category => kz_json:get_value(?PVT_CATEGORY, Doc)
      , action => kz_json:get_value(?PVT_ACTION, Doc)
+     , file_name => kz_json:get_value(?PVT_FILENAME, Doc)
      , created => kz_doc:created(Doc)
      , started => kz_json:get_integer_value(?PVT_STARTED_AT, Doc)
      , finished => kz_json:get_integer_value(?PVT_FINISHED_AT, Doc)
@@ -754,6 +761,7 @@ to_json(#{id := TaskId
          ,auth_account_id := AuthAccountId
          ,category := Category
          ,action := Action
+         ,file_name := InputName
          ,created := Created
          ,started := Started
          ,finished := Finished
@@ -770,6 +778,7 @@ to_json(#{id := TaskId
         ,{?PVT_AUTH_ACCOUNT_ID, AuthAccountId}
         ,{?PVT_CATEGORY, Category}
         ,{?PVT_ACTION, Action}
+        ,{?PVT_FILENAME, InputName}
         ,{?PVT_CREATED, Created}
         ,{?PVT_MODIFIED, kz_util:current_tstamp()}
         ,{?PVT_STARTED_AT, Started}
