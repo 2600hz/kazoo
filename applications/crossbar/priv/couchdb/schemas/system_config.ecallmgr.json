@@ -192,6 +192,11 @@
             "name": "fetch_timeout",
             "type": "integer"
         },
+        "force_conference_verbose_events": {
+            "description": "",
+            "name": "force_conference_verbose_events",
+            "type": "boolean"
+        },
         "freeswitch_context": {
             "default": "context_2",
             "description": "",
