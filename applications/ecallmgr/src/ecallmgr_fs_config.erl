@@ -369,7 +369,7 @@ compare_node_gateways(Running, New) ->
 kill_gateway(GatewayName, Node) ->
     Args = ["profile "
            ,?DEFAULT_FS_PROFILE
-           ," killgw "
+           ," killgw " 
            ,kz_util:to_list(GatewayName)
            ],
     freeswitch:api(Node, 'sofia', lists:flatten(Args)).
@@ -388,7 +388,7 @@ fix_conference_profile(Resp) ->
 -spec fix_conference_profile(kz_json:key(), kz_json:object()) -> {kz_json:key(), kz_json:object()}.
 fix_conference_profile(Name, Profile) ->
     Routines = [fun maybe_fix_profile_tts/1
-                ,fun maybe_set_verbose_events/1
+               ,fun maybe_set_verbose_events/1
                ],
     {Name, kz_json:exec(Routines, Profile)}.
 
