@@ -196,7 +196,7 @@
             "description": "",
             "name": "force_conference_verbose_events",
             "type": "boolean"
-        },        
+        },
         "freeswitch_context": {
             "default": "context_2",
             "description": "",
