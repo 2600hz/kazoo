@@ -12702,6 +12702,9 @@
         "version": "2.0"
     },
     "paths": {
+        "/v2/about": {
+            "get": {}
+        },
         "/v2/accounts": {
             "put": {}
         },
@@ -12711,9 +12714,6 @@
             "patch": {},
             "post": {},
             "put": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/about": {
-            "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/access_lists": {
             "delete": {},
@@ -14139,8 +14139,8 @@
             }
         },
         "/v2/shared_auth": {
-            "get": {},
-            "put": {}
+            "delete": {},
+            "get": {}
         },
         "/v2/sup/{MODULE}": {
             "get": {}
