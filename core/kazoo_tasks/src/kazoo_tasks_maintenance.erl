@@ -47,7 +47,8 @@ add(AuthAccount, Account, Category, Action, CSVFile) ->
             case kz_csv:count_rows(CSVBin) of
                 0 -> print_error(<<"Empty CSV or some row(s) longer than others or header missing">>);
                 TotalRows ->
-                    new_task(AuthAccountId, AccountId, Category, Action, TotalRows, CSVBin)
+                    CSVName = filename:basename(CSVFile),
+                    new_task(AuthAccountId, AccountId, Category, Action, TotalRows, CSVBin, CSVName)
             end;
         {'error', Reason} ->
             print_error(Reason)
@@ -57,7 +58,15 @@ add(AuthAccount, Account, Category, Action, CSVFile) ->
 add(AuthAccount, Account, Category, Action) ->
     AuthAccountId = kz_util:format_account_id(AuthAccount),
     AccountId = kz_util:format_account_id(Account),
-    case kz_tasks:new(AuthAccountId, AccountId, Category, Action, 'undefined', 'undefined') of
+    case kz_tasks:new(AuthAccountId
+                     ,AccountId
+                     ,Category
+                     ,Action
+                     ,'undefined'
+                     ,'undefined'
+                     ,'undefined'
+                     )
+    of
         {'ok', TaskJObj} -> print_json(TaskJObj);
         {'error', Reason} -> handle_new_task_error(Reason, Category, Action)
     end.
@@ -131,10 +140,10 @@ attachment(TaskId, AName) ->
         {'error', Reason} -> print_error(Reason)
     end.
 
--spec new_task(ne_binary(), ne_binary(), ne_binary(), ne_binary(), pos_integer(), ne_binary()) ->
+-spec new_task(ne_binary(), ne_binary(), ne_binary(), ne_binary(), pos_integer(), ne_binary(), ne_binary()) ->
                       'no_return'.
-new_task(AuthAccountId, AccountId, Category, Action, TotalRows, CSVBin) ->
-    case kz_tasks:new(AuthAccountId, AccountId, Category, Action, TotalRows, CSVBin) of
+new_task(AuthAccountId, AccountId, Category, Action, TotalRows, CSVBin, CSVName) ->
+    case kz_tasks:new(AuthAccountId, AccountId, Category, Action, TotalRows, CSVBin, CSVName) of
         {'ok', TaskJObj} ->
             TaskId = kz_json:get_value([<<"_read_only">>, <<"id">>], TaskJObj),
             case kz_datamgr:put_attachment(?KZ_TASKS_DB

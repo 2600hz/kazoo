@@ -12,6 +12,7 @@
                 "    'auth_account_id': doc.pvt_auth_account_id,",
                 "    'category': doc.pvt_category,",
                 "    'action': doc.pvt_action,",
+                "    'file_name': doc.pvt_file_name,",
                 "    'created': doc.pvt_created,",
                 "    'status': doc.pvt_status,",
                 "    'node': doc.pvt_worker_node,",
