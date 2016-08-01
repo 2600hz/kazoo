@@ -528,14 +528,21 @@ delete(Num, Options) ->
     case get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
-            attempt(fun delete_number/1, [Number])
+            AuthBy = knm_number_options:auth_by(Options),
+            attempt(fun delete_number/2, [Number, AuthBy])
     end.
 
--spec delete_number(knm_number()) -> knm_number_return().
-delete_number(Number) ->
-    N = knm_providers:delete(Number),
-    PN = knm_phone_number:delete(phone_number(N)),
-    wrap_phone_number_return(PN, N).
+-spec delete_number(knm_number(), ne_binary()) -> knm_number_return().
+delete_number(Number, AuthBy) ->
+    case ?KNM_DEFAULT_AUTH_BY =:= AuthBy
+        orelse kz_util:is_system_admin(AuthBy)
+    of
+        'false' -> knm_errors:unauthorized();
+        'true' ->
+            N = knm_providers:delete(Number),
+            PN = knm_phone_number:delete(phone_number(N)),
+            wrap_phone_number_return(PN, N)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
