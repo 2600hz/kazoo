@@ -113,7 +113,7 @@ validate(Context) ->
     validate_system_configs(update_db(Context), cb_context:req_verb(Context)).
 validate(Context, Id) ->
     validate_system_config(update_db(Context), Id, cb_context:req_verb(Context)
-                          ,cb_context:req_value(Context, <<"node">>, <<"default">>)
+                          ,cb_context:req_value(Context, <<"node">>, <<"undefined">>)
                           ).
 validate(Context, Id, Node) ->
     validate_system_config(update_db(Context), Id, cb_context:req_verb(Context), Node).
@@ -228,18 +228,18 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec filter_read(cb_context:context(), ne_binary(), kz_json:object()) -> kz_json:object().
-filter_read(Context, Node, QueryString) ->
-    case kz_json:get_value(<<"all">>, QueryString) of
-        <<"true">>  -> kz_doc:public_fields(cb_context:doc(Context));
-        _False      -> kz_json:get_value(Node, cb_context:doc(Context), kz_json:new())
-    end.
+-spec filter_read(cb_context:context(), ne_binary()) -> kz_json:object().
+filter_read(Context, <<"undefined">>) ->
+    kz_doc:public_fields(cb_context:doc(Context));
+
+filter_read(Context, Node) ->
+    kz_json:get_value(Node, cb_context:doc(Context), kz_json:new()).
 
 -spec read(ne_binary(), cb_context:context(), ne_binary()) ->
                   cb_context:context().
 read(Id, Context, Node) ->
     Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)),
-    Data     = filter_read(Context1, Node, cb_context:query_string(Context1)),
+    Data     = filter_read(Context1, Node),
 
     cb_context:set_resp_data(Context1, Data).
 
