@@ -21,7 +21,9 @@
 start(_Type, _Args) ->
     _ = kapi_self:declare_exchanges(),
     _ = kapi_tasks:declare_exchanges(),
-    tasks_sup:start_link().
+    Ok = tasks_sup:start_link(),
+    _ = tasks_bindings:init(),
+    Ok.
 
 %%--------------------------------------------------------------------
 %% @public
