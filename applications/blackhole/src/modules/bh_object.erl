@@ -80,9 +80,9 @@ unsubscribe(Context, <<"object.", Args/binary>> = Binding) ->
 -spec bind_options(ne_binary(), list()) -> kz_json:object().
 bind_options(AccountId, Keys) ->
     [{'restrict_to', ['doc_updates']}
-     ,{'account_id', AccountId}
-     ,{'keys', Keys}
-     ,'federate'
+    ,{'account_id', AccountId}
+    ,{'keys', Keys}
+    ,'federate'
     ].
 
 -spec subscribe(bh_context:context(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
