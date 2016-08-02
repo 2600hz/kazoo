@@ -14,7 +14,7 @@
         ,move/2, move/3
         ,update/2, update/3
         ,release/1, release/2
-        ,delete/1, delete/2
+        ,delete/2
         ,reconcile/2
         ,reserve/2
 
@@ -106,13 +106,8 @@ release(Nums, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete(ne_binaries()) ->
-                    numbers_return().
 -spec delete(ne_binaries(), knm_number_options:options()) ->
                     numbers_return().
-delete(Nums) ->
-    delete(Nums, knm_number_options:default()).
-
 delete(Nums, Options) ->
     [{Num, knm_number:delete(Num, Options)} || Num <- Nums].
 

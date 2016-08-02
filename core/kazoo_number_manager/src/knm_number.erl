@@ -16,7 +16,7 @@
         ,move/2, move/3
         ,update/2, update/3
         ,release/1, release/2
-        ,delete/1, delete/2
+        ,delete/2
         ,assign_to_app/2, assign_to_app/3
         ,lookup_account/1
         ,save/1
@@ -522,25 +522,27 @@ delete_phone_number(Number) ->
 %% Sounds too harsh for you? you are looking for release/1,2.
 %% @end
 %%--------------------------------------------------------------------
--spec delete(ne_binary()) ->
-                    knm_number_return().
 -spec delete(ne_binary(), knm_number_options:options()) ->
                     knm_number_return().
-delete(Num) ->
-    delete(Num, knm_number_options:default()).
-
 delete(Num, Options) ->
     case get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
-            attempt(fun delete_number/1, [Number])
+            AuthBy = knm_number_options:auth_by(Options),
+            attempt(fun delete_number/2, [Number, AuthBy])
     end.
 
--spec delete_number(knm_number()) -> knm_number_return().
-delete_number(Number) ->
-    N = knm_providers:delete(Number),
-    PN = knm_phone_number:delete(phone_number(N)),
-    wrap_phone_number_return(PN, N).
+-spec delete_number(knm_number(), ne_binary()) -> knm_number_return().
+delete_number(Number, AuthBy) ->
+    case ?KNM_DEFAULT_AUTH_BY =:= AuthBy
+        orelse kz_util:is_system_admin(AuthBy)
+    of
+        'false' -> knm_errors:unauthorized();
+        'true' ->
+            N = knm_providers:delete(Number),
+            PN = knm_phone_number:delete(phone_number(N)),
+            wrap_phone_number_return(PN, N)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

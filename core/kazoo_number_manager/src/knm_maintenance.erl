@@ -17,6 +17,8 @@
         ,fix_accounts_numbers/1
 
         ,generate_numbers/4
+
+        ,delete/1
         ]).
 
 -define(TIME_BETWEEN_ACCOUNTS_MS
@@ -266,4 +268,12 @@ generate_numbers(Type, AccountId, StartingNumber, Quantity) ->
     M = kz_util:to_atom(<<"knm_", Type/binary>>, 'true'),
     M:generate_numbers(AccountId, kz_util:to_integer(StartingNumber), kz_util:to_integer(Quantity)).
 
-%% "End of Module" ~ Captain Obvious
+-spec delete(ne_binary()) -> 'no_return'.
+delete(Num) ->
+    case knm_number:delete(Num, knm_number_options:default()) of
+        {'ok', _} -> io:format("Removed ~s\n", [Num]);
+        {'error', _R} -> io:format("ERROR: ~p\n", [_R])
+    end,
+    'no_return'.
+
+%% End of Module

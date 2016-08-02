@@ -383,7 +383,8 @@ delete(Context, ?COLLECTION) ->
 delete(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    case knm_number:release(Number, Options) of
+    Releaser = pick_release_or_delete(Context, Options),
+    case knm_number:Releaser(Number, Options) of
         {'error', Data}=Error ->
             case kz_json:is_json_object(Data)
                 andalso knm_errors:error(Data) == <<"invalid_state_transition">>
@@ -822,25 +823,23 @@ collection_process(Context, Action) ->
 
 -spec collection_process(cb_context:context(), ne_binary(), ne_binaries()) -> process_result().
 collection_process(Context, Action, Numbers) ->
-    lists:foldl(
-      fun
-          ({Number, {'ok', KNMNumber}}, {ServicesAcc, JObjAcc}) ->
-                       JObj = knm_number:to_public_json(KNMNumber),
-                       {ServicesAcc
-                       ,kz_json:set_value([<<"success">>, Number], JObj, JObjAcc)
-                       };
-          ({Number, {'dry_run', Services, ActivationCharges}}, {ServicesAcc, JObjAcc}) ->
-                       {[Services | ServicesAcc]
-                       ,kz_json:set_value([<<"charges">>, Number], ActivationCharges, JObjAcc)
-                       };
-          ({Number, {'error', KNMError}}, {ServicesAcc, JObjAcc}) ->
-                       {ServicesAcc
-                       ,kz_json:set_value([<<"error">>, Number], KNMError, JObjAcc)
-                       }
-               end
+    lists:foldl(fun ({Number, {'ok', KNMNumber}}, {ServicesAcc, JObjAcc}) ->
+                        JObj = knm_number:to_public_json(KNMNumber),
+                        {ServicesAcc
+                        ,kz_json:set_value([<<"success">>, Number], JObj, JObjAcc)
+                        };
+                    ({Number, {'dry_run', Services, ActivationCharges}}, {ServicesAcc, JObjAcc}) ->
+                        {[Services | ServicesAcc]
+                        ,kz_json:set_value([<<"charges">>, Number], ActivationCharges, JObjAcc)
+                        };
+                    ({Number, {'error', KNMError}}, {ServicesAcc, JObjAcc}) ->
+                        {ServicesAcc
+                        ,kz_json:set_value([<<"error">>, Number], KNMError, JObjAcc)
+                        }
+                end
                ,{[], kz_json:new()}
                ,numbers_action(Context, Action, Numbers)
-     ).
+               ).
 
 %% @private
 -spec numbers_action(cb_context:context(), ne_binary(), ne_binaries()) ->
@@ -868,12 +867,26 @@ numbers_action(Context, ?HTTP_POST, Numbers) ->
 numbers_action(Context, ?HTTP_DELETE, Numbers) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    knm_numbers:release(Numbers, Options).
+    Releaser = pick_release_or_delete(Context, Options),
+    knm_numbers:Releaser(Numbers, Options).
 
 -spec fold_dry_runs([kz_services:services(), ...]) -> kz_json:object().
 fold_dry_runs(ServicesList) ->
     F = fun(Services, _Acc) -> kz_services:dry_run(Services) end,
     lists:foldl(F, [], ServicesList).
+
+%% @private
+-spec pick_release_or_delete(cb_context:context(), knm_number_options:options()) -> 'release' | 'delete'.
+pick_release_or_delete(Context, Options) ->
+    AuthBy = knm_number_options:auth_by(Options),
+    Pick = case kz_util:is_true(cb_context:req_param(Context, <<"hard">>, 'false'))
+               andalso kz_util:is_system_admin(AuthBy)
+           of
+               'false' -> 'release';
+               'true' -> 'delete'
+           end,
+    lager:debug("picked ~s", [Pick]),
+    Pick.
 
 %%--------------------------------------------------------------------
 %% @private
