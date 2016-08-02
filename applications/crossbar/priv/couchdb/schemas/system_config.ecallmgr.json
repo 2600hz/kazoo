@@ -303,6 +303,22 @@
             "name": "network_map",
             "type": "object"
         },
+        "node_commands": {
+            "properties": {
+                "send_http": {
+                    "properties": {
+                        "delete_on_success": {
+                            "properties": {
+                                "default": true,
+                                "description": "",
+                                "name": "delete_on_success",
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "node_down_grace_period": {
             "default": 10000,
             "description": "",
