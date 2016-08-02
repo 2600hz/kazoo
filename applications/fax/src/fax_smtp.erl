@@ -687,8 +687,8 @@ add_fax_document(#state{doc=Doc}=State) ->
 %% ====================================================================
 -spec process_message(ne_binary(), ne_binary(), kz_proplist(), kz_proplist(), binary() | mimemail:mimetuple(), state()) ->
                              {'ok', state()}.
-process_message(<<"multipart">>, <<"mixed">>, _Headers, _Parameters, Body, #state{errors=Errors}=State) ->
-    lager:debug("processing multipart/mixed"),
+process_message(<<"multipart">>, Multipart, _Headers, _Parameters, Body, #state{errors=Errors}=State) ->
+    lager:debug("processing multipart/~s", [Multipart]),
     case Body of
         {Type, SubType, _HeadersPart, ParametersPart, BodyPart} ->
             lager:debug("processing ~s/~s", [Type, SubType]),
@@ -728,6 +728,23 @@ process_parts([{Type, SubType, _Headers, Parameters, BodyPart}
 
 -spec maybe_process_part(ne_binary(), kz_proplist(), binary() | mimemail:mimetuple(), state()) ->
                                 {'ok', state()}.
+maybe_process_part(<<"multipart/", Multipart/binary>>, _Parameters, Body, #state{errors=Errors}=State) ->
+    lager:debug("processing multipart/~s", [Multipart]),
+    case Body of
+        {Type, SubType, _HeadersPart, ParametersPart, BodyPart} ->
+            lager:debug("processing ~s/~s", [Type, SubType]),
+            maybe_process_part(<<Type/binary, "/", SubType/binary>>
+                              ,ParametersPart
+                              ,BodyPart
+                              ,State
+                              );
+        [{Type, SubType, _HeadersPart, _ParametersPart, _BodyParts}|_OtherParts]=Parts ->
+            lager:debug("processing multiple parts, first is ~s/~s", [Type, SubType]),
+            process_parts(Parts, State);
+        A ->
+            lager:debug("missed processing ~p", [A]),
+            {'ok', State#state{errors=[<<"invalid body">> | Errors]}}
+    end;
 maybe_process_part(<<"application/octet-stream">>, Parameters, Body, State) ->
     lager:debug("part is application/octet-stream, try check attachment filename extension"),
     case props:get_value(<<"disposition">>, Parameters) of
