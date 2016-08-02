@@ -417,7 +417,9 @@ update_optional_headers(Prop, Fields, Headers) ->
 -spec add_headers(kz_proplist(), api_headers(), kz_proplist()) ->
                          {kz_proplist(), kz_proplist()}.
 add_headers(Prop, Fields, Headers) ->
-    lists:foldl(fun(K, {Headers1, KVs}) ->
+    lists:foldl(fun(K, {Headers1, KVs}) when is_list(K) ->
+                        add_headers(KVs, K, Headers1);
+                   (K, {Headers1, KVs}) ->
                         {[{K, props:get_value(K, KVs)} | Headers1], props:delete(K, KVs)}
                 end, {Headers, Prop}, Fields).
 
@@ -434,7 +436,9 @@ add_optional_headers(Prop, Fields, Headers) ->
 %% Checks Prop against a list of required headers, returns true | false
 -spec has_all(kz_proplist(), api_headers()) -> boolean().
 has_all(Prop, Headers) ->
-    lists:all(fun(Header) ->
+    lists:all(fun(Header) when is_list(Header) ->
+                      has_any(Prop, Header);
+                 (Header) ->
                       case props:is_defined(Header, Prop) of
                           'true' -> 'true';
                           'false' ->
