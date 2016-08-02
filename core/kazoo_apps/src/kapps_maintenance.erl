@@ -147,6 +147,7 @@ blocking_refresh(Pause) ->
 -spec refresh(ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'no_return'.
 refresh() ->
     Databases = get_databases(),
+    _ = flush_account_views(),
     refresh(Databases, 2 * ?MILLISECONDS_IN_SECOND).
 
 refresh(Databases, Pause) ->
@@ -335,6 +336,10 @@ get_definition_from_accounts(AccountDb, AccountId) ->
             _ = kz_datamgr:db_archive(AccountDb),
             maybe_delete_db(AccountDb)
     end.
+
+-spec flush_account_views() -> 'ok'.
+flush_account_views() ->
+    put('account_views', 'undefined').
 
 -spec get_all_account_views() -> kz_proplist().
 get_all_account_views() ->
