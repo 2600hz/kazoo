@@ -823,25 +823,23 @@ collection_process(Context, Action) ->
 
 -spec collection_process(cb_context:context(), ne_binary(), ne_binaries()) -> process_result().
 collection_process(Context, Action, Numbers) ->
-    lists:foldl(
-      fun
-          ({Number, {'ok', KNMNumber}}, {ServicesAcc, JObjAcc}) ->
-              JObj = knm_number:to_public_json(KNMNumber),
-              {ServicesAcc
-              ,kz_json:set_value([<<"success">>, Number], JObj, JObjAcc)
-              };
-          ({Number, {'dry_run', Services, ActivationCharges}}, {ServicesAcc, JObjAcc}) ->
-              {[Services | ServicesAcc]
-              ,kz_json:set_value([<<"charges">>, Number], ActivationCharges, JObjAcc)
-              };
-          ({Number, {'error', KNMError}}, {ServicesAcc, JObjAcc}) ->
-              {ServicesAcc
-              ,kz_json:set_value([<<"error">>, Number], KNMError, JObjAcc)
-              }
-      end
+    lists:foldl(fun ({Number, {'ok', KNMNumber}}, {ServicesAcc, JObjAcc}) ->
+                        JObj = knm_number:to_public_json(KNMNumber),
+                        {ServicesAcc
+                        ,kz_json:set_value([<<"success">>, Number], JObj, JObjAcc)
+                        };
+                    ({Number, {'dry_run', Services, ActivationCharges}}, {ServicesAcc, JObjAcc}) ->
+                        {[Services | ServicesAcc]
+                        ,kz_json:set_value([<<"charges">>, Number], ActivationCharges, JObjAcc)
+                        };
+                    ({Number, {'error', KNMError}}, {ServicesAcc, JObjAcc}) ->
+                        {ServicesAcc
+                        ,kz_json:set_value([<<"error">>, Number], KNMError, JObjAcc)
+                        }
+                end
                ,{[], kz_json:new()}
                ,numbers_action(Context, Action, Numbers)
-     ).
+               ).
 
 %% @private
 -spec numbers_action(cb_context:context(), ne_binary(), ne_binaries()) ->
