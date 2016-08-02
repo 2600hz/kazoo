@@ -1,0 +1,12 @@
+{application, kazoo_tasks,
+ [
+  {description, "Kazoo Tasks - Application library for Tasks"},
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [tasks_sup]},
+  {applications, [ kernel
+                 , stdlib
+
+                 , kazoo
+                 ]}
+ ]}.

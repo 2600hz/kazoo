@@ -3,7 +3,7 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
--include_lib("tasks/include/tasks.hrl").
+-include_lib("kazoo_tasks/include/tasks.hrl").
 
 -define(CONFIG_CAT, <<"tasks">>).
 -define(APP, 'tasks').
