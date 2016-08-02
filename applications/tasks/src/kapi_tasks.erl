@@ -70,7 +70,7 @@ category(JObj) ->
 
 -spec action(kz_json:object()) -> api_binary().
 action(JObj) ->
-    kz_jzon:get_value(<<"Action">>, JObj).
+    kz_json:get_value(<<"Action">>, JObj).
 
 
 -spec help_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
