@@ -338,16 +338,6 @@ get_definition_from_accounts(AccountDb, AccountId) ->
 
 -spec get_all_account_views() -> kz_proplist().
 get_all_account_views() ->
-    case get('account_views') of
-        'undefined' ->
-            Views = fetch_all_account_views(),
-            put('account_views', Views),
-            Views;
-        Views -> Views
-    end.
-
--spec fetch_all_account_views() -> kz_proplist().
-fetch_all_account_views() ->
     [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
     ,kapps_util:get_view_json('conference', <<"views/conference.json">>)
     ,kapps_util:get_view_json('webhooks', <<"webhooks.json">>)
