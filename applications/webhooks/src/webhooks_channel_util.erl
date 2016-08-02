@@ -11,7 +11,29 @@
 -include("webhooks.hrl").
 
 -spec handle_event(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_event(JObj, _Props) ->
+handle_event(JObj, Props) ->
+    % io:format("~n Channel Util event ~s Node ~p EventZone ~p~n>>>>>>>~n"
+    %      ,[kz_json:get_value(<<"Event-Name">>, JObj)
+    %       ,kz_json:get_value(<<"Node">>, JObj)
+    %       ,kz_api:event_zone(JObj)
+    %       ]),
+    case kz_api:is_federated_event(JObj) of
+        'false' ->
+            continue_handle_event(JObj, Props);
+        'true' ->
+            EventZone = kz_api:event_zone(JObj),
+            WebHooksZones = props:get_value(<<"webhooks_zones">>, Props),
+            maybe_handle_federated_event(JObj, Props, lists:member(EventZone, WebHooksZones))
+    end.
+
+-spec maybe_handle_federated_event(kz_json:object(), kz_proplist(), boolean()) -> 'ok'.
+maybe_handle_federated_event(_JObj, _Props, 'true') ->
+    lager:debug("ignoring events that is from another zone with runnig webhooks app");
+maybe_handle_federated_event(JObj, Props, _) ->
+    continue_handle_event(JObj, Props).
+
+-spec continue_handle_event(kz_json:object(), kz_proplist()) -> 'ok'.
+continue_handle_event(JObj, _Props) ->
     HookEvent = hook_event_name(kz_json:get_value(<<"Event-Name">>, JObj)),
     case kz_hooks_util:lookup_account_id(JObj) of
         {'error', _R} ->

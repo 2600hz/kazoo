@@ -21,21 +21,25 @@
 
 %% API
 -export([default_headers_v/1
-         ,default_headers/2
-         ,default_headers/3
-         ,default_headers/4
-         ,default_headers/5
+        ,default_headers/2
+        ,default_headers/3
+        ,default_headers/4
+        ,default_headers/5
 
-         ,server_id/1
-         ,queue_id/1
-         ,msg_id/1
-         ,msg_reply_id/1
-         ,event_category/1
-         ,event_name/1
-         ,app_name/1
-         ,app_version/1
-         ,node/1
+        ,server_id/1
+        ,queue_id/1
+        ,msg_id/1
+        ,msg_reply_id/1
+        ,event_category/1
+        ,event_name/1
+        ,app_name/1
+        ,app_version/1
+        ,node/1
         ]).
+
+-export([is_federated_event/1
+        ,event_zone/1]).
+
 -export([prepare_api_payload/2, prepare_api_payload/3]).
 -export([set_missing_values/2]).
 -export([remove_empty_values/1]).
@@ -46,10 +50,10 @@
 
 %% Other AMQP API validators can use these helpers
 -export([build_message/3
-         ,build_message_specific/3
-         ,build_message_specific_headers/3
-         ,validate/4
-         ,validate_message/4
+        ,build_message_specific/3
+        ,build_message_specific_headers/3
+        ,validate/4
+        ,validate_message/4
         ]).
 
 -include("include/kz_api.hrl").
@@ -508,3 +512,14 @@ type_check_all(Prop, {Key, Fun}) ->
                     'false'
             end
     end.
+
+-spec is_federated_event(kz_json:object()) -> boolean().
+is_federated_event(JObj) ->
+    case kz_json:get_ne_binary_value(<<"AMQP-Broker">>, JObj) of
+        'undefined' -> 'false';
+        _Broker -> 'true'
+    end.
+
+-spec event_zone(kz_json:object()) -> ne_binary().
+event_zone(JObj) ->
+    kz_json:get_ne_binary_value(<<"AMQP-Broker-Zone">>, JObj).

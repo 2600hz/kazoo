@@ -297,7 +297,13 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {'reply', []}.
+    Options = [{<<"webhooks_zones">>, kz_nodes:whapp_zones('webhooks')}],
+    % io:format("~nevent ~s Node ~p ~nEventZone ~p WebHooksZones ~p~n========~n"
+    %     ,[kz_json:get_value(<<"Event-Name">>, _JObj)
+    %      ,kz_json:get_value(<<"Node">>, _JObj)
+    %      ,kz_api:event_zone(_JObj)
+    %      ,props:get_value(<<"webhooks_zones">>, Options)]),
+    {'reply', Options}.
 
 %%--------------------------------------------------------------------
 %% @private
