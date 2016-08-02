@@ -349,13 +349,16 @@ set_db(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(TaskId, Context) ->
-    case kz_tasks:read(TaskId) of
-        {'error', 'not_found'} ->
-            crossbar_util:response_bad_identifier(TaskId, Context);
-        {'ok', TaskJObj} ->
-            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-                                        ,{fun cb_context:set_resp_data/2, TaskJObj}
-                                        ])
+    AccountId = cb_context:account_id(Context),
+    Ctx = crossbar_doc:load_view(?KZ_TASKS_BY_ACCOUNT
+                                ,[{'key', [AccountId, TaskId]}]
+                                ,set_db(Context)
+                                ,fun normalize_view_results/2
+                                ),
+    case [] =:= cb_context:resp_data(Ctx) of
+        'false' -> Ctx;
+        'true' ->
+            crossbar_util:response_bad_identifier(TaskId, Context)
     end.
 
 %%--------------------------------------------------------------------
