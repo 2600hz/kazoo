@@ -13,6 +13,8 @@
 
 -include("ecallmgr.hrl").
 
+-define(NODE_CMD_CONFIG, <<"node_commands">>).
+
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     Node = props:get_value('node', Props),
@@ -30,7 +32,9 @@ exec_cmd(<<"send_http">>, Args, JObj, Node) ->
     Url = kz_json:get_ne_binary_value(<<"Url">>, Args),
     File = kz_json:get_value(<<"File-Name">>, Args),
     Method = <<"http_", (kz_json:get_value(<<"Http-Method">>, Args, <<"put">>))/binary>>,
-    send_http(Node, File, Url, Method, JObj);
+    Default = ecallmgr_config:is_true([?NODE_CMD_CONFIG, <<"send_http">>, <<"delete_on_success">>], 'true'),
+    DeleteOnSuccess = kz_json:is_true(<<"Delete-On-Success">>, JObj, Default),
+    send_http(Node, File, Url, Method, JObj, DeleteOnSuccess);
 
 exec_cmd(Cmd, _Args, JObj, _Node) ->
     reply_error(<<Cmd/binary, " not_implemented">>, JObj).
@@ -61,22 +65,28 @@ reply_success(JObj, Response) ->
     kz_amqp_worker:cast(API, fun(P) -> kapi_switch:publish_reply(Queue, P) end).
 
 
--spec send_http(atom(), file:filename(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
-send_http(Node, File, Url, Method, JObj) ->
+-spec send_http(atom(), binary(), binary(), ne_binary(), kz_json:object(), boolean()) -> 'ok'.
+send_http(Node, File, Url, Method, JObj, DeleteOnSuccess) ->
     lager:debug("processing http_send command : ~s / ~s", [File, Url]),
     Args = <<Url/binary, " ", File/binary>>,
     Fun = fun send_http_cb/3,
     M = kz_util:to_atom(Method, 'true'),
     A = kz_util:to_list(Args),
-    case freeswitch:bgapi(Node, M, A, Fun, [JObj]) of
+    case freeswitch:bgapi(Node, M, A, Fun, [JObj, DeleteOnSuccess, File, Node]) of
         {'error', _} -> reply_error(<<"failure">>, JObj);
         {'ok', JobId} -> lager:debug("send_http command started ~p", [JobId])
     end.
 
 -spec send_http_cb(atom(), ne_binary(), list()) -> 'ok'.
-send_http_cb('ok', <<"+OK", _/binary>>, [JobId, JObj]) ->
+send_http_cb('ok', <<"+OK", _/binary>>, [JobId, JObj, DeleteOnSuccess, File, Node]) ->
     lager:debug("processed http_send command with success : ~s", [JobId]),
+    _ = maybe_delete_file(Node, File, DeleteOnSuccess),
     reply_success(JObj);
 send_http_cb(_, Reply, [JobId, JObj]) ->
     lager:debug("error processing http_send : ~p : ~s", [Reply, JobId]),
     reply_error(Reply, JObj).
+
+-spec maybe_delete_file(atom(), binary(), boolean()) -> any().
+maybe_delete_file(_Node, _File, 'false') -> 'ok';
+maybe_delete_file(Node, File, 'true') ->
+    freeswitch:api(Node, 'system', <<"rm ", File/binary>>).
