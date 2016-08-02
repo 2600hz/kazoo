@@ -26,6 +26,7 @@
 -record(state, {}).
 
 -define(BINDINGS, [{'self', []}
+                  ,{'tasks', []}
                   ]).
 -define(RESPONDERS, [{{'kz_tasks', 'handle_lookup_req'}
                      ,[{<<"tasks">>, <<"lookup_req">>}]
