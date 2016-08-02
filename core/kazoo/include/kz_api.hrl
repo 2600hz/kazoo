@@ -50,6 +50,7 @@
 -define(KEY_SERVER_ID, <<"Server-ID">>).
 -define(KEY_QUEUE_ID, <<"Queue-ID">>).
 -define(KEY_LOG_ID, <<"System-Log-ID">>).
+-define(KEY_OPT_ACCOUNT_ID, <<"Account-ID">>).
 
 %% Default Headers
 %% All messages MUST include the DEFAULT_HEADERS list.
@@ -63,6 +64,7 @@
                                   ,<<"Geo-Location">>, <<"Access-Group">>
                                   ,?KEY_NODE, ?KEY_SERVER_ID, ?KEY_QUEUE_ID
                                   ,<<"Defer-Response">>, ?KEY_LOG_ID
+                                  ,?KEY_OPT_ACCOUNT_ID
                                   ]).
 -define(DEFAULT_VALUES, [{?KEY_NODE, kz_util:to_binary(node())}
                         ,{?KEY_MSG_ID, kz_util:rand_hex_binary(16)}
