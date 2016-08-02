@@ -192,7 +192,7 @@ validate_tasks(Context, ?HTTP_GET) ->
     case cb_context:account_id(Context) of
         'undefined' ->
             lager:debug("starting discovery of task APIs"),
-            JObj = kz_json:from_list([{<<"tasks">>, kz_tasks:help()}]),
+            JObj = kz_json:from_list([{<<"tasks">>, help()}]),
             cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
                                         ,{fun cb_context:set_resp_data/2, JObj}
                                         ]);
@@ -487,5 +487,23 @@ no_categories(Context, Id) ->
     Msg = kz_json:from_list([{<<"tip">>, <<"No APIs known yet: please try again in a second.">>}
                             ,{<<"cause">>, Id}
                             ]),
-    _ = kz_util:spawn(fun kz_tasks:help/0),
+    _ = kz_util:spawn(fun help/0),
     cb_context:add_system_error('bad_identifier', Msg, Context).
+
+%% @private
+-spec help() -> kz_json:object().
+help() ->
+    Req = kz_api:default_headers(?APP_NAME, ?APP_VERSION),
+    case kz_amqp_worker:call(Req
+                            ,fun kapi_tasks:publish_lookup_req/1
+                            ,fun kapi_tasks:lookup_resp_v/1
+                            )
+    of
+        {'ok', JObj} -> JObj;
+        {'timeout', _Resp} ->
+            lager:debug("timeout: ~p", [_Resp]),
+            kz_json:new();
+        {'error', _E} ->
+            lager:debug("error: ~p", [_E]),
+            kz_json:new()
+    end.
