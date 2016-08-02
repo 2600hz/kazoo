@@ -8563,7 +8563,7 @@
                             "properties": {
                                 "delete_on_success": {
                                     "properties": {
-                                        "default": true,
+                                        "default": false,
                                         "description": "",
                                         "name": "delete_on_success",
                                         "type": "boolean"
