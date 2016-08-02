@@ -207,7 +207,7 @@ curl -v -X DELETE \
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}?hard=yes
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}?hard=true
 ```
 
 ##### Response
@@ -681,7 +681,7 @@ curl -v -X DELETE \
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data":{"numbers": ["{PHONENUMBER1}", "{PHONENUMBER2}", "{PHONENUMBER3}"]}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection?hard=please
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection?hard=true
 ```
 
 ```json

@@ -881,7 +881,7 @@ fold_dry_runs(ServicesList) ->
 -spec pick_release_or_delete(cb_context:context(), knm_number_options:options()) -> 'release' | 'delete'.
 pick_release_or_delete(Context, Options) ->
     AuthBy = knm_number_options:auth_by(Options),
-    Pick = case props:is_true(<<"hard">>, kz_json:to_proplist(cb_context:query_string(Context)))
+    Pick = case kz_util:is_true(cb_context:req_param(Context, <<"hard">>, 'false'))
                andalso kz_util:is_system_admin(AuthBy)
            of
                'false' -> 'release';
