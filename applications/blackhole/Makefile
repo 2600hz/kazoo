@@ -1,6 +1,6 @@
 ROOT = ../..
 PROJECT = blackhole
-ERL_LIBS = ../fax
+ERL_LIBS = $(ROOT)/applications/fax
 
 all: compile
 
