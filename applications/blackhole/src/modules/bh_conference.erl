@@ -67,8 +67,8 @@ unsubscribe(Context, <<"conference.event.*.*">> = Binding) ->
 unsubscribe(Context, <<"conference.event.*.", _CallId/binary>> = Binding) ->
     blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
     {'ok', Context};
-unsubscribe(Context, <<"conference.event.", Binding/binary>> = Binding) ->
-    case binary:split(Binding, <<".">>, ['global']) of
+unsubscribe(Context, <<"conference.event.", Args/binary>> = Binding) ->
+    case binary:split(Args, <<".">>, ['global']) of
         [ConfId, CallId] ->
             blackhole_listener:remove_binding('conference', event_binding_options(ConfId, CallId)),
             blackhole_bindings:unbind(Binding, ?MODULE, 'handle_event', Context);
@@ -77,6 +77,7 @@ unsubscribe(Context, <<"conference.event.", Binding/binary>> = Binding) ->
     end,
     {'ok', Context};
 unsubscribe(Context, Binding) ->
+    lager:error("error:~p", [Binding]),
     blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
     {'ok', Context}.
 
