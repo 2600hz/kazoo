@@ -4,26 +4,26 @@
 #### List available tasks
 
 ```shell
-{SUP} kazoo_tasks_maintenance help
+{SUP} tasks_maintenance help
 ```
 
 ```shell
-{SUP} kazoo_tasks_maintenance help {CATEGORY}
+{SUP} tasks_maintenance help {CATEGORY}
 ```
 
 ```shell
-{SUP} kazoo_tasks_maintenance help {CATEGORY} {ACTION}
+{SUP} tasks_maintenance help {CATEGORY} {ACTION}
 ```
 
 
 #### List all tasks
 
 ```shell
-{SUP} kazoo_tasks_maintenance tasks
+{SUP} tasks_maintenance tasks
 ```
 
 ```shell
-{SUP} kazoo_tasks_maintenance tasks {ACCOUNT_ID}
+{SUP} tasks_maintenance tasks {ACCOUNT_ID}
 ```
 
 
@@ -32,40 +32,40 @@
 Note: set timeout to 300 seconds or more when your `{CSV_FILE}` fails to upload.
 
 ```shell
-{SUP} -t 300 kazoo_tasks_maintenance add {AUTH_ACCOUNT_ID} {ACCOUNT_ID} {CATEGORY} {ACTION} {CSV_FILE}
+{SUP} -t 300 tasks_maintenance add {AUTH_ACCOUNT_ID} {ACCOUNT_ID} {CATEGORY} {ACTION} {CSV_FILE}
 ```
 
 Or, for a task that does not require an input file:
 
 ```shell
-{SUP} -t 300 kazoo_tasks_maintenance add {AUTH_ACCOUNT_ID} {ACCOUNT_ID} {CATEGORY} {ACTION}
+{SUP} -t 300 tasks_maintenance add {AUTH_ACCOUNT_ID} {ACCOUNT_ID} {CATEGORY} {ACTION}
 ```
 
 
 #### Remove a completed task
 
 ```shell
-{SUP} kazoo_tasks_maintenance remove {TASK_ID}
+{SUP} tasks_maintenance remove {TASK_ID}
 ```
 
 
 #### Get a specific task's details
 
 ```shell
-{SUP} kazoo_tasks_maintenance task {TASK_ID}
+{SUP} tasks_maintenance task {TASK_ID}
 ```
 
 Note: set timeout to 300 seconds or more when the CSV file fails to download.
 
 ```shell
-{SUP} -t 300 kazoo_tasks_maintenance task_input {TASK_ID}
+{SUP} -t 300 tasks_maintenance task_input {TASK_ID}
 ```
 
 
 #### Start a task
 
 ```shell
-{SUP} kazoo_tasks_maintenance start {TASK_ID}
+{SUP} tasks_maintenance start {TASK_ID}
 ```
 
 
@@ -74,5 +74,5 @@ Note: set timeout to 300 seconds or more when the CSV file fails to download.
 Note: set timeout to 300 seconds or more when the errors listing fails to download.
 
 ```shell
-{SUP} -t 300 kazoo_tasks_maintenance task_output {TASK_ID}
+{SUP} -t 300 tasks_maintenance task_output {TASK_ID}
 ```

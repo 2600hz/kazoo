@@ -1,6 +1,6 @@
 /*
-Section: Kazoo Tasks
-Title: Kazoo Tasks
+Section: Tasks
+Title: Tasks
 Language: en-US
 */
 
@@ -20,7 +20,7 @@ There is also a maintenance module whose entry points are [documented here](./ma
 
 ## Task discovery
 
-The `kazoo_tasks` application discovers the different kinds of tasks provided by Kazoo applications on a cluster by sending an `help_req` event.
+The `tasks` application discovers the different kinds of tasks provided by Kazoo applications on a cluster by sending an `help_req` event.
 An app can listen to the `help_req` event from `tasks` and then reply with the kinds of tasks it is offering.
 
 A reply to `help_req` must have these JSON values:

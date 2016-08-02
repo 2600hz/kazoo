@@ -3,11 +3,11 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
--include_lib("kazoo_tasks/include/kazoo_tasks.hrl").
+-include_lib("tasks/include/tasks.hrl").
 
 -define(CONFIG_CAT, <<"tasks">>).
--define(APP, 'kazoo_tasks').
--define(APP_NAME, <<"kazoo_tasks">>).
+-define(APP, 'tasks').
+-define(APP_NAME, <<"tasks">>).
 -define(APP_VERSION, <<"4.0.0">> ).
 
 -define(PVT_ACCOUNT_ID, <<"pvt_account_id">>).

@@ -22,7 +22,7 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("kazoo_tasks/include/kazoo_tasks.hrl").
+-include_lib("tasks/include/tasks.hrl").
 
 -define(SCHEMA_TASKS, <<"tasks">>).
 
@@ -46,7 +46,7 @@
 %% @end
 %%--------------------------------------------------------------------
 init() ->
-    {'ok', _} = application:ensure_all_started('kazoo_tasks'),
+    {'ok', _} = application:ensure_all_started('tasks'),
 
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),

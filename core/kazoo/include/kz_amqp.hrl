@@ -139,7 +139,7 @@
 -define(TYPE_LEADER, <<"topic">>).
 
 %% Tasks Exchange
-%% - kazoo_tasks can publish tasks discovery request to the appropriate queue in this
+%% - tasks can publish tasks discovery request to the appropriate queue in this
 %%   exchange to identify a kapp's available tasks.
 %% - kapps use this exchange to share API information
 -define(EXCHANGE_TASKS, <<"tasks">>).

@@ -14,7 +14,7 @@
                  , kazoo
                  , kazoo_services
                  , kazoo_transactions
-                 , kazoo_tasks
+                 , tasks
 
                  , lager
                  , cowlib

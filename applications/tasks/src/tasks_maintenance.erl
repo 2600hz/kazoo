@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(kazoo_tasks_maintenance).
+-module(tasks_maintenance).
 
 -export([help/0, help/1, help/2]).
 -export([tasks/0, tasks/1]).

@@ -1,5 +1,5 @@
 ROOT = ../..
-PROJECT = kazoo_tasks
+PROJECT = tasks
 
 all: compile
 

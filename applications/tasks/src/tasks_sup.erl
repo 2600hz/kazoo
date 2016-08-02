@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(kazoo_tasks_sup).
+-module(tasks_sup).
 -behaviour(supervisor).
 
 -export([start_link/0]).
