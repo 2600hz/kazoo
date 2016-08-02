@@ -770,6 +770,12 @@ is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) ->
     'true';
 is_authorized(#knm_phone_number{auth_by = 'undefined'}) -> 'false';
 is_authorized(#knm_phone_number{assigned_to = 'undefined'
+                               ,assign_to = 'undefined'
+                               ,auth_by = AuthBy
+                               }) ->
+    lager:debug("assigns all undefined, checking if auth is super duper"),
+    kz_util:is_system_admin(AuthBy);
+is_authorized(#knm_phone_number{assigned_to = 'undefined'
                                ,assign_to = AssignTo
                                ,auth_by = AuthBy
                                }) ->
