@@ -165,26 +165,11 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(?HOOK_EVT(ne_binary(), ne_binary(), kz_json:object()), state()) ->
                          {'noreply', state()}.
-handle_info(?HOOK_EVT(_AccountId, EventType, JObj), State) ->
-    _ = kz_util:spawn(fun handle_amqp_event/3, [JObj, [], call_routing(EventType, JObj)]),
+handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
+    _ = kz_util:spawn(fun handle_hook_event/3, [AccountId, EventType, JObj]),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
-
--spec get_account_id(kz_json:object()) -> ne_binary().
-get_account_id(EventJObj) ->
-    kz_json:get_first_defined([<<"Account-ID">>
-                              ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
-                              ], EventJObj).
-
--spec get_call_id(kz_json:object()) -> ne_binary().
-get_call_id(EventJObj) ->
-    kz_json:get_value(<<"Call-ID">>, EventJObj).
-
-%% forge internal routing_key to restrict subscirber (bh_call) to specific account
--spec call_routing(ne_binary(), kz_json:object()) -> ne_binary().
-call_routing(EventType, JObj) ->
-    kz_util:join_binary([<<"call">>, get_account_id(JObj), EventType, get_call_id(JObj)], <<".">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -225,3 +210,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec encode_call_id(kz_json:object()) -> ne_binary().
+encode_call_id(JObj) ->
+    amqp_util:encode(kz_call_event:call_id(JObj)).
+
+-spec handle_hook_event(ne_binary(), ne_binary(), kz_json:object()) -> any().
+handle_hook_event(AccountId, EventType, JObj) ->
+    RK = kz_util:join_binary([<<"call">>
+                             ,AccountId
+                             ,EventType
+                             ,encode_call_id(JObj)
+                             ], <<".">>),
+    handle_amqp_event(JObj, [], RK).
