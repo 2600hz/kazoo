@@ -19,7 +19,7 @@
         ,code_change/3
         ]).
 
--include("kz_tasks.hrl").
+-include("tasks.hrl").
 
 -define(SERVER, ?MODULE).
 

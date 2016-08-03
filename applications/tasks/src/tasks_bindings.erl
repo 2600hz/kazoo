@@ -39,7 +39,7 @@
         ,failed/1
         ]).
 
--include("kz_tasks.hrl").
+-include("tasks.hrl").
 
 -type payload() :: ne_binary().
 

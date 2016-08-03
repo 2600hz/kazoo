@@ -45,7 +45,7 @@
         ,terminate/2
         ]).
 
--include("kz_tasks.hrl").
+-include("tasks.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 
 -define(SERVER, {'via', 'kz_globals', ?MODULE}).

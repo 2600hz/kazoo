@@ -15,7 +15,7 @@
 -export([start/1]).
 -export([remove/1]).
 
--include("kz_tasks.hrl").
+-include("tasks.hrl").
 
 
 %%% API
