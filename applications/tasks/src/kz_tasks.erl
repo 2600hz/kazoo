@@ -270,10 +270,18 @@ remove(TaskId=?NE_BINARY) ->
 handle_lookup_req(JObj, _Props) ->
     'true' = kapi_tasks:lookup_req_v(JObj),
     Help =
-        case {kapi_tasks:category(JObj), kapi_tasks:action(JObj)} of
-            {'undefined', 'undefined'} -> help();
-            {Category, 'undefined'} -> help(Category);
-            {Category, Action} -> help(Category, Action)
+        case
+            case {kapi_tasks:category(JObj), kapi_tasks:action(JObj)} of
+                {'undefined', 'undefined'} -> help();
+                {Category, 'undefined'} -> help(Category);
+                {Category, Action} -> help(Category, Action)
+            end
+        of
+            {'error', _R} ->
+                lager:debug("lookup_req error: ~s", [_R]),
+                kz_json:new();
+            {'ok', JOk} -> JOk;
+            JOk -> JOk
         end,
     Resp = kz_json:from_list(
              [{<<"Help">>, Help}
