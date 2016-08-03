@@ -142,7 +142,12 @@ help() ->
 -spec help(ne_binary()) -> {'ok', kz_json:object()} |
                            help_error().
 help(Category=?NE_BINARY) ->
-    gen_server:call(?SERVER, {'help', Category}).
+    JObjs = tasks_bindings:map(<<"tasks.help.", Category/binary>>, []),
+    JObj = parse_apis(JObjs),
+    case kz_json:is_empty(JObj) of
+        'true' -> {'error', 'unknown_category'};
+        'false' -> JObj
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -152,7 +157,16 @@ help(Category=?NE_BINARY) ->
 -spec help(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
                                         help_error().
 help(Category=?NE_BINARY, Action=?NE_BINARY) ->
-    gen_server:call(?SERVER, {'help', Category, Action}).
+    JObjs = tasks_bindings:map(<<"tasks.help.", Category/binary>>, [[Action]]),
+    JObj = parse_apis(JObjs),
+    case kz_json:is_empty(JObj) of
+        'false' -> JObj;
+        'true' ->
+            case help(Category) of
+                {'error', _}=Error -> Error;
+                _ -> {'error', 'unknown_action'}
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -414,32 +428,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({'help', _}, _From, State=#state{apis = APIs})
-  when APIs == #{} ->
-    ?REPLY(State, {'error', 'no_categories'});
-handle_call({'help', _, _}, _From, State=#state{apis = APIs})
-  when APIs == #{} ->
-    ?REPLY(State, {'error', 'no_categories'});
-%%FIXME: upgrade OTP http://stackoverflow.com/a/23107510/1418165
-handle_call({'help', Category}, _From, State=#state{apis = Categories}) ->
-    lager:debug("fetching category ~s", [Category]),
-    case maps:get(Category, Categories, 'undefined') of
-        'undefined' -> ?REPLY(State, {'error', 'unknown_category'});
-        Actions ->
-            JObj = kz_json:from_list(maps:to_list(Actions)),
-            ?REPLY_FOUND(State, JObj)
-    end;
-handle_call({'help', Category, Action}, _From, State=#state{apis = Categories}) ->
-    lager:debug("fetching category/action ~s/~s", [Category, Action]),
-    case maps:get(Category, Categories, 'undefined') of
-        'undefined' -> ?REPLY(State, {'error', 'unknown_category'});
-        Actions ->
-            case maps:get(Action, Actions, 'undefined') of
-                'undefined' -> ?REPLY(State, {'error', 'unknown_action'});
-                API -> ?REPLY_FOUND(State, API)
-            end
-    end;
-
 handle_call({'new', AuthAccountId, AccountId, Category, Action, TotalRows, InputName}, _From, State) ->
     lager:debug("creating ~s/~s task (~p)", [Category, Action, TotalRows]),
     lager:debug("using auth ~s and account ~s", [AuthAccountId, AccountId]),

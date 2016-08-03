@@ -10,7 +10,7 @@
 %% behaviour: tasks_provider
 
 -export([init/0]).
--export([help/0
+-export([help/0, help/1
         ]).
 
 %% Verifiers
@@ -43,22 +43,24 @@ init() ->
 
 
 -spec help() -> kz_json:object().
-help() ->
+-spec help(ne_binaries()) -> kz_json:object().
+help() -> help(?ACTIONS).
+help(Actions) ->
     kz_json:from_list(
       [{<<?CATEGORY>>
-       ,kz_json:from_list([{Action, help(Action)} || Action <- ?ACTIONS])
+       ,kz_json:from_list([{Action, action(Action)} || Action <- Actions])
        }
       ]).
 
--spec help(ne_binary()) -> kz_json:object().
-help(<<"id1">>) ->
+-spec action(ne_binary()) -> kz_json:object().
+action(<<"id1">>) ->
     kz_json:from_list(
       [{<<"description">>, <<"The identity task">>}
       ,{<<"doc">>, <<"Takes 1 column as input and return it as is.">>}
       ,{<<"expected_content">>, <<"text/csv">>}
       ]
      );
-help(<<"id2">>) ->
+action(<<"id2">>) ->
     kz_json:from_list(
       [{<<"description">>, <<"The identity task">>}
       ,{<<"doc">>, <<"Takes 2 columns as input and return them as is.">>}
