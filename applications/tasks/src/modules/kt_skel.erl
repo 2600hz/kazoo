@@ -9,8 +9,8 @@
 -module(kt_skel).
 %% behaviour: tasks_provider
 
--export([init/0]).
--export([help/0, help/1
+-export([init/0
+        ,help/0
         ]).
 
 %% Verifiers
@@ -40,16 +40,13 @@ init() ->
 
 -spec init(ne_binary()) -> any().
 init(Action) ->
-    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".", Action/binary>>, ?MODULE, kz_util:to_atom(Action)),
-    _ = tasks_bindings:bind(<<"tasks.help."?CATEGORY".", Action/binary>>, ?MODULE, 'help').
+    tasks_bindings:bind(<<"tasks."?CATEGORY".", Action/binary>>, ?MODULE, kz_util:to_atom(Action)).
 
 -spec help() -> kz_json:object().
--spec help(ne_binaries()) -> kz_json:object().
-help() -> help(?ACTIONS).
-help(Actions) ->
+help() ->
     kz_json:from_list(
       [{<<?CATEGORY>>
-       ,kz_json:from_list([{Action, action(Action)} || Action <- Actions])
+       ,kz_json:from_list([{Action, action(Action)} || Action <- ?ACTIONS])
        }
       ]).
 

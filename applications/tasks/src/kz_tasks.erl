@@ -153,14 +153,12 @@ help(Category=?NE_BINARY) ->
 -spec help(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
                                         help_error().
 help(Category=?NE_BINARY, Action=?NE_BINARY) ->
-    JObjs = tasks_bindings:map(<<"tasks.help.", Category/binary>>, [[Action]]),
-    JObj = parse_apis(JObjs),
-    case kz_json:is_empty(JObj) of
-        'false' -> {'ok', kz_json:get_value([Category, Action], JObj)};
-        'true' ->
-            case help(Category) of
-                {'error', _}=Error -> Error;
-                _ -> {'error', 'unknown_action'}
+    case help(Category) of
+        {'error', _}=Error -> Error;
+        {'ok', JObj} ->
+            case kz_json:get_value(Action, JObj) of
+                'undefined' -> {'error', 'unknown_action'};
+                J -> {'ok', J}
             end
     end.
 
