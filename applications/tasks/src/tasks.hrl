@@ -10,6 +10,9 @@
 -define(APP_NAME, <<"tasks">>).
 -define(APP_VERSION, <<"4.0.0">> ).
 
+-define(TASKS, ['kt_skel'
+               ]).
+
 -define(PVT_ACCOUNT_ID, <<"pvt_account_id">>).
 -define(PVT_ACTION, <<"pvt_action">>).
 -define(PVT_AUTH_ACCOUNT_ID, <<"pvt_auth_account_id">>).

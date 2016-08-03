@@ -46,6 +46,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -54,7 +55,7 @@
 %% is the payload, possibly modified
 %% @end
 %%--------------------------------------------------------------------
--type map_results() :: list().
+-type map_results() :: kz_proplist().
 -spec map(ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     kazoo_bindings:map(Routing, Payload).
@@ -76,11 +77,11 @@ fold(Routing, Payload) ->
 %% Helper functions for working on a result set of bindings
 %% @end
 %%-------------------------------------------------------------------
--spec any(kz_proplist()) -> boolean().
+-spec any(map_results()) -> boolean().
 any(Res) when is_list(Res) ->
     kazoo_bindings:any(Res, fun check_bool/1).
 
--spec all(kz_proplist()) -> boolean().
+-spec all(map_results()) -> boolean().
 all(Res) when is_list(Res) ->
     kazoo_bindings:all(Res, fun check_bool/1).
 
@@ -172,4 +173,16 @@ modules_loaded() -> kazoo_bindings:modules_loaded().
 init() ->
     lager:debug("initializing tasks bindings"),
     kz_util:put_callid(?LOG_SYSTEM_ID),
-    'ok'.
+    lists:foreach(fun init_mod/1, ?TASKS).
+
+init_mod(ModuleName) ->
+    lager:debug("initializing module: ~p", [ModuleName]),
+    maybe_init_mod(ModuleName).
+
+maybe_init_mod(ModuleName) ->
+    lager:debug("trying to init module: ~p", [ModuleName]),
+    try (kz_util:to_atom(ModuleName, 'true')):init()
+    catch
+        _E:_R ->
+            lager:warning("failed to initialize ~s: ~p, ~p.", [ModuleName, _E, _R])
+    end.
