@@ -139,7 +139,8 @@ get_binding_candidates(Vsn, Action) ->
 -type fold_results() :: payload().
 -spec fold(ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
-    fold_processor(Routing, Payload, get_binding_candidates(Routing)).
+    Bindings = get_binding_candidates(Routing),
+    fold_processor(Routing, Payload, Bindings).
 
 %%-------------------------------------------------------------------
 %% @doc
@@ -173,6 +174,8 @@ succeeded(Res, F) when is_list(Res),
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Match routing patterns. * matches 1 slot, # 0 or more.
+%% Note: matching only accepts wilcards on first argument (asymetric).
 %% @end
 %%
 %% <<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>
@@ -710,7 +713,9 @@ map_processor_fold(#kz_binding{binding_parts=BParts
                   ,_Routing
                   ,RoutingParts
                   ) ->
-    case matches(BParts, RoutingParts) of
+    case matches(BParts, RoutingParts)
+        orelse matches(RoutingParts, BParts)
+    of
         'false' -> Acc;
         'true' ->
             lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
@@ -740,6 +745,7 @@ fold_processor(Routing, Payload, Bindings) ->
              ) ->
                   case Binding =:= Routing
                       orelse matches(BParts, RoutingParts)
+                      orelse matches(RoutingParts, BParts)
                   of
                       'true' ->
                           lager:debug("routing ~s matches ~s", [Routing, Binding]),
