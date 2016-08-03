@@ -187,13 +187,13 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, _DocId) ->
-    % disallow vmbox messages array changing
+						% disallow vmbox messages array changing
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     Props = [{?VM_KEY_MESSAGES, kz_json:get_value(?VM_KEY_MESSAGES, DbDoc, [])}],
     Context1 = cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context))),
     C1 = crossbar_doc:save(Context1),
 
-    % remove messages array to not let it exposed
+						% remove messages array to not let it exposed
     cb_context:set_doc(Context, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:doc(C1))).
 
 post(Context, OldBoxId, ?MESSAGES_RESOURCE) ->
@@ -378,9 +378,9 @@ filter_messages([Mess|Messages], <<"all">> = Filter, Context, Selected) ->
     Id = kzd_box_message:media_id(Mess),
     filter_messages(Messages, Filter, Context, [Id|Selected]);
 filter_messages([Mess|Messages], <<_/binary>> = Filter, Context, Selected)
-        when Filter =:= ?VM_FOLDER_NEW;
-             Filter =:= ?VM_FOLDER_SAVED;
-             Filter =:= ?VM_FOLDER_DELETED ->
+  when Filter =:= ?VM_FOLDER_NEW;
+       Filter =:= ?VM_FOLDER_SAVED;
+       Filter =:= ?VM_FOLDER_DELETED ->
     Id = kzd_box_message:media_id(Mess),
     QsFiltered = should_filter_by_qs(Mess, crossbar_doc:has_qs_filter(Context), Context),
     case kzd_box_message:folder(Mess) of
@@ -521,7 +521,7 @@ normalize_view_results(JObj, Acc) ->
 -spec merge_summary_results(kz_json:objects(), kz_json:objects()) -> kz_json:objects().
 merge_summary_results(BoxSummary, MODBSummary) ->
     MergeFun = fun(JObj, Acc) ->
-                   [merge_summary_fold(JObj, MODBSummary) | Acc]
+		       [merge_summary_fold(JObj, MODBSummary) | Acc]
                end,
     lists:foldl(MergeFun, [], BoxSummary).
 
@@ -827,7 +827,7 @@ update_message_folder(BoxId, MediaId, Context, DefaultFolder) ->
 maybe_filter_docs_by_qs(JObjs, Context) ->
     [J
      || J <- JObjs
-        ,should_filter_by_qs(J, crossbar_doc:has_qs_filter(Context), Context)
+	    ,should_filter_by_qs(J, crossbar_doc:has_qs_filter(Context), Context)
     ].
 
 -spec should_filter_by_qs(kz_json:object(), boolean(), cb_context:context()) -> boolean().
