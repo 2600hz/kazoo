@@ -28,12 +28,8 @@
 
 -record(state, {}).
 
--define(BINDINGS, [{'tasks', [{'restrict_to', ['help']}
-                             ]
-                   }
-                  ]).
--define(RESPONDERS, [{{?MODULE, 'help'}, [{<<"tasks">>, <<"help_req">>}]}
-                    ]).
+-define(BINDINGS, []).
+-define(RESPONDERS, []).
 
 %%%===================================================================
 %%% API
