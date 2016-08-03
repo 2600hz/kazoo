@@ -18,7 +18,6 @@
                    ,kzd_media:type()
                    ,kzd_user:type()
                    ,kzd_voicemail_box:type()
-                   ,<<"fax">>
                    ]).
 
 -define(KAPI_CONF_HRL, 'true').
