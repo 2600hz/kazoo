@@ -35,12 +35,13 @@
 
 -spec init() -> 'ok'.
 init() ->
-    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".id1">>, ?MODULE, 'id1'),
-    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".id2">>, ?MODULE, 'id2'),
-    _ = tasks_bindings:bind(<<"tasks.help."?CATEGORY".id1">>, ?MODULE, 'help'),
-    _ = tasks_bindings:bind(<<"tasks.help."?CATEGORY".id2">>, ?MODULE, 'help'),
+    lists:foreach(fun init/1, ?ACTIONS),
     _ = tasks_bindings:bind(<<"tasks.help."?CATEGORY>>, ?MODULE, 'help').
 
+-spec init(ne_binary()) -> any().
+init(Action) ->
+    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".", Action/binary>>, ?MODULE, kz_util:to_atom(Action)),
+    _ = tasks_bindings:bind(<<"tasks.help."?CATEGORY".", Action/binary>>, ?MODULE, 'help').
 
 -spec help() -> kz_json:object().
 -spec help(ne_binaries()) -> kz_json:object().
