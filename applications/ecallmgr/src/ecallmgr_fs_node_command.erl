@@ -32,7 +32,7 @@ exec_cmd(<<"send_http">>, Args, JObj, Node) ->
     Url = kz_json:get_ne_binary_value(<<"Url">>, Args),
     File = kz_json:get_value(<<"File-Name">>, Args),
     Method = <<"http_", (kz_json:get_value(<<"Http-Method">>, Args, <<"put">>))/binary>>,
-    Default = ecallmgr_config:is_true([?NODE_CMD_CONFIG, <<"send_http">>, <<"delete_on_success">>], 'true'),
+    Default = ecallmgr_config:is_true([?NODE_CMD_CONFIG, <<"send_http">>, <<"delete_on_success">>], 'false'),
     DeleteOnSuccess = kz_json:is_true(<<"Delete-On-Success">>, JObj, Default),
     send_http(Node, File, Url, Method, JObj, DeleteOnSuccess);
 
