@@ -161,9 +161,6 @@ new_task(AuthAccountId, AccountId, Category, Action, TotalRows, CSVBin, CSVName)
     end.
 
 -spec handle_new_task_error(atom() | kz_json:object(), ne_binary(), ne_binary()) -> 'no_return'.
-handle_new_task_error('no_categories', _, _) ->
-    _ = kz_util:spawn(fun kz_tasks:help/0),
-    print_error(<<"No APIs known yet: please try again in a second.">>);
 handle_new_task_error('unknown_category', Category, _) ->
     print_error(<<"No such category: ", Category/binary>>);
 handle_new_task_error('unknown_action', _, Action) ->

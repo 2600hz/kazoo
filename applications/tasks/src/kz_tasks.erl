@@ -77,11 +77,7 @@
 
 -type input() :: ne_binary() | kz_json:objects() | 'undefined'.
 
--type help_error() :: {'error'
-                      ,'no_categories' |
-                       'unknown_category' |
-                       'unknown_action'
-                      }.
+-type help_error() :: {'error', 'unknown_category' | 'unknown_action'}.
 
 -export_type([task_id/0
              ,input/0
@@ -197,7 +193,6 @@ all(AccountId=?NE_BINARY) ->
                           {'error'
                           ,'not_found' |
                            'already_started' |
-                           'no_categories' |
                            any()
                           }.
 start(TaskId=?NE_BINARY) ->
@@ -451,11 +446,6 @@ handle_call({'new', AuthAccountId, AccountId, Category, Action, TotalRows, Input
     lager:debug("task ~s created, rows: ~p", [TaskId, TotalRows]),
     ?REPLY(State, Ok);
 
-handle_call({'start_task', _TaskId}, _From, State=#state{apis = APIs})
-  when APIs == #{} ->
-    lager:error("no categories starting task ~s: app was probably just restarted, run discovery again"
-               ,[_TaskId]),
-    ?REPLY(State, {'error', 'no_categories'});
 handle_call({'start_task', TaskId}, _From, State) ->
     lager:debug("attempting to start ~s", [TaskId]),
     %% Running tasks are stored in server State.
