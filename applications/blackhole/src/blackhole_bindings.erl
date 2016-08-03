@@ -22,8 +22,8 @@
 -module(blackhole_bindings).
 
 %% API
--export([bind/3,bind/4
-        ,unbind/3,unbind/4
+-export([bind/3,bind/4,subscribe/4
+        ,unbind/3,unbind/4,unsubscribe/4
         ,map/2
         ,fold/2
         ,flush/0, flush/1, flush_mod/1
@@ -155,6 +155,12 @@ unbind([_|_]=Bindings, Module, Fun, Payload) ->
     'ok';
 unbind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
     kazoo_bindings:unbind(Binding, Module, Fun, Payload).
+
+-spec subscribe(ne_binary(), atom(), atom(), any()) -> bind_results().
+subscribe(Binding, Module, Fun, Payload) -> kazoo_bindings:bind(Binding, Module, Fun, Payload).
+
+-spec unsubscribe(ne_binary(), atom(), atom(), any()) -> bind_results().
+unsubscribe(Binding, Module, Fun, Payload) -> kazoo_bindings:unbind(Binding, Module, Fun, Payload).
 
 -spec flush() -> 'ok'.
 flush() -> kazoo_bindings:flush().
