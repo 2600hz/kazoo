@@ -27,7 +27,6 @@ handle_event(#bh_context{binding=Binding} = Context, EventJObj) ->
 -spec handle_object_event(bh_context:context(), kz_json:object()) -> 'ok'.
 handle_object_event(#bh_context{binding=Binding} = Context, EventJObj) ->
     kz_util:put_callid(EventJObj),
-    %% TODO: check account id
     NormJObj = kz_json:normalize_jobj(kz_json:set_value(<<"Binding">>, Binding, EventJObj)),
     blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), NormJObj).
 
@@ -39,10 +38,10 @@ subscribe(Context, <<"fax.status.", FaxId/binary>> = Binding) ->
     blackhole_listener:add_binding('fax', fax_status_bind_options(bh_context:account_id(Context), FaxId)),
     blackhole_bindings:bind(Binding, ?MODULE, 'handle_event', Context),
     {'ok', Context};
-%% listen to: doc_edited.faxes.fax.0f79141acb547d8e8e564925c414cc0e
+%% listen_to: doc_edited.$modb.fax.$fax_id
 subscribe(Context, <<"fax.object.", Action/binary>>) ->
-    blackhole_bindings:bind(<<Action/binary,".faxes.fax.*">>, ?MODULE, 'handle_object_event', Context),
-    blackhole_listener:add_binding('conf', fax_object_bind_options(Action)),
+    blackhole_listener:add_binding('conf', fax_object_bind_options(Context, Action)),
+    blackhole_bindings:bind(fax_object_bind_key(Context, Action), ?MODULE, 'handle_object_event', Context),
     {'ok', Context};
 subscribe(Context, Binding) ->
     blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
@@ -54,8 +53,8 @@ unsubscribe(Context, <<"fax.status.", FaxId/binary>> = Binding) ->
     blackhole_bindings:unbind(Binding, ?MODULE, 'handle_event', Context),
     {'ok', Context};
 unsubscribe(Context, <<"fax.object.", Action/binary>>) ->
-    blackhole_bindings:bind(<<Action/binary,".faxes.fax.*">>, ?MODULE, 'handle_object_event', Context),
-    blackhole_listener:add_binding('conf', fax_object_bind_options(Action)),
+    blackhole_listener:remove_binding('conf', fax_object_bind_options(Context, Action)),
+    blackhole_bindings:unbind(fax_object_bind_key(Context, Action), ?MODULE, 'handle_object_event', Context),
     {'ok', Context};
 unsubscribe(Context, Binding) ->
     blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
@@ -68,8 +67,14 @@ fax_status_bind_options(AccountId, FaxId) ->
     ,'federate'
     ].
 
--spec fax_object_bind_options(ne_binary()) -> kz_json:object().
-fax_object_bind_options(Action) ->
-    [{'keys', [[{'action', Action}, {'db', <<"faxes">>}, {'doc_type', <<"fax">>}]]}
+-spec fax_object_bind_options(bh_context:context(), ne_binary()) -> kz_json:object().
+fax_object_bind_options(Context, Action) ->
+    MODB = kazoo_modb:get_modb(bh_context:account_id(Context)),
+    [{'keys', [[{'action', Action}, {'db', MODB}, {'doc_type', <<"fax">>}]]}
     ,'federate'
     ].
+
+-spec fax_object_bind_key(bh_context:context(), ne_binary()) -> ne_binary().
+fax_object_bind_key(Context, Action) ->
+    MODB = kazoo_modb:get_modb(bh_context:account_id(Context)),
+    <<Action/binary, ".", MODB/binary, ".fax.*">>.
