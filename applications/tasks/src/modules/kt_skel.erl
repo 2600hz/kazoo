@@ -59,6 +59,7 @@ action(<<"id1">>) ->
       [{<<"description">>, <<"The identity task">>}
       ,{<<"doc">>, <<"Takes 1 column as input and return it as is.">>}
       ,{<<"expected_content">>, <<"text/csv">>}
+      ,{<<"optional">>, [<<"col1">>]}
       ]
      );
 action(<<"id2">>) ->
@@ -66,6 +67,7 @@ action(<<"id2">>) ->
       [{<<"description">>, <<"The identity task">>}
       ,{<<"doc">>, <<"Takes 2 columns as input and return them as is.">>}
       ,{<<"expected_content">>, <<"text/csv">>}
+      ,{<<"mandatory">>, [<<"col1">>, <<"col2">>]}
       ]
      ).
 
@@ -78,7 +80,7 @@ action(<<"id2">>) ->
 id1(_Props, _IterValue, Col1) ->
     [Col1].
 
--spec id2(kz_proplist(), task_iterator(), api_binary(), api_binary()) -> task_return().
+-spec id2(kz_proplist(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
 id2(_Props, _IterValue, Col1, Col2) ->
     [Col1, Col2].
 
