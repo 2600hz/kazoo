@@ -45,7 +45,8 @@ subscribe(Context, <<"object.", Args/binary>> = Binding) ->
                     [ subscribe(Context, doc_binding(Type, Action), Action, Type) || Action <- ?DOC_ACTIONS]
             end;
         [Type, Action] ->
-            case lists:member(Action, ?DOC_ACTIONS) andalso lists:member(Type, ?DOC_TYPES) of
+            case lists:member(Action, ?DOC_ACTIONS)
+                andalso lists:member(Type, ?DOC_TYPES) of
                 'false' ->
                     blackhole_util:send_error_message(Context, <<"unallowed object binding">>, Binding);
                 'true' ->
@@ -67,7 +68,8 @@ unsubscribe(Context, <<"object.", Args/binary>> = Binding) ->
                     [ unsubscribe(Context, doc_binding(Type, Action), Action, Type) || Action <- ?DOC_ACTIONS]
             end;
         [Type, Action] ->
-            case lists:member(Action, ?DOC_ACTIONS) andalso lists:member(Type, ?DOC_TYPES) of
+            case lists:member(Action, ?DOC_ACTIONS)
+                andalso lists:member(Type, ?DOC_TYPES) of
                 'false' ->
                     blackhole_util:send_error_message(Context, <<"unallowed object binding">>, Binding);
                 'true' ->
