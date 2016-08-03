@@ -679,14 +679,13 @@ handle_call_start_task(Task=#{ id := TaskId
                              , category := Category
                              , action := Action
                              }
-                      ,State=#state{ apis = APIs
-                                   , nodes = Nodes
+                      ,State=#state{ nodes = Nodes
                                    , modules = Modules
                                    , apps = Apps
                                    }
                       ) ->
     lager:info("about to start task ~s: ~s ~s", [TaskId, Category, Action]),
-    API = task_api(Category, Action, APIs),
+    API = task_api(Category, Action),
     lager:debug("API ~s", [kz_json:encode(API)]),
     WorkerModule = worker_module(API),
     lager:debug("worker type: ~s", [WorkerModule]),
@@ -809,12 +808,13 @@ add_task(Task, State) ->
     Tasks = [Task | State#state.tasks],
     State#state{tasks = Tasks}.
 
--spec task_api(ne_binary(), ne_binary(), kz_json:objects()) -> kz_json:object().
-task_api(Category, Action, APIs) ->
+-spec task_api(ne_binary(), ne_binary()) -> kz_json:object().
+task_api(Category, Action) ->
+    {'ok', JObj} = help(Category, Action),
     kz_json:set_values([{<<"category">>, Category}
                        ,{<<"action">>, Action}
                        ]
-                      ,maps:get(Action, maps:get(Category, APIs))
+                      ,JObj
                       ).
 
 %%--------------------------------------------------------------------
