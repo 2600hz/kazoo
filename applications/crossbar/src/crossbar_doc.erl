@@ -27,7 +27,7 @@
         ,start_key/1, start_key/2
         ,pagination_page_size/0, pagination_page_size/1
         ,has_qs_filter/1
-        ,filtered_doc_by_qs/3
+        ,filtered_doc_by_qs/2, filtered_doc_by_qs/3
         ]).
 
 -export([handle_json_success/2]).
@@ -1039,7 +1039,12 @@ maybe_apply_custom_filter(Context, FilterFun, JObjs) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec filtered_doc_by_qs(kz_json:object(), cb_context:context()) -> boolean().
 -spec filtered_doc_by_qs(kz_json:object(), boolean(), cb_context:context()) -> boolean().
+
+filtered_doc_by_qs(JObj, Context) ->
+    filter_doc(JObj, Context).
+
 filtered_doc_by_qs(_JObj, 'false', _Context) -> 'true';
 filtered_doc_by_qs(JObj, 'true', Context) ->
     filter_doc(kz_json:get_value(<<"doc">>, JObj), Context).

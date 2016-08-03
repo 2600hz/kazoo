@@ -187,13 +187,13 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, _DocId) ->
-                                                % disallow vmbox messages array changing
+    %% disallow vmbox messages array changing
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     Props = [{?VM_KEY_MESSAGES, kz_json:get_value(?VM_KEY_MESSAGES, DbDoc, [])}],
     Context1 = cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context))),
     C1 = crossbar_doc:save(Context1),
 
-                                                % remove messages array to not let it exposed
+    %% remove messages array to not let it exposed
     cb_context:set_doc(Context, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:doc(C1))).
 
 post(Context, OldBoxId, ?MESSAGES_RESOURCE) ->
@@ -337,7 +337,7 @@ validate_messages(Context, DocId, ?HTTP_DELETE) ->
                  _ -> get_folder_filter(Context, <<"all">>)
              end,
 
-    ToDelete = filter_messages(Messages, Filter),
+    ToDelete = filter_messages(Messages, Filter, Context),
 
     cb_context:set_resp_data(
       cb_context:set_resp_status(Context, 'success')
@@ -362,33 +362,39 @@ get_folder_filter(Context, Default) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_messages(kz_json:objects(), kz_vm_message:vm_folder() | ne_binaries()) -> ne_binaries().
--spec filter_messages(kz_json:objects(), ne_binary() | ne_binaries(), ne_binaries()) -> ne_binaries().
-filter_messages(Messages, {?VM_FOLDER_DELETED, _}) ->
-    filter_messages(Messages, ?VM_FOLDER_DELETED, []);
-filter_messages(Messages, Filters) ->
-    filter_messages(Messages, Filters, []).
+-type filter_options() :: kz_vm_message:vm_folder() | ne_binaries().
 
-filter_messages([], _Filters, Selected) ->
-    Selected;
-filter_messages([Mess|Messages], <<"all">>=Filter, Selected) ->
+-spec filter_messages(kz_json:objects(), filter_options(), cb_context:context()) -> ne_binaries().
+-spec filter_messages(kz_json:objects(), filter_options(), cb_context:context(), ne_binaries()) -> ne_binaries().
+filter_messages(Messages, {?VM_FOLDER_DELETED, _}, Context) ->
+    %% move to delete folder and soft-delete
+    filter_messages(Messages, ?VM_FOLDER_DELETED, Context, []);
+filter_messages(Messages, Filters, Context) ->
+    filter_messages(Messages, Filters, Context, []).
+
+%% Filter by folder
+filter_messages([], _Filters, _Context, Selected) -> Selected;
+filter_messages([Mess|Messages], <<"all">> = Filter, Context, Selected) ->
     Id = kzd_box_message:media_id(Mess),
-    filter_messages(Messages, Filter, [Id|Selected]);
-filter_messages([Mess|Messages], <<_/binary>> = Filter, Selected) when Filter =:= ?VM_FOLDER_NEW;
-                                                                       Filter =:= ?VM_FOLDER_SAVED;
-                                                                       Filter =:= ?VM_FOLDER_DELETED ->
+    filter_messages(Messages, Filter, Context, [Id|Selected]);
+filter_messages([Mess|Messages], <<_/binary>> = Filter, Context, Selected)
+  when Filter =:= ?VM_FOLDER_NEW;
+       Filter =:= ?VM_FOLDER_SAVED;
+       Filter =:= ?VM_FOLDER_DELETED ->
     Id = kzd_box_message:media_id(Mess),
+    QsFiltered = should_filter_by_qs(Mess, crossbar_doc:has_qs_filter(Context), Context),
     case kzd_box_message:folder(Mess) of
-        Filter -> filter_messages(Messages, Filter, [Id|Selected]);
-        _ -> filter_messages(Messages, Filter, Selected)
+        Filter when not QsFiltered -> filter_messages(Messages, Filter, Context, [Id|Selected]);
+        _ -> filter_messages(Messages, Filter, Context, Selected)
     end;
-filter_messages(_, [], Selected) ->
-    Selected;
-filter_messages([Mess|Messages], Filters, Selected) ->
+%% Filter by Ids
+filter_messages(_, [], _Context, Selected) -> Selected;
+filter_messages([Mess|Messages], Filters, Context, Selected) ->
     Id = kzd_box_message:media_id(Mess),
+    QsFiltered = should_filter_by_qs(Mess, crossbar_doc:has_qs_filter(Context), Context),
     case lists:member(Id, Filters) of
-        'true' -> filter_messages(Messages, Filters, [Id|Selected]);
-        'false' -> filter_messages(Messages, Filters, Selected)
+        'true' when not QsFiltered -> filter_messages(Messages, Filters, Context, [Id|Selected]);
+        'false' -> filter_messages(Messages, Filters, Context, Selected)
     end.
 
 %%--------------------------------------------------------------------
@@ -424,12 +430,15 @@ validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
     case check_uniqueness(VMBoxId, Context) of
         'true' -> Context;
         'false' ->
-            cb_context:add_validation_error(
-              <<"mailbox">>
+            Msg = kz_json:from_list([{<<"message">>
+                                     ,<<"Invalid mailbox number or already exists">>
+                                     }
+                                    ]),
+            cb_context:add_validation_error(<<"mailbox">>
                                            ,<<"unique">>
-                                           ,kz_json:from_list([{<<"message">>, <<"Invalid mailbox number or already exists">>}])
+                                           ,Msg
                                            ,Context
-             )
+                                           )
     end.
 
 %%--------------------------------------------------------------------
@@ -500,9 +509,32 @@ validate_patch(Context, DocId)->
 %%--------------------------------------------------------------------
 -spec load_vmbox_summary(cb_context:context()) -> cb_context:context().
 load_vmbox_summary(Context) ->
-    case kz_vm_message:vmbox_summary(cb_context:account_id(Context)) of
-        {'ok', JObj} -> crossbar_doc:handle_json_success(JObj, Context);
-        {'error', _} -> cb_context:add_system_error('datastore_fault', Context)
+    Context1 = crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2),
+    MODBSummary = kz_vm_message:count_modb_messages(cb_context:account_id(Context)),
+    RspData = merge_summary_results(cb_context:doc(Context1), MODBSummary),
+    cb_context:set_resp_data(cb_context:set_doc(Context1, RspData), RspData).
+
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_view_results(JObj, Acc) ->
+    [kz_json:get_value(<<"value">>, JObj)|Acc].
+
+-spec merge_summary_results(kz_json:objects(), kz_json:objects()) -> kz_json:objects().
+merge_summary_results(BoxSummary, MODBSummary) ->
+    MergeFun = fun(JObj, Acc) ->
+		       [merge_summary_fold(JObj, MODBSummary) | Acc]
+               end,
+    lists:foldl(MergeFun, [], BoxSummary).
+
+-spec merge_summary_fold(kz_json:object(), kz_json:objects()) -> kz_json:object().
+merge_summary_fold(JObj, MODBSummary) ->
+    BoxId = kz_json:get_value(<<"id">>, JObj),
+    case kz_json:find_value(<<"key">>, BoxId, MODBSummary) of
+        'undefined' ->
+            JObj;
+        J ->
+            BCount = kz_json:get_integer_value(?VM_KEY_MESSAGES, JObj, 0),
+            MCount = kz_json:get_integer_value(<<"value">>, J, 0),
+            kz_json:set_value(?VM_KEY_MESSAGES, BCount + MCount, JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -537,7 +569,8 @@ load_vmbox(DocId, Context) ->
 -spec load_message_summary(ne_binary(), cb_context:context()) -> cb_context:context().
 load_message_summary(DocId, Context) ->
     Messages = kz_vm_message:messages(cb_context:account_id(Context), DocId),
-    crossbar_util:response(Messages, cb_context:set_resp_status(Context, 'success')).
+    Filtered = maybe_filter_docs_by_qs(Messages, Context),
+    crossbar_util:response(Filtered, cb_context:set_resp_status(Context, 'success')).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -789,6 +822,18 @@ update_message_folder(BoxId, MediaId, Context, DefaultFolder) ->
         {'error', Error} ->
             crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)
     end.
+
+-spec maybe_filter_docs_by_qs(kz_json:objects(), cb_context:context()) -> kz_json:objects().
+maybe_filter_docs_by_qs(JObjs, Context) ->
+    [J
+     || J <- JObjs
+	    ,should_filter_by_qs(J, crossbar_doc:has_qs_filter(Context), Context)
+    ].
+
+-spec should_filter_by_qs(kz_json:object(), boolean(), cb_context:context()) -> boolean().
+should_filter_by_qs(_, 'false', _Context) -> 'true';
+should_filter_by_qs(JObj, 'true', Context) ->
+    crossbar_doc:filtered_doc_by_qs(JObj, Context).
 
 %%--------------------------------------------------------------------
 %% @private
