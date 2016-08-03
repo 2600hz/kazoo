@@ -35,8 +35,8 @@
 
 -spec init() -> 'ok'.
 init() ->
-    _ = tasks_provider:bind(<<"tasks."?CATEGORY".id1">>, ?MODULE, 'id1'),
-    _ = tasks_provider:bind(<<"tasks."?CATEGORY".id2">>, ?MODULE, 'id2'),
+    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".id1">>, ?MODULE, 'id1'),
+    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".id2">>, ?MODULE, 'id2'),
     _ = tasks_bindings:bind(<<"tasks.help."?CATEGORY".id1">>, ?MODULE, 'help'),
     _ = tasks_bindings:bind(<<"tasks.help."?CATEGORY".id2">>, ?MODULE, 'help'),
     _ = tasks_bindings:bind(<<"tasks.help."?CATEGORY>>, ?MODULE, 'help').
