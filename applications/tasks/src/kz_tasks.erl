@@ -131,23 +131,8 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec help() -> kz_json:object().
 help() ->
-    CollectUntil = {fun (Resp, Acc) -> {'false', [Resp|Acc]} end, []},
-    case kz_amqp_worker:call_collect(kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                    ,fun kapi_tasks:publish_help_req/1
-                                    ,CollectUntil
-                                    )
-    of
-        {'timeout', []} ->
-            lager:debug("no app replied to help_req"),
-            kz_json:new();
-        {'timeout', JObjs} ->
-            lager:debug("help_req got ~p replies", [length(JObjs)]),
-            {Apps, Nodes, Modules, APIs} = parse_apis(JObjs),
-            gen_server:call(?SERVER, {'replace_APIs', Apps, Nodes, Modules, APIs});
-        {'error', _Reason} ->
-            lager:error("error in broadcasted help_req: ~p", [_Reason]),
-            kz_json:new()
-    end.
+    JObjs = tasks_bindings:map(<<"tasks.help.*">>, []),
+    parse_apis(JObjs).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -429,20 +414,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({'replace_APIs', Apps, Nodes, Modules, APIs}, _From, State) ->
-    lager:debug("replacing APIs"),
-    State1 = State#state{ apis = APIs
-                        , apps = Apps
-                        , nodes = Nodes
-                        , modules = Modules
-                        },
-    JObj =
-        kz_json:from_list(
-          [ {Category, kz_json:from_list(maps:to_list(Actions))}
-            || {Category, Actions} <- maps:to_list(APIs)
-          ]),
-    ?REPLY(State1, JObj);
-
 handle_call({'help', _}, _From, State=#state{apis = APIs})
   when APIs == #{} ->
     ?REPLY(State, {'error', 'no_categories'});
@@ -952,29 +923,22 @@ status(_Task) ->
     %% Probably due to worker killed (due to e.g. OOM).
     ?STATUS_BAD.
 
--type maps() :: {map_apps(), map_nodes(), map_modules(), map_apis()}.
--spec parse_apis(kz_json:objects()) -> maps().
+-spec parse_apis(kz_proplist()) -> kz_json:object().
 parse_apis(JObjs) ->
-    Acc0 = {#{}, #{}, #{}, #{}},
-    lists:foldl(fun parse_apis_fold/2, Acc0, JObjs).
+    parse_apis(JObjs, kz_json:new()).
 
--spec parse_apis_fold(kz_json:object(), maps()) -> maps().
-parse_apis_fold(JObj, {Apps, Nodes, Modules, APIs}) ->
-    APICategory = kz_json:get_value(<<"Tasks-Category">>, JObj),
-    App = kz_json:get_value(<<"App-Name">>, JObj),
-    Module = kz_json:get_value(<<"Tasks-Module">>, JObj),
-    TasksProvided = kz_json:get_value(<<"Tasks">>, JObj),
-    lager:debug("verifying ~s (~s) tasks have unique fields", [APICategory, App]),
-    _ = kz_json:map(fun verify_unicity_map/2, TasksProvided),
-    { Apps#{APICategory => App}
-      %%TODO: use a set of nodes
-    , Nodes#{APICategory => kz_api:node(JObj)}
-    , Modules#{APICategory => kz_util:to_atom(Module, 'true')}
-    , APIs#{APICategory => maps:from_list(kz_json:to_proplist(TasksProvided))}
-    }.
+-spec parse_apis(kz_json:objects(), kz_json:object()) -> kz_json:object().
+parse_apis([], Acc) -> Acc;
+parse_apis([JObj|JObjs], Acc) ->
+    [Category] = kz_json:get_keys(JObj),
+    Actions = kz_json:get_value(Category, JObj),
+    _ = lists:foreach(fun verify_unicity_map/1, kz_json:to_proplist(Actions)),
+    parse_apis(JObjs
+              ,kz_json:set_value(Category, Actions, Acc)
+              ).
 
--spec verify_unicity_map(ne_binary(), kz_json:object()) -> 'ok'.
-verify_unicity_map(_Action, API) ->
+-spec verify_unicity_map({ne_binary(), kz_json:object()}) -> 'ok'.
+verify_unicity_map({_Action, API}) ->
     Fields0 = mandatory(API) ++ optional(API),
     Fields = [kz_util:to_lower_binary(Field) || Field <- Fields0],
     case
