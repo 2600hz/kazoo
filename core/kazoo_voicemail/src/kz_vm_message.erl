@@ -10,15 +10,15 @@
 
 -export([new_message/5
          ,message_doc/2
-         ,message/2, messages/2, fetch_vmbox_messages/2
-         ,count/2, count_per_folder/2, count_modb_messages/3
+         ,message/2, messages/2
+         ,count/2, count_per_folder/2, count_modb_messages/1, count_modb_messages/3
          ,count_by_owner/2
          ,set_folder/3, update_folder/3, update_folder/4
          ,bulk_update/3
 
          ,media_url/2
 
-         ,load_vmbox/2, load_vmbox/3, vmbox_summary/1
+         ,load_vmbox/2, load_vmbox/3
          ,find_message_differences/3
 
          ,change_vmbox/4
@@ -42,7 +42,7 @@
 -define(MODB_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
 -define(MODB_COUNT_VIEW, <<"mailbox_messages/count_per_folder">>).
 -define(COUNT_BY_VMBOX, <<"mailbox_messages/count_by_vmbox">>).
--define(BOX_MESSAGES_CB_LIST, <<"vmboxes/crossbar_listing">>).
+-define(VMBOX_CB_LIST, <<"vmboxes/crossbar_listing">>).
 -define(PVT_LEGACY_TYPE, <<"private_media">>).
 
 -define(RETENTION_DURATION
@@ -319,51 +319,11 @@ load_vmbox(AccountId, BoxId, IncludeMessages) ->
 
 -spec maybe_include_messages(ne_binary(), ne_binary(), kz_json:object(), boolean()) -> {'ok', kz_json:object()}.
 maybe_include_messages(AccountId, BoxId, JObj, 'true') ->
-    VmMessages = kz_json:get_value(?VM_KEY_MESSAGES, JObj, []),
-    AllMsg = fetch_modb_messages(AccountId, BoxId, VmMessages),
-    {'ok', kz_json:set_value(?VM_KEY_MESSAGES, AllMsg, JObj)};
+    BoxMessages = kz_json:get_value(?VM_KEY_MESSAGES, JObj, []),
+    MODBMessages = fetch_modb_messages(AccountId, BoxId),
+    {'ok', kz_json:set_value(?VM_KEY_MESSAGES, BoxMessages ++ MODBMessages, JObj)};
 maybe_include_messages(_AccountId, _BoxId, JObj, _) ->
     {'ok', kz_json:delete_key(?VM_KEY_MESSAGES, JObj)}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Get vmbox summary view results from accountdb and merge
-%% its message count with MODB vmbox count
-%% @end
-%%--------------------------------------------------------------------
--spec vmbox_summary(ne_binary()) -> db_ret().
-vmbox_summary(AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    case kz_datamgr:get_results(AccountDb, ?BOX_MESSAGES_CB_LIST, []) of
-        {'ok', JObjs} ->
-            Res = [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs],
-            MODBRes = modb_count_summary(AccountId),
-            {'ok', merge_summary_results(Res, MODBRes)};
-        {'error', _R}=E ->
-            lager:debug("error fetching vmbox_summary for account ~s: ~p", [AccountId, _R]),
-            E
-    end.
-
--spec modb_count_summary(ne_binary()) -> kz_json:objects().
-modb_count_summary(AccountId) ->
-    Opts = ['reduce', 'group'],
-    ViewOptsList = get_range_view(AccountId, Opts),
-    [Res || Res <- results_from_modbs(AccountId, ?COUNT_BY_VMBOX, ViewOptsList, []), Res =/= []].
-
--spec merge_summary_results(kz_json:objects(), kz_json:objects()) -> kz_json:objects().
-merge_summary_results(BoxSummary, MODBSummary) ->
-    lists:foldl(fun(JObj, Acc) ->
-                    BoxId = kz_json:get_value(<<"id">>, JObj),
-                    case kz_json:find_value(<<"key">>, BoxId, MODBSummary) of
-                        'undefined' ->
-                            [JObj | Acc];
-                        J ->
-                            BCount = kz_json:get_integer_value(?VM_KEY_MESSAGES, JObj, 0),
-                            MCount = kz_json:get_integer_value(<<"value">>, J, 0),
-                            [kz_json:set_value(?VM_KEY_MESSAGES, BCount + MCount, JObj) | Acc]
-                    end
-                end
-                , [], BoxSummary).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -374,8 +334,8 @@ merge_summary_results(BoxSummary, MODBSummary) ->
 messages(AccountId, BoxId) ->
     % first get messages metadata from vmbox for backward compatibility
     case fetch_vmbox_messages(AccountId, BoxId) of
-        {'ok', Msgs} -> fetch_modb_messages(AccountId, BoxId, Msgs);
-        _ -> fetch_modb_messages(AccountId, BoxId, [])
+        {'ok', Msgs} -> Msgs ++ fetch_modb_messages(AccountId, BoxId);
+        _ -> []
     end.
 
 %%--------------------------------------------------------------------
@@ -454,6 +414,7 @@ update_folder(Folder, MsgIds, AccountId, BoxId) ->
 
 -spec apply_folder(vm_folder(), kz_json:object()) -> kz_json:object().
 apply_folder({?VM_FOLDER_DELETED, 'false'}, Doc) ->
+    %% only move to delete folder not actually soft-delete it
     Metadata = kzd_box_message:set_folder_deleted(kzd_box_message:metadata(Doc)),
     kzd_box_message:set_metadata(Metadata, Doc);
 apply_folder({?VM_FOLDER_DELETED, 'true'}, Doc) ->
@@ -747,6 +708,12 @@ count_per_folder(AccountId, BoxId) ->
         _ -> count_modb_messages(AccountId, BoxId, {0, 0})
     end.
 
+-spec count_modb_messages(ne_binary()) -> kz_json:objects().
+count_modb_messages(AccountId) ->
+    Opts = ['reduce', 'group'],
+    ViewOptsList = get_range_view(AccountId, Opts),
+    results_from_modbs(AccountId, ?COUNT_BY_VMBOX, ViewOptsList, []).
+
 -spec count_modb_messages(ne_binary(), ne_binary(), {non_neg_integer(), non_neg_integer()}) -> {non_neg_integer(), non_neg_integer()}.
 count_modb_messages(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
     Opts = ['reduce'
@@ -857,8 +824,8 @@ fetch_vmbox_messages(AccountId, BoxId) ->
             E
     end.
 
--spec fetch_modb_messages(ne_binary(), ne_binary(), kz_json:objects()) -> kz_json:objects().
-fetch_modb_messages(AccountId, DocId, VMBoxMsg) ->
+-spec fetch_modb_messages(ne_binary(), ne_binary()) -> kz_json:objects().
+fetch_modb_messages(AccountId, DocId) ->
     ViewOpts = [{'key', DocId}
                 ,'include_docs'
                ],
@@ -868,7 +835,7 @@ fetch_modb_messages(AccountId, DocId, VMBoxMsg) ->
                    || Msg <- results_from_modbs(AccountId, ?MODB_LISTING_BY_MAILBOX, ViewOptsList, [])
                       ,Msg =/= []
                   ],
-    VMBoxMsg ++ ModbResults.
+    ModbResults.
 
 -spec results_from_modbs(ne_binary(), ne_binary(), kz_proplist(), kz_json:objects()) -> kz_json:objects().
 results_from_modbs(_AccountId, _View, [], ViewResults) ->
@@ -1075,7 +1042,7 @@ migrate() ->
 -spec migrate(ne_binary()) -> 'ok'.
 migrate(AccountId) ->
     AccountDb = get_db(AccountId),
-    case kz_datamgr:get_results(AccountDb, ?BOX_MESSAGES_CB_LIST, []) of
+    case kz_datamgr:get_results(AccountDb, ?VMBOX_CB_LIST, []) of
         {'ok', []} -> lager:debug("no voicemail boxes in ~s", [AccountDb]);
         {'ok', View} ->
             _ = [migrate(AccountId, kz_json:get_value(<<"value">>, V)) || V <- View],
@@ -1110,7 +1077,7 @@ cleanup_heard_voicemail(AccountId) ->
     lager:debug("retaining messages for ~p days, delete those older for ~s", [Duration, AccountId]),
 
     AccountDb = get_db(AccountId),
-    case kz_datamgr:get_results(AccountDb, ?BOX_MESSAGES_CB_LIST, []) of
+    case kz_datamgr:get_results(AccountDb, ?VMBOX_CB_LIST, []) of
         {'ok', []} -> lager:debug("no voicemail boxes in ~s", [AccountDb]);
         {'ok', View} ->
             cleanup_heard_voicemail(AccountId
