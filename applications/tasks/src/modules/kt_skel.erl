@@ -11,6 +11,7 @@
 
 -export([init/0
         ,help/0
+        ,module/0
         ]).
 
 %% Verifiers
@@ -46,6 +47,9 @@ help() ->
        ,kz_json:from_list([{Action, action(Action)} || Action <- ?ACTIONS])
        }
       ]).
+
+-spec module() -> module().
+module() -> ?MODULE.
 
 -spec action(ne_binary()) -> kz_json:object().
 action(<<"id1">>) ->

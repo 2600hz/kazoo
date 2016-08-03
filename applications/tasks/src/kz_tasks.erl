@@ -84,16 +84,7 @@
              ,help_error/0
              ]).
 
--type api_category() :: ne_binary().
--type map_apis() :: #{api_category() => #{ne_binary() => kz_json:object()}}.
--type map_apps() :: #{api_category() => ne_binary()}.
--type map_nodes() :: #{api_category() => ne_binary()}.
--type map_modules() :: #{api_category() => module()}.
 -record(state, { tasks = [] :: [task()]
-               , apis = #{} :: map_apis()
-               , apps = #{} :: map_apps()
-               , nodes = #{} :: map_nodes()
-               , modules = #{} :: map_modules()
                }).
 -type state() :: #state{}.
 
@@ -679,19 +670,16 @@ handle_call_start_task(Task=#{ id := TaskId
                              , category := Category
                              , action := Action
                              }
-                      ,State=#state{ nodes = Nodes
-                                   , modules = Modules
-                                   , apps = Apps
-                                   }
+                      ,State
                       ) ->
     lager:info("about to start task ~s: ~s ~s", [TaskId, Category, Action]),
     API = task_api(Category, Action),
     lager:debug("API ~s", [kz_json:encode(API)]),
     WorkerModule = worker_module(API),
     lager:debug("worker type: ~s", [WorkerModule]),
-    Node = maps:get(Category, Nodes),
-    Module = maps:get(Category, Modules),
-    lager:debug("app ~s module ~s node ~s", [maps:get(Category, Apps), Module, Node]),
+    Node = kz_util:to_binary(node()),
+    Module = task_module(Category),
+    lager:debug("module ~s node ~s", [Module, Node]),
     Function = kz_util:to_atom(Action, 'true'),
     Fields = mandatory(API) ++ optional(API),
     ExtraArgs = [{'account_id', AccountId}
@@ -816,6 +804,11 @@ task_api(Category, Action) ->
                        ]
                       ,JObj
                       ).
+
+-spec task_module(ne_binary()) -> module().
+task_module(Category) ->
+    [Module] = tasks_bindings:map(<<"tasks.module.", Category/binary>>, []),
+    Module.
 
 %%--------------------------------------------------------------------
 %% @private
