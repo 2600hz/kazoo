@@ -22,8 +22,9 @@
 -module(tasks_bindings).
 
 %% API
--export([bind/3,bind/4
-        ,unbind/3,unbind/4
+-export([bind/3, bind/4
+        ,bind_actions/3
+        ,unbind/3, unbind/4
         ,map/2
         ,fold/2
         ,flush/0, flush/1
@@ -145,6 +146,17 @@ bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
 bind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
     kazoo_bindings:bind(Binding, Module, Fun, Payload).
+
+-spec bind_actions(ne_binary(), module(), ne_binaries()) -> 'ok'.
+bind_actions(RoutePrefix, Module, Actions) ->
+    lists:foreach(fun (Action) ->
+                          bind(<<RoutePrefix/binary, ".", Action/binary>>
+                              ,Module
+                              ,kz_util:to_atom(Action)
+                              )
+                  end
+                 ,Actions
+                 ).
 
 -spec unbind(ne_binary() | ne_binaries(), atom(), atom()) -> 'ok'.
 unbind(Bindings, Module, Fun) ->
