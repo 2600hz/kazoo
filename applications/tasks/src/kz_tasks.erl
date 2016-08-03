@@ -142,7 +142,7 @@ help(Category=?NE_BINARY) ->
     JObj = parse_apis(JObjs),
     case kz_json:is_empty(JObj) of
         'true' -> {'error', 'unknown_category'};
-        'false' -> {'ok', JObj}
+        'false' -> {'ok', kz_json:get_value(Category, JObj)}
     end.
 
 %%--------------------------------------------------------------------
@@ -156,7 +156,7 @@ help(Category=?NE_BINARY, Action=?NE_BINARY) ->
     JObjs = tasks_bindings:map(<<"tasks.help.", Category/binary>>, [[Action]]),
     JObj = parse_apis(JObjs),
     case kz_json:is_empty(JObj) of
-        'false' -> {'ok', JObj};
+        'false' -> {'ok', kz_json:get_value([Category, Action], JObj)};
         'true' ->
             case help(Category) of
                 {'error', _}=Error -> Error;
