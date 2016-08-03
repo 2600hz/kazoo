@@ -287,9 +287,9 @@ put(Context) ->
             crossbar_util:response_bad_identifier(Category, Context);
         {'error', 'unknown_action'} ->
             crossbar_util:response_bad_identifier(Action, Context);
-        {'error', _R} ->
-            lager:debug("new ~s task ~s cannot be created: ~s", [Category, Action, kz_json:encode(_R)]),
-            cb_context:add_system_error('parse_error', Context)
+        {'error', Reason} ->
+            lager:debug("new ~s task ~s cannot be created: ~p", [Category, Action, Reason]),
+            crossbar_util:response_400(<<"bad request">>, Reason, Context)
     end.
 
 %%--------------------------------------------------------------------
