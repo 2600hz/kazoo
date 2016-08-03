@@ -187,13 +187,13 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, _DocId) ->
-%% disallow vmbox messages array changing
+    %% disallow vmbox messages array changing
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     Props = [{?VM_KEY_MESSAGES, kz_json:get_value(?VM_KEY_MESSAGES, DbDoc, [])}],
     Context1 = cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context))),
     C1 = crossbar_doc:save(Context1),
 
-%% remove messages array to not let it exposed
+    %% remove messages array to not let it exposed
     cb_context:set_doc(Context, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:doc(C1))).
 
 post(Context, OldBoxId, ?MESSAGES_RESOURCE) ->
