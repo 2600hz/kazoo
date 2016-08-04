@@ -13,7 +13,6 @@
         ,handle_amqp_event/3
         ,add_call_binding/1, add_call_binding/2, remove_call_binding/1, remove_call_binding/2
         ,add_binding/2, remove_binding/2
-        ,subscribe/2, unsubscribe/2
         ]).
 -export([init/1
         ,handle_call/3
@@ -89,13 +88,6 @@ add_binding(Wapi, Options) ->
 -spec remove_binding(atom(), kz_proplist()) -> 'ok'.
 remove_binding(Wapi, Options) ->
     gen_listener:rm_binding(?SERVER, Wapi, Options).
-
--spec subscribe(atom(), kz_proplist()) -> 'ok'.
-subscribe(Wapi, Options) -> gen_listener:add_binding(?SERVER, Wapi, Options).
-
--spec unsubscribe(atom(), kz_proplist()) -> 'ok'.
-unsubscribe(Wapi, Options) -> gen_listener:rm_binding(?SERVER, Wapi, Options).
-
 
 %%%===================================================================
 %%% gen_server callbacks
