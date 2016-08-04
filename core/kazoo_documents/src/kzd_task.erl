@@ -46,7 +46,8 @@ fetch(_, 'undefined') ->
     {'error', 'task_id_undefined'};
 fetch(Account, Id) ->
     AccountId = kz_util:format_account_db(Account),
-    case kz_datamgr:get_single_result(?KZ_TASKS_BY_ACCOUNT
+    case kz_datamgr:get_single_result(?KZ_TASKS_DB
+                                     ,?KZ_TASKS_BY_ACCOUNT
                                      ,[{'key', [AccountId, Id]}]
                                      )
     of
