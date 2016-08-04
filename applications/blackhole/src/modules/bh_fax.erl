@@ -47,16 +47,6 @@ subscribe(Context, Binding) ->
     blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
     {'ok', Context}.
 
-<<<<<<< HEAD
--spec sub_unsub('subscribe'|'unsubscribe', bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
-sub_unsub(Kind, #bh_context{account_id=AccountId}=Context, <<"fax.status.", FaxId/binary>>) ->
-    blackhole_listener:Kind('fax', fax_status_bind_options(bh_context:account_id(Context), FaxId)),
-    blackhole_bindings:Kind(<<"fax.status.", AccountId/binary, ".", FaxId/binary>>, ?MODULE, 'handle_event', Context),
-    {'ok', Context};
-sub_unsub(Kind, #bh_context{account_id=AccountId}=Context, <<"fax.object.", Action/binary>>) ->
-    blackhole_listener:Kind('conf', fax_object_bind_options(AccountId, Action)),
-    blackhole_bindings:Kind(fax_object_bind_key(AccountId, Action), ?MODULE, 'handle_object_event', Context),
-=======
 -spec unsubscribe(bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
 unsubscribe(Context, <<"fax.status.", FaxId/binary>> = Binding) ->
     blackhole_listener:remove_binding('fax', fax_status_bind_options(bh_context:account_id(Context), FaxId)),
@@ -65,7 +55,6 @@ unsubscribe(Context, <<"fax.status.", FaxId/binary>> = Binding) ->
 unsubscribe(Context, <<"fax.object.", Action/binary>>) ->
     blackhole_listener:remove_binding('conf', fax_object_bind_options(Context, Action)),
     blackhole_bindings:unbind(fax_object_bind_key(Context, Action), ?MODULE, 'handle_object_event', Context),
->>>>>>> parent of 9eee697... code deduplication
     {'ok', Context};
 unsubscribe(Context, Binding) ->
     blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
