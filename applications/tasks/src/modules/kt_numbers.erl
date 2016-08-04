@@ -58,13 +58,13 @@ init() ->
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".carrier_module">>, ?MODULE, 'carrier_module'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
--spec output_header(atom()) -> kz_csv:row().
+-spec output_header(ne_binary()) -> kz_csv:row().
 output_header(<<"list">>) ->
     list_output_header();
 output_header(<<"list_all">>) ->
     list_output_header().
 
--spec cleanup(atom(), any()) -> any().
+-spec cleanup(ne_binary(), any()) -> any().
 cleanup(<<"import">>, 'init') ->
     %% Hit iff no rows at all succeeded.
     'ok';
