@@ -270,9 +270,9 @@ build_local_extension(#state{number_props=Props
     AccountId = knm_number_options:account_id(Props),
     OriginalAccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     {CEDNum, CEDName} = local_extension_callee_id(JObj, Number),
-
     Realm = get_account_realm(AccountId),
-    FromURI = <<"sip:", Number/binary, "@", Realm/binary>>,
+    FromRealm = get_account_realm(OriginalAccountId),
+    FromURI = <<"sip:", CIDNum/binary, "@", FromRealm/binary>>,
     CCVsOrig = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     CCVs = kz_json:set_values(
              [{<<"Ignore-Display-Updates">>, <<"true">>}
