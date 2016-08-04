@@ -15,6 +15,12 @@
             "name": "crawl_for_low_balance",
             "type": "boolean"
         },
+        "cycle_delay_time": {
+            "default": 300000,
+            "description": "",
+            "name": "cycle_delay_time",
+            "type": "integer"
+        },
         "interaccount_delay": {
             "default": 10000,
             "description": "",

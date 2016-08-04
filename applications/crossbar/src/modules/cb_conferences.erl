@@ -82,7 +82,7 @@ init() ->
 allowed_methods() -> [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_ConferenceId) -> [?HTTP_GET, ?HTTP_PATCH, ?HTTP_DELETE, ?HTTP_POST, ?HTTP_PUT].
 allowed_methods(_ConferenceId, ?PARTICIPANTS) -> [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(_ConferenceId, ?PARTICIPANTS, _ParticipantId) -> [?HTTP_PUT].
+allowed_methods(_ConferenceId, ?PARTICIPANTS, _ParticipantId) -> [?HTTP_GET, ?HTTP_PUT].
 
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
@@ -142,6 +142,12 @@ validate_participants(?HTTP_PUT, Context, ConferenceId) ->
     load_conference(ConferenceId, Context).
 
 -spec validate_participant(http_method(), cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+validate_participant(?HTTP_GET, Context0, ConferenceId, ParticipantId) ->
+    Context1 = load_conference(ConferenceId, Context0),
+    case cb_context:resp_status(Context1) of
+        'success' -> enrich_participant(ParticipantId, ConferenceId, Context1);
+        _Else -> Context1
+    end;
 validate_participant(?HTTP_PUT, Context, ConferenceId, _ParticipantId) ->
     load_conference(ConferenceId, Context).
 
@@ -324,6 +330,17 @@ perform_participant_action(Conference, ?KICK, ParticipantId) ->
     kapps_conference_command:kick(ParticipantId, Conference).
 
 %% add real-time call-info to participants
+-spec enrich_participant(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+enrich_participant(ParticipantId, ConferenceId, Context) ->
+    Participants = extract_participants(
+                     request_conference_details(ConferenceId)
+                    ),
+    [Normalized|_] = [kz_json:normalize_jobj(JObj)
+                      || JObj <- request_call_details(Participants)
+                             ,kz_json:get_binary_value(<<"Participant-ID">>, JObj) == ParticipantId
+                     ] ++ [kz_json:new()],
+    crossbar_util:response(Normalized, Context).
+
 -spec enrich_participants(ne_binary(), cb_context:context()) -> cb_context:context().
 enrich_participants(ConferenceId, Context) ->
     Participants = extract_participants(
