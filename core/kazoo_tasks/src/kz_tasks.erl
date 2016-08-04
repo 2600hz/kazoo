@@ -22,6 +22,7 @@
 -export([from_json/1
         ,to_json/1
         ,to_public_json/1
+        ,task_by_id/1
         ]).
 
 -export([is_processing/1
@@ -131,7 +132,7 @@ new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
         {'error', _R}=E ->
             lager:debug("checking task ~s ~s failed: ~p", [Category, Action, _R]),
             E;
-        {'ok', API} ->
+        API ->
             lager:debug("task ~s ~s matched api ~s", [Category, Action, kz_json:encode(API)]),
             case find_input_errors(API, Input) of
                 Errors when Errors =/= #{} ->

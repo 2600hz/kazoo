@@ -77,9 +77,9 @@ handle_lookup_req(JObj, _Props) ->
     Help =
         case
             case {kapi_tasks:category(JObj), kapi_tasks:action(JObj)} of
-                {'undefined', 'undefined'} -> kz_tasks:help();
-                {Category, 'undefined'} -> kz_tasks:help(Category);
-                {Category, Action} -> kz_tasks:help(Category, Action)
+                {'undefined', 'undefined'} -> kz_tasks_scheduler:help();
+                {Category, 'undefined'} -> kz_tasks_scheduler:help(Category);
+                {Category, Action} -> kz_tasks_scheduler:help(Category, Action)
             end
         of
             {'error', _R} ->

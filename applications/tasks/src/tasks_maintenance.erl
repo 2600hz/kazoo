@@ -22,18 +22,18 @@
 
 -spec help() -> 'no_return'.
 help() ->
-    print_json(kz_tasks:help()).
+    print_json(kz_tasks_scheduler:help()).
 
 -spec help(text()) -> 'no_return'.
 help(Category) ->
-    case kz_tasks:help(Category) of
+    case kz_tasks_scheduler:help(Category) of
         {'ok', JObj} -> print_json(JObj);
         {'error', Reason} -> print_error(Reason)
     end.
 
 -spec help(text(), text()) -> 'no_return'.
 help(Category, Action) ->
-    case kz_tasks:help(Category, Action) of
+    case kz_tasks_scheduler:help(Category, Action) of
         {'ok', JObj} -> print_json(JObj);
         {'error', Reason} -> print_error(Reason)
     end.
@@ -99,14 +99,14 @@ task_output(TaskId) ->
 
 -spec start(text()) -> 'no_return'.
 start(TaskId) ->
-    case kz_tasks:start(TaskId) of
+    case kz_tasks_scheduler:start(TaskId) of
         {'ok', StartedTask} -> print_json(StartedTask);
         {'error', Reason} -> print_error(Reason)
     end.
 
 -spec remove(text()) -> 'no_return'.
 remove(TaskId) ->
-    case kz_tasks:remove(TaskId) of
+    case kz_tasks_scheduler:remove(TaskId) of
         {'ok', RemovedTask} -> print_json(RemovedTask);
         {'error', Reason} -> print_error(Reason)
     end.

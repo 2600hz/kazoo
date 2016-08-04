@@ -17,7 +17,7 @@
 -define(SERVER, ?MODULE).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('kz_tasks')
+-define(CHILDREN, [?WORKER('kz_tasks_scheduler')
                   ,?WORKER('tasks_listener')
                   ]).
 

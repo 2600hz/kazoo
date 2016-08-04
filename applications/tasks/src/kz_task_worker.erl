@@ -43,7 +43,7 @@ start(TaskId, API, ExtraArgs) ->
             lager:debug("worker for ~s started", [TaskId]),
             loop('init', State);
         {'error', _R} ->
-            kz_tasks:worker_error(TaskId),
+            kz_tasks_scheduler:worker_error(TaskId),
             lager:debug("worker exiting now: ~p", [_R])
     end.
 
@@ -124,13 +124,13 @@ loop(IterValue, State=#state{task_id = TaskId
 -spec teardown(state(), kz_json:object(), any()) -> 'stop'.
 teardown(State, API, IterValue) ->
     TaskId = State#state.task_id,
-    _ = kz_tasks:worker_finished(TaskId
-                                ,State#state.total_succeeded
-                                ,State#state.total_failed
-                                ,?OUT(TaskId)
-                                ),
+    _ = kz_tasks_scheduler:worker_finished(TaskId
+                                          ,State#state.total_succeeded
+                                          ,State#state.total_failed
+                                          ,?OUT(TaskId)
+                                          ),
     _ = erase(?IN),
-    _ = kz_tasks:cleanup_task(API, IterValue),
+    _ = kz_tasks_scheduler:cleanup_task(API, IterValue),
     'stop'.
 
 %% @private
@@ -148,8 +148,11 @@ new_state_after_writing(WrittenSucceeded, WrittenFailed, State) ->
     S = State#state{total_succeeded = NewTotalSucceeded
                    ,total_failed = NewTotalFailed
                    },
-    _ = kz_tasks:worker_maybe_send_update(State#state.task_id, NewTotalSucceeded, NewTotalFailed),
-    _ = kz_tasks:worker_pause(),
+    _ = kz_tasks_scheduler:worker_maybe_send_update(State#state.task_id
+                                                   ,NewTotalSucceeded
+                                                   ,NewTotalFailed
+                                                   ),
+    _ = kz_tasks_scheduler:worker_pause(),
     S.
 
 %% @private
@@ -216,7 +219,7 @@ reason(_) -> <<>>.
 -spec write_output_csv_header(kz_tasks:task_id(), kz_json:object(), kz_csv:row()) ->
                                      'ok' | {'error', any()}.
 write_output_csv_header(TaskId, API, HeaderRow) ->
-    HeaderRHS = kz_tasks:get_output_header(API),
+    HeaderRHS = kz_tasks_scheduler:get_output_header(API),
     Data = [kz_csv:row_to_iolist(HeaderRow ++ HeaderRHS), $\n],
     file:write_file(?OUT(TaskId), Data).
 

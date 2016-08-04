@@ -42,7 +42,7 @@ start(TaskId, API, ExtraArgs) ->
             lager:debug("worker for ~s started", [TaskId]),
             loop('init', State);
         {'error', _R} ->
-            kz_tasks:worker_error(TaskId),
+            kz_tasks_scheduler:worker_error(TaskId),
             lager:debug("worker exiting now: ~p", [_R])
     end.
 
@@ -76,15 +76,19 @@ loop(IterValue, State=#state{task_id = TaskId
                             }) ->
     case is_task_successful(TaskId, API, ExtraArgs, IterValue) of
         'stop' ->
-            _ = kz_tasks:worker_finished(TaskId, TotalSucceeded, TotalFailed, ?OUT(TaskId)),
+            _ = kz_tasks_scheduler:worker_finished(TaskId
+                                                  ,TotalSucceeded
+                                                  ,TotalFailed
+                                                  ,?OUT(TaskId)
+                                                  ),
             'stop';
         {IsSuccessful, Written, 'stop'} ->
             NewState = state_after_writing(IsSuccessful, Written, State),
-            _ = kz_tasks:worker_finished(TaskId
-                                        ,NewState#state.total_succeeded
-                                        ,NewState#state.total_failed
-                                        ,?OUT(TaskId)
-                                        ),
+            _ = kz_tasks_scheduler:worker_finished(TaskId
+                                                  ,NewState#state.total_succeeded
+                                                  ,NewState#state.total_failed
+                                                  ,?OUT(TaskId)
+                                                  ),
             'stop';
         {IsSuccessful, Written, {_PrevRow, NewIterValue}} ->
             NewState = state_after_writing(IsSuccessful, Written, State),
@@ -106,8 +110,11 @@ new_state_after_writing(WrittenSucceeded, WrittenFailed, State) ->
     S = State#state{total_succeeded = NewTotalSucceeded
                    ,total_failed = NewTotalFailed
                    },
-    _ = kz_tasks:worker_maybe_send_update(State#state.task_id, NewTotalSucceeded, NewTotalFailed),
-    _ = kz_tasks:worker_pause(),
+    _ = kz_tasks_scheduler:worker_maybe_send_update(State#state.task_id
+                                                   ,NewTotalSucceeded
+                                                   ,NewTotalFailed
+                                                   ),
+    _ = kz_tasks_scheduler:worker_pause(),
     S.
 
 %% @private
@@ -156,7 +163,7 @@ reason(_) -> <<>>.
 -spec write_output_csv_header(kz_tasks:task_id(), kz_json:object()) ->
                                      'ok' | {'error', any()}.
 write_output_csv_header(TaskId, API) ->
-    HeaderRHS = kz_tasks:get_output_header(API),
+    HeaderRHS = kz_tasks_scheduler:get_output_header(API),
     Data = [kz_csv:row_to_iolist(HeaderRHS), $\n],
     file:write_file(?OUT(TaskId), Data).
 
