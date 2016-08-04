@@ -46,6 +46,7 @@
         ]).
 
 -include("tasks.hrl").
+-include_lib("kazoo_tasks/include/task_fields.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 
 -define(SERVER, {'via', 'kz_globals', ?MODULE}).
@@ -709,21 +710,20 @@ handle_call_start_task(Task=#{ id := TaskId
 
 -spec from_json(kz_json:object()) -> task().
 from_json(Doc) ->
-    TotalRows = kz_json:get_integer_value(?PVT_TOTAL_ROWS, Doc),
     #{ worker_pid => 'undefined'
-     , worker_node => kz_json:get_value(?PVT_WORKER_NODE, Doc)
-     , account_id => kz_json:get_value(?PVT_ACCOUNT_ID, Doc)
-     , auth_account_id => kz_json:get_value(?PVT_AUTH_ACCOUNT_ID, Doc)
-     , id => kz_doc:id(Doc)
-     , category => kz_json:get_value(?PVT_CATEGORY, Doc)
-     , action => kz_json:get_value(?PVT_ACTION, Doc)
-     , file_name => kz_json:get_value(?PVT_FILENAME, Doc)
+     , worker_node => kzd_task:node(Doc)
+     , account_id => kzd_task:account_id(Doc)
+     , auth_account_id => kzd_task:auth_account_id(Doc)
+     , id => kzd_task:id(Doc)
+     , category => kzd_task:category(Doc)
+     , action => kzd_task:action(Doc)
+     , file_name => kzd_task:file_name(Doc)
      , created => kz_doc:created(Doc)
-     , started => kz_json:get_integer_value(?PVT_STARTED_AT, Doc)
-     , finished => kz_json:get_integer_value(?PVT_FINISHED_AT, Doc)
-     , total_rows => TotalRows
-     , total_rows_failed => kz_json:get_integer_value(?PVT_TOTAL_ROWS_FAILED, Doc)
-     , total_rows_succeeded => kz_json:get_integer_value(?PVT_TOTAL_ROWS_SUCCEEDED, Doc)
+     , started => kzd_task:start_timestamp(Doc)
+     , finished => kzd_task:end_timestamp(Doc)
+     , total_rows => kzd_task:total_count(Doc)
+     , total_rows_failed => kzd_task:failure_count(Doc)
+     , total_rows_succeeded => kzd_task:success_count(Doc)
      }.
 
 -spec to_json(task()) -> kz_json:object().
@@ -744,7 +744,7 @@ to_json(#{id := TaskId
     kz_json:from_list(
       props:filter_undefined(
         [{<<"_id">>, TaskId}
-        ,{?PVT_TYPE, ?KZ_TASKS_DOC_TYPE}
+        ,{?PVT_TYPE, kzd_app:type()}
         ,{?PVT_WORKER_NODE, Node}
         ,{?PVT_ACCOUNT_ID, AccountId}
         ,{?PVT_AUTH_ACCOUNT_ID, AuthAccountId}
@@ -767,19 +767,20 @@ to_public_json(Task) ->
     JObj =
         kz_json:from_list(
           props:filter_undefined(
-            [{<<"id">>, kz_doc:id(Doc)}
-            ,{<<"node">>, kz_json:get_value(?PVT_WORKER_NODE, Doc)}
-            ,{<<"account_id">>, kz_json:get_value(?PVT_ACCOUNT_ID, Doc)}
-            ,{<<"auth_account_id">>, kz_json:get_value(?PVT_AUTH_ACCOUNT_ID, Doc)}
-            ,{<<"category">>, kz_json:get_value(?PVT_CATEGORY, Doc)}
-            ,{<<"action">>, kz_json:get_value(?PVT_ACTION, Doc)}
+            [{<<"id">>, kzd_task:id(Doc)}
+            ,{<<"node">>, kzd_task:node(Doc)}
+            ,{<<"account_id">>, kzd_task:account_id(Doc)}
+            ,{<<"auth_account_id">>, kzd_task:auth_account_id(Doc)}
+            ,{<<"category">>, kzd_task:category(Doc)}
+            ,{<<"action">>, kzd_task:action(Doc)}
+            ,{<<"file_name">>, kzd_task:file_name(Doc)}
             ,{<<"created">>, kz_doc:created(Doc)}
-            ,{<<"start_timestamp">>, kz_json:get_integer_value(?PVT_STARTED_AT, Doc)}
-            ,{<<"end_timestamp">>, kz_json:get_integer_value(?PVT_FINISHED_AT, Doc)}
-            ,{<<"total_count">>, kz_json:get_integer_value(?PVT_TOTAL_ROWS, Doc)}
-            ,{<<"failure_count">>, kz_json:get_integer_value(?PVT_TOTAL_ROWS_FAILED, Doc)}
-            ,{<<"success_count">>, kz_json:get_integer_value(?PVT_TOTAL_ROWS_SUCCEEDED, Doc)}
-            ,{<<"status">>, kz_json:get_value(?PVT_STATUS, Doc)}
+            ,{<<"start_timestamp">>, kzd_task:start_timestamp(Doc)}
+            ,{<<"end_timestamp">>, kzd_task:end_timestamp(Doc)}
+            ,{<<"total_count">>, kzd_task:total_count(Doc)}
+            ,{<<"failure_count">>, kzd_task:failure_count(Doc)}
+            ,{<<"success_count">>, kzd_task:success_count(Doc)}
+            ,{<<"status">>, kzd_task:status(Doc)}
             ])),
     kz_json:set_value(<<"_read_only">>, JObj, kz_json:new()).
 

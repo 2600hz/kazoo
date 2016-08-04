@@ -461,7 +461,7 @@ load_csv_attachment(Context, TaskId, AName) ->
         >>,
     Ctx = crossbar_doc:load_attachment(TaskId
                                       ,AName
-                                      ,?TYPE_CHECK_OPTION(?KZ_TASKS_DOC_TYPE)
+                                      ,?TYPE_CHECK_OPTION(kzd_task:type())
                                       ,set_db(Context)
                                       ),
     case cb_context:resp_status(Ctx) of
