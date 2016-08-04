@@ -1275,7 +1275,7 @@ set_resp_headers(Req0, Context) ->
 fix_header(<<"Location">> = H, Path, Req) ->
     {H, crossbar_util:get_path(Req, Path)};
 fix_header(H, V, _) ->
-    {kz_util:to_binary(H), kz_util:to_binary(V)}.
+    {kz_util:to_lower_binary(H), kz_util:to_binary(V)}.
 
 -spec halt(cowboy_req:req(), cb_context:context()) ->
                   halt_return().
