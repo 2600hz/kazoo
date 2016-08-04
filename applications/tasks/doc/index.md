@@ -95,8 +95,8 @@ The function must return one of:
 * `{Error, Data}`: attempts to write `Error` as an error to output & will pass `Data` on next call.
 
 Examples of both kinds of tasks can be found in
-* [knm_tasks](https://github.com/2600hz/kazoo/blob/master/core/kazoo_number_manager/src/knm_tasks.erl)
-* [kz_services_tasks](https://github.com/2600hz/kazoo/blob/master/core/kazoo_services/src/kz_services_tasks.erl)
+* [kt_numbers](https://github.com/2600hz/kazoo/blob/master/applications/tasks/src/modules/kt_numbers.erl)
+* [kt_services](https://github.com/2600hz/kazoo/blob/master/applications/tasks/src/modules/kt_services.erl)
 
 
 ## Task statuses
