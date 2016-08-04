@@ -51,6 +51,7 @@ sub_unsub(_Kind, Context, Binding) ->
     blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
     {'ok', Context}.
 
+-spec fax_status_bind_options(ne_binary(), ne_binary()) -> kz_proplist().
 fax_status_bind_options(AccountId, FaxId) ->
     [{'restrict_to', ['status']}
     ,{'account_id', AccountId}
