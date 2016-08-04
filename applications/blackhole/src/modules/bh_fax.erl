@@ -34,27 +34,27 @@ handle_object_event(#bh_context{binding=Binding} = Context, EventJObj) ->
 event_name(_JObj) -> <<"fax.status">>.
 
 -spec subscribe(bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
-subscribe(Context, <<"fax.status.", FaxId/binary>> = Binding) ->
-    blackhole_listener:add_binding('fax', fax_status_bind_options(bh_context:account_id(Context), FaxId)),
+subscribe(#bh_context{account_id=AccountId}=Context, <<"fax.status.", FaxId/binary>> = Binding) ->
+    blackhole_listener:add_binding('fax', fax_status_bind_options(AccountId, FaxId)),
     blackhole_bindings:bind(Binding, ?MODULE, 'handle_event', Context),
     {'ok', Context};
 %% listen_to: doc_edited.$modb.fax.$fax_id
-subscribe(Context, <<"fax.object.", Action/binary>>) ->
-    blackhole_listener:add_binding('conf', fax_object_bind_options(Context, Action)),
-    blackhole_bindings:bind(fax_object_bind_key(Context, Action), ?MODULE, 'handle_object_event', Context),
+subscribe(#bh_context{account_id=AccountId}=Context, <<"fax.object.", Action/binary>>) ->
+    blackhole_listener:add_binding('conf', fax_object_bind_options(AccountId, Action)),
+    blackhole_bindings:bind(fax_object_bind_key(AccountId, Action), ?MODULE, 'handle_object_event', Context),
     {'ok', Context};
 subscribe(Context, Binding) ->
     blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
     {'ok', Context}.
 
 -spec unsubscribe(bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
-unsubscribe(Context, <<"fax.status.", FaxId/binary>> = Binding) ->
-    blackhole_listener:remove_binding('fax', fax_status_bind_options(bh_context:account_id(Context), FaxId)),
+unsubscribe(#bh_context{account_id=AccountId}=Context, <<"fax.status.", FaxId/binary>> = Binding) ->
+    blackhole_listener:remove_binding('fax', fax_status_bind_options(AccountId, FaxId)),
     blackhole_bindings:unbind(Binding, ?MODULE, 'handle_event', Context),
     {'ok', Context};
-unsubscribe(Context, <<"fax.object.", Action/binary>>) ->
-    blackhole_listener:remove_binding('conf', fax_object_bind_options(Context, Action)),
-    blackhole_bindings:unbind(fax_object_bind_key(Context, Action), ?MODULE, 'handle_object_event', Context),
+unsubscribe(#bh_context{account_id=AccountId}=Context, <<"fax.object.", Action/binary>>) ->
+    blackhole_listener:remove_binding('conf', fax_object_bind_options(AccountId, Action)),
+    blackhole_bindings:unbind(fax_object_bind_key(AccountId, Action), ?MODULE, 'handle_object_event', Context),
     {'ok', Context};
 unsubscribe(Context, Binding) ->
     blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
