@@ -11,6 +11,8 @@
 -export([start_link/0]).
 
 -export([handle_lookup_req/2
+        ,handle_start_req/2
+        ,handle_remove_req/2
         ]).
 
 -export([init/1
@@ -33,6 +35,12 @@
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_lookup_req'}
                      ,[{<<"tasks">>, <<"lookup_req">>}]
+                     }
+                    ,{{?MODULE, 'handle_start_req'}
+                     ,[{<<"tasks">>, <<"start_req">>}]
+                     }
+                    ,{{?MODULE, 'handle_remove_req'}
+                     ,[{<<"tasks">>, <<"remove_req">>}]
                      }
                     ]).
 
@@ -87,6 +95,48 @@ handle_lookup_req(JObj, _Props) ->
              ]
             ),
     kapi_tasks:publish_lookup_resp(kz_api:server_id(JObj), Resp).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_start_req(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_start_req(JObj, _Props) ->
+    'true' = kapi_tasks:start_req_v(JObj),
+    Help =
+        case kz_tasks_scheduler:start(kapi_tasks:task_id(JObj)) of
+            {'ok', TaskJObj} -> TaskJObj;
+            {'error', 'already_started'} -> <<"already_started">>
+        end,
+    Resp = kz_json:from_list(
+             [{<<"Reply">>, Help}
+             ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]
+            ),
+    kapi_tasks:publish_start_resp(kz_api:server_id(JObj), Resp).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_remove_req(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_remove_req(JObj, _Props) ->
+    'true' = kapi_tasks:remove_req_v(JObj),
+    Help =
+        case kz_tasks_scheduler:remove(kapi_tasks:task_id(JObj)) of
+            {'ok', TaskJObj} -> TaskJObj;
+            {'error', 'task_running'} -> <<"task_running">>
+        end,
+    Resp = kz_json:from_list(
+             [{<<"Reply">>, Help}
+             ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]
+            ),
+    kapi_tasks:publish_remove_resp(kz_api:server_id(JObj), Resp).
 
 
 %%%===================================================================

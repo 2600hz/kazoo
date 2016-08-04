@@ -10,6 +10,7 @@
 
 -export([category/1
         ,action/1
+        ,task_id/1
         ]).
 
 -export([bind_q/2, unbind_q/2]).
@@ -20,8 +21,19 @@
 -export([publish_lookup_req/1, publish_lookup_req/2]).
 -export([publish_lookup_resp/2, publish_lookup_resp/3]).
 
+-export([start_req/1, start_req_v/1]).
+-export([start_resp/1, start_resp_v/1]).
+-export([publish_start_req/1, publish_start_req/2]).
+-export([publish_start_resp/2, publish_start_resp/3]).
+
+-export([remove_req/1, remove_req_v/1]).
+-export([remove_resp/1, remove_resp_v/1]).
+-export([publish_remove_req/1, publish_remove_req/2]).
+-export([publish_remove_resp/2, publish_remove_resp/3]).
+
 
 -include_lib("kazoo/include/kz_api.hrl").
+
 
 -define(LOOKUP_REQ_HEADERS, []).
 -define(OPTIONAL_LOOKUP_REQ_HEADERS, [<<"Category">>, <<"Action">>]).
@@ -37,6 +49,37 @@
                             ]).
 -define(LOOKUP_RESP_TYPES, []).
 
+
+-define(START_REQ_HEADERS, [<<"Task-ID">>]).
+-define(OPTIONAL_START_REQ_HEADERS, []).
+-define(START_REQ_VALUES, [{<<"Event-Category">>, <<"tasks">>}
+                           ,{<<"Event-Name">>, <<"start_req">>}
+                           ]).
+-define(START_REQ_TYPES, []).
+
+-define(START_RESP_HEADERS, [<<"Reply">>]).
+-define(OPTIONAL_START_RESP_HEADERS, []).
+-define(START_RESP_VALUES, [{<<"Event-Category">>, <<"tasks">>}
+                            ,{<<"Event-Name">>, <<"start_resp">>}
+                            ]).
+-define(START_RESP_TYPES, []).
+
+
+-define(REMOVE_REQ_HEADERS, [<<"Task-ID">>]).
+-define(OPTIONAL_REMOVE_REQ_HEADERS, []).
+-define(REMOVE_REQ_VALUES, [{<<"Event-Category">>, <<"tasks">>}
+                           ,{<<"Event-Name">>, <<"remove_req">>}
+                           ]).
+-define(REMOVE_REQ_TYPES, []).
+
+-define(REMOVE_RESP_HEADERS, [<<"Reply">>]).
+-define(OPTIONAL_REMOVE_RESP_HEADERS, []).
+-define(REMOVE_RESP_VALUES, [{<<"Event-Category">>, <<"tasks">>}
+                            ,{<<"Event-Name">>, <<"remove_resp">>}
+                            ]).
+-define(REMOVE_RESP_TYPES, []).
+
+
 -define(TASKS_AMQP_KEY(SubKey), <<"tasks.", SubKey>>).
 
 
@@ -47,6 +90,10 @@ category(JObj) ->
 -spec action(kz_json:object()) -> api_binary().
 action(JObj) ->
     kz_json:get_value(<<"Action">>, JObj).
+
+-spec task_id(kz_json:object()) -> kz_tasks:task_id().
+task_id(JObj) ->
+    kz_json:get_value(<<"Task-ID">>, JObj).
 
 
 -spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
@@ -118,4 +165,98 @@ publish_lookup_resp(RespQ, JObj) ->
     publish_lookup_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_lookup_resp(RespQ, JObj, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?LOOKUP_RESP_VALUES, fun lookup_resp/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+
+-spec start_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+start_req(Prop) when is_list(Prop) ->
+    case start_req_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?START_REQ_HEADERS, ?OPTIONAL_START_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for start req"}
+    end;
+start_req(JObj) ->
+    start_req(kz_json:to_proplist(JObj)).
+
+-spec start_req_v(api_terms()) -> boolean().
+start_req_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?START_REQ_HEADERS, ?START_REQ_VALUES, ?START_REQ_TYPES);
+start_req_v(JObj) ->
+    start_req_v(kz_json:to_proplist(JObj)).
+
+-spec start_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+start_resp(Prop) when is_list(Prop) ->
+    case start_resp_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?START_RESP_HEADERS, ?OPTIONAL_START_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for start resp"}
+    end;
+start_resp(JObj) ->
+    start_resp(kz_json:to_proplist(JObj)).
+
+-spec start_resp_v(api_terms()) -> boolean().
+start_resp_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?START_RESP_HEADERS, ?START_RESP_VALUES, ?START_RESP_TYPES);
+start_resp_v(JObj) ->
+    start_resp_v(kz_json:to_proplist(JObj)).
+
+-spec publish_start_req(api_terms()) -> 'ok'.
+-spec publish_start_req(api_terms(), binary()) -> 'ok'.
+publish_start_req(JObj) ->
+    publish_start_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_start_req(Req, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?START_REQ_VALUES, fun ?MODULE:start_req/1),
+    amqp_util:tasks_publish(?TASKS_AMQP_KEY("start"), Payload, ContentType).
+
+-spec publish_start_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_start_resp(ne_binary(), api_terms(), binary()) -> 'ok'.
+publish_start_resp(RespQ, JObj) ->
+    publish_start_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_start_resp(RespQ, JObj, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?START_RESP_VALUES, fun start_resp/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+
+-spec remove_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+remove_req(Prop) when is_list(Prop) ->
+    case remove_req_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?REMOVE_REQ_HEADERS, ?OPTIONAL_REMOVE_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for remove req"}
+    end;
+remove_req(JObj) ->
+    remove_req(kz_json:to_proplist(JObj)).
+
+-spec remove_req_v(api_terms()) -> boolean().
+remove_req_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?REMOVE_REQ_HEADERS, ?REMOVE_REQ_VALUES, ?REMOVE_REQ_TYPES);
+remove_req_v(JObj) ->
+    remove_req_v(kz_json:to_proplist(JObj)).
+
+-spec remove_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+remove_resp(Prop) when is_list(Prop) ->
+    case remove_resp_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?REMOVE_RESP_HEADERS, ?OPTIONAL_REMOVE_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for remove resp"}
+    end;
+remove_resp(JObj) ->
+    remove_resp(kz_json:to_proplist(JObj)).
+
+-spec remove_resp_v(api_terms()) -> boolean().
+remove_resp_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?REMOVE_RESP_HEADERS, ?REMOVE_RESP_VALUES, ?REMOVE_RESP_TYPES);
+remove_resp_v(JObj) ->
+    remove_resp_v(kz_json:to_proplist(JObj)).
+
+-spec publish_remove_req(api_terms()) -> 'ok'.
+-spec publish_remove_req(api_terms(), binary()) -> 'ok'.
+publish_remove_req(JObj) ->
+    publish_remove_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_remove_req(Req, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?REMOVE_REQ_VALUES, fun ?MODULE:remove_req/1),
+    amqp_util:tasks_publish(?TASKS_AMQP_KEY("remove"), Payload, ContentType).
+
+-spec publish_remove_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_remove_resp(ne_binary(), api_terms(), binary()) -> 'ok'.
+publish_remove_resp(RespQ, JObj) ->
+    publish_remove_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_remove_resp(RespQ, JObj, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?REMOVE_RESP_VALUES, fun remove_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).

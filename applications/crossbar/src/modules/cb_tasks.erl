@@ -46,8 +46,6 @@
 %% @end
 %%--------------------------------------------------------------------
 init() ->
-    {'ok', _} = application:ensure_all_started('tasks'),
-
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.tasks">>, ?MODULE, 'allowed_methods'),
@@ -301,13 +299,22 @@ put(Context) ->
 %%--------------------------------------------------------------------
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, TaskId) ->
-    case kz_tasks:start(TaskId) of
-        {'ok', Task} -> crossbar_util:response(Task, Context);
-        {'error', 'already_started'} ->
+    Req = [{<<"Task-ID">>, TaskId}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    {'ok', Resp} =
+        kz_amqp_worker:call(Req
+                           ,fun kapi_tasks:publish_start_req/1
+                           ,fun kapi_tasks:start_resp_v/1
+                           ),
+    case kz_json:get_value(<<"Reply">>, Resp) of
+        <<"already_started">> ->
             Msg = kz_json:from_list([{<<"reason">>, <<"task already started">>}
                                     ,{<<"cause">>, TaskId}
                                     ]),
-            cb_context:add_system_error('bad_identifier', Msg, Context)
+            cb_context:add_system_error('bad_identifier', Msg, Context);
+        Task ->
+            crossbar_util:response(Task, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -318,13 +325,22 @@ patch(Context, TaskId) ->
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, TaskId) ->
-    case kz_tasks:remove(TaskId) of
-        {'ok', Task} -> crossbar_util:response(Task, Context);
-        {'error', 'task_running'} ->
+    Req = [{<<"Task-ID">>, TaskId}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    {'ok', Resp} =
+        kz_amqp_worker:call(Req
+                           ,fun kapi_tasks:publish_remove_req/1
+                           ,fun kapi_tasks:remove_resp_v/1
+                           ),
+    case kz_json:get_value(<<"Reply">>, Resp) of
+        <<"task_running">> ->
             Msg = kz_json:from_list([{<<"message">>, <<"task is running">>}
                                     ,{<<"cause">>, TaskId}
                                     ]),
-            cb_context:add_system_error('bad_identifier', Msg, Context)
+            cb_context:add_system_error('bad_identifier', Msg, Context);
+        Task ->
+            crossbar_util:response(Task, Context)
     end.
 
 

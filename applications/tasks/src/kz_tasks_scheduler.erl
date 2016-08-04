@@ -531,7 +531,7 @@ parse_apis([], Acc) -> Acc;
 parse_apis([JObj|JObjs], Acc) ->
     [Category] = kz_json:get_keys(JObj),
     Actions = kz_json:get_value(Category, JObj),
-    _ = lists:foreach(fun verify_unicity_map/1, kz_json:to_proplist(Actions)),
+    lists:foreach(fun verify_unicity_map/1, kz_json:to_proplist(Actions)),
     NewAcc = kz_json:set_value(Category, Actions, Acc),
     parse_apis(JObjs, NewAcc).
 
