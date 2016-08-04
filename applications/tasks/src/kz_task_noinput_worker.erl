@@ -9,14 +9,12 @@
 -module(kz_task_noinput_worker).
 
 %% API
--export([start/6]).
+-export([start/3]).
 
 -include("tasks.hrl").
 
 -record(state, { task_id :: kz_tasks:task_id()
                , api :: kz_json:object()
-               , module :: module()
-               , function :: atom()
                , fassoc :: kz_csv:fassoc()
                , extra_args :: kz_proplist()
                , total_failed = 0 :: non_neg_integer()
@@ -36,11 +34,10 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec start(kz_tasks:task_id(), kz_json:object(), module(), atom(), kz_proplist(), ne_binaries()) ->
-                   'ok'.
-start(TaskId, API, Module, Function, ExtraArgs, OrderedFields) ->
+-spec start(kz_tasks:task_id(), kz_json:object(), kz_proplist()) -> 'ok'.
+start(TaskId, API, ExtraArgs) ->
     _ = kz_util:put_callid(TaskId),
-    case init(TaskId, API, Module, Function, ExtraArgs, OrderedFields) of
+    case init(TaskId, API, ExtraArgs) of
         {'ok', State} ->
             lager:debug("worker for ~s started", [TaskId]),
             loop('init', State);
@@ -54,26 +51,17 @@ start(TaskId, API, Module, Function, ExtraArgs, OrderedFields) ->
 %%%===================================================================
 
 %% @private
--spec init(kz_tasks:task_id(), kz_json:object(), module(), atom(), kz_proplist(), ne_binaries()) ->
-                  {'ok', state()} |
-                  {'error', any()}.
-init(TaskId, API, Module, Function, ExtraArgs, _) ->
-    case
-        kz_util:try_load_module(Module) =:= Module
-        andalso write_output_csv_header(TaskId, Module, Function)
-    of
-        'false' ->
-            lager:error("failed loading module '~p' for task ~s", [Module, TaskId]),
-            {'error', 'badmodule'};
+-spec init(kz_tasks:task_id(), kz_json:object(), kz_proplist()) -> {'ok', state()} |
+                                                                   {'error', any()}.
+init(TaskId, API, ExtraArgs) ->
+    case write_output_csv_header(TaskId, API) of
         {'error', _R}=Error ->
             lager:error("failed to write CSV header in ~s", [?OUT(TaskId)]),
             Error;
         'ok' ->
-            State = #state{ task_id = TaskId
-                          , api = API
-                          , module = Module
-                          , function = Function
-                          , extra_args = ExtraArgs
+            State = #state{task_id = TaskId
+                          ,api = API
+                          ,extra_args = ExtraArgs
                           },
             {'ok', State}
     end.
@@ -81,13 +69,12 @@ init(TaskId, API, Module, Function, ExtraArgs, _) ->
 %% @private
 -spec loop(task_iterator(), state()) -> any().
 loop(IterValue, State=#state{task_id = TaskId
-                            ,module = Module
-                            ,function = Function
+                            ,api = API
                             ,extra_args = ExtraArgs
                             ,total_failed = TotalFailed
                             ,total_succeeded = TotalSucceeded
                             }) ->
-    case is_task_successful(TaskId, Module, Function, ExtraArgs, IterValue) of
+    case is_task_successful(TaskId, API, ExtraArgs, IterValue) of
         'stop' ->
             _ = kz_tasks:worker_finished(TaskId, TotalSucceeded, TotalFailed, ?OUT(TaskId)),
             'stop';
@@ -124,29 +111,28 @@ new_state_after_writing(WrittenSucceeded, WrittenFailed, State) ->
     S.
 
 %% @private
--spec is_task_successful(kz_tasks:task_id(), module(), atom(), list(), task_iterator()) ->
+-spec is_task_successful(kz_tasks:task_id(), kz_json:object(), kz_proplist(), task_iterator()) ->
                                 {boolean(), non_neg_integer(), task_iterator()} |
                                 'stop'.
-is_task_successful(TaskId, Module, Function, ExtraArgs, IterValue) ->
-    try Module:Function(ExtraArgs, IterValue) of
-        'stop' -> 'stop';
-        {'ok', _Data}=NewIterValue ->
+is_task_successful(TaskId, API, ExtraArgs, IterValue) ->
+    case tasks_bindings:apply(API, [ExtraArgs, IterValue]) of
+        ['stop'] -> 'stop';
+        [{'ok', _Data}=NewIterValue] ->
             %% For initialisation steps. Skeeps writing a CSV output row.
             {'true', 0, NewIterValue};
-        {[_|_]=NewRowOrRows, _Data}=NewIterValue ->
+        [{[_|_]=NewRowOrRows, _Data}=NewIterValue] ->
             Written = store_return(TaskId, NewRowOrRows),
             {'true', Written, NewIterValue};
-        {?NE_BINARY=NewRow, _Data}=NewIterValue ->
+        [{?NE_BINARY=NewRow, _Data}=NewIterValue] ->
             Written = store_return(TaskId, NewRow),
             {'true', Written, NewIterValue};
-        {Error, _Data}=NewIterValue ->
-            Written = store_return(TaskId, Error),
-            {'false', Written, NewIterValue}
-    catch
-        _E:_R ->
+        [{'EXIT', _}] ->
             kz_util:log_stacktrace(),
             Written = store_return(TaskId, ?WORKER_TASK_FAILED),
-            {'false', Written, 'stop'}
+            {'false', Written, 'stop'};
+        [{Error, _Data}=NewIterValue] ->
+            Written = store_return(TaskId, Error),
+            {'false', Written, NewIterValue}
     end.
 
 %% @private
@@ -167,10 +153,10 @@ reason(?NE_BINARY=Reason) ->
 reason(_) -> <<>>.
 
 %% @private
--spec write_output_csv_header(kz_tasks:task_id(), module(), atom()) ->
+-spec write_output_csv_header(kz_tasks:task_id(), kz_json:object()) ->
                                      'ok' | {'error', any()}.
-write_output_csv_header(TaskId, Module, Function) ->
-    HeaderRHS = kz_tasks:get_output_header(Module, Function),
+write_output_csv_header(TaskId, API) ->
+    HeaderRHS = kz_tasks:get_output_header(API),
     Data = [kz_csv:row_to_iolist(HeaderRHS), $\n],
     file:write_file(?OUT(TaskId), Data).
 
