@@ -272,10 +272,11 @@ build_local_extension(#state{number_props=Props
     {CEDNum, CEDName} = local_extension_callee_id(JObj, Number),
 
     Realm = get_account_realm(AccountId),
+    FromURI = <<"sip:", Number/binary, "@", Realm/binary>>,
     CCVsOrig = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     CCVs = kz_json:set_values(
              [{<<"Ignore-Display-Updates">>, <<"true">>}
-             ,{<<"From-URI">>, bridge_from_uri(Number, JObj)}
+             ,{<<"From-URI">>, FromURI}
              ,{<<"Account-ID">>, OriginalAccountId}
              ,{<<"Reseller-ID">>, kz_services:find_reseller_id(OriginalAccountId)}
              ],
@@ -396,32 +397,6 @@ local_extension_failure(JObj, OffnetReq) ->
     ,{<<"Resource-Response">>, JObj}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
-
--spec bridge_from_uri(api_binary(), kapi_offnet_resource:req()) ->
-                             api_binary().
-bridge_from_uri(Number, OffnetReq) ->
-    Realm = default_realm(OffnetReq),
-
-    case (kapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
-          orelse kapi_offnet_resource:format_from_uri(OffnetReq)
-         )
-        andalso (is_binary(Number)
-                 andalso is_binary(Realm)
-                )
-    of
-        'false' -> 'undefined';
-        'true' ->
-            FromURI = <<"sip:", Number/binary, "@", Realm/binary>>,
-            lager:debug("setting bridge from-uri to ~s", [FromURI]),
-            FromURI
-    end.
-
--spec default_realm(kapi_offnet_resource:req()) -> api_binary().
-default_realm(OffnetReq) ->
-    case kapi_offnet_resource:from_uri_realm(OffnetReq) of
-        'undefined' -> kapi_offnet_resource:account_realm(OffnetReq);
-        Realm -> Realm
-    end.
 
 -spec get_event_type(kz_json:object()) -> {ne_binary(), ne_binary(), ne_binary()}.
 get_event_type(JObj) ->
