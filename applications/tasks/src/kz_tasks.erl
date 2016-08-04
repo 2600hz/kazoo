@@ -672,25 +672,18 @@ handle_call_start_task(Task=#{ id := TaskId
     lager:info("about to start task ~s: ~s ~s", [TaskId, Category, Action]),
     API = task_api(Category, Action),
     lager:debug("API ~s", [kz_json:encode(API)]),
-    WorkerModule = worker_module(API),
-    lager:debug("worker type: ~s", [WorkerModule]),
-    Node = kz_util:to_binary(node()),
-    lager:debug("node ~s", [Node]),
+    Worker = worker_module(API),
+    lager:debug("worker type: ~s", [Worker]),
     ExtraArgs = [{'account_id', AccountId}
                 ,{'auth_account_id', AuthAccountId}
                 ],
     lager:debug("extra args: ~p", [ExtraArgs]),
     %% Task needs to run where App is started.
-    try erlang:spawn_link(kz_util:to_atom(Node, 'true')
-                         ,WorkerModule
-                         ,'start'
-                         ,[TaskId, API, ExtraArgs]
-                         )
-    of
+    try kz_util:spawn_link(fun Worker:start/3, [TaskId, API, ExtraArgs]) of
         Pid ->
-            Task1 = Task#{ started => kz_util:current_tstamp()
-                         , worker_pid => Pid
-                         , worker_node => Node
+            Task1 = Task#{started => kz_util:current_tstamp()
+                         ,worker_pid => Pid
+                         ,worker_node => kz_util:to_binary(node())
                          },
             {'ok', JObj} = update_task(Task1),
             State1 = add_task(Task1, State),
