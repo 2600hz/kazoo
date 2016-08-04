@@ -11,6 +11,7 @@
 -define(APP_VERSION, <<"4.0.0">> ).
 
 -define(TASKS, ['kt_skel'
+               ,'kt_numbers'
                ]).
 
 -define(API_MANDATORY, <<"mandatory">>).

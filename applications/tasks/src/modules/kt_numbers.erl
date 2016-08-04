@@ -32,6 +32,8 @@
         ]).
 
 -include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
 -define(CATEGORY, "number_management").
 -define(ACTIONS, [<<"list">>
