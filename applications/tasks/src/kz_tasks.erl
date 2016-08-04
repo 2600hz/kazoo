@@ -19,9 +19,6 @@
         ,remove/1
         ]).
 
--export([handle_lookup_req/2
-        ]).
-
 %%% API used by workers
 -export([worker_finished/4
         ,worker_error/1
@@ -245,41 +242,6 @@ read(TaskId=?NE_BINARY) ->
                            {'error', 'not_found' | 'task_running'}.
 remove(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'remove_task', TaskId}).
-
-
-%%%===================================================================
-%%% AMQP API
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec handle_lookup_req(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_lookup_req(JObj, _Props) ->
-    'true' = kapi_tasks:lookup_req_v(JObj),
-    Help =
-        case
-            case {kapi_tasks:category(JObj), kapi_tasks:action(JObj)} of
-                {'undefined', 'undefined'} -> help();
-                {Category, 'undefined'} -> help(Category);
-                {Category, Action} -> help(Category, Action)
-            end
-        of
-            {'error', _R} ->
-                lager:debug("lookup_req error: ~s", [_R]),
-                kz_json:new();
-            {'ok', JOk} -> JOk;
-            JOk -> JOk
-        end,
-    Resp = kz_json:from_list(
-             [{<<"Help">>, Help}
-             ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]
-            ),
-    kapi_tasks:publish_lookup_resp(kz_api:server_id(JObj), Resp).
 
 
 %%%===================================================================

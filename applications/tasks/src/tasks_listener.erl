@@ -10,6 +10,9 @@
 
 -export([start_link/0]).
 
+-export([handle_lookup_req/2
+        ]).
+
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -28,10 +31,11 @@
 -define(BINDINGS, [{'self', []}
                   ,{'tasks', []}
                   ]).
--define(RESPONDERS, [{{'kz_tasks', 'handle_lookup_req'}
+-define(RESPONDERS, [{{?MODULE, 'handle_lookup_req'}
                      ,[{<<"tasks">>, <<"lookup_req">>}]
                      }
                     ]).
+
 
 %%%===================================================================
 %%% API
@@ -48,6 +52,42 @@ start_link() ->
                             ]
                            ,[]
                            ).
+
+
+%%%===================================================================
+%%% AMQP API
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_lookup_req(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_lookup_req(JObj, _Props) ->
+    'true' = kapi_tasks:lookup_req_v(JObj),
+    Help =
+        case
+            case {kapi_tasks:category(JObj), kapi_tasks:action(JObj)} of
+                {'undefined', 'undefined'} -> kz_tasks:help();
+                {Category, 'undefined'} -> kz_tasks:help(Category);
+                {Category, Action} -> kz_tasks:help(Category, Action)
+            end
+        of
+            {'error', _R} ->
+                lager:debug("lookup_req error: ~s", [_R]),
+                kz_json:new();
+            {'ok', JOk} -> JOk;
+            JOk -> JOk
+        end,
+    Resp = kz_json:from_list(
+             [{<<"Help">>, Help}
+             ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]
+            ),
+    kapi_tasks:publish_lookup_resp(kz_api:server_id(JObj), Resp).
+
 
 %%%===================================================================
 %%% gen_server callbacks
