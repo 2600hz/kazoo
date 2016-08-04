@@ -351,10 +351,11 @@ read(TaskId, Context) ->
                                 ,set_db(Context)
                                 ,fun normalize_view_results/2
                                 ),
-    case [] =:= cb_context:resp_data(Ctx) of
-        'false' -> Ctx;
-        'true' ->
-            crossbar_util:response_bad_identifier(TaskId, Context)
+    case cb_context:resp_data(Ctx) of
+        [] -> crossbar_util:response_bad_identifier(TaskId, Context);
+        [TaskJObj] ->
+            JObj = kz_json:set_value(<<"_read_only">>, TaskJObj, kz_json:new()),
+            cb_context:set_resp_data(Ctx, JObj)
     end.
 
 %%--------------------------------------------------------------------
