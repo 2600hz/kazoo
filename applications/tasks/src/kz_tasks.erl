@@ -372,7 +372,7 @@ get_output_header(API) ->
 -spec cleanup_task(kz_json:object(), any()) -> 'ok'.
 cleanup_task(API, Data) ->
     lager:debug("cleaning up after task"),
-    Action = kz_util:to_atom(kz_json:get_value(<<"action">>, API), 'true'),
+    Action = kz_json:get_value(<<"action">>, API),
     case tasks_bindings:apply(API, <<"cleanup">>, [Action, Data]) of
         [] -> lager:debug("skipped cleanup");
         [{'EXIT', {_E, _Rs}}] ->

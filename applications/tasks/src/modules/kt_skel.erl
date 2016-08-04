@@ -41,35 +41,33 @@ init() ->
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".col2">>, ?MODULE, 'col2'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
--spec help() -> kz_json:object().
-help() ->
-    kz_json:from_list(
-      [{<<?CATEGORY>>
-       ,kz_json:from_list([{Action, action(Action)} || Action <- ?ACTIONS])
-       }
-      ]).
-
 -spec output_header(ne_binary()) -> kz_csv:row().
 output_header(<<"id2">>) ->
     [<<"Col1">>, <<"Col2">>].
 
--spec action(ne_binary()) -> kz_json:object().
+-spec help() -> kz_json:object().
+help() ->
+    kz_json:from_list(
+      [{<<?CATEGORY>>
+       ,kz_json:from_list(
+          [{Action, kz_json:from_list(action(Action))} || Action <- ?ACTIONS]
+         )
+       }
+      ]).
+
+-spec action(ne_binary()) -> kz_proplist().
 action(<<"id1">>) ->
-    kz_json:from_list(
-      [{<<"description">>, <<"The identity task">>}
-      ,{<<"doc">>, <<"Takes 1 column as input and return it as is.">>}
-      ,{<<"expected_content">>, <<"text/csv">>}
-      ,{<<"optional">>, [<<"col1">>]}
-      ]
-     );
+    [{<<"description">>, <<"The identity task">>}
+    ,{<<"doc">>, <<"Takes 1 column as input and return it as is.">>}
+    ,{<<"expected_content">>, <<"text/csv">>}
+    ,{<<"optional">>, [<<"col1">>]}
+    ];
 action(<<"id2">>) ->
-    kz_json:from_list(
-      [{<<"description">>, <<"The identity task">>}
-      ,{<<"doc">>, <<"Takes 2 columns as input and return them as is.">>}
-      ,{<<"expected_content">>, <<"text/csv">>}
-      ,{<<"mandatory">>, [<<"col1">>, <<"col2">>]}
-      ]
-     ).
+    [{<<"description">>, <<"The identity task">>}
+    ,{<<"doc">>, <<"Takes 2 columns as input and return them as is.">>}
+    ,{<<"expected_content">>, <<"text/csv">>}
+    ,{<<"mandatory">>, [<<"col1">>, <<"col2">>]}
+    ].
 
 %%% Verifiers
 -spec col2(ne_binary()) -> boolean().
