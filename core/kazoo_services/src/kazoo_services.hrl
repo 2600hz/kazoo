@@ -3,8 +3,8 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
-
 -include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
+-include_lib("kazoo_services/include/kz_service.hrl").
 
 -define(APP, 'kazoo_services').
 -define(APP_NAME, <<"kazoo_services">>).
@@ -19,9 +19,6 @@
 -else.
 -define(SUPPORT_BILLING_ID, 'true').
 -endif.
-
--define(SERVICES_BOM, <<"services_bom">>).
--define(SERVICES_EOM, <<"services_eom">>).
 
 -define(KAZOO_SERVICES_HRL, 'true').
 -endif.

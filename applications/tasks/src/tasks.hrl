@@ -10,8 +10,9 @@
 -define(APP_NAME, <<"tasks">>).
 -define(APP_VERSION, <<"4.0.0">> ).
 
--define(TASKS, ['kt_skel'
-               ,'kt_numbers'
+-define(TASKS, ['kt_numbers'
+               ,'kt_services'
+                %% ,'kt_skel'
                ]).
 
 -define(API_MANDATORY, <<"mandatory">>).
