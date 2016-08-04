@@ -11,11 +11,11 @@
 
 -export([init/0
         ,help/0
-        ,module/0
+        ,output_header/1
         ]).
 
 %% Verifiers
--export([
+-export([col2/1
         ]).
 
 %% Appliers
@@ -37,7 +37,8 @@
 -spec init() -> 'ok'.
 init() ->
     _ = tasks_bindings:bind(<<"tasks.help."?CATEGORY>>, ?MODULE, 'help'),
-    _ = tasks_bindings:bind(<<"tasks.module."?CATEGORY>>, ?MODULE, 'module'),
+    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".output_header">>, ?MODULE, 'output_header'),
+    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".col2">>, ?MODULE, 'col2'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
 -spec help() -> kz_json:object().
@@ -48,8 +49,9 @@ help() ->
        }
       ]).
 
--spec module() -> module().
-module() -> ?MODULE.
+-spec output_header(ne_binary()) -> kz_csv:row().
+output_header(<<"id2">>) ->
+    [<<"Col1">>, <<"Col2">>].
 
 -spec action(ne_binary()) -> kz_json:object().
 action(<<"id1">>) ->
@@ -70,7 +72,8 @@ action(<<"id2">>) ->
      ).
 
 %%% Verifiers
-
+-spec col2(ne_binary()) -> boolean().
+col2(?NE_BINARY) -> 'true'.
 
 %%% Appliers
 

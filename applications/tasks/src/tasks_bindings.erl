@@ -25,6 +25,7 @@
 -export([bind/3, bind/4
         ,bind_actions/3
         ,unbind/3, unbind/4
+        ,apply/2, apply/3
         ,map/2
         ,fold/2
         ,flush/0, flush/1
@@ -47,6 +48,20 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+%% @public
+-spec apply(kz_json:object(), list()) -> list().
+apply(API, Args) ->
+    Action = kz_json:get_value(<<"action">>, API),
+    ?MODULE:apply(API, Action, Args).
+
+%% @public
+-spec apply(kz_json:object(), ne_binary(), list()) -> list().
+apply(API, Action, Args) ->
+    Category = kz_json:get_value(<<"category">>, API),
+    Route = <<"tasks.", Category/binary, ".", Action/binary>>,
+    lager:debug("using route ~s", [Route]),
+    map(Route, Args).
 
 %%--------------------------------------------------------------------
 %% @public

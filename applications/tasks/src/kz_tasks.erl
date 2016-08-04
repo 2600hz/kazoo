@@ -27,8 +27,8 @@
         ,worker_error/1
         ,worker_pause/0
         ,worker_maybe_send_update/3
-        ,get_output_header/2
-        ,cleanup_task/3
+        ,get_output_header/1
+        ,cleanup_task/2
         ]).
 
 -export([mandatory/1
@@ -351,17 +351,16 @@ worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed, Output=?NE_BINAR
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_output_header(module(), atom()) -> kz_csv:row().
-get_output_header(Module, Function) ->
-    try Module:output_header(Function) of
-        [_|_]=Header -> Header;
+-spec get_output_header(kz_json:object()) -> kz_csv:row().
+get_output_header(API) ->
+    Action = kz_json:get_value(<<"action">>, API),
+    case tasks_bindings:apply(API, <<"output_header">>, Action) of
+        [[_|_]=Header] -> Header;
+        [{'EXIT', {_E, _R}}] ->
+            lager:debug("output_header not found for ~s (~p), using default", [Action, _E]),
+            ?OUTPUT_CSV_HEADER_ROW;
         _NotARow ->
             lager:debug("bad CSV output header ~p, using default", [_NotARow]),
-            ?OUTPUT_CSV_HEADER_ROW
-    catch
-        _E:_R ->
-            lager:debug("output_header not found for ~s:~s (~p:~p), using default"
-                       ,[Module, Function, _E, _R]),
             ?OUTPUT_CSV_HEADER_ROW
     end.
 
@@ -370,18 +369,15 @@ get_output_header(Module, Function) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_task(module(), kz_json:object(), any()) -> 'ok'.
-cleanup_task(Module, API, Data) ->
+-spec cleanup_task(kz_json:object(), any()) -> 'ok'.
+cleanup_task(API, Data) ->
     lager:debug("cleaning up after task"),
     Action = kz_util:to_atom(kz_json:get_value(<<"action">>, API), 'true'),
-    try
-        Module:cleanup(Action, Data),
-        lager:debug("cleanup completed")
-    catch
-        'error':'function_clause' ->
-            lager:debug("skipped cleanup");
-        _E:_R ->
-            lager:debug("cleanup ~p: ~p", [_E, _R])
+    case tasks_bindings:apply(API, <<"cleanup">>, [Action, Data]) of
+        [] -> lager:debug("skipped cleanup");
+        [{'EXIT', {_E, _Rs}}] ->
+            lager:debug("cleanup ~p: ~p", [_E, hd(_Rs)]);
+        _ -> lager:debug("cleanup completed")
     end.
 
 
@@ -422,7 +418,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({'new', AuthAccountId, AccountId, Category, Action, TotalRows, InputName}, _From, State) ->
-    lager:debug("creating ~s/~s task (~p)", [Category, Action, TotalRows]),
+    lager:debug("creating ~s.~s task (~p)", [Category, Action, TotalRows]),
     lager:debug("using auth ~s and account ~s", [AuthAccountId, AccountId]),
     TaskId = ?A_TASK_ID,
     Task = #{ worker_pid => 'undefined'
@@ -679,10 +675,7 @@ handle_call_start_task(Task=#{ id := TaskId
     WorkerModule = worker_module(API),
     lager:debug("worker type: ~s", [WorkerModule]),
     Node = kz_util:to_binary(node()),
-    Module = task_module(Category),
-    lager:debug("module ~s node ~s", [Module, Node]),
-    Function = kz_util:to_atom(Action, 'true'),
-    Fields = mandatory(API) ++ optional(API),
+    lager:debug("node ~s", [Node]),
     ExtraArgs = [{'account_id', AccountId}
                 ,{'auth_account_id', AuthAccountId}
                 ],
@@ -691,7 +684,7 @@ handle_call_start_task(Task=#{ id := TaskId
     try erlang:spawn_link(kz_util:to_atom(Node, 'true')
                          ,WorkerModule
                          ,'start'
-                         ,[TaskId, API, Module, Function, ExtraArgs, Fields]
+                         ,[TaskId, API, ExtraArgs]
                          )
     of
         Pid ->
@@ -744,7 +737,7 @@ to_json(#{id := TaskId
     kz_json:from_list(
       props:filter_undefined(
         [{<<"_id">>, TaskId}
-        ,{?PVT_TYPE, kzd_app:type()}
+        ,{?PVT_TYPE, kzd_task:type()}
         ,{?PVT_WORKER_NODE, Node}
         ,{?PVT_ACCOUNT_ID, AccountId}
         ,{?PVT_AUTH_ACCOUNT_ID, AuthAccountId}
@@ -805,11 +798,6 @@ task_api(Category, Action) ->
                        ]
                       ,JObj
                       ).
-
--spec task_module(ne_binary()) -> module().
-task_module(Category) ->
-    [Module] = tasks_bindings:map(<<"tasks.module.", Category/binary>>, []),
-    Module.
 
 %%--------------------------------------------------------------------
 %% @private
