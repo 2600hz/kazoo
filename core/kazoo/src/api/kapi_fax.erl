@@ -25,7 +25,22 @@
         ,publish_start_job/1, publish_start_job/2
         ]).
 
--include("fax.hrl").
+-include_lib("kazoo/include/kz_api.hrl").
+
+-define(FAX_START, <<"start">>).
+-define(FAX_ACQUIRE, <<"acquire">>).
+-define(FAX_PREPARE, <<"prepare">>).
+-define(FAX_ORIGINATE, <<"originate">>).
+-define(FAX_NEGOTIATE, <<"negotiate">>).
+-define(FAX_SEND, <<"send">>).
+-define(FAX_RECEIVE, <<"receive">>).
+-define(FAX_END, <<"end">>).
+-define(FAX_ERROR, <<"error">>).
+
+-define(FAX_STATE_LIST, [?FAX_START, ?FAX_PREPARE, ?FAX_SEND, ?FAX_RECEIVE, ?FAX_END, ?FAX_ERROR]).
+
+-define(FAX_OUTGOING, <<"outgoing">>).
+-define(FAX_INCOMING, <<"incoming">>).
 
 -define(FAX_EXCHANGE, <<"fax">>).
 
