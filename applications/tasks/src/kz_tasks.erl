@@ -60,20 +60,20 @@
 -define(A_TASK_ID, kz_util:rand_hex_binary(?TASK_ID_SIZE)).
 -type task_id() :: <<_:(8*2*?TASK_ID_SIZE)>>.
 
--type task() :: #{ worker_pid => api_pid()
-                 , worker_node => ne_binary() | 'undefined'
-                 , account_id => ne_binary()
-                 , auth_account_id => ne_binary()
-                 , id => task_id()
-                 , category => ne_binary()
-                 , action => ne_binary()
-                 , file_name => ne_binary() | 'undefined'
-                 , created => gregorian_seconds() %% Time of task creation (PUT)
-                 , started => api_seconds() %% Time of task start (PATCH)
-                 , finished => api_seconds() %% Time of task finish (> started)
-                 , total_rows => api_pos_integer() %% CSV rows (undefined for a noinput task)
-                 , total_rows_failed => api_non_neg_integer() %% Rows that crashed or didn't return ok
-                 , total_rows_succeeded => api_non_neg_integer() %% Rows that returned 'ok'
+-type task() :: #{worker_pid => api_pid()
+                 ,worker_node => ne_binary() | 'undefined'
+                 ,account_id => ne_binary()
+                 ,auth_account_id => ne_binary()
+                 ,id => task_id()
+                 ,category => ne_binary()
+                 ,action => ne_binary()
+                 ,file_name => ne_binary() | 'undefined'
+                 ,created => gregorian_seconds() %% Time of task creation (PUT)
+                 ,started => api_seconds() %% Time of task start (PATCH)
+                 ,finished => api_seconds() %% Time of task finish (> started)
+                 ,total_rows => api_pos_integer() %% CSV rows (undefined for a noinput task)
+                 ,total_rows_failed => api_non_neg_integer() %% Rows that crashed or didn't return ok
+                 ,total_rows_succeeded => api_non_neg_integer() %% Rows that returned 'ok'
                  }.
 
 -type input() :: ne_binary() | kz_json:objects() | 'undefined'.
@@ -85,7 +85,7 @@
              ,help_error/0
              ]).
 
--record(state, { tasks = [] :: [task()]
+-record(state, {tasks = [] :: [task()]
                }).
 -type state() :: #state{}.
 
@@ -421,20 +421,20 @@ handle_call({'new', AuthAccountId, AccountId, Category, Action, TotalRows, Input
     lager:debug("creating ~s.~s task (~p)", [Category, Action, TotalRows]),
     lager:debug("using auth ~s and account ~s", [AuthAccountId, AccountId]),
     TaskId = ?A_TASK_ID,
-    Task = #{ worker_pid => 'undefined'
-            , worker_node => 'undefined'
-            , account_id => AccountId
-            , auth_account_id => AuthAccountId
-            , id => TaskId
-            , category => Category
-            , action => Action
-            , file_name => InputName
-            , created => kz_util:current_tstamp()
-            , started => 'undefined'
-            , finished => 'undefined'
-            , total_rows => TotalRows
-            , total_rows_failed => 'undefined'
-            , total_rows_succeeded => 'undefined'
+    Task = #{worker_pid => 'undefined'
+            ,worker_node => 'undefined'
+            ,account_id => AccountId
+            ,auth_account_id => AuthAccountId
+            ,id => TaskId
+            ,category => Category
+            ,action => Action
+            ,file_name => InputName
+            ,created => kz_util:current_tstamp()
+            ,started => 'undefined'
+            ,finished => 'undefined'
+            ,total_rows => TotalRows
+            ,total_rows_failed => 'undefined'
+            ,total_rows_succeeded => 'undefined'
             },
     {'ok', _JObj} = Ok = save_new_task(Task),
     lager:debug("task ~s created, rows: ~p", [TaskId, TotalRows]),
@@ -461,9 +461,9 @@ handle_call({'worker_finished', TaskId, TotalSucceeded, TotalFailed}, _From, Sta
     lager:debug("worker finished ~s: ~p/~p", [TaskId, TotalSucceeded, TotalFailed]),
     case task_by_id(TaskId, State) of
         [Task] ->
-            Task1 = Task#{ finished => kz_util:current_tstamp()
-                         , total_rows_failed => TotalFailed
-                         , total_rows_succeeded => TotalSucceeded
+            Task1 = Task#{finished => kz_util:current_tstamp()
+                         ,total_rows_failed => TotalFailed
+                         ,total_rows_succeeded => TotalSucceeded
                          },
             %% This MUST happen before put_attachment or conflicts won't be resolved.
             {'ok', _JObj} = update_task(Task1),
@@ -513,9 +513,9 @@ handle_call(_Request, _From, State) ->
 handle_cast({'worker_error', TaskId}, State) ->
     lager:debug("worker error ~s", [TaskId]),
     [Task=#{total_rows := TotalRows}] = task_by_id(TaskId, State),
-    Task1 = Task#{ finished => kz_util:current_tstamp()
-                 , total_rows_failed => TotalRows
-                 , total_rows_succeeded => 0
+    Task1 = Task#{finished => kz_util:current_tstamp()
+                 ,total_rows_failed => TotalRows
+                 ,total_rows_succeeded => 0
                  },
     {'ok', _JObj} = update_task(Task1),
     State1 = remove_task(TaskId, State),
@@ -524,8 +524,8 @@ handle_cast({'worker_error', TaskId}, State) ->
 handle_cast({'worker_update_processed', TaskId, TotalSucceeded, TotalFailed}, State) ->
     lager:debug("worker update ~s: ~p/~p", [TaskId, TotalSucceeded, TotalFailed]),
     [Task] = task_by_id(TaskId, State),
-    Task1 = Task#{ total_rows_failed => TotalFailed
-                 , total_rows_succeeded => TotalSucceeded
+    Task1 = Task#{total_rows_failed => TotalFailed
+                 ,total_rows_succeeded => TotalSucceeded
                  },
     {'ok', _JObj} = update_task(Task1),
     State1 = add_task(Task1, remove_task(TaskId, State)),
@@ -555,8 +555,8 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
             %% Note: this means output attachment was MAYBE NOT saved to task doc.
             %% Note: setting total_rows_failed to undefined here will change
             %%  status to ?STATUS_BAD but will not update total_rows_failed value in doc.
-            Task1 = Task#{ finished => kz_util:current_tstamp()
-                         , total_rows_failed := 'undefined'
+            Task1 = Task#{finished => kz_util:current_tstamp()
+                         ,total_rows_failed := 'undefined'
                          },
             {'ok', _JObj} = update_task(Task1),
             State1 = remove_task(TaskId, State),
@@ -657,15 +657,15 @@ task_by_pid(Pid, State) ->
 -spec handle_call_start_task(task(), state()) -> ?REPLY(state(), Response) when
       Response :: {'ok', kz_json:object()} |
                   {'error', any()}.
-handle_call_start_task(#{ finished := Finished
+handle_call_start_task(#{finished := Finished
                         }, State)
   when Finished /= 'undefined' ->
     ?REPLY(State, {'error', 'already_started'});
-handle_call_start_task(Task=#{ id := TaskId
-                             , account_id := AccountId
-                             , auth_account_id := AuthAccountId
-                             , category := Category
-                             , action := Action
+handle_call_start_task(Task=#{id := TaskId
+                             ,account_id := AccountId
+                             ,auth_account_id := AuthAccountId
+                             ,category := Category
+                             ,action := Action
                              }
                       ,State
                       ) ->
@@ -696,20 +696,20 @@ handle_call_start_task(Task=#{ id := TaskId
 
 -spec from_json(kz_json:object()) -> task().
 from_json(Doc) ->
-    #{ worker_pid => 'undefined'
-     , worker_node => kzd_task:node(Doc)
-     , account_id => kzd_task:account_id(Doc)
-     , auth_account_id => kzd_task:auth_account_id(Doc)
-     , id => kzd_task:id(Doc)
-     , category => kzd_task:category(Doc)
-     , action => kzd_task:action(Doc)
-     , file_name => kzd_task:file_name(Doc)
-     , created => kz_doc:created(Doc)
-     , started => kzd_task:start_timestamp(Doc)
-     , finished => kzd_task:end_timestamp(Doc)
-     , total_rows => kzd_task:total_count(Doc)
-     , total_rows_failed => kzd_task:failure_count(Doc)
-     , total_rows_succeeded => kzd_task:success_count(Doc)
+    #{worker_pid => 'undefined'
+     ,worker_node => kzd_task:node(Doc)
+     ,account_id => kzd_task:account_id(Doc)
+     ,auth_account_id => kzd_task:auth_account_id(Doc)
+     ,id => kzd_task:id(Doc)
+     ,category => kzd_task:category(Doc)
+     ,action => kzd_task:action(Doc)
+     ,file_name => kzd_task:file_name(Doc)
+     ,created => kz_doc:created(Doc)
+     ,started => kzd_task:start_timestamp(Doc)
+     ,finished => kzd_task:end_timestamp(Doc)
+     ,total_rows => kzd_task:total_count(Doc)
+     ,total_rows_failed => kzd_task:failure_count(Doc)
+     ,total_rows_succeeded => kzd_task:success_count(Doc)
      }.
 
 -spec to_json(task()) -> kz_json:object().
@@ -798,8 +798,8 @@ task_api(Category, Action) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_processing(task()) -> boolean().
-is_processing(#{ started := Started
-               , finished := Finished
+is_processing(#{started := Started
+               ,finished := Finished
                })
   when Started  /= 'undefined',
        Finished == 'undefined' ->
@@ -892,9 +892,8 @@ parse_apis([JObj|JObjs], Acc) ->
     [Category] = kz_json:get_keys(JObj),
     Actions = kz_json:get_value(Category, JObj),
     _ = lists:foreach(fun verify_unicity_map/1, kz_json:to_proplist(Actions)),
-    parse_apis(JObjs
-              ,kz_json:set_value(Category, Actions, Acc)
-              ).
+    NewAcc = kz_json:set_value(Category, Actions, Acc),
+    parse_apis(JObjs, NewAcc).
 
 -spec verify_unicity_map({ne_binary(), kz_json:object()}) -> 'ok'.
 verify_unicity_map({_Action, API}) ->

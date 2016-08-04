@@ -4,13 +4,13 @@
   {vsn, "4.0.0"},
   {modules, []},
   {registered, [tasks_sup]},
-  {applications, [ kernel
-                 , stdlib
+  {applications, [kernel
+                 ,stdlib
 
-                 , kazoo
-                 , kazoo_globals
+                 ,kazoo
+                 ,kazoo_globals
 
-                 , lager
+                 ,lager
                  ]},
   {mod, {tasks_app, []}}
  ]}.
