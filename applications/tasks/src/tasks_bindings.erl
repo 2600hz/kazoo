@@ -43,7 +43,7 @@
 
 -include("tasks.hrl").
 
--type payload() :: ne_binary().
+-type payload() :: list().
 
 %%%===================================================================
 %%% API

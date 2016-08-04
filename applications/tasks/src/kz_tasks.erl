@@ -354,7 +354,7 @@ worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed, Output=?NE_BINAR
 -spec get_output_header(kz_json:object()) -> kz_csv:row().
 get_output_header(API) ->
     Action = kz_json:get_value(<<"action">>, API),
-    case tasks_bindings:apply(API, <<"output_header">>, Action) of
+    case tasks_bindings:apply(API, <<"output_header">>, [Action]) of
         [[_|_]=Header] -> Header;
         [{'EXIT', {_E, _R}}] ->
             lager:debug("output_header not found for ~s (~p), using default", [Action, _E]),
