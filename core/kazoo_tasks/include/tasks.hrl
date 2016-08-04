@@ -11,5 +11,12 @@
 -define(KZ_TASKS_INPUT_ERROR_UF, <<"unknown_fields">>).
 -define(KZ_TASKS_INPUT_ERROR_MIME, <<"expected_content">>).
 
+-define(STATUS_EXECUTING, <<"executing">>).
+-define(STATUS_FAILURE, <<"failure">>).
+-define(STATUS_PARTIAL, <<"partial">>).
+-define(STATUS_PENDING, <<"pending">>).
+-define(STATUS_SUCCESS, <<"success">>).
+-define(STATUS_BAD, <<"internal_error">>).
+
 -define(KAZOO_TASKS_HRL, 'true').
 -endif.

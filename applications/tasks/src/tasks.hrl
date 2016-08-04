@@ -15,17 +15,6 @@
                 %% ,'kt_skel'
                ]).
 
--define(API_MANDATORY, <<"mandatory">>).
--define(API_OPTIONAL, <<"optional">>).
--define(API_INPUT_MIME, <<"expected_content">>).
-
--define(STATUS_EXECUTING, <<"executing">>).
--define(STATUS_FAILURE, <<"failure">>).
--define(STATUS_PARTIAL, <<"partial">>).
--define(STATUS_PENDING, <<"pending">>).
--define(STATUS_SUCCESS, <<"success">>).
--define(STATUS_BAD, <<"internal_error">>).
-
 -define(WORKER_TASK_FAILED, <<"applier crashed">>).
 -define(WORKER_TASK_TYPE, <<"bad input">>).
 -define(WORKER_TASK_MAYBE_OK, <<"internal">>).
