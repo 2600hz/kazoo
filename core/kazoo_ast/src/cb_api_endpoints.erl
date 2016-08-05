@@ -94,10 +94,11 @@ ref_doc_header(BaseName) ->
     ].
 
 maybe_add_schema(BaseName) ->
-    case open_schema(BaseName) of
-        {'ok', SchemaJObj} ->
+    case file:read_file(?SCHEMAS_PATH(<<BaseName/binary, ".json">>)) of
+        {'ok', SchemaBin} ->
+            SchemaJObj = kz_json:decode(SchemaBin),
             [?SCHEMA_SECTION, schema_to_table(SchemaJObj), "\n\n"];
-        {'error', _} ->
+        {'error', _R} ->
             [?SCHEMA_SECTION, "\n\n"]
     end.
 
@@ -272,25 +273,14 @@ to_swagger_json() ->
 -spec to_swagger_definitions() -> kz_json:object().
 to_swagger_definitions() ->
     SchemasPath = ?SCHEMAS_PATH(<<>>),
-    filelib:fold_files(SchemasPath, ".json\$", 'false', fun process_schema/2, kz_json:new()).
+    filelib:fold_files(SchemasPath, "\\.json\$", 'false', fun process_schema/2, kz_json:new()).
 
-open_schema(<<C:1/binary, _/binary>> = File) ->
-    case file:read_file(File) of
-        {'ok', SchemaJSON} -> {'ok', kz_json:decode(SchemaJSON)};
-        {'error', 'enoent'} when C =/= <<"/">> ->
-            open_schema(?SCHEMAS_PATH(<<File/binary, ".json">>));
-        {'error', _E}=E -> E
-    end.
-
-process_schema(SchemaJSONFile, Definitions) ->
-    {'ok', SchemaJObj} = open_schema(SchemaJSONFile),
-    SchemaName = kz_util:to_binary(filename:basename(SchemaJSONFile, ".json")),
-    kz_json:set_value(SchemaName
-                     ,kz_json:delete_keys([<<"_id">>, <<"$schema">>]
-                                         ,SchemaJObj
-                                         )
-                     ,Definitions
-                     ).
+-spec process_schema(ne_binary(), kz_json:object()) -> kz_json:object().
+process_schema(Filename, Definitions) ->
+    {'ok', Bin} = file:read_file(Filename),
+    JObj = kz_json:delete_keys([<<"_id">>, <<"$schema">>], kz_json:decode(Bin)),
+    Name = kz_util:to_binary(filename:basename(Filename, ".json")),
+    kz_json:set_value(Name, JObj, Definitions).
 
 -define(SWAGGER_JSON,
         filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])).
