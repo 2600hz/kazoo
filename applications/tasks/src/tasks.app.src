@@ -7,8 +7,7 @@
   {applications, [kernel
                  ,stdlib
 
-                 ,kazoo
-                 ,kazoo_globals
+                 ,kazoo_apps
 
                  ,lager
                  ]},
