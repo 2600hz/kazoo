@@ -253,7 +253,7 @@ refresh(?KZ_ALERTS_DB) ->
     'ok';
 refresh(?KZ_TASKS_DB) ->
     _ = kz_datamgr:db_create(?KZ_TASKS_DB),
-    _ = kz_datamgr:revise_views_from_folder(?KZ_TASKS_DB, 'kazoo_tasks'),
+    _ = kz_datamgr:revise_views_from_folder(?KZ_TASKS_DB, 'tasks'),
     'ok';
 refresh(Database) when is_binary(Database) ->
     case kz_datamgr:db_classification(Database) of

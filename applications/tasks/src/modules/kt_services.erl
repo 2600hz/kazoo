@@ -6,12 +6,11 @@
 %%% @contributors
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(kz_services_tasks).
+-module(kt_services).
 %% behaviour: tasks_provider
 
--export([help/0
-        ,category/0
-        ,module/0
+-export([init/0
+        ,help/0
         ,output_header/1
         ]).
 
@@ -23,20 +22,26 @@
 -export([descendant_quantities/2
         ]).
 
--include("kazoo_services.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo_services/include/kz_service.hrl").
+
+-define(CATEGORY, "services").
+-define(ACTIONS, [<<"descendant_quantities">>
+                 ]).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
--spec category() -> ne_binary().
-category() -> <<"services">>.
+-spec init() -> 'ok'.
+init() ->
+    _ = tasks_bindings:bind(<<"tasks.help."?CATEGORY>>, ?MODULE, 'help'),
+    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".output_header">>, ?MODULE, 'output_header'),
+    tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
--spec module() -> ne_binary().
-module() -> kz_util:to_binary(?MODULE).
-
--spec output_header(atom()) -> kz_csv:row().
-output_header('descendant_quantities') ->
+-spec output_header(ne_binary()) -> kz_csv:row().
+output_header(<<"descendant_quantities">>) ->
     [<<"account_id">>
     ,<<"year">>
     ,<<"month">>
@@ -46,26 +51,33 @@ output_header('descendant_quantities') ->
     ,<<"quantity_eom">>
     ].
 
--spec help() -> kz_proplist().
+-spec help() -> kz_json:object().
 help() ->
-    [{<<"descendant_quantities">>
-     ,kz_json:from_list([{<<"description">>, <<"List per-month descendant accounts quantities">>}
-                        ,{<<"doc">>, <<"Attempts to create a month-on-month listing of quantities used by descendant accounts.\n"
-                                       "This task returns the following fields:\n"
-                                       "* `account_id`: a sub-account of the creator of this task.\n"
-                                       "* `year`: integral year as 4 characters.\n"
-                                       "* `month`: integral month as 2 characters (left-padded with a zero).\n"
-                                       "* `category`: name of the quantity's category.\n"
-                                       "* `item`: name of the category's item.\n"
-                                       "* `quantity_bom`: integral quantity's value or empty.\n"
-                                       "* `quantity_eom`: integral quantity's value or empty.\n"
-                                       "Note: some beginning-of-month and end-of-month quantities documents may be missing.\n"
-                                       "Note: when both an account's BoM & EoM documents for a given month are missing, no rows are a created for this month.\n"
-                                       "Note: in all other cases the documents' value is printed verbatim: if unset the empty string is returned.\n"
-                                       "E.g.: an integer quantity (such as 1, 10 or 0 (zero)) represents was the system has. If no quantity was found, the empty value is used.\n"
-                                     >>}
-                        ])
-     }
+    kz_json:from_list(
+      [{<<?CATEGORY>>
+       ,kz_json:from_list(
+          [{Action, kz_json:from_list(action(Action))} || Action <- ?ACTIONS]
+         )
+       }
+      ]).
+
+-spec action(ne_binary()) -> kz_json:object().
+action(<<"descendant_quantities">>) ->
+    [{<<"description">>, <<"List per-month descendant accounts quantities">>}
+    ,{<<"doc">>, <<"Attempts to create a month-on-month listing of quantities used by descendant accounts.\n"
+                   "This task returns the following fields:\n"
+                   "* `account_id`: a sub-account of the creator of this task.\n"
+                   "* `year`: integral year as 4 characters.\n"
+                   "* `month`: integral month as 2 characters (left-padded with a zero).\n"
+                   "* `category`: name of the quantity's category.\n"
+                   "* `item`: name of the category's item.\n"
+                   "* `quantity_bom`: integral quantity's value or empty.\n"
+                   "* `quantity_eom`: integral quantity's value or empty.\n"
+                   "Note: some beginning-of-month and end-of-month quantities documents may be missing.\n"
+                   "Note: when both an account's BoM & EoM documents for a given month are missing, no rows are a created for this month.\n"
+                   "Note: in all other cases the documents' value is printed verbatim: if unset the empty string is returned.\n"
+                   "E.g.: an integer quantity (such as 1, 10 or 0 (zero)) represents was the system has. If no quantity was found, the empty value is used.\n"
+                 >>}
     ].
 
 %%% Verifiers

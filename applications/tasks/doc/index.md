@@ -1,6 +1,6 @@
 /*
-Section: Kazoo Tasks
-Title: Kazoo Tasks
+Section: Tasks
+Title: Tasks
 Language: en-US
 */
 
@@ -20,18 +20,8 @@ There is also a maintenance module whose entry points are [documented here](./ma
 
 ## Task discovery
 
-The `kazoo_tasks` application discovers the different kinds of tasks provided by Kazoo applications on a cluster by sending an `help_req` event.
-An app can listen to the `help_req` event from `tasks` and then reply with the kinds of tasks it is offering.
-
-A reply to `help_req` must have these JSON values:
-* `Tasks-Category` (`nonempty_string()`): name of the category tasks will be listed under.
-* `Tasks-Module` (`nonempty_string()`): name of module implementing the tasks callbacks.
-* `Tasks` (`kz_json:object()`): to each task's name is associated its metadata.
-
-Examples of such replies:
-* [knm_tasks_listener](https://github.com/2600hz/kazoo/blob/master/core/kazoo_number_manager/src/knm_tasks_listener.erl) for [knm_tasks](https://github.com/2600hz/kazoo/blob/master/core/kazoo_number_manager/src/knm_tasks.erl)
-* [kz_services_tasks_listener](https://github.com/2600hz/kazoo/blob/master/core/kazoo_services/src/kz_services_tasks_listener.erl) for [kz_services_tasks](https://github.com/2600hz/kazoo/blob/master/core/kazoo_services/src/kz_services_tasks.erl)
-
+The `tasks` application discovers the different kinds of tasks provided by Kazoo applications on a cluster using `tasks_bindings`.
+A task has to bind to `tasks.Category.help`, `tasks.Category.help.Action` & `tasks.Category.Action`.
 
 ### A task's metadata
 
@@ -105,8 +95,8 @@ The function must return one of:
 * `{Error, Data}`: attempts to write `Error` as an error to output & will pass `Data` on next call.
 
 Examples of both kinds of tasks can be found in
-* [knm_tasks](https://github.com/2600hz/kazoo/blob/master/core/kazoo_number_manager/src/knm_tasks.erl)
-* [kz_services_tasks](https://github.com/2600hz/kazoo/blob/master/core/kazoo_services/src/kz_services_tasks.erl)
+* [kt_numbers](https://github.com/2600hz/kazoo/blob/master/applications/tasks/src/modules/kt_numbers.erl)
+* [kt_services](https://github.com/2600hz/kazoo/blob/master/applications/tasks/src/modules/kt_services.erl)
 
 
 ## Task statuses

@@ -6,18 +6,23 @@
 %%% @contributors
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(kazoo_tasks_sup).
+-module(tasks_sup).
 -behaviour(supervisor).
 
 -export([start_link/0]).
 -export([init/1]).
 
--include("kz_tasks.hrl").
+-include("tasks.hrl").
 
 -define(SERVER, ?MODULE).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('kz_tasks')]).
+-define(CHILDREN, [?WORKER('kz_tasks_scheduler')
+                  ,?WORKER('tasks_listener')
+                   %% Numbers
+                  ,?WORKER('knm_port_request_crawler')
+                  ,?WORKER('knm_number_crawler')
+                  ]).
 
 %% ===================================================================
 %% API functions

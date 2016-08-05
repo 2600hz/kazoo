@@ -26,7 +26,7 @@
 -export([start_link/0
         ,bind/3, bind/4
         ,unbind/3, unbind/4
-        ,map/2
+        ,map/2, map/3
         ,fold/2
         ,flush/0, flush/1, flush_mod/1
         ,filter/1
@@ -39,7 +39,8 @@
         ,all/2
         ,succeeded/2
         ,failed/2
-        ,matches/2
+        ,matches/1, matches/2
+        ,candidates/1
         ]).
 
 %% ETS Persistence
@@ -100,6 +101,10 @@
 map(Routing, Payload) ->
     map_processor(Routing, Payload, get_binding_candidates(Routing)).
 
+-spec map(ne_binary(), payload(), kz_bindings()) -> map_results().
+map(Routing, Payload, Bindings) ->
+    map_processor(Routing, Payload, Bindings).
+
 -spec get_binding_candidates(ne_binary()) -> kz_bindings().
 get_binding_candidates(Routing) ->
     case binary:split(Routing, <<".">>, ['global']) of
@@ -139,7 +144,8 @@ get_binding_candidates(Vsn, Action) ->
 -type fold_results() :: payload().
 -spec fold(ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
-    fold_processor(Routing, Payload, get_binding_candidates(Routing)).
+    Bindings = get_binding_candidates(Routing),
+    fold_processor(Routing, Payload, Bindings).
 
 %%-------------------------------------------------------------------
 %% @doc
@@ -173,6 +179,8 @@ succeeded(Res, F) when is_list(Res),
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Match routing patterns. * matches 1 slot, # 0 or more.
+%% Note: matching only accepts wilcards on first argument (asymetric).
 %% @end
 %%
 %% <<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>
@@ -448,7 +456,7 @@ handle_cast('flush', #state{}=State) ->
     ets:delete_all_objects(table_id()),
     {'noreply', State, 'hibernate'};
 handle_cast({'flush', Binding}, #state{}=State) ->
-    ets:delete(table_id(), Binding),
+    _ = [ets:delete(table_id(), Key) || #kz_binding{binding=Key} <- matches(Binding)],
     {'noreply', State};
 handle_cast({'flush_mod', Mod}, State) ->
     lager:debug("trying to flush ~s", [Mod]),
@@ -674,9 +682,8 @@ log_function_clause(M, F, Lenth, ST) ->
 map_processor(Routing, Payload, Bindings) when not is_list(Payload) ->
     map_processor(Routing, [Payload], Bindings);
 map_processor(Routing, Payload, Bindings) ->
-    RoutingParts = lists:reverse(binary:split(Routing, <<".">>, ['global'])),
+    RoutingParts = routing_parts(Routing),
     Map = map_responder_fun(Payload),
-
     lists:foldl(fun(Binding, Acc) ->
                         map_processor_fold(Binding, Acc, Map, Routing, RoutingParts)
                 end
@@ -710,7 +717,9 @@ map_processor_fold(#kz_binding{binding_parts=BParts
                   ,_Routing
                   ,RoutingParts
                   ) ->
-    case matches(BParts, RoutingParts) of
+    case matches(BParts, RoutingParts)
+        orelse matches(RoutingParts, BParts)
+    of
         'false' -> Acc;
         'true' ->
             lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
@@ -728,8 +737,7 @@ map_responders(Acc, Map, Responders) ->
 fold_processor(Routing, Payload, Bindings) when not is_list(Payload) ->
     fold_processor(Routing, [Payload], Bindings);
 fold_processor(Routing, Payload, Bindings) ->
-    RoutingParts = lists:reverse(binary:split(Routing, <<".">>, ['global'])),
-
+    RoutingParts = routing_parts(Routing),
     [Reply|_] =
         lists:foldl(
           fun(#kz_binding{binding=Binding
@@ -740,6 +748,7 @@ fold_processor(Routing, Payload, Bindings) ->
              ) ->
                   case Binding =:= Routing
                       orelse matches(BParts, RoutingParts)
+                      orelse matches(RoutingParts, BParts)
                   of
                       'true' ->
                           lager:debug("routing ~s matches ~s", [Routing, Binding]),
@@ -751,3 +760,27 @@ fold_processor(Routing, Payload, Bindings) ->
                    ,Bindings
          ),
     Reply.
+
+-spec candidates(ne_binary()) -> kz_bindings().
+candidates(Routing) ->
+    get_binding_candidates(Routing).
+
+-spec matches(ne_binary()) -> kz_bindings().
+matches(Routing) ->
+    RoutingParts = routing_parts(Routing),
+    ets:foldr(fun(#kz_binding{binding=Binding
+                             ,binding_parts=BParts
+                             }=Bind, Acc) ->
+                      case Binding =:= Routing
+                          orelse matches(BParts, RoutingParts)
+                          orelse matches(RoutingParts, BParts)
+                      of
+                          'true' -> [Bind | Acc];
+                          'false' -> Acc
+                      end
+              end
+             , [], table_id()).
+
+-spec routing_parts(ne_binary()) -> ne_binaries().
+routing_parts(Routing) ->
+    lists:reverse(binary:split(Routing, <<".">>, ['global'])).

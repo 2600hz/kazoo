@@ -1,17 +1,19 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
-%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(kz_services_tasks_listener).
+-module(tasks_listener).
 -behaviour(gen_listener).
 
 -export([start_link/0]).
 
--export([help/2]).
+-export([handle_lookup_req/2
+        ,handle_start_req/2
+        ,handle_remove_req/2
+        ]).
 
 -export([init/1
         ,handle_call/3
@@ -22,18 +24,26 @@
         ,code_change/3
         ]).
 
--include("kazoo_services.hrl").
+-include("tasks.hrl").
 
 -define(SERVER, ?MODULE).
 
 -record(state, {}).
 
--define(BINDINGS, [{'tasks', [{'restrict_to', ['help']}
-                             ]
-                   }
+-define(BINDINGS, [{'self', []}
+                  ,{'tasks', []}
                   ]).
--define(RESPONDERS, [{{?MODULE, 'help'}, [{<<"tasks">>, <<"help_req">>}]}
+-define(RESPONDERS, [{{?MODULE, 'handle_lookup_req'}
+                     ,[{<<"tasks">>, <<"lookup_req">>}]
+                     }
+                    ,{{?MODULE, 'handle_start_req'}
+                     ,[{<<"tasks">>, <<"start_req">>}]
+                     }
+                    ,{{?MODULE, 'handle_remove_req'}
+                     ,[{<<"tasks">>, <<"remove_req">>}]
+                     }
                     ]).
+
 
 %%%===================================================================
 %%% API
@@ -51,20 +61,83 @@ start_link() ->
                            ,[]
                            ).
 
+
+%%%===================================================================
+%%% AMQP API
+%%%===================================================================
+
 %%--------------------------------------------------------------------
-%% @doc Declare jobs available
+%% @public
+%% @doc
+%% @end
 %%--------------------------------------------------------------------
--spec help(kz_json:object(), kz_proplist()) -> 'ok'.
-help(JObj, _Props) ->
-    'true' = kapi_tasks:help_req_v(JObj),
-    RespJObj =
-        kz_json:from_list([{<<"Tasks">>, kz_json:from_list(kz_services_tasks:help())}
-                          ,{<<"Tasks-Category">>, kz_services_tasks:category()}
-                          ,{<<"Tasks-Module">>, kz_services_tasks:module()}
-                          ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-                           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                          ]),
-    kapi_tasks:publish_help_resp(kz_api:server_id(JObj), RespJObj).
+-spec handle_lookup_req(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_lookup_req(JObj, _Props) ->
+    'true' = kapi_tasks:lookup_req_v(JObj),
+    Help =
+        case
+            case {kapi_tasks:category(JObj), kapi_tasks:action(JObj)} of
+                {'undefined', 'undefined'} -> kz_tasks_scheduler:help();
+                {Category, 'undefined'} -> kz_tasks_scheduler:help(Category);
+                {Category, Action} -> kz_tasks_scheduler:help(Category, Action)
+            end
+        of
+            {'error', _R} ->
+                lager:debug("lookup_req error: ~s", [_R]),
+                kz_json:new();
+            {'ok', JOk} -> JOk;
+            JOk -> JOk
+        end,
+    Resp = kz_json:from_list(
+             [{<<"Help">>, Help}
+             ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]
+            ),
+    kapi_tasks:publish_lookup_resp(kz_api:server_id(JObj), Resp).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_start_req(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_start_req(JObj, _Props) ->
+    'true' = kapi_tasks:start_req_v(JObj),
+    Help =
+        case kz_tasks_scheduler:start(kapi_tasks:task_id(JObj)) of
+            {'ok', TaskJObj} -> TaskJObj;
+            {'error', 'already_started'} -> <<"already_started">>
+        end,
+    Resp = kz_json:from_list(
+             [{<<"Reply">>, Help}
+             ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]
+            ),
+    kapi_tasks:publish_start_resp(kz_api:server_id(JObj), Resp).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_remove_req(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_remove_req(JObj, _Props) ->
+    'true' = kapi_tasks:remove_req_v(JObj),
+    Help =
+        case kz_tasks_scheduler:remove(kapi_tasks:task_id(JObj)) of
+            {'ok', TaskJObj} -> TaskJObj;
+            {'error', 'task_running'} -> <<"task_running">>
+        end,
+    Resp = kz_json:from_list(
+             [{<<"Reply">>, Help}
+             ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]
+            ),
+    kapi_tasks:publish_remove_resp(kz_api:server_id(JObj), Resp).
+
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -111,10 +184,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'gen_listener', {'created_queue', _QueueName}}, State) ->
-    {'noreply', State};
-handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
-    {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 

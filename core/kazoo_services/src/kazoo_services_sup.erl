@@ -26,7 +26,6 @@
 -define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
                   ,?WORKER('kz_services_modb')
                   ,?WORKER('kz_service_sync')
-                  ,?WORKER('kz_services_tasks_listener')
                   ]).
 
 %% ===================================================================

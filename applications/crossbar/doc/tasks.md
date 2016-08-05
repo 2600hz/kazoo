@@ -159,23 +159,6 @@ curl -v -X PUT \
 }
 ```
 
-##### Failure: no task providers known yet
-
-```json
-{
-    "auth_token": "{AUTH_TOKEN}",
-    "data": {
-        "cause": "{CATEGORY}",
-        "message": "bad identifier",
-        "tip": "No APIs known yet: please try again in a second."
-    },
-    "error": "404",
-    "message": "bad_identifier",
-    "request_id": "0e77686d7dfc6ecb1b8c78b745c2ed92",
-    "status": "error"
-}
-```
-
 ##### Unknown category
 
 ```json

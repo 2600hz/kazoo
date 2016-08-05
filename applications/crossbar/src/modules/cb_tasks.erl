@@ -22,7 +22,7 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("kazoo_tasks/include/kazoo_tasks.hrl").
+-include_lib("kazoo_tasks/include/tasks.hrl").
 
 -define(SCHEMA_TASKS, <<"tasks">>).
 
@@ -46,8 +46,6 @@
 %% @end
 %%--------------------------------------------------------------------
 init() ->
-    {'ok', _} = application:ensure_all_started('kazoo_tasks'),
-
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.tasks">>, ?MODULE, 'allowed_methods'),
@@ -192,7 +190,7 @@ validate_tasks(Context, ?HTTP_GET) ->
     case cb_context:account_id(Context) of
         'undefined' ->
             lager:debug("starting discovery of task APIs"),
-            JObj = kz_json:from_list([{<<"tasks">>, kz_tasks:help()}]),
+            JObj = kz_json:from_list([{<<"tasks">>, help()}]),
             cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
                                         ,{fun cb_context:set_resp_data/2, JObj}
                                         ]);
@@ -283,15 +281,13 @@ put(Context) ->
             TaskId = kz_json:get_value([<<"_read_only">>, <<"id">>], TaskJObj),
             save_attached_data(set_db(Context), TaskId, CSVorJSON, IsCSV),
             crossbar_util:response(TaskJObj, Context);
-        {'error', 'no_categories'} ->
-            no_categories(Context, Category);
         {'error', 'unknown_category'} ->
             crossbar_util:response_bad_identifier(Category, Context);
         {'error', 'unknown_action'} ->
             crossbar_util:response_bad_identifier(Action, Context);
-        {'error', _R} ->
-            lager:debug("new ~s task ~s cannot be created: ~s", [Category, Action, kz_json:encode(_R)]),
-            cb_context:add_system_error('parse_error', Context)
+        {'error', Reason} ->
+            lager:debug("new ~s task ~s cannot be created: ~p", [Category, Action, Reason]),
+            crossbar_util:response_400(<<"bad request">>, Reason, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -303,15 +299,22 @@ put(Context) ->
 %%--------------------------------------------------------------------
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, TaskId) ->
-    case kz_tasks:start(TaskId) of
-        {'ok', Task} -> crossbar_util:response(Task, Context);
-        {'error', 'no_categories'} ->
-            no_categories(Context, TaskId);
-        {'error', 'already_started'} ->
+    Req = [{<<"Task-ID">>, TaskId}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    {'ok', Resp} =
+        kz_amqp_worker:call(Req
+                           ,fun kapi_tasks:publish_start_req/1
+                           ,fun kapi_tasks:start_resp_v/1
+                           ),
+    case kz_json:get_value(<<"Reply">>, Resp) of
+        <<"already_started">> ->
             Msg = kz_json:from_list([{<<"reason">>, <<"task already started">>}
                                     ,{<<"cause">>, TaskId}
                                     ]),
-            cb_context:add_system_error('bad_identifier', Msg, Context)
+            cb_context:add_system_error('bad_identifier', Msg, Context);
+        Task ->
+            crossbar_util:response(Task, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -322,13 +325,22 @@ patch(Context, TaskId) ->
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, TaskId) ->
-    case kz_tasks:remove(TaskId) of
-        {'ok', Task} -> crossbar_util:response(Task, Context);
-        {'error', 'task_running'} ->
+    Req = [{<<"Task-ID">>, TaskId}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    {'ok', Resp} =
+        kz_amqp_worker:call(Req
+                           ,fun kapi_tasks:publish_remove_req/1
+                           ,fun kapi_tasks:remove_resp_v/1
+                           ),
+    case kz_json:get_value(<<"Reply">>, Resp) of
+        <<"task_running">> ->
             Msg = kz_json:from_list([{<<"message">>, <<"task is running">>}
                                     ,{<<"cause">>, TaskId}
                                     ]),
-            cb_context:add_system_error('bad_identifier', Msg, Context)
+            cb_context:add_system_error('bad_identifier', Msg, Context);
+        Task ->
+            crossbar_util:response(Task, Context)
     end.
 
 
@@ -349,13 +361,17 @@ set_db(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(TaskId, Context) ->
-    case kz_tasks:read(TaskId) of
-        {'error', 'not_found'} ->
-            crossbar_util:response_bad_identifier(TaskId, Context);
-        {'ok', TaskJObj} ->
-            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-                                        ,{fun cb_context:set_resp_data/2, TaskJObj}
-                                        ])
+    AccountId = cb_context:account_id(Context),
+    Ctx = crossbar_doc:load_view(?KZ_TASKS_BY_ACCOUNT
+                                ,[{'key', [AccountId, TaskId]}]
+                                ,set_db(Context)
+                                ,fun normalize_view_results/2
+                                ),
+    case cb_context:resp_data(Ctx) of
+        [] -> crossbar_util:response_bad_identifier(TaskId, Context);
+        [TaskJObj] ->
+            JObj = kz_json:set_value(<<"_read_only">>, TaskJObj, kz_json:new()),
+            cb_context:set_resp_data(Ctx, JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -461,7 +477,7 @@ load_csv_attachment(Context, TaskId, AName) ->
         >>,
     Ctx = crossbar_doc:load_attachment(TaskId
                                       ,AName
-                                      ,?TYPE_CHECK_OPTION(?KZ_TASKS_DOC_TYPE)
+                                      ,?TYPE_CHECK_OPTION(kzd_task:type())
                                       ,set_db(Context)
                                       ),
     case cb_context:resp_status(Ctx) of
@@ -479,10 +495,19 @@ load_csv_attachment(Context, TaskId, AName) ->
     end.
 
 %% @private
--spec no_categories(cb_context:context(), ne_binary()) -> cb_context:context().
-no_categories(Context, Id) ->
-    Msg = kz_json:from_list([{<<"tip">>, <<"No APIs known yet: please try again in a second.">>}
-                            ,{<<"cause">>, Id}
-                            ]),
-    _ = kz_util:spawn(fun kz_tasks:help/0),
-    cb_context:add_system_error('bad_identifier', Msg, Context).
+-spec help() -> kz_json:object().
+help() ->
+    Req = kz_api:default_headers(?APP_NAME, ?APP_VERSION),
+    case kz_amqp_worker:call(Req
+                            ,fun kapi_tasks:publish_lookup_req/1
+                            ,fun kapi_tasks:lookup_resp_v/1
+                            )
+    of
+        {'ok', JObj} -> kz_json:get_value(<<"Help">>, JObj);
+        {'timeout', _Resp} ->
+            lager:debug("timeout: ~p", [_Resp]),
+            kz_json:new();
+        {'error', _E} ->
+            lager:debug("error: ~p", [_E]),
+            kz_json:new()
+    end.

@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(kazoo_tasks_maintenance).
+-module(tasks_maintenance).
 
 -export([help/0, help/1, help/2]).
 -export([tasks/0, tasks/1]).
@@ -15,25 +15,25 @@
 -export([start/1]).
 -export([remove/1]).
 
--include("kz_tasks.hrl").
+-include("tasks.hrl").
 
 
 %%% API
 
 -spec help() -> 'no_return'.
 help() ->
-    print_json(kz_tasks:help()).
+    print_json(kz_tasks_scheduler:help()).
 
 -spec help(text()) -> 'no_return'.
 help(Category) ->
-    case kz_tasks:help(Category) of
+    case kz_tasks_scheduler:help(Category) of
         {'ok', JObj} -> print_json(JObj);
         {'error', Reason} -> print_error(Reason)
     end.
 
 -spec help(text(), text()) -> 'no_return'.
 help(Category, Action) ->
-    case kz_tasks:help(Category, Action) of
+    case kz_tasks_scheduler:help(Category, Action) of
         {'ok', JObj} -> print_json(JObj);
         {'error', Reason} -> print_error(Reason)
     end.
@@ -99,14 +99,14 @@ task_output(TaskId) ->
 
 -spec start(text()) -> 'no_return'.
 start(TaskId) ->
-    case kz_tasks:start(TaskId) of
+    case kz_tasks_scheduler:start(TaskId) of
         {'ok', StartedTask} -> print_json(StartedTask);
         {'error', Reason} -> print_error(Reason)
     end.
 
 -spec remove(text()) -> 'no_return'.
 remove(TaskId) ->
-    case kz_tasks:remove(TaskId) of
+    case kz_tasks_scheduler:remove(TaskId) of
         {'ok', RemovedTask} -> print_json(RemovedTask);
         {'error', Reason} -> print_error(Reason)
     end.
@@ -161,9 +161,6 @@ new_task(AuthAccountId, AccountId, Category, Action, TotalRows, CSVBin, CSVName)
     end.
 
 -spec handle_new_task_error(atom() | kz_json:object(), ne_binary(), ne_binary()) -> 'no_return'.
-handle_new_task_error('no_categories', _, _) ->
-    _ = kz_util:spawn(fun kz_tasks:help/0),
-    print_error(<<"No APIs known yet: please try again in a second.">>);
 handle_new_task_error('unknown_category', Category, _) ->
     print_error(<<"No such category: ", Category/binary>>);
 handle_new_task_error('unknown_action', _, Action) ->
