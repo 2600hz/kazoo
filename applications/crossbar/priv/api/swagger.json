@@ -1,5 +1,8 @@
 {
     "basePath": "/v2",
+    "consumes": [
+        "application/json"
+    ],
     "definitions": {
         "access_lists": {
             "additionalProperties": true,
@@ -12721,6 +12724,10 @@
             "type": "object"
         }
     },
+    "externalDocs": {
+        "description": "Kazoo documentation's Git repository",
+        "url": "https://github.com/2600hz/kazoo/tree/master/applications/crossbar/doc"
+    },
     "host": "localhost:8000",
     "info": {
         "description": "The Crossbar APIs",
@@ -12982,109 +12989,23 @@
             "get": {}
         },
         "/accounts/{ACCOUNT_ID}/devices": {
-            "get": {
-                "description": "Summary listing of devices for the account",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A listing of devices created for the account"
-                    }
-                }
-            },
-            "put": {
-                "description": "Create a new device",
-                "parameters": {
-                    "in": "body",
-                    "name": "devices",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/devices"
-                    }
-                },
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "201": {
-                        "description": "The newly created device object"
-                    }
-                }
-            }
+            "get": {},
+            "put": {}
         },
         "/accounts/{ACCOUNT_ID}/devices/status": {
             "get": {}
         },
         "/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}": {
-            "delete": {
-                "description": "Remove the device from the account",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The removed device object"
-                    }
-                }
-            },
-            "get": {
-                "description": "Get the device details",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The device object, in full"
-                    }
-                }
-            },
+            "delete": {},
+            "get": {},
             "patch": {},
-            "post": {
-                "description": "Edit the device object",
-                "parameters": {
-                    "in": "body",
-                    "name": "devices",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/devices"
-                    }
-                },
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The edited device object, in full"
-                    }
-                }
-            }
+            "post": {}
         },
         "/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}": {
-            "get": {
-                "description": "Execute quickcall to {NUMBER}",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The call initialization details"
-                    }
-                }
-            }
+            "get": {}
         },
         "/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync": {
-            "post": {
-                "description": "Reset the device by sending a check-sync SIP NOTIFY",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "202": {
-                        "description": "Notice that the check-sync has been sent"
-                    }
-                }
-            }
+            "post": {}
         },
         "/accounts/{ACCOUNT_ID}/dialplans": {
             "get": {}
@@ -13723,291 +13644,47 @@
             "get": {}
         },
         "/accounts/{ACCOUNT_ID}/vmboxes": {
-            "get": {
-                "description": "Summary listing of voicemail boxes for the account",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A listing of voicemail boxes for the account"
-                    }
-                }
-            },
-            "put": {
-                "description": "Create a new voicemail box",
-                "parameters": {
-                    "in": "body",
-                    "name": "vmboxes",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/vmboxes"
-                    }
-                },
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "201": {
-                        "description": "The newly created voicemail box"
-                    }
-                }
-            }
+            "get": {},
+            "put": {}
         },
         "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}": {
-            "delete": {
-                "description": "Deletes the voicemail box from the account"
-            },
-            "get": {
-                "description": "Details of the voicemail box",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A voicemail box document"
-                    }
-                }
-            },
-            "patch": {
-                "description": "Patch an existing voicemail box",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The updated voicemail box"
-                    }
-                }
-            },
-            "post": {
-                "description": "Edit an existing voicemail box",
-                "parameters": {
-                    "in": "body",
-                    "name": "vmboxes",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/vmboxes"
-                    }
-                },
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The updated voicemail box"
-                    }
-                }
-            }
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
         },
         "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages": {
-            "delete": {
-                "description": "Remove all or a list of messages from a voicemail box",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Listing of messages, if any are left"
-                    }
-                }
-            },
-            "get": {
-                "description": "Listing of messages contained in the voicemail box",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A listing of messages"
-                    }
-                }
-            },
-            "post": {
-                "description": "Change a list message",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A listing of messages"
-                    }
-                }
-            }
+            "delete": {},
+            "get": {},
+            "post": {}
         },
         "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/raw": {
-            "post": {
-                "description": "Fetch raw aduio of a list message id",
-                "produces": [
-                    "application/zip"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "ZIP file containing the raw audio of voicemail messages"
-                    }
-                }
-            }
+            "post": {}
         },
         "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}": {
-            "delete": {
-                "description": "Remove the message from the voicemail box",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The removed message object"
-                    }
-                }
-            },
-            "get": {
-                "description": "Get a specific message object",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The message object"
-                    }
-                }
-            },
-            "post": {
-                "description": "Change a message",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A listing of messages"
-                    }
-                }
-            }
+            "delete": {},
+            "get": {},
+            "post": {}
         },
         "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}/raw": {
             "get": {}
         },
         "/accounts/{ACCOUNT_ID}/webhooks": {
-            "get": {
-                "description": "Summary listing of webhooks for the account",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A listing of webhooks created for the account"
-                    }
-                }
-            },
-            "patch": {
-                "description": "Re-enable the collection of webhooks",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Result of reenabling hooks"
-                    }
-                }
-            },
-            "put": {
-                "description": "Create a new webhook",
-                "parameters": {
-                    "in": "body",
-                    "name": "webhooks",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/webhooks"
-                    }
-                },
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "201": {
-                        "description": "The newly created webhook object"
-                    }
-                }
-            }
+            "get": {},
+            "patch": {},
+            "put": {}
         },
         "/accounts/{ACCOUNT_ID}/webhooks/attempts": {
-            "get": {
-                "description": "List the attempts Kazoo has made to the external servers",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "List of objects representing webhook attempts made"
-                    }
-                }
-            }
+            "get": {}
         },
         "/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}": {
-            "delete": {
-                "description": "Remove the webhook from the account",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The removed webhook object"
-                    }
-                }
-            },
-            "get": {
-                "description": "Get the webhook details",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The webhook object, in full"
-                    }
-                }
-            },
-            "patch": {
-                "description": "Patch the webhook object",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The patched webhook object, in full"
-                    }
-                }
-            },
-            "post": {
-                "description": "Edit the webhook object",
-                "parameters": {
-                    "in": "body",
-                    "name": "webhooks",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/webhooks"
-                    }
-                },
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The edited webhook object, in full"
-                    }
-                }
-            }
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
         },
         "/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts": {
-            "get": {
-                "description": "List the attempts Kazoo has made to the external servers for this webhook",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "List of objects representing webhook attempts made for this webhook"
-                    }
-                }
-            }
+            "get": {}
         },
         "/accounts/{ACCOUNT_ID}/websockets": {
             "get": {}
@@ -14050,53 +13727,16 @@
             "get": {}
         },
         "/api_auth": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "api_auth",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/api_auth"
-                    }
-                }
-            }
+            "put": {}
         },
         "/google_auth": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "google_auth",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/google_auth"
-                    }
-                }
-            }
+            "put": {}
         },
         "/ip_auth": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "ip_auth",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/ip_auth"
-                    }
-                }
-            }
+            "put": {}
         },
         "/rates": {
-            "get": {
-                "description": "Listing of available rate docs",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A list of available rate docs"
-                    }
-                }
-            },
+            "get": {},
             "post": {},
             "put": {}
         },
@@ -14104,69 +13744,19 @@
             "get": {}
         },
         "/rates/{RATE_ID}": {
-            "delete": {
-                "description": "Delete the rate doc",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The now-deleted rate doc"
-                    }
-                }
-            },
-            "get": {
-                "description": "Get the rate doc",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The rate doc"
-                    }
-                }
-            },
+            "delete": {},
+            "get": {},
             "patch": {},
             "post": {}
         },
         "/schemas": {
-            "get": {
-                "description": "Listing of installed schemas available",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A list of schemas installed"
-                    }
-                }
-            }
+            "get": {}
         },
         "/schemas/{SCHEMADOC}": {
-            "get": {
-                "description": "Get the JSON schema definition",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The schema definition"
-                    }
-                }
-            }
+            "get": {}
         },
         "/schemas/{SCHEMADOC}/validation": {
-            "put": {
-                "description": "Perform a test validation",
-                "produces": [
-                    "application/json"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The results of the validation"
-                    }
-                }
-            }
+            "put": {}
         },
         "/shared_auth": {
             "get": {},
@@ -14183,16 +13773,7 @@
         },
         "/system_configs": {
             "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "system_configs",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/system_configs"
-                    }
-                }
-            }
+            "put": {}
         },
         "/system_configs/{_ID}": {
             "delete": {},
@@ -14209,45 +13790,21 @@
             "get": {}
         },
         "/ubiquiti_auth": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "ubiquiti_auth",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/ubiquiti_auth"
-                    }
-                }
-            }
+            "put": {}
         },
         "/user_auth": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "user_auth",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/user_auth"
-                    }
-                }
-            }
+            "put": {}
         },
         "/user_auth/recovery": {
             "post": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "user_auth",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/user_auth"
-                    }
-                }
-            }
+            "put": {}
         },
         "/user_auth/{AUTHTOKEN}": {
             "get": {}
         }
     },
+    "produces": [
+        "application/json"
+    ],
     "swagger": "2.0"
 }
