@@ -258,6 +258,8 @@ to_swagger_json() ->
                                  ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
                                  ,{<<"swagger">>, <<"2.0">>}
                                  ,{<<"info">>, ?SWAGGER_INFO}
+                                 ,{<<"consumes">>, [<<"application/json">>]}
+                                 ,{<<"produces">>, [<<"application/json">>]}
                                  ]
                                 ,BaseSwagger
                                 ),
