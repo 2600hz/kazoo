@@ -495,10 +495,12 @@ maybe_intercept(Context, _CallId, _TargetType, 'undefined') ->
                                    ,Context
                                    );
 maybe_intercept(Context, CallId, TargetType, TargetId) ->
+    UnbridgedOnly = cb_context:req_value(Context, <<"unbridged_only">>),
     API = [{<<"Action">>, <<"intercept">>}
           ,{<<"Call-ID">>, CallId}
           ,{<<"Data">>, kz_json:from_list([{<<"target_type">>, TargetType}
                                           ,{<<"target_id">>, TargetId}
+                                          ,{<<"unbridged_only">>, UnbridgedOnly}
                                           ])}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],

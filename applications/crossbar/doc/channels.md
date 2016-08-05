@@ -86,6 +86,7 @@ Key | Description | Type | Default | Required
 `action.intercept` | Intercept `{UUID}` to `target` and hangup the other leg| | |
 `target_type` | Type of `target` | `string('device', 'user')` | | `true`
 `target_id` | Id of device to which current channel will be bridged | `string()` | | `true`
+`unbridged_only` | Intercept only unbridged channel | `boolean()` | `true` | 
 
 > POST /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 

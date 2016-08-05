@@ -92,6 +92,7 @@ get_originate_req(Data, Call) ->
     SourceOfDTMF = kz_json:get_value(<<"dtmf_leg">>, Data),
     TargetType = kz_json:get_value(<<"target_type">>, Data),
     TargetId = kz_json:get_value(<<"target_id">>, Data),
+    UnbridgedOnly = kz_json:is_true(<<"unbridged_only">>, Data, 'true'),
 
     Params = kz_json:set_values([{<<"source">>, ?MODULE}
                                 ,{<<"can_call_self">>, 'true'}
@@ -99,7 +100,7 @@ get_originate_req(Data, Call) ->
 
     SourceDeviceId = find_device_id_for_leg(SourceOfDTMF),
     Endpoints = build_endpoints(TargetType, TargetId, SourceDeviceId, Params, Call),
-    build_originate(Endpoints, SourceOfDTMF, Call).
+    build_originate(Endpoints, SourceOfDTMF, UnbridgedOnly, Call).
 
 -spec build_endpoints(ne_binary(), ne_binary(), ne_binary(), kz_json:object(), kapps_call:call()) -> kz_json:objects().
 build_endpoints(<<"device">>, Id, Id, _Params, _Call) ->
@@ -128,15 +129,15 @@ build_endpoints(<<"user">>, OwnerId, SourceDeviceId, Params, Call) ->
                ,kz_attributes:owned_by(OwnerId, <<"device">>, Call)
      ).
 
--spec build_originate(kz_json:objects(), ne_binary(), kapps_call:call()) -> kz_proplist().
-build_originate([], _CallId, _Call) -> [];
-build_originate(Endpoints, CallId, Call) ->
+-spec build_originate(kz_json:objects(), ne_binary(), boolean(), kapps_call:call()) -> kz_proplist().
+build_originate([], _CallId, _UnbridgedOnly, _Call) -> [];
+build_originate(Endpoints, CallId, UnbridgedOnly, Call) ->
     lager:debug("targeting ~s for intercept", [CallId]),
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
       ,{<<"Endpoints">>, Endpoints}
       ,{<<"Existing-Call-ID">>, CallId}
-      ,{<<"Intercept-Unbridged-Only">>, 'false'}
+      ,{<<"Intercept-Unbridged-Only">>, UnbridgedOnly}
       ,{<<"Outbound-Call-ID">>, <<(kz_util:rand_hex_binary(18))/binary, "-intercept">>}
       ,{<<"Outbound-Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
       ,{<<"Outbound-Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
