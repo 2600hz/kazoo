@@ -1,7 +1,7 @@
 DEPS = lager eiconv gen_smtp amqp_client cowboy jesse jiffy certifi couchbeam wsock zucchini \
        erlsom erlydtl exml escalus folsom detergent erlang_localtime \
        nklib gproc poolboy syslog lager_syslog eflame hep ecsv reloader \
-       proper recon getopt sync eunit
+       proper recon getopt fs_sync eunit
 
 BUILD_DEPS = parse_trans
 
@@ -17,7 +17,7 @@ dep_jesse = git https://github.com/for-GET/jesse 9e7830001deb78b57ce2ae15049afb7
 dep_nklib = git https://github.com/NetComposer/nklib
 dep_couchbeam = git https://github.com/benoitc/couchbeam 1.3.1
 dep_lager = git https://github.com/basho/lager 3.2.1
-dep_sync = git https://github.com/jamhed/sync
+dep_fs_sync = git https://github.com/jamhed/fs_sync
 
 ### PR opened upstream ###
 dep_erlang_localtime = git https://github.com/lazedo/erlang_localtime 0bb26016380cd7df5d30aa0ef284ae252b5bae31
