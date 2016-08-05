@@ -246,6 +246,12 @@ maybe_object_properties_to_row(Key, Acc0, Names, Settings) ->
                           ])
        ).
 
+-define(SWAGGER_EXTERNALDOCS
+       ,kz_json:from_list([{<<"description">>, <<"Kazoo documentation's Git repository">>}
+                          ,{<<"url">>, <<"https://github.com/2600hz/kazoo/tree/master/applications/crossbar/doc">>}
+                          ])
+       ).
+
 to_swagger_json() ->
     BaseSwagger = read_swagger_json(),
     BasePaths = kz_json:get_value(<<"paths">>, BaseSwagger),
@@ -260,6 +266,7 @@ to_swagger_json() ->
                                  ,{<<"info">>, ?SWAGGER_INFO}
                                  ,{<<"consumes">>, [<<"application/json">>]}
                                  ,{<<"produces">>, [<<"application/json">>]}
+                                 ,{<<"externalDocs">>, ?SWAGGER_EXTERNALDOCS}
                                  ]
                                 ,BaseSwagger
                                 ),
