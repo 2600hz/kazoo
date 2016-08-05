@@ -124,19 +124,19 @@ init({Call, JObj}) ->
     ?WSD_TITLE(["FSM: ", kapps_call:call_id(Call), " listen on: ", kz_util:to_list(ListenOn)]),
 
     {'ok', 'unarmed', #state{numbers=numbers(Call, JObj)
-                             ,patterns=patterns(Call, JObj)
-                             ,binding_digit=binding_digit(Call, JObj)
-                             ,digit_timeout=digit_timeout(Call, JObj)
+                            ,patterns=patterns(Call, JObj)
+                            ,binding_digit=binding_digit(Call, JObj)
+                            ,digit_timeout=digit_timeout(Call, JObj)
 
-                             ,listen_on=ListenOn
+                            ,listen_on=ListenOn
 
-                             ,call=kapps_call:clear_helpers(
-                                     kapps_call:kvs_store(?MODULE, self(), Call)
-                                    )
-                             ,call_id=kapps_call:call_id_direct(Call)
+                            ,call=kapps_call:clear_helpers(
+                                    kapps_call:kvs_store(?MODULE, self(), Call)
+                                   )
+                            ,call_id=kapps_call:call_id_direct(Call)
 
-                             ,b_endpoint_id=BEndpointId
-                             }}.
+                            ,b_endpoint_id=BEndpointId
+                            }}.
 
 unarmed({'dtmf', CallId, BindingDigit}, #state{call_id=CallId
                                               ,listen_on='a'
