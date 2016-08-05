@@ -13,15 +13,14 @@
 -include_lib("kazoo/src/kz_json.hrl").
 -include_lib("crossbar/src/crossbar.hrl").
 
--define(REF_PATH(Module)
-       ,filename:join([code:lib_dir('crossbar')
-                      ,"doc"
-                      ,"ref"
-                      ,<<Module/binary, ".md">>
-                      ])
-       ).
+-define(REF_PATH(Module),
+        filename:join([code:lib_dir('crossbar'), "doc", "ref", <<Module/binary,".md">>])).
+
+-define(SCHEMAS_PATH(Schema),
+        filename:join([code:priv_dir('crossbar'), "couchdb", "schemas", Schema])).
 
 -define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
+
 
 to_ref_doc() ->
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
@@ -32,9 +31,7 @@ api_to_ref_doc({Module, Paths}) ->
 
 api_to_ref_doc(Module, Paths, ?CURRENT_VERSION) ->
     BaseName = base_module_name(Module),
-    Sections = lists:foldl(fun(K, Acc) ->
-                                   api_path_to_section(Module, K, Acc)
-                           end
+    Sections = lists:foldl(fun(K, Acc) -> api_path_to_section(Module, K, Acc) end
                           ,ref_doc_header(BaseName)
                           ,Paths
                           ),
@@ -272,13 +269,7 @@ to_swagger_json() ->
                                 ),
     write_swagger_json(Swagger).
 
--define(SCHEMAS_PATH(Schema), filename:join([code:priv_dir('crossbar')
-                                            ,"couchdb"
-                                            ,"schemas"
-                                            ,Schema
-                                            ])
-       ).
-
+-spec to_swagger_definitions() -> kz_json:object().
 to_swagger_definitions() ->
     SchemasPath = ?SCHEMAS_PATH(<<>>),
     filelib:fold_files(SchemasPath, ".json\$", 'false', fun process_schema/2, kz_json:new()).
