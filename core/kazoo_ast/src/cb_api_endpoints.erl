@@ -242,7 +242,7 @@ maybe_object_properties_to_row(Key, Acc0, Names, Settings) ->
        ,kz_json:from_list([{<<"title">>, <<"Crossbar">>}
                           ,{<<"description">>, <<"The Crossbar APIs">>}
                           ,{<<"license">>, kz_json:from_list([{<<"name">>, <<"Mozilla Public License 1.1">>}])}
-                          ,{<<"version">>, <<"2.0">>}
+                          ,{<<"version">>, ?CURRENT_VERSION}
                           ])
        ).
 

@@ -12735,7 +12735,7 @@
             "name": "Mozilla Public License 1.1"
         },
         "title": "Crossbar",
-        "version": "2.0"
+        "version": "v2"
     },
     "paths": {
         "/about": {
