@@ -19,6 +19,11 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER('kz_tasks_scheduler')
                   ,?WORKER('tasks_listener')
+                   %% Services
+                  ,?WORKER('kz_services_modb')
+                   %% Numbers
+                  ,?WORKER('knm_port_request_crawler')
+                  ,?WORKER('knm_number_crawler')
                   ]).
 
 %% ===================================================================
