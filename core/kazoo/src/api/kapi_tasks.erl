@@ -53,15 +53,15 @@
 -define(START_REQ_HEADERS, [<<"Task-ID">>]).
 -define(OPTIONAL_START_REQ_HEADERS, []).
 -define(START_REQ_VALUES, [{<<"Event-Category">>, <<"tasks">>}
-                           ,{<<"Event-Name">>, <<"start_req">>}
-                           ]).
+                          ,{<<"Event-Name">>, <<"start_req">>}
+                          ]).
 -define(START_REQ_TYPES, []).
 
 -define(START_RESP_HEADERS, [<<"Reply">>]).
 -define(OPTIONAL_START_RESP_HEADERS, []).
 -define(START_RESP_VALUES, [{<<"Event-Category">>, <<"tasks">>}
-                            ,{<<"Event-Name">>, <<"start_resp">>}
-                            ]).
+                           ,{<<"Event-Name">>, <<"start_resp">>}
+                           ]).
 -define(START_RESP_TYPES, []).
 
 

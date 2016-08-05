@@ -164,7 +164,7 @@ new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
                     {'ok', _JObj} = Ok = save_new_task(Task),
                     lager:debug("task ~s created, rows: ~p", [TaskId, TotalRows]),
                     Ok
-                end
+            end
     end.
 
 %%%===================================================================
