@@ -83,7 +83,7 @@
 %%% API
 %%%===================================================================
 
--spec start_fsm(apps_call:call(), kz_json:object()) -> any().
+-spec start_fsm(kapps_call:call(), kz_json:object()) -> any().
 start_fsm(Call, JObj) ->
     gen_fsm:start_link(?MODULE, {Call, JObj}, []).
 
