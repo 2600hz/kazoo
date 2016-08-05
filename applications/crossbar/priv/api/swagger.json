@@ -12720,6 +12720,7 @@
             "type": "object"
         }
     },
+    "host": "localhost:8000",
     "info": {
         "description": "The Crossbar APIs",
         "license": {
