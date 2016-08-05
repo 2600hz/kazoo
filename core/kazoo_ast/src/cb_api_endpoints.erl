@@ -259,6 +259,7 @@ to_swagger_json() ->
     Swagger = kz_json:set_values([{<<"paths">>, to_swagger_paths(Paths, BasePaths)}
                                  ,{<<"definitions">>, to_swagger_definitions()}
                                  ,{<<"host">>, <<"localhost:8000">>}
+                                 ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
                                  ,{<<"swagger">>, <<"2.0">>}
                                  ,{<<"info">>, ?SWAGGER_INFO}
                                  ]
