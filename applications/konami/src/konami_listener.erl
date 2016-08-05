@@ -70,19 +70,11 @@ handle_metaflow(JObj, Props) ->
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),
     kapps_call:put_callid(Call),
 
-    try konami_code_fsm:start_fsm(
+    _ = konami_code_fsm:start_fsm(
           kapps_call:kvs_store('consumer_pid', props:get_value('server', Props), Call)
                                  ,JObj
-         )
-    of
-        _ -> 'ok'
-    catch
-        'exit':'normal' -> 'ok';
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("failed to run FSM: ~s: ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST)
-    end.
+         ),
+    'ok'.
 
 handle_route_req(JObj, _Props) ->
     'true' = kapi_route:req_v(JObj),

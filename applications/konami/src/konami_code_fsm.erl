@@ -83,38 +83,9 @@
 %%% API
 %%%===================================================================
 
--spec start_fsm(kapps_call:call(), kz_json:object()) -> any().
+-spec start_fsm(apps_call:call(), kz_json:object()) -> any().
 start_fsm(Call, JObj) ->
-    ListenOn = listen_on(Call, JObj),
-
-    kapps_call:put_callid(Call),
-
-    maybe_add_call_event_bindings(Call, ListenOn),
-
-    lager:debug("starting Konami FSM, listening on '~s'", [ListenOn]),
-
-    BEndpointId = b_endpoint_id(JObj, ListenOn),
-
-    lager:debug("a endpoint: ~s b endpoint: ~s", [kapps_call:authorizing_id(Call), BEndpointId]),
-
-    ?WSD_START(),
-    ?WSD_TITLE(["FSM: ", kapps_call:call_id(Call), " listen on: ", kz_util:to_list(ListenOn)]),
-
-    gen_fsm:enter_loop(?MODULE, [], 'unarmed'
-                      ,#state{numbers=numbers(Call, JObj)
-                             ,patterns=patterns(Call, JObj)
-                             ,binding_digit=binding_digit(Call, JObj)
-                             ,digit_timeout=digit_timeout(Call, JObj)
-
-                             ,listen_on=ListenOn
-
-                             ,call=kapps_call:clear_helpers(
-                                     kapps_call:kvs_store(?MODULE, self(), Call)
-                                    )
-                             ,call_id=kapps_call:call_id_direct(Call)
-
-                             ,b_endpoint_id=BEndpointId
-                             }).
+    gen_fsm:start_link(?MODULE, {Call, JObj}, []).
 
 -spec event(pid(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 event(FSM, CallId, <<"DTMF">>, JObj) ->
@@ -135,9 +106,37 @@ transfer_to(Call, Leg) ->
 %%% gen_fsm callbacks
 %%%===================================================================
 
--spec init([]) -> {'ok', 'unarmed', state()}.
-init([]) ->
-    {'ok', 'unarmed', #state{}}.
+-spec init({kapps_call:call(), kz_json:object()}) -> {'ok', 'unarmed', state()}.
+init({Call, JObj}) ->
+    ListenOn = listen_on(Call, JObj),
+
+    kapps_call:put_callid(Call),
+
+    maybe_add_call_event_bindings(Call, ListenOn),
+
+    lager:debug("starting Konami FSM, listening on '~s'", [ListenOn]),
+
+    BEndpointId = b_endpoint_id(JObj, ListenOn),
+
+    lager:debug("a endpoint: ~s b endpoint: ~s", [kapps_call:authorizing_id(Call), BEndpointId]),
+
+    ?WSD_START(),
+    ?WSD_TITLE(["FSM: ", kapps_call:call_id(Call), " listen on: ", kz_util:to_list(ListenOn)]),
+
+    {'ok', 'unarmed', #state{numbers=numbers(Call, JObj)
+                             ,patterns=patterns(Call, JObj)
+                             ,binding_digit=binding_digit(Call, JObj)
+                             ,digit_timeout=digit_timeout(Call, JObj)
+
+                             ,listen_on=ListenOn
+
+                             ,call=kapps_call:clear_helpers(
+                                     kapps_call:kvs_store(?MODULE, self(), Call)
+                                    )
+                             ,call_id=kapps_call:call_id_direct(Call)
+
+                             ,b_endpoint_id=BEndpointId
+                             }}.
 
 unarmed({'dtmf', CallId, BindingDigit}, #state{call_id=CallId
                                               ,listen_on='a'
