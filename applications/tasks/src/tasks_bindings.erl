@@ -199,6 +199,7 @@ modules_loaded() -> kazoo_bindings:modules_loaded().
 -spec init() -> 'ok'.
 init() ->
     lager:debug("initializing tasks bindings"),
+    flush(<<"tasks.#">>),
     kz_util:put_callid(?LOG_SYSTEM_ID),
     lists:foreach(fun init_mod/1, ?TASKS).
 
