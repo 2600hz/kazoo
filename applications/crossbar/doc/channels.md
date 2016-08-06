@@ -9,7 +9,7 @@ The Channels API allows queries to find active channels for an account, a user, 
 
 > GET /v2/accounts/{ACCOUNT_ID}/channels
 
-```curl
+```shell
 curl -v -X GET \
     -H "Content-Type: application/json" \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
@@ -41,7 +41,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/channels
 
-```curl
+```shell
 curl -v -X GET \
     -H "Content-Type: application/json" \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
@@ -50,7 +50,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/channels
 
-```curl
+```shell
 curl -v -X GET \
     -H "Content-Type: application/json" \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
@@ -61,7 +61,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "Content-Type: application/json" \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
@@ -86,7 +86,7 @@ Key | Description | Type | Default | Required
 
 > POST /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
-```curl
+```shell
 curl -v -X POST \
     -H "Content-Type: application/json" \
     -H "X-Auth-Token: {AUTH_TOKEN}" \

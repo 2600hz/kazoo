@@ -10,7 +10,7 @@
 
 > GET /v2/accounts/{ACCOUNT_ID}/channels
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels
@@ -20,7 +20,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
@@ -30,7 +30,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}

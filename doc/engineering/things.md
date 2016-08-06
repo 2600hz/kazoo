@@ -15,7 +15,7 @@ stuff | A list of stuff to do | array(string()) | [] | N
 
 > GET /v2/accounts/{ACCOUNT_ID}/things
 
-```curl
+```shell
 curl -x GET \
      -H "X-Auth-Token: {AUTH_TOKEN}" \
      http://{SERVER}/v2/accounts/{ACCOUNT_ID}/things
@@ -33,7 +33,7 @@ If your client supports it, the full URI of the successfully-created thing will 
 
 > PUT /v2/accounts/{ACCOUNT_ID}/things
 
-```curl
+```shell
 curl -X PUT \
      -H "X-Auth-Token: {AUTH_TOKEN}" \
      -d '{"data":{"name":"thing2"}}'
@@ -50,7 +50,7 @@ curl -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/things/{THING_ID}
 
-```curl
+```shell
 curl -X GET \
      -H "X-Auth-Token: {AUTH_TOKEN}" \
      http://{SERVER}/v2/accounts/{ACCOUNT_ID}/things/{THING_ID}
@@ -68,7 +68,7 @@ curl -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/things/{THING_ID}
 
-```curl
+```shell
 curl -X POST
      -H "X-Auth-Token: {AUTH_TOKEN}"
      -d '{"data":{"name":"thing2", "
@@ -87,7 +87,7 @@ curl -X POST
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/things/{THING_ID}
 
-```curl
+```shell
 curl -X PATCH
      -H "X-Auth-Token: {AUTH_TOKEN}"
      -d '{"data":{"stuff":["object"]}}
@@ -107,7 +107,7 @@ curl -X PATCH
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/things/{THING_ID}
 
-```curl
+```shell
 curl -X DELETE
      -H "X-Auth-Token: {AUTH_TOKEN}"
      http://{SERVER}/v2/accounts/{ACCOUNT_ID}/things/{THING_ID}
@@ -128,7 +128,7 @@ When you want to get stuff done for a thing!
 
 > POST /v2/accounts/{ACCOUNT_ID}/things/{THING_ID}/stuff
 
-```curl
+```shell
 curl -X POST
      -H "X-Auth-Token: {AUTH_TOKEN}"
      http://{SERVER}/v2/accounts/{ACCOUNT_ID}/things/{THING_ID}/stuff

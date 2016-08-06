@@ -44,7 +44,7 @@ Puts the created account under the account of the owner of the `{AUTH_TOKEN}`. T
 
 > PUT /v2/accounts
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -82,7 +82,7 @@ curl -v -X PUT \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
@@ -119,7 +119,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
@@ -156,7 +156,7 @@ curl -v -X GET \
 
 > PATCH /v2/accounts/{ACCOUNT_ID}
 
-```curl
+```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data":{"some_key":"some_value"}}' \
@@ -194,7 +194,7 @@ curl -v -X PATCH \
 
 > POST /v2/accounts/{ACCOUNT_ID}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -236,7 +236,7 @@ Puts the created account under `{ACCOUNT_ID}`
 
 > PUT /v2/accounts/{ACCOUNT_ID}
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -274,7 +274,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/parents
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/parents
@@ -297,7 +297,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/tree
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tree
@@ -322,7 +322,7 @@ The API key is used by the `api_auth` API to obtain an `auth_token`. This is int
 
 > GET /v2/accounts/{ACCOUNT_ID}/api_key
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
      http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/api_key
@@ -343,7 +343,7 @@ By default a user account under an admin/reseller account can view all the other
 
 > GET /v2/accounts/{ACCOUNT_ID}/siblings
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/siblings
@@ -371,7 +371,7 @@ This will include children, grandchildren, etc
 
 > GET /v2/accounts/{ACCOUNT_ID}/descendants
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants
@@ -399,7 +399,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/children
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/children
@@ -429,7 +429,7 @@ Requires superduper admin auth token
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/reseller
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/reseller
@@ -441,7 +441,7 @@ Requires superduper admin auth token
 
 > PUT /v2/accounts/{ACCOUNT_ID}/reseller
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/reseller
@@ -460,7 +460,7 @@ Key | Value | Description
 
 > POST /v2/accounts/{ACCOUNT_ID}/move
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data": {"to": "{ACCOUNT_ID_DESTINATION}"}}' \

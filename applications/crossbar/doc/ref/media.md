@@ -25,7 +25,7 @@ Key | Description | Type | Default | Required
 
 > GET /v2/accounts/{ACCOUNT_ID}/media
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media
@@ -35,7 +35,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/media
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media
@@ -45,7 +45,7 @@ curl -v -X PUT \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
@@ -55,7 +55,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
@@ -65,7 +65,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
@@ -75,7 +75,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/media/prompts
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/prompts
@@ -85,7 +85,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/media/languages
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/languages
@@ -95,7 +95,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
@@ -105,7 +105,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
@@ -115,7 +115,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}
@@ -125,7 +125,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/media/languages/{LANGUAGE}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/languages/{LANGUAGE}

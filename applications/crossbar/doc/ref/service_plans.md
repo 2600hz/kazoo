@@ -16,7 +16,7 @@ Key | Description | Type | Default | Required
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans
@@ -26,7 +26,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans
@@ -36,7 +36,7 @@ curl -v -X POST \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
@@ -46,7 +46,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
@@ -56,7 +56,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
@@ -66,7 +66,7 @@ curl -v -X POST \
 
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans/override
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/override
@@ -76,7 +76,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans/current
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/current
@@ -86,7 +86,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans/reconciliation
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/reconciliation
@@ -96,7 +96,7 @@ curl -v -X POST \
 
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans/synchronization
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/synchronization
@@ -106,7 +106,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans/available/{ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/available/{ID}

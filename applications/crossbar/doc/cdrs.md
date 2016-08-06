@@ -55,7 +55,7 @@ Key | Description | Type | Default | Required
 
 > GET /v2/accounts/{ACCOUNT_ID}/cdrs
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
@@ -63,7 +63,7 @@ curl -v -X GET \
 
 Get a time range of CDRs (using gregorian seconds for timestamps):
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?created_from={FROM_TIMESTAMP}&created_to={TO_TIMESTAMP}
@@ -71,7 +71,7 @@ curl -v -X GET \
 
 Get CDRs as CSV:
 
-```curl
+```shell
 curl -v -X GET \
     -H "Accept: text/csv" \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
@@ -82,7 +82,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}
@@ -92,7 +92,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/cdrs/interaction
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs/interaction
@@ -104,7 +104,7 @@ Crossbar cdrs was extended to provide simplified interaction call detail records
 
 > GET /v2/accounts/{ACCOUNT_ID}/cdrs/legs/{INTERACTION_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs/legs/{INTERACTION_ID}

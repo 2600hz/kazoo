@@ -10,7 +10,7 @@
 
 > GET /v2/schemas
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/schemas
@@ -20,7 +20,7 @@ curl -v -X GET \
 
 > GET /v2/schemas/{SCHEMADOC}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/schemas/{SCHEMADOC}
@@ -30,7 +30,7 @@ curl -v -X GET \
 
 > PUT /v2/schemas/{SCHEMADOC}/validation
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/schemas/{SCHEMADOC}/validation

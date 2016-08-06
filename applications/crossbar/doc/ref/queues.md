@@ -27,7 +27,7 @@ Key | Description | Type | Default | Required
 
 > GET /v2/accounts/{ACCOUNT_ID}/queues
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues
@@ -37,7 +37,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/queues
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues
@@ -47,7 +47,7 @@ curl -v -X PUT \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
@@ -57,7 +57,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
@@ -67,7 +67,7 @@ curl -v -X GET \
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 
-```curl
+```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
@@ -77,7 +77,7 @@ curl -v -X PATCH \
 
 > POST /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
@@ -87,7 +87,7 @@ curl -v -X POST \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/queues/eavesdrop
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/eavesdrop
@@ -97,7 +97,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/queues/stats
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/stats
@@ -107,7 +107,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/eavesdrop
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/eavesdrop
@@ -117,7 +117,7 @@ curl -v -X PUT \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
@@ -127,7 +127,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
@@ -137,7 +137,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster

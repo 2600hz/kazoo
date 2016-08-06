@@ -24,7 +24,7 @@ Some webhooks will also include a `modifiers` object; these are parameters speci
 
 > GET http://{SERVER}:8000/v2/webhooks
 
-```curl
+```shell
 curl -v -X GET \
     -H "Content-Type:application/json" \
     -H "X-Auth-Token: {AUTH_TOKEN} \
@@ -97,7 +97,7 @@ curl -v -X GET \
 
 Any webhooks with *disable_reason* in the summary has been auto-disabled.
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
@@ -107,7 +107,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/webhooks
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -120,7 +120,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
@@ -130,7 +130,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -145,7 +145,7 @@ curl -v -X POST \
 
 You can also patch an existing webhook:
 
-```curl
+```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -157,7 +157,7 @@ curl -v -X PATCH \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
@@ -169,7 +169,7 @@ Webhooks tracks attempts to send the hook payloads to your URIs. You can get a l
 
 > GET /v2/accounts/{ACCOUNT_ID}/webhooks/attempts
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/attempts
@@ -200,7 +200,7 @@ List attempts for a specific attempt
 
 > GET /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
@@ -214,7 +214,7 @@ Enable an account's hooks
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/webhooks
 
-```curl
+```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks \
@@ -225,7 +225,7 @@ Enable an account's and descendant accounts' hooks
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/descendants/webhooks
 
-```curl
+```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants/webhooks \

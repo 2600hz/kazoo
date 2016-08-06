@@ -65,7 +65,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/user_auth/{AUTH_TOKEN}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/user_auth/{AUTH_TOKEN}

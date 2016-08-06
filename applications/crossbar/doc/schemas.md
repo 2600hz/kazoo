@@ -14,7 +14,7 @@ Any fields that aren't defined in the JSON schema will be stored, unmodified, al
 
 > GET /v2/schemas
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/schemas
@@ -104,7 +104,7 @@ curl -v -X GET \
 
 > GET /v2/schemas/{SCHEMANAME}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/schemas/acls
@@ -167,7 +167,7 @@ Test your request data against the validation schema (without performing a datab
 
 > PUT /v2/schemas/{SCHEMA_NAME}/validation
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data":{...}}'

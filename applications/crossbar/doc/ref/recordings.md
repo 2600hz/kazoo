@@ -10,7 +10,7 @@
 
 > GET /v2/accounts/{ACCOUNT_ID}/recordings
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings
@@ -20,7 +20,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
@@ -30,7 +30,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}/attachment
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}/attachment

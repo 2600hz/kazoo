@@ -28,7 +28,7 @@ Key | Description | Type | Default | Required
 
 > GET /v2/accounts/{ACCOUNT_ID}/ledgers
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers
@@ -38,7 +38,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}
@@ -48,7 +48,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/ledgers/debit
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/debit
@@ -58,7 +58,7 @@ curl -v -X PUT \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/ledgers/credit
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/credit
@@ -68,7 +68,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{_ID}

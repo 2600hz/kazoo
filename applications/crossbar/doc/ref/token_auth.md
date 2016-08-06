@@ -10,7 +10,7 @@
 
 > DELETE /v2/shared_auth
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/shared_auth
@@ -20,7 +20,7 @@ curl -v -X DELETE \
 
 > GET /v2/shared_auth
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/shared_auth

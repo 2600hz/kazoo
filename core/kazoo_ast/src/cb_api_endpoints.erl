@@ -57,7 +57,7 @@ api_path_to_section(_MOdule, _Paths, Acc) -> Acc.
 
 %% #### Fetch/Create/Change
 %% > Verb Path
-%% ```curl
+%% ```shell
 %% curl -v http://{SERVER}:8000/Path
 %% ```
 methods_to_section('undefined', _Path, Acc) ->
@@ -76,7 +76,7 @@ method_to_section(<<"nil">>, Acc, _APIPath) -> Acc;
 method_to_section(Method, Acc, APIPath) ->
     [[ "#### ", method_as_action(Method), "\n\n"
      ,"> ", Method, " ", APIPath, "\n\n"
-     ,"```curl\ncurl -v -X ", Method, " \\\n    -H \"X-Auth-Token: {AUTH_TOKEN}\" \\\n    http://{SERVER}:8000", APIPath, "\n```\n\n"
+     ,"```shell\ncurl -v -X ", Method, " \\\n    -H \"X-Auth-Token: {AUTH_TOKEN}\" \\\n    http://{SERVER}:8000", APIPath, "\n```\n\n"
      ]
      | Acc
     ].

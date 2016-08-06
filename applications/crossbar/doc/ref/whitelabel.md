@@ -10,7 +10,7 @@
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/whitelabel
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
@@ -20,7 +20,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
@@ -30,7 +30,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/whitelabel
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
@@ -40,7 +40,7 @@ curl -v -X POST \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/whitelabel
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
@@ -50,7 +50,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}
@@ -60,7 +60,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/domains
@@ -70,7 +70,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/domains
@@ -80,7 +80,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
@@ -90,7 +90,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
@@ -100,7 +100,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/icon
@@ -110,7 +110,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/icon
@@ -120,7 +120,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/logo
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo
@@ -130,7 +130,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/logo
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo
@@ -140,7 +140,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome
@@ -150,7 +150,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/icon
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/icon
@@ -160,7 +160,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/logo
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/logo

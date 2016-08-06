@@ -17,7 +17,7 @@ Key | Description | Type | Default | Required
 
 > PUT /v2/user_auth
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/user_auth
@@ -27,7 +27,7 @@ curl -v -X PUT \
 
 > GET /v2/user_auth/{AUTHTOKEN}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/user_auth/{AUTHTOKEN}
@@ -37,7 +37,7 @@ curl -v -X GET \
 
 > POST /v2/user_auth/recovery
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/user_auth/recovery
@@ -47,7 +47,7 @@ curl -v -X POST \
 
 > PUT /v2/user_auth/recovery
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/user_auth/recovery
