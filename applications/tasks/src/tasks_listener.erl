@@ -75,13 +75,7 @@ start_link() ->
 handle_lookup_req(JObj, _Props) ->
     'true' = kapi_tasks:lookup_req_v(JObj),
     Help =
-        case
-            case {kapi_tasks:category(JObj), kapi_tasks:action(JObj)} of
-                {'undefined', 'undefined'} -> kz_tasks_scheduler:help();
-                {Category, 'undefined'} -> kz_tasks_scheduler:help(Category);
-                {Category, Action} -> kz_tasks_scheduler:help(Category, Action)
-            end
-        of
+        case help(JObj) of
             {'error', _R} ->
                 lager:debug("lookup_req error: ~s", [_R]),
                 kz_json:new();
@@ -95,6 +89,15 @@ handle_lookup_req(JObj, _Props) ->
              ]
             ),
     kapi_tasks:publish_lookup_resp(kz_api:server_id(JObj), Resp).
+
+%% @private
+-spec help(kz_json:object()) -> kz_tasks:help_error().
+help(JObj) ->
+    case {kapi_tasks:category(JObj), kapi_tasks:action(JObj)} of
+        {'undefined', 'undefined'} -> kz_tasks_scheduler:help();
+        {Category, 'undefined'} -> kz_tasks_scheduler:help(Category);
+        {Category, Action} -> kz_tasks_scheduler:help(Category, Action)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
