@@ -191,21 +191,21 @@ cccp_allowed_callee(Number) ->
 
 -spec build_request(_,ne_binary(),_,_,_,ne_binary(),_,ne_binary(),ne_binary(),ne_binary()) -> any().
 build_request(CallId, ToDID, AuthorizingId, Q, CtrlQ, AccountId, Action, RetainCID, RetainName, RetainNumber) ->
-    CCVs = [{<<"Account-ID">>, AccountId}
-           ,{<<"Authorizing-ID">>, AuthorizingId}
-           ,{<<"Authorizing-Type">>, <<"user">>}
-           ,{<<"Retain-CID">>, RetainCID}
-           ],
+    Realm = kz_util:get_account_realm(AccountId),
+    CCVs = props:filter_undefined([{<<"Account-ID">>, AccountId}
+                                  ,{<<"Authorizing-ID">>, AuthorizingId}
+                                  ,{<<"Authorizing-Type">>, <<"user">>}
+                                  ,{<<"Retain-CID">>, RetainCID}
+                                  ,{<<"Presence-ID">>, build_presence(ToDID, Realm)}
+                                  ]),
     Diversions = case RetainCID of
                      <<"true">> ->
-                         Realm = kz_util:get_account_realm(AccountId),
                          AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
                          {AccountNumber,_} = kz_attributes:maybe_get_assigned_number('undefined', 'undefined', AccountDb),
                          [{<<"Diversions">>, [<<"<sip:", AccountNumber/binary, "@", Realm/binary, ">;reason=unconditional">>]}];
                      <<"false">> -> []
                  end,
-    Endpoint = [
-                {<<"Invite-Format">>, <<"loopback">>}
+    Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
                ,{<<"Route">>,  ToDID}
                ,{<<"To-DID">>, ToDID}
                ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
@@ -264,6 +264,10 @@ maybe_outbound_call(ToDID, RetainNumber, RetainName, AccountId) ->
 -spec maybe_cid_name(ne_binary(), ne_binary()) -> ne_binary().
 maybe_cid_name(<<Name/binary>>, _) -> Name;
 maybe_cid_name(_, Number) -> Number.
+
+-spec build_presence(ne_binary()|'undefined', ne_binary()) -> ne_binary()|'undefined'.
+build_presence(<<Number/binary>>, Realm) -> <<Number/binary, "@", Realm/binary>>;
+build_presence(_, _) -> 'undefined'.
 
 -spec current_account_outbound_directions(ne_binary()) -> ne_binaries().
 current_account_outbound_directions(AccountId) ->
