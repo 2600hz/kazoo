@@ -36,3 +36,4 @@
 ####Call initiation over API:
 
       curl -X PUT -H X-Auth-Token:{AUTH_TOKEN} https://{SERVER}:8443/v1/accounts/{ACCOUNT_ID}/cccps/autodial -d '{"data": { "a_leg_number": "1234567", "b_leg_number": "5579", "callback_delay": 10, "cid_retain": true, "media_id": "74c3e22b5dd9ff473de4ba2aea4e4183"}}'
+      curl -X PUT -H X-Auth-Token:{AUTH_TOKEN} https://{SERVER}:8443/v1/accounts/{ACCOUNT_ID}/cccps/autodial -d '{"data": { "a_leg_number": "1234567", "b_leg_number": "{CONFERENCE_ID}", "media_id": "74c3e22b5dd9ff473de4ba2aea4e4183"}}'

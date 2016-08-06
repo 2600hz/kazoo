@@ -116,6 +116,9 @@ handle_cast({'offnet_ctl_queue', CtrlQ}, State) ->
     {'noreply', State#state{offnet_ctl_q=CtrlQ}};
 handle_cast({'call_update', CallUpdate}, State) ->
     {'noreply', State#state{call=CallUpdate}};
+handle_cast({'call_id_update', NewCallId}, #state{call=Call}=State) ->
+    NewCall = kapps_call:set_call_id(NewCallId, Call) ,
+    {'noreply', State#state{parked_call_id = NewCallId, call = NewCall}};
 handle_cast({'parked', CallId, ToDID}, State) ->
     _P = bridge_to_final_destination(CallId, ToDID, State),
     lager:debug("bridging to ~s (via ~s) in ~p", [ToDID, CallId, _P]),
@@ -147,12 +150,14 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, #state{call=Call
+                          ,account_id=AccountId
                           ,b_leg_number=BLegNumber
                           ,auth_doc_id=AuthDocId
                           ,media_id=MediaId
                           }=_State
             ) ->
     {'reply', [{'call', Call}
+              ,{'account_id', AccountId}
               ,{'b_leg_number', BLegNumber}
               ,{'auth_doc_id', AuthDocId}
               ,{'media_id', MediaId}
@@ -212,6 +217,11 @@ handle_resource_response(JObj, Props) ->
         {<<"dialplan">>,<<"route_win">>} ->
             gen_listener:cast(Srv, {'call_update', kapps_call:from_route_win(JObj,call(Props))}),
             gen_listener:add_binding(Srv, {'call',[{'callid', CallId}]});
+        {<<"call_event">>,<<"CHANNEL_REPLACED">>} ->
+            gen_listener:rm_binding(Srv, {'call',[]}),
+            NewCallId = kz_json:get_value(<<"Replaced-By">>, JObj),
+            gen_listener:cast(Srv, {'call_id_update', NewCallId}),
+            gen_listener:add_binding(Srv, {'call',[{'callid', NewCallId}]});
         {<<"call_event">>,<<"CHANNEL_ANSWER">>} ->
             CallUpdate = kapps_call:kvs_store_proplist([{'consumer_pid', self()},{'auth_doc_id', props:get_value('auth_doc_id',Props)}]
                                                       ,kapps_call:from_route_req(JObj,call(Props))
@@ -258,27 +268,72 @@ bridge_to_final_destination(CallId, ToDID, #state{offnet_ctl_q=CtrlQ
 b_leg_number(Props) ->
     case props:get_value('b_leg_number', Props) of
         'undefined' ->
-            Call = props:get_value('call', Props),
+            Call = call(Props),
             _ = timer:sleep(?PROMPT_DELAY),
             {'num_to_dial', Number} = cccp_util:get_number(Call),
             Number;
+        <<DocId:32/binary>> ->
+            _ = maybe_make_announcement_to_a_leg(Props),
+            maybe_handle_doc_id(DocId, Props);
         BLegNumber ->
-            maybe_make_announcement_to_a_leg(BLegNumber, Props)
+            _ = maybe_make_announcement_to_a_leg(Props),
+            BLegNumber
     end.
 
--spec maybe_make_announcement_to_a_leg(ne_binary(), kz_proplist()) -> ne_binary().
-maybe_make_announcement_to_a_leg(BLegNumber, Props) ->
+-spec maybe_make_announcement_to_a_leg(kz_proplist()) -> ne_binary().
+maybe_make_announcement_to_a_leg(Props) ->
     case props:get_value('media_id', Props) of
-        'undefined' ->
-            BLegNumber;
-        MediaId ->
-            Call = props:get_value('call', Props),
+        <<MediaId:32/binary>> ->
+            Call = call(Props),
             MediaPath = kz_media_util:media_path(MediaId, Call),
             _ = timer:sleep(?PROMPT_DELAY),
-            kapps_call_command:b_play(MediaPath, Call),
-            BLegNumber
+            kapps_call_command:b_play(MediaPath, Call);
+        _ -> 'ok'
     end.
 
 -spec call(kz_proplist()) -> kapps_call:call().
 call(Props) ->
     props:get_value('call', Props).
+
+-spec maybe_handle_doc_id(ne_binary(), kz_proplist()) -> 'ok'.
+maybe_handle_doc_id(DocId, Props) ->
+    AccountDb = kz_util:format_account_id(props:get_value('account_id', Props), 'encoded'),
+    case kz_datamgr:open_cache_doc(AccountDb, DocId) of
+        {'error', _} -> kapps_call_command:hangup(call(Props));
+        {'ok', JObj} -> maybe_handle_doc(JObj, Props)
+    end.
+
+-spec maybe_handle_doc(kz_json:object(), kz_proplist()) -> 'ok'.
+maybe_handle_doc(JObj, Props) ->
+    Call = call(Props),
+    case kz_doc:type(JObj) of
+        <<"conference">> ->
+            conf_discover(JObj, ensure_call(Call));
+        _ ->
+            kapps_call_command:hangup(Call)
+    end.
+
+-spec conf_discover(kz_json:object(), kapps_call:call()) -> 'ok'.
+conf_discover(ConfDoc, Call) ->
+    Command =
+        props:filter_undefined(
+          [{<<"Call">>, kapps_call:to_json(Call)}
+          ,{<<"Conference-ID">>, kz_doc:id(ConfDoc)}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ]),
+    kapi_conference:publish_discovery_req(Command).
+
+-spec ensure_call(kapps_call:call()) -> kapps_call:call().
+ensure_call(Call) ->
+    case kapps_call:switch_hostname(Call) of
+        'undefined' -> switch_hostname_lookup(Call);
+        _ -> Call
+    end.
+
+-spec switch_hostname_lookup(kapps_call:call()) -> kapps_call:call().
+switch_hostname_lookup(Call) ->
+    case kapps_call:switch_nodename(Call) of
+        <<"freeswitch@", Hostname/binary>> ->
+            kapps_call:set_switch_hostname(Hostname, Call);
+        _ -> Call
+    end.
