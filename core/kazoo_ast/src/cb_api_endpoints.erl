@@ -76,7 +76,10 @@ method_to_section(<<"nil">>, Acc, _APIPath) -> Acc;
 method_to_section(Method, Acc, APIPath) ->
     [[ "#### ", method_as_action(Method), "\n\n"
      ,"> ", Method, " ", APIPath, "\n\n"
-     ,"```shell\ncurl -v -X ", Method, " \\\n    -H \"X-Auth-Token: {AUTH_TOKEN}\" \\\n    http://{SERVER}:8000", APIPath, "\n```\n\n"
+     , "```shell\ncurl -v -X ", Method, " \\\n"
+       "    -H \"X-Auth-Token: {AUTH_TOKEN}\" \\\n"
+       "    http://{SERVER}:8000", APIPath, "\n"
+       "```\n\n"
      ]
      | Acc
     ].
@@ -94,8 +97,8 @@ method_as_action(?HTTP_PATCH) ->
 
 ref_doc_header(BaseName) ->
     [maybe_add_schema(BaseName)
-    ,["#### About ", kz_util:ucfirst_binary(BaseName), $\n, $\n]
-    ,["### ", kz_util:ucfirst_binary(BaseName), $\n,$\n]
+    ,["#### About ", kz_util:ucfirst_binary(BaseName), "\n\n"]
+    ,["### ", kz_util:ucfirst_binary(BaseName), "\n\n"]
     ].
 
 maybe_add_schema(BaseName) ->
