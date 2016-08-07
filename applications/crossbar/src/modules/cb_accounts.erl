@@ -103,8 +103,7 @@ allowed_methods(_AccountId, ?DESCENDANTS) -> [?HTTP_GET];
 allowed_methods(_AccountId, ?SIBLINGS) -> [?HTTP_GET];
 allowed_methods(_AccountId, ?API_KEY) -> [?HTTP_GET];
 allowed_methods(_AccountId, ?TREE) -> [?HTTP_GET];
-allowed_methods(_AccountId, ?PARENTS) -> [?HTTP_GET];
-allowed_methods(_AccountId, _Path) -> [].
+allowed_methods(_AccountId, ?PARENTS) -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
