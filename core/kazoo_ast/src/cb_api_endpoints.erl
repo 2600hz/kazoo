@@ -277,7 +277,7 @@ to_swagger_json() ->
 
 to_swagger_definitions() ->
     SchemasPath = ?SCHEMAS_PATH(<<>>),
-    filelib:fold_files(SchemasPath, ".json$", 'false', fun process_schema/2, kz_json:new()).
+    filelib:fold_files(SchemasPath, ".json\$", 'false', fun process_schema/2, kz_json:new()).
 
 open_schema(<<C:1/binary, _/binary>> = File) ->
     case file:read_file(File) of
@@ -469,7 +469,7 @@ get() ->
 
 process_application(App) ->
     EBinDir = code:lib_dir(App, 'ebin'),
-    filelib:fold_files(EBinDir, "^cb_.*.beam$", 'false', fun process_module/2, []).
+    filelib:fold_files(EBinDir, "^cb_.*.beam\$", 'false', fun process_module/2, []).
 
 process_module(File, Acc) ->
     {'ok', {Module, [{'exports', Fs}]}} = beam_lib:chunks(File, ['exports']),
@@ -689,6 +689,6 @@ grep_cb_module(Module) when is_atom(Module) ->
     grep_cb_module(kz_util:to_binary(Module));
 grep_cb_module(?NE_BINARY=Module) ->
     re:run(Module
-          ,<<"^cb_([a-z_]+?)(?:_(v[0-9]))?$">>
+          ,<<"^cb_([a-z_]+?)(?:_(v[0-9]))?\$">>
           ,[{'capture', 'all_but_first', 'binary'}]
           ).
