@@ -380,9 +380,9 @@ format_pc_config({Callback, Paths}, Acc, Module, ModuleName) ->
 
 format_pc_callback({[], []}, Acc, _Module, _ModuleName, _Callback) ->
     Acc;
-format_pc_callback({Path, []}, Acc, _Module, ModuleName, Callback) ->
-    PathName = path_name(Path, ModuleName),
-    kz_json:set_value([PathName, kz_util:to_binary(Callback)], <<"not supported">>, Acc);
+format_pc_callback({_Path, []}, Acc, _Module, _ModuleName, _Callback) ->
+    io:format("~s not supported ~s\n", [_ModuleName, _Path]),
+    Acc;
 format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
     PathName = path_name(Path, ModuleName),
     kz_json:set_values(props:filter_undefined(
