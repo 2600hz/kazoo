@@ -84,16 +84,11 @@ method_to_section(Method, Acc, APIPath) ->
      | Acc
     ].
 
-method_as_action(?HTTP_GET) ->
-    <<"Fetch">>;
-method_as_action(?HTTP_PUT) ->
-    <<"Create">>;
-method_as_action(?HTTP_POST) ->
-    <<"Change">>;
-method_as_action(?HTTP_DELETE) ->
-    <<"Remove">>;
-method_as_action(?HTTP_PATCH) ->
-    <<"Patch">>.
+method_as_action(?HTTP_GET) -> <<"Fetch">>;
+method_as_action(?HTTP_PUT) -> <<"Create">>;
+method_as_action(?HTTP_POST) -> <<"Change">>;
+method_as_action(?HTTP_DELETE) -> <<"Remove">>;
+method_as_action(?HTTP_PATCH) -> <<"Patch">>.
 
 ref_doc_header(BaseName) ->
     [maybe_add_schema(BaseName)
