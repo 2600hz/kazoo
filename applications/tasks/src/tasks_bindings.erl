@@ -185,7 +185,8 @@ unbind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
     kazoo_bindings:unbind(Binding, Module, Fun, Payload).
 
 -spec flush() -> 'ok'.
-flush() -> kazoo_bindings:flush().
+flush() ->
+    lists:foreach(fun kazoo_bindings:flush_mod/1, modules_loaded()).
 
 -spec flush(ne_binary()) -> 'ok'.
 flush(Binding) -> kazoo_bindings:flush(Binding).
@@ -194,12 +195,23 @@ filter(Predicate) ->
     kazoo_bindings:filter(Predicate).
 
 -spec modules_loaded() -> atoms().
-modules_loaded() -> kazoo_bindings:modules_loaded().
+modules_loaded() ->
+    lists:usort(
+      [Mod || Mod <- kazoo_bindings:modules_loaded(),
+              is_task_module(Mod)
+      ]).
+
+-spec is_task_module(ne_binary() | atom()) -> boolean().
+is_task_module(<<"kt_", _/binary>>) -> 'true';
+is_task_module(Mod)
+  when is_atom(Mod) ->
+    is_task_module(kz_util:to_binary(Mod));
+is_task_module(_) -> 'false'.
+
 
 -spec init() -> 'ok'.
 init() ->
     lager:debug("initializing tasks bindings"),
-    flush(<<"tasks.#">>),
     kz_util:put_callid(?LOG_SYSTEM_ID),
     lists:foreach(fun init_mod/1, ?TASKS).
 
