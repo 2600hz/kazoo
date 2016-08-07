@@ -23,7 +23,7 @@
 
 -export([init/0
         ,authorize/1, authorize/2, authorize/3, authorize/4
-        ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+        ,allowed_methods/1, allowed_methods/2, allowed_methods/3
         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
         ,validate/1, validate/2, validate/3, validate/4
 
@@ -155,13 +155,9 @@ authorize(Context, _Module, _Function, _Args) ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
-allowed_methods() ->
-    [].
-
 allowed_methods(_Module) ->
     [?HTTP_GET].
 
