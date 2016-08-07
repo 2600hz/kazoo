@@ -10,7 +10,7 @@
 %% behaviour: tasks_provider
 
 -export([init/0
-        ,help/0
+        ,help/1, help/2, help/3
         ,output_header/1
         ]).
 
@@ -36,7 +36,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    _ = tasks_bindings:bind(<<"tasks.help."?CATEGORY>>, ?MODULE, 'help'),
+    _ = tasks_bindings:bind(<<"tasks.help">>, ?MODULE, 'help'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".output_header">>, ?MODULE, 'output_header'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
@@ -51,15 +51,16 @@ output_header(<<"descendant_quantities">>) ->
     ,<<"quantity_eom">>
     ].
 
--spec help() -> kz_json:object().
-help() ->
-    kz_json:from_list(
-      [{<<?CATEGORY>>
-       ,kz_json:from_list(
-          [{Action, kz_json:from_list(action(Action))} || Action <- ?ACTIONS]
-         )
-       }
-      ]).
+-spec help(kz_json:object()) -> kz_json:object().
+help(JObj) -> help(JObj, <<?CATEGORY>>).
+
+-spec help(kz_json:object(), ne_binary()) -> kz_json:object().
+help(JObj, <<?CATEGORY>>) ->
+    lists:foldl(fun(Action, J) -> help(J, <<?CATEGORY>>, Action) end, JObj, ?ACTIONS).
+
+-spec help(kz_json:object(), ne_binary(), ne_binary()) -> kz_json:object().
+help(JObj, <<?CATEGORY>>, Action) ->
+    kz_json:set_value([<<?CATEGORY>>, Action], kz_json:from_list(action(Action)), JObj).
 
 -spec action(ne_binary()) -> kz_json:object().
 action(<<"descendant_quantities">>) ->

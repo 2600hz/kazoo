@@ -190,7 +190,7 @@ validate_tasks(Context, ?HTTP_GET) ->
     case cb_context:account_id(Context) of
         'undefined' ->
             lager:debug("starting discovery of task APIs"),
-            JObj = kz_json:from_list([{<<"tasks">>, help()}]),
+            JObj = kz_json:from_list([{<<"tasks">>, help(Context)}]),
             cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
                                         ,{fun cb_context:set_resp_data/2, JObj}
                                         ]);
@@ -495,9 +495,12 @@ load_csv_attachment(Context, TaskId, AName) ->
     end.
 
 %% @private
--spec help() -> kz_json:object().
-help() ->
-    Req = kz_api:default_headers(?APP_NAME, ?APP_VERSION),
+-spec help(cb_context:context()) -> kz_json:object().
+help(Context) ->
+    Req = props:filter_undefined([{<<"Category">>, cb_context:req_param(Context, <<"category">>)}
+                                 ,{<<"Action">>, cb_context:req_param(Context, <<"action">>)}
+                                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                 ]),
     case kz_amqp_worker:call(Req
                             ,fun kapi_tasks:publish_lookup_req/1
                             ,fun kapi_tasks:lookup_resp_v/1
