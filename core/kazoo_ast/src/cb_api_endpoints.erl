@@ -72,7 +72,6 @@ methods_to_section(ModuleName, {Path, Methods}, Acc) ->
                ,Methods
                ).
 
-method_to_section(<<"nil">>, Acc, _APIPath) -> Acc;
 method_to_section(Method, Acc, APIPath) ->
     [[ "#### ", method_as_action(Method), "\n\n"
      ,"> ", Method, " ", APIPath, "\n\n"
@@ -309,8 +308,7 @@ to_swagger_paths(Paths, BasePaths) ->
     Endpoints =
         [{[Path,Method], kz_json:get_value([Path,Method], BasePaths, kz_json:new())}
          || {Path,AllowedMethods} <- kz_json:to_proplist(Paths),
-            Method <- kz_json:get_list_value(<<"allowed_methods">>, AllowedMethods, []),
-            Method =/= <<"nil">>
+            Method <- kz_json:get_list_value(<<"allowed_methods">>, AllowedMethods, [])
         ],
     Base = kz_json:set_values(Endpoints, kz_json:new()),
     kz_json:foldl(fun to_swagger_path/3, Base, Paths).
@@ -325,7 +323,6 @@ to_swagger_path(Path, PathMeta, Acc) ->
                ,Methods
                ).
 
-add_swagger_path(<<"nil">>, Acc, _Path, _Parameters) -> Acc;
 add_swagger_path(Method, Acc, Path, Parameters) ->
     MethodJObj = kz_json:get_value([Path, Method], Acc, kz_json:new()),
     Vs = props:filter_undefined(
@@ -630,8 +627,7 @@ find_methods_in_clause(?ATOM('ok'), Acc) ->
     Acc;
 find_methods_in_clause(?MATCH(_Left, _Right), Acc) ->
     Acc;
-find_methods_in_clause(?EMPTY_LIST, Acc) ->
-    [<<"nil">> | Acc];
+find_methods_in_clause(?EMPTY_LIST, Acc) -> Acc;
 find_methods_in_clause(?LIST(?BINARY(Method), ?EMPTY_LIST)
                       ,Acc) ->
     [list_to_binary(Method) | Acc];
