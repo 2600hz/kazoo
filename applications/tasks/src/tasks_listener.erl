@@ -10,8 +10,7 @@
 
 -export([start_link/0]).
 
--export([handle_lookup_req/2
-        ,handle_start_req/2
+-export([handle_start_req/2
         ,handle_remove_req/2
         ]).
 
@@ -33,7 +32,7 @@
 -define(BINDINGS, [{'self', []}
                   ,{'tasks', []}
                   ]).
--define(RESPONDERS, [{{?MODULE, 'handle_lookup_req'}
+-define(RESPONDERS, [{{'kz_tasks_help', 'handle_lookup_req'}
                      ,[{<<"tasks">>, <<"lookup_req">>}]
                      }
                     ,{{?MODULE, 'handle_start_req'}
@@ -65,39 +64,6 @@ start_link() ->
 %%%===================================================================
 %%% AMQP API
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec handle_lookup_req(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_lookup_req(JObj, _Props) ->
-    'true' = kapi_tasks:lookup_req_v(JObj),
-    Help =
-        case help(JObj) of
-            {'error', _R} ->
-                lager:debug("lookup_req error: ~s", [_R]),
-                kz_json:new();
-            {'ok', JOk} -> JOk;
-            JOk -> JOk
-        end,
-    Resp = kz_json:from_list(
-             [{<<"Help">>, Help}
-             ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]
-            ),
-    kapi_tasks:publish_lookup_resp(kz_api:server_id(JObj), Resp).
-
-%% @private
--spec help(kz_json:object()) -> kz_tasks:help_error().
-help(JObj) ->
-    case {kapi_tasks:category(JObj), kapi_tasks:action(JObj)} of
-        {'undefined', 'undefined'} -> kz_tasks_scheduler:help();
-        {Category, 'undefined'} -> kz_tasks_scheduler:help(Category);
-        {Category, Action} -> kz_tasks_scheduler:help(Category, Action)
-    end.
 
 %%--------------------------------------------------------------------
 %% @public
