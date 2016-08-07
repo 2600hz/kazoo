@@ -72,9 +72,7 @@ allowed_methods() ->
 allowed_methods(?PATH_PLAN) ->
     [?HTTP_GET];
 allowed_methods(?PATH_AUDIT) ->
-    [?HTTP_GET];
-allowed_methods(_) ->
-    [].
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
