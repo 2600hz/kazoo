@@ -29,6 +29,6 @@ start(_Type, _Args) ->
 %% @public
 %% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(any()) -> any().
+-spec stop(any()) -> 'ok'.
 stop(_State) ->
-    'ok'.
+    tasks_bindings:flush().
