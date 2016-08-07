@@ -1,5 +1,4 @@
 {
-    "basePath": "/v2",
     "consumes": [
         "application/json"
     ],
@@ -12738,1068 +12737,1517 @@
         "version": "v2"
     },
     "paths": {
-        "/about": {
+        "/v2/about": {
             "get": {}
         },
-        "/accounts": {
+        "/v2/accounts": {
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}": {
             "delete": {},
             "get": {},
             "patch": {},
             "post": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/access_lists": {
+        "/v2/accounts/{ACCOUNT_ID}/access_lists": {
             "delete": {},
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/acls": {
+        "/v2/accounts/{ACCOUNT_ID}/acls": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/agents": {
+        "/v2/accounts/{ACCOUNT_ID}/agents": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/agents/stats": {
+        "/v2/accounts/{ACCOUNT_ID}/agents/stats": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/agents/status": {
+        "/v2/accounts/{ACCOUNT_ID}/agents/status": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/agents/status/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/agents/status/{ID}": {
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/agents/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/agents/{ID}": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status": {
+        "/v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status": {
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/agents/{ID}/status": {
+        "/v2/accounts/{ACCOUNT_ID}/agents/{ID}/status": {
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/alerts": {
+        "/v2/accounts/{ACCOUNT_ID}/alerts": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/alerts/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/alerts/{ID}": {
             "delete": {},
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/allotments": {
+        "/v2/accounts/{ACCOUNT_ID}/allotments": {
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/allotments/consumed": {
+        "/v2/accounts/{ACCOUNT_ID}/allotments/consumed": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/api_key": {
+        "/v2/accounts/{ACCOUNT_ID}/api_key": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/apps_link/authorize": {
+        "/v2/accounts/{ACCOUNT_ID}/apps_link/authorize": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/apps_store": {
+        "/v2/accounts/{ACCOUNT_ID}/apps_store": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/apps_store/blacklist": {
+        "/v2/accounts/{ACCOUNT_ID}/apps_store/blacklist": {
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/apps_store/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}/{ID}": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/blacklists": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/blacklists/{ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/addresses": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/cards": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/cards/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/credits": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/customer": {
-            "get": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/transactions": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/braintree/transactions/{ID}": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/bulk": {
-            "delete": {},
-            "get": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/call_inspector": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/call_inspector/{ID}": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/callflows": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/callflows/{CALLFLOW_ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/cccps": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/cccps/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}": {
             "delete": {},
             "get": {},
             "post": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/cdrs": {
+        "/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/cdrs/interaction": {
+        "/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}/{ID}": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/cdrs/legs/{INTERACTION_ID}": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/channels": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/channels/{UUID}": {
-            "get": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/children": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/clicktocall": {
+        "/v2/accounts/{ACCOUNT_ID}/blacklists": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/connect": {
+        "/v2/accounts/{ACCOUNT_ID}/braintree/addresses": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}": {
+            "delete": {},
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/history": {
+        "/v2/accounts/{ACCOUNT_ID}/braintree/cards": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/braintree/credits": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/braintree/customer": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/braintree/transactions": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/braintree/transactions/{ID}": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/comments": {
-            "delete": {},
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/comments/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/bulk": {
             "delete": {},
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/conferences": {
+        "/v2/accounts/{ACCOUNT_ID}/call_inspector": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/call_inspector/{ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/callflows": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/callflows/{CALLFLOW_ID}": {
             "delete": {},
             "get": {},
             "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/cccps": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/cccps/{ID}": {
+            "delete": {},
+            "get": {},
             "post": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants": {
+        "/v2/accounts/{ACCOUNT_ID}/cdrs": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/cdrs/interaction": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/cdrs/legs/{INTERACTION_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/channels": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/channels/{UUID}": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/children": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/clicktocall": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/connect": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/history": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/comments": {
+            "delete": {},
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/configs/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/comments/{ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/conferences": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}": {
             "delete": {},
             "get": {},
             "patch": {},
             "post": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/connectivity": {
+        "/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/connectivity/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/configs/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/contact_list": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/descendants": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/devices": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/devices/status": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync": {
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/dialplans": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/directories": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/faxboxes": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/faxes": {
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/faxes/inbox": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}": {
-            "delete": {},
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment": {
-            "delete": {},
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/faxes/incoming": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/faxes/outbox": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}": {
-            "delete": {},
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment": {
-            "delete": {},
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/faxes/outgoing": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/faxes/smtplog": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/freeswitch": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/global_provisioner_templates": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}/image": {
-            "delete": {},
-            "get": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/groups": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/groups/{ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/hotdesks": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/ips": {
-            "get": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/ips/assigned": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/ips/hosts": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/ips/zones": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/ips/{IP}": {
-            "delete": {},
-            "get": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/killio/call": {
             "post": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/ledgers": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/ledgers/credit": {
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/ledgers/debit": {
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{_ID}": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/limits": {
-            "get": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/lists": {
+        "/v2/accounts/{ACCOUNT_ID}/connectivity": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/lists/{LIST_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/connectivity/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries": {
-            "delete": {},
+        "/v2/accounts/{ACCOUNT_ID}/contact_list": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/descendants": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/devices": {
+            "get": {
+                "description": "Summary listing of devices for the account",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A listing of devices created for the account"
+                    }
+                }
+            },
+            "put": {
+                "description": "Create a new device",
+                "parameters": {
+                    "in": "body",
+                    "name": "devices",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/devices"
+                    }
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "201": {
+                        "description": "The newly created device object"
+                    }
+                }
+            }
+        },
+        "/v2/accounts/{ACCOUNT_ID}/devices/status": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}": {
+            "delete": {
+                "description": "Remove the device from the account",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The removed device object"
+                    }
+                }
+            },
+            "get": {
+                "description": "Get the device details",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The device object, in full"
+                    }
+                }
+            },
+            "patch": {},
+            "post": {
+                "description": "Edit the device object",
+                "parameters": {
+                    "in": "body",
+                    "name": "devices",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/devices"
+                    }
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The edited device object, in full"
+                    }
+                }
+            }
+        },
+        "/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}": {
+            "get": {
+                "description": "Execute quickcall to {NUMBER}",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The call initialization details"
+                    }
+                }
+            }
+        },
+        "/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync": {
+            "post": {
+                "description": "Reset the device by sending a check-sync SIP NOTIFY",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Notice that the check-sync has been sent"
+                    }
+                }
+            }
+        },
+        "/v2/accounts/{ACCOUNT_ID}/dialplans": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/directories": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}": {
             "delete": {},
             "get": {},
             "patch": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/photo": {
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/vcard": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/local_provisioner_templates": {
+        "/v2/accounts/{ACCOUNT_ID}/faxboxes": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}/image": {
-            "delete": {},
-            "get": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/media": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/media/languages": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/media/languages/{LANGUAGE}": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/media/prompts": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}": {
-            "delete": {},
-            "get": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw": {
-            "get": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/menus": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/menus/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}": {
             "delete": {},
             "get": {},
             "patch": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/metaflows": {
+        "/v2/accounts/{ACCOUNT_ID}/faxes": {
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/inbox": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}": {
+            "delete": {},
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment": {
+            "delete": {},
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/incoming": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/outbox": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}": {
+            "delete": {},
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment": {
+            "delete": {},
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/outgoing": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/smtplog": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/freeswitch": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}": {
             "delete": {},
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/move": {
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/notifications": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/notifications/customer_update/message": {
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/notifications/smtplog": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID}": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/notifications/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}/image": {
             "delete": {},
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/notifications/{ID}/preview": {
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/onboard": {
+        "/v2/accounts/{ACCOUNT_ID}/groups": {
+            "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/parents": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/parked_calls": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/phone_numbers": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/check": {
+        "/v2/accounts/{ACCOUNT_ID}/groups/{ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/classifiers": {
+        "/v2/accounts/{ACCOUNT_ID}/hotdesks": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONENUMBER}": {
+        "/v2/accounts/{ACCOUNT_ID}/ips": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ips/assigned": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/collection": {
+        "/v2/accounts/{ACCOUNT_ID}/ips/hosts": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ips/zones": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ips/{IP}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/killio/call": {
+            "post": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ledgers": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ledgers/credit": {
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ledgers/debit": {
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/limits": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/lists": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries": {
+            "delete": {},
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/photo": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/vcard": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/local_provisioner_templates": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}/image": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/media": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/media/languages": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/media/languages/{LANGUAGE}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/media/prompts": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/menus": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/menus/{ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/metaflows": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/move": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/notifications": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/notifications/customer_update/message": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/notifications/smtplog": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/notifications/{ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/notifications/{ID}/preview": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/onboard": {
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/parents": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/parked_calls": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/check": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONENUMBER}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection": {
             "delete": {},
             "post": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate": {
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate": {
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/fix": {
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/fix": {
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/locality": {
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/locality": {
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/prefix": {
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}": {
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}": {
             "delete": {},
             "get": {},
             "post": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate": {
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate": {
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/identify": {
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/identify": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/reserve": {
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/reserve": {
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/pivot/debug": {
+        "/v2/accounts/{ACCOUNT_ID}/pivot/debug": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/pivot/debug/{UUID}": {
+        "/v2/accounts/{ACCOUNT_ID}/pivot/debug/{UUID}": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/canceled": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/canceled": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/completed": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/completed": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/pending": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/pending": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/rejected": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/rejected": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/scheduled": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/scheduled": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/submitted": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/submitted": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}": {
             "delete": {},
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}": {
             "delete": {},
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/canceled": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/canceled": {
             "patch": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/completed": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/completed": {
             "patch": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/loa": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/loa": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/pending": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/pending": {
             "patch": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/rejected": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/rejected": {
             "patch": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/scheduled": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/scheduled": {
             "patch": {}
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/submitted": {
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/submitted": {
             "patch": {}
         },
-        "/accounts/{ACCOUNT_ID}/presence": {
+        "/v2/accounts/{ACCOUNT_ID}/presence": {
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/presence/report-{REPORT_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/presence/report-{REPORT_ID}": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/presence/{EXTENSION}": {
+        "/v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}": {
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/queues": {
+        "/v2/accounts/{ACCOUNT_ID}/queues": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/queues/eavesdrop": {
+        "/v2/accounts/{ACCOUNT_ID}/queues/eavesdrop": {
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/queues/stats": {
+        "/v2/accounts/{ACCOUNT_ID}/queues/stats": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/queues/{Q_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}": {
             "delete": {},
             "get": {},
             "patch": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/queues/{Q_ID}/eavesdrop": {
+        "/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/eavesdrop": {
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster": {
+        "/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster": {
             "delete": {},
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/rate_limits": {
+        "/v2/accounts/{ACCOUNT_ID}/rate_limits": {
             "delete": {},
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/recordings": {
+        "/v2/accounts/{ACCOUNT_ID}/recordings": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}/attachment": {
+        "/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}/attachment": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/registrations": {
+        "/v2/accounts/{ACCOUNT_ID}/registrations": {
             "delete": {},
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/registrations/count": {
+        "/v2/accounts/{ACCOUNT_ID}/registrations/count": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/registrations/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/registrations/{ID}": {
             "delete": {}
         },
-        "/accounts/{ACCOUNT_ID}/reseller": {
+        "/v2/accounts/{ACCOUNT_ID}/reseller": {
             "delete": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/resource_selectors": {
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors": {
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/resource_selectors/name": {
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/name": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTORNAME}": {
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTORNAME}": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTORNAME}/resource/{RESOURCE_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTORNAME}/resource/{RESOURCE_ID}": {
             "delete": {},
             "get": {},
             "post": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/resource_selectors/resource": {
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTORNAME}": {
+        "/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTORNAME}": {
             "delete": {},
             "get": {},
             "post": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/resource_templates": {
+        "/v2/accounts/{ACCOUNT_ID}/resource_templates": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/resource_templates/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/resource_templates/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/resources": {
+        "/v2/accounts/{ACCOUNT_ID}/resources": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/resources/collection": {
+        "/v2/accounts/{ACCOUNT_ID}/resources/collection": {
             "post": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/resources/jobs": {
+        "/v2/accounts/{ACCOUNT_ID}/resources/jobs": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}": {
             "delete": {},
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/search": {
+        "/v2/accounts/{ACCOUNT_ID}/search": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/search/multi": {
+        "/v2/accounts/{ACCOUNT_ID}/search/multi": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/service_plans": {
+        "/v2/accounts/{ACCOUNT_ID}/service_plans": {
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/service_plans/available/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/service_plans/available/{ID}": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/service_plans/current": {
+        "/v2/accounts/{ACCOUNT_ID}/service_plans/current": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/service_plans/override": {
+        "/v2/accounts/{ACCOUNT_ID}/service_plans/override": {
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/service_plans/reconciliation": {
+        "/v2/accounts/{ACCOUNT_ID}/service_plans/reconciliation": {
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/service_plans/synchronization": {
+        "/v2/accounts/{ACCOUNT_ID}/service_plans/synchronization": {
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/service_plans/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}": {
             "delete": {},
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/services": {
+        "/v2/accounts/{ACCOUNT_ID}/services": {
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/services/audit": {
+        "/v2/accounts/{ACCOUNT_ID}/services/audit": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/services/plan": {
+        "/v2/accounts/{ACCOUNT_ID}/services/plan": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/siblings": {
+        "/v2/accounts/{ACCOUNT_ID}/siblings": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/signup": {
+        "/v2/accounts/{ACCOUNT_ID}/signup": {
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/signup/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/signup/{ID}": {
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/skels": {
+        "/v2/accounts/{ACCOUNT_ID}/skels": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/skels/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/skels/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/sms": {
+        "/v2/accounts/{ACCOUNT_ID}/sms": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/sms/{_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/sms/{_ID}": {
             "delete": {},
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/tasks": {
+        "/v2/accounts/{ACCOUNT_ID}/tasks": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}": {
             "delete": {},
             "get": {},
             "patch": {}
         },
-        "/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input": {
+        "/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output": {
+        "/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/templates": {
+        "/v2/accounts/{ACCOUNT_ID}/templates": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/templates/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/templates/{ID}": {
             "delete": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/temporal_rules": {
+        "/v2/accounts/{ACCOUNT_ID}/temporal_rules": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/temporal_rules/{ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/temporal_rules_sets": {
-            "get": {},
-            "put": {}
-        },
-        "/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/token_restrictions": {
+        "/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/token_restrictions": {
             "delete": {},
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/transactions": {
+        "/v2/accounts/{ACCOUNT_ID}/transactions": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/transactions/credit": {
+        "/v2/accounts/{ACCOUNT_ID}/transactions/credit": {
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/transactions/current_balance": {
+        "/v2/accounts/{ACCOUNT_ID}/transactions/current_balance": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/transactions/debit": {
+        "/v2/accounts/{ACCOUNT_ID}/transactions/debit": {
             "delete": {}
         },
-        "/accounts/{ACCOUNT_ID}/transactions/monthly_recurring": {
+        "/v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/transactions/subscriptions": {
+        "/v2/accounts/{ACCOUNT_ID}/transactions/subscriptions": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/tree": {
+        "/v2/accounts/{ACCOUNT_ID}/tree": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/users": {
+        "/v2/accounts/{ACCOUNT_ID}/users": {
             "get": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/users/{USER_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}": {
             "delete": {},
             "get": {},
             "patch": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo": {
+        "/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo": {
             "delete": {},
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{NUMBER}": {
+        "/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{NUMBER}": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/users/{USER_ID}/vcard": {
+        "/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/vcard": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/vmboxes": {
-            "get": {},
-            "put": {}
+        "/v2/accounts/{ACCOUNT_ID}/vmboxes": {
+            "get": {
+                "description": "Summary listing of voicemail boxes for the account",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A listing of voicemail boxes for the account"
+                    }
+                }
+            },
+            "put": {
+                "description": "Create a new voicemail box",
+                "parameters": {
+                    "in": "body",
+                    "name": "vmboxes",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/vmboxes"
+                    }
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "201": {
+                        "description": "The newly created voicemail box"
+                    }
+                }
+            }
         },
-        "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {}
+        "/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}": {
+            "delete": {
+                "description": "Deletes the voicemail box from the account"
+            },
+            "get": {
+                "description": "Details of the voicemail box",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A voicemail box document"
+                    }
+                }
+            },
+            "patch": {
+                "description": "Patch an existing voicemail box",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The updated voicemail box"
+                    }
+                }
+            },
+            "post": {
+                "description": "Edit an existing voicemail box",
+                "parameters": {
+                    "in": "body",
+                    "name": "vmboxes",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/vmboxes"
+                    }
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The updated voicemail box"
+                    }
+                }
+            }
         },
-        "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages": {
-            "delete": {},
-            "get": {},
-            "post": {}
+        "/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages": {
+            "delete": {
+                "description": "Remove all or a list of messages from a voicemail box",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listing of messages, if any are left"
+                    }
+                }
+            },
+            "get": {
+                "description": "Listing of messages contained in the voicemail box",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A listing of messages"
+                    }
+                }
+            },
+            "post": {
+                "description": "Change a list message",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A listing of messages"
+                    }
+                }
+            }
         },
-        "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/raw": {
-            "post": {}
+        "/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/raw": {
+            "post": {
+                "description": "Fetch raw aduio of a list message id",
+                "produces": [
+                    "application/zip"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ZIP file containing the raw audio of voicemail messages"
+                    }
+                }
+            }
         },
-        "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}": {
-            "delete": {},
-            "get": {},
-            "post": {}
+        "/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}": {
+            "delete": {
+                "description": "Remove the message from the voicemail box",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The removed message object"
+                    }
+                }
+            },
+            "get": {
+                "description": "Get a specific message object",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The message object"
+                    }
+                }
+            },
+            "post": {
+                "description": "Change a message",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A listing of messages"
+                    }
+                }
+            }
         },
-        "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}/raw": {
+        "/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}/raw": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/webhooks": {
-            "get": {},
-            "patch": {},
-            "put": {}
+        "/v2/accounts/{ACCOUNT_ID}/webhooks": {
+            "get": {
+                "description": "Summary listing of webhooks for the account",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A listing of webhooks created for the account"
+                    }
+                }
+            },
+            "patch": {
+                "description": "Re-enable the collection of webhooks",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Result of reenabling hooks"
+                    }
+                }
+            },
+            "put": {
+                "description": "Create a new webhook",
+                "parameters": {
+                    "in": "body",
+                    "name": "webhooks",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/webhooks"
+                    }
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "201": {
+                        "description": "The newly created webhook object"
+                    }
+                }
+            }
         },
-        "/accounts/{ACCOUNT_ID}/webhooks/attempts": {
+        "/v2/accounts/{ACCOUNT_ID}/webhooks/attempts": {
+            "get": {
+                "description": "List the attempts Kazoo has made to the external servers",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of objects representing webhook attempts made"
+                    }
+                }
+            }
+        },
+        "/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}": {
+            "delete": {
+                "description": "Remove the webhook from the account",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The removed webhook object"
+                    }
+                }
+            },
+            "get": {
+                "description": "Get the webhook details",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The webhook object, in full"
+                    }
+                }
+            },
+            "patch": {
+                "description": "Patch the webhook object",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The patched webhook object, in full"
+                    }
+                }
+            },
+            "post": {
+                "description": "Edit the webhook object",
+                "parameters": {
+                    "in": "body",
+                    "name": "webhooks",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/webhooks"
+                    }
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The edited webhook object, in full"
+                    }
+                }
+            }
+        },
+        "/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts": {
+            "get": {
+                "description": "List the attempts Kazoo has made to the external servers for this webhook",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of objects representing webhook attempts made for this webhook"
+                    }
+                }
+            }
+        },
+        "/v2/accounts/{ACCOUNT_ID}/websockets": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {}
-        },
-        "/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts": {
+        "/v2/accounts/{ACCOUNT_ID}/websockets/{ID}": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/websockets": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/websockets/{ID}": {
-            "get": {}
-        },
-        "/accounts/{ACCOUNT_ID}/whitelabel": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel": {
             "delete": {},
             "get": {},
             "post": {},
             "put": {}
         },
-        "/accounts/{ACCOUNT_ID}/whitelabel/domains": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel/domains": {
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/whitelabel/icon": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel/icon": {
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/whitelabel/logo": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel/logo": {
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/whitelabel/welcome": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel/welcome": {
             "get": {},
             "post": {}
         },
-        "/accounts/{ACCOUNT_ID}/whitelabel/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/whitelabel/{ID}/icon": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/icon": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/whitelabel/{ID}/logo": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/logo": {
             "get": {}
         },
-        "/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome": {
             "get": {}
         },
-        "/api_auth": {
-            "put": {}
+        "/v2/api_auth": {
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "api_auth",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/api_auth"
+                    }
+                }
+            }
         },
-        "/google_auth": {
-            "put": {}
+        "/v2/google_auth": {
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "google_auth",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/google_auth"
+                    }
+                }
+            }
         },
-        "/ip_auth": {
-            "put": {}
+        "/v2/ip_auth": {
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "ip_auth",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/ip_auth"
+                    }
+                }
+            }
         },
-        "/rates": {
-            "get": {},
+        "/v2/rates": {
+            "get": {
+                "description": "Listing of available rate docs",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A list of available rate docs"
+                    }
+                }
+            },
             "post": {},
             "put": {}
         },
-        "/rates/number/{PHONENUMBER}": {
+        "/v2/rates/number/{PHONENUMBER}": {
             "get": {}
         },
-        "/rates/{RATE_ID}": {
-            "delete": {},
-            "get": {},
+        "/v2/rates/{RATE_ID}": {
+            "delete": {
+                "description": "Delete the rate doc",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The now-deleted rate doc"
+                    }
+                }
+            },
+            "get": {
+                "description": "Get the rate doc",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The rate doc"
+                    }
+                }
+            },
             "patch": {},
             "post": {}
         },
-        "/schemas": {
-            "get": {}
+        "/v2/schemas": {
+            "get": {
+                "description": "Listing of installed schemas available",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A list of schemas installed"
+                    }
+                }
+            }
         },
-        "/schemas/{SCHEMADOC}": {
-            "get": {}
+        "/v2/schemas/{SCHEMADOC}": {
+            "get": {
+                "description": "Get the JSON schema definition",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The schema definition"
+                    }
+                }
+            }
         },
-        "/schemas/{SCHEMADOC}/validation": {
-            "put": {}
+        "/v2/schemas/{SCHEMADOC}/validation": {
+            "put": {
+                "description": "Perform a test validation",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The results of the validation"
+                    }
+                }
+            }
         },
-        "/shared_auth": {
+        "/v2/shared_auth": {
             "get": {},
             "put": {}
         },
-        "/sup/{MODULE}": {
+        "/v2/sup/{MODULE}": {
             "get": {}
         },
-        "/sup/{MODULE}/{FUNCTION}": {
+        "/v2/sup/{MODULE}/{FUNCTION}": {
             "get": {}
         },
-        "/sup/{MODULE}/{FUNCTION}/{ARGS}": {
+        "/v2/sup/{MODULE}/{FUNCTION}/{ARGS}": {
             "get": {}
         },
-        "/system_configs": {
+        "/v2/system_configs": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "system_configs",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/system_configs"
+                    }
+                }
+            }
         },
-        "/system_configs/{_ID}": {
+        "/v2/system_configs/{_ID}": {
             "delete": {},
             "get": {},
             "post": {}
         },
-        "/system_configs/{_ID}/{NODE}": {
+        "/v2/system_configs/{_ID}/{NODE}": {
             "delete": {},
             "get": {},
             "post": {}
         },
-        "/token_auth": {
-            "delete": {},
-            "get": {}
+        "/v2/ubiquiti_auth": {
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "ubiquiti_auth",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/ubiquiti_auth"
+                    }
+                }
+            }
         },
-        "/ubiquiti_auth": {
-            "put": {}
+        "/v2/user_auth": {
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "user_auth",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/user_auth"
+                    }
+                }
+            }
         },
-        "/user_auth": {
-            "put": {}
-        },
-        "/user_auth/recovery": {
+        "/v2/user_auth/recovery": {
             "post": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "user_auth",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/user_auth"
+                    }
+                }
+            }
         },
-        "/user_auth/{AUTHTOKEN}": {
+        "/v2/user_auth/{AUTHTOKEN}": {
             "get": {}
         }
     },
