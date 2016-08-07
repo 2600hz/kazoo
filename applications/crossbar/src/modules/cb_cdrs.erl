@@ -193,8 +193,7 @@ allowed_methods(?PATH_INTERACTION) ->
 allowed_methods(_CDRId) ->
     [?HTTP_GET].
 allowed_methods(?PATH_LEGS, _InteractionId) ->
-    [?HTTP_GET];
-allowed_methods(_ , _) -> [].
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @private
