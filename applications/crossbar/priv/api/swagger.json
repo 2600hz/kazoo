@@ -4322,6 +4322,43 @@
                 }
             }
         },
+        "groups": {
+            "description": "Validator for the group",
+            "properties": {
+                "endpoints": {
+                    "default": {},
+                    "description": "Endpoints included into group",
+                    "required": true,
+                    "type": "object"
+                },
+                "music_on_hold": {
+                    "default": {},
+                    "description": "The music on hold parameters",
+                    "name": "Music on Hold",
+                    "properties": {
+                        "media_id": {
+                            "description": "The ID of a media object that should be used as music on hold",
+                            "maxLength": 128,
+                            "name": "Media ID",
+                            "required": false,
+                            "type": "string"
+                        }
+                    },
+                    "required": false,
+                    "type": "object"
+                },
+                "name": {
+                    "description": "A friendly name for the group",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "name": "Name",
+                    "required": true,
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
         "ips": {
             "description": "IP addresses assigned to the account",
             "name": "IP Addresses",

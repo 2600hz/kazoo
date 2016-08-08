@@ -36,7 +36,6 @@
     "data": {
         "music_on_hold": {},
         "name": "Test group",
-        "resources": {},
         "endpoints": {
             "df9274b450ea6795cdb381055c3f9b45": {
                 "type": "user",
@@ -59,7 +58,6 @@
     "data": {
         "music_on_hold": {},
         "name": "Test group",
-        "resources": {},
         "endpoints": {
             "df9274b450ea6795cdb381055c3f9b45": {
                 "type": "user",
@@ -91,7 +89,6 @@
     "data": {
         "music_on_hold": {},
         "name": "Test group",
-        "resources": {},
         "endpoints": {
             "df9274b450ea6795cdb381055c3f9b45": {
                 "type": "user",
@@ -125,7 +122,6 @@
         "music_on_hold": {},
         "name": "Test group 2",
         "id": "1743724cd775bf6994380dbc79c1af09",
-        "resources": {},
         "endpoints": {
             "df9274b450ea6795cdb381055c3f9b45": {
                 "type": "user",
@@ -148,7 +144,6 @@
     "data": {
         "music_on_hold": {},
         "name": "Test group 2",
-        "resources": {},
         "endpoints": {
             "df9274b450ea6795cdb381055c3f9b45": {
                 "type": "user",
@@ -184,7 +179,6 @@
         "music_on_hold": {},
         "name": "Test group 2",
         "id": "1743724cd775bf6994380dbc79c1af09",
-        "resources": {},
         "endpoints": {
             "df9274b450ea6795cdb381055c3f9b45": {
                 "type": "user",
