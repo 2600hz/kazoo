@@ -34,50 +34,52 @@ event_name(EventJObj) ->
 
 %% example binding: object.fax.doc_update
 -spec subscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-subscribe(Context, <<"object.", Args/binary>> = Binding) ->
+subscribe(Context, <<"object.", Args/binary>> = _Binding) ->
     case binary:split(Args, <<".">>, ['global']) of
         [Type, <<"*">>] ->
             case lists:member(Type, ?DOC_TYPES) of
                 'false' ->
-                    blackhole_util:send_error_message(Context, <<"unallowed object binding">>, Binding);
+                    {'error', <<"Unmatched binding">>};
                 'true' ->
-                    [ subscribe(Context, doc_binding(Type, Action), Action, Type) || Action <- ?DOC_ACTIONS]
+                    [ subscribe(Context, doc_binding(Type, Action), Action, Type) || Action <- ?DOC_ACTIONS ],
+                    {'ok', Context}
             end;
         [Type, Action] ->
             case lists:member(Action, ?DOC_ACTIONS)
                 andalso lists:member(Type, ?DOC_TYPES) of
                 'false' ->
-                    blackhole_util:send_error_message(Context, <<"unallowed object binding">>, Binding);
+                    {'error', <<"Unmatched binding">>};
                 'true' ->
-                    subscribe(Context, doc_binding(Action, Type), Action, Type)
+                    subscribe(Context, doc_binding(Action, Type), Action, Type),
+                    {'ok', Context}
             end;
         _Else ->
-            blackhole_util:send_error_message(Context, <<"unmatched object binding">>, Binding)
-    end,
-    {'ok', Context}.
+            {'error', <<"Unmatched binding">>}
+    end.
 
 -spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-unsubscribe(Context, <<"object.", Args/binary>> = Binding) ->
+unsubscribe(Context, <<"object.", Args/binary>> = _Binding) ->
     case binary:split(Args, <<".">>, ['global']) of
         [Type, <<"*">>] ->
             case lists:member(Type, ?DOC_TYPES) of
                 'false' ->
-                    blackhole_util:send_error_message(Context, <<"unallowed object binding">>, Binding);
+                    {'error', <<"Unmatched binding">>};
                 'true' ->
-                    [ unsubscribe(Context, doc_binding(Type, Action), Action, Type) || Action <- ?DOC_ACTIONS]
+                    [ unsubscribe(Context, doc_binding(Type, Action), Action, Type) || Action <- ?DOC_ACTIONS],
+                    {'ok', Context}
             end;
         [Type, Action] ->
             case lists:member(Action, ?DOC_ACTIONS)
                 andalso lists:member(Type, ?DOC_TYPES) of
                 'false' ->
-                    blackhole_util:send_error_message(Context, <<"unallowed object binding">>, Binding);
+                    {'error', <<"Unmatched binding">>};
                 'true' ->
-                    unsubscribe(Context, doc_binding(Action, Type), Action, Type)
+                    unsubscribe(Context, doc_binding(Action, Type), Action, Type),
+                    {'ok', Context}
             end;
         _Else ->
-            blackhole_util:send_error_message(Context, <<"unmatched object binding">>, Binding)
-    end,
-    {'ok', Context}.
+            {'error', <<"Unmatched binding">>}
+    end.
 
 -spec bind_options(ne_binary(), list()) -> kz_json:object().
 bind_options(AccountId, Keys) ->

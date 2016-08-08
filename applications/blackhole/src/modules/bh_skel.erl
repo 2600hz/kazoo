@@ -26,14 +26,15 @@ handle_event(Context, EventJObj) ->
 event_name(JObj) ->
     kz_json:get_value(<<"Event-Name">>, JObj).
 
+%% Binding must match module name
 -spec subscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
 subscribe(Context, <<"skel.", _Args/binary>> = _Binding) ->
     {'ok', Context};
 subscribe(_Context, _Binding) ->
-    {'error', <<"unmatched_binding">>}.
+    {'error', <<"Unmatched binding">>}.
 
 -spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
 unsubscribe(Context, <<"skel.", _Args/binary>> = _Binding) ->
     {'ok', Context};
 unsubscribe(_Context, _Binding) ->
-    {'error', <<"unmatched_binding">>}.
+    {'error', <<"Unmatched binding">>}.

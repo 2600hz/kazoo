@@ -41,14 +41,13 @@ subscribe(Context, <<"call.", Binding/binary>>) ->
     case binary:split(Binding, <<".">>, ['global']) of
         [Event, <<"*">>] ->
             AccountId = bh_context:account_id(Context),
-            add_call_binding(AccountId, Context, [Event]);
+            add_call_binding(AccountId, Context, [Event]),
+            {'ok', Context};
         _ ->
-            blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding)
-    end,
-    {'ok', Context};
-subscribe(Context, Binding) ->
-    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
-    {'ok', Context}.
+            {'error', <<"Unmatched binding">>}
+    end;
+subscribe(_Context, _Binding) ->
+    {'error', <<"Unmatched binding">>}.
 
 -spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
 unsubscribe(Context, <<"call.*.*">>) ->
@@ -59,14 +58,13 @@ unsubscribe(Context, <<"call.", Binding/binary>>) ->
     case binary:split(Binding, <<".">>, ['global']) of
         [Event, <<"*">>] ->
             AccountId = bh_context:account_id(Context),
-            rm_call_binding(AccountId, Context, [Event]);
+            rm_call_binding(AccountId, Context, [Event]),
+            {'ok', Context};
         _ ->
-            blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding)
-    end,
-    {'ok', Context};
-unsubscribe(Context, Binding) ->
-    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
-    {'ok', Context}.
+            {'error', <<"Unmatched binding">>}
+    end;
+unsubscribe(_Context, _Binding) ->
+    {'error', <<"Unmatched binding">>}.
 
 -spec add_call_binding(ne_binary(), bh_context:context(), [ne_binary()]) -> ok.
 add_call_binding(_AccountId, _Context, []) -> ok;

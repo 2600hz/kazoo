@@ -25,60 +25,52 @@ handle_event(#bh_context{binding=Binding}=Context, EventJObj) ->
                                ).
 
 -spec subscribe(ne_binary(), bh_context:context()) -> bh_subscribe_result().
-subscribe(Context, <<"conference.command.*">> = Binding) ->
-    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
-    {'ok', Context};
+subscribe(_Context, <<"conference.command.*">> = _Binding) ->
+    {'error', <<"Unmatched binding">>};
 subscribe(Context, <<"conference.command.", ConfId/binary>>) ->
     BindKey = <<"conference.command.", ConfId/binary>>,
     blackhole_listener:add_binding('conference', command_binding_options(ConfId)),
     blackhole_bindings:bind(BindKey, ?MODULE, 'handle_event', Context),
     {'ok', Context};
-subscribe(Context, <<"conference.event.*.*">> = Binding) ->
-    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
-    {'ok', Context};
-subscribe(Context, <<"conference.event.*.", _CallId/binary>> = Binding) ->
-    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
-    {'ok', Context};
+subscribe(_Context, <<"conference.event.*.*">> = _Binding) ->
+    {'error', <<"Unmatched binding">>};
+subscribe(_Context, <<"conference.event.*.", _CallId/binary>> = _Binding) ->
+    {'error', <<"Unmatched binding">>};
 subscribe(Context, <<"conference.event.", Args/binary>> = Binding) ->
     case binary:split(Args, <<".">>, ['global']) of
         [ConfId, CallId] ->
             blackhole_listener:add_binding('conference', event_binding_options(ConfId, CallId)),
-            blackhole_bindings:bind(Binding, ?MODULE, 'handle_event', Context);
+            blackhole_bindings:bind(Binding, ?MODULE, 'handle_event', Context),
+            {'ok', Context};
         _Else ->
-            blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding)
-    end,
-    {'ok', Context};
-subscribe(Binding, Context) ->
-    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
-    {'ok', Context}.
+            {'error', <<"Unmatched binding">>}
+    end;
+subscribe(_Binding, _Context) ->
+    {'error', <<"Unmatched binding">>}.
+
 
 -spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-unsubscribe(Context, <<"conference.command.*">> = Binding) ->
-    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
-    {'ok', Context};
+unsubscribe(_Context, <<"conference.command.*">> = _Binding) ->
+    {'error', <<"Unmatched binding">>};
 unsubscribe(Context, <<"conference.command.", ConfId/binary>> = Binding) ->
     blackhole_listener:remove_binding('conference', command_binding_options(ConfId)),
     blackhole_bindings:unbind(Binding, ?MODULE, 'handle_event', Context),
     {'ok', Context};
-unsubscribe(Context, <<"conference.event.*.*">> = Binding) ->
-    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
-    {'ok', Context};
-unsubscribe(Context, <<"conference.event.*.", _CallId/binary>> = Binding) ->
-    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
-    {'ok', Context};
+unsubscribe(_Context, <<"conference.event.*.*">> = _Binding) ->
+    {'error', <<"Unmatched binding">>};
+unsubscribe(_Context, <<"conference.event.*.", _CallId/binary>> = _Binding) ->
+    {'error', <<"Unmatched binding">>};
 unsubscribe(Context, <<"conference.event.", Args/binary>> = Binding) ->
     case binary:split(Args, <<".">>, ['global']) of
         [ConfId, CallId] ->
             blackhole_listener:remove_binding('conference', event_binding_options(ConfId, CallId)),
-            blackhole_bindings:unbind(Binding, ?MODULE, 'handle_event', Context);
+            blackhole_bindings:unbind(Binding, ?MODULE, 'handle_event', Context),
+            {'ok', Context};
         _Else ->
-            blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding)
-    end,
-    {'ok', Context};
-unsubscribe(Context, Binding) ->
-    lager:error("error:~p", [Binding]),
-    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
-    {'ok', Context}.
+            {'error', <<"Unmatched binding">>}
+    end;
+unsubscribe(_Context, _Binding) ->
+    {'error', <<"Unmatched binding">>}.
 
 %%%===================================================================
 %%% Internal functions
