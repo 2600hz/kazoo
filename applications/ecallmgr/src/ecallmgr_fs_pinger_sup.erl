@@ -39,7 +39,7 @@ add_node(Node, Options) ->
     supervisor:start_child(?SERVER, ChildSpec).
 
 find_pinger(Node) ->
-    Workers = supervisor:which_children('ecallmgr_fs_pinger_sup'),
+    Workers = supervisor:which_children(?MODULE),
     find_pinger(Workers, Node).
 
 find_pinger([], _) -> 'undefined';

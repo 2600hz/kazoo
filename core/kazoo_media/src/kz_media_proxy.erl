@@ -31,7 +31,7 @@ start_link() ->
 
 -spec stop() -> 'ok'.
 stop() ->
-    _ = cowboy:stop_listener('kz_media_proxy'),
+    _ = cowboy:stop_listener(?MODULE),
     _ = cowboy:stop_listener('media_mgr_ssl'),
     lager:debug("stopped kz_media_proxy listeners").
 
@@ -42,7 +42,8 @@ maybe_start_plaintext(Dispatch) ->
             Port = kapps_config:get_integer(?CONFIG_CAT, <<"proxy_port">>, 24517),
             Listeners = kapps_config:get_integer(?CONFIG_CAT, <<"proxy_listeners">>, 25),
 
-            cowboy:start_http('kz_media_proxy', Listeners
+            cowboy:start_http(?MODULE
+                             ,Listeners
                              ,[{'ip', {0,0,0,0,0,0,0,0}}
                               ,{'port', Port}
                               ]

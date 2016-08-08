@@ -827,7 +827,7 @@ delete_global(Global, _Reason, _Node) ->
                                'ok'.
 remonitor_globals() ->
     remonitor_globals(
-      ets:select(kz_globals:table_id(), [{'_', [], ['$_']}], 1)
+      ets:select(table_id(), [{'_', [], ['$_']}], 1)
      ).
 
 remonitor_globals('$end_of_table') -> 'ok';

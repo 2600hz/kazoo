@@ -566,6 +566,6 @@ stop_recording(Pid) ->
 recording_module(Call) ->
     AccountId = kapps_call:account_id(Call),
     case kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"recorder_module">>) of
-        'undefined' -> kapps_config:get_atom(?CONFIG_CAT, <<"recorder_module">>, 'kz_media_recording');
+        'undefined' -> kapps_config:get_atom(?CONFIG_CAT, <<"recorder_module">>, ?MODULE);
         Mod -> kz_util:to_atom(Mod, 'true')
     end.

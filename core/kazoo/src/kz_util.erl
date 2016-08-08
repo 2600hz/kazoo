@@ -1012,7 +1012,7 @@ uri(BaseUrl, Tokens) ->
 -spec safe_urlencode(binary() | number()) -> iolist().
 safe_urlencode(V) when is_binary(V)
                        orelse is_number(V) ->
-    kz_http_util:urlencode(kz_util:to_binary(V)).
+    kz_http_util:urlencode(to_binary(V)).
 
 -spec to_integer(string() | binary() | integer() | float()) -> integer().
 -spec to_integer(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().

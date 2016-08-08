@@ -911,12 +911,12 @@ from_tag(#kapps_call{from_tag=FromTag}) ->
 direction(#kapps_call{direction=Direction}) ->
     Direction.
 
--spec remove_custom_channel_vars(kz_json:keys(), kapps_call:call()) -> kapps_call:call().
+-spec remove_custom_channel_vars(kz_json:keys(), call()) -> call().
 remove_custom_channel_vars(Keys, #kapps_call{}=Call) ->
     kapps_call_command:set(kz_json:from_list([{Key, <<>>} || Key <- Keys]), 'undefined', Call),
     handle_ccvs_remove(Keys, Call).
 
--spec handle_ccvs_remove(kz_json:keys(), kapps_call:call()) -> kapps_call:call().
+-spec handle_ccvs_remove(kz_json:keys(), call()) -> call().
 handle_ccvs_remove(Keys, #kapps_call{ccvs=CCVs}=Call) ->
     lists:foldl(fun(Key, C) ->
                         case props:get_value(Key, ?SPECIAL_VARS) of

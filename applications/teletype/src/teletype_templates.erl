@@ -237,7 +237,7 @@ master_content_type(_AttachmentName, AttachmentProps, Acc) ->
 
 -spec render_master(ne_binary(), ne_binary(), macros()) -> ne_binary().
 render_master(<<_/binary>> = TemplateId, <<_/binary>> = ContentType, Macros) ->
-    ModuleName = teletype_templates:renderer_name(TemplateId, ContentType),
+    ModuleName = renderer_name(TemplateId, ContentType),
     try ModuleName:render(Macros) of
         {'ok', IOList} ->
             lager:debug("rendered ~s template successfully: ~s", [ContentType, IOList]),

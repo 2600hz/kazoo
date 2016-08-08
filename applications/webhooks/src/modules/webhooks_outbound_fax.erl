@@ -33,7 +33,7 @@
                   ]
        ).
 -define(RESPONDERS
-       ,[{{'webhooks_outbound_fax', 'handle_event'}
+       ,[{{?MODULE, 'handle_event'}
          ,[{<<"notification">>, ?NAME}
           ,{<<"notification">>, <<"outbound_fax_error">>}
           ]

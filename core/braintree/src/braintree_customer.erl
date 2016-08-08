@@ -234,7 +234,7 @@ update_card(Customer, Card) ->
     delete_old_cards_and_addresses(OldCards, NewCard1),
 
     %%get all the new user info
-    braintree_customer:find(UpdatedCustomer).
+    find(UpdatedCustomer).
 
 -spec delete_old_cards_and_addresses(bt_cards(), bt_card()) -> ok.
 delete_old_cards_and_addresses(OldCards, #bt_card{billing_address_id=NewAddressId}) ->

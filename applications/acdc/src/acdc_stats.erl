@@ -237,7 +237,7 @@ call_table_opts() ->
     ].
 
 -define(BINDINGS, [{'self', []}
-                  ,{'acdc_stats', []}
+                  ,{?MODULE, []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_call_stat'}
                      ,[{<<"acdc_call_stat">>, <<"waiting">>}

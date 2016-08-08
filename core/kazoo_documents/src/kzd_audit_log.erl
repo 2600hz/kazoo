@@ -164,8 +164,7 @@ maybe_save_audit_log_to_reseller(Services
             save(ResellerServices, AuditLog1, MasterAccountId)
     end.
 
--spec maybe_save_audit_log(kz_services:services(), kz_json:object(), ne_binary()) ->
-                                  kzd_audit_log:doc().
+-spec maybe_save_audit_log(kz_services:services(), kz_json:object(), ne_binary()) -> doc().
 maybe_save_audit_log(Services, AuditLog, ResellerId) ->
     case kz_services:have_quantities_changed(Services) of
         'true' ->
@@ -177,8 +176,8 @@ maybe_save_audit_log(Services, AuditLog, ResellerId) ->
             AuditLog
     end.
 
--spec maybe_save_master_audit_log(kz_services:services(), kzd_audit_log:doc(), ne_binary()) -> 'ok'.
--spec maybe_save_master_audit_log(kz_services:services(), kzd_audit_log:doc(), ne_binary(), boolean()) -> 'ok'.
+-spec maybe_save_master_audit_log(kz_services:services(), doc(), ne_binary()) -> 'ok'.
+-spec maybe_save_master_audit_log(kz_services:services(), doc(), ne_binary(), boolean()) -> 'ok'.
 maybe_save_master_audit_log(Services, AuditLog, MasterAccountId) ->
     maybe_save_master_audit_log(Services, AuditLog, MasterAccountId
                                ,kapps_config:get_is_true(<<"services">>, <<"should_save_master_audit_logs">>, 'false')
@@ -190,7 +189,7 @@ maybe_save_master_audit_log(Services, AuditLog, MasterAccountId, 'true') ->
     save_audit_log(Services, AuditLog, MasterAccountId),
     lager:debug("reached master account, saved audit log").
 
--spec save_audit_log(kz_services:services(), kzd_audit_log:doc(), ne_binary()) -> kzd_audit_log:doc().
+-spec save_audit_log(kz_services:services(), doc(), ne_binary()) -> doc().
 save_audit_log(Services, AuditLog, ResellerId) ->
     AuditLog1 = update_audit_log(Services, AuditLog),
     case ?MODULE:audit_account_ids(AuditLog1) of
@@ -204,10 +203,8 @@ save_audit_log(Services, AuditLog, ResellerId) ->
     end,
     AuditLog1.
 
--spec update_audit_log(kz_services:services(), kzd_audit_log:doc()) -> kzd_audit_log:doc().
-update_audit_log(Services
-                ,AuditLog
-                ) ->
+-spec update_audit_log(kz_services:services(), doc()) -> doc().
+update_audit_log(Services, AuditLog) ->
     AccountId = kz_services:account_id(Services),
     JObj = kz_services:services_json(Services),
 

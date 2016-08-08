@@ -35,20 +35,18 @@ update_call(CaptureGroup, {'ok', Call}) ->
                    ,(kapps_call:request_realm(Call))/binary
                  >>
                 }
-               ,{fun kapps_call:kvs_store/3, 'cf_privacy', 'true'}
+               ,{fun kapps_call:kvs_store/3, ?MODULE, 'true'}
                ,{fun kapps_call:set_caller_id_name/2
-                ,kapps_config:get_non_empty(
-                   ?CF_CONFIG_CAT
+                ,kapps_config:get_non_empty(?CF_CONFIG_CAT
                                            ,<<"privacy_name">>
                                            ,kz_util:anonymous_caller_id_name()
-                  )
+                                           )
                 }
                ,{fun kapps_call:set_caller_id_number/2
-                ,kapps_config:get_non_empty(
-                   ?CF_CONFIG_CAT
+                ,kapps_config:get_non_empty(?CF_CONFIG_CAT
                                            ,<<"privacy_number">>
                                            ,kz_util:anonymous_caller_id_number()
-                  )
+                                           )
                 }
                ],
     cf_exe:set_call(kapps_call:exec(Routines, Call)).

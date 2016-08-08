@@ -178,11 +178,10 @@ build_filter_fun(Name, Number) ->
 -spec format_endpoints(kz_json:objects(), api_binary(), api_binary(), kapi_offnet_resource:req(), filter_fun()) ->
                               kz_json:objects().
 format_endpoints(Endpoints, Name, Number, OffnetReq, FilterFun) ->
-    SIPHeaders = stepswitch_util:get_sip_headers(OffnetReq),
-    AccountId = kapi_offnet_resource:hunt_account_id(
-                  OffnetReq
+    SIPHeaders = get_sip_headers(OffnetReq),
+    AccountId = kapi_offnet_resource:hunt_account_id(OffnetReq
                                                     ,kapi_offnet_resource:account_id(OffnetReq)
-                 ),
+                                                    ),
     [format_endpoint(set_endpoint_caller_id(Endpoint, Name, Number)
                     ,Number, FilterFun, OffnetReq, SIPHeaders, AccountId
                     )

@@ -336,10 +336,10 @@ flags(Req) ->
 flags(?REQ_TYPE(JObj), Default) ->
     kz_json:get_list_value(?KEY_FLAGS, JObj, Default).
 
--spec jobj_to_req(kz_json:object()) -> kapi_offnet_resource:req().
+-spec jobj_to_req(kz_json:object()) -> req().
 jobj_to_req(JObj) -> ?REQ_TYPE(JObj).
 
--spec req_to_jobj(kapi_offnet_resource:req()) -> kz_json:object().
+-spec req_to_jobj(req()) -> kz_json:object().
 req_to_jobj(?REQ_TYPE(JObj)) -> JObj.
 
 -spec put_callid(req()) -> api_binary().

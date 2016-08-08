@@ -395,7 +395,7 @@ process_fs_kv(Node, UUID, [{K, V}|KVs], Action) ->
                 end, X1, KVs);
 process_fs_kv(Node, UUID, [K|KVs], 'unset'=Action)
   when is_binary(K) ->
-    X1 = ecallmgr_util:get_fs_key(K),
+    X1 = get_fs_key(K),
     lists:foldl(fun(Prop, Acc) ->
                         process_fs_kv_fold(Node, UUID, Prop, Action, Acc)
                 end, [<<X1/binary, "=">>], KVs).
@@ -404,21 +404,21 @@ process_fs_kv_fold(_Node, UUID, {K, V}, Action, Acc) ->
     [format_fs_kv(K, V, UUID, Action) | Acc];
 process_fs_kv_fold(_Node, _UUID, K, 'unset', Acc)
   when is_binary(K) ->
-    Key = ecallmgr_util:get_fs_key(K),
+    Key = get_fs_key(K),
     [<<Key/binary, "=">> | Acc];
 process_fs_kv_fold(_, _, _, _, Acc) ->
     Acc.
 
 -spec format_fs_kv(ne_binary(), binary(), ne_binary(), atom()) -> [binary()].
 format_fs_kv(Key, Value, UUID, 'unset') ->
-    case ecallmgr_util:get_fs_key_and_value(Key, Value, UUID) of
+    case get_fs_key_and_value(Key, Value, UUID) of
         'skip' -> [];
         {K, _V} -> [<<K/binary, "=">>];
         KVs -> [<<K/binary, "=">> || {K,_V} <- KVs]
     end;
 format_fs_kv(_Key, 'undefined', _UUID, _) -> [];
 format_fs_kv(Key, Value, UUID, _) ->
-    case ecallmgr_util:get_fs_key_and_value(Key, Value, UUID) of
+    case get_fs_key_and_value(Key, Value, UUID) of
         'skip' -> [];
         {K, V} -> [<<K/binary, "=", V/binary>>];
         KVs -> [<<K/binary, "=", V/binary>> || {K,V} <- KVs]

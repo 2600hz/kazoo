@@ -411,14 +411,14 @@ notify_watchers(#state{watchers=Watchers}=State) ->
 
 -spec notify_watcher(pid()) -> any().
 notify_watcher(Watcher) ->
-    Watcher ! {'kz_amqp_connections', 'connection_available'}.
+    Watcher ! {?MODULE, 'connection_available'}.
 
 -spec wait_for_notification(kz_timeout()) ->
                                    'ok' |
                                    {'error', 'timeout'}.
 wait_for_notification(Timeout) ->
     receive
-        {'kz_amqp_connections', 'connection_available'} -> 'ok'
+        {?MODULE, 'connection_available'} -> 'ok'
     after
         Timeout -> {'error', 'timeout'}
     end.
