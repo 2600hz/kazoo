@@ -302,6 +302,7 @@ maybe_remove_invalid_notify_doc(_Type, _Id, _Doc) -> 'ok'.
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec refresh_account_db(ne_binary()) -> 'ok'.
 refresh_account_db(Database) ->
     AccountDb = kz_util:format_account_id(Database, 'encoded'),
     AccountId = kz_util:format_account_id(Database, 'raw'),
@@ -309,9 +310,9 @@ refresh_account_db(Database) ->
     _ = ensure_account_definition(AccountDb, AccountId),
     Views = get_all_account_views(),
     _ = kapps_util:update_views(AccountDb, Views, 'true'),
-
     kapps_account_config:migrate(AccountDb),
-    kazoo_bindings:map(binding({'refresh', AccountDb}), AccountId).
+    _ = kazoo_bindings:map(binding({'refresh', AccountDb}), AccountId),
+    'ok'.
 
 -spec remove_depreciated_account_views(ne_binary()) -> 'ok'.
 remove_depreciated_account_views(AccountDb) ->
