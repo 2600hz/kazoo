@@ -15,7 +15,7 @@ function check_MODULE {
         [[ $? -ne 0 ]] && continue
         local err=0
         m=$(echo $m0 | cut -d'(' -f2 | cut -d')' -f1)
-        grep -nE '^[^%]*'$m: "$f"
+        grep -nE '^[^%]*[^a-zA-Z0-9_]'$m: "$f"
         [[ $? -ne 1 ]] && ((err++))
         grep -nE "^[^%]*'$m'" "$f"
         [[ $? -ne 1 ]] && ((err++))
