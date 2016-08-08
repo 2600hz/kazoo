@@ -163,7 +163,7 @@ action(<<"import">>) ->
                       ,<<"e911.locality">>
                       ,<<"e911.region">>
                       ]}
-      ];
+    ];
 
 action(<<"assign_to">>) ->
     [{<<"description">>, <<"Bulk-assign numbers to the provided account">>}
