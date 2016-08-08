@@ -20,6 +20,7 @@
 -export([find_invalid_acccount_dbs/0]).
 -export([refresh/0, refresh/1
         ,refresh_account_db/1
+        ,refresh_numbers_db/1
         ]).
 -export([blocking_refresh/0
         ,blocking_refresh/1
@@ -259,6 +260,7 @@ refresh(Database) when is_binary(Database) ->
     case kz_datamgr:db_classification(Database) of
         'account' -> refresh_account_db(Database);
         'modb' -> kazoo_modb:refresh_views(Database);
+        'numbers' -> refresh_numbers_db(Database);
         'system' ->
             kz_datamgr:db_create(Database),
             'ok';
@@ -295,6 +297,20 @@ maybe_remove_invalid_notify_doc(<<"notification">>, _, JObj) ->
     _ = kz_datamgr:del_doc(?KZ_CONFIG_DB, JObj),
     'ok';
 maybe_remove_invalid_notify_doc(_Type, _Id, _Doc) -> 'ok'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec refresh_numbers_db(ne_binary()) -> 'ok'.
+refresh_numbers_db(Database) ->
+    {'ok',_} = kz_datamgr:revise_doc_from_file(Database
+                                              ,'kazoo_number_manager'
+                                              ,<<"views/numbers.json">>
+                                              ),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
