@@ -71,7 +71,7 @@ respond_with_success(Context) ->
 -spec respond_with_success(bh_context:context(), ne_binary(), ne_binary()) -> bh_context:context().
 respond_with_success(Context, Operation, Details) ->
     Message = kz_json:from_list([
-                                {<<"operation">>, Operation}
+                                 {<<"operation">>, Operation}
                                 ,{<<"detail">>, Details}
                                 ]),
     WsPid = bh_context:websocket_pid(Context),
