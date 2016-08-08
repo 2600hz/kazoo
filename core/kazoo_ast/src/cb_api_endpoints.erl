@@ -16,9 +16,6 @@
 -define(REF_PATH(Module),
         filename:join([code:lib_dir('crossbar'), "doc", "ref", <<Module/binary,".md">>])).
 
--define(SCHEMAS_PATH(Schema),
-        filename:join([code:priv_dir('crossbar'), "couchdb", "schemas", Schema])).
-
 -define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
 
 
@@ -94,7 +91,7 @@ ref_doc_header(BaseName) ->
     ].
 
 maybe_add_schema(BaseName) ->
-    case file:read_file(?SCHEMAS_PATH(<<BaseName/binary, ".json">>)) of
+    case file:read_file(kz_ast_util:schema_path(<<BaseName/binary, ".json">>)) of
         {'ok', SchemaBin} ->
             SchemaJObj = kz_json:decode(SchemaBin),
             [?SCHEMA_SECTION, schema_to_table(SchemaJObj), "\n\n"];
@@ -272,7 +269,7 @@ to_swagger_json() ->
 
 -spec to_swagger_definitions() -> kz_json:object().
 to_swagger_definitions() ->
-    SchemasPath = ?SCHEMAS_PATH(<<>>),
+    SchemasPath = kz_ast_util:schema_path(<<>>),
     filelib:fold_files(SchemasPath, "\\.json\$", 'false', fun process_schema/2, kz_json:new()).
 
 -spec process_schema(ne_binary(), kz_json:object()) -> kz_json:object().
@@ -385,7 +382,7 @@ format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
 
 maybe_include_schema(PathName, Module) ->
     M = base_module_name(Module),
-    case filelib:is_file(?SCHEMAS_PATH(M)) of
+    case filelib:is_file(kz_ast_util:schema_path(M)) of
         'false' -> {'undefined', 'undefined'};
         'true' ->
             {[PathName, <<"schema">>], base_module_name(Module)}
