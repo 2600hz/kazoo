@@ -17,6 +17,7 @@
 -export([get_callback_module/1]).
 -export([send_error_message/3]).
 -export([handle_event/3]).
+-export([respond_with_success/1, respond_with_success/3]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -59,6 +60,24 @@ respond_with_error(Context, Error, JObj) ->
     WsPid = bh_context:websocket_pid(Context),
     blackhole_data_emitter:emit(WsPid, Error, JObj),
     Context.
+
+-spec respond_with_success(bh_context:context()) -> bh_context:context().
+respond_with_success(Context) ->
+    Message = kz_json:from_list([{<<"message">>, <<"operation completed successfully">>}]),
+    WsPid = bh_context:websocket_pid(Context),
+    blackhole_data_emitter:emit(WsPid, <<"success">>, Message),
+    Context.
+
+-spec respond_with_success(bh_context:context(), ne_binary(), ne_binary()) -> bh_context:context().
+respond_with_success(Context, Operation, Details) ->
+    Message = kz_json:from_list([
+                                {<<"operation">>, Operation}
+                                ,{<<"detail">>, Details}
+                                ]),
+    WsPid = bh_context:websocket_pid(Context),
+    blackhole_data_emitter:emit(WsPid, <<"success">>, Message),
+    Context.
+
 
 -spec error_module(atom()) -> ne_binary().
 error_module(Module) ->
