@@ -960,16 +960,8 @@ try_to_binary(Value) ->
 
 -spec json_to_csv(kz_json:object()) -> iolist().
 json_to_csv(JObj) ->
-    {Vs, _} = kz_json:get_values(correct_jobj(JObj)),
+    {Vs, _} = kz_json:get_values(JObj),
     csv_ize(Vs).
-
--spec correct_jobj(kz_json:object()) -> kz_json:object().
-correct_jobj(JObj) ->
-    L = [correct_proplist_kv(P) || P <- kz_json:to_proplist(JObj)],
-    kz_json:from_list(L).
-
-correct_proplist_kv({K}) -> {K, <<>>};
-correct_proplist_kv(T) -> T.
 
 -spec multiple_choices(cowboy_req:req(), cb_context:context()) ->
                               {'false', cowboy_req:req(), cb_context:context()}.

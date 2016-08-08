@@ -55,20 +55,22 @@ recv(_SessionPid, SessionId, Message, Context) ->
 amqp_send(Context, Data) ->
     case blackhole_util:is_authorized(Context) of
         'true' ->
-            {Message} = Data,
-            {Keys, _} = lists:unzip(Message),
-
-            SendMessage = Message ++ [
-                                      {<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
-                                      | kz_api:default_headers(<<"qubicle">>, <<"1.0">>)
-                                     ],
-
-            {'ok', Payload} = kz_api:build_message(SendMessage, [], Keys),
-            amqp_util:basic_publish(<<"qubicle">>, <<"qubicle.recipient">>, Payload, ?DEFAULT_CONTENT_TYPE);
-
+            build_and_send(Data);
         'false' ->
             lager:info("ahh ahh ahh, you didn't say the magic word")
     end.
+
+-spec build_and_send(kz_json:object()) -> 'ok'.
+build_and_send(Data) ->
+    SendMessage =
+        kz_json:set_values([{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+                            | kz_api:default_headers(<<"qubicle">>, <<"1.0">>)
+                           ]
+                           ,Data
+                          ),
+
+    {'ok', Payload} = kz_api:build_message(SendMessage, [], kz_json:get_keys(Data)),
+    amqp_util:basic_publish(<<"qubicle">>, <<"qubicle.recipient">>, Payload, ?DEFAULT_CONTENT_TYPE).
 
 %%--------------------------------------------------------------------
 %% @public

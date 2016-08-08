@@ -236,7 +236,7 @@ extract_chunk(Dev) ->
                     [CallId, LogPart] = binary:split(CallIdAndLogPart, <<"|">>),
                     Key = {'callid', CallId},
                     Buffer = get_buffer(Key),
-                    acc(rm_newline(LogPart), [{RawTimestamp}|Buffer], Dev, Key);
+                    acc(rm_newline(LogPart), [{'timestamp', RawTimestamp}|Buffer], Dev, Key);
                 _Ignore ->
                     extract_chunk(Dev)
             end
@@ -282,7 +282,7 @@ cleanse_data_and_get_timestamp(Data0) ->
 -spec cleanse_data_fold({ne_binary() | kz_now()} | ne_binary()
                        ,cleanse_acc()
                        ) -> cleanse_acc().
-cleanse_data_fold({RawTimestamp}, {Acc, TS}) ->
+cleanse_data_fold({'timestamp', RawTimestamp}, {Acc, TS}) ->
     case ci_parsers_util:timestamp(RawTimestamp) of
         Ts when Ts < TS ->
             {Acc, Ts};

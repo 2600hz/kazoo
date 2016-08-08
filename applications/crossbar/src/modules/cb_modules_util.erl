@@ -537,12 +537,12 @@ token_cost(Context, Default, Suffix) when is_integer(Default)
 find_token_cost(N, _Default, _Suffix, _Nouns, _ReqVerb, _AccountId) when is_integer(N) ->
     lager:debug("flat token cost of ~p configured", [N]),
     N;
-find_token_cost(?JSON_WRAPPER(_) = JObj, Default, Suffix, [{Endpoint, _} | _], ReqVerb, 'undefined') ->
+find_token_cost(JObj, Default, Suffix, [{Endpoint, _} | _], ReqVerb, 'undefined') ->
     Keys = [[Endpoint, ReqVerb | Suffix]
            ,[Endpoint | Suffix]
            ],
     get_token_cost(JObj, Default, Keys);
-find_token_cost(?JSON_WRAPPER(_) = JObj, Default, Suffix, [{Endpoint, _}|_], ReqVerb, AccountId) ->
+find_token_cost(JObj, Default, Suffix, [{Endpoint, _}|_], ReqVerb, AccountId) ->
     Keys = [[AccountId, Endpoint, ReqVerb | Suffix]
            ,[AccountId, Endpoint | Suffix]
            ,[AccountId | Suffix]

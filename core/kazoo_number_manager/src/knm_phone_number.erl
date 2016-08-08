@@ -526,7 +526,8 @@ features_list(N) ->
     sets:to_list(sets:from_list(kz_json:get_keys(features(N)))).
 
 -spec set_features(knm_phone_number(), kz_json:object()) -> knm_phone_number().
-set_features(N, Features=?JSON_WRAPPER(_)) ->
+set_features(N, Features) ->
+    'true' = kz_json:is_json_object(Features),
     N#knm_phone_number{features=Features}.
 
 %%--------------------------------------------------------------------
@@ -641,11 +642,15 @@ carrier_data(#knm_phone_number{carrier_data=Data}) -> Data.
 -spec set_carrier_data(knm_phone_number(), api_object()) -> knm_phone_number().
 set_carrier_data(N, 'undefined') ->
     set_carrier_data(N, kz_json:new());
-set_carrier_data(N, Data=?JSON_WRAPPER(_)) ->
+set_carrier_data(N, Data) ->
+    'true' = kz_json:is_json_object(Data),
     N#knm_phone_number{carrier_data=Data}.
 
 -spec update_carrier_data(knm_phone_number(), kz_json:object()) -> knm_phone_number().
-update_carrier_data(N=#knm_phone_number{carrier_data = Data}, JObj=?JSON_WRAPPER(_)) ->
+update_carrier_data(N=#knm_phone_number{carrier_data = Data}
+                   ,JObj
+                   ) ->
+    'true' = kz_json:is_json_object(JObj),
     Updated = kz_json:merge_jobjs(JObj, Data),
     N#knm_phone_number{carrier_data = Updated}.
 
@@ -712,7 +717,8 @@ set_batch_run(N, BatchRun) when is_boolean(BatchRun) ->
 locality(#knm_phone_number{locality=Locality}) -> Locality.
 
 -spec set_locality(knm_phone_number(), kz_json:object()) -> knm_phone_number().
-set_locality(N, JObj=?JSON_WRAPPER(_)) ->
+set_locality(N, JObj) ->
+    'true' = kz_json:is_json_object(JObj),
     N#knm_phone_number{locality=JObj}.
 
 %%--------------------------------------------------------------------
@@ -724,11 +730,13 @@ set_locality(N, JObj=?JSON_WRAPPER(_)) ->
 doc(#knm_phone_number{doc=Doc}) -> Doc.
 
 -spec set_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
-set_doc(N, JObj=?JSON_WRAPPER(_)) ->
+set_doc(N, JObj) ->
+    'true' = kz_json:is_json_object(JObj),
     N#knm_phone_number{doc=JObj}.
 
 -spec update_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
-update_doc(N=#knm_phone_number{doc = Doc}, JObj=?JSON_WRAPPER(_)) ->
+update_doc(N=#knm_phone_number{doc = Doc}, JObj) ->
+    'true' = kz_json:is_json_object(JObj),
     Updated = kz_json:merge_jobjs(JObj, Doc),
     N#knm_phone_number{doc = Updated}.
 

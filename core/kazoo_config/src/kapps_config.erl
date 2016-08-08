@@ -102,17 +102,24 @@ get_binary(Category, Key, Default, Node) ->
                       kz_json:object() | Default.
 
 get_json(Category, Key) ->
-    case get(Category, Key) of
-        'undefined' -> 'undefined';
-        ?JSON_WRAPPER(_)=V -> V;
-        _Else -> 'undefined'
+    V = get(Category, Key),
+    as_json_value(V).
+
+-spec as_json_value(any()) -> api_object().
+as_json_value('undefined') -> 'undefined';
+as_json_value(V) ->
+    case kz_json:is_json_object(V) of
+        'true' -> V;
+        'false' -> 'undefined'
     end.
+
 get_json(Category, Key, Default) ->
     get_json(Category, Key, Default, kz_util:to_binary(node())).
 get_json(Category, Key, Default, Node) ->
-    case get(Category, Key, Default, Node) of
-        ?JSON_WRAPPER(_)=V -> V;
-        _Else -> Default
+    V = get(Category, Key, Default, Node),
+    case kz_json:is_json_object(V) of
+        'true' -> V;
+        'false' -> Default
     end.
 
 %%-----------------------------------------------------------------------------

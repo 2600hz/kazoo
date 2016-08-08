@@ -28,6 +28,7 @@ process_app(App, Acc) ->
 process_module(Module) ->
     process_module(Module, []).
 
+process_module('kz_json', Acc) -> Acc;
 process_module(Module, Acc) ->
     case kz_ast_util:module_ast(Module) of
         'undefined' -> Acc;
@@ -89,6 +90,8 @@ raw_json_in_expression(?TUPLE(?EMPTY_LIST)=Tuple, Acc) ->
     [element(2, Tuple) | Acc];
 raw_json_in_expression(?TUPLE([?LIST(H, T)]), Acc) ->
     is_list_json(H, T, Acc);
+raw_json_in_expression(?TUPLE([?VAR(_Name)])=T, Acc) ->
+    [element(2, T) | Acc];
 raw_json_in_expression(?TUPLE(Elements), Acc) ->
     raw_json_in_expressions(Elements, Acc);
 raw_json_in_expression(?GEN_MOD_FUN_ARGS(_M, _F, Args), Acc) ->

@@ -552,13 +552,11 @@ load_docs(Context, Filter)
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_attachment(kazoo_data:docid() | kz_json:object(), ne_binary(), kz_proplist(), cb_context:context()) ->
+-spec load_attachment({ne_binary(), ne_binary()} | kazoo_data:docid() | kz_json:object(), ne_binary(), kz_proplist(), cb_context:context()) ->
                              cb_context:context().
 load_attachment({DocType, DocId}, AName, Options, Context) ->
     load_attachment(DocId, AName, [{'doc_type', DocType} | Options], Context);
-load_attachment(Doc={_}, AName, Options, Context) ->
-    load_attachment({kz_doc:type(Doc), kz_doc:id(Doc)}, AName, Options, Context);
-load_attachment(DocId, AName, Options, Context) ->
+load_attachment(<<_/binary>>=DocId, AName, Options, Context) ->
     case kz_datamgr:fetch_attachment(cb_context:account_db(Context), DocId, AName, Options) of
         {'error', Error} -> handle_datamgr_errors(Error, DocId, Context);
         {'ok', AttachBin} ->
@@ -571,7 +569,9 @@ load_attachment(DocId, AName, Options, Context) ->
                               ,[{fun cb_context:set_resp_data/2, AttachBin}
                                ,{fun cb_context:set_resp_etag/2, rev_to_etag(cb_context:doc(Context1))}
                                ])
-    end.
+    end;
+load_attachment(Doc, AName, Options, Context) ->
+    load_attachment({kz_doc:type(Doc), kz_doc:id(Doc)}, AName, Options, Context).
 
 %%--------------------------------------------------------------------
 %% @public
