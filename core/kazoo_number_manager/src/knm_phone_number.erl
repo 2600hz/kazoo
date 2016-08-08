@@ -42,6 +42,8 @@
         ,batch_run/1, set_batch_run/2
         ,locality/1, set_locality/2
         ,doc/1, update_doc/2
+        ,modified/1, set_modified/2
+        ,created/1, set_created/2
         ]).
 
 -export([list_attachments/2]).
@@ -67,6 +69,8 @@
                           ,batch_run = 'false' :: boolean()
                           ,locality :: kz_json:object()
                           ,doc = kz_json:new() :: kz_json:object()
+                          ,modified :: gregorian_seconds()
+                          ,created :: gregorian_seconds()
                           }).
 -opaque knm_phone_number() :: #knm_phone_number{}.
 
@@ -288,7 +292,6 @@ to_public_json(Number) ->
 %%--------------------------------------------------------------------
 -spec to_json(knm_phone_number()) -> kz_json:object().
 to_json(#knm_phone_number{doc=JObj}=N) ->
-    Now = kz_util:current_tstamp(),
     kz_json:from_list(
       props:filter_empty(
         [{<<"_id">>, number(N)}
@@ -303,8 +306,8 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
          ,{?PVT_MODULE_NAME, module_name(N)}
          ,{?PVT_CARRIER_DATA, carrier_data(N)}
          ,{?PVT_REGION, region(N)}
-         ,{?PVT_MODIFIED, Now}
-         ,{?PVT_CREATED, kz_doc:created(JObj, Now)}
+         ,{?PVT_MODIFIED, modified(N)}
+         ,{?PVT_CREATED, created(N)}
          ,{?PVT_TYPE, <<"number">>}
          | kz_json:to_proplist(
              kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))
@@ -326,6 +329,7 @@ from_json(JObj) ->
                 lists:foldl(fun (FeatureKey, Acc) -> kz_json:set_value(FeatureKey, kz_json:new(), Acc) end, kz_json:new(), FeaturesList);
             FeaturesJObj -> FeaturesJObj
         end,
+    Now = kz_util:current_tstamp(),
     {'ok', PhoneNumber} =
         setters(new(),
                 [{fun set_number/2, knm_converters:normalize(kz_doc:id(JObj))}
@@ -341,6 +345,8 @@ from_json(JObj) ->
                 ,{fun set_region/2, kz_json:get_value(?PVT_REGION, JObj)}
                 ,{fun set_auth_by/2, kz_json:get_value(?PVT_AUTH_BY, JObj)}
                 ,{fun set_doc/2, kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))}
+                ,{fun set_modified/2, kz_doc:modified(JObj, Now)}
+                ,{fun set_created/2, kz_doc:created(JObj, Now)}
                 ]),
     PhoneNumber.
 
@@ -725,6 +731,32 @@ set_doc(N, JObj=?JSON_WRAPPER(_)) ->
 update_doc(N=#knm_phone_number{doc = Doc}, JObj=?JSON_WRAPPER(_)) ->
     Updated = kz_json:merge_jobjs(JObj, Doc),
     N#knm_phone_number{doc = Updated}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec modified(knm_phone_number()) -> gregorian_seconds().
+modified(#knm_phone_number{modified=Modified}) -> Modified.
+
+-spec set_modified(knm_phone_number(), gregorian_seconds()) -> knm_phone_number().
+set_modified(PN, Modified)
+  when is_integer(Modified), Modified > 0 ->
+    PN#knm_phone_number{doc=Modified}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec created(knm_phone_number()) -> gregorian_seconds().
+created(#knm_phone_number{created=Created}) -> Created.
+
+-spec set_created(knm_phone_number(), gregorian_seconds()) -> knm_phone_number().
+set_created(PN, Created)
+  when is_integer(Created), Created > 0 ->
+    PN#knm_phone_number{doc=Created}.
 
 %%--------------------------------------------------------------------
 %% @public
