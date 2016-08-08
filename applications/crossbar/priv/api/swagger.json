@@ -14204,6 +14204,10 @@
             "get": {},
             "post": {}
         },
+        "/token_auth": {
+            "delete": {},
+            "get": {}
+        },
         "/ubiquiti_auth": {
             "put": {
                 "parameters": {

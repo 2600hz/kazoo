@@ -444,7 +444,7 @@ path_name(Module) ->
         {'match', [<<"shared_auth">>=Name]} -> Name;
         {'match', [<<"sup">>=Name]} -> Name;
         {'match', [<<"system_configs">>=Name]} -> Name;
-        {'match', [<<"token_auth">>]} -> <<"shared_auth">>;
+        {'match', [<<"token_auth">>=Name]} -> Name;
         {'match', [<<"ubiquiti_auth">>=Name]} -> Name;
         {'match', [<<"user_auth">>=Name]} -> Name;
         {'match', [<<"rates">>=Name]} -> Name;
