@@ -115,8 +115,8 @@ special_bindings(M) -> M.
 -spec handle_event(bh_context:context(), kz_json:object(), ne_binary()) -> 'ok'.
 handle_event(#bh_context{binding=Binding} = Context, EventJObj, EventName) ->
     lager:debug("event:~s account_id:~s websocket:~s", [EventName
-                ,bh_context:account_id(Context)
-                ,bh_context:websocket_session_id(Context)]),
+                                                       ,bh_context:account_id(Context)
+                                                       ,bh_context:websocket_session_id(Context)]),
     kz_util:put_callid(EventJObj),
     NormJObj = kz_json:normalize_jobj(kz_json:set_value(<<"Binding">>, Binding, EventJObj)),
     blackhole_data_emitter:emit(bh_context:websocket_pid(Context), EventName, NormJObj).
