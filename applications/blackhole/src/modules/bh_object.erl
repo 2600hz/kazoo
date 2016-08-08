@@ -22,7 +22,6 @@ doc_binding(Type, Action) -> <<Action/binary, ".*.", Type/binary, ".*">>.
 -spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
 handle_event(#bh_context{binding=Binding} = Context, EventJObj) ->
     kz_util:put_callid(EventJObj),
-    lager:debug("handle_event fired for ~s ~s", [bh_context:account_id(Context), bh_context:websocket_session_id(Context)]),
     NormJObj = kz_json:normalize_jobj(kz_json:set_value(<<"Binding">>, Binding, EventJObj)),
     blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), NormJObj).
 
@@ -34,7 +33,7 @@ event_name(EventJObj) ->
     <<DocType/binary, ".", EventName/binary>>.
 
 %% example binding: object.fax.doc_update
--spec subscribe(bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
+-spec subscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
 subscribe(Context, <<"object.", Args/binary>> = Binding) ->
     case binary:split(Args, <<".">>, ['global']) of
         [Type, <<"*">>] ->
@@ -57,7 +56,7 @@ subscribe(Context, <<"object.", Args/binary>> = Binding) ->
     end,
     {'ok', Context}.
 
--spec unsubscribe(bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
+-spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
 unsubscribe(Context, <<"object.", Args/binary>> = Binding) ->
     case binary:split(Args, <<".">>, ['global']) of
         [Type, <<"*">>] ->

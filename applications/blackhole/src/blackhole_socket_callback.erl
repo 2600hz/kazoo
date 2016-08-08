@@ -131,7 +131,10 @@ subscribe(Context, _JObj, Binding, Module) ->
         {'ok', Context1} ->
             Context2 = bh_context:add_binding(Context1, Binding),
             _ = blackhole_tracking:update_socket(Context2),
-            {'ok', Context2}
+            {'ok', Context2};
+        {'error', Error} ->
+            blackhole_util:send_error_message(Context, Module, Error),
+            {'ok', Context}
     catch
         Error:_ ->
             blackhole_util:send_error_message(Context, Module, Error),

@@ -19,13 +19,12 @@
 
 -spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
 handle_event(#bh_context{binding=Binding}=Context, EventJObj) ->
-    lager:debug("handling conference event ~s", [get_response_key(EventJObj)]),
     blackhole_data_emitter:emit(bh_context:websocket_pid(Context)
                                ,get_response_key(EventJObj)
                                ,kz_json:normalize_jobj(kz_json:set_value(<<"Binding">>, Binding, EventJObj))
                                ).
 
--spec subscribe(ne_binary(), bh_context:context()) -> {'ok', bh_context:context()}.
+-spec subscribe(ne_binary(), bh_context:context()) -> bh_subscribe_result().
 subscribe(Context, <<"conference.command.*">> = Binding) ->
     blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
     {'ok', Context};
@@ -53,7 +52,7 @@ subscribe(Binding, Context) ->
     blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
     {'ok', Context}.
 
--spec unsubscribe(bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
+-spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
 unsubscribe(Context, <<"conference.command.*">> = Binding) ->
     blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
     {'ok', Context};
