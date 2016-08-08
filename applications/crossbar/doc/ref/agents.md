@@ -10,7 +10,7 @@
 
 > GET /v2/accounts/{ACCOUNT_ID}/agents
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents
@@ -20,7 +20,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/agents/{ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}
@@ -30,7 +30,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/agents/stats
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/stats
@@ -40,7 +40,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/agents/status
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status
@@ -50,7 +50,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
@@ -60,7 +60,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
@@ -70,7 +70,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
@@ -80,7 +80,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
@@ -90,7 +90,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
@@ -100,7 +100,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status/{ID}

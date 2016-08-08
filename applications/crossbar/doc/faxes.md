@@ -66,7 +66,7 @@ In the first method, you can create a fax document that includes a URL which con
 
 > PUT /v2/accounts/{ACCOUNT_ID}/faxes
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data":{"document":{"url":"http://myserver.com/fax.pdf","method":"get"},"retries":3,"from_name":"Test Fax","from_number":"18884732963","to_name":"To Name","to_number":"18884732963"}}' \
@@ -105,7 +105,7 @@ curl -v -X PUT \
 
 In the second method, you can use a single PUT request and send a multipart content-type to attach both the JSON metadata about the fax transmission and the document itself, in a single request. This avoids needing to have an external storage location for storing fax attachments prior to processing. This is a good solution for portals that upload documents.
 
-```curl
+```shell
 curl -v -X PUT \
      -H "Content-Type: multipart/mixed" \
      -F "content=@fax.json; type=application/json" \
@@ -120,7 +120,7 @@ This is identical to the `PUT /faxes` above.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/faxes/outgoing
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing
@@ -132,7 +132,7 @@ This API retrieves a listing of all outgoing faxes. Use the "id" to fetch detail
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outgoing
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing
@@ -163,7 +163,7 @@ Get all the details about a fax that is in the outgoing queue.
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
@@ -210,7 +210,7 @@ This API retrieves a listing of all outgoing faxes which have already been sent 
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox
@@ -220,7 +220,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
@@ -230,7 +230,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"action" : "resubmit", "data":{}}'
@@ -241,7 +241,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment
@@ -254,7 +254,7 @@ If a fax job was queued or attempted to be queued as the result of an inbound em
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/smtplog
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/smtplog
@@ -264,7 +264,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}
@@ -277,7 +277,7 @@ This API allows you to delete an old fax message. For privacy reasons, this may 
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
@@ -290,7 +290,7 @@ In some cases, you may wish to remove the document from a fax (usually for priva
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment
@@ -304,7 +304,7 @@ Retrieve a list of faxes that have previously been received.
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox
@@ -316,7 +316,7 @@ This API retrieves all metadata about a particular fax for which you have the fa
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
@@ -328,7 +328,7 @@ This API retrieves the fax document / attachments for a particular inbound fax f
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment
@@ -340,7 +340,7 @@ This API allows you to delete an old fax message. For privacy reasons, this may 
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
@@ -352,7 +352,7 @@ In some cases, you may wish to remove the document from a fax (usually for priva
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment
@@ -369,7 +369,7 @@ NOTE: THIS FUNCTION DOES NOT WORK YET AS OF THE WRITING OF THIS DOCUMENT. We'll 
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/incoming
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming
@@ -380,7 +380,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}

@@ -39,7 +39,7 @@ Key | Description | Type | Default | Required
 
 > PUT /v2/accounts/{ACCOUNT_ID}/faxes
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes
@@ -49,7 +49,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outgoing
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing
@@ -59,7 +59,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/faxes/outgoing
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing
@@ -69,7 +69,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox
@@ -79,7 +79,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/incoming
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming
@@ -89,7 +89,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox
@@ -99,7 +99,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/smtplog
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/smtplog
@@ -109,7 +109,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
@@ -119,7 +119,7 @@ curl -v -X GET \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
@@ -129,7 +129,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
@@ -139,7 +139,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
@@ -149,7 +149,7 @@ curl -v -X PUT \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
@@ -159,7 +159,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
@@ -169,7 +169,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{FAX_ID}
@@ -179,7 +179,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}
@@ -189,7 +189,7 @@ curl -v -X GET \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment
@@ -199,7 +199,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}/attachment
@@ -209,7 +209,7 @@ curl -v -X GET \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment
@@ -219,7 +219,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment

@@ -10,7 +10,7 @@
 
 > GET /v2/accounts/{ACCOUNT_ID}/templates
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/templates
@@ -20,7 +20,7 @@ curl -v -X GET \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/templates/{ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/templates/{ID}
@@ -30,7 +30,7 @@ curl -v -X DELETE \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/templates/{ID}
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/templates/{ID}

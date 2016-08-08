@@ -12,7 +12,7 @@ Key | Description | Type | Default | Required
 
 > GET /v2/accounts/{ACCOUNT_ID}/allotments
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments
@@ -22,7 +22,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/allotments
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments
@@ -32,7 +32,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/allotments/consumed
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments/consumed

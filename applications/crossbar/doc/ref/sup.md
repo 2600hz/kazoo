@@ -10,7 +10,7 @@
 
 > GET /v2/sup/{MODULE}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/sup/{MODULE}
@@ -20,7 +20,7 @@ curl -v -X GET \
 
 > GET /v2/sup/{MODULE}/{FUNCTION}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/sup/{MODULE}/{FUNCTION}
@@ -30,7 +30,7 @@ curl -v -X GET \
 
 > GET /v2/sup/{MODULE}/{FUNCTION}/{ARGS}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/sup/{MODULE}/{FUNCTION}/{ARGS}

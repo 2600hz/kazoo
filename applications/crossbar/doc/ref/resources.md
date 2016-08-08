@@ -61,7 +61,7 @@ Key | Description | Type | Default | Required
 
 > GET /v2/accounts/{ACCOUNT_ID}/resources
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources
@@ -71,7 +71,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/resources
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources
@@ -81,7 +81,7 @@ curl -v -X PUT \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
@@ -91,7 +91,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
@@ -101,7 +101,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
@@ -111,7 +111,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/resources/jobs
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs
@@ -121,7 +121,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/resources/jobs
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs
@@ -131,7 +131,7 @@ curl -v -X PUT \
 
 > POST /v2/accounts/{ACCOUNT_ID}/resources/collection
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
@@ -141,7 +141,7 @@ curl -v -X POST \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/resources/collection
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
@@ -151,7 +151,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}

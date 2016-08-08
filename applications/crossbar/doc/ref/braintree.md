@@ -10,7 +10,7 @@
 
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/credits
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/credits
@@ -20,7 +20,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/braintree/credits
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/credits
@@ -30,7 +30,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/transactions
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions
@@ -40,7 +40,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/braintree/transactions
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions
@@ -50,7 +50,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/addresses
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses
@@ -60,7 +60,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/braintree/addresses
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses
@@ -70,7 +70,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/cards
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards
@@ -80,7 +80,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/braintree/cards
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards
@@ -90,7 +90,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/customer
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/customer
@@ -100,7 +100,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/braintree/customer
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/customer
@@ -110,7 +110,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/transactions/{ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions/{ID}
@@ -120,7 +120,7 @@ curl -v -X GET \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
@@ -130,7 +130,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
@@ -140,7 +140,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
@@ -150,7 +150,7 @@ curl -v -X POST \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
@@ -160,7 +160,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
@@ -170,7 +170,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}

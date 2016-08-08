@@ -30,7 +30,7 @@ List current ledgers and value for an account.
 
 > GET /v2/accounts/{ACCOUNT_ID}/ledgers
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers
@@ -53,7 +53,7 @@ List ledger values for an account with paging and filtering support
 
 > GET /v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}?created_from=11111111&created_to=22222222
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}
@@ -98,7 +98,7 @@ retrieves ledger document
 
 > GET /v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{ID}
@@ -143,7 +143,7 @@ parameter "impact_reseller" (boolean not required) when true will also create th
 > PUT /v2/accounts/{ACCOUNT_ID}/ledgers/debit
 > PUT /v2/accounts/{ACCOUNT_ID}/ledgers/credit
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/debit

@@ -55,7 +55,7 @@ All calls to this callflow will now store debug logs to the account's current MO
 
 > GET /v2/accounts/{ACCOUNT_ID}/pivot/debug
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/pivot/debug
@@ -90,7 +90,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/pivot/debug/{UUID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/pivot/debug/{UUID}

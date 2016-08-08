@@ -36,7 +36,7 @@ Key | Description | Type | Default | Required
 
 This can take an optional query string parameter `zone` to filter the results.
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips
@@ -58,7 +58,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/ips
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data":["1.2.3.4"]}' \
@@ -86,7 +86,7 @@ curl -v -X POST \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/ips/{IP}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips/1.2.3.4
@@ -110,7 +110,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/ips/{IP}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips/{IP}
@@ -135,7 +135,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/ips/{IP}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data":{}}' \
@@ -161,7 +161,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/ips/hosts
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips/hosts
@@ -180,7 +180,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/ips/zones
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips/zones
@@ -199,7 +199,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/ips/assigned
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips/assigned

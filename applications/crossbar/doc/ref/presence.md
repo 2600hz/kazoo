@@ -10,7 +10,7 @@
 
 > GET /v2/accounts/{ACCOUNT_ID}/presence
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence
@@ -20,7 +20,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/presence
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence
@@ -30,7 +30,7 @@ curl -v -X POST \
 
 > POST /v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}
@@ -40,7 +40,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/presence/report-{REPORT_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence/report-{REPORT_ID}

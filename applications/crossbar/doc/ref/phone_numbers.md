@@ -49,7 +49,7 @@ Key | Description | Type | Default | Required
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers
@@ -59,7 +59,7 @@ curl -v -X GET \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
@@ -69,7 +69,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
@@ -79,7 +79,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
@@ -89,7 +89,7 @@ curl -v -X POST \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
@@ -99,7 +99,7 @@ curl -v -X PUT \
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/check
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/check
@@ -109,7 +109,7 @@ curl -v -X POST \
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/locality
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/locality
@@ -119,7 +119,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix
@@ -129,7 +129,7 @@ curl -v -X GET \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
@@ -139,7 +139,7 @@ curl -v -X DELETE \
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
@@ -149,7 +149,7 @@ curl -v -X POST \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
@@ -159,7 +159,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers
@@ -169,7 +169,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/fix
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/fix
@@ -179,7 +179,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/identify
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/identify
@@ -189,7 +189,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/reserve
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/reserve
@@ -199,7 +199,7 @@ curl -v -X PUT \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate
@@ -209,7 +209,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONENUMBER}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONENUMBER}
@@ -219,7 +219,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate

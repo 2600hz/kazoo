@@ -16,7 +16,7 @@ The transactions endpoint allows you to list debits and credits made to a specif
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions
 
-```curl
+```shell
 curl -x GET \
      -H "X-Auth-Token: {AUTH_TOKEN}" \
      http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions
@@ -52,7 +52,7 @@ curl -x GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions/current_balance
 
-```curl
+```shell
 curl -x GET \
      -H "X-Auth-Token: {AUTH_TOKEN}" \
      http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/current_balance
@@ -75,7 +75,7 @@ Querystring options:
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
 
-```curl
+```shell
 curl -x GET \
      -H "X-Auth-Token: {AUTH_TOKEN}" \
      http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
@@ -92,7 +92,7 @@ curl -x GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
 
-```curl
+```shell
 curl -x GET \
      -H "X-Auth-Token: {AUTH_TOKEN}" \
      http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
@@ -124,7 +124,7 @@ Only for super duper admins and resellers.
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/transactions/debit
 
-```curl
+```shell
 curl -x DELETE \
      -H "X-Auth-Token: {AUTH_TOKEN}" \
      -d '{"data": {"amount": 1} }'

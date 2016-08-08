@@ -20,7 +20,7 @@ Key | Description | Type | Default | Required
 
 > GET /v2/accounts/{ACCOUNT_ID}/directories
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories
@@ -30,7 +30,7 @@ curl -v -X GET \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/directories
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories
@@ -40,7 +40,7 @@ curl -v -X PUT \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
@@ -50,7 +50,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
@@ -62,7 +62,7 @@ It is possible to fetch the directory as a PDF for download (such as a company d
 
 > GET /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Accept: application/pdf"
@@ -75,7 +75,7 @@ If your client doesn't support setting the `Accept` header, you can append `?acc
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
 
-```curl
+```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
@@ -85,7 +85,7 @@ curl -v -X PATCH \
 
 > POST /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}

@@ -10,7 +10,7 @@
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions
@@ -20,7 +20,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
@@ -30,7 +30,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
@@ -40,7 +40,7 @@ curl -v -X GET \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/transactions/debit
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/debit
@@ -50,7 +50,7 @@ curl -v -X DELETE \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/transactions/credit
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/credit
@@ -60,7 +60,7 @@ curl -v -X PUT \
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions/current_balance
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/current_balance

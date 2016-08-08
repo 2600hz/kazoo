@@ -11,7 +11,7 @@ Recordings endpoint provides a way to access call recordings.
 
 lists the call recording with pagination and filtering
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings
@@ -23,7 +23,7 @@ curl -v -X GET \
 
 gets a specific recording document
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
@@ -37,7 +37,7 @@ gets a specific recording document attachment if available.
 
 optional parameter `inline` true|false
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}/attachment

@@ -82,7 +82,7 @@ Key | Description | Type | Default | Required
 
 > GET /v2/accounts/{ACCOUNT_ID}/devices
 
-```curl
+```shell
 curl -v -X GET \
     -X "X-Auth-Token: {AUTH_TOKEN} \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices
@@ -110,7 +110,7 @@ See the schema for available fields to include in the data portion
 
 > PUT /v2/accounts/{ACCOUNT_ID}/devices
 
-```curl
+```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN} \
     -H "Content-Type: application/json" \
@@ -162,7 +162,7 @@ curl -v -X PUT \
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 
-```curl
+```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
@@ -213,7 +213,7 @@ curl -v -X DELETE \
 
 > GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
@@ -265,7 +265,7 @@ Including `"sync":true` in the "data" will attempt to reboot the phone. See the 
 
 > POST /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -317,7 +317,7 @@ curl -v -X POST \
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 
-```curl
+```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data":{"presence_id":"dis_my_device"}}' \
@@ -373,7 +373,7 @@ This will fetch the current registrations of any devices. If no devices are regi
 
 > GET /v2/accounts/{ACCOUNT_ID}/devices/status
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/status
@@ -397,7 +397,7 @@ Some devices support receiving SIP NOTIFY packets with `event` = `check-sync`. T
 
 > POST /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync
@@ -430,7 +430,7 @@ Key | Type | Description
 
 > GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}
@@ -521,7 +521,7 @@ Notice that the first device, `{DEVICE_ID_1}` is owned by `{USER_ID}` but the se
 
 > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/devices
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/devices
@@ -558,7 +558,7 @@ Here is a minimal API request that creates a device that will authenticate by IP
 
 > PUT /v2/accounts/{ACCOUNT_ID}/devices
 
-```curl
+```shell
     curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \

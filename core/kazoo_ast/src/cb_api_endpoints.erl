@@ -57,7 +57,7 @@ api_path_to_section(_MOdule, _Paths, Acc) -> Acc.
 
 %% #### Fetch/Create/Change
 %% > Verb Path
-%% ```curl
+%% ```shell
 %% curl -v http://{SERVER}:8000/Path
 %% ```
 methods_to_section('undefined', _Path, Acc) ->
@@ -75,7 +75,10 @@ methods_to_section(ModuleName, {Path, Methods}, Acc) ->
 method_to_section(Method, Acc, APIPath) ->
     [[ "#### ", method_as_action(Method), "\n\n"
      ,"> ", Method, " ", APIPath, "\n\n"
-     ,"```curl\ncurl -v -X ", Method, " \\\n    -H \"X-Auth-Token: {AUTH_TOKEN}\" \\\n    http://{SERVER}:8000", APIPath, "\n```\n\n"
+     , "```shell\ncurl -v -X ", Method, " \\\n"
+       "    -H \"X-Auth-Token: {AUTH_TOKEN}\" \\\n"
+       "    http://{SERVER}:8000", APIPath, "\n"
+       "```\n\n"
      ]
      | Acc
     ].
@@ -93,8 +96,8 @@ method_as_action(?HTTP_PATCH) ->
 
 ref_doc_header(BaseName) ->
     [maybe_add_schema(BaseName)
-    ,["#### About ", kz_util:ucfirst_binary(BaseName), $\n, $\n]
-    ,["### ", kz_util:ucfirst_binary(BaseName), $\n,$\n]
+    ,["#### About ", kz_util:ucfirst_binary(BaseName), "\n\n"]
+    ,["### ", kz_util:ucfirst_binary(BaseName), "\n\n"]
     ].
 
 maybe_add_schema(BaseName) ->

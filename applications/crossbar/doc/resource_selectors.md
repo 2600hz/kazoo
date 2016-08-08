@@ -28,7 +28,7 @@ Rules storred in `resource_selector_rules` file in Account database. System-wide
 
 > GET /v2/resource_selectors
 
-```curl
+```shell
 curl -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -82,7 +82,7 @@ curl -X GET \
 
 > POST /v2/resource_selectors
 
-```curl
+```shell
 curl -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -136,7 +136,7 @@ Each selector is sepparate doument:
 
 #### List selectors names
 
-```curl
+```shell
 curl -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -159,7 +159,7 @@ curl -X GET \
 
 Here we see 2 selectors, `lcr` with 12 documents and `lcr2` with `36039` documents.
 
-```curl
+```shell
 curl -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -185,7 +185,7 @@ curl -X GET \
 
 #### List resources
 
-```curl
+```shell
 curl -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -211,7 +211,7 @@ curl -X GET \
 
 In this exampe we see resources `RES-2` with 3 docuemnts, `RES-3` with 8 documents and `RES-4` with 1 document.
 
-```curl
+```shell
 curl -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -234,7 +234,7 @@ curl -X GET \
 
 #### Show selectors
 
-```curl
+```shell
 curl -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -269,7 +269,7 @@ Here we ses selectors for resource `RES-4` with selector name `lcr`. Resulted li
 
 ### Add selectors
 
-```curl
+```shell
 curl -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -290,7 +290,7 @@ curl -X PUT \
 
 ### Delete selectors
 
-```curl
+```shell
 curl -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -311,7 +311,7 @@ curl -X DELETE \
 
 If you want delete all selectors, you can use special word `_all`, instead explictly list each selector.
 
-```curl
+```shell
 curl -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \

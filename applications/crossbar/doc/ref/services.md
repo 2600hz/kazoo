@@ -10,7 +10,7 @@
 
 > GET /v2/accounts/{ACCOUNT_ID}/services
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services
@@ -20,7 +20,7 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/services
 
-```curl
+```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services
@@ -30,7 +30,7 @@ curl -v -X POST \
 
 > GET /v2/accounts/{ACCOUNT_ID}/services/audit
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/audit
@@ -40,7 +40,7 @@ curl -v -X GET \
 
 > GET /v2/accounts/{ACCOUNT_ID}/services/plan
 
-```curl
+```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/plan
