@@ -35,7 +35,7 @@
 -define(PVT_CREATED, <<"pvt_created">>).
 -define(PVT_TYPE, <<"pvt_type">>).
 
--define(KNM_DB_PREFIX, "numbers/").
+-define(KNM_DB_PREFIX, "numbers/+").
 
 -define(NUMBER_STATE_PORT_IN, <<"port_in">>).
 -define(NUMBER_STATE_PORT_OUT, <<"port_out">>).
