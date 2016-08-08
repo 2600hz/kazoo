@@ -24,5 +24,7 @@ function check_MODULE {
     return $errors
 }
 
-check_andalso_orelse "$@"
-check_MODULE "$@"
+errs=0
+check_andalso_orelse "$@" || ((errs++))
+check_MODULE "$@" || ((errs++))
+exit $errs
