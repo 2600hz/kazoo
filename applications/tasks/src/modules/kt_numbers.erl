@@ -298,7 +298,8 @@ list_number_row(AuthBy, E164) ->
 
 -spec list_all(kz_proplist(), task_iterator()) -> task_iterator().
 list_all(Props, 'init') ->
-    ForAccounts = [props:get_value('account_id', Props) | get_descendants(ForAccount)],
+    Account = props:get_value('account_id', Props),
+    ForAccounts = [Account | get_descendants(Account)],
     ToList = [{ForAccount, NumberDb}
               || ForAccount <- ForAccounts,
                  NumberDb <- knm_util:get_all_number_dbs()
@@ -421,7 +422,10 @@ get_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
 %%--------------------------------------------------------------------
 -spec number_db_listing(ne_binary(), ne_binary()) -> ne_binaries().
 number_db_listing(NumberDb, ?MATCH_ACCOUNT_RAW(AssignedTo)) ->
-    case kz_datamgr:get_results(NumberDb, <<"numbers/assigned_to">>) of
+    ViewOptions = [{'startkey', [AssignedTo]}
+                  ,{'endkey', [AssignedTo, kz_json:new()]}
+                  ],
+    case kz_datamgr:get_results(NumberDb, <<"numbers/assigned_to">>, ViewOptions) of
         {'ok', []} -> [];
         {'ok', JObjs} -> [kz_doc:id(JObj) || JObj <- JObjs];
         {'error', _R} ->
