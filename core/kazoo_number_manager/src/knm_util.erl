@@ -20,8 +20,8 @@
 
 -spec get_all_number_dbs() -> ne_binaries().
 get_all_number_dbs() ->
-    ViewOptions = [{'startkey', ?KNM_DB_PREFIX}
-                  ,{'endkey', <<?KNM_DB_PREFIX_L, "\ufff0">>}
+    ViewOptions = [{'startkey', <<?KNM_DB_PREFIX "+">>}
+                  ,{'endkey', <<?KNM_DB_PREFIX "+" "\ufff0">>}
                   ],
     {'ok', Dbs} = kz_datamgr:db_list(ViewOptions),
     [kz_http_util:urlencode(Db) || Db <- Dbs].
