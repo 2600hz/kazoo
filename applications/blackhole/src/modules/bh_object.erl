@@ -20,10 +20,8 @@
 doc_binding(Type, Action) -> <<Action/binary, ".*.", Type/binary, ".*">>.
 
 -spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
-handle_event(#bh_context{binding=Binding} = Context, EventJObj) ->
-    kz_util:put_callid(EventJObj),
-    NormJObj = kz_json:normalize_jobj(kz_json:set_value(<<"Binding">>, Binding, EventJObj)),
-    blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), NormJObj).
+handle_event(Context, EventJObj) ->
+    blackhole_util:handle_event(Context, EventJObj, event_name(EventJObj)).
 
 %% example event: fax.doc_update
 -spec event_name(kz_json:object()) -> ne_binary().

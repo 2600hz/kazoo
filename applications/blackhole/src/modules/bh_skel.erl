@@ -19,8 +19,7 @@
 
 -spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
 handle_event(Context, EventJObj) ->
-    kz_util:put_callid(EventJObj),
-    blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), EventJObj).
+    blackhole_util:handle_event(Context, EventJObj, event_name(EventJObj)).
 
 -spec event_name(kz_json:object()) -> ne_binary().
 event_name(JObj) ->

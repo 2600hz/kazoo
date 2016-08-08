@@ -18,20 +18,13 @@
 -include("blackhole.hrl").
 
 -spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
-handle_event(#bh_context{binding=Binding} = Context, EventJObj) ->
-    kz_util:put_callid(EventJObj),
+handle_event(Context, EventJObj) ->
     'true' = kapi_fax:status_v(EventJObj),
-    NormJObj = kz_json:normalize_jobj(kz_json:set_value(<<"Binding">>, Binding, EventJObj)),
-    blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), NormJObj).
+    blackhole_util:handle_event(Context, EventJObj, <<"fax.status">>).
 
 -spec handle_object_event(bh_context:context(), kz_json:object()) -> 'ok'.
-handle_object_event(#bh_context{binding=Binding} = Context, EventJObj) ->
-    kz_util:put_callid(EventJObj),
-    NormJObj = kz_json:normalize_jobj(kz_json:set_value(<<"Binding">>, Binding, EventJObj)),
-    blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), NormJObj).
-
--spec event_name(kz_json:object()) -> ne_binary().
-event_name(_JObj) -> <<"fax.status">>.
+handle_object_event(Context, EventJObj) ->
+    blackhole_util:handle_event(Context, EventJObj, <<"fax.object">>).
 
 -spec subscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
 subscribe(#bh_context{account_id=AccountId}=Context, <<"fax.status.", FaxId/binary>> = Binding) ->

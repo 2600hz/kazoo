@@ -18,11 +18,8 @@
 -include("blackhole.hrl").
 
 -spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
-handle_event(#bh_context{binding=Binding}=Context, EventJObj) ->
-    blackhole_data_emitter:emit(bh_context:websocket_pid(Context)
-                               ,get_response_key(EventJObj)
-                               ,kz_json:normalize_jobj(kz_json:set_value(<<"Binding">>, Binding, EventJObj))
-                               ).
+handle_event(Context, EventJObj) ->
+    blackhole_util:handle_event(Context, EventJObj, get_response_key(EventJObj)).
 
 -spec subscribe(ne_binary(), bh_context:context()) -> bh_subscribe_result().
 subscribe(_Context, <<"conference.command.*">> = _Binding) ->
