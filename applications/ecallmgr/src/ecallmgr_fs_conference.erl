@@ -262,8 +262,7 @@ process_participant_event(<<"add-member">>, Props, Node, CallId) ->
     CallInfo = request_call_details(CallId),
     _ = ecallmgr_fs_conferences:participant_create(Props, Node, CallInfo),
     'continue';
-process_participant_event(<<"del-member">>, _Props, _Node, _CallId) ->
-    'continue';
+process_participant_event(<<"del-member">>, _Props, _Node, _CallId) -> 'continue';
 process_participant_event(<<"stop-talking">>, _, _, _) -> 'continue';
 process_participant_event(<<"start-talking">>, _, _, _) -> 'continue';
 process_participant_event(<<"mute-member">>, _, _, CallId) ->
@@ -384,8 +383,14 @@ process_conference_event(<<"play-file-done">> = Event, Props, _) ->
                  ,{<<"Application-Data">>, props:get_value(<<"File">>, Props)}
                  ,{<<"Asynchronous-Playback">>, props:get_is_true(<<"Async">>, Props)}
                  ]};
-process_conference_event(<<"lock">>, _, _) -> 'continue';
-process_conference_event(<<"unlock">>, _, _) -> 'continue';
+process_conference_event(<<"lock">>, Props, _) ->
+    UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
+    ecallmgr_fs_conferences:update(UUID, {#conference.locked, 'true'}),
+    'continue';
+process_conference_event(<<"unlock">>, Props, _) ->
+    UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
+    ecallmgr_fs_conferences:update(UUID, {#conference.locked, 'false'}),
+    'continue';
 process_conference_event(<<"speak-text">>, _, _) -> 'stop';
 process_conference_event(<<"exit-sounds-on">>, _, _) -> 'stop';
 process_conference_event(<<"exit-sounds-off">>, _, _) -> 'stop';
