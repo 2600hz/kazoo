@@ -244,6 +244,10 @@
 
 -define(CHANNEL_LOOPBACK_HEADER_PREFIX, "Export-Loopback-").
 -define(CALL_INTERACTION_ID, "Call-Interaction-ID").
+-define(CALL_INTERACTION_DEFAULT
+       ,<<(kz_util:to_binary(kz_util:current_tstamp()))/binary
+          ,"-", (kz_util:rand_hex_binary(4))/binary
+        >>).
 
 -type xml_thing() :: xml_el() | xml_text().
 -type xml_things() :: xml_els() | xml_texts().
