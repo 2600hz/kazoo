@@ -28,58 +28,15 @@
             "type": "string"
         },
         "endpoints": {
-            "default": [],
-            "description": "Endpoint IDs (devices, users, etc) included in the ring group",
-            "items": {
-                "description": "ID of the endpoint (device, user, etc)",
-                "properties": {
-                    "delay": {
-                        "default": 0,
-                        "description": "How long to delay ringing the endpoint, in seconds",
-                        "required": false,
-                        "type": "integer"
-                    },
-                    "endpoint_type": {
-                        "description": "The type (device, user, etc) of endpoint",
-                        "enum": [
-                            "device",
-                            "user",
-                            "group"
-                        ],
-                        "required": true,
-                        "type": "string"
-                    },
-                    "id": {
-                        "description": "The ID of the endpoint",
-                        "maxLength": 128,
-                        "minLength": 1,
-                        "required": true,
-                        "type": "string"
-                    },
-                    "timeout": {
-                        "default": 20,
-                        "description": "How long to ring the endpoint, in seconds",
-                        "required": false,
-                        "type": "integer"
-                    },
-                    "weight": {
-                        "description": "Weight of endpoint, different usage in various strategies",
-                        "maximum": 100,
-                        "minimum": 1,
-                        "required": false,
-                        "type": "integer"
-                    }
-                },
-                "type": "object"
-            },
-            "minItems": 1,
+            "default": {},
+            "description": "Endpoints included into group",
             "required": true,
-            "type": "array"
+            "type": "object"
         },
         "resources": {
-            "default": [],
+            "default": {},
             "required": false,
-            "type": "array"
+            "type": "object"
         }
     },
     "required": true,
