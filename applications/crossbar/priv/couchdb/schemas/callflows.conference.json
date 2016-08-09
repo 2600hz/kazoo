@@ -52,14 +52,14 @@
                 "media_id": {
                     "description": "Media to play, either Kazoo media ID or URL",
                     "name": "Media",
-                    "required": true,
+                    "required": false,
                     "type": "string"
                 },
                 "play": {
                     "default": true,
                     "description": "Should the Welcome Prompt be played",
                     "name": "Play Welcome Prompt",
-                    "required": false,
+                    "required": true,
                     "type": "boolean"
                 }
             },
