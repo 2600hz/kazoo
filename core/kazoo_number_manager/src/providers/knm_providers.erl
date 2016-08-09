@@ -55,19 +55,12 @@ has_emergency_services(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec provider_modules(knm_number:knm_number()) -> ne_binaries().
--ifdef(TEST).
-provider_modules(_Number) ->
-    ?DEFAULT_PROVIDER_MODULES.
--else.
 provider_modules(Number) ->
-    Features = knm_phone_number:features_list(knm_number:phone_number(Number)),
-    Providers = kapps_config:get(?KNM_CONFIG_CAT
-                                ,<<"providers">>
-                                ,?DEFAULT_PROVIDER_MODULES
-                                ),
-    [provider_module(Provider)
-     || Provider <- Providers,
-        lists:member(Provider, Features)
+    Allowed = kapps_config:get(?KNM_CONFIG_CAT, <<"allowed_features">>, ?DEFAULT_ALLOWED_FEATURES),
+    Possible = kz_json:get_keys(knm_phone_number:doc(knm_number:phone_number(Number))),
+    [provider_module(Feature)
+     || Feature <- Possible,
+        lists:member(Feature, Allowed)
     ].
 
 -spec provider_module(ne_binary()) -> ne_binary().
@@ -86,7 +79,6 @@ provider_module(<<"failover">>) ->
 provider_module(Other) ->
     lager:debug("unmatched feature provider '~s', allowing", [Other]),
     Other.
--endif.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -17,6 +17,13 @@
 -define(KEY_DISPLAY_NAME, <<"display_name">>).
 -define(KEY_INBOUND_LOOKUP, <<"inbound_lookup">>).
 
+-define(DEFAULT_ALLOWED_FEATURES, [?FEATURE_CNAM
+                                  ,<<"dash_e911">>
+                                  ,<<"prepend">>
+                                  ,<<"port">>
+                                  ,<<"failover">>
+                                  ]).
+
 -define(KNM_USER_AGENT, "Kazoo Number Manager " ++ binary_to_list(?APP_VERSION)).
 
 
