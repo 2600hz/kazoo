@@ -3,6 +3,12 @@
     "_id": "groups",
     "description": "Validator for the group",
     "properties": {
+        "endpoints": {
+            "default": {},
+            "description": "Endpoints included into group",
+            "required": true,
+            "type": "object"
+        },
         "music_on_hold": {
             "default": {},
             "description": "The music on hold parameters",
@@ -26,12 +32,6 @@
             "name": "Name",
             "required": true,
             "type": "string"
-        },
-        "endpoints": {
-            "default": {},
-            "description": "Endpoints included into group",
-            "required": true,
-            "type": "object"
         },
         "resources": {
             "default": {},
