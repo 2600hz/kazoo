@@ -188,7 +188,6 @@ create_phone_number(Options, Number) ->
     TargetState = knm_number_options:state(Options),
     Routines = [fun (N) -> knm_number_states:to_state(N, TargetState) end
                ,fun save_number/1
-               ,fun dry_run_or_number/1
                ],
     apply_number_routines(Number, Routines).
 
@@ -210,7 +209,6 @@ reserve(Num, Options) ->
 do_reserve(Number) ->
     Routines = [fun knm_number_states:to_reserved/1
                ,fun save_number/1
-               ,fun dry_run_or_number/1
                ],
     apply_number_routines(Number, Routines).
 
@@ -219,6 +217,7 @@ save_number(Number) ->
     Routines = [fun knm_providers:save/1
                ,fun save_phone_number/1
                ,fun knm_services:update_services/1
+               ,fun dry_run_or_number/1
                ],
     apply_number_routines(Number, Routines).
 
@@ -310,7 +309,6 @@ move(Num, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
 move_to(Number) ->
     Routines = [fun knm_number_states:to_in_service/1
                ,fun save_number/1
-               ,fun dry_run_or_number/1
                ],
     apply_number_routines(Number, Routines).
 
@@ -330,7 +328,7 @@ update(Num, Routines, Options) ->
     case get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
-            update_phone_number(Number, Routines)
+            attempt(fun update_phone_number/2, [Number, Routines])
     end.
 
 -spec update_phone_number(knm_number(), knm_phone_number:set_functions()) ->
@@ -339,10 +337,8 @@ update_phone_number(Number, Routines) ->
     PhoneNumber = phone_number(Number),
     case knm_phone_number:setters(PhoneNumber, Routines) of
         {'error', _R}=Error -> Error;
-        {'ok', UpdatedPhoneNumber} ->
-            wrap_phone_number_return(knm_phone_number:save(UpdatedPhoneNumber)
-                                    ,Number
-                                    )
+        {'ok', NewPN} ->
+            save_number(set_phone_number(Number, NewPN))
     end.
 
 %%--------------------------------------------------------------------
