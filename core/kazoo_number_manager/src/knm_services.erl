@@ -33,21 +33,24 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec activate_feature(knm_number:knm_number(), ne_binary()) ->
+-type set_feature() :: {ne_binary(), kz_json:object()}.
+-spec activate_feature(knm_number:knm_number(), set_feature() | ne_binary()) ->
                               knm_number:knm_number().
--spec activate_feature(knm_number:knm_number(), ne_binary(), ne_binary()) ->
+-spec activate_feature(knm_number:knm_number(), set_feature(), ne_binary()) ->
                               knm_number:knm_number().
--spec activate_feature(knm_number:knm_number(), ne_binary(), ne_binary(), kz_services:services()) ->
+-spec activate_feature(knm_number:knm_number(), set_feature(), ne_binary(), kz_services:services()) ->
                               knm_number:knm_number().
-activate_feature(Number, Feature) ->
+activate_feature(Number, Feature=?NE_BINARY) ->
+    activate_feature(Number, {Feature, kz_json:new()});
+activate_feature(Number, FeatureToSet) ->
     BillingId = fetch_billing_id(Number),
-    activate_feature(Number, Feature, BillingId).
+    activate_feature(Number, FeatureToSet, BillingId).
 
-activate_feature(Number, Feature, BillingId) ->
+activate_feature(Number, FeatureToSet, BillingId) ->
     Services = fetch_services(Number),
-    activate_feature(Number, Feature, BillingId, Services).
+    activate_feature(Number, FeatureToSet, BillingId, Services).
 
-activate_feature(Number, Feature, BillingId, Services) ->
+activate_feature(Number, {Feature,FeatureData}, BillingId, Services) ->
     Units = kz_service_phone_numbers:feature_activation_charge(Feature, Services),
     Charges = knm_number:charges(Number, Feature),
     TotalCharges = Charges + Units,
@@ -59,17 +62,14 @@ activate_feature(Number, Feature, BillingId, Services) ->
             knm_errors:not_enough_credit(Number, Units);
         'true' ->
             PhoneNumber = knm_number:phone_number(Number),
-
-            lager:debug("adding feature ~s to ~s", [Feature, knm_phone_number:number(PhoneNumber)]),
-
+            lager:debug("adding feature ~s to ~s"
+                       ,[Feature, knm_phone_number:number(PhoneNumber)]),
             Transaction = create_transaction(Number, Feature, Units),
-
             knm_number:set_phone_number(
-              knm_number:add_transaction(
-                knm_number:set_charges(Number, Feature, TotalCharges)
+              knm_number:add_transaction(knm_number:set_charges(Number, Feature, TotalCharges)
                                         ,Transaction
-               ),
-              knm_phone_number:set_feature(PhoneNumber, Feature, kz_json:new())
+                                        ),
+              knm_phone_number:set_feature(PhoneNumber, Feature, FeatureData)
              )
     end.
 

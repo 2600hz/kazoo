@@ -95,15 +95,15 @@ handle(Number) ->
 handle_outbound_cnam(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Doc = knm_phone_number:doc(PhoneNumber),
-    Features = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM),
-    CurrentCNAM = kz_json:get_ne_value(?KEY_DISPLAY_NAME, Features),
+    Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_OUTBOUND_CNAM),
+    CurrentCNAM = kz_json:get_ne_value(?KEY_DISPLAY_NAME, Feature),
     case kz_json:get_ne_value([?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Doc) of
         'undefined' ->
             knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM);
-        CurrentCNAM ->
-            knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM);
-        _Else ->
-            Number1 = knm_services:activate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
+        CurrentCNAM -> Number;
+        NewCNAM ->
+            FeatureData = kz_json:from_list([{?KEY_DISPLAY_NAME, NewCNAM}]),
+            Number1 = knm_services:activate_feature(Number, {?FEATURE_OUTBOUND_CNAM, FeatureData}),
             _ = publish_cnam_update(Number1),
             Number1
     end.
