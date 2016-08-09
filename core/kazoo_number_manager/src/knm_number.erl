@@ -420,13 +420,11 @@ reconcile_number(Number, Options) ->
                 }
                ],
     case updates_require_save(PhoneNumber, Updaters) of
+        {'false', _PhoneNumber} -> {'ok', Number};
         {'true', UpdatedPhoneNumber} ->
-            wrap_phone_number_return(
-              knm_phone_number:save(UpdatedPhoneNumber)
+            wrap_phone_number_return(knm_phone_number:save(UpdatedPhoneNumber)
                                     ,Number
-             );
-        {'false', _PhoneNumber} ->
-            {'ok', Number}
+                                    )
     end.
 
 -spec updates_require_save(knm_phone_number:knm_phone_number(), up_req_els()) ->
