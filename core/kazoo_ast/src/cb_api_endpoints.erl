@@ -64,7 +64,8 @@ methods_to_section('undefined', _Path, Acc) ->
     io:format("skipping path ~p\n", [_Path]),
     Acc;
 methods_to_section(ModuleName, {Path, Methods}, Acc) ->
-    APIPath = path_name(Path, ModuleName),
+    API = kz_util:iolist_join($/, [?CURRENT_VERSION, ModuleName | format_path_tokens(Path)]),
+    APIPath = iolist_to_binary([$/, API]),
     lists:foldl(fun(Method, Acc1) ->
                         method_to_section(Method, Acc1, APIPath)
                 end
@@ -83,16 +84,11 @@ method_to_section(Method, Acc, APIPath) ->
      | Acc
     ].
 
-method_as_action(?HTTP_GET) ->
-    <<"Fetch">>;
-method_as_action(?HTTP_PUT) ->
-    <<"Create">>;
-method_as_action(?HTTP_POST) ->
-    <<"Change">>;
-method_as_action(?HTTP_DELETE) ->
-    <<"Remove">>;
-method_as_action(?HTTP_PATCH) ->
-    <<"Patch">>.
+method_as_action(?HTTP_GET) -> <<"Fetch">>;
+method_as_action(?HTTP_PUT) -> <<"Create">>;
+method_as_action(?HTTP_POST) -> <<"Change">>;
+method_as_action(?HTTP_DELETE) -> <<"Remove">>;
+method_as_action(?HTTP_PATCH) -> <<"Patch">>.
 
 ref_doc_header(BaseName) ->
     [maybe_add_schema(BaseName)
@@ -259,6 +255,7 @@ to_swagger_json() ->
     Swagger = kz_json:set_values([{<<"paths">>, to_swagger_paths(Paths, BasePaths)}
                                  ,{<<"definitions">>, to_swagger_definitions()}
                                  ,{<<"host">>, <<"localhost:8000">>}
+                                 ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
                                  ,{<<"swagger">>, <<"2.0">>}
                                  ,{<<"info">>, ?SWAGGER_INFO}
                                  ]
@@ -275,7 +272,7 @@ to_swagger_json() ->
 
 to_swagger_definitions() ->
     SchemasPath = ?SCHEMAS_PATH(<<>>),
-    filelib:fold_files(SchemasPath, ".json$", 'false', fun process_schema/2, kz_json:new()).
+    filelib:fold_files(SchemasPath, ".json\$", 'false', fun process_schema/2, kz_json:new()).
 
 open_schema(<<C:1/binary, _/binary>> = File) ->
     case file:read_file(File) of
@@ -360,7 +357,6 @@ format_as_path_centric(Data) ->
 
 format_pc_module({Module, Config}, Acc) ->
     ModuleName = path_name(Module),
-
     lists:foldl(fun(ConfigData, Acc1) ->
                         format_pc_config(ConfigData, Acc1, Module, ModuleName)
                 end
@@ -381,13 +377,12 @@ format_pc_config({Callback, Paths}, Acc, Module, ModuleName) ->
                ,Paths
                ).
 
-format_pc_callback({[], []}, Acc, _Module, _ModuleName, _Callback) ->
-    Acc;
+format_pc_callback({[], []}, Acc, _Module, _ModuleName, _Callback) -> Acc;
 format_pc_callback({_Path, []}, Acc, _Module, _ModuleName, _Callback) ->
     io:format("~s not supported ~s\n", [_ModuleName, _Path]),
     Acc;
 format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
-    PathName = path_name(Path, ModuleName),
+    PathName = swagger_api_path(Path, ModuleName),
     kz_json:set_values(props:filter_undefined(
                          [{[PathName, kz_util:to_binary(Callback)]
                           ,[kz_util:to_lower_binary(V) || V <- Vs]
@@ -401,10 +396,9 @@ format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
 maybe_include_schema(PathName, Module) ->
     M = base_module_name(Module),
     case filelib:is_file(?SCHEMAS_PATH(M)) of
+        'false' -> {'undefined', 'undefined'};
         'true' ->
-            {[PathName, <<"schema">>], base_module_name(Module)};
-        'false' ->
-            {'undefined', 'undefined'}
+            {[PathName, <<"schema">>], base_module_name(Module)}
     end.
 
 format_path_tokens(<<"/">>) -> [];
@@ -420,59 +414,42 @@ format_path_token(<<"_", Rest/binary>>) ->
     VarName = kz_util:to_upper_binary(Rest),
     case binary:split(VarName, <<"ID">>) of
         [Thing, <<>>] -> <<"{", Thing/binary, "_ID}">>;
-        _ -> <<"{", (VarName)/binary, "}">>
+        _ -> <<"{", VarName/binary, "}">>
     end;
 format_path_token(Token) -> Token.
 
-base_module_name(Module) when is_atom(Module) ->
-    base_module_name(kz_util:to_binary(Module));
-base_module_name(<<_/binary>>=Module) ->
-    {'match', [Name|_]} = re:run(Module
-                                ,<<"^cb_([a-z_]+?)(?:_v([0-9]))?$">>
-                                ,[{'capture', 'all_but_first', 'binary'}]
-                                ),
+base_module_name(Module) ->
+    {'match', [Name|_]} = grep_cb_module(Module),
     Name.
 
-module_version(Module) when is_atom(Module) ->
-    module_version(kz_util:to_binary(Module));
-module_version(<<_/binary>> = Module) ->
-    case re:run(Module
-               ,<<"^cb_([a-z_]+?)(?:_(v[0-9]))?$">>
-               ,[{'capture', 'all_but_first', 'binary'}]
-               )
-    of
+module_version(Module) ->
+    case grep_cb_module(Module) of
         {'match', [_Name, Version]} -> Version;
         {'match', [_Name]} -> ?CURRENT_VERSION
     end.
 
-path_name(Path, ModuleName) ->
-    kz_util:join_binary([<<>>, ModuleName | format_path_tokens(Path)], <<"/">>).
+swagger_api_path(Path, ModuleName) ->
+    API = kz_util:iolist_join($/, [ModuleName | format_path_tokens(Path)]),
+    iolist_to_binary([$/, API]).
 
-path_name(Module) when is_atom(Module) ->
-    path_name(kz_util:to_binary(Module));
-path_name(<<_/binary>>=Module) ->
-    case re:run(Module
-               ,<<"^cb_([a-z_]+?)(?:_(v[0-9]))?$">>
-               ,[{'capture', 'all_but_first', 'binary'}]
-               )
-    of
-        {'match', [<<"about">>]} -> <<?CURRENT_VERSION/binary, "/about">>;
-        {'match', [<<"accounts">>]} -> <<?CURRENT_VERSION/binary, "/accounts">>;
-        {'match', [<<"api_auth">>]} -> <<?CURRENT_VERSION/binary, "/api_auth">>;
-        {'match', [<<"basic_auth">>]} -> <<?CURRENT_VERSION/binary, "/basic_auth">>;
-        {'match', [<<"google_auth">>]} -> <<?CURRENT_VERSION/binary, "/google_auth">>;
-        {'match', [<<"ip_auth">>]} -> <<?CURRENT_VERSION/binary, "/ip_auth">>;
-        {'match', [<<"schemas">>]} -> <<?CURRENT_VERSION/binary, "/schemas">>;
-        {'match', [<<"shared_auth">>]} -> <<?CURRENT_VERSION/binary, "/shared_auth">>;
-        {'match', [<<"sup">>]} -> <<?CURRENT_VERSION/binary, "/sup">>;
-        {'match', [<<"system_configs">>]} -> <<?CURRENT_VERSION/binary, "/system_configs">>;
-        {'match', [<<"token_auth">>]} -> <<?CURRENT_VERSION/binary, "/shared_auth">>;
-        {'match', [<<"ubiquiti_auth">>]} -> <<?CURRENT_VERSION/binary, "/ubiquiti_auth">>;
-        {'match', [<<"user_auth">>]} -> <<?CURRENT_VERSION/binary, "/user_auth">>;
-        {'match', [<<"rates">>]} -> <<?CURRENT_VERSION/binary, "/rates">>;
-        {'match', [Name]} -> <<?CURRENT_VERSION/binary, "/accounts/{ACCOUNT_ID}/", Name/binary>>;
-        {'match', [Name, ?CURRENT_VERSION]} ->
-            <<?CURRENT_VERSION/binary, "/accounts/{ACCOUNT_ID}/", Name/binary>>;
+path_name(Module) ->
+    case grep_cb_module(Module) of
+        {'match', [<<"about">>=Name]} -> Name;
+        {'match', [<<"accounts">>=Name]} -> Name;
+        {'match', [<<"api_auth">>=Name]} -> Name;
+        {'match', [<<"basic_auth">>=Name]} -> Name;
+        {'match', [<<"google_auth">>=Name]} -> Name;
+        {'match', [<<"ip_auth">>=Name]} -> Name;
+        {'match', [<<"schemas">>=Name]} -> Name;
+        {'match', [<<"shared_auth">>=Name]} -> Name;
+        {'match', [<<"sup">>=Name]} -> Name;
+        {'match', [<<"system_configs">>=Name]} -> Name;
+        {'match', [<<"token_auth">>=Name]} -> Name;
+        {'match', [<<"ubiquiti_auth">>=Name]} -> Name;
+        {'match', [<<"user_auth">>=Name]} -> Name;
+        {'match', [<<"rates">>=Name]} -> Name;
+        {'match', [Name]} -> <<"accounts/{ACCOUNT_ID}/", Name/binary>>;
+        {'match', [Name, ?CURRENT_VERSION]} -> <<"accounts/{ACCOUNT_ID}/", Name/binary>>;
         {'match', _M} ->
             io:format("skipping '~s' for not being in the current version\n", [Module]),
             'undefined'
@@ -487,7 +464,7 @@ get() ->
 
 process_application(App) ->
     EBinDir = code:lib_dir(App, 'ebin'),
-    filelib:fold_files(EBinDir, "^cb_.*.beam$", 'false', fun process_module/2, []).
+    filelib:fold_files(EBinDir, "^cb_.*.beam\$", 'false', fun process_module/2, []).
 
 process_module(File, Acc) ->
     {'ok', {Module, [{'exports', Fs}]}} = beam_lib:chunks(File, ['exports']),
@@ -702,3 +679,11 @@ find_content_types_in_clause(?LIST(?TUPLE(?CONTENT_TYPE_BINS(Type, SubType))
                             ,Acc) ->
     CT = kz_util:join_binary([Type, SubType], <<"/">>),
     find_content_types_in_clause(Rest, [CT | Acc]).
+
+grep_cb_module(Module) when is_atom(Module) ->
+    grep_cb_module(kz_util:to_binary(Module));
+grep_cb_module(?NE_BINARY=Module) ->
+    re:run(Module
+          ,<<"^cb_([a-z_]+?)(?:_(v[0-9]))?\$">>
+          ,[{'capture', 'all_but_first', 'binary'}]
+          ).
