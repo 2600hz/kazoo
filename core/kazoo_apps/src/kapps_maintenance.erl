@@ -307,7 +307,7 @@ maybe_remove_invalid_notify_doc(_Type, _Id, _Doc) -> 'ok'.
 %%--------------------------------------------------------------------
 -spec refresh_numbers_db(ne_binary()) -> 'ok'.
 refresh_numbers_db(<<?KNM_DB_PREFIX, Suffix/binary>>) ->
-    NumberDb = <<"numbers%2F%2B", Suffix/binary>>,
+    NumberDb = <<?KNM_DB_PREFIX_ENCODED, Suffix/binary>>,
     {'ok',_} = kz_datamgr:revise_doc_from_file(NumberDb
                                               ,'kazoo_number_manager'
                                               ,<<"views/numbers.json">>

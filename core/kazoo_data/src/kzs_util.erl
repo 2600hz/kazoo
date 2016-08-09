@@ -38,8 +38,8 @@ db_classification(?KZ_SERVICES_DB) -> 'aggregate';
 db_classification(?KZ_PORT_REQUESTS_DB) -> 'aggregate';
 db_classification(?KZ_WEBHOOKS_DB) -> 'aggregate';
 db_classification(<<?KNM_DB_PREFIX, _/binary>>) -> 'numbers';
-db_classification(<<"numbers%2F%2B", _/binary>>) -> 'numbers';
-db_classification(<<"numbers%2f%2b", _/binary>>) -> 'numbers';
+db_classification(<<?KNM_DB_PREFIX_ENCODED, _/binary>>) -> 'numbers';
+db_classification(<<?KNM_DB_PREFIX_encoded, _/binary>>) -> 'numbers';
 db_classification(?MATCH_MODB_SUFFIX_UNENCODED(_A,_B,_Rest,_Year,_Month)) -> 'modb';% these only need to match
 db_classification(?MATCH_MODB_SUFFIX_ENCODED(_A,_B,_Rest,_Year,_Month)) -> 'modb';%   "account..." then the
 db_classification(?MATCH_MODB_SUFFIX_encoded(_A,_B,_Rest,_Year,_Month)) -> 'modb';%   right size.
