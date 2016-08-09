@@ -19,8 +19,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_number:knm_number()) ->
-                  knm_number:knm_number().
+-spec save(knm_number:knm_number()) -> knm_number:knm_number().
 save(Number) ->
     exec(Number, 'save').
 
@@ -29,8 +28,7 @@ save(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_number:knm_number()) ->
-                    knm_number:knm_number().
+-spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
     exec(Number, 'delete').
 
@@ -104,14 +102,14 @@ provider_module(Other) ->
 exec(Number, Action) ->
     exec(Number, Action, provider_modules(Number)).
 
-exec(Num, Action, Providers) ->
-    lists:foldl(fun (Provider, Number) ->
-                        case apply_action(Number, Action, Provider) of
-                            {'true', Ret} -> Ret;
-                            'false' -> Number
+exec(Number, Action, Providers) ->
+    lists:foldl(fun (Provider, N) ->
+                        case apply_action(N, Action, Provider) of
+                            {'true', NewN} -> NewN;
+                            'false' -> N
                         end
                 end
-               ,Num
+               ,Number
                ,Providers
                ).
 
@@ -123,7 +121,7 @@ apply_action(Number, Action, Provider) ->
             lager:debug("provider ~s is unknown, skipping", [Provider]),
             'false';
         Module ->
+            lager:debug("attempting ~s:~s/1", [Module, Action]),
             Ret = erlang:apply(Module, Action, [Number]),
-            lager:debug("successfully attempted ~s:~s/1", [Module, Action]),
             {'true', Ret}
     end.

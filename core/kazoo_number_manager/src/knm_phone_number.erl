@@ -529,11 +529,6 @@ features_list(N) ->
 set_features(N, Features=?JSON_WRAPPER(_)) ->
     N#knm_phone_number{features=Features}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec feature(knm_phone_number(), ne_binary()) ->
                      kz_json:json_term() | 'undefined'.
 feature(Number, Feature) ->
