@@ -76,12 +76,9 @@ update_prepend(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Features = knm_phone_number:features(PhoneNumber),
     CurrentPrepend = kz_json:get_ne_value(?PREPEND_KEY, Features),
-
     Doc = knm_phone_number:doc(PhoneNumber),
-    Prepend = kz_json:get_ne_value([?PVT_FEATURES ,?PREPEND_KEY], Doc),
-
+    Prepend = kz_json:get_ne_value(?PREPEND_KEY, Doc),
     NotChanged = kz_json:are_identical(CurrentPrepend, Prepend),
-
     case kz_util:is_empty(Prepend) of
         'true' ->
             knm_services:deactivate_feature(Number, ?PREPEND_KEY);
@@ -89,9 +86,7 @@ update_prepend(Number) ->
             knm_services:deactivate_feature(Number, ?PREPEND_KEY);
         'false' ->
             case kz_json:is_true(<<"enabled">>, Prepend) of
-                'false' ->
-                    knm_services:deactivate_feature(Number, ?PREPEND_KEY);
-                'true' ->
-                    knm_services:activate_feature(Number, ?PREPEND_KEY)
+                'false' -> knm_services:deactivate_feature(Number, ?PREPEND_KEY);
+                'true' -> knm_services:activate_feature(Number, ?PREPEND_KEY)
             end
     end.

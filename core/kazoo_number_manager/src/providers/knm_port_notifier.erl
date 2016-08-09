@@ -75,7 +75,7 @@ has_emergency_services(_Number) -> 'false'.
                                 knm_number:knm_number().
 maybe_port_feature(Number) ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
-    case kz_json:get_ne_value([?PVT_FEATURES, ?PORT_KEY], Doc) of
+    case kz_json:get_ne_value(?PORT_KEY, Doc) of
         'undefined' ->
             knm_services:deactivate_feature(Number, ?PORT_KEY);
         Port ->
