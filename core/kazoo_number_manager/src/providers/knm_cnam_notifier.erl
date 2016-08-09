@@ -117,10 +117,18 @@ handle_outbound_cnam(Number) ->
 -spec handle_inbound_cnam(knm_number:knm_number()) ->
                                  knm_number:knm_number().
 handle_inbound_cnam(Number) ->
-    Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
+    PhoneNumber = knm_number:phone_number(Number),
+    Doc = knm_phone_number:doc(PhoneNumber),
+    Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_INBOUND_CNAM),
     case kz_json:is_true([?FEATURE_CNAM, ?KEY_INBOUND_LOOKUP], Doc) of
         'false' -> knm_services:deactivate_feature(Number, ?KEY_INBOUND_LOOKUP);
-        'true' -> knm_services:activate_feature(Number, ?FEATURE_INBOUND_CNAM)
+        'true' ->
+            case kz_json:is_true(?KEY_INBOUND_LOOKUP, Feature) of
+                'true' -> Number;
+                'false' ->
+                    FeatureData = kz_json:from_list([{?KEY_INBOUND_LOOKUP, <<"true">>}]),
+                    knm_services:activate_feature(Number, {?FEATURE_INBOUND_CNAM, FeatureData})
+            end
     end.
 
 %%--------------------------------------------------------------------
