@@ -175,18 +175,18 @@ maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
 -spec set_interaction(api_binary(), gregorian_seconds(), kz_json:object()) ->
                              kz_json:object().
 set_interaction(_AccountId, _Timestamp, JObj) ->
-    <<Time:11/binary, "-", Key/binary>> = Interaction = kz_call_event:custom_channel_var(JObj, <<?CALL_INTERACTION_ID>>),
+    Interaction = kz_call_event:custom_channel_var(JObj, <<?CALL_INTERACTION_ID>>, ?CALL_INTERACTION_DEFAULT),
+    <<Time:11/binary, "-", Key/binary>> = Interaction,
     Timestamp = kz_util:to_integer(Time),
     CallId = kz_call_event:call_id(JObj),
     DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
 
-    kz_json:set_values(
-      [{<<"Interaction-Time">>, Timestamp}
-      ,{<<"Interaction-Key">>, Key}
-      ,{<<"Interaction-Id">>, Interaction}
-      ]
+    kz_json:set_values([{<<"Interaction-Time">>, Timestamp}
+                       ,{<<"Interaction-Key">>, Key}
+                       ,{<<"Interaction-Id">>, Interaction}
+                       ]
                       ,kz_json:delete_key(?CCV(<<?CALL_INTERACTION_ID>>), kz_doc:set_id(JObj, DocId))
-     ).
+                      ).
 
 -spec save_cdr(api_binary(), gregorian_seconds(), kz_json:object()) -> kz_json:object().
 save_cdr(_, _, JObj) ->

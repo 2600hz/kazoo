@@ -461,10 +461,5 @@
 
 -define(CHANNEL_VARS_EXT, "Execute-Extension-Original-").
 
--define(CALL_INTERACTION_DEFAULT
-       ,<<(kz_util:to_binary(kz_util:current_tstamp()))/binary
-          ,"-", (kz_util:rand_hex_binary(4))/binary
-        >>).
-
 -define(ECALLMGR_HRL, 'true').
 -endif.
