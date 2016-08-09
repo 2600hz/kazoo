@@ -32,11 +32,11 @@ save(Number) ->
     save(Number, State).
 
 save(Number, ?NUMBER_STATE_RESERVED) ->
-    handle_outbound_cnam(Number);
+    handle(Number);
 save(Number, ?NUMBER_STATE_IN_SERVICE) ->
-    handle_outbound_cnam(Number);
+    handle(Number);
 save(Number, ?NUMBER_STATE_PORT_IN) ->
-    handle_outbound_cnam(Number);
+    handle(Number);
 save(Number, _State) ->
     Number.
 
@@ -74,25 +74,38 @@ has_emergency_services(_Number) -> 'false'.
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec handle(knm_number:knm_number()) -> knm_number:knm_number().
+handle(Number) ->
+    support_depreciated_cnam(
+      handle_inbound_cnam(
+        handle_outbound_cnam(
+          Number
+         )
+       )
+     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec handle_outbound_cnam(knm_number:knm_number()) ->
                                   knm_number:knm_number().
 handle_outbound_cnam(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Doc = knm_phone_number:doc(PhoneNumber),
     Features = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM),
-
     CurrentCNAM = kz_json:get_ne_value(?KEY_DISPLAY_NAME, Features),
     case kz_json:get_ne_value([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Doc) of
         'undefined' ->
-            Number1 = knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
-            handle_inbound_cnam(Number1);
+            knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM);
         CurrentCNAM ->
-            Number1 = knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
-            handle_inbound_cnam(Number1);
+            knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM);
         _Else ->
             Number1 = knm_services:activate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
             _ = publish_cnam_update(Number1),
-            handle_inbound_cnam(Number1)
+            Number1
     end.
 
 %%--------------------------------------------------------------------
@@ -105,12 +118,10 @@ handle_outbound_cnam(Number) ->
                                  knm_number:knm_number().
 handle_inbound_cnam(Number) ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
-    Number1 =
-        case kz_json:is_true([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_INBOUND_LOOKUP], Doc) of
-            'false' -> knm_services:deactivate_feature(Number, ?KEY_INBOUND_LOOKUP);
-            'true' -> knm_services:activate_feature(Number, ?FEATURE_INBOUND_CNAM)
-        end,
-    support_depreciated_cnam(Number1).
+    case kz_json:is_true([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_INBOUND_LOOKUP], Doc) of
+        'false' -> knm_services:deactivate_feature(Number, ?KEY_INBOUND_LOOKUP);
+        'true' -> knm_services:activate_feature(Number, ?FEATURE_INBOUND_CNAM)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
