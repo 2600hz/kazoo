@@ -56,9 +56,9 @@ SIP Username: {{device.sip.username}}
                          <p>Your account is ready to use, here are some details to help get you started!</p>
                          <h2>Account</h2>
                          <table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">
-<tr><td>Account ID: </td><td>{{account.pvt_account_id}}</td></tr>
-                         <tr><td>Account Name: </td><td>{{account.name}}</td></tr>
-                         <tr><td>Account Realm: </td><td>{{account.realm}}</td></tr>
+                           <tr><td>Account ID: </td><td>{{account.account_id}}</td></tr>
+                           <tr><td>Account Name: </td><td>{{account.name}}</td></tr>
+                           <tr><td>Account Realm: </td><td>{{account.realm}}</td></tr>
                          </table>
                          {% if admin %}
                            <h2>Admin</h2>

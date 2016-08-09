@@ -82,7 +82,7 @@ process_accounts(DataJObj) ->
                ],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?ACC_CHILDREN_LIST, ViewOpts) of
         {'ok', Accounts} ->
-            [process_account(kz_json:get_value(<<"id">>, Account), DataJObj) || Account <- Accounts];
+            [process_account(kz_doc:id(Account), DataJObj) || Account <- Accounts];
         {'error', _Reason} = E ->
             lager:info("failed to load children. error: ~p", [E])
     end.

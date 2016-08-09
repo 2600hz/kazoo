@@ -280,8 +280,10 @@
 
 %% Notify New Account
 -define(NEW_ACCOUNT_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_NEW_ACCOUNT_HEADERS, [<<"Account-DB">>, <<"Account-Name">>
-                                      ,<<"Account-API-Key">>, <<"Account-Realm">>
+-define(OPTIONAL_NEW_ACCOUNT_HEADERS, [<<"Account-DB">>
+                                      ,<<"Account-Name">>
+                                      ,<<"Account-API-Key">>
+                                      ,<<"Account-Realm">>
                                            | ?DEFAULT_OPTIONAL_HEADERS
                                       ]).
 -define(NEW_ACCOUNT_VALUES, [{<<"Event-Category">>, <<"notification">>}
