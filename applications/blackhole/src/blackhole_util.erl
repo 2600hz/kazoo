@@ -16,6 +16,8 @@
 -export([respond_with_error/1, respond_with_error/3, respond_with_authn_failure/1]).
 -export([get_callback_module/1]).
 -export([send_error_message/3]).
+-export([handle_event/3]).
+-export([respond_with_success/1, respond_with_success/3]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -58,6 +60,24 @@ respond_with_error(Context, Error, JObj) ->
     WsPid = bh_context:websocket_pid(Context),
     blackhole_data_emitter:emit(WsPid, Error, JObj),
     Context.
+
+-spec respond_with_success(bh_context:context()) -> bh_context:context().
+respond_with_success(Context) ->
+    Message = kz_json:from_list([{<<"message">>, <<"operation completed successfully">>}]),
+    WsPid = bh_context:websocket_pid(Context),
+    blackhole_data_emitter:emit(WsPid, <<"success">>, Message),
+    Context.
+
+-spec respond_with_success(bh_context:context(), ne_binary(), ne_binary()) -> bh_context:context().
+respond_with_success(Context, Operation, Details) ->
+    Message = kz_json:from_list([
+                                 {<<"operation">>, Operation}
+                                ,{<<"detail">>, Details}
+                                ]),
+    WsPid = bh_context:websocket_pid(Context),
+    blackhole_data_emitter:emit(WsPid, <<"success">>, Message),
+    Context.
+
 
 -spec error_module(atom()) -> ne_binary().
 error_module(Module) ->
@@ -110,3 +130,12 @@ special_bindings(<<"doc_edited">>) -> <<"object">>;
 special_bindings(<<"doc_created">>) -> <<"object">>;
 special_bindings(<<"doc_deleted">>) -> <<"object">>;
 special_bindings(M) -> M.
+
+-spec handle_event(bh_context:context(), kz_json:object(), ne_binary()) -> 'ok'.
+handle_event(#bh_context{binding=Binding} = Context, EventJObj, EventName) ->
+    lager:debug("event:~s account_id:~s websocket:~s", [EventName
+                                                       ,bh_context:account_id(Context)
+                                                       ,bh_context:websocket_session_id(Context)]),
+    kz_util:put_callid(EventJObj),
+    NormJObj = kz_json:normalize_jobj(kz_json:set_value(<<"Binding">>, Binding, EventJObj)),
+    blackhole_data_emitter:emit(bh_context:websocket_pid(Context), EventName, NormJObj).

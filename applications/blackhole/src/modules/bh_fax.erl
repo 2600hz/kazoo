@@ -18,22 +18,15 @@
 -include("blackhole.hrl").
 
 -spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
-handle_event(#bh_context{binding=Binding} = Context, EventJObj) ->
-    kz_util:put_callid(EventJObj),
+handle_event(Context, EventJObj) ->
     'true' = kapi_fax:status_v(EventJObj),
-    NormJObj = kz_json:normalize_jobj(kz_json:set_value(<<"Binding">>, Binding, EventJObj)),
-    blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), NormJObj).
+    blackhole_util:handle_event(Context, EventJObj, <<"fax.status">>).
 
 -spec handle_object_event(bh_context:context(), kz_json:object()) -> 'ok'.
-handle_object_event(#bh_context{binding=Binding} = Context, EventJObj) ->
-    kz_util:put_callid(EventJObj),
-    NormJObj = kz_json:normalize_jobj(kz_json:set_value(<<"Binding">>, Binding, EventJObj)),
-    blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), NormJObj).
+handle_object_event(Context, EventJObj) ->
+    blackhole_util:handle_event(Context, EventJObj, <<"fax.object">>).
 
--spec event_name(kz_json:object()) -> ne_binary().
-event_name(_JObj) -> <<"fax.status">>.
-
--spec subscribe(bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
+-spec subscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
 subscribe(#bh_context{account_id=AccountId}=Context, <<"fax.status.", FaxId/binary>> = Binding) ->
     blackhole_listener:add_binding('fax', fax_status_bind_options(AccountId, FaxId)),
     blackhole_bindings:bind(Binding, ?MODULE, 'handle_event', Context),
@@ -43,11 +36,10 @@ subscribe(#bh_context{account_id=AccountId}=Context, <<"fax.object.", Action/bin
     blackhole_listener:add_binding('conf', fax_object_bind_options(AccountId, Action)),
     blackhole_bindings:bind(fax_object_bind_key(AccountId, Action), ?MODULE, 'handle_object_event', Context),
     {'ok', Context};
-subscribe(Context, Binding) ->
-    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
-    {'ok', Context}.
+subscribe(_Context, _Binding) ->
+    {'error', <<"Unmatched binding">>}.
 
--spec unsubscribe(bh_context:context(), ne_binary()) -> {'ok', bh_context:context()}.
+-spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
 unsubscribe(#bh_context{account_id=AccountId}=Context, <<"fax.status.", FaxId/binary>> = Binding) ->
     blackhole_listener:remove_binding('fax', fax_status_bind_options(AccountId, FaxId)),
     blackhole_bindings:unbind(Binding, ?MODULE, 'handle_event', Context),
@@ -56,9 +48,8 @@ unsubscribe(#bh_context{account_id=AccountId}=Context, <<"fax.object.", Action/b
     blackhole_listener:remove_binding('conf', fax_object_bind_options(AccountId, Action)),
     blackhole_bindings:unbind(fax_object_bind_key(AccountId, Action), ?MODULE, 'handle_object_event', Context),
     {'ok', Context};
-unsubscribe(Context, Binding) ->
-    blackhole_util:send_error_message(Context, <<"unmatched binding">>, Binding),
-    {'ok', Context}.
+unsubscribe(_Context, _Binding) ->
+    {'error', <<"Unmatched binding">>}.
 
 -spec fax_status_bind_options(ne_binary(), ne_binary()) -> kz_proplist().
 fax_status_bind_options(AccountId, FaxId) ->

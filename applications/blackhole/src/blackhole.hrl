@@ -15,6 +15,8 @@
 
 -define(VERSION_SUPPORTED, [<<"v1">>]).
 
+-type bh_subscribe_result() :: {'ok', bh_context:context()} | {'error', ne_binary()}.
+
 -record(bh_context, {
           auth_token = <<>> :: api_binary() | '_'
                     ,auth_account_id :: api_binary() | '_'
