@@ -42,7 +42,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(list()) -> startlink_ret().
+-spec start_link(ne_binary() | list()) -> startlink_ret().
 start_link(Args) ->
     ServerName = ci_parsers_util:make_name(Args),
     gen_server:start_link({'local', ServerName}, ?MODULE, Args, []).
@@ -189,7 +189,8 @@ extract_chunks(ParserId, Dev, LogIP, LogPort, Counter) ->
     end.
 
 -type key() :: {'callid', ne_binary()}.
--type data() :: [ne_binary() | {ne_binary()}].
+-type datum() :: ne_binary() | {'timestamp', ne_binary()}.
+-type data() :: [datum()].
 
 -spec make_and_store_chunk(atom(), ne_binary(), pos_integer(), ne_binary(), pos_integer(), data()) ->
                                   pos_integer().
@@ -279,7 +280,7 @@ cleanse_data_and_get_timestamp(Data0) ->
                ,Data0
                ).
 
--spec cleanse_data_fold({ne_binary() | kz_now()} | ne_binary()
+-spec cleanse_data_fold(datum()
                        ,cleanse_acc()
                        ) -> cleanse_acc().
 cleanse_data_fold({'timestamp', RawTimestamp}, {Acc, TS}) ->

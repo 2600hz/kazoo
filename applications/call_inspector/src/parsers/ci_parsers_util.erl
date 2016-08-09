@@ -58,7 +58,10 @@ open_file(Filename) ->
 parse_interval() ->
     2 * ?MILLISECONDS_IN_SECOND.  %% Milliseconds
 
--spec make_name(ne_binary() | {'parser_args', ne_binary(), any()}) -> atom().
+-type parser_args() :: {'parser_args', ne_binary(), any()} |
+                       {'parser_args', file:filename_all(), ne_binary(), any()}.
+
+-spec make_name(ne_binary() | parser_args()) -> atom().
 make_name(Bin)
   when is_binary(Bin) ->
     binary_to_atom(Bin, 'utf8');
