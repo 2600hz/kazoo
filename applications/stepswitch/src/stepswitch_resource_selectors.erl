@@ -67,7 +67,7 @@ foldl_modules(Number, OffnetJObj, SelectorsDb, SelectorRules) ->
                ).
 
 -spec rule_to_resource(kz_json:object(), stepswitch_resources:resources(), ne_binary(), kapi_offnet_resource:req(), ne_binary()) ->
-                                  stepswitch_resources:resources().
+                              stepswitch_resources:resources().
 rule_to_resource(Rule, Resources, Number, OffnetJObj, SelectorsDb) ->
     [Module|_] = kz_json:get_keys(Rule),
     ModuleName = real_module_name(Module),

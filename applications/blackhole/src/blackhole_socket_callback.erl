@@ -10,10 +10,9 @@
 
 -include("blackhole.hrl").
 
--export([
-         open/3,
-         recv/4,
-         close/3
+-export([open/3
+        ,recv/4
+        ,close/3
         ]).
 
 -type cb_return() :: {'ok', bh_context:context()}.
@@ -66,7 +65,7 @@ build_and_send(Data) ->
         kz_json:set_values([{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
                             | kz_api:default_headers(<<"qubicle">>, <<"1.0">>)
                            ]
-                           ,Data
+                          ,Data
                           ),
 
     {'ok', Payload} = kz_api:build_message(SendMessage, [], kz_json:get_keys(Data)),

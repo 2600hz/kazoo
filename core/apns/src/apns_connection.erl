@@ -262,7 +262,7 @@ handle_info( {'ssl', SslSocket, Data}
     end;
 
 handle_info({'ssl_closed', SslSocket}, State = #state{in_socket = SslSocket
-                                                      ,connection= Connection
+                                                     ,connection= Connection
                                                      }) ->
     error_logger:info_msg(
       "Feedback server disconnected. Waiting ~p millis to connect again...~n",
