@@ -154,7 +154,7 @@ delete(Context, _) ->
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
-    cb_context:validate_request_data(<<"callflows.ring_group">>, Context, OnSuccess).
+    cb_context:validate_request_data(<<"groups">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -176,7 +176,7 @@ read(Id, Context) ->
 -spec update(ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
-    cb_context:validate_request_data(<<"callflows.ring_group">>, Context, OnSuccess).
+    cb_context:validate_request_data(<<"groups">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
