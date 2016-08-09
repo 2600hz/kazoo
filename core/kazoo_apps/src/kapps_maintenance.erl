@@ -9,6 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(kapps_maintenance).
 
+-include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 -include("kazoo_apps.hrl").
 
 -export([rebuild_token_auth/0
@@ -20,6 +21,7 @@
 -export([find_invalid_acccount_dbs/0]).
 -export([refresh/0, refresh/1
         ,refresh_account_db/1
+        ,refresh_numbers_db/1
         ]).
 -export([blocking_refresh/0
         ,blocking_refresh/1
@@ -259,6 +261,7 @@ refresh(Database) when is_binary(Database) ->
     case kz_datamgr:db_classification(Database) of
         'account' -> refresh_account_db(Database);
         'modb' -> kazoo_modb:refresh_views(Database);
+        'numbers' -> refresh_numbers_db(Database);
         'system' ->
             kz_datamgr:db_create(Database),
             'ok';
@@ -302,6 +305,22 @@ maybe_remove_invalid_notify_doc(_Type, _Id, _Doc) -> 'ok'.
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec refresh_numbers_db(ne_binary()) -> 'ok'.
+refresh_numbers_db(<<?KNM_DB_PREFIX, Suffix/binary>>) ->
+    NumberDb = <<?KNM_DB_PREFIX_ENCODED, Suffix/binary>>,
+    {'ok',_} = kz_datamgr:revise_doc_from_file(NumberDb
+                                              ,'kazoo_number_manager'
+                                              ,<<"views/numbers.json">>
+                                              ),
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec refresh_account_db(ne_binary()) -> 'ok'.
 refresh_account_db(Database) ->
     AccountDb = kz_util:format_account_id(Database, 'encoded'),
     AccountId = kz_util:format_account_id(Database, 'raw'),
@@ -309,9 +328,9 @@ refresh_account_db(Database) ->
     _ = ensure_account_definition(AccountDb, AccountId),
     Views = get_all_account_views(),
     _ = kapps_util:update_views(AccountDb, Views, 'true'),
-
     kapps_account_config:migrate(AccountDb),
-    kazoo_bindings:map(binding({'refresh', AccountDb}), AccountId).
+    _ = kazoo_bindings:map(binding({'refresh', AccountDb}), AccountId),
+    'ok'.
 
 -spec remove_depreciated_account_views(ne_binary()) -> 'ok'.
 remove_depreciated_account_views(AccountDb) ->

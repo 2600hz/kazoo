@@ -11,6 +11,7 @@
         ,map_keys_to_atoms/1
         ]).
 
+-include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 -include("kz_data.hrl").
 
 %%------------------------------------------------------------------------------
@@ -36,9 +37,9 @@ db_classification(?KZ_ACDC_DB) -> 'aggregate';
 db_classification(?KZ_SERVICES_DB) -> 'aggregate';
 db_classification(?KZ_PORT_REQUESTS_DB) -> 'aggregate';
 db_classification(?KZ_WEBHOOKS_DB) -> 'aggregate';
-db_classification(<<"numbers/", _/binary>>) -> 'numbers';
-db_classification(<<"numbers%2F", _/binary>>) -> 'numbers';
-db_classification(<<"numbers%2f", _/binary>>) -> 'numbers';
+db_classification(<<?KNM_DB_PREFIX, _/binary>>) -> 'numbers';
+db_classification(<<?KNM_DB_PREFIX_ENCODED, _/binary>>) -> 'numbers';
+db_classification(<<?KNM_DB_PREFIX_encoded, _/binary>>) -> 'numbers';
 db_classification(?MATCH_MODB_SUFFIX_UNENCODED(_A,_B,_Rest,_Year,_Month)) -> 'modb';% these only need to match
 db_classification(?MATCH_MODB_SUFFIX_ENCODED(_A,_B,_Rest,_Year,_Month)) -> 'modb';%   "account..." then the
 db_classification(?MATCH_MODB_SUFFIX_encoded(_A,_B,_Rest,_Year,_Month)) -> 'modb';%   right size.

@@ -163,7 +163,7 @@ action(<<"import">>) ->
                       ,<<"e911.locality">>
                       ,<<"e911.region">>
                       ]}
-      ];
+    ];
 
 action(<<"assign_to">>) ->
     [{<<"description">>, <<"Bulk-assign numbers to the provided account">>}
@@ -254,19 +254,20 @@ carrier_module(_) -> 'false'.
 
 -spec list(kz_proplist(), task_iterator()) -> task_iterator().
 list(Props, 'init') ->
-    {'ok', [props:get_value('account_id', Props)]};
+    ForAccount = props:get_value('account_id', Props),
+    ToList = [{ForAccount, NumberDb} || NumberDb <- knm_util:get_all_number_dbs()],
+    {'ok', ToList};
 list(_, []) ->
     'stop';
-list(_, [?MATCH_ACCOUNT_RAW(AccountId) | Rest]) ->
-    AccountDb = kz_util:format_account_db(AccountId),
-    {'ok', knm_numbers:account_listing(AccountDb) ++ Rest};
-list(Props, [{E164,JObj} | Rest]) ->
+list(_, [{?MATCH_ACCOUNT_RAW(AccountId), NumberDb} | Rest]) ->
+    {'ok', number_db_listing(NumberDb, AccountId) ++ Rest};
+list(Props, [E164 | Rest]) ->
     AuthBy = props:get_value('auth_account_id', Props),
-    Row = list_number_row(AuthBy, E164, JObj),
+    Row = list_number_row(AuthBy, E164),
     {Row, Rest}.
 
--spec list_number_row(ne_binary(), ne_binary(), kz_json:object()) -> kz_csv:row().
-list_number_row(AuthBy, E164, JObj) ->
+-spec list_number_row(ne_binary(), ne_binary()) -> kz_csv:row().
+list_number_row(AuthBy, E164) ->
     Options = [{'auth_by', AuthBy}
               ],
     case knm_number:get(E164, Options) of
@@ -276,8 +277,8 @@ list_number_row(AuthBy, E164, JObj) ->
             ,knm_phone_number:assigned_to(PhoneNumber)
             ,knm_phone_number:prev_assigned_to(PhoneNumber)
             ,knm_phone_number:state(PhoneNumber)
-            ,integer_to_binary(kz_json:get_value(<<"created">>, JObj))
-            ,integer_to_binary(kz_json:get_value(<<"updated">>, JObj))
+            ,integer_to_binary(knm_phone_number:created(PhoneNumber))
+            ,integer_to_binary(knm_phone_number:modified(PhoneNumber))
             ,knm_phone_number:used_by(PhoneNumber)
             ,kz_util:to_binary(knm_phone_number:ported_in(PhoneNumber))
             ,knm_phone_number:module_name(PhoneNumber)
@@ -297,16 +298,19 @@ list_number_row(AuthBy, E164, JObj) ->
 
 -spec list_all(kz_proplist(), task_iterator()) -> task_iterator().
 list_all(Props, 'init') ->
-    ForAccount = props:get_value('account_id', Props),
-    Subs = get_descendants(ForAccount),
-    {'ok', [ForAccount|Subs]};
+    Account = props:get_value('account_id', Props),
+    ForAccounts = [Account | get_descendants(Account)],
+    ToList = [{ForAccount, NumberDb}
+              || ForAccount <- ForAccounts,
+                 NumberDb <- knm_util:get_all_number_dbs()
+             ],
+    {'ok', ToList};
 list_all(_, []) ->
     'stop';
-list_all(_, [?MATCH_ACCOUNT_RAW(AccountId) | Rest]) ->
-    AccountDb = kz_util:format_account_db(AccountId),
-    {'ok', knm_numbers:account_listing(AccountDb) ++ Rest};
-list_all(_, [{E164,JObj} | Rest]) ->
-    Row = list_number_row(?KNM_DEFAULT_AUTH_BY, E164, JObj),
+list_all(_, [{?MATCH_ACCOUNT_RAW(AccountId), NumberDb} | Rest]) ->
+    {'ok', number_db_listing(NumberDb, AccountId) ++ Rest};
+list_all(_, [E164 | Rest]) ->
+    Row = list_number_row(?KNM_DEFAULT_AUTH_BY, E164),
     {Row, Rest}.
 
 -spec import(kz_proplist(), task_iterator()
@@ -407,6 +411,25 @@ get_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
         {'ok', JObjs} -> [kz_account:id(JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:debug("unable to get descendants of ~s: ~p", [AccountId, _R]),
+            []
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% List an number db's phone numbers assigned to Account.
+%% @end
+%%--------------------------------------------------------------------
+-spec number_db_listing(ne_binary(), ne_binary()) -> ne_binaries().
+number_db_listing(NumberDb, ?MATCH_ACCOUNT_RAW(AssignedTo)) ->
+    ViewOptions = [{'startkey', [AssignedTo]}
+                  ,{'endkey', [AssignedTo, kz_json:new()]}
+                  ],
+    case kz_datamgr:get_results(NumberDb, <<"numbers/assigned_to">>, ViewOptions) of
+        {'ok', []} -> [];
+        {'ok', JObjs} -> [kz_doc:id(JObj) || JObj <- JObjs];
+        {'error', _R} ->
+            lager:debug("error listing numbers for ~s: ~p", [NumberDb, _R]),
             []
     end.
 
