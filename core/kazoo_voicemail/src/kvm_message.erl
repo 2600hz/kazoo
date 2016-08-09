@@ -8,57 +8,36 @@
 %%%-------------------------------------------------------------------
 -module(kz_vm_message).
 
--export([new_message/5
-         ,message_doc/2
-         ,message/2, messages/2
-         ,count/2, count_per_folder/2, count_modb_messages/1, count_modb_messages/3
-         ,count_by_owner/2
-         ,set_folder/3, update_folder/3, update_folder/4
-         ,bulk_update/3
+-export([new_message/2
+        ,message_doc/2
+        ,message/2, messages/2
+        ,count/2, count_per_folder/2, count_modb_messages/1, count_modb_messages/3
+        ,count_by_owner/2
+        ,set_folder/3, update_folder/3, update_folder/4
+        ,bulk_update/3
 
-         ,media_url/2
+        ,media_url/2
 
-         ,load_vmbox/2, load_vmbox/3
-         ,find_message_differences/3
+        ,load_vmbox/2, load_vmbox/3
+        ,find_message_differences/3
 
-         ,change_vmbox/4
+        ,change_vmbox/4
 
-         ,get_db/1, get_db/2
-         ,get_range_view/2
-
-         ,migrate/0, migrate/1, migrate/2
-         ,cleanup_heard_voicemail/1
+        ,get_db/1, get_db/2
+        ,get_range_view/2
         ]).
 
 -include("kz_voicemail.hrl").
--include_lib("kazoo/src/kz_json.hrl").
-
--define(APP_NAME, <<"callflow">>).
--define(APP_VERSION, <<"4.0.0">> ).
--define(CF_CONFIG_CAT, <<"callflow">>).
--define(KEY_VOICEMAIL, <<"voicemail">>).
--define(KEY_RETENTION_DURATION, <<"message_retention_duration">>).
 
 -define(MODB_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
 -define(MODB_COUNT_VIEW, <<"mailbox_messages/count_per_folder">>).
 -define(COUNT_BY_VMBOX, <<"mailbox_messages/count_by_vmbox">>).
--define(VMBOX_CB_LIST, <<"vmboxes/crossbar_listing">>).
 -define(PVT_LEGACY_TYPE, <<"private_media">>).
-
--define(RETENTION_DURATION
-        ,kapps_config:get_integer(?CF_CONFIG_CAT
-                           ,[?KEY_VOICEMAIL, ?KEY_RETENTION_DURATION]
-                           ,93 %% 93 days(3 months)
-                          )
-       ).
-
--define(RETENTION_DAYS(Duration)
-        ,?SECONDS_IN_DAY * Duration + ?SECONDS_IN_HOUR
-       ).
 
 -define(RETRY_CONFLICT(F), retry_conflict(fun() -> F end)).
 
 -type db_ret() :: 'ok' | {'ok', kz_json:object() | kz_json:objects()} | {'error', any()}.
+-type vm_folder() :: ne_binary() | {ne_binary(), boolean()}.
 
 -export_type([vm_folder/0]).
 
@@ -87,40 +66,43 @@ get_db(AccountId, Year, Month) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc recieve a new voicemail message and store it
+%% @doc recieve and store a new voicemail message
 %% expected options:
-%%  [{<<"Attachment-Name">>, AttachmentName}
-%%    ,{<<"Box-Id">>, BoxId}
-%%    ,{<<"OwnerId">>, OwnerId}
-%%    ,{<<"Length">>, Length}
-%%    ,{<<"Transcribe-Voicemail">>, MaybeTranscribe}
-%%    ,{<<"After-Notify-Action">>, Action}
-%%  ]
+%% [{<<"Attachment-Name">>, AttachmentName}
+%% ,{<<"Box-Id">>, BoxId}
+%% ,{<<"OwnerId">>, OwnerId}
+%% ,{<<"Length">>, Length}
+%% ,{<<"Transcribe-Voicemail">>, MaybeTranscribe}
+%% ,{<<"After-Notify-Action">>, Action}
+%% ,{<<"Attachment-Name">>, AttachmentName}
+%% ,{<<"Box-Num">>, BoxNum}
+%% ,{<<"Timezone">>, Timezone}
+%% ]
 %% @end
 %%--------------------------------------------------------------------
--spec new_message(ne_binary(), ne_binary(), ne_binary(), kapps_call:call(), kz_proplist()) -> any().
-new_message(AttachmentName, BoxNum, Timezone, Call, Props) ->
+-spec new_message(kapps_call:call(), kz_proplist()) -> any().
+new_message(Call, Props) ->
     BoxId = props:get_value(<<"Box-Id">>, Props),
     Length = props:get_value(<<"Length">>, Props),
+    AttachmentName = props:get_value(<<"Attachment-Name">>, Props),
 
     lager:debug("saving new ~bms voicemail media and metadata", [Length]),
 
-    {MediaId, MediaUrl} = create_message_doc(AttachmentName, BoxNum, Call, Timezone, Props),
+    {MediaId, MediaUrl} = create_message_doc(kapps_call:account_id(Call), Props),
 
     Msg = io_lib:format("failed to store voicemail media ~s in voicemail box ~s of account ~s"
-                        ,[MediaId, BoxId, kapps_call:account_id(Call)]
+                       ,[MediaId, BoxId, kapps_call:account_id(Call)]
                        ),
     Funs = [{fun kapps_call:kvs_store/3, 'mailbox_id', BoxId}
-            ,{fun kapps_call:kvs_store/3, 'attachment_name', AttachmentName}
-            ,{fun kapps_call:kvs_store/3, 'media_id', MediaId}
-            ,{fun kapps_call:kvs_store/3, 'media_length', Length}
+           ,{fun kapps_call:kvs_store/3, 'attachment_name', AttachmentName}
+           ,{fun kapps_call:kvs_store/3, 'media_id', MediaId}
+           ,{fun kapps_call:kvs_store/3, 'media_length', Length}
            ],
 
     lager:debug("storing voicemail media recording ~s in doc ~s", [AttachmentName, MediaId]),
     case store_recording(AttachmentName, MediaUrl, kapps_call:exec(Funs, Call)) of
         'ok' ->
-            _ = notify_and_save_meta(Call, MediaId, Length, Props),
-            'ok';
+            notify_and_save_meta(Call, MediaId, Length, Props);
         {'error', Call1} ->
             lager:error(Msg),
             {'error', Call1, Msg}
@@ -131,22 +113,16 @@ new_message(AttachmentName, BoxNum, Timezone, Call, Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create_message_doc(ne_binary(), ne_binary(), kapps_call:call(), ne_binary(), kz_proplist()) ->
-                                {ne_binary(), ne_binary()}.
-create_message_doc(AttachmentName, BoxNum, Call, Timezone, Props) ->
-    {Year, Month, _} = erlang:date(),
-    Db = kazoo_modb:get_modb(kapps_call:account_id(Call), Year, Month),
+-spec create_message_doc(ne_binary(), kz_proplist()) -> {ne_binary(), ne_binary()}.
+create_message_doc(AccountId, Props) ->
+    MsgJObj = kzd_box_message:new(AccountId, Props),
+    {'ok', SavedJObj} = kz_datamgr:save_doc(kz_doc:account_db(MsgJObj), MsgJObj),
 
-    MediaId = <<(kz_util:to_binary(Year))/binary
-                ,(kz_util:pad_month(Month))/binary
-                ,"-"
-                ,(kz_util:rand_hex_binary(16))/binary
-              >>,
-    Doc = kzd_box_message:new(Db, MediaId, AttachmentName, BoxNum, Timezone, Props),
-    {'ok', JObj} = kz_datamgr:save_doc(Db, Doc),
-    MediaUrl = kz_media_url:store(JObj, AttachmentName),
+    MediaUrl = kz_media_url:store(SavedJObj
+                                 ,props:get_value(<<"Attachment-Name">>, Props)
+                                 ),
 
-    {MediaId, MediaUrl}.
+    {kz_doc:id(MsgJObj), MediaUrl}.
 
 -spec store_recording(ne_binary(), ne_binary(), kapps_call:call()) ->
                                  'ok' |
@@ -163,7 +139,7 @@ store_recording(AttachmentName, Url, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec notify_and_save_meta(kapps_call:call(), ne_binary(), integer(), kz_proplist()) -> 'ok' | db_ret().
+-spec notify_and_save_meta(kapps_call:call(), ne_binary(), integer(), kz_proplist()) -> 'ok'.
 notify_and_save_meta(Call, MediaId, Length, Props) ->
     BoxId = props:get_value(<<"Box-Id">>, Props),
     NotifyAction = props:get_atom_value(<<"After-Notify-Action">>, Props),
@@ -202,7 +178,7 @@ get_completed_msg([JObj|JObjs], Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_save_meta(pos_integer(), atom(), kapps_call:call(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok' | db_ret().
+-spec maybe_save_meta(pos_integer(), atom(), kapps_call:call(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 maybe_save_meta(Length, 'nothing', Call, MediaId, _UpdateJObj, BoxId) ->
     save_meta(Length, 'nothing', Call, MediaId, BoxId);
 
@@ -215,7 +191,7 @@ maybe_save_meta(Length, Action, Call, MediaId, UpdateJObj, BoxId) ->
             save_meta(Length, Action, Call, MediaId, BoxId)
     end.
 
--spec save_meta(pos_integer(), atom(), kapps_call:call(), ne_binary(), ne_binary()) -> 'ok' | db_ret().
+-spec save_meta(pos_integer(), atom(), kapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
 save_meta(Length, Action, Call, MediaId, BoxId) ->
     AccountId = kapps_call:account_id(Call),
     CIDNumber = get_caller_id_number(Call),
@@ -231,21 +207,21 @@ save_meta(Length, Action, Call, MediaId, BoxId) ->
                        apply_folder(?VM_FOLDER_DELETED, JObj)
                    end
                   ],
-            _ = save_metadata(Metadata, AccountId, MediaId, Fun);
+            save_metadata(Metadata, AccountId, MediaId, Fun);
         'save' ->
             lager:debug("attachment was sent out via notification, saving media file"),
             Fun = [fun(JObj) ->
                        apply_folder(?VM_FOLDER_SAVED, JObj)
                    end
                   ],
-            _ = save_metadata(Metadata, AccountId, MediaId, Fun);
+            save_metadata(Metadata, AccountId, MediaId, Fun);
         'nothing' ->
-            {'ok', _} = save_metadata(Metadata, AccountId, MediaId, []),
+            save_metadata(Metadata, AccountId, MediaId, []),
             lager:debug("stored voicemail metadata for ~s", [MediaId]),
             publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp)
     end.
 
--spec save_metadata(kz_json:object(), ne_binary(), ne_binary(), update_funs()) -> db_ret().
+-spec save_metadata(kz_json:object(), ne_binary(), ne_binary(), update_funs()) -> 'ok'.
 save_metadata(NewMessage, AccountId, MessageId, Funs) ->
     UpdateFuns = [fun(JObj) ->
                       kzd_box_message:set_metadata(NewMessage, JObj)
@@ -253,16 +229,15 @@ save_metadata(NewMessage, AccountId, MessageId, Funs) ->
                   | Funs
                  ],
     case ?RETRY_CONFLICT(update_message_doc(AccountId, 'undefined', MessageId, UpdateFuns)) of
-        {'ok', _}=OK -> OK;
-        {'error', R}=E ->
-            lager:info("error while storing voicemail metadata: ~p", [R]),
-            E
+        {'ok', _} -> 'ok';
+        {'error', _R} ->
+            lager:info("error while storing voicemail metadata: ~p", [_R])
     end.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc fetch whole message doc from db. It will take care if the message
-%% message is stil in accountdb, it will merge metadata from vmbox
+%% message is still in accountdb, it will merge metadata from vmbox
 %% @end
 %%--------------------------------------------------------------------
 -spec message_doc(ne_binary(), kazoo_data:docid()) -> db_ret().
@@ -385,12 +360,12 @@ maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId, _) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_folder(ne_binary(), ne_binary() | ne_binaries(), ne_binary()) -> db_ret().
+-spec update_folder(vm_folder(), ne_binary() | ne_binaries(), ne_binary()) -> db_ret().
 update_folder(Folder, MessageId, AccountId) ->
     update_folder(Folder, MessageId, AccountId, 'undefined').
 
--spec update_folder(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), ne_binary()) -> db_ret().
-update_folder(_, _, 'undefined', _) ->
+-spec update_folder(vm_folder(), api_ne_binary() | api_ne_binaries(), ne_binary(), ne_binary()) -> db_ret().
+update_folder(_, 'undefined', _, _) ->
     {'error', 'attachment_undefined'};
 update_folder(Folder, MessageId, AccountId, BoxId) when is_binary(MessageId) ->
     Fun = [fun(JObj) ->
@@ -409,8 +384,6 @@ update_folder(Folder, MsgIds, AccountId, BoxId) ->
            end
           ],
     {'ok', bulk_update(AccountId, BoxId, MsgIds, Fun)}.
-
--type vm_folder() :: ne_binary() | {ne_binary(), boolean()}.
 
 -spec apply_folder(vm_folder(), kz_json:object()) -> kz_json:object().
 apply_folder({?VM_FOLDER_DELETED, 'false'}, Doc) ->
@@ -1034,98 +1007,4 @@ get_caller_id_number(Call) ->
         Prepend ->
             Pre = <<(kz_util:to_binary(Prepend))/binary, CallerIdNumber/binary>>,
             kz_util:truncate_right_binary(Pre, kzd_schema_caller_id:external_name_max_length())
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Migrate all messages in vmbox into the new modb format
-%% @end
-%%--------------------------------------------------------------------
--spec migrate() -> 'ok'.
-migrate() ->
-    _ = [migrate(Id)|| Id <- kapps_util:get_all_accounts('raw')],
-    'ok'.
-
--spec migrate(ne_binary()) -> 'ok'.
-migrate(AccountId) ->
-    AccountDb = get_db(AccountId),
-    case kz_datamgr:get_results(AccountDb, ?VMBOX_CB_LIST, []) of
-        {'ok', []} -> lager:debug("no voicemail boxes in ~s", [AccountDb]);
-        {'ok', View} ->
-            _ = [migrate(AccountId, kz_json:get_value(<<"value">>, V)) || V <- View],
-            lager:debug("migrated all messages of ~b mail boxes in ~s to modbs", [length(View), AccountDb]);
-        {'error', _E} ->
-            lager:debug("failed to get voicemail boxes in ~s: ~p", [AccountDb, _E])
-    end.
-
--spec migrate(ne_binary(), ne_binary() | kz_json:object()) -> 'ok'.
-migrate(AccountId, <<_/binary>> = BoxId) ->
-    Msgs = messages(AccountId, BoxId),
-    Ids = [M || M <- Msgs, maybe_migrate_to_modb(kzd_box_message:media_id(M))],
-    _ = bulk_update(AccountId, BoxId, Ids, []),
-    'ok';
-migrate(AccountId, Box) ->
-    migrate(AccountId, kz_doc:id(Box)).
-
--spec maybe_migrate_to_modb(ne_binary()) -> boolean().
-maybe_migrate_to_modb(?MATCH_MODB_PREFIX(_, _, _)) -> 'false';
-maybe_migrate_to_modb(_) -> 'true'.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Clean old heard voice messages from db
-%% @end
-%%--------------------------------------------------------------------
--spec cleanup_heard_voicemail(ne_binary()) -> 'ok'.
-cleanup_heard_voicemail(AccountId) ->
-    Today = kz_util:current_tstamp(),
-    Duration = ?RETENTION_DURATION,
-    DurationS = ?RETENTION_DAYS(Duration),
-    lager:debug("retaining messages for ~p days, delete those older for ~s", [Duration, AccountId]),
-
-    AccountDb = get_db(AccountId),
-    case kz_datamgr:get_results(AccountDb, ?VMBOX_CB_LIST, []) of
-        {'ok', []} -> lager:debug("no voicemail boxes in ~s", [AccountDb]);
-        {'ok', View} ->
-            cleanup_heard_voicemail(AccountId
-                                    ,Today - DurationS
-                                    ,[kz_json:get_value(<<"value">>, V) || V <- View]
-                                   ),
-            lager:debug("cleaned up ~b voicemail boxes in ~s", [length(View), AccountDb]);
-        {'error', _E} ->
-            lager:debug("failed to get voicemail boxes in ~s: ~p", [AccountDb, _E])
-    end.
-
--spec cleanup_heard_voicemail(ne_binary(), pos_integer(), kz_proplist()) -> 'ok'.
-cleanup_heard_voicemail(AccountId, Timestamp, Boxes) ->
-    _ = [cleanup_voicemail_box(AccountId, Timestamp, Box) || Box <- Boxes],
-    'ok'.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Filter out old messages in vmbox and soft delete them
-%% @end
-%%--------------------------------------------------------------------
--spec cleanup_voicemail_box(ne_binary(), pos_integer(), kz_json:object()) -> 'ok'.
-cleanup_voicemail_box(AccountId, Timestamp, Box) ->
-    BoxId = kz_doc:id(Box),
-    Msgs = messages(AccountId, BoxId),
-    case
-        lists:partition(
-            fun(Msg) ->
-                %% must be old enough, and not in the NEW folder
-                kz_json:get_integer_value(<<"timestamp">>, Msg) < Timestamp
-                    andalso kz_json:get_value(<<"folder">>, Msg) =/= <<"new">>
-            end
-            ,Msgs
-        )
-    of
-        {[], _} ->
-            lager:debug("there are no old messages to remove from ~s", [BoxId]);
-        {Older, _} ->
-            lager:debug("there are ~b old messages to remove", [length(Older)]),
-
-            _ = update_folder(?VM_FOLDER_DELETED, Older, AccountId, BoxId),
-            lager:debug("soft-deleted old messages"),
-            lager:debug("updated messages in voicemail box ~s", [BoxId])
     end.

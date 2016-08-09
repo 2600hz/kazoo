@@ -4,17 +4,22 @@
 %%% Mailbox message document manipulation
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
+%%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(kzd_box_message).
 
--export([new/0, new/6, build_metadata_object/6
+-export([new/2, build_metadata_object/6
         ,count_folder/2, normalize_count/1
         ,create_message_name/3
         ,type/0
-        ,folder/1, folder/2, set_folder/2, set_folder_new/1, set_folder_saved/1, set_folder_deleted/1, filter_folder/2
+
+        ,folder/1, folder/2, set_folder/2
+        ,set_folder_new/1, set_folder_saved/1, set_folder_deleted/1
+        ,filter_folder/2
+
         ,message_history/1, add_message_history/2
         ,message_name/1, message_name/2, set_message_name/2
+
         ,media_id/1, set_media_id/2
         ,metadata/1, metadata/2, set_metadata/2
         ,source_id/1, set_source_id/2
@@ -54,37 +59,42 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Generate a mailbox message doc
-%% @end
-%%--------------------------------------------------------------------
--spec new() -> doc().
-new() ->
-    kz_json:from_list([{?PVT_TYPE, type()}]).
-
-%%--------------------------------------------------------------------
-%% @public
 %% @doc Generate a mailbox message doc with the given properties
 %% expected options in Props:
 %%    [{<<"Box-Id">>, BoxId}]
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> doc().
-new(Db, DocId, AttachmentName, BoxNum, Timezone, Props) ->
+-spec new(ne_binary(), kz_proplist()) -> doc().
+new(AccountId, Props) ->
+    {Year, Month, _} = erlang:date(),
+    Db = kazoo_modb:get_modb(AccountId, Year, Month),
+    MediaId = <<(kz_util:to_binary(Year))/binary
+               ,(kz_util:pad_month(Month))/binary
+               ,"-"
+               ,(kz_util:rand_hex_binary(16))/binary
+              >>,
+
     UtcSeconds = kz_util:current_tstamp(),
-    Name = create_message_name(BoxNum, Timezone, UtcSeconds),
+    Name = create_message_name(props:get_value(<<"Box-Num">>, Props)
+                              ,props:get_value(<<"Timezone">>, Props)
+                              ,UtcSeconds),
 
     DocProps = props:filter_undefined(
-                 [{<<"_id">>, DocId}
+                 [{<<"_id">>, MediaId}
                  ,{?KEY_NAME, Name}
                  ,{?KEY_DESC, <<"mailbox message media">>}
                  ,{?KEY_SOURCE_TYPE, ?KEY_VOICEMAIL}
                  ,{?KEY_SOURCE_ID, props:get_value(<<"Box-Id">>, Props)}
                  ,{?KEY_MEDIA_SOURCE, <<"recording">>}
-                 ,{?KEY_MEDIA_FILENAME, AttachmentName}
+                 ,{?KEY_MEDIA_FILENAME, props:get_value(<<"Attachment-Name">>, Props)}
                  ,{?KEY_STREAMABLE, 'true'}
                  ,{?KEY_UTC_SEC, UtcSeconds}
                  ]),
-    kz_doc:update_pvt_parameters(kz_json:from_list(DocProps), Db, [{'type', type()}]).
+    kz_doc:update_pvt_parameters(
+        kz_json:from_list(DocProps)
+        ,Db
+        ,[{'type', type()}]
+    ).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -1263,12 +1263,15 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
                                             ,after_notify_action=Action
                                             }=Box, Call) ->
     NewMsgProps = [{<<"Box-Id">>, BoxId}
-                  ,{<<"OwnerId">>, OwnerId}
+                  ,{<<"Owner-Id">>, OwnerId}
                   ,{<<"Length">>, Length}
                   ,{<<"Transcribe-Voicemail">>, MaybeTranscribe}
                   ,{<<"After-Notify-Action">>, Action}
+                  ,{<<"Attachment-Name">>, AttachmentName}
+                  ,{<<"Box-Num">>, BoxNum}
+                  ,{<<"Timezone">>, Timezone}
                   ],
-    case kz_vm_message:new_message(AttachmentName, BoxNum, Timezone, Call, NewMsgProps) of
+    case kz_vm_message:new_message(Call, NewMsgProps) of
         'ok' -> send_mwi_update(Box, Call);
         {'error', Call1, Msg} ->
             system_report(Msg, Call1)
