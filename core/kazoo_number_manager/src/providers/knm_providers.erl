@@ -64,10 +64,12 @@ provider_modules(Number) ->
     ].
 
 -spec provider_module(ne_binary()) -> ne_binary().
-provider_module(<<"cnam">>) ->
+provider_module(?FEATURE_CNAM) ->
     <<"knm_cnam_notifier">>;
-provider_module(<<"dash_e911">>) ->
+provider_module(?DASH_KEY) ->
     <<"knm_dash_e911">>;
+provider_module(?VITELITY_KEY) ->
+    <<"knm_vitelity_e911">>;
 provider_module(<<"prepend">>) ->
     <<"knm_prepend">>;
 provider_module(<<"port">>) ->
