@@ -799,9 +799,9 @@ client_handle_event(JObj, {Module, Fun}, Props, BasicDeliver) ->
 
 -spec callback_handle_event(kz_json:object(), basic_deliver(), state()) ->
                                    'ignore' |
-                                   {'ignore', state()} |
+                                   {'ignore', module_state()} |
                                    kz_proplist() |
-                                   {kz_proplist(), state()}.
+                                   {kz_proplist(), module_state()}.
 callback_handle_event(JObj
                      ,BasicDeliver
                      ,#state{module=Module
@@ -838,6 +838,7 @@ callback_handle_event(JObj
 
 -spec callback_handle_event(kz_json:object(), basic_deliver(), atom(), module_state()) ->
                                    'ignore' |
+                                   {'ignore', module_state()} |
                                    {'reply', kz_proplist()} |
                                    {'reply', kz_proplist(), module_state()} |
                                    {'EXIT', any()}.
