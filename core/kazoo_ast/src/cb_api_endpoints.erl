@@ -13,15 +13,11 @@
 -include_lib("kazoo/src/kz_json.hrl").
 -include_lib("crossbar/src/crossbar.hrl").
 
--define(REF_PATH(Module)
-       ,filename:join([code:lib_dir('crossbar')
-                      ,"doc"
-                      ,"ref"
-                      ,<<Module/binary, ".md">>
-                      ])
-       ).
+-define(REF_PATH(Module),
+        filename:join([code:lib_dir('crossbar'), "doc", "ref", <<Module/binary,".md">>])).
 
 -define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
+
 
 to_ref_doc() ->
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
@@ -32,9 +28,7 @@ api_to_ref_doc({Module, Paths}) ->
 
 api_to_ref_doc(Module, Paths, ?CURRENT_VERSION) ->
     BaseName = base_module_name(Module),
-    Sections = lists:foldl(fun(K, Acc) ->
-                                   api_path_to_section(Module, K, Acc)
-                           end
+    Sections = lists:foldl(fun(K, Acc) -> api_path_to_section(Module, K, Acc) end
                           ,ref_doc_header(BaseName)
                           ,Paths
                           ),
@@ -97,10 +91,11 @@ ref_doc_header(BaseName) ->
     ].
 
 maybe_add_schema(BaseName) ->
-    case open_schema(BaseName) of
-        {'ok', SchemaJObj} ->
+    case file:read_file(kz_ast_util:schema_path(<<BaseName/binary, ".json">>)) of
+        {'ok', SchemaBin} ->
+            SchemaJObj = kz_json:decode(SchemaBin),
             [?SCHEMA_SECTION, schema_to_table(SchemaJObj), "\n\n"];
-        {'error', _} ->
+        {'error', _R} ->
             [?SCHEMA_SECTION, "\n\n"]
     end.
 
@@ -242,7 +237,13 @@ maybe_object_properties_to_row(Key, Acc0, Names, Settings) ->
        ,kz_json:from_list([{<<"title">>, <<"Crossbar">>}
                           ,{<<"description">>, <<"The Crossbar APIs">>}
                           ,{<<"license">>, kz_json:from_list([{<<"name">>, <<"Mozilla Public License 1.1">>}])}
-                          ,{<<"version">>, <<"2.0">>}
+                          ,{<<"version">>, ?CURRENT_VERSION}
+                          ])
+       ).
+
+-define(SWAGGER_EXTERNALDOCS
+       ,kz_json:from_list([{<<"description">>, <<"Kazoo documentation's Git repository">>}
+                          ,{<<"url">>, <<"https://github.com/2600hz/kazoo/tree/master/applications/crossbar/doc">>}
                           ])
        ).
 
@@ -258,39 +259,25 @@ to_swagger_json() ->
                                  ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
                                  ,{<<"swagger">>, <<"2.0">>}
                                  ,{<<"info">>, ?SWAGGER_INFO}
+                                 ,{<<"consumes">>, [<<"application/json">>]}
+                                 ,{<<"produces">>, [<<"application/json">>]}
+                                 ,{<<"externalDocs">>, ?SWAGGER_EXTERNALDOCS}
                                  ]
                                 ,BaseSwagger
                                 ),
     write_swagger_json(Swagger).
 
--define(SCHEMAS_PATH(Schema), filename:join([code:priv_dir('crossbar')
-                                            ,"couchdb"
-                                            ,"schemas"
-                                            ,Schema
-                                            ])
-       ).
-
+-spec to_swagger_definitions() -> kz_json:object().
 to_swagger_definitions() ->
-    SchemasPath = ?SCHEMAS_PATH(<<>>),
-    filelib:fold_files(SchemasPath, ".json\$", 'false', fun process_schema/2, kz_json:new()).
+    SchemasPath = kz_ast_util:schema_path(<<>>),
+    filelib:fold_files(SchemasPath, "\\.json\$", 'false', fun process_schema/2, kz_json:new()).
 
-open_schema(<<C:1/binary, _/binary>> = File) ->
-    case file:read_file(File) of
-        {'ok', SchemaJSON} -> {'ok', kz_json:decode(SchemaJSON)};
-        {'error', 'enoent'} when C =/= <<"/">> ->
-            open_schema(?SCHEMAS_PATH(<<File/binary, ".json">>));
-        {'error', _E}=E -> E
-    end.
-
-process_schema(SchemaJSONFile, Definitions) ->
-    {'ok', SchemaJObj} = open_schema(SchemaJSONFile),
-    SchemaName = kz_util:to_binary(filename:basename(SchemaJSONFile, ".json")),
-    kz_json:set_value(SchemaName
-                     ,kz_json:delete_keys([<<"_id">>, <<"$schema">>]
-                                         ,SchemaJObj
-                                         )
-                     ,Definitions
-                     ).
+-spec process_schema(ne_binary(), kz_json:object()) -> kz_json:object().
+process_schema(Filename, Definitions) ->
+    {'ok', Bin} = file:read_file(Filename),
+    JObj = kz_json:delete_keys([<<"_id">>, <<"$schema">>], kz_json:decode(Bin)),
+    Name = kz_util:to_binary(filename:basename(Filename, ".json")),
+    kz_json:set_value(Name, JObj, Definitions).
 
 -define(SWAGGER_JSON,
         filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])).
@@ -395,7 +382,7 @@ format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
 
 maybe_include_schema(PathName, Module) ->
     M = base_module_name(Module),
-    case filelib:is_file(?SCHEMAS_PATH(M)) of
+    case filelib:is_file(kz_ast_util:schema_path(M)) of
         'false' -> {'undefined', 'undefined'};
         'true' ->
             {[PathName, <<"schema">>], base_module_name(Module)}

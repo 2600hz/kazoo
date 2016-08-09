@@ -1,5 +1,8 @@
 {
     "basePath": "/v2",
+    "consumes": [
+        "application/json"
+    ],
     "definitions": {
         "access_lists": {
             "additionalProperties": true,
@@ -12721,6 +12724,10 @@
             "type": "object"
         }
     },
+    "externalDocs": {
+        "description": "Kazoo documentation's Git repository",
+        "url": "https://github.com/2600hz/kazoo/tree/master/applications/crossbar/doc"
+    },
     "host": "localhost:8000",
     "info": {
         "description": "The Crossbar APIs",
@@ -12728,7 +12735,7 @@
             "name": "Mozilla Public License 1.1"
         },
         "title": "Crossbar",
-        "version": "2.0"
+        "version": "v2"
     },
     "paths": {
         "/about": {
@@ -14249,5 +14256,8 @@
             "get": {}
         }
     },
+    "produces": [
+        "application/json"
+    ],
     "swagger": "2.0"
 }
