@@ -53,9 +53,9 @@ fix_accounts_numbers(Accounts) ->
 -spec fix_account_numbers(ne_binary()) -> 'ok'.
 fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(_)) ->
     ?LOG("########## fixing [~s] ##########", [AccountDb]),
-    ?LOG("[~s] getting numbers", [AccountDb]),
-    ToFix = get_phone_numbers(AccountDb),
-    ?LOG("[~s] start fixing numbers", [AccountDb]),
+    ?LOG("[~s] getting old numbers", [AccountDb]),
+    ToFix = get_old_phone_numbers(AccountDb),
+    ?LOG("[~s] start fixing old numbers", [AccountDb]),
     foreach_pause_in_between(?TIME_BETWEEN_NUMBERS_MS, fun maybe_fix_number/1, ToFix),
     kz_datamgr:flush_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC);
 fix_account_numbers(Account = ?NE_BINARY) ->
@@ -84,8 +84,8 @@ get_result_keys(AccountDb, View) ->
             []
     end.
 
--spec get_phone_numbers(ne_binary()) -> [number_to_fix()].
-get_phone_numbers(AccountDb) ->
+-spec get_old_phone_numbers(ne_binary()) -> [number_to_fix()].
+get_old_phone_numbers(AccountDb) ->
     CallflowNumbers = get_result_keys(AccountDb, <<"callflows/listing_by_number">>),
     TrunkstoreNumbers = get_result_keys(AccountDb, <<"trunkstore/lookup_did">>),
     case kz_datamgr:open_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
