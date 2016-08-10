@@ -83,7 +83,9 @@
         ,change_notice/0
         ]).
 
--export_type([view_options/0]).
+-export_type([view_option/0, view_options/0
+             ,view_listing/0, views_listing/0
+             ]).
 
 -include("kz_data.hrl").
 
@@ -391,8 +393,8 @@ db_view_cleanup(DbName) ->
         {'error', _}=E -> E
     end.
 
--spec db_view_update(ne_binary(), kz_proplist()) -> boolean().
--spec db_view_update(ne_binary(), kz_proplist(), boolean()) -> boolean().
+-spec db_view_update(ne_binary(), views_listing()) -> boolean().
+-spec db_view_update(ne_binary(), views_listing(), boolean()) -> boolean().
 
 db_view_update(DbName, Views) ->
     db_view_update(DbName, Views, 'false').
@@ -975,13 +977,14 @@ delete_attachment(DbName, DocId, AName, Options) ->
         {'error', _}=E -> E
     end.
 
--spec attachment_url(text(), docid(), ne_binary()) -> {'ok', ne_binary()}
-                                                          | {'proxy', tuple()}
-                                                          | {'error', any()}.
--spec attachment_url(text(), docid(), ne_binary(), kz_proplist()) -> {'ok', ne_binary()}
-                                                                         | {'proxy', tuple()}
-                                                                         | {'error', any()}.
-
+-spec attachment_url(text(), docid(), ne_binary()) ->
+                            {'ok', ne_binary()} |
+                            {'proxy', tuple()} |
+                            {'error', any()}.
+-spec attachment_url(text(), docid(), ne_binary(), kz_proplist()) ->
+                            {'ok', ne_binary()} |
+                            {'proxy', tuple()} |
+                            {'error', any()}.
 attachment_url(DbName, DocId, AttachmentId) ->
     attachment_url(DbName, DocId, AttachmentId, []).
 
@@ -1124,7 +1127,7 @@ get_result_keys(JObjs) ->
 %% - otherwise `{error, multiple_results}' is returned.
 %% @end
 %%--------------------------------------------------------------------
--spec get_single_result(ne_binary(), ne_binary(), [view_option()|'first_when_multiple']) ->
+-spec get_single_result(ne_binary(), ne_binary(), view_options()) ->
                                {'ok', kz_json:object()} |
                                {'error', 'multiple_results'} |
                                data_error().

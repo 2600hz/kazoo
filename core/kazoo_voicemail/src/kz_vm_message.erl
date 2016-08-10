@@ -330,11 +330,11 @@ maybe_include_messages(_AccountId, _BoxId, JObj, _) ->
 %% @doc fetch all messages for a vmbox
 %% @end
 %%--------------------------------------------------------------------
--spec messages(ne_binary(), ne_binary()) -> kz_json:objects().
-messages(AccountId, BoxId) ->
+-spec messages(ne_binary(), ne_binary() | kz_json:object()) -> kz_json:objects().
+messages(AccountId, Box) ->
     % first get messages metadata from vmbox for backward compatibility
-    case fetch_vmbox_messages(AccountId, BoxId) of
-        {'ok', Msgs} -> Msgs ++ fetch_modb_messages(AccountId, BoxId);
+    case fetch_vmbox_messages(AccountId, Box) of
+        {'ok', Msgs} -> Msgs ++ fetch_modb_messages(AccountId, Box);
         _ -> []
     end.
 
@@ -459,31 +459,31 @@ do_update_message_doc(AccountId, MsgId, JObj, Funs) ->
 %% @end
 %%--------------------------------------------------------------------
 -record(bulk_res, {succeeded = []  :: ne_binaries()
-                   ,failed = [] :: kz_json:objects()
-                   ,moved = [] :: kz_json:objects()
+                  ,failed = [] :: kz_json:objects()
+                  ,moved = [] :: ne_binaries()
                   }).
 -type bulk_results() :: #bulk_res{}.
 
--spec bulk_update(ne_binary(), ne_binary(), kz_json:objects()) ->
-                                kz_json:object().
+-spec bulk_update(ne_binary(), ne_binary(), ne_binaries() | kz_json:objects()) ->
+                         kz_json:object().
 bulk_update(AccountId, BoxId, Msgs) ->
     bulk_update(AccountId, BoxId, Msgs, []).
 
 -spec bulk_update(ne_binary(), ne_binary(), ne_binaries() | kz_json:objects(), update_funs()) ->
-                                kz_json:object().
+                         kz_json:object().
 bulk_update(AccountId, BoxId, Things, Funs) ->
     #bulk_res{succeeded=Succeeded
-              ,failed=Failed
-              ,moved=Moved
+             ,failed=Failed
+             ,moved=Moved
              } = bulk_update_fold(AccountId, BoxId, Things, Funs, #bulk_res{}),
     _ = cleanup_moved_msgs(AccountId, BoxId, Moved),
     kz_json:from_list([{<<"succeeded">>, Succeeded}
-                       ,{<<"failed">>, Failed}
+                      ,{<<"failed">>, Failed}
                       ]).
 
 -spec bulk_update_fold(ne_binary(), ne_binary(), ne_binaries() | kz_json:objects(), update_funs(), bulk_results()) ->
-                                bulk_results().
-bulk_update_fold(_, _, [], _, Result) ->
+                              bulk_results().
+bulk_update_fold(_AccountId, _BoxId, [], _Funs, Result) ->
     Result;
 bulk_update_fold(AccountId, BoxId, [<<_/binary>> = MsgId|MsgIds], Funs, #bulk_res{failed=Failed}=Blk) ->
     case message_doc(AccountId, MsgId) of
@@ -532,7 +532,7 @@ do_update(AccountId, BoxId, OldId, JObj, Funs, #bulk_res{succeeded=Succeeded
         {'ok', NJObj} ->
             NewId = kz_doc:id(NJObj),
             Blk#bulk_res{succeeded=[NewId | Succeeded]
-                         ,moved=[OldId | Moved]
+                        ,moved=[OldId | Moved]
                         };
         {'error', R} ->
             Blk#bulk_res{failed=[kz_json:from_list([{OldId, kz_util:to_binary(R)}]) | Failed]};
@@ -636,7 +636,10 @@ cleanup_moved_msgs(AccountId, BoxId, OldIds) ->
 %% @doc Move messages to another vmbox
 %% @end
 %%--------------------------------------------------------------------
--spec change_vmbox(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), ne_binary()) -> kz_json:objects().
+-spec change_vmbox(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), ne_binary()) ->
+                          kz_json:object().
+change_vmbox(AccountId, <<_/binary>> = MsgId, <<_/binary>> = OldBoxId, <<_/binary>> = NewBoxId) ->
+    change_vmbox(AccountId, [MsgId], OldBoxId, NewBoxId);
 change_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId) when is_list(MsgIds) ->
     AccountDb = get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
@@ -647,9 +650,7 @@ change_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId) when is_list(MsgIds) ->
             ,fun(JObj) -> change_to_sip_field(AccountId, NBoxJ, JObj) end
             ,fun(JObj) -> kzd_box_message:add_message_history(OldBoxId, JObj) end
            ],
-    bulk_update(AccountId, OldBoxId, MsgIds, Funs);
-change_vmbox(AccountId, MsgId, OldBoxId, NewBoxId) ->
-    change_vmbox(AccountId, [MsgId], OldBoxId, NewBoxId).
+    bulk_update(AccountId, OldBoxId, MsgIds, Funs).
 
 -spec change_message_name(kz_json:object(), kz_json:object()) -> kz_json:object().
 change_message_name(NBoxJ, MsgJObj) ->
@@ -815,17 +816,21 @@ check_doc_type(_Doc, _ExpectedType, _DocType) ->
     lager:debug("not expected type : ~s , ~s", [_ExpectedType, _DocType]),
     {'error', 'not_found'}.
 
--spec fetch_vmbox_messages(ne_binary(), ne_binary()) -> db_ret().
-fetch_vmbox_messages(AccountId, BoxId) ->
+-spec fetch_vmbox_messages(ne_binary(), ne_binary() | kz_json:object()) -> db_ret().
+fetch_vmbox_messages(AccountId, <<_/binary>> = BoxId) ->
     case open_accountdb_doc(AccountId, BoxId, kzd_voicemail_box:type()) of
-        {'ok', BoxJObj} -> {'ok', kz_json:get_value(?VM_KEY_MESSAGES, BoxJObj, [])};
+        {'ok', BoxJObj} ->
+            fetch_vmbox_messages(AccountId, BoxJObj);
         {'error', _}=E ->
             lager:debug("error fetching voicemail messages for ~s from accountid ~s", [BoxId, AccountId]),
             E
-    end.
+    end;
+fetch_vmbox_messages(_AccountId, BoxJObj) ->
+    {'ok', kz_json:get_value(?VM_KEY_MESSAGES, BoxJObj, [])}.
 
--spec fetch_modb_messages(ne_binary(), ne_binary()) -> kz_json:objects().
-fetch_modb_messages(AccountId, DocId) ->
+-spec fetch_modb_messages(ne_binary(), ne_binary() | kz_json:object()) ->
+                                 kz_json:objects().
+fetch_modb_messages(AccountId, <<_/binary>> = DocId) ->
     ViewOpts = [{'key', DocId}
                 ,'include_docs'
                ],
@@ -835,7 +840,9 @@ fetch_modb_messages(AccountId, DocId) ->
                    || Msg <- results_from_modbs(AccountId, ?MODB_LISTING_BY_MAILBOX, ViewOptsList, [])
                       ,Msg =/= []
                   ],
-    ModbResults.
+    ModbResults;
+fetch_modb_messages(AccountId, Doc) ->
+    fetch_modb_messages(AccountId, kz_doc:id(Doc)).
 
 -spec results_from_modbs(ne_binary(), ne_binary(), kz_proplist(), kz_json:objects()) -> kz_json:objects().
 results_from_modbs(_AccountId, _View, [], ViewResults) ->

@@ -1009,7 +1009,7 @@ uri(BaseUrl, Tokens) ->
     <<Pro/binary, "://", Uri/binary>>.
 
 
--spec safe_urlencode(binary() | number()) -> iolist().
+-spec safe_urlencode(binary() | number()) -> binary().
 safe_urlencode(V) when is_binary(V)
                        orelse is_number(V) ->
     kz_http_util:urlencode(to_binary(V)).

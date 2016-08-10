@@ -156,7 +156,7 @@ admin_user_properties(DataJObj) ->
 -spec account_admin_user_properties(kz_json:object()) -> kz_proplist().
 account_admin_user_properties(AccountJObj) ->
     AccountDb = kz_doc:account_db(AccountJObj),
-    case kz_datamgr:get_all_results(AccountDb, <<"users/crossbar_listing">>) of
+    case kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, ['include_docs']) of
         {'error', _E} ->
             lager:debug("failed to get user listing from ~s: ~p", [AccountDb, _E]),
             [];
@@ -164,17 +164,17 @@ account_admin_user_properties(AccountJObj) ->
             find_admin(Users)
     end.
 
--spec find_admin(api_binaries()) -> kz_proplist().
+-spec find_admin(kz_json:objects()) -> kz_proplist().
 find_admin([]) ->
     lager:debug("account has no admin users"),
     [];
 find_admin([User|Users]) ->
-    case kz_json:get_value([<<"value">>, <<"priv_level">>], User) of
-        <<"admin">> -> admin_properties(kz_json:get_value(<<"value">>, User));
+    UserDoc = kz_json:get_value(<<"doc">>, User),
+    case kzd_user:priv_level(UserDoc) of
+        <<"admin">> -> admin_properties(UserDoc);
         _ -> find_admin(Users)
     end.
 
--spec admin_properties(kz_json:object()) -> kz_proplist().
+-spec admin_properties(kzd_user:doc()) -> kz_proplist().
 admin_properties(User) ->
-    Ks = [<<"first_name">>, <<"last_name">>, <<"email">>, <<"timezone">>],
-    [{K, kz_json:get_value(K, User)} || K <- Ks].
+    teletype_util:user_params(User).

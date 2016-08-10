@@ -66,24 +66,27 @@ first_occurrence(JObj, _Props) ->
         'true' -> handle_req(DataJObj)
     end.
 
+-spec build_macro_data(kz_json:object()) -> kz_proplist().
+build_macro_data(DataJObj) ->
+    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
+    [{<<"system">>, teletype_util:system_params()}
+    ,{<<"account">>, teletype_util:account_params(DataJObj)}
+    ,{<<"user">>, teletype_util:find_account_admin(AccountId)}
+    ,{<<"event">>, kz_json:get_value(<<"occurrence">>, DataJObj)}
+    ].
+
 -spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
-    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    Macros = [{<<"system">>, teletype_util:system_params()}
-             ,{<<"account">>, teletype_util:account_params(DataJObj)}
-             ,{<<"user">>, teletype_util:find_account_admin(AccountId)}
-             ,{<<"event">>, kz_json:get_value(<<"occurrence">>, DataJObj)}
-             ],
+    Macros = build_macro_data(DataJObj),
 
     %% Load templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
 
-    Subject = teletype_util:render_subject(
-                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
+    Subject = teletype_util:render_subject(kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
                                           ,Macros
-               ),
+                                          ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 

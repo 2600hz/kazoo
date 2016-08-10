@@ -133,7 +133,7 @@ current_balance(Account) -> get_balance(Account, []).
 previous_balance(Account, Year, Month) ->
     get_balance(Account, [{'year', Year}, {'month', Month}]).
 
--spec get_balance(ne_binary(), couch_util:view_options()) -> units().
+-spec get_balance(ne_binary(), kazoo_modb:view_options()) -> units().
 get_balance(Account, Options) ->
     View = <<"transactions/credit_remaining">>,
     ViewOptions = ['reduce'
@@ -151,8 +151,10 @@ get_balance(Account, Options) ->
             0
     end.
 
--spec get_balance_from_previous(ne_binary(), kz_proplist()) -> units().
--spec get_balance_from_previous(ne_binary(), kz_proplist(), integer()) -> units().
+-spec get_balance_from_previous(ne_binary(), kazoo_modb:view_options()) ->
+                                       units().
+-spec get_balance_from_previous(ne_binary(), kazoo_modb:view_options(), integer()) ->
+                                       units().
 get_balance_from_previous(Account, ViewOptions) ->
     Retries = props:get_value('retry', ViewOptions, 3),
     get_balance_from_previous(Account, ViewOptions, Retries).
@@ -234,7 +236,7 @@ get_rollup_from_previous(Account) ->
             E
     end.
 
--spec get_rollup_balance(ne_binary(), couch_util:view_options()) ->
+-spec get_rollup_balance(ne_binary(), kazoo_modb:view_options()) ->
                                 {'ok', units()} |
                                 {'error', any()}.
 get_rollup_balance(Account, Options) ->
@@ -272,13 +274,13 @@ current_account_dollars(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_balance_from_account(ne_binary(), couch_util:view_options()) -> units().
+-spec get_balance_from_account(ne_binary(), kazoo_modb:view_options()) -> units().
 get_balance_from_account(Account, ViewOptions0) ->
     View = <<"transactions/credit_remaining">>,
     AccountId = kz_util:format_account_id(Account),
     AccountDb = kz_util:format_account_db(AccountId),
     ViewOptions = ['first_when_multiple' | ViewOptions0],
-    case kz_datamgr:get_results(AccountDb, View, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, View, kazoo_modb:strip_modb_options(ViewOptions)) of
         {'ok', ViewRes} ->
             kz_json:get_integer_value(<<"value">>, ViewRes, 0);
         {'error', _R} ->

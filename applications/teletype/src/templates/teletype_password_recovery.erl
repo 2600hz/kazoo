@@ -65,19 +65,23 @@ handle_password_recovery(JObj, _Props) ->
         'true' -> process_req(DataJObj)
     end.
 
--spec get_user(kz_json:object()) -> kz_proplist().
+-spec get_user(kzd_user:doc()) -> kz_proplist().
 get_user(DataJObj) ->
-    [{Key, kz_json:get_value(Key, DataJObj)}
-     || Key <- [<<"first_name">>, <<"last_name">>, <<"email">>, <<"password">>]
+    [{<<"password">>, kz_json:get_value(<<"password">>, DataJObj)}
+     | teletype_util:user_params(DataJObj)
+    ].
+
+-spec build_macro_data(kz_json:objecT()) -> kz_proplist().
+build_macro_data(DataJObj) ->
+    [{<<"system">>, teletype_util:system_params()}
+    ,{<<"account">>, teletype_util:account_params(DataJObj)}
+    ,{<<"user">>, get_user(DataJObj)}
+    ,{<<"link">>, [kz_json:get_value(<<"password_reset_link">>, DataJObj)]}
     ].
 
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
-    Macros = [{<<"system">>, teletype_util:system_params()}
-             ,{<<"account">>, teletype_util:account_params(DataJObj)}
-             ,{<<"user">>, get_user(DataJObj)}
-             ,{<<"link">>, [kz_json:get_value(<<"password_reset_link">>, DataJObj)]}
-             ],
+    Macros = build_macro_data(DataJObj),
 
     %% Populate templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
@@ -87,10 +91,9 @@ process_req(DataJObj) ->
                                              ,teletype_util:find_account_id(DataJObj)
                                              ),
 
-    Subject = teletype_util:render_subject(
-                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+    Subject = teletype_util:render_subject(kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
                                           ,Macros
-               ),
+                                          ),
 
     Emails0 = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
     Emails = props:set_value(<<"to">>, [kz_json:get_value(<<"email">>, DataJObj)], Emails0),
