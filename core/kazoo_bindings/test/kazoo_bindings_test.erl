@@ -78,11 +78,7 @@ expands_test_() ->
     {"Running PropEr tests"
     ,{'timeout'
      ,50000
-     ,?_assertEqual('true'
-                   ,proper:quickcheck(?MODULE:prop_expands()
-                                     ,[{'numtests', 10000}]
-                                     )
-                   )
+     ,?_assertEqual('true', proper:quickcheck(prop_expands(), [{'numtests', 10000}]))
      }
     }.
 

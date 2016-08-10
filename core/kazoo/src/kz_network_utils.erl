@@ -135,7 +135,7 @@ to_cidr(IP, Prefix) when not is_binary(IP) ->
 to_cidr(IP, Prefix) when not is_binary(Prefix) ->
     to_cidr(IP, kz_util:to_binary(Prefix));
 to_cidr(IP, Prefix) ->
-    case ?MODULE:is_ipv4(IP)
+    case is_ipv4(IP)
         andalso kz_util:to_integer(Prefix) =< 32
     of
         'true' ->

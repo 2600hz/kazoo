@@ -694,7 +694,7 @@ is_authentic(Req, Context, ?HTTP_OPTIONS) ->
     %% all OPTIONS, they are harmless (I hope) and required for CORS preflight
     {'true', Req, Context};
 is_authentic(Req, Context0, _ReqVerb) ->
-    Event = ?MODULE:create_event_name(Context0, <<"authenticate">>),
+    Event = create_event_name(Context0, <<"authenticate">>),
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
             is_authentic(Req, Context0, _ReqVerb, cb_context:req_nouns(Context0));
@@ -715,7 +715,7 @@ is_authentic(Req, Context, _ReqVerb, []) ->
     lager:debug("failed to authenticate"),
     ?MODULE:halt(Req, cb_context:add_system_error('invalid_credentials', Context));
 is_authentic(Req, Context, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
-    Event = ?MODULE:create_event_name(Context, <<"authenticate.", Mod/binary>>),
+    Event = create_event_name(Context, <<"authenticate.", Mod/binary>>),
     Payload = [Context | Params],
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Payload)) of
         [] ->
@@ -819,7 +819,7 @@ is_permitted_verb(Req, Context, ?HTTP_OPTIONS) ->
     %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
     {'true', Req, Context};
 is_permitted_verb(Req, Context0, _ReqVerb) ->
-    Event = ?MODULE:create_event_name(Context0, <<"authorize">>),
+    Event = create_event_name(Context0, <<"authorize">>),
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
             is_permitted_nouns(Req, Context0, _ReqVerb,cb_context:req_nouns(Context0));
@@ -836,7 +836,7 @@ is_permitted_verb(Req, Context0, _ReqVerb) ->
                                          {'true', cowboy_req:req(), cb_context:context()} |
                                          halt_return().
 is_permitted_verb_on_module(Req, Context0, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
-    Event = ?MODULE:create_event_name(Context0, <<"authorize.", Mod/binary>>),
+    Event = create_event_name(Context0, <<"authorize.", Mod/binary>>),
     Payload = [Context0 | Params],
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Payload)) of
         [{'halt', Context1}|_] ->
@@ -854,7 +854,7 @@ is_permitted_nouns(Req, Context, _ReqVerb, []) ->
     lager:debug("no one authz'd the request"),
     ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Context));
 is_permitted_nouns(Req, Context0, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
-    Event = ?MODULE:create_event_name(Context0, <<"authorize.", Mod/binary>>),
+    Event = create_event_name(Context0, <<"authorize.", Mod/binary>>),
     Payload = [Context0 | Params],
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Payload)) of
         [] ->
@@ -886,7 +886,7 @@ is_known_content_type(Req, Context, ?HTTP_DELETE) ->
 is_known_content_type(Req0, Context0, _ReqVerb) ->
     Context1 =
         lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                            Event = ?MODULE:create_event_name(Context0, <<"content_types_accepted.", Mod/binary>>),
+                            Event = create_event_name(Context0, <<"content_types_accepted.", Mod/binary>>),
                             Payload = [ContextAcc | Params],
                             crossbar_bindings:fold(Event, Payload)
                     end, Context0, cb_context:req_nouns(Context0)),
@@ -952,7 +952,7 @@ does_resource_exist(Context) ->
     does_resource_exist(Context, cb_context:req_nouns(Context)).
 
 does_resource_exist(Context, [{Mod, Params}|_]) ->
-    Event = ?MODULE:create_event_name(Context, <<"resource_exists.", Mod/binary>>),
+    Event = create_event_name(Context, <<"resource_exists.", Mod/binary>>),
     Responses = crossbar_bindings:map(Event, Params),
     crossbar_bindings:any(Responses) and 'true';
 does_resource_exist(_Context, _ReqNouns) ->
@@ -992,7 +992,7 @@ validate(Context, ReqNouns) ->
 
 -spec validate_data(cb_context:context(), list()) -> cb_context:context().
 validate_data(Context, [{Mod, Params}|_]) ->
-    Event = ?MODULE:create_event_name(Context, <<"validate.", Mod/binary>>),
+    Event = create_event_name(Context, <<"validate.", Mod/binary>>),
     Payload = [cb_context:set_resp_status(Context, 'fatal') | Params],
     cb_context:import_errors(crossbar_bindings:fold(Event, Payload)).
 
@@ -1006,7 +1006,7 @@ validate_resources(Context, ReqNouns) ->
 
 -spec validate_resources_fold(req_noun(), cb_context:context()) -> cb_context:context().
 validate_resources_fold({Mod, Params}, ContextAcc) ->
-    Event = ?MODULE:create_event_name(ContextAcc, <<"validate_resource.", Mod/binary>>),
+    Event = create_event_name(ContextAcc, <<"validate_resource.", Mod/binary>>),
     Payload = [ContextAcc | Params],
     crossbar_bindings:fold(Event, Payload).
 
@@ -1019,7 +1019,7 @@ validate_resources_fold({Mod, Params}, ContextAcc) ->
 %%--------------------------------------------------------------------
 -spec process_billing(cb_context:context()) -> cb_context:context().
 process_billing(Context)->
-    Event = ?MODULE:create_event_name(Context, <<"billing">>),
+    Event = create_event_name(Context, <<"billing">>),
     process_billing_response(Context, crossbar_bindings:fold(Event, Context)).
 
 process_billing_response(Context, NewContext) ->
@@ -1287,7 +1287,7 @@ halt(Req0, Context) ->
     lager:debug("setting resp body: ~s", [Content]),
     Req2 = cowboy_req:set_resp_body(Content, Req1),
 
-    Req3 = ?MODULE:add_cors_headers(Req2, Context),
+    Req3 = add_cors_headers(Req2, Context),
     lager:debug("ensured CORS headers are on the response"),
 
     Req4 = cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context), Req3),

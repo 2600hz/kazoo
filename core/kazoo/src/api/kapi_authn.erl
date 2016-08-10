@@ -175,7 +175,7 @@ declare_exchanges() ->
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
-    {ok, Payload} = kz_api:prepare_api_payload(Req, ?AUTHN_REQ_VALUES, fun ?MODULE:req/1),
+    {ok, Payload} = kz_api:prepare_api_payload(Req, ?AUTHN_REQ_VALUES, fun req/1),
     amqp_util:callmgr_publish(Payload, ContentType, get_authn_req_routing(Req)).
 
 -spec publish_resp(ne_binary(), api_terms()) -> 'ok'.
@@ -191,7 +191,7 @@ publish_resp(Queue, Resp, ContentType) ->
 publish_error(Queue, JObj) ->
     publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_error(Queue, Resp, ContentType) ->
-    {ok, Payload} = kz_api:prepare_api_payload(Resp, ?AUTHN_ERR_VALUES, fun ?MODULE:error/1),
+    {ok, Payload} = kz_api:prepare_api_payload(Resp, ?AUTHN_ERR_VALUES, fun error/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%-----------------------------------------------------------------------------

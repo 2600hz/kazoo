@@ -133,7 +133,7 @@ subscribe_v(JObj) -> subscribe_v(kz_json:to_proplist(JObj)).
 
 publish_subscribe(JObj) -> publish_subscribe(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_subscribe(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SUBSCRIBE_VALUES, fun ?MODULE:subscribe/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SUBSCRIBE_VALUES, fun subscribe/1),
     amqp_util:basic_publish(?DIALOGINFO_SUBS_EXCHANGE, <<>>, Payload, ContentType).
 
 %%--------------------------------------------------------------------
@@ -157,7 +157,7 @@ update_v(JObj) -> update_v(kz_json:to_proplist(JObj)).
 -spec publish_update(ne_binary(), api_terms()) -> 'ok'.
 publish_update(Q, JObj) -> publish_update(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_update(Q, Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?UPDATE_VALUES, fun ?MODULE:update/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?UPDATE_VALUES, fun update/1),
     amqp_util:basic_publish(?DIALOGINFO_EXCHANGE, Q, Payload, ContentType).
 
 %%--------------------------------------------------------------------
@@ -180,7 +180,7 @@ notify_v(JObj) -> notify_v(kz_json:to_proplist(JObj)).
 
 publish_notify(JObj) -> publish_notify(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_notify(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?NOTIFY_VALUES, fun ?MODULE:notify/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?NOTIFY_VALUES, fun notify/1),
     amqp_util:basic_publish(?OMNIPRESENCE_EXCHANGE, <<>>, Payload, ContentType).
 
 %%--------------------------------------------------------------------
@@ -208,7 +208,7 @@ search_req_v(JObj) ->
 publish_search_req(JObj) ->
     publish_search_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_search_req(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SEARCH_REQ_VALUES, fun ?MODULE:search_req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SEARCH_REQ_VALUES, fun search_req/1),
     amqp_util:basic_publish(?OMNIPRESENCE_EXCHANGE, search_req_routing_key(Req), Payload, ContentType).
 
 -spec search_req_routing_key(binary() | api_terms()) -> ne_binary().
@@ -242,7 +242,7 @@ search_partial_resp_v(JObj) ->
 publish_search_partial_resp(Queue, JObj) ->
     publish_search_partial_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_search_partial_resp(Queue, Resp, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?SEARCH_PARTIAL_RESP_VALUES, fun ?MODULE:search_partial_resp/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?SEARCH_PARTIAL_RESP_VALUES, fun search_partial_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%--------------------------------------------------------------------
@@ -270,7 +270,7 @@ search_resp_v(JObj) ->
 publish_search_resp(Queue, JObj) ->
     publish_search_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_search_resp(Queue, Resp, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?SEARCH_RESP_VALUES, fun ?MODULE:search_resp/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?SEARCH_RESP_VALUES, fun search_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%--------------------------------------------------------------------

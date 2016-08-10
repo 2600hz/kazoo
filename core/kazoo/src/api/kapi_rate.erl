@@ -151,7 +151,7 @@ declare_exchanges() ->
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?RATE_REQ_VALUES, fun ?MODULE:req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?RATE_REQ_VALUES, fun req/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RATE_REQ).
 
 -spec publish_resp(ne_binary(), api_terms()) -> 'ok'.
@@ -159,7 +159,7 @@ publish_req(Req, ContentType) ->
 publish_resp(Queue, JObj) ->
     publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resp(Queue, Resp, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?RATE_RESP_VALUES, fun ?MODULE:resp/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?RATE_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec broadcast_resp(api_terms()) -> 'ok'.
@@ -167,5 +167,5 @@ publish_resp(Queue, Resp, ContentType) ->
 broadcast_resp(JObj) ->
     broadcast_resp(JObj, ?DEFAULT_CONTENT_TYPE).
 broadcast_resp(Resp, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?RATE_RESP_VALUES, fun ?MODULE:resp/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?RATE_RESP_VALUES, fun resp/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RATE_BROADCAST).

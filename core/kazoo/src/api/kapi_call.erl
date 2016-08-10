@@ -547,7 +547,7 @@ publish_event(Event) -> publish_event(Event, ?DEFAULT_CONTENT_TYPE).
 publish_event(Event, ContentType) when is_list(Event) ->
     CallId = props:get_first_defined([<<"Call-ID">>, <<"Unique-ID">>], Event),
     EventName = props:get_value(<<"Event-Name">>, Event),
-    {'ok', Payload} = kz_api:prepare_api_payload(Event, ?CALL_EVENT_VALUES, fun ?MODULE:event/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Event, ?CALL_EVENT_VALUES, fun event/1),
     amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY(EventName, CallId), Payload, ContentType);
 publish_event(Event, ContentType) ->
     publish_event(kz_json:to_proplist(Event), ContentType).
@@ -563,7 +563,7 @@ publish_channel_status_req(API) ->
 publish_channel_status_req(CallId, JObj) ->
     publish_channel_status_req(CallId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_channel_status_req(CallId, Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?CHANNEL_STATUS_REQ_VALUES, fun ?MODULE:channel_status_req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?CHANNEL_STATUS_REQ_VALUES, fun channel_status_req/1),
     amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('status_req', CallId), Payload, ContentType).
 
 -spec publish_channel_status_resp(ne_binary(), api_terms()) -> 'ok'.
@@ -571,7 +571,7 @@ publish_channel_status_req(CallId, Req, ContentType) ->
 publish_channel_status_resp(RespQ, JObj) ->
     publish_channel_status_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_channel_status_resp(RespQ, Resp, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?CHANNEL_STATUS_RESP_VALUES, fun ?MODULE:channel_status_resp/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?CHANNEL_STATUS_RESP_VALUES, fun channel_status_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_query_auth_id_req(api_terms()) -> 'ok'.
@@ -585,7 +585,7 @@ publish_query_auth_id_req(API) ->
 publish_query_auth_id_req(AuthId, JObj) ->
     publish_query_auth_id_req(AuthId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_auth_id_req(AuthId, Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?QUERY_AUTH_ID_REQ_VALUES, fun ?MODULE:query_auth_id_req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?QUERY_AUTH_ID_REQ_VALUES, fun query_auth_id_req/1),
     amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('status_req', AuthId), Payload, ContentType).
 
 -spec publish_query_auth_id_resp(ne_binary(), api_terms()) -> 'ok'.
@@ -593,7 +593,7 @@ publish_query_auth_id_req(AuthId, Req, ContentType) ->
 publish_query_auth_id_resp(RespQ, JObj) ->
     publish_query_auth_id_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_auth_id_resp(RespQ, Resp, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?QUERY_AUTH_ID_RESP_VALUES, fun ?MODULE:query_auth_id_resp/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?QUERY_AUTH_ID_RESP_VALUES, fun query_auth_id_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 publish_query_user_channels_req(Props) when is_list(Props) ->
@@ -610,13 +610,13 @@ publish_query_user_channels_req(JObj) ->
                                    ).
 
 publish_query_user_channels_req(Req, 'undefined', 'undefined', ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?QUERY_USER_CHANNELS_REQ_VALUES, fun ?MODULE:query_user_channels_req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?QUERY_USER_CHANNELS_REQ_VALUES, fun query_user_channels_req/1),
     amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('status_req', <<>>), Payload, ContentType);
 publish_query_user_channels_req(Req, 'undefined', Realm, ContentType) ->
     Username = first_username(Req),
     publish_query_user_channels_req(Req, Username, Realm, ContentType);
 publish_query_user_channels_req(Req, Username, Realm, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?QUERY_USER_CHANNELS_REQ_VALUES, fun ?MODULE:query_user_channels_req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?QUERY_USER_CHANNELS_REQ_VALUES, fun query_user_channels_req/1),
     User = <<Username/binary, ":", Realm/binary>>,
     amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('status_req', User), Payload, ContentType).
 
@@ -625,7 +625,7 @@ publish_query_user_channels_req(Req, Username, Realm, ContentType) ->
 publish_query_user_channels_resp(RespQ, JObj) ->
     publish_query_user_channels_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_user_channels_resp(RespQ, Resp, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?QUERY_USER_CHANNELS_RESP_VALUES, fun ?MODULE:query_user_channels_resp/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?QUERY_USER_CHANNELS_RESP_VALUES, fun query_user_channels_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_query_account_channels_req(api_terms()) -> 'ok'.
@@ -642,7 +642,7 @@ publish_query_account_channels_req(JObj) ->
                                       ).
 
 publish_query_account_channels_req(Req, AccountId, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?QUERY_ACCOUNT_CHANNELS_REQ_VALUES, fun ?MODULE:query_account_channels_req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?QUERY_ACCOUNT_CHANNELS_REQ_VALUES, fun query_account_channels_req/1),
     amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('status_req', AccountId), Payload, ContentType).
 
 -spec publish_query_account_channels_resp(ne_binary(), api_terms()) -> 'ok'.
@@ -650,14 +650,14 @@ publish_query_account_channels_req(Req, AccountId, ContentType) ->
 publish_query_account_channels_resp(RespQ, JObj) ->
     publish_query_account_channels_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_account_channels_resp(RespQ, Resp, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?QUERY_ACCOUNT_CHANNELS_RESP_VALUES, fun ?MODULE:query_account_channels_resp/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?QUERY_ACCOUNT_CHANNELS_RESP_VALUES, fun query_account_channels_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_query_channels_req(api_terms()) -> 'ok'.
 -spec publish_query_channels_req(api_terms(), ne_binary()) -> 'ok'.
 publish_query_channels_req(ApiProps) -> publish_query_channels_req(ApiProps, ?DEFAULT_CONTENT_TYPE).
 publish_query_channels_req(ApiProps, ContentType) when is_list(ApiProps) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(ApiProps, ?QUERY_CHANNELS_REQ_VALUES, fun ?MODULE:query_channels_req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(ApiProps, ?QUERY_CHANNELS_REQ_VALUES, fun query_channels_req/1),
     amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('status_req', <<"channels">>), Payload, ContentType);
 publish_query_channels_req(JObj, ContentType) ->
     publish_query_channels_req(kz_json:to_proplist(JObj), ContentType).
@@ -666,7 +666,7 @@ publish_query_channels_req(JObj, ContentType) ->
 -spec publish_query_channels_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_query_channels_resp(RespQ, ApiProps) -> publish_query_channels_resp(RespQ, ApiProps, ?DEFAULT_CONTENT_TYPE).
 publish_query_channels_resp(RespQ, ApiProps, ContentType) when is_list(ApiProps) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(ApiProps, ?QUERY_CHANNELS_RESP_VALUES, fun ?MODULE:query_channels_resp/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(ApiProps, ?QUERY_CHANNELS_RESP_VALUES, fun query_channels_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType);
 publish_query_channels_resp(RespQ, JObj, ContentType) ->
     publish_query_channels_resp(RespQ, kz_json:to_proplist(JObj), ContentType).
@@ -676,7 +676,7 @@ publish_query_channels_resp(RespQ, JObj, ContentType) ->
 publish_usurp_control(CallId, JObj) ->
     publish_usurp_control(CallId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_usurp_control(CallId, JObj, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?CALL_USURP_CONTROL_VALUES, fun ?MODULE:usurp_control/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?CALL_USURP_CONTROL_VALUES, fun usurp_control/1),
     amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('usurp_control', CallId), Payload, ContentType).
 
 -spec publish_usurp_publisher(ne_binary(), api_terms()) -> 'ok'.
@@ -684,7 +684,7 @@ publish_usurp_control(CallId, JObj, ContentType) ->
 publish_usurp_publisher(CallId, JObj) ->
     publish_usurp_publisher(CallId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_usurp_publisher(CallId, JObj, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?PUBLISHER_USURP_CONTROL_VALUES, fun ?MODULE:usurp_publisher/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?PUBLISHER_USURP_CONTROL_VALUES, fun usurp_publisher/1),
     amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('publisher_usurp', CallId), Payload, ContentType).
 
 -spec get_status(api_terms()) -> ne_binary().

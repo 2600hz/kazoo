@@ -232,7 +232,7 @@ declare_exchanges() ->
 publish_get_req(JObj) ->
     publish_get_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_get_req(Api, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_GET_REQ_VALUES, fun ?MODULE:get_req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_GET_REQ_VALUES, fun get_req/1),
     amqp_util:sysconf_publish(routing_key_get(), Payload, ContentType).
 
 -spec publish_get_resp(ne_binary(), api_terms()) -> 'ok'.
@@ -240,7 +240,7 @@ publish_get_req(Api, ContentType) ->
 publish_get_resp(RespQ, JObj) ->
     publish_get_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_get_resp(RespQ, Api, ContentType) ->
-    PrepareOptions = [{'formatter', fun ?MODULE:get_resp/1}
+    PrepareOptions = [{'formatter', fun get_resp/1}
                      ,{'remove_recursive', 'false'}
                      ],
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_GET_RESP_VALUES, PrepareOptions),
@@ -251,7 +251,7 @@ publish_get_resp(RespQ, Api, ContentType) ->
 publish_set_req(JObj) ->
     publish_set_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_set_req(Api, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_SET_REQ_VALUES, fun ?MODULE:set_req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_SET_REQ_VALUES, fun set_req/1),
     amqp_util:sysconf_publish(routing_key_set(), Payload, ContentType).
 
 -spec publish_set_resp(ne_binary(), api_terms()) -> 'ok'.
@@ -259,7 +259,7 @@ publish_set_req(Api, ContentType) ->
 publish_set_resp(RespQ, JObj) ->
     publish_set_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_set_resp(RespQ, Api, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_SET_RESP_VALUES, fun ?MODULE:set_resp/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_SET_RESP_VALUES, fun set_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_flush_req(api_terms()) -> 'ok'.
@@ -267,7 +267,7 @@ publish_set_resp(RespQ, Api, ContentType) ->
 publish_flush_req(JObj) ->
     publish_flush_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_flush_req(Api, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_FLUSH_REQ_VALUES, fun ?MODULE:flush_req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Api, ?SYSCONF_FLUSH_REQ_VALUES, fun flush_req/1),
     amqp_util:sysconf_publish(routing_key_flush(), Payload, ContentType).
 
 routing_key_get() ->

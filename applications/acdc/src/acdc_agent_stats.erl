@@ -423,7 +423,7 @@ archive_status_data(Srv, 'false') ->
     maybe_archive_status_data(Srv, Match).
 
 maybe_archive_status_data(Srv, Match) ->
-    case ets:select(?MODULE:status_table_id(), Match) of
+    case ets:select(status_table_id(), Match) of
         [] -> 'ok';
         Stats ->
             kz_datamgr:suppress_change_notice(),

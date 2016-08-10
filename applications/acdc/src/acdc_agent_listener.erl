@@ -448,7 +448,7 @@ handle_cast({'queue_logout', Q}, #state{agent_queues=[Q]
                                        }=State) ->
     lager:debug("agent logged out of last known queue ~s, logging out", [Q]),
     logout_from_queue(AcctId, AgentId, Q),
-    ?MODULE:logout_agent(self()),
+    logout_agent(self()),
     {'noreply', State#state{agent_queues=[]}};
 handle_cast({'queue_logout', Q}, #state{agent_queues=Qs
                                        ,acct_id=AcctId
@@ -506,7 +506,7 @@ handle_cast({'channel_hungup', CallId}, #state{call=Call
                     ,'hibernate'};
                 'true' ->
                     lager:debug("thief is done, going down"),
-                    ?MODULE:stop(self()),
+                    stop(self()),
                     {'noreply', State}
             end;
         _ ->

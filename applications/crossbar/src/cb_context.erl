@@ -808,7 +808,7 @@ add_system_error(Code, Error, JObj, Context) ->
 build_system_error(Code, Error, <<_/binary>> = Message, Context) ->
     build_system_error(Code, Error, kz_json:from_list([{<<"message">>, Message}]), Context);
 build_system_error(Code, Error, JObj, Context) ->
-    ApiVersion = ?MODULE:api_version(Context),
+    ApiVersion = api_version(Context),
     Message = kz_json_schema:build_error_message(ApiVersion, JObj),
     Context#cb_context{resp_status='error'
                       ,resp_error_code=Code

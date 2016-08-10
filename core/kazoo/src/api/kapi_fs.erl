@@ -57,5 +57,5 @@ declare_exchanges() ->
 publish_req(Queue, JObj) ->
     publish_req(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Queue, Req, ContentType) ->
-    {ok, Payload} = kz_api:prepare_api_payload(Req, ?FS_REQ_VALUES, fun ?MODULE:req/1),
+    {ok, Payload} = kz_api:prepare_api_payload(Req, ?FS_REQ_VALUES, fun req/1),
     amqp_util:callctl_publish(Queue, Payload, ContentType).

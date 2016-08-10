@@ -192,7 +192,7 @@ maybe_save_master_audit_log(Services, AuditLog, MasterAccountId, 'true') ->
 -spec save_audit_log(kz_services:services(), doc(), ne_binary()) -> doc().
 save_audit_log(Services, AuditLog, ResellerId) ->
     AuditLog1 = update_audit_log(Services, AuditLog),
-    case ?MODULE:audit_account_ids(AuditLog1) of
+    case audit_account_ids(AuditLog1) of
         [] ->
             lager:debug("no audit log to save");
         _Ids ->
@@ -216,4 +216,4 @@ update_audit_log(Services, AuditLog) ->
                        ,{<<"account_name">>, kz_services:account_name(AccountId)}
                        ])
                     ),
-    ?MODULE:set_audit_account(AuditLog, AccountId, AccountAudit).
+    set_audit_account(AuditLog, AccountId, AccountAudit).

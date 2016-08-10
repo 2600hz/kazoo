@@ -104,8 +104,8 @@ publish_delegate(TargetApp, API, Key) ->
     publish_delegate(TargetApp, API, Key, ?DEFAULT_CONTENT_TYPE).
 
 publish_delegate(<<_/binary>> = TargetApp, API, 'undefined', ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?DELEGATE_VALUES, fun ?MODULE:delegate/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?DELEGATE_VALUES, fun delegate/1),
     amqp_util:kapps_publish(?DELEGATE_ROUTING_KEY(TargetApp), Payload, ContentType);
 publish_delegate(<<_/binary>> = TargetApp, API, Key, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?DELEGATE_VALUES, fun ?MODULE:delegate/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?DELEGATE_VALUES, fun delegate/1),
     amqp_util:kapps_publish(?DELEGATE_ROUTING_KEY(TargetApp, Key), Payload, ContentType).

@@ -100,7 +100,7 @@ get(Account, Config, Key, Default) ->
 -spec set(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
                  kz_json:object().
 set(Account, Config, Key, Value) ->
-    JObj = kz_json:set_value(Key, Value, ?MODULE:get(Account, Config)),
+    JObj = kz_json:set_value(Key, Value, get(Account, Config)),
 
     AccountDb = account_db(Account),
     {'ok', JObj1} = kz_datamgr:ensure_saved(AccountDb

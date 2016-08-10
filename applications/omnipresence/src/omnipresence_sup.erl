@@ -22,7 +22,7 @@
 
 -define(SUBS_ETS_OPTS, [{'table_id', omnip_subscriptions:table_id()}
                        ,{'table_options', omnip_subscriptions:table_config()}
-                       ,{'find_me_function', fun ?MODULE:subscriptions_srv/0}
+                       ,{'find_me_function', fun subscriptions_srv/0}
                        ]).
 
 %% Helper macro for declaring children of supervisor

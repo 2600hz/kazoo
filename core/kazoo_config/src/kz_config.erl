@@ -56,7 +56,7 @@ get_atom(Section, Key) ->
 
 -spec get_atom(section(), atom(), Default) -> [atom(),...] | Default.
 get_atom(Section, Key, Default) ->
-    case ?MODULE:get(Section, Key, Default) of
+    case get(Section, Key, Default) of
         Default -> Default;
         [_|_]=Values ->
             [kz_util:to_atom(Value, 'true') || Value <- Values];
@@ -70,7 +70,7 @@ get_boolean(Section, Key) ->
 
 -spec get_boolean(section(), atom(), boolean()) -> boolean().
 get_boolean(Section, Key, Default) ->
-    case ?MODULE:get(Section, Key, Default) of
+    case get(Section, Key, Default) of
         Default -> Default;
         [Value] -> kz_util:is_true(Value)
     end.
@@ -87,7 +87,7 @@ get_integer(Section, Key) ->
 
 -spec get_integer(section(), atom(), Default) -> [integer(),...] | Default.
 get_integer(Section, Key, Default) ->
-    case ?MODULE:get(Section, Key, Default) of
+    case get(Section, Key, Default) of
         Default -> Default;
         [_|_]=Values -> [kz_util:to_integer(Value) || Value <- Values];
         Value -> [kz_util:to_integer(Value)]
@@ -105,7 +105,7 @@ get_string(Section, Key) ->
 
 -spec get_string(section(), atom(), Default) -> [string(),...] | Default.
 get_string(Section, Key, Default) ->
-    case ?MODULE:get(Section, Key, Default) of
+    case get(Section, Key, Default) of
         Default -> Default;
         [_|_]=Values -> [kz_util:to_lower_string(Value) || Value <- Values];
         Value -> [kz_util:to_lower_string(Value)]
@@ -117,7 +117,7 @@ get_raw_string(Section, Key) ->
 
 -spec get_raw_string(section(), atom(), Default) -> [string(),...] | Default.
 get_raw_string(Section, Key, Default) ->
-    case ?MODULE:get(Section, Key, Default) of
+    case get(Section, Key, Default) of
         Default -> Default;
         [_|_]=Values -> Values;
         Value -> Value

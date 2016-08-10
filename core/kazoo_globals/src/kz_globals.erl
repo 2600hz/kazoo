@@ -323,7 +323,7 @@ handle_cast('stop', #state{has_ets='true'}=State) ->
 handle_cast('stop', #state{has_ets='false'}=State) ->
     lager:debug("want to go down, but not in control of ETS"),
     timer:sleep(50),
-    ?MODULE:stop(),
+    stop(),
     {'noreply', State};
 handle_cast({'kz_nodes', {'expire', #kz_node{node=Node}}}, State) ->
     delete_by_node(Node),

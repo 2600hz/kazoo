@@ -929,7 +929,7 @@ create_auth_token(Context, AuthModule) ->
     case kz_json:is_empty(JObj) of
         'true' ->
             lager:debug("empty doc, no auth token created"),
-            ?MODULE:response('error', <<"invalid credentials">>, 401, Context);
+            response('error', <<"invalid credentials">>, 401, Context);
         'false' ->
             create_auth_token(Context, AuthModule, JObj)
     end.
@@ -959,13 +959,12 @@ create_auth_token(Context, AuthModule, JObj) ->
         {'ok', Doc} ->
             AuthToken = kz_doc:id(Doc),
             lager:debug("created new local auth token ~s", [AuthToken]),
-            ?MODULE:response(?MODULE:response_auth(JObj, AccountId, OwnerId)
-                            ,cb_context:setters(
-                               Context
-                                               ,[{fun cb_context:set_auth_token/2, AuthToken}
-                                                ,{fun cb_context:set_auth_doc/2, Doc}
-                                                ])
-                            );
+            response(response_auth(JObj, AccountId, OwnerId)
+                    ,cb_context:setters(Context
+                                       ,[{fun cb_context:set_auth_token/2, AuthToken}
+                                        ,{fun cb_context:set_auth_doc/2, Doc}
+                                        ])
+                    );
         {'error', R} ->
             lager:debug("could not create new local auth token, ~p", [R]),
             cb_context:add_system_error('invalid_credentials', Context)

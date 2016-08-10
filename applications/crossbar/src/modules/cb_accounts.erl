@@ -316,7 +316,7 @@ put(Context) ->
     end.
 
 put(Context, _AccountId) ->
-    ?MODULE:put(Context).
+    put(Context).
 
 put(Context, AccountId, ?RESELLER) ->
     case whs_account_conversion:promote(AccountId) of

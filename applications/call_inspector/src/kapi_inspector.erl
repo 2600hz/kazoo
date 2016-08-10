@@ -128,7 +128,7 @@ declare_exchanges() ->
 publish_lookup_req(JObj) ->
     publish_lookup_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_lookup_req(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?LOOKUP_REQ_VALUES, fun ?MODULE:lookup_req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?LOOKUP_REQ_VALUES, fun lookup_req/1),
     amqp_util:monitor_publish(Payload, ContentType, ?CI_AMQP_KEY(<<"lookup">>)).
 
 -spec publish_lookup_resp(ne_binary(), api_terms()) -> 'ok'.
@@ -144,7 +144,7 @@ publish_lookup_resp(RespQ, JObj, ContentType) ->
 publish_filter_req(JObj) ->
     publish_filter_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_filter_req(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FILTER_REQ_VALUES, fun ?MODULE:filter_req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FILTER_REQ_VALUES, fun filter_req/1),
     amqp_util:monitor_publish(Payload, ContentType, ?CI_AMQP_KEY(<<"filter">>)).
 
 -spec publish_filter_resp(ne_binary(), api_terms()) -> 'ok'.

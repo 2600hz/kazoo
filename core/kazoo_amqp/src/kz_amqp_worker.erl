@@ -555,7 +555,7 @@ handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
     CallId = get('callid'),
     MsgId = kz_api:msg_reply_id(ReqProp),
 
-    case ?MODULE:send_request(CallId, Q, PublishFun, ReqProp) of
+    case send_request(CallId, Q, PublishFun, ReqProp) of
         'ok' ->
             lager:debug("published request with msg id ~s for ~p", [MsgId, ClientPid]),
             {'noreply'
@@ -584,12 +584,11 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
     CallId = get('callid'),
     MsgId = kz_api:msg_reply_id(ReqProp),
 
-    case ?MODULE:send_request(CallId, Q, PublishFun, ReqProp) of
+    case send_request(CallId, Q, PublishFun, ReqProp) of
         'ok' ->
             lager:debug("published request with msg id ~s for ~p", [MsgId, ClientPid]),
             {'noreply'
-            ,State#state{
-               client_pid = ClientPid
+            ,State#state{client_pid = ClientPid
                         ,client_ref = erlang:monitor('process', ClientPid)
                         ,client_from = From
                         ,client_cfun = UntilFun
@@ -600,7 +599,7 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
                         ,req_timeout_ref = start_req_timeout(Timeout)
                         ,req_start_time = os:timestamp()
                         ,callid = CallId
-              }
+                        }
             };
         {'error', Err}=Error ->
             lager:debug("failed to send request: ~p", [Err]),

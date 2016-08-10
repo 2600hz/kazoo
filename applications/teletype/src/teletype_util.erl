@@ -726,10 +726,7 @@ find_address(Key, DataJObj, TemplateMetaJObj) ->
 -spec find_admin_emails(kz_json:object(), ne_binary(), kz_json:key()) ->
                                api_binaries().
 find_admin_emails(DataJObj, ConfigCat, Key) ->
-    case ?MODULE:find_account_rep_email(
-            ?MODULE:find_account_id(DataJObj)
-           )
-    of
+    case find_account_rep_email(find_account_id(DataJObj)) of
         'undefined' ->
             lager:debug("didn't find account rep for '~s'", [Key]),
             find_default(ConfigCat, Key);

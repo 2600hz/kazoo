@@ -105,7 +105,7 @@ maybe_convert_attachment(Macros, ContentType, Bin) ->
     FromFormat = from_format_from_content_type(ContentType),
     lager:debug("converting from ~s to ~s", [FromFormat, ToFormat]),
 
-    case ?MODULE:convert(FromFormat, ToFormat, Bin) of
+    case convert(FromFormat, ToFormat, Bin) of
         {'ok', Converted} ->
             Filename = get_file_name(Macros, ToFormat),
             lager:debug("adding attachment as ~s", [Filename]),

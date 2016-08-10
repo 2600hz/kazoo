@@ -657,7 +657,7 @@ get_first_defined(Keys, JObj) ->
 
 get_first_defined([], _JObj, Default) -> Default;
 get_first_defined([H|T], JObj, Default) ->
-    case ?MODULE:get_value(H, JObj) of
+    case get_value(H, JObj) of
         'undefined' -> get_first_defined(T, JObj, Default);
         V -> V
     end.

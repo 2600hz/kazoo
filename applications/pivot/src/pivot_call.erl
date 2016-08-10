@@ -146,7 +146,7 @@ init([Call, JObj]) ->
 
     lager:debug("starting pivot req to ~s to ~s", [Method, VoiceUri]),
 
-    ?MODULE:new_request(self(), VoiceUri, Method, BaseParams),
+    new_request(self(), VoiceUri, Method, BaseParams),
 
     {'ok'
     ,#state{cdr_uri=kz_json:get_value(<<"CDR-URI">>, JObj)
@@ -476,15 +476,15 @@ handle_resp(RequesterQ, Call, CT, <<_/binary>> = RespBody) ->
     Srv = kzt_util:get_amqp_listener(Call),
 
     case process_resp(RequesterQ, Call, CT, RespBody) of
-        {'stop', Call1} -> ?MODULE:stop_call(Srv, Call1);
-        {'ok', Call1} -> ?MODULE:stop_call(Srv, Call1);
-        {'usurp', _Call1} -> ?MODULE:usurp_executor(Srv);
+        {'stop', Call1} -> stop_call(Srv, Call1);
+        {'ok', Call1} -> stop_call(Srv, Call1);
+        {'usurp', _Call1} -> usurp_executor(Srv);
         {'request', Call1} ->
-            ?MODULE:updated_call(Srv, kzt_util:increment_iteration(Call1)),
-            ?MODULE:new_request(Srv
-                               ,kzt_util:get_voice_uri(Call1)
-                               ,kzt_util:get_voice_uri_method(Call1)
-                               )
+            updated_call(Srv, kzt_util:increment_iteration(Call1)),
+            new_request(Srv
+                       ,kzt_util:get_voice_uri(Call1)
+                       ,kzt_util:get_voice_uri_method(Call1)
+                       )
     end.
 
 -spec process_resp(api_binary(), kapps_call:call(), list() | binary(), binary()) ->

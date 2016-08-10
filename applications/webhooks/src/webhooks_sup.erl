@@ -21,7 +21,7 @@
 
 -define(ETSMGR_ARGS
        ,[[{'table_id', webhooks_util:table_id()}
-         ,{'find_me_function', fun ?MODULE:listener/0}
+         ,{'find_me_function', fun listener/0}
          ,{'table_options', webhooks_util:table_options()}
          ,{'gift_data', webhooks_util:gift_data()}
          ]]

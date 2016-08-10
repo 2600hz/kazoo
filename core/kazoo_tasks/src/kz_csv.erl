@@ -205,7 +205,7 @@ associator_test() ->
     CSVRow    = [<<"1">>, <<"5">>, <<"3">>, <<"2">>],
     Verify = fun (_Cell) -> 'true' end,
     Verifier = fun (_Field, Cell) -> Verify(Cell) end,
-    FAssoc = ?MODULE:associator(CSVHeader, OrderedFields, Verifier),
+    FAssoc = associator(CSVHeader, OrderedFields, Verifier),
     ?assertEqual({'true', [<<"1">>, <<"2">>, <<"3">>, 'undefined', <<"5">>]}, FAssoc(CSVRow)).
 
 associator_verify_test() ->
@@ -214,7 +214,7 @@ associator_verify_test() ->
     CSVRow    = [<<"1">>, <<"5">>, <<"3">>, <<"2">>],
     Verify = fun (_Cell) -> 'false' end,
     Verifier = fun (<<"B">>, Cell) -> Verify(Cell); (_Field, _Cell) -> 'true' end,
-    FAssoc = ?MODULE:associator(CSVHeader, OrderedFields, Verifier),
+    FAssoc = associator(CSVHeader, OrderedFields, Verifier),
     ?assertEqual('false', FAssoc(CSVRow)).
 
 take_row_test_() ->
@@ -225,27 +225,27 @@ take_row_test_() ->
     CSV5 = <<"e\r\r">>,
     CSV6 = <<>>,
     CSV7 = <<"\r\r">>,
-    [?_assertEqual({[<<"a">>], CSV2}, ?MODULE:take_row(CSV1))
-    ,?_assertEqual({[<<"b">>], CSV3}, ?MODULE:take_row(CSV2))
-    ,?_assertEqual({[<<"c">>], CSV4}, ?MODULE:take_row(CSV3))
-    ,?_assertEqual({[<<"d">>], CSV5}, ?MODULE:take_row(CSV4))
-    ,?_assertEqual({[<<"e">>], CSV6}, ?MODULE:take_row(CSV5))
-    ,?_assertEqual('eof', ?MODULE:take_row(CSV6))
-    ,?_assertEqual('eof', ?MODULE:take_row(CSV7))
-    ,?_assertEqual({[<<"1">>,<<"B">>], <<>>}, ?MODULE:take_row(<<"1,B">>))
+    [?_assertEqual({[<<"a">>], CSV2}, take_row(CSV1))
+    ,?_assertEqual({[<<"b">>], CSV3}, take_row(CSV2))
+    ,?_assertEqual({[<<"c">>], CSV4}, take_row(CSV3))
+    ,?_assertEqual({[<<"d">>], CSV5}, take_row(CSV4))
+    ,?_assertEqual({[<<"e">>], CSV6}, take_row(CSV5))
+    ,?_assertEqual('eof', take_row(CSV6))
+    ,?_assertEqual('eof', take_row(CSV7))
+    ,?_assertEqual({[<<"1">>,<<"B">>], <<>>}, take_row(<<"1,B">>))
     ].
 
 count_rows_test_() ->
-    [?_assertEqual(0, ?MODULE:count_rows(<<"a,b,\n,1,2,">>))
-    ,?_assertEqual(0, ?MODULE:count_rows(<<"abc">>))
-    ,?_assertEqual(0, ?MODULE:count_rows(<<"a,b,c\n1\n2\n3">>))
-    ,?_assertEqual(1, ?MODULE:count_rows(<<"a,b,c\n1,2,3">>))
-    ,?_assertEqual(3, ?MODULE:count_rows(<<"a,b,c\n1,2,3\r\n4,5,6\n7,8,9\n">>))
+    [?_assertEqual(0, count_rows(<<"a,b,\n,1,2,">>))
+    ,?_assertEqual(0, count_rows(<<"abc">>))
+    ,?_assertEqual(0, count_rows(<<"a,b,c\n1\n2\n3">>))
+    ,?_assertEqual(1, count_rows(<<"a,b,c\n1,2,3">>))
+    ,?_assertEqual(3, count_rows(<<"a,b,c\n1,2,3\r\n4,5,6\n7,8,9\n">>))
     ].
 
 row_to_iolist_test_() ->
-    [?_assertException('error', 'function_clause', ?MODULE:row_to_iolist([]))] ++
-        [?_assertEqual(Expected, iolist_to_binary(?MODULE:row_to_iolist(Input)))
+    [?_assertException('error', 'function_clause', row_to_iolist([]))] ++
+        [?_assertEqual(Expected, iolist_to_binary(row_to_iolist(Input)))
          || {Expected, Input} <- [{<<"a,b">>, [<<"a">>, <<"b">>]}
                                  ,{<<"a,,b">>, [<<"a">>, ?ZILCH, <<"b">>]}
                                  ,{<<",,b">>, [?ZILCH, ?ZILCH, <<"b">>]}

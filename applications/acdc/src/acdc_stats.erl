@@ -574,7 +574,7 @@ cleanup_data(Srv) ->
                    }],
     gen_listener:cast(Srv, {'remove_status', StatusMatch}),
 
-    case ets:select(?MODULE:call_table_id()
+    case ets:select(call_table_id()
                    ,[{#call_stat{entered_timestamp='$1', status= <<"waiting">>, _='_'}
                      ,[PastConstraint]
                      ,['$_']

@@ -59,7 +59,7 @@ init_io(Parent) ->
     Debug = sys:debug_options([]),
     proc_lib:init_ack(Parent, {'ok', self()}),
     lager:debug("started io server for cb_sup"),
-    ?MODULE:io_loop(Parent, Debug).
+    io_loop(Parent, Debug).
 
 io_loop(Parent, Debug) ->
     receive
@@ -71,10 +71,10 @@ io_loop(Parent, Debug) ->
             sys:handle_system_msg(Request, From, Parent, ?MODULE, Debug, 'ok');
         {'io_request', From, ReplyAs, Request} ->
             _ = handle_io_request(From, ReplyAs, Request),
-            ?MODULE:io_loop(Parent, Debug);
+            io_loop(Parent, Debug);
         _Msg ->
             lager:debug("unhandled msg: ~p", [_Msg]),
-            ?MODULE:io_loop(Parent, Debug)
+            io_loop(Parent, Debug)
     end.
 
 handle_io_request(From, ReplyAs, {'put_chars', _Encoding, Characters}) ->
@@ -94,7 +94,7 @@ io_reply(From, ReplyAs, Msg) ->
     From ! {'io_reply', ReplyAs, Msg}.
 
 system_continue(Parent, Debug, _State) ->
-    ?MODULE:io_loop(Parent, Debug).
+    io_loop(Parent, Debug).
 
 system_terminate(Reason, _Parent, _Debug, _State) ->
     exit(Reason).

@@ -120,9 +120,9 @@
 -export([default_helper_function/2]).
 
 -record(kapps_call, {call_id :: api_binary()                       %% The UUID of the call
-                      ,call_id_helper = fun ?MODULE:default_helper_function/2 :: kapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
+                      ,call_id_helper = fun default_helper_function/2 :: kapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
                       ,control_q :: api_binary()                   %% The control queue provided on route win
-                      ,control_q_helper = fun ?MODULE:default_helper_function/2 :: kapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
+                      ,control_q_helper = fun default_helper_function/2 :: kapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
                       ,controller_q :: api_binary()                %%
                       ,caller_id_name = kz_util:anonymous_caller_id_name() :: ne_binary()      %% The caller name
                       ,caller_id_number = kz_util:anonymous_caller_id_number() :: ne_binary() %% The caller number
@@ -520,7 +520,7 @@ set_other_leg_call_id(CallId, #kapps_call{}=Call) ->
 call_id(#kapps_call{call_id=CallId, call_id_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun(CallId, Call);
 call_id(#kapps_call{call_id=CallId}=Call) ->
-    ?MODULE:default_helper_function(CallId, Call).
+    default_helper_function(CallId, Call).
 
 call_id_direct(#kapps_call{call_id=CallId}) ->
     CallId.
@@ -535,7 +535,7 @@ call_id_helper(Fun, #kapps_call{}=Call) when is_function(Fun, 2) ->
 
 -spec clear_call_id_helper(call()) -> call().
 clear_call_id_helper(Call) ->
-    Call#kapps_call{call_id_helper=fun ?MODULE:default_helper_function/2}.
+    Call#kapps_call{call_id_helper=fun default_helper_function/2}.
 
 -spec set_control_queue(ne_binary(), call()) -> call().
 set_control_queue(ControlQ, #kapps_call{}=Call) when is_binary(ControlQ) ->
@@ -546,7 +546,7 @@ set_control_queue(ControlQ, #kapps_call{}=Call) when is_binary(ControlQ) ->
 control_queue(#kapps_call{control_q=ControlQ, control_q_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun(ControlQ, Call);
 control_queue(#kapps_call{control_q=ControlQ}=Call) ->
-    ?MODULE:default_helper_function(ControlQ, Call).
+    default_helper_function(ControlQ, Call).
 
 control_queue_direct(#kapps_call{control_q=ControlQ}) ->
     ControlQ.
@@ -557,7 +557,7 @@ control_queue_helper(Fun, #kapps_call{}=Call) when is_function(Fun, 2) ->
 
 -spec clear_control_queue_helper(call()) -> call().
 clear_control_queue_helper(#kapps_call{}=Call) ->
-    Call#kapps_call{control_q_helper=fun ?MODULE:default_helper_function/2}.
+    Call#kapps_call{control_q_helper=fun default_helper_function/2}.
 
 -spec set_controller_queue(ne_binary(), call()) -> call().
 set_controller_queue(ControllerQ, #kapps_call{}=Call) when is_binary(ControllerQ) ->
@@ -1164,29 +1164,29 @@ retrieve(CallId, AppName) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
--define(UPDATERS, [fun(C) -> ?MODULE:set_call_id(<<"123456789ABCDEF">>, C) end
-                   ,fun(C) -> ?MODULE:set_control_queue(<<"control_queue">>, C) end
-                   ,fun(C) -> ?MODULE:set_controller_queue(<<"controller_queue">>, C) end
-                   ,fun(C) -> ?MODULE:set_caller_id_name(<<"caller_id_name">>, C) end
-                   ,fun(C) -> ?MODULE:set_caller_id_number(<<"caller_id_number">>, C) end
-                   ,fun(C) -> ?MODULE:set_callee_id_name(<<"callee_id_name">>, C) end
-                   ,fun(C) -> ?MODULE:set_callee_id_number(<<"callee_id_number">>, C) end
-                   ,fun(C) -> ?MODULE:set_request(<<"request_user@request_domain">>, C) end
-                   ,fun(C) -> ?MODULE:set_from(<<"from_user@from_domain">>, C) end
-                   ,fun(C) -> ?MODULE:set_to(<<"to_user@to_domain">>, C) end
-                   ,fun(C) -> ?MODULE:set_account_db(<<"account%2F12%2F3456789">>, C) end
-                   ,fun(C) -> ?MODULE:set_account_id(<<"123456789">>, C) end
-                   ,fun(C) -> ?MODULE:set_authorizing_id(<<"987654321">>, C) end
-                   ,fun(C) -> ?MODULE:set_authorizing_type(<<"test">>, C) end
-                   ,fun(C) -> ?MODULE:set_owner_id(<<"abcdefghi">>, C) end
-                   ,fun(C) -> ?MODULE:set_fetch_id(<<"1234567890ABCDEFG">>, C) end
-                   ,fun(C) -> ?MODULE:set_bridge_id(<<"1234567890ABCDEF">>, C) end
-                   ,fun(C) -> ?MODULE:set_custom_channel_var(<<"key1">>, <<"value1">>, C) end
-                   ,fun(C) -> ?MODULE:set_custom_channel_var(<<"key2">>, 2600, C) end
-                   ,fun(C) -> ?MODULE:set_custom_channel_var([<<"key3">>, <<"key4">>], 'true', C) end
-                   ,fun(C) -> ?MODULE:kvs_store(<<"kvs_key_1">>, <<"kvs_value_1">>, C) end
-                   ,fun(C) -> ?MODULE:kvs_store(<<"kvs_key_2">>, <<"kvs_value_2">>, C) end
-                   ,fun(C) -> ?MODULE:kvs_store(<<"kvs_key_2">>, kz_json:from_list([{<<"sub_key_1">>, <<"sub_value_1">>}]), C) end
+-define(UPDATERS, [fun(C) -> set_call_id(<<"123456789ABCDEF">>, C) end
+                   ,fun(C) -> set_control_queue(<<"control_queue">>, C) end
+                   ,fun(C) -> set_controller_queue(<<"controller_queue">>, C) end
+                   ,fun(C) -> set_caller_id_name(<<"caller_id_name">>, C) end
+                   ,fun(C) -> set_caller_id_number(<<"caller_id_number">>, C) end
+                   ,fun(C) -> set_callee_id_name(<<"callee_id_name">>, C) end
+                   ,fun(C) -> set_callee_id_number(<<"callee_id_number">>, C) end
+                   ,fun(C) -> set_request(<<"request_user@request_domain">>, C) end
+                   ,fun(C) -> set_from(<<"from_user@from_domain">>, C) end
+                   ,fun(C) -> set_to(<<"to_user@to_domain">>, C) end
+                   ,fun(C) -> set_account_db(<<"account%2F12%2F3456789">>, C) end
+                   ,fun(C) -> set_account_id(<<"123456789">>, C) end
+                   ,fun(C) -> set_authorizing_id(<<"987654321">>, C) end
+                   ,fun(C) -> set_authorizing_type(<<"test">>, C) end
+                   ,fun(C) -> set_owner_id(<<"abcdefghi">>, C) end
+                   ,fun(C) -> set_fetch_id(<<"1234567890ABCDEFG">>, C) end
+                   ,fun(C) -> set_bridge_id(<<"1234567890ABCDEF">>, C) end
+                   ,fun(C) -> set_custom_channel_var(<<"key1">>, <<"value1">>, C) end
+                   ,fun(C) -> set_custom_channel_var(<<"key2">>, 2600, C) end
+                   ,fun(C) -> set_custom_channel_var([<<"key3">>, <<"key4">>], 'true', C) end
+                   ,fun(C) -> kvs_store(<<"kvs_key_1">>, <<"kvs_value_1">>, C) end
+                   ,fun(C) -> kvs_store(<<"kvs_key_2">>, <<"kvs_value_2">>, C) end
+                   ,fun(C) -> kvs_store(<<"kvs_key_2">>, kz_json:from_list([{<<"sub_key_1">>, <<"sub_value_1">>}]), C) end
                   ]).
 
 %% TODO: I am out of the alloted time for this module, please add during another refactor
@@ -1198,7 +1198,7 @@ from_route_win_test() ->
     'ok'.
 
 json_conversion_test() -> 'ok'.
-    %% Call1 = lists:foldr(fun(F, C) -> F(C) end, ?MODULE:new(), ?UPDATERS),
+    %% Call1 = lists:foldr(fun(F, C) -> F(C) end, new(), ?UPDATERS),
     %% _Call2 = from_json(to_json(Call1)).
     %% TODO: These are equal, but the order of the CCVs json headers
     %%       is reversed.... and I am out of time for this module

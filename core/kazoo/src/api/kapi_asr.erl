@@ -147,7 +147,7 @@ declare_exchanges() ->
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
-    {ok, Payload} = kz_api:prepare_api_payload(Req, ?ASR_REQ_VALUES, fun ?MODULE:req/1),
+    {ok, Payload} = kz_api:prepare_api_payload(Req, ?ASR_REQ_VALUES, fun req/1),
     amqp_util:callctl_publish(?KEY_ASR_REQ, Payload, ContentType).
 
 %%--------------------------------------------------------------------
@@ -160,7 +160,7 @@ publish_req(Req, ContentType) ->
 publish_resp(Queue, JObj) ->
     publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resp(Queue, Resp, ContentType) ->
-    {ok, Payload} = kz_api:prepare_api_payload(Resp, ?ASR_RESP_VALUES, fun ?MODULE:resp/1),
+    {ok, Payload} = kz_api:prepare_api_payload(Resp, ?ASR_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%--------------------------------------------------------------------
@@ -173,5 +173,5 @@ publish_resp(Queue, Resp, ContentType) ->
 publish_error(Queue, JObj) ->
     publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_error(Queue, Error, ContentType) ->
-    {ok, Payload} = kz_api:prepare_api_payload(Error, ?ASR_ERROR_VALUES, fun ?MODULE:error/1),
+    {ok, Payload} = kz_api:prepare_api_payload(Error, ?ASR_ERROR_VALUES, fun error/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).

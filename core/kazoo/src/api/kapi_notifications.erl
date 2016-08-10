@@ -1409,229 +1409,229 @@ declare_exchanges() ->
 -spec publish_voicemail_saved(api_terms(), ne_binary()) -> 'ok'.
 publish_voicemail_saved(JObj) -> publish_voicemail_saved(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_voicemail_saved(Voicemail, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Voicemail, ?VOICEMAIL_SAVED_VALUES, fun ?MODULE:voicemail_saved/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Voicemail, ?VOICEMAIL_SAVED_VALUES, fun voicemail_saved/1),
     amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_SAVED, Payload, ContentType).
 
 -spec publish_voicemail(api_terms()) -> 'ok'.
 -spec publish_voicemail(api_terms(), ne_binary()) -> 'ok'.
 publish_voicemail(JObj) -> publish_voicemail(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_voicemail(Voicemail, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Voicemail, ?VOICEMAIL_VALUES, fun ?MODULE:voicemail/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Voicemail, ?VOICEMAIL_VALUES, fun voicemail/1),
     amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_NEW, Payload, ContentType).
 
 -spec publish_voicemail_full(api_terms()) -> 'ok'.
 -spec publish_voicemail_full(api_terms(), ne_binary()) -> 'ok'.
 publish_voicemail_full(JObj) -> publish_voicemail_full(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_voicemail_full(Voicemail, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Voicemail, ?VOICEMAIL_FULL_VALUES, fun ?MODULE:voicemail_full/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Voicemail, ?VOICEMAIL_FULL_VALUES, fun voicemail_full/1),
     amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_FULL, Payload, ContentType).
 
 -spec publish_fax_inbound(api_terms()) -> 'ok'.
 -spec publish_fax_inbound(api_terms(), ne_binary()) -> 'ok'.
 publish_fax_inbound(JObj) -> publish_fax_inbound(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_fax_inbound(Fax, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Fax,?FAX_INBOUND_VALUES, fun ?MODULE:fax_inbound/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Fax,?FAX_INBOUND_VALUES, fun fax_inbound/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_INBOUND, Payload, ContentType).
 
 -spec publish_fax_outbound(api_terms()) -> 'ok'.
 -spec publish_fax_outbound(api_terms(), ne_binary()) -> 'ok'.
 publish_fax_outbound(JObj) -> publish_fax_outbound(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_fax_outbound(Fax, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Fax, ?FAX_OUTBOUND_VALUES, fun ?MODULE:fax_outbound/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Fax, ?FAX_OUTBOUND_VALUES, fun fax_outbound/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_OUTBOUND, Payload, ContentType).
 
 -spec publish_fax_inbound_error(api_terms()) -> 'ok'.
 -spec publish_fax_inbound_error(api_terms(), ne_binary()) -> 'ok'.
 publish_fax_inbound_error(JObj) -> publish_fax_inbound_error(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_fax_inbound_error(Fax, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Fax, ?FAX_INBOUND_ERROR_VALUES, fun ?MODULE:fax_inbound_error/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Fax, ?FAX_INBOUND_ERROR_VALUES, fun fax_inbound_error/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_INBOUND_ERROR, Payload, ContentType).
 
 -spec publish_fax_outbound_error(api_terms()) -> 'ok'.
 -spec publish_fax_outbound_error(api_terms(), ne_binary()) -> 'ok'.
 publish_fax_outbound_error(JObj) -> publish_fax_outbound_error(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_fax_outbound_error(Fax, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Fax, ?FAX_OUTBOUND_ERROR_VALUES, fun ?MODULE:fax_outbound_error/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Fax, ?FAX_OUTBOUND_ERROR_VALUES, fun fax_outbound_error/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_OUTBOUND_ERROR, Payload, ContentType).
 
 -spec publish_register(api_terms()) -> 'ok'.
 -spec publish_register(api_terms(), ne_binary()) -> 'ok'.
 publish_register(JObj) -> publish_register(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_register(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?REGISTER_VALUES, fun ?MODULE:register/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?REGISTER_VALUES, fun register/1),
     amqp_util:notifications_publish(?NOTIFY_REGISTER, Payload, ContentType).
 
 -spec publish_deregister(api_terms()) -> 'ok'.
 -spec publish_deregister(api_terms(), ne_binary()) -> 'ok'.
 publish_deregister(JObj) -> publish_deregister(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_deregister(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?DEREGISTER_VALUES, fun ?MODULE:deregister/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?DEREGISTER_VALUES, fun deregister/1),
     amqp_util:notifications_publish(?NOTIFY_DEREGISTER, Payload, ContentType).
 
 -spec publish_password_recovery(api_terms()) -> 'ok'.
 -spec publish_password_recovery(api_terms(), ne_binary()) -> 'ok'.
 publish_password_recovery(JObj) -> publish_password_recovery(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_password_recovery(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PASSWORD_RECOVERY_VALUES, fun ?MODULE:password_recovery/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PASSWORD_RECOVERY_VALUES, fun password_recovery/1),
     amqp_util:notifications_publish(?NOTIFY_PASSWORD_RECOVERY, Payload, ContentType).
 
 -spec publish_first_occurrence(api_terms()) -> 'ok'.
 -spec publish_first_occurrence(api_terms(), ne_binary()) -> 'ok'.
 publish_first_occurrence(JObj) -> publish_first_occurrence(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_first_occurrence(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?FIRST_OCCURRENCE_VALUES, fun ?MODULE:first_occurrence/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?FIRST_OCCURRENCE_VALUES, fun first_occurrence/1),
     amqp_util:notifications_publish(?NOTIFY_FIRST_OCCURRENCE, Payload, ContentType).
 
 -spec publish_new_account(api_terms()) -> 'ok'.
 -spec publish_new_account(api_terms(), ne_binary()) -> 'ok'.
 publish_new_account(JObj) -> publish_new_account(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_new_account(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?NEW_ACCOUNT_VALUES, fun ?MODULE:new_account/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?NEW_ACCOUNT_VALUES, fun new_account/1),
     amqp_util:notifications_publish(?NOTIFY_NEW_ACCOUNT, Payload, ContentType).
 
 -spec publish_new_user(api_terms()) -> 'ok'.
 -spec publish_new_user(api_terms(), ne_binary()) -> 'ok'.
 publish_new_user(JObj) -> publish_new_user(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_new_user(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?NEW_USER_VALUES, fun ?MODULE:new_user/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?NEW_USER_VALUES, fun new_user/1),
     amqp_util:notifications_publish(?NOTIFY_NEW_USER, Payload, ContentType).
 
 -spec publish_port_unconfirmed(api_terms()) -> 'ok'.
 -spec publish_port_unconfirmed(api_terms(), ne_binary()) -> 'ok'.
 publish_port_unconfirmed(JObj) -> publish_port_unconfirmed(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_port_unconfirmed(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_UNCONFIRMED_VALUES, fun ?MODULE:port_unconfirmed/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_UNCONFIRMED_VALUES, fun port_unconfirmed/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_UNCONFIRMED, Payload, ContentType).
 
 -spec publish_port_request(api_terms()) -> 'ok'.
 -spec publish_port_request(api_terms(), ne_binary()) -> 'ok'.
 publish_port_request(JObj) -> publish_port_request(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_port_request(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_REQUEST_VALUES, fun ?MODULE:port_request/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_REQUEST_VALUES, fun port_request/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_REQUEST, Payload, ContentType).
 
 -spec publish_port_pending(api_terms()) -> 'ok'.
 -spec publish_port_pending(api_terms(), ne_binary()) -> 'ok'.
 publish_port_pending(JObj) -> publish_port_pending(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_port_pending(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_PENDING_VALUES, fun ?MODULE:port_pending/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_PENDING_VALUES, fun port_pending/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_PENDING, Payload, ContentType).
 
 -spec publish_port_scheduled(api_terms()) -> 'ok'.
 -spec publish_port_scheduled(api_terms(), ne_binary()) -> 'ok'.
 publish_port_scheduled(JObj) -> publish_port_scheduled(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_port_scheduled(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_SCHEDULED_VALUES, fun ?MODULE:port_scheduled/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_SCHEDULED_VALUES, fun port_scheduled/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_SCHEDULED, Payload, ContentType).
 
 -spec publish_port_rejected(api_terms()) -> 'ok'.
 -spec publish_port_rejected(api_terms(), ne_binary()) -> 'ok'.
 publish_port_rejected(JObj) -> publish_port_rejected(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_port_rejected(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_REJECTED_VALUES, fun ?MODULE:port_rejected/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_REJECTED_VALUES, fun port_rejected/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_REJECTED, Payload, ContentType).
 
 -spec publish_port_cancel(api_terms()) -> 'ok'.
 -spec publish_port_cancel(api_terms(), ne_binary()) -> 'ok'.
 publish_port_cancel(JObj) -> publish_port_cancel(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_port_cancel(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_CANCEL_VALUES, fun ?MODULE:port_cancel/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_CANCEL_VALUES, fun port_cancel/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_CANCEL, Payload, ContentType).
 
 -spec publish_ported(api_terms()) -> 'ok'.
 -spec publish_ported(api_terms(), ne_binary()) -> 'ok'.
 publish_ported(JObj) -> publish_ported(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_ported(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORTED_VALUES, fun ?MODULE:ported/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORTED_VALUES, fun ported/1),
     amqp_util:notifications_publish(?NOTIFY_PORTED, Payload, ContentType).
 
 -spec publish_port_comment(api_terms()) -> 'ok'.
 -spec publish_port_comment(api_terms(), ne_binary()) -> 'ok'.
 publish_port_comment(JObj) -> publish_port_comment(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_port_comment(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_COMMENT_VALUES, fun ?MODULE:port_comment/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?PORT_COMMENT_VALUES, fun port_comment/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_COMMENT, Payload, ContentType).
 
 -spec publish_cnam_request(api_terms()) -> 'ok'.
 -spec publish_cnam_request(api_terms(), ne_binary()) -> 'ok'.
 publish_cnam_request(JObj) -> publish_cnam_request(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_cnam_request(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?CNAM_REQUEST_VALUES, fun ?MODULE:cnam_request/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?CNAM_REQUEST_VALUES, fun cnam_request/1),
     amqp_util:notifications_publish(?NOTIFY_CNAM_REQUEST, Payload, ContentType).
 
 -spec publish_low_balance(api_terms()) -> 'ok'.
 -spec publish_low_balance(api_terms(), ne_binary()) -> 'ok'.
 publish_low_balance(JObj) -> publish_low_balance(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_low_balance(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?LOW_BALANCE_VALUES, fun ?MODULE:low_balance/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?LOW_BALANCE_VALUES, fun low_balance/1),
     amqp_util:notifications_publish(?NOTIFY_LOW_BALANCE, Payload, ContentType).
 
 -spec publish_topup(api_terms()) -> 'ok'.
 -spec publish_topup(api_terms(), ne_binary()) -> 'ok'.
 publish_topup(JObj) -> publish_topup(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_topup(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?TOPUP_VALUES, fun ?MODULE:topup/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?TOPUP_VALUES, fun topup/1),
     amqp_util:notifications_publish(?NOTIFY_TOPUP, Payload, ContentType).
 
 -spec publish_transaction(api_terms()) -> 'ok'.
 -spec publish_transaction(api_terms(), ne_binary()) -> 'ok'.
 publish_transaction(JObj) -> publish_transaction(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_transaction(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?TRANSACTION_VALUES, fun ?MODULE:transaction/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?TRANSACTION_VALUES, fun transaction/1),
     amqp_util:notifications_publish(?NOTIFY_TRANSACTION, Payload, ContentType).
 
 -spec publish_service_added(api_terms()) -> 'ok'.
 -spec publish_service_added(api_terms(), ne_binary()) -> 'ok'.
 publish_service_added(JObj) -> publish_service_added(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_service_added(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?SERVICE_ADDED_VALUES, fun ?MODULE:service_added/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?SERVICE_ADDED_VALUES, fun service_added/1),
     amqp_util:notifications_publish(?NOTIFY_SERVICE_ADDED, Payload, ContentType).
 
 -spec publish_system_alert(api_terms()) -> 'ok'.
 -spec publish_system_alert(api_terms(), ne_binary()) -> 'ok'.
 publish_system_alert(JObj) -> publish_system_alert(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_system_alert(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?SYSTEM_ALERT_VALUES, fun ?MODULE:system_alert/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?SYSTEM_ALERT_VALUES, fun system_alert/1),
     amqp_util:notifications_publish(?NOTIFY_SYSTEM_ALERT, Payload, ContentType).
 
 -spec publish_webhook(api_terms()) -> 'ok'.
 -spec publish_webhook(api_terms(), ne_binary()) -> 'ok'.
 publish_webhook(JObj) -> publish_webhook(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_webhook(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?WEBHOOK_VALUES, fun ?MODULE:webhook/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?WEBHOOK_VALUES, fun webhook/1),
     amqp_util:notifications_publish(?NOTIFY_WEBHOOK_CALLFLOW, Payload, ContentType).
 
 -spec publish_webhook_disabled(api_terms()) -> 'ok'.
 -spec publish_webhook_disabled(api_terms(), ne_binary()) -> 'ok'.
 publish_webhook_disabled(JObj) -> publish_webhook_disabled(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_webhook_disabled(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?WEBHOOK_DISABLED_VALUES, fun ?MODULE:webhook_disabled/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?WEBHOOK_DISABLED_VALUES, fun webhook_disabled/1),
     amqp_util:notifications_publish(?NOTIFY_WEBHOOK_DISABLED, Payload, ContentType).
 
 -spec publish_notify_update(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_notify_update(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_notify_update(RespQ, JObj) -> publish_notify_update(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_notify_update(RespQ, API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?NOTIFY_UPDATE_VALUES, fun ?MODULE:notify_update/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?NOTIFY_UPDATE_VALUES, fun notify_update/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_denied_emergency_bridge(api_terms()) -> 'ok'.
 -spec publish_denied_emergency_bridge(api_terms(), ne_binary()) -> 'ok'.
 publish_denied_emergency_bridge(JObj) -> publish_denied_emergency_bridge(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_denied_emergency_bridge(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?DENIED_EMERGENCY_BRIDGE_VALUES, fun ?MODULE:denied_emergency_bridge/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?DENIED_EMERGENCY_BRIDGE_VALUES, fun denied_emergency_bridge/1),
     amqp_util:notifications_publish(?NOTIFY_DENIED_EMERGENCY_BRIDGE, Payload, ContentType).
 
 -spec publish_customer_update(api_terms()) -> 'ok'.
 -spec publish_customer_update(api_terms(), ne_binary()) -> 'ok'.
 publish_customer_update(JObj) -> publish_customer_update(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_customer_update(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?CUSTOMER_UPDATE_VALUES, fun ?MODULE:customer_update/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?CUSTOMER_UPDATE_VALUES, fun customer_update/1),
     amqp_util:notifications_publish(?NOTIFY_CUSTOMER_UPDATE, Payload, ContentType).
 
 -spec publish_skel(api_terms()) -> 'ok'.
 -spec publish_skel(api_terms(), ne_binary()) -> 'ok'.
 publish_skel(JObj) -> publish_skel(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_skel(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?SKEL_VALUES, fun ?MODULE:skel/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?SKEL_VALUES, fun skel/1),
     amqp_util:notifications_publish(?NOTIFY_SKEL, Payload, ContentType).

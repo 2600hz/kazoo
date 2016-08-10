@@ -1138,7 +1138,7 @@ dry_run_activation_charges(CategoryId, ItemId, Quantity, #kz_services{jobj=JObj}
     case kzd_services:item_quantity(JObj, CategoryId, ItemId) of
         Quantity -> JObjs;
         OldQuantity ->
-            ServicesJObj = ?MODULE:to_json(Services),
+            ServicesJObj = to_json(Services),
             Plans = kz_service_plans:from_service_json(ServicesJObj),
             ServicePlan = kz_service_plans:public_json(Plans),
             ItemPlan = get_item_plan(CategoryId, ItemId, ServicePlan),

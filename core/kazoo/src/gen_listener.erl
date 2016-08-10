@@ -489,14 +489,14 @@ handle_cast({'$execute', Function}
 handle_cast({'$execute', Module, Function, Args}=Msg
            ,#state{federators=Federators}=State) ->
     erlang:apply(Module, Function, Args),
-    _ = [?MODULE:cast(Federator, Msg)
+    _ = [cast(Federator, Msg)
          || {_Broker, Federator} <- Federators
         ],
     {'noreply', State};
 handle_cast({'$execute', Function, Args}=Msg
            ,#state{federators=Federators}=State) ->
     erlang:apply(Function, Args),
-    _ = [?MODULE:cast(Federator, Msg)
+    _ = [cast(Federator, Msg)
          || {_Broker, Federator} <- Federators
         ],
     {'noreply', State};
@@ -504,7 +504,7 @@ handle_cast({'$execute', Function}=Msg
            ,#state{federators=Federators}=State
            ) ->
     Function(),
-    _ = [?MODULE:cast(Federator, Msg)
+    _ = [cast(Federator, Msg)
          || {_Broker, Federator} <- Federators
         ],
     {'noreply', State};
@@ -1102,7 +1102,7 @@ update_existing_listeners_bindings(Listeners, Binding, Props) ->
 -spec update_existing_listener_bindings(federator_listener(), binding_module(), kz_proplist()) -> 'ok'.
 update_existing_listener_bindings({_Broker, Pid}, Binding, Props) ->
     lager:debug("updating listener ~p with ~s", [Pid, Binding]),
-    ?MODULE:add_binding(Pid, Binding, Props).
+    add_binding(Pid, Binding, Props).
 
 -spec create_federated_params({binding_module(), kz_proplist()}, kz_proplist()) ->
                                      kz_proplist().

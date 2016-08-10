@@ -67,5 +67,5 @@ declare_exchanges() ->
 %%--------------------------------------------------------------------
 -spec publish_resume(api_terms()) -> 'ok'.
 publish_resume(JObj) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?RESUME_VALUES, fun ?MODULE:resume/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?RESUME_VALUES, fun resume/1),
     amqp_util:kapps_publish(?RESUME_ROUTING_KEY, Payload).

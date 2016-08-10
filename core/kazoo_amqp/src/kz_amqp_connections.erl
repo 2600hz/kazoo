@@ -74,7 +74,7 @@ new(Broker) -> new(Broker, 'local').
 new(<<_/binary>> = Broker, Zone) ->
     case broker_connections(Broker) =:= 0 of
         'false' -> {'error', 'exists'};
-        'true' -> ?MODULE:add(Broker, Zone)
+        'true' -> add(Broker, Zone)
     end;
 new(Broker, Zone) ->
     new(kz_util:to_binary(Broker), Zone).

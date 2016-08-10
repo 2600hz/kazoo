@@ -557,7 +557,7 @@ build('undefined', _Properties, _Call) ->
 build(EndpointId, 'undefined', Call) when is_binary(EndpointId) ->
     build(EndpointId, kz_json:new(), Call);
 build(EndpointId, Properties, Call) when is_binary(EndpointId) ->
-    case ?MODULE:get(EndpointId, Call) of
+    case get(EndpointId, Call) of
         {'ok', Endpoint} -> build_endpoint(Endpoint, Properties, Call);
         {'error', _}=E -> E
     end;
@@ -1009,7 +1009,7 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
                       [{<<"Invite-Format">>, get_invite_format(SIPJObj)}
                       ,{<<"To-User">>, get_to_user(SIPJObj, Properties)}
                       ,{<<"To-Username">>, get_to_username(SIPJObj)}
-                      ,{<<"To-Realm">>, ?MODULE:get_sip_realm(Endpoint, kapps_call:account_id(Call))}
+                      ,{<<"To-Realm">>, get_sip_realm(Endpoint, kapps_call:account_id(Call))}
                       ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
                       ,{<<"To-IP">>, kz_json:get_value(<<"ip">>, SIPJObj)}
                       ,{<<"SIP-Transport">>, get_sip_transport(SIPJObj)}
@@ -1086,7 +1086,7 @@ build_push_failover(Endpoint, Clid, PushJObj, Call) ->
     lager:debug("building push failover"),
     SIPJObj = kz_json:get_value(<<"sip">>, Endpoint),
     ToUsername = get_to_username(SIPJObj),
-    ToRealm = ?MODULE:get_sip_realm(Endpoint, kapps_call:account_id(Call)),
+    ToRealm = get_sip_realm(Endpoint, kapps_call:account_id(Call)),
     ToUser = <<ToUsername/binary, "@", ToRealm/binary>>,
     Proxy = kz_json:get_value(<<"Token-Proxy">>, PushJObj),
     PushHeaders = kz_json:foldl(fun(K, V, Acc) ->

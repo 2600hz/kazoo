@@ -132,7 +132,7 @@ declare_exchanges() ->
 publish_get_req(JObj) ->
     publish_get_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_get_req(Api, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Api, ?BLACKHOLE_GET_REQ_VALUES, fun ?MODULE:get_req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Api, ?BLACKHOLE_GET_REQ_VALUES, fun get_req/1),
     amqp_util:sysconf_publish(routing_key_get(), Payload, ContentType).
 
 %%--------------------------------------------------------------------
@@ -145,7 +145,7 @@ publish_get_req(Api, ContentType) ->
 publish_get_resp(RespQ, JObj) ->
     publish_get_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_get_resp(RespQ, Api, ContentType) ->
-    PrepareOptions = [{'formatter', fun ?MODULE:get_resp/1}
+    PrepareOptions = [{'formatter', fun get_resp/1}
                      ,{'remove_recursive', 'false'}
                      ],
     {'ok', Payload} = kz_api:prepare_api_payload(Api, ?BLACKHOLE_GET_RESP_VALUES, PrepareOptions),
