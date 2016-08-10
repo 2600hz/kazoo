@@ -32,14 +32,14 @@
         io:format(Format ++ "\n", Args)
        ).
 
--type number_to_fix() :: #{ key => ne_binary()
-                          , old => knm_phone_number:knm_phone_number()
-                          , fetched => knm_phone_number:knm_phone_number()
-                          , account_db => ne_binary()
-                          , account_id => ne_binary()
-                          , trunkstore_numbers => ne_binaries()
-                          , callflow_numbers => ne_binaries()
-                          , fixes => list()
+-type number_to_fix() :: #{key => ne_binary()
+                          ,old => knm_phone_number:knm_phone_number()
+                          ,fetched => knm_phone_number:knm_phone_number()
+                          ,account_db => ne_binary()
+                          ,account_id => ne_binary()
+                          ,trunkstore_numbers => ne_binaries()
+                          ,callflow_numbers => ne_binaries()
+                          ,fixes => list()
                           }.
 
 %% API
@@ -90,18 +90,18 @@ get_old_phone_numbers(AccountDb) ->
     TrunkstoreNumbers = get_result_keys(AccountDb, <<"trunkstore/lookup_did">>),
     case kz_datamgr:open_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
         {'ok', JObj} ->
-            [ #{ key => Key
-               , old => phone_number_from_dirty_json(knm_converters:normalize(Key)
-                                                    ,kz_json:get_value(Key, JObj))
-               , fetched => fetch_number(Key)
-               , account_db => AccountDb
-               , account_id => kz_util:format_account_id(AccountDb)
-               , trunkstore_numbers => TrunkstoreNumbers
-               , callflow_numbers => CallflowNumbers
-               , fixes => []
-               }
-              || Key <- kz_json:get_keys(kz_json:public_fields(JObj)),
-                 knm_converters:is_reconcilable(Key)
+            [#{key => Key
+              ,old => phone_number_from_dirty_json(knm_converters:normalize(Key)
+                                                  ,kz_json:get_value(Key, JObj))
+              ,fetched => fetch_number(Key)
+              ,account_db => AccountDb
+              ,account_id => kz_util:format_account_id(AccountDb)
+              ,trunkstore_numbers => TrunkstoreNumbers
+              ,callflow_numbers => CallflowNumbers
+              ,fixes => []
+              }
+             || Key <- kz_json:get_keys(kz_json:public_fields(JObj)),
+                knm_converters:is_reconcilable(Key)
             ];
         {'error', _R} ->
             ?LOG("failed to open ~s doc for account ~s ~p"
@@ -124,16 +124,16 @@ phone_number_from_dirty_json(NormalizedNumber, JObj) ->
     LessDirtyJObj =
         kz_json:from_list(
           props:filter_empty(
-            [ {<<"_id">>, NormalizedNumber}
-            , {?PVT_DB_NAME, knm_converters:to_db(NormalizedNumber)}
-            , {?PVT_ASSIGNED_TO, kz_json:get_first_defined([?PVT_ASSIGNED_TO, <<"assigned_to">>], JObj)}
-            , {?PVT_PREVIOUSLY_ASSIGNED_TO, kz_json:get_first_defined([?PVT_PREVIOUSLY_ASSIGNED_TO, <<"previously_assigned_to">>], JObj)}
-            , {?PVT_USED_BY, kz_json:get_first_defined([?PVT_USED_BY, <<"used_by">>], JObj)}
-            , {?PVT_STATE, State}
-            , {?PVT_PORTED_IN, ?NUMBER_STATE_PORT_IN == State}
-            , {?PVT_MODULE_NAME, kz_json:get_first_defined([?PVT_MODULE_NAME, <<"module_name">>], JObj, knm_carriers:default_carrier())}
-            , {?PVT_CARRIER_DATA, kz_json:get_first_defined([?PVT_CARRIER_DATA, <<"module_data">>], JObj)}
-            , {?PVT_AUTH_BY, kz_json:get_first_defined([?PVT_AUTH_BY, <<"authorizing_account">>], JObj)}
+            [{<<"_id">>, NormalizedNumber}
+            ,{?PVT_DB_NAME, knm_converters:to_db(NormalizedNumber)}
+            ,{?PVT_ASSIGNED_TO, kz_json:get_first_defined([?PVT_ASSIGNED_TO, <<"assigned_to">>], JObj)}
+            ,{?PVT_PREVIOUSLY_ASSIGNED_TO, kz_json:get_first_defined([?PVT_PREVIOUSLY_ASSIGNED_TO, <<"previously_assigned_to">>], JObj)}
+            ,{?PVT_USED_BY, kz_json:get_first_defined([?PVT_USED_BY, <<"used_by">>], JObj)}
+            ,{?PVT_STATE, State}
+            ,{?PVT_PORTED_IN, ?NUMBER_STATE_PORT_IN == State}
+            ,{?PVT_MODULE_NAME, kz_json:get_first_defined([?PVT_MODULE_NAME, <<"module_name">>], JObj, knm_carriers:default_carrier())}
+            ,{?PVT_CARRIER_DATA, kz_json:get_first_defined([?PVT_CARRIER_DATA, <<"module_data">>], JObj)}
+            ,{?PVT_AUTH_BY, kz_json:get_first_defined([?PVT_AUTH_BY, <<"authorizing_account">>], JObj)}
             ])
          ),
     knm_phone_number:from_json(
@@ -143,18 +143,18 @@ phone_number_from_dirty_json(NormalizedNumber, JObj) ->
 -spec maybe_fix_number(number_to_fix()) -> 'ok'.
 maybe_fix_number(ToFix=#{old := _OldPN}) ->
     ?LOG("##### fixing [~s] #####", [knm_phone_number:number(_OldPN)]),
-    Routines = [ fun maybe_fix_assignment/1
-               , fun maybe_fix_used_by/1
+    Routines = [fun maybe_fix_assignment/1
+               ,fun maybe_fix_used_by/1
                ],
     fix_number(lists:foldl(fun(F, Map) -> F(Map) end, ToFix, Routines)).
 
 -spec fix_number(number_to_fix()) -> 'ok'.
-fix_number(#{ fixes := Fixes
-            , key := Key
-            , account_id := AccountId
-            , account_db := AccountDb
-            , old := OldPN
-            , fetched := FetchedPN
+fix_number(#{fixes := Fixes
+            ,key := Key
+            ,account_id := AccountId
+            ,account_db := AccountDb
+            ,old := OldPN
+            ,fetched := FetchedPN
             }) ->
     PhoneNumber = case knm_phone_number:module_name(FetchedPN) of
                       'undefined' -> OldPN;
@@ -197,9 +197,9 @@ add_fixes(MoreFixes, ToFix=#{fixes := Fixes}) ->
     ToFix#{fixes => Fixes++MoreFixes}.
 
 -spec maybe_fix_assignment(number_to_fix()) -> number_to_fix().
-maybe_fix_assignment(#{ account_id := AccountId
-                      , old := OldPN
-                      , fetched := FetchedPN
+maybe_fix_assignment(#{account_id := AccountId
+                      ,old := OldPN
+                      ,fetched := FetchedPN
                       } = ToFix) ->
     _Number = knm_phone_number:number(OldPN),
     ?LOG("[~s] maybe fix assignment", [_Number]),
@@ -224,10 +224,10 @@ maybe_fix_assignment(#{ account_id := AccountId
     end.
 
 -spec maybe_fix_used_by(number_to_fix()) -> number_to_fix().
-maybe_fix_used_by(#{ old := OldPN
-                   , fetched := FetchedPN
-                   , callflow_numbers := CallflowNumbers
-                   , trunkstore_numbers := TrunkstoreNumbers
+maybe_fix_used_by(#{old := OldPN
+                   ,fetched := FetchedPN
+                   ,callflow_numbers := CallflowNumbers
+                   ,trunkstore_numbers := TrunkstoreNumbers
                    } = ToFix) ->
     Number = knm_phone_number:number(OldPN),
     ?LOG("[~s] maybe fix used_by", [Number]),
