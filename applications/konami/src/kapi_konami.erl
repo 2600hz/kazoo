@@ -80,7 +80,7 @@ declare_exchanges() ->
 
 -spec publish_transferred(ne_binary(), api_terms()) -> 'ok'.
 publish_transferred(TargetCallId, API) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?TRANSFERRED_VALUES, fun ?MODULE:transferred/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?TRANSFERRED_VALUES, fun transferred/1),
     amqp_util:kapps_publish(transferred_routing_key(TargetCallId), Payload).
 
 -spec bind_for_transferred(ne_binary(), ne_binary()) -> 'ok'.

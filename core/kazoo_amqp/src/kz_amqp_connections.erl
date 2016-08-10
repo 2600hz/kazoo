@@ -74,7 +74,7 @@ new(Broker) -> new(Broker, 'local').
 new(<<_/binary>> = Broker, Zone) ->
     case broker_connections(Broker) =:= 0 of
         'false' -> {'error', 'exists'};
-        'true' -> ?MODULE:add(Broker, Zone)
+        'true' -> add(Broker, Zone)
     end;
 new(Broker, Zone) ->
     new(kz_util:to_binary(Broker), Zone).
@@ -411,14 +411,14 @@ notify_watchers(#state{watchers=Watchers}=State) ->
 
 -spec notify_watcher(pid()) -> any().
 notify_watcher(Watcher) ->
-    Watcher ! {'kz_amqp_connections', 'connection_available'}.
+    Watcher ! {?MODULE, 'connection_available'}.
 
 -spec wait_for_notification(kz_timeout()) ->
                                    'ok' |
                                    {'error', 'timeout'}.
 wait_for_notification(Timeout) ->
     receive
-        {'kz_amqp_connections', 'connection_available'} -> 'ok'
+        {?MODULE, 'connection_available'} -> 'ok'
     after
         Timeout -> {'error', 'timeout'}
     end.

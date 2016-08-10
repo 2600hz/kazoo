@@ -277,7 +277,7 @@ handle_get_req_data('undefined', 'undefined', Node) ->
     lager:warning("received undefined blackhole get req", [Node]);
 handle_get_req_data(AccountId, 'undefined', Node) ->
     lager:debug("received blackhole get for account:~s from ~s", [AccountId, Node]),
-    case ?MODULE:get_sockets(AccountId) of
+    case get_sockets(AccountId) of
         {'error', 'not_found'} ->
             lager:debug("no sockets found for ~s", [AccountId]),
             [];
@@ -288,7 +288,7 @@ handle_get_req_data(AccountId, 'undefined', Node) ->
     end;
 handle_get_req_data('undefined', SocketId, Node) ->
     lager:debug("received blackhole get for socket:~s from ~s", [SocketId, Node]),
-    case ?MODULE:get_socket(SocketId) of
+    case get_socket(SocketId) of
         {'error', 'not_found'} ->
             lager:debug("socket ~s not found", [SocketId]);
         {'ok', Context} ->

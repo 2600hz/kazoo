@@ -140,13 +140,13 @@ is_true(Key) ->
     kz_util:is_true(?MODULE:get(Key)).
 
 is_true(Key, Default) ->
-    case ?MODULE:get(Key, Default) of
+    case get(Key, Default) of
         Default -> Default;
         N -> kz_util:is_true(N)
     end.
 
 is_true(Key, Default, Node) ->
-    case ?MODULE:get(Key, Default, Node) of
+    case get(Key, Default, Node) of
         Default -> Default;
         N -> kz_util:is_true(N)
     end.

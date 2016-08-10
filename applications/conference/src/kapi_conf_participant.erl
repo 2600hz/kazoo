@@ -60,5 +60,5 @@ declare_exchanges() ->
 publish_dialplan_req(Queue, JObj) ->
     publish_dialplan_req(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_dialplan_req(Queue, Req, ContentType) ->
-    {ok, Payload} = kz_api:prepare_api_payload(Req, ?DIALPLAN_REQ_VALUES, fun ?MODULE:dialplan_req/1),
+    {ok, Payload} = kz_api:prepare_api_payload(Req, ?DIALPLAN_REQ_VALUES, fun dialplan_req/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).

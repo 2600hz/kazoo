@@ -1129,7 +1129,7 @@ get_result_keys(JObjs) ->
                                {'error', 'multiple_results'} |
                                data_error().
 get_single_result(DbName, DesignDoc, Options) ->
-    case kz_datamgr:get_results(DbName, DesignDoc, Options) of
+    case get_results(DbName, DesignDoc, Options) of
         {'ok', [Result]} -> {'ok', Result};
         {'ok', []} -> {'error', 'not_found'};
         {'ok', Results} ->

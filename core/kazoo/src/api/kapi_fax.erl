@@ -241,7 +241,7 @@ publish_query_status(Q, JObj) ->
     publish_query_status(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 
 publish_query_status(Q, API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?FAX_QUERY_VALUES, fun ?MODULE:query_status/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?FAX_QUERY_VALUES, fun query_status/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_status(api_terms()) -> 'ok'.

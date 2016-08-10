@@ -435,7 +435,7 @@ check_for_inactive_buckets() ->
               kz_token_bucket:stop(Srv),
               kz_util:to_binary(Srv)
           end
-          || Srv <- ets:select(?MODULE:table_id(), MS)
+          || Srv <- ets:select(table_id(), MS)
          ]
     of
         [] -> 'ok';

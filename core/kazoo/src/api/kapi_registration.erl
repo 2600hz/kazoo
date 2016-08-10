@@ -295,7 +295,7 @@ declare_exchanges() ->
 publish_success(JObj) ->
     publish_success(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_success(Success, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Success, ?REG_SUCCESS_VALUES, fun ?MODULE:success/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Success, ?REG_SUCCESS_VALUES, fun success/1),
     amqp_util:registrar_publish(get_success_routing(Success), Payload, ContentType).
 
 %%--------------------------------------------------------------------
@@ -307,7 +307,7 @@ publish_success(Success, ContentType) ->
 publish_flush(JObj) ->
     publish_flush(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_flush(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?REG_FLUSH_VALUES, fun ?MODULE:flush/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?REG_FLUSH_VALUES, fun flush/1),
     amqp_util:registrar_publish(get_flush_routing(API), Payload, ContentType).
 
 -spec publish_query_req(api_terms()) -> 'ok'.
@@ -315,7 +315,7 @@ publish_flush(API, ContentType) ->
 publish_query_req(JObj) ->
     publish_query_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_req(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?REG_QUERY_VALUES, fun ?MODULE:query_req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?REG_QUERY_VALUES, fun query_req/1),
     amqp_util:registrar_publish(get_query_routing(Req), Payload, ContentType).
 
 -spec publish_query_resp(ne_binary(), api_terms()) -> 'ok'.
@@ -323,7 +323,7 @@ publish_query_req(Req, ContentType) ->
 publish_query_resp(Queue, JObj) ->
     publish_query_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_resp(Queue, Resp, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?REG_QUERY_RESP_VALUES, fun ?MODULE:query_resp/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?REG_QUERY_RESP_VALUES, fun query_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec publish_query_err(ne_binary(), api_terms()) -> 'ok'.
@@ -331,7 +331,7 @@ publish_query_resp(Queue, Resp, ContentType) ->
 publish_query_err(Queue, JObj) ->
     publish_query_err(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_err(Queue, Resp, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?REG_QUERY_ERR_VALUES, fun ?MODULE:query_err/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?REG_QUERY_ERR_VALUES, fun query_err/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec publish_sync() -> 'ok'.
@@ -342,7 +342,7 @@ publish_sync() ->
 publish_sync(JObj) ->
     publish_sync(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_sync(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?REG_SYNC_VALUES, fun ?MODULE:sync/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?REG_SYNC_VALUES, fun sync/1),
     amqp_util:registrar_publish(?REG_SYNC_RK, Payload, ContentType).
 
 %%--------------------------------------------------------------------

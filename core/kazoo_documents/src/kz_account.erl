@@ -525,8 +525,7 @@ trial_has_expired(JObj, Now) ->
 is_expired(JObj) ->
     case trial_has_expired(JObj) of
         'false' -> 'false';
-        'true' ->
-            {'true', kz_account:trial_expiration(JObj)}
+        'true' -> {'true', trial_expiration(JObj)}
     end.
 
 %%--------------------------------------------------------------------

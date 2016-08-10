@@ -68,7 +68,7 @@ status(Supervisor) ->
             print_status(augment_status(Status, LPid));
         _ ->
             lager:info("Agent Supervisor ~p is dead, stopping", [Supervisor]),
-            ?MODULE:stop(Supervisor)
+            stop(Supervisor)
     end.
 
 -define(AGENT_INFO_FIELDS, kapps_config:get(?CONFIG_CAT, <<"agent_info_fields">>

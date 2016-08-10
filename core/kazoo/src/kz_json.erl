@@ -220,9 +220,9 @@ are_identical('undefined', 'undefined') -> 'true';
 are_identical('undefined', _) -> 'false';
 are_identical(_, 'undefined') -> 'false';
 are_identical(JObj1, JObj2) ->
-    [KV || {_, V}=KV <- kz_json:to_proplist(JObj1), (not kz_util:is_empty(V))]
+    [KV || {_, V}=KV <- to_proplist(JObj1), (not kz_util:is_empty(V))]
         =:=
-    [KV || {_, V}=KV <- kz_json:to_proplist(JObj2), (not kz_util:is_empty(V))].
+    [KV || {_, V}=KV <- to_proplist(JObj2), (not kz_util:is_empty(V))].
 
 %% converts top-level proplist to json object, but only if sub-proplists have been converted
 %% first.
@@ -549,8 +549,8 @@ is_true(Key, JObj, Default) ->
         V -> kz_util:is_true(V)
     end.
 
--spec get_binary_boolean(keys(), kz_json:object() | objects()) -> api_binary().
--spec get_binary_boolean(keys(), kz_json:object() | objects(), Default) -> Default | ne_binary().
+-spec get_binary_boolean(keys(), object() | objects()) -> api_binary().
+-spec get_binary_boolean(keys(), object() | objects(), Default) -> Default | ne_binary().
 get_binary_boolean(Key, JObj) ->
     get_binary_boolean(Key, JObj, 'undefined').
 
@@ -657,7 +657,7 @@ get_first_defined(Keys, JObj) ->
 
 get_first_defined([], _JObj, Default) -> Default;
 get_first_defined([H|T], JObj, Default) ->
-    case ?MODULE:get_value(H, JObj) of
+    case get_value(H, JObj) of
         'undefined' -> get_first_defined(T, JObj, Default);
         V -> V
     end.
@@ -896,11 +896,11 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_fixture_from_file(atom(), nonempty_string() | ne_binary()) ->
-                                {'ok', kz_json:object()} |
+                                {'ok', object()} |
                                 {'error', atom()}.
 
 -spec load_fixture_from_file(atom(), nonempty_string() | ne_binary(), ne_binary()) ->
-                                {'ok', kz_json:object()} |
+                                {'ok', object()} |
                                 {'error', atom()}.
 
 load_fixture_from_file(App, File) ->

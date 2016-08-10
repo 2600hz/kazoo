@@ -233,7 +233,7 @@ publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 
 publish_req(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?OFFNET_RESOURCE_REQ_VALUES, fun ?MODULE:req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?OFFNET_RESOURCE_REQ_VALUES, fun req/1),
     amqp_util:offnet_resource_publish(Payload, ContentType).
 
 -spec publish_resp(ne_binary(), api_terms()) -> 'ok'.
@@ -242,7 +242,7 @@ publish_resp(TargetQ, JObj) ->
     publish_resp(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 
 publish_resp(TargetQ, Resp, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?OFFNET_RESOURCE_RESP_VALUES, fun ?MODULE:resp/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?OFFNET_RESOURCE_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 -spec force_outbound(req()) -> boolean().
@@ -336,10 +336,10 @@ flags(Req) ->
 flags(?REQ_TYPE(JObj), Default) ->
     kz_json:get_list_value(?KEY_FLAGS, JObj, Default).
 
--spec jobj_to_req(kz_json:object()) -> kapi_offnet_resource:req().
+-spec jobj_to_req(kz_json:object()) -> req().
 jobj_to_req(JObj) -> ?REQ_TYPE(JObj).
 
--spec req_to_jobj(kapi_offnet_resource:req()) -> kz_json:object().
+-spec req_to_jobj(req()) -> kz_json:object().
 req_to_jobj(?REQ_TYPE(JObj)) -> JObj.
 
 -spec put_callid(req()) -> api_binary().

@@ -19,7 +19,7 @@
 -spec prev_year_month(ne_binary() | kz_year(), ne_binary() | kz_month()) ->
                              {kz_year(), kz_month()}.
 prev_year_month(AccountMod) ->
-    {_AccountId, Year, Month} = ?MODULE:split_account_mod(AccountMod),
+    {_AccountId, Year, Month} = split_account_mod(AccountMod),
     prev_year_month(Year, Month).
 
 prev_year_month(<<_/binary>> = Year, Month) ->

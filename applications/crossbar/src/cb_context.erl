@@ -669,7 +669,7 @@ failed_error(Error, Context) ->
                                        ]
                                       )
                                     ),
-    JObj = cb_context:validation_errors(Context),
+    JObj = validation_errors(Context),
     Context#cb_context{validation_errors=kz_json:merge_jobjs(ErrorJObj, JObj)
                       ,resp_status='error'
                       ,resp_error_code=ErrorCode
@@ -804,12 +804,11 @@ add_system_error(Code, Error, JObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec build_system_error(integer(), atom() | ne_binary(), ne_binary() | kz_json:object(), cb_context:context()) ->
-                                cb_context:context().
+-spec build_system_error(integer(), atom() | ne_binary(), ne_binary() | kz_json:object(), context()) -> context().
 build_system_error(Code, Error, <<_/binary>> = Message, Context) ->
     build_system_error(Code, Error, kz_json:from_list([{<<"message">>, Message}]), Context);
 build_system_error(Code, Error, JObj, Context) ->
-    ApiVersion = ?MODULE:api_version(Context),
+    ApiVersion = api_version(Context),
     Message = kz_json_schema:build_error_message(ApiVersion, JObj),
     Context#cb_context{resp_status='error'
                       ,resp_error_code=Code
@@ -839,7 +838,7 @@ add_validation_error(Property, Code, Message, Context) ->
                                           ]
                                          )
                                        ),
-    ErrorsJObj = cb_context:validation_errors(Context),
+    ErrorsJObj = validation_errors(Context),
 
     Context#cb_context{validation_errors=kz_json:merge_jobjs(ErrorJObj, ErrorsJObj)
                       ,resp_status='error'
@@ -853,15 +852,13 @@ maybe_update_error_message(_Old, <<"init failed">>) -> <<"validation error">>;
 maybe_update_error_message(Msg, Msg) -> Msg;
 maybe_update_error_message(_Old, New) -> New.
 
--spec maybe_fix_js_types(cb_context:context(), kz_json:object(), [jesse_error:error_reason()]) ->
-                                cb_context:context().
+-spec maybe_fix_js_types(context(), kz_json:object(), [jesse_error:error_reason()]) -> context().
 maybe_fix_js_types(Context, SchemaJObj, Errors) ->
     JObj = req_data(Context),
     case lists:foldl(fun maybe_fix_js_type/2, JObj, Errors) of
         JObj ->
-            lager:debug("request data did not validate against ~s: ~p", [kz_doc:id(SchemaJObj)
-                                                                        ,Errors
-                                                                        ]),
+            lager:debug("request data did not validate against ~s: ~p"
+                       ,[kz_doc:id(SchemaJObj), Errors]),
             failed(Context, Errors);
         NewJObj ->
             validate_request_data(SchemaJObj, set_req_data(Context, NewJObj))

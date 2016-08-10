@@ -936,7 +936,7 @@ hex_char_to_binary(B) ->
 
 -spec rand_hex_binary(pos_integer() | ne_binary()) -> ne_binary().
 rand_hex_binary(Size) when not is_integer(Size) ->
-    rand_hex_binary(?MODULE:to_integer(Size));
+    rand_hex_binary(to_integer(Size));
 rand_hex_binary(Size) when is_integer(Size)
                            andalso Size > 0 ->
     to_hex_binary(rand_hex(Size)).
@@ -1012,7 +1012,7 @@ uri(BaseUrl, Tokens) ->
 -spec safe_urlencode(binary() | number()) -> iolist().
 safe_urlencode(V) when is_binary(V)
                        orelse is_number(V) ->
-    kz_http_util:urlencode(kz_util:to_binary(V)).
+    kz_http_util:urlencode(to_binary(V)).
 
 -spec to_integer(string() | binary() | integer() | float()) -> integer().
 -spec to_integer(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
@@ -1472,7 +1472,7 @@ decr_timeout(Timeout, Elapsed) when is_integer(Elapsed) ->
         'false' -> Diff
     end;
 decr_timeout(Timeout, Start) ->
-    decr_timeout(Timeout, ?MODULE:elapsed_ms(Start)).
+    decr_timeout(Timeout, elapsed_ms(Start)).
 
 -spec microseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
 microseconds_to_seconds(Microseconds) -> to_integer(Microseconds) div 1000000.
@@ -1542,14 +1542,14 @@ format_date() ->
 
 format_date(Timestamp) ->
     {{Y,M,D}, _ } = calendar:gregorian_seconds_to_datetime(Timestamp),
-    list_to_binary([?MODULE:to_binary(Y), "-", ?MODULE:to_binary(M), "-", ?MODULE:to_binary(D)]).
+    list_to_binary([to_binary(Y), "-", to_binary(M), "-", to_binary(D)]).
 
 format_time() ->
     format_time(current_tstamp()).
 
 format_time(Timestamp) ->
     { _, {H,I,S}} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    list_to_binary([?MODULE:to_binary(H), ":", ?MODULE:to_binary(I), ":", ?MODULE:to_binary(S)]).
+    list_to_binary([to_binary(H), ":", to_binary(I), ":", to_binary(S)]).
 
 format_datetime() ->
     format_datetime(current_tstamp()).

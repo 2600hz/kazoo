@@ -10,6 +10,7 @@
 -define(MAX_PAYLOAD, 256).
 
 -behaviour(application).
+-define(APP, ?MODULE).
 
 -export([start/0, stop/0]).
 -export([connect/0, connect/1, connect/2, connect/3, disconnect/1]).
@@ -49,7 +50,7 @@
 %% @doc Starts the application
 -spec start() -> 'ok'.
 start() ->
-    _ = application:ensure_all_started('apns'),
+    _ = application:ensure_all_started(?APP),
     'ok'.
 
 %% @doc Stops the application
@@ -103,8 +104,7 @@ connect(Name, Fun) when is_function(Fun, 2) ->
 
 %% @doc Opens an connection named after the atom()
 %%      using the given feedback and error functions
--spec connect(
-        atom(), fun((binary(), apns:status()) -> stop | any()), fun((string()) -> any())) ->
+-spec connect(atom(), fun((binary(), status()) -> stop | any()), fun((string()) -> any())) ->
                      {ok, pid()} | {error, {already_started, pid()}} | {error, Reason::_}.
 connect(Name, ErrorFun, FeedbackFun) ->
     connect(

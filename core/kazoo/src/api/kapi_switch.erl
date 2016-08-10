@@ -251,13 +251,13 @@ declare_exchanges() ->
 -spec publish_reload_acls() -> 'ok'.
 publish_reload_acls() ->
     Defaults = kz_api:default_headers(<<"switch_event">>, kz_util:to_binary(?MODULE)),
-    {'ok', Payload} = kz_api:prepare_api_payload(Defaults, ?RELOAD_ACLS_VALUES, fun ?MODULE:reload_acls/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Defaults, ?RELOAD_ACLS_VALUES, fun reload_acls/1),
     amqp_util:configuration_publish(?RELOAD_ACLS_KEY, Payload, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_reload_gateways() -> 'ok'.
 publish_reload_gateways() ->
     Defaults = kz_api:default_headers(<<"switch_event">>, kz_util:to_binary(?MODULE)),
-    {'ok', Payload} = kz_api:prepare_api_payload(Defaults, ?RELOAD_GATEWAYS_VALUES, fun ?MODULE:reload_gateways/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Defaults, ?RELOAD_GATEWAYS_VALUES, fun reload_gateways/1),
     amqp_util:configuration_publish(?RELOAD_GATEWAYS_KEY, Payload, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_fs_xml_flush(api_terms()) -> 'ok'.
@@ -265,7 +265,7 @@ publish_reload_gateways() ->
 publish_fs_xml_flush(JObj) ->
     publish_fs_xml_flush(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_fs_xml_flush(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FS_XML_FLUSH_VALUES, fun ?MODULE:fs_xml_flush/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FS_XML_FLUSH_VALUES, fun fs_xml_flush/1),
     amqp_util:configuration_publish(?FS_XML_FLUSH_KEY, Payload, ContentType).
 
 -spec publish_check_sync(api_terms()) -> 'ok'.
@@ -273,7 +273,7 @@ publish_fs_xml_flush(Req, ContentType) ->
 publish_check_sync(JObj) ->
     publish_check_sync(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_check_sync(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?CHECK_SYNC_VALUES, fun ?MODULE:check_sync/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?CHECK_SYNC_VALUES, fun check_sync/1),
 
     Realm = check_sync_realm(Req),
     Username = check_sync_username(Req),
@@ -304,13 +304,13 @@ check_sync_value(API, Key, Get) ->
 publish_command(JObj) ->
     publish_command(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_command(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FS_COMMAND_VALUES, fun ?MODULE:fs_command/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FS_COMMAND_VALUES, fun fs_command/1),
     N = check_fs_node(Req),
     amqp_util:configuration_publish(?FS_COMMAND_KEY(N), Payload, ContentType).
 
 -spec publish_reply(binary(), api_terms()) -> 'ok'.
 publish_reply(Queue, Req) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FSREPLY_COMMAND_VALUES, fun ?MODULE:fs_reply/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?FSREPLY_COMMAND_VALUES, fun fs_reply/1),
     amqp_util:targeted_publish(Queue, Payload).
 
 -spec check_fs_node(api_terms()) -> api_binary().

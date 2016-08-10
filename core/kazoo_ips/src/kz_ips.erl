@@ -49,9 +49,7 @@ available(Zone, Quantity) ->
                                )
     of
         {'error', 'not_found'} ->
-            kz_ip_utils:refresh_database(
-              fun() -> ?MODULE:available(Zone, Quantity) end
-             );
+            kz_ip_utils:refresh_database(fun() -> available(Zone, Quantity) end);
         {'ok', JObjs} ->
             {'ok', [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
         {'error', _R}=E ->
@@ -77,9 +75,7 @@ assigned(Account) ->
                                )
     of
         {'error', 'not_found'} ->
-            kz_ip_utils:refresh_database(
-              fun() -> ?MODULE:assigned(Account) end
-             );
+            kz_ip_utils:refresh_database(fun() -> assigned(Account) end);
         {'ok', JObjs} ->
             {'ok', [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
         {'error', _R}=E ->
@@ -106,9 +102,7 @@ zones() ->
                                )
     of
         {'error', 'not_found'} ->
-            kz_ip_utils:refresh_database(
-              fun() -> ?MODULE:zones() end
-             );
+            kz_ip_utils:refresh_database(fun zones/0);
         {'ok', JObjs} ->
             {'ok', [kz_json:get_value(<<"key">>, JObj)
                     || JObj <- JObjs
@@ -137,9 +131,7 @@ hosts() ->
                                )
     of
         {'error', 'not_found'} ->
-            kz_ip_utils:refresh_database(
-              fun() -> ?MODULE:hosts() end
-             );
+            kz_ip_utils:refresh_database(fun hosts/0);
         {'ok', JObjs} ->
             {'ok', [kz_json:get_value(<<"key">>, JObj)
                     || JObj <- JObjs
@@ -166,9 +158,7 @@ summary(Host) ->
                                )
     of
         {'error', 'not_found'} ->
-            kz_ip_utils:refresh_database(
-              fun() -> ?MODULE:summary(Host) end
-             );
+            kz_ip_utils:refresh_database(fun() -> summary(Host) end);
         {'ok', JObjs} -> {'ok', [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
         {'error', _R}=E ->
             lager:debug("unable to get host ips: ~p", [_R]),

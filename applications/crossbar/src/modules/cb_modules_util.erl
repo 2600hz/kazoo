@@ -100,7 +100,7 @@ range_modb_view_options(Context, 'undefined', SuffixKeys) ->
 range_modb_view_options(Context, PrefixKeys, 'undefined') ->
     range_modb_view_options(Context, PrefixKeys, []);
 range_modb_view_options(Context, PrefixKeys, SuffixKeys) ->
-    case ?MODULE:range_view_options(Context) of
+    case range_view_options(Context) of
         {CreatedFrom, CreatedTo} ->
             range_modb_view_options1(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo);
         Context1 -> Context1
@@ -110,7 +110,7 @@ range_modb_view_options(Context, PrefixKeys, SuffixKeys) ->
                                      {'ok', crossbar_doc:view_options()} |
                                      cb_context:context().
 range_modb_view_options(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo) ->
-    case ?MODULE:range_view_options(Context, ?MAX_RANGE, <<"created">>, CreatedFrom, CreatedTo) of
+    case range_view_options(Context, ?MAX_RANGE, <<"created">>, CreatedFrom, CreatedTo) of
         {CreatedFrom, CreatedTo} ->
             range_modb_view_options1(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo);
         Context1 -> Context1

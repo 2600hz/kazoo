@@ -45,7 +45,7 @@
 create_user(Context) ->
     Context1 = validate_request('undefined', cb_context:set_req_verb(Context, ?HTTP_PUT)),
     case cb_context:resp_status(Context1) of
-        'success' -> ?MODULE:put(Context1);
+        'success' -> put(Context1);
         _Status -> Context1
     end.
 

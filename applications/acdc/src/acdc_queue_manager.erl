@@ -83,13 +83,13 @@
                     ,{{'acdc_queue_handler', 'handle_presence_probe'}
                      ,[{<<"presence">>, <<"probe">>}]
                      }
-                    ,{{'acdc_queue_manager', 'handle_member_call'}
+                    ,{{?MODULE, 'handle_member_call'}
                      ,[{<<"member">>, <<"call">>}]
                      }
-                    ,{{'acdc_queue_manager', 'handle_member_call_cancel'}
+                    ,{{?MODULE, 'handle_member_call_cancel'}
                      ,[{<<"member">>, <<"call_cancel">>}]
                      }
-                    ,{{'acdc_queue_manager', 'handle_agent_change'}
+                    ,{{?MODULE, 'handle_agent_change'}
                      ,[{<<"queue">>, <<"agent_change">>}]
                      }
                     ]).

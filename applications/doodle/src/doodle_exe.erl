@@ -335,17 +335,17 @@ handle_cast({'continue', Key}, #state{flow=Flow
     case kz_json:get_value([<<"children">>, Key], Flow) of
         'undefined' when Key =:= <<"_">> ->
             lager:info("wildcard child does not exist, we are lost...hanging up"),
-            ?MODULE:stop(self()),
+            stop(self()),
             {'noreply', State};
         'undefined' ->
             lager:info("requested child does not exist, trying wild card", [Key]),
-            ?MODULE:continue(self()),
+            continue(self()),
             {'noreply', State};
         NewFlow ->
             case kz_json:is_empty(NewFlow) of
                 'false' -> {'noreply', launch_cf_module(State#state{flow=NewFlow})};
                 'true' ->
-                    ?MODULE:stop(self()),
+                    stop(self()),
                     {'noreply', State}
             end
     end;
@@ -386,8 +386,8 @@ handle_cast('initialize', #state{call=Call}) ->
     log_call_information(Call),
     Flow = kapps_call:kvs_fetch('cf_flow', Call),
     Updaters = [fun(C) -> kapps_call:kvs_store('consumer_pid', self(), C) end
-               ,fun(C) -> kapps_call:call_id_helper(fun ?MODULE:callid/2, C) end
-               ,fun(C) -> kapps_call:control_queue_helper(fun ?MODULE:control_queue/2, C) end
+               ,fun(C) -> kapps_call:call_id_helper(fun callid/2, C) end
+               ,fun(C) -> kapps_call:control_queue_helper(fun control_queue/2, C) end
                ],
     CallWithHelpers = lists:foldr(fun(F, C) -> F(C) end, Call, Updaters),
     {'noreply', #state{call=CallWithHelpers
@@ -431,7 +431,7 @@ handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{cf_module_pid={Pid, R
     erlang:demonitor(Ref, ['flush']),
     LastAction = kapps_call:kvs_fetch('cf_last_action', Call),
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
-    ?MODULE:continue(self()),
+    continue(self()),
     {'noreply', State#state{cf_module_pid='undefined'}};
 handle_info({'DOWN', _Ref, 'process', _Pid, 'normal'}, State) ->
     {'noreply', State};
@@ -447,7 +447,7 @@ handle_info({'EXIT', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
     erlang:demonitor(Ref, ['flush']),
     LastAction = kapps_call:kvs_fetch('cf_last_action', Call),
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
-    ?MODULE:continue(self()),
+    continue(self()),
     {'noreply', State#state{cf_module_pid='undefined'}};
 handle_info({'EXIT', Pid, 'normal'}, #state{cf_module_old_pid={Pid, Ref}
                                            ,call=Call
@@ -639,7 +639,7 @@ maybe_start_cf_module(ModuleBin, Data, Call) ->
                             {'undefined', CFModule}.
 cf_module_skip(CFModule, _Call) ->
     lager:error("unknown callflow action '~s', skipping to next action", [CFModule]),
-    ?MODULE:continue(self()),
+    continue(self()),
     {'undefined', CFModule}.
 
 %%--------------------------------------------------------------------

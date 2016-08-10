@@ -120,9 +120,9 @@ read(TaskId=?NE_BINARY) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec new(ne_binary(), ne_binary()
-         ,ne_binary(), ne_binary(), api_pos_integer(), kz_tasks:input(), api_binary()) ->
+         ,ne_binary(), ne_binary(), api_pos_integer(), input(), api_binary()) ->
                  {'ok', kz_json:object()} |
-                 kz_tasks:help_error() |
+                 help_error() |
                  {'error', kz_json:object()}.
 new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
    ,Category=?NE_BINARY, Action=?NE_BINARY, TotalRows, Input, CSVName)

@@ -81,7 +81,7 @@ push_resp_v(JObj) ->
 publish_push_req(JObj) ->
     publish_push_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_push_req(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?PUSH_REQ_VALUES, fun ?MODULE:push_req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?PUSH_REQ_VALUES, fun push_req/1),
     amqp_util:basic_publish(?PUSH_EXCHANGE, push_routing_key(Req), Payload, ContentType).
 
 -spec publish_push_resp(api_terms()) -> 'ok'.
@@ -89,7 +89,7 @@ publish_push_req(Req, ContentType) ->
 publish_push_resp(JObj) ->
     publish_push_resp(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_push_resp(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?PUSH_RESP_VALUES, fun ?MODULE:push_resp/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?PUSH_RESP_VALUES, fun push_resp/1),
     amqp_util:basic_publish(?PUSH_EXCHANGE, push_routing_key(Req), Payload, ContentType).
 
 -spec publish_targeted_push_resp(ne_binary(), api_terms()) -> 'ok'.

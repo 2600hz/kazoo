@@ -237,7 +237,7 @@ call_table_opts() ->
     ].
 
 -define(BINDINGS, [{'self', []}
-                  ,{'acdc_stats', []}
+                  ,{?MODULE, []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_call_stat'}
                      ,[{<<"acdc_call_stat">>, <<"waiting">>}
@@ -574,7 +574,7 @@ cleanup_data(Srv) ->
                    }],
     gen_listener:cast(Srv, {'remove_status', StatusMatch}),
 
-    case ets:select(?MODULE:call_table_id()
+    case ets:select(call_table_id()
                    ,[{#call_stat{entered_timestamp='$1', status= <<"waiting">>, _='_'}
                      ,[PastConstraint]
                      ,['$_']

@@ -44,9 +44,9 @@ Then, once you've started the apns application, you can connect to the APNS netw
         %% your connection identifier:
         my_connection_name,
         %% called in case of a "hard" error:
-        fun ?MODULE:handle_apns_error/2,
+        fun M:handle_apns_error/2,
         %% called if the device uninstalled the application:
-        fun ?MODULE:handle_apns_delete_subscription/1
+        fun M:handle_apns_delete_subscription/1
       ).
 ```
 

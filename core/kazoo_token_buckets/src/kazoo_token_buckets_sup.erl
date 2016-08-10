@@ -25,7 +25,7 @@
                                ,[
                                  [{'table_id', kz_buckets:table_id()}
                                  ,{'table_options', kz_buckets:table_options()}
-                                 ,{'find_me_function', fun ?MODULE:buckets_srv/0}
+                                 ,{'find_me_function', fun buckets_srv/0}
                                  ,{'gift_data', kz_buckets:gift_data()}
                                  ]
                                 ])

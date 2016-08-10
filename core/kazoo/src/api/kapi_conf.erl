@@ -275,7 +275,7 @@ get_routing_key(Props) ->
 publish_doc_update(Action, Db, Type, Id, JObj) ->
     publish_doc_update(Action, Db, Type, Id, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_doc_update(Action, Db, Type, Id, Change, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Change, ?CONF_DOC_UPDATE_VALUES, fun ?MODULE:doc_update/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Change, ?CONF_DOC_UPDATE_VALUES, fun doc_update/1),
     amqp_util:document_change_publish(Action, Db, Type, Id, Payload, ContentType).
 
 -spec publish_db_update(action(), ne_binary(), api_terms()) -> 'ok'.
@@ -283,7 +283,7 @@ publish_doc_update(Action, Db, Type, Id, Change, ContentType) ->
 publish_db_update(Action, Db, JObj) ->
     publish_db_update(Action, Db, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_db_update(Action, Db, Change, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Change, ?CONF_DOC_UPDATE_VALUES, fun ?MODULE:doc_update/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Change, ?CONF_DOC_UPDATE_VALUES, fun doc_update/1),
     amqp_util:document_change_publish(Action, Db, <<"database">>, Db, Payload, ContentType).
 
 -spec publish_doc_type_update(api_terms()) -> 'ok'.
@@ -291,7 +291,7 @@ publish_db_update(Action, Db, Change, ContentType) ->
 publish_doc_type_update(JObj) ->
     publish_doc_type_update(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_doc_type_update(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?DOC_TYPE_UPDATE_VALUES, fun ?MODULE:doc_type_update/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?DOC_TYPE_UPDATE_VALUES, fun doc_type_update/1),
     amqp_util:configuration_publish(doc_type_update_routing_key(API), Payload, ContentType, [{'mandatory', 'true'}]).
 
 -spec doc_type_update_routing_key(api_terms() | ne_binary()) -> ne_binary().

@@ -324,7 +324,7 @@ handle_info(?HOOK_EVT(_AccountId, _, JObj), State) ->
     AcctId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     SIPName = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj),
     lager:debug("available device: ~s(~s)", [SIPName, AcctId]),
-    ?MODULE:available_device(AcctId, SIPName),
+    available_device(AcctId, SIPName),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),

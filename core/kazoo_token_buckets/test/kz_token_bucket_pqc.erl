@@ -52,7 +52,7 @@ sequential_test_() ->
     ,{'timeout'
      ,50000
      ,?_assertEqual('true'
-                   ,proper:quickcheck(?MODULE:correct()
+                   ,proper:quickcheck(correct()
                                      ,[{'max_shrinks', 4}
                                       ,{'numtests', 50}
                                       ,{'to_file', 'user'}
@@ -67,7 +67,7 @@ parallel_test_() ->
     ,{'timeout'
      ,50000
      ,?_assertEqual('true'
-                   ,proper:quickcheck(?MODULE:correct_parallel()
+                   ,proper:quickcheck(correct_parallel()
                                      ,[{'max_shrinks', 4}
                                       ,{'numtests', 50}
                                       ,{'to_file', 'user'}

@@ -168,7 +168,7 @@ is_false(Key, Props, Default) ->
 get_integer_value(Key, Props) ->
     get_integer_value(Key, Props, 'undefined').
 get_integer_value(Key, Props, Default) ->
-    case ?MODULE:get_value(Key, Props) of
+    case get_value(Key, Props) of
         'undefined' -> Default;
         Val -> kz_util:to_integer(Val)
     end.
@@ -180,7 +180,7 @@ get_integer_value(Key, Props, Default) ->
 get_atom_value(Key, Props) ->
     get_atom_value(Key, Props, 'undefined').
 get_atom_value(Key, Props, Default) ->
-    case ?MODULE:get_value(Key, Props) of
+    case get_value(Key, Props) of
         'undefined' -> Default;
         Val -> kz_util:to_atom(Val)
     end.
@@ -191,12 +191,12 @@ get_atom_value(Key, Props, Default) ->
 get_binary_value(Key, Props) ->
     get_binary_value(Key, Props, 'undefined').
 get_binary_value(Keys, Props, Default) when is_list(Keys) ->
-    case ?MODULE:get_first_defined(Keys, Props) of
+    case get_first_defined(Keys, Props) of
         'undefined' -> Default;
         V -> kz_util:to_binary(V)
     end;
 get_binary_value(Key, Props, Default) ->
-    case ?MODULE:get_value(Key, Props) of
+    case get_value(Key, Props) of
         'undefined' -> Default;
         V -> kz_util:to_binary(V)
     end.
@@ -207,7 +207,7 @@ get_binary_value(Key, Props, Default) ->
 get_ne_binary_value(Key, Props) ->
     get_ne_binary_value(Key, Props, 'undefined').
 get_ne_binary_value(Key, Props, Default) ->
-    case ?MODULE:get_value(Key, Props) of
+    case get_value(Key, Props) of
         'undefined' -> Default;
         <<>> -> Default;
         V -> kz_util:to_binary(V)
@@ -229,7 +229,7 @@ delete(K, Props) ->
 
 -spec delete_keys(kz_proplist_keys(), kz_proplist()) -> kz_proplist().
 delete_keys([], Props) -> Props;
-delete_keys([_|_]=Ks, Props) -> lists:foldl(fun ?MODULE:delete/2, Props, Ks).
+delete_keys([_|_]=Ks, Props) -> lists:foldl(fun delete/2, Props, Ks).
 
 -spec is_defined(kz_proplist_key(), kz_proplist()) -> boolean().
 is_defined(Key, Props) ->
@@ -313,6 +313,6 @@ to_log(Props, Header) ->
     Keys = ?MODULE:get_keys(Props),
     K = kz_util:rand_hex_binary(4),
     lager:debug(<<"===== Start ", Header/binary , " - ", K/binary, " ====">>),
-    lists:foreach(fun(A) -> lager:info("~s - ~p = ~p",[K,A,?MODULE:get_value(A,Props)]) end,Keys),
+    lists:foreach(fun(A) -> lager:info("~s - ~p = ~p",[K,A,get_value(A,Props)]) end,Keys),
     lager:debug(<<"===== End ", Header/binary, " - ", K/binary, " ====">>),
     'ok'.

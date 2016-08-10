@@ -385,11 +385,11 @@ handle_cast({'continue', Key}, #state{flow=Flow
     case kz_json:get_value([<<"children">>, Key], Flow) of
         'undefined' when Key =:= <<"_">> ->
             lager:info("wildcard child does not exist, we are lost...hanging up"),
-            ?MODULE:stop(self()),
+            stop(self()),
             {'noreply', State};
         'undefined' ->
             lager:info("requested child does not exist, trying wild card", [Key]),
-            ?MODULE:continue(self()),
+            continue(self()),
             {'noreply', State};
         NewFlow ->
             {'noreply', launch_cf_module(State#state{flow=NewFlow})}
@@ -450,8 +450,8 @@ handle_cast('initialize', #state{call=Call}=State) ->
     log_call_information(Call),
     Flow = kapps_call:kvs_fetch('cf_flow', Call),
     Updaters = [fun(C) -> kapps_call:kvs_store('consumer_pid', self(), C) end
-               ,fun(C) -> kapps_call:call_id_helper(fun ?MODULE:callid/2, C) end
-               ,fun(C) -> kapps_call:control_queue_helper(fun ?MODULE:control_queue/2, C) end
+               ,fun(C) -> kapps_call:call_id_helper(fun callid/2, C) end
+               ,fun(C) -> kapps_call:control_queue_helper(fun control_queue/2, C) end
                ],
     CallWithHelpers = lists:foldr(fun(F, C) -> F(C) end, Call, Updaters),
     _ = kz_util:spawn(fun cf_singular_call_hooks:maybe_hook_call/1, [CallWithHelpers]),
@@ -496,7 +496,7 @@ handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{cf_module_pid={Pid, R
     erlang:demonitor(Ref, ['flush']),
     LastAction = kapps_call:kvs_fetch('cf_last_action', Call),
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
-    ?MODULE:continue(self()),
+    continue(self()),
     {'noreply', State#state{cf_module_pid='undefined'}};
 handle_info({'DOWN', _Ref, 'process', _Pid, 'normal'}, State) ->
     {'noreply', State};
@@ -512,7 +512,7 @@ handle_info({'EXIT', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
     erlang:demonitor(Ref, ['flush']),
     LastAction = kapps_call:kvs_fetch('cf_last_action', Call),
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
-    ?MODULE:continue(self()),
+    continue(self()),
     {'noreply', State#state{cf_module_pid='undefined'}};
 handle_info({'EXIT', Pid, 'normal'}, #state{cf_module_old_pid={Pid, Ref}
                                            ,call=Call
@@ -538,10 +538,9 @@ handle_info(_Msg, State) ->
 handle_event(JObj, #state{cf_module_pid=PidRef, call=Call ,self=Self}) ->
     CallId = kapps_call:call_id_direct(Call),
     Others = kapps_call:kvs_fetch('cf_event_pids', [], Call),
-    ModPid = get_pid(PidRef),
-    Notify = case is_pid(ModPid) of
-                 'true' -> [ModPid | Others];
-                 'false' -> Others
+    Notify = case get_pid(PidRef) of
+                 'undefined' -> Others;
+                 ModPid -> [ModPid | Others]
              end,
 
     case {kapps_util:get_event_type(JObj), kz_json:get_value(<<"Call-ID">>, JObj)} of
@@ -561,8 +560,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef, call=Call ,self=Self}) ->
             relay_message(Notify, JObj);
         {{_Cat, _Name}, _Else} when Others =:= [] ->
             lager:info("received ~s (~s) from call ~s while relaying for ~s"
-                      ,[_Cat, _Name, _Else, CallId]
-                      );
+                      ,[_Cat, _Name, _Else, CallId]);
         {_Evt, _Else} ->
             lager:info("the others want to know about ~p", [_Evt]),
             relay_message(Others, JObj)
@@ -658,7 +656,7 @@ maybe_start_cf_module(ModuleBin, Data, Call) ->
                                  {'undefined', atom()}.
 cf_module_not_found(Call) ->
     lager:error("unknown callflow action, reverting to last action"),
-    ?MODULE:continue(self()),
+    continue(self()),
     {'undefined', kapps_call:kvs_fetch('cf_last_action', Call)}.
 
 %%--------------------------------------------------------------------
@@ -783,7 +781,7 @@ relay_message(Notify, Message) ->
         ],
     'ok'.
 
--spec get_pid({pid(), reference()} | 'undefined') -> pid().
+-spec get_pid({pid(), reference()} | 'undefined') -> api_pid().
 get_pid({Pid, _}) when is_pid(Pid) -> Pid;
 get_pid(_) -> 'undefined'.
 

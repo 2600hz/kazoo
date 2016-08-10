@@ -120,8 +120,8 @@ v(JObj) ->
 v(Prop, DPApp) ->
     try
         VFun = kz_util:to_atom(<<DPApp/binary, "_v">>),
-        case lists:keyfind(VFun, 1, ?MODULE:module_info(exports)) of
-            'false' -> throw({invalid_dialplan_object, Prop});
+        case lists:keyfind(VFun, 1, ?MODULE:module_info('exports')) of
+            'false' -> throw({'invalid_dialplan_object', Prop});
             {_, 1} -> ?MODULE:VFun(Prop)
         end
     catch
@@ -1084,7 +1084,7 @@ publish_command(CtrlQ, Prop, DPApp) ->
 publish_metaflow(API) ->
     publish_metaflow(API, ?DEFAULT_CONTENT_TYPE).
 publish_metaflow(API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?METAFLOW_VALUES, fun ?MODULE:metaflow/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?METAFLOW_VALUES, fun metaflow/1),
     CallId = metaflow_callid(API),
     amqp_util:kapps_publish(?METAFLOW_ROUTING_KEY(CallId), Payload, ContentType).
 
@@ -1107,7 +1107,7 @@ publish_error(CallID, JObj) ->
 publish_error(CallID, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, [{<<"Event-Name">>, <<"dialplan">>}
                                                        | ?ERROR_RESP_VALUES
-                                                      ], fun ?MODULE:error/1),
+                                                      ], fun error/1),
     amqp_util:callevt_publish(kapi_call:event_routing_key(<<"diaplan">>, CallID), Payload, ContentType).
 
 -spec publish_originate_ready(ne_binary(), api_terms()) -> 'ok'.
@@ -1115,7 +1115,7 @@ publish_error(CallID, API, ContentType) ->
 publish_originate_ready(ServerId, JObj) ->
     publish_originate_ready(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_originate_ready(ServerId, API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?ORIGINATE_READY_VALUES, fun ?MODULE:originate_ready/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?ORIGINATE_READY_VALUES, fun originate_ready/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 -spec publish_originate_execute(ne_binary(), api_terms()) -> 'ok'.
@@ -1123,7 +1123,7 @@ publish_originate_ready(ServerId, API, ContentType) ->
 publish_originate_execute(ServerId, JObj) ->
     publish_originate_execute(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_originate_execute(ServerId, API, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(API, ?ORIGINATE_EXECUTE_VALUES, fun ?MODULE:originate_execute/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?ORIGINATE_EXECUTE_VALUES, fun originate_execute/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 dial_method_single() -> ?DIAL_METHOD_SINGLE.

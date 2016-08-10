@@ -99,7 +99,7 @@ start_link() ->
 
 -spec is_up(node()) -> boolean().
 is_up(Node) ->
-    case ets:match('kz_nodes', #kz_node{node = Node, expires = '$2', _ = '_'}) of
+    case ets:match(?MODULE, #kz_node{node = Node, expires = '$2', _ = '_'}) of
         [] -> 'false';
         [_] -> 'true'
     end.
@@ -802,7 +802,7 @@ notify_expire(Nodes, #state{notify_expire=Set}) ->
     notify_expire(Nodes, sets:to_list(Set));
 notify_expire([#kz_node{node=NodeName}=Node|Nodes], Pids) ->
     lager:warning("node ~s heartbeat has expired", [NodeName]),
-    _ = [gen_listener:cast(Pid, {'kz_nodes', {'expire', Node}})
+    _ = [gen_listener:cast(Pid, {?MODULE, {'expire', Node}})
          || Pid <- Pids
         ],
     notify_expire(Nodes, Pids).
@@ -812,7 +812,7 @@ notify_new(Node, #state{notify_new=Set}) ->
     notify_new(Node, sets:to_list(Set));
 notify_new(#kz_node{node=NodeName}=Node, Pids) ->
     lager:info("received heartbeat from new node ~s", [NodeName]),
-    _ = [gen_listener:cast(Pid, {'kz_nodes', {'new', Node}})
+    _ = [gen_listener:cast(Pid, {?MODULE, {'new', Node}})
          || Pid <- Pids
         ],
     'ok'.

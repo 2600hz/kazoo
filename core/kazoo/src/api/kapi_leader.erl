@@ -96,7 +96,7 @@ declare_exchanges() ->
 publish_req(Routing, JObj) ->
     publish_req(Routing, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Routing, Req, ContentType) ->
-    {ok, Payload} = kz_api:prepare_api_payload(Req, ?LEADER_REQ_VALUES, fun ?MODULE:req/1),
+    {ok, Payload} = kz_api:prepare_api_payload(Req, ?LEADER_REQ_VALUES, fun req/1),
     amqp_util:leader_publish(Routing, Payload, ContentType).
 
 -spec bind_q(ne_binary(), proplist()) -> 'ok'.

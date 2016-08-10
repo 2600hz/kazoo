@@ -338,9 +338,9 @@ set_order_id(OrderId, Transaction) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_per_minute(kz_transaction:transaction()) -> boolean().
+-spec is_per_minute(transaction()) -> boolean().
 is_per_minute(Transaction) ->
-    case kz_transaction:code(Transaction) of
+    case code(Transaction) of
         ?CODE_PER_MINUTE_CALL -> 'true';
         ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL -> 'true';
         _Code -> 'false'

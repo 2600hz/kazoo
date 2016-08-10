@@ -27,7 +27,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(gen_listener).
-
 -behaviour(gen_server).
 
 -export([start_link/3
@@ -489,14 +488,14 @@ handle_cast({'$execute', Function}
 handle_cast({'$execute', Module, Function, Args}=Msg
            ,#state{federators=Federators}=State) ->
     erlang:apply(Module, Function, Args),
-    _ = [gen_listener:cast(Federator, Msg)
+    _ = [?MODULE:cast(Federator, Msg)
          || {_Broker, Federator} <- Federators
         ],
     {'noreply', State};
 handle_cast({'$execute', Function, Args}=Msg
            ,#state{federators=Federators}=State) ->
     erlang:apply(Function, Args),
-    _ = [gen_listener:cast(Federator, Msg)
+    _ = [?MODULE:cast(Federator, Msg)
          || {_Broker, Federator} <- Federators
         ],
     {'noreply', State};
@@ -504,7 +503,7 @@ handle_cast({'$execute', Function}=Msg
            ,#state{federators=Federators}=State
            ) ->
     Function(),
-    _ = [gen_listener:cast(Federator, Msg)
+    _ = [?MODULE:cast(Federator, Msg)
          || {_Broker, Federator} <- Federators
         ],
     {'noreply', State};
@@ -581,13 +580,13 @@ handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue='undefined'}=St
     lager:debug("received consume ok (~s) for abandoned queue", [CTag]),
     {'noreply', State};
 handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=State) ->
-    gen_server:cast(self(), {'gen_listener', {'is_consuming', 'true'}}),
+    gen_server:cast(self(), {?MODULE, {'is_consuming', 'true'}}),
     {'noreply', State#state{is_consuming='true'
                            ,consumer_tags=[CTag | CTags]
                            }};
 handle_info(#'basic.cancel_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=State) ->
     lager:debug("recv a basic.cancel_ok for tag ~s", [CTag]),
-    gen_server:cast(self(), {'gen_listener', {'is_consuming', 'false'}}),
+    gen_server:cast(self(), {?MODULE, {'is_consuming', 'false'}}),
     {'noreply', State#state{is_consuming='false'
                            ,consumer_tags=lists:delete(CTag, CTags)
                            }};
@@ -600,7 +599,7 @@ handle_info(#'basic.nack'{}=Nack, #state{}=State) ->
 handle_info(#'channel.flow'{active=Active}, State) ->
     lager:debug("received channel flow (~s)", [Active]),
     amqp_util:flow_control_reply(Active),
-    gen_server:cast(self(), {'gen_listener',{'channel_flow_control', Active}}),
+    gen_server:cast(self(), {?MODULE,{'channel_flow_control', Active}}),
     {'noreply', State};
 handle_info('$is_gen_listener_consuming'
            ,#state{is_consuming='false'
@@ -616,10 +615,10 @@ handle_info('$is_gen_listener_consuming'
 handle_info('$is_gen_listener_consuming', State) ->
     {'noreply', State};
 handle_info({'$server_confirms', ServerConfirms}, State) ->
-    gen_server:cast(self(), {'gen_listener',{'server_confirms',ServerConfirms}}),
+    gen_server:cast(self(), {?MODULE,{'server_confirms',ServerConfirms}}),
     {'noreply', State};
 handle_info({'$channel_flow', Active}, State) ->
-    gen_server:cast(self(), {'gen_listener',{'channel_flow', Active}}),
+    gen_server:cast(self(), {?MODULE,{'channel_flow', Active}}),
     {'noreply', State};
 handle_info(?CALLBACK_TIMEOUT_MSG, State) ->
     handle_callback_info('timeout', State);
@@ -666,7 +665,7 @@ handle_return(Payload, <<"application/erlang">>, BR, State) ->
 
 -spec handle_return(kz_json:object(), #'basic.return'{}, state()) -> handle_cast_return().
 handle_return(JObj, BR, State) ->
-    Msg = {'gen_listener', {'return', JObj, basic_return_to_jobj(BR)}},
+    Msg = {?MODULE, {'return', JObj, basic_return_to_jobj(BR)}},
     handle_module_cast(Msg, State).
 
 -spec basic_return_to_jobj(#'basic.return'{}) -> kz_json:object().
@@ -683,7 +682,7 @@ basic_return_to_jobj(#'basic.return'{reply_code=Code
 
 -spec handle_confirm(#'basic.ack'{} | #'basic.nack'{}, state()) -> handle_cast_return().
 handle_confirm(Confirm, State) ->
-    Msg = {'gen_listener', {'confirm', Confirm}},
+    Msg = {?MODULE, {'confirm', Confirm}},
     handle_module_cast(Msg, State).
 
 %%--------------------------------------------------------------------
@@ -916,13 +915,13 @@ start_timer(_) -> 'undefined'.
 -spec add_other_queue(binary(), kz_proplist(), kz_proplist(), state()) -> {ne_binary(), state()}.
 add_other_queue(<<>>, QueueProps, Bindings, #state{other_queues=OtherQueues}=State) ->
     {'ok', Q} = start_amqp(QueueProps),
-    gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
+    gen_server:cast(self(), {?MODULE, {'created_queue', Q}}),
 
     _ = [create_binding(Type, BindProps, Q) || {Type, BindProps} <- Bindings],
     {Q, State#state{other_queues=[{Q, {Bindings, QueueProps}}|OtherQueues]}};
 add_other_queue(QueueName, QueueProps, Bindings, #state{other_queues=OtherQueues}=State) ->
     {'ok', Q} = start_amqp([{'queue_name', QueueName} | QueueProps]),
-    gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
+    gen_server:cast(self(), {?MODULE, {'created_queue', Q}}),
     _ = [create_binding(Type, BindProps, Q) || {Type, BindProps} <- Bindings],
     case props:get_value(QueueName, OtherQueues) of
         'undefined' ->
@@ -1102,7 +1101,7 @@ update_existing_listeners_bindings(Listeners, Binding, Props) ->
 -spec update_existing_listener_bindings(federator_listener(), binding_module(), kz_proplist()) -> 'ok'.
 update_existing_listener_bindings({_Broker, Pid}, Binding, Props) ->
     lager:debug("updating listener ~p with ~s", [Pid, Binding]),
-    gen_listener:add_binding(Pid, Binding, Props).
+    ?MODULE:add_binding(Pid, Binding, Props).
 
 -spec create_federated_params({binding_module(), kz_proplist()}, kz_proplist()) ->
                                      kz_proplist().
@@ -1149,7 +1148,7 @@ handle_exchanges_ready(#state{params=Params}=State) ->
 handle_amqp_started(#state{params=Params}=State, Q) ->
     State1 = start_initial_bindings(State#state{queue=Q}, Params),
 
-    gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
+    gen_server:cast(self(), {?MODULE, {'created_queue', Q}}),
 
     maybe_server_confirms(props:get_value('server_confirms', Params, 'false')),
 

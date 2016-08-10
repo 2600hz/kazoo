@@ -86,5 +86,5 @@ declare_exchanges() ->
 publish_advertise(JObj) ->
     publish_advertise(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_advertise(Advertise, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Advertise, ?ADVERTISE_VALUES, fun ?MODULE:advertise/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Advertise, ?ADVERTISE_VALUES, fun advertise/1),
     amqp_util:nodes_publish(Payload, ContentType).

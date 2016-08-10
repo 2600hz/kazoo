@@ -184,7 +184,7 @@ refresh() ->
             lager:debug("refreshed accounts");
         {'error', 'not_found'} ->
             lager:debug("acdc db not found"),
-            lager:debug("consider running acdc_maintenance:migrate() to enable acdc for already-configured accounts");
+            lager:debug("consider running ~s:migrate() to enable acdc for already-configured accounts", [?MODULE]);
         {'error', _E} ->
             lager:debug("failed to query acdc db: ~p", [_E])
     end.

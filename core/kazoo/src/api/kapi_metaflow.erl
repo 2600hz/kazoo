@@ -76,7 +76,7 @@ declare_exchanges() ->
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?METAFLOW_REQ_VALUES, fun ?MODULE:req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?METAFLOW_REQ_VALUES, fun req/1),
     amqp_util:kapps_publish(?METAFLOW_REQ_ROUTING_KEY(call_id(Req), action(Req)), Payload, ContentType).
 
 action([_|_]=API) ->
