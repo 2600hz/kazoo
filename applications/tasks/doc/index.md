@@ -72,12 +72,6 @@ If the call crashes, the current input row plus a crash reason column is written
 Arguments of `TaskName/Arity` are first the +1 proplist then the input fields in order.
 If an `optional` input value is not defined, its value is `undefined`.
 
-The function must return a valid instance of the type `task_return()`:
-* `ok`: row is counted as successful, nothin is written in the error column.
-* `ne_binary()`: the error to write in the error column.
-* `kz_csv:row()`: the row to write (usefull if `output_header(TaskName)` was implemented).
-* `[kz_csv:row()]`: this is only supported for `noinput` tasks.
-
 
 #### Tasks without input data
 
@@ -87,14 +81,26 @@ As second argument, the function takes one of:
 * `init`: so that the function can return `{ok, Data}`. Nothing is written to output and `Data` will be passed to the function on next call.
 * `Data`: the term that a previous call to the function returned. This way one can work with state in between iterations.
 
-The function must return one of:
+
+### Return values
+
+The function must return a valid instance of the type `task_return()`:
+
 * `stop`: ends the task & uploads the output CSV.
+* `ok`: row is counted as successful, nothin is written in the error column.
+* `ne_binary()`: the error to write in the error column.
+* `kz_csv:row()`: the row to write (usefull if `output_header(TaskName)` was implemented).
+* `[kz_csv:row()]`: this is only supported for `noinput` tasks.
 * `{ok, Data}`: nothing is written to output and `Data` will be passed to the function on next call.
 * `{ToWrite, Data}`: where `ToWrite` is either a `kz_csv:row()` or `[kz_csv:row()]`. Writes them to output & will pass `Data` on next call.
 * `{binary(), Data}`: writes the binary string to output & will pass `Data` on next call.
 * `{Error, Data}`: attempts to write `Error` as an error to output & will pass `Data` on next call.
 
+
+### Examples
+
 Examples of both kinds of tasks can be found in
+
 * [kt_numbers](https://github.com/2600hz/kazoo/blob/master/applications/tasks/src/modules/kt_numbers.erl)
 * [kt_services](https://github.com/2600hz/kazoo/blob/master/applications/tasks/src/modules/kt_services.erl)
 
