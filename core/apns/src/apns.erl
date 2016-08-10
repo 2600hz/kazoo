@@ -10,6 +10,7 @@
 -define(MAX_PAYLOAD, 256).
 
 -behaviour(application).
+-define(APP, ?MODULE).
 
 -export([start/0, stop/0]).
 -export([connect/0, connect/1, connect/2, connect/3, disconnect/1]).
@@ -49,7 +50,7 @@
 %% @doc Starts the application
 -spec start() -> 'ok'.
 start() ->
-    _ = application:ensure_all_started(?MODULE),
+    _ = application:ensure_all_started(?APP),
     'ok'.
 
 %% @doc Stops the application
