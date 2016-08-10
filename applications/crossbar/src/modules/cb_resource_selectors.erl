@@ -36,6 +36,11 @@
                     ,{'success', 0}
                     ,{'error', 0}
                     ]).
+-type stat() :: {'total', integer()} |
+                {'success', integer()} |
+                {'error', integer()}.
+-type stats() :: [stat()].
+
 -define(DEFAULT_RULES, kz_json:new()).
 -define(RULES_PVT_TYPE, <<"resource_selector_rules">>).
 -define(DEFAULT_CSV_CONFIG
@@ -285,22 +290,39 @@ put(Context, ?NAME, SelectorName, ?RESOURCE, ResourceId) ->
 put_resource_selector(Context, ResourceId, SelectorName) ->
     maybe_suppress_change_notice(),
     Data = kz_json:get_ne_value(<<"selectors">>, cb_context:req_data(Context), []),
-    Db = cb_context:account_db(Context),
     _ = init_db(Context),
-    BulkLimit = kz_datamgr:max_bulk_insert(),
-    {Stats, LastJObjs} = lists:foldl(fun({[{S, V}]}, {AccStats, JObjs}) ->
-                                             J = generate_selector_doc(Context, ResourceId, SelectorName, S, V),
-                                             maybe_save_selectors(Db, AccStats, [J|JObjs], BulkLimit);
-                                        (S, {AccStats, JObjs}) ->
-                                             J = generate_selector_doc(Context, ResourceId, SelectorName, S, 'undefined'),
-                                             maybe_save_selectors(Db, AccStats, [J|JObjs], BulkLimit)
-                                     end
-                                    ,{?ZERO_STATS, []}
-                                    ,Data
-                                    ),
-    FinalStats = do_save_selectors(Db, Stats, LastJObjs),
-    maybe_send_db_change_notice(Db, FinalStats),
+    {Stats, LastJObjs} =
+        lists:foldl(fun(Datum, Acc) ->
+                            fold_datum(Datum, Acc, Context, ResourceId, SelectorName)
+                    end
+                   ,{?ZERO_STATS, []}
+                   ,Data
+                   ),
+
+    FinalStats = do_save_selectors(cb_context:account_db(Context)
+                                  ,Stats
+                                  ,LastJObjs
+                                  ),
+    maybe_send_db_change_notice(cb_context:account_db(Context), FinalStats),
     crossbar_util:response(kz_json:from_list(FinalStats), Context).
+
+-spec fold_datum(kz_json:object() | kz_json:key(), {stats(), kz_json:objects()}, cb_context:context(), ne_binary(), ne_binary()) ->
+                        {stats(), kz_json:objects()}.
+fold_datum(MaybeJObj, {AccStats, JObjs}, Context, ResourceId, SelectorName) ->
+    J =
+        case kz_json:is_json_object(MaybeJObj)
+            andalso kz_json:get_values(MaybeJObj)
+        of
+            {[V],[S]} ->
+                generate_selector_doc(Context, ResourceId, SelectorName, S, V);
+            'false' ->
+                generate_selector_doc(Context, ResourceId, SelectorName, MaybeJObj, 'undefined')
+        end,
+    maybe_save_selectors(cb_context:account_db(Context)
+                        ,AccStats
+                        ,[J|JObjs]
+                        ,kz_datamgr:max_bulk_insert()
+                        ).
 
 -spec generate_selector_doc(cb_context:context(), ne_binary(), ne_binary(), ne_binary(), api_binary()) ->
                                    kz_json:object().
@@ -405,33 +427,35 @@ split_keys(Keys, Acc, BlockSize) ->
 
 -spec refresh_selectors_index(ne_binary()) -> 'ok'.
 refresh_selectors_index(Db) ->
-    %% {'ok', _} = kz_datamgr:all_docs(Db, [{limit, 1}]),
     {'ok', _} = kz_datamgr:get_results(Db, ?SRS_LIST, [{'limit', 1}]),
     'ok'.
 
 -spec get_stat_from_result(kz_json:objects(), kz_proplist()) -> kz_proplist().
-get_stat_from_result(JObj, AccStats) ->
-    lists:foldl(fun(Row, Acc) ->
-                        case kz_json:get_value(<<"rev">>, Row) of
-                            'undefined' ->
-                                Err = props:get_integer_value('error', Acc),
-                                Total = props:get_integer_value('total', Acc),
-                                props:set_values([{'error', Err + 1}
-                                                 ,{'total', Total + 1}
-                                                 ]
-                                                ,Acc);
-                            _ ->
-                                Success = props:get_integer_value('success', Acc),
-                                Total = props:get_integer_value('total', Acc),
-                                props:set_values([{'success', Success + 1}
-                                                 ,{'total', Total + 1}
-                                                 ]
-                                                ,Acc)
-                        end
-                end
+get_stat_from_result(JObjs, AccStats) ->
+    lists:foldl(fun get_stat_fold/2
                ,AccStats
-               ,JObj
+               ,JObjs
                ).
+
+get_stat_fold(RowJObj, Acc) ->
+    case kz_doc:revision(RowJObj) of
+        'undefined' ->
+            Err = props:get_integer_value('error', Acc),
+            Total = props:get_integer_value('total', Acc),
+            props:set_values([{'error', Err + 1}
+                             ,{'total', Total + 1}
+                             ]
+                            ,Acc
+                            );
+        _ ->
+            Success = props:get_integer_value('success', Acc),
+            Total = props:get_integer_value('total', Acc),
+            props:set_values([{'success', Success + 1}
+                             ,{'total', Total + 1}
+                             ]
+                            ,Acc
+                            )
+    end.
 
 -spec maybe_suppress_change_notice() -> 'ok'.
 maybe_suppress_change_notice() ->

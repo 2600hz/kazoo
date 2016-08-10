@@ -7,7 +7,6 @@
 %%%-------------------------------------------------------------------
 -module(kz_datamgr).
 
-
 -export([db_classification/1]).
 
 %% Settings-related

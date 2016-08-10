@@ -40,6 +40,7 @@ test:
       fi
     - make bump-copyright
     - . ~/.kerl/$OTP_VERSION/activate && make
+    - . ~/.kerl/$OTP_VERSION/activate && make code_checks
     - ./scripts/validate-js.sh $($CHANGED)
     - . ~/.kerl/$OTP_VERSION/activate && make apis
     - |

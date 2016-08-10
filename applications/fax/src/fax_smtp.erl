@@ -787,7 +787,7 @@ process_part(CT, Body, State) ->
 -spec is_allowed_content_type(ne_binary()) -> boolean().
 is_allowed_content_type(CT) ->
     AllowedCT = kapps_config:get(?CONFIG_CAT, <<"allowed_content_types">>, ?DEFAULT_ALLOWED_CONTENT_TYPES),
-    DeniedCT = kapps_config:get(?CONFIG_CAT, <<"denied_content_types">>, [{[{<<"prefix">>, <<"image/">>}]}]),
+    DeniedCT = kapps_config:get(?CONFIG_CAT, <<"denied_content_types">>, ?DEFAULT_DENIED_CONTENT_TYPES),
     AllowedBy = content_type_matched_by(CT, AllowedCT, <<>>),
     DeniedBy = content_type_matched_by(CT, DeniedCT, <<>>),
     byte_size(AllowedBy) > byte_size(DeniedBy).

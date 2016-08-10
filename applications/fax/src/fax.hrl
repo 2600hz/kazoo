@@ -48,22 +48,25 @@
 
 -define(OPENXML_MIME_PREFIX, "application/vnd.openxmlformats-officedocument.").
 -define(OPENOFFICE_MIME_PREFIX, "application/vnd.oasis.opendocument.").
--define(OPENOFFICE_COMPATIBLE(CT), (
-                               CT =:= <<"application/msword">>
-                                   orelse CT =:= <<"application/vnd.ms-excel">>
-                                   orelse CT =:= <<"application/vnd.ms-powerpoint">>
-                              )).
+-define(OPENOFFICE_COMPATIBLE(CT)
+       ,(CT =:= <<"application/msword">>
+             orelse CT =:= <<"application/vnd.ms-excel">>
+             orelse CT =:= <<"application/vnd.ms-powerpoint">>
+        )).
 
--define(DEFAULT_ALLOWED_CONTENT_TYPES, [
-                                        <<"application/pdf">>
+-define(DEFAULT_ALLOWED_CONTENT_TYPES, [<<"application/pdf">>
                                        ,<<"image/tiff">>
-                                       ,{[{<<"prefix">>, <<"image">>}]}
-                                       ,{[{<<"prefix">>, <<?OPENXML_MIME_PREFIX>>}]}
-                                       ,{[{<<"prefix">>, <<?OPENOFFICE_MIME_PREFIX>>}]}
+                                       ,kz_json:from_list([{<<"prefix">>, <<"image">>}])
+                                       ,kz_json:from_list([{<<"prefix">>, <<?OPENXML_MIME_PREFIX>>}])
+                                       ,kz_json:from_list([{<<"prefix">>, <<?OPENOFFICE_MIME_PREFIX>>}])
                                        ,<<"application/msword">>
                                        ,<<"application/vnd.ms-excel">>
                                        ,<<"application/vnd.ms-powerpoint">>
                                        ]).
+
+-define(DEFAULT_DENIED_CONTENT_TYPES
+       ,[kz_json:from_list([{<<"prefix">>, <<"image/">>}])]
+       ).
 
 -define(SMTP_MSG_MAX_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"smtp_max_msg_size">>, 10485670)).
 -define(SMTP_EXTENSIONS, [{"SIZE", kz_util:to_list(?SMTP_MSG_MAX_SIZE)}]).

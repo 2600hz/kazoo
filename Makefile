@@ -174,6 +174,9 @@ fmt: TO_FMT ?= $(shell find applications core -iname '*.erl' -or -iname '*.hrl' 
 fmt: $(FMT)
 	@$(FMT) $(TO_FMT)
 
+code_checks:
+	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
+
 apis:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-schemas.escript
 	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/couchdb/schemas/*.json

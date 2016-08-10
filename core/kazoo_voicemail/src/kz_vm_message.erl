@@ -76,10 +76,10 @@ get_db(AccountId, {_, ?MATCH_MODB_PREFIX(Year, Month, _)}) ->
     get_db(AccountId, Year, Month);
 get_db(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)) ->
     get_db(AccountId, Year, Month);
-get_db(AccountId, ?JSON_WRAPPER(_)=Doc) ->
-    get_db(AccountId, kz_doc:id(Doc));
-get_db(AccountId, _DocId) ->
-    get_db(AccountId).
+get_db(AccountId, <<_/binary>> = _DocId) ->
+    get_db(AccountId);
+get_db(AccountId, Doc) ->
+    get_db(AccountId, kz_doc:id(Doc)).
 
 -spec get_db(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 get_db(AccountId, Year, Month) ->
@@ -485,9 +485,18 @@ bulk_update(AccountId, BoxId, Things, Funs) ->
                                 bulk_results().
 bulk_update_fold(_, _, [], _, Result) ->
     Result;
-bulk_update_fold(AccountId, BoxId, [?JSON_WRAPPER(_)=Msg|Msgs], Funs, #bulk_res{failed=Failed}=Blk) ->
+bulk_update_fold(AccountId, BoxId, [<<_/binary>> = MsgId|MsgIds], Funs, #bulk_res{failed=Failed}=Blk) ->
+    case message_doc(AccountId, MsgId) of
+        {'ok', JObj} ->
+            Result = do_update(AccountId, BoxId, MsgId, JObj, Funs, Blk),
+            bulk_update_fold(AccountId, BoxId, MsgIds, Funs, Result);
+        {'error', R} ->
+            Result = Blk#bulk_res{failed=[kz_json:from_list([{MsgId, kz_util:to_binary(R)}]) | Failed]},
+            bulk_update_fold(AccountId, BoxId,  MsgIds, Funs, Result)
+    end;
+bulk_update_fold(AccountId, BoxId, [Msg|Msgs], Funs, #bulk_res{failed=Failed}=Blk) ->
     NewFun = [fun(JObj) ->
-                  kzd_box_message:set_metadata(Msg, JObj)
+                      kzd_box_message:set_metadata(Msg, JObj)
               end
               | Funs
              ],
@@ -499,24 +508,15 @@ bulk_update_fold(AccountId, BoxId, [?JSON_WRAPPER(_)=Msg|Msgs], Funs, #bulk_res{
         {'error', R} ->
             Result = Blk#bulk_res{failed=[kz_json:from_list([{MsgId, kz_util:to_binary(R)}]) | Failed]},
             bulk_update_fold(AccountId, BoxId, Msgs, Funs, Result)
-    end;
-bulk_update_fold(AccountId, BoxId, [MsgId|MsgIds], Funs, #bulk_res{failed=Failed}=Blk) ->
-    case message_doc(AccountId, MsgId) of
-        {'ok', JObj} ->
-            Result = do_update(AccountId, BoxId, MsgId, JObj, Funs, Blk),
-            bulk_update_fold(AccountId, BoxId, MsgIds, Funs, Result);
-        {'error', R} ->
-            Result = Blk#bulk_res{failed=[kz_json:from_list([{MsgId, kz_util:to_binary(R)}]) | Failed]},
-            bulk_update_fold(AccountId, BoxId,  MsgIds, Funs, Result)
     end.
 
 -spec do_update(ne_binary(), ne_binary(), ne_binary(), kz_json:object(), update_funs(), bulk_results()) -> bulk_results().
 do_update(AccountId, BoxId, ?MATCH_MODB_PREFIX(Year, Month, _)=Id, JObj, Funs, #bulk_res{succeeded=Succeeded
-                                                                                         ,failed=Failed
+                                                                                        ,failed=Failed
                                                                                         }=Blk) ->
     NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
     case BoxId =:= kzd_box_message:source_id(JObj)
-             andalso handle_update_result(Id, kazoo_modb:save_doc(AccountId, NewJObj, Year, Month))
+        andalso handle_update_result(Id, kazoo_modb:save_doc(AccountId, NewJObj, Year, Month))
     of
         {'ok', _} -> Blk#bulk_res{succeeded=[Id | Succeeded]};
         {'error', R} -> Blk#bulk_res{failed=[kz_json:from_list([{Id, kz_util:to_binary(R)}]) | Failed]};
@@ -774,14 +774,14 @@ maybe_add_to_vmbox(M, _Id, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec media_url(ne_binary(), ne_binary() | kz_json:object()) -> binary().
-media_url(AccountId, ?JSON_WRAPPER(_)=Message) ->
-    media_url(AccountId, kzd_box_message:media_id(Message));
-media_url(AccountId, MessageId) ->
+media_url(AccountId, <<_/binary>> = MessageId) ->
     case message_doc(AccountId, MessageId) of
         {'ok', Message} ->
             kz_media_url:playback(Message, Message);
         {'error', _} -> <<>>
-    end.
+    end;
+media_url(AccountId, Message) ->
+    media_url(AccountId, kzd_box_message:media_id(Message)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1052,13 +1052,13 @@ migrate(AccountId) ->
     end.
 
 -spec migrate(ne_binary(), ne_binary() | kz_json:object()) -> 'ok'.
-migrate(AccountId, ?JSON_WRAPPER(_)=Box) ->
-    migrate(AccountId, kz_doc:id(Box));
-migrate(AccountId, BoxId) ->
+migrate(AccountId, <<_/binary>> = BoxId) ->
     Msgs = messages(AccountId, BoxId),
     Ids = [M || M <- Msgs, maybe_migrate_to_modb(kzd_box_message:media_id(M))],
     _ = bulk_update(AccountId, BoxId, Ids, []),
-    'ok'.
+    'ok';
+migrate(AccountId, Box) ->
+    migrate(AccountId, kz_doc:id(Box)).
 
 -spec maybe_migrate_to_modb(ne_binary()) -> boolean().
 maybe_migrate_to_modb(?MATCH_MODB_PREFIX(_, _, _)) -> 'false';

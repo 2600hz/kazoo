@@ -146,15 +146,12 @@ guess_type(_F, _D) ->
     'undefined'.
 
 process() ->
-    _ = application:load('callflow'),
-    {'ok', Modules} = application:get_key('callflow', 'modules'),
-
-    io:format("processing "),
+    io:format("processing callflow data usage: "),
     Usages = [{Module, Usages} ||
-                 Module <- Modules,
+                 Module <- kz_ast_util:app_modules('callflow'),
                  (Usages = process(Module)) =/= 'undefined'
              ],
-    io:format(" done~n~n~n"),
+    io:format(" done~n"),
     Usages.
 
 process(Module) when is_atom(Module) ->
