@@ -538,10 +538,9 @@ handle_info(_Msg, State) ->
 handle_event(JObj, #state{cf_module_pid=PidRef, call=Call ,self=Self}) ->
     CallId = kapps_call:call_id_direct(Call),
     Others = kapps_call:kvs_fetch('cf_event_pids', [], Call),
-    ModPid = get_pid(PidRef),
-    Notify = case is_pid(ModPid) of
-                 'true' -> [ModPid | Others];
-                 'false' -> Others
+    Notify = case get_pid(PidRef) of
+                 'undefined' -> Others;
+                 ModPid -> [ModPid | Others]
              end,
 
     case {kapps_util:get_event_type(JObj), kz_json:get_value(<<"Call-ID">>, JObj)} of
@@ -561,8 +560,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef, call=Call ,self=Self}) ->
             relay_message(Notify, JObj);
         {{_Cat, _Name}, _Else} when Others =:= [] ->
             lager:info("received ~s (~s) from call ~s while relaying for ~s"
-                      ,[_Cat, _Name, _Else, CallId]
-                      );
+                      ,[_Cat, _Name, _Else, CallId]);
         {_Evt, _Else} ->
             lager:info("the others want to know about ~p", [_Evt]),
             relay_message(Others, JObj)
@@ -783,7 +781,7 @@ relay_message(Notify, Message) ->
         ],
     'ok'.
 
--spec get_pid({pid(), reference()} | 'undefined') -> pid().
+-spec get_pid({pid(), reference()} | 'undefined') -> api_pid().
 get_pid({Pid, _}) when is_pid(Pid) -> Pid;
 get_pid(_) -> 'undefined'.
 
