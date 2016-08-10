@@ -267,12 +267,14 @@ list(Props, 'init') ->
     {'ok', ToList};
 list(_, []) ->
     'stop';
-list(_, [{?MATCH_ACCOUNT_RAW(AccountId), NumberDb} | Rest]) ->
-    {'ok', number_db_listing(NumberDb, AccountId) ++ Rest};
-list(Props, [E164 | Rest]) ->
-    AuthBy = props:get_value('auth_account_id', Props),
-    Row = list_number_row(AuthBy, E164),
-    {Row, Rest}.
+list(Props, [{AccountId, NumberDb} | Rest]) ->
+    case number_db_listing(NumberDb, AccountId) of
+        [] -> {'ok', Rest};
+        E164s ->
+            AuthBy = props:get_value('auth_account_id', Props),
+            Rows = [list_number_row(AuthBy, E164) || E164 <- E164s],
+            {Rows, Rest}
+    end.
 
 -spec list_number_row(ne_binary()) -> kz_csv:row().
 -spec list_number_row(ne_binary(), ne_binary()) -> kz_csv:row().
@@ -318,11 +320,13 @@ list_all(Props, 'init') ->
     {'ok', ToList};
 list_all(_, []) ->
     'stop';
-list_all(_, [{?MATCH_ACCOUNT_RAW(AccountId), NumberDb} | Rest]) ->
-    {'ok', number_db_listing(NumberDb, AccountId) ++ Rest};
-list_all(_, [E164 | Rest]) ->
-    Row = list_number_row(E164),
-    {Row, Rest}.
+list_all(_, [{AccountId, NumberDb} | Rest]) ->
+    case number_db_listing(NumberDb, AccountId) of
+        [] -> {'ok', Rest};
+        E164s ->
+            Rows = [list_number_row(E164) || E164 <- E164s],
+            {Rows, Rest}
+    end.
 
 -spec dump(kz_proplist(), task_iterator()) -> task_iterator().
 dump(_, 'init') ->
