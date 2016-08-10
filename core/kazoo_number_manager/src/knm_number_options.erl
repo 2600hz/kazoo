@@ -9,7 +9,6 @@
 -module(knm_number_options).
 
 -export([assign_to/1, assign_to/2
-        ,assigned_to/1, assigned_to/2
         ,auth_by/1, auth_by/2
         ,dry_run/1, dry_run/2
         ,batch_run/1, batch_run/2
@@ -49,8 +48,7 @@
                   {'ported_in', boolean()} |
                   {'public_fields', kz_json:object()} |
                   {'state', ne_binary()} |
-                  {'should_delete', boolean()} |
-                  {'assigned_to', ne_binary()}.
+                  {'should_delete', boolean()}.
 
 -type options() :: [option()].
 
@@ -88,8 +86,7 @@ to_phone_number_setters(Options) ->
      end
      || {Option, Value} <- Options,
         is_atom(Option),
-        Option =/= 'should_delete',
-        Option =/= 'assigned_to'
+        Option =/= 'should_delete'
     ].
 
 -spec dry_run(options()) -> boolean().
@@ -108,13 +105,6 @@ batch_run(Options) ->
     batch_run(Options, 'false').
 batch_run(Options, Default) ->
     props:get_is_true('batch_run', Options, Default).
-
--spec assigned_to(options()) -> api_binary().
--spec assigned_to(options(), Default) -> ne_binary() | Default.
-assigned_to(Options) ->
-    assigned_to(Options, 'undefined').
-assigned_to(Options, Default) ->
-    props:get_binary_value('assigned_to', Options, Default).
 
 -spec assign_to(options()) -> api_binary().
 -spec assign_to(options(), Default) -> ne_binary() | Default.
