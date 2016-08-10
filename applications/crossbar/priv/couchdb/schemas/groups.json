@@ -32,11 +32,6 @@
             "name": "Name",
             "required": true,
             "type": "string"
-        },
-        "resources": {
-            "default": {},
-            "required": false,
-            "type": "object"
         }
     },
     "required": true,
