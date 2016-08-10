@@ -1054,7 +1054,7 @@
                         "media_id": {
                             "description": "Media to play, either Kazoo media ID or URL",
                             "name": "Media",
-                            "required": true,
+                            "required": false,
                             "type": "string"
                         },
                         "play": {
