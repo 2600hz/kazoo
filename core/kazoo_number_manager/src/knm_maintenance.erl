@@ -54,9 +54,9 @@ fix_accounts_numbers(Accounts) ->
 fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(_)) ->
     ?LOG("########## fixing [~s] ##########", [AccountDb]),
     ?LOG("[~s] getting old numbers", [AccountDb]),
-    ToFix = get_old_phone_numbers(AccountDb),
+    OldToFix = get_old_phone_numbers(AccountDb),
     ?LOG("[~s] start fixing old numbers", [AccountDb]),
-    foreach_pause_in_between(?TIME_BETWEEN_NUMBERS_MS, fun maybe_fix_number/1, ToFix),
+    foreach_pause_in_between(?TIME_BETWEEN_NUMBERS_MS, fun maybe_fix_old_number/1, OldToFix),
     kz_datamgr:flush_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC);
 fix_account_numbers(Account = ?NE_BINARY) ->
     fix_account_numbers(kz_util:format_account_db(Account)).
@@ -140,22 +140,22 @@ phone_number_from_dirty_json(NormalizedNumber, JObj) ->
       kz_json:set_value(<<"from_fix">>, kz_json:public_fields(JObj), LessDirtyJObj)
      ).
 
--spec maybe_fix_number(number_to_fix()) -> 'ok'.
-maybe_fix_number(ToFix=#{old := _OldPN}) ->
+-spec maybe_fix_old_number(number_to_fix()) -> 'ok'.
+maybe_fix_old_number(ToFix=#{old := _OldPN}) ->
     ?LOG("##### fixing [~s] #####", [knm_phone_number:number(_OldPN)]),
     Routines = [fun maybe_fix_assignment/1
                ,fun maybe_fix_used_by/1
                ],
-    fix_number(lists:foldl(fun(F, Map) -> F(Map) end, ToFix, Routines)).
+    fix_old_number(lists:foldl(fun(F, Map) -> F(Map) end, ToFix, Routines)).
 
--spec fix_number(number_to_fix()) -> 'ok'.
-fix_number(#{fixes := Fixes
-            ,key := Key
-            ,account_id := AccountId
-            ,account_db := AccountDb
-            ,old := OldPN
-            ,fetched := FetchedPN
-            }) ->
+-spec fix_old_number(number_to_fix()) -> 'ok'.
+fix_old_number(#{fixes := Fixes
+                ,key := Key
+                ,account_id := AccountId
+                ,account_db := AccountDb
+                ,old := OldPN
+                ,fetched := FetchedPN
+                }) ->
     PhoneNumber = case knm_phone_number:module_name(FetchedPN) of
                       'undefined' -> OldPN;
                       _ -> FetchedPN
