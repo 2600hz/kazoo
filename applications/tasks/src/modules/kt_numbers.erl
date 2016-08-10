@@ -24,6 +24,7 @@
 %% Appliers
 -export([list/2
         ,list_all/2
+        ,dump/2
         ,import/17
         ,assign_to/4
         ,release/3
@@ -38,6 +39,7 @@
 -define(CATEGORY, "number_management").
 -define(ACTIONS, [<<"list">>
                  ,<<"list_all">>
+                 ,<<"dump">>
                  ,<<"import">>
                  ,<<"assign_to">>
                  ,<<"release">>
@@ -62,6 +64,8 @@ init() ->
 output_header(<<"list">>) ->
     list_output_header();
 output_header(<<"list_all">>) ->
+    list_output_header();
+output_header(<<"dump">>) ->
     list_output_header().
 
 -spec cleanup(ne_binary(), any()) -> any().
@@ -128,10 +132,14 @@ help() ->
 
 -spec action(ne_binary()) -> kz_json:object().
 action(<<"list">>) ->
-    [{<<"description">>, <<"List all numbers under the account starting the task">>}
+    [{<<"description">>, <<"List all numbers assigned to the account starting the task">>}
     ,{<<"doc">>, list_doc()}
     ];
 action(<<"list_all">>) ->
+    [{<<"description">>, <<"List all numbers assigned to the account starting the task & its subaccounts">>}
+    ,{<<"doc">>, list_doc()}
+    ];
+action(<<"dump">>) ->
     [{<<"description">>, <<"List all numbers that exist in the system">>}
     ,{<<"doc">>, list_doc()}
     ];
@@ -266,7 +274,10 @@ list(Props, [E164 | Rest]) ->
     Row = list_number_row(AuthBy, E164),
     {Row, Rest}.
 
+-spec list_number_row(ne_binary()) -> kz_csv:row().
 -spec list_number_row(ne_binary(), ne_binary()) -> kz_csv:row().
+list_number_row(E164) ->
+    list_number_row(?KNM_DEFAULT_AUTH_BY, E164).
 list_number_row(AuthBy, E164) ->
     Options = [{'auth_by', AuthBy}
               ],
@@ -310,8 +321,24 @@ list_all(_, []) ->
 list_all(_, [{?MATCH_ACCOUNT_RAW(AccountId), NumberDb} | Rest]) ->
     {'ok', number_db_listing(NumberDb, AccountId) ++ Rest};
 list_all(_, [E164 | Rest]) ->
-    Row = list_number_row(?KNM_DEFAULT_AUTH_BY, E164),
+    Row = list_number_row(E164),
     {Row, Rest}.
+
+-spec dump(kz_proplist(), task_iterator()) -> task_iterator().
+dump(_, 'init') ->
+    {'ok', knm_util:get_all_number_dbs()};
+dump(_, []) ->
+    'stop';
+dump(_, [NumberDb|NumberDbs]) ->
+    case kz_datamgr:get_results(NumberDb, <<"numbers/status">>) of
+        {'ok', []} -> {'ok', NumberDbs};
+        {'error', _R} ->
+            lager:debug("could not get numbers from ~s: ~p", [NumberDb, _R]),
+            {'ok', NumberDbs};
+        {'ok', JObjs} ->
+            Rows = [list_number_row(kz_doc:id(JObj)) || JObj <- JObjs],
+            {Rows, NumberDbs}
+    end.
 
 -spec import(kz_proplist(), task_iterator()
             ,ne_binary(), api_binary(), api_binary()
