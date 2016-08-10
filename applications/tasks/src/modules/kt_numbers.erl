@@ -141,8 +141,8 @@ action(<<"import">>) ->
     ,{<<"doc">>, <<"Creates numbers from fields similar to list tasks.\n"
                    "Note: number must be E164-formatted.\n"
                    "Note: number must not be in the system already.\n"
-                   "If `account_id` is empty, number will be assigned to account creating task, with state 'available'.\n"
-                   "Otherwise, the number will be assigned to `account_id` with state 'in_service'.\n"
+                   "If `account_id` is empty, number will be assigned to account creating task.\n"
+                   "`module_name` will be set only if account creating task is system admin.\n"
                    "Note: `carrier_module` defaults to 'knm_local'.\n"
                  >>}
     ,{<<"expected_content">>, <<"text/csv">>}
