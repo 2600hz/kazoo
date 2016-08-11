@@ -219,12 +219,14 @@ config_key_to_schema(_F, _Document, 'undefined', _Default, Schemas) ->
 config_key_to_schema(_F, 'undefined', _Key, _Default, Schemas) ->
     Schemas;
 config_key_to_schema(F, Document, Key, Default, Schemas) ->
-    Properties = guess_properties(Key, guess_type(F, Default), Default),
+    %% io:format(user, "\nF ~p ~p\n", [Document, Schemas]),
+    Properties = guess_properties(Document, Key, guess_type(F, Default), Default),
     Existing = kz_json:get_json_value([Document, <<"properties">> | Key]
                                      ,Schemas
                                      ,kz_json:new()
                                      ),
     Updated = kz_json:merge_jobjs(Existing, Properties),
+    io:format(user, "\nM ~s\n  ~s\n", [kz_json:encode(Properties), kz_json:encode(Updated)]),
     kz_json:set_value([Document, <<"properties">> | Key], Updated, Schemas).
 
 category_to_document(?VAR(_)) -> 'undefined';
@@ -314,22 +316,39 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_number', [])
 guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_name', [])) -> <<"string">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'to_integer', _Args)) -> <<"integer">>.
 
-guess_properties(<<_/binary>> = Key, Type, Default) ->
+guess_properties(Document, Key, Type, Default)
+  when is_binary(Key) ->
+    %% io:format(user, "\nD ~p ~p ~1000p\n", [Key, Type, Default]),
     kz_json:from_list(
       props:filter_undefined(
         [{<<"type">>, Type}
-        ,{<<"description">>, <<>>}
+        ,{<<"description">>, guess_description(Document, Key, Type)}
         ,{<<"name">>, Key}
         ,{<<"default">>, try default_value(Default) catch _:_ -> 'default' end}
         ]
        )
      );
-guess_properties([<<_/binary>> = Key], Type, Default) ->
-    guess_properties(Key, Type, Default);
-guess_properties([Key, <<"properties">>], Type, Default) ->
-    guess_properties(Key, Type, Default);
-guess_properties([_Key, <<"properties">> | Rest], Type, Default) ->
-    guess_properties(Rest, Type, Default).
+guess_properties(Document, [Key], Type, Default)
+  when is_binary(Key) ->
+    guess_properties(Document, Key, Type, Default);
+guess_properties(Document, [Key, <<"properties">>], Type, Default) ->
+    guess_properties(Document, Key, Type, Default);
+guess_properties(Document, [_Key, <<"properties">> | Rest], Type, Default) ->
+    guess_properties(Document, Rest, Type, Default).
+
+guess_description(Document, Key, _Type) ->
+    Sentence = guess_description(Document, Key),
+    kz_util:join_binary(Sentence, <<$\s>>).
+guess_description(Document, Key) ->
+    [Document | guess_description(Key)].
+guess_description(Key) ->
+    io:format(user, "\nK ~p\n", [Key]),
+    [case Word of
+         <<"ms">> -> <<"milliseconds">>;
+         _ -> Word
+     end
+     || Word <- binary:split(Key, <<$_>>, ['global'])
+    ].
 
 default_value('undefined') -> 'undefined';
 default_value(?ATOM('true')) -> 'true';
