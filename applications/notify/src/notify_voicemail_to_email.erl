@@ -179,14 +179,14 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     Service = props:get_value(<<"service">>, Props),
     AccountId = props:get_value(<<"account_id">>, Props),
     DocId = props:get_value(<<"media">>, Voicemail),
-    DB = kz_vm_message:get_db(AccountId, DocId),
+    DB = kvm_util:get_db(AccountId, DocId),
 
     From = props:get_value(<<"send_from">>, Service),
 
     {ContentTypeParams, CharsetString} = notify_util:get_charset_params(Service),
 
     lager:debug("attempting to attach media ~s in ~s", [DocId, DB]),
-    {'ok', VMJObj} = kz_vm_message:message_doc(AccountId, DocId),
+    {'ok', VMJObj} = kvm_message:fetch(AccountId, DocId),
 
     [AttachmentId] = kz_doc:attachment_names(VMJObj),
     lager:debug("attachment id ~s", [AttachmentId]),

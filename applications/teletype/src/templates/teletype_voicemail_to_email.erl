@@ -152,8 +152,8 @@ email_attachments(_DataJObj, _Macros, 'true') -> [];
 email_attachments(DataJObj, Macros, 'false') ->
     VMId = kz_json:get_value(<<"voicemail_name">>, DataJObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    DB = kz_vm_message:get_db(AccountId, VMId),
-    {'ok', VMJObj} = kz_vm_message:message_doc(AccountId, VMId),
+    DB = kvm_util:get_db(AccountId, VMId),
+    {'ok', VMJObj} = kvm_message:fetch(AccountId, VMId),
 
     {[AttachmentMeta], [AttachmentId]} = kz_json:get_values(kz_doc:attachments(VMJObj)),
     {'ok', AttachmentBin} = kz_datamgr:fetch_attachment(DB, VMId, AttachmentId),

@@ -865,7 +865,7 @@ vm_count(JObj) ->
     New = kzd_box_message:count_folder(Messages, ?VM_FOLDER_NEW),
     Saved = kzd_box_message:count_folder(Messages, ?VM_FOLDER_SAVED),
 
-    kz_vm_message:count_modb_messages(AccountId, BoxId, {New, Saved}).
+    kvm_messages:count_by_modb(AccountId, BoxId, {New, Saved}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -875,4 +875,4 @@ vm_count(JObj) ->
 -spec vm_count_by_owner(ne_binary(), api_binary()) -> {non_neg_integer(), non_neg_integer()}.
 vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
 vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
-    kz_vm_message:count_by_owner(AccountDb, OwnerId).
+    kvm_messages:count_by_owner(AccountDb, OwnerId).

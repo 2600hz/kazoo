@@ -180,7 +180,7 @@ send_mwi_update(BoxId, AccountId) ->
     BoxNumber = kzd_voicemail_box:mailbox_number(BoxJObj),
 
     _ = kz_util:spawn(fun cf_util:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
-    Messages = kz_vm_message:messages(AccountId, BoxId),
+    Messages = kvm_messages:get(AccountId, BoxId),
     New = kzd_box_message:count_folder(Messages, ?VM_FOLDER_NEW),
     Saved = kzd_box_message:count_folder(Messages, ?VM_FOLDER_SAVED),
     _ = kz_util:spawn(fun send_mwi_update/4, [New, Saved, BoxNumber, AccountId]),

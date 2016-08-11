@@ -8,7 +8,7 @@ Additionally, the v2 vmboxes API will no longer return the messages array and th
 
 #### New message
 
-Callflow voicemail module specifically uses `kz_vm_message:new_message/5` to record and store the new voicemail message. This function expects props from callflow as follow:
+Callflow voicemail module specifically uses `kvm_message:new_message/5` to record and store the new voicemail message. This function expects props from callflow as follow:
 
 ```erlang
 [{<<"Attachment-Name">>, AttachmentName}
@@ -45,8 +45,8 @@ There is a new configuration parameter `message_retention_duration` under `syste
 
 #### Migrate old messages to MODbs
 
-If you want to manually move all messages from accountdb to account MODb you can use `kz_vm_maintenance:migrate/0`, `kz_vm_maintenance:migrate/1` and `kz_vm_maintenance:migrate/2`.
+If you want to manually move all messages from accountdb to account MODb you can use `kvm_maintenance:migrate/0`, `kvm_maintenance:migrate/1` and `kvm_maintenance:migrate/2`.
 
 #### Clean old and heard messages
 
-For deleting old messages and heard messages you can use `kz_vm_maintenance:cleanup_heard_voicemail/1`.
+For deleting old messages and heard messages you can use `kvm_maintenance:cleanup_heard_voicemail/1`.

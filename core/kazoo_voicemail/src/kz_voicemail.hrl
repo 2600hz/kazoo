@@ -13,6 +13,8 @@
 -define(KEY_VOICEMAIL, <<"voicemail">>).
 -define(KEY_RETENTION_DURATION, <<"message_retention_duration">>).
 
+-define(RETRY_CONFLICT(F), kvm_util:retry_conflict(fun() -> F end)).
+
 -define(RETENTION_PATH, [?KEY_VOICEMAIL, ?KEY_RETENTION_DURATION]).
 -define(RETENTION_DURATION
        ,kapps_config:get_integer(?CF_CONFIG_CAT, ?RETENTION_PATH, 93)  %% 93 days(3 months)
@@ -21,6 +23,11 @@
 -define(RETENTION_DAYS(Duration)
        ,?SECONDS_IN_DAY * Duration + ?SECONDS_IN_HOUR
        ).
+
+-type update_funs() :: [fun((kz_json:object()) -> kz_json:object())].
+
+-type db_ret() :: 'ok' | {'ok', kz_json:object() | kz_json:objects()} | {'error', any()}.
+-type vm_folder() :: ne_binary() | {ne_binary(), boolean()}.
 
 -define(KZ_VOICEMAIL_HRL, 'true').
 -endif.

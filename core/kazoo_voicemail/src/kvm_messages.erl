@@ -31,11 +31,11 @@
 %% @doc fetch all messages for a voicemail box
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binary(), ne_binary()) -> kz_json:objects().
-get(AccountId, BoxId) ->
+-spec get(ne_binary(), ne_binary() | kz_json:object()) -> kz_json:objects().
+get(AccountId, Box) ->
     % first get messages metadata from vmbox for backward compatibility
-    case get_from_vmbox(AccountId, BoxId) of
-        {'ok', Msgs} -> Msgs ++ get_from_modb(AccountId, BoxId);
+    case get_from_vmbox(AccountId, Box) of
+        {'ok', Msgs} -> Msgs ++ get_from_modb(AccountId, Box);
         _ -> []
     end.
 
@@ -44,23 +44,27 @@ get(AccountId, BoxId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_from_vmbox(ne_binary(), ne_binary()) -> db_ret().
-get_from_vmbox(AccountId, BoxId) ->
+-spec get_from_vmbox(ne_binary(), ne_binary() | kz_json:object()) -> db_ret().
+get_from_vmbox(AccountId, ?NE_BINARY = BoxId) ->
     case kvm_util:open_accountdb_doc(AccountId, BoxId, kzd_voicemail_box:type()) of
-        {'ok', BoxJObj} -> {'ok', kz_json:get_value(?VM_KEY_MESSAGES, BoxJObj, [])};
+        {'ok', BoxJObj} ->
+            get_from_vmbox(AccountId, BoxJObj);
         {'error', _} = Error ->
             lager:debug("failed to fetch voicemail messages for vmbox ~s(~s)"
             	       ,[BoxId, AccountId]),
             Error
-    end.
+    end;
+get_from_vmbox(_AccountId, BoxJObj) ->
+    {'ok', kz_json:get_value(?VM_KEY_MESSAGES, BoxJObj, [])}.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_from_modb(ne_binary(), ne_binary()) -> kz_json:objects().
-get_from_modb(AccountId, DocId) ->
+-spec get_from_modb(ne_binary(), ne_binary() | kz_json:object()) ->
+                            kz_json:objects().
+get_from_modb(AccountId, ?NE_BINARY = DocId) ->
     ViewOpts = [{'key', DocId}
                 ,'include_docs'
                ],
@@ -70,7 +74,9 @@ get_from_modb(AccountId, DocId) ->
                    || Msg <- modb_get_results(AccountId, ?MODB_LISTING_BY_MAILBOX, ViewOptsList, [])
                       ,Msg =/= []
                   ],
-    ModbResults.
+    ModbResults;
+get_from_modb(AccountId, Doc) ->
+    get_from_modb(AccountId, kz_doc:id(Doc)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -146,7 +152,7 @@ count_by_modb(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
                   }).
 -type bulk_results() :: #bulk_res{}.
 
--spec update(ne_binary(), ne_binary(), kz_json:objects()) ->
+-spec update(ne_binary(), ne_binary(), ne_binaries() | kz_json:objects()) ->
                                 kz_json:object().
 update(AccountId, BoxId, Msgs) ->
     update(AccountId, BoxId, Msgs, []).
@@ -165,7 +171,7 @@ update(AccountId, BoxId, Things, Funs) ->
 
 -spec update_fold(ne_binary(), ne_binary(), ne_binaries() | kz_json:objects(), update_funs(), bulk_results()) ->
                                 bulk_results().
-update_fold(_, _, [], _, Result) ->
+update_fold(_AccountId, _BoxId, [], _Funs, Result) ->
     Result;
 update_fold(AccountId, BoxId, [?JSON_WRAPPER(_)=Msg|Msgs], Funs, #bulk_res{failed=Failed}=Blk) ->
     NewFun = [fun(JObj) ->
@@ -272,7 +278,9 @@ maybe_include_messages(_AccountId, _BoxId, JObj, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec change_box_id(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), ne_binary()) -> kz_json:objects().
-change_box_id(AccountId, MsgIds, OldBoxId, NewBoxId) when is_list(MsgIds) ->
+change_box_id(AccountId, ?NE_BINARY = MsgId, OldBoxId, NewBoxId) ->
+    change_box_id(AccountId, [MsgId], OldBoxId, NewBoxId);
+change_box_id(AccountId, MsgIds, OldBoxId, NewBoxId) ->
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
 
@@ -282,9 +290,7 @@ change_box_id(AccountId, MsgIds, OldBoxId, NewBoxId) when is_list(MsgIds) ->
             ,fun(JObj) -> change_to_sip_field(AccountId, NBoxJ, JObj) end
             ,fun(JObj) -> kzd_box_message:add_message_history(OldBoxId, JObj) end
            ],
-    update(AccountId, OldBoxId, MsgIds, Funs);
-change_box_id(AccountId, MsgId, OldBoxId, NewBoxId) ->
-    change_box_id(AccountId, [MsgId], OldBoxId, NewBoxId).
+    update(AccountId, OldBoxId, MsgIds, Funs).
 
 %%%===================================================================
 %%% Internal functions

@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2016, 2600Hz
 %%% @doc
-%%% Voice mail message
+%%% Mailbox maintenance
 %%% @end
 %%% @contributors
 %%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
--module(kz_vm_maintenance).
+-module(kvm_maintenance).
 
 -export([migrate/0, migrate/1, migrate/2
         ,cleanup_heard_voicemail/1
@@ -31,7 +31,7 @@ migrate() ->
 
 -spec migrate(ne_binary()) -> 'ok'.
 migrate(AccountId) ->
-    AccountDb = kz_vm_message:get_db(AccountId),
+    AccountDb = kvm_util:get_db(AccountId),
     case kz_datamgr:get_results(AccountDb, ?VMBOX_CB_LIST, []) of
         {'ok', []} -> ?LOG("no voicemail boxes in ~s", [AccountDb]);
         {'ok', View} ->
@@ -45,9 +45,9 @@ migrate(AccountId) ->
 migrate(AccountId, ?JSON_WRAPPER(_)=Box) ->
     migrate(AccountId, kz_doc:id(Box));
 migrate(AccountId, BoxId) ->
-    Msgs = kz_vm_message:messages(AccountId, BoxId),
+    Msgs = kvm_messages:get(AccountId, BoxId),
     Ids = [M || M <- Msgs, maybe_migrate_to_modb(kzd_box_message:media_id(M))],
-    _ = kz_vm_message:bulk_update(AccountId, BoxId, Ids),
+    _ = kvm_messages:update(AccountId, BoxId, Ids),
     'ok'.
 
 -spec maybe_migrate_to_modb(ne_binary()) -> boolean().
@@ -66,7 +66,7 @@ cleanup_heard_voicemail(AccountId) ->
     DurationS = ?RETENTION_DAYS(Duration),
     ?LOG("retaining messages for ~p days, delete those older for ~s", [Duration, AccountId]),
 
-    AccountDb = kz_vm_message:get_db(AccountId),
+    AccountDb = kvm_util:get_db(AccountId),
     case kz_datamgr:get_results(AccountDb, ?VMBOX_CB_LIST, []) of
         {'ok', []} -> ?LOG("no voicemail boxes in ~s", [AccountDb]);
         {'ok', View} ->
@@ -92,7 +92,7 @@ cleanup_heard_voicemail(AccountId, Timestamp, Boxes) ->
 -spec cleanup_voicemail_box(ne_binary(), pos_integer(), kz_json:object()) -> 'ok'.
 cleanup_voicemail_box(AccountId, Timestamp, Box) ->
     BoxId = kz_doc:id(Box),
-    Msgs = kz_vm_message:messages(AccountId, BoxId),
+    Msgs = kvm_messages:get(AccountId, BoxId),
     case
         lists:partition(
             fun(Msg) ->
@@ -108,7 +108,7 @@ cleanup_voicemail_box(AccountId, Timestamp, Box) ->
         {Older, _} ->
             ?LOG("there are ~b old messages to remove", [length(Older)]),
 
-            _ = kz_vm_message:update_folder(?VM_FOLDER_DELETED, Older, AccountId, BoxId),
+            _ = kvm_messages:change_folder(?VM_FOLDER_DELETED, Older, AccountId, BoxId),
             ?LOG("soft-deleted old messages", []),
             ?LOG("updated messages in voicemail box ~s", [BoxId])
     end.

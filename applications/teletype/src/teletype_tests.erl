@@ -39,7 +39,7 @@ find_vmboxes(<<_/binary>> = AccountId) ->
 find_vmbox_messages(_AccountId, []) ->
     lager:debug("no vmboxes had messages in ~p", [_AccountId]);
 find_vmbox_messages(AccountId, [Box|Boxes]) ->
-    case kz_vm_message:messages(AccountId, Box) of
+    case kvm_messages:get(AccountId, Box) of
         [] -> find_vmbox_messages(AccountId, Boxes);
         Ms -> voicemail_to_email(AccountId, Box, Ms)
     end.
