@@ -28,7 +28,7 @@
 
 -define(TEMPLATE_TEXT, <<"Service addition notice for your sub-account {{user.name}} (ID #{{user.id}})\n\n{% if service %}New Services\n{% for srv_cat, srv_item in service %}{{ srv_cat }}:\n{% for item, quantity in srv_item %}    {{ item }}: {{ quantity }}\n{% endfor %}{% endfor %}\n{% endif %}\n\nAffected account\nAccount ID: {{user.id}}\nAccount Name: {{user.name}}\nAccount Realm: {{user.realm}}\n\nReseller account\nAccount ID: {{account.id}}\nAccount Name: {{account.name}}\nAccount Realm: {{account.realm}}\n\nSent from {{system.hostname}}">>).
 -define(TEMPLATE_HTML, <<"<html><head><meta charset=\"utf-8\" /></head><body><h1>Service addition notice for your sub-account {{user.name}} (ID #{{user.id}})</h1><br/>{% if service %}<h2>New Services</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">{% for srv_cat, srv_item in service %}<tr><td colspan=\"2\">{{ srv_cat }}</td></tr>{% for item, quantity in srv_item %}<tr><td style=\"text-align: center;\">{{ item }}</td><td>{{ quantity }}</td></tr>{% endfor %}{% endfor %}</table>{% endif %}<h2>Affected account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{user.id}}</td></tr><tr><td>Account Name: </td><td>{{user.name}}</td></tr><tr><td>Account Realm: </td><td>{{user.realm}}</td></tr></table><h2>Reseller account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{account.id}}</td></tr><tr><td>Account Name: </td><td>{{account.name}}</td></tr><tr><td>Account Realm: </td><td>{{account.realm}}</td></tr></table><p style=\"font-size:9pt;color:#CCCCCC\">Sent from {{system.hostname}}</p></body></html>">>).
--define(TEMPLATE_SUBJECT, <<"New service addition notice (sub-account ID #{{sub_account.id}})">>).
+-define(TEMPLATE_SUBJECT, <<"New service addition notice (sub-account ID #{{user.id}})">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"New Service Addition">>).
 
@@ -81,8 +81,9 @@ process_req(DataJObj) ->
     AccountId = teletype_util:find_account_id(DataJObj),
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, AccountId),
 
-    Subject = teletype_util:render_subject(
-                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj]), Macros),
+    Subject = teletype_util:render_subject(kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
+                                          ,Macros
+                                          ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
@@ -116,6 +117,7 @@ user_info_data(DataJObj) ->
         'false' ->
             AccountId = kzd_audit_log:authenticating_user_account_id(Audit),
             {'ok', AccountJObj} = kz_account:fetch(AccountId),
+
             [{<<"name">>, kz_account:name(AccountJObj)}
             ,{<<"id">>, AccountId}
             ,{<<"realm">>, kz_account:realm(AccountJObj)}

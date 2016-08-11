@@ -413,7 +413,9 @@
 
 %% Notify Top Up
 -define(TOPUP_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_TOPUP_HEADERS, [<<"Amount">>, <<"Response">>, <<"Success">>
+-define(OPTIONAL_TOPUP_HEADERS, [<<"Amount">>
+                                ,<<"Response">>
+                                ,<<"Success">>
                                      | ?DEFAULT_OPTIONAL_HEADERS
                                 ]).
 -define(TOPUP_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -423,7 +425,8 @@
 
 %% Notify Transaction
 -define(TRANSACTION_HEADERS, [<<"Account-ID">>, <<"Transaction">>]).
--define(OPTIONAL_TRANSACTION_HEADERS, [<<"Service-Plan">>, <<"Billing-ID">>
+-define(OPTIONAL_TRANSACTION_HEADERS, [<<"Billing-ID">>
+                                      ,<<"Service-Plan">>
                                            | ?DEFAULT_OPTIONAL_HEADERS
                                       ]).
 -define(TRANSACTION_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -441,8 +444,13 @@
 
 %% Notify System Alert
 -define(SYSTEM_ALERT_HEADERS, [<<"Subject">>, <<"Message">>]).
--define(OPTIONAL_SYSTEM_ALERT_HEADERS, [<<"Pid">>, <<"Module">>, <<"Line">>, <<"Request-ID">>, <<"Section">>
-                                       ,<<"Node">>, <<"Details">>
+-define(OPTIONAL_SYSTEM_ALERT_HEADERS, [<<"Details">>
+                                       ,<<"Line">>
+                                       ,<<"Module">>
+                                       ,<<"Node">>
+                                       ,<<"Pid">>
+                                       ,<<"Request-ID">>
+                                       ,<<"Section">>
                                             | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(SYSTEM_ALERT_VALUES, [{<<"Event-Category">>, <<"notification">>}
