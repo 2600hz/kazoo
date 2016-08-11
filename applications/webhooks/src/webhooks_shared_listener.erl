@@ -300,8 +300,10 @@ handle_event(_JObj, _State) ->
     WHZones = lists:sort([kz_util:to_binary(Z)
                           || Z <- kz_nodes:whapp_zones(?APP_NAME)
                          ]),
-    Options = [{<<"webhooks_zones">>, WHZones}
-              ] ++ should_handle_federated_events(WHZones),
+    Options = [{<<"should_handle_federated">>
+               ,kz_util:to_binary(kz_nodes:local_zone()) == hd(WHZones)
+               }
+              ],
     {'reply', Options}.
 
 %%--------------------------------------------------------------------
@@ -332,15 +334,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
--spec should_handle_federated_events(binaries()) -> kz_proplist().
-should_handle_federated_events([]) -> [];
-should_handle_federated_events([H | T]) ->
-    case kz_util:to_binary(kz_nodes:local_zone()) == H of
-        'true' ->
-            [{<<"should_handle_federated">>, 'true'}];
-        _ when T == [] ->
-            [{<<"should_handle_federated">>, 'true'}];
-        _ ->
-            [{<<"should_handle_federated">>, 'false'}]
-    end.
