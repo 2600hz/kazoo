@@ -358,6 +358,8 @@ default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_number', [])) ->
     default_value(kz_util:anonymous_caller_id_number());
 default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_name', [])) ->
     default_value(kz_util:anonymous_caller_id_name());
+default_value(?MOD_FUN_ARGS(M, 'type', [])) ->
+    default_value(M:type());
 default_value(?MOD_FUN_ARGS('ecallmgr_config', 'get', [_Key, Default])) ->
     default_value(Default);
 %%TODO: support all kapps_config exports
