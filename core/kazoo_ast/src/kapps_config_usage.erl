@@ -352,7 +352,10 @@ default_value(?MOD_FUN_ARGS('kz_json', 'from_list', L)) ->
     default_values_from_list(L);
 default_value(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
     kz_json:new();
-default_value(?MOD_FUN_ARGS(_M, _F, _Args)) -> 'undefined';
+default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_number', [])) ->
+    kz_util:anonymous_caller_id_number();
+default_value(?MOD_FUN_ARGS(_M, _F, _Args)) ->
+    'undefined';
 default_value(?FUN_ARGS(_F, _Args)) ->
     'undefined'.
 

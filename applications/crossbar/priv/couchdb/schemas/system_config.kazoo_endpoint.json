@@ -13,6 +13,7 @@
             "type": "string"
         },
         "default_caller_id_number": {
+            "default": "0000000000",
             "description": "",
             "name": "default_caller_id_number",
             "type": "string"
