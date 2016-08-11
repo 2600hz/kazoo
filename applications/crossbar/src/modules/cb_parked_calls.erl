@@ -31,4 +31,12 @@ resource_exists() -> 'true'.
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     Ctx1 = crossbar_doc:load(?DB_DOC_NAME, Context, [{'expected_type', ?DB_DOC_NAME}]),
-    cb_context:set_resp_data(Ctx1, kz_json:public_fields(kz_json:normalize_jobj(cb_context:doc(Ctx1)))).
+
+    case cb_context:doc(Ctx1) of
+        'undefined' ->
+            Ctx2 = cb_context:set_resp_data(Ctx1, kz_json:new()),
+            cb_context:set_resp_status(Ctx2, 'success');
+
+        ValidDoc ->
+            cb_context:set_resp_data(Ctx1, kz_json:public_fields(kz_json:normalize_jobj(ValidDoc)))
+    end.
