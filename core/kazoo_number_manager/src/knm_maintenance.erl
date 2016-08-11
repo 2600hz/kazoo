@@ -57,7 +57,12 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(_)) ->
     OldToFix = get_old_phone_numbers(AccountDb),
     ?LOG("[~s] start fixing old numbers", [AccountDb]),
     foreach_pause_in_between(?TIME_BETWEEN_NUMBERS_MS, fun maybe_fix_old_number/1, OldToFix),
-    kz_datamgr:flush_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC);
+    kz_datamgr:flush_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC),
+    ?LOG("[~s] getting numbers", [AccountDb]),
+    ToFix = get_phone_numbers(AccountDb),
+    ?LOG("[~s] start fixing numbers", [AccountDb]),
+    foreach_pause_in_between(?TIME_BETWEEN_NUMBERS_MS, number_fixer(AccountDb), ToFix),
+    ?LOG("########## done fixing [~s] ##########", [AccountDb]);
 fix_account_numbers(Account = ?NE_BINARY) ->
     fix_account_numbers(kz_util:format_account_db(Account)).
 
@@ -75,6 +80,62 @@ foreach_pause_in_between(Time, Fun, [Element|Elements]) ->
     timer:sleep(Time),
     foreach_pause_in_between(Time, Fun, Elements).
 
+
+-spec get_phone_numbers(ne_binary()) -> ne_binaries().
+get_phone_numbers(AccountDb) ->
+    case kz_datamgr:get_results(AccountDb, <<"numbers/list_by_number">>) of
+        {'ok', JObjs} -> [kz_doc:id(JObj) || JObj <- JObjs];
+        {'error', _R} ->
+            lager:debug("could not read ~s's numbers: ~p", [AccountDb, _R]),
+            []
+    end.
+
+-spec number_fixer(ne_binary()) -> fun((ne_binary()) -> 'ok').
+number_fixer(AccountDb) ->
+    CallflowNumbers = callflow_numbers(AccountDb),
+    TrunkstoreNumbers = trunkstore_numbers(AccountDb),
+    fun (DID) ->
+            maybe_fix_number(AccountDb, CallflowNumbers, TrunkstoreNumbers, DID)
+    end.
+
+-spec maybe_fix_number(ne_binary(), ne_binaries(), ne_binaries(), ne_binary()) -> 'ok'.
+maybe_fix_number(AccountDb, CallflowNumbers, TrunkstoreNumbers, DID) ->
+    case [Doc || {'ok', Doc} <- [kz_datamgr:open_doc(AccountDb, DID)],
+                 'undefined' =:= kz_json:get_ne_binary_value(?PVT_ASSIGNED_TO, Doc)
+         ]
+    of
+        [] -> 'ok';
+        [_Doc] ->
+            ?LOG("[~s] deleting unassigned number ~s", [AccountDb, DID]),
+            _ = kz_datamgr:del_doc(AccountDb, DID)
+    end,
+    AppOrUndef = should_be_assigned_to(DID, CallflowNumbers, TrunkstoreNumbers),
+    ?LOG("[~s] ensuring number ~s is assigned to app ~s", [AccountDb, DID, AppOrUndef]),
+    case knm_number:assign_to_app(DID, AppOrUndef) of
+        {'error', _R} -> ?LOG("[~s] assignment failed: ~p", [AccountDb, _R]);
+        _ -> 'ok'
+    end.
+
+-spec should_be_assigned_to(ne_binary(), ne_binaries(), ne_binaries()) -> api_binary().
+should_be_assigned_to(DID, CallflowNumbers, TrunkstoreNumbers) ->
+    case lists:member(DID, CallflowNumbers) of
+        'true' -> <<"callflow">>;
+        'false' ->
+            case lists:member(DID, TrunkstoreNumbers) of
+                'true' -> <<"trunkstore">>;
+                'false' -> 'undefined'
+            end
+    end.
+
+
+-spec callflow_numbers(ne_binary()) -> ne_binaries().
+callflow_numbers(AccountDb) ->
+    get_result_keys(AccountDb, <<"callflows/listing_by_number">>).
+
+-spec trunkstore_numbers(ne_binary()) -> ne_binaries().
+trunkstore_numbers(AccountDb) ->
+    get_result_keys(AccountDb, <<"trunkstore/lookup_did">>).
+
 -spec get_result_keys(ne_binary(), ne_binary()) -> ne_binaries().
 get_result_keys(AccountDb, View) ->
     case kz_datamgr:get_all_results(AccountDb, View) of
@@ -86,8 +147,8 @@ get_result_keys(AccountDb, View) ->
 
 -spec get_old_phone_numbers(ne_binary()) -> [number_to_fix()].
 get_old_phone_numbers(AccountDb) ->
-    CallflowNumbers = get_result_keys(AccountDb, <<"callflows/listing_by_number">>),
-    TrunkstoreNumbers = get_result_keys(AccountDb, <<"trunkstore/lookup_did">>),
+    CallflowNumbers = callflow_numbers(AccountDb),
+    TrunkstoreNumbers = trunkstore_numbers(AccountDb),
     case kz_datamgr:open_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
         {'ok', JObj} ->
             [#{key => Key

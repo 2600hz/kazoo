@@ -563,10 +563,12 @@ maybe_update_assignment(Number, NewApp) ->
     case knm_phone_number:used_by(PhoneNumber) of
         NewApp -> {'ok', Number};
         _OldApp ->
-            UpdatedPhoneNumber = knm_phone_number:set_used_by(PhoneNumber, NewApp),
-            wrap_phone_number_return(knm_phone_number:save(UpdatedPhoneNumber)
-                                    ,Number
-                                    )
+            lager:debug("assigning ~s to ~s", [knm_phone_number:number(PhoneNumber), NewApp]),
+            NewPN =
+                knm_phone_number:save(
+                  knm_phone_number:set_used_by(PhoneNumber, NewApp)
+                 ),
+            wrap_phone_number_return(NewPN, Number)
     end.
 
 %%--------------------------------------------------------------------
