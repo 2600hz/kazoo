@@ -194,7 +194,7 @@ revise_docs_from_folder(DbName, App, Folder) ->
 revise_docs_from_folder(DbName, App, Folder, Sleep) ->
     case code:priv_dir(App) of
         {'error', 'bad_name'} ->
-            lager:info("tried to revise docs for db ~p for invalid priv directory. app: ~p", [DbName, App]);
+            lager:error("tried to revise docs for db ~p for invalid priv directory. app: ~p", [DbName, App]);
 
         ValidDir ->
             Files = filelib:wildcard([ValidDir, "/couchdb/", kz_util:to_list(Folder), "/*.json"]),
