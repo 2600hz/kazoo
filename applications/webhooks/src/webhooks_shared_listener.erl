@@ -297,7 +297,14 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {'reply', []}.
+    WHZones = lists:sort([kz_util:to_binary(Z)
+                          || Z <- kz_nodes:whapp_zones(?APP_NAME)
+                         ]),
+    Options = [{<<"should_handle_federated">>
+               ,kz_util:to_binary(kz_nodes:local_zone()) == hd(WHZones)
+               }
+              ],
+    {'reply', Options}.
 
 %%--------------------------------------------------------------------
 %% @private

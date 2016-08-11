@@ -11,7 +11,24 @@
 -include("webhooks.hrl").
 
 -spec handle_event(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_event(JObj, _Props) ->
+handle_event(JObj, Props) ->
+    case kz_api:is_federated_event(JObj) of
+        'false' ->
+            continue_handle_event(JObj, Props);
+        'true' ->
+            ShouldHandle = props:get_is_true(<<"should_handle_federated">>, Props),
+            maybe_handle_federated_event(JObj, Props, ShouldHandle)
+    end.
+
+-spec maybe_handle_federated_event(kz_json:object(), kz_proplist(), boolean()) -> 'ok'.
+maybe_handle_federated_event(JObj, _Props, 'false') ->
+    HookEvent = hook_event_name(kz_json:get_value(<<"Event-Name">>, JObj)),
+    lager:debug("event ~s would be handled in other webhooks zones", [HookEvent]);
+maybe_handle_federated_event(JObj, Props, _) ->
+    continue_handle_event(JObj, Props).
+
+-spec continue_handle_event(kz_json:object(), kz_proplist()) -> 'ok'.
+continue_handle_event(JObj, _Props) ->
     HookEvent = hook_event_name(kz_json:get_value(<<"Event-Name">>, JObj)),
     case kz_hooks_util:lookup_account_id(JObj) of
         {'error', _R} ->
