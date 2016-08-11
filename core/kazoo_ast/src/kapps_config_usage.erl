@@ -14,11 +14,8 @@ to_schema_docs(Schemas) ->
 
 update_schema({Name, AutoGenSchema}) ->
     Path = kz_ast_util:schema_path(<<"system_config.", Name/binary, ".json">>),
-
     SchemaDoc = schema_doc(Name, Path),
-
     Updated = kz_json:merge_recursive(AutoGenSchema, SchemaDoc),
-
     'ok' = file:write_file(Path, kz_json:encode(Updated)).
 
 schema_doc(Name, Path) ->
@@ -214,9 +211,7 @@ config_to_schema(F, [Cat, K, Default, _Node], Schemas) ->
     config_to_schema(F, [Cat, K, Default], Schemas);
 config_to_schema(F, [Cat, K, Default], Schemas) ->
     Document = category_to_document(Cat),
-
     Key = key_to_key_path(K),
-
     config_key_to_schema(F, Document, Key, Default, Schemas).
 
 config_key_to_schema(_F, _Document, 'undefined', _Default, Schemas) ->
@@ -225,14 +220,11 @@ config_key_to_schema(_F, 'undefined', _Key, _Default, Schemas) ->
     Schemas;
 config_key_to_schema(F, Document, Key, Default, Schemas) ->
     Properties = guess_properties(Key, guess_type(F, Default), Default),
-
     Existing = kz_json:get_json_value([Document, <<"properties">> | Key]
                                      ,Schemas
                                      ,kz_json:new()
                                      ),
-
     Updated = kz_json:merge_jobjs(Existing, Properties),
-
     kz_json:set_value([Document, <<"properties">> | Key], Updated, Schemas).
 
 category_to_document(?VAR(_)) -> 'undefined';
@@ -245,7 +237,7 @@ key_to_key_path(?EMPTY_LIST) -> [];
 key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [Doc, Field | _]), Tail)) ->
     [iolist_to_binary([${
                       ,kz_ast_util:binary_match_to_binary(Doc)
-                      ,"."
+                      ,$.
                       ,kz_ast_util:binary_match_to_binary(Field)
                       ,$}
                       ]
@@ -278,9 +270,9 @@ key_to_key_path(?LIST(Head, Tail)) ->
 key_to_key_path(?BINARY_MATCH(K)) ->
     [kz_ast_util:binary_match_to_binary(K)].
 
-guess_type('is_true', _Default) -><<"boolean">>;
-guess_type('get_is_true', _Default) -><<"boolean">>;
-guess_type('get_boolean', _Default) -><<"boolean">>;
+guess_type('is_true', _Default) -> <<"boolean">>;
+guess_type('get_is_true', _Default) -> <<"boolean">>;
+guess_type('get_boolean', _Default) -> <<"boolean">>;
 guess_type('get', Default) -> guess_type_by_default(Default);
 guess_type('fetch', Default) -> guess_type_by_default(Default);
 guess_type('get_non_empty', Default) -> guess_type_by_default(Default);

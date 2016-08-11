@@ -92,7 +92,7 @@ check_default(<<"true">>) -> 'true';
 check_default(<<"false">>) -> 'false';
 check_default(B) when is_boolean(B) -> B;
 check_default(I) when is_integer(I) -> I;
-check_default(<<_/binary>>=B) -> B;
+check_default(B) when is_binary(B) -> B;
 check_default(A) when is_atom(A) -> 'undefined';
 
 check_default(Default) ->
@@ -226,13 +226,11 @@ process_expression(Acc, ?TRY_BODY(Body, CatchClauses)) ->
                        ,CatchClauses
                        );
 process_expression(Acc, ?TRY_EXPR(Exprs, Clauses, CatchClauses)) ->
-    process_expressions(
-      process_expressions(
-        process_expressions(Acc, Exprs)
-                         ,Clauses
-       )
+    process_expressions(process_expressions(process_expressions(Acc, Exprs)
+                                           ,Clauses
+                                           )
                        ,CatchClauses
-     );
+                       );
 
 process_expression(Acc, ?LC(Expr, Qualifiers)) ->
     process_expressions(process_expression(Acc, Expr)
