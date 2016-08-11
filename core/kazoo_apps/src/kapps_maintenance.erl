@@ -329,7 +329,7 @@ refresh_account_db(Database) ->
     Views = get_all_account_views(),
     _ = kapps_util:update_views(AccountDb, Views, 'true'),
     kapps_account_config:migrate(AccountDb),
-    _ = kazoo_bindings:map(binding({'refresh', AccountDb}), AccountId),
+    _ = kazoo_bindings:map(binding({'refresh_account', AccountDb}), AccountId),
     'ok'.
 
 -spec remove_depreciated_account_views(ne_binary()) -> 'ok'.
