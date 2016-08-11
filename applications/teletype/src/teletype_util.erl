@@ -332,7 +332,7 @@ user_params(UserJObj) ->
      ).
 
 -spec user_property(kzd_user:doc(), Key, fun((kz_json:object()) -> api_binary())) ->
-                            {Key, api_binary()}.
+                           {Key, api_binary()}.
 user_property(User, <<_/binary>>=Key, Fun) when is_function(Fun, 1) ->
     {Key, Fun(User)}.
 

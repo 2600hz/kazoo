@@ -886,7 +886,7 @@ augment_registration(Reg, JObj) ->
                                                   ,[JObj, CCVs]
                                                   ,Reg#registration.authorizing_type
                                                   )
-     }.
+                    }.
 
 -spec fix_contact(api_binary()) -> api_binary().
 fix_contact('undefined') -> 'undefined';

@@ -696,9 +696,9 @@ from_magic_hash(Bin) ->
     zlib:unzip(kz_util:from_hex_binary(Bin)).
 
 -spec media_local_store_url(kapps_call:call(), kz_json:object()) ->
-                            {'ok', ne_binary()} |
-                            {'proxy', tuple()} |
-                            {'error', any()}.
+                                   {'ok', ne_binary()} |
+                                   {'proxy', tuple()} |
+                                   {'error', any()}.
 media_local_store_url(Call, JObj) ->
     AccountDb = kapps_call:account_db(Call),
     MediaId = kz_doc:id(JObj),
