@@ -356,6 +356,8 @@ default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_number', [])) ->
     kz_util:anonymous_caller_id_number();
 default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_name', [])) ->
     kz_util:anonymous_caller_id_name();
+default_value(?MOD_FUN_ARGS('kapps_config', 'get_integer', [_Category, _Key, Default])) ->
+    default_value(Default);
 default_value(?MOD_FUN_ARGS(_M, _F, _Args)) ->
     'undefined';
 default_value(?FUN_ARGS(_F, _Args)) ->

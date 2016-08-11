@@ -13,6 +13,7 @@
             "properties": {
                 "max_bucket_tokens": {
                     "properties": {
+                        "default": 100,
                         "description": "",
                         "name": "max_bucket_tokens",
                         "type": "integer"
@@ -20,6 +21,7 @@
                 },
                 "tokens_fill_rate": {
                     "properties": {
+                        "default": 10,
                         "description": "",
                         "name": "tokens_fill_rate",
                         "type": "integer"
