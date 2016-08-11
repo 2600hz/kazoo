@@ -224,6 +224,8 @@ do_move_to_modb(AccountId, JObj, Funs) ->
 
     TransformFuns = [fun(DestDoc) -> kzd_box_message:set_metadata(kzd_box_message:metadata(JObj), DestDoc) end
                     ,fun(DestDoc) -> update_media_id(ToId, DestDoc) end
+                    ,fun(DestDoc) -> kz_json:set_value(<<"pvt_moved_to_modb">>, <<"true">>, DestDoc) end
+                    ,fun(DestDoc) -> kz_json:set_value(<<"pvt_previous_id">>, FromId, DestDoc) end
                     ,fun(DestDoc) -> kz_json:set_value(<<"pvt_type">>, kzd_box_message:type(), DestDoc) end
                      | Funs
                     ],
