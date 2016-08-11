@@ -61,6 +61,7 @@
                             "caller-controls": "default",
                             "comfort-noise": 1000,
                             "energy-level": 20,
+                            "enter-sound": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
                             "interval": 20,
                             "moh-sound": "$${hold_music}",
                             "rate": 8000

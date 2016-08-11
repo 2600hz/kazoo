@@ -6795,6 +6795,7 @@
                     "name": "master_account_id"
                 },
                 "timezone": {
+                    "default": "America/Los_Angeles",
                     "description": "",
                     "name": "timezone",
                     "type": "string"
@@ -7493,6 +7494,7 @@
                                     "caller-controls": "default",
                                     "comfort-noise": 1000,
                                     "energy-level": 20,
+                                    "enter-sound": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
                                     "interval": 20,
                                     "moh-sound": "$${hold_music}",
                                     "rate": 8000
@@ -8765,6 +8767,7 @@
                     "type": "string"
                 },
                 "conversion_pdf_command": {
+                    "default": "/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s -- ~s > /dev/null && echo -n \"success\"",
                     "description": "",
                     "name": "conversion_pdf_command",
                     "type": "string"
@@ -11147,6 +11150,7 @@
                         },
                         "tokens_fill_time": {
                             "properties": {
+                                "default": "second",
                                 "description": "",
                                 "name": "tokens_fill_time",
                                 "type": "string"

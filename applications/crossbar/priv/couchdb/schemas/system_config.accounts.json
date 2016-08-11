@@ -20,6 +20,7 @@
             "name": "master_account_id"
         },
         "timezone": {
+            "default": "America/Los_Angeles",
             "description": "",
             "name": "timezone",
             "type": "string"

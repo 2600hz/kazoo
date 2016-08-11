@@ -353,10 +353,15 @@ default_value(?MOD_FUN_ARGS('kz_json', 'from_list', L)) ->
 default_value(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
     kz_json:new();
 default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_number', [])) ->
-    kz_util:anonymous_caller_id_number();
+    default_value(kz_util:anonymous_caller_id_number());
 default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_name', [])) ->
-    kz_util:anonymous_caller_id_name();
+    default_value(kz_util:anonymous_caller_id_name());
+%%TODO: support all kapps_config exports
+default_value(?MOD_FUN_ARGS('kapps_config', 'get', [_Category, _Key, Default])) ->
+    default_value(Default);
 default_value(?MOD_FUN_ARGS('kapps_config', 'get_integer', [_Category, _Key, Default])) ->
+    default_value(Default);
+default_value(?MOD_FUN_ARGS('kapps_config', 'get_binary', [_Category, _Key, Default])) ->
     default_value(Default);
 default_value(?MOD_FUN_ARGS(_M, _F, _Args)) ->
     'undefined';

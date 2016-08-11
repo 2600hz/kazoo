@@ -29,6 +29,7 @@
                 },
                 "tokens_fill_time": {
                     "properties": {
+                        "default": "second",
                         "description": "",
                         "name": "tokens_fill_time",
                         "type": "string"
