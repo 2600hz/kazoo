@@ -13,6 +13,7 @@
         ,handle_update_result/2, check_doc_type/3
         ,retry_conflict/1
 
+        ,check_msg_belonging/2
         ,apply_folder/2
         ,find_differences/3
         ,cleanup_moved_msgs/3
@@ -115,6 +116,16 @@ retry_conflict(Fun, Tries) ->
         {'error', 'conflict'} -> retry_conflict(Fun, Tries - 1);
         Other -> Other
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec check_msg_belonging(api_ne_binary(), kz_json:object()) -> boolean().
+check_msg_belonging(BoxId, JObj) ->
+    BoxId =:= 'undefined'
+        orelse BoxId =:= kzd_box_message:source_id(JObj).
 
 %%--------------------------------------------------------------------
 %% @public

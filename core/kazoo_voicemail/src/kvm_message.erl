@@ -137,7 +137,7 @@ maybe_set_folder(_, ?VM_FOLDER_DELETED=ToFolder, MessageId, AccountId, _) ->
 maybe_set_folder(FromFolder, FromFolder, ?MATCH_MODB_PREFIX(_, _, _), _, Msg) -> {'ok', Msg};
 maybe_set_folder(FromFolder, FromFolder, MessageId, AccountId, _) ->
     lager:info("folder is same, but doc is in accountdb, move it to modb"),
-    update(AccountId, 'undefined', MessageId, []);
+    update(AccountId, 'undefined', MessageId);
 maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId, _) ->
     change_folder(ToFolder, MessageId, AccountId).
 
@@ -170,22 +170,25 @@ change_folder(Folder, MessageId, AccountId, BoxId) ->
 %% @doc Update a single message doc and do migration when necessary
 %% @end
 %%--------------------------------------------------------------------
-
+-spec update(ne_binary(), api_ne_binary(), ne_binary()) -> db_ret().
 -spec update(ne_binary(), api_ne_binary(), ne_binary(), update_funs()) -> db_ret().
+update(AccountId, BoxId, MsgId) ->
+    update(AccountId, BoxId, MsgId, []).
+
 update(AccountId, BoxId, MsgId, Funs) ->
     case fetch(AccountId, MsgId) of
         {'ok', JObj} ->
-            case BoxId =:= 'undefined'
-                orelse kzd_box_message:source_id(JObj) =:= BoxId
-            of
-                'true' -> do_update(AccountId, MsgId, JObj, Funs);
-                'false' -> {'error', 'not_found'}
+            case kvm_util:check_msg_belonging(BoxId, JObj) of
+                'true' ->
+                    do_update(AccountId, MsgId, JObj, Funs);
+                'false' ->
+                    {'error', 'not_found'}
             end;
-        {'error', _}=E -> E
+        {'error', _} = E -> E
     end.
 
 -spec do_update(ne_binary(), ne_binary(), kz_json:object(), update_funs()) -> db_ret().
-do_update(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=MsgId, JObj, Funs) ->
+do_update(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _) = MsgId, JObj, Funs) ->
     NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
     kvm_util:handle_update_result(MsgId, kazoo_modb:save_doc(AccountId, NewJObj, Year, Month));
 do_update(AccountId, MsgId, JObj, Funs) ->
