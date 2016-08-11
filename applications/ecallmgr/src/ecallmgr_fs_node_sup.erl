@@ -31,17 +31,22 @@
 
 -include("ecallmgr.hrl").
 
--define(CHILDREN, [<<"authn">>
-                  ,<<"channel">>
-                  ,<<"conference">>
-                  ,<<"config">>
-                  ,<<"event_stream_sup">>
-                  ,<<"msg">>
-                  ,<<"node">>
-                  ,<<"notify">>
-                  ,<<"resource">>
-                  ,<<"route">>
-                  ]).
+-define(NODE_CHILD_TYPE(Type), kz_json:from_list([{<<"type">>, Type}])).
+-define(NODE_WORKER, ?NODE_CHILD_TYPE(<<"worker">>)).
+-define(NODE_SUPERVISOR, ?NODE_CHILD_TYPE(<<"supervisor">>)).
+
+-define(CHILDREN, kz_json:from_list(
+		    [{<<"node">>, ?NODE_WORKER}
+		    ,{<<"authn">>, ?NODE_WORKER}
+		    ,{<<"channel">>, ?NODE_WORKER}
+		    ,{<<"conference">>, ?NODE_WORKER}
+		    ,{<<"config">>, ?NODE_WORKER}
+		    ,{<<"event_stream_sup">>, ?NODE_SUPERVISOR}
+		    ,{<<"msg">>, ?NODE_WORKER}
+		    ,{<<"notify">>, ?NODE_WORKER}
+		    ,{<<"resource">>, ?NODE_WORKER}
+		    ,{<<"route_sup">>, ?NODE_SUPERVISOR}
+		    ])).
 
 %% ===================================================================
 %% API functions
@@ -130,44 +135,23 @@ init([Node, Options]) ->
 
     NodeB = kz_util:to_binary(Node),
     Args = [Node, Options],
-    Children = [child_name(NodeB, Args, H)
-                || H <- ecallmgr_config:get(<<"modules">>, ?CHILDREN)
-               ],
-
+    Modules = ecallmgr_config:get(<<"modules">>, ?CHILDREN),
+    JObj = maybe_correct_modules(Modules),
+    Children = kz_json:foldl(fun(Module, V, Acc) ->
+                                     Type = kz_json:get_ne_binary_value(<<"type">>, V),
+                                     [child_name(NodeB, Args, Module, Type) | Acc]
+                             end, [], JObj),
     {'ok', {SupFlags, Children}}.
 
--spec child_name(binary(), list(), binary() | tuple() | kz_json:object()) ->
-                        supervisor:child_spec().
-child_name(NodeB, Args, {<<"supervisor">>, Module}) ->
+-spec child_name(binary(), list(), binary(), binary()) -> any().
+child_name(NodeB, Args, Module, <<"supervisor">>) ->
     Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
     Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?SUPER_NAME_ARGS(Mod, Name, Args);
-child_name(NodeB, Args, {<<"worker">>, Module}) ->
+child_name(NodeB, Args, Module, <<"worker">>) ->
     Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
     Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
-    ?WORKER_NAME_ARGS(Mod, Name, Args);
-child_name(NodeB, Args, <<"event_stream_sup">>=Module) ->
-    Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
-    Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
-    ?SUPER_NAME_ARGS(Mod, Name, Args);
-child_name(NodeB, Args, <<"route">>) ->
-    child_name(NodeB, Args, <<"route_sup">>);
-child_name(NodeB, Args, <<"route_sup">>=Module) ->
-    Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
-    Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
-    ?SUPER_NAME_ARGS(Mod, Name, Args);
-child_name(NodeB, Args, <<_/binary>>=Module) ->
-    Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
-    Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
-    ?WORKER_NAME_ARGS(Mod, Name, Args);
-child_name(NodeB, Args, MaybeJObj) ->
-    try kz_json:get_values(MaybeJObj) of
-        {[Module], [Type]} -> child_name(NodeB, Args, {Type, Module})
-    catch
-        _E:_R ->
-            lager:error("error determining child type : ~p : ~p", [MaybeJObj, Args])
-    end.
-
+    ?WORKER_NAME_ARGS(Mod, Name, Args).
 
 -spec srv([{atom(), pid(), any(), any()}], list()) -> api_pid().
 srv([], _) -> 'undefined';
@@ -177,3 +161,22 @@ srv([{Name, Pid, _, _} | Children], Suffix) ->
         'true' -> Pid;
         'false' -> srv(Children, Suffix)
     end.
+
+maybe_correct_modules(Modules)
+  when is_list(Modules) ->
+    FixedModules = [fix_module(Mod) || Mod <- Modules],
+    kz_json:from_list(FixedModules);
+maybe_correct_modules(JObj) -> JObj.
+
+fix_module_type(<<"pus_", _/binary>>) ->
+    kz_json:from_list([{<<"type">>, <<"supervisor">>}]);
+fix_module_type(_) ->
+    kz_json:from_list([{<<"type">>, <<"worker">>}]).
+
+maybe_module_deprecated(<<"route">>) -> <<"route_sup">>;
+maybe_module_deprecated(Mod) -> Mod.
+
+fix_module(Mod) ->
+    Module = maybe_module_deprecated(Mod),
+    ModInv = list_to_binary(lists:reverse(binary_to_list(Module))),
+    {Module, fix_module_type(ModInv)}.
