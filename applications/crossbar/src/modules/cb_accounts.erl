@@ -21,6 +21,8 @@
         ,post/2, post/3
         ,delete/2, delete/3
         ,patch/2
+
+        ,replicate_account_definition/1
         ]).
 
 -export([notify_new_account/1]).

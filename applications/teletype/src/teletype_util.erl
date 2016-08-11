@@ -615,10 +615,9 @@ should_handle_account(Account) ->
             lager:debug("teletype should handle account ~s", [Account]),
             'true';
         {'ok', JObj} ->
-            should_handle_account(
-              Account
+            should_handle_account(Account
                                  ,kz_account:notification_preference(JObj)
-             )
+                                 )
     end.
 
 should_handle_account(_Account, ?APP_NAME) -> 'true';
@@ -629,18 +628,17 @@ should_handle_account(Account, 'undefined') ->
 should_handle_account(_Account, _Preference) ->
     lager:debug("not handling notification;"
                 " unknown notification preference '~s' for '~s'"
-               ,[_Preference, _Account]).
+               ,[_Preference, _Account]
+               ).
 
 -spec should_handle_reseller(ne_binary()) -> boolean().
 should_handle_reseller(Account) ->
     case kz_account:fetch(kz_services:find_reseller_id(Account)) of
-        {'error', _E} ->
-            'true';
+        {'error', _E} -> 'true';
         {'ok', ResellerJObj} ->
-            should_handle_account(
-              'undefined'
+            should_handle_account('undefined'
                                  ,kz_account:notification_preference(ResellerJObj)
-             )
+                                 )
     end.
 
 -define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).
