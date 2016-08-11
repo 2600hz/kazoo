@@ -13028,9 +13028,6 @@
         "/accounts/{ACCOUNT_ID}/devices": {
             "get": {
                 "description": "Summary listing of devices for the account",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "A listing of devices created for the account"
@@ -13047,9 +13044,6 @@
                         "$ref": "#/definitions/devices"
                     }
                 },
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "201": {
                         "description": "The newly created device object"
@@ -13063,9 +13057,6 @@
         "/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}": {
             "delete": {
                 "description": "Remove the device from the account",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "The removed device object"
@@ -13074,9 +13065,6 @@
             },
             "get": {
                 "description": "Get the device details",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "The device object, in full"
@@ -13094,9 +13082,6 @@
                         "$ref": "#/definitions/devices"
                     }
                 },
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "The edited device object, in full"
@@ -13107,9 +13092,6 @@
         "/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}": {
             "get": {
                 "description": "Execute quickcall to {NUMBER}",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "The call initialization details"
@@ -13120,9 +13102,6 @@
         "/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync": {
             "post": {
                 "description": "Reset the device by sending a check-sync SIP NOTIFY",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "202": {
                         "description": "Notice that the check-sync has been sent"
@@ -13769,9 +13748,6 @@
         "/accounts/{ACCOUNT_ID}/vmboxes": {
             "get": {
                 "description": "Summary listing of voicemail boxes for the account",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "A listing of voicemail boxes for the account"
@@ -13788,9 +13764,6 @@
                         "$ref": "#/definitions/vmboxes"
                     }
                 },
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "201": {
                         "description": "The newly created voicemail box"
@@ -13804,9 +13777,6 @@
             },
             "get": {
                 "description": "Details of the voicemail box",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "A voicemail box document"
@@ -13815,9 +13785,6 @@
             },
             "patch": {
                 "description": "Patch an existing voicemail box",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "The updated voicemail box"
@@ -13834,9 +13801,6 @@
                         "$ref": "#/definitions/vmboxes"
                     }
                 },
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "The updated voicemail box"
@@ -13847,9 +13811,6 @@
         "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages": {
             "delete": {
                 "description": "Remove all or a list of messages from a voicemail box",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "Listing of messages, if any are left"
@@ -13858,9 +13819,6 @@
             },
             "get": {
                 "description": "Listing of messages contained in the voicemail box",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "A listing of messages"
@@ -13869,9 +13827,6 @@
             },
             "post": {
                 "description": "Change a list message",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "A listing of messages"
@@ -13882,9 +13837,6 @@
         "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/raw": {
             "post": {
                 "description": "Fetch raw aduio of a list message id",
-                "produces": [
-                    "application/zip"
-                ],
                 "responses": {
                     "200": {
                         "description": "ZIP file containing the raw audio of voicemail messages"
@@ -13895,9 +13847,6 @@
         "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}": {
             "delete": {
                 "description": "Remove the message from the voicemail box",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "The removed message object"
@@ -13906,9 +13855,6 @@
             },
             "get": {
                 "description": "Get a specific message object",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "The message object"
@@ -13917,9 +13863,6 @@
             },
             "post": {
                 "description": "Change a message",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "A listing of messages"
@@ -13933,9 +13876,6 @@
         "/accounts/{ACCOUNT_ID}/webhooks": {
             "get": {
                 "description": "Summary listing of webhooks for the account",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "A listing of webhooks created for the account"
@@ -13944,9 +13884,6 @@
             },
             "patch": {
                 "description": "Re-enable the collection of webhooks",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "Result of reenabling hooks"
@@ -13963,9 +13900,6 @@
                         "$ref": "#/definitions/webhooks"
                     }
                 },
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "201": {
                         "description": "The newly created webhook object"
@@ -13976,9 +13910,6 @@
         "/accounts/{ACCOUNT_ID}/webhooks/attempts": {
             "get": {
                 "description": "List the attempts Kazoo has made to the external servers",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "List of objects representing webhook attempts made"
@@ -13989,9 +13920,6 @@
         "/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}": {
             "delete": {
                 "description": "Remove the webhook from the account",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "The removed webhook object"
@@ -14000,9 +13928,6 @@
             },
             "get": {
                 "description": "Get the webhook details",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "The webhook object, in full"
@@ -14011,9 +13936,6 @@
             },
             "patch": {
                 "description": "Patch the webhook object",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "The patched webhook object, in full"
@@ -14030,9 +13952,6 @@
                         "$ref": "#/definitions/webhooks"
                     }
                 },
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "The edited webhook object, in full"
@@ -14043,9 +13962,6 @@
         "/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts": {
             "get": {
                 "description": "List the attempts Kazoo has made to the external servers for this webhook",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "List of objects representing webhook attempts made for this webhook"
@@ -14132,9 +14048,6 @@
         "/rates": {
             "get": {
                 "description": "Listing of available rate docs",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "A list of available rate docs"
@@ -14150,9 +14063,6 @@
         "/rates/{RATE_ID}": {
             "delete": {
                 "description": "Delete the rate doc",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "The now-deleted rate doc"
@@ -14161,9 +14071,6 @@
             },
             "get": {
                 "description": "Get the rate doc",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "The rate doc"
@@ -14176,9 +14083,6 @@
         "/schemas": {
             "get": {
                 "description": "Listing of installed schemas available",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "A list of schemas installed"
@@ -14189,9 +14093,6 @@
         "/schemas/{SCHEMADOC}": {
             "get": {
                 "description": "Get the JSON schema definition",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "The schema definition"
@@ -14202,9 +14103,6 @@
         "/schemas/{SCHEMADOC}/validation": {
             "put": {
                 "description": "Perform a test validation",
-                "produces": [
-                    "application/json"
-                ],
                 "responses": {
                     "200": {
                         "description": "The results of the validation"
