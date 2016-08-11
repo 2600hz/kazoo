@@ -226,11 +226,16 @@
 
 %% Notify Deregister
 -define(DEREGISTER_HEADERS, [<<"Username">>, <<"Realm">>, <<"Account-ID">>]).
--define(OPTIONAL_DEREGISTER_HEADERS, [<<"Status">>, <<"User-Agent">>, <<"Call-ID">>, <<"Profile-Name">>, <<"Presence-Hosts">>
-                                     ,<<"From-User">>, <<"From-Host">>, <<"FreeSWITCH-Hostname">>, <<"RPid">>
-                                     ,<<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
-                                     ,<<"Event-Timestamp">>, <<"Contact">>, <<"Expires">>, <<"Account-DB">>
-                                     ,<<"Authorizing-ID">>, <<"Suppress-Unregister-Notify">>
+-define(OPTIONAL_DEREGISTER_HEADERS, [<<"Account-DB">>, <<"Authorizing-ID">>
+                                     ,<<"Call-ID">>, <<"Contact">>
+                                     ,<<"Event-Timestamp">>, <<"Expires">>
+                                     ,<<"FreeSWITCH-Hostname">>, <<"From-Host">>, <<"From-User">>
+                                     ,<<"Network-IP">>, <<"Network-Port">>
+                                     ,<<"Presence-Hosts">>, <<"Profile-Name">>
+                                     ,<<"RPid">>
+                                     ,<<"Status">>, <<"Suppress-Unregister-Notify">>
+                                     ,<<"To-Host">>, <<"To-User">>
+                                     ,<<"User-Agent">>
                                           | ?DEFAULT_OPTIONAL_HEADERS
                                      ]).
 -define(DEREGISTER_VALUES, [{<<"Event-Category">>, <<"notification">>}

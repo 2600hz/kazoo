@@ -83,10 +83,7 @@ handle_deregister(JObj, _Props) ->
 
 -spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
-    Macros = [{<<"system">>, teletype_util:system_params()}
-             ,{<<"account">>, teletype_util:account_params(DataJObj)}
-             ,{<<"last_registration">>, kz_json:to_proplist(DataJObj)}
-             ],
+    Macros = build_macros(DataJObj),
 
     %% Load templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
@@ -104,3 +101,18 @@ handle_req(DataJObj) ->
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
+
+-spec build_macros(kz_json:object()) -> kz_proplist().
+-spec build_macros(kz_json:object(), kz_proplist()) -> kz_proplist().
+build_macros(DataJObj) ->
+    build_macros(DataJObj, teletype_util:account_params(DataJObj)).
+
+build_macros(DataJObj, []) ->
+    lager:info("no account data available for deregister, not sending notification"),
+    teletype_util:send_update(DataJObj, <<"failed">>, <<"missing account">>),
+    exit('normal');
+build_macros(DataJObj, AccountParams) ->
+    [{<<"system">>, teletype_util:system_params()}
+    ,{<<"account">>, AccountParams}
+    ,{<<"last_registration">>, kz_json:to_proplist(DataJObj)}
+    ].
