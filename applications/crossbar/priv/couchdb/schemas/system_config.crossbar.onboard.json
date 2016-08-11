@@ -10,6 +10,7 @@
             "type": "integer"
         },
         "default_extension_callflow": {
+            "default": "{\"data\": { \"id\": \"~s\" }, \"module\": \"user\", \"children\": { \"_\": { \"data\": { \"id\": \"~s\" }, \"module\": \"voicemail\", \"children\": {}}}}",
             "description": "",
             "name": "default_extension_callflow",
             "type": "string"
