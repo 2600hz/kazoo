@@ -80,7 +80,9 @@
 -export([pad_month/1]).
 
 -export([binary_md5/1]).
--export([pad_binary/3, join_binary/1, join_binary/2]).
+-export([pad_binary/3, pad_binary_left/3
+        ,join_binary/1, join_binary/2
+        ]).
 -export([a1hash/3, floor/1, ceiling/1]).
 
 -export([current_tstamp/0, current_unix_tstamp/0
