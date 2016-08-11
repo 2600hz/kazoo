@@ -8,7 +8,10 @@
 %%%-------------------------------------------------------------------
 -module(teletype_maintenance).
 
--export([receipts/0]).
+-export([receipts/0
+         ,restore_system_templates/0
+         ,restore_system_template/1
+        ]).
 
 -include("teletype.hrl").
 
@@ -66,3 +69,38 @@ receipt_for_printing(Receipt) ->
 
 default_receipt_printing(Receipt) ->
     kz_util:strip_binary(Receipt, [$\n, $\r]).
+
+restore_system_templates() ->
+    [restore_system_template(Template) || Template <- list_system_templates()],
+    'ok'.
+
+restore_system_template(<<"skel">>) ->
+    'ok';
+restore_system_template(TemplateId) ->
+    DbId = kz_notification:db_id(TemplateId),
+    ModId = kz_notification:resp_id(TemplateId),
+
+    io:format("restoring to default version: ~s(~s)~n", [ModId, DbId]),
+
+    {'ok', TemplateDoc} = kz_datamgr:open_doc(?KZ_CONFIG_DB, DbId),
+    {'ok', _Deleted} = kz_datamgr:del_doc(?KZ_CONFIG_DB, TemplateDoc),
+    io:format("  deleted ~s~n", [TemplateId]),
+
+    Mod = kz_util:to_atom(<<"teletype_", ModId/binary>>, 'true'),
+    io:format("  re-initializing template ~s~n", [ModId]),
+    Mod:init(),
+    io:format("  finished~n").
+
+list_system_templates() ->
+    case kz_datamgr:all_docs(?KZ_CONFIG_DB
+                            ,[{'startkey', <<"notification.">>}
+                             ,{'endkey', <<"notification.zzz">>}
+                             ]
+                            )
+    of
+        {'ok', Results} ->
+            [kz_json:get_value(<<"key">>, Result) || Result <- Results];
+        {'error', _E} ->
+            io:format("failed to query existing notifications: ~p~n", [_E]),
+            []
+    end.

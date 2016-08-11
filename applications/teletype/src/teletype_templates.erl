@@ -10,10 +10,6 @@
 
 -include("teletype.hrl").
 
--define(TEMPLATE_FAILURE_KEY(TemplateId, AccountId)
-       ,{?MODULE, TemplateId, AccountId}
-       ).
-
 -export([init/2
         ,renderer_name/2
         ,render/2, render/3, render/4
@@ -24,6 +20,10 @@
 
 -type macro() :: {ne_binary(), ne_binary() | number() | macros()}.
 -type macros() :: [macro()].
+
+-define(TEMPLATE_FAILURE_KEY(TemplateId, AccountId)
+       ,{?MODULE, TemplateId, AccountId}
+       ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -391,11 +391,10 @@ save(TemplateJObj) ->
 -spec update_from_params(kz_json:object(), init_params()) ->
                                 update_acc().
 update_from_params(TemplateJObj, Params) ->
-    lists:foldl(
-      fun update_from_param/2
+    lists:foldl(fun update_from_param/2
                ,{'false', TemplateJObj}
                ,Params
-     ).
+               ).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -369,9 +369,9 @@ maybe_add_parent_params(AccountJObj) ->
         'undefined' -> [];
         ParentAccountId ->
             {'ok', ParentAccountJObj} = kz_account:fetch(ParentAccountId),
-            [{<<"name">>, kz_account:name(ParentAccountJObj)}
-            ,{<<"realm">>, kz_account:realm(ParentAccountJObj)}
-            ,{<<"id">>, kz_account:id(ParentAccountJObj)}
+            [{<<"parent_name">>, kz_account:name(ParentAccountJObj)}
+            ,{<<"parent_realm">>, kz_account:realm(ParentAccountJObj)}
+            ,{<<"parent_id">>, kz_account:id(ParentAccountJObj)}
             ]
     end.
 
