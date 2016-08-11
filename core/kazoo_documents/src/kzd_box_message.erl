@@ -69,9 +69,9 @@ new(AccountId, Props) ->
     {Year, Month, _} = erlang:date(),
     Db = kazoo_modb:get_modb(AccountId, Year, Month),
     MediaId = <<(kz_util:to_binary(Year))/binary
-               ,(kz_util:pad_month(Month))/binary
-               ,"-"
-               ,(kz_util:rand_hex_binary(16))/binary
+                ,(kz_util:pad_month(Month))/binary
+                ,"-"
+                ,(kz_util:rand_hex_binary(16))/binary
               >>,
 
     UtcSeconds = kz_util:current_tstamp(),
@@ -91,9 +91,7 @@ new(AccountId, Props) ->
                  ,{?KEY_UTC_SEC, UtcSeconds}
                  ]),
     kz_doc:update_pvt_parameters(
-        kz_json:from_list(DocProps)
-        ,Db
-        ,[{'type', type()}]
+      kz_json:from_list(DocProps), Db, [{'type', type()}]
     ).
 
 %%--------------------------------------------------------------------

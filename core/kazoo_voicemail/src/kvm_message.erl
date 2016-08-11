@@ -132,7 +132,7 @@ set_folder(Folder, Message, AccountId) ->
 
 -spec maybe_set_folder(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> db_ret().
 maybe_set_folder(_, ?VM_FOLDER_DELETED=ToFolder, MessageId, AccountId, _) ->
-    % ensuring that message is really deleted
+    %% ensuring that message is really deleted
     change_folder(ToFolder, MessageId, AccountId);
 maybe_set_folder(FromFolder, FromFolder, ?MATCH_MODB_PREFIX(_, _, _), _, Msg) -> {'ok', Msg};
 maybe_set_folder(FromFolder, FromFolder, MessageId, AccountId, _) ->
@@ -155,7 +155,7 @@ change_folder(_, 'undefined', _, _) ->
     {'error', 'attachment_undefined'};
 change_folder(Folder, MessageId, AccountId, BoxId) ->
     Fun = [fun(JObj) ->
-               kvm_util:apply_folder(Folder, JObj)
+                   kvm_util:apply_folder(Folder, JObj)
            end
           ],
     case update(AccountId, BoxId, MessageId, Fun) of
@@ -176,7 +176,7 @@ update(AccountId, BoxId, MsgId, Funs) ->
     case fetch(AccountId, MsgId) of
         {'ok', JObj} ->
             case BoxId =:= 'undefined'
-                     orelse kzd_box_message:source_id(JObj) =:= BoxId
+                orelse kzd_box_message:source_id(JObj) =:= BoxId
             of
                 'true' -> do_update(AccountId, MsgId, JObj, Funs);
                 'false' -> {'error', 'not_found'}
@@ -217,9 +217,9 @@ do_move_to_modb(AccountId, JObj, Funs) ->
     FromId = kz_doc:id(JObj),
     ToDb = kazoo_modb:get_modb(AccountId, Year, Month),
     ToId = <<(kz_util:to_binary(Year))/binary
-              ,(kz_util:pad_month(Month))/binary
-              ,"-"
-              ,(kz_util:rand_hex_binary(16))/binary
+             ,(kz_util:pad_month(Month))/binary
+             ,"-"
+             ,(kz_util:rand_hex_binary(16))/binary
            >>,
 
     TransformFuns = [fun(DestDoc) -> kzd_box_message:set_metadata(kzd_box_message:metadata(JObj), DestDoc) end
@@ -294,8 +294,8 @@ create_message_doc(AccountId, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec store_recording(ne_binary(), ne_binary(), kapps_call:call()) ->
-                                 'ok' |
-                                 {'error', kapps_call:call()}.
+                             'ok' |
+                             {'error', kapps_call:call()}.
 store_recording(AttachmentName, Url, Call) ->
     lager:debug("storing recording ~s at ~s", [AttachmentName, Url]),
     case kapps_call_command:store_file(<<"/tmp/", AttachmentName/binary>>, Url, Call) of
@@ -356,14 +356,14 @@ save_meta(Length, Action, Call, MediaId, BoxId) ->
         'delete' ->
             lager:debug("attachment was sent out via notification, deleteing media file"),
             Fun = [fun(JObj) ->
-                       kvm_util:apply_folder(?VM_FOLDER_DELETED, JObj)
+                           kvm_util:apply_folder(?VM_FOLDER_DELETED, JObj)
                    end
                   ],
             save_metadata(Metadata, AccountId, MediaId, Fun);
         'save' ->
             lager:debug("attachment was sent out via notification, saving media file"),
             Fun = [fun(JObj) ->
-                       kvm_util:apply_folder(?VM_FOLDER_SAVED, JObj)
+                           kvm_util:apply_folder(?VM_FOLDER_SAVED, JObj)
                    end
                   ],
             save_metadata(Metadata, AccountId, MediaId, Fun);
@@ -376,7 +376,7 @@ save_meta(Length, Action, Call, MediaId, BoxId) ->
 -spec save_metadata(kz_json:object(), ne_binary(), ne_binary(), update_funs()) -> 'ok'.
 save_metadata(NewMessage, AccountId, MessageId, Funs) ->
     UpdateFuns = [fun(JObj) ->
-                      kzd_box_message:set_metadata(NewMessage, JObj)
+                          kzd_box_message:set_metadata(NewMessage, JObj)
                   end
                   | Funs
                  ],

@@ -93,16 +93,13 @@ cleanup_heard_voicemail(AccountId, Timestamp, Boxes) ->
 cleanup_voicemail_box(AccountId, Timestamp, Box) ->
     BoxId = kz_doc:id(Box),
     Msgs = kvm_messages:get(AccountId, BoxId),
-    case
-        lists:partition(
-            fun(Msg) ->
-                %% must be old enough, and not in the NEW folder
-                kz_json:get_integer_value(<<"timestamp">>, Msg) < Timestamp
-                    andalso kz_json:get_value(<<"folder">>, Msg) =/= <<"new">>
-            end
-            ,Msgs
-        )
-    of
+    FilterFun = fun(Msg) ->
+                    %% must be old enough, and not in the NEW folder
+                    kz_json:get_integer_value(<<"timestamp">>, Msg) < Timestamp
+                        andalso kz_json:get_value(<<"folder">>, Msg) =/= <<"new">>
+                end,
+
+    case lists:partition(FilterFun, Msgs) of
         {[], _} ->
             ?LOG("there are no old messages to remove from ~s", [BoxId]);
         {Older, _} ->

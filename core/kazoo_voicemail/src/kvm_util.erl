@@ -159,12 +159,12 @@ find_differences_fold(DirtyJ, MsgJ, {DiffAcc, VMMsgAcc}) ->
     MessageId = kzd_box_message:media_id(MsgJ),
     case kz_json:find_value(<<"media_id">>, MessageId, DirtyJ) of
         'undefined' ->
-        {[MsgJ | DiffAcc], VMMsgAcc};
-    J ->
-        case kz_json:are_identical(MsgJ, J) of
-            'true' -> {DiffAcc, maybe_add_to_vmbox(MsgJ, VMMsgAcc)};
-            'false' -> {[J | DiffAcc], VMMsgAcc}
-        end
+            {[MsgJ | DiffAcc], VMMsgAcc};
+        J ->
+            case kz_json:are_identical(MsgJ, J) of
+                'true' -> {DiffAcc, maybe_add_to_vmbox(MsgJ, VMMsgAcc)};
+                'false' -> {[J | DiffAcc], VMMsgAcc}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -231,28 +231,28 @@ get_caller_id_number(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_saved_notify(ne_binary(), ne_binary(), kapps_call:call(), pos_integer(), kz_proplist()) ->
-                                    {'ok', kz_json:objects()} |
-                                    {'timeout', kz_json:objects()} |
-                                    {'error', any()}.
+                                  {'ok', kz_json:objects()} |
+                                  {'timeout', kz_json:objects()} |
+                                  {'error', any()}.
 publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
     MaybeTranscribe = props:get_value(<<"Transcribe-Voicemail">>, Props),
     Transcription = maybe_transcribe(Call, MediaId, MaybeTranscribe),
 
     NotifyProp = [{<<"From-User">>, kapps_call:from_user(Call)}
-                  ,{<<"From-Realm">>, kapps_call:from_realm(Call)}
-                  ,{<<"To-User">>, kapps_call:to_user(Call)}
-                  ,{<<"To-Realm">>, kapps_call:to_realm(Call)}
-                  ,{<<"Account-DB">>, kapps_call:account_db(Call)}
-                  ,{<<"Account-ID">>, kapps_call:account_id(Call)}
-                  ,{<<"Voicemail-Box">>, BoxId}
-                  ,{<<"Voicemail-Name">>, MediaId}
-                  ,{<<"Caller-ID-Number">>, get_caller_id_number(Call)}
-                  ,{<<"Caller-ID-Name">>, get_caller_id_name(Call)}
-                  ,{<<"Voicemail-Timestamp">>, kz_util:current_tstamp()}
-                  ,{<<"Voicemail-Length">>, Length}
-                  ,{<<"Voicemail-Transcription">>, Transcription}
-                  ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                 ,{<<"From-Realm">>, kapps_call:from_realm(Call)}
+                 ,{<<"To-User">>, kapps_call:to_user(Call)}
+                 ,{<<"To-Realm">>, kapps_call:to_realm(Call)}
+                 ,{<<"Account-DB">>, kapps_call:account_db(Call)}
+                 ,{<<"Account-ID">>, kapps_call:account_id(Call)}
+                 ,{<<"Voicemail-Box">>, BoxId}
+                 ,{<<"Voicemail-Name">>, MediaId}
+                 ,{<<"Caller-ID-Number">>, get_caller_id_number(Call)}
+                 ,{<<"Caller-ID-Name">>, get_caller_id_name(Call)}
+                 ,{<<"Voicemail-Timestamp">>, kz_util:current_tstamp()}
+                 ,{<<"Voicemail-Length">>, Length}
+                 ,{<<"Voicemail-Transcription">>, Transcription}
+                 ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                  ],
 
     lager:debug("notifying of voicemail saved"),

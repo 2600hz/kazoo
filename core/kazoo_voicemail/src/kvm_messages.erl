@@ -66,13 +66,13 @@ get_from_vmbox(_AccountId, BoxJObj) ->
                             kz_json:objects().
 get_from_modb(AccountId, ?NE_BINARY = DocId) ->
     ViewOpts = [{'key', DocId}
-                ,'include_docs'
+               ,'include_docs'
                ],
     ViewOptsList = get_range_view(AccountId, ViewOpts),
 
     ModbResults = [kzd_box_message:metadata(kz_json:get_value(<<"doc">>, Msg))
                    || Msg <- modb_get_results(AccountId, ?MODB_LISTING_BY_MAILBOX, ViewOptsList, [])
-                      ,Msg =/= []
+                          ,Msg =/= []
                   ],
     ModbResults;
 get_from_modb(AccountId, Doc) ->
@@ -108,7 +108,7 @@ count_by_owner(AccountId, OwnerId) ->
 
 -spec count_per_folder(ne_binary(), ne_binary()) -> {non_neg_integer(), non_neg_integer()}.
 count_per_folder(AccountId, BoxId) ->
-    % first count messages from vmbox for backward compatibility
+    %% first count messages from vmbox for backward compatibility
     case get_from_vmbox(AccountId, BoxId) of
         {'ok', Msgs} ->
             New = kzd_box_message:count_folder(Msgs, [?VM_FOLDER_NEW]),
@@ -126,10 +126,10 @@ count_by_modb(AccountId) ->
 -spec count_by_modb(ne_binary(), ne_binary(), {non_neg_integer(), non_neg_integer()}) -> {non_neg_integer(), non_neg_integer()}.
 count_by_modb(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
     Opts = ['reduce'
-            ,'group'
-            ,{'group_level', 2}
-            ,{'startkey', [BoxId]}
-            ,{'endkey', [BoxId, kz_json:new()]}
+           ,'group'
+           ,{'group_level', 2}
+           ,{'startkey', [BoxId]}
+           ,{'endkey', [BoxId, kz_json:new()]}
            ],
     ViewOptions = get_range_view(AccountId, Opts),
 
@@ -147,8 +147,8 @@ count_by_modb(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
 %% @end
 %%--------------------------------------------------------------------
 -record(bulk_res, {succeeded = []  :: ne_binaries()
-                   ,failed = [] :: kz_json:objects()
-                   ,moved = [] :: kz_json:objects()
+                  ,failed = [] :: kz_json:objects()
+                  ,moved = [] :: kz_json:objects()
                   }).
 -type bulk_results() :: #bulk_res{}.
 
@@ -158,15 +158,15 @@ update(AccountId, BoxId, Msgs) ->
     update(AccountId, BoxId, Msgs, []).
 
 -spec update(ne_binary(), ne_binary(), ne_binaries() | kz_json:objects(), update_funs()) ->
-                                kz_json:object().
+                    kz_json:object().
 update(AccountId, BoxId, Things, Funs) ->
     #bulk_res{succeeded=Succeeded
-              ,failed=Failed
-              ,moved=Moved
+             ,failed=Failed
+             ,moved=Moved
              } = update_fold(AccountId, BoxId, Things, Funs, #bulk_res{}),
     kvm_util:cleanup_moved_msgs(AccountId, BoxId, Moved),
     kz_json:from_list([{<<"succeeded">>, Succeeded}
-                       ,{<<"failed">>, Failed}
+                      ,{<<"failed">>, Failed}
                       ]).
 
 -spec update_fold(ne_binary(), ne_binary(), ne_binaries() | kz_json:objects(), update_funs(), bulk_results()) ->
@@ -175,7 +175,7 @@ update_fold(_AccountId, _BoxId, [], _Funs, Result) ->
     Result;
 update_fold(AccountId, BoxId, [?JSON_WRAPPER(_)=Msg|Msgs], Funs, #bulk_res{failed=Failed}=Blk) ->
     NewFun = [fun(JObj) ->
-                  kzd_box_message:set_metadata(Msg, JObj)
+                      kzd_box_message:set_metadata(Msg, JObj)
               end
               | Funs
              ],
@@ -200,27 +200,27 @@ update_fold(AccountId, BoxId, [MsgId|MsgIds], Funs, #bulk_res{failed=Failed}=Blk
 
 -spec do_update(ne_binary(), ne_binary(), ne_binary(), kz_json:object(), update_funs(), bulk_results()) -> bulk_results().
 do_update(AccountId, BoxId, ?MATCH_MODB_PREFIX(Year, Month, _)=Id, JObj, Funs, #bulk_res{succeeded=Succeeded
-                                                                                         ,failed=Failed
+                                                                                        ,failed=Failed
                                                                                         }=Blk) ->
     NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
     case BoxId =:= kzd_box_message:source_id(JObj)
-             andalso kvm_util:handle_update_result(Id, kazoo_modb:save_doc(AccountId, NewJObj, Year, Month))
+        andalso kvm_util:handle_update_result(Id, kazoo_modb:save_doc(AccountId, NewJObj, Year, Month))
     of
         {'ok', _} -> Blk#bulk_res{succeeded=[Id | Succeeded]};
         {'error', R} -> Blk#bulk_res{failed=[kz_json:from_list([{Id, kz_util:to_binary(R)}]) | Failed]};
         'false' -> Blk#bulk_res{failed=[kz_json:from_list([{Id, <<"not_found">>}]) | Failed]}
     end;
 do_update(AccountId, BoxId, OldId, JObj, Funs, #bulk_res{succeeded=Succeeded
-                                                         ,failed=Failed
-                                                         ,moved=Moved
+                                                        ,failed=Failed
+                                                        ,moved=Moved
                                                         }=Blk) ->
     case BoxId =:= kzd_box_message:source_id(JObj)
-             andalso kvm_util:handle_update_result(OldId, kvm_message:move_to_modb(AccountId, JObj, Funs, 'false'))
+        andalso kvm_util:handle_update_result(OldId, kvm_message:move_to_modb(AccountId, JObj, Funs, 'false'))
     of
         {'ok', NJObj} ->
             NewId = kz_doc:id(NJObj),
             Blk#bulk_res{succeeded=[NewId | Succeeded]
-                         ,moved=[OldId | Moved]
+                        ,moved=[OldId | Moved]
                         };
         {'error', R} ->
             Blk#bulk_res{failed=[kz_json:from_list([{OldId, kz_util:to_binary(R)}]) | Failed]};
@@ -232,9 +232,9 @@ do_update(AccountId, BoxId, OldId, JObj, Funs, #bulk_res{succeeded=Succeeded
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
- change_folder(Folder, MsgIds, AccountId, BoxId) ->
+change_folder(Folder, MsgIds, AccountId, BoxId) ->
     Fun = [fun(JObj) ->
-               kvm_util:apply_folder(Folder, JObj)
+                   kvm_util:apply_folder(Folder, JObj)
            end
           ],
     {'ok', update(AccountId, BoxId, MsgIds, Fun)}.
@@ -285,10 +285,10 @@ change_box_id(AccountId, MsgIds, OldBoxId, NewBoxId) ->
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
 
     Funs = [fun(JObj) -> kzd_box_message:set_source_id(NewBoxId, JObj) end
-            ,fun(JObj) -> kvm_util:apply_folder(?VM_FOLDER_NEW, JObj) end
-            ,fun(JObj) -> change_message_name(NBoxJ, JObj) end
-            ,fun(JObj) -> change_to_sip_field(AccountId, NBoxJ, JObj) end
-            ,fun(JObj) -> kzd_box_message:add_message_history(OldBoxId, JObj) end
+           ,fun(JObj) -> kvm_util:apply_folder(?VM_FOLDER_NEW, JObj) end
+           ,fun(JObj) -> change_message_name(NBoxJ, JObj) end
+           ,fun(JObj) -> change_to_sip_field(AccountId, NBoxJ, JObj) end
+           ,fun(JObj) -> kzd_box_message:add_message_history(OldBoxId, JObj) end
            ],
     update(AccountId, OldBoxId, MsgIds, Funs).
 
@@ -310,7 +310,7 @@ modb_get_results(AccountId, View, [ViewOpts|ViewOptsList], Acc) ->
         {'ok', Msgs} -> modb_get_results(AccountId, View, ViewOptsList, Msgs ++ Acc);
         {'error', _}=_E ->
             lager:debug("error when fetching voicemail message for ~s from modb ~s"
-                        ,[props:get_value('key', ViewOpts), props:get_value('modb', ViewOpts)]
+                       ,[props:get_value('key', ViewOpts), props:get_value('modb', ViewOpts)]
                        ),
             modb_get_results(AccountId, View, ViewOptsList, Acc)
     end.
@@ -326,12 +326,12 @@ get_range_view(AccountId, ViewOpts) ->
     From = To - ?RETENTION_DAYS(?RETENTION_DURATION),
 
     Fun = fun(MODB) ->
-              {AccountId, Year, Month} = kazoo_modb_util:split_account_mod(MODB),
-              [{'year', Year}
-              ,{'month', Month}
-              ,{'modb', MODB}
-               | ViewOpts
-              ]
+                  {AccountId, Year, Month} = kazoo_modb_util:split_account_mod(MODB),
+                  [{'year', Year}
+                  ,{'month', Month}
+                  ,{'modb', MODB}
+                   | ViewOpts
+                  ]
           end,
     [Fun(Db) || Db <- kazoo_modb:get_range(AccountId, From, To)].
 
