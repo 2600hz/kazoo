@@ -16,6 +16,9 @@
 -export([fix_account_numbers/1
         ,fix_accounts_numbers/1
 
+        ,fix_db_numbers/0
+        ,fix_db_numbers/1
+
         ,generate_numbers/4
 
         ,delete/1
@@ -45,12 +48,35 @@
 %% API
 
 %% @public
+-spec fix_db_numbers() -> 'ok'.
+-spec fix_db_numbers(ne_binary()) -> 'ok'.
+fix_db_numbers() ->
+    lists:foreach(fun fix_db_numbers/1, knm_util:get_all_number_dbs()).
+
+fix_db_numbers(NumberDb) ->
+    ?LOG("########## fixing [~s] ##########", [NumberDb]),
+    DIDs = case kz_datamgr:get_results(NumberDb, <<"numbers/status">>) of
+               {'ok', JObjs} -> [kz_doc:id(JObj) || JObj <- JObjs];
+               {'error', _} -> []
+           end,
+    F = fun (DID) ->
+                ?LOG("[~s] fixing number ", [DID]),
+                %% Fixes number / account db assigment (pvt_(prev_)?assigned_to fields).
+                case knm_number:get(DID) of
+                    {'error', _R} ->
+                        ?LOG("[~s] failed to fix ~s: ~p ", [NumberDb, DID, _R]);
+                    _ -> 'ok'
+                end
+        end,
+    foreach_pause_in_between(?TIME_BETWEEN_NUMBERS_MS, F, DIDs),
+    ?LOG("########## done fixing [~s] ##########", [NumberDb]).
+
+%% @public
 -spec fix_accounts_numbers([ne_binary()]) -> 'ok'.
+-spec fix_account_numbers(ne_binary()) -> 'ok'.
 fix_accounts_numbers(Accounts) ->
     foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun fix_account_numbers/1, Accounts).
 
-%% @public
--spec fix_account_numbers(ne_binary()) -> 'ok'.
 fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(_)) ->
     ?LOG("########## fixing [~s] ##########", [AccountDb]),
     ?LOG("[~s] getting old numbers", [AccountDb]),
