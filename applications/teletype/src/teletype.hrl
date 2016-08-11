@@ -95,6 +95,9 @@
         ,?MACRO_VALUE(<<"account.id">>, <<"account_id">>, <<"Account ID">>, <<"Account ID">>)
         ,?MACRO_VALUE(<<"account.language">>, <<"account_language">>, <<"Account Language">>, <<"Account Language">>)
         ,?MACRO_VALUE(<<"account.timezone">>, <<"account_timezone">>, <<"Account Timezone">>, <<"Account Timezone">>)
+        ,?MACRO_VALUE(<<"account.parent_id">>, <<"account_parent_id">>, <<"Parent Account ID">>, <<"Parent Account ID">>)
+        ,?MACRO_VALUE(<<"account.parent_name">>, <<"account_parent_name">>, <<"Parent Account Name">>, <<"Parent Account Name">>)
+        ,?MACRO_VALUE(<<"account.parent_realm">>, <<"account_parent_realm">>, <<"Parent Account Realm">>, <<"Parent Account Realm">>)
         ]).
 
 -define(USER_MACROS

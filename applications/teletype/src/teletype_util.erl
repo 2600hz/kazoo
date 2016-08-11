@@ -356,11 +356,25 @@ find_account_params(DataJObj, AccountId) ->
                                    ,{<<"id">>, kz_account:id(AccountJObj)}
                                    ,{<<"language">>, kz_account:language(AccountJObj)}
                                    ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
+                                    | maybe_add_parent_params(AccountJObj)
                                    ]);
         {'error', _E} ->
             lager:debug("failed to find account doc for ~s: ~p", [AccountId, _E]),
             []
     end.
+
+-spec maybe_add_parent_params(kz_json:object()) -> kz_proplist().
+maybe_add_parent_params(AccountJObj) ->
+    case kz_account:parent_account_id(AccountJObj) of
+        'undefined' -> [];
+        ParentAccountId ->
+            {'ok', ParentAccountJObj} = kz_account:fetch(ParentAccountId),
+            [{<<"name">>, kz_account:name(ParentAccountJObj)}
+            ,{<<"realm">>, kz_account:realm(ParentAccountJObj)}
+            ,{<<"id">>, kz_account:id(ParentAccountJObj)}
+            ]
+    end.
+
 
 -spec default_from_address(ne_binary()) -> ne_binary().
 -spec default_from_address(kz_json:object(), ne_binary()) -> ne_binary().

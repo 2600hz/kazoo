@@ -33,6 +33,10 @@ Your account is ready to use, here are some details to help get you started!
                          Account Name: {{account.name}}
                          Account Realm: {{account.realm}}
 
+                         {% if account.parent_id %}Parent Account ID: {{account.parent_id}}
+                         Parent Account Name: {{account.parent_name}}
+                         Parent Account Realm: {{account.parent_realm}}{% endif %}
+
                          {% if admin %}Admin
                            First Name: {{admin.first_name}}
                            Last Name: {{admin.last_name}}
@@ -59,6 +63,9 @@ SIP Username: {{device.sip.username}}
                            <tr><td>Account ID: </td><td>{{account.account_id}}</td></tr>
                            <tr><td>Account Name: </td><td>{{account.name}}</td></tr>
                            <tr><td>Account Realm: </td><td>{{account.realm}}</td></tr>
+                           {% if account.parent_id %}<tr><td>Parent Account ID: </td><td>{{account.parent_id}}</td></tr>
+                           <tr><td>Parent Account Name: </td><td>{{account.parent_name}}</td></tr>
+                           <tr><td>Parent Account Realm: </td><td>{{account.parent_realm}}</td></tr>{% endif %}
                          </table>
                          {% if admin %}
                            <h2>Admin</h2>
