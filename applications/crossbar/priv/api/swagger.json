@@ -9133,6 +9133,7 @@
                     "name": "custom_sip_interface"
                 },
                 "default_caller_id_name": {
+                    "default": "anonymous",
                     "description": "",
                     "name": "default_caller_id_name",
                     "type": "string"

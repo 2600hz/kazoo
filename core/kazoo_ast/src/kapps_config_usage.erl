@@ -354,16 +354,15 @@ default_value(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
     kz_json:new();
 default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_number', [])) ->
     kz_util:anonymous_caller_id_number();
+default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_name', [])) ->
+    kz_util:anonymous_caller_id_name();
 default_value(?MOD_FUN_ARGS(_M, _F, _Args)) ->
     'undefined';
 default_value(?FUN_ARGS(_F, _Args)) ->
     'undefined'.
 
 default_values_from_list(KVs) ->
-    lists:foldl(fun default_value_from_kv/2
-               ,kz_json:new()
-               ,KVs
-               ).
+    lists:foldl(fun default_value_from_kv/2, kz_json:new(), KVs).
 
 default_value_from_kv(KV, Acc) ->
     KVs = props:filter_undefined(default_value(KV)),
