@@ -35,7 +35,7 @@
 -define(RESET_ID_SIZE,
         case kapps_config:get_integer(?CONFIG_CAT, <<"reset_id_size">>, ?RESET_ID_SIZE_DEFAULT) of
             _TooBig when _TooBig >= 180 -> ?RESET_ID_SIZE_DEFAULT;
-            _TooSmall when _TooSmall =< 60 -> ?RESET_ID_SIZE_DEFAULT;
+            _TooSmall when _TooSmall < 42 -> ?RESET_ID_SIZE_DEFAULT;
             Ok -> Ok
         end).
 -define(RESET_PVT_TYPE, <<"password_reset">>).
@@ -418,11 +418,11 @@ maybe_load_user_doc_by_username(Account, Context) ->
 %% @private
 -spec save_reset_id_then_send_email(cb_context:context()) -> cb_context:context().
 save_reset_id_then_send_email(Context) ->
-    AccountDb = cb_context:account_db(Context),
-    ResetId = reset_id(AccountDb),
+    MoDb = cb_context:account_modb(Context),
+    ResetId = reset_id(MoDb),
     UserDoc = cb_context:doc(Context),
     %% Not much chance for doc to already exist
-    {'ok',_} = kz_datamgr:save_doc(AccountDb, create_resetid_doc(ResetId, kz_doc:id(UserDoc))),
+    {'ok',_} = kazoo_modb:save_doc(MoDb, create_resetid_doc(ResetId, kz_doc:id(UserDoc))),
     Email = kz_json:get_ne_binary_value(<<"email">>, UserDoc),
     lager:debug("created recovery id, sending email to '~s'", [Email]),
     UIURL = kz_json:get_ne_binary_value(<<"ui_url">>, cb_context:req_data(Context)),
@@ -445,18 +445,18 @@ save_reset_id_then_send_email(Context) ->
 -spec maybe_load_user_doc_via_reset_id(cb_context:context()) -> cb_context:context().
 maybe_load_user_doc_via_reset_id(Context) ->
     ResetId = kz_json:get_ne_binary_value(?RESET_ID, cb_context:req_data(Context)),
-    AccountDb = reset_id(ResetId),
+    MoDb = ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, _Y, _M) = reset_id(ResetId),
     lager:debug("looking up password reset doc: ~s", [ResetId]),
-    case kz_datamgr:open_cache_doc(AccountDb, ResetId) of
+    case kazoo_modb:open_doc(MoDb, ResetId) of
         {'ok', ResetIdDoc} ->
             lager:debug("found password reset doc"),
+            AccountDb = ?MATCH_ACCOUNT_ENCODED(A, B, Rest),
             Context1 = crossbar_doc:load(kz_json:get_value(<<"pvt_userid">>, ResetIdDoc)
                                         ,cb_context:set_account_db(Context, AccountDb)
                                         ,?TYPE_CHECK_OPTION(kzd_user:type())
                                         ),
             NewUserDoc =
                 kz_json:set_value(<<"require_password_update">>, 'true', cb_context:doc(Context1)),
-            _ = kz_datamgr:del_doc(AccountDb, ResetId),
             cb_context:setters(Context1, [{fun cb_context:set_resp_status/2, 'success'}
                                          ,{fun cb_context:set_doc/2, NewUserDoc}
                                          ]);
@@ -471,11 +471,27 @@ maybe_load_user_doc_via_reset_id(Context) ->
 
 %% @private
 -spec reset_id(ne_binary()) -> ne_binary().
-reset_id(?MATCH_ACCOUNT_ENCODED(A, B, Rest)) ->
-    Noise = kz_util:rand_hex_binary((?RESET_ID_SIZE - 32) div 2),
-    <<(?MATCH_ACCOUNT_RAW(A,B,Rest))/binary, Noise/binary>>;
-reset_id(<<ResetId:32/binary, _Noi:8, _se/binary>>) ->
-    kz_util:format_account_db(kz_util:to_lower_binary(ResetId)).
+reset_id(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, YYYY, MM)) ->
+    <<Y1:1/binary, Y2:1/binary, Y3:1/binary, Y4:1/binary>> = YYYY,
+    <<M1:1/binary, M2:1/binary>> = MM,
+    SomeNoise = kz_util:rand_hex_binary((?RESET_ID_SIZE - (32 + 4 + 2 + 3 + 1)) div 2),
+    <<N1:1/binary, N2:1/binary, N3:1/binary, Noise/binary>> = SomeNoise,
+    <<(?MATCH_ACCOUNT_RAW(A, B, Rest))/binary,
+      N1/binary, Y1/binary, Y4/binary,
+      N2/binary, M2/binary, Y2/binary,
+      N3/binary, Y3/binary, M1/binary,
+      Noise/binary
+    >>;
+reset_id(<<AccountId:32/binary,
+           _N1:1/binary, Y1:1/binary, Y4:1/binary,
+           _N2:1/binary, M2:1/binary, Y2:1/binary,
+           _N3:1/binary, Y3:1/binary, M1:1/binary,
+           _Noi:8, _se/binary
+         >>) ->
+    ?MATCH_ACCOUNT_RAW(A, B, Rest) = kz_util:to_lower_binary(AccountId),
+    YYYY = <<Y1/binary, Y2/binary, Y3/binary, Y4/binary>>,
+    MM = <<M1/binary, M2/binary>>,
+    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, YYYY, MM).
 
 %% @private
 -spec reset_link(ne_binary(), ne_binary()) -> ne_binary().
