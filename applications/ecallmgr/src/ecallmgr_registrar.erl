@@ -785,37 +785,33 @@ create_registration(JObj) ->
     Reg = existing_or_new_registration(Username, Realm),
     Proxy = kz_json:get_value(<<"Proxy-Path">>, JObj, Reg#registration.proxy),
     OriginalContact =
-        kz_json:get_first_defined(
-          [<<"Original-Contact">>
-          ,<<"Contact">>
-          ]
+        kz_json:get_first_defined([<<"Original-Contact">>
+                                  ,<<"Contact">>
+                                  ]
                                  ,JObj
                                  ,Reg#registration.original_contact
-         ),
+                                 ),
     Expires =
         ecallmgr_util:maybe_add_expires_deviation(
           kz_json:get_integer_value(<<"Expires">>, JObj, Reg#registration.expires)
          ),
     RegistrarNode =
-        kz_json:get_first_defined(
-          [<<"Registrar-Node">>
-          ,<<"FreeSWITCH-Nodename">>
-          ,<<"Node">>
-          ]
+        kz_json:get_first_defined([<<"Registrar-Node">>
+                                  ,<<"FreeSWITCH-Nodename">>
+                                  ,<<"Node">>
+                                  ]
                                  ,JObj
                                  ,Reg#registration.registrar_node
-         ),
+                                 ),
     RegistrarHostname =
-        kz_json:get_first_defined(
-          [<<"Hostname">>
-          ,<<"Registrar-Hostname">>
-          ]
+        kz_json:get_first_defined([<<"Hostname">>
+                                  ,<<"Registrar-Hostname">>
+                                  ]
                                  ,JObj
                                  ,Reg#registration.registrar_hostname
-         ),
+                                 ),
     augment_registration(
-      Reg#registration{
-        username=Username
+      Reg#registration{username=Username
                       ,realm=Realm
                       ,proxy=Proxy
                       ,expires=Expires
@@ -836,7 +832,7 @@ create_registration(JObj) ->
                       ,call_id=kz_json:get_value(<<"Call-ID">>, JObj, Reg#registration.call_id)
                       ,user_agent=kz_json:get_value(<<"User-Agent">>, JObj, Reg#registration.user_agent)
                       ,initial=kz_json:is_true(<<"First-Registration">>, JObj, Reg#registration.initial)
-       }
+                      }
                         ,JObj
      ).
 
@@ -865,9 +861,8 @@ augment_registration(Reg, JObj) ->
                       ,Reg#registration.register_overwrite_notify
                       )
          ),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    Reg#registration{
-      account_id=AccountId
+    AccountDb = kz_util:format_account_db(AccountId),
+    Reg#registration{account_id=AccountId
                     ,account_db=AccountDb
                     ,suppress_unregister=SuppressUnregister
                     ,register_overwrite_notify=OverwriteNotify
