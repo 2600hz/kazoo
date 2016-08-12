@@ -31,7 +31,7 @@
 %%--------------------------------------------------------------------
 -spec get_db(ne_binary()) -> ne_binary().
 get_db(AccountId) ->
-    kz_util:format_account_id(AccountId, 'encoded').
+    kz_util:format_account_db(AccountId).
 
 -spec get_db(ne_binary(), kazoo_data:docid() | kz_json:object()) -> ne_binary().
 get_db(AccountId, {_, ?MATCH_MODB_PREFIX(Year, Month, _)}) ->

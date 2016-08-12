@@ -94,9 +94,9 @@ cleanup_voicemail_box(AccountId, Timestamp, Box) ->
     BoxId = kz_doc:id(Box),
     Msgs = kvm_messages:get(AccountId, BoxId),
     FilterFun = fun(Msg) ->
-                    %% must be old enough, and not in the NEW folder
-                    kz_json:get_integer_value(<<"timestamp">>, Msg) < Timestamp
-                        andalso kz_json:get_value(<<"folder">>, Msg) =/= <<"new">>
+                        %% must be old enough, and not in the NEW folder
+                        kz_json:get_integer_value(<<"timestamp">>, Msg) < Timestamp
+                            andalso kz_json:get_value(<<"folder">>, Msg) =/= <<"new">>
                 end,
 
     case lists:partition(FilterFun, Msgs) of

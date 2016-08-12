@@ -40,7 +40,7 @@
 %%--------------------------------------------------------------------
 -spec get(ne_binary(), ne_binary() | kz_json:object()) -> kz_json:objects().
 get(AccountId, Box) ->
-    % first get messages metadata from vmbox for backward compatibility
+    %% first get messages metadata from vmbox for backward compatibility
     case get_from_vmbox(AccountId, Box) of
         {'ok', Msgs} -> Msgs ++ get_from_modb(AccountId, Box);
         _ -> []
@@ -70,7 +70,7 @@ get_from_vmbox(_AccountId, BoxJObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_from_modb(ne_binary(), ne_binary() | kz_json:object()) ->
-                            kz_json:objects().
+                           kz_json:objects().
 get_from_modb(AccountId, ?NE_BINARY = DocId) ->
     ViewOpts = [{'key', DocId}
                ,'include_docs'
@@ -154,7 +154,7 @@ count_by_modb(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update(ne_binary(), ne_binary(), ne_binaries() | kz_json:objects()) ->
-                                kz_json:object().
+                    kz_json:object().
 -spec update(ne_binary(), ne_binary(), ne_binaries() | kz_json:objects(), update_funs()) ->
                     kz_json:object().
 update(AccountId, BoxId, Msgs) ->
@@ -171,7 +171,7 @@ update(AccountId, BoxId, Things, Funs) ->
                       ]).
 
 -spec update_fold(ne_binary(), ne_binary(), ne_binaries() | kz_json:objects(), update_funs(), bulk_results()) ->
-                                bulk_results().
+                         bulk_results().
 update_fold(_AccountId, _BoxId, [], _Funs, Result) ->
     Result;
 update_fold(AccountId, BoxId, [?NE_BINARY = MsgId | MsgIds], Funs, #bulk_res{failed = Failed} = Blk) ->
@@ -275,7 +275,7 @@ maybe_include_messages(_AccountId, _BoxId, JObj, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec change_box_id(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), ne_binary()) ->
-                            kz_json:object().
+                           kz_json:object().
 change_box_id(AccountId, ?NE_BINARY = MsgId, OldBoxId, NewBoxId) ->
     change_box_id(AccountId, [MsgId], OldBoxId, NewBoxId);
 change_box_id(AccountId, MsgIds, OldBoxId, NewBoxId) ->

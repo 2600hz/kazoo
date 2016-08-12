@@ -278,20 +278,20 @@ update_media_id(MediaId, JObj) ->
 %%--------------------------------------------------------------------
 -spec copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binary() | ne_binaries()) ->
                              kz_json:object().
-copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds) when is_list(NewBoxIds) ->
+copy_to_vmboxes(AccountId, Id, OldBoxId, ?NE_BINARY = NewBoxId) ->
+    copy_to_vmboxes(AccountId, Id, OldBoxId, [NewBoxId]);
+copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds) ->
     case maybe_move_to_db(AccountId, OldBoxId, Id) of
         {'error', Error} ->
             Failed = kz_json:from_list([{Id, Error}]),
             kz_json:from_list([{<<"failed">>, Failed}]);
         {'ok', JObj} ->
             copy_to_vmboxes_fold(AccountId, JObj, OldBoxId, NewBoxIds, kz_json:new())
-    end;
-copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxId) ->
-    copy_to_vmboxes(AccountId, Id, OldBoxId, [NewBoxId]).
+    end.
 
 -spec copy_to_vmboxes_fold(ne_binary(), kz_json:object(), ne_binary(), ne_binaries(), kz_json:object()) ->
                                   kz_json:object().
-copy_to_vmboxes_fold(_, _, _, [], Copied) -> Copied;
+copy_to_vmboxes_fold(_AccountId, _JObj, _OldBoxId, [], Copied) -> Copied;
 copy_to_vmboxes_fold(AccountId, JObj, OldBoxId, [NBId | NBIds], Copied) ->
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NBId),
