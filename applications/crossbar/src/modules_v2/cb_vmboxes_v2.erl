@@ -220,10 +220,14 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE, MediaId) ->
         'undefined' ->
             C = update_message_folder(OldBoxId, MediaId, Context, ?VM_FOLDER_SAVED),
             update_mwi(C, OldBoxId);
-        NewBoxId ->
+        ?NE_BINARY = NewBoxId ->
             Moved = kvm_messages:change_box_id(AccountId, MediaId, OldBoxId, NewBoxId),
             C = cb_context:set_resp_data(Context, Moved),
-            update_mwi(C, [OldBoxId, NewBoxId])
+            update_mwi(C, [OldBoxId, NewBoxId]);
+        NewBoxIds ->
+            Copied = kvm_message:copy_to_vmboxes(AccountId, MediaId, OldBoxId, NewBoxIds),
+            C = cb_context:set_resp_data(Context, Copied),
+            update_mwi(C, [OldBoxId | NewBoxIds])
     end.
 
 %%--------------------------------------------------------------------
@@ -594,13 +598,9 @@ load_message(MediaId, BoxId, UpdateJObj, Context) ->
 
 -spec load_message_doc(ne_binary(), ne_binary(), cb_context:context()) -> {atom(), any()}.
 load_message_doc(MediaId, BoxId, Context) ->
-    case kvm_message:fetch(cb_context:account_id(Context), MediaId) of
-        {'ok', MDoc}=OK ->
-            case kzd_box_message:source_id(MDoc) of
-                BoxId -> OK;
-                _ -> {'error', 'not_found'}
-            end;
-        {'error', _}=E -> E
+    case kvm_message:fetch(cb_context:account_id(Context), MediaId, BoxId) of
+        {'ok', _} = OK -> OK;
+        {'error', _} = E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -636,7 +636,7 @@ ensure_message_in_folder(Message, UpdateJObj, Context) ->
 %%--------------------------------------------------------------------
 -spec load_message_binary(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
 load_message_binary(BoxId, MediaId, Context) ->
-    case kvm_message:fetch(cb_context:account_id(Context), MediaId) of
+    case kvm_message:fetch(cb_context:account_id(Context), MediaId, BoxId) of
         {'ok', JObj} ->
             case kz_datamgr:open_cache_doc(cb_context:account_db(Context), BoxId) of
                 {'error', Error} ->
@@ -666,10 +666,7 @@ load_attachment_from_message(Doc, BoxId, Context, Timezone) ->
                                   ,filename:extension(AttachmentId)
                                   ,Timezone
                                   ),
-    case (kzd_box_message:source_id(Doc) =:= BoxId)
-        andalso kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MediaId, AttachmentId)
-    of
-        'false' -> crossbar_doc:handle_datamgr_errors('not_found', MediaId, Context);
+    case kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MediaId, AttachmentId) of
         {'error', Error} ->
             crossbar_doc:handle_datamgr_errors(Error, MediaId, Context);
         {'ok', AttachBin} ->
@@ -719,7 +716,7 @@ save_attachments_to_file([Id|Ids], BoxId, Context, Timezone, WorkDir) ->
 -spec save_attachment_to_file(ne_binary(), ne_binary(), cb_context:context(), ne_binary(), string()) ->
                                      'ok' | {atom(), any()}.
 save_attachment_to_file(MsgId, BoxId, Context, Timezone, WorkDir) ->
-    case kvm_message:fetch(cb_context:account_id(Context), MsgId) of
+    case kvm_message:fetch(cb_context:account_id(Context), MsgId, BoxId) of
         {'ok', Doc} ->
             VMMetaJObj = kzd_box_message:metadata(Doc),
 
@@ -729,11 +726,8 @@ save_attachment_to_file(MsgId, BoxId, Context, Timezone, WorkDir) ->
                                           ,filename:extension(AttachmentId)
                                           ,Timezone
                                           ),
-            case (kzd_box_message:source_id(Doc) =:= BoxId)
-                andalso kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MsgId, AttachmentId)
-            of
-                'false' -> {'error', 'not_found'};
-                {'error', _}=E -> E;
+            case kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MsgId, AttachmentId) of
+                {'error', _} = E -> E;
                 {'ok', AttachBin} ->
                     'ok' = file:write_file(lists:concat([WorkDir, kz_util:to_list(Filename)]), AttachBin)
             end;

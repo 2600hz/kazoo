@@ -14,7 +14,6 @@
         ,retry_conflict/1
 
         ,check_msg_belonging/2
-        ,apply_folder/2
         ,find_differences/3
         ,cleanup_moved_msgs/3
 
@@ -126,26 +125,6 @@ retry_conflict(Fun, Tries) ->
 check_msg_belonging(BoxId, JObj) ->
     BoxId =:= 'undefined'
         orelse BoxId =:= kzd_box_message:source_id(JObj).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec apply_folder(vm_folder(), kz_json:object()) -> kz_json:object().
-apply_folder({?VM_FOLDER_DELETED, 'false'}, Doc) ->
-    %% only move to deleted folder not actually soft-delete it
-    Metadata = kzd_box_message:set_folder_deleted(kzd_box_message:metadata(Doc)),
-    kzd_box_message:set_metadata(Metadata, Doc);
-apply_folder({?VM_FOLDER_DELETED, 'true'}, Doc) ->
-    %% move to deleted folder and soft-delete it
-    apply_folder(?VM_FOLDER_DELETED, Doc);
-apply_folder(?VM_FOLDER_DELETED, Doc) ->
-    Metadata = kzd_box_message:set_folder_deleted(kzd_box_message:metadata(Doc)),
-    kz_doc:set_soft_deleted(kzd_box_message:set_metadata(Metadata, Doc), 'true');
-apply_folder(Folder, Doc) ->
-    Metadata = kzd_box_message:set_folder(Folder, kzd_box_message:metadata(Doc)),
-    kzd_box_message:set_metadata(Metadata, Doc).
 
 %%--------------------------------------------------------------------
 %% @public

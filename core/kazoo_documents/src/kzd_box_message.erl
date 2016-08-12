@@ -15,10 +15,13 @@
 
         ,folder/1, folder/2, set_folder/2
         ,set_folder_new/1, set_folder_saved/1, set_folder_deleted/1
+        ,apply_folder/2
         ,filter_folder/2
 
         ,message_history/1, add_message_history/2
         ,message_name/1, message_name/2, set_message_name/2
+
+        ,change_message_name/2, change_to_sip_field/3
 
         ,media_id/1, set_media_id/2
         ,metadata/1, metadata/2, set_metadata/2
@@ -92,7 +95,7 @@ new(AccountId, Props) ->
                  ]),
     kz_doc:update_pvt_parameters(
       kz_json:from_list(DocProps), Db, [{'type', type()}]
-    ).
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -157,7 +160,7 @@ type() -> ?PVT_TYPE.
 folder(JObj) ->
     folder(JObj, 'undefined').
 
--spec folder(doc(), Default) -> kz_json:object() | Default.
+-spec folder(doc(), Default) -> doc() | Default.
 folder(JObj, Default) ->
     kz_json:get_first_defined([[?KEY_METADATA, ?VM_KEY_FOLDER], ?VM_KEY_FOLDER], JObj, Default).
 
@@ -176,6 +179,26 @@ set_folder_saved(JObj) ->
 -spec set_folder_deleted(doc()) -> doc().
 set_folder_deleted(JObj) ->
     kz_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_DELETED, JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec apply_folder(kvm_message:vm_folder(), doc()) -> doc().
+apply_folder({?VM_FOLDER_DELETED, 'false'}, Doc) ->
+    %% only move to deleted folder not actually soft-delete it
+    Metadata = set_folder_deleted(metadata(Doc)),
+    set_metadata(Metadata, Doc);
+apply_folder({?VM_FOLDER_DELETED, 'true'}, Doc) ->
+    %% move to deleted folder and soft-delete it
+    apply_folder(?VM_FOLDER_DELETED, Doc);
+apply_folder(?VM_FOLDER_DELETED, Doc) ->
+    Metadata = set_folder_deleted(metadata(Doc)),
+    kz_doc:set_soft_deleted(set_metadata(Metadata, Doc), 'true');
+apply_folder(Folder, Doc) ->
+    Metadata = set_folder(Folder, metadata(Doc)),
+    set_metadata(Metadata, Doc).
 
 -spec message_history(doc()) -> ne_binaries().
 message_history(JObj) ->
@@ -209,7 +232,7 @@ set_media_id(MediaId, JObj) ->
 metadata(JObj) ->
     metadata(JObj, 'undefined').
 
--spec metadata(doc(), Default) -> kz_json:object() | Default.
+-spec metadata(doc(), Default) -> doc() | Default.
 metadata(JObj, Default) ->
     kz_json:get_value(?KEY_METADATA, JObj, Default).
 
@@ -281,3 +304,31 @@ count_folder(Messages, Folders) when is_list(Folders) ->
               ]);
 count_folder(Messages, Folder) ->
     count_folder(Messages, [Folder]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec change_message_name(doc(), doc()) -> doc().
+change_message_name(NBoxJ, MsgJObj) ->
+    BoxNum = kzd_voicemail_box:mailbox_number(NBoxJ),
+    Timezone = kzd_voicemail_box:timezone(NBoxJ),
+    UtcSeconds = utc_seconds(MsgJObj),
+
+    NewName = create_message_name(BoxNum, Timezone, UtcSeconds),
+    set_message_name(NewName, MsgJObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec change_to_sip_field(ne_binary(), doc(), doc()) -> doc().
+change_to_sip_field(AccountId, NBoxJ, MsgJObj) ->
+    Realm = kz_util:get_account_realm(AccountId),
+    BoxNum = kzd_voicemail_box:mailbox_number(NBoxJ),
+
+    Metadata = metadata(MsgJObj),
+    To = <<BoxNum/binary, "@", Realm/binary>>,
+    set_metadata(set_to_sip(To, Metadata), MsgJObj).

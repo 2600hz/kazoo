@@ -9,10 +9,11 @@
 -module(kvm_message).
 
 -export([new/2
-        ,fetch/2, message/2
+        ,fetch/2, fetch/3, message/2
         ,set_folder/3, change_folder/3, change_folder/4
 
         ,move_to_modb/4
+        ,copy_to_vmboxes/4
 
         ,media_url/2
         ]).
@@ -73,22 +74,41 @@ new(Call, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary(), kazoo_data:docid()) -> db_ret().
-fetch(AccountId, {_, ?MATCH_MODB_PREFIX(_, _, _)} = DocId) ->
-    kvm_util:open_modb_doc(AccountId, DocId, kzd_box_message:type());
-fetch(AccountId, ?MATCH_MODB_PREFIX(_, _, _) = DocId) ->
-    kvm_util:open_modb_doc(AccountId, DocId, kzd_box_message:type());
-fetch(AccountId, MediaId) ->
+-spec fetch(ne_binary(), kazoo_data:docid(), api_ne_binary()) -> db_ret().
+fetch(AccountId, DocId) ->
+    fetch(AccountId, DocId, 'undefined').
+
+fetch(AccountId, {_, ?MATCH_MODB_PREFIX(_, _, _)} = DocId, BoxId) ->
+    case kvm_util:open_modb_doc(AccountId, DocId, kzd_box_message:type()) of
+        {'ok', JObj} = OK ->
+            case kvm_util:check_msg_belonging(BoxId, JObj) of
+                'true' -> OK;
+                'false' -> {'error', 'not_found'}
+            end;
+        {'error', _} = Error -> Error
+    end;
+fetch(AccountId, ?MATCH_MODB_PREFIX(_, _, _) = DocId, BoxId) ->
+    case kvm_util:open_modb_doc(AccountId, DocId, kzd_box_message:type()) of
+        {'ok', JObj} = OK ->
+            case kvm_util:check_msg_belonging(BoxId, JObj) of
+                'true' -> OK;
+                'false' -> {'error', 'not_found'}
+            end;
+        {'error', _} = Error -> Error
+    end;
+fetch(AccountId, MediaId, BoxId) ->
     case kvm_util:open_accountdb_doc(AccountId, MediaId, ?PVT_LEGACY_TYPE) of
         {'ok', MediaJObj} ->
             SourceId = kzd_box_message:source_id(MediaJObj),
-            case kvm_messages:get_from_vmbox(AccountId, SourceId) of
+            case kvm_util:check_msg_belonging(BoxId, MediaJObj)
+                andalso kvm_messages:get_from_vmbox(AccountId, SourceId) of
                 {'ok', VMBoxMsgs} ->
                     merge_metadata(MediaId, MediaJObj, VMBoxMsgs);
-                {'error', _}=E ->
-                    E
+                {'error', _}  = Error -> Error;
+                'false' -> {'error', 'not_found'}
             end;
         {'error', _R}=E ->
-            lager:warning("failed to load voicemail message ~s: ~p", [MediaId, _R]),
+            lager:debug("failed to load voicemail message ~s: ~p", [MediaId, _R]),
             E
     end.
 
@@ -108,7 +128,6 @@ merge_metadata(MediaId, MediaJObj, VMBoxMsgs) ->
 -spec message(ne_binary(), ne_binary()) -> db_ret().
 message(AccountId, MessageId) ->
     case fetch(AccountId, MessageId) of
-        {'ok', []} -> {'error', 'not_found'};
         {'ok', Msg} -> {'ok', kzd_box_message:metadata(Msg)};
         {'error', _}=E ->
             E
@@ -155,7 +174,7 @@ change_folder(_, 'undefined', _, _) ->
     {'error', 'attachment_undefined'};
 change_folder(Folder, MessageId, AccountId, BoxId) ->
     Fun = [fun(JObj) ->
-                   kvm_util:apply_folder(Folder, JObj)
+                   kzd_box_message:apply_folder(Folder, JObj)
            end
           ],
     case update(AccountId, BoxId, MessageId, Fun) of
@@ -176,14 +195,9 @@ update(AccountId, BoxId, MsgId) ->
     update(AccountId, BoxId, MsgId, []).
 
 update(AccountId, BoxId, MsgId, Funs) ->
-    case fetch(AccountId, MsgId) of
+    case fetch(AccountId, MsgId, BoxId) of
         {'ok', JObj} ->
-            case kvm_util:check_msg_belonging(BoxId, JObj) of
-                'true' ->
-                    do_update(AccountId, MsgId, JObj, Funs);
-                'false' ->
-                    {'error', 'not_found'}
-            end;
+            do_update(AccountId, MsgId, JObj, Funs);
         {'error', _} = E -> E
     end.
 
@@ -259,6 +273,91 @@ update_media_id(MediaId, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @public
+%% @doc copy a message to other vmboxes
+%% @end
+%%--------------------------------------------------------------------
+-spec copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binary() | ne_binaries()) ->
+                             kz_json:object().
+copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds) when is_list(NewBoxIds) ->
+    case maybe_move_to_db(AccountId, OldBoxId, Id) of
+        {'error', Error} ->
+            Failed = kz_json:from_list([{Id, Error}]),
+            kz_json:from_list([{<<"failed">>, Failed}]);
+        {'ok', JObj} ->
+            copy_to_vmboxes_fold(AccountId, JObj, OldBoxId, NewBoxIds, kz_json:new())
+    end;
+copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxId) ->
+    copy_to_vmboxes(AccountId, Id, OldBoxId, [NewBoxId]).
+
+-spec copy_to_vmboxes_fold(ne_binary(), kz_json:object(), ne_binary(), ne_binaries(), kz_json:object()) ->
+                                  kz_json:object().
+copy_to_vmboxes_fold(_, _, _, [], Copied) -> Copied;
+copy_to_vmboxes_fold(AccountId, JObj, OldBoxId, [NBId | NBIds], Copied) ->
+    AccountDb = kvm_util:get_db(AccountId),
+    {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NBId),
+
+    Funs = ?CHANGE_VMBOX_FUNS(AccountId, NBId, NBoxJ, OldBoxId),
+
+    case kvm_util:handle_update_result(kz_doc:id(JObj), do_copy(AccountId, JObj, Funs)) of
+        {'ok', NewJObj} ->
+            Succeeded = kz_json:get_value(<<"succeeded">>, Copied, []),
+            NewCopied = kz_json:set_value(<<"succeeded">>
+                                         ,[kz_doc:id(NewJObj) | Succeeded]
+                                         ,Copied),
+            copy_to_vmboxes_fold(AccountId, JObj, OldBoxId, NBIds, NewCopied);
+        {'error', Error} ->
+            Failed = kz_json:get_value(<<"failed">>, Copied, []),
+            NewCopied = kz_json:set_value(<<"failed">>
+                                         ,[{kz_doc:id(JObj), Error} | Failed]
+                                         ,Copied),
+            copy_to_vmboxes_fold(AccountId, JObj, OldBoxId, NBIds, NewCopied)
+    end.
+
+-spec do_copy(ne_binary(), kz_json:object(), update_funs()) -> db_ret().
+do_copy(AccountId, JObj, Funs) ->
+    ?MATCH_MODB_PREFIX(Year, Month, _) = kz_doc:id(JObj),
+
+    FromDb = kazoo_modb:get_modb(AccountId, Year, Month),
+    FromId = kz_doc:id(JObj),
+    ToDb = kazoo_modb:get_modb(AccountId),
+    ToId = <<(kz_util:to_binary(Year))/binary
+             ,(kz_util:pad_month(Month))/binary
+             ,"-"
+             ,(kz_util:rand_hex_binary(16))/binary
+           >>,
+
+    TransformFuns = [fun(DestDoc) -> update_media_id(ToId, DestDoc) end
+                     | Funs
+                    ],
+    Options = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}],
+    try_copy(FromDb, FromId, ToDb, ToId, Options, 3).
+
+-spec try_copy(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist(), non_neg_integer()) -> db_ret().
+try_copy(FromDb, FromId, ToDb, ToId, Options, Tries) ->
+    case kz_datamgr:copy_doc(FromDb, FromId, ToDb, ToId, Options) of
+        {'ok', _} = OK -> OK;
+        {'error', 'not_found'} when Tries > 0 ->
+            maybe_create_modb(ToDb),
+            try_copy(FromDb, FromId, ToDb, ToId, Options, Tries - 1);
+        {'error', _}=Error -> Error
+    end.
+
+-spec maybe_move_to_db(ne_binary(), ne_binary(), ne_binary()) -> db_ret().
+maybe_move_to_db(AccountId, BoxId, ?MATCH_MODB_PREFIX(_, _, _) = Id) ->
+    fetch(AccountId, Id, BoxId);
+maybe_move_to_db(AccountId, BoxId, Id) ->
+    case fetch(AccountId, Id, BoxId) of
+        {'ok', JObj} ->
+            Moved = move_to_modb(AccountId, JObj, [], 'true'),
+            case kvm_util:handle_update_result(Id, Moved) of
+                {'ok', _} = OK -> OK;
+                {'error', _} = Error -> Error
+            end;
+        {'error', _} = E -> E
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -271,6 +370,7 @@ media_url(AccountId, MessageId) ->
             kz_media_url:playback(Message, Message);
         {'error', _} -> <<>>
     end.
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -359,14 +459,14 @@ save_meta(Length, Action, Call, MediaId, BoxId) ->
         'delete' ->
             lager:debug("attachment was sent out via notification, deleteing media file"),
             Fun = [fun(JObj) ->
-                           kvm_util:apply_folder(?VM_FOLDER_DELETED, JObj)
+                           kzd_box_message:apply_folder(?VM_FOLDER_DELETED, JObj)
                    end
                   ],
             save_metadata(Metadata, AccountId, MediaId, Fun);
         'save' ->
             lager:debug("attachment was sent out via notification, saving media file"),
             Fun = [fun(JObj) ->
-                           kvm_util:apply_folder(?VM_FOLDER_SAVED, JObj)
+                           kzd_box_message:apply_folder(?VM_FOLDER_SAVED, JObj)
                    end
                   ],
             save_metadata(Metadata, AccountId, MediaId, Fun);

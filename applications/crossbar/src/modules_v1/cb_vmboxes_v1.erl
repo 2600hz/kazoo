@@ -560,13 +560,9 @@ load_message(MediaId, BoxId, UpdateJObj, Context) ->
 
 -spec load_message_doc(ne_binary(), ne_binary(), cb_context:context()) -> {atom(), any()}.
 load_message_doc(MediaId, BoxId, Context) ->
-    case kvm_message:fetch(cb_context:account_id(Context), MediaId) of
-        {'ok', MDoc}=OK ->
-            case kzd_box_message:source_id(MDoc) of
-                BoxId -> OK;
-                _ -> {'error', 'not_found'}
-            end;
-        {'error', _}=E -> E
+    case kvm_message:fetch(cb_context:account_id(Context), MediaId, BoxId) of
+        {'ok', _} = OK -> OK;
+        {'error', _} = E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -602,7 +598,7 @@ ensure_message_in_folder(Message, UpdateJObj, Context) ->
 %%--------------------------------------------------------------------
 -spec load_message_binary(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
 load_message_binary(DocId, MediaId, Context) ->
-    case kvm_message:fetch(cb_context:account_id(Context), MediaId) of
+    case kvm_message:fetch(cb_context:account_id(Context), MediaId, DocId) of
         {'ok', JObj} ->
             case kz_datamgr:open_cache_doc(cb_context:account_db(Context), DocId) of
                 {'error', Error} ->

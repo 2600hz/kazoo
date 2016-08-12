@@ -181,43 +181,39 @@ update_fold(AccountId, BoxId, [?JSON_WRAPPER(_) = Msg | Msgs], Funs, #bulk_res{f
               | Funs
              ],
     MsgId = kzd_box_message:media_id(Msg),
-    case kvm_message:fetch(AccountId, MsgId) of
+    case kvm_message:fetch(AccountId, MsgId, BoxId) of
         {'ok', JObj} ->
-            Result = do_update(AccountId, BoxId, MsgId, JObj, NewFun, Blk),
+            Result = do_update(AccountId, MsgId, JObj, NewFun, Blk),
             update_fold(AccountId, BoxId, Msgs, Funs, Result);
         {'error', R} ->
             Result = Blk#bulk_res{failed = [kz_json:from_list([{MsgId, kz_util:to_binary(R)}]) | Failed]},
             update_fold(AccountId, BoxId, Msgs, Funs, Result)
     end;
 update_fold(AccountId, BoxId, [MsgId | MsgIds], Funs, #bulk_res{failed = Failed} = Blk) ->
-    case kvm_message:fetch(AccountId, MsgId) of
+    case kvm_message:fetch(AccountId, MsgId, BoxId) of
         {'ok', JObj} ->
-            Result = do_update(AccountId, BoxId, MsgId, JObj, Funs, Blk),
+            Result = do_update(AccountId, MsgId, JObj, Funs, Blk),
             update_fold(AccountId, BoxId, MsgIds, Funs, Result);
         {'error', R} ->
             Result = Blk#bulk_res{failed = [kz_json:from_list([{MsgId, kz_util:to_binary(R)}]) | Failed]},
             update_fold(AccountId, BoxId,  MsgIds, Funs, Result)
     end.
 
--spec do_update(ne_binary(), ne_binary(), ne_binary(), kz_json:object(), update_funs(), bulk_results()) -> bulk_results().
-do_update(AccountId, BoxId, ?MATCH_MODB_PREFIX(Year, Month, _)=Id, JObj, Funs, #bulk_res{succeeded = Succeeded
-                                                                                        ,failed = Failed
-                                                                                        } = Blk) ->
+-spec do_update(ne_binary(), ne_binary(), kz_json:object(), update_funs(), bulk_results()) -> bulk_results().
+do_update(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=Id, JObj, Funs, #bulk_res{succeeded = Succeeded
+                                                                                 ,failed = Failed
+                                                                                 } = Blk) ->
     NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
-    case kvm_util:check_msg_belonging(BoxId, JObj)
-        andalso kvm_util:handle_update_result(Id, kazoo_modb:save_doc(AccountId, NewJObj, Year, Month))
-    of
+    case kvm_util:handle_update_result(Id, kazoo_modb:save_doc(AccountId, NewJObj, Year, Month)) of
         {'ok', _} -> Blk#bulk_res{succeeded = [Id | Succeeded]};
         {'error', R} -> Blk#bulk_res{failed = [kz_json:from_list([{Id, kz_util:to_binary(R)}]) | Failed]};
         'false' -> Blk#bulk_res{failed=[kz_json:from_list([{Id, <<"not_found">>}]) | Failed]}
     end;
-do_update(AccountId, BoxId, OldId, JObj, Funs, #bulk_res{succeeded = Succeeded
-                                                        ,failed = Failed
-                                                        ,moved = Moved
-                                                        } = Blk) ->
-    case kvm_util:check_msg_belonging(BoxId, JObj)
-        andalso kvm_util:handle_update_result(OldId, kvm_message:move_to_modb(AccountId, JObj, Funs, 'false'))
-    of
+do_update(AccountId, OldId, JObj, Funs, #bulk_res{succeeded = Succeeded
+                                                 ,failed = Failed
+                                                 ,moved = Moved
+                                                 } = Blk) ->
+    case kvm_util:handle_update_result(OldId, kvm_message:move_to_modb(AccountId, JObj, Funs, 'false')) of
         {'ok', NJObj} ->
             NewId = kz_doc:id(NJObj),
             Blk#bulk_res{succeeded = [NewId | Succeeded]
@@ -235,7 +231,7 @@ do_update(AccountId, BoxId, OldId, JObj, Funs, #bulk_res{succeeded = Succeeded
 %%--------------------------------------------------------------------
 change_folder(Folder, MsgIds, AccountId, BoxId) ->
     Fun = [fun(JObj) ->
-                   kvm_util:apply_folder(Folder, JObj)
+                   kzd_box_message:apply_folder(Folder, JObj)
            end
           ],
     {'ok', update(AccountId, BoxId, MsgIds, Fun)}.
@@ -284,13 +280,7 @@ change_box_id(AccountId, ?NE_BINARY = MsgId, OldBoxId, NewBoxId) ->
 change_box_id(AccountId, MsgIds, OldBoxId, NewBoxId) ->
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
-
-    Funs = [fun(JObj) -> kzd_box_message:set_source_id(NewBoxId, JObj) end
-           ,fun(JObj) -> kvm_util:apply_folder(?VM_FOLDER_NEW, JObj) end
-           ,fun(JObj) -> change_message_name(NBoxJ, JObj) end
-           ,fun(JObj) -> change_to_sip_field(AccountId, NBoxJ, JObj) end
-           ,fun(JObj) -> kzd_box_message:add_message_history(OldBoxId, JObj) end
-           ],
+    Funs = ?CHANGE_VMBOX_FUNS(AccountId, NewBoxId, NBoxJ, OldBoxId),
     update(AccountId, OldBoxId, MsgIds, Funs).
 
 %%%===================================================================
@@ -335,31 +325,3 @@ get_range_view(AccountId, ViewOpts) ->
                   ]
           end,
     [Fun(Db) || Db <- kazoo_modb:get_range(AccountId, From, To)].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec change_message_name(kz_json:object(), kz_json:object()) -> kz_json:object().
-change_message_name(NBoxJ, MsgJObj) ->
-    BoxNum = kzd_voicemail_box:mailbox_number(NBoxJ),
-    Timezone = kzd_voicemail_box:timezone(NBoxJ),
-    UtcSeconds = kzd_box_message:utc_seconds(MsgJObj),
-
-    NewName = kzd_box_message:create_message_name(BoxNum, Timezone, UtcSeconds),
-    kzd_box_message:set_message_name(NewName, MsgJObj).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec change_to_sip_field(ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
-change_to_sip_field(AccountId, NBoxJ, MsgJObj) ->
-    Realm = kz_util:get_account_realm(AccountId),
-    BoxNum = kzd_voicemail_box:mailbox_number(NBoxJ),
-
-    Metadata = kzd_box_message:metadata(MsgJObj),
-    To = <<BoxNum/binary, "@", Realm/binary>>,
-    kzd_box_message:set_metadata(kzd_box_message:set_to_sip(To, Metadata), MsgJObj).
