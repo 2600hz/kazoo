@@ -71,7 +71,7 @@ get_user(DataJObj) ->
      | teletype_util:user_params(DataJObj)
     ].
 
--spec build_macro_data(kz_json:objecT()) -> kz_proplist().
+-spec build_macro_data(kz_json:object()) -> kz_proplist().
 build_macro_data(DataJObj) ->
     [{<<"system">>, teletype_util:system_params()}
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
