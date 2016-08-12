@@ -45,7 +45,7 @@
                ,meta :: kz_json:object()
                ,timer_ref :: reference()
                ,id :: ne_binary() %% used in publishing doc_deleted
-         }).
+               }).
 -type state() :: #state{}.
 
 %%%===================================================================
