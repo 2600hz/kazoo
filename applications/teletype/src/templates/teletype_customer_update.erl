@@ -29,8 +29,6 @@
           ])
        ).
 
--define(TEMPLATE_TEXT, <<"Dear {{user.first_name}} {{user.last_name}}.\n\nHere are some news that we have selected for you.\n\nBest regards,">>).
--define(TEMPLATE_HTML, <<"<p>Dear {{user.first_name}} {{user.last_name}}.</p><p>Here are some news that we have selected for you.</p><p>Best regards,</p>">>).
 -define(TEMPLATE_SUBJECT, <<"Customer update">>).
 -define(TEMPLATE_CATEGORY, <<"user">>).
 -define(TEMPLATE_NAME, <<"Customer update">>).
@@ -45,8 +43,6 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}
@@ -82,7 +78,7 @@ process_accounts(DataJObj) ->
                ],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?ACC_CHILDREN_LIST, ViewOpts) of
         {'ok', Accounts} ->
-            [process_account(kz_json:get_value(<<"id">>, Account), DataJObj) || Account <- Accounts];
+            [process_account(kz_doc:id(Account), DataJObj) || Account <- Accounts];
         {'error', _Reason} = E ->
             lager:info("failed to load children. error: ~p", [E])
     end.

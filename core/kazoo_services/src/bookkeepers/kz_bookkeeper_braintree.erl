@@ -240,11 +240,10 @@ handle_topup(BillingId, JObjs) ->
 -spec braintree_quick_sale(ne_binary(), number() | ne_binary(), kz_proplist()) ->
                                   {boolean(), bt_transaction() | 'undefined'}.
 braintree_quick_sale(BillingId, Amount, Props) ->
-    try braintree_transaction:quick_sale(
-          BillingId
+    try braintree_transaction:quick_sale(BillingId
                                         ,wht_util:units_to_dollars(Amount)
                                         ,Props
-         )
+                                        )
     of
         BraintreeTransaction ->
             {handle_quick_sale_response(BraintreeTransaction), BraintreeTransaction}
@@ -279,18 +278,15 @@ send_topup_notification(Success, BillingId, Amount, ResponseText) when is_binary
             ,{<<"Response">>, ResponseText}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    _ = case
-            kapps_util:amqp_pool_send(
-              Props
-                                     ,fun kapi_notifications:publish_topup/1
-             )
+    _ = case kz_amqp_worker:cast(Props
+                                ,fun kapi_notifications:publish_topup/1
+                                )
         of
             'ok' -> lager:debug("topup notification sent for ~s", [BillingId]);
             {'error', _R} ->
-                lager:error(
-                  "failed to send topup notification for ~s : ~p"
+                lager:error("failed to send topup notification for ~s : ~p"
                            ,[BillingId, _R]
-                 )
+                           )
         end,
     Success;
 send_topup_notification(Success, BillingId, Amount, BraintreeTransaction) ->

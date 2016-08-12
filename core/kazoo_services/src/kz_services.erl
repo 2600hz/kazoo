@@ -718,7 +718,7 @@ default_maybe_allow_updates(AccountId) ->
             Error = kz_json:from_list([{<<"error">>, <<"updates_disallowed">>}
                                       ,{<<"message">>, kz_util:to_binary(Reason)}
                                       ]),
-            throw({<<"account_billing_invalid">>, kz_util:to_binary(Error)})
+            throw({<<"account_billing_invalid">>, Error})
     end.
 
 -spec spawn_move_to_good_standing(ne_binary()) -> 'true'.
@@ -1262,7 +1262,7 @@ do_cascade_quantities(<<_/binary>> = Account, <<_/binary>> = View) ->
 
 -spec do_cascade_quantities_fold(kz_json:object(), kz_json:object()) ->
                                         kz_json:object().
--spec do_cascade_quantities_fold(kz_json:object(), kz_json:object(), kz_json:key()) ->
+-spec do_cascade_quantities_fold(kz_json:object(), kz_json:object(), kz_json:keys()) ->
                                         kz_json:object().
 do_cascade_quantities_fold(JObj, J) ->
     do_cascade_quantities_fold(JObj, J, kz_json:get_value(<<"key">>, JObj)).

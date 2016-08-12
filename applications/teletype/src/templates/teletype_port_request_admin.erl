@@ -24,8 +24,6 @@
          )
        ).
 
--define(TEMPLATE_TEXT, <<"Port request submitted for {{account.name}} by {{port_request.customer_contact}}.\n\nThe account's tree:\n\n {{ account.name }} ({{ account.id }})\n{% for id, name in account_tree %} {{ name }} ({{ id }})\n{% endfor %}\n\nRequest to port numbers: {{ port_request.numbers }}.\n\nPort Details:\n\n {% for k,v in port_request %} {{ k }} : {{ v }}\n {% endfor %}\n">>).
--define(TEMPLATE_HTML, <<"<p>Port request submitted for {{account.name}} by {{port_request.customer_contact}}.</p>\n<p>The account's tree:</p>\n<ul><li>{{ account.name }} ({{ account.id }})</li>\n{% for id, name in account_tree %}<li>{{ name }} ({{ id }})</li>\n{% endfor %}</ul>\n<p>Request to port numbers: {{ port_request.numbers }}</p>\n\n<p>Port Details:</p>\n\n<ul>{% for k,v in port_request %}<li>{{ k }} : {{ v }}</li>\n{% endfor %}</ul>\n">>).
 -define(TEMPLATE_SUBJECT, <<"Port request for {{account.name}}">>).
 -define(TEMPLATE_CATEGORY, <<"system">>).
 -define(TEMPLATE_NAME, <<"Admin Port Request">>).
@@ -40,8 +38,6 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}

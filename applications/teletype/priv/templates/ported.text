@@ -1,0 +1,3 @@
+Port request successful for {{account.name}}.
+
+ Numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}.

@@ -68,6 +68,7 @@
 
 -type view_option() :: 'conflicts' |
                        'descending' |
+                       'first_when_multiple' |
                        'group' |
                        'include_docs' |
                        'inclusive_end' |
@@ -86,6 +87,9 @@
                        {'startkey', key_range()}.
 
 -type view_options() :: list(view_option()).
+
+-type view_listing() :: {ne_binary(), kz_json:object()}.
+-type views_listing() :: [view_listing()].
 
 -type db_classifications() :: 'account' | 'modb' | 'acdc' |
                               'numbers' | 'aggregate' | 'system' |

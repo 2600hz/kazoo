@@ -491,7 +491,7 @@ get_call_termination_reason(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_views_json(atom(), string()) -> kz_json:objects().
+-spec get_views_json(atom(), string()) -> kz_datamgr:views_listing().
 get_views_json(App, Folder) ->
     Files = filelib:wildcard(lists:flatten([code:priv_dir(App), "/couchdb/", Folder, "/*.json"])),
     [JObj
@@ -508,8 +508,8 @@ get_views_json(App, Folder) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_view_json(atom(), text()) -> {ne_binary(), kz_json:object()}.
--spec get_view_json(text()) -> {ne_binary(), kz_json:object()}.
+-spec get_view_json(atom(), text()) -> kz_datamgr:view_listing().
+-spec get_view_json(text()) -> kz_datamgr:view_listing().
 
 get_view_json(App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
@@ -527,8 +527,8 @@ get_view_json(Path) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_views(ne_binary(), kz_proplist()) -> 'ok'.
--spec update_views(ne_binary(), kz_proplist(), boolean()) -> 'ok'.
+-spec update_views(ne_binary(), kz_datamgr:views_listing()) -> boolean().
+-spec update_views(ne_binary(), kz_datamgr:views_listing(), boolean()) -> boolean().
 
 update_views(Db, Views) ->
     update_views(Db, Views, 'false').
@@ -695,7 +695,10 @@ to_magic_hash(Bin) ->
 from_magic_hash(Bin) ->
     zlib:unzip(kz_util:from_hex_binary(Bin)).
 
--spec media_local_store_url(kapps_call:call(), kz_json:object()) -> ne_binary().
+-spec media_local_store_url(kapps_call:call(), kz_json:object()) ->
+                                   {'ok', ne_binary()} |
+                                   {'proxy', tuple()} |
+                                   {'error', any()}.
 media_local_store_url(Call, JObj) ->
     AccountDb = kapps_call:account_db(Call),
     MediaId = kz_doc:id(JObj),

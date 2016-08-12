@@ -16,14 +16,15 @@
 
 -include("teletype.hrl").
 
-voicemail_to_email(AccountId) ->
+voicemail_to_email(<<_/binary>> = AccountId) ->
     case find_vmboxes(AccountId) of
         [] -> lager:debug("no voicemail boxes in account ~s", [AccountId]);
         VMBoxes -> find_vmbox_messages(AccountId, VMBoxes)
     end.
 
-find_vmboxes(AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+-spec find_vmboxes(ne_binary()) -> kz_json:objects().
+find_vmboxes(<<_/binary>> = AccountId) ->
+    AccountDb = kz_util:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"vmboxes/crossbar_listing">>, ['include_docs']) of
         {'ok', VMBoxes} -> VMBoxes;
         {'error', _E} ->
@@ -31,21 +32,27 @@ find_vmboxes(AccountId) ->
             []
     end.
 
+-spec find_vmbox_messages(ne_binary(), kz_json:objects()) ->
+                                 'ok' |
+                                 {'ok', kz_json:objects()} |
+                                 {'error', any()}.
 find_vmbox_messages(_AccountId, []) ->
     lager:debug("no vmboxes had messages in ~p", [_AccountId]);
 find_vmbox_messages(AccountId, [Box|Boxes]) ->
     case kz_vm_message:messages(AccountId, Box) of
         [] -> find_vmbox_messages(AccountId, Boxes);
-        Ms -> voicemail_to_email(AccountId, kz_json:get_value(<<"doc">>, Box), Ms)
+        Ms -> voicemail_to_email(AccountId, Box, Ms)
     end.
 
 voicemail_to_email(AccountId, <<_/binary>> = VoicemailBoxId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    {'ok', VMBox} = kz_datamgr:open_cache_doc(AccountDb
-                                             ,VoicemailBoxId
-                                             ),
+    AccountDb = kz_util:format_account_db(AccountId),
+    {'ok', VMBox} = kz_datamgr:open_cache_doc(AccountDb, VoicemailBoxId),
+
     find_vmbox_messages(AccountId, [VMBox]).
 
+-spec voicemail_to_email(ne_binary(), kz_json:object(), kz_json:objects()) ->
+                                {'ok', kz_json:objects()} |
+                                {'error', any()}.
 voicemail_to_email(AccountId, VMBox,  [Message|_]) ->
     MediaId = kz_json:get_value(<<"media_id">>, Message),
     Length = kz_json:get_value(<<"length">>, Message),
@@ -55,7 +62,7 @@ voicemail_to_email(AccountId, VMBox,  [Message|_]) ->
            ,{<<"From-Realm">>, <<"TestFromRealm">>}
            ,{<<"To-User">>, <<"TestToUser">>}
            ,{<<"To-Realm">>, <<"TestToRealm">>}
-           ,{<<"Account-DB">>, kz_util:format_account_id(AccountId, 'encoded')}
+           ,{<<"Account-DB">>, kz_util:format_account_db(AccountId)}
            ,{<<"Account-ID">>, AccountId}
            ,{<<"Voicemail-Box">>, kz_doc:id(VMBox)}
            ,{<<"Voicemail-Name">>, MediaId}
@@ -66,10 +73,11 @@ voicemail_to_email(AccountId, VMBox,  [Message|_]) ->
            ,{<<"Call-ID">>, CallId}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    kapps_util:amqp_pool_collect(Prop
-                                ,fun kapi_notifications:publish_voicemail/1
-                                ,5 * ?MILLISECONDS_IN_SECOND
-                                ).
+    kz_amqp_worker:call_collect(Prop
+                               ,fun kapi_notifications:publish_voicemail/1
+                               ,5 * ?MILLISECONDS_IN_SECOND
+                               ).
+
 skel(AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, ['include_docs']) of

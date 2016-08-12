@@ -9,7 +9,7 @@
 -module(crossbar_services).
 
 -export([maybe_dry_run/2, maybe_dry_run/3
-         ,reconcile/1
+        ,reconcile/1
         ]).
 
 -include("crossbar.hrl").
@@ -351,8 +351,8 @@ maybe_notify_reseller(Context, Services, AuditLog) ->
         'false' ->
             Props = [{<<"Account-ID">>, cb_context:account_id(Context)}
                     ,{<<"Audit-Log">>, AuditLog}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
-            kapi_notifications:publish_service_added(Props),
+            kz_amqp_worker:cast(Props, fun kapi_notifications:publish_service_added/1),
             lager:debug("published service_added to reseller account ~s~n", [ResellerId])
   end.

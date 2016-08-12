@@ -26,59 +26,6 @@
           ])
        ).
 
--define(TEMPLATE_TEXT, <<"Thank you for registering!
-Your account is ready to use, here are some details to help get you started!
-
-                         Account ID: {{account.id}}
-                         Account Name: {{account.name}}
-                         Account Realm: {{account.realm}}
-
-                         {% if admin %}Admin
-                           First Name: {{admin.first_name}}
-                           Last Name: {{admin.last_name}}
-                           Email: {{admin.email}}
-                           Timezone: {{admin.timezone}}
-
-                           {% endif %}{% if devices %}SIP Credentials
-                             {% for device in devices %}User: {{device.user.first_name}} {{device.user.last_name}}
-                               Email: {{device.user.email|default:\"\"}}
-SIP Username: {{device.sip.username}}
-                                        SIP Password: {{device.sip.password}}
-                                        SIP Realm: {{account.realm}}
-
-                                        {% endfor %}{% endif %}
-
-                                          Sent from {{system.hostname}}">>).
--define(TEMPLATE_HTML, <<"<html><head><meta charset=\"utf-8\" /></head>
-<body>
-                         <h3>Thank you for registering!</h3>
-                         <h2>Welcome</h2>
-                         <p>Your account is ready to use, here are some details to help get you started!</p>
-                         <h2>Account</h2>
-                         <table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">
-<tr><td>Account ID: </td><td>{{account.pvt_account_id}}</td></tr>
-                         <tr><td>Account Name: </td><td>{{account.name}}</td></tr>
-                         <tr><td>Account Realm: </td><td>{{account.realm}}</td></tr>
-                         </table>
-                         {% if admin %}
-                           <h2>Admin</h2>
-                               <table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">
-<tr><td>Name: </td><td>{{admin.first_name}} {{admin.last_name}}</td></tr>
-                               <tr><td>Email: </td><td>{{admin.email}}</td></tr>
-                               <tr><td>Timezone: </td><td>{{admin.timezone}}</td></tr>
-                               </table>
-                               {% endif %}
-                                 {% if devices %}
-                                   <h2>SIP Credentials</h2>
-                                       <table cellpadding=\"4\" cellspacing=\"0\" border=\"1\">
-<tr><th>User</th><th>Email</th><th>SIP Username</th><th>SIP Password</th><th>SIP Realm</th></tr>
-                                       {% for device in devices %}
-                                         <tr><td>{{device.user.first_name}}{{device.user.last_name}}</td><td>{{device.user.email|default:\"\"}}</td><td>{{device.sip.username}}</td><td>{{device.sip.password}}</td><td>{{account.realm}}</td></tr>
-{% endfor %}
-  </table>
-      {% endif %}
-      <p style='font-size:9pt;color:#CCCCCC'>Sent from {{system.hostname}}</p>
-          </body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Your new VoIP services Account">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"New Account">>).
@@ -93,8 +40,6 @@ SIP Username: {{device.sip.username}}
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}
@@ -156,7 +101,7 @@ admin_user_properties(DataJObj) ->
 -spec account_admin_user_properties(kz_json:object()) -> kz_proplist().
 account_admin_user_properties(AccountJObj) ->
     AccountDb = kz_doc:account_db(AccountJObj),
-    case kz_datamgr:get_all_results(AccountDb, <<"users/crossbar_listing">>) of
+    case kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, ['include_docs']) of
         {'error', _E} ->
             lager:debug("failed to get user listing from ~s: ~p", [AccountDb, _E]),
             [];
@@ -164,17 +109,17 @@ account_admin_user_properties(AccountJObj) ->
             find_admin(Users)
     end.
 
--spec find_admin(api_binaries()) -> kz_proplist().
+-spec find_admin(kz_json:objects()) -> kz_proplist().
 find_admin([]) ->
     lager:debug("account has no admin users"),
     [];
 find_admin([User|Users]) ->
-    case kz_json:get_value([<<"value">>, <<"priv_level">>], User) of
-        <<"admin">> -> admin_properties(kz_json:get_value(<<"value">>, User));
+    UserDoc = kz_json:get_value(<<"doc">>, User),
+    case kzd_user:priv_level(UserDoc) of
+        <<"admin">> -> admin_properties(UserDoc);
         _ -> find_admin(Users)
     end.
 
--spec admin_properties(kz_json:object()) -> kz_proplist().
+-spec admin_properties(kzd_user:doc()) -> kz_proplist().
 admin_properties(User) ->
-    Ks = [<<"first_name">>, <<"last_name">>, <<"email">>, <<"timezone">>],
-    [{K, kz_json:get_value(K, User)} || K <- Ks].
+    teletype_util:user_params(User).

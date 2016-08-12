@@ -25,8 +25,6 @@
           ])
        ).
 
--define(TEMPLATE_TEXT, <<"Hi {{user.first_name}} {{user.last_name}}.\n\nThis is the skeleton template\nBrought to you by VoIP Services">>).
--define(TEMPLATE_HTML, <<"<p>Hi {{user.first_name}} {{user.last_name}}.</p><p>This is the skeleton template</p><p>Brought to you by VoIP Services</p>">>).
 -define(TEMPLATE_SUBJECT, <<"Skeleton Template">>).
 -define(TEMPLATE_CATEGORY, <<"skel">>).
 -define(TEMPLATE_NAME, <<"Skeleton">>).
@@ -41,8 +39,6 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}

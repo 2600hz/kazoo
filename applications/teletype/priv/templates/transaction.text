@@ -1,0 +1,17 @@
+Transaction notice for {{account.name}} - ${{transaction.amount}} (ID #{{account.id}})
+
+{% if transaction %}Transaction
+{% for key, value in transaction %}{{ key }}: {{ value }}
+{% endfor %}
+{% endif %}{% if plan %}Service Plan
+ID: {{plan.id}}
+Category: {{plan.category}}
+Item: {{plan.item}}
+Activation-Charge: {{plan.activation_charge}}
+
+{% endif %}Account
+Account ID: {{account.id}}
+Account Name: {{account.name}}
+Account Realm: {{account.realm}}
+
+Sent from {{system.hostname}}

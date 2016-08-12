@@ -304,16 +304,12 @@ iptuple_to_binary({A,B,C,D}) ->
       ,(kz_util:to_binary(C))/binary, "."
       ,(kz_util:to_binary(D))/binary
     >>;
-iptuple_to_binary({I1, I2, I3, I4, I5, I6, I7, I8}) ->
-    <<(kz_util:to_binary(I1))/binary, ":"
-      ,(kz_util:to_binary(I2))/binary, ":"
-      ,(kz_util:to_binary(I3))/binary, ":"
-      ,(kz_util:to_binary(I4))/binary, ":"
-      ,(kz_util:to_binary(I5))/binary, ":"
-      ,(kz_util:to_binary(I6))/binary, ":"
-      ,(kz_util:to_binary(I7))/binary, ":"
-      ,(kz_util:to_binary(I8))/binary, ":"
-    >>.
+iptuple_to_binary({_I1, _I2, _I3, _I4, _I5, _I6, _I7, _I8}=T) ->
+    kz_util:join_binary([to_hex(I) || I <- tuple_to_list(T)], <<":">>).
+
+-spec to_hex(integer()) -> binary().
+to_hex(I) ->
+    kz_util:to_lower_binary(integer_to_binary(I, 16)).
 
 -spec srvtuple_to_binary(srvtuple()) -> ne_binary().
 srvtuple_to_binary({Priority, Weight, Port, Domain}) ->

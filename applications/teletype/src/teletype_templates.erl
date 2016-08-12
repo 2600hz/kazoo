@@ -10,20 +10,21 @@
 
 -include("teletype.hrl").
 
--define(TEMPLATE_FAILURE_KEY(TemplateId, AccountId)
-       ,{?MODULE, TemplateId, AccountId}
-       ).
-
 -export([init/2
         ,renderer_name/2
         ,render/2, render/3, render/4
         ,preview/3
         ,fetch_notification/2
+        ,write_templates_to_disk/2
         ]).
 -export([doc_id/1]).
 
 -type macro() :: {ne_binary(), ne_binary() | number() | macros()}.
 -type macros() :: [macro()].
+
+-define(TEMPLATE_FAILURE_KEY(TemplateId, AccountId)
+       ,{?MODULE, TemplateId, AccountId}
+       ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -32,13 +33,18 @@
 %%--------------------------------------------------------------------
 -spec init(ne_binary(), init_params()) -> 'ok'.
 init(TemplateId, Params) ->
+    UpdatedParams = props:set_values([{'html', TemplateId}
+                                     ,{'text', TemplateId}
+                                     ]
+                                    ,Params
+                                    ),
     DocId = doc_id(TemplateId),
     lager:debug("init template ~s", [DocId]),
     case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, DocId) of
         {'ok', TemplateJObj} ->
-            maybe_update(TemplateJObj, Params);
+            maybe_update(TemplateJObj, UpdatedParams);
         {'error', 'not_found'} ->
-            create(DocId, Params);
+            create(DocId, UpdatedParams);
         {'error', _E} ->
             lager:warning("failed to find template ~s", [DocId])
     end,
@@ -311,14 +317,13 @@ maybe_decode_html(HTML) ->
 create(DocId, Params) ->
     lager:debug("attempting to create template ~s", [DocId]),
     TemplateJObj =
-        kz_doc:update_pvt_parameters(
-          kz_json:from_list([{<<"_id">>, DocId}])
+        kz_doc:update_pvt_parameters(kz_json:from_list([{<<"_id">>, DocId}])
                                     ,?KZ_CONFIG_DB
                                     ,[{'account_db', ?KZ_CONFIG_DB}
                                      ,{'account_id', ?KZ_CONFIG_DB}
                                      ,{'type', kz_notification:pvt_type()}
                                      ]
-         ),
+                                    ),
     {'ok', UpdatedTemplateJObj} = save(TemplateJObj),
     lager:debug("created base template ~s(~s)", [DocId, kz_doc:revision(UpdatedTemplateJObj)]),
 
@@ -391,11 +396,10 @@ save(TemplateJObj) ->
 -spec update_from_params(kz_json:object(), init_params()) ->
                                 update_acc().
 update_from_params(TemplateJObj, Params) ->
-    lists:foldl(
-      fun update_from_param/2
+    lists:foldl(fun update_from_param/2
                ,{'false', TemplateJObj}
                ,Params
-     ).
+               ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -405,10 +409,10 @@ update_from_params(TemplateJObj, Params) ->
 -spec update_from_param(init_param(), update_acc()) -> update_acc().
 update_from_param({'macros', Macros}, Acc) ->
     update_macros(Macros, Acc);
-update_from_param({'text', Text}, Acc) ->
-    update_text_attachment(Text, Acc);
-update_from_param({'html', HTML}, Acc) ->
-    update_html_attachment(HTML, Acc);
+update_from_param({'text', Basename}, Acc) ->
+    update_text_attachment(Basename, Acc);
+update_from_param({'html', Basename}, Acc) ->
+    update_html_attachment(Basename, Acc);
 update_from_param({'subject', Subject}, Acc) ->
     update_subject(Subject, Acc);
 update_from_param({'category', Category}, Acc) ->
@@ -517,12 +521,24 @@ update_subject(Subject, Acc) ->
                 ).
 
 -spec update_html_attachment(binary(), update_acc()) -> update_acc().
-update_html_attachment(HTML, Acc) ->
-    update_attachment(HTML, Acc, ?TEXT_HTML).
+update_html_attachment(Basename, Acc) ->
+    case read_template_from_disk(Basename, 'html') of
+        {'ok', HTML} ->
+            update_attachment(HTML, Acc, ?TEXT_HTML);
+        {'error', _E} ->
+            lager:info("failed to find template '~s.html': ~p", [Basename, _E]),
+            Acc
+    end.
 
 -spec update_text_attachment(binary(), update_acc()) -> update_acc().
-update_text_attachment(Text, Acc) ->
-    update_attachment(Text, Acc, ?TEXT_PLAIN).
+update_text_attachment(Basename, Acc) ->
+    case read_template_from_disk(Basename, 'text') of
+        {'ok', Text} ->
+            update_attachment(Text, Acc, ?TEXT_PLAIN);
+        {'error', _E} ->
+            lager:info("failed to find template '~s.text': ~p", [Basename, _E]),
+            Acc
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -632,3 +648,35 @@ save_attachment(DocId, AName, ContentType, Contents) ->
             lager:debug("failed to add attachment ~s to ~s: ~p", [AName, DocId, _E]),
             E
     end.
+
+-spec write_templates_to_disk(ne_binary(), kz_proplist()) -> 'ok'.
+write_templates_to_disk(TemplateId, Params) ->
+    lists:foreach(fun(Template) ->
+                          write_template_to_disk(TemplateId, Template)
+                  end
+                 ,props:filter_undefined(
+                    [{'text', props:get_value('text', Params)}
+                    ,{'html', props:get_value('html', Params)}
+                    ]
+                   )
+                 ).
+
+-spec read_template_from_disk(ne_binary(), 'html' | 'text') ->
+                                     {'ok', binary()} |
+                                     {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
+read_template_from_disk(TemplateId, Type) ->
+    File = template_filename(TemplateId, Type),
+    file:read_file(File).
+
+-spec write_template_to_disk(ne_binary(), {'html' | 'text', binary()}) -> 'ok'.
+write_template_to_disk(TemplateId, {Type, Template}) ->
+    File = template_filename(TemplateId, Type),
+    'ok' = file:write_file(File, Template).
+
+-spec template_filename(ne_binary(), 'html' | 'text') -> file:filename_all().
+template_filename(TemplateId, Type) ->
+    Basename = iolist_to_binary([TemplateId, ".", kz_util:to_list(Type)]),
+    filename:join([code:priv_dir('teletype')
+                  ,"templates"
+                  ,Basename
+                  ]).

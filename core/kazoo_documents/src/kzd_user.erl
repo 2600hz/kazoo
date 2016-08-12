@@ -20,12 +20,14 @@
         ,fetch/2
         ,fax_settings/1
         ,name/1, first_name/1, last_name/1
+        ,priv_level/1, priv_level/2
         ]).
 
 -include("kz_documents.hrl").
 
 -type doc() :: kz_json:object().
--export_type([doc/0]).
+-type docs() :: [doc()].
+-export_type([doc/0, docs/0]).
 
 -define(KEY_EMAIL, <<"email">>).
 -define(KEY_TIMEZONE, <<"timezone">>).
@@ -33,6 +35,7 @@
 -define(KEY_IS_ENABLED, <<"enabled">>).
 -define(KEY_FIRST_NAME, <<"first_name">>).
 -define(KEY_LAST_NAME, <<"last_name">>).
+-define(KEY_PRIV_LEVEL, <<"priv_level">>).
 
 -define(PVT_TYPE, <<"user">>).
 
@@ -300,3 +303,10 @@ last_name(Doc) ->
 
 last_name(Doc, Default) ->
     kz_json:get_binary_value(?KEY_LAST_NAME, Doc, Default).
+
+-spec priv_level(doc()) -> api_binary().
+-spec priv_level(doc(), Default) -> ne_binary() | Default.
+priv_level(Doc) ->
+    priv_level(Doc, <<"user">>).
+priv_level(Doc, Default) ->
+    kz_json:get_binary_value(?KEY_PRIV_LEVEL, Doc, Default).

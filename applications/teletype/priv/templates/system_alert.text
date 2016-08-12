@@ -1,0 +1,37 @@
+Alert
+{{message}}
+{% if request %}Producer
+{% for key, value in request %}{{ key }}: {{ value }}
+{% endfor %}
+{% endif %}{% if details %}Details
+{% for key, value in details %}{{ key }}: {{ value }}
+{% endfor %}
+{% endif %}{% if callflow %}Callflow
+{% for key, value in callflow %}{{ key }}: {{ value }}
+{% endfor %}
+{% endif %}{% if error_details %}Error Details
+{% for key, value in error_details %}{{ key }}: {{ value }}
+{% endfor %}
+{% endif %}{% if key_store %}Key Value Store
+{% for key, value in key_store %}{{ key }}: {{ value }}
+{% endfor %}
+{% endif %}{% if channel_vars %}Channel Vars
+{% for key, value in channel_vars %}{{ key }}: {{ value }}
+{% endfor %}
+{% endif %}{% if sip_headers %}SIP Headers
+{% for key, value in sip_headers %}{{ key }}: {{ value }}
+{% endfor %}
+{% endif %}{% if account %}Account
+Account ID: {{account.id}}
+Account Name: {{account.name}}
+Account Realm: {{account.realm}}
+
+{% endif %}{% if user %}Admin
+Name: {{user.first_name}} {{user.last_name}}
+Email: {{user.email}}
+Timezone: {{user.timezone}}
+
+{% endif %}{% if account.pvt_wnm_numbers %}Phone Numbers
+{% for number in account.pvt_wnm_numbers %}{{number}}
+{% endfor %}
+{% endif %}

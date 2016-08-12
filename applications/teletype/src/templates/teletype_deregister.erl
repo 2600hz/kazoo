@@ -39,8 +39,6 @@
           ])
        ).
 
--define(TEMPLATE_TEXT, <<"Expired registration in account \"{{account.name}}\".\nNotifications are enabled for loss of registration on the device {{last_registration.username}}@{{account.realm}}\n\nLast Registration:\nDevice ID: {{last_registration.authorizing_id}}\nAccount ID: {{account.id}}\nUser Agent: {{last_registration.user_agent}}\nContact: {{last_registration.contact}}\n\nThis may be due to a network connectivity issue, power outage, or misconfiguration. Please check the device.">>).
--define(TEMPLATE_HTML, <<"<html><body><h2>Expired registration in account \"{{account.name}}\"</h2><p>Notifications are enabled for loss of registration on the device {{last_registration.username}}@{{account.realm}}</p><h3>Last Registration</h3><table><tr><td>Device ID</td><td>{{last_registration.authorizing_id}}</td></tr><tr><td>Account ID</td><td>{{account.id}}</td></tr><tr><td>User Agent</td><td>{{last_registration.user_agent}}</td></tr><tr><td>Contact</td><td>{{last_registration.contact}}</td></tr></table><p>This may be due to a network connectivity issue, power outage, or misconfiguration. Please check the device.</p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Loss of Registration for {{last_registration.username}}@{{account.realm}}">>).
 -define(TEMPLATE_CATEGORY, <<"registration">>).
 -define(TEMPLATE_NAME, <<"Deregister Notice">>).
@@ -55,8 +53,6 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}
@@ -83,10 +79,7 @@ handle_deregister(JObj, _Props) ->
 
 -spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
-    Macros = [{<<"system">>, teletype_util:system_params()}
-             ,{<<"account">>, teletype_util:account_params(DataJObj)}
-             ,{<<"last_registration">>, kz_json:to_proplist(DataJObj)}
-             ],
+    Macros = build_macros(DataJObj),
 
     %% Load templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
@@ -104,3 +97,18 @@ handle_req(DataJObj) ->
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
+
+-spec build_macros(kz_json:object()) -> kz_proplist().
+-spec build_macros(kz_json:object(), kz_proplist()) -> kz_proplist().
+build_macros(DataJObj) ->
+    build_macros(DataJObj, teletype_util:account_params(DataJObj)).
+
+build_macros(DataJObj, []) ->
+    lager:info("no account data available for deregister, not sending notification"),
+    teletype_util:send_update(DataJObj, <<"failed">>, <<"missing account">>),
+    exit('normal');
+build_macros(DataJObj, AccountParams) ->
+    [{<<"system">>, teletype_util:system_params()}
+    ,{<<"account">>, AccountParams}
+    ,{<<"last_registration">>, kz_json:to_proplist(DataJObj)}
+    ].

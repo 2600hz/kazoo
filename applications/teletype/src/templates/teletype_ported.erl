@@ -21,8 +21,6 @@
        ,kz_json:from_list(?PORT_REQUEST_MACROS ++ ?ACCOUNT_MACROS)
        ).
 
--define(TEMPLATE_TEXT, <<"Port request successful for {{account.name}}.\n\n Numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}.">>).
--define(TEMPLATE_HTML, <<"<p>Port request successful for {{account.name}}.</p><p>Numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}</p>">>).
 -define(TEMPLATE_SUBJECT, <<"Port request successful for {{account.name}}">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Successful">>).
@@ -37,8 +35,6 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}

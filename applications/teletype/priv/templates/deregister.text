@@ -1,0 +1,10 @@
+Expired registration in account "{{account.name}}".
+Notifications are enabled for loss of registration on the device {{last_registration.username}}@{{account.realm}}
+
+Last Registration:
+Device ID: {{last_registration.authorizing_id}}
+Account ID: {{account.id}}
+User Agent: {{last_registration.user_agent}}
+Contact: {{last_registration.contact}}
+
+This may be due to a network connectivity issue, power outage, or misconfiguration. Please check the device.

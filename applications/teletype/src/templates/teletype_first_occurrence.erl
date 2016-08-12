@@ -24,8 +24,6 @@
           ])
        ).
 
--define(TEMPLATE_TEXT, <<"The first {{event}} was detected on an account.\n\nAccount\nAccount ID: {{account.id}}\nAccount Name: {{account.name}}\nAccount Realm: {{account.realm}}\n\n{% if admin %}Admin\nName: {{admin.first_name}} {{admin.last_name}}\nEmail: {{admin.email}}\nTimezone: {{admin.timezone}}\n\n{% endif %}\n\nSent from {{system.host}}">>).
--define(TEMPLATE_HTML, <<"<html><body><h2>The first {{event}} was detected on an account.</h2><h2>Account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{account.id}}</td></tr><tr><td>Account Name: </td><td>{{account.name}}</td></tr><tr><td>Account Realm: </td><td>{{account.realm}}</td></tr></table>{% if admin %}<h2>Admin</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Name: </td><td>{{admin.first_name}} {{admin.last_name}}</td></tr><tr><td>Email: </td><td>{{admin.email}}</td></tr><tr><td>Timezone: </td><td>{{admin.timezone}}</td></tr></table>{% endif %}<p style=\"font-size:9pt;color:#CCCCCC\">Sent from {{system.host}}</p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"First {{event}} on {{account.name}}">>).
 -define(TEMPLATE_CATEGORY, <<"sip">>).
 -define(TEMPLATE_NAME, <<"First Occurrence">>).
@@ -40,8 +38,6 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}
@@ -66,24 +62,27 @@ first_occurrence(JObj, _Props) ->
         'true' -> handle_req(DataJObj)
     end.
 
+-spec build_macro_data(kz_json:object()) -> kz_proplist().
+build_macro_data(DataJObj) ->
+    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
+    [{<<"system">>, teletype_util:system_params()}
+    ,{<<"account">>, teletype_util:account_params(DataJObj)}
+    ,{<<"user">>, teletype_util:find_account_admin(AccountId)}
+    ,{<<"event">>, kz_json:get_value(<<"occurrence">>, DataJObj)}
+    ].
+
 -spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
-    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    Macros = [{<<"system">>, teletype_util:system_params()}
-             ,{<<"account">>, teletype_util:account_params(DataJObj)}
-             ,{<<"user">>, teletype_util:find_account_admin(AccountId)}
-             ,{<<"event">>, kz_json:get_value(<<"occurrence">>, DataJObj)}
-             ],
+    Macros = build_macro_data(DataJObj),
 
     %% Load templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
 
-    Subject = teletype_util:render_subject(
-                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
+    Subject = teletype_util:render_subject(kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
                                           ,Macros
-               ),
+                                          ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 

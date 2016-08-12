@@ -23,8 +23,6 @@
                           ])
        ).
 
--define(TEMPLATE_TEXT, <<"Hello, {{user.first_name}} {{user.last_name}}!\n\nWe received a request to change the password for your 2600Hz VoIP Services account \"{{account.name}}\".\nIf you did not make this request, just ignore this email. Otherwise, please click the link below to change your password:\n\n{{link}}">>).
--define(TEMPLATE_HTML, <<"<html></head><body><h3>Hello, {{user.first_name}} {{user.last_name}}!</h3><p>We received a request to change the password of your 2600Hz VoIP Services account \"{{account.name}}\".</p><p>If you did not make this request, just ignore this email. Otherwise, please <a href=\"{{link}}\">click this link to change your password</a>.</p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Reset your VoIP services account password.">>).
 -define(TEMPLATE_CATEGORY, <<"user">>).
 -define(TEMPLATE_NAME, <<"Password Recovery">>).
@@ -39,8 +37,6 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}
@@ -65,19 +61,23 @@ handle_password_recovery(JObj, _Props) ->
         'true' -> process_req(DataJObj)
     end.
 
--spec get_user(kz_json:object()) -> kz_proplist().
+-spec get_user(kzd_user:doc()) -> kz_proplist().
 get_user(DataJObj) ->
-    [{Key, kz_json:get_value(Key, DataJObj)}
-     || Key <- [<<"first_name">>, <<"last_name">>, <<"email">>, <<"password">>]
+    [{<<"password">>, kz_json:get_value(<<"password">>, DataJObj)}
+     | teletype_util:user_params(DataJObj)
+    ].
+
+-spec build_macro_data(kz_json:object()) -> kz_proplist().
+build_macro_data(DataJObj) ->
+    [{<<"system">>, teletype_util:system_params()}
+    ,{<<"account">>, teletype_util:account_params(DataJObj)}
+    ,{<<"user">>, get_user(DataJObj)}
+    ,{<<"link">>, [kz_json:get_value(<<"password_reset_link">>, DataJObj)]}
     ].
 
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
-    Macros = [{<<"system">>, teletype_util:system_params()}
-             ,{<<"account">>, teletype_util:account_params(DataJObj)}
-             ,{<<"user">>, get_user(DataJObj)}
-             ,{<<"link">>, [kz_json:get_value(<<"password_reset_link">>, DataJObj)]}
-             ],
+    Macros = build_macro_data(DataJObj),
 
     %% Populate templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
@@ -87,10 +87,9 @@ process_req(DataJObj) ->
                                              ,teletype_util:find_account_id(DataJObj)
                                              ),
 
-    Subject = teletype_util:render_subject(
-                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+    Subject = teletype_util:render_subject(kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
                                           ,Macros
-               ),
+                                          ),
 
     Emails0 = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
     Emails = props:set_value(<<"to">>, [kz_json:get_value(<<"email">>, DataJObj)], Emails0),

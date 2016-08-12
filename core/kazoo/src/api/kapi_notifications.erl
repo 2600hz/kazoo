@@ -226,11 +226,16 @@
 
 %% Notify Deregister
 -define(DEREGISTER_HEADERS, [<<"Username">>, <<"Realm">>, <<"Account-ID">>]).
--define(OPTIONAL_DEREGISTER_HEADERS, [<<"Status">>, <<"User-Agent">>, <<"Call-ID">>, <<"Profile-Name">>, <<"Presence-Hosts">>
-                                     ,<<"From-User">>, <<"From-Host">>, <<"FreeSWITCH-Hostname">>, <<"RPid">>
-                                     ,<<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
-                                     ,<<"Event-Timestamp">>, <<"Contact">>, <<"Expires">>, <<"Account-DB">>
-                                     ,<<"Authorizing-ID">>, <<"Suppress-Unregister-Notify">>
+-define(OPTIONAL_DEREGISTER_HEADERS, [<<"Account-DB">>, <<"Authorizing-ID">>
+                                     ,<<"Call-ID">>, <<"Contact">>
+                                     ,<<"Event-Timestamp">>, <<"Expires">>
+                                     ,<<"FreeSWITCH-Hostname">>, <<"From-Host">>, <<"From-User">>
+                                     ,<<"Network-IP">>, <<"Network-Port">>
+                                     ,<<"Presence-Hosts">>, <<"Profile-Name">>
+                                     ,<<"RPid">>
+                                     ,<<"Status">>, <<"Suppress-Unregister-Notify">>
+                                     ,<<"To-Host">>, <<"To-User">>
+                                     ,<<"User-Agent">>
                                           | ?DEFAULT_OPTIONAL_HEADERS
                                      ]).
 -define(DEREGISTER_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -280,8 +285,10 @@
 
 %% Notify New Account
 -define(NEW_ACCOUNT_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_NEW_ACCOUNT_HEADERS, [<<"Account-DB">>, <<"Account-Name">>
-                                      ,<<"Account-API-Key">>, <<"Account-Realm">>
+-define(OPTIONAL_NEW_ACCOUNT_HEADERS, [<<"Account-DB">>
+                                      ,<<"Account-Name">>
+                                      ,<<"Account-API-Key">>
+                                      ,<<"Account-Realm">>
                                            | ?DEFAULT_OPTIONAL_HEADERS
                                       ]).
 -define(NEW_ACCOUNT_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -411,7 +418,9 @@
 
 %% Notify Top Up
 -define(TOPUP_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_TOPUP_HEADERS, [<<"Amount">>, <<"Response">>, <<"Success">>
+-define(OPTIONAL_TOPUP_HEADERS, [<<"Amount">>
+                                ,<<"Response">>
+                                ,<<"Success">>
                                      | ?DEFAULT_OPTIONAL_HEADERS
                                 ]).
 -define(TOPUP_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -421,7 +430,8 @@
 
 %% Notify Transaction
 -define(TRANSACTION_HEADERS, [<<"Account-ID">>, <<"Transaction">>]).
--define(OPTIONAL_TRANSACTION_HEADERS, [<<"Service-Plan">>, <<"Billing-ID">>
+-define(OPTIONAL_TRANSACTION_HEADERS, [<<"Billing-ID">>
+                                      ,<<"Service-Plan">>
                                            | ?DEFAULT_OPTIONAL_HEADERS
                                       ]).
 -define(TRANSACTION_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -439,8 +449,13 @@
 
 %% Notify System Alert
 -define(SYSTEM_ALERT_HEADERS, [<<"Subject">>, <<"Message">>]).
--define(OPTIONAL_SYSTEM_ALERT_HEADERS, [<<"Pid">>, <<"Module">>, <<"Line">>, <<"Request-ID">>, <<"Section">>
-                                       ,<<"Node">>, <<"Details">>
+-define(OPTIONAL_SYSTEM_ALERT_HEADERS, [<<"Details">>
+                                       ,<<"Line">>
+                                       ,<<"Module">>
+                                       ,<<"Node">>
+                                       ,<<"Pid">>
+                                       ,<<"Request-ID">>
+                                       ,<<"Section">>
                                             | ?DEFAULT_OPTIONAL_HEADERS
                                        ]).
 -define(SYSTEM_ALERT_VALUES, [{<<"Event-Category">>, <<"notification">>}

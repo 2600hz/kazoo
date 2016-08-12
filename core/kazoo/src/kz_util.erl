@@ -80,7 +80,9 @@
 -export([pad_month/1]).
 
 -export([binary_md5/1]).
--export([pad_binary/3, join_binary/1, join_binary/2]).
+-export([pad_binary/3, pad_binary_left/3
+        ,join_binary/1, join_binary/2
+        ]).
 -export([a1hash/3, floor/1, ceiling/1]).
 
 -export([current_tstamp/0, current_unix_tstamp/0
@@ -1009,7 +1011,7 @@ uri(BaseUrl, Tokens) ->
     <<Pro/binary, "://", Uri/binary>>.
 
 
--spec safe_urlencode(binary() | number()) -> iolist().
+-spec safe_urlencode(binary() | number()) -> binary().
 safe_urlencode(V) when is_binary(V)
                        orelse is_number(V) ->
     kz_http_util:urlencode(to_binary(V)).

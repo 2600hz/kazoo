@@ -175,10 +175,10 @@ find_version(Path) ->
 -spec maybe_allow_proxy_req(ne_binary(), ne_binary()) -> ne_binary().
 maybe_allow_proxy_req(Peer, ForwardIP) ->
     case is_proxied(Peer) of
-        true ->
+        'true' ->
             lager:info("request is from expected reverse proxy: ~s", [ForwardIP]),
             kz_util:to_binary(ForwardIP);
-        false ->
+        'false' ->
             lager:warning("request with \"X-Forwarded-For: ~s\" header, but peer (~s) is not allowed as proxy"
                          ,[ForwardIP, Peer]
                          ),

@@ -24,8 +24,6 @@
          )
        ).
 
--define(TEMPLATE_TEXT, <<"Unfinished port request waiting to be submitted for {{account.name}}.\n\n Request to port numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}.">>).
--define(TEMPLATE_HTML, <<"<p>Unfinished port request waiting to be submitted for {{account.name}}.</p><p>Request to port numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}</p>">>).
 -define(TEMPLATE_SUBJECT, <<"Unfinished port request for {{account.name}}">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Unconfirmed">>).
@@ -40,8 +38,6 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}

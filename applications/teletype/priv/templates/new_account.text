@@ -1,0 +1,27 @@
+Thank you for registering!
+Your account is ready to use, here are some details to help get you started!
+
+                         Account ID: {{account.id}}
+                         Account Name: {{account.name}}
+                         Account Realm: {{account.realm}}
+
+                         {% if account.parent_id %}Parent Account ID: {{account.parent_id}}
+                         Parent Account Name: {{account.parent_name}}
+                         Parent Account Realm: {{account.parent_realm}}{% endif %}
+
+                         {% if admin %}Admin
+                           First Name: {{admin.first_name}}
+                           Last Name: {{admin.last_name}}
+                           Email: {{admin.email}}
+                           Timezone: {{admin.timezone}}
+
+                           {% endif %}{% if devices %}SIP Credentials
+                             {% for device in devices %}User: {{device.user.first_name}} {{device.user.last_name}}
+                               Email: {{device.user.email|default:""}}
+SIP Username: {{device.sip.username}}
+                                        SIP Password: {{device.sip.password}}
+                                        SIP Realm: {{account.realm}}
+
+                                        {% endfor %}{% endif %}
+
+                                          Sent from {{system.hostname}}

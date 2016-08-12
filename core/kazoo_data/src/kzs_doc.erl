@@ -28,7 +28,6 @@
 -define(COPY_DOC_OVERRIDE_PROPERTY, 'override_existing_document').
 -define(COPY_TRANSFORM, 'transform').
 
-
 %% Document related functions --------------------------------------------------
 
 -spec open_doc(map(), ne_binary(), ne_binary(), kz_proplist()) ->

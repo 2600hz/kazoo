@@ -21,6 +21,8 @@
         ,post/2, post/3
         ,delete/2, delete/3
         ,patch/2
+
+        ,replicate_account_definition/1
         ]).
 
 -export([notify_new_account/1]).
@@ -1497,15 +1499,14 @@ support_depreciated_billing_id(BillingId, AccountId, Context) ->
             Context
     catch
         'throw':{Error, Reason} ->
-            cb_context:add_validation_error(
-              <<"billing_id">>
+            cb_context:add_validation_error(<<"billing_id">>
                                            ,<<"not_found">>
                                            ,kz_json:from_list(
                                               [{<<"message">>, kz_util:to_binary(Error)}
                                               ,{<<"cause">>, AccountId}
                                               ])
                                            ,Reason
-             )
+                                           )
     end.
 
 %%--------------------------------------------------------------------

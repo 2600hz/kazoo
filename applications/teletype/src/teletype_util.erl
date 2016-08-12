@@ -13,6 +13,7 @@
         ,render/3
         ,system_params/0
         ,account_params/1
+        ,user_params/1
         ,send_update/2, send_update/3
         ,find_addresses/3
         ,find_account_rep_email/1
@@ -319,6 +320,22 @@ default_content_transfer_encoding(_) -> <<"7BIT">>.
 system_params() ->
     [{<<"hostname">>, kz_util:to_binary(net_adm:localhost())}].
 
+-spec user_params(kzd_user:doc()) -> kz_proplist().
+user_params(UserJObj) ->
+    Ks = [{<<"first_name">>, fun kzd_user:first_name/1}
+         ,{<<"last_name">>, fun kzd_user:last_name/1}
+         ,{<<"email">>, fun kzd_user:email/1}
+         ,{<<"timezone">>, fun kzd_user:timezone/1}
+         ],
+    props:filter_undefined(
+      [user_property(UserJObj, K, F) || {K, F} <- Ks]
+     ).
+
+-spec user_property(kzd_user:doc(), Key, fun((kz_json:object()) -> api_binary())) ->
+                           {Key, api_binary()}.
+user_property(User, <<_/binary>>=Key, Fun) when is_function(Fun, 1) ->
+    {Key, Fun(User)}.
+
 -spec account_params(kz_json:object()) -> kz_proplist().
 account_params(DataJObj) ->
     case find_account_id(DataJObj) of
@@ -339,11 +356,25 @@ find_account_params(DataJObj, AccountId) ->
                                    ,{<<"id">>, kz_account:id(AccountJObj)}
                                    ,{<<"language">>, kz_account:language(AccountJObj)}
                                    ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
+                                    | maybe_add_parent_params(AccountJObj)
                                    ]);
         {'error', _E} ->
             lager:debug("failed to find account doc for ~s: ~p", [AccountId, _E]),
             []
     end.
+
+-spec maybe_add_parent_params(kz_json:object()) -> kz_proplist().
+maybe_add_parent_params(AccountJObj) ->
+    case kz_account:parent_account_id(AccountJObj) of
+        'undefined' -> [];
+        ParentAccountId ->
+            {'ok', ParentAccountJObj} = kz_account:fetch(ParentAccountId),
+            [{<<"parent_name">>, kz_account:name(ParentAccountJObj)}
+            ,{<<"parent_realm">>, kz_account:realm(ParentAccountJObj)}
+            ,{<<"parent_id">>, kz_account:id(ParentAccountJObj)}
+            ]
+    end.
+
 
 -spec default_from_address(ne_binary()) -> ne_binary().
 -spec default_from_address(kz_json:object(), ne_binary()) -> ne_binary().
@@ -506,15 +537,15 @@ query_account_for_admin_emails(<<_/binary>> = AccountId) ->
             []
     end.
 
--spec extract_admin_emails(kz_json:objects()) -> ne_binaries().
+-spec extract_admin_emails(kzd_user:docs()) -> ne_binaries().
 extract_admin_emails(Users) ->
     [Email
      || Admin <- filter_for_admins(Users),
-        (Email = kz_json:get_ne_value([<<"doc">>, <<"email">>], Admin)) =/= 'undefined'
+        (Email = kzd_user:email(Admin)) =/= 'undefined'
     ].
 
 -spec find_account_admin(api_binary()) -> api_object().
--spec find_account_admin(ne_binary(), ne_binary()) -> api_object().
+-spec find_account_admin(ne_binary(), ne_binary()) -> 'undefined' | kzd_user:doc().
 find_account_admin('undefined') -> 'undefined';
 find_account_admin(<<_/binary>> = AccountId) ->
     find_account_admin(AccountId, kz_services:find_reseller_id(AccountId)).
@@ -527,7 +558,7 @@ find_account_admin(AccountId, ResellerId) ->
         Admin -> Admin
     end.
 
--spec query_for_account_admin(ne_binary()) -> api_object().
+-spec query_for_account_admin(ne_binary()) -> 'undefined' | kzd_user:doc().
 query_for_account_admin(AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', <<"user">>}
@@ -545,11 +576,11 @@ query_for_account_admin(AccountId) ->
             'undefined'
     end.
 
--spec filter_for_admins(kz_json:objects()) -> kz_json:objects().
+-spec filter_for_admins(kz_json:objects()) -> kzd_user:docs().
 filter_for_admins(Users) ->
-    [User
+    [Doc
      || User <- Users,
-        kz_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
+        kzd_user:priv_level(Doc = kz_json:get_value(<<"doc">>, User)) =:= <<"admin">>
     ].
 
 -spec should_handle_notification(kz_json:object()) -> boolean().
@@ -584,10 +615,9 @@ should_handle_account(Account) ->
             lager:debug("teletype should handle account ~s", [Account]),
             'true';
         {'ok', JObj} ->
-            should_handle_account(
-              Account
+            should_handle_account(Account
                                  ,kz_account:notification_preference(JObj)
-             )
+                                 )
     end.
 
 should_handle_account(_Account, ?APP_NAME) -> 'true';
@@ -598,18 +628,17 @@ should_handle_account(Account, 'undefined') ->
 should_handle_account(_Account, _Preference) ->
     lager:debug("not handling notification;"
                 " unknown notification preference '~s' for '~s'"
-               ,[_Preference, _Account]).
+               ,[_Preference, _Account]
+               ).
 
 -spec should_handle_reseller(ne_binary()) -> boolean().
 should_handle_reseller(Account) ->
     case kz_account:fetch(kz_services:find_reseller_id(Account)) of
-        {'error', _E} ->
-            'true';
+        {'error', _E} -> 'true';
         {'ok', ResellerJObj} ->
-            should_handle_account(
-              'undefined'
+            should_handle_account('undefined'
                                  ,kz_account:notification_preference(ResellerJObj)
-             )
+                                 )
     end.
 
 -define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).

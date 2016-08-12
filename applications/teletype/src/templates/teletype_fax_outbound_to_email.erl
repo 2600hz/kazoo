@@ -36,8 +36,6 @@
           ]
          )).
 
--define(TEMPLATE_TEXT, <<"Sent New Fax ({{fax.total_pages}} Pages)\n\nCaller ID: {{caller_id.number}}\nCaller Name: {{caller_id.name}}\n\nCalled To: {{to.user}}   (Originally dialed number)\nCalled On: {{date_called.local|date:\"l, F j, Y \\\\a\\\\t H:i\"}}">>).
--define(TEMPLATE_HTML, <<"<html><body><h3>Sent New Fax ({{fax.total_pages}} Pages)</h3><table><tr><td>Caller ID</td><td>{{caller_id.name}} ({{caller_id.number}})</td></tr><tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{date_called.local|date:\"l, F j, Y \\\\a\\\\t H:i\"}}</td></tr></table><p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Successfully sent fax to {{callee_id.name}} ({{callee_id.number}})">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
 -define(TEMPLATE_NAME, <<"Outbound Fax to Email">>).
@@ -52,8 +50,6 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}
