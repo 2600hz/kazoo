@@ -1,0 +1,14 @@
+Port request submitted for {{account.name}} by {{port_request.customer_contact}}.
+
+The account's tree:
+
+ {{ account.name }} ({{ account.id }})
+{% for id, name in account_tree %} {{ name }} ({{ id }})
+{% endfor %}
+
+Request to port numbers: {{ port_request.numbers }}.
+
+Port Details:
+
+ {% for k,v in port_request %} {{ k }} : {{ v }}
+ {% endfor %}

@@ -1,0 +1,7 @@
+New Voicemail Message
+
+Caller ID: {{caller_id.number}}
+Caller Name: {{caller_id.name}}
+
+Called To: {{to.user}}   (Originally dialed number)
+Called On: {{date_called.local|date:"l, F j, Y \\a\\t H:i"}}

@@ -1,0 +1,1 @@
+Attention! The account '{{account.name}}' attempted a call ({{call.call_id}}) emergency services but the call was blocked because the address was not configured!  The emergency caller id was: {{call.emergency_caller_id_name}} {{call.emergency_caller_id_number}}  The external caller id was: {{call.outbound_caller_id_name}} {{call.outbound_caller_id_number}}
