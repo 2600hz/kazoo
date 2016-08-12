@@ -526,7 +526,7 @@ update_html_attachment(Basename, Acc) ->
         {'ok', HTML} ->
             update_attachment(HTML, Acc, ?TEXT_HTML);
         {'error', _E} ->
-            lager:infor("failed to find template '~s.html': ~p", [Basename, _E]),
+            lager:info("failed to find template '~s.html': ~p", [Basename, _E]),
             Acc
     end.
 
@@ -536,7 +536,7 @@ update_text_attachment(Basename, Acc) ->
         {'ok', Text} ->
             update_attachment(Text, Acc, ?TEXT_PLAIN);
         {'error', _E} ->
-            lager:infor("failed to find template '~s.text': ~p", [Basename, _E]),
+            lager:info("failed to find template '~s.text': ~p", [Basename, _E]),
             Acc
     end.
 
