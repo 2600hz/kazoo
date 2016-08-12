@@ -253,12 +253,15 @@ subscribe_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SUBSCRIBE_HEADERS, ?SUBSCRIBE_VALUES, ?SUBSCRIBE_TYPES);
 subscribe_v(JObj) -> subscribe_v(kz_json:to_proplist(JObj)).
 
+-spec publish_subscribe(api_terms()) -> api_formatter_return().
+-spec publish_subscribe(api_terms(), ne_binary()) -> api_formatter_return().
 publish_subscribe(JObj) ->
     publish_subscribe(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_subscribe(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SUBSCRIBE_VALUES, fun subscribe/1),
     amqp_util:presence_publish(subscribe_routing_key(Req), Payload, ContentType).
 
+-spec subscribe_routing_key(api_terms() | ne_binary()) -> ne_binary().
 subscribe_routing_key(Prop) when is_list(Prop) ->
     subscribe_routing_key(props:get_value(<<"User">>, Prop));
 subscribe_routing_key(User) when is_binary(User) ->
