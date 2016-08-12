@@ -393,6 +393,7 @@ handle_info(_Msg, Participant) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
 handle_event(JObj, #participant{call_event_consumers=Consumers
                                ,call=Call
                                ,server=Srv

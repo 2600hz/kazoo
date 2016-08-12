@@ -435,6 +435,7 @@ handle_info(_Msg, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
 handle_event(JObj, #state{fetch_id=FetchId}) ->
     _ = case kz_util:get_event_type(JObj) of
             {<<"call">>, <<"command">>} -> handle_call_command(JObj);

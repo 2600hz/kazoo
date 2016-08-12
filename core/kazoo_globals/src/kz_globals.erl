@@ -368,6 +368,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
 handle_event(JObj, State) ->
     case kz_api:node(JObj) =:= kz_util:to_binary(node()) of
         'true' -> 'ignore';

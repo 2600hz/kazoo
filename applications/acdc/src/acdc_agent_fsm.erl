@@ -1163,6 +1163,7 @@ outbound('current_call', _, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
 handle_event({'agent_logout'}, 'ready', State) ->
     handle_agent_logout(State),
     {'next_state', 'ready', State};
