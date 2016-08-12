@@ -33,6 +33,7 @@
                ,self_binary = kz_util:to_binary(pid_to_list(self())) :: ne_binary()
                ,zone :: ne_binary()
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -68,6 +69,7 @@ stop(Pid) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([pid() | ne_binary()]) -> {'ok', state()}.
 init([Parent, Broker]=L) ->
     lager:debug("federating listener ~p on broker ~s", L),
     kz_amqp_channel:consumer_broker(Broker),
@@ -91,6 +93,7 @@ init([Parent, Broker]=L) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), any(), state()) -> handle_call_ret_state(state()).
 handle_call({'stop', Parent}, _From, #state{parent=Parent}=State) ->
     {'stop', 'normal', 'ok', State};
 handle_call('get_broker', _From, #state{broker=Broker}=State) ->
@@ -108,6 +111,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', _}}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->

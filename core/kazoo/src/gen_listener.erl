@@ -693,6 +693,7 @@ handle_confirm(Confirm, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(Reason, #state{module=Module
                         ,module_state=ModuleState
                         ,federators=Fs
@@ -710,6 +711,7 @@ terminate(Reason, #state{module=Module
 %% @spec code_change(OldVsn, State, Extra) -> {'ok', NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVersion, State, _Extra) ->
     {'ok', State}.
 
@@ -741,10 +743,11 @@ handle_callback_info(Message, #state{module=Module
             {'stop', R, State}
     end.
 
+-spec format_status('normal' | 'terminate', [kz_proplist() | state()]) -> any().
 format_status(_Opt, [_PDict, #state{module=Module
                                    ,module_state=ModuleState
                                    }=State]) ->
-    case erlang:function_exported(Module, format_status, 2) of
+    case erlang:function_exported(Module, 'format_status', 2) of
         'true' -> Module:format_status(_Opt, [_PDict, ModuleState]);
         'false' -> [{'data', [{"Module State", ModuleState}
                              ,{"Module", Module}

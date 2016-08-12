@@ -11,9 +11,6 @@
 -export([port_request/1, port_request/2]).
 -export([deregister/1, deregister/2, deregister/3]).
 -export([low_balance/2]).
--export([new_account/2]).
--export([password_recovery/2]).
--export([abnormal_hangup/2]).
 -export([first_call/1]).
 -export([first_registration/1]).
 -export([transaction/2, transaction/3]).
@@ -104,15 +101,6 @@ low_balance(AccountId, Credit) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(Req, fun kapi_notifications:publish_low_balance/1).
-
-new_account(_User, _Account) ->
-    'ok'.
-
-password_recovery(_User, _Account) ->
-    'ok'.
-
-abnormal_hangup(_CDR, _Account) ->
-    'ok'.
 
 -spec first_call(ne_binary()) -> 'ok'.
 first_call(AccountId) ->

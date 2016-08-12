@@ -7,6 +7,7 @@
                          , <<"Geo-Location">>, <<"Access-Group">>
                          , <<"Tenant-ID">>]).
 
+-spec test(pos_integer()) -> 'ok'.
 test(Times) ->
     Props = [get_prop() || _ <- lists:seq(1, Times)],
     {ElapsedOne, _} = timer:tc(fun() -> [ try_one(Prop) || Prop <- Props] end, []),
