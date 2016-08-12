@@ -82,6 +82,7 @@ handle_call(_Request, _From, Connection) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Msg, Connection) ->
     {'noreply', Connection}.
 

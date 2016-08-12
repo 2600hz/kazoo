@@ -347,6 +347,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'originate', Req}, State) ->
     catch kapi_resource:publish_originate_req(Req),
     {'noreply', State};

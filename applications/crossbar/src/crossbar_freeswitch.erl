@@ -128,6 +128,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('periodic_build', #state{is_running='true'}=State) ->
     {'noreply', State};
 handle_cast('periodic_build', #state{is_running='false'}=State) ->

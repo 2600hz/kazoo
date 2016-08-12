@@ -446,6 +446,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'fs_nodeup', NodeName}, State) ->
     _ = kz_util:spawn(fun maybe_handle_nodeup/2, [NodeName, State]),
     {'noreply', State};

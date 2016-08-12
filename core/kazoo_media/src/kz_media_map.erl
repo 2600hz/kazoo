@@ -207,6 +207,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('flush', State) ->
     ets:delete_all_objects(table_id()),
     lager:debug("flushed all media mappings"),

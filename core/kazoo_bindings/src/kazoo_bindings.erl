@@ -453,6 +453,7 @@ add_binding(Binding, Responder, Pieces, Prefix) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('flush', #state{}=State) ->
     ets:delete_all_objects(table_id()),
     {'noreply', State, 'hibernate'};

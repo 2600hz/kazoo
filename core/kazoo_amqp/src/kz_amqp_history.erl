@@ -212,6 +212,7 @@ handle_call(_Msg, _From, State) ->
 %%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'update_consumer_tag', Consumer, OldTag, NewTag}, State) ->
     Pattern = #kz_amqp_history{consumer=Consumer
                               ,command=#'basic.consume'{consumer_tag=OldTag

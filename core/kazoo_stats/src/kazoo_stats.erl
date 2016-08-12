@@ -119,6 +119,7 @@ handle_call(Other,_From,State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('stop', State) ->
     {'stop', 'ok', State};
 handle_cast({Operation, Key, Val}, State) when Operation == 'add';

@@ -111,6 +111,7 @@ handle_call(_Msg, _From, Connection) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('disconnect'
            ,#kz_amqp_connection{available='false'}=Connection) ->
     {'noreply', Connection, 'hibernate'};

@@ -529,6 +529,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'rate_resp', JObj}, State) ->
     Props = props:filter_undefined(
               [{#channel.rate, kz_json:get_value(<<"Rate">>, JObj)}

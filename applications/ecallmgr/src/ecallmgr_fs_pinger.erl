@@ -89,6 +89,7 @@ handle_call(_Request, _From, #state{timeout=Timeout}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Msg, #state{timeout=Timeout}=State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State, Timeout}.

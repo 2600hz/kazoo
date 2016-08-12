@@ -313,6 +313,7 @@ handle_call(_Msg, _From, State) ->
 %%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'new_connection', Connection, Broker, Zone, Tags}, State) ->
     Ref = erlang:monitor('process', Connection),
     _ = ets:insert(?TAB, #kz_amqp_connections{connection=Connection

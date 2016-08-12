@@ -116,6 +116,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('bind_to_msg_events', #state{node=Node}=State) ->
     gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"KZ::DELIVERY_REPORT">>)}),
     gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"SMS::DELIVERY_REPORT">>)}),

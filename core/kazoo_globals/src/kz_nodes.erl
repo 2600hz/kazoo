@@ -409,6 +409,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'notify_new', Pid}, #state{notify_new=Set}=State) ->
     _ = erlang:monitor('process', Pid),
     {'noreply', State#state{notify_new=sets:add_element(Pid, Set)}};

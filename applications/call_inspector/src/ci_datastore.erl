@@ -148,6 +148,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'store_chunk', CallId, Chunk}, State) ->
     Object = #object{call_id=CallId
                     ,timestamp=kz_util:current_tstamp()

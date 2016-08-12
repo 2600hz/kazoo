@@ -102,6 +102,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('request_event_stream', #state{node=Node}=State) ->
     Bindings = get_event_bindings(State),
     case maybe_bind(Node, Bindings) of

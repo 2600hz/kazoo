@@ -177,6 +177,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'add_hook', #webhook{id=_Id}=Hook}, State) ->
     lager:debug("adding hook ~s", [_Id]),
     ets:insert_new(webhooks_util:table_id(), Hook),

@@ -164,6 +164,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'add_connection', #data_connection{}=Connection}, State) ->
     lager:info("adding connection"),
     maybe_start_new_connection(Connection),

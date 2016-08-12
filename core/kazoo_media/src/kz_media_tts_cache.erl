@@ -159,6 +159,7 @@ handle_call('continuous', _From, #state{}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('stop', State) ->
     lager:debug("asked to stop, going down"),
     {'stop', 'normal', State};

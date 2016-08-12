@@ -168,6 +168,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'cleanup_finished', Ref}, #state{cleanup_timer_ref=Ref}=State) ->
     lager:debug("cleanup finished for ~p, starting timer", [Ref]),
     {'noreply', State#state{cleanup_timer_ref=start_cleanup_timer()}, 'hibernate'};

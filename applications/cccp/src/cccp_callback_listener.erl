@@ -107,6 +107,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{queue='undefined'}=S) ->
     gen_listener:cast(self(), 'originate_park'),
     {'noreply', S#state{queue = Q}};

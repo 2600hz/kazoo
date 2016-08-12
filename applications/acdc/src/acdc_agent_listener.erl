@@ -404,6 +404,7 @@ handle_call(_Request, _From, #state{}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'refresh_config', Qs}, #state{agent_queues=Queues}=State) ->
     {Add, Rm} = acdc_agent_util:changed(Queues, Qs),
 

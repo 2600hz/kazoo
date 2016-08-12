@@ -292,6 +292,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'amqp_delete', Global, 'undefined'}, State) ->
     kz_global_proxy:stop(kz_global:pid(Global)),
     {'noreply', State};

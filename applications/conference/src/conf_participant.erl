@@ -235,6 +235,7 @@ handle_call(_Request, _, P) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('hungup', #participant{in_conference='true'
                                   ,call=Call
                                   }=Participant
