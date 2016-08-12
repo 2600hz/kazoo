@@ -28,8 +28,6 @@
           ])
        ).
 
--define(TEMPLATE_TEXT, <<"Attention! The account '{{account.name}}' attempted a call ({{call.call_id}}) emergency services but the call was blocked because the address was not configured!  The emergency caller id was: {{call.emergency_caller_id_name}} {{call.emergency_caller_id_number}}  The external caller id was: {{call.outbound_caller_id_name}} {{call.outbound_caller_id_number}}">>).
--define(TEMPLATE_HTML, <<"<h1>Attention!</h1><p>The account '{{account.name}}' attempted a call ({{call.call_id}}) emergency services but the call was blocked because the address was not configured!</p><p>The emergency caller id was: {{call.emergency_caller_id_name}} {{call.emergency_caller_id_number}}</p><p>The external caller id was: {{call.outbound_caller_id_name}} {{call.outbound_caller_id_number}}</p>">>).
 -define(TEMPLATE_SUBJECT, <<"Blocked emergency call from account {{account.name}}">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"Denied Emergency Bridge">>).
@@ -44,8 +42,6 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}

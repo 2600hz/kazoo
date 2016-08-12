@@ -32,21 +32,6 @@
           ]
          )).
 
--define(TEMPLATE_TEXT, <<"Error : {% firstof error.fax_info error.call_info \"unknown error\" %}
-
-Caller ID: {% firstof caller_id.name fax.remote_station_id caller_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})
-
-         Called To: {{to.user}} (Originally dialed number)
-         Called On: {% firstof fax.timestamp|date:\"l, F j, Y \\a\\t H:i\" date_called|date:\"l, F j, Y \\a\\t H:i\" %}
-                  ">>).
--define(TEMPLATE_HTML, <<"<html><body><h3>Error : {% firstof error.fax_info error.call_info \"unknown error\" %} </h3>
-<table>
-                         <tr><td>Caller ID</td><td>{% firstof caller_id.name fax.remote_station_id caller_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})</td></tr>
-                                                  <tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr>
-                                                      <tr><td>Call received</td><td>{% firstof fax.timestamp|date:\"l, F j, Y \\\\a\\\\t H:i\" date_called|date:\"l, F j, Y \\\\a\\\\t H:i\"%}</td></tr>
-                                                                                   </table>
-                                                                                       <p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p></body></html>
-">>).
 -define(TEMPLATE_SUBJECT, <<"Error Receiving Fax from {% firstof caller_id.name fax.remote_station_id caller_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
 -define(TEMPLATE_NAME, <<"Inbound Fax Error to Email">>).
@@ -61,8 +46,6 @@ Caller ID: {% firstof caller_id.name fax.remote_station_id caller_id.number \"un
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}

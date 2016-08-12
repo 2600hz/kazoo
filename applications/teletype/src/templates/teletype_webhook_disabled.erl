@@ -28,8 +28,6 @@
           ])
        ).
 
--define(TEMPLATE_TEXT, <<"Webhook '{{hook.name}}' has been auto-disabled in account '{{account.name}}' because {{hook.disable_reason}}.\n\nCheck the webhook history API for more information on why the hook was disabled.">>).
--define(TEMPLATE_HTML, <<"<html><body><h3>Webhook '{{hook.name}}' has been auto-disabled</h3><p>Account: {{account.name}}</p><p>Reason: {{hook.disable_reason}}</p><p>Check the webhook history API for more information on why the hook was disabled.</p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Webhook '{{hook.name}}' auto-disabled">>).
 -define(TEMPLATE_CATEGORY, <<"webhook">>).
 -define(TEMPLATE_NAME, <<"Webhook Auto-Disabled">>).
@@ -44,8 +42,6 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}

@@ -26,66 +26,6 @@
           ])
        ).
 
--define(TEMPLATE_TEXT, <<"Thank you for registering!
-Your account is ready to use, here are some details to help get you started!
-
-                         Account ID: {{account.id}}
-                         Account Name: {{account.name}}
-                         Account Realm: {{account.realm}}
-
-                         {% if account.parent_id %}Parent Account ID: {{account.parent_id}}
-                         Parent Account Name: {{account.parent_name}}
-                         Parent Account Realm: {{account.parent_realm}}{% endif %}
-
-                         {% if admin %}Admin
-                           First Name: {{admin.first_name}}
-                           Last Name: {{admin.last_name}}
-                           Email: {{admin.email}}
-                           Timezone: {{admin.timezone}}
-
-                           {% endif %}{% if devices %}SIP Credentials
-                             {% for device in devices %}User: {{device.user.first_name}} {{device.user.last_name}}
-                               Email: {{device.user.email|default:\"\"}}
-SIP Username: {{device.sip.username}}
-                                        SIP Password: {{device.sip.password}}
-                                        SIP Realm: {{account.realm}}
-
-                                        {% endfor %}{% endif %}
-
-                                          Sent from {{system.hostname}}">>).
--define(TEMPLATE_HTML, <<"<html><head><meta charset=\"utf-8\" /></head>
-<body>
-                         <h3>Thank you for registering!</h3>
-                         <h2>Welcome</h2>
-                         <p>Your account is ready to use, here are some details to help get you started!</p>
-                         <h2>Account</h2>
-                         <table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">
-                           <tr><td>Account ID: </td><td>{{account.account_id}}</td></tr>
-                           <tr><td>Account Name: </td><td>{{account.name}}</td></tr>
-                           <tr><td>Account Realm: </td><td>{{account.realm}}</td></tr>
-                           {% if account.parent_id %}<tr><td>Parent Account ID: </td><td>{{account.parent_id}}</td></tr>
-                           <tr><td>Parent Account Name: </td><td>{{account.parent_name}}</td></tr>
-                           <tr><td>Parent Account Realm: </td><td>{{account.parent_realm}}</td></tr>{% endif %}
-                         </table>
-                         {% if admin %}
-                           <h2>Admin</h2>
-                               <table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">
-<tr><td>Name: </td><td>{{admin.first_name}} {{admin.last_name}}</td></tr>
-                               <tr><td>Email: </td><td>{{admin.email}}</td></tr>
-                               <tr><td>Timezone: </td><td>{{admin.timezone}}</td></tr>
-                               </table>
-                               {% endif %}
-                                 {% if devices %}
-                                   <h2>SIP Credentials</h2>
-                                       <table cellpadding=\"4\" cellspacing=\"0\" border=\"1\">
-<tr><th>User</th><th>Email</th><th>SIP Username</th><th>SIP Password</th><th>SIP Realm</th></tr>
-                                       {% for device in devices %}
-                                         <tr><td>{{device.user.first_name}}{{device.user.last_name}}</td><td>{{device.user.email|default:\"\"}}</td><td>{{device.sip.username}}</td><td>{{device.sip.password}}</td><td>{{account.realm}}</td></tr>
-{% endfor %}
-  </table>
-      {% endif %}
-      <p style='font-size:9pt;color:#CCCCCC'>Sent from {{system.hostname}}</p>
-          </body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Your new VoIP services Account">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"New Account">>).
@@ -100,8 +40,6 @@ SIP Username: {{device.sip.username}}
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}

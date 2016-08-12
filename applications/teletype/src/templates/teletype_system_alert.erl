@@ -24,77 +24,6 @@
           ])
        ).
 
--define(TEMPLATE_HTML_HEAD, "<html><head><meta charset=\"utf-8\" /></head><body>").
--define(TEMPLATE_HTML_TAIL, "</body></html>").
--define(TEMPLATE_HTML_ALERT, "<h2>Alert</h2><p>{{message}}</p>").
--define(TEMPLATE_HTML_GROUP(T,C), io_lib:format("{% if ~s %}<h2>~s</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">{% for key, value in ~s %}<tr><td>{{ key }}: </td><td>{{ value }}</td></tr>{% endfor %}</table>{% endif %}", [C, T, C]) ).
-
--define(TEMPLATE_HTML_PRODUCER, ?TEMPLATE_HTML_GROUP("Producer", "request")).
--define(TEMPLATE_HTML_DETAILS, ?TEMPLATE_HTML_GROUP("Details", "details")).
--define(TEMPLATE_HTML_CCVS, ?TEMPLATE_HTML_GROUP("Channel Vars", "channel_vars")).
--define(TEMPLATE_HTML_SIPHDR, ?TEMPLATE_HTML_GROUP("SIP Headers", "sip_headers")).
--define(TEMPLATE_HTML_KVS, ?TEMPLATE_HTML_GROUP("Key Value Store", "key_store")).
--define(TEMPLATE_HTML_ERROR, ?TEMPLATE_HTML_GROUP("Error Details", "error_details")).
--define(TEMPLATE_HTML_FLOW, ?TEMPLATE_HTML_GROUP("Callflow", "callflow")).
-
--define(TEMPLATE_HTML_ACCOUNT, "{% if account %}<h2>Account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{account.id}}</td></tr><tr><td>Account Name: </td><td>{{account.name}}</td></tr><tr><td>Account Realm: </td><td>{{account.realm}}</td></tr></table>{% endif %}").
--define(TEMPLATE_HTML_USER, "{% if user %}<h2>Admin</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Name: </td><td>{{user.first_name}} {{user.last_name}}</td></tr><tr><td>Email: </td><td>{{user.email}}</td></tr><tr><td>Timezone: </td><td>{{user.timezone}}</td></tr></table>{% endif %}").
--define(TEMPLATE_HTML_NUMBERS, "{% if account.pvt_wnm_numbers %}<h2>Phone Numbers</h2><ul>{% for number in account.pvt_wnm_numbers %}<li>{{number}}</li>{% endfor %}</ul>{% endif %}").
-
--define(TEMPLATE_HTML, kz_util:to_binary(
-                         lists:flatten(
-                           [?TEMPLATE_HTML_HEAD
-                           ,?TEMPLATE_HTML_ALERT
-                           ,?TEMPLATE_HTML_PRODUCER
-                           ,?TEMPLATE_HTML_DETAILS
-                           ,?TEMPLATE_HTML_FLOW
-                           ,?TEMPLATE_HTML_ERROR
-                           ,?TEMPLATE_HTML_KVS
-                           ,?TEMPLATE_HTML_CCVS
-                           ,?TEMPLATE_HTML_SIPHDR
-                           ,?TEMPLATE_HTML_ACCOUNT
-                           ,?TEMPLATE_HTML_USER
-                           ,?TEMPLATE_HTML_NUMBERS
-                           ,?TEMPLATE_HTML_TAIL
-                           ]
-                          )
-                        )
-       ).
-
-
--define(TEMPLATE_TEXT_ALERT, "Alert\n{{message}}\n").
--define(TEMPLATE_TEXT_GROUP(T,C), io_lib:format("{% if ~s %}~s\n{% for key, value in ~s %}{{ key }}: {{ value }}\n{% endfor %}\n{% endif %}", [C, T, C])).
-
--define(TEMPLATE_TEXT_PRODUCER, ?TEMPLATE_TEXT_GROUP("Producer", "request")).
--define(TEMPLATE_TEXT_DETAILS, ?TEMPLATE_TEXT_GROUP("Details", "details")).
--define(TEMPLATE_TEXT_CCVS, ?TEMPLATE_TEXT_GROUP("Channel Vars", "channel_vars")).
--define(TEMPLATE_TEXT_SIPHDR, ?TEMPLATE_TEXT_GROUP("SIP Headers", "sip_headers")).
--define(TEMPLATE_TEXT_KVS, ?TEMPLATE_TEXT_GROUP("Key Value Store", "key_store")).
--define(TEMPLATE_TEXT_ERROR, ?TEMPLATE_TEXT_GROUP("Error Details", "error_details")).
--define(TEMPLATE_TEXT_FLOW, ?TEMPLATE_TEXT_GROUP("Callflow", "callflow")).
-
--define(TEMPLATE_TEXT_ACCOUNT, "{% if account %}Account\nAccount ID: {{account.id}}\nAccount Name: {{account.name}}\nAccount Realm: {{account.realm}}\n\n{% endif %}").
--define(TEMPLATE_TEXT_USER, "{% if user %}Admin\nName: {{user.first_name}} {{user.last_name}}\nEmail: {{user.email}}\nTimezone: {{user.timezone}}\n\n{% endif %}").
--define(TEMPLATE_TEXT_NUMBERS, "{% if account.pvt_wnm_numbers %}Phone Numbers\n{% for number in account.pvt_wnm_numbers %}{{number}}\n{% endfor %}\n{% endif %}").
-
--define(TEMPLATE_TEXT, kz_util:to_binary(
-                         lists:flatten(
-                           [?TEMPLATE_TEXT_ALERT
-                           ,?TEMPLATE_TEXT_PRODUCER
-                           ,?TEMPLATE_TEXT_DETAILS
-                           ,?TEMPLATE_TEXT_FLOW
-                           ,?TEMPLATE_TEXT_ERROR
-                           ,?TEMPLATE_TEXT_KVS
-                           ,?TEMPLATE_TEXT_CCVS
-                           ,?TEMPLATE_TEXT_SIPHDR
-                           ,?TEMPLATE_TEXT_ACCOUNT
-                           ,?TEMPLATE_TEXT_USER
-                           ,?TEMPLATE_TEXT_NUMBERS
-                           ]
-                          )
-                        )
-       ).
-
 -define(TEMPLATE_SUBJECT, <<"VoIP Services: {{request.level}} from {{request.node}}">>).
 -define(TEMPLATE_CATEGORY, <<"system">>).
 -define(TEMPLATE_NAME, <<"System Notifications">>).
@@ -109,8 +38,6 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}

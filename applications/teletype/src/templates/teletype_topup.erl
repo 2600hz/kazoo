@@ -32,8 +32,6 @@
                          )
        ).
 
--define(TEMPLATE_TEXT, <<"Attempted to top-up account \"{{account.name}}\" for {{amount}}.  The transaction processor response was {{response}} resulting in a new balance of {{balance}}.">>).
--define(TEMPLATE_HTML, <<"<html><body><h2>Attempted to top-up account \"{{account.name}}\" for {{amount}}</h2><p>The transaction processor response was {{response}} resulting in a new balance of {{balance}}.</p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Account {{account.name}} has been topped up">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"Top Up">>).
@@ -48,8 +46,6 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}

@@ -15,6 +15,7 @@
         ,render/2, render/3, render/4
         ,preview/3
         ,fetch_notification/2
+        ,write_templates_to_disk/2
         ]).
 -export([doc_id/1]).
 
@@ -32,8 +33,6 @@
 %%--------------------------------------------------------------------
 -spec init(ne_binary(), init_params()) -> 'ok'.
 init(TemplateId, Params) ->
-    write_templates_to_disk(TemplateId, Params),
-
     UpdatedParams = props:set_values([{'html', TemplateId}
                                      ,{'text', TemplateId}
                                      ]
