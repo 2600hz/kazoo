@@ -185,14 +185,14 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
 handle_event(JObj, #state{request_handler=RequestHandler
                          ,resource_req=OffnetReq
                          ,msg_id=MsgId
                          }) ->
     case kapps_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
-            lager:debug("channel was destroy while waiting for execute extension", []),
+            lager:debug("channel was destroy while waiting for execute extension"),
             gen_listener:cast(RequestHandler, {'originate_result', originate_success(JObj, OffnetReq)});
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
             CallId = kz_call_event:other_leg_call_id(JObj),

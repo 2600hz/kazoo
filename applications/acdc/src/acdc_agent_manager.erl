@@ -87,7 +87,7 @@ start_link() ->
 %% @private
 %% @doc Initializes the server
 %%--------------------------------------------------------------------
--spec init([]) -> {'ok', 'ok'}.
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_hooks:register(),
     {'ok', #state{}}.

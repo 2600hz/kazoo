@@ -628,7 +628,7 @@ connecting('current_call', _, #state{member_call=Call
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(any(), atom(), queue_fsm_state()) -> any().
+-spec handle_event(any(), atom(), queue_fsm_state()) -> handle_fsm_ret(queue_fsm_state())..
 handle_event({'refresh', QueueJObj}, StateName, State) ->
     lager:debug("refreshing queue configs"),
     {'next_state', StateName, update_properties(QueueJObj, State), 'hibernate'};
@@ -652,7 +652,8 @@ handle_event(_Event, StateName, State) ->
 %%                   {stop, Reason, Reply, NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_sync_event(any(), {pid(),any()}, atom(), queue_fsm_state()) -> any().
+-spec handle_sync_event(any(), {pid(),any()}, atom(), queue_fsm_state()) ->
+                               handle_sync_event(queue_fsm_state())..
 handle_sync_event('cdr_url', _, StateName, #state{cdr_url=Url}=State) ->
     {'reply', Url, StateName, State};
 handle_sync_event(_Event, _From, StateName, State) ->
@@ -673,7 +674,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), atom(), queue_fsm_state()) -> any().
+-spec handle_info(any(), atom(), queue_fsm_state()) -> handle_fsm_ret(queue_fsm_state()).
 handle_info(_Info, StateName, State) ->
     lager:debug("unhandled message in state ~s: ~p", [StateName, _Info]),
     {'next_state', StateName, State}.
@@ -702,7 +703,8 @@ terminate(_Reason, _StateName, _State) ->
 %%                   {ok, StateName, NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec code_change(any(), atom(), queue_fsm_state(), any()) -> any().
+-spec code_change(any(), atom(), queue_fsm_state(), any()) ->
+                         {'ok', atom(), queue_fsm_state()}.
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 

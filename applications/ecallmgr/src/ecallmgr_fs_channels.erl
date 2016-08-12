@@ -8,7 +8,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_channels).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -147,8 +146,7 @@ show_all() ->
 
 -spec per_minute_accounts() -> ne_binaries().
 per_minute_accounts() ->
-    MatchSpec = [
-                 {#channel{account_id = '$1'
+    MatchSpec = [{#channel{account_id = '$1'
                           ,account_billing = <<"per_minute">>
                           ,reseller_id = '$2'
                           ,reseller_billing = <<"per_minute">>
@@ -169,8 +167,7 @@ per_minute_accounts() ->
 
 -spec per_minute_channels(ne_binary()) -> [{ne_binary(), ne_binary()}].
 per_minute_channels(AccountId) ->
-    MatchSpec = [
-                 {#channel{node = '$1', uuid = '$2', reseller_id = AccountId, reseller_billing = <<"per_minute">>, _ = '_'}
+    MatchSpec = [{#channel{node = '$1', uuid = '$2', reseller_id = AccountId, reseller_billing = <<"per_minute">>, _ = '_'}
                  ,[]
                  ,[{{'$1', '$2'}}]
                  }
@@ -528,7 +525,7 @@ handle_info(_Msg, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
 handle_event(_JObj, #state{}) ->
     {'reply', []}.
 

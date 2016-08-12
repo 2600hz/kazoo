@@ -596,7 +596,7 @@ publish_query_auth_id_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?QUERY_AUTH_ID_RESP_VALUES, fun query_auth_id_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
--spec publish_query_user_channels_req(api_terms()) -> api_formatter_return().
+-spec publish_query_user_channels_req(api_terms()) -> 'ok'.
 publish_query_user_channels_req(Props) when is_list(Props) ->
     publish_query_user_channels_req(Props
                                    ,props:get_value(<<"Username">>, Props)

@@ -157,8 +157,10 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
-handle_event(_JObj, #state{dth_cdr_url=Url, wsdl_model=WSDL}) ->
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
+handle_event(_JObj, #state{dth_cdr_url=Url
+                          ,wsdl_model=WSDL
+                          }) ->
     {'reply', [{'cdr_url', Url}, {'wsdl', WSDL}]}.
 
 %%--------------------------------------------------------------------

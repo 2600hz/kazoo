@@ -52,7 +52,7 @@
                           ,timestamp = kz_util:current_tstamp() :: pos_integer() | '$2' | '_'
                           }).
 
--record(channel, {uuid :: api_binary() | '$1' | '_'
+-record(channel, {uuid :: api_binary() | '$1' | '$2' | '_'
                  ,destination :: api_binary() | '_'
                  ,direction :: api_binary() | '$1' | '_'
                  ,account_id :: api_binary() | '$1' | '$2' | '_'
@@ -64,7 +64,7 @@
                  ,presence_id :: api_binary() | '$2' | '_'
                  ,fetch_id :: api_binary() | '$5' | '_'
                  ,bridge_id :: api_binary() | '$5' | '_'
-                 ,reseller_id :: api_binary() | '_'
+                 ,reseller_id :: api_binary() | '$1' | '$2' | '_'
                  ,reseller_billing :: api_binary() | '_'
                  ,realm :: api_binary() | '_' | '$2'
                  ,username :: api_binary() | '_' | '$1'

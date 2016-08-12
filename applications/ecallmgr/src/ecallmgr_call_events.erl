@@ -9,7 +9,6 @@
 %%%   Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_events).
-
 -behaviour(gen_listener).
 
 -include("ecallmgr.hrl").
@@ -525,7 +524,7 @@ handle_bowout(Node, Props, ResigningUUID) ->
 %% @spec handle_event(JObj, State) -> {'reply', Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
 handle_event(_JObj, #state{ref=Ref
                           ,call_id=CallId
                           ,node=Node

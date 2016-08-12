@@ -1348,8 +1348,8 @@ publish_command(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_targeted_command(ne_binary(), api_terms()) -> 'ok'.
--spec publish_targeted_command(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_targeted_command(atom(), api_terms()) -> 'ok'.
+-spec publish_targeted_command(atom(), api_terms(), ne_binary()) -> 'ok'.
 publish_targeted_command(Focus, JObj) ->
     publish_targeted_command(Focus, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_targeted_command(Focus, Req, ContentType) ->
