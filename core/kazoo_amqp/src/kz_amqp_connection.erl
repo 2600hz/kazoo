@@ -206,6 +206,7 @@ terminate(_Reason, #kz_amqp_connection{broker=_Broker}=Connection) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, Connection, _Extra) ->
     {'ok', Connection}.
 

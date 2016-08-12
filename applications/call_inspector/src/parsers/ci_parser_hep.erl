@@ -149,6 +149,7 @@ terminate(_Reason, #state{socket = Socket}) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

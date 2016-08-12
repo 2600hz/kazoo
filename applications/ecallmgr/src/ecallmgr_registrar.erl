@@ -514,6 +514,7 @@ terminate(_Reason, _) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
     {'ok', State}.

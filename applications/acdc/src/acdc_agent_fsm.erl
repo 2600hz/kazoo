@@ -1334,6 +1334,7 @@ terminate(_Reason, _StateName, #state{agent_listener=AgentListener}) ->
 %%                   {'ok', StateName, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 

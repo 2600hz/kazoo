@@ -217,6 +217,7 @@ terminate(_Reason, _TemplateName) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, TemplateName, _Extra) ->
     {'ok', TemplateName}.
 
