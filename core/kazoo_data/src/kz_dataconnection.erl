@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_dataconnection).
-
 -behaviour(gen_server).
 
 -export([start_link/1]).
@@ -20,6 +19,7 @@
         ]).
 
 -include("kz_data.hrl").
+-type state() :: #data_connection{}.
 
 -define(SERVER, ?MODULE).
 

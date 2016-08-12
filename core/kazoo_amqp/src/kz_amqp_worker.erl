@@ -16,7 +16,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_amqp_worker).
-
 -behaviour(gen_listener).
 
 %% API
@@ -115,6 +114,7 @@
                ,acc = 'undefined' :: any()
                ,defer = 'undefined' :: 'undefined' | {any(), {pid(), reference()}}
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

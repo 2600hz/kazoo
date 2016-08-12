@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_media_tts_cache).
-
 -behaviour(gen_server).
 
 %% API
@@ -38,8 +37,7 @@
        ).
 -define(TIMEOUT_MESSAGE, {'$kz_media_tts_cache', 'tts_timeout'}).
 
--record(state, {
-          text :: ne_binary()
+-record(state, {text :: ne_binary()
                ,contents = <<>> :: binary()
                ,status :: 'streaming' | 'ready'
                ,kz_http_req_id :: kz_http:req_id()
@@ -48,6 +46,7 @@
                ,timer_ref :: reference()
                ,id :: ne_binary() %% used in publishing doc_deleted
          }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

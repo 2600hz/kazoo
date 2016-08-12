@@ -19,7 +19,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(kazoo_bindings).
-
 -behaviour(gen_server).
 
 %% API
@@ -84,6 +83,7 @@
 -type kz_bindings() :: [kz_binding()].
 
 -record(state, {bindings = [] :: kz_bindings()}).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

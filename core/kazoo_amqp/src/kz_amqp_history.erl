@@ -7,7 +7,6 @@
 %%%
 %%%-------------------------------------------------------------------
 -module(kz_amqp_history).
-
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -39,6 +38,7 @@
                ,exchanges = dict:new()
                ,connections = sets:new()
                }).
+-type state() :: #state{}.
 
 -record(kz_amqp_history, {timestamp = os:timestamp() :: kz_now() | '_'
                          ,consumer :: api_pid() | '_'

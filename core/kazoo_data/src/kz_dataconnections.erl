@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_dataconnections).
-
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -32,6 +31,7 @@
 -export_type([data_connection/0, data_connections/0]).
 
 -record(state, {cookie = 'change_me'}).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
