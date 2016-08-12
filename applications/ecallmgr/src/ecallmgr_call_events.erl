@@ -343,6 +343,7 @@ update_event(Fun, Reg) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'event', [CallId | _]}, #state{call_id=CallId
                                            ,passive='true'
                                            }=State) ->

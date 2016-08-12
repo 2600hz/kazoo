@@ -320,6 +320,7 @@ maybe_update_queues(SIPNames, Requestor, Queues) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(?HOOK_EVT(_AccountId, _, JObj), State) ->
     AcctId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     SIPName = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj),

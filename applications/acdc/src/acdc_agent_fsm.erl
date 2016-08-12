@@ -1253,6 +1253,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'timeout', _Ref, ?SYNC_RESPONSE_MESSAGE}=Msg, StateName, State) ->
     gen_fsm:send_event(self(), Msg),
     {'next_state', StateName, State};

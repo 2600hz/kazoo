@@ -164,6 +164,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'DOWN', MonitorRef, 'process', _, 'normal'}, #state{monitor=MonitorRef}=State) ->
     {'noreply', State#state{is_running='false'}};
 handle_info({'DOWN', MonitorRef, _, _Pid, _Reason}, #state{monitor=MonitorRef}=State) ->

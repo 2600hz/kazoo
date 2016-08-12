@@ -353,6 +353,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER', Tbl, _From, _Data}, #state{table_id='undefined'}=State) ->
     lager:debug("recv ets transfer from ~p for ~p", [_From, Tbl]),
     {'noreply', State#state{table_id=Tbl}};

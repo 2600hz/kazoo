@@ -100,6 +100,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('timeout', State) ->
     {'noreply', State};
 handle_info(_Info, State) ->

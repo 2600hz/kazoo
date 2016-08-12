@@ -374,6 +374,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'event', [UUID | Props]}, #state{node=Node, options=Options}=State) ->
     NewProps = case props:get_is_true(<<"Publish-Channel-State">>, Props) of
                    'undefined' ->

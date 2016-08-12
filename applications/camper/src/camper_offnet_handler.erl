@@ -223,6 +223,7 @@ add_request(JObj) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.

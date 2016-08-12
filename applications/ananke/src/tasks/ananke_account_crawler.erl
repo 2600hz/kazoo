@@ -122,6 +122,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('next_account', State=[]) ->
     {'stop', 'normal', State};
 handle_info('next_account', [Account|Accounts]) ->

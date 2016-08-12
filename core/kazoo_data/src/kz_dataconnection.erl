@@ -94,6 +94,7 @@ handle_cast(_Msg, Connection) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('maintain_connection', #data_connection{connected = 'false'}=Connection) ->
     case try_connection(Connection) of
         {'error', _} ->

@@ -115,6 +115,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'route', Section, EventName, SubClass, Context, FSId, 'undefined', FSData}, State) ->
     MsgId = kz_util:rand_hex_binary(16),
     handle_info({'route', Section, EventName, SubClass, Context, FSId, MsgId, [{<<"Unique-ID">>, MsgId} | FSData]}, State);

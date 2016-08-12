@@ -477,6 +477,7 @@ handle_cast(_Cast, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('expire_sip_subscriptions', Cache) ->
     Now = kz_util:current_tstamp(),
     DeleteSpec = [{#sip_subscription{expires = '$1', timestamp = '$2', _ = '_'},

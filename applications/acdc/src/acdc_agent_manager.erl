@@ -136,6 +136,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(?HOOK_EVT(AccountId, <<"CHANNEL_CREATE">>, JObj), State) ->
     lager:debug("channel_create event"),
     _ = kz_util:spawn(fun acdc_agent_handler:handle_new_channel/2, [JObj, AccountId]),

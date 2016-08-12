@@ -117,6 +117,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'fetch', 'directory', <<"domain">>, <<"name">>, _Value, Id, ['undefined' | Props]}
            ,#state{node=Node}=State) ->
     _ = kz_util:spawn(fun handle_directory_lookup/3, [Id, Props, Node]),

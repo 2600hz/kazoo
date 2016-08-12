@@ -379,6 +379,7 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('sync_interface', #state{node=Node
                                     ,interface=Interface
                                     }=State) ->

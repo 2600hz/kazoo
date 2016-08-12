@@ -148,6 +148,7 @@ handle_cast(_Msg, Connection) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'DOWN', _Ref, 'process', _Pid, _Reason}
            ,#kz_amqp_connection{available='false'}=Connection
            ) ->

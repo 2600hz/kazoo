@@ -211,6 +211,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
     lager:info("write access to table '~p' available", [_TblId]),
     Self = self(),

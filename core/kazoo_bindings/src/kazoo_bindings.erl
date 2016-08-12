@@ -534,6 +534,7 @@ filter_bindings(Predicate, Key, Updates, Deletes) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER',_TableId, _From, _Gift}, State) ->
     lager:debug("recv transfer of control for ~s from ~p", [_TableId, _From]),
     {'noreply', State};

@@ -120,6 +120,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('start_parsing', State=#state{parser_id = ParserId
                                          ,iodevice = IoDevice
                                          ,logip = LogIP

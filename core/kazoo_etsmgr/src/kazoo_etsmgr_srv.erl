@@ -172,6 +172,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'EXIT', Pid, 'killed'}, #state{give_away_pid=Pid}=State) ->
     lager:debug("ets mgr ~p killed", [Pid]),
     {'noreply', State#state{give_away_pid='undefined'}};

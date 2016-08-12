@@ -111,6 +111,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'fetch', 'configuration', <<"configuration">>, <<"name">>, Conf, ID, []}, #state{node=Node}=State) ->
     lager:debug("fetch configuration request from ~s: ~s", [Node, ID]),
     _ = kz_util:spawn(fun handle_config_req/4, [Node, ID, Conf, 'undefined']),

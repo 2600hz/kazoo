@@ -558,6 +558,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'timeout', Ref, ?EXPIRE_PERIOD_MSG}
            ,#state{expire_period_ref=Ref
                   ,expire_period=Period

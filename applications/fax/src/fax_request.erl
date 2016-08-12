@@ -217,6 +217,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'DOWN', _Ref, 'process', Pid, 'normal'}, State) ->
     lager:debug("handler ~p down normally, request is done", [Pid]),
     {'stop', 'normal', State};

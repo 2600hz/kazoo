@@ -133,6 +133,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'event', Props}, #state{node=Node}=State) ->
     _ = kz_util:spawn(fun process_fs_event/2, [Node, Props]),
     {'noreply', State, 'hibernate'};

@@ -109,6 +109,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'EXIT', Etssrv, 'killed'}, #state{etssrv=Etssrv}=State) ->
     lager:debug("ets mgr ~p killed", [Etssrv]),
     {'noreply', State#state{etssrv='undefined'}};

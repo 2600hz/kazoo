@@ -139,6 +139,7 @@ handle_cast(_,State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'send_stats', SendStats}=Info,State) ->
     send_stats(State#state.variables, State#state.sip),
     erlang:send_after(SendStats, self(), Info),

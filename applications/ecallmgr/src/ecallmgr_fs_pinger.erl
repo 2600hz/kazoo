@@ -102,6 +102,7 @@ handle_cast(_Msg, #state{timeout=Timeout}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('initialize_pinger', #state{node=Node, options=Props}=State) ->
     kz_notify:system_alert("node ~s disconnected from ~s", [Node, node()]),
     _ = case props:get_value('cookie', Props) of

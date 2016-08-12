@@ -117,6 +117,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}, #state{node=Node}=State) ->
     EventName = props:get_value(<<"Event-Name">>, FSData),
     SubClass = props:get_value(<<"Event-Subclass">>, FSData),

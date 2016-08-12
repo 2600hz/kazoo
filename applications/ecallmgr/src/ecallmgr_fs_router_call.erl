@@ -115,6 +115,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'route', Section, _EventName, _SubClass, _Context, Id, 'undefined', _FSData}, #state{node=Node}=State) ->
     lager:warning("fetch unknown callid from ~s: Ev: ~p Sc: ~p, Ctx: ~p Id: ~s"
                  ,[Node, _EventName, _SubClass, _Context, Id]),

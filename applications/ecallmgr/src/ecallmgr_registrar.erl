@@ -461,6 +461,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('expire', State) ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
     _ = expire_objects(),

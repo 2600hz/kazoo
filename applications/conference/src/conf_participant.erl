@@ -374,6 +374,7 @@ handle_cast(_Cast, Participant) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'event', [_CallId | Props]}, Participant) ->
     _Action = props:get_value(<<"Action">>, Props),
     {'noreply', Participant};

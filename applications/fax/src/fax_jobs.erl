@@ -168,6 +168,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('timeout', #state{queue='undefined'}=State) ->
     {'noreply', State, ?POLLING_INTERVAL};
 handle_info('timeout', #state{account_id=AccountId

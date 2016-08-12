@@ -146,6 +146,7 @@ handle_cast(_Msg, #state{idle_alert=Timeout}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                          ,node=Node
                                          ,switch_info='false'

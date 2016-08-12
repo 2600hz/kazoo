@@ -116,6 +116,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'udp', _Socket, _IPTuple, _InPortNo, Packet}, State) ->
     {'ok', Hep} = hep:decode(Packet),
     make_and_store_chunk(State#state.parser_id, Hep),

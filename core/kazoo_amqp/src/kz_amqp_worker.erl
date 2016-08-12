@@ -812,6 +812,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'DOWN', ClientRef, 'process', _Pid, _Reason}, #state{current_msg_id = _MsgId
                                                                  ,client_ref = ClientRef
                                                                  ,callid = CallId

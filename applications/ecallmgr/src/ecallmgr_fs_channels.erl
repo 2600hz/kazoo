@@ -511,6 +511,7 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'timeout', Ref, _Msg}, #state{max_channel_cleanup_ref=Ref}=State) ->
     maybe_cleanup_old_channels(),
     {'noreply', State#state{max_channel_cleanup_ref=start_cleanup_ref()}};

@@ -341,6 +341,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'DOWN', Ref, 'process', Pid, Reason}, State) ->
     lager:debug("monitor ~p detected process ~p exited with reason ~p", [Ref, Pid, Reason]),
     erlang:demonitor(Ref, ['flush']),

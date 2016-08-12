@@ -580,6 +580,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'synchronize_channels', SyncRef}, #state{sync_ref=SyncRef}=State) ->
     Req = kz_api:default_headers(?APP_NAME, ?APP_VERSION),
     _ = case kz_amqp_worker:call_collect(Req

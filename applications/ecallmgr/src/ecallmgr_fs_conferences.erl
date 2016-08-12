@@ -353,6 +353,7 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Msg, State) ->
     lager:debug("unhandled msg: ~p", [_Msg]),
     {'noreply', State}.

@@ -108,6 +108,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(?STAT_CHECK_MSG, State) ->
     _P = kz_util:spawn(fun check_stats/0),
     {'noreply', State#state{stat_timer_ref=start_timer()}, 'hibernate'};

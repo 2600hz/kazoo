@@ -184,6 +184,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('cleanup', #state{cleanup_timer_ref=Ref}=State) ->
     _Pid = kz_util:spawn(fun start_cleanup_pass/1, [Ref]),
     lager:debug("cleaning up in ~p(~p)", [_Pid, Ref]),

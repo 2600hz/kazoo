@@ -244,6 +244,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER', _TableId, _From, _GiftData}, State) ->
     lager:debug("recv control of ~p from ~p", [_TableId, _From]),
     _ = kz_util:spawn(fun init_map/0),

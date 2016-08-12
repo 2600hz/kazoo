@@ -352,6 +352,7 @@ handle_cast(_Msg, State) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'DOWN', Ref, 'process', Connection, _Reason}, State) ->
     lager:warning("connection ~p went down: ~p"
                  ,[Connection, _Reason]),

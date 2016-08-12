@@ -670,6 +670,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Info, StateName, State) ->
     lager:debug("unhandled message in state ~s: ~p", [StateName, _Info]),
     {'next_state', StateName, State}.

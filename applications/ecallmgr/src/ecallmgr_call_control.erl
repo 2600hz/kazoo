@@ -323,6 +323,7 @@ handle_cast(_, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'event', [CallId | Props]}, #state{call_id=CallId
                                                ,node=Node
                                                }=State) ->
