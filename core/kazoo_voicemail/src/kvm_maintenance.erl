@@ -42,13 +42,13 @@ migrate(AccountId) ->
     end.
 
 -spec migrate(ne_binary(), ne_binary() | kz_json:object()) -> 'ok'.
-migrate(AccountId, ?JSON_WRAPPER(_)=Box) ->
-    migrate(AccountId, kz_doc:id(Box));
-migrate(AccountId, BoxId) ->
+migrate(AccountId, <<_/binary>> = BoxId) ->
     Msgs = kvm_messages:get(AccountId, BoxId),
     Ids = [M || M <- Msgs, maybe_migrate_to_modb(kzd_box_message:media_id(M))],
     _ = kvm_messages:update(AccountId, BoxId, Ids),
-    'ok'.
+    'ok';
+migrate(AccountId, Box) ->
+    migrate(AccountId, kz_doc:id(Box)).
 
 -spec maybe_migrate_to_modb(ne_binary()) -> boolean().
 maybe_migrate_to_modb(?MATCH_MODB_PREFIX(_, _, _)) -> 'false';

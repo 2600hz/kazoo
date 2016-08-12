@@ -18,7 +18,7 @@
         ,cleanup_moved_msgs/3
 
         ,publish_saved_notify/5, publish_voicemail_saved/5
-        ,get_completed_msg/1
+        ,get_notify_completed_message/1
         ,get_caller_id_name/1, get_caller_id_number/1
         ]).
 
@@ -38,10 +38,10 @@ get_db(AccountId, {_, ?MATCH_MODB_PREFIX(Year, Month, _)}) ->
     get_db(AccountId, Year, Month);
 get_db(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)) ->
     get_db(AccountId, Year, Month);
-get_db(AccountId, ?JSON_WRAPPER(_)=Doc) ->
-    get_db(AccountId, kz_doc:id(Doc));
-get_db(AccountId, _DocId) ->
-    get_db(AccountId).
+get_db(AccountId, ?NE_BINARY = _DocId) ->
+    get_db(AccountId);
+get_db(AccountId, Doc) ->
+    get_db(AccountId, kz_doc:id(Doc)).
 
 -spec get_db(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 get_db(AccountId, Year, Month) ->
@@ -282,16 +282,16 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_completed_msg(kz_json:objects()) -> kz_json:object().
--spec get_completed_msg(kz_json:objects(), kz_json:object()) -> kz_json:object().
-get_completed_msg(JObjs) ->
-    get_completed_msg(JObjs, kz_json:new()).
+-spec get_notify_completed_message(kz_json:objects()) -> kz_json:object().
+-spec get_notify_completed_message(kz_json:objects(), kz_json:object()) -> kz_json:object().
+get_notify_completed_message(JObjs) ->
+    get_notify_completed_message(JObjs, kz_json:new()).
 
-get_completed_msg([], Acc) -> Acc;
-get_completed_msg([JObj|JObjs], Acc) ->
+get_notify_completed_message([], Acc) -> Acc;
+get_notify_completed_message([JObj|JObjs], Acc) ->
     case kz_json:get_value(<<"Status">>, JObj) of
-        <<"completed">> -> get_completed_msg([], JObj);
-        _ -> get_completed_msg(JObjs, Acc)
+        <<"completed">> -> get_notify_completed_message([], JObj);
+        _ -> get_notify_completed_message(JObjs, Acc)
     end.
 
 %%%===================================================================

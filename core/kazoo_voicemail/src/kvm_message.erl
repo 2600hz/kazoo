@@ -362,14 +362,14 @@ maybe_move_to_db(AccountId, BoxId, Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec media_url(ne_binary(), ne_binary() | kz_json:object()) -> binary().
-media_url(AccountId, ?JSON_WRAPPER(_)=Message) ->
-    media_url(AccountId, kzd_box_message:media_id(Message));
-media_url(AccountId, MessageId) ->
+media_url(AccountId, ?NE_BINARY = MessageId) ->
     case fetch(AccountId, MessageId) of
         {'ok', Message} ->
             kz_media_url:playback(Message, Message);
         {'error', _} -> <<>>
-    end.
+    end;
+media_url(AccountId, Message) ->
+    media_url(AccountId, kzd_box_message:media_id(Message)).
 
 %%%===================================================================
 %%% Internal functions
@@ -418,16 +418,11 @@ notify_and_save_meta(Call, MediaId, Length, Props) ->
 
     case kvm_util:publish_saved_notify(MediaId, BoxId, Call, Length, Props) of
         {'ok', JObjs} ->
-            JObj = kvm_util:get_completed_msg(JObjs),
+            JObj = kvm_util:get_notify_completed_message(JObjs),
             maybe_save_meta(Length, NotifyAction, Call, MediaId, JObj, BoxId);
         {'timeout', JObjs} ->
-            case kvm_util:get_completed_msg(JObjs) of
-                ?EMPTY_JSON_OBJECT ->
-                    lager:info("timed out waiting for voicemail new notification resp"),
-                    save_meta(Length, NotifyAction, Call, MediaId, BoxId);
-                JObj ->
-                    maybe_save_meta(Length, NotifyAction, Call, MediaId, JObj, BoxId)
-            end;
+            JObj = kvm_util:get_notify_completed_message(JObjs),
+            maybe_save_meta(Length, NotifyAction, Call, MediaId, JObj, BoxId);
         {'error', _E} ->
             lager:debug("voicemail new notification error: ~p", [_E]),
             save_meta(Length, NotifyAction, Call, MediaId, BoxId)
@@ -443,6 +438,9 @@ maybe_save_meta(Length, Action, Call, MediaId, UpdateJObj, BoxId) ->
             save_meta(Length, Action, Call, MediaId, BoxId);
         <<"failed">> ->
             lager:debug("attachment failed to send out via notification: ~s", [kz_json:get_value(<<"Failure-Message">>, UpdateJObj)]),
+            save_meta(Length, Action, Call, MediaId, BoxId);
+        _ ->
+            lager:info("timed out waiting for voicemail new notification resp"),
             save_meta(Length, Action, Call, MediaId, BoxId)
     end.
 

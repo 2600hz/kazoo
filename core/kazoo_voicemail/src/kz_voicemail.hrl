@@ -3,7 +3,6 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
--include_lib("kazoo/src/kz_json.hrl").
 
 -define(VMBOX_CB_LIST, <<"vmboxes/crossbar_listing">>).
 

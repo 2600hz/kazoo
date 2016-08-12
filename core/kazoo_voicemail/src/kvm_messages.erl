@@ -28,7 +28,7 @@
 
 -record(bulk_res, {succeeded = []  :: ne_binaries()
                   ,failed = [] :: kz_json:objects()
-                  ,moved = [] :: kz_json:objects()
+                  ,moved = [] :: ne_binaries()
                   }).
 -type bulk_results() :: #bulk_res{}.
 -type count_result() :: {non_neg_integer(), non_neg_integer()}.
@@ -174,7 +174,16 @@ update(AccountId, BoxId, Things, Funs) ->
                                 bulk_results().
 update_fold(_AccountId, _BoxId, [], _Funs, Result) ->
     Result;
-update_fold(AccountId, BoxId, [?JSON_WRAPPER(_) = Msg | Msgs], Funs, #bulk_res{failed = Failed} = Blk) ->
+update_fold(AccountId, BoxId, [?NE_BINARY = MsgId | MsgIds], Funs, #bulk_res{failed = Failed} = Blk) ->
+    case kvm_message:fetch(AccountId, MsgId, BoxId) of
+        {'ok', JObj} ->
+            Result = do_update(AccountId, MsgId, JObj, Funs, Blk),
+            update_fold(AccountId, BoxId, MsgIds, Funs, Result);
+        {'error', R} ->
+            Result = Blk#bulk_res{failed = [kz_json:from_list([{MsgId, kz_util:to_binary(R)}]) | Failed]},
+            update_fold(AccountId, BoxId,  MsgIds, Funs, Result)
+    end;
+update_fold(AccountId, BoxId, [Msg | Msgs], Funs, #bulk_res{failed = Failed} = Blk) ->
     NewFun = [fun(JObj) ->
                       kzd_box_message:set_metadata(Msg, JObj)
               end
@@ -188,15 +197,6 @@ update_fold(AccountId, BoxId, [?JSON_WRAPPER(_) = Msg | Msgs], Funs, #bulk_res{f
         {'error', R} ->
             Result = Blk#bulk_res{failed = [kz_json:from_list([{MsgId, kz_util:to_binary(R)}]) | Failed]},
             update_fold(AccountId, BoxId, Msgs, Funs, Result)
-    end;
-update_fold(AccountId, BoxId, [MsgId | MsgIds], Funs, #bulk_res{failed = Failed} = Blk) ->
-    case kvm_message:fetch(AccountId, MsgId, BoxId) of
-        {'ok', JObj} ->
-            Result = do_update(AccountId, MsgId, JObj, Funs, Blk),
-            update_fold(AccountId, BoxId, MsgIds, Funs, Result);
-        {'error', R} ->
-            Result = Blk#bulk_res{failed = [kz_json:from_list([{MsgId, kz_util:to_binary(R)}]) | Failed]},
-            update_fold(AccountId, BoxId,  MsgIds, Funs, Result)
     end.
 
 -spec do_update(ne_binary(), ne_binary(), kz_json:object(), update_funs(), bulk_results()) -> bulk_results().
@@ -274,7 +274,8 @@ maybe_include_messages(_AccountId, _BoxId, JObj, _) ->
 %% @doc Move messages to another vmbox
 %% @end
 %%--------------------------------------------------------------------
--spec change_box_id(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), ne_binary()) -> kz_json:objects().
+-spec change_box_id(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), ne_binary()) ->
+                            kz_json:object().
 change_box_id(AccountId, ?NE_BINARY = MsgId, OldBoxId, NewBoxId) ->
     change_box_id(AccountId, [MsgId], OldBoxId, NewBoxId);
 change_box_id(AccountId, MsgIds, OldBoxId, NewBoxId) ->
