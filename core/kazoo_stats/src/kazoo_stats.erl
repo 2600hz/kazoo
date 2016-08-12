@@ -101,6 +101,7 @@ init([Send_stats]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('get_db', _From, State) ->
     {'reply', State, State};
 handle_call(Other,_From,State) ->

@@ -376,6 +376,7 @@ init([Supervisor, Agent, Queues]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('presence_id', _, #state{agent_presence_id=PresenceId}=State) ->
     {'reply', PresenceId, State, 'hibernate'};
 handle_call('queues', _, #state{agent_queues=Queues}=State) ->

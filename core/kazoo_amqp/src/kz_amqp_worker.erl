@@ -539,6 +539,7 @@ init([Args]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(Call, From, #state{queue='undefined'}=State)
   when is_tuple(Call) ->
     kz_util:put_callid(element(2, Call)),

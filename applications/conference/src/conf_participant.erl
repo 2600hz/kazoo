@@ -211,6 +211,7 @@ init([Call]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'get_conference'}, _, #participant{conference='undefined'}=P) ->
     {'reply', {'error', 'not_provided'}, P};
 handle_call({'get_conference'}, _, #participant{conference=Conf}=P) ->

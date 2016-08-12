@@ -314,6 +314,7 @@ init([Call]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'update_call', Routines}, _From, #state{call=Call}=State) ->
     NewCall = kapps_call:exec(Routines, Call),
     {'reply', NewCall, State#state{call=NewCall}};

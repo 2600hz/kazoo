@@ -233,6 +233,7 @@ init([WorkerSup, MgrPid, AccountId, QueueId]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('delivery', _From, #state{delivery=D}=State) ->
     {'reply', D, State};
 handle_call('config', _From, #state{account_id=AccountId

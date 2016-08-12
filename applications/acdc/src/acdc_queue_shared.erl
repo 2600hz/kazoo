@@ -125,6 +125,7 @@ init([FSMPid]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('deliveries', _From, #state{deliveries=Ds}=State) ->
     {'reply', Ds, State};
 handle_call(_Request, _From, State) ->

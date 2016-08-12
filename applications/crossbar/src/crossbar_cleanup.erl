@@ -143,6 +143,7 @@ binding_all_dbs() ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('status', _From, #state{cleanup_timer_ref=Cleanup
                                    ,minute_timer_ref=Minute
                                    ,hour_timer_ref=Hour

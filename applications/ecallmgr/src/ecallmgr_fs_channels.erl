@@ -409,6 +409,7 @@ start_cleanup_ref() ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'new_channel', Channel}, _, State) ->
     ets:insert(?CHANNELS_TBL, Channel),
     {'reply', 'ok', State};

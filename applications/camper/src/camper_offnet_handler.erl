@@ -121,6 +121,7 @@ init([JObj]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled request from ~p: ~p", [_From, _Request]),
     {'reply', {'error', 'not_implemented'}, State}.

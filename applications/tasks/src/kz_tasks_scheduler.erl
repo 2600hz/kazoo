@@ -274,6 +274,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'start_task', TaskId}, _From, State) ->
     lager:debug("attempting to start ~s", [TaskId]),
     %% Running tasks are stored in server State.

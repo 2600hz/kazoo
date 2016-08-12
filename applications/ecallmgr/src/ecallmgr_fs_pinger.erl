@@ -75,6 +75,7 @@ init([Node, Props]) ->
 %% @end
 %% #state{nodes=[{FSNode, HandlerPid}]}
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, #state{timeout=Timeout}=State) ->
     {'reply', {'error', 'not_implemented'}, State, Timeout}.
 

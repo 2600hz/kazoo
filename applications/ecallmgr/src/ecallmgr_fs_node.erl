@@ -328,6 +328,7 @@ init([Node, Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('sip_external_ip', _, #state{interface=Interface}=State) ->
     {'reply', Interface#interface.ext_sip_ip, State};
 handle_call('sip_url', _, #state{interface=Interface}=State) ->

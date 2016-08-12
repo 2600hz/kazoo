@@ -237,6 +237,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('flush', _From, State) ->
     ets:delete_all_objects(?TAB_NAME),
     lager:debug("flushed table"),

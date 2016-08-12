@@ -172,6 +172,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'get_sockets', AccountId}, _From, State) ->
     Pattern = #bh_context{account_id=AccountId, _='_'},
     Result =

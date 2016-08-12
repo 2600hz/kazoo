@@ -370,6 +370,7 @@ init([]) ->
 %% @end
 %% #state{nodes=[{FSNode, HandlerPid}]}
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'is_node_up', Node}, _From, #state{nodes=Nodes}=State) ->
     Resp = case dict:find(Node, Nodes) of
                'error' -> 'false';

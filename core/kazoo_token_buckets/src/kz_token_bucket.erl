@@ -193,6 +193,7 @@ init([Max, FillRate, FillAsBlock, FillTime]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'consume', Req}, _From, #state{tokens=Current}=State) ->
     case Current - Req of
         N when N >= 0 ->

@@ -390,6 +390,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'print_status', Nodes}, _From, State) ->
     print_status(Nodes, State),
     {'reply', 'ok', State};

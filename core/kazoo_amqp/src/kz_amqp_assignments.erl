@@ -144,6 +144,7 @@ init([]) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'request_float', Consumer, Broker}, _, State) ->
     _ = import_pending_channels(),
     {'reply', assign_or_reserve(Consumer, Broker, 'float'), State};

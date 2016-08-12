@@ -93,6 +93,7 @@ init([#kz_amqp_connection{}=Connection]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('get_connection', _, Connection) ->
     {'reply', Connection, Connection};
 handle_call('stop', _, Connection) ->

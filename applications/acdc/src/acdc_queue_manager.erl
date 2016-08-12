@@ -315,6 +315,7 @@ init(Super, AccountId, QueueId, QueueJObj) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'should_ignore_member_call', K}, _, #state{ignored_member_calls=Dict}=State) ->
     case catch dict:fetch(K, Dict) of
         {'EXIT', _} -> {'reply', 'false', State};

@@ -147,6 +147,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'render', Props, Template}, _, TemplateName) ->
     {'ok', TemplateName} = erlydtl:compile_template(Template, TemplateName),
     {'ok', Result} = TemplateName:render(Props),

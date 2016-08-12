@@ -248,6 +248,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'subscribe', #omnip_subscription{}=Sub}, _From,  #state{other_nodes_count=Count} = State) ->
     SubscribeResult = {Count, subscribe(Sub)},
     {'reply', SubscribeResult, State};

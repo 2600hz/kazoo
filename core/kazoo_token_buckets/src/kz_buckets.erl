@@ -297,6 +297,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'start', App, Name, MaxTokens, FillRate, FillTime}, _From, #state{table_id=Tbl}=State) ->
     lager:debug("maybe starting token bucket for ~s, ~s (~b at ~b/~s)"
                ,[App, Name, MaxTokens, FillRate, FillTime]

@@ -175,6 +175,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'add_mapping', ?KZ_MEDIA_DB, JObj}, _From, State) ->
     _ = maybe_add_prompt(?KZ_MEDIA_DB, JObj),
     {'reply', 'ok', State};

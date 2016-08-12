@@ -269,6 +269,7 @@ init([Call]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('get_call', _From, #state{call=Call}=State) ->
     {'reply', {'ok', Call}, State};
 handle_call('callid', _From, #state{call=Call}=State) ->

@@ -226,6 +226,7 @@ init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('node', _From, #state{node=Node}=State) ->
     {'reply', Node, State};
 handle_call('callid', _From, #state{call_id=CallId}=State) ->

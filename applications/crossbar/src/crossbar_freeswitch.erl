@@ -110,6 +110,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('current', _From, #state{config='undefined'}=State) ->
     {'reply', {'error', 'no_file'}, State};
 handle_call('current', _From, #state{config=Config}=State) ->
