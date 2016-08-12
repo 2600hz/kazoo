@@ -7,7 +7,6 @@
 %%% Peter DEfebvre
 %%%-------------------------------------------------------------------
 -module(blackhole_tracking).
-
 -behaviour(gen_listener).
 
 -export([start_link/0
@@ -29,6 +28,8 @@
         ]).
 
 -include("blackhole.hrl").
+
+-type state() :: ets:tid() | atom().
 
 -define(SERVER, ?MODULE).
 

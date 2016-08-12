@@ -9,7 +9,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(hangups_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -23,6 +22,9 @@
         ]).
 
 -include("hangups.hrl").
+
+-record(state, {}).
+-type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
 
@@ -70,7 +72,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:debug("started hangups listener"),
-    {'ok', 'ok'}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private

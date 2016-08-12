@@ -31,7 +31,9 @@
 -define(CLEANUP_ROUNDTRIP_TIME,
         kapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_delay_time_ms">>, ?MILLISECONDS_IN_MINUTE)).
 
--record(state, {cleanup_ref :: reference()}).
+-record(state, {cleanup_ref :: reference()
+               }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

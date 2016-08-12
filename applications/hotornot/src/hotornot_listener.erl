@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(hotornot_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -21,6 +20,9 @@
         ]).
 
 -include("hotornot.hrl").
+
+-record(state, {}).
+-type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
 

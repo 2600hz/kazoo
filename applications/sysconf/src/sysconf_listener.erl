@@ -7,7 +7,6 @@
 %%%   Edouard Swiac
 %%%-------------------------------------------------------------------
 -module(sysconf_listener).
-
 -behaviour(gen_listener).
 
 %% API
@@ -22,6 +21,9 @@
         ]).
 
 -include("sysconf.hrl").
+
+-record(state, {}).
+-type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
 
@@ -69,7 +71,7 @@ start_link() ->
 init([]) ->
     process_flag('trap_exit', 'true'),
     lager:debug("starting new sysconf server"),
-    {'ok', 'ok'}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -7,7 +7,6 @@
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(knm_number_crawler).
-
 -behaviour(gen_server).
 
 %% API
@@ -41,7 +40,9 @@
        ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)
        ).
 
--record(state, {cleanup_ref :: reference()}).
+-record(state, {cleanup_ref :: reference()
+               }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

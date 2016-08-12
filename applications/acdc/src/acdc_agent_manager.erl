@@ -11,7 +11,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(acdc_agent_manager).
-
 -behaviour(gen_listener).
 
 %% API
@@ -29,6 +28,9 @@
 
 -include("acdc.hrl").
 -include_lib("kazoo_apps/include/kz_hooks.hrl").
+
+-record(state, {}).
+-type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
 
@@ -88,7 +90,7 @@ start_link() ->
 -spec init([]) -> {'ok', 'ok'}.
 init([]) ->
     kz_hooks:register(),
-    {'ok', 'ok'}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private

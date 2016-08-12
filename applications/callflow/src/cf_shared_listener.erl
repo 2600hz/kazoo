@@ -7,7 +7,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_shared_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -21,6 +20,9 @@
         ]).
 
 -include("callflow.hrl").
+
+-record(state, {}).
+-type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
 
@@ -83,7 +85,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:debug("starting new callflow shared queue server"),
-    {'ok', []}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private

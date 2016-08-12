@@ -7,7 +7,6 @@
 %%%     Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(ananke_account_crawler).
-
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -29,6 +28,7 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".account_crawler">>).
 
 -record(state, {}).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% amqp_cron callbacks

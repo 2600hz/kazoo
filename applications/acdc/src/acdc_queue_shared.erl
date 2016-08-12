@@ -8,7 +8,6 @@
 %%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(acdc_queue_shared).
-
 -behaviour(gen_listener).
 
 %% API
@@ -35,6 +34,7 @@
 -record(state, {fsm_pid :: pid()
                ,deliveries = [] :: deliveries()
                }).
+-type state() :: #state{}.
 
 -define(SHARED_BINDING_OPTIONS(Priority)
        ,[{'consume_options', [{'no_ack', 'false'}

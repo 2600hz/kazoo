@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(konami_event_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0
@@ -40,7 +39,9 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {cleanup_ref :: reference()}).
+-record(state, {cleanup_ref :: reference()
+               }).
+-type state() :: #state{}.
 
 -define(CLEANUP_TIMEOUT
        ,kapps_config:get_integer(?APP_NAME, <<"event_cleanup_timeout_ms">>, ?MILLISECONDS_IN_HOUR)

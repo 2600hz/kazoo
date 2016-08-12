@@ -8,7 +8,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(conf_participant).
-
 -behaviour(gen_listener).
 
 %% API
@@ -211,7 +210,7 @@ init([Call]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), pid_ref(), participant()) -> handle_call_ret_state(participant()).
 handle_call({'get_conference'}, _, #participant{conference='undefined'}=P) ->
     {'reply', {'error', 'not_provided'}, P};
 handle_call({'get_conference'}, _, #participant{conference=Conf}=P) ->
@@ -235,7 +234,7 @@ handle_call(_Request, _, P) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), participant()) -> handle_cast_ret_state(participant()).
 handle_cast('hungup', #participant{in_conference='true'
                                   ,call=Call
                                   }=Participant
@@ -376,7 +375,7 @@ handle_cast(_Cast, Participant) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), participant()) -> handle_info_ret_state(participant()).
 handle_info({'event', [_CallId | Props]}, Participant) ->
     _Action = props:get_value(<<"Action">>, Props),
     {'noreply', Participant};
@@ -426,7 +425,7 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(any(), state()) -> 'ok'.
+-spec terminate(any(), participant()) -> 'ok'.
 terminate(_Reason, #participant{name_pronounced = Name}) ->
     maybe_clear(Name),
     lager:debug("conference participant execution has been stopped: ~p", [_Reason]).
@@ -447,7 +446,7 @@ maybe_clear(_) -> 'ok'.
 %% @spec code_change(OldVsn, State, Extra) -> {'ok', NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec code_change(any(), state(), any()) -> {'ok', state()}.
+-spec code_change(any(), participant(), any()) -> {'ok', participant()}.
 code_change(_OldVsn, Participant, _Extra) ->
     {'ok', Participant}.
 

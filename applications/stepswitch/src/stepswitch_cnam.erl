@@ -5,7 +5,6 @@
 %%% @end
 %%%-------------------------------------------------------------------
 -module(stepswitch_cnam).
-
 -behaviour(gen_server).
 
 -export([start_link/1]).
@@ -24,6 +23,8 @@
         ]).
 
 -include("stepswitch.hrl").
+
+-type state() :: atom().
 
 -define(SERVER, ?MODULE).
 

@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(konami_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0
@@ -29,6 +28,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {}).
+-type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'dialplan', ['metaflow']}

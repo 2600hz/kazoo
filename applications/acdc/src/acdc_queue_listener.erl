@@ -16,7 +16,6 @@
 %%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(acdc_queue_listener).
-
 -behaviour(gen_listener).
 
 %% API
@@ -53,8 +52,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {
-          queue_id :: ne_binary()
+-record(state, {queue_id :: ne_binary()
                ,account_id :: ne_binary()
 
                               %% PIDs of the gang
@@ -72,7 +70,7 @@
                ,call :: kapps_call:call()
                ,agent_id :: ne_binary()
                ,delivery :: gen_listener:basic_deliver()
-         }).
+               }).
 -type state() :: #state{}.
 
 -define(BINDINGS, [{'self', []}]).

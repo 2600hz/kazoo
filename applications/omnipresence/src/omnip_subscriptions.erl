@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(omnip_subscriptions).
-
 -behaviour(gen_server).
 
 -export([start_link/0
@@ -55,13 +54,13 @@
 -define(DEFAULT_EVENT, ?BLF_EVENT).
 -define(DEFAULT_SEND_EVENT_LIST, [?BLF_EVENT, ?PRESENCE_EVENT]).
 
--record(state, {
-          expire_ref :: reference(),
-          ready = 'false' :: boolean(),
-          sync = 'false'  :: boolean(),
-          sync_nodes = [] :: list(),
-          other_nodes_count = 0 :: integer()
-         }).
+-record(state, {expire_ref :: reference()
+               ,ready = 'false' :: boolean()
+               ,sync = 'false'  :: boolean()
+               ,sync_nodes = [] :: list()
+               ,other_nodes_count = 0 :: integer()
+               }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

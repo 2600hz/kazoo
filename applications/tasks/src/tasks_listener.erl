@@ -28,6 +28,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {}).
+-type state() :: #state{}.
 
 -define(BINDINGS, [{'self', []}
                   ,{'tasks', []}

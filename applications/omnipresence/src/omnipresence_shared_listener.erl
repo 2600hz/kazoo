@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(omnipresence_shared_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -29,6 +28,7 @@
 -record(state, {subs_pid :: pid()
                ,subs_ref :: reference()
                }).
+-type state() :: #state{}.
 
 -define(BINDINGS, [{'self', []}
                    %% channel events that toggle presence lights

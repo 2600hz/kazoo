@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(stepswitch_originate).
-
 -behaviour(gen_listener).
 
 -export([start_link/2]).
@@ -31,6 +30,7 @@
                ,queue :: api_binary()
                ,timeout :: api_reference()
                }).
+-type state() :: #state{}.
 
 -define(RESPONDERS, []).
 -define(BINDINGS, [{'resource', []}

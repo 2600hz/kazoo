@@ -7,7 +7,6 @@
 %%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(camper_request_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -22,6 +21,9 @@
 
 -include("camper.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
+
+-record(state, {}).
+-type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
 
@@ -94,7 +96,7 @@ handle_camper_req(JObj, _Props, #'basic.deliver'{'routing_key' = Key}) ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:info("started request listener"),
-    {'ok', 'ok'}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private

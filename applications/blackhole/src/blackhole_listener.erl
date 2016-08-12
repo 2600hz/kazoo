@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(blackhole_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0

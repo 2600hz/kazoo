@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(teletype_shared_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -25,6 +24,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {}).
+-type state() :: #state{}.
 
 -define(RESPONDERS, [{{'teletype_voicemail_to_email', 'handle_new_voicemail'}
                      ,[{<<"notification">>, <<"voicemail_new">>}]

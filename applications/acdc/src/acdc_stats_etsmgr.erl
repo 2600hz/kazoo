@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(acdc_stats_etsmgr).
-
 -behaviour(gen_server).
 
 %% API
@@ -30,6 +29,7 @@
                ,etssrv :: pid()
                ,give_away_ref :: reference()
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

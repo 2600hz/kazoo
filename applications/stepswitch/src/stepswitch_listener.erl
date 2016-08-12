@@ -4,7 +4,6 @@
 %%% @end
 %%%-------------------------------------------------------------------
 -module(stepswitch_listener).
-
 -behaviour(gen_listener).
 
 -include("stepswitch.hrl").
@@ -23,6 +22,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {}).
+-type state() :: #state{}.
 
 -define(BINDINGS, [{'route', [{'restrict_to', ?RESOURCE_TYPES_HANDLED}]}
                   ,{'offnet_resource', []}

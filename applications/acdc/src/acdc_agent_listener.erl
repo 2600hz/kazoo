@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(acdc_agent_listener).
-
 -behaviour(gen_listener).
 
 %% API
@@ -67,8 +66,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {
-          call :: kapps_call:call()
+-record(state, {call :: kapps_call:call()
                ,acdc_queue_id :: ne_binary() % the ACDc Queue ID
                ,msg_queue_id :: ne_binary() % the AMQP Queue ID of the ACDc Queue process
                ,agent_id :: ne_binary()
@@ -90,7 +88,8 @@
                ,agent_call_ids = [] :: api_binaries() | kz_proplist()
                ,cdr_urls = dict:new() :: dict:dict() %% {CallId, Url}
                ,agent_presence_id :: api_binary()
-         }).
+               }).
+-type state() :: #state{}.
 
 -type agent() :: kapps_call:call() | kz_json:object().
 

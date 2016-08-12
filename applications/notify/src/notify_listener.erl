@@ -8,7 +8,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(notify_listener).
-
 -behaviour(gen_listener).
 
 %% API
@@ -72,6 +71,7 @@
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -record(state, {}).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

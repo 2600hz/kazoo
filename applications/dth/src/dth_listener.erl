@@ -7,7 +7,6 @@
 %%% Created : 13 Jan 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(dth_listener).
-
 -behaviour(gen_listener).
 
 %% API
@@ -42,6 +41,7 @@
 -record(state, {wsdl_model = 'undefined' :: 'undefined' | #wsdl{}
                ,dth_cdr_url = <<>> :: binary()
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
