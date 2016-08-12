@@ -12,7 +12,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ts_responder).
-
 -behaviour(gen_listener).
 
 %% API
@@ -36,6 +35,9 @@
 -define(ROUTE_QUEUE_NAME, <<"trunkstore_listener">>).
 -define(ROUTE_QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(ROUTE_CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+
+-record(state, {}).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -70,7 +72,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:info("started ts_responder"),
-    {'ok', 'ok'}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private

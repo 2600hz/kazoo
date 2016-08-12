@@ -55,6 +55,7 @@
 -record(state, {table_id :: ets:tid()
                ,inactivity_timer_ref :: reference()
                }).
+-type state() :: #state{}.
 
 -record(bucket, {key :: {ne_binary(), ne_binary()} | '_'
                 ,srv :: pid() | '$1' | '$2' | '_'

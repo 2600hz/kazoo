@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_registrar).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -74,6 +73,7 @@
 -record(state, {started = kz_util:current_tstamp()
                ,queue :: api_binary()
                }).
+-type state() :: #state{}.
 
 -record(registration, {id :: {ne_binary(), ne_binary()} | '_' | '$1'
                       ,username :: ne_binary() | '_'

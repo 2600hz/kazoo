@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_conferences).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -51,6 +50,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {}).
+-type state() :: #state{}.
 
 -define(CONFERENCES_TBL, 'ecallmgr_conferences').
 -define(PARTICIPANTS_TBL, 'ecallmgr_participants').

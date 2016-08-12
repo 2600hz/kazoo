@@ -8,7 +8,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_node).
-
 -behaviour(gen_listener).
 
 -export([start_link/1, start_link/2]).
@@ -132,6 +131,7 @@
                ,interface = #interface{} :: interface()
                ,start_cmds_pid_ref       :: pid_ref() | 'undefined'
                }).
+-type state() :: #state{}.
 
 -define(RESPONDERS, [{{?MODULE, 'handle_reload_acls'}
                      ,[{<<"switch_event">>, <<"reload_acls">>}]

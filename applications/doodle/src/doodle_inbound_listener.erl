@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(doodle_inbound_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/1]).
@@ -26,6 +25,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {connection :: amqp_listener_connection()}).
+-type state() :: #state{}.
 
 -define(BINDINGS(Ex), [{'sms', [{'exchange', Ex}
                                ,{'restrict_to', ['inbound']}

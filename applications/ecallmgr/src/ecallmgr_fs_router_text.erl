@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_router_text).
-
 -behaviour(gen_server).
 
 -export([start_link/1, start_link/2]).
@@ -31,6 +30,7 @@
 -record(state, {node = 'undefined' :: atom()
                ,options = [] :: kz_proplist()
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

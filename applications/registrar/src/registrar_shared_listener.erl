@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(registrar_shared_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -21,6 +20,9 @@
         ]).
 
 -include("reg.hrl").
+
+-record(state, {}).
+-type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
 
@@ -75,7 +77,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:debug("starting new registrar shared queue server"),
-    {'ok', []}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private

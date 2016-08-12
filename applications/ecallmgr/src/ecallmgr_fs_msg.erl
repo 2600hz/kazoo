@@ -7,7 +7,6 @@
 %%%    Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_msg).
-
 -behaviour(gen_listener).
 
 -export([start_link/1, start_link/2]).
@@ -24,10 +23,10 @@
 -export([handle_message_route/2]).
 -export([process_fs_event/2]).
 
--record(state, {
-          node :: atom()
+-record(state, {node :: atom()
                ,options :: kz_proplist()
-         }).
+               }).
+-type state() :: #state{}.
 
 -define(BINDINGS(Node), [{'sms', [{'route_id', Node}
                                  ,{'restrict_to', ['route']}

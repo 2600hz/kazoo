@@ -8,7 +8,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_authn).
-
 -behaviour(gen_server).
 
 %% API
@@ -32,6 +31,7 @@
 -record(state, {node :: atom()
                ,options = [] :: kz_proplist()
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

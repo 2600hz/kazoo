@@ -7,7 +7,6 @@
 %%%    Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_notify).
-
 -behaviour(gen_listener).
 
 -export([start_link/1, start_link/2]).
@@ -24,10 +23,10 @@
         ,code_change/3
         ]).
 
--record(state, {
-          node :: atom()
+-record(state, {node :: atom()
                ,options :: kz_proplist()
-         }).
+               }).
+-type state() :: #state{}.
 
 -define(MWI_BODY, "Messages-Waiting: ~s\r\nMessage-Account: ~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
 

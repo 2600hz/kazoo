@@ -8,7 +8,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_channel).
-
 -behaviour(gen_server).
 
 -export([start_link/1
@@ -56,6 +55,7 @@
 -record(state, {node = 'undefined' :: atom()
                ,options = [] :: kz_proplist()
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

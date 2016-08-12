@@ -8,7 +8,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_config).
-
 -behaviour(gen_server).
 
 %% API
@@ -29,6 +28,7 @@
 -record(state, {node :: atom()
                ,options = [] :: kz_proplist()
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

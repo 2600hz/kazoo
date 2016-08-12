@@ -11,7 +11,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_amqp_bootstrap).
-
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -28,6 +27,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {}).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

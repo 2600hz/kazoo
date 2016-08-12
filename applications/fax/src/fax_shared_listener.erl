@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(fax_shared_listener).
-
 -behaviour(gen_listener).
 
 %% API
@@ -25,6 +24,9 @@
 
 -include("fax.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
+
+-record(state, {}).
+-type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
 
@@ -115,7 +117,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {'ok', 'ok'}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private

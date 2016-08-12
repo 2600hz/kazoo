@@ -11,7 +11,6 @@
 %%%   James Aimonetti
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_pinger).
-
 -behaviour(gen_server).
 
 -export([start_link/2]).
@@ -31,6 +30,7 @@
                ,options = [] :: kz_proplist()
                ,timeout = 2 * ?MILLISECONDS_IN_SECOND
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

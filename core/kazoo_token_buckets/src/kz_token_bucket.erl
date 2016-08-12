@@ -15,7 +15,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_token_bucket).
-
 -behaviour(gen_server).
 
 %% API
@@ -65,6 +64,7 @@
                ,fill_ref :: reference()
                ,fill_as_block = 'true' :: boolean()
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

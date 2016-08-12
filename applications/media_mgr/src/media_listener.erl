@@ -8,7 +8,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(media_listener).
-
 -behaviour(gen_listener).
 
 %% API
@@ -27,6 +26,9 @@
         ]).
 
 -include("media.hrl").
+
+-record(state, {}).
+-type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
 
@@ -74,7 +76,7 @@ handle_media_req(JObj, _Props) ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:debug("starting media_mgr listener"),
-    {'ok', 'ok'}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private

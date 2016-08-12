@@ -8,7 +8,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(kz_amqp_connection).
-
 -behaviour(gen_server).
 
 -export([start_link/1]).
@@ -25,6 +24,7 @@
         ]).
 
 -include("amqp_util.hrl").
+-type state() :: kz_amqp_connection().
 
 -define(SERVER, ?MODULE).
 

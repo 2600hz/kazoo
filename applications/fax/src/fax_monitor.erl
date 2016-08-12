@@ -8,7 +8,6 @@
 %%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(fax_monitor).
-
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -23,8 +22,11 @@
 
 -include("fax.hrl").
 
+-record(state, {}).
+-type state() :: #state{}.
+
 -define(NAME, ?MODULE).
--define(SERVER, {via, kz_globals, ?NAME}).
+-define(SERVER, {'via', 'kz_globals', ?NAME}).
 
 -define(POLLING_INTERVAL, 5000).
 
@@ -62,7 +64,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     _ = kz_util:spawn(fun cleanup_jobs/0),
-    {'ok', 'undefined', ?POLLING_INTERVAL}.
+    {'ok', #state{}, ?POLLING_INTERVAL}.
 
 %%--------------------------------------------------------------------
 %% @private

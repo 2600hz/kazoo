@@ -8,9 +8,7 @@
 %%% @contributors
 %%%   Luis Azedo
 %%%-------------------------------------------------------------------
-
 -module(crossbar_freeswitch).
-
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -52,10 +50,11 @@
 
 -define(AUTHN_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
--record(state, {config = 'undefined' :: api_binary(),
-                is_running = 'false' :: boolean(),
-                monitor :: reference()
+-record(state, {config = 'undefined' :: api_binary()
+               ,is_running = 'false' :: boolean()
+               ,monitor :: reference()
                }).
+-type state() :: #state{}.
 
 %% this shouldn't be here. we need to move this definition from
 %% ecallmgr.hrl into the database or into kazoo/include

@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_service_sync).
-
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -25,6 +24,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {}).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

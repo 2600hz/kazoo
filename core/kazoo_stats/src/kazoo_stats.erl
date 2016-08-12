@@ -6,7 +6,6 @@
 %%% sip events statistics.
 %%%-------------------------------------------------------------------
 -module(kazoo_stats).
-
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -36,6 +35,7 @@
                ,sip=[]
                ,send_stats=?SEND_INTERVAL
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

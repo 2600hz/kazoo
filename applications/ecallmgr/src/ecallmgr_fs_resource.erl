@@ -8,7 +8,6 @@
 %%%    James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_resource).
-
 -behaviour(gen_listener).
 
 -export([start_link/1, start_link/2]).
@@ -29,6 +28,7 @@
 -record(state, {node :: atom()
                ,options :: kz_proplist()
                }).
+-type state() :: #state{}.
 
 -define(BINDINGS, [{'resource', [{'restrict_to', ['originate']}]}
                   ,{'self', []}

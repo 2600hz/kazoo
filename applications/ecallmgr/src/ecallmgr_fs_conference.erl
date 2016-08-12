@@ -8,7 +8,6 @@
 %%%   Roman Galeev
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_conference).
-
 -behaviour(gen_listener).
 
 %% API
@@ -59,6 +58,7 @@
                ,options = [] :: kz_proplist()
                ,publish_participant_event = [] :: [ne_binary()]
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

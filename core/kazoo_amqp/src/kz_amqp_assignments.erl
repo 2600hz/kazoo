@@ -7,7 +7,6 @@
 %%%
 %%%-------------------------------------------------------------------
 -module(kz_amqp_assignments).
-
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -36,6 +35,7 @@
 -define(TAB, ?MODULE).
 -define(SERVER_RETRY_PERIOD, 30 * ?MILLISECONDS_IN_SECOND).
 -record(state, {brokers = ordsets:new()}).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API

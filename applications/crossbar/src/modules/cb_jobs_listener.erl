@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(cb_jobs_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0
@@ -28,7 +27,9 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {recovery_ref :: reference()}).
+-record(state, {recovery_ref :: reference()
+               }).
+-type state() :: #state{}.
 
 -define(APP_ROUTING, kz_util:to_binary(?MODULE)).
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".resources">>).

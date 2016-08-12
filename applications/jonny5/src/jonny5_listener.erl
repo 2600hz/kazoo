@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(jonny5_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -22,11 +21,11 @@
 -include("jonny5.hrl").
 
 -record(state, {}).
-
+-type state() :: #state{}.
 
 %% NOTE: do not replace CHANNEL_DESTROY bindings with kz_hooks (which federate)
 %%   as that will cause duplicate credit/debits at the end of the call since
-%%   the round-robin shared queue thing wont work.
+%%   the round-robin shared queue thing won't work.
 -define(RESPONDERS, [{'j5_authz_req', [{<<"authz">>, <<"authz_req">>}]}
                     ,{'j5_balance_check_req', [{<<"authz">>, <<"balance_check_req">>}]}
                     ,{'j5_channel_destroy', [{<<"call_event">>, <<"CHANNEL_DESTROY">>}]}

@@ -10,7 +10,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kazoo_etsmgr_srv).
-
 -behaviour(gen_server).
 
 %% API
@@ -54,6 +53,7 @@
                ,find_me_pid_ref :: {pid(), reference()}
                ,gift_data :: any()
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
