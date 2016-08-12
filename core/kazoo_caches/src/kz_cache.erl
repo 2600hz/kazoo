@@ -584,7 +584,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
 handle_event(JObj, #state{tab=Tab}=State) ->
     case (V=kapi_conf:doc_update_v(JObj))
         andalso (kz_api:node(JObj) =/= kz_util:to_binary(node())
@@ -611,7 +611,8 @@ handle_event(JObj, #state{tab=Tab}=State) ->
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{tab=Tab}) ->
     lager:debug("terminating ~p(~p)", [self(), Tab]),
-    ets:delete(Tab).
+    ets:delete(Tab),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
