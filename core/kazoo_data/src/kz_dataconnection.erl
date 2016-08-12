@@ -135,6 +135,7 @@ handle_info(_Info, Connection) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _Connection) ->
     lager:debug("couch connection terminating: ~p", [_Reason]).
 

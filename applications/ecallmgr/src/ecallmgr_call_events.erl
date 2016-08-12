@@ -546,6 +546,7 @@ handle_event(_JObj, #state{ref=Ref
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{node_down_tref=NDTRef
                          ,sanity_check_tref=SCTRef
                          }) ->

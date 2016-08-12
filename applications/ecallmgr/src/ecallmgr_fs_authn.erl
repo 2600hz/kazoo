@@ -148,6 +148,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{node=Node}) ->
     lager:info("authn listener for ~s terminating: ~p", [Node, _Reason]).
 

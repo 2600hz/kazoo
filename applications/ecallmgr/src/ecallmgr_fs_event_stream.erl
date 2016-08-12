@@ -238,6 +238,7 @@ handle_no_switch({'tcp', Socket, Data}, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{socket='undefined', node=Node}=State) ->
     lager:debug("event stream for ~p on node ~p terminating: ~p"
                ,[get_event_bindings(State), Node, _Reason]

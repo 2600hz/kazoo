@@ -240,6 +240,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{call=Call}) ->
     kapps_call_command:hangup(Call),
     lager:debug("fax request terminating: ~p", [_Reason]).

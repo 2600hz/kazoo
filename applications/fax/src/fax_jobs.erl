@@ -224,6 +224,7 @@ handle_event(JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{account_id=AccountId}) ->
     lager:debug("terminating fax jobs for account ~s: ~p", [AccountId, _Reason]).
 

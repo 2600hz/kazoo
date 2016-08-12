@@ -518,6 +518,7 @@ handle_event(_JObj, #state{fsm_pid=FSM}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("ACDc queue terminating: ~p", [_Reason]).
 

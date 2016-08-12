@@ -142,6 +142,7 @@ handle_event(_JObj, #state{}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("stepswitch listener terminating: ~p", [_Reason]).
 

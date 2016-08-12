@@ -582,6 +582,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef, call=Call ,self=Self}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate({'shutdown', 'transfer'}, _) ->
     lager:info("callflow execution has been transferred");
 terminate({'shutdown', 'control_usurped'}, _) ->

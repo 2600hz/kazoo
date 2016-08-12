@@ -156,6 +156,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{iodevice = IoDevice}) ->
     'ok' = file:close(IoDevice),
     lager:debug("call inspector kamailio parser terminated: ~p", [_Reason]).

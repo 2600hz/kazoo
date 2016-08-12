@@ -206,6 +206,7 @@ handle_event(_JObj, _TemplateName) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _TemplateName) ->
     lager:debug("stepswitch cnam worker terminating: ~p", [_Reason]).
 

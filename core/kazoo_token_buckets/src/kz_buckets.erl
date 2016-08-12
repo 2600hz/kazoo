@@ -393,6 +393,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("bucket ets mgr going down: ~p", [_Reason]).
 

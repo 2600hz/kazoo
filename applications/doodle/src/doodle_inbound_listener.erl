@@ -174,6 +174,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate('shutdown', _State) ->
     lager:debug("inbound listener terminating");
 terminate(Reason, #state{connection=Connection}) ->

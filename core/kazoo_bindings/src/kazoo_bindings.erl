@@ -555,6 +555,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _) ->
     lager:debug("bindings server terminating: ~p", [_Reason]).
 

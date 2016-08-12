@@ -687,6 +687,7 @@ handle_info(_Info, StateName, State) ->
 %% @spec terminate(Reason, StateName, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _StateName, _State) ->
     lager:debug("acdc queue fsm terminating: ~p", [_Reason]).
 

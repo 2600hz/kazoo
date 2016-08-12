@@ -271,6 +271,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{id=Id}) ->
     publish_doc_update(Id),
     lager:debug("media tts ~s going down: ~p", [Id, _Reason]).

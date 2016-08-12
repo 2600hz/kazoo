@@ -177,6 +177,7 @@ send_give_away_retry(Tbl, Data, Timeout) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("ETS mgr going down: ~p", [_Reason]).
 

@@ -251,6 +251,7 @@ find_me(Fun, Srv) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("ETS mgr going down: ~p", [_Reason]).
 

@@ -175,6 +175,7 @@ handle_event(JObj, BasicDeliver, #state{parent=Parent
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener federator terminating: ~p", [_Reason]).
 

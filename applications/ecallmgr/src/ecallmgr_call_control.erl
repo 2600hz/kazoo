@@ -475,6 +475,7 @@ handle_call_events(JObj, FetchId) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{start_time=StartTime
                          ,sanity_check_tref=SCTRef
                          ,keep_alive_ref=KATRef

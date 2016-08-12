@@ -218,6 +218,7 @@ handle_info(_Msg, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("~s terminating: ~p", [?MODULE, _Reason]).
 

@@ -1320,6 +1320,7 @@ handle_info(_Info, StateName, State) ->
 %% @spec terminate(Reason, StateName, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _StateName, #state{agent_listener=AgentListener}) ->
     lager:debug("acdc agent fsm terminating while in ~s: ~p", [_StateName, _Reason]),
     acdc_agent_listener:stop(AgentListener),

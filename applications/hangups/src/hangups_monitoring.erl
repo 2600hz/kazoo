@@ -129,6 +129,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{stat_timer_ref=Ref}) ->
     _ = erlang:cancel_timer(Ref),
     lager:debug("hangups_monitor going down: ~p", [_Reason]).

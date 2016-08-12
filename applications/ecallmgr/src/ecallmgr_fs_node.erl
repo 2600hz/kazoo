@@ -421,6 +421,7 @@ handle_event(_JObj, #state{node=Node}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{node=Node}) ->
     lager:info("node listener for ~s terminating: ~p", [Node, _Reason]).
 

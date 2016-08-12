@@ -276,6 +276,7 @@ handle_resource_response(JObj, Props) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     'ok'.
 

@@ -543,6 +543,7 @@ handle_event(_JObj, #state{}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{}) ->
     ets:delete(?CHANNELS_TBL),
     lager:info("fs channels terminating: ~p", [_Reason]).

@@ -134,6 +134,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %% @spec terminate(Reason, State) -> void()
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 

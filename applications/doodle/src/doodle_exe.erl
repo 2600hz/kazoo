@@ -553,6 +553,7 @@ get_pid(_) -> 'undefined'.
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate({'shutdown', 'transfer'}, _) ->
     lager:info("callflow execution has been transferred");
 terminate({'shutdown', 'control_usurped'}, _) ->

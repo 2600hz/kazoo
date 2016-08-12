@@ -478,6 +478,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{stage='undefined'}) ->
     lager:debug("fax worker ~p terminated on undefined stage: ~p", [self(), _Reason]);
 terminate('normal' = _Reason, #state{stage=Stage, job_id=JobId, controller=CtrlQ, queue_name=Q}) ->

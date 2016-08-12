@@ -164,6 +164,7 @@ maybe_clear_dictionary_entry(_) -> 'ok'.
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("kazoo service sync terminating: ~p", [_Reason]).
 

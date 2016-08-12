@@ -608,6 +608,7 @@ handle_event(JObj, #state{tab=Tab}=State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{tab=Tab}) ->
     lager:debug("terminating ~p(~p)", [self(), Tab]),
     ets:delete(Tab).

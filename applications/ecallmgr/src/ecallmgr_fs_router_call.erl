@@ -142,6 +142,7 @@ handle_info(_Other, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{node=Node}) ->
     lager:info("route listener for ~s terminating: ~p", [Node, _Reason]).
 

@@ -874,6 +874,7 @@ handle_event(_JObj, #state{fsm_pid=FSM
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(Reason, #state{agent_queues=Queues
                         ,acct_id=AcctId
                         ,agent_id=AgentId

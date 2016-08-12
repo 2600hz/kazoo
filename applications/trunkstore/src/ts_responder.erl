@@ -142,6 +142,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _) ->
     lager:info("ts_responder terminating: ~p", [_Reason]).
 

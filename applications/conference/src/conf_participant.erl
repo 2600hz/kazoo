@@ -426,6 +426,7 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #participant{name_pronounced = Name}) ->
     maybe_clear(Name),
     lager:debug("conference participant execution has been stopped: ~p", [_Reason]).

@@ -202,6 +202,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{}=_State) ->
     lager:debug("call inspector datastore terminated: ~p", [_Reason]),
     'ok'.
