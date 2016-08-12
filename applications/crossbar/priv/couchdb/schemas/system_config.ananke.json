@@ -5,7 +5,7 @@
     "properties": {
         "schedules": {
             "default": [],
-            "description": "",
+            "description": "ananke schedules",
             "name": "schedules",
             "type": "array"
         },
@@ -18,7 +18,7 @@
                                 "attempts": {
                                     "properties": {
                                         "default": 5,
-                                        "description": "",
+                                        "description": "ananke attempts",
                                         "name": "attempts",
                                         "type": "string"
                                     }
@@ -26,7 +26,7 @@
                                 "interval_s": {
                                     "properties": {
                                         "default": 300,
-                                        "description": "",
+                                        "description": "ananke interval s",
                                         "name": "interval_s",
                                         "type": "string"
                                     }
@@ -34,7 +34,7 @@
                                 "timeout_s": {
                                     "properties": {
                                         "default": 20,
-                                        "description": "",
+                                        "description": "ananke timeout s",
                                         "name": "timeout_s",
                                         "type": "string"
                                     }

@@ -8,13 +8,13 @@
                 "selector_column": 1,
                 "value_column": 2
             },
-            "description": "",
+            "description": "crossbar.resource_selectors csv config",
             "name": "csv_config",
             "type": "object"
         },
         "suppress_selectors_change_notice": {
             "default": false,
-            "description": "",
+            "description": "crossbar.resource_selectors suppress selectors change notice",
             "name": "suppress_selectors_change_notice",
             "type": "boolean"
         }

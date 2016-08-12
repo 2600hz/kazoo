@@ -5,7 +5,7 @@
     "properties": {
         "backoff_fudge_ms": {
             "default": 5000,
-            "description": "",
+            "description": "notify backoff fudge milliseconds",
             "name": "backoff_fudge_ms",
             "type": "integer"
         },
@@ -15,7 +15,7 @@
                     "properties": {
                         "content_transfer_encoding": {
                             "properties": {
-                                "description": "",
+                                "description": "notify content transfer encoding",
                                 "name": "content_transfer_encoding",
                                 "type": "string"
                             }
@@ -26,13 +26,13 @@
         },
         "notification_app": {
             "default": "notify",
-            "description": "",
+            "description": "notify notification app",
             "name": "notification_app",
             "type": "string"
         },
         "search_rep_email": {
             "default": true,
-            "description": "",
+            "description": "notify search rep email",
             "name": "search_rep_email",
             "type": "boolean"
         }

@@ -5,7 +5,7 @@
     "properties": {
         "maximum_range": {
             "default": 2682000,
-            "description": "",
+            "description": "crossbar.services maximum range",
             "name": "maximum_range",
             "type": "integer"
         }

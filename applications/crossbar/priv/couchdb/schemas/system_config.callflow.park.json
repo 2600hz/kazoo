@@ -5,25 +5,25 @@
     "properties": {
         "db_doc_name": {
             "default": "parked_calls",
-            "description": "",
+            "description": "callflow.park db doc name",
             "name": "db_doc_name",
             "type": "string"
         },
         "default_callback_timeout": {
             "default": 30000,
-            "description": "",
+            "description": "callflow.park default callback timeout",
             "name": "default_callback_timeout",
             "type": "integer"
         },
         "default_ringback_timeout": {
             "default": 120000,
-            "description": "",
+            "description": "callflow.park default ringback timeout",
             "name": "default_ringback_timeout",
             "type": "integer"
         },
         "parked_presence_type": {
             "default": "early",
-            "description": "",
+            "description": "callflow.park parked presence type",
             "name": "parked_presence_type",
             "type": "string"
         }

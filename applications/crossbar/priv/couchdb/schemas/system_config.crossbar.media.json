@@ -5,13 +5,13 @@
     "properties": {
         "normalization_format": {
             "default": "mp3",
-            "description": "",
+            "description": "crossbar.media normalization format",
             "name": "normalization_format",
             "type": "string"
         },
         "normalize_media": {
             "default": false,
-            "description": "",
+            "description": "crossbar.media normalize media",
             "name": "normalize_media",
             "type": "boolean"
         }

@@ -5,13 +5,13 @@
     "properties": {
         "active_modbs": {
             "default": 6,
-            "description": "",
+            "description": "modb active modbs",
             "name": "active_modbs",
             "type": "integer"
         },
         "routines": {
             "default": [],
-            "description": "",
+            "description": "modb routines",
             "name": "routines",
             "type": "array"
         }

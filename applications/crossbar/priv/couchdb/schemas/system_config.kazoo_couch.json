@@ -5,25 +5,25 @@
     "properties": {
         "allow_maintenance_db_delete": {
             "default": false,
-            "description": "",
+            "description": "kazoo_couch allow maintenance db delete",
             "name": "allow_maintenance_db_delete",
             "type": "boolean"
         },
         "default_chunk_size": {
             "default": 1000,
-            "description": "",
+            "description": "kazoo_couch default chunk size",
             "name": "default_chunk_size",
             "type": "integer"
         },
         "max_concurrent_docs_to_archive": {
             "default": 500,
-            "description": "",
+            "description": "kazoo_couch max concurrent docs to archive",
             "name": "max_concurrent_docs_to_archive",
             "type": "integer"
         },
         "use_bigcouch_direct": {
             "default": true,
-            "description": "",
+            "description": "kazoo_couch use bigcouch direct",
             "name": "use_bigcouch_direct",
             "type": "boolean"
         }

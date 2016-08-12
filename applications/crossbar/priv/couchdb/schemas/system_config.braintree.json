@@ -5,37 +5,37 @@
     "properties": {
         "debug": {
             "default": false,
-            "description": "",
+            "description": "braintree debug",
             "name": "debug",
             "type": "boolean"
         },
         "default_environment": {
             "default": [],
-            "description": "",
+            "description": "braintree default environment",
             "name": "default_environment",
             "type": "string"
         },
         "default_merchant_id": {
             "default": [],
-            "description": "",
+            "description": "braintree default merchant id",
             "name": "default_merchant_id",
             "type": "string"
         },
         "max_amount": {
             "default": 200.0,
-            "description": "",
+            "description": "braintree max amount",
             "name": "max_amount",
             "type": "number"
         },
         "min_amount": {
             "default": 5.0,
-            "description": "",
+            "description": "braintree min amount",
             "name": "min_amount",
             "type": "number"
         },
         "should_prorate": {
             "default": true,
-            "description": "",
+            "description": "braintree should prorate",
             "name": "should_prorate",
             "type": "boolean"
         }

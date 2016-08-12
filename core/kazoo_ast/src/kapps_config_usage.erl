@@ -15,8 +15,11 @@ to_schema_docs(Schemas) ->
 update_schema({Name, AutoGenSchema}) ->
     Path = kz_ast_util:schema_path(<<"system_config.", Name/binary, ".json">>),
     SchemaDoc = schema_doc(Name, Path),
-    Updated = kz_json:merge_recursive(AutoGenSchema, SchemaDoc),
+    Updated = kz_json:merge_recursive(AutoGenSchema, SchemaDoc, fun merger/2),
     'ok' = file:write_file(Path, kz_json:encode(Updated)).
+
+merger(JObj1, JObj2) ->
+    kz_util:is_empty(JObj1) and not kz_util:is_empty(JObj2).
 
 schema_doc(Name, Path) ->
     kz_ast_util:ensure_file_exists(Path),

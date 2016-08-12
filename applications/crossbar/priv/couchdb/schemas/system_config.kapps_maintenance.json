@@ -5,7 +5,7 @@
     "properties": {
         "migrate_current_version": {
             "default": "3.22",
-            "description": "",
+            "description": "kapps_maintenance migrate current version",
             "name": "migrate_current_version",
             "type": "string"
         }

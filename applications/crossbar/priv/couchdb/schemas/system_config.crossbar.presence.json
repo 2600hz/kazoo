@@ -5,7 +5,7 @@
     "properties": {
         "query_presence_timeout": {
             "default": 1000,
-            "description": "",
+            "description": "crossbar.presence query presence timeout",
             "name": "query_presence_timeout",
             "type": "integer"
         }

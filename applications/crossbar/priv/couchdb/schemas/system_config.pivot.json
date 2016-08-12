@@ -5,13 +5,13 @@
     "properties": {
         "store_recordings": {
             "default": false,
-            "description": "",
+            "description": "pivot store recordings",
             "name": "store_recordings",
             "type": "boolean"
         },
         "tts_texts_size": {
             "default": 4000,
-            "description": "",
+            "description": "pivot tts texts size",
             "name": "tts_texts_size",
             "type": "integer"
         }

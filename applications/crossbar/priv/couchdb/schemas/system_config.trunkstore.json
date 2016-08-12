@@ -4,26 +4,26 @@
     "description": "Schema for trunkstore system_config",
     "properties": {
         "default_caller_id_number": {
-            "default": "0000000000",
-            "description": "",
+            "default": "default",
+            "description": "trunkstore default caller id number",
             "name": "default_caller_id_number",
             "type": "string"
         },
         "default_hunt_non_reconcilable": {
             "default": false,
-            "description": "",
+            "description": "trunkstore default hunt non reconcilable",
             "name": "default_hunt_non_reconcilable",
             "type": "boolean"
         },
         "ensure_valid_caller_id": {
             "default": false,
-            "description": "",
+            "description": "trunkstore ensure valid caller id",
             "name": "ensure_valid_caller_id",
             "type": "boolean"
         },
         "ring_ready_offnet": {
             "default": true,
-            "description": "",
+            "description": "trunkstore ring ready offnet",
             "name": "ring_ready_offnet",
             "type": "boolean"
         }

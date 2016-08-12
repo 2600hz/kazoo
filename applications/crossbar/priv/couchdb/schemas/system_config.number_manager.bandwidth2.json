@@ -5,31 +5,31 @@
     "properties": {
         "account_id": {
             "default": "",
-            "description": "",
+            "description": "number_manager.bandwidth2 account id",
             "name": "account_id",
             "type": "string"
         },
         "debug": {
             "default": false,
-            "description": "",
+            "description": "number_manager.bandwidth2 debug",
             "name": "debug",
             "type": "boolean"
         },
         "enable_provisioning": {
             "default": true,
-            "description": "",
+            "description": "number_manager.bandwidth2 enable provisioning",
             "name": "enable_provisioning",
             "type": "boolean"
         },
         "order_name_prefix": {
             "default": "Kazoo",
-            "description": "",
+            "description": "number_manager.bandwidth2 order name prefix",
             "name": "order_name_prefix",
             "type": "string"
         },
         "sandbox_provisioning": {
             "default": true,
-            "description": "",
+            "description": "number_manager.bandwidth2 sandbox provisioning",
             "name": "sandbox_provisioning",
             "type": "boolean"
         }

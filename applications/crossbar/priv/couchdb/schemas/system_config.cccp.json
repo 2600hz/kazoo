@@ -5,33 +5,33 @@
     "properties": {
         "allowed_callee_regex": {
             "default": "^\\+?\\d{7,}$",
-            "description": "",
+            "description": "cccp allowed callee regex",
             "name": "allowed_callee_regex",
             "type": "string"
         },
         "callback_delay": {
             "default": 3,
-            "description": "",
+            "description": "cccp callback delay",
             "name": "callback_delay",
             "type": "integer"
         },
         "cccp_cb_number": {
-            "description": "",
+            "description": "cccp cccp cb number",
             "name": "cccp_cb_number"
         },
         "cccp_cc_number": {
-            "description": "",
+            "description": "cccp cccp cc number",
             "name": "cccp_cc_number"
         },
         "last_number_redial_code": {
             "default": "*0",
-            "description": "",
+            "description": "cccp last number redial code",
             "name": "last_number_redial_code",
             "type": "string"
         },
         "prompt_delay": {
             "default": 1,
-            "description": "",
+            "description": "cccp prompt delay",
             "name": "prompt_delay",
             "type": "integer"
         }

@@ -5,31 +5,30 @@
     "properties": {
         "crawl_for_first_occurrence": {
             "default": true,
-            "description": "",
+            "description": "notify.account_crawler crawl for first occurrence",
             "name": "crawl_for_first_occurrence",
             "type": "boolean"
         },
         "crawl_for_low_balance": {
             "default": true,
-            "description": "",
+            "description": "notify.account_crawler crawl for low balance",
             "name": "crawl_for_low_balance",
             "type": "boolean"
         },
         "cycle_delay_time": {
             "default": 300000,
-            "description": "",
             "name": "cycle_delay_time",
             "type": "integer"
         },
         "interaccount_delay": {
             "default": 10000,
-            "description": "",
+            "description": "notify.account_crawler interaccount delay",
             "name": "interaccount_delay",
             "type": "integer"
         },
         "low_balance_repeat_s": {
             "default": 86400,
-            "description": "",
+            "description": "notify.account_crawler low balance repeat s",
             "name": "low_balance_repeat_s",
             "type": "integer"
         }

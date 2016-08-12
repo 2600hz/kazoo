@@ -11,7 +11,7 @@
                             "delivery_mode": 2,
                             "mandatory": true
                         },
-                        "description": "",
+                        "description": "sms options",
                         "name": "options",
                         "type": "object"
                     }

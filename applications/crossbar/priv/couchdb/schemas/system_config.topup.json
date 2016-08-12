@@ -5,7 +5,7 @@
     "properties": {
         "enable": {
             "default": true,
-            "description": "",
+            "description": "topup enable",
             "name": "enable",
             "type": "boolean"
         }

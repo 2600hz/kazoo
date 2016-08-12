@@ -5,37 +5,37 @@
     "properties": {
         "debug": {
             "default": false,
-            "description": "",
+            "description": "number_manager.voip_innovations debug",
             "name": "debug",
             "type": "boolean"
         },
         "enable_provisioning": {
             "default": true,
-            "description": "",
+            "description": "number_manager.voip_innovations enable provisioning",
             "name": "enable_provisioning",
             "type": "boolean"
         },
         "endpoint_group": {
             "default": "",
-            "description": "",
+            "description": "number_manager.voip_innovations endpoint group",
             "name": "endpoint_group",
             "type": "string"
         },
         "login": {
             "default": "",
-            "description": "",
+            "description": "number_manager.voip_innovations login",
             "name": "login",
             "type": "string"
         },
         "password": {
             "default": "",
-            "description": "",
+            "description": "number_manager.voip_innovations password",
             "name": "password",
             "type": "string"
         },
         "sandbox_provisioning": {
             "default": false,
-            "description": "",
+            "description": "number_manager.voip_innovations sandbox provisioning",
             "name": "sandbox_provisioning",
             "type": "boolean"
         }

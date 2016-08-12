@@ -4,7 +4,7 @@
     "description": "Schema for mobile_manager system_config",
     "properties": {
         "url": {
-            "description": "",
+            "description": "mobile_manager url",
             "name": "url",
             "type": "string"
         }

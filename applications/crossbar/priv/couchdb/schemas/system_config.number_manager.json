@@ -12,13 +12,13 @@
                 "prepend",
                 "vitelity_e911"
             ],
-            "description": "",
+            "description": "number_manager allowed features",
             "name": "allowed_features",
             "type": "array"
         },
         "available_module_name": {
             "default": "knm_local",
-            "description": "",
+            "description": "number_manager available module name",
             "name": "available_module_name",
             "type": "string"
         },
@@ -26,7 +26,7 @@
             "default": [
                 "knm_local"
             ],
-            "description": "",
+            "description": "number_manager carrier modules",
             "name": "carrier_modules",
             "type": "array"
         },
@@ -66,7 +66,7 @@
                     "regex": "^(.*)$"
                 }
             },
-            "description": "",
+            "description": "number_manager classifiers",
             "name": "classifiers",
             "type": "object"
         },
@@ -74,53 +74,53 @@
             "default": [
                 "regex"
             ],
-            "description": "",
+            "description": "number_manager converters",
             "name": "converters",
             "type": "array"
         },
         "crawler_timer_ms": {
             "default": 86400000,
-            "description": "",
+            "description": "number_manager crawler timer milliseconds",
             "name": "crawler_timer_ms",
             "type": "integer"
         },
         "default_force_outbound": {
             "default": false,
-            "description": "",
+            "description": "number_manager default force outbound",
             "name": "default_force_outbound",
             "type": "boolean"
         },
         "deleted_expiry_d": {
             "default": 90,
-            "description": "",
+            "description": "number_manager deleted expiry d",
             "name": "deleted_expiry_d",
             "type": "integer"
         },
         "discovery_expiry_d": {
             "default": 90,
-            "description": "",
+            "description": "number_manager discovery expiry d",
             "name": "discovery_expiry_d",
             "type": "integer"
         },
         "e164_converters": {
-            "description": "",
+            "description": "number_manager e164 converters",
             "name": "e164_converters"
         },
         "force_local_outbound": {
             "default": true,
-            "description": "",
+            "description": "number_manager force local outbound",
             "name": "force_local_outbound",
             "type": "boolean"
         },
         "force_port_in_outbound": {
             "default": true,
-            "description": "",
+            "description": "number_manager force port in outbound",
             "name": "force_port_in_outbound",
             "type": "boolean"
         },
         "force_port_out_outbound": {
             "default": true,
-            "description": "",
+            "description": "number_manager force port out outbound",
             "name": "force_port_out_outbound",
             "type": "boolean"
         },
@@ -131,35 +131,34 @@
                 "failover",
                 "prepend"
             ],
-            "description": "",
             "name": "providers",
             "type": "array"
         },
         "reconcile_regex": {
             "default": "^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$",
-            "description": "",
+            "description": "number_manager reconcile regex",
             "name": "reconcile_regex",
             "type": "string"
         },
         "released_state": {
-            "description": "",
+            "description": "number_manager released state",
             "name": "released_state",
             "type": "string"
         },
         "should_permanently_delete": {
-            "description": "",
+            "description": "number_manager should permanently delete",
             "name": "should_permanently_delete",
             "type": "boolean"
         },
         "time_between_accounts_ms": {
             "default": 1000,
-            "description": "",
+            "description": "number_manager time between accounts milliseconds",
             "name": "time_between_accounts_ms",
             "type": "integer"
         },
         "time_between_numbers_ms": {
             "default": 1000,
-            "description": "",
+            "description": "number_manager time between numbers milliseconds",
             "name": "time_between_numbers_ms",
             "type": "integer"
         }

@@ -4,7 +4,7 @@
     "description": "Schema for whitelabel system_config",
     "properties": {
         "domains": {
-            "description": "",
+            "description": "whitelabel domains",
             "name": "domains"
         }
     },

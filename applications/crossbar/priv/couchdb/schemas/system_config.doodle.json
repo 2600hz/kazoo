@@ -4,29 +4,29 @@
     "description": "Schema for doodle system_config",
     "properties": {
         "connections": {
-            "description": "",
+            "description": "doodle connections",
             "name": "connections"
         },
         "default_test_from_number": {
             "default": "15552220001",
-            "description": "",
+            "description": "doodle default test from number",
             "name": "default_test_from_number",
             "type": "string"
         },
         "default_test_route_id": {
             "default": "syneverse",
-            "description": "",
+            "description": "doodle default test route id",
             "name": "default_test_route_id",
             "type": "string"
         },
         "inbound_broker": {
-            "description": "",
+            "description": "doodle inbound broker",
             "name": "inbound_broker",
             "type": "string"
         },
         "inbound_exchange": {
             "default": "sms",
-            "description": "",
+            "description": "doodle inbound exchange",
             "name": "inbound_exchange",
             "type": "string"
         },
@@ -34,35 +34,35 @@
             "default": {
                 "passive": true
             },
-            "description": "",
+            "description": "doodle inbound exchange options",
             "name": "inbound_exchange_options",
             "type": "object"
         },
         "inbound_exchange_type": {
             "default": "topic",
-            "description": "",
+            "description": "doodle inbound exchange type",
             "name": "inbound_exchange_type",
             "type": "string"
         },
         "inbound_queue_name": {
             "default": "default",
-            "description": "",
+            "description": "doodle inbound queue name",
             "name": "inbound_queue_name",
             "type": "string"
         },
         "min_bucket_cost": {
             "default": 1,
-            "description": "",
+            "description": "doodle min bucket cost",
             "name": "min_bucket_cost",
             "type": "integer"
         },
         "reschedule": {
-            "description": "",
+            "description": "doodle reschedule",
             "name": "reschedule"
         },
         "route_win_timeout": {
             "default": 3000,
-            "description": "",
+            "description": "doodle route win timeout",
             "name": "route_win_timeout",
             "type": "integer"
         },
@@ -70,7 +70,7 @@
             "default": {
                 "en-US": "sms service unavailable"
             },
-            "description": "",
+            "description": "doodle unavailable message",
             "name": "unavailable_message",
             "type": "object"
         }

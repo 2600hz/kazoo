@@ -5,31 +5,31 @@
     "properties": {
         "application_timeout": {
             "default": 500000,
-            "description": "",
+            "description": "call_command application timeout",
             "name": "application_timeout",
             "type": "integer"
         },
         "collect_timeout": {
             "default": 5000,
-            "description": "",
+            "description": "call_command collect timeout",
             "name": "collect_timeout",
             "type": "integer"
         },
         "digit_timeout": {
             "default": 3000,
-            "description": "",
+            "description": "call_command digit timeout",
             "name": "digit_timeout",
             "type": "integer"
         },
         "interdigit_timeout": {
             "default": 2000,
-            "description": "",
+            "description": "call_command interdigit timeout",
             "name": "interdigit_timeout",
             "type": "integer"
         },
         "message_timeout": {
             "default": 5000,
-            "description": "",
+            "description": "call_command message timeout",
             "name": "message_timeout",
             "type": "integer"
         },
@@ -40,7 +40,7 @@
                         "retries": {
                             "properties": {
                                 "default": 5,
-                                "description": "",
+                                "description": "call_command retries",
                                 "name": "retries",
                                 "type": "integer"
                             }
@@ -48,7 +48,7 @@
                         "save_timeout_ms": {
                             "properties": {
                                 "default": 300000,
-                                "description": "",
+                                "description": "call_command save timeout milliseconds",
                                 "name": "save_timeout_ms",
                                 "type": "integer"
                             }

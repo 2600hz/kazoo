@@ -4,41 +4,41 @@
     "description": "Schema for kazoo_endpoint system_config",
     "properties": {
         "custom_sip_interface": {
-            "description": "",
+            "description": "kazoo_endpoint custom sip interface",
             "name": "custom_sip_interface"
         },
         "default_caller_id_name": {
-            "default": "anonymous",
-            "description": "",
+            "default": "default",
+            "description": "kazoo_endpoint default caller id name",
             "name": "default_caller_id_name",
             "type": "string"
         },
         "default_caller_id_number": {
-            "default": "0000000000",
-            "description": "",
+            "default": "default",
+            "description": "kazoo_endpoint default caller id number",
             "name": "default_caller_id_number",
             "type": "string"
         },
         "default_ignore_completed_elsewhere": {
             "default": true,
-            "description": "",
+            "description": "kazoo_endpoint default ignore completed elsewhere",
             "name": "default_ignore_completed_elsewhere",
             "type": "boolean"
         },
         "restrict_to_known_types": {
             "default": false,
-            "description": "",
+            "description": "kazoo_endpoint restrict to known types",
             "name": "restrict_to_known_types",
             "type": "boolean"
         },
         "should_add_diversion_header": {
             "default": false,
-            "description": "",
+            "description": "kazoo_endpoint should add diversion header",
             "name": "should_add_diversion_header",
             "type": "boolean"
         },
         "sip_transport": {
-            "description": "",
+            "description": "kazoo_endpoint sip transport",
             "name": "sip_transport"
         }
     },

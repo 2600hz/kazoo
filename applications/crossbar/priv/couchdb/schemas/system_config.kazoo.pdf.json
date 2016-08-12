@@ -5,7 +5,7 @@
     "properties": {
         "html2pdf": {
             "default": "/usr/bin/htmldoc --quiet --webpage -f $pdf$ $html$",
-            "description": "",
+            "description": "kazoo.pdf html2pdf",
             "name": "html2pdf",
             "type": "string"
         }

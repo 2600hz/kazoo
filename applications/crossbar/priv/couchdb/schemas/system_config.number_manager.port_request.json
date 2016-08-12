@@ -5,7 +5,7 @@
     "properties": {
         "crawler_delay_time_ms": {
             "default": 60000,
-            "description": "",
+            "description": "number_manager.port_request crawler delay time milliseconds",
             "name": "crawler_delay_time_ms",
             "type": "integer"
         }

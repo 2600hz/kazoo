@@ -4,7 +4,7 @@
     "description": "Schema for provisioner system_config",
     "properties": {
         "cluster_id": {
-            "description": "",
+            "description": "provisioner cluster id",
             "name": "cluster_id",
             "type": "string"
         },
@@ -35,16 +35,16 @@
                     }
                 }
             },
-            "description": "",
+            "description": "provisioner feature keys",
             "name": "feature_keys",
             "type": "object"
         },
         "provisioning_type": {
-            "description": "",
+            "description": "provisioner provisioning type",
             "name": "provisioning_type"
         },
         "provisioning_url": {
-            "description": "",
+            "description": "provisioner provisioning url",
             "name": "provisioning_url",
             "type": "string"
         }

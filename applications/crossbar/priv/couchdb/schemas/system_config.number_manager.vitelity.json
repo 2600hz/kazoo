@@ -5,12 +5,12 @@
     "properties": {
         "api_uri": {
             "default": "http://api.vitelity.net/api.php",
-            "description": "",
+            "description": "number_manager.vitelity api uri",
             "name": "api_uri",
             "type": "string"
         },
         "routesip": {
-            "description": "",
+            "description": "number_manager.vitelity routesip",
             "name": "routesip"
         }
     },

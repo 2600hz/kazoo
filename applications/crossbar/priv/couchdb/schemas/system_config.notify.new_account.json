@@ -5,19 +5,19 @@
     "properties": {
         "default_to": {
             "default": "",
-            "description": "",
+            "description": "notify.new_account default to",
             "name": "default_to",
             "type": "string"
         },
         "html_content_transfer_encoding": {
             "default": "7BIT",
-            "description": "",
+            "description": "notify.new_account html content transfer encoding",
             "name": "html_content_transfer_encoding",
             "type": "string"
         },
         "text_content_transfer_encoding": {
             "default": "7BIT",
-            "description": "",
+            "description": "notify.new_account text content transfer encoding",
             "name": "text_content_transfer_encoding",
             "type": "string"
         }

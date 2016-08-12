@@ -8,12 +8,12 @@
                 "freeswitch_dialplan",
                 "freeswitch_chatplan"
             ],
-            "description": "",
+            "description": "crossbar.freeswitch files to include",
             "name": "files_to_include",
             "type": "array"
         },
         "offline_configuration_key": {
-            "description": "",
+            "description": "crossbar.freeswitch offline configuration key",
             "name": "offline_configuration_key",
             "type": "string"
         },
@@ -21,7 +21,7 @@
             "default": [
                 "freeswitch_directory_realm"
             ],
-            "description": "",
+            "description": "crossbar.freeswitch realm templates to process",
             "name": "realm_templates_to_process",
             "type": "array"
         },
@@ -29,18 +29,18 @@
             "default": [
                 "freeswitch_directory"
             ],
-            "description": "",
+            "description": "crossbar.freeswitch templates to process",
             "name": "templates_to_process",
             "type": "array"
         },
         "work_dir": {
             "default": "/tmp/",
-            "description": "",
+            "description": "crossbar.freeswitch work dir",
             "name": "work_dir",
             "type": "string"
         },
         "{Module}": {
-            "description": "",
+            "description": "crossbar.freeswitch {Module}",
             "name": "{Module}",
             "type": "string"
         }

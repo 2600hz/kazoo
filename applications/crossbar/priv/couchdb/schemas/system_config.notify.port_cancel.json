@@ -4,13 +4,13 @@
     "description": "Schema for notify.port_cancel system_config",
     "properties": {
         "default_from": {
-            "description": "",
+            "description": "notify.port_cancel default from",
             "name": "default_from",
             "type": "string"
         },
         "default_to": {
             "default": "",
-            "description": "",
+            "description": "notify.port_cancel default to",
             "name": "default_to",
             "type": "string"
         }
