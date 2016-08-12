@@ -291,6 +291,8 @@ update_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?UPDATE_HEADERS, ?UPDATE_VALUES, ?UPDATE_TYPES);
 update_v(JObj) -> update_v(kz_json:to_proplist(JObj)).
 
+-spec publish_update(api_terms()) -> api_formatter_return().
+-spec publish_update(api_terms(), ne_binary()) -> api_formatter_return().
 publish_update(JObj) ->
     publish_update(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_update(Req, ContentType) ->
@@ -456,6 +458,7 @@ mwi_query_routing_key(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec register_overwrite(api_terms()) -> api_formatter_return().
 register_overwrite(Prop) when is_list(Prop) ->
     case register_overwrite_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?REGISTER_OVERWRITE_HEADERS, ?OPTIONAL_REGISTER_OVERWRITE_HEADERS);
@@ -548,6 +551,8 @@ flush_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FLUSH_HEADERS, ?FLUSH_VALUES, ?FLUSH_TYPES);
 flush_v(JObj) -> flush_v(kz_json:to_proplist(JObj)).
 
+-spec publish_flush(api_terms()) -> api_formatter_return().
+-spec publish_flush(api_terms(), ne_binary()) -> api_formatter_return().
 publish_flush(JObj) ->
     publish_flush(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_flush(Req, ContentType) ->
@@ -572,6 +577,8 @@ sync_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SYNC_HEADERS, ?SYNC_VALUES, ?SYNC_TYPES);
 sync_v(JObj) -> sync_v(kz_json:to_proplist(JObj)).
 
+-spec publish_sync(api_terms()) -> api_formatter_return().
+-spec publish_sync(api_terms(), ne_binary()) -> api_formatter_return().
 publish_sync(JObj) ->
     publish_sync(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_sync(Req, ContentType) ->
