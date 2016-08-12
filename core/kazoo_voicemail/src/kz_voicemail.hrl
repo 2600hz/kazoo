@@ -23,6 +23,11 @@
        ,?SECONDS_IN_DAY * Duration + ?SECONDS_IN_HOUR
        ).
 
+-record(bulk_res, {succeeded = []  :: ne_binaries()
+                  ,failed = [] :: kz_json:objects()
+                  ,moved = [] :: ne_binaries()
+                  }).
+
 -type update_funs() :: [fun((kz_json:object()) -> kz_json:object())].
 
 -type db_ret() :: 'ok' | {'ok', kz_json:object() | kz_json:objects()} | {'error', any()}.

@@ -206,10 +206,14 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE) ->
             {'ok', Result} = kvm_messages:change_folder(Folder, MsgIds, AccountId, OldBoxId),
             C = cb_context:set_resp_data(Context, Result),
             update_mwi(C, OldBoxId);
-        NewBoxId ->
+        ?NE_BINARY = NewBoxId ->
             Moved = kvm_messages:change_box_id(AccountId, MsgIds, OldBoxId, NewBoxId),
             C = cb_context:set_resp_data(Context, Moved),
-            update_mwi(C, [OldBoxId, NewBoxId])
+            update_mwi(C, [OldBoxId, NewBoxId]);
+        NewBoxIds ->
+            Copied = kvm_message:copy_to_vmboxes(AccountId, MsgIds, OldBoxId, NewBoxIds),
+            C = cb_context:set_resp_data(Context, Copied),
+            update_mwi(C, [OldBoxId | NewBoxIds])
     end.
 
 post(Context, _DocId, ?MESSAGES_RESOURCE, ?BIN_DATA) ->

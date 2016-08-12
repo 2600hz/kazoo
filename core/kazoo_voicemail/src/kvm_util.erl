@@ -10,8 +10,8 @@
 
 -export([get_db/1, get_db/2
         ,open_modb_doc/3, open_accountdb_doc/3
-        ,handle_update_result/2, check_doc_type/3
-        ,retry_conflict/1
+        ,update_result/2, bulk_update_result/2, bulk_update_result/3
+        ,retry_conflict/1, check_doc_type/3
 
         ,check_msg_belonging/2
         ,find_differences/3
@@ -89,15 +89,52 @@ check_doc_type(_Doc, _ExpectedType, _DocType) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_update_result(ne_binary(), db_ret()) -> db_ret().
-handle_update_result(?MATCH_MODB_PREFIX(_, _, _)=_Id, {'error', _R}=Error) ->
+-spec update_result(ne_binary(), db_ret()) -> db_ret().
+update_result(?MATCH_MODB_PREFIX(_, _, _)=_Id, {'error', _R}=Error) ->
     lager:warning("failed to update voicemail message ~s: ~p", [_Id, _R]),
     Error;
-handle_update_result(?MATCH_MODB_PREFIX(_, _, _), {'ok', _}=Res) -> Res;
-handle_update_result(FromId, {'error', _R}=Error) ->
+update_result(?MATCH_MODB_PREFIX(_, _, _), {'ok', _}=Res) -> Res;
+update_result(FromId, {'error', _R}=Error) ->
     lager:warning("failed move voicemail message ~s to modb: ~p", [FromId, _R]),
     Error;
-handle_update_result(_, {'ok', _}=Res) -> Res.
+update_result(_, {'ok', _}=Res) -> Res.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec bulk_update_result(ne_binary(), db_ret(), kvm_messags:bulk_results()) ->
+                                 kvm_messags:bulk_results().
+bulk_update_result(Id, {'error', R} = Error, #bulk_res{failed = Failed} = Blk) ->
+    _ = update_result(Id, Error),
+    Blk#bulk_res{failed = [kz_json:from_list([{Id, kz_util:to_binary(R)}]) | Failed]};
+bulk_update_result(Id, {'ok', JObj} = OK, #bulk_res{succeeded = Succeeded
+                                                   ,moved = Moved} = Blk) ->
+    _ = update_result(Id, OK),
+    NewId = kz_doc:id(JObj),
+    case Id of
+        ?MATCH_MODB_PREFIX(_, _, _) ->
+            Blk#bulk_res{succeeded = [NewId | Succeeded]};
+        _ ->
+            Blk#bulk_res{succeeded = [NewId | Succeeded]
+                        ,moved = [Id | Moved]
+                        }
+    end.
+
+-spec bulk_update_result(kz_json:object(), kz_json:object()) -> kz_json:object().
+bulk_update_result(Result, CurrentResults) ->
+    Failed = kz_json:get_value(<<"failed">>, CurrentResults, [])
+                  ++ kz_json:get_value(<<"failed">>, Result, []),
+    Succeeded = kz_json:get_value(<<"succeeded">>, CurrentResults, [])
+                  ++ kz_json:get_value(<<"succeeded">>, Result, []),
+    kz_json:set_values(
+      [{<<"succeeded">>, Succeeded}
+      ,{<<"failed">>, Failed}
+      ]
+      ,CurrentResults
+    ).
+
 
 %%--------------------------------------------------------------------
 %% @public

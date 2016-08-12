@@ -204,9 +204,9 @@ update(AccountId, BoxId, MsgId, Funs) ->
 -spec do_update(ne_binary(), ne_binary(), kz_json:object(), update_funs()) -> db_ret().
 do_update(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _) = MsgId, JObj, Funs) ->
     NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
-    kvm_util:handle_update_result(MsgId, kazoo_modb:save_doc(AccountId, NewJObj, Year, Month));
+    kvm_util:update_result(MsgId, kazoo_modb:save_doc(AccountId, NewJObj, Year, Month));
 do_update(AccountId, MsgId, JObj, Funs) ->
-    kvm_util:handle_update_result(MsgId, move_to_modb(AccountId, JObj, Funs, 'true')).
+    kvm_util:update_result(MsgId, move_to_modb(AccountId, JObj, Funs, 'true')).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -273,7 +273,7 @@ update_media_id(MediaId, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc copy a message to other vmboxes
+%% @doc copy a message to other vmbox(es)
 %% @end
 %%--------------------------------------------------------------------
 -spec copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binary() | ne_binaries()) ->
@@ -283,35 +283,28 @@ copy_to_vmboxes(AccountId, Id, OldBoxId, ?NE_BINARY = NewBoxId) ->
 copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds) ->
     case maybe_move_to_db(AccountId, OldBoxId, Id) of
         {'error', Error} ->
-            Failed = kz_json:from_list([{Id, Error}]),
-            kz_json:from_list([{<<"failed">>, Failed}]);
+            Failed = kz_json:from_list([{Id, kz_util:to_binary(Error)}]),
+            kz_json:from_list([{<<"failed">>, [Failed]}]);
         {'ok', JObj} ->
-            copy_to_vmboxes_fold(AccountId, JObj, OldBoxId, NewBoxIds, kz_json:new())
+            copy_to_vmboxes_fold(AccountId, JObj, OldBoxId, NewBoxIds, #bulk_res{})
     end.
 
--spec copy_to_vmboxes_fold(ne_binary(), kz_json:object(), ne_binary(), ne_binaries(), kz_json:object()) ->
+-spec copy_to_vmboxes_fold(ne_binary(), kz_json:object(), ne_binary(), ne_binaries(), kvm_messags:bulk_results()) ->
                                   kz_json:object().
-copy_to_vmboxes_fold(_AccountId, _JObj, _OldBoxId, [], Copied) -> Copied;
+copy_to_vmboxes_fold(_, _, _, [], #bulk_res{succeeded = Succeeded
+                                           ,failed = Failed
+                                                                }) ->
+    kz_json:from_list([{<<"succeeded">>, Succeeded}
+                      ,{<<"failed">>, Failed}
+                      ]);
 copy_to_vmboxes_fold(AccountId, JObj, OldBoxId, [NBId | NBIds], Copied) ->
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NBId),
 
     Funs = ?CHANGE_VMBOX_FUNS(AccountId, NBId, NBoxJ, OldBoxId),
-
-    case kvm_util:handle_update_result(kz_doc:id(JObj), do_copy(AccountId, JObj, Funs)) of
-        {'ok', NewJObj} ->
-            Succeeded = kz_json:get_value(<<"succeeded">>, Copied, []),
-            NewCopied = kz_json:set_value(<<"succeeded">>
-                                         ,[kz_doc:id(NewJObj) | Succeeded]
-                                         ,Copied),
-            copy_to_vmboxes_fold(AccountId, JObj, OldBoxId, NBIds, NewCopied);
-        {'error', Error} ->
-            Failed = kz_json:get_value(<<"failed">>, Copied, []),
-            NewCopied = kz_json:set_value(<<"failed">>
-                                         ,[{kz_doc:id(JObj), Error} | Failed]
-                                         ,Copied),
-            copy_to_vmboxes_fold(AccountId, JObj, OldBoxId, NBIds, NewCopied)
-    end.
+    Id = kz_doc:id(JObj),
+    NewCopied = kvm_util:bulk_update_result(Id, do_copy(AccountId, JObj, Funs), Copied),
+    copy_to_vmboxes_fold(AccountId, JObj, OldBoxId, NBIds, NewCopied).
 
 -spec do_copy(ne_binary(), kz_json:object(), update_funs()) -> db_ret().
 do_copy(AccountId, JObj, Funs) ->
@@ -349,7 +342,7 @@ maybe_move_to_db(AccountId, BoxId, Id) ->
     case fetch(AccountId, Id, BoxId) of
         {'ok', JObj} ->
             Moved = move_to_modb(AccountId, JObj, [], 'true'),
-            case kvm_util:handle_update_result(Id, Moved) of
+            case kvm_util:update_result(Id, Moved) of
                 {'ok', _} = OK -> OK;
                 {'error', _} = Error -> Error
             end;

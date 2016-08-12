@@ -15,6 +15,7 @@
 
         ,update/3
         ,change_box_id/4
+        ,copy_to_vmboxes/4
         ,change_folder/4
 
         ,load_vmbox/2, load_vmbox/3
@@ -26,12 +27,10 @@
 -define(MODB_COUNT_VIEW, <<"mailbox_messages/count_per_folder">>).
 -define(COUNT_BY_VMBOX, <<"mailbox_messages/count_by_vmbox">>).
 
--record(bulk_res, {succeeded = []  :: ne_binaries()
-                  ,failed = [] :: kz_json:objects()
-                  ,moved = [] :: ne_binaries()
-                  }).
 -type bulk_results() :: #bulk_res{}.
 -type count_result() :: {non_neg_integer(), non_neg_integer()}.
+
+-export_type([bulk_results/0]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -71,8 +70,8 @@ get_from_vmbox(_AccountId, BoxJObj) ->
 %%--------------------------------------------------------------------
 -spec get_from_modb(ne_binary(), ne_binary() | kz_json:object()) ->
                            kz_json:objects().
-get_from_modb(AccountId, ?NE_BINARY = DocId) ->
-    ViewOpts = [{'key', DocId}
+get_from_modb(AccountId, ?NE_BINARY = BoxId) ->
+    ViewOpts = [{'key', BoxId}
                ,'include_docs'
                ],
     ViewOptsList = get_range_view(AccountId, ViewOpts),
@@ -82,8 +81,8 @@ get_from_modb(AccountId, ?NE_BINARY = DocId) ->
                           ,Msg =/= []
                   ],
     ModbResults;
-get_from_modb(AccountId, Doc) ->
-    get_from_modb(AccountId, kz_doc:id(Doc)).
+get_from_modb(AccountId, Box) ->
+    get_from_modb(AccountId, kz_doc:id(Box)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -174,55 +173,33 @@ update(AccountId, BoxId, Things, Funs) ->
                          bulk_results().
 update_fold(_AccountId, _BoxId, [], _Funs, Result) ->
     Result;
-update_fold(AccountId, BoxId, [?NE_BINARY = MsgId | MsgIds], Funs, #bulk_res{failed = Failed} = Blk) ->
+update_fold(AccountId, BoxId, [?NE_BINARY = Msg | Msgs], Funs, #bulk_res{failed = Failed} = Blk) ->
+    {MsgId, NewFuns} = maybe_add_update_fun(Msg, Funs),
     case kvm_message:fetch(AccountId, MsgId, BoxId) of
         {'ok', JObj} ->
-            Result = do_update(AccountId, MsgId, JObj, Funs, Blk),
-            update_fold(AccountId, BoxId, MsgIds, Funs, Result);
-        {'error', R} ->
-            Result = Blk#bulk_res{failed = [kz_json:from_list([{MsgId, kz_util:to_binary(R)}]) | Failed]},
-            update_fold(AccountId, BoxId,  MsgIds, Funs, Result)
-    end;
-update_fold(AccountId, BoxId, [Msg | Msgs], Funs, #bulk_res{failed = Failed} = Blk) ->
-    NewFun = [fun(JObj) ->
-                      kzd_box_message:set_metadata(Msg, JObj)
-              end
-              | Funs
-             ],
-    MsgId = kzd_box_message:media_id(Msg),
-    case kvm_message:fetch(AccountId, MsgId, BoxId) of
-        {'ok', JObj} ->
-            Result = do_update(AccountId, MsgId, JObj, NewFun, Blk),
+            Result = do_update(AccountId, MsgId, JObj, NewFuns, Blk),
             update_fold(AccountId, BoxId, Msgs, Funs, Result);
         {'error', R} ->
             Result = Blk#bulk_res{failed = [kz_json:from_list([{MsgId, kz_util:to_binary(R)}]) | Failed]},
             update_fold(AccountId, BoxId, Msgs, Funs, Result)
     end.
 
+maybe_add_update_fun(?NE_BINARY = Id, Funs) -> {Id, Funs};
+maybe_add_update_fun(Msg, Funs) ->
+    MsgId = kzd_box_message:media_id(Msg),
+    NewFuns = [fun(JObj) ->
+                       kzd_box_message:set_metadata(Msg, JObj)
+               end
+               | Funs
+              ],
+    {MsgId, NewFuns}.
+
 -spec do_update(ne_binary(), ne_binary(), kz_json:object(), update_funs(), bulk_results()) -> bulk_results().
-do_update(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=Id, JObj, Funs, #bulk_res{succeeded = Succeeded
-                                                                                 ,failed = Failed
-                                                                                 } = Blk) ->
+do_update(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=Id, JObj, Funs, Blk) ->
     NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
-    case kvm_util:handle_update_result(Id, kazoo_modb:save_doc(AccountId, NewJObj, Year, Month)) of
-        {'ok', _} -> Blk#bulk_res{succeeded = [Id | Succeeded]};
-        {'error', R} -> Blk#bulk_res{failed = [kz_json:from_list([{Id, kz_util:to_binary(R)}]) | Failed]};
-        'false' -> Blk#bulk_res{failed=[kz_json:from_list([{Id, <<"not_found">>}]) | Failed]}
-    end;
-do_update(AccountId, OldId, JObj, Funs, #bulk_res{succeeded = Succeeded
-                                                 ,failed = Failed
-                                                 ,moved = Moved
-                                                 } = Blk) ->
-    case kvm_util:handle_update_result(OldId, kvm_message:move_to_modb(AccountId, JObj, Funs, 'false')) of
-        {'ok', NJObj} ->
-            NewId = kz_doc:id(NJObj),
-            Blk#bulk_res{succeeded = [NewId | Succeeded]
-                        ,moved = [OldId | Moved]
-                        };
-        {'error', R} ->
-            Blk#bulk_res{failed = [kz_json:from_list([{OldId, kz_util:to_binary(R)}]) | Failed]};
-        'false' -> Blk#bulk_res{failed = [kz_json:from_list([{OldId, <<"not_found">>}]) | Failed]}
-    end.
+    kvm_util:bulk_update_result(Id, kazoo_modb:save_doc(AccountId, NewJObj, Year, Month), Blk);
+do_update(AccountId, OldId, JObj, Funs, Blk) ->
+    kvm_util:bulk_update_result(OldId, kvm_message:move_to_modb(AccountId, JObj, Funs, 'false'), Blk).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -283,6 +260,25 @@ change_box_id(AccountId, MsgIds, OldBoxId, NewBoxId) ->
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
     Funs = ?CHANGE_VMBOX_FUNS(AccountId, NewBoxId, NBoxJ, OldBoxId),
     update(AccountId, OldBoxId, MsgIds, Funs).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc copy messages to other vmbox(es)
+%% @end
+%%--------------------------------------------------------------------
+-spec copy_to_vmboxes(ne_binary(), ne_binaries(), ne_binary(), ne_binary() | ne_binaries()) ->
+                             kz_json:object().
+copy_to_vmboxes(AccountId, Ids, OldBoxId, ?NE_BINARY = NewBoxId) ->
+    copy_to_vmboxes(AccountId, Ids, OldBoxId, [NewBoxId]);
+copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds) ->
+    copy_to_vmboxes_fold(AccountId, Ids, OldBoxId, NewBoxIds, kz_json:new()).
+
+copy_to_vmboxes_fold(_, [], _, _, Copied) -> Copied;
+copy_to_vmboxes_fold(AccountId, [Id | Ids], OldBoxId, NewBoxIds, Copied) ->
+    CopyRes = kvm_message:copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds),
+
+    NewCopied = kvm_util:bulk_update_result(CopyRes, Copied),
+    copy_to_vmboxes_fold(AccountId, Ids, OldBoxId, NewBoxIds, NewCopied).
 
 %%%===================================================================
 %%% Internal functions
