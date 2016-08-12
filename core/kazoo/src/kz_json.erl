@@ -821,6 +821,7 @@ delete_key(Keys, JObj, PruneOpt) ->
 delete_keys(Keys, JObj) when is_list(Keys) ->
     lists:foldr(fun(K, JObj0) -> delete_key(K, JObj0) end, JObj, Keys).
 
+-spec prune([list() | binary(),...], object()) -> object().
 prune([], JObj) ->
     JObj;
 prune([K], JObj) when not is_list(JObj) ->
@@ -847,6 +848,7 @@ prune([K|T], [_|_]=JObjs) ->
         V1 -> replace_in_list(K, V1, JObjs, [])
     end.
 
+-spec no_prune([list() | binary(),...], object()) -> object().
 no_prune([], JObj) ->
     JObj;
 no_prune([K], JObj) when not is_list(JObj) ->

@@ -140,11 +140,15 @@
                                ]).
 -define(ORIGINATE_UUID_TYPES, []).
 
+-spec originate_ready(api_terms()) -> api_formatter_return().
+-spec originate_ready_v(api_terms()) -> boolean().
 originate_ready(API) ->
     kapi_dialplan:originate_ready(API).
 originate_ready_v(API) ->
     kapi_dialplan:originate_ready_v(API).
 
+-spec originate_execute(api_terms()) -> api_formatter_return().
+-spec originate_execute_v(api_terms()) -> boolean().
 originate_execute(API) ->
     kapi_dialplan:originate_execute(API).
 originate_execute_v(API) ->

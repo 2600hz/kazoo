@@ -143,6 +143,7 @@ handle_info(_Info, State) ->
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
+-spec handle_event(kz_json:object(), gen_listener:basic_deliver(), state()) -> handle_event_ret().
 handle_event(JObj, BasicDeliver, #state{parent=Parent
                                        ,broker=Broker
                                        ,self_binary=Self

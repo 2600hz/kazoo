@@ -1095,6 +1095,8 @@ metaflow_callid(JObj) ->
     kz_json:get_value([<<"Call">>, <<"Call-ID">>], JObj).
 
 %% sending DP actions to CallControl Queue
+-spec publish_action(ne_binary(), kz_json:object()) -> 'ok'.
+-spec publish_action(ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 publish_action(Queue, JSON) ->
     publish_action(Queue, JSON, ?DEFAULT_CONTENT_TYPE).
 publish_action(Queue, Payload, ContentType) ->
@@ -1126,8 +1128,10 @@ publish_originate_execute(ServerId, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?ORIGINATE_EXECUTE_VALUES, fun originate_execute/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
+-spec dial_method_single() -> ne_binary().
 dial_method_single() -> ?DIAL_METHOD_SINGLE.
 
+-spec dial_method_simultaneous() -> ne_binary().
 dial_method_simultaneous() -> ?DIAL_METHOD_SIMUL.
 
 %%--------------------------------------------------------------------
