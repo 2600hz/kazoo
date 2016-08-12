@@ -107,13 +107,13 @@ list_doc() ->
       "* `used_by`: Kazoo application handling this number.\n"
       "* `port_in`: whether this number is linked to an ongoing port request.\n"
       "* `carrier_module`: service that created the number document.\n"
-      "* `cnam.inbound`: \n"
-      "* `cnam.outbound`: \n"
-      "* `e911.post_code`: \n"
-      "* `e911.street_address`: \n"
-      "* `e911.extended_address`: \n"
-      "* `e911.locality`: \n"
-      "* `e911.region`: \n"
+      "* `cnam.inbound`: whether inbound CNAM is activated.\n"
+      "* `cnam.outbound`: caller ID to use on outbound calls.\n"
+      "* `e911.post_code`: E911 postal code.\n"
+      "* `e911.street_address`: E911 street address.\n"
+      "* `e911.extended_address`: E911 street address, second field.\n"
+      "* `e911.locality`: E911 locality.\n"
+      "* `e911.region`: E911 region.\n"
     >>.
 
 -spec help() -> kz_json:object().
@@ -273,6 +273,9 @@ list_number_row(AuthBy, E164) ->
     case knm_number:get(E164, Options) of
         {'ok', KNMNumber} ->
             PhoneNumber = knm_number:phone_number(KNMNumber),
+            InboundCNAM = knm_phone_number:feature(PhoneNumber, <<"inbound_cnam">>),
+            OutboundCNAM = knm_phone_number:feature(PhoneNumber, <<"outbound_cnam">>),
+            E911 = knm_phone_number:feature(PhoneNumber, ?DASH_KEY),
             [E164
             ,knm_phone_number:assigned_to(PhoneNumber)
             ,knm_phone_number:prev_assigned_to(PhoneNumber)
@@ -282,13 +285,13 @@ list_number_row(AuthBy, E164) ->
             ,knm_phone_number:used_by(PhoneNumber)
             ,kz_util:to_binary(knm_phone_number:ported_in(PhoneNumber))
             ,knm_phone_number:module_name(PhoneNumber)
-            ,'undefined'%%TODO
-            ,'undefined'%%TODO
-            ,'undefined'%%TODO
-            ,'undefined'%%TODO
-            ,'undefined'%%TODO
-            ,'undefined'%%TODO
-            ,'undefined'%%TODO
+            ,kz_json:is_true(<<"inbound_lookup">>, InboundCNAM)
+            ,kz_json:get_ne_binary_value(<<"display_name">>, OutboundCNAM)
+            ,kz_json:get_ne_binary_value(<<"post_code">>, E911)
+            ,kz_json:get_ne_binary_value(<<"street_address">>, E911)
+            ,kz_json:get_ne_binary_value(<<"extended_address">>, E911)
+            ,kz_json:get_ne_binary_value(<<"locality">>, E911)
+            ,kz_json:get_ne_binary_value(<<"region">>, E911)
             ];
         {'error', 'not_reconcilable'} ->
             %% Numbers that shouldn't be in the system (e.g. '+141510010+14')
@@ -326,8 +329,8 @@ import(Props, 'init', _1,_2,_3, _4,_5,_6, _7,_8,_9, _10,_11,_12, _13,_14,_15) ->
 import(Props, AccountIds
       ,E164, AccountId0, Carrier
       ,_PortIn, _PrevAssignedTo, _Created, _Modified, _UsedBy
-      ,_CNAMInbound, _CNAMOutbound
-      ,_E911PostalCode, _E911StreetAddress, _E911ExtendedAddress, _E911Locality, _E911Region) ->
+      ,CNAMInbound0, CNAMOutbound
+      ,E911PostalCode, E911StreetAddress, E911ExtendedAddress, E911Locality, E911Region) ->
     %%TODO: use all the optional fields
     AccountId = case AccountId0 of
                     'undefined' -> props:get_value('account_id', Props);
@@ -340,15 +343,38 @@ import(Props, AccountIds
                      'undefined' -> ?CARRIER_LOCAL;
                      _ -> Carrier
                  end,
+    CNAMInbound = kz_util:is_true(CNAMInbound0),
+    E911 = props:filter_empty(
+             [{<<"post_code">>, E911PostalCode}
+             ,{<<"street_address">>, E911StreetAddress}
+             ,{<<"extended_address">>, E911ExtendedAddress}
+             ,{<<"locality">>, E911Locality}
+             ,{<<"region">>, E911Region}
+             ]),
     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'batch_run', 'true'}
               ,{'assign_to', AccountId}
               ,{'module_name', ModuleName}
+              ,{'public_fields', kz_json:from_list(cnam(CNAMInbound, CNAMOutbound) ++ e911(E911))}
               ],
     case handle_result(knm_number:create(E164, Options)) of
         [] -> {[], sets:add_element(AccountId, AccountIds)};
         E -> {E, AccountIds}
     end.
+
+%% @private
+-spec cnam(boolean(), api_binary()) -> kz_proplist().
+cnam(_, 'undefined') -> [];
+cnam(Inbound, CallerID=?NE_BINARY) ->
+    [{<<"cnam">>, kz_json:from_list([{<<"display_name">>, CallerID}
+                                    ,{<<"inbound_lookup">>, Inbound}
+                                    ])
+     }].
+
+%% @private
+-spec e911(kz_proplist()) -> kz_proplist().
+e911([]) -> [];
+e911(Props) -> [{?DASH_KEY, kz_json:from_list(Props)}].
 
 -spec assign_to(kz_proplist(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
 assign_to(Props, _IterValue, Number, AccountId) ->

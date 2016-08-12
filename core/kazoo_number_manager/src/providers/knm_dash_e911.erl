@@ -106,7 +106,7 @@ maybe_update_dash_e911(Number) ->
     CurrentE911 = kz_json:get_ne_value(?DASH_KEY, Features),
 
     Doc = knm_phone_number:doc(PhoneNumber),
-    E911 = kz_json:get_ne_value([?PVT_FEATURES, ?DASH_KEY], Doc),
+    E911 = kz_json:get_ne_value(?DASH_KEY, Doc),
 
     NotChanged = kz_json:are_identical(CurrentE911, E911),
     case kz_util:is_empty(E911) of

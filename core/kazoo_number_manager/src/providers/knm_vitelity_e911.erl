@@ -129,7 +129,7 @@ maybe_update_e911(Number, 'true') ->
     CurrentE911 = kz_json:get_ne_value(?VITELITY_KEY, Features),
 
     Doc = knm_phone_number:doc(PhoneNumber),
-    E911 = kz_json:get_ne_value([?PVT_FEATURES, ?VITELITY_KEY], Doc),
+    E911 = kz_json:get_ne_value(?VITELITY_KEY, Doc),
 
     NotChanged = kz_json:are_identical(CurrentE911, E911),
     case kz_util:is_empty(E911) of
@@ -149,7 +149,7 @@ maybe_update_e911(Number, 'false') ->
     CurrentE911 = kz_json:get_ne_value(?VITELITY_KEY, Features),
 
     Doc = knm_phone_number:doc(PhoneNumber),
-    E911 = kz_json:get_ne_value([?PVT_FEATURES, ?VITELITY_KEY], Doc),
+    E911 = kz_json:get_ne_value(?VITELITY_KEY, Doc),
 
     NotChanged = kz_json:are_identical(CurrentE911, E911),
     case kz_util:is_empty(E911) of

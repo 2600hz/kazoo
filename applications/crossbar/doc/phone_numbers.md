@@ -118,7 +118,7 @@ curl -v -X GET \
                 "assigned_to": "{ACCOUNT_ID}",
                 "created": 63602230185,
                 "features": [
-                    "cnam"
+                    "local"
                 ],
                 "state": "in_service",
                 "updated": 63602230212,
@@ -296,12 +296,14 @@ Possible reasons for failure:
 
 #### Update public fields of a number
 
+Note: some public fields are used to configure number features.
+
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {"my_own_field": "some other value"}}' \
+    -d '{"data":{"my_own_field":"some other value", "cnam":{"display_name":"My caller ID", "inbound_lookup":true}}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
 ```
 
@@ -310,15 +312,28 @@ curl -v -X POST \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "_read_only": {
-            "created": 63627848989,
-            "modified": 63627848989,
-            "state": "reserved"
+            "created": 63635220353,
+            "features": [
+                "outbound_cnam",
+                "inbound_cnam"
+            ],
+            "modified": 63635220353,
+            "state": "in_service",
+            "used_by": "callflow"
         },
+        "cnam": {
+            "display_name": "My caller ID",
+            "inbound_lookup": true
+        },
+        "features": [
+            "outbound_cnam",
+            "inbound_cnam"
+        ],
         "id": "{PHONENUMBER}",
-        "state": "reserved",
-        "my_own_field": "some other value"
+        "state": "in_service",
+        "used_by": "callflow"
     },
-    "request_id": "609d2ddbc57fbbce22b42be229b67840",
+    "request_id": "7530a90fe4061b095a92eabd7ab872e7",
     "revision": "undefined",
     "status": "success"
 }

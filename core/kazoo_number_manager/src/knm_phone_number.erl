@@ -530,11 +530,6 @@ set_features(N, Features) ->
     'true' = kz_json:is_json_object(Features),
     N#knm_phone_number{features=Features}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec feature(knm_phone_number(), ne_binary()) ->
                      kz_json:json_term() | 'undefined'.
 feature(Number, Feature) ->

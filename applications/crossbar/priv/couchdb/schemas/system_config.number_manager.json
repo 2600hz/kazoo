@@ -3,6 +3,19 @@
     "_id": "system_config.number_manager",
     "description": "Schema for number_manager system_config",
     "properties": {
+        "allowed_features": {
+            "default": [
+                "cnam",
+                "dash_e911",
+                "failover",
+                "port",
+                "prepend",
+                "vitelity_e911"
+            ],
+            "description": "",
+            "name": "allowed_features",
+            "type": "array"
+        },
         "available_module_name": {
             "default": "knm_local",
             "description": "",

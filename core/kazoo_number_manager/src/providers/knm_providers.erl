@@ -19,8 +19,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_number:knm_number()) ->
-                  knm_number:knm_number().
+-spec save(knm_number:knm_number()) -> knm_number:knm_number().
 save(Number) ->
     exec(Number, 'save').
 
@@ -29,8 +28,7 @@ save(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_number:knm_number()) ->
-                    knm_number:knm_number().
+-spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
     exec(Number, 'delete').
 
@@ -57,28 +55,21 @@ has_emergency_services(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec provider_modules(knm_number:knm_number()) -> ne_binaries().
--ifdef(TEST).
-provider_modules(_Number) ->
-    ?DEFAULT_PROVIDER_MODULES.
--else.
 provider_modules(Number) ->
-    Features = knm_phone_number:features_list(knm_number:phone_number(Number)),
-    Providers = kapps_config:get(?KNM_CONFIG_CAT
-                                ,<<"providers">>
-                                ,?DEFAULT_PROVIDER_MODULES
-                                ),
-    [provider_module(Provider)
-     || Provider <- Providers,
-        lists:member(Provider, Features)
+    Allowed = kapps_config:get(?KNM_CONFIG_CAT, <<"allowed_features">>, ?DEFAULT_ALLOWED_FEATURES),
+    Possible = kz_json:get_keys(knm_phone_number:doc(knm_number:phone_number(Number))),
+    [provider_module(Feature)
+     || Feature <- Possible,
+        lists:member(Feature, Allowed)
     ].
 
 -spec provider_module(ne_binary()) -> ne_binary().
-provider_module(<<"inbound_cnam">>) ->
+provider_module(?FEATURE_CNAM) ->
     <<"knm_cnam_notifier">>;
-provider_module(<<"outbound_cnam">>) ->
-    <<"knm_cnam_notifier">>;
-provider_module(<<"dash_e911">>) ->
+provider_module(?DASH_KEY) ->
     <<"knm_dash_e911">>;
+provider_module(?VITELITY_KEY) ->
+    <<"knm_vitelity_e911">>;
 provider_module(<<"prepend">>) ->
     <<"knm_prepend">>;
 provider_module(<<"port">>) ->
@@ -88,7 +79,6 @@ provider_module(<<"failover">>) ->
 provider_module(Other) ->
     lager:debug("unmatched feature provider '~s', allowing", [Other]),
     Other.
--endif.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -104,14 +94,14 @@ provider_module(Other) ->
 exec(Number, Action) ->
     exec(Number, Action, provider_modules(Number)).
 
-exec(Num, Action, Providers) ->
-    lists:foldl(fun (Provider, Number) ->
-                        case apply_action(Number, Action, Provider) of
-                            {'true', Ret} -> Ret;
-                            'false' -> Number
+exec(Number, Action, Providers) ->
+    lists:foldl(fun (Provider, N) ->
+                        case apply_action(N, Action, Provider) of
+                            {'true', NewN} -> NewN;
+                            'false' -> N
                         end
                 end
-               ,Num
+               ,Number
                ,Providers
                ).
 
@@ -123,7 +113,7 @@ apply_action(Number, Action, Provider) ->
             lager:debug("provider ~s is unknown, skipping", [Provider]),
             'false';
         Module ->
+            lager:debug("attempting ~s:~s/1", [Module, Action]),
             Ret = erlang:apply(Module, Action, [Number]),
-            lager:debug("successfully attempted ~s:~s/1", [Module, Action]),
             {'true', Ret}
     end.

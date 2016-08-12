@@ -88,7 +88,7 @@ handle_outbound_cnam(Number, 'true') ->
     Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM),
     Doc = knm_phone_number:doc(PhoneNumber),
     CurrentCNAM = kz_json:get_ne_value(?KEY_DISPLAY_NAME, Feature),
-    case kz_json:get_ne_value([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Doc) of
+    case kz_json:get_ne_value([?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Doc) of
         'undefined' ->
             Number1 = knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
             handle_inbound_cnam(Number1);
@@ -105,7 +105,7 @@ handle_outbound_cnam(Number, 'false') ->
     Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM),
     Doc = knm_phone_number:doc(PhoneNumber),
     CurrentCNAM = kz_json:get_ne_value(?KEY_DISPLAY_NAME, Feature),
-    case kz_json:get_ne_value([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Doc) of
+    case kz_json:get_ne_value([?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Doc) of
         'undefined' ->
             Number1 = knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
             handle_inbound_cnam(Number1);
@@ -237,7 +237,7 @@ handle_inbound_cnam(Number) ->
 
 handle_inbound_cnam(Number, 'true') ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
-    case kz_json:is_true([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_INBOUND_LOOKUP], Doc) of
+    case kz_json:is_true([?FEATURE_CNAM, ?KEY_INBOUND_LOOKUP], Doc) of
         'false' ->
             knm_services:deactivate_feature(Number, ?FEATURE_INBOUND_CNAM);
         'true' ->
@@ -245,7 +245,7 @@ handle_inbound_cnam(Number, 'true') ->
     end;
 handle_inbound_cnam(Number, 'false') ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
-    case kz_json:is_true([?PVT_FEATURES, ?FEATURE_CNAM, ?KEY_INBOUND_LOOKUP], Doc) of
+    case kz_json:is_true([?FEATURE_CNAM, ?KEY_INBOUND_LOOKUP], Doc) of
         'false' -> remove_inbound_cnam(Number);
         'true' -> add_inbound_cnam(Number)
     end.
