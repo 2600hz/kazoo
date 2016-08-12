@@ -8301,9 +8301,6 @@
                     "name": "acls",
                     "type": "object"
                 },
-                "amqp": {
-                    "name": "amqp"
-                },
                 "authz_default_action": {
                     "default": "deny",
                     "description": "ecallmgr authz default action",
@@ -8494,11 +8491,6 @@
                     "name": "freeswitch_context",
                     "type": "string"
                 },
-                "fs_amqp_listeners": {
-                    "default": 1,
-                    "name": "fs_amqp_listeners",
-                    "type": "integer"
-                },
                 "fs_cmds": {
                     "default": [
                         {
@@ -8571,21 +8563,41 @@
                     "type": "integer"
                 },
                 "modules": {
-                    "default": [
-                        "authn",
-                        "channel",
-                        "conference",
-                        "config",
-                        "event_stream_sup",
-                        "msg",
-                        "node",
-                        "notify",
-                        "resource",
-                        "route"
-                    ],
+                    "default": {
+                        "authn": {
+                            "type": "worker"
+                        },
+                        "channel": {
+                            "type": "worker"
+                        },
+                        "conference": {
+                            "type": "worker"
+                        },
+                        "config": {
+                            "type": "worker"
+                        },
+                        "event_stream_sup": {
+                            "type": "supervisor"
+                        },
+                        "msg": {
+                            "type": "worker"
+                        },
+                        "node": {
+                            "type": "worker"
+                        },
+                        "notify": {
+                            "type": "worker"
+                        },
+                        "resource": {
+                            "type": "worker"
+                        },
+                        "route_sup": {
+                            "type": "supervisor"
+                        }
+                    },
                     "description": "ecallmgr modules",
                     "name": "modules",
-                    "type": "array"
+                    "type": "object"
                 },
                 "network_map": {
                     "default": {},
