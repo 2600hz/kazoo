@@ -173,7 +173,7 @@ update(AccountId, BoxId, Things, Funs) ->
                          bulk_results().
 update_fold(_AccountId, _BoxId, [], _Funs, Result) ->
     Result;
-update_fold(AccountId, BoxId, [?NE_BINARY = Msg | Msgs], Funs, #bulk_res{failed = Failed} = Blk) ->
+update_fold(AccountId, BoxId, [Msg | Msgs], Funs, #bulk_res{failed = Failed} = Blk) ->
     {MsgId, NewFuns} = maybe_add_update_fun(Msg, Funs),
     case kvm_message:fetch(AccountId, MsgId, BoxId) of
         {'ok', JObj} ->
