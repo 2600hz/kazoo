@@ -220,7 +220,7 @@ sync_capabilities(Srv) ->
 sync_registrations(Srv) ->
     gen_server:cast(find_srv(Srv), 'sync_registrations').
 
--spec hostname(pid()) -> api_binary().
+-spec hostname(fs_node()) -> api_binary().
 hostname(Srv) ->
     case fs_node(Srv) of
         'undefined' -> 'undefined';
