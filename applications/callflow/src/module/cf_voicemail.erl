@@ -747,7 +747,7 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone
         {'ok', 'delete'} ->
             lager:info("caller chose to delete the message"),
             _ = kapps_call_command:b_prompt(<<"vm-deleted">>, Call),
-            _ = kvm_message:set_folder(?VM_FOLDER_DELETED, H, AccountId),
+            _ = kvm_message:set_folder({?VM_FOLDER_DELETED, 'false'}, H, AccountId),
             play_messages(T, PrevMessages, Count, Box, Call);
         {'ok', 'return'} ->
             lager:info("caller chose to return to the main menu"),
