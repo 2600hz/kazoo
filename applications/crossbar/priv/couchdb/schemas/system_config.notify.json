@@ -5,7 +5,7 @@
     "properties": {
         "backoff_fudge_ms": {
             "default": 5000,
-            "description": "notify backoff fudge milliseconds",
+            "description": "notify backoff fudge in milliseconds",
             "name": "backoff_fudge_ms",
             "type": "integer"
         },

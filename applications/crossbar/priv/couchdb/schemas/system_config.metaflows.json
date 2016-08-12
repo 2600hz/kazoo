@@ -17,7 +17,7 @@
         },
         "digit_timeout_ms": {
             "default": 800,
-            "description": "metaflows digit timeout milliseconds",
+            "description": "metaflows digit timeout in milliseconds",
             "name": "digit_timeout_ms",
             "type": "integer"
         },

@@ -48,7 +48,7 @@
                         "save_timeout_ms": {
                             "properties": {
                                 "default": 300000,
-                                "description": "call_command save timeout milliseconds",
+                                "description": "call_command save timeout in milliseconds",
                                 "name": "save_timeout_ms",
                                 "type": "integer"
                             }

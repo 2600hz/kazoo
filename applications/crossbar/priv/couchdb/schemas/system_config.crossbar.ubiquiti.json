@@ -9,7 +9,7 @@
         },
         "api_token_expires_s": {
             "default": 1800,
-            "description": "crossbar.ubiquiti api token expires s",
+            "description": "crossbar.ubiquiti api token expires in seconds",
             "name": "api_token_expires_s",
             "type": "integer"
         },

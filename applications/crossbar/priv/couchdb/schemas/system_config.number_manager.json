@@ -80,7 +80,7 @@
         },
         "crawler_timer_ms": {
             "default": 86400000,
-            "description": "number_manager crawler timer milliseconds",
+            "description": "number_manager crawler timer in milliseconds",
             "name": "crawler_timer_ms",
             "type": "integer"
         },
@@ -92,13 +92,13 @@
         },
         "deleted_expiry_d": {
             "default": 90,
-            "description": "number_manager deleted expiry d",
+            "description": "number_manager deleted expiry in days",
             "name": "deleted_expiry_d",
             "type": "integer"
         },
         "discovery_expiry_d": {
             "default": 90,
-            "description": "number_manager discovery expiry d",
+            "description": "number_manager discovery expiry in days",
             "name": "discovery_expiry_d",
             "type": "integer"
         },
@@ -152,13 +152,13 @@
         },
         "time_between_accounts_ms": {
             "default": 1000,
-            "description": "number_manager time between accounts milliseconds",
+            "description": "number_manager time between accounts in milliseconds",
             "name": "time_between_accounts_ms",
             "type": "integer"
         },
         "time_between_numbers_ms": {
             "default": 1000,
-            "description": "number_manager time between numbers milliseconds",
+            "description": "number_manager time between numbers in milliseconds",
             "name": "time_between_numbers_ms",
             "type": "integer"
         }

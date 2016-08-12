@@ -5,7 +5,7 @@
     "properties": {
         "inactivity_timeout_s": {
             "default": 600,
-            "description": "token_buckets inactivity timeout s",
+            "description": "token_buckets inactivity timeout in seconds",
             "name": "inactivity_timeout_s",
             "type": "integer"
         },

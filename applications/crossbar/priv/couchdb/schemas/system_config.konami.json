@@ -5,7 +5,7 @@
     "properties": {
         "event_cleanup_timeout_ms": {
             "default": 3600000,
-            "description": "konami event cleanup timeout milliseconds",
+            "description": "konami event cleanup timeout in milliseconds",
             "name": "event_cleanup_timeout_ms",
             "type": "integer"
         },

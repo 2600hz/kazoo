@@ -16,25 +16,25 @@
         },
         "archive_period_ms": {
             "default": 60000,
-            "description": "acdc archive period milliseconds",
+            "description": "acdc archive period in milliseconds",
             "name": "archive_period_ms",
             "type": "integer"
         },
         "archive_window_s": {
             "default": 60,
-            "description": "acdc archive window s",
+            "description": "acdc archive window in seconds",
             "name": "archive_window_s",
             "type": "integer"
         },
         "cleanup_period_ms": {
             "default": 360000,
-            "description": "acdc cleanup period milliseconds",
+            "description": "acdc cleanup period in milliseconds",
             "name": "cleanup_period_ms",
             "type": "integer"
         },
         "cleanup_window_s": {
             "default": 86400,
-            "description": "acdc cleanup window s",
+            "description": "acdc cleanup window in seconds",
             "name": "cleanup_window_s",
             "type": "integer"
         },

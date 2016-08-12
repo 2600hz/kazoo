@@ -28,7 +28,7 @@
         },
         "low_balance_repeat_s": {
             "default": 86400,
-            "description": "notify.account_crawler low balance repeat s",
+            "description": "notify.account_crawler low balance repeat in seconds",
             "name": "low_balance_repeat_s",
             "type": "integer"
         }

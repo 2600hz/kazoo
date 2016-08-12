@@ -41,7 +41,7 @@
         },
         "fax_detect_duration_s": {
             "default": 5,
-            "description": "callflow fax detect duration s",
+            "description": "callflow fax detect duration in seconds",
             "name": "fax_detect_duration_s",
             "type": "integer"
         },

@@ -38,7 +38,7 @@
         },
         "balance_crawler_cycle_ms": {
             "default": 60000,
-            "description": "ecallmgr balance crawler cycle milliseconds",
+            "description": "ecallmgr balance crawler cycle in milliseconds",
             "name": "balance_crawler_cycle_ms",
             "type": "integer"
         },
@@ -50,13 +50,13 @@
         },
         "balance_crawler_fetch_timeout_ms": {
             "default": 10000,
-            "description": "ecallmgr balance crawler fetch timeout milliseconds",
+            "description": "ecallmgr balance crawler fetch timeout in milliseconds",
             "name": "balance_crawler_fetch_timeout_ms",
             "type": "integer"
         },
         "balance_crawler_interaccount_delay_ms": {
             "default": 10,
-            "description": "ecallmgr balance crawler interaccount delay milliseconds",
+            "description": "ecallmgr balance crawler interaccount delay in milliseconds",
             "name": "balance_crawler_interaccount_delay_ms",
             "type": "integer"
         },
@@ -222,13 +222,13 @@
         },
         "fs_cmds_wait_ms": {
             "default": 5000,
-            "description": "ecallmgr fs cmds wait milliseconds",
+            "description": "ecallmgr fs cmds wait in milliseconds",
             "name": "fs_cmds_wait_ms",
             "type": "integer"
         },
         "fs_node_uptime_s": {
             "default": 600,
-            "description": "ecallmgr fs node uptime s",
+            "description": "ecallmgr fs node uptime in seconds",
             "name": "fs_node_uptime_s",
             "type": "integer"
         },
@@ -262,13 +262,13 @@
         },
         "max_channel_cleanup_timeout_ms": {
             "default": 60000,
-            "description": "ecallmgr max channel cleanup timeout milliseconds",
+            "description": "ecallmgr max channel cleanup timeout in milliseconds",
             "name": "max_channel_cleanup_timeout_ms",
             "type": "integer"
         },
         "max_channel_uptime_s": {
             "default": 0,
-            "description": "ecallmgr max channel uptime s",
+            "description": "ecallmgr max channel uptime in seconds",
             "name": "max_channel_uptime_s",
             "type": "integer"
         },

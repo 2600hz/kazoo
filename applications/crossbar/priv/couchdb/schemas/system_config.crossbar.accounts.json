@@ -41,7 +41,7 @@
         },
         "new_account_notify_delay_s": {
             "default": 30,
-            "description": "crossbar.accounts new account notify delay s",
+            "description": "crossbar.accounts new account notify delay in seconds",
             "name": "new_account_notify_delay_s",
             "type": "integer"
         },

@@ -66,28 +66,19 @@ module_to_schema(Module, Schemas) ->
     end.
 
 functions_to_schema(Fs, Schemas) ->
-    lists:foldl(fun function_to_schema/2
-               ,Schemas
-               ,Fs
-               ).
+    lists:foldl(fun function_to_schema/2, Schemas, Fs).
 
 function_to_schema({_Module, _Function, _Arity, Clauses}, Schemas) ->
     clauses_to_schema(Clauses, Schemas).
 
 clauses_to_schema(Clauses, Schemas) ->
-    lists:foldl(fun clause_to_schema/2
-               ,Schemas
-               ,Clauses
-               ).
+    lists:foldl(fun clause_to_schema/2, Schemas, Clauses).
 
 clause_to_schema(?CLAUSE(_Args, _Guards, Expressions), Schemas) ->
     expressions_to_schema(Expressions, Schemas).
 
 expressions_to_schema(Expressions, Schemas) ->
-    lists:foldl(fun expression_to_schema/2
-               ,Schemas
-               ,Expressions
-               ).
+    lists:foldl(fun expression_to_schema/2, Schemas, Expressions).
 
 expression_to_schema(?MOD_FUN_ARGS('kapps_config', F, Args), Schemas) ->
     config_to_schema(F, Args, Schemas);
@@ -229,7 +220,6 @@ config_key_to_schema(F, Document, Key, Default, Schemas) ->
                                      ,kz_json:new()
                                      ),
     Updated = kz_json:merge_jobjs(Existing, Properties),
-    io:format(user, "\nM ~s\n  ~s\n", [kz_json:encode(Properties), kz_json:encode(Updated)]),
     kz_json:set_value([Document, <<"properties">> | Key], Updated, Schemas).
 
 category_to_document(?VAR(_)) -> 'undefined';
@@ -321,7 +311,6 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'to_integer', _Args)) -> <<"integ
 
 guess_properties(Document, Key, Type, Default)
   when is_binary(Key) ->
-    %% io:format(user, "\nD ~p ~p ~1000p\n", [Key, Type, Default]),
     kz_json:from_list(
       props:filter_undefined(
         [{<<"type">>, Type}
@@ -345,9 +334,10 @@ guess_description(Document, Key, _Type) ->
 guess_description(Document, Key) ->
     [Document | guess_description(Key)].
 guess_description(Key) ->
-    io:format(user, "\nK ~p\n", [Key]),
     [case Word of
-         <<"ms">> -> <<"milliseconds">>;
+         <<"s">> -> <<"in seconds">>;
+         <<"ms">> -> <<"in milliseconds">>;
+         <<"d">> -> <<"in days">>;
          _ -> Word
      end
      || Word <- binary:split(Key, <<$_>>, ['global'])

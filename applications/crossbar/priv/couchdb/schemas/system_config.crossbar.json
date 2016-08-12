@@ -85,7 +85,7 @@
         },
         "request_timeout_ms": {
             "default": 10000,
-            "description": "crossbar request timeout milliseconds",
+            "description": "crossbar request timeout in milliseconds",
             "name": "request_timeout_ms",
             "type": "integer"
         },
@@ -109,7 +109,7 @@
         },
         "soft_delete_pause_ms": {
             "default": 10000,
-            "description": "crossbar soft delete pause milliseconds",
+            "description": "crossbar soft delete pause in milliseconds",
             "name": "soft_delete_pause_ms",
             "type": "integer"
         },

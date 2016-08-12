@@ -11,7 +11,7 @@
         },
         "wait_after_row_ms": {
             "default": 500,
-            "description": "tasks wait after row milliseconds",
+            "description": "tasks wait after row in milliseconds",
             "name": "wait_after_row_ms",
             "type": "integer"
         }

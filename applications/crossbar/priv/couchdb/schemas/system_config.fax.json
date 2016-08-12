@@ -201,7 +201,7 @@
         },
         "wait_for_fax_timeout_ms": {
             "default": 3600000,
-            "description": "fax wait for fax timeout milliseconds",
+            "description": "fax wait for fax timeout in milliseconds",
             "name": "wait_for_fax_timeout_ms",
             "type": "integer"
         },

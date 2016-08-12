@@ -6820,25 +6820,25 @@
                 },
                 "archive_period_ms": {
                     "default": 60000,
-                    "description": "acdc archive period milliseconds",
+                    "description": "acdc archive period in milliseconds",
                     "name": "archive_period_ms",
                     "type": "integer"
                 },
                 "archive_window_s": {
                     "default": 60,
-                    "description": "acdc archive window s",
+                    "description": "acdc archive window in seconds",
                     "name": "archive_window_s",
                     "type": "integer"
                 },
                 "cleanup_period_ms": {
                     "default": 360000,
-                    "description": "acdc cleanup period milliseconds",
+                    "description": "acdc cleanup period in milliseconds",
                     "name": "cleanup_period_ms",
                     "type": "integer"
                 },
                 "cleanup_window_s": {
                     "default": 86400,
-                    "description": "acdc cleanup window s",
+                    "description": "acdc cleanup window in seconds",
                     "name": "cleanup_window_s",
                     "type": "integer"
                 },
@@ -6915,7 +6915,7 @@
                                         "interval_s": {
                                             "properties": {
                                                 "default": 300,
-                                                "description": "ananke interval s",
+                                                "description": "ananke interval in seconds",
                                                 "name": "interval_s",
                                                 "type": "string"
                                             }
@@ -6923,7 +6923,7 @@
                                         "timeout_s": {
                                             "properties": {
                                                 "default": 20,
-                                                "description": "ananke timeout s",
+                                                "description": "ananke timeout in seconds",
                                                 "name": "timeout_s",
                                                 "type": "string"
                                             }
@@ -7050,7 +7050,7 @@
                                 "save_timeout_ms": {
                                     "properties": {
                                         "default": 300000,
-                                        "description": "call_command save timeout milliseconds",
+                                        "description": "call_command save timeout in milliseconds",
                                         "name": "save_timeout_ms",
                                         "type": "integer"
                                     }
@@ -7104,7 +7104,7 @@
                 },
                 "fax_detect_duration_s": {
                     "default": 5,
-                    "description": "callflow fax detect duration s",
+                    "description": "callflow fax detect duration in seconds",
                     "name": "fax_detect_duration_s",
                     "type": "integer"
                 },
@@ -7619,7 +7619,7 @@
                 },
                 "request_timeout_ms": {
                     "default": 10000,
-                    "description": "crossbar request timeout milliseconds",
+                    "description": "crossbar request timeout in milliseconds",
                     "name": "request_timeout_ms",
                     "type": "integer"
                 },
@@ -7643,7 +7643,7 @@
                 },
                 "soft_delete_pause_ms": {
                     "default": 10000,
-                    "description": "crossbar soft delete pause milliseconds",
+                    "description": "crossbar soft delete pause in milliseconds",
                     "name": "soft_delete_pause_ms",
                     "type": "integer"
                 },
@@ -7745,7 +7745,7 @@
                 },
                 "new_account_notify_delay_s": {
                     "default": 30,
-                    "description": "crossbar.accounts new account notify delay s",
+                    "description": "crossbar.accounts new account notify delay in seconds",
                     "name": "new_account_notify_delay_s",
                     "type": "integer"
                 },
@@ -7930,7 +7930,7 @@
             "properties": {
                 "notification_timeout_ms": {
                     "default": 5000,
-                    "description": "crossbar.notifications notification timeout milliseconds",
+                    "description": "crossbar.notifications notification timeout in milliseconds",
                     "name": "notification_timeout_ms",
                     "type": "integer"
                 }
@@ -7998,7 +7998,7 @@
             "properties": {
                 "unfinished_port_request_lifetime_s": {
                     "default": 2592000,
-                    "description": "crossbar.port_requests unfinished port request lifetime s",
+                    "description": "crossbar.port_requests unfinished port request lifetime in seconds",
                     "name": "unfinished_port_request_lifetime_s",
                     "type": "integer"
                 }
@@ -8046,13 +8046,13 @@
             "properties": {
                 "job_recovery_threshold_s": {
                     "default": 3600,
-                    "description": "crossbar.resources job recovery threshold s",
+                    "description": "crossbar.resources job recovery threshold in seconds",
                     "name": "job_recovery_threshold_s",
                     "type": "integer"
                 },
                 "job_recovery_timeout_s": {
                     "default": 21600,
-                    "description": "crossbar.resources job recovery timeout s",
+                    "description": "crossbar.resources job recovery timeout in seconds",
                     "name": "job_recovery_timeout_s",
                     "type": "integer"
                 }
@@ -8112,7 +8112,7 @@
                 },
                 "api_token_expires_s": {
                     "default": 1800,
-                    "description": "crossbar.ubiquiti api token expires s",
+                    "description": "crossbar.ubiquiti api token expires in seconds",
                     "name": "api_token_expires_s",
                     "type": "integer"
                 },
@@ -8330,7 +8330,7 @@
                 },
                 "balance_crawler_cycle_ms": {
                     "default": 60000,
-                    "description": "ecallmgr balance crawler cycle milliseconds",
+                    "description": "ecallmgr balance crawler cycle in milliseconds",
                     "name": "balance_crawler_cycle_ms",
                     "type": "integer"
                 },
@@ -8342,13 +8342,13 @@
                 },
                 "balance_crawler_fetch_timeout_ms": {
                     "default": 10000,
-                    "description": "ecallmgr balance crawler fetch timeout milliseconds",
+                    "description": "ecallmgr balance crawler fetch timeout in milliseconds",
                     "name": "balance_crawler_fetch_timeout_ms",
                     "type": "integer"
                 },
                 "balance_crawler_interaccount_delay_ms": {
                     "default": 10,
-                    "description": "ecallmgr balance crawler interaccount delay milliseconds",
+                    "description": "ecallmgr balance crawler interaccount delay in milliseconds",
                     "name": "balance_crawler_interaccount_delay_ms",
                     "type": "integer"
                 },
@@ -8514,13 +8514,13 @@
                 },
                 "fs_cmds_wait_ms": {
                     "default": 5000,
-                    "description": "ecallmgr fs cmds wait milliseconds",
+                    "description": "ecallmgr fs cmds wait in milliseconds",
                     "name": "fs_cmds_wait_ms",
                     "type": "integer"
                 },
                 "fs_node_uptime_s": {
                     "default": 600,
-                    "description": "ecallmgr fs node uptime s",
+                    "description": "ecallmgr fs node uptime in seconds",
                     "name": "fs_node_uptime_s",
                     "type": "integer"
                 },
@@ -8554,13 +8554,13 @@
                 },
                 "max_channel_cleanup_timeout_ms": {
                     "default": 60000,
-                    "description": "ecallmgr max channel cleanup timeout milliseconds",
+                    "description": "ecallmgr max channel cleanup timeout in milliseconds",
                     "name": "max_channel_cleanup_timeout_ms",
                     "type": "integer"
                 },
                 "max_channel_uptime_s": {
                     "default": 0,
-                    "description": "ecallmgr max channel uptime s",
+                    "description": "ecallmgr max channel uptime in seconds",
                     "name": "max_channel_uptime_s",
                     "type": "integer"
                 },
@@ -8933,7 +8933,7 @@
                 },
                 "wait_for_fax_timeout_ms": {
                     "default": 3600000,
-                    "description": "fax wait for fax timeout milliseconds",
+                    "description": "fax wait for fax timeout in milliseconds",
                     "name": "wait_for_fax_timeout_ms",
                     "type": "integer"
                 },
@@ -9279,7 +9279,7 @@
             "properties": {
                 "event_cleanup_timeout_ms": {
                     "default": 3600000,
-                    "description": "konami event cleanup timeout milliseconds",
+                    "description": "konami event cleanup timeout in milliseconds",
                     "name": "event_cleanup_timeout_ms",
                     "type": "integer"
                 },
@@ -9514,7 +9514,7 @@
                 },
                 "digit_timeout_ms": {
                     "default": 800,
-                    "description": "metaflows digit timeout milliseconds",
+                    "description": "metaflows digit timeout in milliseconds",
                     "name": "digit_timeout_ms",
                     "type": "integer"
                 },
@@ -9611,7 +9611,7 @@
             "properties": {
                 "backoff_fudge_ms": {
                     "default": 5000,
-                    "description": "notify backoff fudge milliseconds",
+                    "description": "notify backoff fudge in milliseconds",
                     "name": "backoff_fudge_ms",
                     "type": "integer"
                 },
@@ -9674,7 +9674,7 @@
                 },
                 "low_balance_repeat_s": {
                     "default": 86400,
-                    "description": "notify.account_crawler low balance repeat s",
+                    "description": "notify.account_crawler low balance repeat in seconds",
                     "name": "low_balance_repeat_s",
                     "type": "integer"
                 }
@@ -10151,7 +10151,7 @@
                 },
                 "crawler_timer_ms": {
                     "default": 86400000,
-                    "description": "number_manager crawler timer milliseconds",
+                    "description": "number_manager crawler timer in milliseconds",
                     "name": "crawler_timer_ms",
                     "type": "integer"
                 },
@@ -10163,13 +10163,13 @@
                 },
                 "deleted_expiry_d": {
                     "default": 90,
-                    "description": "number_manager deleted expiry d",
+                    "description": "number_manager deleted expiry in days",
                     "name": "deleted_expiry_d",
                     "type": "integer"
                 },
                 "discovery_expiry_d": {
                     "default": 90,
-                    "description": "number_manager discovery expiry d",
+                    "description": "number_manager discovery expiry in days",
                     "name": "discovery_expiry_d",
                     "type": "integer"
                 },
@@ -10223,13 +10223,13 @@
                 },
                 "time_between_accounts_ms": {
                     "default": 1000,
-                    "description": "number_manager time between accounts milliseconds",
+                    "description": "number_manager time between accounts in milliseconds",
                     "name": "time_between_accounts_ms",
                     "type": "integer"
                 },
                 "time_between_numbers_ms": {
                     "default": 1000,
-                    "description": "number_manager time between numbers milliseconds",
+                    "description": "number_manager time between numbers in milliseconds",
                     "name": "time_between_numbers_ms",
                     "type": "integer"
                 }
@@ -10371,7 +10371,7 @@
             "properties": {
                 "crawler_delay_time_ms": {
                     "default": 60000,
-                    "description": "number_manager.port_request crawler delay time milliseconds",
+                    "description": "number_manager.port_request crawler delay time in milliseconds",
                     "name": "crawler_delay_time_ms",
                     "type": "integer"
                 }
@@ -10463,13 +10463,13 @@
             "properties": {
                 "expire_check_ms": {
                     "default": 1000,
-                    "description": "omnipresence expire check milliseconds",
+                    "description": "omnipresence expire check in milliseconds",
                     "name": "expire_check_ms",
                     "type": "integer"
                 },
                 "expires_fudge_s": {
                     "default": 20,
-                    "description": "omnipresence expires fudge s",
+                    "description": "omnipresence expires fudge in seconds",
                     "name": "expires_fudge_s",
                     "type": "integer"
                 },
@@ -11091,13 +11091,13 @@
             "properties": {
                 "acl_request_timeout_fudge_ms": {
                     "default": 100,
-                    "description": "sysconf acl request timeout fudge milliseconds",
+                    "description": "sysconf acl request timeout fudge in milliseconds",
                     "name": "acl_request_timeout_fudge_ms",
                     "type": "integer"
                 },
                 "acl_request_timeout_ms": {
                     "default": 2000,
-                    "description": "sysconf acl request timeout milliseconds",
+                    "description": "sysconf acl request timeout in milliseconds",
                     "name": "acl_request_timeout_ms",
                     "type": "integer"
                 }
@@ -11116,7 +11116,7 @@
                 },
                 "wait_after_row_ms": {
                     "default": 500,
-                    "description": "tasks wait after row milliseconds",
+                    "description": "tasks wait after row in milliseconds",
                     "name": "wait_after_row_ms",
                     "type": "integer"
                 }
@@ -11142,7 +11142,7 @@
             "properties": {
                 "inactivity_timeout_s": {
                     "default": 600,
-                    "description": "token_buckets inactivity timeout s",
+                    "description": "token_buckets inactivity timeout in seconds",
                     "name": "inactivity_timeout_s",
                     "type": "integer"
                 },
@@ -11231,7 +11231,7 @@
                 },
                 "attempt_failure_expiry_ms": {
                     "default": 60000,
-                    "description": "webhooks attempt failure expiry milliseconds",
+                    "description": "webhooks attempt failure expiry in milliseconds",
                     "name": "attempt_failure_expiry_ms",
                     "type": "integer"
                 },

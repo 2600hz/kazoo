@@ -26,7 +26,7 @@
                                 "interval_s": {
                                     "properties": {
                                         "default": 300,
-                                        "description": "ananke interval s",
+                                        "description": "ananke interval in seconds",
                                         "name": "interval_s",
                                         "type": "string"
                                     }
@@ -34,7 +34,7 @@
                                 "timeout_s": {
                                     "properties": {
                                         "default": 20,
-                                        "description": "ananke timeout s",
+                                        "description": "ananke timeout in seconds",
                                         "name": "timeout_s",
                                         "type": "string"
                                     }

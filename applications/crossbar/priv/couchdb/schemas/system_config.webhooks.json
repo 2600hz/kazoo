@@ -9,7 +9,7 @@
         },
         "attempt_failure_expiry_ms": {
             "default": 60000,
-            "description": "webhooks attempt failure expiry milliseconds",
+            "description": "webhooks attempt failure expiry in milliseconds",
             "name": "attempt_failure_expiry_ms",
             "type": "integer"
         },
