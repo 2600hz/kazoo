@@ -14,13 +14,13 @@
                 "system_config": "infinity",
                 "system_data": "infinity"
             },
-            "description": "",
+            "description": "datamgr cache policy",
             "name": "cache_policy",
             "type": "object"
         },
         "default_archive_folder": {
             "default": "/tmp",
-            "description": "",
+            "description": "datamgr default archive folder",
             "name": "default_archive_folder",
             "type": "string"
         },
@@ -32,12 +32,12 @@
                 "fax",
                 "mailbox_message"
             ],
-            "description": "",
+            "description": "datamgr no caching doc types",
             "name": "no_caching_doc_types",
             "type": "array"
         },
         "performance": {
-            "description": "",
+            "description": "datamgr performance",
             "name": "performance"
         }
     },

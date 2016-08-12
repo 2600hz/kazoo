@@ -5,13 +5,13 @@
     "properties": {
         "send_progress_after_processed": {
             "default": 1000,
-            "description": "",
+            "description": "tasks send progress after processed",
             "name": "send_progress_after_processed",
             "type": "integer"
         },
         "wait_after_row_ms": {
             "default": 500,
-            "description": "",
+            "description": "tasks wait after row in milliseconds",
             "name": "wait_after_row_ms",
             "type": "integer"
         }

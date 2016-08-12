@@ -5,13 +5,13 @@
     "properties": {
         "maximum_bulk": {
             "default": 50,
-            "description": "",
+            "description": "crossbar.cdrs maximum bulk",
             "name": "maximum_bulk",
             "type": "integer"
         },
         "maximum_range": {
             "default": 2682000,
-            "description": "",
+            "description": "crossbar.cdrs maximum range",
             "name": "maximum_range",
             "type": "integer"
         }

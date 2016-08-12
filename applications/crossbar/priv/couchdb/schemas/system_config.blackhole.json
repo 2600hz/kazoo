@@ -7,13 +7,13 @@
             "default": [
                 "bh_token_auth"
             ],
-            "description": "",
+            "description": "blackhole autoload modules",
             "name": "autoload_modules",
             "type": "array"
         },
         "port": {
             "default": 5555,
-            "description": "",
+            "description": "blackhole port",
             "name": "port",
             "type": "integer"
         }

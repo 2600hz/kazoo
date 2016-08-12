@@ -5,12 +5,12 @@
     "properties": {
         "default_country": {
             "default": "US",
-            "description": "",
+            "description": "crossbar.phone_numbers default country",
             "name": "default_country",
             "type": "string"
         },
         "phonebook_url": {
-            "description": "",
+            "description": "crossbar.phone_numbers phonebook url",
             "name": "phonebook_url",
             "type": "string"
         }

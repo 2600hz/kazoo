@@ -5,7 +5,7 @@
     "properties": {
         "default_enabled": {
             "default": false,
-            "description": "",
+            "description": "notify.low_balance default enabled",
             "name": "default_enabled",
             "type": "boolean"
         }

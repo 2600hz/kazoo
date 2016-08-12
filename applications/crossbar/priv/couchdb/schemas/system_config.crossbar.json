@@ -5,41 +5,41 @@
     "properties": {
         "allow_tracing": {
             "default": false,
-            "description": "",
+            "description": "crossbar allow tracing",
             "name": "allow_tracing",
             "type": "boolean"
         },
         "api_auth_tokens": {
             "default": 35,
-            "description": "",
+            "description": "crossbar api auth tokens",
             "name": "api_auth_tokens",
             "type": "integer"
         },
         "autoload_modules": {
-            "description": "",
+            "description": "crossbar autoload modules",
             "name": "autoload_modules"
         },
         "cleanup_timer": {
             "default": 86400,
-            "description": "",
+            "description": "crossbar cleanup timer",
             "name": "cleanup_timer",
             "type": "integer"
         },
         "default_allow_anonymous_quickcalls": {
             "default": true,
-            "description": "",
+            "description": "crossbar default allow anonymous quickcalls",
             "name": "default_allow_anonymous_quickcalls",
             "type": "boolean"
         },
         "default_language": {
             "default": "en-US",
-            "description": "",
+            "description": "crossbar default language",
             "name": "default_language",
             "type": "string"
         },
         "expiry_percentage": {
             "default": 75,
-            "description": "",
+            "description": "crossbar expiry percentage",
             "name": "expiry_percentage",
             "type": "integer"
         },
@@ -49,120 +49,120 @@
                 "/:version/accounts/:account_id/faxes/:direction/:fax_id/attachment",
                 "/:version/accounts/:account_id/presence/:reportid"
             ],
-            "description": "",
+            "description": "crossbar magic path patterns",
             "name": "magic_path_patterns",
             "type": "array"
         },
         "max_upload_size": {
             "default": 8000000,
-            "description": "",
+            "description": "crossbar max upload size",
             "name": "max_upload_size",
             "type": "integer"
         },
         "maximum_range": {
             "default": 2682000,
-            "description": "",
+            "description": "crossbar maximum range",
             "name": "maximum_range",
             "type": "integer"
         },
         "pagination_page_size": {
             "default": 50,
-            "description": "",
+            "description": "crossbar pagination page size",
             "name": "pagination_page_size",
             "type": "integer"
         },
         "port": {
             "default": 8000,
-            "description": "",
+            "description": "crossbar port",
             "name": "port",
             "type": "integer"
         },
         "pretty_metrics": {
             "default": true,
-            "description": "",
+            "description": "crossbar pretty metrics",
             "name": "pretty_metrics",
             "type": "boolean"
         },
         "request_timeout_ms": {
             "default": 10000,
-            "description": "",
+            "description": "crossbar request timeout in milliseconds",
             "name": "request_timeout_ms",
             "type": "integer"
         },
         "reset_id_size": {
             "default": 137,
-            "description": "",
+            "description": "crossbar reset id size",
             "name": "reset_id_size",
             "type": "integer"
         },
         "reverse_proxies": {
             "default": [],
-            "description": "",
+            "description": "crossbar reverse proxies",
             "name": "reverse_proxies",
             "type": "array"
         },
         "schema_strict_validation": {
             "default": false,
-            "description": "",
+            "description": "crossbar schema strict validation",
             "name": "schema_strict_validation",
             "type": "boolean"
         },
         "soft_delete_pause_ms": {
             "default": 10000,
-            "description": "",
+            "description": "crossbar soft delete pause in milliseconds",
             "name": "soft_delete_pause_ms",
             "type": "integer"
         },
         "ssl_ca_cert": {
-            "description": "",
+            "description": "crossbar ssl ca cert",
             "name": "ssl_ca_cert",
             "type": "string"
         },
         "ssl_workers": {
             "default": 100,
-            "description": "",
+            "description": "crossbar ssl workers",
             "name": "ssl_workers",
             "type": "integer"
         },
         "token_auth_expiry": {
             "default": 3600,
-            "description": "",
+            "description": "crossbar token auth expiry",
             "name": "token_auth_expiry",
             "type": "integer"
         },
         "token_costs": {
             "default": 1,
-            "description": "",
+            "description": "crossbar token costs",
             "name": "token_costs",
             "type": "integer"
         },
         "trace_path": {
             "default": "/tmp",
-            "description": "",
+            "description": "crossbar trace path",
             "name": "trace_path",
             "type": "string"
         },
         "use_plaintext": {
             "default": true,
-            "description": "",
+            "description": "crossbar use plaintext",
             "name": "use_plaintext",
             "type": "boolean"
         },
         "use_ssl": {
             "default": false,
-            "description": "",
+            "description": "crossbar use ssl",
             "name": "use_ssl",
             "type": "boolean"
         },
         "user_auth_tokens": {
             "default": 35,
-            "description": "",
+            "description": "crossbar user auth tokens",
             "name": "user_auth_tokens",
             "type": "integer"
         },
         "workers": {
             "default": 100,
-            "description": "",
+            "description": "crossbar workers",
             "name": "workers",
             "type": "integer"
         }

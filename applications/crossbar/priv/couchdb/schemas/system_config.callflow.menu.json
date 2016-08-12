@@ -5,7 +5,7 @@
     "properties": {
         "min_greeting_length": {
             "default": 1500,
-            "description": "",
+            "description": "callflow.menu min greeting length",
             "name": "min_greeting_length",
             "type": "integer"
         }

@@ -5,7 +5,7 @@
     "properties": {
         "basic_auth_type": {
             "default": "md5",
-            "description": "",
+            "description": "crossbar.auth basic auth type",
             "name": "basic_auth_type",
             "type": "string"
         }

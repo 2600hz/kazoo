@@ -4,7 +4,7 @@
     "description": "Schema for crossbar.shared_auth system_config",
     "properties": {
         "authoritative_crossbar": {
-            "description": "",
+            "description": "crossbar.shared_auth authoritative crossbar",
             "name": "authoritative_crossbar",
             "type": "string"
         }

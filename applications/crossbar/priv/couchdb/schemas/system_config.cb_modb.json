@@ -5,7 +5,7 @@
     "properties": {
         "maybe_archive_modbs": {
             "default": false,
-            "description": "",
+            "description": "cb_modb maybe archive modbs",
             "name": "maybe_archive_modbs",
             "type": "boolean"
         }

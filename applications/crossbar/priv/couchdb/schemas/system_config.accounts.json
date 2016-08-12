@@ -5,22 +5,23 @@
     "properties": {
         "allow_subaccounts_for_direct": {
             "default": true,
-            "description": "",
+            "description": "accounts allow subaccounts for direct",
             "name": "allow_subaccounts_for_direct",
             "type": "boolean"
         },
         "default_timezone": {
             "default": "America/Los_Angeles",
-            "description": "",
+            "description": "accounts default timezone",
             "name": "default_timezone",
             "type": "string"
         },
         "master_account_id": {
-            "description": "",
+            "description": "accounts master account id",
             "name": "master_account_id"
         },
         "timezone": {
-            "description": "",
+            "default": "America/Los_Angeles",
+            "description": "accounts timezone",
             "name": "timezone",
             "type": "string"
         }

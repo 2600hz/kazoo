@@ -5,7 +5,7 @@
     "properties": {
         "clock_timezone": {
             "default": "UTC",
-            "description": "",
+            "description": "servers clock timezone",
             "name": "clock_timezone",
             "type": "string"
         }

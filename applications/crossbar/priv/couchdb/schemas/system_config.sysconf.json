@@ -5,13 +5,13 @@
     "properties": {
         "acl_request_timeout_fudge_ms": {
             "default": 100,
-            "description": "",
+            "description": "sysconf acl request timeout fudge in milliseconds",
             "name": "acl_request_timeout_fudge_ms",
             "type": "integer"
         },
         "acl_request_timeout_ms": {
             "default": 2000,
-            "description": "",
+            "description": "sysconf acl request timeout in milliseconds",
             "name": "acl_request_timeout_ms",
             "type": "integer"
         }

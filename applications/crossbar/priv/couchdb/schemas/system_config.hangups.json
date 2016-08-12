@@ -12,7 +12,7 @@
                 "PROGRESS_TIMEOUT",
                 "RECOVERY_ON_TIMER_EXPIRE"
             ],
-            "description": "",
+            "description": "hangups hangups to monitor",
             "name": "hangups_to_monitor",
             "type": "array"
         },
@@ -27,7 +27,7 @@
                 "NORMAL_CLEARING",
                 "ALLOTTED_TIMEOUT"
             ],
-            "description": "",
+            "description": "hangups ignore hangup causes",
             "name": "ignore_hangup_causes",
             "type": "array"
         }

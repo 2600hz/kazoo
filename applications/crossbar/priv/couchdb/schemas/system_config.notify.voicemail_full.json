@@ -5,12 +5,12 @@
     "properties": {
         "default_enabled": {
             "default": false,
-            "description": "",
+            "description": "notify.voicemail_full default enabled",
             "name": "default_enabled",
             "type": "boolean"
         },
         "default_to": {
-            "description": "",
+            "description": "notify.voicemail_full default to",
             "name": "default_to"
         }
     },

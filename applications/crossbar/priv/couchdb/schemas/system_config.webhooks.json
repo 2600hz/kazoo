@@ -4,32 +4,24 @@
     "description": "Schema for webhooks system_config",
     "properties": {
         "attempt_failure_count": {
-            "description": "",
+            "description": "webhooks attempt failure count",
             "name": "attempt_failure_count"
         },
         "attempt_failure_expiry_ms": {
             "default": 60000,
-            "description": "",
+            "description": "webhooks attempt failure expiry in milliseconds",
             "name": "attempt_failure_expiry_ms",
             "type": "integer"
         },
         "log_successful_attempts": {
             "default": false,
-            "description": "",
+            "description": "webhooks log successful attempts",
             "name": "log_successful_attempts",
             "type": "boolean"
         },
         "object_types": {
-            "default": [
-                "undefined",
-                "undefined",
-                "undefined",
-                "undefined",
-                "undefined",
-                "undefined",
-                "undefined"
-            ],
-            "description": "",
+            "default": "default",
+            "description": "webhooks object types",
             "name": "object_types",
             "type": "array"
         }

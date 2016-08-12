@@ -5,13 +5,13 @@
     "properties": {
         "store_anonymous": {
             "default": false,
-            "description": "",
+            "description": "cdr store anonymous",
             "name": "store_anonymous",
             "type": "boolean"
         },
         "v3_migrate_num_months": {
             "default": 4,
-            "description": "",
+            "description": "cdr v3 migrate num months",
             "name": "v3_migrate_num_months",
             "type": "integer"
         }

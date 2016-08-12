@@ -5,47 +5,47 @@
     "properties": {
         "default_allow_updates": {
             "default": true,
-            "description": "",
+            "description": "services default allow updates",
             "name": "default_allow_updates",
             "type": "boolean"
         },
         "master_account_bookkeeper": {
             "default": "kz_bookkeeper_local",
-            "description": "",
+            "description": "services master account bookkeeper",
             "name": "master_account_bookkeeper",
             "type": "string"
         },
         "modules": {
-            "description": "",
+            "description": "services modules",
             "name": "modules"
         },
         "scan_rate": {
             "default": 20000,
-            "description": "",
+            "description": "services scan rate",
             "name": "scan_rate",
             "type": "integer"
         },
         "should_save_master_audit_logs": {
             "default": false,
-            "description": "",
+            "description": "services should save master audit logs",
             "name": "should_save_master_audit_logs",
             "type": "boolean"
         },
         "support_billing_id": {
             "default": true,
-            "description": "",
+            "description": "services support billing id",
             "name": "support_billing_id",
             "type": "boolean"
         },
         "sync_buffer_period": {
             "default": 600,
-            "description": "",
+            "description": "services sync buffer period",
             "name": "sync_buffer_period",
             "type": "integer"
         },
         "sync_services": {
             "default": false,
-            "description": "",
+            "description": "services sync services",
             "name": "sync_services",
             "type": "boolean"
         }

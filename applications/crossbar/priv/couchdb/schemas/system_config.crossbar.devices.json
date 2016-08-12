@@ -5,16 +5,16 @@
     "properties": {
         "allow_aggregates": {
             "default": "true",
-            "description": "",
+            "description": "crossbar.devices allow aggregates",
             "name": "allow_aggregates",
             "type": "boolean"
         },
         "provisioning_type": {
-            "description": "",
+            "description": "crossbar.devices provisioning type",
             "name": "provisioning_type"
         },
         "provisioning_url": {
-            "description": "",
+            "description": "crossbar.devices provisioning url",
             "name": "provisioning_url",
             "type": "string"
         }

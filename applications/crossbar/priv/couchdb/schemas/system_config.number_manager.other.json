@@ -5,16 +5,16 @@
     "properties": {
         "default_country": {
             "default": "US",
-            "description": "",
+            "description": "number_manager.other default country",
             "name": "default_country",
             "type": "string"
         },
         "endpoints": {
-            "description": "",
+            "description": "number_manager.other endpoints",
             "name": "endpoints"
         },
         "phonebook_url": {
-            "description": "",
+            "description": "number_manager.other phonebook url",
             "name": "phonebook_url"
         }
     },

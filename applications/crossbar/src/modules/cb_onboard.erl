@@ -23,7 +23,7 @@
 -include("crossbar.hrl").
 
 -define(OB_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".onboard">>).
--define(DEFAULT_FLOW, "{\"data\": { \"id\": \"~s\" }, \"module\": \"user\", \"children\": { \"_\": { \"data\": { \"id\": \"~s\" }, \"module\": \"voicemail\", \"children\": {}}}}").
+-define(DEFAULT_FLOW, <<"{\"data\": { \"id\": \"~s\" }, \"module\": \"user\", \"children\": { \"_\": { \"data\": { \"id\": \"~s\" }, \"module\": \"voicemail\", \"children\": {}}}}">>).
 
 %%%===================================================================
 %%% API
@@ -408,8 +408,7 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
     Generators = [fun(J) ->
                           User = get_context_jobj(<<"users">>, Pass),
                           VMBox = get_context_jobj(<<"vmboxes">>, Pass),
-                          DefaultFlow = kapps_config:get_string(?OB_CONFIG_CAT, <<"default_extension_callflow">>
-                                                               ,kz_util:to_binary(?DEFAULT_FLOW)),
+                          DefaultFlow = kapps_config:get_string(?OB_CONFIG_CAT, <<"default_extension_callflow">>, ?DEFAULT_FLOW),
                           Flow = kz_json:decode(io_lib:format(DefaultFlow, [kz_doc:id(User)
                                                                            ,kz_doc:id(VMBox)
                                                                            ])),

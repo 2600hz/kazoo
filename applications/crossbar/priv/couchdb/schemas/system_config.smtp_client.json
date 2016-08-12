@@ -5,53 +5,53 @@
     "properties": {
         "auth": {
             "default": "never",
-            "description": "",
+            "description": "smtp_client auth",
             "name": "auth",
             "type": "string"
         },
         "no_mx_lookups": {
             "default": true,
-            "description": "",
+            "description": "smtp_client no mx lookups",
             "name": "no_mx_lookups",
             "type": "boolean"
         },
         "password": {
             "default": "",
-            "description": "",
+            "description": "smtp_client password",
             "name": "password",
             "type": "string"
         },
         "port": {
             "default": 25,
-            "description": "",
+            "description": "smtp_client port",
             "name": "port",
             "type": "integer"
         },
         "relay": {
             "default": "localhost",
-            "description": "",
+            "description": "smtp_client relay",
             "name": "relay",
             "type": "string"
         },
         "retries": {
             "default": 1,
-            "description": "",
+            "description": "smtp_client retries",
             "name": "retries",
             "type": "integer"
         },
         "tls": {
-            "description": "",
+            "description": "smtp_client tls",
             "name": "tls"
         },
         "use_ssl": {
             "default": false,
-            "description": "",
+            "description": "smtp_client use ssl",
             "name": "use_ssl",
             "type": "boolean"
         },
         "username": {
             "default": "",
-            "description": "",
+            "description": "smtp_client username",
             "name": "username",
             "type": "string"
         }

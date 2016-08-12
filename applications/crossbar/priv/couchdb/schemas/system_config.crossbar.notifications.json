@@ -5,7 +5,7 @@
     "properties": {
         "notification_timeout_ms": {
             "default": 5000,
-            "description": "",
+            "description": "crossbar.notifications notification timeout in milliseconds",
             "name": "notification_timeout_ms",
             "type": "integer"
         }

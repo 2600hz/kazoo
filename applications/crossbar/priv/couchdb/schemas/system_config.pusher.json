@@ -5,17 +5,17 @@
     "properties": {
         "User-Agents": {
             "default": {},
-            "description": "",
+            "description": "pusher User-Agents",
             "name": "User-Agents",
             "type": "object"
         },
         "apple": {
-            "description": "",
+            "description": "pusher apple",
             "name": "apple",
             "type": "string"
         },
         "google": {
-            "description": "",
+            "description": "pusher google",
             "name": "google",
             "type": "string"
         }

@@ -5,55 +5,55 @@
     "properties": {
         "account_realm_suffix": {
             "default": "sip.2600hz.com",
-            "description": "",
+            "description": "crossbar.accounts account realm suffix",
             "name": "account_realm_suffix",
             "type": "string"
         },
         "allow_move": {
             "default": "superduper_admin",
-            "description": "",
+            "description": "crossbar.accounts allow move",
             "name": "allow_move",
             "type": "string"
         },
         "allow_sibling_listing": {
             "default": true,
-            "description": "",
+            "description": "crossbar.accounts allow sibling listing",
             "name": "allow_sibling_listing",
             "type": "boolean"
         },
         "default_parent": {
             "default": "",
-            "description": "",
+            "description": "crossbar.accounts default parent",
             "name": "default_parent",
             "type": "string"
         },
         "ensure_unique_name": {
             "default": true,
-            "description": "",
+            "description": "crossbar.accounts ensure unique name",
             "name": "ensure_unique_name",
             "type": "boolean"
         },
         "expose_api_key": {
             "default": false,
-            "description": "",
+            "description": "crossbar.accounts expose api key",
             "name": "expose_api_key",
             "type": "boolean"
         },
         "new_account_notify_delay_s": {
             "default": 30,
-            "description": "",
+            "description": "crossbar.accounts new account notify delay in seconds",
             "name": "new_account_notify_delay_s",
             "type": "integer"
         },
         "random_realm_strength": {
             "default": 3,
-            "description": "",
+            "description": "crossbar.accounts random realm strength",
             "name": "random_realm_strength",
             "type": "integer"
         },
         "trial_time": {
             "default": 1209600,
-            "description": "",
+            "description": "crossbar.accounts trial time",
             "name": "trial_time",
             "type": "integer"
         }

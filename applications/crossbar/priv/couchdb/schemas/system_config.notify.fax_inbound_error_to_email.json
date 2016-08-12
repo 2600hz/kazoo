@@ -5,12 +5,12 @@
     "properties": {
         "default_enabled": {
             "default": false,
-            "description": "",
+            "description": "notify.fax_inbound_error_to_email default enabled",
             "name": "default_enabled",
             "type": "boolean"
         },
         "default_to": {
-            "description": "",
+            "description": "notify.fax_inbound_error_to_email default to",
             "name": "default_to"
         }
     },

@@ -14,12 +14,12 @@ to_schema_docs(Schemas) ->
 
 update_schema({Name, AutoGenSchema}) ->
     Path = kz_ast_util:schema_path(<<"system_config.", Name/binary, ".json">>),
-
     SchemaDoc = schema_doc(Name, Path),
-
-    Updated = kz_json:merge_recursive(AutoGenSchema, SchemaDoc),
-
+    Updated = kz_json:merge_recursive(AutoGenSchema, SchemaDoc, fun merger/2),
     'ok' = file:write_file(Path, kz_json:encode(Updated)).
+
+merger(JObj1, JObj2) ->
+    kz_util:is_empty(JObj1) and not kz_util:is_empty(JObj2).
 
 schema_doc(Name, Path) ->
     kz_ast_util:ensure_file_exists(Path),
@@ -66,28 +66,19 @@ module_to_schema(Module, Schemas) ->
     end.
 
 functions_to_schema(Fs, Schemas) ->
-    lists:foldl(fun function_to_schema/2
-               ,Schemas
-               ,Fs
-               ).
+    lists:foldl(fun function_to_schema/2, Schemas, Fs).
 
 function_to_schema({_Module, _Function, _Arity, Clauses}, Schemas) ->
     clauses_to_schema(Clauses, Schemas).
 
 clauses_to_schema(Clauses, Schemas) ->
-    lists:foldl(fun clause_to_schema/2
-               ,Schemas
-               ,Clauses
-               ).
+    lists:foldl(fun clause_to_schema/2, Schemas, Clauses).
 
 clause_to_schema(?CLAUSE(_Args, _Guards, Expressions), Schemas) ->
     expressions_to_schema(Expressions, Schemas).
 
 expressions_to_schema(Expressions, Schemas) ->
-    lists:foldl(fun expression_to_schema/2
-               ,Schemas
-               ,Expressions
-               ).
+    lists:foldl(fun expression_to_schema/2, Schemas, Expressions).
 
 expression_to_schema(?MOD_FUN_ARGS('kapps_config', F, Args), Schemas) ->
     config_to_schema(F, Args, Schemas);
@@ -214,9 +205,7 @@ config_to_schema(F, [Cat, K, Default, _Node], Schemas) ->
     config_to_schema(F, [Cat, K, Default], Schemas);
 config_to_schema(F, [Cat, K, Default], Schemas) ->
     Document = category_to_document(Cat),
-
     Key = key_to_key_path(K),
-
     config_key_to_schema(F, Document, Key, Default, Schemas).
 
 config_key_to_schema(_F, _Document, 'undefined', _Default, Schemas) ->
@@ -224,15 +213,13 @@ config_key_to_schema(_F, _Document, 'undefined', _Default, Schemas) ->
 config_key_to_schema(_F, 'undefined', _Key, _Default, Schemas) ->
     Schemas;
 config_key_to_schema(F, Document, Key, Default, Schemas) ->
-    Properties = guess_properties(Key, guess_type(F, Default), Default),
-
+    %% io:format(user, "\nF ~p ~p\n", [Document, Schemas]),
+    Properties = guess_properties(Document, Key, guess_type(F, Default), Default),
     Existing = kz_json:get_json_value([Document, <<"properties">> | Key]
                                      ,Schemas
                                      ,kz_json:new()
                                      ),
-
     Updated = kz_json:merge_jobjs(Existing, Properties),
-
     kz_json:set_value([Document, <<"properties">> | Key], Updated, Schemas).
 
 category_to_document(?VAR(_)) -> 'undefined';
@@ -245,7 +232,7 @@ key_to_key_path(?EMPTY_LIST) -> [];
 key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [Doc, Field | _]), Tail)) ->
     [iolist_to_binary([${
                       ,kz_ast_util:binary_match_to_binary(Doc)
-                      ,"."
+                      ,$.
                       ,kz_ast_util:binary_match_to_binary(Field)
                       ,$}
                       ]
@@ -278,9 +265,9 @@ key_to_key_path(?LIST(Head, Tail)) ->
 key_to_key_path(?BINARY_MATCH(K)) ->
     [kz_ast_util:binary_match_to_binary(K)].
 
-guess_type('is_true', _Default) -><<"boolean">>;
-guess_type('get_is_true', _Default) -><<"boolean">>;
-guess_type('get_boolean', _Default) -><<"boolean">>;
+guess_type('is_true', _Default) -> <<"boolean">>;
+guess_type('get_is_true', _Default) -> <<"boolean">>;
+guess_type('get_boolean', _Default) -> <<"boolean">>;
 guess_type('get', Default) -> guess_type_by_default(Default);
 guess_type('fetch', Default) -> guess_type_by_default(Default);
 guess_type('get_non_empty', Default) -> guess_type_by_default(Default);
@@ -322,22 +309,39 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_number', [])
 guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_name', [])) -> <<"string">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'to_integer', _Args)) -> <<"integer">>.
 
-guess_properties(<<_/binary>> = Key, Type, Default) ->
+guess_properties(Document, Key, Type, Default)
+  when is_binary(Key) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"type">>, Type}
-        ,{<<"description">>, <<>>}
+        ,{<<"description">>, guess_description(Document, Key, Type)}
         ,{<<"name">>, Key}
         ,{<<"default">>, try default_value(Default) catch _:_ -> 'default' end}
         ]
        )
      );
-guess_properties([<<_/binary>> = Key], Type, Default) ->
-    guess_properties(Key, Type, Default);
-guess_properties([Key, <<"properties">>], Type, Default) ->
-    guess_properties(Key, Type, Default);
-guess_properties([_Key, <<"properties">> | Rest], Type, Default) ->
-    guess_properties(Rest, Type, Default).
+guess_properties(Document, [Key], Type, Default)
+  when is_binary(Key) ->
+    guess_properties(Document, Key, Type, Default);
+guess_properties(Document, [Key, <<"properties">>], Type, Default) ->
+    guess_properties(Document, Key, Type, Default);
+guess_properties(Document, [_Key, <<"properties">> | Rest], Type, Default) ->
+    guess_properties(Document, Rest, Type, Default).
+
+guess_description(Document, Key, _Type) ->
+    Sentence = guess_description(Document, Key),
+    kz_util:join_binary(Sentence, <<$\s>>).
+guess_description(Document, Key) ->
+    [Document | guess_description(Key)].
+guess_description(Key) ->
+    [case Word of
+         <<"s">> -> <<"in seconds">>;
+         <<"ms">> -> <<"in milliseconds">>;
+         <<"d">> -> <<"in days">>;
+         _ -> Word
+     end
+     || Word <- binary:split(Key, <<$_>>, ['global'])
+    ].
 
 default_value('undefined') -> 'undefined';
 default_value(?ATOM('true')) -> 'true';
@@ -360,15 +364,34 @@ default_value(?MOD_FUN_ARGS('kz_json', 'from_list', L)) ->
     default_values_from_list(L);
 default_value(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
     kz_json:new();
-default_value(?MOD_FUN_ARGS(_M, _F, _Args)) -> 'undefined';
+default_value(?MOD_FUN_ARGS('kz_util', 'rand_hex_binary', [_Arg])) ->
+    'undefined';
+default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_number', [])) ->
+    default_value(kz_util:anonymous_caller_id_number());
+default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_name', [])) ->
+    default_value(kz_util:anonymous_caller_id_name());
+default_value(?MOD_FUN_ARGS('kz_util', 'to_binary', [Arg])) ->
+    default_value(Arg);
+default_value(?MOD_FUN_ARGS('kz_util', 'to_integer', [Arg])) ->
+    default_value(Arg);
+default_value(?MOD_FUN_ARGS(M, 'type', [])) ->
+    default_value(M:type());
+default_value(?MOD_FUN_ARGS('ecallmgr_config', 'get', [_Key, Default])) ->
+    default_value(Default);
+%%TODO: support all kapps_config exports
+default_value(?MOD_FUN_ARGS('kapps_config', 'get', [_Category, _Key, Default])) ->
+    default_value(Default);
+default_value(?MOD_FUN_ARGS('kapps_config', 'get_integer', [_Category, _Key, Default])) ->
+    default_value(Default);
+default_value(?MOD_FUN_ARGS('kapps_config', 'get_binary', [_Category, _Key, Default])) ->
+    default_value(Default);
+default_value(?MOD_FUN_ARGS(_M, _F, _Args)) ->
+    'undefined';
 default_value(?FUN_ARGS(_F, _Args)) ->
     'undefined'.
 
 default_values_from_list(KVs) ->
-    lists:foldl(fun default_value_from_kv/2
-               ,kz_json:new()
-               ,KVs
-               ).
+    lists:foldl(fun default_value_from_kv/2, kz_json:new(), KVs).
 
 default_value_from_kv(KV, Acc) ->
     KVs = props:filter_undefined(default_value(KV)),

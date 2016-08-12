@@ -4,17 +4,17 @@
     "description": "Schema for milliwatt system_config",
     "properties": {
         "echo": {
-            "description": "",
+            "description": "milliwatt echo",
             "name": "echo"
         },
         "route_win_timeout": {
             "default": 3000,
-            "description": "",
+            "description": "milliwatt route win timeout",
             "name": "route_win_timeout",
             "type": "integer"
         },
         "tone": {
-            "description": "",
+            "description": "milliwatt tone",
             "name": "tone"
         }
     },

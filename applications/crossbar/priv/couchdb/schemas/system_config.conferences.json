@@ -7,7 +7,7 @@
             "properties": {
                 "{ConfigName}": {
                     "properties": {
-                        "description": "",
+                        "description": "conferences {ConfigName}",
                         "name": "{ConfigName}"
                     }
                 }
@@ -18,7 +18,7 @@
                 "{ConfigName}": {
                     "properties": {
                         "default": [],
-                        "description": "",
+                        "description": "conferences {ConfigName}",
                         "name": "{ConfigName}",
                         "type": "array"
                     }
@@ -29,7 +29,7 @@
             "properties": {
                 "{ConfigName}": {
                     "properties": {
-                        "description": "",
+                        "description": "conferences {ConfigName}",
                         "name": "{ConfigName}"
                     }
                 }
@@ -37,19 +37,19 @@
         },
         "entry_tone": {
             "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
-            "description": "",
+            "description": "conferences entry tone",
             "name": "entry_tone",
             "type": "string"
         },
         "exit_tone": {
             "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)",
-            "description": "",
+            "description": "conferences exit tone",
             "name": "exit_tone",
             "type": "string"
         },
         "moderator_entry_tone": {
             "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
-            "description": "",
+            "description": "conferences moderator entry tone",
             "name": "moderator_entry_tone",
             "type": "string"
         },
@@ -61,18 +61,19 @@
                             "caller-controls": "default",
                             "comfort-noise": 1000,
                             "energy-level": 20,
+                            "enter-sound": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
                             "interval": 20,
                             "moh-sound": "$${hold_music}",
                             "rate": 8000
                         },
-                        "description": "",
+                        "description": "conferences default",
                         "name": "default",
                         "type": "object"
                     }
                 },
                 "{ConfigName}": {
                     "properties": {
-                        "description": "",
+                        "description": "conferences {ConfigName}",
                         "name": "{ConfigName}"
                     }
                 }
@@ -80,19 +81,19 @@
         },
         "review_name": {
             "default": false,
-            "description": "",
+            "description": "conferences review name",
             "name": "review_name",
             "type": "boolean"
         },
         "route_win_timeout": {
             "default": 3000,
-            "description": "",
+            "description": "conferences route win timeout",
             "name": "route_win_timeout",
             "type": "integer"
         },
         "support_name_announcement": {
             "default": true,
-            "description": "",
+            "description": "conferences support name announcement",
             "name": "support_name_announcement",
             "type": "boolean"
         }

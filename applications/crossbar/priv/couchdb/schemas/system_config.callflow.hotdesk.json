@@ -5,19 +5,19 @@
     "properties": {
         "max_hotdesk_id_length": {
             "default": 10,
-            "description": "",
+            "description": "callflow.hotdesk max hotdesk id length",
             "name": "max_hotdesk_id_length",
             "type": "integer"
         },
         "max_login_attempts": {
             "default": 3,
-            "description": "",
+            "description": "callflow.hotdesk max login attempts",
             "name": "max_login_attempts",
             "type": "integer"
         },
         "max_pin_length": {
             "default": 6,
-            "description": "",
+            "description": "callflow.hotdesk max pin length",
             "name": "max_pin_length",
             "type": "integer"
         }

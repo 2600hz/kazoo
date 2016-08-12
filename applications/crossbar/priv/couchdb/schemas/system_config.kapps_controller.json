@@ -29,7 +29,7 @@
                 "trunkstore",
                 "webhooks"
             ],
-            "description": "",
+            "description": "kapps_controller kapps",
             "name": "kapps",
             "type": "array"
         }

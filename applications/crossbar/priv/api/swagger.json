@@ -6780,22 +6780,23 @@
             "properties": {
                 "allow_subaccounts_for_direct": {
                     "default": true,
-                    "description": "",
+                    "description": "accounts allow subaccounts for direct",
                     "name": "allow_subaccounts_for_direct",
                     "type": "boolean"
                 },
                 "default_timezone": {
                     "default": "America/Los_Angeles",
-                    "description": "",
+                    "description": "accounts default timezone",
                     "name": "default_timezone",
                     "type": "string"
                 },
                 "master_account_id": {
-                    "description": "",
+                    "description": "accounts master account id",
                     "name": "master_account_id"
                 },
                 "timezone": {
-                    "description": "",
+                    "default": "America/Los_Angeles",
+                    "description": "accounts timezone",
                     "name": "timezone",
                     "type": "string"
                 }
@@ -6813,61 +6814,61 @@
                         "username",
                         "email"
                     ],
-                    "description": "",
+                    "description": "acdc agent info fields",
                     "name": "agent_info_fields",
                     "type": "array"
                 },
                 "archive_period_ms": {
                     "default": 60000,
-                    "description": "",
+                    "description": "acdc archive period in milliseconds",
                     "name": "archive_period_ms",
                     "type": "integer"
                 },
                 "archive_window_s": {
                     "default": 60,
-                    "description": "",
+                    "description": "acdc archive window in seconds",
                     "name": "archive_window_s",
                     "type": "integer"
                 },
                 "cleanup_period_ms": {
                     "default": 360000,
-                    "description": "",
+                    "description": "acdc cleanup period in milliseconds",
                     "name": "cleanup_period_ms",
                     "type": "integer"
                 },
                 "cleanup_window_s": {
                     "default": 86400,
-                    "description": "",
+                    "description": "acdc cleanup window in seconds",
                     "name": "cleanup_window_s",
                     "type": "integer"
                 },
                 "default_agent_pause_timeout": {
                     "default": 600,
-                    "description": "",
+                    "description": "acdc default agent pause timeout",
                     "name": "default_agent_pause_timeout",
                     "type": "integer"
                 },
                 "max_connect_failures": {
                     "default": 3,
-                    "description": "",
+                    "description": "acdc max connect failures",
                     "name": "max_connect_failures",
                     "type": "integer"
                 },
                 "max_result_set": {
                     "default": 25,
-                    "description": "",
+                    "description": "acdc max result set",
                     "name": "max_result_set",
                     "type": "integer"
                 },
                 "queue_collect_resp_timeout": {
                     "default": 2000,
-                    "description": "",
+                    "description": "acdc queue collect resp timeout",
                     "name": "queue_collect_resp_timeout",
                     "type": "integer"
                 },
                 "queue_worker_count": {
                     "default": 5,
-                    "description": "",
+                    "description": "acdc queue worker count",
                     "name": "queue_worker_count",
                     "type": "integer"
                 }
@@ -6880,7 +6881,7 @@
             "properties": {
                 "enabled": {
                     "default": true,
-                    "description": "",
+                    "description": "alerts enabled",
                     "name": "enabled",
                     "type": "boolean"
                 }
@@ -6893,7 +6894,7 @@
             "properties": {
                 "schedules": {
                     "default": [],
-                    "description": "",
+                    "description": "ananke schedules",
                     "name": "schedules",
                     "type": "array"
                 },
@@ -6906,7 +6907,7 @@
                                         "attempts": {
                                             "properties": {
                                                 "default": 5,
-                                                "description": "",
+                                                "description": "ananke attempts",
                                                 "name": "attempts",
                                                 "type": "string"
                                             }
@@ -6914,7 +6915,7 @@
                                         "interval_s": {
                                             "properties": {
                                                 "default": 300,
-                                                "description": "",
+                                                "description": "ananke interval in seconds",
                                                 "name": "interval_s",
                                                 "type": "string"
                                             }
@@ -6922,7 +6923,7 @@
                                         "timeout_s": {
                                             "properties": {
                                                 "default": 20,
-                                                "description": "",
+                                                "description": "ananke timeout in seconds",
                                                 "name": "timeout_s",
                                                 "type": "string"
                                             }
@@ -6944,13 +6945,13 @@
                     "default": [
                         "bh_token_auth"
                     ],
-                    "description": "",
+                    "description": "blackhole autoload modules",
                     "name": "autoload_modules",
                     "type": "array"
                 },
                 "port": {
                     "default": 5555,
-                    "description": "",
+                    "description": "blackhole port",
                     "name": "port",
                     "type": "integer"
                 }
@@ -6963,37 +6964,37 @@
             "properties": {
                 "debug": {
                     "default": false,
-                    "description": "",
+                    "description": "braintree debug",
                     "name": "debug",
                     "type": "boolean"
                 },
                 "default_environment": {
                     "default": [],
-                    "description": "",
+                    "description": "braintree default environment",
                     "name": "default_environment",
                     "type": "string"
                 },
                 "default_merchant_id": {
                     "default": [],
-                    "description": "",
+                    "description": "braintree default merchant id",
                     "name": "default_merchant_id",
                     "type": "string"
                 },
                 "max_amount": {
                     "default": 200.0,
-                    "description": "",
+                    "description": "braintree max amount",
                     "name": "max_amount",
                     "type": "number"
                 },
                 "min_amount": {
                     "default": 5.0,
-                    "description": "",
+                    "description": "braintree min amount",
                     "name": "min_amount",
                     "type": "number"
                 },
                 "should_prorate": {
                     "default": true,
-                    "description": "",
+                    "description": "braintree should prorate",
                     "name": "should_prorate",
                     "type": "boolean"
                 }
@@ -7006,31 +7007,31 @@
             "properties": {
                 "application_timeout": {
                     "default": 500000,
-                    "description": "",
+                    "description": "call_command application timeout",
                     "name": "application_timeout",
                     "type": "integer"
                 },
                 "collect_timeout": {
                     "default": 5000,
-                    "description": "",
+                    "description": "call_command collect timeout",
                     "name": "collect_timeout",
                     "type": "integer"
                 },
                 "digit_timeout": {
                     "default": 3000,
-                    "description": "",
+                    "description": "call_command digit timeout",
                     "name": "digit_timeout",
                     "type": "integer"
                 },
                 "interdigit_timeout": {
                     "default": 2000,
-                    "description": "",
+                    "description": "call_command interdigit timeout",
                     "name": "interdigit_timeout",
                     "type": "integer"
                 },
                 "message_timeout": {
                     "default": 5000,
-                    "description": "",
+                    "description": "call_command message timeout",
                     "name": "message_timeout",
                     "type": "integer"
                 },
@@ -7041,7 +7042,7 @@
                                 "retries": {
                                     "properties": {
                                         "default": 5,
-                                        "description": "",
+                                        "description": "call_command retries",
                                         "name": "retries",
                                         "type": "integer"
                                     }
@@ -7049,7 +7050,7 @@
                                 "save_timeout_ms": {
                                     "properties": {
                                         "default": 300000,
-                                        "description": "",
+                                        "description": "call_command save timeout in milliseconds",
                                         "name": "save_timeout_ms",
                                         "type": "integer"
                                     }
@@ -7070,7 +7071,7 @@
                         "extension": {
                             "properties": {
                                 "default": "mp3",
-                                "description": "",
+                                "description": "callflow extension",
                                 "name": "extension",
                                 "type": "string"
                             }
@@ -7079,67 +7080,67 @@
                 },
                 "calls_consume_tokens": {
                     "default": true,
-                    "description": "",
+                    "description": "callflow calls consume tokens",
                     "name": "calls_consume_tokens",
                     "type": "boolean"
                 },
                 "default_pin_length": {
                     "default": 10,
-                    "description": "",
+                    "description": "callflow default pin length",
                     "name": "default_pin_length",
                     "type": "integer"
                 },
                 "default_use_account_caller_id": {
                     "default": true,
-                    "description": "",
+                    "description": "callflow default use account caller id",
                     "name": "default_use_account_caller_id",
                     "type": "boolean"
                 },
                 "ensure_valid_caller_id": {
                     "default": false,
-                    "description": "",
+                    "description": "callflow ensure valid caller id",
                     "name": "ensure_valid_caller_id",
                     "type": "boolean"
                 },
                 "fax_detect_duration_s": {
                     "default": 5,
-                    "description": "",
+                    "description": "callflow fax detect duration in seconds",
                     "name": "fax_detect_duration_s",
                     "type": "integer"
                 },
                 "min_bucket_cost": {
                     "default": 5,
-                    "description": "",
+                    "description": "callflow min bucket cost",
                     "name": "min_bucket_cost",
                     "type": "integer"
                 },
                 "mwi_send_unsoliciated_updates": {
                     "default": true,
-                    "description": "",
+                    "description": "callflow mwi send unsoliciated updates",
                     "name": "mwi_send_unsoliciated_updates",
                     "type": "boolean"
                 },
                 "post_answer_delay": {
                     "default": 100,
-                    "description": "",
+                    "description": "callflow post answer delay",
                     "name": "post_answer_delay",
                     "type": "integer"
                 },
                 "ring_ready_offnet": {
                     "default": true,
-                    "description": "",
+                    "description": "callflow ring ready offnet",
                     "name": "ring_ready_offnet",
                     "type": "boolean"
                 },
                 "route_win_timeout": {
                     "default": 3000,
-                    "description": "",
+                    "description": "callflow route win timeout",
                     "name": "route_win_timeout",
                     "type": "integer"
                 },
                 "singular_call_hook_url": {
                     "default": "",
-                    "description": "",
+                    "description": "callflow singular call hook url",
                     "name": "singular_call_hook_url",
                     "type": "string"
                 },
@@ -7148,7 +7149,7 @@
                         "delete_after_notify": {
                             "properties": {
                                 "default": false,
-                                "description": "",
+                                "description": "callflow delete after notify",
                                 "name": "delete_after_notify",
                                 "type": "boolean"
                             }
@@ -7156,7 +7157,7 @@
                         "extension": {
                             "properties": {
                                 "default": "mp3",
-                                "description": "",
+                                "description": "callflow extension",
                                 "name": "extension",
                                 "type": "string"
                             }
@@ -7164,7 +7165,7 @@
                         "max_box_number_length": {
                             "properties": {
                                 "default": 15,
-                                "description": "",
+                                "description": "callflow max box number length",
                                 "name": "max_box_number_length",
                                 "type": "integer"
                             }
@@ -7172,7 +7173,7 @@
                         "max_message_count": {
                             "properties": {
                                 "default": 100,
-                                "description": "",
+                                "description": "callflow max message count",
                                 "name": "max_message_count",
                                 "type": "integer"
                             }
@@ -7180,7 +7181,7 @@
                         "max_message_length": {
                             "properties": {
                                 "default": 500,
-                                "description": "",
+                                "description": "callflow max message length",
                                 "name": "max_message_length",
                                 "type": "integer"
                             }
@@ -7188,7 +7189,7 @@
                         "max_pin_length": {
                             "properties": {
                                 "default": 6,
-                                "description": "",
+                                "description": "callflow max pin length",
                                 "name": "max_pin_length",
                                 "type": "integer"
                             }
@@ -7196,7 +7197,7 @@
                         "message_retention_duration": {
                             "properties": {
                                 "default": 93,
-                                "description": "",
+                                "description": "callflow message retention duration",
                                 "name": "message_retention_duration",
                                 "type": "integer"
                             }
@@ -7204,7 +7205,7 @@
                         "min_message_size": {
                             "properties": {
                                 "default": 500,
-                                "description": "",
+                                "description": "callflow min message size",
                                 "name": "min_message_size",
                                 "type": "integer"
                             }
@@ -7212,7 +7213,7 @@
                         "save_after_notify": {
                             "properties": {
                                 "default": false,
-                                "description": "",
+                                "description": "callflow save after notify",
                                 "name": "save_after_notify",
                                 "type": "boolean"
                             }
@@ -7228,19 +7229,19 @@
             "properties": {
                 "callfwd_number_timeout": {
                     "default": 8000,
-                    "description": "",
+                    "description": "callflow.call_forward callfwd number timeout",
                     "name": "callfwd_number_timeout",
                     "type": "integer"
                 },
                 "max_callfwd_number_length": {
                     "default": 20,
-                    "description": "",
+                    "description": "callflow.call_forward max callfwd number length",
                     "name": "max_callfwd_number_length",
                     "type": "integer"
                 },
                 "min_callfwd_number_length": {
                     "default": 3,
-                    "description": "",
+                    "description": "callflow.call_forward min callfwd number length",
                     "name": "min_callfwd_number_length",
                     "type": "integer"
                 }
@@ -7253,19 +7254,19 @@
             "properties": {
                 "max_hotdesk_id_length": {
                     "default": 10,
-                    "description": "",
+                    "description": "callflow.hotdesk max hotdesk id length",
                     "name": "max_hotdesk_id_length",
                     "type": "integer"
                 },
                 "max_login_attempts": {
                     "default": 3,
-                    "description": "",
+                    "description": "callflow.hotdesk max login attempts",
                     "name": "max_login_attempts",
                     "type": "integer"
                 },
                 "max_pin_length": {
                     "default": 6,
-                    "description": "",
+                    "description": "callflow.hotdesk max pin length",
                     "name": "max_pin_length",
                     "type": "integer"
                 }
@@ -7278,7 +7279,7 @@
             "properties": {
                 "min_greeting_length": {
                     "default": 1500,
-                    "description": "",
+                    "description": "callflow.menu min greeting length",
                     "name": "min_greeting_length",
                     "type": "integer"
                 }
@@ -7291,25 +7292,25 @@
             "properties": {
                 "db_doc_name": {
                     "default": "parked_calls",
-                    "description": "",
+                    "description": "callflow.park db doc name",
                     "name": "db_doc_name",
                     "type": "string"
                 },
                 "default_callback_timeout": {
                     "default": 30000,
-                    "description": "",
+                    "description": "callflow.park default callback timeout",
                     "name": "default_callback_timeout",
                     "type": "integer"
                 },
                 "default_ringback_timeout": {
                     "default": 120000,
-                    "description": "",
+                    "description": "callflow.park default ringback timeout",
                     "name": "default_ringback_timeout",
                     "type": "integer"
                 },
                 "parked_presence_type": {
                     "default": "early",
-                    "description": "",
+                    "description": "callflow.park parked presence type",
                     "name": "parked_presence_type",
                     "type": "string"
                 }
@@ -7322,7 +7323,7 @@
             "properties": {
                 "default_emit_account_id": {
                     "default": false,
-                    "description": "",
+                    "description": "callflow.resources default emit account id",
                     "name": "default_emit_account_id",
                     "type": "boolean"
                 }
@@ -7335,25 +7336,25 @@
             "properties": {
                 "stop_after": {
                     "default": 31,
-                    "description": "",
+                    "description": "camper stop after",
                     "name": "stop_after",
                     "type": "integer"
                 },
                 "timeout": {
                     "default": 15,
-                    "description": "",
+                    "description": "camper timeout",
                     "name": "timeout",
                     "type": "integer"
                 },
                 "tries": {
                     "default": 10,
-                    "description": "",
+                    "description": "camper tries",
                     "name": "tries",
                     "type": "integer"
                 },
                 "try_interval": {
                     "default": 3,
-                    "description": "",
+                    "description": "camper try interval",
                     "name": "try_interval",
                     "type": "integer"
                 }
@@ -7366,7 +7367,7 @@
             "properties": {
                 "maybe_archive_modbs": {
                     "default": false,
-                    "description": "",
+                    "description": "cb_modb maybe archive modbs",
                     "name": "maybe_archive_modbs",
                     "type": "boolean"
                 }
@@ -7379,33 +7380,33 @@
             "properties": {
                 "allowed_callee_regex": {
                     "default": "^\\+?\\d{7,}$",
-                    "description": "",
+                    "description": "cccp allowed callee regex",
                     "name": "allowed_callee_regex",
                     "type": "string"
                 },
                 "callback_delay": {
                     "default": 3,
-                    "description": "",
+                    "description": "cccp callback delay",
                     "name": "callback_delay",
                     "type": "integer"
                 },
                 "cccp_cb_number": {
-                    "description": "",
+                    "description": "cccp cccp cb number",
                     "name": "cccp_cb_number"
                 },
                 "cccp_cc_number": {
-                    "description": "",
+                    "description": "cccp cccp cc number",
                     "name": "cccp_cc_number"
                 },
                 "last_number_redial_code": {
                     "default": "*0",
-                    "description": "",
+                    "description": "cccp last number redial code",
                     "name": "last_number_redial_code",
                     "type": "string"
                 },
                 "prompt_delay": {
                     "default": 1,
-                    "description": "",
+                    "description": "cccp prompt delay",
                     "name": "prompt_delay",
                     "type": "integer"
                 }
@@ -7418,13 +7419,13 @@
             "properties": {
                 "store_anonymous": {
                     "default": false,
-                    "description": "",
+                    "description": "cdr store anonymous",
                     "name": "store_anonymous",
                     "type": "boolean"
                 },
                 "v3_migrate_num_months": {
                     "default": 4,
-                    "description": "",
+                    "description": "cdr v3 migrate num months",
                     "name": "v3_migrate_num_months",
                     "type": "integer"
                 }
@@ -7439,7 +7440,7 @@
                     "properties": {
                         "{ConfigName}": {
                             "properties": {
-                                "description": "",
+                                "description": "conferences {ConfigName}",
                                 "name": "{ConfigName}"
                             }
                         }
@@ -7450,7 +7451,7 @@
                         "{ConfigName}": {
                             "properties": {
                                 "default": [],
-                                "description": "",
+                                "description": "conferences {ConfigName}",
                                 "name": "{ConfigName}",
                                 "type": "array"
                             }
@@ -7461,7 +7462,7 @@
                     "properties": {
                         "{ConfigName}": {
                             "properties": {
-                                "description": "",
+                                "description": "conferences {ConfigName}",
                                 "name": "{ConfigName}"
                             }
                         }
@@ -7469,19 +7470,19 @@
                 },
                 "entry_tone": {
                     "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
-                    "description": "",
+                    "description": "conferences entry tone",
                     "name": "entry_tone",
                     "type": "string"
                 },
                 "exit_tone": {
                     "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)",
-                    "description": "",
+                    "description": "conferences exit tone",
                     "name": "exit_tone",
                     "type": "string"
                 },
                 "moderator_entry_tone": {
                     "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
-                    "description": "",
+                    "description": "conferences moderator entry tone",
                     "name": "moderator_entry_tone",
                     "type": "string"
                 },
@@ -7493,18 +7494,19 @@
                                     "caller-controls": "default",
                                     "comfort-noise": 1000,
                                     "energy-level": 20,
+                                    "enter-sound": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
                                     "interval": 20,
                                     "moh-sound": "$${hold_music}",
                                     "rate": 8000
                                 },
-                                "description": "",
+                                "description": "conferences default",
                                 "name": "default",
                                 "type": "object"
                             }
                         },
                         "{ConfigName}": {
                             "properties": {
-                                "description": "",
+                                "description": "conferences {ConfigName}",
                                 "name": "{ConfigName}"
                             }
                         }
@@ -7512,19 +7514,19 @@
                 },
                 "review_name": {
                     "default": false,
-                    "description": "",
+                    "description": "conferences review name",
                     "name": "review_name",
                     "type": "boolean"
                 },
                 "route_win_timeout": {
                     "default": 3000,
-                    "description": "",
+                    "description": "conferences route win timeout",
                     "name": "route_win_timeout",
                     "type": "integer"
                 },
                 "support_name_announcement": {
                     "default": true,
-                    "description": "",
+                    "description": "conferences support name announcement",
                     "name": "support_name_announcement",
                     "type": "boolean"
                 }
@@ -7537,41 +7539,41 @@
             "properties": {
                 "allow_tracing": {
                     "default": false,
-                    "description": "",
+                    "description": "crossbar allow tracing",
                     "name": "allow_tracing",
                     "type": "boolean"
                 },
                 "api_auth_tokens": {
                     "default": 35,
-                    "description": "",
+                    "description": "crossbar api auth tokens",
                     "name": "api_auth_tokens",
                     "type": "integer"
                 },
                 "autoload_modules": {
-                    "description": "",
+                    "description": "crossbar autoload modules",
                     "name": "autoload_modules"
                 },
                 "cleanup_timer": {
                     "default": 86400,
-                    "description": "",
+                    "description": "crossbar cleanup timer",
                     "name": "cleanup_timer",
                     "type": "integer"
                 },
                 "default_allow_anonymous_quickcalls": {
                     "default": true,
-                    "description": "",
+                    "description": "crossbar default allow anonymous quickcalls",
                     "name": "default_allow_anonymous_quickcalls",
                     "type": "boolean"
                 },
                 "default_language": {
                     "default": "en-US",
-                    "description": "",
+                    "description": "crossbar default language",
                     "name": "default_language",
                     "type": "string"
                 },
                 "expiry_percentage": {
                     "default": 75,
-                    "description": "",
+                    "description": "crossbar expiry percentage",
                     "name": "expiry_percentage",
                     "type": "integer"
                 },
@@ -7581,120 +7583,120 @@
                         "/:version/accounts/:account_id/faxes/:direction/:fax_id/attachment",
                         "/:version/accounts/:account_id/presence/:reportid"
                     ],
-                    "description": "",
+                    "description": "crossbar magic path patterns",
                     "name": "magic_path_patterns",
                     "type": "array"
                 },
                 "max_upload_size": {
                     "default": 8000000,
-                    "description": "",
+                    "description": "crossbar max upload size",
                     "name": "max_upload_size",
                     "type": "integer"
                 },
                 "maximum_range": {
                     "default": 2682000,
-                    "description": "",
+                    "description": "crossbar maximum range",
                     "name": "maximum_range",
                     "type": "integer"
                 },
                 "pagination_page_size": {
                     "default": 50,
-                    "description": "",
+                    "description": "crossbar pagination page size",
                     "name": "pagination_page_size",
                     "type": "integer"
                 },
                 "port": {
                     "default": 8000,
-                    "description": "",
+                    "description": "crossbar port",
                     "name": "port",
                     "type": "integer"
                 },
                 "pretty_metrics": {
                     "default": true,
-                    "description": "",
+                    "description": "crossbar pretty metrics",
                     "name": "pretty_metrics",
                     "type": "boolean"
                 },
                 "request_timeout_ms": {
                     "default": 10000,
-                    "description": "",
+                    "description": "crossbar request timeout in milliseconds",
                     "name": "request_timeout_ms",
                     "type": "integer"
                 },
                 "reset_id_size": {
                     "default": 137,
-                    "description": "",
+                    "description": "crossbar reset id size",
                     "name": "reset_id_size",
                     "type": "integer"
                 },
                 "reverse_proxies": {
                     "default": [],
-                    "description": "",
+                    "description": "crossbar reverse proxies",
                     "name": "reverse_proxies",
                     "type": "array"
                 },
                 "schema_strict_validation": {
                     "default": false,
-                    "description": "",
+                    "description": "crossbar schema strict validation",
                     "name": "schema_strict_validation",
                     "type": "boolean"
                 },
                 "soft_delete_pause_ms": {
                     "default": 10000,
-                    "description": "",
+                    "description": "crossbar soft delete pause in milliseconds",
                     "name": "soft_delete_pause_ms",
                     "type": "integer"
                 },
                 "ssl_ca_cert": {
-                    "description": "",
+                    "description": "crossbar ssl ca cert",
                     "name": "ssl_ca_cert",
                     "type": "string"
                 },
                 "ssl_workers": {
                     "default": 100,
-                    "description": "",
+                    "description": "crossbar ssl workers",
                     "name": "ssl_workers",
                     "type": "integer"
                 },
                 "token_auth_expiry": {
                     "default": 3600,
-                    "description": "",
+                    "description": "crossbar token auth expiry",
                     "name": "token_auth_expiry",
                     "type": "integer"
                 },
                 "token_costs": {
                     "default": 1,
-                    "description": "",
+                    "description": "crossbar token costs",
                     "name": "token_costs",
                     "type": "integer"
                 },
                 "trace_path": {
                     "default": "/tmp",
-                    "description": "",
+                    "description": "crossbar trace path",
                     "name": "trace_path",
                     "type": "string"
                 },
                 "use_plaintext": {
                     "default": true,
-                    "description": "",
+                    "description": "crossbar use plaintext",
                     "name": "use_plaintext",
                     "type": "boolean"
                 },
                 "use_ssl": {
                     "default": false,
-                    "description": "",
+                    "description": "crossbar use ssl",
                     "name": "use_ssl",
                     "type": "boolean"
                 },
                 "user_auth_tokens": {
                     "default": 35,
-                    "description": "",
+                    "description": "crossbar user auth tokens",
                     "name": "user_auth_tokens",
                     "type": "integer"
                 },
                 "workers": {
                     "default": 100,
-                    "description": "",
+                    "description": "crossbar workers",
                     "name": "workers",
                     "type": "integer"
                 }
@@ -7707,55 +7709,55 @@
             "properties": {
                 "account_realm_suffix": {
                     "default": "sip.2600hz.com",
-                    "description": "",
+                    "description": "crossbar.accounts account realm suffix",
                     "name": "account_realm_suffix",
                     "type": "string"
                 },
                 "allow_move": {
                     "default": "superduper_admin",
-                    "description": "",
+                    "description": "crossbar.accounts allow move",
                     "name": "allow_move",
                     "type": "string"
                 },
                 "allow_sibling_listing": {
                     "default": true,
-                    "description": "",
+                    "description": "crossbar.accounts allow sibling listing",
                     "name": "allow_sibling_listing",
                     "type": "boolean"
                 },
                 "default_parent": {
                     "default": "",
-                    "description": "",
+                    "description": "crossbar.accounts default parent",
                     "name": "default_parent",
                     "type": "string"
                 },
                 "ensure_unique_name": {
                     "default": true,
-                    "description": "",
+                    "description": "crossbar.accounts ensure unique name",
                     "name": "ensure_unique_name",
                     "type": "boolean"
                 },
                 "expose_api_key": {
                     "default": false,
-                    "description": "",
+                    "description": "crossbar.accounts expose api key",
                     "name": "expose_api_key",
                     "type": "boolean"
                 },
                 "new_account_notify_delay_s": {
                     "default": 30,
-                    "description": "",
+                    "description": "crossbar.accounts new account notify delay in seconds",
                     "name": "new_account_notify_delay_s",
                     "type": "integer"
                 },
                 "random_realm_strength": {
                     "default": 3,
-                    "description": "",
+                    "description": "crossbar.accounts random realm strength",
                     "name": "random_realm_strength",
                     "type": "integer"
                 },
                 "trial_time": {
                     "default": 1209600,
-                    "description": "",
+                    "description": "crossbar.accounts trial time",
                     "name": "trial_time",
                     "type": "integer"
                 }
@@ -7768,7 +7770,7 @@
             "properties": {
                 "basic_auth_type": {
                     "default": "md5",
-                    "description": "",
+                    "description": "crossbar.auth basic auth type",
                     "name": "basic_auth_type",
                     "type": "string"
                 }
@@ -7781,7 +7783,7 @@
             "properties": {
                 "max_account_credit": {
                     "default": 500.0,
-                    "description": "",
+                    "description": "crossbar.braintree max account credit",
                     "name": "max_account_credit",
                     "type": "number"
                 }
@@ -7794,7 +7796,7 @@
             "properties": {
                 "default_reconcile_numbers": {
                     "default": false,
-                    "description": "",
+                    "description": "crossbar.callflows default reconcile numbers",
                     "name": "default_reconcile_numbers",
                     "type": "boolean"
                 }
@@ -7807,13 +7809,13 @@
             "properties": {
                 "maximum_bulk": {
                     "default": 50,
-                    "description": "",
+                    "description": "crossbar.cdrs maximum bulk",
                     "name": "maximum_bulk",
                     "type": "integer"
                 },
                 "maximum_range": {
                     "default": 2682000,
-                    "description": "",
+                    "description": "crossbar.cdrs maximum range",
                     "name": "maximum_range",
                     "type": "integer"
                 }
@@ -7826,7 +7828,7 @@
             "properties": {
                 "default_includes": {
                     "default": [],
-                    "description": "",
+                    "description": "crossbar.contact_list default includes",
                     "name": "default_includes",
                     "type": "array"
                 }
@@ -7839,16 +7841,16 @@
             "properties": {
                 "allow_aggregates": {
                     "default": "true",
-                    "description": "",
+                    "description": "crossbar.devices allow aggregates",
                     "name": "allow_aggregates",
                     "type": "boolean"
                 },
                 "provisioning_type": {
-                    "description": "",
+                    "description": "crossbar.devices provisioning type",
                     "name": "provisioning_type"
                 },
                 "provisioning_url": {
-                    "description": "",
+                    "description": "crossbar.devices provisioning url",
                     "name": "provisioning_url",
                     "type": "string"
                 }
@@ -7864,12 +7866,12 @@
                         "freeswitch_dialplan",
                         "freeswitch_chatplan"
                     ],
-                    "description": "",
+                    "description": "crossbar.freeswitch files to include",
                     "name": "files_to_include",
                     "type": "array"
                 },
                 "offline_configuration_key": {
-                    "description": "",
+                    "description": "crossbar.freeswitch offline configuration key",
                     "name": "offline_configuration_key",
                     "type": "string"
                 },
@@ -7877,7 +7879,7 @@
                     "default": [
                         "freeswitch_directory_realm"
                     ],
-                    "description": "",
+                    "description": "crossbar.freeswitch realm templates to process",
                     "name": "realm_templates_to_process",
                     "type": "array"
                 },
@@ -7885,18 +7887,18 @@
                     "default": [
                         "freeswitch_directory"
                     ],
-                    "description": "",
+                    "description": "crossbar.freeswitch templates to process",
                     "name": "templates_to_process",
                     "type": "array"
                 },
                 "work_dir": {
                     "default": "/tmp/",
-                    "description": "",
+                    "description": "crossbar.freeswitch work dir",
                     "name": "work_dir",
                     "type": "string"
                 },
                 "{Module}": {
-                    "description": "",
+                    "description": "crossbar.freeswitch {Module}",
                     "name": "{Module}",
                     "type": "string"
                 }
@@ -7909,13 +7911,13 @@
             "properties": {
                 "normalization_format": {
                     "default": "mp3",
-                    "description": "",
+                    "description": "crossbar.media normalization format",
                     "name": "normalization_format",
                     "type": "string"
                 },
                 "normalize_media": {
                     "default": false,
-                    "description": "",
+                    "description": "crossbar.media normalize media",
                     "name": "normalize_media",
                     "type": "boolean"
                 }
@@ -7928,7 +7930,7 @@
             "properties": {
                 "notification_timeout_ms": {
                     "default": 5000,
-                    "description": "",
+                    "description": "crossbar.notifications notification timeout in milliseconds",
                     "name": "notification_timeout_ms",
                     "type": "integer"
                 }
@@ -7941,30 +7943,31 @@
             "properties": {
                 "default_callflow_start_exten": {
                     "default": 2000,
-                    "description": "",
+                    "description": "crossbar.onboard default callflow start exten",
                     "name": "default_callflow_start_exten",
                     "type": "integer"
                 },
                 "default_extension_callflow": {
-                    "description": "",
+                    "default": "{\"data\": { \"id\": \"~s\" }, \"module\": \"user\", \"children\": { \"_\": { \"data\": { \"id\": \"~s\" }, \"module\": \"voicemail\", \"children\": {}}}}",
+                    "description": "crossbar.onboard default extension callflow",
                     "name": "default_extension_callflow",
                     "type": "string"
                 },
                 "default_vm_start_exten": {
                     "default": 3000,
-                    "description": "",
+                    "description": "crossbar.onboard default vm start exten",
                     "name": "default_vm_start_exten",
                     "type": "integer"
                 },
                 "device_pwd_strength": {
                     "default": 6,
-                    "description": "",
+                    "description": "crossbar.onboard device pwd strength",
                     "name": "device_pwd_strength",
                     "type": "integer"
                 },
                 "device_username_strength": {
                     "default": 3,
-                    "description": "",
+                    "description": "crossbar.onboard device username strength",
                     "name": "device_username_strength",
                     "type": "integer"
                 }
@@ -7977,12 +7980,12 @@
             "properties": {
                 "default_country": {
                     "default": "US",
-                    "description": "",
+                    "description": "crossbar.phone_numbers default country",
                     "name": "default_country",
                     "type": "string"
                 },
                 "phonebook_url": {
-                    "description": "",
+                    "description": "crossbar.phone_numbers phonebook url",
                     "name": "phonebook_url",
                     "type": "string"
                 }
@@ -7995,7 +7998,7 @@
             "properties": {
                 "unfinished_port_request_lifetime_s": {
                     "default": 2592000,
-                    "description": "",
+                    "description": "crossbar.port_requests unfinished port request lifetime in seconds",
                     "name": "unfinished_port_request_lifetime_s",
                     "type": "integer"
                 }
@@ -8008,7 +8011,7 @@
             "properties": {
                 "query_presence_timeout": {
                     "default": 1000,
-                    "description": "",
+                    "description": "crossbar.presence query presence timeout",
                     "name": "query_presence_timeout",
                     "type": "integer"
                 }
@@ -8024,13 +8027,13 @@
                         "selector_column": 1,
                         "value_column": 2
                     },
-                    "description": "",
+                    "description": "crossbar.resource_selectors csv config",
                     "name": "csv_config",
                     "type": "object"
                 },
                 "suppress_selectors_change_notice": {
                     "default": false,
-                    "description": "",
+                    "description": "crossbar.resource_selectors suppress selectors change notice",
                     "name": "suppress_selectors_change_notice",
                     "type": "boolean"
                 }
@@ -8043,13 +8046,13 @@
             "properties": {
                 "job_recovery_threshold_s": {
                     "default": 3600,
-                    "description": "",
+                    "description": "crossbar.resources job recovery threshold in seconds",
                     "name": "job_recovery_threshold_s",
                     "type": "integer"
                 },
                 "job_recovery_timeout_s": {
                     "default": 21600,
-                    "description": "",
+                    "description": "crossbar.resources job recovery timeout in seconds",
                     "name": "job_recovery_timeout_s",
                     "type": "integer"
                 }
@@ -8062,7 +8065,7 @@
             "properties": {
                 "maximum_range": {
                     "default": 2682000,
-                    "description": "",
+                    "description": "crossbar.services maximum range",
                     "name": "maximum_range",
                     "type": "integer"
                 }
@@ -8074,7 +8077,7 @@
             "description": "Schema for crossbar.shared_auth system_config",
             "properties": {
                 "authoritative_crossbar": {
-                    "description": "",
+                    "description": "crossbar.shared_auth authoritative crossbar",
                     "name": "authoritative_crossbar",
                     "type": "string"
                 }
@@ -8086,13 +8089,13 @@
             "description": "Schema for crossbar.token_restrictions system_config",
             "properties": {
                 "_": {
-                    "description": "",
+                    "description": "crossbar.token_restrictions  ",
                     "name": "_",
                     "type": "object"
                 },
                 "default_priv_level": {
                     "default": "admin",
-                    "description": "",
+                    "description": "crossbar.token_restrictions default priv level",
                     "name": "default_priv_level",
                     "type": "string"
                 }
@@ -8104,12 +8107,12 @@
             "description": "Schema for crossbar.ubiquiti system_config",
             "properties": {
                 "api_secret": {
-                    "description": "",
+                    "description": "crossbar.ubiquiti api secret",
                     "name": "api_secret"
                 },
                 "api_token_expires_s": {
                     "default": 1800,
-                    "description": "",
+                    "description": "crossbar.ubiquiti api token expires in seconds",
                     "name": "api_token_expires_s",
                     "type": "integer"
                 },
@@ -8118,7 +8121,7 @@
                         "sso_url": {
                             "properties": {
                                 "default": "https://sso.ubnt.com/api/sso/v1/",
-                                "description": "",
+                                "description": "crossbar.ubiquiti sso url",
                                 "name": "sso_url",
                                 "type": "string"
                             }
@@ -8127,12 +8130,12 @@
                 },
                 "salt_length": {
                     "default": 20,
-                    "description": "",
+                    "description": "crossbar.ubiquiti salt length",
                     "name": "salt_length",
                     "type": "integer"
                 },
                 "sso_provider_id": {
-                    "description": "",
+                    "description": "crossbar.ubiquiti sso provider id",
                     "name": "sso_provider_id"
                 },
                 "staging": {
@@ -8140,7 +8143,7 @@
                         "sso_url": {
                             "properties": {
                                 "default": "https://sso-stage.ubnt.com/api/sso/v1/",
-                                "description": "",
+                                "description": "crossbar.ubiquiti sso url",
                                 "name": "sso_url",
                                 "type": "string"
                             }
@@ -8149,7 +8152,7 @@
                 },
                 "tokens_per_request": {
                     "default": 35,
-                    "description": "",
+                    "description": "crossbar.ubiquiti tokens per request",
                     "name": "tokens_per_request",
                     "type": "integer"
                 },
@@ -8157,7 +8160,7 @@
                     "properties": {
                         "sso_url": {
                             "properties": {
-                                "description": "",
+                                "description": "crossbar.ubiquiti sso url",
                                 "name": "sso_url"
                             }
                         }
@@ -8181,13 +8184,13 @@
                         "system_config": "infinity",
                         "system_data": "infinity"
                     },
-                    "description": "",
+                    "description": "datamgr cache policy",
                     "name": "cache_policy",
                     "type": "object"
                 },
                 "default_archive_folder": {
                     "default": "/tmp",
-                    "description": "",
+                    "description": "datamgr default archive folder",
                     "name": "default_archive_folder",
                     "type": "string"
                 },
@@ -8199,12 +8202,12 @@
                         "fax",
                         "mailbox_message"
                     ],
-                    "description": "",
+                    "description": "datamgr no caching doc types",
                     "name": "no_caching_doc_types",
                     "type": "array"
                 },
                 "performance": {
-                    "description": "",
+                    "description": "datamgr performance",
                     "name": "performance"
                 }
             },
@@ -8215,29 +8218,29 @@
             "description": "Schema for doodle system_config",
             "properties": {
                 "connections": {
-                    "description": "",
+                    "description": "doodle connections",
                     "name": "connections"
                 },
                 "default_test_from_number": {
                     "default": "15552220001",
-                    "description": "",
+                    "description": "doodle default test from number",
                     "name": "default_test_from_number",
                     "type": "string"
                 },
                 "default_test_route_id": {
                     "default": "syneverse",
-                    "description": "",
+                    "description": "doodle default test route id",
                     "name": "default_test_route_id",
                     "type": "string"
                 },
                 "inbound_broker": {
-                    "description": "",
+                    "description": "doodle inbound broker",
                     "name": "inbound_broker",
                     "type": "string"
                 },
                 "inbound_exchange": {
                     "default": "sms",
-                    "description": "",
+                    "description": "doodle inbound exchange",
                     "name": "inbound_exchange",
                     "type": "string"
                 },
@@ -8245,35 +8248,35 @@
                     "default": {
                         "passive": true
                     },
-                    "description": "",
+                    "description": "doodle inbound exchange options",
                     "name": "inbound_exchange_options",
                     "type": "object"
                 },
                 "inbound_exchange_type": {
                     "default": "topic",
-                    "description": "",
+                    "description": "doodle inbound exchange type",
                     "name": "inbound_exchange_type",
                     "type": "string"
                 },
                 "inbound_queue_name": {
                     "default": "default",
-                    "description": "",
+                    "description": "doodle inbound queue name",
                     "name": "inbound_queue_name",
                     "type": "string"
                 },
                 "min_bucket_cost": {
                     "default": 1,
-                    "description": "",
+                    "description": "doodle min bucket cost",
                     "name": "min_bucket_cost",
                     "type": "integer"
                 },
                 "reschedule": {
-                    "description": "",
+                    "description": "doodle reschedule",
                     "name": "reschedule"
                 },
                 "route_win_timeout": {
                     "default": 3000,
-                    "description": "",
+                    "description": "doodle route win timeout",
                     "name": "route_win_timeout",
                     "type": "integer"
                 },
@@ -8281,7 +8284,7 @@
                     "default": {
                         "en-US": "sms service unavailable"
                     },
-                    "description": "",
+                    "description": "doodle unavailable message",
                     "name": "unavailable_message",
                     "type": "object"
                 }
@@ -8294,67 +8297,66 @@
             "properties": {
                 "acls": {
                     "default": {},
-                    "description": "",
+                    "description": "ecallmgr acls",
                     "name": "acls",
                     "type": "object"
                 },
                 "amqp": {
-                    "description": "",
                     "name": "amqp"
                 },
                 "authz_default_action": {
                     "default": "deny",
-                    "description": "",
+                    "description": "ecallmgr authz default action",
                     "name": "authz_default_action",
                     "type": "string"
                 },
                 "authz_dry_run": {
                     "default": false,
-                    "description": "",
+                    "description": "ecallmgr authz dry run",
                     "name": "authz_dry_run",
                     "type": "boolean"
                 },
                 "authz_enabled": {
                     "default": false,
-                    "description": "",
+                    "description": "ecallmgr authz enabled",
                     "name": "authz_enabled",
                     "type": "boolean"
                 },
                 "authz_local_resources": {
                     "default": false,
-                    "description": "",
+                    "description": "ecallmgr authz local resources",
                     "name": "authz_local_resources",
                     "type": "boolean"
                 },
                 "balance_crawler_cycle_ms": {
                     "default": 60000,
-                    "description": "",
+                    "description": "ecallmgr balance crawler cycle in milliseconds",
                     "name": "balance_crawler_cycle_ms",
                     "type": "integer"
                 },
                 "balance_crawler_enabled": {
                     "default": false,
-                    "description": "",
+                    "description": "ecallmgr balance crawler enabled",
                     "name": "balance_crawler_enabled",
                     "type": "boolean"
                 },
                 "balance_crawler_fetch_timeout_ms": {
                     "default": 10000,
-                    "description": "",
+                    "description": "ecallmgr balance crawler fetch timeout in milliseconds",
                     "name": "balance_crawler_fetch_timeout_ms",
                     "type": "integer"
                 },
                 "balance_crawler_interaccount_delay_ms": {
                     "default": 10,
-                    "description": "",
+                    "description": "ecallmgr balance crawler interaccount delay in milliseconds",
                     "name": "balance_crawler_interaccount_delay_ms",
                     "type": "integer"
                 },
                 "call_routing_bindings": {
                     "default": [
-                        "undefined"
+                        "context_2"
                     ],
-                    "description": "",
+                    "description": "ecallmgr call routing bindings",
                     "name": "call_routing_bindings",
                     "type": "array"
                 },
@@ -8421,80 +8423,79 @@
                             "module": "mod_sms"
                         }
                     ],
-                    "description": "",
+                    "description": "ecallmgr capabilities",
                     "name": "capabilities",
                     "type": "array"
                 },
                 "configuration_handlers": {
-                    "description": "",
+                    "description": "ecallmgr configuration handlers",
                     "name": "configuration_handlers"
                 },
                 "debug_channel": {
                     "default": false,
-                    "description": "",
+                    "description": "ecallmgr debug channel",
                     "name": "debug_channel",
                     "type": "boolean"
                 },
                 "default_fax_extension": {
                     "default": ".tiff",
-                    "description": "",
+                    "description": "ecallmgr default fax extension",
                     "name": "default_fax_extension",
                     "type": "string"
                 },
                 "default_realm": {
                     "default": "nodomain.com",
-                    "description": "",
+                    "description": "ecallmgr default realm",
                     "name": "default_realm",
                     "type": "string"
                 },
                 "default_recording_extension": {
                     "default": ".mp3",
-                    "description": "",
+                    "description": "ecallmgr default recording extension",
                     "name": "default_recording_extension",
                     "type": "string"
                 },
                 "default_ringback": {
-                    "description": "",
+                    "description": "ecallmgr default ringback",
                     "name": "default_ringback"
                 },
                 "event_stream_idle_alert": {
                     "default": 0,
-                    "description": "",
+                    "description": "ecallmgr event stream idle alert",
                     "name": "event_stream_idle_alert",
                     "type": "integer"
                 },
                 "expires_deviation_time": {
                     "default": 0,
-                    "description": "",
+                    "description": "ecallmgr expires deviation time",
                     "name": "expires_deviation_time",
                     "type": "integer"
                 },
                 "fax_file_path": {
                     "default": "/tmp/",
-                    "description": "",
+                    "description": "ecallmgr fax file path",
                     "name": "fax_file_path",
                     "type": "string"
                 },
                 "fetch_timeout": {
                     "default": 2600,
-                    "description": "",
+                    "description": "ecallmgr fetch timeout",
                     "name": "fetch_timeout",
                     "type": "integer"
                 },
                 "force_conference_verbose_events": {
-                    "description": "",
+                    "description": "ecallmgr force conference verbose events",
                     "name": "force_conference_verbose_events",
                     "type": "boolean"
                 },
                 "freeswitch_context": {
                     "default": "context_2",
-                    "description": "",
+                    "description": "ecallmgr freeswitch context",
                     "name": "freeswitch_context",
                     "type": "string"
                 },
                 "fs_amqp_listeners": {
                     "default": 1,
-                    "description": "",
                     "name": "fs_amqp_listeners",
                     "type": "integer"
                 },
@@ -8507,88 +8508,88 @@
                             "reloadacl": ""
                         }
                     ],
-                    "description": "",
+                    "description": "ecallmgr fs cmds",
                     "name": "fs_cmds",
                     "type": "array"
                 },
                 "fs_cmds_wait_ms": {
                     "default": 5000,
-                    "description": "",
+                    "description": "ecallmgr fs cmds wait in milliseconds",
                     "name": "fs_cmds_wait_ms",
                     "type": "integer"
                 },
                 "fs_node_uptime_s": {
                     "default": 600,
-                    "description": "",
+                    "description": "ecallmgr fs node uptime in seconds",
                     "name": "fs_node_uptime_s",
                     "type": "integer"
                 },
                 "fs_nodes": {
                     "default": [],
-                    "description": "",
+                    "description": "ecallmgr fs nodes",
                     "name": "fs_nodes",
                     "type": "array"
                 },
                 "fs_profiles": {
                     "default": {},
-                    "description": "",
+                    "description": "ecallmgr fs profiles",
                     "name": "fs_profiles",
                     "type": "object"
                 },
                 "fs_reconnect_cmds": {
-                    "description": "",
+                    "description": "ecallmgr fs reconnect cmds",
                     "name": "fs_reconnect_cmds"
                 },
                 "gateways": {
                     "default": {},
-                    "description": "",
+                    "description": "ecallmgr gateways",
                     "name": "gateways",
                     "type": "object"
                 },
                 "insert_fetched_registration_locally": {
                     "default": false,
-                    "description": "",
+                    "description": "ecallmgr insert fetched registration locally",
                     "name": "insert_fetched_registration_locally",
                     "type": "boolean"
                 },
                 "max_channel_cleanup_timeout_ms": {
                     "default": 60000,
-                    "description": "",
+                    "description": "ecallmgr max channel cleanup timeout in milliseconds",
                     "name": "max_channel_cleanup_timeout_ms",
                     "type": "integer"
                 },
                 "max_channel_uptime_s": {
                     "default": 0,
-                    "description": "",
+                    "description": "ecallmgr max channel uptime in seconds",
                     "name": "max_channel_uptime_s",
                     "type": "integer"
                 },
                 "max_timeout_for_node_restart": {
                     "default": 10000,
-                    "description": "",
+                    "description": "ecallmgr max timeout for node restart",
                     "name": "max_timeout_for_node_restart",
                     "type": "integer"
                 },
                 "modules": {
                     "default": [
-                        "node",
                         "authn",
-                        "route",
                         "channel",
-                        "config",
-                        "resource",
-                        "notify",
                         "conference",
+                        "config",
                         "event_stream_sup",
-                        "msg"
+                        "msg",
+                        "node",
+                        "notify",
+                        "resource",
+                        "route"
                     ],
-                    "description": "",
+                    "description": "ecallmgr modules",
                     "name": "modules",
                     "type": "array"
                 },
                 "network_map": {
                     "default": {},
-                    "description": "",
+                    "description": "ecallmgr network map",
                     "name": "network_map",
                     "type": "object"
                 },
@@ -8599,7 +8600,7 @@
                                 "delete_on_success": {
                                     "properties": {
                                         "default": false,
-                                        "description": "",
+                                        "description": "ecallmgr delete on success",
                                         "name": "delete_on_success",
                                         "type": "boolean"
                                     }
@@ -8610,120 +8611,120 @@
                 },
                 "node_down_grace_period": {
                     "default": 10000,
-                    "description": "",
+                    "description": "ecallmgr node down grace period",
                     "name": "node_down_grace_period",
                     "type": "integer"
                 },
                 "process_gateways": {
                     "default": false,
-                    "description": "",
+                    "description": "ecallmgr process gateways",
                     "name": "process_gateways",
                     "type": "boolean"
                 },
                 "publish_channel_reconnect": {
                     "default": false,
-                    "description": "",
+                    "description": "ecallmgr publish channel reconnect",
                     "name": "publish_channel_reconnect",
                     "type": "boolean"
                 },
                 "publish_channel_state": {
                     "default": true,
-                    "description": "",
+                    "description": "ecallmgr publish channel state",
                     "name": "publish_channel_state",
                     "type": "boolean"
                 },
                 "record_sample_rate": {
                     "default": 8000,
-                    "description": "",
+                    "description": "ecallmgr record sample rate",
                     "name": "record_sample_rate",
                     "type": "integer"
                 },
                 "record_stereo_sample_rate": {
                     "default": 16000,
-                    "description": "",
+                    "description": "ecallmgr record stereo sample rate",
                     "name": "record_stereo_sample_rate",
                     "type": "integer"
                 },
                 "record_waste_resources": {
                     "default": false,
-                    "description": "",
+                    "description": "ecallmgr record waste resources",
                     "name": "record_waste_resources",
                     "type": "boolean"
                 },
                 "recording_file_path": {
                     "default": "/tmp/",
-                    "description": "",
+                    "description": "ecallmgr recording file path",
                     "name": "recording_file_path",
                     "type": "string"
                 },
                 "redirect_via_proxy": {
                     "default": true,
-                    "description": "",
+                    "description": "ecallmgr redirect via proxy",
                     "name": "redirect_via_proxy",
                     "type": "boolean"
                 },
                 "restrict_channel_state_publisher": {
                     "default": false,
-                    "description": "",
+                    "description": "ecallmgr restrict channel state publisher",
                     "name": "restrict_channel_state_publisher",
                     "type": "boolean"
                 },
                 "should_detect_inband_dtmf": {
-                    "description": "",
+                    "description": "ecallmgr should detect inband dtmf",
                     "name": "should_detect_inband_dtmf",
                     "type": "boolean"
                 },
                 "sofia_conf": {
-                    "description": "",
+                    "description": "ecallmgr sofia conf",
                     "name": "sofia_conf"
                 },
                 "tcp_packet_type": {
                     "default": 2,
-                    "description": "",
+                    "description": "ecallmgr tcp packet type",
                     "name": "tcp_packet_type",
                     "type": "integer"
                 },
                 "text_routing_bindings": {
                     "default": [
-                        "undefined"
+                        "context_2"
                     ],
-                    "description": "",
+                    "description": "ecallmgr text routing bindings",
                     "name": "text_routing_bindings",
                     "type": "array"
                 },
                 "use_bypass_media_after_bridge": {
                     "default": false,
-                    "description": "",
+                    "description": "ecallmgr use bypass media after bridge",
                     "name": "use_bypass_media_after_bridge",
                     "type": "boolean"
                 },
                 "use_http_cache": {
                     "default": true,
-                    "description": "",
+                    "description": "ecallmgr use http cache",
                     "name": "use_http_cache",
                     "type": "boolean"
                 },
                 "use_shout": {
                     "default": false,
-                    "description": "",
+                    "description": "ecallmgr use shout",
                     "name": "use_shout",
                     "type": "boolean"
                 },
                 "use_vlc": {
                     "default": false,
-                    "description": "",
+                    "description": "ecallmgr use vlc",
                     "name": "use_vlc",
                     "type": "boolean"
                 },
                 "{Direction}_rate_required": {
                     "default": false,
-                    "description": "",
+                    "description": "ecallmgr {Direction} rate required",
                     "name": "{Direction}_rate_required",
                     "type": "boolean"
                 },
                 "{Direction}_rate_resp_timeout": {
                     "default": 10000,
-                    "description": "",
+                    "description": "ecallmgr {Direction} rate resp timeout",
                     "name": "{Direction}_rate_resp_timeout",
                     "type": "integer"
                 }
@@ -8736,96 +8737,116 @@
             "properties": {
                 "allow_all_addresses_when_empty": {
                     "default": false,
-                    "description": "",
+                    "description": "fax allow all addresses when empty",
                     "name": "allow_all_addresses_when_empty",
                     "type": "boolean"
                 },
                 "allowed_content_types": {
-                    "default": "default",
-                    "description": "",
+                    "default": [
+                        "application/pdf",
+                        "image/tiff",
+                        {
+                            "prefix": "image"
+                        },
+                        {
+                            "prefix": "application/vnd.openxmlformats-officedocument."
+                        },
+                        {
+                            "prefix": "application/vnd.oasis.opendocument."
+                        },
+                        "application/msword",
+                        "application/vnd.ms-excel",
+                        "application/vnd.ms-powerpoint"
+                    ],
+                    "description": "fax allowed content types",
                     "name": "allowed_content_types",
                     "type": "array"
                 },
                 "cloud_registration_pool_interval": {
                     "default": 5000,
-                    "description": "",
+                    "description": "fax cloud registration pool interval",
                     "name": "cloud_registration_pool_interval",
                     "type": "integer"
                 },
                 "conversion_image_command": {
                     "default": "convert -density 204x98 -units PixelsPerInch -size 1728x1078 ~s ~s > /dev/null && echo -n success",
-                    "description": "",
+                    "description": "fax conversion image command",
                     "name": "conversion_image_command",
                     "type": "string"
                 },
                 "conversion_openoffice_document_command": {
                     "default": "unoconv -c ~s -f pdf --stdout ~s | /usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s - > /dev/null&& echo -n success",
-                    "description": "",
+                    "description": "fax conversion openoffice document command",
                     "name": "conversion_openoffice_document_command",
                     "type": "string"
                 },
                 "conversion_pdf_command": {
-                    "description": "",
+                    "default": "/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s -- ~s > /dev/null && echo -n \"success\"",
+                    "description": "fax conversion pdf command",
                     "name": "conversion_pdf_command",
                     "type": "string"
                 },
                 "count_pages_command": {
                     "default": "echo -n `tiffinfo ~s | grep 'Page Number' | grep -c 'P'`",
-                    "description": "",
+                    "description": "fax count pages command",
                     "name": "count_pages_command",
                     "type": "string"
                 },
                 "default_compare_field": {
                     "default": "result_cause",
-                    "description": "",
+                    "description": "fax default compare field",
                     "name": "default_compare_field",
                     "type": "string"
                 },
                 "default_fax_extension": {
                     "default": ".tiff",
-                    "description": "",
+                    "description": "fax default fax extension",
                     "name": "default_fax_extension",
                     "type": "string"
                 },
                 "default_retry_count": {
                     "default": 3,
-                    "description": "",
+                    "description": "fax default retry count",
                     "name": "default_retry_count",
                     "type": "integer"
                 },
                 "default_retry_period": {
                     "default": 300,
-                    "description": "",
+                    "description": "fax default retry period",
                     "name": "default_retry_period",
                     "type": "integer"
                 },
                 "delete_empty_faxes": {
                     "default": false,
-                    "description": "",
+                    "description": "fax delete empty faxes",
                     "name": "delete_empty_faxes",
                     "type": "boolean"
                 },
                 "denied_content_types": {
-                    "default": "default",
-                    "description": "",
+                    "default": [
+                        {
+                            "prefix": "image/"
+                        }
+                    ],
+                    "description": "fax denied content types",
                     "name": "denied_content_types",
                     "type": "array"
                 },
                 "endpoint_timeout": {
                     "default": 40,
-                    "description": "",
+                    "description": "fax endpoint timeout",
                     "name": "endpoint_timeout",
                     "type": "integer"
                 },
                 "ensure_valid_caller_id": {
                     "default": true,
-                    "description": "",
+                    "description": "fax ensure valid caller id",
                     "name": "ensure_valid_caller_id",
                     "type": "boolean"
                 },
                 "fax_file_path": {
                     "default": "/tmp/",
-                    "description": "",
+                    "description": "fax fax file path",
                     "name": "fax_file_path",
                     "type": "string"
                 },
@@ -8834,91 +8855,91 @@
                         "override_callee_number": false,
                         "override_fax_identity": true
                     },
-                    "description": "",
+                    "description": "fax fax settings",
                     "name": "fax_settings",
                     "type": "object"
                 },
                 "file_cache_path": {
                     "default": "/tmp/",
-                    "description": "",
+                    "description": "fax file cache path",
                     "name": "file_cache_path",
                     "type": "string"
                 },
                 "ignore_early_media": {
                     "default": false,
-                    "description": "",
+                    "description": "fax ignore early media",
                     "name": "ignore_early_media",
                     "type": "boolean"
                 },
                 "image_min_size": {
                     "default": "700x10",
-                    "description": "",
+                    "description": "fax image min size",
                     "name": "image_min_size",
                     "type": "string"
                 },
                 "image_size_cmd_format": {
                     "default": "echo -n `identify -format \"%[fx:w]x%[fx:h]\" ~s`",
-                    "description": "",
+                    "description": "fax image size cmd format",
                     "name": "image_size_cmd_format",
                     "type": "string"
                 },
                 "inbound_t38_default": {
                     "default": true,
-                    "description": "",
+                    "description": "fax inbound t38 default",
                     "name": "inbound_t38_default",
                     "type": "string"
                 },
                 "max_storage_retry": {
                     "default": 5,
-                    "description": "",
+                    "description": "fax max storage retry",
                     "name": "max_storage_retry",
                     "type": "integer"
                 },
                 "openoffice_server": {
                     "default": "'socket,host=localhost,port=2002;urp;StarOffice.ComponentContext'",
-                    "description": "",
+                    "description": "fax openoffice server",
                     "name": "openoffice_server",
                     "type": "string"
                 },
                 "port": {
                     "default": 30950,
-                    "description": "",
+                    "description": "fax port",
                     "name": "port",
                     "type": "integer"
                 },
                 "report_anonymous_system_errors": {
                     "default": false,
-                    "description": "",
+                    "description": "fax report anonymous system errors",
                     "name": "report_anonymous_system_errors",
                     "type": "boolean"
                 },
                 "report_faxbox_system_errors": {
                     "default": true,
-                    "description": "",
+                    "description": "fax report faxbox system errors",
                     "name": "report_faxbox_system_errors",
                     "type": "boolean"
                 },
                 "reschedule": {
                     "default": {},
-                    "description": "",
+                    "description": "fax reschedule",
                     "name": "reschedule",
                     "type": "object"
                 },
                 "smtp_sessions": {
                     "default": 50,
-                    "description": "",
+                    "description": "fax smtp sessions",
                     "name": "smtp_sessions",
                     "type": "integer"
                 },
                 "wait_for_fax_timeout_ms": {
                     "default": 3600000,
-                    "description": "",
+                    "description": "fax wait for fax timeout in milliseconds",
                     "name": "wait_for_fax_timeout_ms",
                     "type": "integer"
                 },
                 "workers": {
                     "default": 50,
-                    "description": "",
+                    "description": "fax workers",
                     "name": "workers",
                     "type": "integer"
                 }
@@ -8956,7 +8977,7 @@
                             }
                         }
                     },
-                    "description": "",
+                    "description": "frontier rate limits",
                     "name": "rate_limits",
                     "type": "object"
                 }
@@ -8976,7 +8997,7 @@
                         "PROGRESS_TIMEOUT",
                         "RECOVERY_ON_TIMER_EXPIRE"
                     ],
-                    "description": "",
+                    "description": "hangups hangups to monitor",
                     "name": "hangups_to_monitor",
                     "type": "array"
                 },
@@ -8991,7 +9012,7 @@
                         "NORMAL_CLEARING",
                         "ALLOTTED_TIMEOUT"
                     ],
-                    "description": "",
+                    "description": "hangups ignore hangup causes",
                     "name": "ignore_hangup_causes",
                     "type": "array"
                 }
@@ -9003,27 +9024,27 @@
             "description": "Schema for jonny5 system_config",
             "properties": {
                 "default_inbound_trunks": {
-                    "description": "",
+                    "description": "jonny5 default inbound trunks",
                     "name": "default_inbound_trunks"
                 },
                 "default_twoway_trunks": {
-                    "description": "",
+                    "description": "jonny5 default twoway trunks",
                     "name": "default_twoway_trunks"
                 },
                 "default_{Key}": {
-                    "description": "",
+                    "description": "jonny5 default {Key}",
                     "name": "default_{Key}",
                     "type": "integer"
                 },
                 "flat_rate_blacklist": {
                     "default": "^\\+?1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340|900|8(?:[0,2,3,4,5,6,7]{2}|8[0-9]))\\d{7}$",
-                    "description": "",
+                    "description": "jonny5 flat rate blacklist",
                     "name": "flat_rate_blacklist",
                     "type": "string"
                 },
                 "flat_rate_whitelist": {
                     "default": "^\\+?1\\d{10}$",
-                    "description": "",
+                    "description": "jonny5 flat rate whitelist",
                     "name": "flat_rate_whitelist",
                     "type": "string"
                 }
@@ -9060,7 +9081,7 @@
                         "trunkstore",
                         "webhooks"
                     ],
-                    "description": "",
+                    "description": "kapps_controller kapps",
                     "name": "kapps",
                     "type": "array"
                 }
@@ -9073,7 +9094,7 @@
             "properties": {
                 "migrate_current_version": {
                     "default": "3.22",
-                    "description": "",
+                    "description": "kapps_maintenance migrate current version",
                     "name": "migrate_current_version",
                     "type": "string"
                 }
@@ -9086,7 +9107,7 @@
             "properties": {
                 "html2pdf": {
                     "default": "/usr/bin/htmldoc --quiet --webpage -f $pdf$ $html$",
-                    "description": "",
+                    "description": "kazoo.pdf html2pdf",
                     "name": "html2pdf",
                     "type": "string"
                 }
@@ -9099,25 +9120,25 @@
             "properties": {
                 "allow_maintenance_db_delete": {
                     "default": false,
-                    "description": "",
+                    "description": "kazoo_couch allow maintenance db delete",
                     "name": "allow_maintenance_db_delete",
                     "type": "boolean"
                 },
                 "default_chunk_size": {
                     "default": 1000,
-                    "description": "",
+                    "description": "kazoo_couch default chunk size",
                     "name": "default_chunk_size",
                     "type": "integer"
                 },
                 "max_concurrent_docs_to_archive": {
                     "default": 500,
-                    "description": "",
+                    "description": "kazoo_couch max concurrent docs to archive",
                     "name": "max_concurrent_docs_to_archive",
                     "type": "integer"
                 },
                 "use_bigcouch_direct": {
                     "default": true,
-                    "description": "",
+                    "description": "kazoo_couch use bigcouch direct",
                     "name": "use_bigcouch_direct",
                     "type": "boolean"
                 }
@@ -9129,39 +9150,41 @@
             "description": "Schema for kazoo_endpoint system_config",
             "properties": {
                 "custom_sip_interface": {
-                    "description": "",
+                    "description": "kazoo_endpoint custom sip interface",
                     "name": "custom_sip_interface"
                 },
                 "default_caller_id_name": {
-                    "description": "",
+                    "default": "default",
+                    "description": "kazoo_endpoint default caller id name",
                     "name": "default_caller_id_name",
                     "type": "string"
                 },
                 "default_caller_id_number": {
-                    "description": "",
+                    "default": "default",
+                    "description": "kazoo_endpoint default caller id number",
                     "name": "default_caller_id_number",
                     "type": "string"
                 },
                 "default_ignore_completed_elsewhere": {
                     "default": true,
-                    "description": "",
+                    "description": "kazoo_endpoint default ignore completed elsewhere",
                     "name": "default_ignore_completed_elsewhere",
                     "type": "boolean"
                 },
                 "restrict_to_known_types": {
                     "default": false,
-                    "description": "",
+                    "description": "kazoo_endpoint restrict to known types",
                     "name": "restrict_to_known_types",
                     "type": "boolean"
                 },
                 "should_add_diversion_header": {
                     "default": false,
-                    "description": "",
+                    "description": "kazoo_endpoint should add diversion header",
                     "name": "should_add_diversion_header",
                     "type": "boolean"
                 },
                 "sip_transport": {
-                    "description": "",
+                    "description": "kazoo_endpoint sip transport",
                     "name": "sip_transport"
                 }
             },
@@ -9175,42 +9198,42 @@
                     "default": [
                         "PCMU"
                     ],
-                    "description": "",
+                    "description": "kazoo_endpoint.mobile codecs",
                     "name": "codecs",
                     "type": "array"
                 },
                 "create_sip_endpoint": {
                     "default": false,
-                    "description": "",
+                    "description": "kazoo_endpoint.mobile create sip endpoint",
                     "name": "create_sip_endpoint",
                     "type": "boolean"
                 },
                 "custom_sip_interface": {
-                    "description": "",
+                    "description": "kazoo_endpoint.mobile custom sip interface",
                     "name": "custom_sip_interface",
                     "type": "string"
                 },
                 "formatter": {
                     "default": "^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$",
-                    "description": "",
+                    "description": "kazoo_endpoint.mobile formatter",
                     "name": "formatter",
                     "type": "string"
                 },
                 "path": {
                     "default": "",
-                    "description": "",
+                    "description": "kazoo_endpoint.mobile path",
                     "name": "path",
                     "type": "string"
                 },
                 "prefix": {
                     "default": "",
-                    "description": "",
+                    "description": "kazoo_endpoint.mobile prefix",
                     "name": "prefix",
                     "type": "string"
                 },
                 "realm": {
                     "default": "mobile.k.zswitch.net",
-                    "description": "",
+                    "description": "kazoo_endpoint.mobile realm",
                     "name": "realm",
                     "type": "string"
                 },
@@ -9228,7 +9251,7 @@
                                         "type": "topic"
                                     }
                                 },
-                                "description": "",
+                                "description": "kazoo_endpoint.mobile connections",
                                 "name": "connections",
                                 "type": "object"
                             }
@@ -9237,13 +9260,13 @@
                 },
                 "sms_interface": {
                     "default": "amqp",
-                    "description": "",
+                    "description": "kazoo_endpoint.mobile sms interface",
                     "name": "sms_interface",
                     "type": "string"
                 },
                 "suffix": {
                     "default": "",
-                    "description": "",
+                    "description": "kazoo_endpoint.mobile suffix",
                     "name": "suffix",
                     "type": "string"
                 }
@@ -9256,7 +9279,7 @@
             "properties": {
                 "event_cleanup_timeout_ms": {
                     "default": 3600000,
-                    "description": "",
+                    "description": "konami event cleanup timeout in milliseconds",
                     "name": "event_cleanup_timeout_ms",
                     "type": "integer"
                 },
@@ -9265,7 +9288,7 @@
                         "default_takeback_dtmf": {
                             "properties": {
                                 "default": "*1",
-                                "description": "",
+                                "description": "konami default takeback dtmf",
                                 "name": "default_takeback_dtmf",
                                 "type": "string"
                             }
@@ -9274,13 +9297,13 @@
                 },
                 "use_fast_rearm": {
                     "default": false,
-                    "description": "",
+                    "description": "konami use fast rearm",
                     "name": "use_fast_rearm",
                     "type": "boolean"
                 },
                 "webseq_enabled": {
                     "default": false,
-                    "description": "",
+                    "description": "konami webseq enabled",
                     "name": "webseq_enabled",
                     "type": "boolean"
                 }
@@ -9293,7 +9316,7 @@
             "properties": {
                 "max_length": {
                     "default": 3600,
-                    "description": "",
+                    "description": "kzt_twiml_util max length",
                     "name": "max_length",
                     "type": "integer"
                 }
@@ -9306,13 +9329,13 @@
             "properties": {
                 "authenticated_playback": {
                     "default": false,
-                    "description": "",
+                    "description": "media authenticated playback",
                     "name": "authenticated_playback",
                     "type": "boolean"
                 },
                 "authenticated_store": {
                     "default": true,
-                    "description": "",
+                    "description": "media authenticated store",
                     "name": "authenticated_store",
                     "type": "boolean"
                 },
@@ -9321,7 +9344,7 @@
                         "extension": {
                             "properties": {
                                 "default": "mp3",
-                                "description": "",
+                                "description": "media extension",
                                 "name": "extension",
                                 "type": "string"
                             }
@@ -9329,54 +9352,54 @@
                     }
                 },
                 "default_language": {
-                    "description": "",
+                    "description": "media default language",
                     "name": "default_language"
                 },
                 "fix_media_names": {
                     "default": true,
-                    "description": "",
+                    "description": "media fix media names",
                     "name": "fix_media_names",
                     "type": "boolean"
                 },
                 "max_recording_time_limit": {
                     "default": 600,
-                    "description": "",
+                    "description": "media max recording time limit",
                     "name": "max_recording_time_limit",
                     "type": "integer"
                 },
                 "normalize_destination_args": {
                     "default": "-r 8000",
-                    "description": "",
+                    "description": "media normalize destination args",
                     "name": "normalize_destination_args",
                     "type": "string"
                 },
                 "normalize_executable": {
                     "default": "sox",
-                    "description": "",
+                    "description": "media normalize executable",
                     "name": "normalize_executable",
                     "type": "string"
                 },
                 "normalize_source_args": {
                     "default": "",
-                    "description": "",
+                    "description": "media normalize source args",
                     "name": "normalize_source_args",
                     "type": "string"
                 },
                 "proxy_listeners": {
                     "default": 25,
-                    "description": "",
+                    "description": "media proxy listeners",
                     "name": "proxy_listeners",
                     "type": "integer"
                 },
                 "proxy_password": {
                     "default": "",
-                    "description": "",
+                    "description": "media proxy password",
                     "name": "proxy_password",
                     "type": "string"
                 },
                 "proxy_port": {
                     "default": 24517,
-                    "description": "",
+                    "description": "media proxy port",
                     "name": "proxy_port",
                     "type": "string"
                 },
@@ -9384,89 +9407,89 @@
                     "default": [
                         "127.0.0.0/24"
                     ],
-                    "description": "",
+                    "description": "media proxy store acls",
                     "name": "proxy_store_acls",
                     "type": "array"
                 },
                 "proxy_store_authenticate": {
                     "default": true,
-                    "description": "",
+                    "description": "media proxy store authenticate",
                     "name": "proxy_store_authenticate",
                     "type": "boolean"
                 },
                 "proxy_username": {
                     "default": "",
-                    "description": "",
+                    "description": "media proxy username",
                     "name": "proxy_username",
                     "type": "string"
                 },
                 "record_min_sec": {
                     "default": 0,
-                    "description": "",
+                    "description": "media record min sec",
                     "name": "record_min_sec",
                     "type": "integer"
                 },
                 "recorder_module": {
                     "default": "kz_media_recording",
-                    "description": "",
+                    "description": "media recorder module",
                     "name": "recorder_module",
                     "type": "string"
                 },
                 "ssl_cert": {
-                    "description": "",
+                    "description": "media ssl cert",
                     "name": "ssl_cert",
                     "type": "string"
                 },
                 "ssl_key": {
-                    "description": "",
+                    "description": "media ssl key",
                     "name": "ssl_key",
                     "type": "string"
                 },
                 "ssl_password": {
                     "default": "",
-                    "description": "",
+                    "description": "media ssl password",
                     "name": "ssl_password",
                     "type": "string"
                 },
                 "ssl_port": {
                     "default": 24518,
-                    "description": "",
+                    "description": "media ssl port",
                     "name": "ssl_port",
                     "type": "integer"
                 },
                 "store_recordings": {
                     "default": false,
-                    "description": "",
+                    "description": "media store recordings",
                     "name": "store_recordings",
                     "type": "boolean"
                 },
                 "support_account_overrides": {
                     "default": true,
-                    "description": "",
+                    "description": "media support account overrides",
                     "name": "support_account_overrides",
                     "type": "boolean"
                 },
                 "tts_cache": {
                     "default": 3600000,
-                    "description": "",
+                    "description": "media tts cache",
                     "name": "tts_cache",
                     "type": "integer"
                 },
                 "use_https": {
                     "default": false,
-                    "description": "",
+                    "description": "media use https",
                     "name": "use_https",
                     "type": "boolean"
                 },
                 "use_plaintext": {
                     "default": true,
-                    "description": "",
+                    "description": "media use plaintext",
                     "name": "use_plaintext",
                     "type": "boolean"
                 },
                 "use_ssl_proxy": {
                     "default": false,
-                    "description": "",
+                    "description": "media use ssl proxy",
                     "name": "use_ssl_proxy",
                     "type": "boolean"
                 }
@@ -9479,25 +9502,25 @@
             "properties": {
                 "binding_digit": {
                     "default": "*",
-                    "description": "",
+                    "description": "metaflows binding digit",
                     "name": "binding_digit",
                     "type": "string"
                 },
                 "default_metaflow": {
                     "default": {},
-                    "description": "",
+                    "description": "metaflows default metaflow",
                     "name": "default_metaflow",
                     "type": "object"
                 },
                 "digit_timeout_ms": {
                     "default": 800,
-                    "description": "",
+                    "description": "metaflows digit timeout in milliseconds",
                     "name": "digit_timeout_ms",
                     "type": "integer"
                 },
                 "listen_on": {
                     "default": "a",
-                    "description": "",
+                    "description": "metaflows listen on",
                     "name": "listen_on",
                     "type": "string"
                 },
@@ -9510,7 +9533,7 @@
                             "module": "say"
                         }
                     },
-                    "description": "",
+                    "description": "metaflows numbers",
                     "name": "numbers",
                     "type": "object"
                 },
@@ -9523,7 +9546,7 @@
                             "module": "say"
                         }
                     },
-                    "description": "",
+                    "description": "metaflows patterns",
                     "name": "patterns",
                     "type": "object"
                 }
@@ -9535,17 +9558,17 @@
             "description": "Schema for milliwatt system_config",
             "properties": {
                 "echo": {
-                    "description": "",
+                    "description": "milliwatt echo",
                     "name": "echo"
                 },
                 "route_win_timeout": {
                     "default": 3000,
-                    "description": "",
+                    "description": "milliwatt route win timeout",
                     "name": "route_win_timeout",
                     "type": "integer"
                 },
                 "tone": {
-                    "description": "",
+                    "description": "milliwatt tone",
                     "name": "tone"
                 }
             },
@@ -9556,7 +9579,7 @@
             "description": "Schema for mobile_manager system_config",
             "properties": {
                 "url": {
-                    "description": "",
+                    "description": "mobile_manager url",
                     "name": "url",
                     "type": "string"
                 }
@@ -9569,13 +9592,13 @@
             "properties": {
                 "active_modbs": {
                     "default": 6,
-                    "description": "",
+                    "description": "modb active modbs",
                     "name": "active_modbs",
                     "type": "integer"
                 },
                 "routines": {
                     "default": [],
-                    "description": "",
+                    "description": "modb routines",
                     "name": "routines",
                     "type": "array"
                 }
@@ -9588,7 +9611,7 @@
             "properties": {
                 "backoff_fudge_ms": {
                     "default": 5000,
-                    "description": "",
+                    "description": "notify backoff fudge in milliseconds",
                     "name": "backoff_fudge_ms",
                     "type": "integer"
                 },
@@ -9598,7 +9621,7 @@
                             "properties": {
                                 "content_transfer_encoding": {
                                     "properties": {
-                                        "description": "",
+                                        "description": "notify content transfer encoding",
                                         "name": "content_transfer_encoding",
                                         "type": "string"
                                     }
@@ -9609,13 +9632,13 @@
                 },
                 "notification_app": {
                     "default": "notify",
-                    "description": "",
+                    "description": "notify notification app",
                     "name": "notification_app",
                     "type": "string"
                 },
                 "search_rep_email": {
                     "default": true,
-                    "description": "",
+                    "description": "notify search rep email",
                     "name": "search_rep_email",
                     "type": "boolean"
                 }
@@ -9628,31 +9651,30 @@
             "properties": {
                 "crawl_for_first_occurrence": {
                     "default": true,
-                    "description": "",
+                    "description": "notify.account_crawler crawl for first occurrence",
                     "name": "crawl_for_first_occurrence",
                     "type": "boolean"
                 },
                 "crawl_for_low_balance": {
                     "default": true,
-                    "description": "",
+                    "description": "notify.account_crawler crawl for low balance",
                     "name": "crawl_for_low_balance",
                     "type": "boolean"
                 },
                 "cycle_delay_time": {
                     "default": 300000,
-                    "description": "",
                     "name": "cycle_delay_time",
                     "type": "integer"
                 },
                 "interaccount_delay": {
                     "default": 10000,
-                    "description": "",
+                    "description": "notify.account_crawler interaccount delay",
                     "name": "interaccount_delay",
                     "type": "integer"
                 },
                 "low_balance_repeat_s": {
                     "default": 86400,
-                    "description": "",
+                    "description": "notify.account_crawler low balance repeat in seconds",
                     "name": "low_balance_repeat_s",
                     "type": "integer"
                 }
@@ -9665,7 +9687,7 @@
             "properties": {
                 "default_to": {
                     "default": "",
-                    "description": "",
+                    "description": "notify.cnam_request default to",
                     "name": "default_to",
                     "type": "string"
                 }
@@ -9678,19 +9700,19 @@
             "properties": {
                 "default_to": {
                     "default": "",
-                    "description": "",
+                    "description": "notify.deregister default to",
                     "name": "default_to",
                     "type": "string"
                 },
                 "html_content_transfer_encoding": {
                     "default": "7BIT",
-                    "description": "",
+                    "description": "notify.deregister html content transfer encoding",
                     "name": "html_content_transfer_encoding",
                     "type": "string"
                 },
                 "text_content_transfer_encoding": {
                     "default": "7BIT",
-                    "description": "",
+                    "description": "notify.deregister text content transfer encoding",
                     "name": "text_content_transfer_encoding",
                     "type": "string"
                 }
@@ -9703,13 +9725,13 @@
             "properties": {
                 "attachment_format": {
                     "default": "pdf",
-                    "description": "",
+                    "description": "notify.fax attachment format",
                     "name": "attachment_format",
                     "type": "string"
                 },
                 "tiff_to_pdf_conversion_command": {
                     "default": "tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"",
-                    "description": "",
+                    "description": "notify.fax tiff to pdf conversion command",
                     "name": "tiff_to_pdf_conversion_command",
                     "type": "string"
                 }
@@ -9722,12 +9744,12 @@
             "properties": {
                 "default_enabled": {
                     "default": false,
-                    "description": "",
+                    "description": "notify.fax_inbound_error_to_email default enabled",
                     "name": "default_enabled",
                     "type": "boolean"
                 },
                 "default_to": {
-                    "description": "",
+                    "description": "notify.fax_inbound_error_to_email default to",
                     "name": "default_to"
                 }
             },
@@ -9738,7 +9760,7 @@
             "description": "Schema for notify.fax_inbound_to_email system_config",
             "properties": {
                 "default_to": {
-                    "description": "",
+                    "description": "notify.fax_inbound_to_email default to",
                     "name": "default_to"
                 }
             },
@@ -9750,12 +9772,12 @@
             "properties": {
                 "default_enabled": {
                     "default": true,
-                    "description": "",
+                    "description": "notify.fax_outbound_error_to_email default enabled",
                     "name": "default_enabled",
                     "type": "boolean"
                 },
                 "default_to": {
-                    "description": "",
+                    "description": "notify.fax_outbound_error_to_email default to",
                     "name": "default_to"
                 }
             },
@@ -9766,7 +9788,7 @@
             "description": "Schema for notify.fax_outbound_to_email system_config",
             "properties": {
                 "default_to": {
-                    "description": "",
+                    "description": "notify.fax_outbound_to_email default to",
                     "name": "default_to"
                 }
             },
@@ -9778,19 +9800,19 @@
             "properties": {
                 "default_to": {
                     "default": "",
-                    "description": "",
+                    "description": "notify.first_occurrence default to",
                     "name": "default_to",
                     "type": "string"
                 },
                 "html_content_transfer_encoding": {
                     "default": "7BIT",
-                    "description": "",
+                    "description": "notify.first_occurrence html content transfer encoding",
                     "name": "html_content_transfer_encoding",
                     "type": "string"
                 },
                 "text_content_transfer_encoding": {
                     "default": "7BIT",
-                    "description": "",
+                    "description": "notify.first_occurrence text content transfer encoding",
                     "name": "text_content_transfer_encoding",
                     "type": "string"
                 }
@@ -9803,7 +9825,7 @@
             "properties": {
                 "default_enabled": {
                     "default": false,
-                    "description": "",
+                    "description": "notify.low_balance default enabled",
                     "name": "default_enabled",
                     "type": "boolean"
                 }
@@ -9816,19 +9838,19 @@
             "properties": {
                 "default_to": {
                     "default": "",
-                    "description": "",
+                    "description": "notify.new_account default to",
                     "name": "default_to",
                     "type": "string"
                 },
                 "html_content_transfer_encoding": {
                     "default": "7BIT",
-                    "description": "",
+                    "description": "notify.new_account html content transfer encoding",
                     "name": "html_content_transfer_encoding",
                     "type": "string"
                 },
                 "text_content_transfer_encoding": {
                     "default": "7BIT",
-                    "description": "",
+                    "description": "notify.new_account text content transfer encoding",
                     "name": "text_content_transfer_encoding",
                     "type": "string"
                 }
@@ -9841,19 +9863,19 @@
             "properties": {
                 "default_to": {
                     "default": "",
-                    "description": "",
+                    "description": "notify.password_recovery default to",
                     "name": "default_to",
                     "type": "string"
                 },
                 "html_content_transfer_encoding": {
                     "default": "7BIT",
-                    "description": "",
+                    "description": "notify.password_recovery html content transfer encoding",
                     "name": "html_content_transfer_encoding",
                     "type": "string"
                 },
                 "text_content_transfer_encoding": {
                     "default": "7BIT",
-                    "description": "",
+                    "description": "notify.password_recovery text content transfer encoding",
                     "name": "text_content_transfer_encoding",
                     "type": "string"
                 }
@@ -9865,13 +9887,13 @@
             "description": "Schema for notify.port_cancel system_config",
             "properties": {
                 "default_from": {
-                    "description": "",
+                    "description": "notify.port_cancel default from",
                     "name": "default_from",
                     "type": "string"
                 },
                 "default_to": {
                     "default": "",
-                    "description": "",
+                    "description": "notify.port_cancel default to",
                     "name": "default_to",
                     "type": "string"
                 }
@@ -9883,13 +9905,13 @@
             "description": "Schema for notify.port_request system_config",
             "properties": {
                 "default_from": {
-                    "description": "",
+                    "description": "notify.port_request default from",
                     "name": "default_from",
                     "type": "string"
                 },
                 "default_to": {
                     "default": "",
-                    "description": "",
+                    "description": "notify.port_request default to",
                     "name": "default_to",
                     "type": "string"
                 }
@@ -9901,7 +9923,7 @@
             "description": "Schema for notify.port_request_admin system_config",
             "properties": {
                 "default_to": {
-                    "description": "",
+                    "description": "notify.port_request_admin default to",
                     "name": "default_to"
                 }
             },
@@ -9913,13 +9935,13 @@
             "properties": {
                 "default_to": {
                     "default": "",
-                    "description": "",
+                    "description": "notify.ported default to",
                     "name": "default_to",
                     "type": "string"
                 },
                 "send_from_admin_email": {
                     "default": true,
-                    "description": "",
+                    "description": "notify.ported send from admin email",
                     "name": "send_from_admin_email",
                     "type": "boolean"
                 }
@@ -9932,30 +9954,30 @@
             "properties": {
                 "default_to": {
                     "default": "",
-                    "description": "",
+                    "description": "notify.system_alert default to",
                     "name": "default_to",
                     "type": "string"
                 },
                 "enable_email_alerts": {
                     "default": true,
-                    "description": "",
+                    "description": "notify.system_alert enable email alerts",
                     "name": "enable_email_alerts",
                     "type": "boolean"
                 },
                 "html_content_transfer_encoding": {
                     "default": "7BIT",
-                    "description": "",
+                    "description": "notify.system_alert html content transfer encoding",
                     "name": "html_content_transfer_encoding",
                     "type": "string"
                 },
                 "subscriber_url": {
-                    "description": "",
+                    "description": "notify.system_alert subscriber url",
                     "name": "subscriber_url",
                     "type": "string"
                 },
                 "text_content_transfer_encoding": {
                     "default": "7BIT",
-                    "description": "",
+                    "description": "notify.system_alert text content transfer encoding",
                     "name": "text_content_transfer_encoding",
                     "type": "string"
                 }
@@ -9968,19 +9990,19 @@
             "properties": {
                 "default_to": {
                     "default": "",
-                    "description": "",
+                    "description": "notify.topup default to",
                     "name": "default_to",
                     "type": "string"
                 },
                 "html_content_transfer_encoding": {
                     "default": "7BIT",
-                    "description": "",
+                    "description": "notify.topup html content transfer encoding",
                     "name": "html_content_transfer_encoding",
                     "type": "string"
                 },
                 "text_content_transfer_encoding": {
                     "default": "7BIT",
-                    "description": "",
+                    "description": "notify.topup text content transfer encoding",
                     "name": "text_content_transfer_encoding",
                     "type": "string"
                 }
@@ -9993,19 +10015,19 @@
             "properties": {
                 "default_to": {
                     "default": "",
-                    "description": "",
+                    "description": "notify.transaction default to",
                     "name": "default_to",
                     "type": "string"
                 },
                 "html_content_transfer_encoding": {
                     "default": "7BIT",
-                    "description": "",
+                    "description": "notify.transaction html content transfer encoding",
                     "name": "html_content_transfer_encoding",
                     "type": "string"
                 },
                 "text_content_transfer_encoding": {
                     "default": "7BIT",
-                    "description": "",
+                    "description": "notify.transaction text content transfer encoding",
                     "name": "text_content_transfer_encoding",
                     "type": "string"
                 }
@@ -10018,12 +10040,12 @@
             "properties": {
                 "default_enabled": {
                     "default": false,
-                    "description": "",
+                    "description": "notify.voicemail_full default enabled",
                     "name": "default_enabled",
                     "type": "boolean"
                 },
                 "default_to": {
-                    "description": "",
+                    "description": "notify.voicemail_full default to",
                     "name": "default_to"
                 }
             },
@@ -10035,13 +10057,13 @@
             "properties": {
                 "html_content_transfer_encoding": {
                     "default": "7BIT",
-                    "description": "",
+                    "description": "notify.voicemail_to_email html content transfer encoding",
                     "name": "html_content_transfer_encoding",
                     "type": "string"
                 },
                 "text_content_transfer_encoding": {
                     "default": "7BIT",
-                    "description": "",
+                    "description": "notify.voicemail_to_email text content transfer encoding",
                     "name": "text_content_transfer_encoding",
                     "type": "string"
                 }
@@ -10061,13 +10083,13 @@
                         "prepend",
                         "vitelity_e911"
                     ],
-                    "description": "",
+                    "description": "number_manager allowed features",
                     "name": "allowed_features",
                     "type": "array"
                 },
                 "available_module_name": {
                     "default": "knm_local",
-                    "description": "",
+                    "description": "number_manager available module name",
                     "name": "available_module_name",
                     "type": "string"
                 },
@@ -10075,7 +10097,7 @@
                     "default": [
                         "knm_local"
                     ],
-                    "description": "",
+                    "description": "number_manager carrier modules",
                     "name": "carrier_modules",
                     "type": "array"
                 },
@@ -10115,7 +10137,7 @@
                             "regex": "^(.*)$"
                         }
                     },
-                    "description": "",
+                    "description": "number_manager classifiers",
                     "name": "classifiers",
                     "type": "object"
                 },
@@ -10123,53 +10145,53 @@
                     "default": [
                         "regex"
                     ],
-                    "description": "",
+                    "description": "number_manager converters",
                     "name": "converters",
                     "type": "array"
                 },
                 "crawler_timer_ms": {
                     "default": 86400000,
-                    "description": "",
+                    "description": "number_manager crawler timer in milliseconds",
                     "name": "crawler_timer_ms",
                     "type": "integer"
                 },
                 "default_force_outbound": {
                     "default": false,
-                    "description": "",
+                    "description": "number_manager default force outbound",
                     "name": "default_force_outbound",
                     "type": "boolean"
                 },
                 "deleted_expiry_d": {
                     "default": 90,
-                    "description": "",
+                    "description": "number_manager deleted expiry in days",
                     "name": "deleted_expiry_d",
                     "type": "integer"
                 },
                 "discovery_expiry_d": {
                     "default": 90,
-                    "description": "",
+                    "description": "number_manager discovery expiry in days",
                     "name": "discovery_expiry_d",
                     "type": "integer"
                 },
                 "e164_converters": {
-                    "description": "",
+                    "description": "number_manager e164 converters",
                     "name": "e164_converters"
                 },
                 "force_local_outbound": {
                     "default": true,
-                    "description": "",
+                    "description": "number_manager force local outbound",
                     "name": "force_local_outbound",
                     "type": "boolean"
                 },
                 "force_port_in_outbound": {
                     "default": true,
-                    "description": "",
+                    "description": "number_manager force port in outbound",
                     "name": "force_port_in_outbound",
                     "type": "boolean"
                 },
                 "force_port_out_outbound": {
                     "default": true,
-                    "description": "",
+                    "description": "number_manager force port out outbound",
                     "name": "force_port_out_outbound",
                     "type": "boolean"
                 },
@@ -10180,35 +10202,34 @@
                         "failover",
                         "prepend"
                     ],
-                    "description": "",
                     "name": "providers",
                     "type": "array"
                 },
                 "reconcile_regex": {
                     "default": "^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$",
-                    "description": "",
+                    "description": "number_manager reconcile regex",
                     "name": "reconcile_regex",
                     "type": "string"
                 },
                 "released_state": {
-                    "description": "",
+                    "description": "number_manager released state",
                     "name": "released_state",
                     "type": "string"
                 },
                 "should_permanently_delete": {
-                    "description": "",
+                    "description": "number_manager should permanently delete",
                     "name": "should_permanently_delete",
                     "type": "boolean"
                 },
                 "time_between_accounts_ms": {
                     "default": 1000,
-                    "description": "",
+                    "description": "number_manager time between accounts in milliseconds",
                     "name": "time_between_accounts_ms",
                     "type": "integer"
                 },
                 "time_between_numbers_ms": {
                     "default": 1000,
-                    "description": "",
+                    "description": "number_manager time between numbers in milliseconds",
                     "name": "time_between_numbers_ms",
                     "type": "integer"
                 }
@@ -10221,35 +10242,35 @@
             "properties": {
                 "debug": {
                     "default": false,
-                    "description": "",
+                    "description": "number_manager.bandwidth debug",
                     "name": "debug",
                     "type": "boolean"
                 },
                 "enable_provisioning": {
                     "default": true,
-                    "description": "",
+                    "description": "number_manager.bandwidth enable provisioning",
                     "name": "enable_provisioning",
                     "type": "boolean"
                 },
                 "endpoints": {
-                    "description": "",
+                    "description": "number_manager.bandwidth endpoints",
                     "name": "endpoints"
                 },
                 "numbers_api_url": {
                     "default": "https://api.bandwidth.com/public/v2/numbers.api",
-                    "description": "",
+                    "description": "number_manager.bandwidth numbers api url",
                     "name": "numbers_api_url",
                     "type": "string"
                 },
                 "order_name_prefix": {
                     "default": "Kazoo",
-                    "description": "",
+                    "description": "number_manager.bandwidth order name prefix",
                     "name": "order_name_prefix",
                     "type": "string"
                 },
                 "sandbox_provisioning": {
                     "default": true,
-                    "description": "",
+                    "description": "number_manager.bandwidth sandbox provisioning",
                     "name": "sandbox_provisioning",
                     "type": "boolean"
                 }
@@ -10262,31 +10283,31 @@
             "properties": {
                 "account_id": {
                     "default": "",
-                    "description": "",
+                    "description": "number_manager.bandwidth2 account id",
                     "name": "account_id",
                     "type": "string"
                 },
                 "debug": {
                     "default": false,
-                    "description": "",
+                    "description": "number_manager.bandwidth2 debug",
                     "name": "debug",
                     "type": "boolean"
                 },
                 "enable_provisioning": {
                     "default": true,
-                    "description": "",
+                    "description": "number_manager.bandwidth2 enable provisioning",
                     "name": "enable_provisioning",
                     "type": "boolean"
                 },
                 "order_name_prefix": {
                     "default": "Kazoo",
-                    "description": "",
+                    "description": "number_manager.bandwidth2 order name prefix",
                     "name": "order_name_prefix",
                     "type": "string"
                 },
                 "sandbox_provisioning": {
                     "default": true,
-                    "description": "",
+                    "description": "number_manager.bandwidth2 sandbox provisioning",
                     "name": "sandbox_provisioning",
                     "type": "boolean"
                 }
@@ -10299,13 +10320,13 @@
             "properties": {
                 "debug": {
                     "default": false,
-                    "description": "",
+                    "description": "number_manager.dash_e911 debug",
                     "name": "debug",
                     "type": "boolean"
                 },
                 "emergency_provisioning_url": {
                     "default": "https://service.dashcs.com/dash-api/xml/emergencyprovisioning/v1",
-                    "description": "",
+                    "description": "number_manager.dash_e911 emergency provisioning url",
                     "name": "emergency_provisioning_url",
                     "type": "string"
                 }
@@ -10317,7 +10338,7 @@
             "description": "Schema for number_manager.locality system_config",
             "properties": {
                 "url": {
-                    "description": "",
+                    "description": "number_manager.locality url",
                     "name": "url"
                 }
             },
@@ -10329,16 +10350,16 @@
             "properties": {
                 "default_country": {
                     "default": "US",
-                    "description": "",
+                    "description": "number_manager.other default country",
                     "name": "default_country",
                     "type": "string"
                 },
                 "endpoints": {
-                    "description": "",
+                    "description": "number_manager.other endpoints",
                     "name": "endpoints"
                 },
                 "phonebook_url": {
-                    "description": "",
+                    "description": "number_manager.other phonebook url",
                     "name": "phonebook_url"
                 }
             },
@@ -10350,7 +10371,7 @@
             "properties": {
                 "crawler_delay_time_ms": {
                     "default": 60000,
-                    "description": "",
+                    "description": "number_manager.port_request crawler delay time in milliseconds",
                     "name": "crawler_delay_time_ms",
                     "type": "integer"
                 }
@@ -10363,13 +10384,13 @@
             "properties": {
                 "numbers_api_url": {
                     "default": "https://api.simwood.com/v3/numbers",
-                    "description": "",
+                    "description": "number_manager.simwood numbers api url",
                     "name": "numbers_api_url",
                     "type": "string"
                 },
                 "simwood_account_id": {
                     "default": "",
-                    "description": "",
+                    "description": "number_manager.simwood simwood account id",
                     "name": "simwood_account_id",
                     "type": "string"
                 }
@@ -10382,12 +10403,12 @@
             "properties": {
                 "api_uri": {
                     "default": "http://api.vitelity.net/api.php",
-                    "description": "",
+                    "description": "number_manager.vitelity api uri",
                     "name": "api_uri",
                     "type": "string"
                 },
                 "routesip": {
-                    "description": "",
+                    "description": "number_manager.vitelity routesip",
                     "name": "routesip"
                 }
             },
@@ -10399,37 +10420,37 @@
             "properties": {
                 "debug": {
                     "default": false,
-                    "description": "",
+                    "description": "number_manager.voip_innovations debug",
                     "name": "debug",
                     "type": "boolean"
                 },
                 "enable_provisioning": {
                     "default": true,
-                    "description": "",
+                    "description": "number_manager.voip_innovations enable provisioning",
                     "name": "enable_provisioning",
                     "type": "boolean"
                 },
                 "endpoint_group": {
                     "default": "",
-                    "description": "",
+                    "description": "number_manager.voip_innovations endpoint group",
                     "name": "endpoint_group",
                     "type": "string"
                 },
                 "login": {
                     "default": "",
-                    "description": "",
+                    "description": "number_manager.voip_innovations login",
                     "name": "login",
                     "type": "string"
                 },
                 "password": {
                     "default": "",
-                    "description": "",
+                    "description": "number_manager.voip_innovations password",
                     "name": "password",
                     "type": "string"
                 },
                 "sandbox_provisioning": {
                     "default": false,
-                    "description": "",
+                    "description": "number_manager.voip_innovations sandbox provisioning",
                     "name": "sandbox_provisioning",
                     "type": "boolean"
                 }
@@ -10442,25 +10463,25 @@
             "properties": {
                 "expire_check_ms": {
                     "default": 1000,
-                    "description": "",
+                    "description": "omnipresence expire check in milliseconds",
                     "name": "expire_check_ms",
                     "type": "integer"
                 },
                 "expires_fudge_s": {
                     "default": 20,
-                    "description": "",
+                    "description": "omnipresence expires fudge in seconds",
                     "name": "expires_fudge_s",
                     "type": "integer"
                 },
                 "subscriptions_sync_enabled": {
                     "default": false,
-                    "description": "",
+                    "description": "omnipresence subscriptions sync enabled",
                     "name": "subscriptions_sync_enabled",
                     "type": "boolean"
                 },
                 "use_fast_pickup_cookies": {
                     "default": true,
-                    "description": "",
+                    "description": "omnipresence use fast pickup cookies",
                     "name": "use_fast_pickup_cookies",
                     "type": "boolean"
                 }
@@ -10473,13 +10494,13 @@
             "properties": {
                 "store_recordings": {
                     "default": false,
-                    "description": "",
+                    "description": "pivot store recordings",
                     "name": "store_recordings",
                     "type": "boolean"
                 },
                 "tts_texts_size": {
                     "default": 4000,
-                    "description": "",
+                    "description": "pivot tts texts size",
                     "name": "tts_texts_size",
                     "type": "integer"
                 }
@@ -10491,7 +10512,7 @@
             "description": "Schema for provisioner system_config",
             "properties": {
                 "cluster_id": {
-                    "description": "",
+                    "description": "provisioner cluster id",
                     "name": "cluster_id",
                     "type": "string"
                 },
@@ -10522,16 +10543,16 @@
                             }
                         }
                     },
-                    "description": "",
+                    "description": "provisioner feature keys",
                     "name": "feature_keys",
                     "type": "object"
                 },
                 "provisioning_type": {
-                    "description": "",
+                    "description": "provisioner provisioning type",
                     "name": "provisioning_type"
                 },
                 "provisioning_url": {
-                    "description": "",
+                    "description": "provisioner provisioning url",
                     "name": "provisioning_url",
                     "type": "string"
                 }
@@ -10544,17 +10565,17 @@
             "properties": {
                 "User-Agents": {
                     "default": {},
-                    "description": "",
+                    "description": "pusher User-Agents",
                     "name": "User-Agents",
                     "type": "object"
                 },
                 "apple": {
-                    "description": "",
+                    "description": "pusher apple",
                     "name": "apple",
                     "type": "string"
                 },
                 "google": {
-                    "description": "",
+                    "description": "pusher google",
                     "name": "google",
                     "type": "string"
                 }
@@ -10567,25 +10588,25 @@
             "properties": {
                 "device_enabled_default": {
                     "default": true,
-                    "description": "",
+                    "description": "registrar device enabled default",
                     "name": "device_enabled_default",
                     "type": "boolean"
                 },
                 "listeners": {
                     "default": 1,
-                    "description": "",
+                    "description": "registrar listeners",
                     "name": "listeners",
                     "type": "integer"
                 },
                 "owner_enabled_default": {
                     "default": true,
-                    "description": "",
+                    "description": "registrar owner enabled default",
                     "name": "owner_enabled_default",
                     "type": "boolean"
                 },
                 "use_aggregate": {
                     "default": true,
-                    "description": "",
+                    "description": "registrar use aggregate",
                     "name": "use_aggregate",
                     "type": "boolean"
                 }
@@ -10597,31 +10618,31 @@
             "description": "Schema for reorder system_config",
             "properties": {
                 "assume_inbound_e164": {
-                    "description": "",
+                    "description": "reorder assume inbound e164",
                     "name": "assume_inbound_e164",
                     "type": "boolean"
                 },
                 "known-error-code": {
                     "default": "686",
-                    "description": "",
+                    "description": "reorder known-error-code",
                     "name": "known-error-code",
                     "type": "string"
                 },
                 "known-error-message": {
                     "default": "PEBCAK",
-                    "description": "",
+                    "description": "reorder known-error-message",
                     "name": "known-error-message",
                     "type": "string"
                 },
                 "unknown-error-code": {
                     "default": "604",
-                    "description": "",
+                    "description": "reorder unknown-error-code",
                     "name": "unknown-error-code",
                     "type": "string"
                 },
                 "unknown-error-message": {
                     "default": "Nope Nope Nope",
-                    "description": "",
+                    "description": "reorder unknown-error-message",
                     "name": "unknown-error-message",
                     "type": "string"
                 }
@@ -10634,7 +10655,7 @@
             "properties": {
                 "clock_timezone": {
                     "default": "UTC",
-                    "description": "",
+                    "description": "servers clock timezone",
                     "name": "clock_timezone",
                     "type": "string"
                 }
@@ -10647,47 +10668,47 @@
             "properties": {
                 "default_allow_updates": {
                     "default": true,
-                    "description": "",
+                    "description": "services default allow updates",
                     "name": "default_allow_updates",
                     "type": "boolean"
                 },
                 "master_account_bookkeeper": {
                     "default": "kz_bookkeeper_local",
-                    "description": "",
+                    "description": "services master account bookkeeper",
                     "name": "master_account_bookkeeper",
                     "type": "string"
                 },
                 "modules": {
-                    "description": "",
+                    "description": "services modules",
                     "name": "modules"
                 },
                 "scan_rate": {
                     "default": 20000,
-                    "description": "",
+                    "description": "services scan rate",
                     "name": "scan_rate",
                     "type": "integer"
                 },
                 "should_save_master_audit_logs": {
                     "default": false,
-                    "description": "",
+                    "description": "services should save master audit logs",
                     "name": "should_save_master_audit_logs",
                     "type": "boolean"
                 },
                 "support_billing_id": {
                     "default": true,
-                    "description": "",
+                    "description": "services support billing id",
                     "name": "support_billing_id",
                     "type": "boolean"
                 },
                 "sync_buffer_period": {
                     "default": 600,
-                    "description": "",
+                    "description": "services sync buffer period",
                     "name": "sync_buffer_period",
                     "type": "integer"
                 },
                 "sync_services": {
                     "default": false,
-                    "description": "",
+                    "description": "services sync services",
                     "name": "sync_services",
                     "type": "boolean"
                 }
@@ -10706,7 +10727,7 @@
                                     "delivery_mode": 2,
                                     "mandatory": true
                                 },
-                                "description": "",
+                                "description": "sms options",
                                 "name": "options",
                                 "type": "object"
                             }
@@ -10722,19 +10743,19 @@
             "properties": {
                 "application_timeout": {
                     "default": 500000,
-                    "description": "",
+                    "description": "sms_command application timeout",
                     "name": "application_timeout",
                     "type": "integer"
                 },
                 "collect_timeout": {
                     "default": 60000,
-                    "description": "",
+                    "description": "sms_command collect timeout",
                     "name": "collect_timeout",
                     "type": "integer"
                 },
                 "message_timeout": {
                     "default": 60000,
-                    "description": "",
+                    "description": "sms_command message timeout",
                     "name": "message_timeout",
                     "type": "integer"
                 }
@@ -10747,53 +10768,53 @@
             "properties": {
                 "auth": {
                     "default": "never",
-                    "description": "",
+                    "description": "smtp_client auth",
                     "name": "auth",
                     "type": "string"
                 },
                 "no_mx_lookups": {
                     "default": true,
-                    "description": "",
+                    "description": "smtp_client no mx lookups",
                     "name": "no_mx_lookups",
                     "type": "boolean"
                 },
                 "password": {
                     "default": "",
-                    "description": "",
+                    "description": "smtp_client password",
                     "name": "password",
                     "type": "string"
                 },
                 "port": {
                     "default": 25,
-                    "description": "",
+                    "description": "smtp_client port",
                     "name": "port",
                     "type": "integer"
                 },
                 "relay": {
                     "default": "localhost",
-                    "description": "",
+                    "description": "smtp_client relay",
                     "name": "relay",
                     "type": "string"
                 },
                 "retries": {
                     "default": 1,
-                    "description": "",
+                    "description": "smtp_client retries",
                     "name": "retries",
                     "type": "integer"
                 },
                 "tls": {
-                    "description": "",
+                    "description": "smtp_client tls",
                     "name": "tls"
                 },
                 "use_ssl": {
                     "default": false,
-                    "description": "",
+                    "description": "smtp_client use ssl",
                     "name": "use_ssl",
                     "type": "boolean"
                 },
                 "username": {
                     "default": "",
-                    "description": "",
+                    "description": "smtp_client username",
                     "name": "username",
                     "type": "string"
                 }
@@ -10809,72 +10830,72 @@
                         "application/mpeg",
                         "application/wav"
                     ],
-                    "description": "",
+                    "description": "speech asr content types",
                     "name": "asr_content_types",
                     "type": "array"
                 },
                 "asr_prefered_content_type": {
                     "default": "application/mpeg",
-                    "description": "",
+                    "description": "speech asr prefered content type",
                     "name": "asr_prefered_content_type",
                     "type": "string"
                 },
                 "asr_provider": {
                     "default": "",
-                    "description": "",
+                    "description": "speech asr provider",
                     "name": "asr_provider",
                     "type": "string"
                 },
                 "asr_url": {
                     "default": "http://api.ispeech.org/api/rest",
-                    "description": "",
+                    "description": "speech asr url",
                     "name": "asr_url",
                     "type": "string"
                 },
                 "temporary_storage_path": {
                     "default": "/tmp",
-                    "description": "",
+                    "description": "speech temporary storage path",
                     "name": "temporary_storage_path",
                     "type": "string"
                 },
                 "tts_api_key": {
-                    "description": "",
+                    "description": "speech tts api key",
                     "name": "tts_api_key",
                     "type": "string"
                 },
                 "tts_args_encode": {
                     "default": "multipart",
-                    "description": "",
+                    "description": "speech tts args encode",
                     "name": "tts_args_encode",
                     "type": "string"
                 },
                 "tts_default_voice": {
                     "default": "female/en-US",
-                    "description": "",
+                    "description": "speech tts default voice",
                     "name": "tts_default_voice",
                     "type": "string"
                 },
                 "tts_language": {
                     "default": "en-US",
-                    "description": "",
+                    "description": "speech tts language",
                     "name": "tts_language",
                     "type": "string"
                 },
                 "tts_provider": {
                     "default": "ispeech",
-                    "description": "",
+                    "description": "speech tts provider",
                     "name": "tts_provider",
                     "type": "string"
                 },
                 "tts_url": {
                     "default": "http://api.ispeech.org/api/json",
-                    "description": "",
+                    "description": "speech tts url",
                     "name": "tts_url",
                     "type": "string"
                 },
                 "tts_voice": {
                     "default": "male",
-                    "description": "",
+                    "description": "speech tts voice",
                     "name": "tts_voice",
                     "type": "string"
                 }
@@ -10887,134 +10908,134 @@
             "properties": {
                 "assume_inbound_e164": {
                     "default": false,
-                    "description": "",
+                    "description": "stepswitch assume inbound e164",
                     "name": "assume_inbound_e164",
                     "type": "boolean"
                 },
                 "cid_rules_honor_diversions": {
                     "default": false,
-                    "description": "",
+                    "description": "stepswitch cid rules honor diversions",
                     "name": "cid_rules_honor_diversions",
                     "type": "boolean"
                 },
                 "default_audio_codecs": {
                     "default": [],
-                    "description": "",
+                    "description": "stepswitch default audio codecs",
                     "name": "default_audio_codecs",
                     "type": "array"
                 },
                 "default_bypass_media": {
                     "default": false,
-                    "description": "",
+                    "description": "stepswitch default bypass media",
                     "name": "default_bypass_media",
                     "type": "boolean"
                 },
                 "default_caller_id_type": {
                     "default": "external",
-                    "description": "",
+                    "description": "stepswitch default caller id type",
                     "name": "default_caller_id_type",
                     "type": "string"
                 },
                 "default_codecs": {
                     "default": [],
-                    "description": "",
+                    "description": "stepswitch default codecs",
                     "name": "default_codecs",
                     "type": "array"
                 },
                 "default_emergency_cid_number": {
-                    "description": "",
+                    "description": "stepswitch default emergency cid number",
                     "name": "default_emergency_cid_number"
                 },
                 "default_formatters": {
-                    "description": "",
+                    "description": "stepswitch default formatters",
                     "name": "default_formatters"
                 },
                 "default_prefix": {
                     "default": "",
-                    "description": "",
+                    "description": "stepswitch default prefix",
                     "name": "default_prefix",
                     "type": "string"
                 },
                 "default_progress_timeout": {
                     "default": 8,
-                    "description": "",
+                    "description": "stepswitch default progress timeout",
                     "name": "default_progress_timeout",
                     "type": "integer"
                 },
                 "default_route": {
-                    "description": "",
+                    "description": "stepswitch default route",
                     "name": "default_route",
                     "type": "string"
                 },
                 "default_suffix": {
                     "default": "",
-                    "description": "",
+                    "description": "stepswitch default suffix",
                     "name": "default_suffix",
                     "type": "string"
                 },
                 "default_video_codecs": {
                     "default": [],
-                    "description": "",
+                    "description": "stepswitch default video codecs",
                     "name": "default_video_codecs",
                     "type": "array"
                 },
                 "default_weight": {
                     "default": 3,
-                    "description": "",
+                    "description": "stepswitch default weight",
                     "name": "default_weight",
                     "type": "integer"
                 },
                 "deny_emergency_bridge_cause": {
                     "default": "Emergency service not configured",
-                    "description": "",
+                    "description": "stepswitch deny emergency bridge cause",
                     "name": "deny_emergency_bridge_cause",
                     "type": "string"
                 },
                 "deny_emergency_bridge_code": {
                     "default": 486,
-                    "description": "",
+                    "description": "stepswitch deny emergency bridge code",
                     "name": "deny_emergency_bridge_code",
                     "type": "string"
                 },
                 "deny_emergency_bridge_media": {
                     "default": "prompt://system_media/stepswitch-emergency_not_configured/",
-                    "description": "",
+                    "description": "stepswitch deny emergency bridge media",
                     "name": "deny_emergency_bridge_media",
                     "type": "string"
                 },
                 "deny_invalid_emergency_cid": {
                     "default": false,
-                    "description": "",
+                    "description": "stepswitch deny invalid emergency cid",
                     "name": "deny_invalid_emergency_cid",
                     "type": "boolean"
                 },
                 "ensure_valid_emergency_cid": {
                     "default": false,
-                    "description": "",
+                    "description": "stepswitch ensure valid emergency cid",
                     "name": "ensure_valid_emergency_cid",
                     "type": "boolean"
                 },
                 "format_from_uri": {
                     "default": false,
-                    "description": "",
+                    "description": "stepswitch format from uri",
                     "name": "format_from_uri",
                     "type": "boolean"
                 },
                 "max_shortdial_correction": {
                     "default": 5,
-                    "description": "",
+                    "description": "stepswitch max shortdial correction",
                     "name": "max_shortdial_correction",
                     "type": "integer"
                 },
                 "min_shortdial_correction": {
                     "default": 2,
-                    "description": "",
+                    "description": "stepswitch min shortdial correction",
                     "name": "min_shortdial_correction",
                     "type": "integer"
                 },
                 "route_by": {
                     "default": "stepswitch_resources",
-                    "description": "",
+                    "description": "stepswitch route by",
                     "name": "route_by",
                     "type": "string"
                 }
@@ -11027,37 +11048,37 @@
             "properties": {
                 "disable_normalize": {
                     "default": false,
-                    "description": "",
+                    "description": "stepswitch.cnam disable normalize",
                     "name": "disable_normalize",
                     "type": "boolean"
                 },
                 "http_basic_auth_password": {
                     "default": "",
-                    "description": "",
+                    "description": "stepswitch.cnam http basic auth password",
                     "name": "http_basic_auth_password",
                     "type": "string"
                 },
                 "http_basic_auth_username": {
                     "default": "",
-                    "description": "",
+                    "description": "stepswitch.cnam http basic auth username",
                     "name": "http_basic_auth_username",
                     "type": "string"
                 },
                 "http_body": {
                     "default": "",
-                    "description": "",
+                    "description": "stepswitch.cnam http body",
                     "name": "http_body",
                     "type": "string"
                 },
                 "http_method": {
                     "default": "get",
-                    "description": "",
+                    "description": "stepswitch.cnam http method",
                     "name": "http_method",
                     "type": "string"
                 },
                 "http_url": {
                     "default": "https://api.opencnam.com/v2/phone/{{phone_number}}",
-                    "description": "",
+                    "description": "stepswitch.cnam http url",
                     "name": "http_url",
                     "type": "string"
                 }
@@ -11070,13 +11091,13 @@
             "properties": {
                 "acl_request_timeout_fudge_ms": {
                     "default": 100,
-                    "description": "",
+                    "description": "sysconf acl request timeout fudge in milliseconds",
                     "name": "acl_request_timeout_fudge_ms",
                     "type": "integer"
                 },
                 "acl_request_timeout_ms": {
                     "default": 2000,
-                    "description": "",
+                    "description": "sysconf acl request timeout in milliseconds",
                     "name": "acl_request_timeout_ms",
                     "type": "integer"
                 }
@@ -11089,13 +11110,13 @@
             "properties": {
                 "send_progress_after_processed": {
                     "default": 1000,
-                    "description": "",
+                    "description": "tasks send progress after processed",
                     "name": "send_progress_after_processed",
                     "type": "integer"
                 },
                 "wait_after_row_ms": {
                     "default": 500,
-                    "description": "",
+                    "description": "tasks wait after row in milliseconds",
                     "name": "wait_after_row_ms",
                     "type": "integer"
                 }
@@ -11108,7 +11129,7 @@
             "properties": {
                 "iterate_over_bcc": {
                     "default": true,
-                    "description": "",
+                    "description": "teletype iterate over bcc",
                     "name": "iterate_over_bcc",
                     "type": "boolean"
                 }
@@ -11121,7 +11142,7 @@
             "properties": {
                 "inactivity_timeout_s": {
                     "default": 600,
-                    "description": "",
+                    "description": "token_buckets inactivity timeout in seconds",
                     "name": "inactivity_timeout_s",
                     "type": "integer"
                 },
@@ -11129,21 +11150,24 @@
                     "properties": {
                         "max_bucket_tokens": {
                             "properties": {
-                                "description": "",
+                                "default": 100,
+                                "description": "token_buckets max bucket tokens",
                                 "name": "max_bucket_tokens",
                                 "type": "integer"
                             }
                         },
                         "tokens_fill_rate": {
                             "properties": {
-                                "description": "",
+                                "default": 10,
+                                "description": "token_buckets tokens fill rate",
                                 "name": "tokens_fill_rate",
                                 "type": "integer"
                             }
                         },
                         "tokens_fill_time": {
                             "properties": {
-                                "description": "",
+                                "default": "second",
+                                "description": "token_buckets tokens fill time",
                                 "name": "tokens_fill_time",
                                 "type": "string"
                             }
@@ -11159,7 +11183,7 @@
             "properties": {
                 "enable": {
                     "default": true,
-                    "description": "",
+                    "description": "topup enable",
                     "name": "enable",
                     "type": "boolean"
                 }
@@ -11171,25 +11195,26 @@
             "description": "Schema for trunkstore system_config",
             "properties": {
                 "default_caller_id_number": {
-                    "description": "",
+                    "default": "default",
+                    "description": "trunkstore default caller id number",
                     "name": "default_caller_id_number",
                     "type": "string"
                 },
                 "default_hunt_non_reconcilable": {
                     "default": false,
-                    "description": "",
+                    "description": "trunkstore default hunt non reconcilable",
                     "name": "default_hunt_non_reconcilable",
                     "type": "boolean"
                 },
                 "ensure_valid_caller_id": {
                     "default": false,
-                    "description": "",
+                    "description": "trunkstore ensure valid caller id",
                     "name": "ensure_valid_caller_id",
                     "type": "boolean"
                 },
                 "ring_ready_offnet": {
                     "default": true,
-                    "description": "",
+                    "description": "trunkstore ring ready offnet",
                     "name": "ring_ready_offnet",
                     "type": "boolean"
                 }
@@ -11201,32 +11226,24 @@
             "description": "Schema for webhooks system_config",
             "properties": {
                 "attempt_failure_count": {
-                    "description": "",
+                    "description": "webhooks attempt failure count",
                     "name": "attempt_failure_count"
                 },
                 "attempt_failure_expiry_ms": {
                     "default": 60000,
-                    "description": "",
+                    "description": "webhooks attempt failure expiry in milliseconds",
                     "name": "attempt_failure_expiry_ms",
                     "type": "integer"
                 },
                 "log_successful_attempts": {
                     "default": false,
-                    "description": "",
+                    "description": "webhooks log successful attempts",
                     "name": "log_successful_attempts",
                     "type": "boolean"
                 },
                 "object_types": {
-                    "default": [
-                        "undefined",
-                        "undefined",
-                        "undefined",
-                        "undefined",
-                        "undefined",
-                        "undefined",
-                        "undefined"
-                    ],
-                    "description": "",
+                    "default": "default",
+                    "description": "webhooks object types",
                     "name": "object_types",
                     "type": "array"
                 }
@@ -11238,7 +11255,7 @@
             "description": "Schema for whitelabel system_config",
             "properties": {
                 "domains": {
-                    "description": "",
+                    "description": "whitelabel domains",
                     "name": "domains"
                 }
             },
