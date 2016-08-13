@@ -9675,6 +9675,7 @@
                 },
                 "cycle_delay_time": {
                     "default": 300000,
+                    "description": "notify.account_crawler cycle delay time",
                     "name": "cycle_delay_time",
                     "type": "integer"
                 },
