@@ -141,8 +141,7 @@ delete(Context, Username) ->
 
 -spec lookup_regs(cb_context:context()) -> kz_json:objects().
 lookup_regs(Context) ->
-    AccountRealm = kz_util:get_account_realm(cb_context:account_id(Context)),
-    Req = [{<<"Realm">>, AccountRealm}
+    Req = [{<<"Realm">>, get_realm(Context)}
           ,{<<"Fields">>, []}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
@@ -212,7 +211,7 @@ normalize_registration(JObj) ->
 
 -spec count_registrations(cb_context:context()) -> integer().
 count_registrations(Context) ->
-    Req = [{<<"Realm">>, get_realm_for_counting(Context)}
+    Req = [{<<"Realm">>, get_realm(Context)}
           ,{<<"Fields">>, []}
           ,{<<"Count-Only">>, 'true'}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -227,9 +226,9 @@ count_registrations(Context) ->
         {'timeout', _} -> lager:debug("timed out query for counting regs"), 0
     end.
 
--spec get_realm_for_counting(cb_context:context()) -> ne_binary().
-get_realm_for_counting(Context) ->
+-spec get_realm(cb_context:context()) -> ne_binary().
+get_realm(Context) ->
     case cb_context:account_id(Context) of
         'undefined' -> <<"all">>;
-        _AccountId -> kz_util:get_account_realm(cb_context:account_id(Context))
+        AccountId -> kz_util:get_account_realm(AccountId)
     end.
