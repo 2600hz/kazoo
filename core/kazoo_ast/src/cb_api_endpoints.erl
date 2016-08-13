@@ -297,36 +297,49 @@ to_swagger_paths(Paths, BasePaths) ->
          || {Path,AllowedMethods} <- kz_json:to_proplist(Paths),
             Method <- kz_json:get_list_value(<<"allowed_methods">>, AllowedMethods, [])
         ],
-    Base = kz_json:set_values(Endpoints, kz_json:new()),
-    kz_json:foldl(fun to_swagger_path/3, Base, Paths).
+    kz_json:merge_recursive(kz_json:set_values(Endpoints, kz_json:new())
+                           ,kz_json:foldl(fun to_swagger_path/3, kz_json:new(), Paths)
+                           ).
 
 to_swagger_path(Path, PathMeta, Acc) ->
     Methods = kz_json:get_value(<<"allowed_methods">>, PathMeta, []),
-    Parameters = swagger_params(PathMeta),
+    SchemaParameter = swagger_params(PathMeta),
     lists:foldl(fun(Method, Acc1) ->
-                        add_swagger_path(Method, Acc1, Path, Parameters)
+                        add_swagger_path(Method, Acc1, Path, SchemaParameter)
                 end
                ,Acc
                ,Methods
                ).
 
-add_swagger_path(Method, Acc, Path, Parameters) ->
+add_swagger_path(Method, Acc, Path, SchemaParameter) ->
     MethodJObj = kz_json:get_value([Path, Method], Acc, kz_json:new()),
-    Vs = props:filter_undefined(
+    Parameters = make_parameters(Path, Method, SchemaParameter),
+    Vs = props:filter_empty(
            [{[Path, Method], MethodJObj}
-           ,maybe_add_schema(Path, Method, Parameters)
-           ]
-          ),
+           ,{[Path, Method, <<"parameters">>], Parameters}
+           ]),
     kz_json:insert_values(Vs, Acc).
 
-maybe_add_schema(_Path, _Method, 'undefined') ->
-    {'undefined', 'undefined'};
-maybe_add_schema(Path, <<"put">> = Method, Parameters) ->
-    {[Path, Method, <<"parameters">>], Parameters};
-maybe_add_schema(Path, <<"post">> = Method, Parameters) ->
-    {[Path, Method, <<"parameters">>], Parameters};
+make_parameters(Path, Method, SchemaParameter) ->
+    lists:usort(fun compare_parameters/2
+               ,[Parameter
+                 || F <- [fun (P, M) -> maybe_add_schema(P, M, SchemaParameter) end
+                         ,fun auth_token_param/2
+                         ],
+                    Parameter <- [F(Path, Method)],
+                    not kz_util:is_empty(Parameter)
+                ]
+               ).
+
+compare_parameters(Param1, Param2) ->
+    kz_json:get_value(<<"name">>, Param1) =< kz_json:get_value(<<"name">>, Param2).
+
+maybe_add_schema(_Path, Method, Schema)
+  when Method =:= <<"put">>;
+       Method =:= <<"post">> ->
+    Schema;
 maybe_add_schema(_Path, _Method, _Parameters) ->
-    {'undefined', 'undefined'}.
+    'undefined'.
 
 swagger_params(PathMeta) ->
     case kz_json:get_value(<<"schema">>, PathMeta) of
@@ -338,6 +351,16 @@ swagger_params(PathMeta) ->
                               ,{<<"schema">>, kz_json:from_list([{<<"$ref">>, <<"#/definitions/", Schema/binary>>}])}
                               ])
     end.
+
+auth_token_param(<<"/accounts/{ACCOUNT_ID}/",_/binary>>, _Method) ->
+    kz_json:from_list(
+      [{<<"name">>, <<"X-Auth-Token">>}
+      ,{<<"in">>, <<"header">>}
+      ,{<<"type">>, <<"string">>}
+      ,{<<"required">>, 'true'}
+      ]);
+auth_token_param(_Path, _Method) ->
+    'undefined'.
 
 format_as_path_centric(Data) ->
     lists:foldl(fun format_pc_module/2, kz_json:new(), Data).
@@ -380,7 +403,7 @@ format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
 
 maybe_include_schema(PathName, Module) ->
     M = base_module_name(Module),
-    case filelib:is_file(kz_ast_util:schema_path(M)) of
+    case filelib:is_file(kz_ast_util:schema_path(<<M/binary, ".json">>)) of
         'false' -> {'undefined', 'undefined'};
         'true' ->
             {[PathName, <<"schema">>], base_module_name(Module)}
