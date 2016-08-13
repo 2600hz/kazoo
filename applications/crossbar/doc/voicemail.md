@@ -358,7 +358,9 @@ Provide an array of message ids, e.g `{"data": {"messages": ["MSG_ID1", "MSG_ID2
 
 * **Change the folder of messages:** set the folder that messages should move to (e.g. new or saved) by adding a query string `?folder=saved` to the URL or set it in the payload as `{"data": {"folder": "saved"}}`.
 
-* **Move messages to another voicemail box:** set the destination voicemail box id in payload like: `{"data": {"source_id": "{NEW_VMBOX_ID}"}}`
+* **Move messages to another voicemail box:** set the destination voicemail box ID in payload like: `{"data": {"source_id": "{NEW_VMBOX_ID}"}}`
+
+* **Copy messages to a single or a list of voicemail boxes** set the destination voicemail box ID in payload like: `{"data": {"source_id": ["{NEW_VMBOX_ID}"]}}`
 
 **Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
 
@@ -473,7 +475,9 @@ curl -v -X GET \
 
 * **Change the folder of a message:** set the folder that message should move to (e.g. new or saved) by adding a query string `?folder=saved` to the URL or set it in the payload as `{"data": {"folder": "saved"}}`.
 
-* **Move a message to another voicemail box:** set the destination voicemail box id in payload like: `{"data": {"source_id": "{NEW_VMBOX_ID}"}}`
+* **Move a message to another voicemail box:** set the destination voicemail box ID in payload like: `{"data": {"source_id": "{NEW_VMBOX_ID}"}}`
+
+* **Copy messages to a single or a list of voicemail boxes** set the destination voicemail box ID in payload like: `{"data": {"source_id": ["{NEW_VMBOX_ID}"]}}`
 
 > POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
 

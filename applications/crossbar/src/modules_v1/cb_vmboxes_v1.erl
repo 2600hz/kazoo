@@ -186,7 +186,7 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE) ->
             C = cb_context:set_resp_data(Context, Result),
             update_mwi(C, OldBoxId);
         ?NE_BINARY = NewBoxId ->
-            Moved = kvm_messages:change_box_id(AccountId, MsgIds, OldBoxId, NewBoxId),
+            Moved = kvm_messages:move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId),
             C = cb_context:set_resp_data(Context, Moved),
             update_mwi(C, [OldBoxId, NewBoxId]);
         NewBoxIds ->
@@ -202,7 +202,7 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE, MediaId) ->
             C = update_message_folder(OldBoxId, MediaId, Context, ?VM_FOLDER_SAVED),
             update_mwi(C, OldBoxId);
         ?NE_BINARY = NewBoxId ->
-            Moved = kvm_messages:change_box_id(AccountId, MediaId, OldBoxId, NewBoxId),
+            Moved = kvm_messages:move_to_vmbox(AccountId, MediaId, OldBoxId, NewBoxId),
             C = cb_context:set_resp_data(Context, Moved),
             update_mwi(C, [OldBoxId, NewBoxId]);
         NewBoxIds ->

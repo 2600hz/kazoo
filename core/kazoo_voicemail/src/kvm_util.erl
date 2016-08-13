@@ -105,7 +105,7 @@ update_result(_, {'ok', _}=Res) -> Res.
 %% @end
 %%--------------------------------------------------------------------
 -spec bulk_update_result(ne_binary(), db_ret(), kvm_messags:bulk_results()) ->
-                                 kvm_messags:bulk_results().
+                                kvm_messags:bulk_results().
 bulk_update_result(Id, {'error', R} = Error, #bulk_res{failed = Failed} = Blk) ->
     _ = update_result(Id, Error),
     Blk#bulk_res{failed = [kz_json:from_list([{Id, kz_util:to_binary(R)}]) | Failed]};
@@ -124,16 +124,18 @@ bulk_update_result(Id, {'ok', JObj} = OK, #bulk_res{succeeded = Succeeded
 
 -spec bulk_update_result(kz_json:object(), kz_json:object()) -> kz_json:object().
 bulk_update_result(Result, CurrentResults) ->
-    Failed = kz_json:get_value(<<"failed">>, CurrentResults, [])
-                  ++ kz_json:get_value(<<"failed">>, Result, []),
-    Succeeded = kz_json:get_value(<<"succeeded">>, CurrentResults, [])
-                  ++ kz_json:get_value(<<"succeeded">>, Result, []),
+    Failed = lists:append([kz_json:get_value(<<"failed">>, CurrentResults, [])
+                          ,kz_json:get_value(<<"failed">>, Result, [])
+                          ]),
+    Succeeded = lists:append([kz_json:get_value(<<"succeeded">>, CurrentResults, [])
+                             ,kz_json:get_value(<<"succeeded">>, Result, [])
+                             ]),
+
     kz_json:set_values(
       [{<<"succeeded">>, Succeeded}
       ,{<<"failed">>, Failed}
-      ]
-      ,CurrentResults
-    ).
+      ], CurrentResults
+     ).
 
 
 %%--------------------------------------------------------------------

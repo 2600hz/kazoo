@@ -112,13 +112,6 @@ fetch(AccountId, MediaId, BoxId) ->
             E
     end.
 
--spec merge_metadata(ne_binary(), kz_json:object(), kz_json:objects()) -> db_ret().
-merge_metadata(MediaId, MediaJObj, VMBoxMsgs) ->
-    case kz_json:find_value(<<"media_id">>, MediaId, VMBoxMsgs) of
-        'undefined' -> {'error', 'not_found'};
-        Metadata -> {'ok', kzd_box_message:set_metadata(Metadata, MediaJObj)}
-    end.
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc fetch message metadata from db, will take care of previous
@@ -293,7 +286,7 @@ copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds) ->
                                   kz_json:object().
 copy_to_vmboxes_fold(_, _, _, [], #bulk_res{succeeded = Succeeded
                                            ,failed = Failed
-                                                                }) ->
+                                           }) ->
     kz_json:from_list([{<<"succeeded">>, Succeeded}
                       ,{<<"failed">>, Failed}
                       ]);
@@ -367,6 +360,19 @@ media_url(AccountId, Message) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec merge_metadata(ne_binary(), kz_json:object(), kz_json:objects()) -> db_ret().
+merge_metadata(MediaId, MediaJObj, VMBoxMsgs) ->
+    case kz_json:find_value(<<"media_id">>, MediaId, VMBoxMsgs) of
+        'undefined' -> {'error', 'not_found'};
+        Metadata -> {'ok', kzd_box_message:set_metadata(Metadata, MediaJObj)}
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private

@@ -14,7 +14,7 @@
         ,count_by_modb/1, count_by_modb/3
 
         ,update/3
-        ,change_box_id/4
+        ,move_to_vmbox/4
         ,copy_to_vmboxes/4
         ,change_folder/4
 
@@ -184,16 +184,6 @@ update_fold(AccountId, BoxId, [Msg | Msgs], Funs, #bulk_res{failed = Failed} = B
             update_fold(AccountId, BoxId, Msgs, Funs, Result)
     end.
 
-maybe_add_update_fun(?NE_BINARY = Id, Funs) -> {Id, Funs};
-maybe_add_update_fun(Msg, Funs) ->
-    MsgId = kzd_box_message:media_id(Msg),
-    NewFuns = [fun(JObj) ->
-                       kzd_box_message:set_metadata(Msg, JObj)
-               end
-               | Funs
-              ],
-    {MsgId, NewFuns}.
-
 -spec do_update(ne_binary(), ne_binary(), kz_json:object(), update_funs(), bulk_results()) -> bulk_results().
 do_update(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=Id, JObj, Funs, Blk) ->
     NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
@@ -238,24 +228,16 @@ load_vmbox(AccountId, BoxId, IncludeMessages) ->
             E
     end.
 
--spec maybe_include_messages(ne_binary(), ne_binary(), kz_json:object(), boolean()) -> {'ok', kz_json:object()}.
-maybe_include_messages(AccountId, BoxId, JObj, 'true') ->
-    BoxMessages = kz_json:get_value(?VM_KEY_MESSAGES, JObj, []),
-    MODBMessages = get_from_modb(AccountId, BoxId),
-    {'ok', kz_json:set_value(?VM_KEY_MESSAGES, BoxMessages ++ MODBMessages, JObj)};
-maybe_include_messages(_AccountId, _BoxId, JObj, _) ->
-    {'ok', kz_json:delete_key(?VM_KEY_MESSAGES, JObj)}.
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Move messages to another vmbox
 %% @end
 %%--------------------------------------------------------------------
--spec change_box_id(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), ne_binary()) ->
+-spec move_to_vmbox(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), ne_binary()) ->
                            kz_json:object().
-change_box_id(AccountId, ?NE_BINARY = MsgId, OldBoxId, NewBoxId) ->
-    change_box_id(AccountId, [MsgId], OldBoxId, NewBoxId);
-change_box_id(AccountId, MsgIds, OldBoxId, NewBoxId) ->
+move_to_vmbox(AccountId, ?NE_BINARY = MsgId, OldBoxId, NewBoxId) ->
+    move_to_vmbox(AccountId, [MsgId], OldBoxId, NewBoxId);
+move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId) ->
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
     Funs = ?CHANGE_VMBOX_FUNS(AccountId, NewBoxId, NBoxJ, OldBoxId),
@@ -322,3 +304,33 @@ get_range_view(AccountId, ViewOpts) ->
                   ]
           end,
     [Fun(Db) || Db <- kazoo_modb:get_range(AccountId, From, To)].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_add_update_fun(ne_binary() | kz_json:object(), update_funs()) ->
+                                  {ne_binary(), update_funs()}.
+maybe_add_update_fun(?NE_BINARY = Id, Funs) -> {Id, Funs};
+maybe_add_update_fun(Msg, Funs) ->
+    MsgId = kzd_box_message:media_id(Msg),
+    NewFuns = [fun(JObj) ->
+                       kzd_box_message:set_metadata(Msg, JObj)
+               end
+               | Funs
+              ],
+    {MsgId, NewFuns}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_include_messages(ne_binary(), ne_binary(), kz_json:object(), boolean()) -> {'ok', kz_json:object()}.
+maybe_include_messages(AccountId, BoxId, JObj, 'true') ->
+    BoxMessages = kz_json:get_value(?VM_KEY_MESSAGES, JObj, []),
+    MODBMessages = get_from_modb(AccountId, BoxId),
+    {'ok', kz_json:set_value(?VM_KEY_MESSAGES, BoxMessages ++ MODBMessages, JObj)};
+maybe_include_messages(_AccountId, _BoxId, JObj, _) ->
+    {'ok', kz_json:delete_key(?VM_KEY_MESSAGES, JObj)}.
