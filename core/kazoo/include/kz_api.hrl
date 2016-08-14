@@ -52,6 +52,9 @@
 -define(KEY_LOG_ID, <<"System-Log-ID">>).
 -define(KEY_OPT_ACCOUNT_ID, <<"Account-ID">>).
 
+-define(KEY_AMQP_BROKER, <<"AMQP-Broker">>).
+-define(KEY_AMQP_ZONE, <<"AMQP-Broker-Zone">>).
+
 %% Default Headers
 %% All messages MUST include the DEFAULT_HEADERS list.
 -define(DEFAULT_HEADERS, [?KEY_APP_NAME
