@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_service_sync).
-
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -25,6 +24,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {}).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -106,6 +106,7 @@ start_sync_service_timer() ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -119,6 +120,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -132,6 +134,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'try_sync_service'}, State) ->
     _ = maybe_sync_service(),
     _ = maybe_clear_process_dictionary(),
@@ -161,6 +164,7 @@ maybe_clear_dictionary_entry(_) -> 'ok'.
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("kazoo service sync terminating: ~p", [_Reason]).
 
@@ -172,6 +176,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_conferences).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -51,6 +50,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {}).
+-type state() :: #state{}.
 
 -define(CONFERENCES_TBL, 'ecallmgr_conferences').
 -define(PARTICIPANTS_TBL, 'ecallmgr_participants').
@@ -263,6 +263,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'conference_create', Props, Node}, _, State) ->
     lager:debug("created conference ~p", [Props]),
     Conference = conference_from_props(Props, Node),
@@ -314,6 +315,7 @@ handle_call(_Req, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'sync_node', Node}, State) ->
     Sync = list_conferences(Node),
     Conferences = get_conference_dictionary(Sync),
@@ -353,6 +355,7 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Msg, State) ->
     lager:debug("unhandled msg: ~p", [_Msg]),
     {'noreply', State}.
@@ -365,6 +368,7 @@ handle_info(_Msg, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -379,6 +383,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     _ = ets:delete(?CONFERENCES_TBL),
     _ = ets:delete(?PARTICIPANTS_TBL),
@@ -392,6 +397,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) -> {'ok', State}.
 
 %%%===================================================================

@@ -200,6 +200,15 @@
 -type handle_event_ret() :: 'ignore' |
                             {'reply', kz_proplist()}.
 
+-type handle_fsm_ret(State) :: {'next_state', atom(), State} |
+                               {'next_state', atom(), State, timeout() | 'hibernate'} |
+                               {'stop', any(), State}.
+
+-type handle_sync_event_ret(State) :: handle_fsm_ret(State) |
+                                      {'reply', any(), atom(), State} |
+                                      {'reply', any(), atom(), State, timeout() | 'hibernate'} |
+                                      {'stop', any(), any(), State}.
+
 -type server_ref() :: atom() |
                       {atom(), atom()} |
                       {'global', any()} |

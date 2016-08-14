@@ -8,7 +8,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_channels).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -147,8 +146,7 @@ show_all() ->
 
 -spec per_minute_accounts() -> ne_binaries().
 per_minute_accounts() ->
-    MatchSpec = [
-                 {#channel{account_id = '$1'
+    MatchSpec = [{#channel{account_id = '$1'
                           ,account_billing = <<"per_minute">>
                           ,reseller_id = '$2'
                           ,reseller_billing = <<"per_minute">>
@@ -169,8 +167,7 @@ per_minute_accounts() ->
 
 -spec per_minute_channels(ne_binary()) -> [{ne_binary(), ne_binary()}].
 per_minute_channels(AccountId) ->
-    MatchSpec = [
-                 {#channel{node = '$1', uuid = '$2', reseller_id = AccountId, reseller_billing = <<"per_minute">>, _ = '_'}
+    MatchSpec = [{#channel{node = '$1', uuid = '$2', reseller_id = AccountId, reseller_billing = <<"per_minute">>, _ = '_'}
                  ,[]
                  ,[{{'$1', '$2'}}]
                  }
@@ -409,6 +406,7 @@ start_cleanup_ref() ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'new_channel', Channel}, _, State) ->
     ets:insert(?CHANNELS_TBL, Channel),
     {'reply', 'ok', State};
@@ -511,6 +509,7 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'timeout', Ref, _Msg}, #state{max_channel_cleanup_ref=Ref}=State) ->
     maybe_cleanup_old_channels(),
     {'noreply', State#state{max_channel_cleanup_ref=start_cleanup_ref()}};
@@ -526,6 +525,7 @@ handle_info(_Msg, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
 handle_event(_JObj, #state{}) ->
     {'reply', []}.
 
@@ -540,6 +540,7 @@ handle_event(_JObj, #state{}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{}) ->
     ets:delete(?CHANNELS_TBL),
     lager:info("fs channels terminating: ~p", [_Reason]).
@@ -552,6 +553,7 @@ terminate(_Reason, #state{}) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

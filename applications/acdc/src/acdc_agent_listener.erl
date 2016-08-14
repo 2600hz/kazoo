@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(acdc_agent_listener).
-
 -behaviour(gen_listener).
 
 %% API
@@ -67,8 +66,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {
-          call :: kapps_call:call()
+-record(state, {call :: kapps_call:call()
                ,acdc_queue_id :: ne_binary() % the ACDc Queue ID
                ,msg_queue_id :: ne_binary() % the AMQP Queue ID of the ACDc Queue process
                ,agent_id :: ne_binary()
@@ -90,7 +88,8 @@
                ,agent_call_ids = [] :: api_binaries() | kz_proplist()
                ,cdr_urls = dict:new() :: dict:dict() %% {CallId, Url}
                ,agent_presence_id :: api_binary()
-         }).
+               }).
+-type state() :: #state{}.
 
 -type agent() :: kapps_call:call() | kz_json:object().
 
@@ -376,6 +375,7 @@ init([Supervisor, Agent, Queues]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('presence_id', _, #state{agent_presence_id=PresenceId}=State) ->
     {'reply', PresenceId, State, 'hibernate'};
 handle_call('queues', _, #state{agent_queues=Queues}=State) ->
@@ -403,6 +403,7 @@ handle_call(_Request, _From, #state{}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'refresh_config', Qs}, #state{agent_queues=Queues}=State) ->
     {Add, Rm} = acdc_agent_util:changed(Queues, Qs),
 
@@ -834,6 +835,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -847,6 +849,7 @@ handle_info(_Info, State) ->
 %%                                   ignore
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
 handle_event(_JObj, #state{fsm_pid='undefined'}) -> 'ignore';
 handle_event(_JObj, #state{fsm_pid=FSM
                           ,agent_id=AgentId
@@ -870,6 +873,7 @@ handle_event(_JObj, #state{fsm_pid=FSM
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(Reason, #state{agent_queues=Queues
                         ,acct_id=AcctId
                         ,agent_id=AgentId
@@ -888,6 +892,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

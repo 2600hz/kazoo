@@ -16,7 +16,6 @@
 %%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(acdc_queue_listener).
-
 -behaviour(gen_listener).
 
 %% API
@@ -53,8 +52,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {
-          queue_id :: ne_binary()
+-record(state, {queue_id :: ne_binary()
                ,account_id :: ne_binary()
 
                               %% PIDs of the gang
@@ -72,7 +70,7 @@
                ,call :: kapps_call:call()
                ,agent_id :: ne_binary()
                ,delivery :: gen_listener:basic_deliver()
-         }).
+               }).
 -type state() :: #state{}.
 
 -define(BINDINGS, [{'self', []}]).
@@ -233,6 +231,7 @@ init([WorkerSup, MgrPid, AccountId, QueueId]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('delivery', _From, #state{delivery=D}=State) ->
     {'reply', D, State};
 handle_call('config', _From, #state{account_id=AccountId
@@ -488,6 +487,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -501,6 +501,7 @@ handle_info(_Info, State) ->
 %%                                   ignore
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
 handle_event(_JObj, #state{fsm_pid=FSM}) ->
     {'reply', [{'fsm_pid', FSM}]}.
 
@@ -515,6 +516,7 @@ handle_event(_JObj, #state{fsm_pid=FSM}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("ACDc queue terminating: ~p", [_Reason]).
 
@@ -526,6 +528,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

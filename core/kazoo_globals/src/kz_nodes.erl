@@ -7,7 +7,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(kz_nodes).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -390,6 +389,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), nodes_state()) -> handle_call_ret_state(nodes_state()).
 handle_call({'print_status', Nodes}, _From, State) ->
     print_status(Nodes, State),
     {'reply', 'ok', State};
@@ -408,6 +408,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), nodes_state()) -> handle_cast_ret_state(nodes_state()).
 handle_cast({'notify_new', Pid}, #state{notify_new=Set}=State) ->
     _ = erlang:monitor('process', Pid),
     {'noreply', State#state{notify_new=sets:add_element(Pid, Set)}};
@@ -443,6 +444,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), nodes_state()) -> handle_info_ret_state(nodes_state()).
 handle_info('expire_nodes', #state{tab=Tab}=State) ->
     Now = kz_util:now_ms(),
     FindSpec = [{#kz_node{expires='$2'
@@ -510,6 +512,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), nodes_state()) -> handle_event_ret().
 handle_event(_JObj, #state{node=Node}) ->
     {'reply', [{'node', kz_util:to_binary(Node)}]}.
 
@@ -524,6 +527,7 @@ handle_event(_JObj, #state{node=Node}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), nodes_state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
@@ -535,6 +539,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), nodes_state(), any()) -> {'ok', nodes_state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 %%%===================================================================

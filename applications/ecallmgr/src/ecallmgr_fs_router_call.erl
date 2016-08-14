@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_router_call).
-
 -behaviour(gen_server).
 
 -export([start_link/1, start_link/2]).
@@ -31,6 +30,7 @@
 -record(state, {node = 'undefined' :: atom()
                ,options = [] :: kz_proplist()
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -80,6 +80,7 @@ init([Node, Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -93,6 +94,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('bind_to_dialplan', #state{node=Node}=State) ->
     Bindings = ecallmgr_config:get(?BINDINGS_CFG_KEY, ?DEFAULT_BINDINGS, Node),
     case ecallmgr_fs_router_util:register_bindings(Node, ?FETCH_SECTION, Bindings) of
@@ -115,6 +117,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'route', Section, _EventName, _SubClass, _Context, Id, 'undefined', _FSData}, #state{node=Node}=State) ->
     lager:warning("fetch unknown callid from ~s: Ev: ~p Sc: ~p, Ctx: ~p Id: ~s"
                  ,[Node, _EventName, _SubClass, _Context, Id]),
@@ -139,6 +142,7 @@ handle_info(_Other, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{node=Node}) ->
     lager:info("route listener for ~s terminating: ~p", [Node, _Reason]).
 
@@ -150,6 +154,7 @@ terminate(_Reason, #state{node=Node}) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

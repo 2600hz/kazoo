@@ -900,6 +900,7 @@ to_hex_binary(S) ->
     Bin = to_binary(S),
     << <<(binary_to_hex_char(B div 16)), (binary_to_hex_char(B rem 16))>> || <<B>> <= Bin>>.
 
+-spec hexencode_binary(binary()) -> binary().
 hexencode_binary(<<_/binary>> = Bin) ->
     hexencode_binary(Bin, <<>>);
 hexencode_binary(S) ->
@@ -1477,6 +1478,7 @@ decr_timeout(Timeout, Start) ->
     decr_timeout(Timeout, elapsed_ms(Start)).
 
 -spec microseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
+-spec milliseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
 microseconds_to_seconds(Microseconds) -> to_integer(Microseconds) div 1000000.
 milliseconds_to_seconds(Milliseconds) -> to_integer(Milliseconds) div ?MILLISECONDS_IN_SECOND.
 
@@ -1611,6 +1613,7 @@ make_dir(Filename) ->
             lager:error("creating directory ~s failed : ~p", [Filename, _E])
     end.
 
+-spec normalize_amqp_uri(ne_binary()) -> ne_binary().
 normalize_amqp_uri(URI) ->
     to_binary(amqp_uri:remove_credentials(to_list(URI))).
 

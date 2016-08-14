@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_registrar).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -74,6 +73,7 @@
 -record(state, {started = kz_util:current_tstamp()
                ,queue :: api_binary()
                }).
+-type state() :: #state{}.
 
 -record(registration, {id :: {ne_binary(), ne_binary()} | '_' | '$1'
                       ,username :: ne_binary() | '_'
@@ -381,6 +381,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Msg, _From, State) ->
     {'noreply', State}.
 
@@ -394,6 +395,7 @@ handle_call(_Msg, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('registrar_sync', #state{queue=Q}=State) ->
     Payload = kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION),
     kz_amqp_worker:cast(Payload, fun kapi_registration:publish_sync/1),
@@ -461,6 +463,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('expire', State) ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
     _ = expire_objects(),
@@ -483,6 +486,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
 handle_event(_JObj, #state{started=Started}) ->
     {'reply', [{'registrar_age', kz_util:current_tstamp() - Started}]}.
 
@@ -510,6 +514,7 @@ terminate(_Reason, _) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
     {'ok', State}.

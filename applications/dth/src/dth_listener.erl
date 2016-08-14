@@ -7,7 +7,6 @@
 %%% Created : 13 Jan 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(dth_listener).
-
 -behaviour(gen_listener).
 
 %% API
@@ -42,6 +41,7 @@
 -record(state, {wsdl_model = 'undefined' :: 'undefined' | #wsdl{}
                ,dth_cdr_url = <<>> :: binary()
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -110,6 +110,7 @@ maybe_init_model() ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Req, _From, State) ->
     {'noreply', State}.
 
@@ -123,6 +124,7 @@ handle_call(_Req, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('blacklist_refresh', #state{wsdl_model='undefined'}=State) ->
     gen_listener:delayed_cast(self(), 'blacklist_refresh', ?BLACKLIST_REFRESH),
     {'noreply', State#state{wsdl_model=maybe_init_model()}};
@@ -143,6 +145,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -154,7 +157,10 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{dth_cdr_url=Url, wsdl_model=WSDL}) ->
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
+handle_event(_JObj, #state{dth_cdr_url=Url
+                          ,wsdl_model=WSDL
+                          }) ->
     {'reply', [{'cdr_url', Url}, {'wsdl', WSDL}]}.
 
 %%--------------------------------------------------------------------
@@ -180,6 +186,7 @@ terminate(_Reason, _) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

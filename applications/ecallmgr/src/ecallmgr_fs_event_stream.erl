@@ -88,6 +88,7 @@ init([Node, Bindings, Subclasses]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -101,6 +102,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('request_event_stream', #state{node=Node}=State) ->
     Bindings = get_event_bindings(State),
     case maybe_bind(Node, Bindings) of
@@ -146,6 +148,7 @@ handle_cast(_Msg, #state{idle_alert=Timeout}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                          ,node=Node
                                          ,switch_info='false'
@@ -235,6 +238,7 @@ handle_no_switch({'tcp', Socket, Data}, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{socket='undefined', node=Node}=State) ->
     lager:debug("event stream for ~p on node ~p terminating: ~p"
                ,[get_event_bindings(State), Node, _Reason]
@@ -253,6 +257,7 @@ terminate(_Reason, #state{socket=Socket, node=Node}=State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

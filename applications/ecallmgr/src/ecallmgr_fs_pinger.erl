@@ -11,7 +11,6 @@
 %%%   James Aimonetti
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_pinger).
-
 -behaviour(gen_server).
 
 -export([start_link/2]).
@@ -31,6 +30,7 @@
                ,options = [] :: kz_proplist()
                ,timeout = 2 * ?MILLISECONDS_IN_SECOND
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -75,6 +75,7 @@ init([Node, Props]) ->
 %% @end
 %% #state{nodes=[{FSNode, HandlerPid}]}
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, #state{timeout=Timeout}=State) ->
     {'reply', {'error', 'not_implemented'}, State, Timeout}.
 
@@ -88,6 +89,7 @@ handle_call(_Request, _From, #state{timeout=Timeout}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Msg, #state{timeout=Timeout}=State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State, Timeout}.
@@ -102,6 +104,7 @@ handle_cast(_Msg, #state{timeout=Timeout}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('initialize_pinger', #state{node=Node, options=Props}=State) ->
     kz_notify:system_alert("node ~s disconnected from ~s", [Node, node()]),
     _ = case props:get_value('cookie', Props) of
@@ -149,6 +152,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{node=Node}) ->
     lager:debug("fs pinger ~p to '~s' termination", [_Reason, Node]).
 
@@ -160,6 +164,7 @@ terminate(_Reason, #state{node=Node}) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

@@ -8,9 +8,7 @@
 %%% @contributors
 %%%   Luis Azedo
 %%%-------------------------------------------------------------------
-
 -module(crossbar_freeswitch).
-
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -52,10 +50,11 @@
 
 -define(AUTHN_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
--record(state, {config = 'undefined' :: api_binary(),
-                is_running = 'false' :: boolean(),
-                monitor :: reference()
+-record(state, {config = 'undefined' :: api_binary()
+               ,is_running = 'false' :: boolean()
+               ,monitor :: reference()
                }).
+-type state() :: #state{}.
 
 %% this shouldn't be here. we need to move this definition from
 %% ecallmgr.hrl into the database or into kazoo/include
@@ -110,6 +109,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('current', _From, #state{config='undefined'}=State) ->
     {'reply', {'error', 'no_file'}, State};
 handle_call('current', _From, #state{config=Config}=State) ->
@@ -127,6 +127,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('periodic_build', #state{is_running='true'}=State) ->
     {'noreply', State};
 handle_cast('periodic_build', #state{is_running='false'}=State) ->
@@ -164,6 +165,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'DOWN', MonitorRef, 'process', _, 'normal'}, #state{monitor=MonitorRef}=State) ->
     {'noreply', State#state{is_running='false'}};
 handle_info({'DOWN', MonitorRef, _, _Pid, _Reason}, #state{monitor=MonitorRef}=State) ->
@@ -184,6 +186,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("crossbar freeswitch terminating: ~p", [_Reason]).
 
@@ -195,6 +198,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

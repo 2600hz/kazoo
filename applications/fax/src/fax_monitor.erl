@@ -8,7 +8,6 @@
 %%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(fax_monitor).
-
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -23,8 +22,11 @@
 
 -include("fax.hrl").
 
+-record(state, {}).
+-type state() :: #state{}.
+
 -define(NAME, ?MODULE).
--define(SERVER, {via, kz_globals, ?NAME}).
+-define(SERVER, {'via', 'kz_globals', ?NAME}).
 
 -define(POLLING_INTERVAL, 5000).
 
@@ -62,7 +64,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     _ = kz_util:spawn(fun cleanup_jobs/0),
-    {'ok', 'undefined', ?POLLING_INTERVAL}.
+    {'ok', #state{}, ?POLLING_INTERVAL}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -78,6 +80,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State, ?POLLING_INTERVAL}.
 
@@ -91,6 +94,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State, ?POLLING_INTERVAL}.
@@ -105,6 +109,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('timeout', State) ->
     ViewOptions = ['reduce'
                   ,'group'
@@ -134,6 +139,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("fax jobs terminating: ~p", [_Reason]).
 
@@ -145,6 +151,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

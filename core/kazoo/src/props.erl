@@ -21,7 +21,7 @@
         ,get_is_false/2, get_is_false/3, is_false/2, is_false/3
         ,get_keys/1
         ,get_first_defined/2, get_first_defined/3
-        ,get_all_values/2, get_values/2
+        ,get_all_values/2
         ,set_values/2
         ,set_value/3
         ,insert_value/2, insert_value/3, insert_values/2
@@ -153,6 +153,8 @@ is_true(Key, Props, Default) ->
 get_is_false(Key, Props) -> is_false(Key, Props).
 get_is_false(Key, Props, Default) -> is_false(Key, Props, Default).
 
+-spec is_false(kz_proplist_key(), kz_proplist()) -> api_boolean().
+-spec is_false(kz_proplist_key(), kz_proplist(), Default) -> boolean() | Default.
 is_false(Key, Props) ->
     is_false(Key, Props, 'undefined').
 is_false(Key, Props, Default) ->
@@ -217,8 +219,7 @@ get_ne_binary_value(Key, Props, Default) ->
 get_keys(Props) -> [K || {K,_} <- Props].
 
 -spec get_all_values(kz_proplist_key(), kz_proplist()) -> kz_proplist_values().
-get_all_values(Key, Props) -> get_values(Key, Props).
-get_values(Key, Props) -> [V || {K, V} <- Props, K =:= Key].
+get_all_values(Key, Props) -> [V || {K, V} <- Props, K =:= Key].
 
 -spec delete(kz_proplist_key(), kz_proplist()) -> kz_proplist().
 delete(K, Props) ->

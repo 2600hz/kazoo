@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(omnip_subscriptions).
-
 -behaviour(gen_server).
 
 -export([start_link/0
@@ -55,13 +54,13 @@
 -define(DEFAULT_EVENT, ?BLF_EVENT).
 -define(DEFAULT_SEND_EVENT_LIST, [?BLF_EVENT, ?PRESENCE_EVENT]).
 
--record(state, {
-          expire_ref :: reference(),
-          ready = 'false' :: boolean(),
-          sync = 'false'  :: boolean(),
-          sync_nodes = [] :: list(),
-          other_nodes_count = 0 :: integer()
-         }).
+-record(state, {expire_ref :: reference()
+               ,ready = 'false' :: boolean()
+               ,sync = 'false'  :: boolean()
+               ,sync_nodes = [] :: list()
+               ,other_nodes_count = 0 :: integer()
+               }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -248,6 +247,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'subscribe', #omnip_subscription{}=Sub}, _From,  #state{other_nodes_count=Count} = State) ->
     SubscribeResult = {Count, subscribe(Sub)},
     {'reply', SubscribeResult, State};
@@ -290,6 +290,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}=_R, #state{expire_ref=Ref, ready='true'}=State) ->
     case expire_old_subscriptions() of
         0 -> 'ok';
@@ -326,6 +327,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
@@ -337,6 +339,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

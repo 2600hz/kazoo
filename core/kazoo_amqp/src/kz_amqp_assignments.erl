@@ -7,7 +7,6 @@
 %%%
 %%%-------------------------------------------------------------------
 -module(kz_amqp_assignments).
-
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -36,6 +35,7 @@
 -define(TAB, ?MODULE).
 -define(SERVER_RETRY_PERIOD, 30 * ?MILLISECONDS_IN_SECOND).
 -record(state, {brokers = ordsets:new()}).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -144,6 +144,7 @@ init([]) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'request_float', Consumer, Broker}, _, State) ->
     _ = import_pending_channels(),
     {'reply', assign_or_reserve(Consumer, Broker, 'float'), State};
@@ -165,6 +166,7 @@ handle_call(_Msg, _From, State) ->
 %%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'add_channel_primary_broker', Broker, Connection, Channel}, State) ->
     _ = add_channel_primary_broker(Broker, Connection, Channel),
     {'noreply', State};
@@ -202,6 +204,7 @@ handle_cast(_Msg, State) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'DOWN', Ref, 'process', _Pid, Reason}, State) ->
     erlang:demonitor(Ref, ['flush']),
     handle_down_msg(find_reference(Ref), Reason),
@@ -221,6 +224,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("AMQP assignments terminating: ~p", [_Reason]).
 
@@ -232,6 +236,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

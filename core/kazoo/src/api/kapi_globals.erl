@@ -47,22 +47,22 @@
 -type state() :: 'none' | 'local' | 'pending' | 'remote' | 'registered'.
 -export_type([state/0]).
 
--spec encode(term()) -> ne_binary().
+-spec encode(any()) -> ne_binary().
 encode(Term) ->
     base64:encode(term_to_binary(Term)).
 
--spec decode(api_binary()) -> term().
+-spec decode(api_binary()) -> any().
 decode('undefined') -> 'undefined';
 decode(Bin) ->
     binary_to_term(base64:decode(Bin)).
 
--spec maybe_encode(term()) -> term().
+-spec maybe_encode(any()) -> any().
 maybe_encode(<<131, _/binary>>=Encoded) ->
     base64:encode(Encoded);
 maybe_encode(Term) ->
     encode(Term).
 
--spec maybe_decode(term()) -> term().
+-spec maybe_decode(any()) -> any().
 maybe_decode(<<131, _/binary>>=Encoded) ->
     binary_to_term(Encoded);
 maybe_decode(MaybeEncoded) ->
@@ -75,17 +75,18 @@ maybe_decode(MaybeEncoded) ->
         'error':{'badarg', _} -> MaybeEncoded
     end.
 
+-spec encode_req(kz_json:object() | kz_proplist()) -> any().
 encode_req(Req) ->
     set_name(Req, name(Req)).
 
--spec name(kz_json:object() | kz_proplist()) -> term().
+-spec name(kz_json:object() | kz_proplist()) -> any().
 name(Props)
   when is_list(Props) ->
     maybe_decode(props:get_value(<<"Name">>, Props));
 name(JObj) ->
     maybe_decode(kz_json:get_value(<<"Name">>, JObj)).
 
--spec set_name(api_terms(), term()) -> api_terms().
+-spec set_name(api_terms(), any()) -> api_terms().
 set_name(Req, 'undefined') -> Req;
 set_name(Props, Name)
   when is_list(Props) ->
@@ -105,7 +106,7 @@ reply(JObj) ->
 state(JObj) ->
     kz_json:get_atom_value(<<"State">>, JObj).
 
--spec reason(kz_json:object()) -> term().
+-spec reason(kz_json:object()) -> any().
 reason(JObj) ->
     maybe_decode(kz_json:get_value(<<"Reason">>, JObj)).
 

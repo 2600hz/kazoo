@@ -7,7 +7,6 @@
 %%%    Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_msg).
-
 -behaviour(gen_listener).
 
 -export([start_link/1, start_link/2]).
@@ -24,10 +23,10 @@
 -export([handle_message_route/2]).
 -export([process_fs_event/2]).
 
--record(state, {
-          node :: atom()
+-record(state, {node :: atom()
                ,options :: kz_proplist()
-         }).
+               }).
+-type state() :: #state{}.
 
 -define(BINDINGS(Node), [{'sms', [{'route_id', Node}
                                  ,{'restrict_to', ['route']}
@@ -102,6 +101,7 @@ init([Node, Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -115,6 +115,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('bind_to_msg_events', #state{node=Node}=State) ->
     gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"KZ::DELIVERY_REPORT">>)}),
     gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"SMS::DELIVERY_REPORT">>)}),
@@ -133,6 +134,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'event', Props}, #state{node=Node}=State) ->
     _ = kz_util:spawn(fun process_fs_event/2, [Node, Props]),
     {'noreply', State, 'hibernate'};
@@ -150,6 +152,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
 handle_event(_JObj, #state{node=Node}) ->
     {'reply', [{'node', Node}]}.
 
@@ -164,6 +167,7 @@ handle_event(_JObj, #state{node=Node}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{node=Node}) ->
     lager:info("notify listener for ~s terminating: ~p", [Node, _Reason]).
 
@@ -175,6 +179,7 @@ terminate(_Reason, #state{node=Node}) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

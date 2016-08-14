@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(stepswitch_originate).
-
 -behaviour(gen_listener).
 
 -export([start_link/2]).
@@ -31,6 +30,7 @@
                ,queue :: api_binary()
                ,timeout :: api_reference()
                }).
+-type state() :: #state{}.
 
 -define(RESPONDERS, []).
 -define(BINDINGS, [{'resource', []}
@@ -94,6 +94,7 @@ init([Endpoints, OffnetReq]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call: ~p", [_Request]),
     {'reply', {'error', 'not_implemented'}, State}.
@@ -108,6 +109,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'kz_amqp_channel', _}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
@@ -163,6 +165,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('originate_timeout', #state{timeout='undefined'}=State) ->
     {'noreply', State};
 handle_info('originate_timeout', #state{response_queue=ResponseQ
@@ -182,13 +185,14 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
 handle_event(JObj, #state{request_handler=RequestHandler
                          ,resource_req=OffnetReq
                          ,msg_id=MsgId
                          }) ->
     case kapps_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
-            lager:debug("channel was destroy while waiting for execute extension", []),
+            lager:debug("channel was destroy while waiting for execute extension"),
             gen_listener:cast(RequestHandler, {'originate_result', originate_success(JObj, OffnetReq)});
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
             CallId = kz_call_event:other_leg_call_id(JObj),
@@ -226,6 +230,7 @@ handle_event(JObj, #state{request_handler=RequestHandler
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
@@ -237,6 +242,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

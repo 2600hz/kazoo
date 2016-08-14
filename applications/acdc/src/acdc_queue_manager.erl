@@ -11,7 +11,6 @@
 %%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(acdc_queue_manager).
-
 -behaviour(gen_listener).
 
 %% API
@@ -315,6 +314,7 @@ init(Super, AccountId, QueueId, QueueJObj) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), mgr_state()) -> handle_call_ret_state(mgr_state()).
 handle_call({'should_ignore_member_call', K}, _, #state{ignored_member_calls=Dict}=State) ->
     case catch dict:fetch(K, Dict) of
         {'EXIT', _} -> {'reply', 'false', State};
@@ -379,6 +379,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), mgr_state()) -> handle_cast_ret_state(mgr_state()).
 handle_cast({'update_strategy', StrategyState}, State) ->
     {'noreply', State#state{strategy_state=StrategyState}, 'hibernate'};
 
@@ -523,6 +524,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), mgr_state()) -> handle_info_ret_state(mgr_state()).
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -545,6 +547,7 @@ handle_event(_JObj, #state{enter_when_empty=EnterWhenEmpty
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), mgr_state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("queue manager terminating: ~p", [_Reason]).
 
@@ -556,6 +559,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), mgr_state(), any()) -> {'ok', mgr_state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

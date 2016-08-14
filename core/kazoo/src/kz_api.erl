@@ -143,9 +143,7 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
 
 default_headers_v(Props) when is_list(Props) ->
     Filtered = props:filter_empty(Props),
-    lists:all(fun(K) -> default_header_v(K, Filtered) end
-              ,?DEFAULT_HEADERS
-             );
+    lists:all(fun(K) -> default_header_v(K, Filtered) end, ?DEFAULT_HEADERS);
 default_headers_v(JObj) ->
     default_headers_v(kz_json:to_proplist(JObj)).
 
@@ -153,6 +151,7 @@ default_headers_v(JObj) ->
 default_header_v(Header, Props) ->
     not kz_util:is_empty(props:get_value(Header, Props)).
 
+-spec disambiguate_and_publish(kz_json:object(), kz_json:object(), ne_binary() | atom()) -> any().
 disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
     Wapi = list_to_binary([<<"kapi_">>, kz_util:to_binary(Binding)]),
     ApiMod = kz_util:to_atom(Wapi),

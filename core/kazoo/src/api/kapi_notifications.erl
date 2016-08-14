@@ -591,6 +591,7 @@ headers(_Notification) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec voicemail(api_terms()) -> api_formatter_return().
 voicemail(Prop) when is_list(Prop) ->
     case voicemail_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?VOICEMAIL_HEADERS, ?OPTIONAL_VOICEMAIL_HEADERS);
@@ -608,6 +609,7 @@ voicemail_v(JObj) -> voicemail_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec voicemail_saved(api_terms()) -> api_formatter_return().
 voicemail_saved(Prop) when is_list(Prop) ->
     case voicemail_saved_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?VOICEMAIL_HEADERS, ?OPTIONAL_VOICEMAIL_HEADERS);
@@ -625,6 +627,7 @@ voicemail_saved_v(JObj) -> voicemail_saved_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec voicemail_full(api_terms()) -> api_formatter_return().
 voicemail_full(Prop) when is_list(Prop) ->
     case voicemail_full_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?VOICEMAIL_FULL_HEADERS, ?OPTIONAL_VOICEMAIL_FULL_HEADERS);
@@ -642,6 +645,7 @@ voicemail_full_v(JObj) -> voicemail_full_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec fax_inbound(api_terms()) -> api_formatter_return().
 fax_inbound(Prop) when is_list(Prop) ->
     case fax_inbound_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?FAX_INBOUND_HEADERS, ?OPTIONAL_FAX_INBOUND_HEADERS);
@@ -659,6 +663,7 @@ fax_inbound_v(JObj) -> fax_inbound_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec fax_outbound(api_terms()) -> api_formatter_return().
 fax_outbound(Prop) when is_list(Prop) ->
     case fax_outbound_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?FAX_OUTBOUND_HEADERS, ?OPTIONAL_FAX_OUTBOUND_HEADERS);
@@ -676,6 +681,7 @@ fax_outbound_v(JObj) -> fax_outbound_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec fax_inbound_error(api_terms()) -> api_formatter_return().
 fax_inbound_error(Prop) when is_list(Prop) ->
     case fax_inbound_error_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?FAX_INBOUND_ERROR_HEADERS, ?OPTIONAL_FAX_INBOUND_ERROR_HEADERS);
@@ -693,6 +699,7 @@ fax_inbound_error_v(JObj) -> fax_inbound_error_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec fax_outbound_error(api_terms()) -> api_formatter_return().
 fax_outbound_error(Prop) when is_list(Prop) ->
     case fax_outbound_error_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?FAX_OUTBOUND_ERROR_HEADERS, ?OPTIONAL_FAX_OUTBOUND_ERROR_HEADERS);
@@ -710,6 +717,7 @@ fax_outbound_error_v(JObj) -> fax_outbound_error_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec register(api_terms()) -> api_formatter_return().
 register(Prop) when is_list(Prop) ->
     case register_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?REGISTER_HEADERS, ?OPTIONAL_REGISTER_HEADERS);
@@ -727,6 +735,7 @@ register_v(JObj) -> register_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec deregister(api_terms()) -> api_formatter_return().
 deregister(Prop) when is_list(Prop) ->
     case deregister_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?DEREGISTER_HEADERS, ?OPTIONAL_DEREGISTER_HEADERS);
@@ -744,6 +753,7 @@ deregister_v(JObj) -> deregister_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec first_occurrence(api_terms()) -> api_formatter_return().
 first_occurrence(Prop) when is_list(Prop) ->
     case first_occurrence_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?FIRST_OCCURRENCE_HEADERS, ?OPTIONAL_FIRST_OCCURRENCE_HEADERS);
@@ -761,6 +771,7 @@ first_occurrence_v(JObj) -> first_occurrence_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec password_recovery(api_terms()) -> api_formatter_return().
 password_recovery(Prop) when is_list(Prop) ->
     case password_recovery_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PASSWORD_RECOVERY_HEADERS, ?OPTIONAL_PASSWORD_RECOVERY_HEADERS);
@@ -778,6 +789,7 @@ password_recovery_v(JObj) -> password_recovery_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec new_account(api_terms()) -> api_formatter_return().
 new_account(Prop) when is_list(Prop) ->
     case new_account_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?NEW_ACCOUNT_HEADERS, ?OPTIONAL_NEW_ACCOUNT_HEADERS);
@@ -795,6 +807,7 @@ new_account_v(JObj) -> new_account_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec new_user(api_terms()) -> api_formatter_return().
 new_user(Prop) when is_list(Prop) ->
     case new_user_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?NEW_USER_HEADERS, ?OPTIONAL_NEW_USER_HEADERS);
@@ -812,6 +825,7 @@ new_user_v(JObj) -> new_user_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec port_unconfirmed(api_terms()) -> api_formatter_return().
 port_unconfirmed(Prop) when is_list(Prop) ->
     case port_unconfirmed_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PORT_UNCONFIRMED_HEADERS, ?OPTIONAL_PORT_UNCONFIRMED_HEADERS);
@@ -829,6 +843,7 @@ port_unconfirmed_v(JObj) -> port_unconfirmed_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec port_request(api_terms()) -> api_formatter_return().
 port_request(Prop) when is_list(Prop) ->
     case port_request_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PORT_REQUEST_HEADERS, ?OPTIONAL_PORT_REQUEST_HEADERS);
@@ -846,6 +861,7 @@ port_request_v(JObj) -> port_request_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec port_pending(api_terms()) -> api_formatter_return().
 port_pending(Prop) when is_list(Prop) ->
     case port_pending_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PORT_PENDING_HEADERS, ?OPTIONAL_PORT_PENDING_HEADERS);
@@ -863,6 +879,7 @@ port_pending_v(JObj) -> port_pending_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec port_scheduled(api_terms()) -> api_formatter_return().
 port_scheduled(Prop) when is_list(Prop) ->
     case port_scheduled_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PORT_SCHEDULED_HEADERS, ?OPTIONAL_PORT_SCHEDULED_HEADERS);
@@ -880,6 +897,7 @@ port_scheduled_v(JObj) -> port_scheduled_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec port_rejected(api_terms()) -> api_formatter_return().
 port_rejected(Prop) when is_list(Prop) ->
     case port_rejected_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PORT_REJECTED_HEADERS, ?OPTIONAL_PORT_REJECTED_HEADERS);
@@ -897,6 +915,7 @@ port_rejected_v(JObj) -> port_rejected_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec port_cancel(api_terms()) -> api_formatter_return().
 port_cancel(Prop) when is_list(Prop) ->
     case port_cancel_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PORT_CANCEL_HEADERS, ?OPTIONAL_PORT_CANCEL_HEADERS);
@@ -914,6 +933,7 @@ port_cancel_v(JObj) -> port_cancel_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec ported(api_terms()) -> api_formatter_return().
 ported(Prop) when is_list(Prop) ->
     case ported_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PORTED_HEADERS, ?OPTIONAL_PORTED_HEADERS);
@@ -931,6 +951,7 @@ ported_v(JObj) -> ported_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec port_comment(api_terms()) -> api_formatter_return().
 port_comment(Prop) when is_list(Prop) ->
     case port_comment_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PORT_COMMENT_HEADERS, ?OPTIONAL_PORT_COMMENT_HEADERS);
@@ -948,6 +969,7 @@ port_comment_v(JObj) -> port_comment_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec cnam_request(api_terms()) -> api_formatter_return().
 cnam_request(Prop) when is_list(Prop) ->
     case cnam_request_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?CNAM_REQUEST_HEADERS, ?OPTIONAL_CNAM_REQUEST_HEADERS);
@@ -965,6 +987,7 @@ cnam_request_v(JObj) -> cnam_request_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec low_balance(api_terms()) -> api_formatter_return().
 low_balance(Prop) when is_list(Prop) ->
     case low_balance_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?LOW_BALANCE_HEADERS, ?OPTIONAL_LOW_BALANCE_HEADERS);
@@ -983,6 +1006,7 @@ low_balance_v(JObj) -> low_balance_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec topup(api_terms()) -> api_formatter_return().
 topup(Prop) when is_list(Prop) ->
     case topup_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?TOPUP_HEADERS, ?OPTIONAL_TOPUP_HEADERS);
@@ -1000,6 +1024,7 @@ topup_v(JObj) -> topup_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec transaction(api_terms()) -> api_formatter_return().
 transaction(Prop) when is_list(Prop) ->
     case transaction_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?TRANSACTION_HEADERS, ?OPTIONAL_TRANSACTION_HEADERS);
@@ -1017,6 +1042,7 @@ transaction_v(JObj) -> transaction_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec service_added(api_terms()) -> api_formatter_return().
 service_added(Prop) when is_list(Prop) ->
     case service_added_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SERVICE_ADDED_HEADERS, ?OPTIONAL_SERVICE_ADDED_HEADERS);
@@ -1034,6 +1060,7 @@ service_added_v(JObj) -> service_added_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec system_alert(api_terms()) -> api_formatter_return().
 system_alert(Prop) when is_list(Prop) ->
     case system_alert_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SYSTEM_ALERT_HEADERS, ?OPTIONAL_SYSTEM_ALERT_HEADERS);
@@ -1051,6 +1078,7 @@ system_alert_v(JObj) -> system_alert_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec webhook(api_terms()) -> api_formatter_return().
 webhook(Prop) when is_list(Prop) ->
     case webhook_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?WEBHOOK_HEADERS, ?OPTIONAL_WEBHOOK_HEADERS);
@@ -1068,6 +1096,7 @@ webhook_v(JObj) -> webhook_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec webhook_disabled(api_terms()) -> api_formatter_return().
 webhook_disabled(Prop) when is_list(Prop) ->
     case webhook_disabled_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?WEBHOOK_DISABLED_HEADERS, ?OPTIONAL_WEBHOOK_DISABLED_HEADERS);
@@ -1085,6 +1114,7 @@ webhook_disabled_v(JObj) -> webhook_disabled_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec notify_update(api_terms()) -> api_formatter_return().
 notify_update(Prop) when is_list(Prop) ->
     case notify_update_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?NOTIFY_UPDATE_HEADERS, ?OPTIONAL_NOTIFY_UPDATE_HEADERS);
@@ -1102,6 +1132,7 @@ notify_update_v(JObj) -> notify_update_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec denied_emergency_bridge(api_terms()) -> api_formatter_return().
 denied_emergency_bridge(Prop) when is_list(Prop) ->
     case denied_emergency_bridge_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?DENIED_EMERGENCY_BRIDGE_HEADERS, ?OPTIONAL_DENIED_EMERGENCY_BRIDGE_HEADERS);
@@ -1118,7 +1149,8 @@ denied_emergency_bridge_v(JObj) -> denied_emergency_bridge_v(kz_json:to_proplist
 %% @doc customer_update notification - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
-%%--------------------------------------------------------------------
+%%-------------------------------------------------------------------
+-spec customer_update(api_terms()) -> api_formatter_return().
 customer_update(Prop) when is_list(Prop) ->
     case customer_update_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?CUSTOMER_UPDATE_HEADERS, ?OPTIONAL_CUSTOMER_UPDATE_HEADERS);
@@ -1136,6 +1168,7 @@ customer_update_v(JObj) -> customer_update_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec skel(api_terms()) -> api_formatter_return().
 skel(Prop) when is_list(Prop) ->
     case skel_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SKEL_HEADERS, ?OPTIONAL_SKEL_HEADERS);

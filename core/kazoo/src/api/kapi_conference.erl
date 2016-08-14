@@ -378,6 +378,7 @@
 -define(CONF_PLAY_MACRO_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
                                    ]).
 
+-spec focus_queue_name(atom()) -> ne_binary().
 focus_queue_name(Focus) -> <<(kz_util:to_binary(Focus))/binary, "_conference">>.
 
 %%--------------------------------------------------------------------
@@ -399,6 +400,7 @@ say(Prop) when is_list(Prop) ->
     end;
 say(JObj) -> say(kz_json:to_proplist(JObj)).
 
+-spec tts(api_terms()) -> api_formatter_return().
 tts(API) -> say(API).
 
 -spec say_v(api_terms()) -> boolean().
@@ -406,6 +408,7 @@ say_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?TTS_REQ_HEADERS, ?CONF_SAY_REQ_VALUES, ?TTS_REQ_TYPES);
 say_v(JObj) -> say_v(kz_json:to_proplist(JObj)).
 
+-spec tts_v(api_terms()) -> boolean().
 tts_v(API) -> say_v(API).
 
 %%--------------------------------------------------------------------
@@ -1345,8 +1348,8 @@ publish_command(ConferenceId, Req, ContentType) ->
 %% Publish to the conference exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_targeted_command(ne_binary(), api_terms()) -> 'ok'.
--spec publish_targeted_command(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_targeted_command(atom(), api_terms()) -> 'ok'.
+-spec publish_targeted_command(atom(), api_terms(), ne_binary()) -> 'ok'.
 publish_targeted_command(Focus, JObj) ->
     publish_targeted_command(Focus, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_targeted_command(Focus, Req, ContentType) ->

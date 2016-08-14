@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(acdc_queue_fsm).
-
 -behaviour(gen_fsm).
 
 %% API
@@ -59,8 +58,7 @@
 -define(AGENT_RING_TIMEOUT, 5).
 -define(AGENT_RING_TIMEOUT_MESSAGE, 'agent_timer_expired').
 
--record(state, {
-          queue_proc :: pid()
+-record(state, {queue_proc :: pid()
                ,manager_proc :: pid()
                ,connect_resps = [] :: kz_json:objects()
                ,collect_ref :: reference()
@@ -93,7 +91,7 @@
                ,cdr_url :: api_binary() % optional URL to request for extra CDR data
 
                ,notifications :: api_object()
-         }).
+               }).
 -type queue_fsm_state() :: #state{}.
 
 -define(WSD_ID, {'file', <<(get('callid'))/binary, "_queue_fsm">>}).
@@ -200,6 +198,7 @@ cdr_url(FSM) ->
 %%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', atom(), queue_fsm_state()}.
 init([MgrPid, ListenerPid, QueueJObj]) ->
     QueueId = kz_doc:id(QueueJObj),
     kz_util:put_callid(<<"fsm_", QueueId/binary, "_", (kz_util:to_binary(self()))/binary>>),
@@ -207,7 +206,8 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
     webseq:start(?WSD_ID),
     webseq:reg_who(?WSD_ID, self(), iolist_to_binary([<<"qFSM">>, pid_to_list(self())])),
 
-    {'ok', 'ready'
+    {'ok'
+    ,'ready'
     ,#state{queue_proc = ListenerPid
            ,manager_proc = MgrPid
            ,account_id = kz_doc:account_id(QueueJObj)
@@ -229,7 +229,8 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
            ,member_call = 'undefined'
 
            ,notifications = kz_json:get_value(<<"notifications">>, QueueJObj)
-           }}.
+           }
+    }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -627,6 +628,7 @@ connecting('current_call', _, #state{member_call=Call
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(any(), atom(), queue_fsm_state()) -> handle_fsm_ret(queue_fsm_state()).
 handle_event({'refresh', QueueJObj}, StateName, State) ->
     lager:debug("refreshing queue configs"),
     {'next_state', StateName, update_properties(QueueJObj, State), 'hibernate'};
@@ -650,6 +652,8 @@ handle_event(_Event, StateName, State) ->
 %%                   {stop, Reason, Reply, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_sync_event(any(), {pid(),any()}, atom(), queue_fsm_state()) ->
+                               handle_sync_event_ret(queue_fsm_state()).
 handle_sync_event('cdr_url', _, StateName, #state{cdr_url=Url}=State) ->
     {'reply', Url, StateName, State};
 handle_sync_event(_Event, _From, StateName, State) ->
@@ -670,6 +674,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), atom(), queue_fsm_state()) -> handle_fsm_ret(queue_fsm_state()).
 handle_info(_Info, StateName, State) ->
     lager:debug("unhandled message in state ~s: ~p", [StateName, _Info]),
     {'next_state', StateName, State}.
@@ -685,6 +690,7 @@ handle_info(_Info, StateName, State) ->
 %% @spec terminate(Reason, StateName, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), atom(), queue_fsm_state()) -> 'ok'.
 terminate(_Reason, _StateName, _State) ->
     lager:debug("acdc queue fsm terminating: ~p", [_Reason]).
 
@@ -697,8 +703,10 @@ terminate(_Reason, _StateName, _State) ->
 %%                   {ok, StateName, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), atom(), queue_fsm_state(), any()) ->
+                         {'ok', atom(), queue_fsm_state()}.
 code_change(_OldVsn, StateName, State, _Extra) ->
-    {ok, StateName, State}.
+    {'ok', StateName, State}.
 
 %%%===================================================================
 %%% Internal functions

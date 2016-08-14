@@ -15,7 +15,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_token_bucket).
-
 -behaviour(gen_server).
 
 %% API
@@ -65,6 +64,7 @@
                ,fill_ref :: reference()
                ,fill_as_block = 'true' :: boolean()
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -193,6 +193,7 @@ init([Max, FillRate, FillAsBlock, FillTime]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'consume', Req}, _From, #state{tokens=Current}=State) ->
     case Current - Req of
         N when N >= 0 ->
@@ -227,6 +228,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'credit', Req}, #state{tokens=Current
                                    ,max_tokens=Max
                                    }=State) ->
@@ -259,6 +261,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'timeout', Ref, ?TOKEN_FILL_TIME}, #state{max_tokens=Max
                                                       ,tokens=Current
                                                       ,fill_rate=FillRate
@@ -286,6 +289,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("token bucket going down: ~p", [_Reason]).
 
@@ -297,6 +301,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

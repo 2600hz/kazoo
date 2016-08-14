@@ -55,6 +55,7 @@
 -record(state, {table_id :: ets:tid()
                ,inactivity_timer_ref :: reference()
                }).
+-type state() :: #state{}.
 
 -record(bucket, {key :: {ne_binary(), ne_binary()} | '_'
                 ,srv :: pid() | '$1' | '$2' | '_'
@@ -297,6 +298,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'start', App, Name, MaxTokens, FillRate, FillTime}, _From, #state{table_id=Tbl}=State) ->
     lager:debug("maybe starting token bucket for ~s, ~s (~b at ~b/~s)"
                ,[App, Name, MaxTokens, FillRate, FillTime]
@@ -334,6 +336,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Req, #state{table_id='undefined'}=State) ->
     lager:debug("ignoring req: ~p", [_Req]),
     {'noreply', State};
@@ -353,6 +356,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER', Tbl, _From, _Data}, #state{table_id='undefined'}=State) ->
     lager:debug("recv ets transfer from ~p for ~p", [_From, Tbl]),
     {'noreply', State#state{table_id=Tbl}};
@@ -390,6 +394,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("bucket ets mgr going down: ~p", [_Reason]).
 
@@ -401,6 +406,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

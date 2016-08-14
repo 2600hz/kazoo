@@ -8,7 +8,6 @@
 %%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(acdc_queue_shared).
-
 -behaviour(gen_listener).
 
 %% API
@@ -35,6 +34,7 @@
 -record(state, {fsm_pid :: pid()
                ,deliveries = [] :: deliveries()
                }).
+-type state() :: #state{}.
 
 -define(SHARED_BINDING_OPTIONS(Priority)
        ,[{'consume_options', [{'no_ack', 'false'}
@@ -125,6 +125,7 @@ init([FSMPid]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('deliveries', _From, #state{deliveries=Ds}=State) ->
     {'reply', Ds, State};
 handle_call(_Request, _From, State) ->
@@ -140,6 +141,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'delivery', Delivery}, #state{deliveries=Ds}=State) ->
     {'noreply', State#state{deliveries=[Delivery|Ds]}};
 handle_cast({'ack', Delivery}, #state{deliveries=Ds}=State) ->
@@ -164,6 +166,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'basic.cancel',_,'true'}, State) ->
     lager:debug("recv basic.cancel...no!!!"),
     {'noreply', State};
@@ -180,6 +183,7 @@ handle_info(_Info, State) ->
 %%                                   ignore
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
 handle_event(_JObj, #state{fsm_pid=FSM}) ->
     {'reply', [{'fsm_pid', FSM}]}.
 
@@ -194,6 +198,7 @@ handle_event(_JObj, #state{fsm_pid=FSM}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{deliveries=Ds}) ->
     _ = [catch amqp_util:basic_nack(Delivery) || Delivery <- Ds],
     lager:debug("acdc_queue_shared terminating: ~p", [_Reason]).
@@ -206,6 +211,7 @@ terminate(_Reason, #state{deliveries=Ds}) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

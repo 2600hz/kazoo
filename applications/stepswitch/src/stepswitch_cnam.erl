@@ -5,7 +5,6 @@
 %%% @end
 %%%-------------------------------------------------------------------
 -module(stepswitch_cnam).
-
 -behaviour(gen_server).
 
 -export([start_link/1]).
@@ -24,6 +23,8 @@
         ]).
 
 -include("stepswitch.hrl").
+
+-type state() :: atom().
 
 -define(SERVER, ?MODULE).
 
@@ -147,6 +148,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'render', Props, Template}, _, TemplateName) ->
     {'ok', TemplateName} = erlydtl:compile_template(Template, TemplateName),
     {'ok', Result} = TemplateName:render(Props),
@@ -164,6 +166,7 @@ handle_call(_Request, _From, TemplateName) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Msg, TemplateName) ->
     {'noreply', TemplateName}.
 
@@ -177,6 +180,7 @@ handle_cast(_Msg, TemplateName) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Info, TemplateName) ->
     {'noreply', TemplateName}.
 
@@ -188,6 +192,7 @@ handle_info(_Info, TemplateName) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
 handle_event(_JObj, _TemplateName) ->
     {'reply', []}.
 
@@ -202,6 +207,7 @@ handle_event(_JObj, _TemplateName) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _TemplateName) ->
     lager:debug("stepswitch cnam worker terminating: ~p", [_Reason]).
 
@@ -213,6 +219,7 @@ terminate(_Reason, _TemplateName) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, TemplateName, _Extra) ->
     {'ok', TemplateName}.
 

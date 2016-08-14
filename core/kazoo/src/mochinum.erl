@@ -23,7 +23,7 @@
 
 %% External API
 
-%% @spec digits(number()) -> string()
+-spec digits(number()) -> string().
 %% @doc  Returns a string that accurately represents the given integer or float
 %%       using a conservative amount of digits. Great for generating
 %%       human-readable output, or compact ASCII serializations for floats.
@@ -43,14 +43,14 @@ digits(Float) ->
             R
     end.
 
-%% @spec frexp(F::float()) -> {Frac::float(), Exp::float()}
+-spec frexp(F::number()) -> {Frac::float(), Exp::integer()}.
 %% @doc  Return the fractional and exponent part of an IEEE 754 double,
 %%       equivalent to the libc function of the same name.
 %%       F = Frac * pow(2, Exp).
 frexp(F) ->
     frexp1(unpack(F)).
 
-%% @spec int_pow(X::integer(), N::integer()) -> Y::integer()
+-spec int_pow(X::integer(), N::integer()) -> Y::integer().
 %% @doc  Moderately efficient way to exponentiate integers.
 %%       int_pow(10, 2) = 100.
 int_pow(_X, 0) ->
@@ -58,7 +58,7 @@ int_pow(_X, 0) ->
 int_pow(X, N) when N > 0 ->
     int_pow(X, N, 1).
 
-%% @spec int_ceil(F::float()) -> integer()
+-spec int_ceil(F::float()) -> integer().
 %% @doc  Return the ceiling of F as an integer. The ceiling is defined as
 %%       F when F == trunc(F);
 %%       trunc(F) when F &lt; 0;

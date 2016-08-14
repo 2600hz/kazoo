@@ -6,7 +6,6 @@
 %%% sip events statistics.
 %%%-------------------------------------------------------------------
 -module(kazoo_stats).
-
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -36,6 +35,7 @@
                ,sip=[]
                ,send_stats=?SEND_INTERVAL
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -101,6 +101,7 @@ init([Send_stats]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('get_db', _From, State) ->
     {'reply', State, State};
 handle_call(Other,_From,State) ->
@@ -118,6 +119,7 @@ handle_call(Other,_From,State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('stop', State) ->
     {'stop', 'ok', State};
 handle_cast({Operation, Key, Val}, State) when Operation == 'add';
@@ -139,6 +141,7 @@ handle_cast(_,State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'send_stats', SendStats}=Info,State) ->
     send_stats(State#state.variables, State#state.sip),
     erlang:send_after(SendStats, self(), Info),
@@ -157,6 +160,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) -> 'ok'.
 
 %%--------------------------------------------------------------------
@@ -167,6 +171,7 @@ terminate(_Reason, _State) -> 'ok'.
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

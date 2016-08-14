@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kz_dataconnection).
-
 -behaviour(gen_server).
 
 -export([start_link/1]).
@@ -20,6 +19,7 @@
         ]).
 
 -include("kz_data.hrl").
+-type state() :: #data_connection{}.
 
 -define(SERVER, ?MODULE).
 
@@ -68,6 +68,7 @@ init([Connection]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, Connection) ->
     {'reply', {'error', 'not_implemented'}, Connection}.
 
@@ -81,6 +82,7 @@ handle_call(_Request, _From, Connection) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Msg, Connection) ->
     {'noreply', Connection}.
 
@@ -94,6 +96,7 @@ handle_cast(_Msg, Connection) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('maintain_connection', #data_connection{connected = 'false'}=Connection) ->
     case try_connection(Connection) of
         {'error', _} ->
@@ -132,6 +135,7 @@ handle_info(_Info, Connection) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _Connection) ->
     lager:debug("couch connection terminating: ~p", [_Reason]).
 
@@ -143,6 +147,7 @@ terminate(_Reason, _Connection) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, Connection, _Extra) ->
     {'ok', Connection}.
 

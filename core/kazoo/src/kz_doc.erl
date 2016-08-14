@@ -316,6 +316,7 @@ attachment_property(JObj, AName, Key) ->
 delete_attachments(JObj) ->
     maybe_remove_attachments(JObj, attachments(JObj)).
 
+-spec delete_attachment(kz_json:object(), ne_binary()) -> kz_json:object().
 delete_attachment(JObj, AName) ->
     maybe_remove_attachment(JObj, AName, attachment(JObj, AName)).
 

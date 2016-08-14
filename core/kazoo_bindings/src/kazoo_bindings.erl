@@ -19,7 +19,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(kazoo_bindings).
-
 -behaviour(gen_server).
 
 %% API
@@ -84,6 +83,7 @@
 -type kz_bindings() :: [kz_binding()].
 
 -record(state, {bindings = [] :: kz_bindings()}).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -351,6 +351,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('current_bindings', _, #state{bindings=Bs}=State) ->
     {'reply', Bs, State};
 handle_call({'bind', Binding, Mod, Fun, Payload}, _, #state{}=State) ->
@@ -452,6 +453,7 @@ add_binding(Binding, Responder, Pieces, Prefix) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('flush', #state{}=State) ->
     ets:delete_all_objects(table_id()),
     {'noreply', State, 'hibernate'};
@@ -534,6 +536,7 @@ filter_bindings(Predicate, Key, Updates, Deletes) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER',_TableId, _From, _Gift}, State) ->
     lager:debug("recv transfer of control for ~s from ~p", [_TableId, _From]),
     {'noreply', State};
@@ -552,6 +555,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _) ->
     lager:debug("bindings server terminating: ~p", [_Reason]).
 
@@ -563,6 +567,7 @@ terminate(_Reason, _) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

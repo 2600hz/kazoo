@@ -28,6 +28,8 @@
 -export([parse_transform/2]).
 
 %% @private
+-type forms() :: [erl_parse:abstract_form() | erl_parse:form_info()].
+-spec parse_transform(forms(), [compile:option()]) -> forms().
 parse_transform(AST, Options) ->
     TruncSize = proplists:get_value(lager_truncation_size, Options, ?DEFAULT_TRUNCATION),
     put(truncation_size, TruncSize),

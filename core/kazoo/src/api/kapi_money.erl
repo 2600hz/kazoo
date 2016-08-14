@@ -164,6 +164,8 @@ routing_key(Props) ->
                    ,props:get_value(account_id, Props, <<"*">>)
                    ]).
 
+-spec publish_credit(api_terms()) -> api_formatter_return().
+-spec publish_credit(api_terms(), ne_binary()) -> api_formatter_return().
 publish_credit(Req) ->
     publish_credit(Req, ?DEFAULT_CONTENT_TYPE).
 publish_credit(Req, ContentType) ->
@@ -171,6 +173,8 @@ publish_credit(Req, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Req, ?CREDIT_VALUES, fun credit/1),
     amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
 
+-spec publish_debit(api_terms()) -> api_formatter_return().
+-spec publish_debit(api_terms(), ne_binary()) -> api_formatter_return().
 publish_debit(Req) ->
     publish_debit(Req, ?DEFAULT_CONTENT_TYPE).
 publish_debit(Req, ContentType) ->
@@ -178,6 +182,8 @@ publish_debit(Req, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Req, ?DEBIT_VALUES, fun debit/1),
     amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
 
+-spec publish_balance_req(api_terms()) -> api_formatter_return().
+-spec publish_balance_req(api_terms(), ne_binary()) -> api_formatter_return().
 publish_balance_req(Req) ->
     publish_balance_req(Req, ?DEFAULT_CONTENT_TYPE).
 publish_balance_req(Req, ContentType) ->
@@ -185,6 +191,8 @@ publish_balance_req(Req, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Req, ?BALANCE_REQ_VALUES, fun balance_req/1),
     amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
 
+-spec publish_balance_resp(ne_binary(), api_terms()) -> api_formatter_return().
+-spec publish_balance_resp(ne_binary(), api_terms(), ne_binary()) -> api_formatter_return().
 publish_balance_resp(Queue, Req) ->
     publish_balance_resp(Queue, Req, ?DEFAULT_CONTENT_TYPE).
 publish_balance_resp(Queue, Req, ContentType) ->

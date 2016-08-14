@@ -8,7 +8,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(acdc_agent_fsm).
-
 -behaviour(gen_fsm).
 
 %% API
@@ -366,6 +365,7 @@ deleted_endpoint(FSM, EP) -> lager:debug("sending EP to ~p: ~p", [FSM, EP]).
 %%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', atom(), fsm_state()}.
 init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
     FSMCallId = <<"fsm_", AccountId/binary, "_", AgentId/binary>>,
     kz_util:put_callid(FSMCallId),
@@ -374,12 +374,15 @@ init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
     _P = kz_util:spawn(fun wait_for_listener/4, [Supervisor, self(), Props, IsThief]),
     lager:debug("waiting for listener in ~p", [_P]),
 
-    {'ok', 'wait', #state{account_id = AccountId
-                         ,account_db = kz_util:format_account_id(AccountId, 'encoded')
-                         ,agent_id = AgentId
-                         ,fsm_call_id = FSMCallId
-                         ,max_connect_failures = max_failures(AccountId)
-                         }}.
+    {'ok'
+    ,'wait'
+    ,#state{account_id = AccountId
+           ,account_db = kz_util:format_account_id(AccountId, 'encoded')
+           ,agent_id = AgentId
+           ,fsm_call_id = FSMCallId
+           ,max_connect_failures = max_failures(AccountId)
+           }
+    }.
 
 -spec max_failures(ne_binary() | kz_json:object()) -> non_neg_integer().
 max_failures(Account) when is_binary(Account) ->
@@ -1163,6 +1166,7 @@ outbound('current_call', _, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(any(), atom(), fsm_state()) -> handle_fsm_ret(fsm_state()).
 handle_event({'agent_logout'}, 'ready', State) ->
     handle_agent_logout(State),
     {'next_state', 'ready', State};
@@ -1236,6 +1240,7 @@ handle_event(_Event, StateName, State) ->
 %%                   {stop, Reason, Reply, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_sync_event(any(), {pid(),any()}, atom(), fsm_state()) -> handle_sync_event_ret(fsm_state()).
 handle_sync_event(_Event, _From, StateName, State) ->
     lager:debug("unhandled sync event in state ~s: ~p", [StateName, _Event]),
     {'reply', 'ok', StateName, State}.
@@ -1253,6 +1258,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), atom(), fsm_state()) -> handle_fsm_ret(fsm_state()).
 handle_info({'timeout', _Ref, ?SYNC_RESPONSE_MESSAGE}=Msg, StateName, State) ->
     gen_fsm:send_event(self(), Msg),
     {'next_state', StateName, State};
@@ -1318,6 +1324,7 @@ handle_info(_Info, StateName, State) ->
 %% @spec terminate(Reason, StateName, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), atom(), fsm_state()) -> 'ok'.
 terminate(_Reason, _StateName, #state{agent_listener=AgentListener}) ->
     lager:debug("acdc agent fsm terminating while in ~s: ~p", [_StateName, _Reason]),
     acdc_agent_listener:stop(AgentListener),
@@ -1332,12 +1339,14 @@ terminate(_Reason, _StateName, #state{agent_listener=AgentListener}) ->
 %%                   {'ok', StateName, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), atom(), fsm_state(), any()) -> {'ok', atom(), fsm_state()}.
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 -spec start_wrapup_timer(integer()) -> reference().
 start_wrapup_timer(Timeout) when Timeout =< 0 -> start_wrapup_timer(1); % send immediately
 start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout*1000, ?WRAPUP_FINISHED).

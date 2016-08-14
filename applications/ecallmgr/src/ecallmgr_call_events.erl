@@ -9,7 +9,6 @@
 %%%   Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_events).
-
 -behaviour(gen_listener).
 
 -include("ecallmgr.hrl").
@@ -222,6 +221,7 @@ unregister_event_process(Node, CallId) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('node', _From, #state{node=Node}=State) ->
     {'reply', Node, State};
 handle_call('callid', _From, #state{call_id=CallId}=State) ->
@@ -239,6 +239,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('init', #state{node=Node}=State) ->
     erlang:monitor_node(Node, 'true'),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
@@ -343,6 +344,7 @@ update_event(Fun, Reg) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'event', [CallId | _]}, #state{call_id=CallId
                                            ,passive='true'
                                            }=State) ->
@@ -522,6 +524,7 @@ handle_bowout(Node, Props, ResigningUUID) ->
 %% @spec handle_event(JObj, State) -> {'reply', Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
 handle_event(_JObj, #state{ref=Ref
                           ,call_id=CallId
                           ,node=Node
@@ -542,6 +545,7 @@ handle_event(_JObj, #state{ref=Ref
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{node_down_tref=NDTRef
                          ,sanity_check_tref=SCTRef
                          }) ->
@@ -557,6 +561,7 @@ terminate(_Reason, #state{node_down_tref=NDTRef
 %% @spec code_change(OldVsn, State, Extra) -> {'ok', NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

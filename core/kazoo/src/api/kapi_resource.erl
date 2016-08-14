@@ -140,11 +140,15 @@
                                ]).
 -define(ORIGINATE_UUID_TYPES, []).
 
+-spec originate_ready(api_terms()) -> api_formatter_return().
+-spec originate_ready_v(api_terms()) -> boolean().
 originate_ready(API) ->
     kapi_dialplan:originate_ready(API).
 originate_ready_v(API) ->
     kapi_dialplan:originate_ready_v(API).
 
+-spec originate_execute(api_terms()) -> api_formatter_return().
+-spec originate_execute_v(api_terms()) -> boolean().
 originate_execute(API) ->
     kapi_dialplan:originate_execute(API).
 originate_execute_v(API) ->
@@ -155,7 +159,6 @@ originate_execute_v(API) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
-
 -spec originate_req(api_terms()) -> api_formatter_return().
 originate_req(Prop) when is_list(Prop) ->
     EPs = [begin
@@ -178,9 +181,7 @@ originate_req_v(Prop) when is_list(Prop) ->
 originate_req_v(JObj) ->
     originate_req_v(kz_json:to_proplist(JObj)).
 
--spec originate_req_endpoint_headers(api_terms()) ->
-                                            {'ok', kz_proplist()} |
-                                            {'error', string()}.
+-spec originate_req_endpoint_headers(api_terms()) -> api_formatter_return().
 originate_req_endpoint_headers(Prop) when is_list(Prop) ->
     kz_api:build_message_specific_headers(Prop, ?ORIGINATE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_ORIGINATE_REQ_ENDPOINT_HEADERS);
 originate_req_endpoint_headers(JObj) ->
@@ -198,9 +199,7 @@ originate_req_endpoint_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec originate_resp(api_terms()) ->
-                            {'ok', iolist()} |
-                            {'error', string()}.
+-spec originate_resp(api_terms()) -> api_formatter_return().
 originate_resp(Prop) when is_list(Prop) ->
     case originate_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?ORIGINATE_RESP_HEADERS, ?OPTIONAL_ORIGINATE_RESP_HEADERS);
@@ -220,9 +219,7 @@ originate_resp_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec originate_started(api_terms()) ->
-                               {'ok', iolist()} |
-                               {'error', string()}.
+-spec originate_started(api_terms()) -> api_formatter_return().
 originate_started(Prop) when is_list(Prop) ->
     case originate_started_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?ORIGINATE_STARTED_HEADERS, ?OPTIONAL_ORIGINATE_STARTED_HEADERS);
@@ -242,9 +239,7 @@ originate_started_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec originate_uuid(api_terms()) ->
-                            {'ok', iolist()} |
-                            {'error', string()}.
+-spec originate_uuid(api_terms()) -> api_formatter_return().
 originate_uuid(Prop) when is_list(Prop) ->
     case originate_uuid_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?ORIGINATE_UUID_HEADERS, ?OPTIONAL_ORIGINATE_UUID_HEADERS);
@@ -264,9 +259,7 @@ originate_uuid_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec eavesdrop_req(api_terms()) ->
-                           {'ok', iolist()} |
-                           {'error', string()}.
+-spec eavesdrop_req(api_terms()) -> api_formatter_return().
 eavesdrop_req(Prop) when is_list(Prop) ->
     case eavesdrop_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?EAVESDROP_REQ_HEADERS, ?OPTIONAL_EAVESDROP_REQ_HEADERS);
@@ -286,9 +279,7 @@ eavesdrop_req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec eavesdrop_resp(api_terms()) ->
-                            {'ok', iolist()} |
-                            {'error', string()}.
+-spec eavesdrop_resp(api_terms()) -> api_formatter_return().
 eavesdrop_resp(Prop) when is_list(Prop) ->
     case eavesdrop_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?EAVESDROP_RESP_HEADERS, ?OPTIONAL_EAVESDROP_RESP_HEADERS);

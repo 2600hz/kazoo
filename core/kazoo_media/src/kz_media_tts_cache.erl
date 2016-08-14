@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_media_tts_cache).
-
 -behaviour(gen_server).
 
 %% API
@@ -38,8 +37,7 @@
        ).
 -define(TIMEOUT_MESSAGE, {'$kz_media_tts_cache', 'tts_timeout'}).
 
--record(state, {
-          text :: ne_binary()
+-record(state, {text :: ne_binary()
                ,contents = <<>> :: binary()
                ,status :: 'streaming' | 'ready'
                ,kz_http_req_id :: kz_http:req_id()
@@ -47,7 +45,8 @@
                ,meta :: kz_json:object()
                ,timer_ref :: reference()
                ,id :: ne_binary() %% used in publishing doc_deleted
-         }).
+               }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -131,6 +130,7 @@ get_language(Language) -> Language.
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('single', _From, #state{meta=Meta
                                    ,contents=Contents
                                    ,status=ready
@@ -158,6 +158,7 @@ handle_call('continuous', _From, #state{}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('stop', State) ->
     lager:debug("asked to stop, going down"),
     {'stop', 'normal', State};
@@ -174,6 +175,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'timeout', TRef, ?TIMEOUT_MESSAGE}, #state{timer_ref=TRef}=State) ->
     lager:debug("timeout expired, going down"),
     {'stop', 'normal', State};
@@ -268,6 +270,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{id=Id}) ->
     publish_doc_update(Id),
     lager:debug("media tts ~s going down: ~p", [Id, _Reason]).
@@ -280,6 +283,7 @@ terminate(_Reason, #state{id=Id}) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

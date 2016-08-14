@@ -459,6 +459,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'store', CacheObj}, State) ->
     State1 = handle_store(CacheObj, State),
     {'noreply', State1};
@@ -558,6 +559,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'timeout', Ref, ?EXPIRE_PERIOD_MSG}
            ,#state{expire_period_ref=Ref
                   ,expire_period=Period
@@ -582,6 +584,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
 handle_event(JObj, #state{tab=Tab}=State) ->
     case (V=kapi_conf:doc_update_v(JObj))
         andalso (kz_api:node(JObj) =/= kz_util:to_binary(node())
@@ -605,9 +608,11 @@ handle_event(JObj, #state{tab=Tab}=State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{tab=Tab}) ->
     lager:debug("terminating ~p(~p)", [self(), Tab]),
-    ets:delete(Tab).
+    ets:delete(Tab),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -617,6 +622,7 @@ terminate(_Reason, #state{tab=Tab}) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

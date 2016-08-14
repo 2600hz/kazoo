@@ -314,6 +314,7 @@ init([Call]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'update_call', Routines}, _From, #state{call=Call}=State) ->
     NewCall = kapps_call:exec(Routines, Call),
     {'reply', NewCall, State#state{call=NewCall}};
@@ -370,6 +371,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'set_call', Call}, State) ->
     {'noreply', State#state{call=Call}};
 handle_cast({'continue', _}, #state{stop_on_destroy='true'
@@ -484,6 +486,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'DOWN', Ref, 'process', Pid, 'normal'}, #state{cf_module_pid={Pid, Ref}
                                                            ,call=Call
                                                            }=State) ->
@@ -535,7 +538,11 @@ handle_info(_Msg, State) ->
 %% @private
 %% @doc Handle call messages, sometimes forward them on.
 %%--------------------------------------------------------------------
-handle_event(JObj, #state{cf_module_pid=PidRef, call=Call ,self=Self}) ->
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
+handle_event(JObj, #state{cf_module_pid=PidRef
+                         ,call=Call
+                         ,self=Self
+                         }) ->
     CallId = kapps_call:call_id_direct(Call),
     Others = kapps_call:kvs_fetch('cf_event_pids', [], Call),
     Notify = case get_pid(PidRef) of
@@ -578,6 +585,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef, call=Call ,self=Self}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate({'shutdown', 'transfer'}, _) ->
     lager:info("callflow execution has been transferred");
 terminate({'shutdown', 'control_usurped'}, _) ->
@@ -602,6 +610,7 @@ terminate(_Reason, #state{call=Call
 %% @spec code_change(OldVsn, State, Extra) -> {'ok', NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

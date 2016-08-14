@@ -31,7 +31,9 @@
 -define(CLEANUP_ROUNDTRIP_TIME,
         kapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_delay_time_ms">>, ?MILLISECONDS_IN_MINUTE)).
 
--record(state, {cleanup_ref :: reference()}).
+-record(state, {cleanup_ref :: reference()
+               }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -85,6 +87,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -98,6 +101,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('stop', State) ->
     lager:debug("crawler has been stopped"),
     {'stop', 'normal', State};
@@ -115,6 +119,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref=Ref}=State) ->
     _P = kz_util:spawn(fun knm_port_request:send_submitted_requests/0),
     {'noreply', State#state{cleanup_ref=cleanup_timer()}};
@@ -133,6 +138,7 @@ handle_info(_Msg, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("~s terminating: ~p", [?MODULE, _Reason]).
 
@@ -144,6 +150,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
