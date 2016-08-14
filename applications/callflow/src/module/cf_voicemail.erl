@@ -547,7 +547,7 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
     lager:debug("playing mailbox main menu"),
     _ = kapps_call_command:b_flush(Call),
 
-    Messages = kz_vm_message:messages(kapps_call:account_id(Call), BoxId),
+    Messages = kvm_messages:get(kapps_call:account_id(Call), BoxId),
     New = kzd_box_message:count_folder(Messages, ?VM_FOLDER_NEW),
     Saved = kzd_box_message:count_folder(Messages, ?VM_FOLDER_SAVED),
 
@@ -599,7 +599,7 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
     lager:debug("playing mailbox main menu"),
     _ = kapps_call_command:b_flush(Call),
 
-    Messages = kz_vm_message:messages(kapps_call:account_id(Call), BoxId),
+    Messages = kvm_messages:get(kapps_call:account_id(Call), BoxId),
     New = kzd_box_message:count_folder(Messages, ?VM_FOLDER_NEW),
     Saved = kzd_box_message:count_folder(Messages, ?VM_FOLDER_SAVED),
 
@@ -723,7 +723,7 @@ play_messages(Messages, Count, Box, Call) ->
 play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone
                                                            }=Box, Call) ->
     AccountId = kapps_call:account_id(Call),
-    Message = kz_vm_message:media_url(AccountId, H),
+    Message = kvm_message:media_url(AccountId, H),
     lager:info("playing mailbox message ~p (~s)", [Count, Message]),
     Prompt = [{'prompt', <<"vm-message_number">>}
              ,{'say', kz_util:to_binary(Count - length(Messages) + 1), <<"number">>}
@@ -736,7 +736,7 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone
         {'ok', 'keep'} ->
             lager:info("caller chose to save the message"),
             _ = kapps_call_command:b_prompt(<<"vm-saved">>, Call),
-            {_, NMessage} = kz_vm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
+            {_, NMessage} = kvm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
             play_messages(T, [NMessage|PrevMessages], Count, Box, Call);
         {'ok', 'prev'} ->
             lager:info("caller chose to listen to previous message"),
@@ -747,12 +747,12 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone
         {'ok', 'delete'} ->
             lager:info("caller chose to delete the message"),
             _ = kapps_call_command:b_prompt(<<"vm-deleted">>, Call),
-            _ = kz_vm_message:set_folder(?VM_FOLDER_DELETED, H, AccountId),
+            _ = kvm_message:set_folder({?VM_FOLDER_DELETED, 'false'}, H, AccountId),
             play_messages(T, PrevMessages, Count, Box, Call);
         {'ok', 'return'} ->
             lager:info("caller chose to return to the main menu"),
             _ = kapps_call_command:b_prompt(<<"vm-saved">>, Call),
-            _ = kz_vm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
+            _ = kvm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
             'complete';
         {'ok', 'replay'} ->
             lager:info("caller chose to replay"),
@@ -1263,12 +1263,15 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
                                             ,after_notify_action=Action
                                             }=Box, Call) ->
     NewMsgProps = [{<<"Box-Id">>, BoxId}
-                  ,{<<"OwnerId">>, OwnerId}
+                  ,{<<"Owner-Id">>, OwnerId}
                   ,{<<"Length">>, Length}
                   ,{<<"Transcribe-Voicemail">>, MaybeTranscribe}
                   ,{<<"After-Notify-Action">>, Action}
+                  ,{<<"Attachment-Name">>, AttachmentName}
+                  ,{<<"Box-Num">>, BoxNum}
+                  ,{<<"Timezone">>, Timezone}
                   ],
-    case kz_vm_message:new_message(AttachmentName, BoxNum, Timezone, Call, NewMsgProps) of
+    case kvm_message:new(Call, NewMsgProps) of
         'ok' -> send_mwi_update(Box, Call);
         {'error', Call1, Msg} ->
             system_report(Msg, Call1)
@@ -1313,7 +1316,7 @@ get_mailbox_profile(Data, Call) ->
             {NameMediaId, OwnerId} = owner_info(AccountDb, MailboxJObj),
 
             MaxMessageCount = max_message_count(Call),
-            MsgCount = kz_vm_message:count(kapps_call:account_id(Call), Id),
+            MsgCount = kvm_messages:count(kapps_call:account_id(Call), Id),
 
             lager:info("mailbox limited to ~p voicemail messages (has ~b currently)"
                       ,[MaxMessageCount, MsgCount]
@@ -1779,7 +1782,7 @@ send_mwi_update(#mailbox{owner_id=OwnerId
                         }
                ,Call) ->
     _ = kz_util:spawn(fun cf_util:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
-    Messages = kz_vm_message:messages(kapps_call:account_id(Call), BoxId),
+    Messages = kvm_messages:get(kapps_call:account_id(Call), BoxId),
     New = kzd_box_message:count_folder(Messages, ?VM_FOLDER_NEW),
     Saved = kzd_box_message:count_folder(Messages, ?VM_FOLDER_SAVED),
     _ = kz_util:spawn(fun send_mwi_update/4, [New, Saved, BoxNumber, Call]),

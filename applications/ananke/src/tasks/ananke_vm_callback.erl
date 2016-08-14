@@ -47,7 +47,7 @@ check(AccountId, VMBoxId) ->
     end.
 
 has_unread(AccountId, VMBoxId) ->
-    {New, _} = kz_vm_message:count_per_folder(AccountId, VMBoxId),
+    {New, _} = kvm_messages:count_per_folder(AccountId, VMBoxId),
     New > 0.
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> any().

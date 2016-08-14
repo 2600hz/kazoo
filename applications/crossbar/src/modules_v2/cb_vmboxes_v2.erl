@@ -51,7 +51,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.execute.patch.vmboxes">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.vmboxes">>, ?MODULE, 'delete'),
     _ = crossbar_bindings:bind(<<"v2_resource.finish_request.post.vmboxes">>, ?MODULE, 'finish_request'),
-    _ = crossbar_bindings:bind(crossbar_cleanup:binding_account(), 'kz_vm_message', 'cleanup_heard_voicemail').
+    _ = crossbar_bindings:bind(crossbar_cleanup:binding_account(), 'kz_vm_maintenance', 'cleanup_heard_voicemail').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -203,13 +203,17 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE) ->
 
     case cb_context:req_value(Context, <<"source_id">>) of
         'undefined' ->
-            {'ok', Result} = kz_vm_message:update_folder(Folder, MsgIds, AccountId, OldBoxId),
+            {'ok', Result} = kvm_messages:change_folder(Folder, MsgIds, AccountId, OldBoxId),
             C = cb_context:set_resp_data(Context, Result),
             update_mwi(C, OldBoxId);
-        NewBoxId ->
-            Moved = kz_vm_message:change_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId),
+        ?NE_BINARY = NewBoxId ->
+            Moved = kvm_messages:move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId),
             C = cb_context:set_resp_data(Context, Moved),
-            update_mwi(C, [OldBoxId, NewBoxId])
+            update_mwi(C, [OldBoxId, NewBoxId]);
+        NewBoxIds ->
+            Copied = kvm_message:copy_to_vmboxes(AccountId, MsgIds, OldBoxId, NewBoxIds),
+            C = cb_context:set_resp_data(Context, Copied),
+            update_mwi(C, [OldBoxId | NewBoxIds])
     end.
 
 post(Context, _DocId, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
@@ -220,10 +224,14 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE, MediaId) ->
         'undefined' ->
             C = update_message_folder(OldBoxId, MediaId, Context, ?VM_FOLDER_SAVED),
             update_mwi(C, OldBoxId);
-        NewBoxId ->
-            Moved = kz_vm_message:change_vmbox(AccountId, MediaId, OldBoxId, NewBoxId),
+        ?NE_BINARY = NewBoxId ->
+            Moved = kvm_messages:move_to_vmbox(AccountId, MediaId, OldBoxId, NewBoxId),
             C = cb_context:set_resp_data(Context, Moved),
-            update_mwi(C, [OldBoxId, NewBoxId])
+            update_mwi(C, [OldBoxId, NewBoxId]);
+        NewBoxIds ->
+            Copied = kvm_message:copy_to_vmboxes(AccountId, MediaId, OldBoxId, NewBoxIds),
+            C = cb_context:set_resp_data(Context, Copied),
+            update_mwi(C, [OldBoxId | NewBoxIds])
     end.
 
 %%--------------------------------------------------------------------
@@ -245,20 +253,20 @@ put(Context) ->
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 delete(Context, DocId) ->
     AccountId = cb_context:account_id(Context),
-    Msgs = kz_vm_message:messages(AccountId, DocId),
-    _ = kz_vm_message:update_folder(?VM_FOLDER_DELETED, Msgs, cb_context:account_id(Context), DocId),
+    Msgs = kvm_messages:get(AccountId, DocId),
+    _ = kvm_messages:change_folder(?VM_FOLDER_DELETED, Msgs, cb_context:account_id(Context), DocId),
     C = crossbar_doc:delete(Context),
     update_mwi(C, DocId).
 
 delete(Context, DocId, ?MESSAGES_RESOURCE) ->
     MsgIds = cb_context:resp_data(Context),
-    {'ok', Result} = kz_vm_message:update_folder({?VM_FOLDER_DELETED, 'true'}, MsgIds, cb_context:account_id(Context), DocId),
+    {'ok', Result} = kvm_messages:change_folder({?VM_FOLDER_DELETED, 'true'}, MsgIds, cb_context:account_id(Context), DocId),
     C = cb_context:set_resp_data(Context, Result),
     update_mwi(C, DocId).
 
 delete(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
     AccountId = cb_context:account_id(Context),
-    case kz_vm_message:update_folder({?VM_FOLDER_DELETED, 'true'}, MediaId, AccountId, DocId) of
+    case kvm_message:change_folder({?VM_FOLDER_DELETED, 'true'}, MediaId, AccountId, DocId) of
         {'ok', Message} ->
             C = crossbar_util:response(Message, cb_context:set_resp_status(Context, 'success')),
             update_mwi(C, DocId);
@@ -330,7 +338,7 @@ validate_messages(Context, DocId, ?HTTP_POST) ->
             maybe_load_vmboxes([DocId | NewBoxId], Context)
     end;
 validate_messages(Context, DocId, ?HTTP_DELETE) ->
-    Messages = kz_vm_message:messages(cb_context:account_id(Context), DocId),
+    Messages = kvm_messages:get(cb_context:account_id(Context), DocId),
 
     Filter = case cb_context:req_value(Context, ?VM_KEY_MESSAGES) of
                  L when is_list(L) -> L;
@@ -344,7 +352,7 @@ validate_messages(Context, DocId, ?HTTP_DELETE) ->
                             ,ToDelete
      ).
 
--spec get_folder_filter(cb_context:context(), ne_binary()) -> kz_vm_message:vm_folder().
+-spec get_folder_filter(cb_context:context(), ne_binary()) -> kvm_message:vm_folder().
 get_folder_filter(Context, Default) ->
     ReqData = cb_context:req_data(Context),
     QS = cb_context:query_string(Context),
@@ -362,7 +370,7 @@ get_folder_filter(Context, Default) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--type filter_options() :: kz_vm_message:vm_folder() | ne_binaries().
+-type filter_options() :: kvm_message:vm_folder() | ne_binaries().
 
 -spec filter_messages(kz_json:objects(), filter_options(), cb_context:context()) -> ne_binaries().
 -spec filter_messages(kz_json:objects(), filter_options(), cb_context:context(), ne_binaries()) -> ne_binaries().
@@ -510,7 +518,7 @@ validate_patch(Context, DocId)->
 -spec load_vmbox_summary(cb_context:context()) -> cb_context:context().
 load_vmbox_summary(Context) ->
     Context1 = crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2),
-    MODBSummary = kz_vm_message:count_modb_messages(cb_context:account_id(Context)),
+    MODBSummary = kvm_messages:count_by_modb(cb_context:account_id(Context)),
     RspData = merge_summary_results(cb_context:doc(Context1), MODBSummary),
     cb_context:set_resp_data(cb_context:set_doc(Context1, RspData), RspData).
 
@@ -555,7 +563,7 @@ maybe_load_vmboxes([Id|Ids], Context) ->
 
 -spec load_vmbox(ne_binary(), cb_context:context()) -> cb_context:context().
 load_vmbox(DocId, Context) ->
-    case kz_vm_message:load_vmbox(cb_context:account_id(Context), DocId, 'false') of
+    case kvm_messages:load_vmbox(cb_context:account_id(Context), DocId, 'false') of
         {'ok', JObj} -> crossbar_doc:handle_json_success(JObj, Context);
         {'error', Error} -> crossbar_doc:handle_datamgr_errors(Error, DocId, Context)
     end.
@@ -568,7 +576,7 @@ load_vmbox(DocId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_message_summary(ne_binary(), cb_context:context()) -> cb_context:context().
 load_message_summary(DocId, Context) ->
-    Messages = kz_vm_message:messages(cb_context:account_id(Context), DocId),
+    Messages = kvm_messages:get(cb_context:account_id(Context), DocId),
     Filtered = maybe_filter_docs_by_qs(Messages, Context),
     crossbar_util:response(Filtered, cb_context:set_resp_status(Context, 'success')).
 
@@ -594,13 +602,9 @@ load_message(MediaId, BoxId, UpdateJObj, Context) ->
 
 -spec load_message_doc(ne_binary(), ne_binary(), cb_context:context()) -> {atom(), any()}.
 load_message_doc(MediaId, BoxId, Context) ->
-    case kz_vm_message:message_doc(cb_context:account_id(Context), MediaId) of
-        {'ok', MDoc}=OK ->
-            case kzd_box_message:source_id(MDoc) of
-                BoxId -> OK;
-                _ -> {'error', 'not_found'}
-            end;
-        {'error', _}=E -> E
+    case kvm_message:fetch(cb_context:account_id(Context), MediaId, BoxId) of
+        {'ok', _} = OK -> OK;
+        {'error', _} = E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -636,7 +640,7 @@ ensure_message_in_folder(Message, UpdateJObj, Context) ->
 %%--------------------------------------------------------------------
 -spec load_message_binary(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
 load_message_binary(BoxId, MediaId, Context) ->
-    case kz_vm_message:message_doc(cb_context:account_id(Context), MediaId) of
+    case kvm_message:fetch(cb_context:account_id(Context), MediaId, BoxId) of
         {'ok', JObj} ->
             case kz_datamgr:open_cache_doc(cb_context:account_db(Context), BoxId) of
                 {'error', Error} ->
@@ -666,10 +670,7 @@ load_attachment_from_message(Doc, BoxId, Context, Timezone) ->
                                   ,filename:extension(AttachmentId)
                                   ,Timezone
                                   ),
-    case (kzd_box_message:source_id(Doc) =:= BoxId)
-        andalso kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MediaId, AttachmentId)
-    of
-        'false' -> crossbar_doc:handle_datamgr_errors('not_found', MediaId, Context);
+    case kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MediaId, AttachmentId) of
         {'error', Error} ->
             crossbar_doc:handle_datamgr_errors(Error, MediaId, Context);
         {'ok', AttachBin} ->
@@ -719,7 +720,7 @@ save_attachments_to_file([Id|Ids], BoxId, Context, Timezone, WorkDir) ->
 -spec save_attachment_to_file(ne_binary(), ne_binary(), cb_context:context(), ne_binary(), string()) ->
                                      'ok' | {atom(), any()}.
 save_attachment_to_file(MsgId, BoxId, Context, Timezone, WorkDir) ->
-    case kz_vm_message:message_doc(cb_context:account_id(Context), MsgId) of
+    case kvm_message:fetch(cb_context:account_id(Context), MsgId, BoxId) of
         {'ok', Doc} ->
             VMMetaJObj = kzd_box_message:metadata(Doc),
 
@@ -729,11 +730,8 @@ save_attachment_to_file(MsgId, BoxId, Context, Timezone, WorkDir) ->
                                           ,filename:extension(AttachmentId)
                                           ,Timezone
                                           ),
-            case (kzd_box_message:source_id(Doc) =:= BoxId)
-                andalso kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MsgId, AttachmentId)
-            of
-                'false' -> {'error', 'not_found'};
-                {'error', _}=E -> E;
+            case kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MsgId, AttachmentId) of
+                {'error', _} = E -> E;
                 {'ok', AttachBin} ->
                     'ok' = file:write_file(lists:concat([WorkDir, kz_util:to_list(Filename)]), AttachBin)
             end;
@@ -816,7 +814,7 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
 update_message_folder(BoxId, MediaId, Context, DefaultFolder) ->
     AccountId = cb_context:account_id(Context),
     Folder = get_folder_filter(Context, DefaultFolder),
-    case kz_vm_message:update_folder(Folder, MediaId, AccountId, BoxId) of
+    case kvm_message:change_folder(Folder, MediaId, AccountId, BoxId) of
         {'ok', Message} ->
             crossbar_util:response(Message, cb_context:set_resp_status(Context, 'success'));
         {'error', Error} ->
