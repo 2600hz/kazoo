@@ -514,11 +514,11 @@ type_check_all(Prop, {Key, Fun}) ->
 
 -spec is_federated_event(kz_json:object()) -> boolean().
 is_federated_event(JObj) ->
-    case kz_json:get_ne_binary_value(<<"AMQP-Broker">>, JObj) of
+    case kz_json:get_ne_binary_value(?KEY_AMQP_BROKER, JObj) of
         'undefined' -> 'false';
         _Broker -> 'true'
     end.
 
 -spec event_zone(kz_json:object()) -> ne_binary().
 event_zone(JObj) ->
-    kz_json:get_ne_binary_value(<<"AMQP-Broker-Zone">>, JObj).
+    kz_json:get_ne_binary_value(?KEY_AMQP_ZONE, JObj).
