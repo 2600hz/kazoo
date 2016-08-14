@@ -499,7 +499,7 @@ sync_participant(JObj, _Call, #participant{in_conference='true'}=Participant) ->
 
 -spec notify_requestor(ne_binary(), non_neg_integer(), kz_json:object(), ne_binary()) -> 'ok'.
 notify_requestor(MyQ, MyId, DiscoveryEvent, ConferenceId) ->
-    case kz_json:get_value(<<"Server-ID">>, DiscoveryEvent) of
+    case kz_api:server_id(DiscoveryEvent) of
         'undefined' -> 'ok';
         <<>> -> 'ok';
         RequestorQ ->
@@ -507,7 +507,8 @@ notify_requestor(MyQ, MyId, DiscoveryEvent, ConferenceId) ->
                    ,{<<"Participant-ID">>, MyId}
                     | kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
                    ],
-            kapi_conference:publish_discovery_resp(RequestorQ, Resp)
+            Publisher = fun(P) -> kapi_conference:publish_discovery_resp(RequestorQ, P) end,
+            kz_amqp_worker:cast(Resp, Publisher)
     end.
 
 -spec play_announce(participant()) -> 'ok'.
