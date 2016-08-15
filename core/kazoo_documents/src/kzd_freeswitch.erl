@@ -44,6 +44,8 @@
         ,event_name/1
 
         ,ccv/2, ccv/3
+
+        ,is_loopback/1, loopback_other_leg/1, loopback_leg_name/1
         ]).
 
 -include("kz_documents.hrl").
@@ -281,3 +283,15 @@ user_agent(Props) ->
                             ]
                            ,Props
                            ).
+
+-spec loopback_leg_name(kz_proplist()) -> api_binary().
+loopback_leg_name(Props) ->
+    props:get_value(<<"variable_loopback_leg">>, Props).
+
+-spec is_loopback(kz_proplist()) -> boolean().
+is_loopback(Props) ->
+    props:get_value(<<"variable_loopback_leg">>, Props) =/= 'undefined'.
+
+-spec loopback_other_leg(kz_proplist()) -> api_binary().
+loopback_other_leg(Props) ->
+    props:get_value(<<"variable_other_loopback_leg_uuid">>, Props).
