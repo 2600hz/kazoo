@@ -124,6 +124,7 @@ handle_remove_req(JObj, _Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     {'ok', #state{}}.
 

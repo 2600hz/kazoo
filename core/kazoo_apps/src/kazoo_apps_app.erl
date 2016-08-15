@@ -12,13 +12,12 @@
 -include_lib("kazoo/include/kz_types.hrl").
 
 -export([start/2, stop/1]).
-
 -export([start/0]).
 
 
+-spec start() -> {'ok', atoms()}.
 start() ->
     {'ok', _Apps} = application:ensure_all_started('kazoo_apps').
-
 
 %% Application callbacks
 

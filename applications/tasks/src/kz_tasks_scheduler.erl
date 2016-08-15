@@ -253,6 +253,7 @@ cleanup_task(API, Data) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     _ = process_flag('trap_exit', 'true'),
     lager:info("ensuring db ~s exists", [?KZ_TASKS_DB]),

@@ -82,18 +82,26 @@ parse_until(C, Bin) ->
         [Pre, Post] -> {Pre, Post}
     end.
 
+-spec scheme(sip_uri()) -> 'sip' | 'sips'.
+-spec set_scheme(sip_uri(), number()) -> sip_uri().
 scheme(#sip_uri{scheme=S}) -> S.
 set_scheme(#sip_uri{}=Sip, S) ->
     Sip#sip_uri{scheme=S}.
 
+-spec user(sip_uri()) -> ne_binary().
+-spec set_user(sip_uri(), ne_binary()) -> sip_uri().
 user(#sip_uri{user=U}) -> U.
 set_user(#sip_uri{}=Sip, U) ->
     Sip#sip_uri{user=U}.
 
+-spec host(sip_uri()) -> ne_binary().
+-spec set_host(sip_uri(), ne_binary()) -> sip_uri().
 host(#sip_uri{host=H}) -> H.
 set_host(#sip_uri{}=Sip, H) ->
     Sip#sip_uri{host=H}.
 
+-spec port(sip_uri()) -> pos_integer().
+-spec set_port(sip_uri(), pos_integer()) -> sip_uri().
 port(#sip_uri{port=P}) -> P.
 set_port(#sip_uri{}=Sip, P) ->
     Sip#sip_uri{port=P}.

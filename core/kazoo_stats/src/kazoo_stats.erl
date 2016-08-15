@@ -50,20 +50,26 @@ start_link() -> start_link(?SEND_INTERVAL).
 start_link(Send_stats) ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [Send_stats], []).
 
+-spec stop() -> 'ok'.
 stop() ->
     gen_server:cast(?SERVER, 'stop').
 
+-spec getdb() -> state().
 getdb() ->
     gen_server:call(?SERVER, 'get_db').
 
+-spec increment_counter(any()) -> 'ok'.
+-spec increment_counter(any(), any()) -> 'ok'.
 increment_counter(Item) -> send_counter(Item, 1).
 
 increment_counter(Realm, Item) ->
     gen_server:cast(?SERVER, {'add', Realm, Item, 1}).
 
+-spec send_counter(any(), pos_integer()) -> 'ok'.
 send_counter(Item, Value) when is_integer(Value) ->
     gen_server:cast(?SERVER, {'add', Item, Value}).
 
+-spec send_absolute(any(), any()) -> 'ok'.
 send_absolute(Item, Value) ->
     gen_server:cast(?SERVER, {'store', Item, Value}).
 
@@ -82,7 +88,7 @@ send_absolute(Item, Value) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> {'ok', #state{}}.
+-spec init(list()) -> {'ok', state()}.
 init([Send_stats]) ->
     erlang:send_after(Send_stats, self(), {'send_stats', Send_stats}),
     {'ok', #state{send_stats=Send_stats}}.

@@ -249,6 +249,7 @@ disable(JObj) ->
 -spec type() -> ne_binary().
 type() -> ?PVT_TYPE.
 
+-spec devices(doc()) -> kz_device:docs().
 devices(UserJObj) ->
     AccountDb = kz_doc:account_db(UserJObj),
     UserId = kz_doc:id(UserJObj),

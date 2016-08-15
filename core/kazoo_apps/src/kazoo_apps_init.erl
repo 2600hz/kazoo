@@ -14,10 +14,12 @@
 
 -include("kazoo_apps.hrl").
 
+-spec start_link() -> startlink_ret().
 start_link() ->
     _ = kz_util:spawn(fun init/0),
     'ignore'.
 
+-spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
     case kz_config:get_atom('kazoo_apps', 'cookie') of

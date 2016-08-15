@@ -99,6 +99,7 @@ release(Pid) when is_pid(Pid) ->
 -spec close(api_pid()) -> 'ok'.
 close(Channel) -> close(Channel, []).
 
+-spec close(api_pid(), list()) -> 'ok'.
 close(Channel, []) when is_pid(Channel) ->
     _ = (catch gen_server:call(Channel, {'close', 200, <<"Goodbye">>}, 5 * ?MILLISECONDS_IN_SECOND)),
     lager:debug("closed amqp channel ~p", [Channel]);

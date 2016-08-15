@@ -324,6 +324,7 @@ channel_ccvs(JObj) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', state()}.
 init([Node, Options]) ->
     kz_util:put_callid(Node),
     lager:info("starting new fs channel listener for ~s", [Node]),

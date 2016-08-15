@@ -11,10 +11,6 @@
 
 -include("kz_att.hrl").
 
-%% ====================================================================
-%% API functions
-%% ====================================================================
-
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
@@ -26,6 +22,10 @@
 -define(FOLDER_CT, <<"application/vnd.google-apps.folder">>).
 -define(DRV_BASE_FETCH_URL, "https://www.googleapis.com/drive/v2/files/").
 
+
+%% ====================================================================
+%% API functions
+%% ====================================================================
 
 encode_multipart(Parts, Boundary) ->
     encode_multipart(Parts, Boundary, <<>>).
@@ -47,6 +47,7 @@ encode_multipart_headers([{K, V} | Headers], Encoded) ->
     Acc = <<Encoded/binary, K/binary, ": ", V/binary, "\r\n">>,
     encode_multipart_headers(Headers, Acc).
 
+-spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
 put_attachment(#{oauth_doc_id := TokenDocId, folder_id := Folder}, _DbName, _DocId, AName, Contents, Options) ->
     {'ok', Token} = kazoo_oauth_util:token(TokenDocId),
     CT = kz_mime:from_filename(AName),
@@ -93,6 +94,7 @@ convert_kv({K, V})
     convert_kv({K, kz_util:to_binary(V)});
 convert_kv(KV) -> KV.
 
+-spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) -> any().
 fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
     case kz_json:get_value(<<"gdrive">>, HandlerProps) of
         'undefined' -> {'error', 'invalid_data'};

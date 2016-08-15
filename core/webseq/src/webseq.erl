@@ -127,9 +127,12 @@ note(Ref, Who, Dir, Note) ->
     Srv = server_ref(Ref),
     gen_server:cast(Srv, {'write', "note ~s of ~s: ~s~n", [Dir, who(Srv, Who), what(Note)]}).
 
+-spec trunc(webseq_srv()) -> 'ok'.
+-spec rotate(webseq_srv()) -> 'ok'.
 trunc(Srv) -> gen_server:cast(server_ref(Srv), 'trunc').
 rotate(Srv) -> gen_server:cast(server_ref(Srv), 'rotate').
 
+-spec process_pid(kz_json:object()) -> ne_binary().
 process_pid(P) ->
     ProcId = kz_json:get_value(<<"Process-ID">>, P),
     case re:run(ProcId, <<".*(<.*>)">>, [{'capture', [1], 'binary'}]) of
@@ -138,8 +141,10 @@ process_pid(P) ->
         _ -> ProcId
     end.
 
+-spec reg_who(webseq_srv(), pid(), ne_binary()) -> 'ok'.
 reg_who(Srv, P, W) -> gen_server:cast(server_ref(Srv), {'reg_who', P, W}).
 
+-spec who(webseq_srv(), ne_binary() | pid()) -> ne_binary().
 who(Srv, P) ->
     case catch gen_server:call(server_ref(Srv), {'who', P}) of
         {'EXIT', _} when is_pid(P) -> pid_to_list(P);

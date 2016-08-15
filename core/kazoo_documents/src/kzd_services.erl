@@ -103,6 +103,8 @@ tree(JObj) ->
 tree(JObj, Default) ->
     kz_json:get_value(?TREE, JObj, Default).
 
+-spec type() -> ne_binary().
+-spec type(kz_json:object()) -> ne_binary().
 type() -> ?TYPE.
 type(JObj) ->
     kz_doc:type(JObj, ?TYPE).

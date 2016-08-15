@@ -431,6 +431,7 @@ owner_id(ObjectId, Call) ->
             'undefined'
     end.
 
+-spec owner_ids(api_binary(), kapps_call:call()) -> ne_binaries().
 owner_ids('undefined', _Call) -> [];
 owner_ids(ObjectId, Call) ->
     AccountDb = kapps_call:account_db(Call),

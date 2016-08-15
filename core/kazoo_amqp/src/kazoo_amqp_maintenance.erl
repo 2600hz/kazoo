@@ -36,9 +36,11 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec add_broker(ne_binary()) -> 'ok' | 'no_return'.
 add_broker(Broker) ->
     add_broker(Broker, 'local').
 
+-spec add_broker(ne_binary(), atom()) -> 'ok' | 'no_return'.
 add_broker(Broker, Zone) when not is_binary(Broker) ->
     add_broker(kz_util:to_binary(Broker), Zone);
 add_broker(Broker, Zone) when not is_atom(Zone) ->
@@ -67,6 +69,7 @@ add_broker(Broker, Zone) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec remove_broker(ne_binary()) -> 'ok'.
 remove_broker(Broker) when not is_binary(Broker) ->
     remove_broker(kz_util:to_binary(Broker));
 remove_broker(Broker) ->
@@ -78,9 +81,11 @@ remove_broker(Broker) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec add_connection(ne_binary()) -> 'ok' | 'no_return'.
 add_connection(Broker) ->
     add_connection(Broker, 'local').
 
+-spec add_connection(ne_binary(), atom()) -> 'ok' | 'no_return'.
 add_connection(Broker, Zone) when not is_binary(Broker) ->
     add_connection(kz_util:to_binary(Broker), Zone);
 add_connection(Broker, Zone) when not is_atom(Zone) ->
@@ -100,6 +105,7 @@ add_connection(Broker, Zone) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec primary_broker() -> 'no_return'.
 primary_broker() ->
     io:format("~s~n", [kz_amqp_connections:primary_broker()]),
     'no_return'.
@@ -110,6 +116,7 @@ primary_broker() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec validate_assignments() -> 'ok'.
 validate_assignments() ->
     Pattern = #kz_amqp_assignment{_='_'},
     validate_assignments(ets:match_object(?ASSIGNMENTS, Pattern, 1)).
@@ -207,6 +214,7 @@ log_invalid_assignment(#kz_amqp_assignment{}=Assignment) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec connection_summary() -> 'ok'.
 connection_summary() ->
     io:format("+--------------------------------------------------+------------------+----------+-----------+------------+---------+~n"),
     io:format("| Broker                                           |    Connection    | Channels | Available | Zone       | Primary |~n"),
@@ -247,6 +255,7 @@ connection_summary({[#kz_amqp_connections{connection=Connection
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec broker_summary() -> 'ok'.
 broker_summary() ->
     Pattern = #kz_amqp_assignment{broker='$1', _='_'},
     Brokers = ordsets:to_list(
@@ -387,6 +396,7 @@ broker_summary_prechannels(Broker) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec channel_summary() -> 'ok'.
 channel_summary() ->
     io:format("+--------------------------------------------------+----------+----------+-----------------+-----------------+-----------------+----------+----------+~n"),
     io:format("| Broker                                           |   Age    | Assigned |     Consumer    |     Channel     |   Connection    |   Type   | Watchers |~n"),
@@ -418,6 +428,7 @@ channel_summary_age(Timestamp) -> kz_util:elapsed_s(Timestamp).
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec consumer_details() -> 'ok'.
 consumer_details() ->
     MatchSpec = [{#kz_amqp_assignment{channel='$1'
                                      ,consumer='$2'
@@ -432,9 +443,11 @@ consumer_details() ->
                  }],
     print_consumer_details(ets:select(?ASSIGNMENTS, MatchSpec, 1)).
 
+-spec consumer_details(ne_binary()) -> 'ok'.
 consumer_details(ProcessUpper) ->
     consumer_details(<<"0">>, ProcessUpper, <<"0">>).
 
+-spec consumer_details(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(NodeNumber) ->
     consumer_details(kz_util:to_binary(NodeNumber), ProcessUpper, ProcessLower);
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(ProcessUpper) ->

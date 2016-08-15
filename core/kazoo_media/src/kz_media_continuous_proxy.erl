@@ -16,6 +16,10 @@
 
 -include("kazoo_media.hrl").
 
+-type state() :: {kz_json:object(), binary()}.
+
+-spec init(any(), cowboy_req:req(), any()) -> {'ok', cowboy_req:req(), state()} |
+                                              {'shutdown', cowboy_req:req(), 'ok'}.
 init({_Transport, _Proto}, Req0, _Opts) ->
     kz_util:put_callid(kz_util:rand_hex_binary(16)),
     case cowboy_req:path_info(Req0) of
@@ -48,6 +52,7 @@ init_from_doc(Url, Req) ->
             {'shutdown', Req1, 'ok'}
     end.
 
+-spec handle(cowboy_req:req(), state()) -> {'ok', cowboy_req:req(), 'ok'}.
 handle(Req0, {Meta, Bin}) ->
     Size = byte_size(Bin),
     ChunkSize = min(Size, ?CHUNKSIZE),
@@ -61,8 +66,7 @@ handle(Req0, {Meta, Bin}) ->
     Req2 = case ContentType of
                CT when CT =:= <<"audio/mpeg">> orelse CT =:= <<"audio/mp3">> ->
                    Req1 = set_resp_headers(Req0, ChunkSize, ContentType, MediaName, Url),
-                   cowboy_req:set_resp_body_fun(
-                     Size
+                   cowboy_req:set_resp_body_fun(Size
                                                ,fun(Socket, Transport) ->
                                                         lager:debug("ready to stream file using transport ~p to socket ~p", [Transport, Socket]),
                                                         kz_media_proxy_util:stream(Socket, Transport, ChunkSize, Bin
@@ -71,8 +75,7 @@ handle(Req0, {Meta, Bin}) ->
                                                 end
                                                ,Req1);
                CT ->
-                   cowboy_req:set_resp_body_fun(
-                     Size
+                   cowboy_req:set_resp_body_fun(Size
                                                ,fun(Socket, Transport) ->
                                                         lager:debug("ready to stream file using transport ~p to socket ~p", [Transport, Socket]),
                                                         kz_media_proxy_util:stream(Socket, Transport, ChunkSize, Bin, 'undefined', 'false')
@@ -85,6 +88,7 @@ handle(Req0, {Meta, Bin}) ->
 
     {'ok', Req3, 'ok'}.
 
+-spec terminate(any(), cowboy_req:req(), state()) -> cowboy_req:req().
 terminate(_Reason, Req, _State) ->
     lager:debug("terminating contiuous proxy req"),
     Req.

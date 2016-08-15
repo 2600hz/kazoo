@@ -282,6 +282,7 @@ do_update(AccountId, OldId, JObj, Funs, Blk) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec change_folder(ne_binary(), ne_binaries(), ne_binary(), ne_binary()) -> kz_json:object().
 change_folder(Folder, MsgIds, AccountId, BoxId) ->
     Fun = [fun(JObj) ->
                    kzd_box_message:apply_folder(Folder, JObj)

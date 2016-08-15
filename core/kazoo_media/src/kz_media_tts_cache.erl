@@ -62,6 +62,7 @@ start_link(Text, JObj) ->
 -spec single(pid()) -> {kz_json:object(), ne_binary()}.
 single(Srv) -> gen_server:call(Srv, 'single').
 
+-spec continuous(pid()) -> {kz_json:object(), ne_binary()}.
 continuous(Srv) -> gen_server:call(Srv, 'continuous').
 
 -spec stop(pid()) -> 'ok'.
@@ -83,6 +84,7 @@ stop(Srv) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', state()}.
 init([Text, JObj]) ->
     kz_util:put_callid(kz_util:binary_md5(Text)),
 

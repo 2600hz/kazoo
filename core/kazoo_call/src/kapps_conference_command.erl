@@ -233,6 +233,7 @@ send_command([_|_]=Command, Conference) ->
     end;
 send_command(JObj, Conference) -> send_command(kz_json:to_proplist(JObj), Conference).
 
+-spec macro([kz_proplist()], kapps_conference:conference()) -> 'ok'.
 macro(Commands, Conference) ->
     Values = [{<<"Event-Category">>, <<"conference">>}
              ,{<<"Event-Name">>, <<"command">>}

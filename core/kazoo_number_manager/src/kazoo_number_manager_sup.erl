@@ -42,6 +42,7 @@ start_link() ->
 %% Supervisor callbacks
 %% ===================================================================
 
+-spec init([]) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,

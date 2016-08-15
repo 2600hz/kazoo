@@ -510,6 +510,7 @@ trial_time_left(JObj, Now) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec trial_has_expired(doc()) -> boolean().
+-spec trial_has_expired(doc(), gregorian_seconds()) -> boolean().
 trial_has_expired(JObj) ->
     trial_has_expired(JObj, kz_util:current_tstamp()).
 trial_has_expired(JObj, Now) ->

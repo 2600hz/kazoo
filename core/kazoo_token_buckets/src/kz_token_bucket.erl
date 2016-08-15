@@ -75,6 +75,7 @@
 %%--------------------------------------------------------------------
 -spec start_link(pos_integer(), pos_integer()) -> startlink_ret().
 -spec start_link(pos_integer(), pos_integer(), boolean()) -> startlink_ret().
+-spec start_link(pos_integer(), pos_integer(), boolean(), fill_rate_time()) -> startlink_ret().
 start_link(Max, FillRate) -> start_link(Max, FillRate, 'true').
 start_link(Max, FillRate, FillAsBlock) ->
     start_link(Max, FillRate, FillAsBlock, default_fill_time()).
@@ -90,6 +91,7 @@ start_link(Max, FillRate, FillAsBlock, FillTime)
        ->
     gen_server:start_link(?SERVER, [Max, FillRate, FillAsBlock, FillTime], []).
 
+-spec start_link(ne_binary(), pos_integer(), pos_integer(), boolean(), fill_rate_time()) -> startlink_ret().
 start_link(Name, Max, FillRate, FillAsBlock, FillTime)
   when is_integer(FillRate), FillRate > 0,
        is_integer(Max), Max > 0,
@@ -165,6 +167,7 @@ normalize_fill_time(_) -> 'second'.
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', state()}.
 init([Max, FillRate, FillAsBlock, FillTime]) ->
     kz_util:put_callid(?MODULE),
     lager:debug("starting token bucket with ~b max, filling at ~b/~s, in a block: ~s"

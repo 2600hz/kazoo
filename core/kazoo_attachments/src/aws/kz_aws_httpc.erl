@@ -10,14 +10,17 @@
         'httpc' | 'hackney' |
         {module(), atom()} |
         fun((string(),
-             'head' | 'get' | 'put' | 'post' | 'trace' | 'options' | 'delete',
-             list({binary(), binary()}),
-             binary(), pos_integer(), #aws_config{}) ->
-                   {'ok', {{pos_integer(), string()},
-                           list({string(), string()}), binary()}} |
+             kz_aws:method(),
+             kz_aws:headers(),
+             binary(), pos_integer(), kz_aws:config()
+            ) ->
+                   {'ok', {{pos_integer(), string()}, kz_aws:headers(), binary()}} |
                    {'error', any()}).
 -export_type([request_fun/0]).
 
+-spec request(string(), kz_aws:method(), kz_aws:headers(), binary(), pos_integer(), kz_aws:config()) ->
+                     {'ok', {{pos_integer(), string()}, kz_aws:headers(), binary()}} |
+                     {'error', any()}.
 request(URL, Method, Hdrs, Body, Timeout,
         #aws_config{http_client = 'httpc'} = Config) ->
     request_httpc(URL, Method, Hdrs, Body, Timeout, Config);

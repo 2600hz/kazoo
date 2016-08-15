@@ -24,12 +24,15 @@
 -define(CACHED_ACCOUNT_DATAPLAN(A), fetch_cached_dataplan(A, fun fetch_account_dataplan/1)).
 -define(CACHED_STORAGE_DATAPLAN(A,B), fetch_cached_dataplan({A, B}, fun fetch_storage_dataplan/1)).
 
+-spec flush() -> 'ok'.
 flush() ->
     kz_cache:flush_local(?KAZOO_DATA_PLAN_CACHE).
 
+-spec plan() -> map().
 plan() ->
     system_dataplan().
 
+-spec plan(ne_binary()) -> map().
 plan(DbName) ->
     get_dataplan(DbName).
 

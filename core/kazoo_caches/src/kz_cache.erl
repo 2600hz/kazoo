@@ -99,6 +99,7 @@ start_link(Name) when is_atom(Name) ->
 start_link(Name, Props) when is_list(Props) ->
     start_link(Name, ?EXPIRE_PERIOD, Props).
 
+-spec start_link(atom(), kz_timeout(), kz_proplist()) -> startlink_ret().
 start_link(Name, ExpirePeriod, Props) ->
     case props:get_value('origin_bindings', Props) of
         'undefined' ->
@@ -346,6 +347,7 @@ wait_for_key_local(Srv, Key, Timeout) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', state()}.
 init([Name, ExpirePeriod, Props]) ->
     kz_util:put_callid(Name),
     kapi_conf:declare_exchanges(),
@@ -411,6 +413,7 @@ to_tab(Tab, Suffix) ->
 monitor_response_fun(Pid, Ref) ->
     fun(_, Value, Reason) -> Pid ! {Reason, Ref, Value} end.
 
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'tables'}, _From, #state{pointer_tab=PointerTab
                                      ,monitor_tab=MonitorTab
                                      }=State) ->

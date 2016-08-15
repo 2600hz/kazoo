@@ -32,7 +32,8 @@
 
 -define(STAT_CHECK_MSG, 'stat_check').
 
--record(state, {stat_timer_ref :: reference()}).
+-record(state, {stat_timer_ref :: reference()
+               }).
 -type state() :: #state{}.
 
 %%%===================================================================
@@ -61,6 +62,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?MODULE),
     {'ok', #state{stat_timer_ref=start_timer()}}.

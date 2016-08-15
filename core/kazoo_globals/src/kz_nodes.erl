@@ -352,6 +352,7 @@ handle_advertise(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', nodes_state()}.
 init([]) ->
     lager:debug("starting nodes watcher"),
     kapi_nodes:declare_exchanges(),

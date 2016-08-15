@@ -17,6 +17,7 @@
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
+-spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
 put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     #{url := BaseUrl, verb := Verb} = Params,
     {'ok', JObj} = kz_datamgr:open_cache_doc(DbName, DocId, Options),
@@ -42,6 +43,7 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
 add_document_url_field('undefined', _) -> [];
 add_document_url_field(DocUrlField, Url) -> [{'document', [{DocUrlField, Url}]}].
 
+-spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) -> any().
 fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
     case kz_json:get_value(<<"url">>, HandlerProps) of
         'undefined' -> {'error', 'invalid_data'};

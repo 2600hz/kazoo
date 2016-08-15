@@ -15,6 +15,10 @@
 
 -include("kazoo_media.hrl").
 
+-type state() :: {kz_json:object(), binary()}.
+
+-spec init(any(), cowboy_req:req(), any()) -> {'ok', cowboy_req:req(), state()} |
+                                              {'shutdown', cowboy_req:req(), 'ok'}.
 init({_Transport, _Proto}, Req0, _Opts) ->
     kz_util:put_callid(kz_util:rand_hex_binary(16)),
     case cowboy_req:path_info(Req0) of
@@ -58,6 +62,7 @@ init_from_doc(Url, Req) ->
             {'shutdown', Req1, 'ok'}
     end.
 
+-spec handle(cowboy_req:req(), state()) -> {'ok', cowboy_req:req(), 'ok'}.
 handle(Req0, {Meta, Bin}) ->
     Size = byte_size(Bin),
     lager:debug("found binary to return: ~b bytes", [Size]),
@@ -89,6 +94,7 @@ handle(Req0, {Meta, Bin}) ->
     {'ok', Req3} = cowboy_req:reply(200, Req2),
     {'ok', Req3, 'ok'}.
 
+-spec terminate(any(), cowboy_req:req(), state()) -> cowboy_req:req().
 terminate(_Reason, Req, _State) ->
     lager:debug("terminating single proxy req"),
     Req.

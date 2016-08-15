@@ -213,6 +213,8 @@ add_srv_host(Domains, Host, Settings) ->
 
 -spec save(doc()) -> {'ok', doc()} |
                      {'error', any()}.
+-spec save(doc(), api_object()) -> {'ok', doc()} |
+                                   {'error', any()}.
 save(Domains) ->
     save(Domains, 'undefined').
 save(Domains, PvtFields) ->

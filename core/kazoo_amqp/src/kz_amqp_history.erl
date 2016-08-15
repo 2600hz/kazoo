@@ -166,6 +166,7 @@ is_bound(Consumer, Exchange, Queue, RoutingKey) when is_pid(Consumer) ->
 %%                     {'stop', Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?MODULE),
     _ = ets:new(?TAB, ['named_table'

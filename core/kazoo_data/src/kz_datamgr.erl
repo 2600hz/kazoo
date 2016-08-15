@@ -563,6 +563,9 @@ open_cache_doc(DbName, DocId, Options) ->
         {'error', _}=E -> E
     end.
 
+-spec add_to_doc_cache(text(), ne_binary(), kz_json:object()) ->
+                              {'ok', kz_json:objects()} |
+                              data_error().
 add_to_doc_cache(DbName, DocId, Doc) when ?VALID_DBNAME ->
     kzs_cache:add_to_doc_cache(DbName, DocId, Doc);
 add_to_doc_cache(DbName, DocId, Doc) ->

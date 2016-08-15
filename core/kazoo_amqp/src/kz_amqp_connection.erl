@@ -74,6 +74,7 @@ disconnect(Srv) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', kz_amqp_connection()}.
 init([#kz_amqp_connection{}=Connection]) ->
     _ = process_flag('trap_exit', 'true'),
     kz_util:put_callid(?LOG_SYSTEM_ID),

@@ -241,12 +241,15 @@ matches(_, _) -> 'false'.
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
+-spec stop() -> 'ok'.
 stop() -> gen_server:cast(?SERVER, 'stop').
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
 -type bind_results() :: [bind_result()].
 -spec bind(ne_binary() | ne_binaries(), atom(), atom()) ->
+                  bind_result() | bind_results().
+-spec bind(ne_binary() | ne_binaries(), atom(), atom(), any()) ->
                   bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun) ->
     [bind(Binding, Module, Fun) || Binding <- Bindings];
@@ -332,6 +335,7 @@ gift_data() -> 'ok'.
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
     lager:debug("starting bindings server"),
