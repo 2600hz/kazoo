@@ -95,7 +95,7 @@ unbind_q(Queue, _Props) ->
 declare_exchanges() ->
     amqp_util:kapps_exchange().
 
--spec publish_query_req(kz_json:object()) -> 'ok'.
+-spec publish_query_req(api_terms()) -> 'ok'.
 -spec publish_query_req(api_terms(), ne_binary()) -> 'ok'.
 publish_query_req(JObj) ->
     publish_query_req(JObj, ?DEFAULT_CONTENT_TYPE).
@@ -103,7 +103,7 @@ publish_query_req(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?QUERY_REQ_VALUES, fun query_req/1),
     amqp_util:kapps_publish(?QUERY_REQ_ROUTING_KEY, Payload, ContentType).
 
--spec publish_query_resp(ne_binary(), kz_json:object()) -> 'ok'.
+-spec publish_query_resp(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_query_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_query_resp(RespQ, JObj) ->
     publish_query_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).

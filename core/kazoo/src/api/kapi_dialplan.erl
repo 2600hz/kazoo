@@ -1095,8 +1095,8 @@ metaflow_callid(JObj) ->
     kz_json:get_value([<<"Call">>, <<"Call-ID">>], JObj).
 
 %% sending DP actions to CallControl Queue
--spec publish_action(ne_binary(), kz_json:object()) -> 'ok'.
--spec publish_action(ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec publish_action(ne_binary(), iodata()) -> 'ok'.
+-spec publish_action(ne_binary(), iodata(), ne_binary()) -> 'ok'.
 publish_action(Queue, JSON) ->
     publish_action(Queue, JSON, ?DEFAULT_CONTENT_TYPE).
 publish_action(Queue, Payload, ContentType) ->
@@ -1254,4 +1254,3 @@ transfer(JObj) -> transfer(kz_json:to_proplist(JObj)).
 transfer_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?TRANSFER_HEADERS, ?TRANSFER_VALUES, ?TRANSFER_TYPES);
 transfer_v(JObj) -> transfer_v(kz_json:to_proplist(JObj)).
-
