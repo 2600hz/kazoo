@@ -1551,11 +1551,14 @@ transfer(Node, UUID, <<"attended">>, TransferTo, JObj) ->
               ,<<"Authorizing-Type">>
               ,<<"Channel-Authorized">>
               ],
-    Realm = props:get_value(<<"Account-Realm">>, CCVs),
+    Realm = case props:get_value(<<"Account-Realm">>, CCVs) of
+                'undefined' -> kz_json:get_value(<<"From-Realm">>, JObj);
+                Value -> Value
+            end,
     ReqURI = <<TransferTo/binary, "@", Realm/binary>>,
     Vars = [{<<"Ignore-Early-Media">>, <<"ring_ready">>}
            ,{<<"Simplify-Loopback">>, <<"false">>}
-           ,{<<"Loopback-Bowout">>, <<"true">>}
+           ,{<<"Loopback-Bowout">>, <<"false">>}
            ,{<<"Loopback-Request-URI">>, ReqURI}
            ,{<<"SIP-Invite-Domain">>, Realm}
            ],

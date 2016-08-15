@@ -219,6 +219,9 @@ to_props(Channel) ->
       ,{<<"from_tag">>, Channel#channel.from_tag}
       ,{<<"elapsed_s">>, kz_util:elapsed_s(Channel#channel.timestamp)}
       ,{<<"interaction_id">>, Channel#channel.interaction_id}
+      ,{<<"is_loopback">>, Channel#channel.is_loopback}
+      ,{<<"loopback_leg_name">>, Channel#channel.loopback_leg_name}
+      ,{<<"loopback_other_leg">>, Channel#channel.loopback_other_leg}
       ]).
 
 -spec to_api_json(channel()) -> kz_json:object().
@@ -257,6 +260,9 @@ to_api_props(Channel) ->
       ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
       ,{<<"Elapsed-Seconds">>, kz_util:elapsed_s(Channel#channel.timestamp)}
       ,{<<?CALL_INTERACTION_ID>>, Channel#channel.interaction_id}
+      ,{<<"is_loopback">>, Channel#channel.is_loopback}
+      ,{<<"loopback_leg_name">>, Channel#channel.loopback_leg_name}
+      ,{<<"loopback_other_leg">>, Channel#channel.loopback_other_leg}
       ]).
 
 -spec channel_ccvs(channel() | kz_json:object() | kz_proplist()) -> kz_proplist().
@@ -663,6 +669,9 @@ props_to_record(Props, Node) ->
             ,to_tag=props:get_value(<<"variable_sip_to_tag">>, Props)
             ,from_tag=props:get_value(<<"variable_sip_from_tag">>, Props)
             ,interaction_id=props:get_value(<<?CALL_INTERACTION_ID>>, CCVs)
+            ,is_loopback=kzd_freeswitch:is_loopback(Props)
+            ,loopback_leg_name=kzd_freeswitch:loopback_leg_name(Props)
+            ,loopback_other_leg=kzd_freeswitch:loopback_other_leg(Props)
             }.
 
 -spec handling_locally(kz_proplist()) -> boolean().
@@ -722,6 +731,9 @@ props_to_update(Props) ->
                            ,{#channel.to_tag, props:get_value(<<"variable_sip_to_tag">>, Props)}
                            ,{#channel.from_tag, props:get_value(<<"variable_sip_from_tag">>, Props)}
                            ,{#channel.interaction_id, props:get_value(<<?CALL_INTERACTION_ID>>, CCVs)}
+                           ,{#channel.is_loopback, kzd_freeswitch:is_loopback(Props)}
+                           ,{#channel.loopback_leg_name, kzd_freeswitch:loopback_leg_name(Props)}
+                           ,{#channel.loopback_other_leg, kzd_freeswitch:loopback_other_leg(Props)}
                             | update_callee(UUID, Props)
                            ]).
 
