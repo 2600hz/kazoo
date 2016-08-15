@@ -60,10 +60,10 @@ default_profile() ->
 
 -spec page_profile() -> wh_json:object().
 page_profile() ->
-    whapps_config:get(?CONFIG_CAT
-                      ,[<<"profiles">>, ?PAGE_PROFILE_NAME]
-                      ,wh_json:from_list(?PAGE_PROFILE_CONFIG)
-                     ).
+    kapps_config:get(?CONFIG_CAT
+                    ,[<<"profiles">>, ?PAGE_PROFILE_NAME]
+                    ,wh_json:from_list(?PAGE_PROFILE_CONFIG)
+                    ).
 
 -spec profiles(ne_binary(), kz_json:object()) -> kz_json:object().
 profiles(ConfigName, Profile) ->
@@ -94,8 +94,8 @@ max_members_sound(Conference) ->
     end.
 
 -spec get_conference(ne_binary()) -> kapps_conference:conference().
-get_conference(?DEFAULT_PROFILE_NAME) -> whapps_conference:new();
-get_conference(?PAGE_PROFILE_NAME) -> whapps_conference:new();
+get_conference(?DEFAULT_PROFILE_NAME) -> kapps_conference:new();
+get_conference(?PAGE_PROFILE_NAME) -> kapps_conference:new();
 get_conference(ConferenceID) ->
     Participants =
         [Pid ||
