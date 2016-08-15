@@ -20,6 +20,8 @@ handle_req(JObj, _Options) ->
 -spec fetch_config(kz_json:object(), ne_binary()) -> 'ok'.
 fetch_config(JObj, ?DEFAULT_PROFILE_NAME = ConfigName) ->
     fetch_config(JObj, ConfigName, default_profile());
+fetch_config(JObj, ?PAGE_PROFILE_NAME = ConfigName) ->
+    fetch_config(JObj, ConfigName, page_profile());
 fetch_config(JObj, ConfigName) ->
     Config = kapps_config:get(?CONFIG_CAT, [<<"profiles">>, ConfigName]),
     fetch_config(JObj, ConfigName, Config).
@@ -56,6 +58,13 @@ default_profile() ->
                     ,kz_json:from_list(?DEFAULT_PROFILE_CONFIG)
                     ).
 
+-spec page_profile() -> wh_json:object().
+page_profile() ->
+    kapps_config:get(?CONFIG_CAT
+                    ,[<<"profiles">>, ?PAGE_PROFILE_NAME]
+                    ,kz_json:from_list(?PAGE_PROFILE_CONFIG)
+                    ).
+
 -spec profiles(ne_binary(), kz_json:object()) -> kz_json:object().
 profiles(ConfigName, Profile) ->
     NewContent = add_conference_params(ConfigName, Profile),
@@ -86,6 +95,7 @@ max_members_sound(Conference) ->
 
 -spec get_conference(ne_binary()) -> kapps_conference:conference().
 get_conference(?DEFAULT_PROFILE_NAME) -> kapps_conference:new();
+get_conference(?PAGE_PROFILE_NAME) -> kapps_conference:new();
 get_conference(ConferenceID) ->
     Participants =
         [Pid ||
@@ -102,8 +112,6 @@ get_conference(ConferenceID) ->
 
 -spec caller_controls(ne_binary()) -> api_object().
 -spec caller_controls(ne_binary(), api_object()) -> api_object().
-caller_controls(?DEFAULT_PROFILE_NAME = ConfigName) ->
-    caller_controls(ConfigName, ?CALLER_CONTROLS(ConfigName, ?DEFAULT_CALLER_CONTROLS_CONFIG));
 caller_controls(ConfigName) ->
     caller_controls(ConfigName, ?CALLER_CONTROLS(ConfigName)).
 
@@ -115,6 +123,8 @@ caller_controls(ConfigName, Controls) ->
 -spec advertise(ne_binary(), api_object()) -> api_object().
 advertise(?DEFAULT_PROFILE_NAME = ConfigName) ->
     advertise(ConfigName, ?ADVERTISE(ConfigName, ?DEFAULT_ADVERTISE_CONFIG));
+advertise(?PAGE_PROFILE_NAME = ConfigName) ->
+    advertise(ConfigName, ?ADVERTISE(ConfigName, ?PAGE_ADVERTISE_CONFIG));
 advertise(ConfigName) ->
     advertise(ConfigName, ?ADVERTISE(ConfigName)).
 
@@ -125,6 +135,8 @@ advertise(ConfigName, Advertise) -> kz_json:from_list([{ConfigName, Advertise}])
 -spec chat_permissions(ne_binary(), api_object()) -> api_object().
 chat_permissions(?DEFAULT_PROFILE_NAME = ConfigName) ->
     chat_permissions(ConfigName, ?CHAT_PERMISSIONS(ConfigName, ?DEFAULT_CHAT_CONFIG));
+chat_permissions(?PAGE_PROFILE_NAME= ConfigName) ->
+    chat_permissions(ConfigName, ?CHAT_PERMISSIONS(ConfigName, ?PAGE_CHAT_CONFIG));
 chat_permissions(ConfigName) ->
     chat_permissions(ConfigName, ?CHAT_PERMISSIONS(ConfigName)).
 

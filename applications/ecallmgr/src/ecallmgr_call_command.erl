@@ -354,7 +354,7 @@ get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
                                             end, DP, ecallmgr_util:build_simple_channels(Endpoints))
                         end
                        ,fun(DP) ->
-                                [{"application", <<"conference ", PageId/binary, "@default">>}
+                                [{"application", <<"conference ", PageId/binary, "@page">>}
                                 ,{"application", <<"park">>}
                                  |DP
                                 ]

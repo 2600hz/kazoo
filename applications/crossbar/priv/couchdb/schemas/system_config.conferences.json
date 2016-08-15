@@ -17,7 +17,6 @@
             "properties": {
                 "{ConfigName}": {
                     "properties": {
-                        "default": [],
                         "description": "conferences {ConfigName}",
                         "name": "{ConfigName}",
                         "type": "array"
@@ -68,6 +67,22 @@
                         },
                         "description": "conferences default",
                         "name": "default",
+                        "type": "object"
+                    }
+                },
+                "page": {
+                    "properties": {
+                        "default": {
+                            "caller-controls": "default",
+                            "comfort-noise": 1000,
+                            "energy-level": 20,
+                            "enter-sound": "",
+                            "interval": 20,
+                            "moh-sound": "",
+                            "rate": 8000
+                        },
+                        "description": "conferences page",
+                        "name": "page",
                         "type": "object"
                     }
                 },
