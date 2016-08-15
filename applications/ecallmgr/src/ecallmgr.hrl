@@ -84,6 +84,9 @@
                  ,interaction_id :: api_binary() | '$5' | '_'
                  ,callee_number :: api_binary() | '$5' | '_'
                  ,callee_name :: api_binary() | '$5' | '_'
+                 ,is_loopback :: boolean() | '_'
+                 ,loopback_leg_name :: api_binary() | '_'
+                 ,loopback_other_leg :: api_binary() | '_'
                  }).
 
 -type channel() :: #channel{}.
