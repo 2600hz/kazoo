@@ -570,6 +570,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec maybe_process_channel_destroy(atom(), ne_binary(), kz_proplist()) -> 'ok'.
 maybe_process_channel_destroy(Node, CallId, Props) ->
+    kz_util:spawn(fun maybe_manual_bowout/2, [Node, Props]),
     case ecallmgr_fs_channel:node(CallId) of
         {'ok', Node} -> gen_server:cast(self(), {'graceful_shutdown', CallId});
         {'error', _} -> gen_server:cast(self(), {'graceful_shutdown', CallId});
@@ -580,6 +581,24 @@ maybe_process_channel_destroy(Node, CallId, Props) ->
             Event = create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props),
             publish_event(Event)
     end.
+
+-spec maybe_manual_bowout(atom(), kz_proplist()) -> 'ok'.
+maybe_manual_bowout(Node, Props) ->
+    App = props:get_value(<<"variable_last_app">>, Props),
+    Role = props:get_value(<<"variable_last_bridge_role">>, Props),
+    BridgeTo = props:get_value(<<"variable_last_bridge_to">>, Props),
+    maybe_manual_bowout(Node, App, Role, BridgeTo).
+
+-spec maybe_manual_bowout(atom(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+maybe_manual_bowout(Node, <<"att_xfer">>, <<"originator">>, UUID) ->
+    case ecallmgr_fs_channel:fetch(UUID,  'record') of
+        {'ok', #channel{loopback_other_leg=OtherLeg, is_loopback='true'}} ->
+            freeswitch:api(Node, 'uuid_setvar', <<UUID/binary, " ", "loopback_bowout true">>),
+            freeswitch:api(Node, 'uuid_setvar', <<OtherLeg/binary, " ", "loopback_bowout true">>),
+            'ok';
+        _ -> 'ok'
+    end;
+maybe_manual_bowout(_Node, _App, _Role, _UUID) -> 'ok'.
 
 -spec process_channel_event(kz_proplist()) -> 'ok'.
 process_channel_event(Props) ->
