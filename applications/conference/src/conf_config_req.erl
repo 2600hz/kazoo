@@ -62,7 +62,7 @@ default_profile() ->
 page_profile() ->
     kapps_config:get(?CONFIG_CAT
                     ,[<<"profiles">>, ?PAGE_PROFILE_NAME]
-                    ,wh_json:from_list(?PAGE_PROFILE_CONFIG)
+                    ,kz_json:from_list(?PAGE_PROFILE_CONFIG)
                     ).
 
 -spec profiles(ne_binary(), kz_json:object()) -> kz_json:object().
