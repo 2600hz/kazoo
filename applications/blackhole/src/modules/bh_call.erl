@@ -11,7 +11,7 @@
 -module(bh_call).
 
 -export([handle_event/2
-        ,subscribe/2, unsubscribe/2
+        ,subscribe/3, unsubscribe/3
         ]).
 
 -include("blackhole.hrl").
@@ -30,38 +30,38 @@ handle_event(Context, EventJObj) ->
 event_name(JObj) ->
     kz_json:get_value(<<"Event-Name">>, JObj).
 
--spec subscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-subscribe(Context, <<"call.*.*">>) ->
-    AccountId = bh_context:account_id(Context),
+-spec subscribe(bh_context:context(), ne_binary(), kz_json:object()) -> bh_subscribe_result().
+subscribe(Context, <<"call.*.*">>, JObj) ->
+    AccountId = blackhole_util:get_account(Context, JObj),
     add_call_binding(AccountId, Context, ?LISTEN_TO),
     {'ok', Context};
-subscribe(Context, <<"call.", Binding/binary>>) ->
+subscribe(Context, <<"call.", Binding/binary>>, JObj) ->
     case binary:split(Binding, <<".">>, ['global']) of
         [Event, <<"*">>] ->
-            AccountId = bh_context:account_id(Context),
+            AccountId = blackhole_util:get_account(Context, JObj),
             add_call_binding(AccountId, Context, [Event]),
             {'ok', Context};
         _ ->
             {'error', <<"Unmatched binding">>}
     end;
-subscribe(_Context, _Binding) ->
+subscribe(_Context, _Binding, _JObj) ->
     {'error', <<"Unmatched binding">>}.
 
--spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-unsubscribe(Context, <<"call.*.*">>) ->
-    AccountId = bh_context:account_id(Context),
+-spec unsubscribe(bh_context:context(), ne_binary(), kz_json:object()) -> bh_subscribe_result().
+unsubscribe(Context, <<"call.*.*">>, JObj) ->
+    AccountId = blackhole_util:get_account(Context, JObj),
     rm_call_binding(AccountId, Context, ?LISTEN_TO),
     {'ok', Context};
-unsubscribe(Context, <<"call.", Binding/binary>>) ->
+unsubscribe(Context, <<"call.", Binding/binary>>, JObj) ->
     case binary:split(Binding, <<".">>, ['global']) of
         [Event, <<"*">>] ->
-            AccountId = bh_context:account_id(Context),
+            AccountId = blackhole_util:get_account(Context, JObj),
             rm_call_binding(AccountId, Context, [Event]),
             {'ok', Context};
         _ ->
             {'error', <<"Unmatched binding">>}
     end;
-unsubscribe(_Context, _Binding) ->
+unsubscribe(_Context, _Binding, _JObj) ->
     {'error', <<"Unmatched binding">>}.
 
 -spec add_call_binding(ne_binary(), bh_context:context(), [ne_binary()]) -> ok.

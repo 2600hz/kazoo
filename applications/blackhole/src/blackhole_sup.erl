@@ -23,6 +23,7 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER('blackhole_listener')
                   ,?WORKER('blackhole_tracking')
+                  ,?WORKER('blackhole_limit')
                   ]).
 
 %% ===================================================================

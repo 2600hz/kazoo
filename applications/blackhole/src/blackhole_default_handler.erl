@@ -22,19 +22,26 @@ init({_Any, 'http'}, _Req0, _HandlerOpts) ->
     {'upgrade', 'protocol', 'cowboy_websocket'}.
 
 websocket_init(_Type, Req, _Opts) ->
-    {Peer, _}  = cowboy_req:peer(Req),
-    {RemIp, _} = Peer,
-
-    {'ok', State} = blackhole_socket_callback:open(self(), session_id(Req), RemIp),
-    {'ok', Req, State}.
+    try
+        {Peer, _}  = cowboy_req:peer(Req),
+        {RemIp, _} = Peer,
+        {'ok', State} = blackhole_socket_callback:open(RemIp),
+        {'ok', Req, State}
+    catch
+        _:Error ->
+            lager:error("error init websocket:~p", [Error]),
+            {'shutdown', Req}
+    end.
 
 websocket_handle({'text', Data}, Req, State) ->
-    Obj    = kz_json:decode(Data),
-    Action = kz_json:get_value(<<"action">>, Obj),
-    Msg    = kz_json:delete_key(<<"action">>, Obj),
-
-    {'ok', NewState} = blackhole_socket_callback:recv(self(), session_id(Req), {Action, Msg}, State),
-    {'ok', Req, NewState}.
+    try
+        JObj = kz_json:decode(Data),
+        NewState = #bh_context{} = blackhole_socket_callback:recv(JObj, State),
+        {'ok', Req, NewState}
+    catch
+        _:Error ->
+            {reply, {'text', error_message(Error)}, Req, State}
+    end.
 
 websocket_info({'$gen_cast', _}, Req, State) ->
     {'ok', Req, State};
@@ -43,19 +50,29 @@ websocket_info({'send_event', Event, Data}, Req, State) ->
     Msg = kz_json:set_value(<<"routing_key">>, Event, Data),
     {'reply', {'text', kz_json:encode(Msg)}, Req, State};
 
+websocket_info({'send_message', Msg}, Req, State) ->
+    {'reply', {'text', kz_json:encode(Msg)}, Req, State};
+
 websocket_info(Info, Req, State) ->
     lager:info("unhandled websocket info: ~p", [Info]),
     {'ok', Req, State}.
 
-websocket_terminate(_Reason, Req, State) ->
-    blackhole_socket_callback:close(self(), session_id(Req), State).
+websocket_terminate(_Reason, _Req, State) ->
+    blackhole_socket_callback:close(State).
 
--spec session_id(cowboy_req:req()) -> binary().
-session_id(Req) ->
-    {Peer, _}  = cowboy_req:peer(Req),
-    {Ip, Port} = Peer,
+-spec error_message(binary() | atom()) -> binary().
+error_message(Error) when is_atom(Error) ->
+    make_error_message(erlang:atom_to_binary(Error, utf8));
+error_message(Error) when is_binary(Error) ->
+    make_error_message(Error);
+error_message(Error) ->
+    lager:error("unhandled error:~p", [Error]),
+    make_error_message(<<"internal">>).
 
-    BinIp   = kz_util:to_binary(inet_parse:ntoa(Ip)),
-    BinPort = kz_util:to_binary(integer_to_list(Port)),
-
-    <<BinIp/binary, ":", BinPort/binary>>.
+-spec make_error_message(ne_binary()) -> kz_json:object().
+make_error_message(<<"not_authorized">> = Error) ->
+    kz_json:encode(kz_json:from_list([{<<"error">>, Error}]));
+make_error_message(Error) ->
+    lager:error("blackhole error:~p", [Error]),
+    kz_util:log_stacktrace(),
+    kz_json:encode(kz_json:from_list([{<<"error">>, Error}])).

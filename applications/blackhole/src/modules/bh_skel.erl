@@ -11,8 +11,7 @@
 -module(bh_skel).
 
 -export([handle_event/2
-        ,subscribe/2
-        , unsubscribe/2
+        ,subscribe/3, unsubscribe/3
         ]).
 
 -include("blackhole.hrl").
@@ -26,14 +25,14 @@ event_name(JObj) ->
     kz_json:get_value(<<"Event-Name">>, JObj).
 
 %% Binding must match module name
--spec subscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-subscribe(Context, <<"skel.", _Args/binary>> = _Binding) ->
+-spec subscribe(bh_context:context(), ne_binary(), kz_json:object()) -> bh_subscribe_result().
+subscribe(Context, <<"skel.", _Args/binary>> = _Binding, _JObj) ->
     {'ok', Context};
-subscribe(_Context, _Binding) ->
+subscribe(_Context, _Binding, _JObj) ->
     {'error', <<"Unmatched binding">>}.
 
--spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-unsubscribe(Context, <<"skel.", _Args/binary>> = _Binding) ->
+-spec unsubscribe(bh_context:context(), ne_binary(), kz_json:object()) -> bh_subscribe_result().
+unsubscribe(Context, <<"skel.", _Args/binary>> = _Binding, _JObj) ->
     {'ok', Context};
-unsubscribe(_Context, _Binding) ->
+unsubscribe(_Context, _Binding, _JObj) ->
     {'error', <<"Unmatched binding">>}.

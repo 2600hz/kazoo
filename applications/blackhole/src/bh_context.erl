@@ -8,8 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(bh_context).
 
--export([new/0, new/2
-        ,from_json/1, from_json/2
+-export([new/0, new/1
         ,to_json/1
         ,is_context/1
         ]).
@@ -17,10 +16,8 @@
 -export([setters/2
         ,auth_token/1, set_auth_token/2
         ,auth_account_id/1, set_auth_account_id/2
-        ,account_id/1, set_account_id/2
         ,bindings/1, set_bindings/2
-        ,bindings_from_json/1, add_binding/2, remove_binding/2, is_bound/2
-        ,websocket_session_id/1, set_websocket_session_id/2
+        ,add_binding/2, remove_binding/2, is_bound/2
         ,websocket_pid/1, set_websocket_pid/2
         ,timestamp/1, set_timestamp/2
         ,name/1, set_name/2
@@ -50,7 +47,6 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec new() -> context().
--spec new(pid(), ne_binary()) -> context().
 new()->
     Setters = [
                fun put_reqid/1
@@ -58,31 +54,8 @@ new()->
               ],
     setters(#bh_context{}, Setters).
 
-new(SessionPid, SessionId) ->
-    Setters = [
-               {fun set_websocket_session_id/2, SessionId}
-              ,{fun set_websocket_pid/2, SessionPid}
-              ],
-    setters(new(), Setters).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec from_json(kz_json:object()) -> context().
--spec from_json(context(), kz_json:object()) -> context().
-from_json(JObj) ->
-    from_json(new(), JObj).
-
-from_json(Context, JObj) ->
-    Setters = [
-               {fun set_account_id/2, kz_json:get_value(<<"account_id">>, JObj)}
-              ,{fun set_auth_token/2,kz_json:get_value(<<"auth_token">>, JObj)}
-              ,{fun set_name/2, kz_json:get_value(<<"name">>, JObj)}
-              ,{fun set_metadata/2, kz_json:get_value(<<"metadata">>, JObj)}
-              ],
-    setters(Context, Setters).
+new(Pid) ->
+    set_websocket_pid(new(), Pid).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -92,12 +65,9 @@ from_json(Context, JObj) ->
 -spec to_json(context()) -> kz_json:object().
 to_json(Context) ->
     kz_json:from_list(
-      props:filter_undefined([
-                              {<<"account_id">>, account_id(Context)}
-                             ,{<<"auth_token">>, auth_token(Context)}
+      props:filter_undefined([{<<"auth_token">>, auth_token(Context)}
                              ,{<<"auth_account_id">>, auth_account_id(Context)}
                              ,{<<"bindings">>, bindings(Context)}
-                             ,{<<"websocket_session_id">>, websocket_session_id(Context)}
                              ,{<<"timestamp">>, timestamp(Context)}
                              ,{<<"name">>, name(Context)}
                              ,{<<"metadata">>, metadata(Context)}
@@ -156,30 +126,9 @@ set_auth_account_id(#bh_context{}=Context, AuthBy) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_id(context()) -> api_binary().
-account_id(#bh_context{account_id=AcctId}) ->
-    AcctId.
-
--spec set_account_id(context(), ne_binary()) -> context().
-set_account_id(#bh_context{}=Context, AcctId) ->
-    Context#bh_context{account_id=AcctId}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec bindings(context()) -> ne_binaries().
 bindings(#bh_context{bindings=Bds}) ->
     Bds.
-
--spec bindings_from_json(kz_json:object()) -> ne_binaries().
-bindings_from_json(JObj) ->
-    case kz_json:get_value(<<"binding">>, JObj) of
-        'undefined' ->
-            kz_json:get_value(<<"bindings">>, JObj, []);
-        Binding -> [Binding]
-    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -219,18 +168,6 @@ websocket_pid(#bh_context{websocket_pid=SocketPid}) -> SocketPid.
 set_websocket_pid(#bh_context{}=Context, SocketPid) ->
     Context#bh_context{websocket_pid=SocketPid}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec websocket_session_id(context()) -> api_binary().
-websocket_session_id(#bh_context{websocket_session_id=SessionId}) ->
-    SessionId.
-
--spec set_websocket_session_id(context(), ne_binary()) -> context().
-set_websocket_session_id(#bh_context{}=Context, SessionId) ->
-    Context#bh_context{websocket_session_id=SessionId}.
 
 %%--------------------------------------------------------------------
 %% @public

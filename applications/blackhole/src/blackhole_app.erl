@@ -21,6 +21,7 @@
 start(_Type, _Args) ->
     OK = blackhole_sup:start_link(),
     _ = blackhole_bindings:init(), %% FIXME: the OTP way to supervise this?
+    _ = kz_counters:start(), %% Ensure counters are started
     OK.
 
 %%--------------------------------------------------------------------
@@ -31,4 +32,5 @@ start(_Type, _Args) ->
 stop(_State) ->
     _ = cowboy:stop_listener('blackhole'),
     _ = cowboy:stop_listener('blackhole_http_listener'),
+    _ = blackhole_limit:stop(),
     'ok'.

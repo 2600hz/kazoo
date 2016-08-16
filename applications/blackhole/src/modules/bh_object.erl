@@ -10,7 +10,7 @@
 -module(bh_object).
 
 -export([handle_event/2
-        ,subscribe/2, unsubscribe/2
+        ,subscribe/3, unsubscribe/3
         ]).
 
 -include("blackhole.hrl").
@@ -31,15 +31,15 @@ event_name(EventJObj) ->
     <<DocType/binary, ".", EventName/binary>>.
 
 %% example binding: object.fax.doc_update
--spec subscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-subscribe(Context, <<"object.", Args/binary>> = _Binding) ->
+-spec subscribe(bh_context:context(), ne_binary(), kz_json:object()) -> bh_subscribe_result().
+subscribe(Context, <<"object.", Args/binary>> = _Binding, JObj) ->
     case binary:split(Args, <<".">>, ['global']) of
         [Type, <<"*">>] ->
             case lists:member(Type, ?DOC_TYPES) of
                 'false' ->
                     {'error', <<"Unmatched binding">>};
                 'true' ->
-                    [ subscribe(Context, doc_binding(Type, Action), Action, Type) || Action <- ?DOC_ACTIONS ],
+                    [ subscribe(Context, JObj, doc_binding(Type, Action), Action, Type) || Action <- ?DOC_ACTIONS ],
                     {'ok', Context}
             end;
         [Type, Action] ->
@@ -48,22 +48,22 @@ subscribe(Context, <<"object.", Args/binary>> = _Binding) ->
                 'false' ->
                     {'error', <<"Unmatched binding">>};
                 'true' ->
-                    subscribe(Context, doc_binding(Action, Type), Action, Type),
+                    subscribe(Context, JObj, doc_binding(Action, Type), Action, Type),
                     {'ok', Context}
             end;
         _Else ->
             {'error', <<"Unmatched binding">>}
     end.
 
--spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-unsubscribe(Context, <<"object.", Args/binary>> = _Binding) ->
+-spec unsubscribe(bh_context:context(), ne_binary(), kz_json:object()) -> bh_subscribe_result().
+unsubscribe(Context, <<"object.", Args/binary>> = _Binding, JObj) ->
     case binary:split(Args, <<".">>, ['global']) of
         [Type, <<"*">>] ->
             case lists:member(Type, ?DOC_TYPES) of
                 'false' ->
                     {'error', <<"Unmatched binding">>};
                 'true' ->
-                    [ unsubscribe(Context, doc_binding(Type, Action), Action, Type) || Action <- ?DOC_ACTIONS],
+                    [ unsubscribe(Context, JObj, doc_binding(Type, Action), Action, Type) || Action <- ?DOC_ACTIONS],
                     {'ok', Context}
             end;
         [Type, Action] ->
@@ -72,7 +72,7 @@ unsubscribe(Context, <<"object.", Args/binary>> = _Binding) ->
                 'false' ->
                     {'error', <<"Unmatched binding">>};
                 'true' ->
-                    unsubscribe(Context, doc_binding(Action, Type), Action, Type),
+                    unsubscribe(Context, JObj, doc_binding(Action, Type), Action, Type),
                     {'ok', Context}
             end;
         _Else ->
@@ -87,17 +87,17 @@ bind_options(AccountId, Keys) ->
     ,'federate'
     ].
 
--spec subscribe(bh_context:context(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-subscribe(Context, Binding, Action, Type) ->
-    AccountId = bh_context:account_id(Context),
+-spec subscribe(bh_context:context(), kz_json:object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+subscribe(Context, JObj, Binding, Action, Type) ->
+    AccountId = blackhole_util:get_account(Context, JObj),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Keys = [[{'action', Action}, {'db', AccountDb}, {'doc_type', Type}]],
     blackhole_bindings:bind(Binding, ?MODULE, 'handle_event', Context),
     blackhole_listener:add_binding('conf', bind_options(AccountId, Keys)).
 
--spec unsubscribe(bh_context:context(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-unsubscribe(Context, Binding, Type, Action) ->
-    AccountId = bh_context:account_id(Context),
+-spec unsubscribe(bh_context:context(), kz_json:object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+unsubscribe(Context, JObj, Binding, Type, Action) ->
+    AccountId = blackhole_util:get_account(Context, JObj),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     Keys = [[{'action', Action}, {'db', AccountDb}, {'doc_type', Type}]],
     blackhole_bindings:unbind(Binding, ?MODULE, 'handle_event', Context),

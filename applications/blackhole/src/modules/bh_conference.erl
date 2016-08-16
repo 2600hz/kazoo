@@ -12,7 +12,7 @@
 -module(bh_conference).
 
 -export([handle_event/2
-        ,subscribe/2, unsubscribe/2
+        ,subscribe/3, unsubscribe/3
         ]).
 
 -include("blackhole.hrl").
@@ -21,19 +21,19 @@
 handle_event(Context, EventJObj) ->
     blackhole_util:handle_event(Context, EventJObj, get_response_key(EventJObj)).
 
--spec subscribe(ne_binary(), bh_context:context()) -> bh_subscribe_result().
-subscribe(_Context, <<"conference.command.*">> = _Binding) ->
+-spec subscribe(ne_binary(), bh_context:context(), kz_json:object()) -> bh_subscribe_result().
+subscribe(_Context, <<"conference.command.*">> = _Binding, _JObj) ->
     {'error', <<"Unmatched binding">>};
-subscribe(Context, <<"conference.command.", ConfId/binary>>) ->
+subscribe(Context, <<"conference.command.", ConfId/binary>>, _JObj) ->
     BindKey = <<"conference.command.", ConfId/binary>>,
     blackhole_listener:add_binding('conference', command_binding_options(ConfId)),
     blackhole_bindings:bind(BindKey, ?MODULE, 'handle_event', Context),
     {'ok', Context};
-subscribe(_Context, <<"conference.event.*.*">> = _Binding) ->
+subscribe(_Context, <<"conference.event.*.*">> = _Binding, _JObj) ->
     {'error', <<"Unmatched binding">>};
-subscribe(_Context, <<"conference.event.*.", _CallId/binary>> = _Binding) ->
+subscribe(_Context, <<"conference.event.*.", _CallId/binary>> = _Binding, _JObj) ->
     {'error', <<"Unmatched binding">>};
-subscribe(Context, <<"conference.event.", Args/binary>> = Binding) ->
+subscribe(Context, <<"conference.event.", Args/binary>> = Binding, _JObj) ->
     case binary:split(Args, <<".">>, ['global']) of
         [ConfId, CallId] ->
             blackhole_listener:add_binding('conference', event_binding_options(ConfId, CallId)),
@@ -42,22 +42,22 @@ subscribe(Context, <<"conference.event.", Args/binary>> = Binding) ->
         _Else ->
             {'error', <<"Unmatched binding">>}
     end;
-subscribe(_Binding, _Context) ->
+subscribe(_Binding, _Context, _JObj) ->
     {'error', <<"Unmatched binding">>}.
 
 
--spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-unsubscribe(_Context, <<"conference.command.*">> = _Binding) ->
+-spec unsubscribe(bh_context:context(), ne_binary(), kz_json:object()) -> bh_subscribe_result().
+unsubscribe(_Context, <<"conference.command.*">> = _Binding, _JObj) ->
     {'error', <<"Unmatched binding">>};
-unsubscribe(Context, <<"conference.command.", ConfId/binary>> = Binding) ->
+unsubscribe(Context, <<"conference.command.", ConfId/binary>> = Binding, _JObj) ->
     blackhole_listener:remove_binding('conference', command_binding_options(ConfId)),
     blackhole_bindings:unbind(Binding, ?MODULE, 'handle_event', Context),
     {'ok', Context};
-unsubscribe(_Context, <<"conference.event.*.*">> = _Binding) ->
+unsubscribe(_Context, <<"conference.event.*.*">> = _Binding, _JObj) ->
     {'error', <<"Unmatched binding">>};
-unsubscribe(_Context, <<"conference.event.*.", _CallId/binary>> = _Binding) ->
+unsubscribe(_Context, <<"conference.event.*.", _CallId/binary>> = _Binding, _JObj) ->
     {'error', <<"Unmatched binding">>};
-unsubscribe(Context, <<"conference.event.", Args/binary>> = Binding) ->
+unsubscribe(Context, <<"conference.event.", Args/binary>> = Binding, _JObj) ->
     case binary:split(Args, <<".">>, ['global']) of
         [ConfId, CallId] ->
             blackhole_listener:remove_binding('conference', event_binding_options(ConfId, CallId)),
@@ -66,7 +66,7 @@ unsubscribe(Context, <<"conference.event.", Args/binary>> = Binding) ->
         _Else ->
             {'error', <<"Unmatched binding">>}
     end;
-unsubscribe(_Context, _Binding) ->
+unsubscribe(_Context, _Binding, _JObj) ->
     {'error', <<"Unmatched binding">>}.
 
 %%%===================================================================

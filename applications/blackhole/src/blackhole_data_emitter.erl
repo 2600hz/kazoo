@@ -10,7 +10,7 @@
 
 -include("blackhole.hrl").
 
--export([emit/3]).
+-export([emit/3, msg/2]).
 
 -spec emit([pid()] | pid(), api_binary(), kz_json:object()) -> 'ok'.
 emit(SessionPid, Event, Data) when is_pid(SessionPid) ->
@@ -20,3 +20,7 @@ emit(SessionPid, Event, Data) when is_pid(SessionPid) ->
 emit(SessionPids, Event, Data) when is_list(SessionPids) ->
     _ = [emit(SessionPid, Event, Data) || SessionPid <- SessionPids],
     'ok'.
+
+-spec msg(pid(), ne_binary()) -> 'ok'.
+msg(Pid, Data) ->
+    Pid ! {'send_message', Data}.
