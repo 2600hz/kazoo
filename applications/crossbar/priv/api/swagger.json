@@ -12897,18 +12897,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "access_lists",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/access_lists"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -13097,18 +13097,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "allotments",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/allotments"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -13263,18 +13263,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "blacklists",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/blacklists"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -13313,18 +13313,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "blacklists",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/blacklists"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -13585,18 +13585,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "callflows",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/callflows"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -13635,18 +13635,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "callflows",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/callflows"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -13665,18 +13665,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "cccps",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/cccps"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -13705,36 +13705,36 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "cccps",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/cccps"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             },
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "cccps",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/cccps"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -13847,18 +13847,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "clicktocall",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/clicktocall"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -13897,18 +13897,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "clicktocall",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/clicktocall"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -13919,7 +13919,7 @@
                     {
                         "in": "header",
                         "name": "X-Auth-Token",
-                        "required": true,
+                        "required": false,
                         "type": "string"
                     }
                 ]
@@ -13927,18 +13927,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "clicktocall",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/clicktocall"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": false,
+                        "type": "string"
                     }
                 ]
             }
@@ -14033,18 +14033,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "conferences",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/conferences"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -14083,36 +14083,36 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "conferences",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/conferences"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             },
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "conferences",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/conferences"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -14131,18 +14131,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "conferences",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/conferences"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -14161,18 +14161,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "conferences",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/conferences"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -14243,18 +14243,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "connectivity",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/connectivity"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -14293,18 +14293,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "connectivity",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/connectivity"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -14354,18 +14354,18 @@
                 "description": "Create a new device",
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "devices",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/devices"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ],
                 "responses": {
@@ -14434,18 +14434,18 @@
                 "description": "Edit the device object",
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "devices",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/devices"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ],
                 "responses": {
@@ -14478,18 +14478,18 @@
                 "description": "Reset the device by sending a check-sync SIP NOTIFY",
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "devices",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/devices"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ],
                 "responses": {
@@ -14525,18 +14525,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "directories",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/directories"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -14575,18 +14575,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "directories",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/directories"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -14659,18 +14659,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "faxes",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/faxes"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -14791,18 +14791,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "faxes",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/faxes"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -14843,18 +14843,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "faxes",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/faxes"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15007,18 +15007,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "groups",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/groups"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15057,18 +15057,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "groups",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/groups"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15099,18 +15099,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "ips",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/ips"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15175,18 +15175,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "ips",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/ips"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15229,18 +15229,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "ledgers",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/ledgers"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15249,18 +15249,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "ledgers",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/ledgers"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15303,18 +15303,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "limits",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/limits"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15333,18 +15333,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "lists",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/lists"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15383,18 +15383,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "lists",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/lists"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15423,18 +15423,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "lists",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/lists"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15473,18 +15473,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "lists",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/lists"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15493,18 +15493,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "lists",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/lists"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15621,18 +15621,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "media",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/media"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15709,18 +15709,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "media",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/media"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15739,18 +15739,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "media",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/media"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15769,18 +15769,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "menus",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/menus"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15819,18 +15819,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "menus",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/menus"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15859,18 +15859,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "metaflows",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/metaflows"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15879,18 +15879,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "accounts",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/accounts"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15909,18 +15909,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "notifications",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/notifications"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15929,18 +15929,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "notifications",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/notifications"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -15993,18 +15993,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "notifications",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/notifications"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16013,18 +16013,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "notifications",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/notifications"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16081,18 +16081,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "phone_numbers",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/phone_numbers"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16135,36 +16135,36 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "phone_numbers",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/phone_numbers"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             },
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "phone_numbers",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/phone_numbers"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16173,18 +16173,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "phone_numbers",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/phone_numbers"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16193,18 +16193,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "phone_numbers",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/phone_numbers"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16213,18 +16213,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "phone_numbers",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/phone_numbers"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16265,36 +16265,36 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "phone_numbers",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/phone_numbers"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             },
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "phone_numbers",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/phone_numbers"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16303,18 +16303,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "phone_numbers",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/phone_numbers"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16335,18 +16335,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "phone_numbers",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/phone_numbers"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16389,18 +16389,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "port_requests",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/port_requests"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16501,18 +16501,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "port_requests",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/port_requests"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16531,18 +16531,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "port_requests",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/port_requests"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16571,18 +16571,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "port_requests",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/port_requests"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16731,18 +16731,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "queues",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/queues"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16751,18 +16751,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "queues",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/queues"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16813,18 +16813,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "queues",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/queues"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16833,18 +16833,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "queues",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/queues"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -16873,18 +16873,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "queues",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/queues"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -17017,18 +17017,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "accounts",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/accounts"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -17047,18 +17047,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "resource_selectors",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/resource_selectors"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -17111,36 +17111,36 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "resource_selectors",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/resource_selectors"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             },
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "resource_selectors",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/resource_selectors"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -17193,36 +17193,36 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "resource_selectors",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/resource_selectors"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             },
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "resource_selectors",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/resource_selectors"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -17305,18 +17305,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "resources",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/resources"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -17325,36 +17325,36 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "resources",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/resources"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             },
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "resources",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/resources"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -17373,18 +17373,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "resources",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/resources"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -17425,18 +17425,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "resources",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/resources"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -17479,18 +17479,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "service_plans",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/service_plans"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -17523,18 +17523,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "service_plans",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/service_plans"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -17543,18 +17543,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "service_plans",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/service_plans"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -17563,18 +17563,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "service_plans",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/service_plans"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -17603,18 +17603,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "service_plans",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/service_plans"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -17779,18 +17779,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "sms",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/sms"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -17831,18 +17831,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "tasks",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/tasks"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -17951,18 +17951,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "temporal_rules",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/temporal_rules"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -18001,18 +18001,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "temporal_rules",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/temporal_rules"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -18031,18 +18031,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "temporal_rules_sets",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/temporal_rules_sets"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -18081,18 +18081,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "temporal_rules_sets",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/temporal_rules_sets"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -18121,18 +18121,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "token_restrictions",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/token_restrictions"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -18235,18 +18235,18 @@
             "put": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "users",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/users"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -18285,18 +18285,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "users",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/users"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -18325,18 +18325,18 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "users",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/users"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -18386,18 +18386,18 @@
                 "description": "Create a new voicemail box",
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "vmboxes",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/vmboxes"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ],
                 "responses": {
@@ -18455,18 +18455,18 @@
                 "description": "Edit an existing voicemail box",
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "vmboxes",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/vmboxes"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ],
                 "responses": {
@@ -18513,18 +18513,18 @@
                 "description": "Change a list message",
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "vmboxes",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/vmboxes"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ],
                 "responses": {
@@ -18539,18 +18539,18 @@
                 "description": "Fetch raw aduio of a list message id",
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "vmboxes",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/vmboxes"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ],
                 "responses": {
@@ -18597,18 +18597,18 @@
                 "description": "Change a message",
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "vmboxes",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/vmboxes"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ],
                 "responses": {
@@ -18667,18 +18667,18 @@
                 "description": "Create a new webhook",
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "webhooks",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/webhooks"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ],
                 "responses": {
@@ -18759,18 +18759,18 @@
                 "description": "Edit the webhook object",
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Auth-Token",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
                         "in": "body",
                         "name": "webhooks",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/webhooks"
                         }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
                     }
                 ],
                 "responses": {
