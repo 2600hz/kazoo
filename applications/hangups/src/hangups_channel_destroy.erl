@@ -17,37 +17,25 @@
         ,start_meters/2
         ]).
 
--define(IGNORE, kapps_config:get(?APP_NAME
-                                ,<<"ignore_hangup_causes">>
-                                ,[<<"NO_ANSWER">>
-                                 ,<<"USER_BUSY">>
-                                 ,<<"NO_USER_RESPONSE">>
-                                 ,<<"LOSE_RACE">>
-                                 ,<<"ATTENDED_TRANSFER">>
-                                 ,<<"ORIGINATOR_CANCEL">>
-                                 ,<<"NORMAL_CLEARING">>
-                                 ,<<"ALLOTTED_TIMEOUT">>
-                                 ])).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_call_event:doc(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
-    HangupCause = kz_json:get_value(<<"Hangup-Cause">>, JObj, <<"unknown">>),
-    case lists:member(HangupCause, ?IGNORE) of
+    HangupCause = kz_call_event:hangup_cause(JObj, <<"unknown">>),
+    case lists:member(HangupCause, hangups_config:ignored_hangup_causes()) of
         'true' -> 'ok';
         'false' -> alert_about_hangup(HangupCause, JObj)
     end.
 
--spec alert_about_hangup(ne_binary(), kz_json:object()) -> 'ok'.
+-spec alert_about_hangup(ne_binary(), kz_call_event:doc()) -> 'ok'.
 alert_about_hangup(HangupCause, JObj) ->
     lager:debug("abnormal call termination: ~s", [HangupCause]),
-    AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj, <<"unknown">>),
+    AccountId = kz_call_event:account_id(JObj, <<"unknown">>),
     kz_notify:detailed_alert("~s ~s to ~s (~s) on ~s(~s)"
                             ,[kz_util:to_lower_binary(HangupCause)
                              ,find_source(JObj)
@@ -66,7 +54,7 @@ alert_about_hangup(HangupCause, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_add_hangup_specific(ne_binary(), kz_json:object()) -> kz_proplist().
+-spec maybe_add_hangup_specific(ne_binary(), kz_call_event:doc()) -> kz_proplist().
 maybe_add_hangup_specific(<<"UNALLOCATED_NUMBER">>, JObj) ->
     maybe_add_number_info(JObj);
 maybe_add_hangup_specific(<<"NO_ROUTE_DESTINATION">>, JObj) ->
@@ -80,7 +68,7 @@ maybe_add_hangup_specific(_HangupCause, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_add_number_info(kz_json:object()) -> kz_proplist().
+-spec maybe_add_number_info(kz_call_event:doc()) -> kz_proplist().
 maybe_add_number_info(JObj) ->
     Destination = find_destination(JObj),
     Props = kz_json:to_proplist(JObj),
@@ -103,17 +91,15 @@ maybe_add_number_info(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec build_account_tree(ne_binary()) -> kz_json:object().
-build_account_tree(AccountId) ->
-    {'ok', AccountDoc} = kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId),
-    Tree = kz_account:tree(AccountDoc),
-    build_account_tree(Tree, []).
+-spec build_account_tree(ne_binary()) -> kz_proplist().
+build_account_tree(<<_/binary>> = AccountId) ->
+    {'ok', AccountDoc} = kz_account:fetch(AccountId),
+    [account_id_name(AncestorId) || AncestorId <- kz_account:tree(AccountDoc)].
 
--spec build_account_tree(ne_binaries(), kz_proplist()) -> kz_json:object().
-build_account_tree([], Map) -> kz_json:from_list(Map);
-build_account_tree([AccountId|Tree], Map) ->
-    {'ok', AccountDoc} = kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId),
-    build_account_tree(Tree, [{AccountId, kz_json:get_value(<<"name">>, AccountDoc)} | Map]).
+-spec account_id_name(ne_binary()) -> {ne_binary(), ne_binary()}.
+account_id_name(AccountId) ->
+    {'ok', AccountDoc} = kz_account:fetch(AccountId),
+    {AccountId, kz_account:name(AccountDoc)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -121,18 +107,18 @@ build_account_tree([AccountId|Tree], Map) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_realm(kz_json:object(), ne_binary()) -> ne_binary().
-find_realm(JObj, AccountId) ->
-    case kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
+-spec find_realm(kz_call_event:doc(), ne_binary()) -> ne_binary().
+find_realm(JObj, <<_/binary>> = AccountId) ->
+    case kz_call_event:account_id(JObj) of
         'undefined' -> get_account_realm(AccountId);
         Realm -> Realm
     end.
 
--spec get_account_realm(api_binary()) -> ne_binary().
-get_account_realm('undefined') -> <<"unknown">>;
-get_account_realm(AccountId) ->
-    case kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId) of
-        {'ok', JObj} -> kz_json:get_value(<<"realm">>, JObj, <<"unknown">>);
+-spec get_account_realm(ne_binary()) -> ne_binary().
+get_account_realm(<<"unknown">>) -> <<"unknown">>;
+get_account_realm(<<_/binary>> = AccountId) ->
+    case kz_account:fetch(AccountId) of
+        {'ok', JObj} -> kz_account:realm(JObj, <<"unknown">>);
         {'error', _} -> <<"unknown">>
     end.
 
@@ -142,14 +128,14 @@ get_account_realm(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_destination(kz_json:object()) -> ne_binary().
+-spec find_destination(kz_call_event:doc()) -> ne_binary().
 find_destination(JObj) ->
     case catch binary:split(kz_json:get_value(<<"Request">>, JObj), <<"@">>) of
         [Num|_] -> Num;
         _ -> use_to_as_destination(JObj)
     end.
 
--spec use_to_as_destination(kz_json:object()) -> ne_binary().
+-spec use_to_as_destination(kz_call_event:doc()) -> ne_binary().
 use_to_as_destination(JObj) ->
     case catch binary:split(kz_json:get_value(<<"To-Uri">>, JObj), <<"@">>) of
         [Num|_] -> Num;
@@ -162,7 +148,7 @@ use_to_as_destination(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_source(kz_json:object()) -> ne_binary().
+-spec find_source(kz_call_event:doc()) -> ne_binary().
 find_source(JObj) ->
     case catch binary:split(kz_json:get_value(<<"From-Uri">>, JObj), <<"@">>) of
         [Num|_] -> Num;
@@ -175,9 +161,9 @@ find_source(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_direction(kz_json:object()) -> ne_binary().
+-spec find_direction(kz_call_event:doc()) -> ne_binary().
 find_direction(JObj) ->
-    kz_json:get_value(<<"Call-Direction">>, JObj, <<"unknown">>).
+    kz_call_event:call_direction(JObj, <<"unknown">>).
 
 %% @public
 -spec start_meters(ne_binary()) -> 'ok'.

@@ -9017,12 +9017,12 @@
             "properties": {
                 "hangups_to_monitor": {
                     "default": [
-                        "WRONG_CALL_STATE",
-                        "NO_ROUTE_DESTINATION",
-                        "CALL_REJECT",
+                        "CALL_REJECTED",
                         "MANDATORY_IE_MISSING",
+                        "NO_ROUTE_DESTINATION",
                         "PROGRESS_TIMEOUT",
-                        "RECOVERY_ON_TIMER_EXPIRE"
+                        "RECOVERY_ON_TIMER_EXPIRE",
+                        "WRONG_CALL_STATE"
                     ],
                     "description": "hangups hangups to monitor",
                     "name": "hangups_to_monitor",
@@ -9030,14 +9030,14 @@
                 },
                 "ignore_hangup_causes": {
                     "default": [
-                        "NO_ANSWER",
-                        "USER_BUSY",
-                        "NO_USER_RESPONSE",
-                        "LOSE_RACE",
+                        "ALLOTTED_TIMEOUT",
                         "ATTENDED_TRANSFER",
-                        "ORIGINATOR_CANCEL",
+                        "LOSE_RACE",
                         "NORMAL_CLEARING",
-                        "ALLOTTED_TIMEOUT"
+                        "NO_ANSWER",
+                        "NO_USER_RESPONSE",
+                        "ORIGINATOR_CANCEL",
+                        "USER_BUSY"
                     ],
                     "description": "hangups ignore hangup causes",
                     "name": "ignore_hangup_causes",

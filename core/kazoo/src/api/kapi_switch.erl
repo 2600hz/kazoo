@@ -314,10 +314,10 @@ publish_reply(Queue, Req) ->
     amqp_util:targeted_publish(Queue, Payload).
 
 -spec check_fs_node(api_terms()) -> api_binary().
-check_fs_node(Props) when is_list(Props) ->
+check_fs_node(Props) ->
     get_value(Props, <<"FreeSWITCH-Node">>, <<"*">>).
 
--spec get_value(api_terms(), ne_binary(), ne_binary()) -> api_binary().
+-spec get_value(api_terms(), kz_json:keys(), ne_binary()) -> api_binary().
 get_value(Props, Key, Default) when is_list(Props) ->
     get_value(Props, Key, fun props:get_value/3, Default);
 get_value(JObj, Key, Default) ->

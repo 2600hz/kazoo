@@ -38,7 +38,8 @@
         ]).
 
 -export([is_federated_event/1
-        ,event_zone/1]).
+        ,event_zone/1
+        ]).
 
 -export([prepare_api_payload/2, prepare_api_payload/3]).
 -export([set_missing_values/2]).
@@ -124,9 +125,9 @@ default_headers(AppName, AppVsn) ->
 
 default_headers(ServerID, AppName, AppVsn) ->
     [{?KEY_SERVER_ID, ServerID}
-     ,{?KEY_APP_NAME, AppName}
-     ,{?KEY_APP_VERSION, AppVsn}
-     ,{?KEY_NODE, kz_util:to_binary(node())}
+    ,{?KEY_APP_NAME, AppName}
+    ,{?KEY_APP_VERSION, AppVsn}
+    ,{?KEY_NODE, kz_util:to_binary(node())}
     ].
 
 default_headers(EvtCat, EvtName, AppName, AppVsn) ->
@@ -134,11 +135,11 @@ default_headers(EvtCat, EvtName, AppName, AppVsn) ->
 
 default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
     [{?KEY_SERVER_ID, ServerID}
-     ,{?KEY_EVENT_CATEGORY, EvtCat}
-     ,{?KEY_EVENT_NAME, EvtName}
-     ,{?KEY_APP_NAME, AppName}
-     ,{?KEY_APP_VERSION, AppVsn}
-     ,{?KEY_NODE, kz_util:to_binary(node())}
+    ,{?KEY_EVENT_CATEGORY, EvtCat}
+    ,{?KEY_EVENT_NAME, EvtName}
+    ,{?KEY_APP_NAME, AppName}
+    ,{?KEY_APP_VERSION, AppVsn}
+    ,{?KEY_NODE, kz_util:to_binary(node())}
     ].
 
 default_headers_v(Props) when is_list(Props) ->
@@ -180,8 +181,8 @@ prepare_api_payload(Prop, HeaderValues, FormatterFun) when is_function(Formatter
 prepare_api_payload(Prop, HeaderValues, Options) when is_list(Prop) ->
     FormatterFun = props:get_value('formatter', Options, fun kz_util:identity/1),
     CleanupFuns = [fun (P) -> remove_empty_values(P, props:get_is_true('remove_recursive', Options, 'true')) end
-                   ,fun (P) -> set_missing_values(P, ?DEFAULT_VALUES) end
-                   ,fun (P) -> set_missing_values(P, HeaderValues) end
+                  ,fun (P) -> set_missing_values(P, ?DEFAULT_VALUES) end
+                  ,fun (P) -> set_missing_values(P, HeaderValues) end
                   ],
     FormatterFun(lists:foldr(fun(F, P) -> F(P) end, Prop, CleanupFuns));
 prepare_api_payload(JObj, HeaderValues, Options) ->
@@ -267,11 +268,11 @@ extract_defaults(JObj) ->
 -spec remove_defaults(api_terms()) -> api_terms().
 remove_defaults(Prop) when is_list(Prop) ->
     props:delete_keys(?OPTIONAL_DEFAULT_HEADERS
-                      ,props:delete_keys(?DEFAULT_HEADERS, Prop)
+                     ,props:delete_keys(?DEFAULT_HEADERS, Prop)
                      );
 remove_defaults(JObj) ->
     kz_json:delete_keys(?OPTIONAL_DEFAULT_HEADERS
-                        ,kz_json:delete_keys(?DEFAULT_HEADERS, JObj)
+                       ,kz_json:delete_keys(?DEFAULT_HEADERS, JObj)
                        ).
 
 %%--------------------------------------------------------------------
@@ -331,7 +332,7 @@ build_message(Prop, ReqH, OptH) when is_list(Prop) ->
     case defaults(Prop, ReqH ++ OptH) of
         {'error', _Reason}=Error ->
             lager:debug("API message does not have the default headers ~s: ~p"
-                        ,[string:join([kz_util:to_list(H) || H <- ReqH], ","), Error]
+                       ,[string:join([kz_util:to_list(H) || H <- ReqH], ","), Error]
                        ),
             Error;
         HeadAndProp ->
@@ -350,7 +351,7 @@ build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {'error', _Reason} = Error ->
             lager:debug("API message does not have the required headers ~s: ~p"
-                        ,[kz_util:join_binary(ReqH, <<",">>), Error]
+                       ,[kz_util:join_binary(ReqH, <<",">>), Error]
                        ),
             Error;
         {Headers1, Prop1} ->
@@ -366,7 +367,7 @@ build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {'error', _Reason} = Error ->
             lager:debug("API message does not have the required headers ~s: ~p"
-                        ,[kz_util:join_binary(ReqH, <<",">>), Error]
+                       ,[kz_util:join_binary(ReqH, <<",">>), Error]
                        ),
             Error;
         {Headers1, Prop1} ->
@@ -470,7 +471,7 @@ values_check_all(Prop, {Key, Vs}) when is_list(Vs) ->
                 'true' -> 'true';
                 'false' ->
                     lager:debug("API key '~s' value '~p' is not one of the values: ~p"
-                                ,[Key, V, Vs]
+                               ,[Key, V, Vs]
                                ),
                     'false'
             end
@@ -481,7 +482,7 @@ values_check_all(Prop, {Key, V}) ->
         V -> 'true';
         _Val ->
             lager:debug("API key '~s' value '~p' is not '~p'"
-                        ,[Key, _Val, V]
+                       ,[Key, _Val, V]
                        ),
             'false'
     end.
