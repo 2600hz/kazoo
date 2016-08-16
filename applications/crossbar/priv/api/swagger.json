@@ -13079,14 +13079,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "allotments",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/allotments"
-                        }
                     }
                 ]
             }
@@ -13109,6 +13101,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "allotments",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/allotments"
+                        }
                     }
                 ]
             }
@@ -13689,14 +13689,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "cccps",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/cccps"
-                        }
                     }
                 ]
             },
@@ -13717,6 +13709,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "cccps",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/cccps"
+                        }
                     }
                 ]
             },
@@ -14067,14 +14067,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "conferences",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/conferences"
-                        }
                     }
                 ]
             },
@@ -14095,6 +14087,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "conferences",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/conferences"
+                        }
                     }
                 ]
             },
@@ -14412,14 +14412,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "devices",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/devices"
-                        }
                     }
                 ],
                 "responses": {
@@ -14446,6 +14438,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "devices",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devices"
+                        }
                     }
                 ],
                 "responses": {
@@ -14464,14 +14464,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "devices",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/devices"
-                        }
                     }
                 ],
                 "responses": {
@@ -14490,6 +14482,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "devices",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/devices"
+                        }
                     }
                 ],
                 "responses": {
@@ -15081,14 +15081,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "ips",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/ips"
-                        }
                     }
                 ]
             }
@@ -15111,6 +15103,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "ips",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ips"
+                        }
                     }
                 ]
             }
@@ -15285,14 +15285,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "limits",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/limits"
-                        }
                     }
                 ]
             }
@@ -15315,6 +15307,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "limits",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/limits"
+                        }
                     }
                 ]
             }
@@ -16073,14 +16073,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "phone_numbers",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/phone_numbers"
-                        }
                     }
                 ]
             }
@@ -16093,6 +16085,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "phone_numbers",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/phone_numbers"
+                        }
                     }
                 ]
             }
@@ -16129,14 +16129,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "phone_numbers",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/phone_numbers"
-                        }
                     }
                 ]
             },
@@ -16147,6 +16139,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "phone_numbers",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/phone_numbers"
+                        }
                     }
                 ]
             },
@@ -16249,14 +16249,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "phone_numbers",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/phone_numbers"
-                        }
                     }
                 ]
             },
@@ -16277,6 +16269,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "phone_numbers",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/phone_numbers"
+                        }
                     }
                 ]
             },
@@ -17095,14 +17095,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "resource_selectors",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/resource_selectors"
-                        }
                     }
                 ]
             },
@@ -17123,6 +17115,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "resource_selectors",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/resource_selectors"
+                        }
                     }
                 ]
             },
@@ -17177,14 +17177,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "resource_selectors",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/resource_selectors"
-                        }
                     }
                 ]
             },
@@ -17205,6 +17197,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "resource_selectors",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/resource_selectors"
+                        }
                     }
                 ]
             },
@@ -17299,14 +17299,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "resources",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/resources"
-                        }
                     }
                 ]
             },
@@ -17337,6 +17329,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "resources",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/resources"
+                        }
                     }
                 ]
             },
@@ -17461,14 +17461,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "service_plans",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/service_plans"
-                        }
                     }
                 ]
             }
@@ -17491,6 +17483,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "service_plans",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service_plans"
+                        }
                     }
                 ]
             }
@@ -17515,14 +17515,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "service_plans",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/service_plans"
-                        }
                     }
                 ]
             }
@@ -17575,6 +17567,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "service_plans",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service_plans"
+                        }
                     }
                 ]
             }
@@ -18443,14 +18443,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "vmboxes",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/vmboxes"
-                        }
                     }
                 ],
                 "responses": {
@@ -18467,6 +18459,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "vmboxes",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/vmboxes"
+                        }
                     }
                 ],
                 "responses": {
@@ -18501,14 +18501,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "vmboxes",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/vmboxes"
-                        }
                     }
                 ],
                 "responses": {
@@ -18551,6 +18543,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "vmboxes",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/vmboxes"
+                        }
                     }
                 ],
                 "responses": {
@@ -18585,14 +18585,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "vmboxes",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/vmboxes"
-                        }
                     }
                 ],
                 "responses": {
@@ -18609,6 +18601,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "vmboxes",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/vmboxes"
+                        }
                     }
                 ],
                 "responses": {
@@ -18747,14 +18747,6 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
-                    },
-                    {
-                        "in": "body",
-                        "name": "webhooks",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/webhooks"
-                        }
                     }
                 ],
                 "responses": {
@@ -18771,6 +18763,14 @@
                         "name": "X-Auth-Token",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "webhooks",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/webhooks"
+                        }
                     }
                 ],
                 "responses": {
