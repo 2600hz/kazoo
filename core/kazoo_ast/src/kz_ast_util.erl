@@ -12,6 +12,8 @@
         ]).
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+
 
 -type ast() :: [erl_parse:abstract_form()].
 
