@@ -329,8 +329,12 @@ list_all(_, [{AccountId, NumberDb} | Rest]) ->
     end.
 
 -spec dump(kz_proplist(), task_iterator()) -> task_iterator().
-dump(_, 'init') ->
-    {'ok', knm_util:get_all_number_dbs()};
+dump(Props, 'init') ->
+    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+    case props:get_value('auth_account_id', Props) of
+        MasterAccountId -> {'ok', knm_util:get_all_number_dbs()};
+        _ -> 'stop'
+    end;
 dump(_, []) ->
     'stop';
 dump(_, [NumberDb|NumberDbs]) ->
