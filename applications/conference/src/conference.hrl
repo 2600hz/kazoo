@@ -31,12 +31,12 @@
                                 ]).
 
 -define(PAGE_PROFILE_CONFIG, [{<<"rate">>, 8000}
-                              ,{<<"caller-controls">>, <<"default">>}
-                              ,{<<"interval">>, 20}
-                              ,{<<"energy-level">>, 20}
-                              ,{<<"comfort-noise">>, 1000}
-                              ,{<<"moh-sound">>, <<"">>}
-                              ,{<<"enter-sound">>, <<"">>}
+                             ,{<<"caller-controls">>, <<"default">>}
+                             ,{<<"interval">>, 20}
+                             ,{<<"energy-level">>, 20}
+                             ,{<<"comfort-noise">>, 1000}
+                             ,{<<"moh-sound">>, <<"">>}
+                             ,{<<"enter-sound">>, <<"">>}
                              ]).
 
 -define(CALLER_CONTROLS(ConfigName), kapps_config:get(?CONFIG_CAT, [<<"caller-controls">>, ConfigName])).
