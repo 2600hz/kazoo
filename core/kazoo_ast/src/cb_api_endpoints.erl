@@ -332,7 +332,7 @@ make_parameters(Path, Method, SchemaParameter) ->
                ).
 
 compare_parameters(Param1, Param2) ->
-    kz_json:get_value(<<"name">>, Param1) =< kz_json:get_value(<<"name">>, Param2).
+    kz_json:get_value(<<"name">>, Param1) >= kz_json:get_value(<<"name">>, Param2).
 
 maybe_add_schema(_Path, Method, Schema)
   when Method =:= <<"put">>;
