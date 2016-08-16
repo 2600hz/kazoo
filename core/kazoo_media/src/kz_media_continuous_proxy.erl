@@ -50,7 +50,7 @@ init_from_doc(Url, Req) ->
 
 handle(Req0, {Meta, Bin}) ->
     Size = byte_size(Bin),
-    ChunkSize = case Size of S when S > ?CHUNKSIZE -> ?CHUNKSIZE; S -> S end,
+    ChunkSize = min(Size, ?CHUNKSIZE),
 
     ContentType = kz_json:get_value(<<"content_type">>, Meta),
     MediaName = kz_json:get_value(<<"media_name">>, Meta, <<>>),
