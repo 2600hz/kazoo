@@ -132,7 +132,7 @@ set_metric(AccountId, Metric, LoadAvg) ->
             lists:foreach(fun(HC) ->
                                   save_threshold(HC, Metric, LoadAvg, SaveFun)
                           end
-                          ,hangups_config:monitored_hangup_causes()
+                         ,hangups_config:monitored_hangup_causes()
                          )
     end.
 
