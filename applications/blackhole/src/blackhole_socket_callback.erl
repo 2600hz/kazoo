@@ -37,11 +37,6 @@ recv(SessionPid, SessionId, {<<"unsubscribe">>, SubscriptionJObj}, Context) ->
     lager:debug("maybe remove binding for session: ~p. Data: ~p", [SessionId, SubscriptionJObj]),
     unsubscribe(Context, SubscriptionJObj, SessionPid, SessionId);
 
-recv(_SessionPid, _SessionId, {<<"send_amqp">>, Data}, Context) ->
-    lager:debug("received send_amqp event on socket ~p with data payload", [_SessionId]),
-    amqp_send(Context, Data),
-    {'ok', Context};
-
 recv(_SessionPid, _SessionId, {_Event, _Data}, Context) ->
     lager:debug("received event: ~p on socket ~p with data payload", [_Event, _SessionId]),
     {'ok', Context};
@@ -49,27 +44,6 @@ recv(_SessionPid, _SessionId, {_Event, _Data}, Context) ->
 recv(_SessionPid, SessionId, Message, Context) ->
     lager:info("receive unknown message ~p on socket ~p", [Message, SessionId]),
     {'ok', Context}.
-
--spec amqp_send(bh_context:context(), kz_json:object()) -> 'ok'.
-amqp_send(Context, Data) ->
-    case blackhole_util:is_authorized(Context) of
-        'true' ->
-            build_and_send(Data);
-        'false' ->
-            lager:info("ahh ahh ahh, you didn't say the magic word")
-    end.
-
--spec build_and_send(kz_json:object()) -> 'ok'.
-build_and_send(Data) ->
-    SendMessage =
-        kz_json:set_values([{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
-                            | kz_api:default_headers(<<"qubicle">>, <<"1.0">>)
-                           ]
-                          ,Data
-                          ),
-
-    {'ok', Payload} = kz_api:build_message(SendMessage, [], kz_json:get_keys(Data)),
-    amqp_util:basic_publish(<<"qubicle">>, <<"qubicle.recipient">>, Payload, ?DEFAULT_CONTENT_TYPE).
 
 %%--------------------------------------------------------------------
 %% @public
