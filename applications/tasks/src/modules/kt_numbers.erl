@@ -285,7 +285,7 @@ list_number_row(AuthBy, E164) ->
             ,knm_phone_number:used_by(PhoneNumber)
             ,kz_util:to_binary(knm_phone_number:ported_in(PhoneNumber))
             ,knm_phone_number:module_name(PhoneNumber)
-            ,kz_json:is_true(<<"inbound_lookup">>, InboundCNAM)
+            ,kz_util:to_binary(kz_json:is_true(<<"inbound_lookup">>, InboundCNAM))
             ,kz_json:get_ne_binary_value(<<"display_name">>, OutboundCNAM)
             ,kz_json:get_ne_binary_value(<<"post_code">>, E911)
             ,kz_json:get_ne_binary_value(<<"street_address">>, E911)
