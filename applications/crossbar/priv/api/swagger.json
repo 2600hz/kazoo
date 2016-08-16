@@ -13919,7 +13919,7 @@
                     {
                         "in": "header",
                         "name": "X-Auth-Token",
-                        "required": true,
+                        "required": false,
                         "type": "string"
                     }
                 ]
@@ -13937,7 +13937,7 @@
                     {
                         "in": "header",
                         "name": "X-Auth-Token",
-                        "required": true,
+                        "required": false,
                         "type": "string"
                     }
                 ]

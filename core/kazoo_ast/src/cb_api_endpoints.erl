@@ -18,6 +18,8 @@
 
 -define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
 
+-define(ACCOUNTS_PREFIX, "accounts/{ACCOUNT_ID}").
+
 
 to_ref_doc() ->
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
@@ -352,15 +354,27 @@ swagger_params(PathMeta) ->
                               ])
     end.
 
-auth_token_param(<<"/accounts/{ACCOUNT_ID}/",_/binary>>, _Method) ->
-    kz_json:from_list(
-      [{<<"name">>, <<"X-Auth-Token">>}
-      ,{<<"in">>, <<"header">>}
-      ,{<<"type">>, <<"string">>}
-      ,{<<"required">>, 'true'}
-      ]);
-auth_token_param(_Path, _Method) ->
-    'undefined'.
+auth_token_param(Path, _Method) ->
+    case is_authtoken_required(Path) of
+        'undefined' -> 'undefined';
+        Required ->
+            kz_json:from_list(
+              [{<<"name">>, <<"X-Auth-Token">>}
+              ,{<<"in">>, <<"header">>}
+              ,{<<"type">>, <<"string">>}
+              ,{<<"required">>, Required}
+              ])
+    end.
+
+-spec is_authtoken_required(ne_binary()) -> api_boolean().
+is_authtoken_required(<<"/"?ACCOUNTS_PREFIX"/", _/binary>>=Path) ->
+    not is_api_c2c_connect(Path);
+is_authtoken_required(_Path) -> 'undefined'.
+
+is_api_c2c_connect(<<"/"?ACCOUNTS_PREFIX"/clicktocall/", _/binary>>=Path) ->
+    kz_util:suffix_binary(<<"/connect">>, Path);
+is_api_c2c_connect(_) -> 'false'.
+
 
 format_as_path_centric(Data) ->
     lists:foldl(fun format_pc_module/2, kz_json:new(), Data).
@@ -456,8 +470,8 @@ path_name(Module) ->
         {'match', [<<"ubiquiti_auth">>=Name]} -> Name;
         {'match', [<<"user_auth">>=Name]} -> Name;
         {'match', [<<"rates">>=Name]} -> Name;
-        {'match', [Name]} -> <<"accounts/{ACCOUNT_ID}/", Name/binary>>;
-        {'match', [Name, ?CURRENT_VERSION]} -> <<"accounts/{ACCOUNT_ID}/", Name/binary>>;
+        {'match', [Name]} -> <<?ACCOUNTS_PREFIX"/", Name/binary>>;
+        {'match', [Name, ?CURRENT_VERSION]} -> <<?ACCOUNTS_PREFIX"/", Name/binary>>;
         {'match', _M} ->
             'undefined'
     end.
