@@ -1,21 +1,13 @@
-{application, callflow,
- [
-  {description, "Callflow - traversing through the tree..."}
- ,{vsn, "4.0.0"}
- ,{modules, []}
- ,{registered, [callflow_cache, cf_event_handler_sup, callflow_sup, cf_exe_sup]}
- ,{applications, [ kernel
-                 , stdlib
-                 , crypto
-
-                 , kazoo_apps
-                 , kazoo_amqp
-                 , kazoo_data
-                 , kazoo_endpoint
-                 , kazoo_token_buckets
-                 , kazoo_voicemail
-
-                 , lager
-                 ]}
- ,{mod, {callflow_app, []}}
- ]}.
+{application,callflow,
+             [{applications,[acdc,crypto,erlang_localtime,jesse,kazoo,
+                             kazoo_amqp,kazoo_apps,kazoo_caches,kazoo_config,
+                             kazoo_data,kazoo_documents,kazoo_endpoint,
+                             kazoo_globals,kazoo_media,kazoo_number_manager,
+                             kazoo_token_buckets,kazoo_voicemail,kazoo_web,
+                             kernel,lager,pivot,stdlib]},
+              {description,"Callflow - traversing through the tree..."},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[callflow_cache,cf_event_handler_sup,callflow_sup,
+                           cf_exe_sup]},
+              {mod,{callflow_app,[]}}]}.

@@ -6,12 +6,12 @@
   {registered, [registrar_cache, registrar_sup, registrar_shared_listener_sup]},
   {applications, [ kernel
                  , stdlib
-                 , crypto
-                 , inets
 
+                 , kazoo
                  , kazoo_apps
-                 , kazoo_amqp
+                 , kazoo_config
                  , kazoo_data
+                 , kazoo_documents
 
                  , lager
                  ]},

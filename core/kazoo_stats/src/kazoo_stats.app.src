@@ -4,8 +4,7 @@
   {vsn, "4.0.0"},
   {modules, []},
   {registered, [kazoo_stats_sup, kazoo_stats]},
-  {applications, [ kernel
-                 , stdlib
+  {applications, [ stdlib
 
                  , kazoo
                  , kazoo_amqp

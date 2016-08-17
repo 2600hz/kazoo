@@ -3,12 +3,11 @@
                           {vsn, "4.0.0"},
                           {modules, []},
                           {registered, [ ]},
-                          {applications, [ kernel
+                          {applications, [ inets
                                          , stdlib
-                                         , asn1
-                                         , crypto
-                                         , public_key
-                                         , ssl
-                                         , inets
+
+                                         , kazoo
+
+                                         , lager
                                          ]}
                          ]}.

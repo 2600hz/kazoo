@@ -4,13 +4,12 @@
   {vsn, "4.0.0"},
   {modules, []},
   {registered, [milliwatt_sup]},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
+  {applications, [stdlib
 
-                 , kazoo_apps
+                 , kazoo
                  , kazoo_amqp
-                 , kazoo_data
+                 , kazoo_apps
+                 , kazoo_config
 
                  , lager
                  ]},

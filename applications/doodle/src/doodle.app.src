@@ -1,18 +1,13 @@
-{application, doodle,
- [
-  {description, "doodle - sms store and forward"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [doodle_cache, doodle_shared_listener, doodle_sup, doodle_exe_sup, doodle_event_handler_sup, doodle_inbound_listener_sup]},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
-
-                 , kazoo_apps
-                 , kazoo_amqp
-                 , kazoo_data
-
-                 , lager
-                 ]},
-  {mod, {doodle_app, []}}
- ]}.
+{application,doodle,
+             [{applications,[callflow,kazoo,kazoo_amqp,kazoo_apps,
+                             kazoo_caches,kazoo_config,kazoo_data,
+                             kazoo_documents,kazoo_endpoint,kazoo_modb,
+                             kazoo_number_manager,kazoo_token_buckets,lager,
+                             stdlib]},
+              {description,"doodle - sms store and forward"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[doodle_cache,doodle_shared_listener,doodle_sup,
+                           doodle_exe_sup,doodle_event_handler_sup,
+                           doodle_inbound_listener_sup]},
+              {mod,{doodle_app,[]}}]}.

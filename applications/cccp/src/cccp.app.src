@@ -1,18 +1,9 @@
-{application, cccp,
- [
-  {description, "CCCP - Calling Card Callback Platform"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [cccp_callback_sup, cccp_platform_sup, cccp_sup]},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
-
-                 , kazoo_apps
-                 , kazoo_amqp
-                 , kazoo_data
-
-                 , lager
-                 ]},
-  {mod, {cccp_app, []}}
- ]}.
+{application,cccp,
+             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_config,
+                             kazoo_data,kazoo_endpoint,kazoo_media,
+                             kazoo_number_manager,lager,stdlib]},
+              {description,"CCCP - Calling Card Callback Platform"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[cccp_callback_sup,cccp_platform_sup,cccp_sup]},
+              {mod,{cccp_app,[]}}]}.

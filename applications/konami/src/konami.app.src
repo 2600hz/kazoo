@@ -6,13 +6,18 @@
   {registered, [konami_event_listener, konami_sup]},
   {applications, [ kernel
                  , stdlib
-                 , crypto
 
-                 , kazoo_apps
+                 , kazoo
                  , kazoo_amqp
+                 , kazoo_apps
+                 , kazoo_config
                  , kazoo_data
+                 , kazoo_documents
+                 , kazoo_endpoint
+                 , kazoo_media
                  , webseq
 
+                 , gproc
                  , lager
                  ]},
   {mod, {konami_app, []}}

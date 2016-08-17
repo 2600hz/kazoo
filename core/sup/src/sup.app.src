@@ -5,6 +5,10 @@
  , {registered, []}
  , {applications, [ kernel
                   , stdlib
+
+                  , kazoo
+
+                  , getopt
                   ]}
  , {env, []}
  ]}.

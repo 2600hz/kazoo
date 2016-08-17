@@ -6,11 +6,9 @@
   {registered, [sysconf_sup]},
   {applications, [ kernel
                  , stdlib
-                 , crypto
-                 , inets
 
-                 , kazoo_apps
-                 , kazoo_amqp
+                 , kazoo
+                 , kazoo_config
                  , kazoo_data
 
                  , lager

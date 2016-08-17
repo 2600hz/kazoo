@@ -6,17 +6,20 @@
   {registered, [kazoo_number_manager_sup]},
   {applications, [ kernel
                  , stdlib
+                 , xmerl
 
+                 , kazoo
+                 , kazoo_apps
+                 , kazoo_caches
+                 , kazoo_config
                  , kazoo_data
                  , kazoo_documents
-                 , kazoo_web
-                 , kazoo_xml
-                 , kazoo
                  , kazoo_services
                  , kazoo_transactions
+                 , kazoo_web
+                 , kazoo_xml
 
                  , lager
-                 , cowlib
                  ]},
   {mod, {kazoo_number_manager_app, []}}
  ]}.

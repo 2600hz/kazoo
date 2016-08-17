@@ -1,18 +1,22 @@
-{
-  application
+{ application
 ,trunkstore
 ,[
-  {description, "Trunk Store Backend - Authentication and Routing"}
+  {description, "Trunk Store Backend - Authentication and Routing for PBXes"}
  ,{vsn, "4.0.0"}
  ,{modules, []}
  ,{registered, [trunkstore_cache, ts_offnet_sup, trunkstore_sup, ts_onnet_sup]}
  ,{applications, [ kernel
                  , stdlib
-                 , crypto
 
-                 , kazoo_apps
+                 , kazoo
                  , kazoo_amqp
+                 , kazoo_apps
+                 , kazoo_caches
+                 , kazoo_config
                  , kazoo_data
+                 , kazoo_documents
+                 , kazoo_number_manager
+                 , kazoo_transactions
 
                  , lager
                  ]}

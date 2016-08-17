@@ -1,15 +1,8 @@
-{application, kazoo_attachments,
- [
-  {description, "Kazoo Attachments Access abstraction layer"}
- ,{id, "f226e705-6f9a-66e3-c5c8-6834d1f89571"}
- ,{vsn, "4.0.0"}
- ,{modules, []}
- ,{registered, []}
- ,{applications, [ kernel
-                 , stdlib
-                 , crypto
-                 , public_key
-                 , lager
-                 , kazoo_data
-                 ]}
- ]}.
+{application,kazoo_attachments,
+             [{applications,[crypto,hackney,inets,kazoo,kazoo_data,
+                             kazoo_oauth,kazoo_web,kernel,lager,stdlib,xmerl]},
+              {description,"Kazoo Attachments Access abstraction layer"},
+              {id,"f226e705-6f9a-66e3-c5c8-6834d1f89571"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[]}]}.

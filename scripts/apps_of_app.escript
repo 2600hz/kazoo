@@ -9,7 +9,9 @@ main(_) ->
     case kast_app_deps:process_project() of
         [] -> 'ok';
         BadApps ->
-            [output_bad_app(A, Missing, Needed) || {A, Missing, Needed} <- BadApps],
+            [output_bad_app(A, Missing, Needed)
+             || {A, Missing, Needed} <- BadApps
+            ],
             erlang:halt(1)
     end.
 

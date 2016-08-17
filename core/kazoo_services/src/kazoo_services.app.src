@@ -1,18 +1,7 @@
-{application, kazoo_services,
- [
-  {description, "Kazoo Services provides billing and service limit support"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [kazoo_services_cache, kazoo_services_sup]},
-  {applications, [ kernel
-                 , stdlib
-
-                 , kazoo_data
-                 , kazoo_config
-                 , kazoo_modb
-                 , braintree
-
-                 , lager
-                 ]},
-  {mod, {kazoo_services_app, []}}
- ]}.
+{application,kazoo_services,
+             [{applications,[]},
+              {description,"Kazoo Services provides billing and service limit support"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[kazoo_services_cache,kazoo_services_sup]},
+              {mod,{kazoo_services_app,[]}}]}.

@@ -4,13 +4,14 @@
   {vsn, "4.0.0"},
   {modules, []},
   {registered, [pivot_cache, pivot_calls_sup, pivot_sup]},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
+  {applications, [ stdlib
 
-                 , kazoo_apps
+                 , kazoo
                  , kazoo_amqp
-                 , kazoo_data
+                 , kazoo_apps
+                 , kazoo_modb
+                 , kazoo_translator
+                 , kazoo_web
 
                  , lager
                  ]},

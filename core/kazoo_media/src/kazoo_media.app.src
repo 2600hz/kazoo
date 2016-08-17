@@ -6,16 +6,18 @@
   {registered, [kz_media_map, kz_media_cache_sup, kazoo_media_sup]},
   {applications, [ kernel
                  , stdlib
-                 , crypto
 
                  , kazoo
                  , kazoo_amqp
-                 , kazoo_data
+                 , kazoo_apps
                  , kazoo_config
-                 , kazoo_documents
+                 , kazoo_data
                  , kazoo_modb
+                 , kazoo_services
+                 , kazoo_web
 
                  , cowboy
+                 , cowlib
                  , lager
                  ]},
   {mod, {kazoo_media_app, []}}

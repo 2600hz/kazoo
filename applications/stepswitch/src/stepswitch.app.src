@@ -4,14 +4,23 @@
   {vsn, "4.0.0"},
   {modules, []},
   {registered, [stepswitch_cache, stepswitch_cnam_pool_sup, stepswitch_listener, stepswitch_request_sup, stepswitch_sup]},
-  {applications, [ kernel
+  {applications, [ssl
                  , stdlib
-                 , crypto
-                 , ssl
-                 , inets
 
+                 , kazoo
+                 , kazoo_amqp
                  , kazoo_apps
+                 , kazoo_caches
+                 , kazoo_config
+                 , kazoo_data
+                 , kazoo_documents
+                 , kazoo_endpoint
+                 , kazoo_ips
+                 , kazoo_number_manager
+                 , kazoo_sip
+                 , kazoo_web
 
+                 , erlydtl
                  , lager
                  , poolboy
                  ]},

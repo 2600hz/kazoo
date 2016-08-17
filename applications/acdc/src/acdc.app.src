@@ -1,25 +1,12 @@
-{application, acdc,
- [
-  {description, "ACDc - Automatic Call Distribution commander"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [acdc_cache, acdc_sup, acdc_recordings_sup, acdc_agents_sup, acdc_queues_sup, acdc_stats_sup, acdc_agent_manager]},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
-                 , inets
-
-                 , kazoo
-                 , kazoo_amqp
-                 , kazoo_data
-                 , kazoo_modb
-                 , kazoo_apps
-                 , webseq
-                 , kazoo_web
-
-                 , lager
-                 , gproc
-                 ]},
-  {mod, {acdc_app, []}}
- ]}.
-
+{application,acdc,
+             [{applications,[crypto,gproc,kazoo,kazoo_amqp,kazoo_apps,
+                             kazoo_caches,kazoo_config,kazoo_data,
+                             kazoo_documents,kazoo_endpoint,kazoo_media,
+                             kazoo_modb,kazoo_web,lager,stdlib,webseq]},
+              {description,"ACDc - Automatic Call Distribution commander"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[acdc_cache,acdc_sup,acdc_recordings_sup,
+                           acdc_agents_sup,acdc_queues_sup,acdc_stats_sup,
+                           acdc_agent_manager]},
+              {mod,{acdc_app,[]}}]}.

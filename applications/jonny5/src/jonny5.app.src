@@ -1,18 +1,12 @@
-{application, jonny5,
- [
-  {description, "Jonny 5 - Short circuit accounts exceeding call volume"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [jonny5_cache, j5_channels, jonny5_listener, jonny5_sup]},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
-
-                 , kazoo_apps
-                 , kazoo_amqp
-                 , kazoo_data
-
-                 , lager
-                 ]},
-  {mod, {jonny5_app, []}}
- ]}.
+{application,jonny5,
+             [{applications,[crypto,kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
+                             kazoo_config,kazoo_data,kazoo_documents,
+                             kazoo_endpoint,kazoo_globals,kazoo_ledgers,
+                             kazoo_number_manager,kazoo_services,
+                             kazoo_transactions,lager,stdlib]},
+              {description,"Jonny 5 - Short circuit accounts exceeding call volume"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[jonny5_cache,j5_channels,jonny5_listener,
+                           jonny5_sup]},
+              {mod,{jonny5_app,[]}}]}.

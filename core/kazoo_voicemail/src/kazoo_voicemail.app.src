@@ -3,15 +3,16 @@
                                 {vsn, "4.0.0"},
                                 {modules, []},
                                 {registered, [ ]},
-                                {applications, [ kernel
-                                               , stdlib
-                                               , crypto
+                                {applications, [ stdlib
 
                                                , kazoo
-                                               , kazoo_data
+                                               , kazoo_amqp
+                                               , kazoo_apps
                                                , kazoo_config
-                                               , kazoo_modb
+                                               , kazoo_data
                                                , kazoo_documents
+                                               , kazoo_media
+                                               , kazoo_modb
 
                                                , lager
                                                ]}

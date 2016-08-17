@@ -6,12 +6,21 @@
   {registered, [notify_sup]},
   {applications, [ kernel
                  , stdlib
-                 , crypto
+                 , inets
 
+                 , kazoo
+                 , kazoo_config
+                 , kazoo_documents
+                 , kazoo_modb
+                 , kazoo_number_manager
+                 , kazoo_services
+                 , kazoo_voicemail
+                 , kazoo_web
                  , kazoo_apps
-                 , kazoo_amqp
                  , kazoo_data
 
+                 , erlydtl
+                 , gen_smtp
                  , lager
                  ]},
   {mod, {notify_app, []}}

@@ -7,7 +7,15 @@
   {applications, [kernel
                  ,stdlib
 
-                 ,kazoo_apps
+                 , kazoo
+                 , kazoo_apps
+                 , kazoo_bindings
+                 , kazoo_config
+                 , kazoo_data
+                 , kazoo_documents
+                 , kazoo_number_manager
+                 , kazoo_services
+                 , kazoo_tasks
 
                  ,lager
                  ]},

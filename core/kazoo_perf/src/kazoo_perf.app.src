@@ -6,13 +6,12 @@
   {registered, []},
   {applications, [ kernel
                  , stdlib
-                 , crypto
-                 , inets
+                 , runtime_tools
 
                  , kazoo
-                 , kazoo_amqp
+                 , kazoo_caches
                  , kazoo_data
 
-                 , lager
+                 , eflame
                  ]}
  ]}.

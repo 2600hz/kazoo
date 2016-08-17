@@ -4,13 +4,12 @@
   {vsn, "4.0.0"},
   {modules, []},
   {registered, [reorder_sup]},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
+  {applications, [stdlib
 
+                 , kazoo
                  , kazoo_apps
-                 , kazoo_amqp
-                 , kazoo_data
+                 , kazoo_config
+                 , kazoo_number_manager
 
                  , lager
                  ]},

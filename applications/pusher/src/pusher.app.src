@@ -5,17 +5,18 @@
   {modules, []},
   {registered, [pusher_cache, pm_google, pm_apple, pusher_sup, pusher_module_sup]},
   {applications, [ kernel
-                 , stdlib
                  , public_key
-                 , crypto
-                 , asn1
-                 , ssl
+                 , stdlib
 
-                 , kazoo_apps
-                 , kazoo_amqp
-                 , kazoo_data
+
                  , apns
                  , gcm
+                 , kazoo
+                 , kazoo_amqp
+                 , kazoo_caches
+                 , kazoo_config
+                 , kazoo_data
+                 , kazoo_sip
 
                  , lager
                  ]},

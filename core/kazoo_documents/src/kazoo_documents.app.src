@@ -1,20 +1,8 @@
-{application, kazoo_documents
-,[
-  {description, "Kazoo Document helper modules"}
- ,{vsn, "4.0.0"}
- ,{modules, []}
- ,{registered, [ ]}
- ,{applications, [ kernel
-                 , stdlib
-                 , crypto
-
-                 , kazoo
-                 , kazoo_data
-                 , kazoo_config
-                 , kazoo_services
-                 , kazoo_modb
-
-                 , cowboy
-                 , lager
-                 ]}
- ]}.
+{application,kazoo_documents,
+             [{applications,[cowboy,erlang_localtime,kazoo,kazoo_apps,
+                             kazoo_config,kazoo_data,kazoo_media,kazoo_modb,
+                             kazoo_services,kernel,lager,stdlib]},
+              {description,"Kazoo Document helper modules"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[]}]}.

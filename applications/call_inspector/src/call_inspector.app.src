@@ -1,18 +1,8 @@
-{application, call_inspector,
- [
-  {description, "An inspectortron application useful for quickly troubleshooting issues"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [ci_parsers_sup, ci_datastore, ci_analyzers_sup, call_inspector_sup]},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
-
-                 , kazoo_apps
-                 , kazoo_amqp
-                 , kazoo_data
-
-                 , lager
-                 ]},
-  {mod, {call_inspector_app, []}}
- ]}.
+{application,call_inspector,
+             [{applications,[hep,kazoo,kazoo_amqp,kernel,lager,stdlib]},
+              {description,"An inspectortron application useful for quickly troubleshooting issues"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[ci_parsers_sup,ci_datastore,ci_analyzers_sup,
+                           call_inspector_sup]},
+              {mod,{call_inspector_app,[]}}]}.

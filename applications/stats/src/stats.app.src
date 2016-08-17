@@ -5,11 +5,12 @@
   {modules, []},
   {registered, [stats_cache, stats_sup]},
   {applications, [ kernel
+                 , snmp
                  , stdlib
-                 , crypto
 
-                 , kazoo_apps
+                 , kazoo
                  , kazoo_amqp
+                 , kazoo_caches
 
                  , lager
                  ]},

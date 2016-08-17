@@ -4,8 +4,7 @@
   {vsn, "4.0.0"},
   {modules, []},
   {registered, [ ]},
-  {applications, [ kernel
-                 , stdlib
+  {applications, [ stdlib
                  , public_key
 
                  , kazoo

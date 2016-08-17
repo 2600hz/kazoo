@@ -4,13 +4,11 @@
   {vsn, "4.0.0"},
   {modules, []},
   {registered, [spyvsspy_sup]},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
+  {applications, [stdlib
 
+                 , kazoo
                  , kazoo_apps
-                 , kazoo_amqp
-                 , kazoo_data
+                 , kazoo_endpoint
 
                  , lager
                  ]},

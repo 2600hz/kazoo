@@ -4,13 +4,15 @@
   {vsn, "4.0.0"},
   {modules, []},
   {registered, [omnipresence_cache, omnip_message_summary_sip, omnipresence_proxy, omnip_message_summary_amqp, omnipresence_shared_listener, omnip_subscriptions, omnip_sup, omnipresence_sup, omnip_dialog_sip, omnip_dialog_amqp, omnip_presence_amqp, omnip_presence_sip]},
-  {applications, [ kernel
+  {applications, [ crypto
                  , stdlib
-                 , crypto
 
+                 , kazoo
+                 , kazoo_caches
+                 , kazoo_config
+                 , kazoo_sip
                  , kazoo_apps
                  , kazoo_amqp
-                 , kazoo_data
 
                  , lager
                  ]},
