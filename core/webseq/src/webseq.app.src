@@ -5,9 +5,9 @@
  , {registered, [ ]}
  , {applications, [ kernel
                   , stdlib
-                  , crypto
 
                   , kazoo
+                  , kazoo_apps
                   , kazoo_data
 
                   , gproc
