@@ -33,10 +33,10 @@ call_command(Node, UUID, JObj) ->
 
             {'ok', Channel=#channel{is_loopback=IsLoopBack, loopback_leg_name=LoopBackLeg}}
                 = ecallmgr_fs_channel:fetch(UUID, 'record'),
-            ForceRingBack = (IsLoopBack and (LoopBackLeg == <<"B">>)),
+            ForceRingReady = (IsLoopBack and (LoopBackLeg == <<"B">>)),
 
             _ = handle_ringback(Node, UUID, JObj),
-            _ = maybe_early_media(Node, UUID, JObj, ForceRingBack),
+            _ = maybe_early_media(Node, UUID, JObj, ForceRingReady),
             _ = maybe_b_leg_events(Node, UUID, JObj),
 
             Routines = [fun handle_hold_media/5
@@ -108,10 +108,10 @@ maybe_issue_ring_ready(_Node, _UUID, _, _) ->
     'ok'.
 
 -spec maybe_early_media(atom(), ne_binary(), kz_json:object(), boolean()) -> 'ok'.
-maybe_early_media(Node, UUID, JObj, ForceRingBack) ->
+maybe_early_media(Node, UUID, JObj, ForceRingReady) ->
     Endpoints = kz_json:get_ne_value(<<"Endpoints">>, JObj, []),
     Separator = ecallmgr_util:get_dial_separator(JObj, Endpoints),
-    maybe_issue_ring_ready(Node, UUID, Separator, ForceRingBack).
+    maybe_issue_ring_ready(Node, UUID, Separator, ForceRingReady).
 
 -spec handle_hold_media(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
 handle_hold_media(DP, _Node, UUID, _Channel, JObj) ->
