@@ -13,21 +13,24 @@ process_project() ->
                                ,kz_ast_util:project_apps()
                                ),
     io:format(" done~n"),
-    Discrepencies.
+    lists:keysort(1, Discrepencies).
 
 process_app(App) ->
     process_app(App, []).
 
 process_app(App, Acc) ->
     AppModules = kz_ast_util:app_modules(App),
-    {'ok', KnownApps} = application:get_key(App, 'applications'),
+    {'ok', ExistingApps} = application:get_key(App, 'applications'),
+    KnownApps = ordsets:from_list(ExistingApps),
 
     RemoteModules = remote_calls(AppModules),
-    RemoteApps = modules_as_apps(App, RemoteModules),
+    RemoteApps = ordsets:from_list(modules_as_apps(App, RemoteModules)),
 
-    case ordsets:subtract(ordsets:from_list(RemoteApps), ordsets:from_list(KnownApps)) of
-        [] -> Acc;
-        Missing -> [{App, Missing} | Acc]
+    Missing = ordsets:subtract(RemoteApps, KnownApps),
+    Unneeded = ordsets:subtract(KnownApps, RemoteApps),
+    case {Missing, Unneeded} of
+        {[], []} -> Acc;
+        _ -> [{App, Missing, Unneeded} | Acc]
     end.
 
 remote_calls(AppModules) ->
@@ -141,7 +144,8 @@ remote_calls_from_expression(?RECEIVE(Clauses, AfterExpr, AfterBody), Acc) ->
     remote_calls_from_expressions([AfterExpr | AfterBody]
                                  ,remote_calls_from_clauses(Clauses, Acc)
                                  );
-remote_calls_from_expression(?LAGER, Acc) -> Acc;
+remote_calls_from_expression(?LAGER, Acc) ->
+    add_remote_module('lager', Acc);
 remote_calls_from_expression(?MATCH(LHS, RHS), Acc) ->
     remote_calls_from_expressions([LHS, RHS], Acc);
 remote_calls_from_expression(?BEGIN_END(Exprs), Acc) ->
