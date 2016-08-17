@@ -17,6 +17,8 @@
         ,find_differences/3
         ,cleanup_moved_msgs/3
 
+        ,retention_days/0
+
         ,publish_saved_notify/5, publish_voicemail_saved/5
         ,get_notify_completed_message/1
         ,get_caller_id_name/1, get_caller_id_number/1
@@ -219,6 +221,10 @@ cleanup_moved_msgs(AccountId, BoxId, OldIds) ->
         {'error', _R} ->
             lager:error("unable to open mailbox for update messages array after moving voicemail messages to MODb ~s: ~s", [BoxId, _R])
     end.
+
+-spec retention_days() -> integer().
+retention_days() ->
+    ?RETENTION_DAYS(?RETENTION_DURATION).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -9,7 +9,7 @@
 -module(kzd_box_message).
 
 -export([new/2, build_metadata_object/6
-        ,count_folder/2, normalize_count/1
+        ,count_folder/2
         ,create_message_name/3
         ,type/0
 
@@ -272,22 +272,6 @@ set_source_id(SourceId, JObj) ->
 -spec filter_folder(kz_json:objects(), ne_binary()) -> kz_json:objects().
 filter_folder(Messages, Folder) ->
     [M || M <- Messages, folder(M) =:= Folder].
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Count mailbox_messages/count_per_folder view results
-%% @end
-%%--------------------------------------------------------------------
--spec normalize_count(kz_json:objects()) -> {non_neg_integer(), non_neg_integer()}.
-normalize_count(ViewRes) ->
-    Props = [{kz_json:get_value([<<"key">>, 2], Msg)
-             ,kz_json:get_integer_value(<<"value">>, Msg)
-             }
-             || Msg <- ViewRes
-            ],
-    {props:get_integer_value(<<"new">>, Props, 0)
-    ,props:get_integer_value(<<"saved">>, Props, 0)
-    }.
 
 %%--------------------------------------------------------------------
 %% @public

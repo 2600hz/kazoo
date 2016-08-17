@@ -865,7 +865,7 @@ vm_count(JObj) ->
     New = kzd_box_message:count_folder(Messages, ?VM_FOLDER_NEW),
     Saved = kzd_box_message:count_folder(Messages, ?VM_FOLDER_SAVED),
 
-    kvm_messages:count_by_modb(AccountId, BoxId, {New, Saved}).
+    kvm_messages:count_from_modb(AccountId, BoxId, {New, Saved}).
 
 %%--------------------------------------------------------------------
 %% @private

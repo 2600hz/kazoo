@@ -9,9 +9,14 @@
 -module(kvm_messages).
 
 
--export([get/2, get_from_vmbox/2, get_from_modb/2
-        ,count/2, count_per_folder/2 ,count_by_owner/2
-        ,count_by_modb/1, count_by_modb/3
+-export([get/1, get_from_vmbox/1, get_from_modb/1
+        ,get/2, get_from_vmbox/2, get_from_modb/2
+
+        ,count/1, count_per_folder/1
+        ,count/2, count_per_folder/2
+        ,count_by_owner/2
+        ,count_from_vmbox/1, count_from_vmbox/2
+        ,count_from_modb/1, count_from_modb/2, count_from_modb/3
 
         ,update/3
         ,move_to_vmbox/4
@@ -23,9 +28,8 @@
 
 -include("kz_voicemail.hrl").
 
--define(MODB_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
--define(MODB_COUNT_VIEW, <<"mailbox_messages/count_per_folder">>).
--define(COUNT_BY_VMBOX, <<"mailbox_messages/count_by_vmbox">>).
+-define(MSG_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
+-define(MSG_COUNT_VIEW, <<"mailbox_messages/count_per_folder">>).
 
 -type bulk_results() :: #bulk_res{}.
 -type count_result() :: {non_neg_integer(), non_neg_integer()}.
@@ -34,31 +38,56 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc fetch all messages for a voicemail box
+%% @doc fetch all messages for a voicemail box or on an account
 %% @end
 %%--------------------------------------------------------------------
 -spec get(ne_binary(), ne_binary() | kz_json:object()) -> kz_json:objects().
+get(AccountId) ->
+    %% first get messages metadata from vmbox for backward compatibility
+    get_from_vmbox(AccountId) ++ get_from_modb(AccountId).
+
 get(AccountId, Box) ->
     %% first get messages metadata from vmbox for backward compatibility
-    case get_from_vmbox(AccountId, Box) of
-        {'ok', Msgs} -> Msgs ++ get_from_modb(AccountId, Box);
-        _ -> []
-    end.
+    get_from_vmbox(AccountId, Box) ++ get_from_modb(AccountId, Box).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_from_vmbox(ne_binary(), ne_binary() | kz_json:object()) -> db_ret().
+-spec get_from_vmbox(ne_binary()) -> kz_json:objects().
+-spec get_from_vmbox(ne_binary(), ne_binary() | kz_json:object()) ->
+                            kz_json:objects().
+get_from_vmbox(AccountId) ->
+    Db = kvm_util:get_db(AccountId),
+    case kz_datamgr:get_results(Db, ?MSG_LISTING_BY_MAILBOX, []) of
+        {'ok', []} -> [];
+        {'ok', Result} ->
+            [kz_json:from_list([{kz_json:get_value([<<"key">>, 1], Msg)
+                                ,kz_json:get_value(<<"value">>, Msg)
+                                }
+                               ])
+             || Msg <- Result
+            ];
+        {'error', _Reason} ->
+            lager:debug("failed to fetch voicemail messages for account ~s: ~p"
+                       ,[AccountId, _Reason]),
+            []
+    end.
+
 get_from_vmbox(AccountId, ?NE_BINARY = BoxId) ->
-    case kvm_util:open_accountdb_doc(AccountId, BoxId, kzd_voicemail_box:type()) of
-        {'ok', BoxJObj} ->
-            get_from_vmbox(AccountId, BoxJObj);
-        {'error', _} = Error ->
-            lager:debug("failed to fetch voicemail messages for vmbox ~s(~s)"
-            	       ,[BoxId, AccountId]),
-            Error
+    ViewOpts = [{'startkey', [BoxId]}
+               ,{'endkey', [BoxId, kz_json:new()]}
+               ],
+    Db = kvm_util:get_db(AccountId),
+    case kz_datamgr:get_results(Db, ?MSG_LISTING_BY_MAILBOX, ViewOpts) of
+        {'ok', []} -> [];
+        {'ok', Result} ->
+            [kz_json:get_value(<<"value">>, Msg) || Msg <- Result];
+        {'error', _Reason} ->
+            lager:debug("failed to fetch voicemail messages for vmbox ~s(~s): ~p"
+                       ,[BoxId, AccountId, _Reason]),
+            []
     end;
 get_from_vmbox(_AccountId, BoxJObj) ->
     {'ok', kz_json:get_value(?VM_KEY_MESSAGES, BoxJObj, [])}.
@@ -68,16 +97,25 @@ get_from_vmbox(_AccountId, BoxJObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec get_from_modb(ne_binary()) -> kz_json:objects().
 -spec get_from_modb(ne_binary(), ne_binary() | kz_json:object()) ->
                            kz_json:objects().
+get_from_modb(AccountId) ->
+    ViewOpts = get_range_view(AccountId, []),
+    ModbResults = [kz_json:get_value(<<"value">>, Msg)
+                   || Msg <- modb_get_results(AccountId, ?MSG_LISTING_BY_MAILBOX, ViewOpts, [])
+                          ,Msg =/= []
+                  ],
+    ModbResults.
+
 get_from_modb(AccountId, ?NE_BINARY = BoxId) ->
-    ViewOpts = [{'key', BoxId}
-               ,'include_docs'
+    ViewOpts = [{'startkey', [BoxId]}
+               ,{'endkey', [BoxId, kz_json:new()]}
                ],
     ViewOptsList = get_range_view(AccountId, ViewOpts),
 
-    ModbResults = [kzd_box_message:metadata(kz_json:get_value(<<"doc">>, Msg))
-                   || Msg <- modb_get_results(AccountId, ?MODB_LISTING_BY_MAILBOX, ViewOptsList, [])
+    ModbResults = [kz_json:get_value(<<"value">>, Msg)
+                   || Msg <- modb_get_results(AccountId, ?MSG_LISTING_BY_MAILBOX, ViewOptsList, [])
                           ,Msg =/= []
                   ],
     ModbResults;
@@ -89,11 +127,21 @@ get_from_modb(AccountId, Box) ->
 %% @doc Count non-deleted messages
 %% @end
 %%--------------------------------------------------------------------
+-spec count(ne_binary()) -> kz_proplist().
 -spec count(ne_binary(), ne_binary()) -> non_neg_integer().
+count(AccountId) ->
+    count_per_folder(AccountId).
+
 count(AccountId, BoxId) ->
     {New, Saved} = count_per_folder(AccountId, BoxId),
     New + Saved.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec count_by_owner(ne_binary(), ne_binary()) -> count_result().
 count_by_owner(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, OwnerId) ->
     AccountId = kz_util:format_account_id(AccountDb),
     count_by_owner(AccountId, OwnerId);
@@ -112,25 +160,86 @@ count_by_owner(AccountId, OwnerId) ->
             {0, 0}
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec count_per_folder(ne_binary()) -> kz_proplist().
 -spec count_per_folder(ne_binary(), ne_binary()) -> count_result().
+count_per_folder(AccountId) ->
+    %% first count messages from vmbox for backward compatibility
+    VMCount = count_from_vmbox(AccountId),
+    MODBCount = count_from_modb(AccountId),
+    [{<<"accountdb_counts">>, VMCount}
+    ,{<<"modb_counts">>, MODBCount}
+    ].
+
 count_per_folder(AccountId, BoxId) ->
     %% first count messages from vmbox for backward compatibility
-    case get_from_vmbox(AccountId, BoxId) of
-        {'ok', Msgs} ->
-            New = kzd_box_message:count_folder(Msgs, [?VM_FOLDER_NEW]),
-            Saved = kzd_box_message:count_folder(Msgs, [?VM_FOLDER_SAVED]),
-            count_by_modb(AccountId, BoxId, {New, Saved});
-        _ -> count_by_modb(AccountId, BoxId, {0, 0})
+    {New, Saved} = count_from_vmbox(AccountId, BoxId),
+    count_from_modb(AccountId, BoxId, {New, Saved}).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec count_from_vmbox(ne_binary()) -> kz_json:object().
+-spec count_from_vmbox(ne_binary(), ne_binary()) -> count_result().
+count_from_vmbox(AccountId) ->
+    ViewOpts = ['reduce'
+               ,'group'
+               ,{'group_level', 2}
+               ],
+    Db = kvm_util:get_db(AccountId),
+    case kz_datamgr:get_results(Db, ?MSG_COUNT_VIEW, ViewOpts) of
+        {'ok', Msgs} -> normalize_count(Msgs);
+        _ ->
+            lager:debug("failed to count accountdb messages for account ~s"
+                       ,[AccountId]),
+            kz_json:new()
     end.
 
--spec count_by_modb(ne_binary()) -> kz_json:objects().
--spec count_by_modb(ne_binary(), ne_binary(), count_result()) -> count_result().
-count_by_modb(AccountId) ->
-    Opts = ['reduce', 'group'],
-    ViewOptsList = get_range_view(AccountId, Opts),
-    modb_get_results(AccountId, ?COUNT_BY_VMBOX, ViewOptsList, []).
+count_from_vmbox(AccountId, BoxId) ->
+    ViewOpts = ['reduce'
+               ,'group'
+               ,{'group_level', 2}
+               ,{'startkey', [BoxId]}
+               ,{'endkey', [BoxId, kz_json:new()]}
+               ],
+    Db = kvm_util:get_db(AccountId),
+    case kz_datamgr:get_results(Db, ?MSG_COUNT_VIEW, ViewOpts) of
+        {'ok', ViewRes} ->
+            Results = normalize_count(ViewRes),
+            normalize_count_non_deleted(BoxId, Results);
+        {'error', _R} ->
+            lager:debug("failed to count accountdb messages for vmbox ~s(~s): ~p"
+                       ,[BoxId, AccountId, _R]),
+            {0, 0}
+    end.
 
-count_by_modb(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec count_from_modb(ne_binary()) -> kz_json:object().
+-spec count_from_modb(ne_binary(), ne_binary()) -> count_result().
+-spec count_from_modb(ne_binary(), ne_binary(), count_result()) -> count_result().
+count_from_modb(AccountId) ->
+    Opts = ['reduce'
+           ,'group'
+           ,{'group_level', 2}
+           ],
+    ViewOptsList = get_range_view(AccountId, Opts),
+    Result = modb_get_results(AccountId, ?MSG_COUNT_VIEW, ViewOptsList, []),
+    normalize_count(Result).
+
+count_from_modb(AccountId, BoxId) ->
+    count_from_modb(AccountId, BoxId, {0, 0}).
+
+count_from_modb(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
     Opts = ['reduce'
            ,'group'
            ,{'group_level', 2}
@@ -139,11 +248,12 @@ count_by_modb(AccountId, BoxId, {ANew, ASaved}=AccountDbCounts) ->
            ],
     ViewOptions = get_range_view(AccountId, Opts),
 
-    case modb_get_results(AccountId, ?MODB_COUNT_VIEW, ViewOptions, []) of
+    case modb_get_results(AccountId, ?MSG_COUNT_VIEW, ViewOptions, []) of
         [] ->
             AccountDbCounts;
-        Results ->
-            {MNew, MSaved} = kzd_box_message:normalize_count(Results),
+        ViewRes ->
+            Results = normalize_count(ViewRes),
+            {MNew, MSaved} = normalize_count_non_deleted(BoxId, Results),
             {ANew + MNew, ASaved + MSaved}
     end.
 
@@ -279,7 +389,7 @@ modb_get_results(AccountId, View, [ViewOpts|ViewOptsList], Acc) ->
         {'ok', []} -> modb_get_results(AccountId, View, ViewOptsList, Acc);
         {'ok', Msgs} -> modb_get_results(AccountId, View, ViewOptsList, Msgs ++ Acc);
         {'error', _}=_E ->
-            lager:debug("error when fetching voicemail message for ~s from modb ~s"
+            lager:debug("failed to count voicemail messages for ~s from modb ~s"
                        ,[props:get_value('key', ViewOpts), props:get_value('modb', ViewOpts)]
                        ),
             modb_get_results(AccountId, View, ViewOptsList, Acc)
@@ -304,6 +414,28 @@ get_range_view(AccountId, ViewOpts) ->
                   ]
           end,
     [Fun(Db) || Db <- kazoo_modb:get_range(AccountId, From, To)].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Normalize count views results
+%% @end
+%%--------------------------------------------------------------------
+-spec normalize_count(kz_json:objects()) -> kz_json:object().
+normalize_count([]) -> kz_json:new();
+normalize_count(ViewRes) ->
+    Fun = fun(M, Acc) ->
+                  VMBox = kz_json:get_value([<<"key">>, 1], M),
+                  Folder = kz_json:get_value([<<"key">>, 2], M),
+                  Value = kz_json:get_integer_value(<<"value">>, M),
+                  kz_json:insert_value([VMBox, Folder], Value, Acc)
+          end,
+    lists:foldl(Fun, kz_json:new(), ViewRes).
+
+-spec normalize_count_non_deleted(ne_binary(), kz_json:object()) -> count_result().
+normalize_count_non_deleted(BoxId, ViewRes) ->
+    {kz_json:get_integer_value([BoxId, ?VM_FOLDER_NEW], ViewRes, 0)
+    ,kz_json:get_integer_value([BoxId, ?VM_FOLDER_SAVED], ViewRes, 0)
+    }.
 
 %%--------------------------------------------------------------------
 %% @private
