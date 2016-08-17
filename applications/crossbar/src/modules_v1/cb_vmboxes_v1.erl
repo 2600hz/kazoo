@@ -495,7 +495,7 @@ normalize_view_results(JObj, Acc) ->
 -spec merge_summary_results(kz_json:objects(), kz_json:objects()) -> kz_json:objects().
 merge_summary_results(BoxSummary, MODBSummary) ->
     MergeFun = fun(JObj, Acc) ->
-               [merge_summary_fold(JObj, MODBSummary) | Acc]
+                       [merge_summary_fold(JObj, MODBSummary) | Acc]
                end,
     lists:foldl(MergeFun, [], BoxSummary).
 
