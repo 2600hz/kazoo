@@ -100,7 +100,7 @@ maybe_issue_ring_ready(Node, UUID, ?SEPARATOR_SIMULTANEOUS, _) ->
     ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, ""),
     'ok';
 maybe_issue_ring_ready(Node, UUID, ?SEPARATOR_SINGLE, 'true') ->
-    %% this is a hack to mitigate the absence of early media in freeswitch loopback 
+    %% this is a hack to mitigate the absence of early media in freeswitch loopback
     lager:debug("bridge is to loopback endpoint, starting local ringing"),
     ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, ""),
     'ok';
