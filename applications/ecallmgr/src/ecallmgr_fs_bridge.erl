@@ -39,7 +39,6 @@ call_command(Node, UUID, JObj) ->
             _ = maybe_early_media(Node, UUID, JObj, ForceRingBack),
             _ = maybe_b_leg_events(Node, UUID, JObj),
 
-
             Routines = [fun handle_hold_media/5
                        ,fun handle_secure_rtp/5
                        ,fun maybe_handle_bypass_media/5
