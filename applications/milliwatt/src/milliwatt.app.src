@@ -1,5 +1,5 @@
 {application,milliwatt,
-             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_config,lager,
+             [{applications,[kazoo,kazoo_amqp,kazoo_call,kazoo_config,lager,
                              stdlib]},
               {description,"milliwatt "},
               {vsn,"4.0.0"},

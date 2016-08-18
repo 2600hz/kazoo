@@ -1,10 +1,10 @@
-{application, kazoo_call,
- [
-  {description, "Representing calls in Kazoo since 2011"}
- ,{id, ""}
- ,{vsn, "4.0.0"}
- ,{modules, []}
- ,{registered, []}
- ,{applications, [stdlib]}
- ,{env, []}
- ]}.
+{application,kazoo_call,
+             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
+                             kazoo_config,kazoo_data,kazoo_documents,
+                             kazoo_media,kazoo_number_manager,lager,stdlib]},
+              {description,"Representing calls in Kazoo since 2011"},
+              {id,[]},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[]},
+              {env,[]}]}.

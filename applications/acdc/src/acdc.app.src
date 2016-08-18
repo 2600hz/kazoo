@@ -1,6 +1,6 @@
 {application,acdc,
              [{applications,[crypto,gproc,kazoo,kazoo_amqp,kazoo_apps,
-                             kazoo_caches,kazoo_config,kazoo_data,
+                             kazoo_caches,kazoo_call,kazoo_config,kazoo_data,
                              kazoo_documents,kazoo_endpoint,kazoo_media,
                              kazoo_modb,kazoo_web,lager,stdlib,webseq]},
               {description,"ACDc - Automatic Call Distribution commander"},

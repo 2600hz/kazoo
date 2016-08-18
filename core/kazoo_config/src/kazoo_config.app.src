@@ -1,5 +1,5 @@
 {application,kazoo_config,
-             [{applications,[kazoo,kazoo_apps,kazoo_caches,kazoo_data,
+             [{applications,[kazoo,kazoo_caches,kazoo_call,kazoo_data,
                              kazoo_services,lager,stdlib,zucchini]},
               {description,"Kazoo Configuration Helper"},
               {vsn,"4.0.0"},

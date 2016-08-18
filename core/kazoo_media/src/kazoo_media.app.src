@@ -1,6 +1,6 @@
 {application,kazoo_media,
              [{applications,[cowboy,cowlib,kazoo,kazoo_amqp,kazoo_apps,
-                             kazoo_config,kazoo_data,kazoo_modb,
+                             kazoo_call,kazoo_config,kazoo_data,kazoo_modb,
                              kazoo_services,kazoo_web,lager,stdlib]},
               {description,"Kazoo Media provides support for generating media URLs as well as proxing media files"},
               {vsn,"4.0.0"},

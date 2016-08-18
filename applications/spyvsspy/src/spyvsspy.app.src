@@ -1,5 +1,6 @@
 {application,spyvsspy,
-             [{applications,[kazoo,kazoo_apps,kazoo_endpoint,lager,stdlib]},
+             [{applications,[kazoo,kazoo_apps,kazoo_call,kazoo_endpoint,lager,
+                             stdlib]},
               {description,"Spy Vs Spy - Eavesdrop on a call or group of calls"},
               {vsn,"4.0.0"},
               {modules,[]},

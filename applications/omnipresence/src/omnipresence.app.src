@@ -1,6 +1,6 @@
 {application,omnipresence,
              [{applications,[crypto,kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
-                             kazoo_config,kazoo_sip,lager,stdlib]},
+                             kazoo_call,kazoo_config,kazoo_sip,lager,stdlib]},
               {description,"Omnipresence - Who's doing what when"},
               {vsn,"4.0.0"},
               {modules,[]},
