@@ -79,7 +79,13 @@ process_app(App) ->
 
 process_app('kazoo_ast', Acc) -> Acc;
 process_app(App, Acc) ->
-    {'ok', ExistingApps} = application:get_key(App, 'applications'),
+    case application:get_key(App, 'applications') of
+        'undefined' -> application:load(App), process_app(App, Acc);
+        {'ok', ExistingApps} ->
+            process_app(App, Acc, ExistingApps)
+    end.
+
+process_app(App, Acc, ExistingApps) ->
     KnownApps = ordsets:from_list(ExistingApps -- ['kernel']),
 
     RemoteModules = remote_calls(App),
