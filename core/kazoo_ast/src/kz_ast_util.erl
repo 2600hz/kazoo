@@ -76,7 +76,7 @@ create_schema(Path) ->
 project_apps() ->
     Core = siblings_of('kazoo'),
     Apps = siblings_of('sysconf'),
-    Core ++ Apps.
+    Core ++ Apps -- ['kazoo_ast'].
 
 siblings_of(App) ->
     [dir_to_app_name(Dir)
