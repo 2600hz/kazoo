@@ -229,6 +229,9 @@ summary(Context) ->
         [{<<"channels">>, []}, {<<"accounts">>, [_AccountId]} | _] ->
             lager:debug("getting account summary"),
             account_summary(Context);
+        [{<<"channels">>,[]}] ->
+            lager:debug("getting system-wide summary"),
+            account_summary(Context);
         _Nouns ->
             lager:debug("unexpected nouns: ~p", [_Nouns]),
             crossbar_util:response_faulty_request(Context)
@@ -320,7 +323,7 @@ get_channels(Context, Devices, PublisherFun) ->
 
     Req = [{<<"Realm">>, Realm}
           ,{<<"Usernames">>, lists:usort(Usernames)} % unique list of usernames
-          ,{<<"Account-ID">>, cb_context:account_id(Context)}
+          ,{<<"Account-ID">>, get_account_id(Context)}
           ,{<<"Active-Only">>, 'false'}
           ,{<<"Msg-ID">>, cb_context:req_id(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -508,3 +511,10 @@ maybe_intercept(Context, CallId, TargetType, TargetId) ->
     lager:debug("attempting to move ~s to ~s(~s)", [CallId, TargetId, TargetType]),
     kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
     crossbar_util:response_202(<<"intercept initiated">>, Context).
+
+-spec get_account_id(cb_context:context()) -> ne_binary().
+get_account_id(Context) ->
+    case cb_context:account_id(Context) of
+        'undefined' -> <<"all">>;
+        AccountId -> AccountId
+    end.

@@ -275,7 +275,10 @@ send_user_query_resp(JObj, Cs) ->
 
 -spec handle_query_account_channels(kz_json:object(), ne_binary()) -> 'ok'.
 handle_query_account_channels(JObj, _) ->
-    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
+    AccountId = case kz_json:get_value(<<"Account-ID">>, JObj) of
+                    <<"all">> -> '_';
+                    Value -> Value
+                end,
     case find_account_channels(AccountId) of
         {'error', 'not_found'} -> send_account_query_resp(JObj, []);
         {'ok', Cs} -> send_account_query_resp(JObj, Cs)
