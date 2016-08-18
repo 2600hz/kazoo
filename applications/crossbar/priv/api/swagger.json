@@ -7837,6 +7837,19 @@
             "required": true,
             "type": "object"
         },
+        "system_config.crossbar.channels": {
+            "description": "Schema for crossbar.channels system_config",
+            "properties": {
+                "system_wide_channels_list": {
+                    "default": false,
+                    "description": "crossbar.channels system wide channels list",
+                    "name": "system_wide_channels_list",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
         "system_config.crossbar.contact_list": {
             "description": "Schema for crossbar.contact_list system_config",
             "properties": {
