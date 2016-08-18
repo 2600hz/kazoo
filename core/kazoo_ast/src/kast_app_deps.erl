@@ -34,10 +34,12 @@ fix_app_deps(App, Missing, Unneeded) ->
     of
         ConfiguredApps -> 'ok';
         UpdatedApps ->
-            io:format("conf: ~p~n", [ConfiguredApps]),
-            io:format("upda: ~p~n", [UpdatedApps]),
             write_app_src(App
-                         ,{'application', App, props:set_value('applications', UpdatedApps, Properties)})
+                         ,{'application'
+                          ,App
+                          ,props:set_value('applications', UpdatedApps, Properties)
+                          }
+                         )
     end.
 
 read_app_src(App) ->
@@ -73,12 +75,8 @@ process_app(App, Acc) ->
     {'ok', ExistingApps} = application:get_key(App, 'applications'),
     KnownApps = ordsets:from_list(ExistingApps -- ['kernel']),
 
-    io:format("app: ~p~n", [AppModules]),
     RemoteModules = remote_calls(AppModules),
     RemoteApps = ordsets:from_list(modules_as_apps(App, RemoteModules)),
-
-    io:format("~nka: ~p~n", [KnownApps]),
-    io:format("rm: ~p~nra: ~p~n", [RemoteModules, RemoteApps]),
 
     Missing = ordsets:subtract(RemoteApps, KnownApps),
     Unneeded = ordsets:subtract(KnownApps, RemoteApps),
