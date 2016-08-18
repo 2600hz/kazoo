@@ -31,12 +31,10 @@ call_command(Node, UUID, JObj) ->
             %% this does not test how many are ACTUALLY dialed (registered)
             %% since that is one of the things we want to be ringing during
 
-            {'ok', Channel=#channel{is_loopback=IsLoopBack, loopback_leg_name=LoopBackLeg}}
-                = ecallmgr_fs_channel:fetch(UUID, 'record'),
-            ForceRingReady = (IsLoopBack and (LoopBackLeg == <<"B">>)),
+            {'ok', Channel} = ecallmgr_fs_channel:fetch(UUID, 'record'),
 
             _ = handle_ringback(Node, UUID, JObj),
-            _ = maybe_early_media(Node, UUID, JObj, ForceRingReady),
+            _ = maybe_early_media(Node, UUID, JObj, Channel),
             _ = maybe_b_leg_events(Node, UUID, JObj),
 
             Routines = [fun handle_hold_media/5
@@ -93,25 +91,30 @@ handle_ringback(Node, UUID, JObj) ->
             ecallmgr_fs_command:set(Node, UUID, [{<<"ringback">>, Stream}])
     end.
 
--spec maybe_issue_ring_ready(atom(), ne_binary(), kz_json:object(), boolean()) -> 'ok'.
-maybe_issue_ring_ready(Node, UUID, ?SEPARATOR_SIMULTANEOUS, _) ->
-    lager:debug("bridge is simultaneous to multiple endpoints, starting local ringing"),
-    %% we don't really care if this succeeds, the call will fail later on
-    ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, ""),
-    'ok';
-maybe_issue_ring_ready(Node, UUID, ?SEPARATOR_SINGLE, 'true') ->
+-spec maybe_issue_ring_ready(atom(), ne_binary(), #channel{}) -> 'ok' | 'skip'.
+maybe_issue_ring_ready(Node, UUID, #channel{is_loopback=IsLoopBack, loopback_leg_name=LoopBackLeg}) ->
     %% this is a hack to mitigate the absence of early media in freeswitch loopback
-    lager:debug("bridge is to loopback endpoint, starting local ringing"),
-    ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, ""),
-    'ok';
-maybe_issue_ring_ready(_Node, _UUID, _, _) ->
-    'ok'.
+    case (IsLoopBack and (LoopBackLeg == <<"B">>)) of
+        'true' ->
+            lager:debug("bridge is to loopback channel, starting local ringing"),
+            ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, ""),
+            'ok';
+        _Else ->
+            'skip'
+    end.
 
 -spec maybe_early_media(atom(), ne_binary(), kz_json:object(), boolean()) -> 'ok'.
-maybe_early_media(Node, UUID, JObj, ForceRingReady) ->
+maybe_early_media(Node, UUID, JObj, Channel) ->
     Endpoints = kz_json:get_ne_value(<<"Endpoints">>, JObj, []),
     Separator = ecallmgr_util:get_dial_separator(JObj, Endpoints),
-    maybe_issue_ring_ready(Node, UUID, Separator, ForceRingReady).
+    case Separator of
+        ?SEPARATOR_SIMULTANEOUS ->
+            lager:debug("bridge is simultaneous to multiple endpoints, starting local ringing"),
+            ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, "");
+        ?SEPARATOR_SINGLE ->
+            maybe_issue_ring_ready(Node, UUID, Channel)
+    end,
+    'ok'.
 
 -spec handle_hold_media(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
 handle_hold_media(DP, _Node, UUID, _Channel, JObj) ->
