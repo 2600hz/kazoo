@@ -1,13 +1,20 @@
 {application, dth,
  [
   {description, "DTH - Integration with DTH Billing System"}
-  ,{vsn, "0.1.0"}
-  ,{modules, []}
-  ,{registered, []}
-  ,{applications, [
-		   kernel
-		   ,stdlib
-		  ]}
-  ,{mod, { dth_app, []} }
-  ,{env, []}
+ ,{vsn, "4.0.0"}
+ ,{modules, []}
+ ,{registered, [dth_cache, dth_sup]}
+ ,{applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , inets
+
+                 , kazoo_apps
+                 , kazoo_amqp
+                 , kazoo_data
+
+                 , lager
+                 , detergent
+                 ]}
+ ,{mod, {dth_app, []}}
  ]}.

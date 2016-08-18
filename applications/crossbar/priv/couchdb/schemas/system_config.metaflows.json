@@ -1,0 +1,59 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.metaflows",
+    "description": "Schema for metaflows system_config",
+    "properties": {
+        "binding_digit": {
+            "default": "*",
+            "description": "metaflows binding digit",
+            "name": "binding_digit",
+            "type": "string"
+        },
+        "default_metaflow": {
+            "default": {},
+            "description": "metaflows default metaflow",
+            "name": "default_metaflow",
+            "type": "object"
+        },
+        "digit_timeout_ms": {
+            "default": 800,
+            "description": "metaflows digit timeout in milliseconds",
+            "name": "digit_timeout_ms",
+            "type": "integer"
+        },
+        "listen_on": {
+            "default": "a",
+            "description": "metaflows listen on",
+            "name": "listen_on",
+            "type": "string"
+        },
+        "numbers": {
+            "default": {
+                "2": {
+                    "data": {
+                        "text": "hi"
+                    },
+                    "module": "say"
+                }
+            },
+            "description": "metaflows numbers",
+            "name": "numbers",
+            "type": "object"
+        },
+        "patterns": {
+            "default": {
+                "^2$": {
+                    "data": {
+                        "text": "hi"
+                    },
+                    "module": "say"
+                }
+            },
+            "description": "metaflows patterns",
+            "name": "patterns",
+            "type": "object"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -1,0 +1,42 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.record_caller",
+    "description": "Record the caller's audio stream",
+    "properties": {
+        "format": {
+            "description": "What format to store the recording on disk",
+            "enum": [
+                "mp3",
+                "wav"
+            ],
+            "name": "Format",
+            "type": "string"
+        },
+        "method": {
+            "default": "put",
+            "description": "What HTTP method to use when sending the recording",
+            "enum": [
+                "put",
+                "post"
+            ],
+            "type": "string"
+        },
+        "time_limit": {
+            "default": 3600,
+            "description": "Time limit, in seconds, for the recording",
+            "maximum": 3600,
+            "minimum": 5,
+            "name": "Time Limit",
+            "required": false,
+            "type": "integer"
+        },
+        "url": {
+            "description": "The URL to use when sending the recording for storage",
+            "name": "URL",
+            "required": false,
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

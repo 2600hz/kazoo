@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.teletype",
+    "description": "Schema for teletype system_config",
+    "properties": {
+        "iterate_over_bcc": {
+            "default": true,
+            "description": "teletype iterate over bcc",
+            "name": "iterate_over_bcc",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

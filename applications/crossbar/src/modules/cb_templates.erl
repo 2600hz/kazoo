@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%%
 %%% Handle client requests for template documents
@@ -12,15 +12,15 @@
 -module(cb_templates).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
-         ,put/2
-         ,delete/2
-         ,account_created/1
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,validate/1, validate/2
+        ,put/2
+        ,delete/2
+        ,account_created/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(DB_PREFIX, "template/").
 
@@ -90,7 +90,7 @@ validate_request(Context, ?HTTP_GET, [{<<"templates">>, _}]) ->
 validate_request(Context, ?HTTP_PUT, [{<<"templates">>, _}], TemplateName) ->
     case cb_context:resp_status(load_template_db(TemplateName, Context)) of
         'success' -> cb_context:add_system_error('datastore_conflict', Context);
-        _Else     -> crossbar_util:response(wh_json:new(), Context)
+        _Else     -> crossbar_util:response(kz_json:new(), Context)
     end;
 validate_request(Context, ?HTTP_DELETE, [{<<"templates">>, _}], TemplateName) ->
     load_template_db(TemplateName, Context);
@@ -102,8 +102,8 @@ put(Context, TemplateName) ->
 
 delete(Context, TemplateName) ->
     DbName = format_template_name(TemplateName, 'encoded'),
-    case couch_mgr:db_delete(DbName) of
-        'true' -> crossbar_util:response(wh_json:new(), Context);
+    case kz_datamgr:db_delete(DbName) of
+        'true' -> crossbar_util:response(kz_json:new(), Context);
         'false' -> cb_context:add_system_error('datastore_fault', Context)
     end.
 
@@ -111,7 +111,7 @@ account_created(Context) ->
     JObj = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_db(Context),
-    import_template(wh_json:get_value(<<"template">>, JObj), AccountId, AccountDb).
+    import_template(kz_json:get_value(<<"template">>, JObj), AccountId, AccountDb).
 
 %%%===================================================================
 %%% Internal functions
@@ -125,11 +125,11 @@ account_created(Context) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    case couch_mgr:db_info() of
+    case kz_datamgr:db_info() of
         {'ok', Dbs} ->
             RespData = [format_template_name(Db, 'raw') || <<?DB_PREFIX, _/binary>>=Db <- Dbs],
             cb_context:set_resp_status(cb_context:set_resp_data(Context, RespData)
-                                       ,'success'
+                                      ,'success'
                                       );
         _ -> cb_context:add_system_error('datastore_missing_view', Context)
     end.
@@ -146,15 +146,15 @@ load_template_db([TemplateName], Context) ->
     load_template_db(TemplateName, Context);
 load_template_db(TemplateName, Context) ->
     DbName = format_template_name(TemplateName, 'encoded'),
-    case couch_mgr:db_exists(DbName) of
+    case kz_datamgr:db_exists(DbName) of
         'false' ->
             lager:debug("check failed for template db ~s", [DbName]),
             cb_context:add_system_error('datastore_missing', Context);
         'true' ->
             lager:debug("check succeeded for template db ~s", [DbName]),
             cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-                                         ,{fun cb_context:set_account_id/2, TemplateName}
-                                         ,{fun cb_context:set_account_db/2, DbName}
+                                        ,{fun cb_context:set_account_id/2, TemplateName}
+                                        ,{fun cb_context:set_account_db/2, DbName}
                                         ])
     end.
 
@@ -188,14 +188,14 @@ format_template_name(TemplateName, 'raw') ->
 -spec create_template_db(ne_binary(), cb_context:context()) -> cb_context:context().
 create_template_db(TemplateName, Context) ->
     TemplateDb = format_template_name(TemplateName, 'encoded'),
-    case couch_mgr:db_create(TemplateDb) of
+    case kz_datamgr:db_create(TemplateDb) of
         'false' ->
             lager:debug("failed to create database: ~s", [TemplateDb]),
             cb_context:add_system_error('datastore_fault', Context);
         'true' ->
             lager:debug("created DB for template ~s", [TemplateName]),
-            couch_mgr:revise_docs_from_folder(TemplateDb, 'crossbar', "account", 'false'),
-            _ = couch_mgr:revise_doc_from_file(TemplateDb, 'crossbar', ?MAINTENANCE_VIEW_FILE),
+            kz_datamgr:revise_docs_from_folder(TemplateDb, 'crossbar', "account", 'false'),
+            _ = kz_datamgr:revise_doc_from_file(TemplateDb, 'crossbar', ?MAINTENANCE_VIEW_FILE),
             cb_context:set_resp_status(Context, 'success')
     end.
 
@@ -211,11 +211,11 @@ import_template('undefined', _, _) -> 'ok';
 import_template(TemplateName, AccountId, AccountDb) ->
     %% TODO: use couch replication...
     TemplateDb = format_template_name(TemplateName, 'encoded'),
-    case couch_mgr:all_docs(TemplateDb) of
+    case kz_datamgr:all_docs(TemplateDb) of
         {'ok', Docs} ->
             Ids = [Id || Doc <- Docs,
                          begin
-                             Id = wh_doc:id(Doc),
+                             Id = kz_doc:id(Doc),
                              not is_design_doc_id(Id)
                          end
                   ],
@@ -237,25 +237,25 @@ is_design_doc_id(_) -> 'true'.
 -spec import_template_docs(ne_binaries(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 import_template_docs([], _, _, _) -> 'ok';
 import_template_docs([Id|Ids], TemplateDb, AccountId, AccountDb) ->
-    case couch_mgr:open_doc(TemplateDb, Id) of
+    case kz_datamgr:open_doc(TemplateDb, Id) of
         {'ok', JObj} ->
-            Routines = [fun(J) -> wh_doc:set_account_id(J, AccountId) end
-                        ,fun(J) -> wh_doc:set_account_db(J, AccountDb) end
-                        ,fun wh_doc:delete_revision/1
-                        ,fun wh_doc:delete_attachments/1
+            Routines = [fun(J) -> kz_doc:set_account_id(J, AccountId) end
+                       ,fun(J) -> kz_doc:set_account_db(J, AccountDb) end
+                       ,fun kz_doc:delete_revision/1
+                       ,fun kz_doc:delete_attachments/1
                        ],
-            _ = couch_mgr:ensure_saved(AccountDb, lists:foldr(fun(F, J) -> F(J) end, JObj, Routines)),
-            Attachments = wh_doc:attachment_names(JObj),
+            _ = kz_datamgr:ensure_saved(AccountDb, lists:foldr(fun(F, J) -> F(J) end, JObj, Routines)),
+            Attachments = kz_doc:attachment_names(JObj),
             _ = import_template_attachments(Attachments, JObj, TemplateDb, AccountDb, Id),
             import_template_docs(Ids, TemplateDb, AccountId, AccountDb);
         {'error', _} -> import_template_docs(Ids, TemplateDb, AccountId, AccountDb)
     end.
 
--spec import_template_attachments(ne_binaries(), wh_json:object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec import_template_attachments(ne_binaries(), kz_json:object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 import_template_attachments([], _, _, _, _) -> 'ok';
 import_template_attachments([Attachment|Attachments], JObj, TemplateDb, AccountDb, Id) ->
-    {'ok', Bin} = couch_mgr:fetch_attachment(TemplateDb, Id, Attachment),
-    ContentType = wh_doc:attachment_content_type(JObj, Attachment),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(ContentType)}]}],
-    _ = couch_mgr:put_attachment(AccountDb, Id, Attachment, Bin, Opts),
+    {'ok', Bin} = kz_datamgr:fetch_attachment(TemplateDb, Id, Attachment),
+    ContentType = kz_doc:attachment_content_type(JObj, Attachment),
+    Opts = [{'content_type', ContentType}],
+    _ = kz_datamgr:put_attachment(AccountDb, Id, Attachment, Bin, Opts),
     import_template_attachments(Attachments, JObj, TemplateDb, AccountDb, Id).

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Listener for sysconf_read, and sysconf_write AMQP requests
 %%% @end
@@ -7,29 +7,32 @@
 %%%   Edouard Swiac
 %%%-------------------------------------------------------------------
 -module(sysconf_listener).
-
 -behaviour(gen_listener).
 
 %% API
 -export([start_link/0]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("sysconf.hrl").
 
+-record(state, {}).
+-type state() :: #state{}.
+
+-define(SERVER, ?MODULE).
+
 -define(RESPONDERS, [{'sysconf_get', [{<<"sysconf">>, <<"get_req">>}]}
-                     ,{'sysconf_set', [{<<"sysconf">>, <<"set_req">>}]}
-                     ,{'sysconf_flush', [{<<"sysconf">>, <<"flush_req">>}]}
+                    ,{'sysconf_set', [{<<"sysconf">>, <<"set_req">>}]}
+                    ,{'sysconf_flush', [{<<"sysconf">>, <<"flush_req">>}]}
                     ]).
 -define(BINDINGS, [{'sysconf', []}]).
 
--define(SERVER, ?MODULE).
 -define(SYSCONF_QUEUE_NAME, <<"sysconf_listener">>).
 -define(SYSCONF_QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(SYSCONF_CONSUME_OPTIONS, [{'exclusive', 'false'}]).
@@ -39,18 +42,15 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
-                                      ,{'bindings', ?BINDINGS}
-                                      ,{'queue_name', ?SYSCONF_QUEUE_NAME}
-                                      ,{'queue_options', ?SYSCONF_QUEUE_OPTIONS}
-                                      ,{'consume_options', ?SYSCONF_CONSUME_OPTIONS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
+                                     ,{'bindings', ?BINDINGS}
+                                     ,{'queue_name', ?SYSCONF_QUEUE_NAME}
+                                     ,{'queue_options', ?SYSCONF_QUEUE_OPTIONS}
+                                     ,{'consume_options', ?SYSCONF_CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================
@@ -71,8 +71,7 @@ start_link() ->
 init([]) ->
     process_flag('trap_exit', 'true'),
     lager:debug("starting new sysconf server"),
-    _ = wh_couch_connections:add_change_handler(?WH_CONFIG_DB),
-    {'ok', 'ok'}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -88,6 +87,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Msg, _From, State) ->
     {'noreply', State}.
 
@@ -101,6 +101,7 @@ handle_call(_Msg, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
@@ -119,13 +120,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'document_changes', _, _}, State) ->
-    whapps_config:flush(),
-    lager:info("system configuration was updated, flushing whapps config cache"),
+    kapps_config:flush(),
+    lager:info("system configuration was updated, flushing kapps config cache"),
     {'noreply', State};
 handle_info({'document_deleted', _}, State) ->
-    whapps_config:flush(),
-    lager:info("system configuration was updated, flushing whapps config cache"),
+    kapps_config:flush(),
+    lager:info("system configuration was updated, flushing kapps config cache"),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -139,6 +141,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -165,6 +168,7 @@ terminate(_Reason, _) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

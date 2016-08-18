@@ -1,6 +1,5 @@
-
 %%%-------------------------------------------------------------------
-%%% @copyright (c) 2010-2013, 2600Hz
+%%% @copyright (c) 2010-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -20,6 +19,9 @@
 
 -include("cdr.hrl").
 
+-define(SERVER, ?MODULE).
+
+-define(CHILDREN, [?WORKER('cdr_listener')]).
 
 %% ===================================================================
 %% API functions
@@ -27,18 +29,18 @@
 
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
-    wh_util:set_startup(),
+    kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    {'ok', {SupFlags, [?WORKER('cdr_listener')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014
+%%% @copyright (C) 2014-2016, 2600Hz
 %%% @doc
 %%% This listener handles call CHANNEL_DESTROY events.
 %%% It is started by cf_singular_call_hooks and will
@@ -13,33 +13,35 @@
 -behaviour(gen_listener).
 
 -export([start_link/1
-         ,handle_call_event/2
+        ,handle_call_event/2
         ]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("callflow.hrl").
 
--record(state, {call :: whapps_call:call()}).
+-define(SERVER, ?MODULE).
+
+-record(state, {call :: kapps_call:call()}).
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS(CallID), [{'call', [{'callid', CallID}
-                                     ,{'restrict_to',
-                                        [ <<"CHANNEL_DESTROY">>
-                                        , <<"CHANNEL_TRANSFEROR">>
-                                        ]}
+                                    ,{'restrict_to',
+                                      [ <<"CHANNEL_DESTROY">>
+                                      , <<"CHANNEL_TRANSFEROR">>
+                                      ]}
                                     ]}
-                           ,{'self', []}
+                          ,{'self', []}
                           ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_call_event'}
-                      ,[{<<"*">>, <<"*">>}]
+                     ,[{<<"*">>, <<"*">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -47,17 +49,15 @@
 -define(CONSUME_OPTIONS, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the listener and binds to the call channel destroy events
-%% @end
+%% @doc Starts the listener and binds to the call channel destroy events
 %%--------------------------------------------------------------------
--spec start_link(whapps_call:call()) -> startlink_ret().
+-spec start_link(kapps_call:call()) -> startlink_ret().
 start_link(Call) ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS(whapps_call:call_id(Call))}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS(kapps_call:call_id(Call))}
+                                     ,{'responders', ?RESPONDERS}
+                                     ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                                     ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                                     ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], [Call]).
 
 %%--------------------------------------------------------------------
@@ -67,13 +67,13 @@ start_link(Call) ->
 %% CHANNEL_DESTROY.
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call_event(wh_json:object(), wh_proplist()) -> any().
+-spec handle_call_event(kz_json:object(), kz_proplist()) -> any().
 handle_call_event(JObj, Props) ->
-    case wh_util:get_event_type(JObj) of
+    case kz_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             gen_listener:cast(props:get_value('server', Props), {'end_hook', JObj});
         {<<"call_event">>, <<"CHANNEL_TRANSFEROR">>} ->
-            % stop the listener so we don't send the destroy event
+                                                % stop the listener so we don't send the destroy event
             gen_listener:cast(props:get_value('server', Props), {'stop', JObj});
         {_, _Evt} -> lager:debug("ignore event ~p", [_Evt])
     end.
@@ -87,10 +87,10 @@ handle_call_event(JObj, Props) ->
 %% @doc
 %% Initializes the listener, and sends the init hook
 %%--------------------------------------------------------------------
--spec init([whapps_call:call()]) -> {'ok', state()}.
+-spec init([kapps_call:call()]) -> {'ok', state()}.
 init([Call]) ->
     %% ReferredBy is interesting because we use it to tell if the call was forwarded
-    ReferredBy = whapps_call:custom_channel_var(<<"Referred-By">>, Call),
+    ReferredBy = kapps_call:custom_channel_var(<<"Referred-By">>, Call),
 
     %% send the init hook only if we were not a forwarded call
     case ReferredBy of
@@ -149,7 +149,7 @@ handle_info(Info, State) ->
 %% Allows listener to pass options to handlers
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(wh_json:object(), state()) -> {'reply', []}.
+-spec handle_event(kz_json:object(), state()) -> {'reply', []}.
 handle_event(_JObj, _State) ->
     {'reply', []}.
 

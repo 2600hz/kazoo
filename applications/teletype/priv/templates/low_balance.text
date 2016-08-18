@@ -1,0 +1,5 @@
+The account "{{account.name}}" has less than {{threshold}} of credit remaining.
+If the account runs out of credit it will not be able to make or receive per-minute calls.
+The current balance is: {{current_balance}}
+
+Account ID: {{account.id}}

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Account module
 %%%
@@ -10,18 +10,20 @@
 -module(cb_whitelabel).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
-         ,authorize/1, authenticate/1
-         ,validate/1, validate/2, validate/3
-         ,content_types_provided/2, content_types_provided/3
-         ,content_types_accepted/2
-         ,put/1
-         ,post/1, post/2
-         ,delete/1
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,authorize/1, authenticate/1
+        ,validate/1, validate/2, validate/3
+        ,content_types_provided/2, content_types_provided/3
+        ,content_types_accepted/2
+        ,put/1
+        ,post/1, post/2
+        ,delete/1
+
+        ,acceptable_content_types/0
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(WHITELABEL_ID, <<"whitelabel">>).
 -define(LOGO_REQ, <<"logo">>).
@@ -33,9 +35,9 @@
 
 %% Commonly found ico mime types
 -define(WHITELABEL_ICON_MIME_TYPES, [{<<"image">>, <<"ico">>}
-                                     ,{<<"image">>, <<"vnd.microsoft.icon">>}
-                                     ,{<<"image">>, <<"x-icon">>}
-                                     ,{<<"image">>, <<"icon">>}
+                                    ,{<<"image">>, <<"vnd.microsoft.icon">>}
+                                    ,{<<"image">>, <<"x-icon">>}
+                                    ,{<<"image">>, <<"icon">>}
                                      | ?WHITELABEL_MIME_TYPES
                                     ]).
 
@@ -48,15 +50,15 @@
 %%%===================================================================
 init() ->
     Bindings = [{<<"*.authenticate">>, 'authenticate'}
-                ,{<<"*.authorize">>, 'authorize'}
-                ,{<<"*.content_types_provided.whitelabel">>, 'content_types_provided'}
-                ,{<<"*.content_types_accepted.whitelabel">>, 'content_types_accepted'}
-                ,{<<"*.allowed_methods.whitelabel">>, 'allowed_methods'}
-                ,{<<"*.resource_exists.whitelabel">>, 'resource_exists'}
-                ,{<<"*.validate.whitelabel">>, 'validate'}
-                ,{<<"*.execute.put.whitelabel">>, 'put'}
-                ,{<<"*.execute.post.whitelabel">>, 'post'}
-                ,{<<"*.execute.delete.whitelabel">>, 'delete'}
+               ,{<<"*.authorize">>, 'authorize'}
+               ,{<<"*.content_types_provided.whitelabel">>, 'content_types_provided'}
+               ,{<<"*.content_types_accepted.whitelabel">>, 'content_types_accepted'}
+               ,{<<"*.allowed_methods.whitelabel">>, 'allowed_methods'}
+               ,{<<"*.resource_exists.whitelabel">>, 'resource_exists'}
+               ,{<<"*.validate.whitelabel">>, 'validate'}
+               ,{<<"*.execute.put.whitelabel">>, 'put'}
+               ,{<<"*.execute.post.whitelabel">>, 'post'}
+               ,{<<"*.execute.delete.whitelabel">>, 'delete'}
                ],
     cb_modules_util:bind(?MODULE, Bindings).
 
@@ -124,8 +126,8 @@ resource_exists(_, ?ICON_REQ) -> 'true'.
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
     authorize(Context
-              ,cb_context:req_nouns(Context)
-              ,cb_context:req_verb(Context)
+             ,cb_context:req_nouns(Context)
+             ,cb_context:req_verb(Context)
              ).
 
 -spec authorize(cb_context:context(), req_nouns(), http_method()) -> boolean().
@@ -171,13 +173,18 @@ authenticate(_Nouns, _Verb) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
+-spec acceptable_content_types() -> kz_proplist().
+acceptable_content_types() ->
+    ?WHITELABEL_WELCOME_MIME_TYPES ++ ?WHITELABEL_ICON_MIME_TYPES.
+
 -spec content_types_provided(cb_context:context(), path_token()) ->
                                     cb_context:context().
 content_types_provided(Context, AttachType) ->
     content_types_provided_for_attachments(Context, AttachType, cb_context:req_verb(Context)).
 
 -spec content_types_provided_for_attachments(cb_context:context(), path_token(), http_method()) ->
-                                    cb_context:context().
+                                                    cb_context:context().
 content_types_provided_for_attachments(Context, ?LOGO_REQ, ?HTTP_GET) ->
     content_types_provided_for_attachments(Context, ?LOGO_REQ);
 content_types_provided_for_attachments(Context, ?ICON_REQ, ?HTTP_GET) ->
@@ -220,9 +227,9 @@ content_types_provided_for_domain_attachments(Context, Domain, AttachType) ->
         {_, JObj} -> set_content_type_provided(Context, JObj)
     end.
 
--spec set_content_type_provided(cb_context:context(), wh_json:object()) -> cb_context:context().
+-spec set_content_type_provided(cb_context:context(), kz_json:object()) -> cb_context:context().
 set_content_type_provided(Context, JObj) ->
-    CT = wh_json:get_value(<<"content_type">>, JObj),
+    CT = kz_json:get_value(<<"content_type">>, JObj),
     [Type, SubType] = binary:split(CT, <<"/">>),
     cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}]).
 
@@ -296,29 +303,29 @@ validate_attachment(Context, AttachType, ?HTTP_POST) ->
 validate_attachment_post(Context, ?LOGO_REQ, []) ->
     cb_context:add_validation_error(
       <<"file">>
-      ,<<"required">>
-      ,wh_json:from_list(
-         [{<<"message">>, <<"Please provide an image file">>}]
-        )
-      ,Context
+                                   ,<<"required">>
+                                   ,kz_json:from_list(
+                                      [{<<"message">>, <<"Please provide an image file">>}]
+                                     )
+                                   ,Context
      );
 validate_attachment_post(Context, ?ICON_REQ, []) ->
     cb_context:add_validation_error(
       <<"file">>
-      ,<<"required">>
-      ,wh_json:from_list(
-         [{<<"message">>, <<"Please provide an image file">>}]
-        )
-      ,Context
+                                   ,<<"required">>
+                                   ,kz_json:from_list(
+                                      [{<<"message">>, <<"Please provide an image file">>}]
+                                     )
+                                   ,Context
      );
 validate_attachment_post(Context, ?WELCOME_REQ, []) ->
     cb_context:add_validation_error(
       <<"file">>
-      ,<<"required">>
-      ,wh_json:from_list(
-         [{<<"message">>, <<"Please provide an html file">>}]
-        )
-      ,Context
+                                   ,<<"required">>
+                                   ,kz_json:from_list(
+                                      [{<<"message">>, <<"Please provide an html file">>}]
+                                     )
+                                   ,Context
      );
 validate_attachment_post(Context, ?LOGO_REQ, [{_Filename, FileJObj}]) ->
     validate_upload(Context, FileJObj);
@@ -329,64 +336,64 @@ validate_attachment_post(Context, ?WELCOME_REQ, [{_Filename, FileJObj}]) ->
 validate_attachment_post(Context, ?LOGO_REQ, _Files) ->
     cb_context:add_validation_error(
       <<"file">>
-      ,<<"maxItems">>
-      ,wh_json:from_list(
-         [{<<"message">>, <<"Please provide a single image file">>}]
-        )
-      ,Context
+                                   ,<<"maxItems">>
+                                   ,kz_json:from_list(
+                                      [{<<"message">>, <<"Please provide a single image file">>}]
+                                     )
+                                   ,Context
      );
 validate_attachment_post(Context, ?ICON_REQ, _Files) ->
     cb_context:add_validation_error(
       <<"file">>
-      ,<<"maxItems">>
-      ,wh_json:from_list(
-         [{<<"message">>, <<"Please provide a single image file">>}]
-        )
-      ,Context
+                                   ,<<"maxItems">>
+                                   ,kz_json:from_list(
+                                      [{<<"message">>, <<"Please provide a single image file">>}]
+                                     )
+                                   ,Context
      );
 validate_attachment_post(Context, ?WELCOME_REQ, _Files) ->
     cb_context:add_validation_error(
       <<"file">>
-      ,<<"maxItems">>
-      ,wh_json:from_list(
-         [{<<"message">>, <<"please provide a single html file">>}]
-        )
-      ,Context
+                                   ,<<"maxItems">>
+                                   ,kz_json:from_list(
+                                      [{<<"message">>, <<"please provide a single html file">>}]
+                                     )
+                                   ,Context
      ).
 
--spec validate_upload(cb_context:context(), wh_json:object()) ->
+-spec validate_upload(cb_context:context(), kz_json:object()) ->
                              cb_context:context().
 validate_upload(Context, FileJObj) ->
     Context1 = load_whitelabel_meta(Context, ?WHITELABEL_ID),
     case cb_context:resp_status(Context) of
         'success' ->
             Props = [{<<"content_type">>, content_type(FileJObj)}
-                     ,{<<"content_length">>, file_size(FileJObj)}
+                    ,{<<"content_length">>, file_size(FileJObj)}
                     ],
             validate_request(cb_context:set_req_data(Context1
-                                                     ,wh_json:set_values(Props, cb_context:doc(Context))
+                                                    ,kz_json:set_values(Props, cb_context:doc(Context))
                                                     )
-                             ,?WHITELABEL_ID
+                            ,?WHITELABEL_ID
                             );
         _Status -> Context1
     end.
 
--spec content_type(wh_json:object()) -> ne_binary().
+-spec content_type(kz_json:object()) -> ne_binary().
 content_type(FileJObj) ->
-    wh_json:get_value([<<"headers">>, <<"content_type">>]
-                      ,FileJObj
-                      ,<<"application/octet-stream">>
+    kz_json:get_value([<<"headers">>, <<"content_type">>]
+                     ,FileJObj
+                     ,<<"application/octet-stream">>
                      ).
 
--spec file_size(wh_json:object()) -> non_neg_integer().
+-spec file_size(kz_json:object()) -> non_neg_integer().
 file_size(FileJObj) ->
-    case wh_json:get_integer_value(
+    case kz_json:get_integer_value(
            [<<"headers">>, <<"content_length">>]
-           ,FileJObj
+                                  ,FileJObj
           )
     of
         'undefined' ->
-            byte_size(wh_json:get_value(<<"contents">>, FileJObj, <<>>));
+            byte_size(kz_json:get_value(<<"contents">>, FileJObj, <<>>));
         Size -> Size
     end.
 
@@ -404,7 +411,7 @@ validate_domains(Context, ?HTTP_POST) ->
                           cb_context:context().
 -spec load_domains(cb_context:context(), api_binary()) ->
                           cb_context:context().
--spec load_domains(cb_context:context(), ne_binary(), wh_json:object()) ->
+-spec load_domains(cb_context:context(), ne_binary(), kz_json:object()) ->
                           cb_context:context().
 load_domains(Context) ->
     load_domains(Context, find_domain(Context)).
@@ -417,19 +424,19 @@ load_domains(Context, Domain) ->
 load_domains(Context, Domain, SystemDomains) ->
     AccountDomains = kzd_domains:format(SystemDomains, Domain),
     cb_context:setters(Context
-                       ,[{fun cb_context:set_resp_data/2, AccountDomains}
-                         ,{fun cb_context:set_resp_status/2, 'success'}
-                        ]).
+                      ,[{fun cb_context:set_resp_data/2, AccountDomains}
+                       ,{fun cb_context:set_resp_status/2, 'success'}
+                       ]).
 
 -spec missing_domain_error(cb_context:context()) ->
                                   cb_context:context().
 missing_domain_error(Context) ->
     cb_context:add_validation_error(<<"domain">>
-                                    ,<<"required">>
-                                    ,wh_json:from_list(
-                                       [{<<"message">>, <<"No domain found to use. Supply one on the request or create one via the whitelabel API">>}]
-                                      )
-                                    ,Context
+                                   ,<<"required">>
+                                   ,kz_json:from_list(
+                                      [{<<"message">>, <<"No domain found to use. Supply one on the request or create one via the whitelabel API">>}]
+                                     )
+                                   ,Context
                                    ).
 
 -spec find_domain(cb_context:context()) -> api_binary().
@@ -443,17 +450,17 @@ find_domain(Context) ->
 find_existing_domain(Context) ->
     Context1 = load_whitelabel_meta(Context, ?WHITELABEL_ID),
     case cb_context:resp_status(Context1) of
-        'success' -> wh_json:get_value(<<"domain">>, cb_context:doc(Context1));
+        'success' -> kz_json:get_value(<<"domain">>, cb_context:doc(Context1));
         _Status -> 'undefined'
     end.
 
--spec system_domains() -> wh_json:object().
+-spec system_domains() -> kz_json:object().
 system_domains() ->
-    case whapps_config:get(<<"whitelabel">>, <<"domains">>) of
+    case kapps_config:get(<<"whitelabel">>, <<"domains">>) of
         'undefined' ->
             lager:info("initializing system domains to default"),
             Default = kzd_domains:default(),
-            whapps_config:set_default(<<"whitelabel">>, <<"domains">>, Default),
+            kapps_config:set_default(<<"whitelabel">>, <<"domains">>, Default),
             Default;
         Domains -> Domains
     end.
@@ -462,8 +469,8 @@ system_domains() ->
 edit_domains(Context) ->
     Domains = cb_context:req_data(Context),
     PvtFields = crossbar_doc:update_pvt_parameters(
-                  wh_json:new()
-                  ,Context
+                  kz_json:new()
+                                                  ,Context
                  ),
 
     lager:debug("saving domains ~p", [Domains]),
@@ -485,11 +492,11 @@ edit_domains(Context) ->
                                   cb_context:context().
 missing_schema_error(Context) ->
     cb_context:add_validation_error(<<"domains">>
-                                    ,<<"required">>
-                                    ,wh_json:from_list(
-                                       [{<<"message">>, <<"The domains schema is missing, unable to validate request">>}]
-                                      )
-                                    ,Context
+                                   ,<<"required">>
+                                   ,kz_json:from_list(
+                                      [{<<"message">>, <<"The domains schema is missing, unable to validate request">>}]
+                                     )
+                                   ,Context
                                    ).
 
 -spec test_account_domains(cb_context:context()) ->
@@ -508,40 +515,40 @@ test_account_domains(Context) ->
 test_account_domains(Context, DomainsJObj) ->
     Options = test_network_options(Context),
     TestResults =
-        wh_json:map(fun(DomainType, DomainConfig) ->
+        kz_json:map(fun(DomainType, DomainConfig) ->
                             test_domains(DomainType, DomainConfig, Options)
                     end
-                    ,DomainsJObj
+                   ,DomainsJObj
                    ),
     crossbar_util:response(TestResults, Context).
 
--spec test_domains(ne_binary(), wh_json:object(), wh_network_utils:options()) ->
-                          {ne_binary(), wh_json:object()}.
+-spec test_domains(ne_binary(), kz_json:object(), kz_network_utils:options()) ->
+                          {ne_binary(), kz_json:object()}.
 test_domains(DomainType, DomainConfig, Options) ->
     {DomainType, test_domain_config(DomainType, DomainConfig, Options)}.
 
--spec test_domain_config(ne_binary(), wh_json:object(), wh_network_utils:options()) ->
-                                wh_json:object().
+-spec test_domain_config(ne_binary(), kz_json:object(), kz_network_utils:options()) ->
+                                kz_json:object().
 test_domain_config(DomainType, DomainConfig, Options) ->
-    wh_json:map(fun(Host, HostConfig) ->
+    kz_json:map(fun(Host, HostConfig) ->
                         {Host, test_host(Host, HostConfig, DomainType, Options)}
                 end
-                ,DomainConfig
+               ,DomainConfig
                ).
 
--spec test_host(ne_binary(), wh_json:object(), ne_binary(), wh_network_utils:options()) ->
-                       wh_json:object().
+-spec test_host(ne_binary(), kz_json:object(), ne_binary(), kz_network_utils:options()) ->
+                       kz_json:object().
 test_host(Host, HostConfig, DomainType, Options) ->
-    wh_json:from_list([{<<"expected">>, kzd_domains:mappings(HostConfig)}
-                       ,{<<"actual">>, lookup(Host, DomainType, Options)}
-                       ,{<<"name">>, kzd_domains:name(HostConfig)}
+    kz_json:from_list([{<<"expected">>, kzd_domains:mappings(HostConfig)}
+                      ,{<<"actual">>, lookup(Host, DomainType, Options)}
+                      ,{<<"name">>, kzd_domains:name(HostConfig)}
                       ]).
 
--spec lookup(ne_binary(), ne_binary(), wh_network_utils:options()) ->
+-spec lookup(ne_binary(), ne_binary(), kz_network_utils:options()) ->
                     ne_binaries().
 lookup(Host, DomainType, Options) ->
-    Type = wh_util:to_atom(wh_util:to_lower_binary(DomainType)),
-    {'ok', Lookup} = wh_network_utils:lookup_dns(Host, Type, Options),
+    Type = kz_util:to_atom(kz_util:to_lower_binary(DomainType)),
+    {'ok', Lookup} = kz_network_utils:lookup_dns(Host, Type, Options),
     lager:debug("lookup of ~s(~s): ~p", [Host, Type, Lookup]),
     format_lookup_results(Type, Lookup).
 
@@ -552,28 +559,28 @@ format_lookup_results(Type, Lookup) ->
 
 -spec format_lookup_result(atom(), inet_res:dns_data()) -> ne_binary().
 format_lookup_result('naptr', {_, _, _, _, _, _}=NAPTR) ->
-    wh_network_utils:naptrtuple_to_binary(NAPTR);
+    kz_network_utils:naptrtuple_to_binary(NAPTR);
 format_lookup_result('srv', {_, _, _, _}=Srv) ->
-    wh_network_utils:srvtuple_to_binary(Srv);
+    kz_network_utils:srvtuple_to_binary(Srv);
 format_lookup_result('mx', {_, _}=MX) ->
-    wh_network_utils:mxtuple_to_binary(MX);
+    kz_network_utils:mxtuple_to_binary(MX);
 format_lookup_result(_, {_, _, _, _}=IP) ->
-    wh_network_utils:iptuple_to_binary(IP);
+    kz_network_utils:iptuple_to_binary(IP);
 format_lookup_result(_, {_, _, _, _, _, _, _, _}=IP) ->
-    wh_network_utils:iptuple_to_binary(IP);
+    kz_network_utils:iptuple_to_binary(IP);
 format_lookup_result(_Type, Value) ->
     lager:debug("attempt to convert ~s result to binary: ~p", [Value]),
-    wh_util:to_binary(Value).
+    kz_util:to_binary(Value).
 
--spec test_network_options(cb_context:context()) -> wh_network_utils:options().
+-spec test_network_options(cb_context:context()) -> kz_network_utils:options().
 test_network_options(Context) ->
     Domain = find_domain(Context),
-    case wh_network_utils:find_nameservers(Domain) of
-        [] ->  wh_network_utils:default_options();
+    case kz_network_utils:find_nameservers(Domain) of
+        [] ->  kz_network_utils:default_options();
         Nameservers ->
-            wh_network_utils:set_option_nameservers(
-              wh_network_utils:default_options()
-              ,Nameservers
+            kz_network_utils:set_option_nameservers(
+              kz_network_utils:default_options()
+                                                   ,Nameservers
              )
     end.
 
@@ -596,7 +603,7 @@ validate_domain_attachment(Context, Domain, AttachType, ?HTTP_GET) ->
 put(Context) ->
     Callback =
         fun() ->
-            maybe_update_account_definition(crossbar_doc:save(Context))
+                maybe_update_account_definition(crossbar_doc:save(Context))
         end,
     crossbar_services:maybe_dry_run(Context, Callback, <<"branding">>).
 
@@ -627,26 +634,26 @@ delete(Context) ->
 -spec find_whitelabel(cb_context:context(), ne_binary()) ->
                              cb_context:context().
 find_whitelabel(Context, Domain) ->
-    ViewOptions = [{'key', wh_util:to_lower_binary(Domain)}],
+    ViewOptions = [{'key', kz_util:to_lower_binary(Domain)}],
     Context1 = crossbar_doc:load_view(?AGG_VIEW_WHITELABEL_DOMAIN
-                                      ,ViewOptions
-                                      ,cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB)
+                                     ,ViewOptions
+                                     ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
                                      ),
     case cb_context:resp_status(Context1) of
         'success' ->
             case cb_context:doc(Context1) of
                 [JObj] ->
-                    Db = wh_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
-                    Id = wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
+                    Db = kz_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
+                    Id = kz_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
                     cb_context:setters(Context1
-                                       ,[{fun cb_context:set_account_db/2, Db}
-                                         ,{fun cb_context:set_account_id/2, Id}
-                                        ]);
+                                      ,[{fun cb_context:set_account_db/2, Db}
+                                       ,{fun cb_context:set_account_id/2, Id}
+                                       ]);
                 _Doc ->
                     cb_context:add_system_error(
                       'bad_identifier'
-                      ,wh_json:from_list([{<<"cause">>, Domain}])
-                      ,Context1
+                                               ,kz_json:from_list([{<<"cause">>, Domain}])
+                                               ,Context1
                      )
             end;
         _Status -> Context1
@@ -660,7 +667,7 @@ find_whitelabel(Context, Domain) ->
 %%--------------------------------------------------------------------
 -spec load_whitelabel_meta(cb_context:context(), ne_binary()) -> cb_context:context().
 load_whitelabel_meta(Context, WhitelabelId) ->
-    crossbar_doc:load(WhitelabelId, Context).
+    crossbar_doc:load(WhitelabelId, Context, ?TYPE_CHECK_OPTION(<<"whitelabel">>)).
 
 -spec find_whitelabel_meta(cb_context:context(), ne_binary()) -> cb_context:context().
 find_whitelabel_meta(Context, Domain) ->
@@ -693,7 +700,7 @@ find_whitelabel_binary(Context, Domain, AttachType) ->
     end.
 
 -spec find_whitelabel_binary_meta(cb_context:context(), ne_binary(), ne_binary()) ->
-                                         'undefined' | {ne_binary(), wh_json:object()}.
+                                         'undefined' | {ne_binary(), kz_json:object()}.
 find_whitelabel_binary_meta(Context, Domain, AttachType) ->
     Context1 = find_whitelabel_meta(Context, Domain),
     case cb_context:resp_status(Context1) of
@@ -702,19 +709,19 @@ find_whitelabel_binary_meta(Context, Domain, AttachType) ->
     end.
 
 -spec whitelabel_binary_meta(cb_context:context(), ne_binary()) ->
-                                    'undefined' | {ne_binary(), wh_json:object()}.
+                                    'undefined' | {ne_binary(), kz_json:object()}.
 whitelabel_binary_meta(Context, AttachType) ->
-    JObj = wh_doc:attachments(cb_context:doc(Context), wh_json:new()),
+    JObj = kz_doc:attachments(cb_context:doc(Context), kz_json:new()),
     case whitelabel_attachment_id(JObj, AttachType) of
         'undefined' -> 'undefined';
         AttachmentId ->
-            {AttachmentId, wh_json:get_value(AttachmentId, JObj)}
+            {AttachmentId, kz_json:get_value(AttachmentId, JObj)}
     end.
 
--spec whitelabel_attachment_id(wh_json:object(), ne_binary()) ->
-                                      'undefined' | {ne_binary(), wh_json:object()}.
+-spec whitelabel_attachment_id(kz_json:object(), ne_binary()) ->
+                                      'undefined' | {ne_binary(), kz_json:object()}.
 whitelabel_attachment_id(JObj, AttachType) ->
-    filter_attachment_type(wh_json:get_keys(JObj), AttachType).
+    filter_attachment_type(kz_json:get_keys(JObj), AttachType).
 
 -spec filter_attachment_type(ne_binaries(), ne_binary()) -> api_binary().
 filter_attachment_type([], _) -> 'undefined';
@@ -732,16 +739,16 @@ filter_attachment_type([AttachmentId|AttachmentIds], AttachType) ->
         _Else -> filter_attachment_type(AttachmentIds, AttachType)
     end.
 
--spec update_response_with_attachment(cb_context:context(), ne_binary(), wh_json:object()) ->
+-spec update_response_with_attachment(cb_context:context(), ne_binary(), kz_json:object()) ->
                                              cb_context:context().
 update_response_with_attachment(Context, AttachmentId, JObj) ->
     cb_context:set_resp_etag(
       cb_context:add_resp_headers(
-        crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, Context)
-        ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
-          ,{<<"Content-Type">>, wh_json:get_value([AttachmentId, <<"content_type">>], JObj)}
-          ,{<<"Content-Length">>, wh_json:get_value([AttachmentId, <<"length">>], JObj)}
-         ]
+        crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, ?TYPE_CHECK_OPTION(<<"whitelabel">>), Context)
+                                 ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
+                                  ,{<<"Content-Type">>, kz_json:get_value([AttachmentId, <<"content_type">>], JObj)}
+                                  ,{<<"Content-Length">>, kz_json:get_value([AttachmentId, <<"length">>], JObj)}
+                                  ]
        ), 'undefined'
      ).
 
@@ -757,19 +764,19 @@ validate_request(Context, WhitelabelId) ->
 
 -spec validate_unique_domain(cb_context:context(), api_binary()) -> cb_context:context().
 validate_unique_domain(Context, WhitelabelId) ->
-    Domain = wh_json:get_ne_value(<<"domain">>, cb_context:req_data(Context)),
+    Domain = kz_json:get_ne_value(<<"domain">>, cb_context:req_data(Context)),
     case is_domain_unique(cb_context:account_id(Context), Domain) of
         'true' -> check_whitelabel_schema(Context, WhitelabelId);
         'false' ->
             Context1 =
                 cb_context:add_validation_error(
                   <<"domain">>
-                  ,<<"unique">>
-                  ,wh_json:from_list(
-                     [{<<"message">>, <<"White label domain is already in use">>}
-                      ,{<<"cause">>, Domain}
-                     ])
-                  ,Context
+                                               ,<<"unique">>
+                                               ,kz_json:from_list(
+                                                  [{<<"message">>, <<"White label domain is already in use">>}
+                                                  ,{<<"cause">>, Domain}
+                                                  ])
+                                               ,Context
                  ),
             check_whitelabel_schema(Context1, WhitelabelId)
     end.
@@ -781,12 +788,12 @@ check_whitelabel_schema(Context, WhitelabelId) ->
 
 -spec on_successful_validation(cb_context:context(), api_binary()) -> cb_context:context().
 on_successful_validation(Context, 'undefined') ->
-    Doc = wh_json:set_values([{<<"pvt_type">>, <<"whitelabel">>}
-                              ,{<<"_id">>, ?WHITELABEL_ID}
+    Doc = kz_json:set_values([{<<"pvt_type">>, <<"whitelabel">>}
+                             ,{<<"_id">>, ?WHITELABEL_ID}
                              ], cb_context:doc(Context)),
     cb_context:set_doc(Context, Doc);
 on_successful_validation(Context, WhitelabelId) ->
-    crossbar_doc:load_merge(WhitelabelId, Context).
+    crossbar_doc:load_merge(WhitelabelId, Context, ?TYPE_CHECK_OPTION(<<"whitelabel">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -806,22 +813,22 @@ on_successful_validation(Context, WhitelabelId) ->
 update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
     JObj = cb_context:doc(Context),
     [{Filename, FileObj}] = cb_context:req_files(Context),
-    Contents = wh_json:get_value(<<"contents">>, FileObj),
-    CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+    Contents = kz_json:get_value(<<"contents">>, FileObj),
+    CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
+    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"whitelabel">>)],
 
     JObj1 = case whitelabel_binary_meta(Context, AttachType) of
                 'undefined' -> JObj;
                 {AttachmentId, _} ->
-                    wh_doc:delete_attachment(JObj, AttachmentId)
+                    kz_doc:delete_attachment(JObj, AttachmentId)
             end,
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, JObj1)),
 
     crossbar_doc:save_attachment(WhitelabelId
-                                 ,attachment_name(AttachType, Filename, CT)
-                                 ,Contents
-                                 ,Context1
-                                 ,Opts
+                                ,attachment_name(AttachType, Filename, CT)
+                                ,Contents
+                                ,Context1
+                                ,Opts
                                 ).
 
 %%--------------------------------------------------------------------
@@ -835,18 +842,18 @@ update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
 -spec attachment_name(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 attachment_name(Filename, CT) ->
     Generators = [fun(A) ->
-                          case wh_util:is_empty(A) of
-                              'true' -> wh_util:to_hex_binary(crypto:rand_bytes(16));
+                          case kz_util:is_empty(A) of
+                              'true' -> kz_util:to_hex_binary(crypto:strong_rand_bytes(16));
                               'false' -> A
                           end
                   end
-                  ,fun(A) ->
-                           case wh_util:is_empty(filename:extension(A)) of
-                               'false' -> A;
-                               'true' ->
-                                   <<A/binary, ".", (cb_modules_util:content_type_to_extension(CT))/binary>>
-                           end
-                   end
+                 ,fun(A) ->
+                          case kz_util:is_empty(filename:extension(A)) of
+                              'false' -> A;
+                              'true' ->
+                                  <<A/binary, ".", (kz_mime:to_extension(CT))/binary>>
+                          end
+                  end
                  ],
     lists:foldl(fun(F, A) -> F(A) end, Filename, Generators).
 
@@ -861,11 +868,11 @@ attachment_name(AttachType, Filename, CT) ->
 %%--------------------------------------------------------------------
 -spec is_domain_unique(ne_binary(), ne_binary()) -> boolean().
 is_domain_unique(AccountId, Domain) ->
-    ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Domain)}],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions) of
+    ViewOptions = [{'key', kz_util:to_lower_binary(Domain)}],
+    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} ->
-            wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj) =:= AccountId;
+            kz_json:get_ne_value([<<"value">>, <<"account_id">>], JObj) =:= AccountId;
         {'ok', _} -> 'false';
         {'error', _R} ->
             lager:debug("unable to get whitelabel domain view: ~p", [_R]),
@@ -882,12 +889,12 @@ is_domain_unique(AccountId, Domain) ->
 maybe_update_account_definition(Context) ->
     maybe_update_account_definition(Context, cb_context:resp_status(Context)).
 maybe_update_account_definition(Context, 'success') ->
-    Context1 = crossbar_doc:load(cb_context:account_id(Context), Context),
+    Context1 = crossbar_doc:load(cb_context:account_id(Context), Context, ?TYPE_CHECK_OPTION(kz_account:type())),
     case cb_context:resp_status(Context1) of
         'success' ->
             AccountDoc = cb_context:doc(Context1),
-            Domain = wh_json:get_ne_value(<<"domain">>, cb_context:doc(Context)),
-            AccountDoc1 = wh_json:set_value(<<"pvt_whitelabel_domain">>, Domain, AccountDoc),
+            Domain = kz_json:get_ne_value(<<"domain">>, cb_context:doc(Context)),
+            AccountDoc1 = kz_json:set_value(<<"pvt_whitelabel_domain">>, Domain, AccountDoc),
             _ = cb_accounts:post(cb_context:set_doc(Context1, AccountDoc1), cb_context:account_id(Context)),
             Context;
         _Status -> Context1
@@ -905,11 +912,11 @@ maybe_cleanup_account_definition(Context) ->
     maybe_cleanup_account_definition(Context, cb_context:resp_status(Context)).
 
 maybe_cleanup_account_definition(Context, 'success') ->
-    Context1 = crossbar_doc:load(cb_context:account_id(Context), Context),
+    Context1 = crossbar_doc:load(cb_context:account_id(Context), Context, ?TYPE_CHECK_OPTION(kz_account:type())),
     case cb_context:resp_status(Context1) of
         'success' ->
             AccountDoc = cb_context:doc(Context1),
-            AccountDoc1 = wh_json:delete_key(<<"pvt_whitelabel_domain">>, AccountDoc),
+            AccountDoc1 = kz_json:delete_key(<<"pvt_whitelabel_domain">>, AccountDoc),
             _ = cb_accounts:post(cb_context:set_doc(Context1, AccountDoc1), cb_context:account_id(Context)),
             Context;
         _Status -> Context1

@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "user_auth_recovery",
-    "description": "Provides an auth-token via user credentials",
+    "description": "Send a reset-your-password email via user credentials",
     "name": "Password Recovery",
     "properties": {
         "account_name": {
@@ -19,14 +19,21 @@
             "type": "string"
         },
         "phone_number": {
-            "description": "A phone number assigned to the users account",
+            "description": "A phone number assigned to the user's account",
             "maxLength": 64,
             "minLength": 1,
             "required": false,
             "type": "string"
         },
+        "ui_url": {
+            "description": "The UI's root URL",
+            "maxLength": 2000,
+            "minLength": 14,
+            "required": true,
+            "type": "string"
+        },
         "username": {
-            "description": "The users username",
+            "description": "The user's username",
             "maxLength": 254,
             "minLength": 1,
             "required": true,

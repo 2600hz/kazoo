@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% /call
 %%%   methods: PUT, POST
@@ -12,14 +12,14 @@
 -module(cb_killio).
 
 -export([init/0
-         ,allowed_methods/1
-         ,resource_exists/1
-         ,validate/2
-         ,put/2
-         ,post/2
+        ,allowed_methods/1
+        ,resource_exists/1
+        ,validate/2
+        ,put/2
+        ,post/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(PVT_TYPE, <<"skel">>).
 -define(PVT_FUNS, [fun add_pvt_type/2]).

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Token auth module
 %%%
@@ -18,14 +18,14 @@
         ,authenticate/1,authenticate/2
         ]).
 
--include("../blackhole.hrl").
+-include("blackhole.hrl").
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
-    couch_mgr:db_create(?KZ_TOKEN_DB),
-    _ = couch_mgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
+    kz_datamgr:db_create(?KZ_TOKEN_DB),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
     _ = blackhole_bindings:bind(<<"blackhole.authenticate">>, ?MODULE, 'authenticate').
 
 %%--------------------------------------------------------------------
@@ -52,10 +52,10 @@ authenticate(Context, Foo) ->
                                                               'false'.
 check_auth_token(Context, AuthToken) ->
     lager:debug("checking auth token: ~s", [AuthToken]),
-    case couch_mgr:open_doc(?KZ_TOKEN_DB, AuthToken) of
+    case kz_datamgr:open_doc(?KZ_TOKEN_DB, AuthToken) of
         {'ok', JObj} ->
             lager:debug("token auth is valid, authenticating"),
-            AccountId = wh_json:get_ne_value(<<"account_id">>, JObj),
+            AccountId = kz_json:get_ne_value(<<"account_id">>, JObj),
             Context1 = bh_context:set_auth_account_id(Context, AccountId),
             {'true', Context1};
         {'error', R} ->

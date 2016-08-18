@@ -1,13 +1,19 @@
 {application, sysconf,
  [
   {description, "Expose system configuration in AMQP messaging bus"},
-  {vsn, "0.0.3"},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
-                 ]},
+  {vsn, "4.0.0"},
   {modules, []},
-  {mod, { sysconf_app, []} },
-  {env, []}
+  {registered, [sysconf_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , inets
+
+                 , kazoo_apps
+                 , kazoo_amqp
+                 , kazoo_data
+
+                 , lager
+                 ]},
+  {mod, {sysconf_app, []}}
  ]}.

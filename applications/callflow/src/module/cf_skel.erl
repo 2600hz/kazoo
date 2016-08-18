@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz INC
+%%% @copyright (C) 2016, 2600Hz INC
 %%% @doc
 %%% Base module for callflow action
 %%% @end
@@ -7,7 +7,9 @@
 %%%-------------------------------------------------------------------
 -module(cf_skel).
 
--include("../callflow.hrl").
+-behaviour(gen_cf_action).
+
+-include("callflow.hrl").
 
 -export([handle/2]).
 
@@ -17,10 +19,10 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(_Data, Call) ->
     %% Data is the "data" object from the JSON payload
-    %% Call is the current whapps_call record
+    %% Call is the current kapps_call record
 
     %% Give control back to cf_exe process
     cf_exe:continue(Call).

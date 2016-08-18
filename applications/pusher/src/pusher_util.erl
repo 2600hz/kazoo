@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz INC
+%%% @copyright (C) 2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -23,21 +23,21 @@
                          'PrivateKeyInfo' | 'CertificationRequest'.
 
 -type pem_entry() :: {pki_asn1_type()
-                      ,binary()
-                      ,'not_encrypted' | cipher_info()
+                     ,binary()
+                     ,'not_encrypted' | cipher_info()
                      }.
 
 -type cipher_info() :: any().
-                       %% {"RC2-CBC" | "DES-CBC" | "DES-EDE3-CBC"
-                       %%  ,binary() | 'PBES2-params'
-                       %% }.
+%% {"RC2-CBC" | "DES-CBC" | "DES-EDE3-CBC"
+%%  ,binary() | 'PBES2-params'
+%% }.
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 
 -type keycert() :: {'undefined' | {'PrivateKeyInfo', binary()}
-                    ,api_binary()
+                   ,api_binary()
                    }.
 -spec binary_to_keycert(binary()) -> keycert().
 binary_to_keycert(Binary) ->
@@ -57,15 +57,15 @@ keycert_fold(_Entry, KeyCert) ->
     KeyCert.
 
 -spec user_agent_push_properties(ne_binary()) -> api_object().
--spec user_agent_push_properties(ne_binary(), wh_json:objects()) -> api_object().
+-spec user_agent_push_properties(ne_binary(), kz_json:objects()) -> api_object().
 user_agent_push_properties(UserAgent) ->
-    UAs = whapps_config:get(?CONFIG_CAT, <<"User-Agents">>, wh_json:new()),
-    {Vs, _Ks} = wh_json:get_values(UAs),
+    UAs = kapps_config:get(?CONFIG_CAT, <<"User-Agents">>, kz_json:new()),
+    {Vs, _Ks} = kz_json:get_values(UAs),
     user_agent_push_properties(UserAgent, Vs).
 
 user_agent_push_properties(_UserAgent, []) -> 'undefined';
 user_agent_push_properties(UserAgent, [JObj|UAs]) ->
-    case re:run(UserAgent, wh_json:get_value(<<"regex">>, JObj, <<"^$">>)) of
+    case re:run(UserAgent, kz_json:get_value(<<"regex">>, JObj, <<"^$">>)) of
         'nomatch' -> user_agent_push_properties(UserAgent, UAs);
-        _ -> wh_json:get_value(<<"properties">>, JObj, wh_json:new())
-    end.
+                                                                  _ -> kz_json:get_value(<<"properties">>, JObj, kz_json:new())
+                                                                end.

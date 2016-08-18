@@ -1,24 +1,20 @@
-/*
-Section: Crossbar
-Title: API Authentication
-Language: en-US
-*/
 
-# Generating an auth token from your API token
+### Generating an auth token from your API token
 
 Use your account's API token to instruct Crossbar to create an authentication token to be used on subsequent requests requiring authentication.
 
-## The Authentication Process
+#### The Authentication Process
 
 1. Get your API key for your account:
-    * Currently this value is only accessible by the system administrators.
-    * Simply curl the account doc from Couch:
+    * This value can be obtained by users on an account via the accounts api endpoint `api_key`.
+    * This value can also be accessed by system administrators directly from the database by using curl to request the account doc from Couch:
 
             curl -v http://localhost:15984/accounts/{ACCOUNT_ID}
             {...
             "pvt_api_key": "dfdb4869092fcaa210077109e42bdbac255dda8b9fe6eeb962b880bea7f9f372",
             ...
             }
+
 
 2. Send an HTTP PUT:
 
@@ -37,7 +33,7 @@ Use your account's API token to instruct Crossbar to create an authentication to
          ,"status": "success"
         }
 
-### The Response
+##### The Response
 
 * {AUTH_TOKEN}: this is your authentication token to include in future requests
 * {ACCOUNT_ID}: your account's ID, useful for constructing URIs

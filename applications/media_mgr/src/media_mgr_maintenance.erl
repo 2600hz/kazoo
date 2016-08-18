@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -13,14 +13,14 @@
 -include("media.hrl").
 
 prompt_url(PromptId) ->
-    AccountId = ?WH_MEDIA_DB,
-    Language = wh_media_util:default_prompt_language(),
+    AccountId = ?KZ_MEDIA_DB,
+    Language = kz_media_util:default_prompt_language(),
     prompt_url(PromptId, AccountId, Language).
 
 prompt_url(PromptId, AccountId) ->
-    Language = wh_media_util:prompt_language(AccountId),
+    Language = kz_media_util:prompt_language(AccountId),
     prompt_url(PromptId, AccountId, Language).
 
 prompt_url(PromptId, AccountId, Language) ->
-    {'ok', URL} = wh_media_url:playback(<<"prompt://", AccountId/binary, "/", PromptId/binary, "/", Language/binary>>, wh_json:new()),
+    {'ok', URL} = kz_media_url:playback(<<"prompt://", AccountId/binary, "/", PromptId/binary, "/", Language/binary>>, kz_json:new()),
     io:format(" URL for ~s/~s/~s: ~s~n", [AccountId, PromptId, Language, URL]).

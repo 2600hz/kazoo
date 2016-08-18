@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz Inc
+%%% @copyright (C) 2015-2016, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -9,23 +9,21 @@
 -module(teletype_port_cancel).
 
 -export([init/0
-         ,handle_req/2
+        ,handle_req/2
         ]).
 
--include("../teletype.hrl").
+-include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"port_cancel">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list(
-           ?PORT_REQUEST_MACROS
-           ++ ?ACCOUNT_MACROS
-          )
+       ,kz_json:from_list(
+          ?PORT_REQUEST_MACROS
+          ++ ?ACCOUNT_MACROS
+         )
        ).
 
--define(TEMPLATE_TEXT, <<"Port request canceled for {{account.name}}.\n\n Numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}.">>).
--define(TEMPLATE_HTML, <<"<p>Port request canceled for {{account.name}}.</p><p>Numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}</p>">>).
 -define(TEMPLATE_SUBJECT, <<"Port request canceled for {{account.name}}">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Cancel">>).
@@ -38,75 +36,65 @@
 
 -spec init() -> 'ok'.
 init() ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                           ,{'text', ?TEMPLATE_TEXT}
-                                           ,{'html', ?TEMPLATE_HTML}
-                                           ,{'subject', ?TEMPLATE_SUBJECT}
-                                           ,{'category', ?TEMPLATE_CATEGORY}
-                                           ,{'friendly_name', ?TEMPLATE_NAME}
-                                           ,{'to', ?TEMPLATE_TO}
-                                           ,{'from', ?TEMPLATE_FROM}
-                                           ,{'cc', ?TEMPLATE_CC}
-                                           ,{'bcc', ?TEMPLATE_BCC}
-                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                          ,{'subject', ?TEMPLATE_SUBJECT}
+                                          ,{'category', ?TEMPLATE_CATEGORY}
+                                          ,{'friendly_name', ?TEMPLATE_NAME}
+                                          ,{'to', ?TEMPLATE_TO}
+                                          ,{'from', ?TEMPLATE_FROM}
+                                          ,{'cc', ?TEMPLATE_CC}
+                                          ,{'bcc', ?TEMPLATE_BCC}
+                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    'true' = wapi_notifications:port_cancel_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_notifications:port_cancel_v(JObj),
+    kz_util:put_callid(JObj),
 
     %% Gather data for template
-    DataJObj = wh_json:normalize(JObj),
-    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    DataJObj = kz_json:normalize(JObj),
+    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured for this account");
         'true' -> process_req(DataJObj)
     end.
 
--spec process_req(wh_json:object()) -> 'ok'.
+-spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
-    PortReqId = wh_json:get_value(<<"port_request_id">>, DataJObj),
+    PortReqId = kz_json:get_value(<<"port_request_id">>, DataJObj),
     {'ok', PortReqJObj} = teletype_util:open_doc(<<"port_request">>, PortReqId, DataJObj),
 
-    ReqData = wh_json:set_value(<<"port_request">>
-                                ,teletype_port_utils:fix_port_request_data(PortReqJObj)
-                                ,DataJObj
+    ReqData = kz_json:set_value(<<"port_request">>
+                               ,teletype_port_utils:fix_port_request_data(PortReqJObj)
+                               ,DataJObj
                                ),
 
     case teletype_util:is_preview(DataJObj) of
         'false' -> handle_port_request(teletype_port_utils:fix_email(ReqData));
-        'true' -> handle_port_request(wh_json:merge_jobjs(DataJObj, ReqData))
+        'true' -> handle_port_request(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
 
--spec handle_port_request(wh_json:object()) -> 'ok'.
--spec handle_port_request(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_port_request(kz_json:object()) -> 'ok'.
 handle_port_request(DataJObj) ->
-    handle_port_request(DataJObj, teletype_templates:fetch(?TEMPLATE_ID, DataJObj)).
-
-handle_port_request(_DataJObj, []) ->
-    lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
-handle_port_request(DataJObj, Templates) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
-              ,{<<"account">>, teletype_util:account_params(DataJObj)}
-              ,{<<"port_request">>, teletype_util:public_proplist(<<"port_request">>, DataJObj)}
+             ,{<<"account">>, teletype_util:account_params(DataJObj)}
+             ,{<<"port_request">>, teletype_util:public_proplist(<<"port_request">>, DataJObj)}
              ],
 
-    RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
-                         || {ContentType, Template} <- Templates
-                        ],
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
     {'ok', TemplateMetaJObj} =
-        teletype_templates:fetch_meta(?TEMPLATE_ID
-                                      ,teletype_util:find_account_id(DataJObj)
-                                     ),
+        teletype_templates:fetch_notification(?TEMPLATE_ID
+                                             ,teletype_util:find_account_id(DataJObj)
+                                             ),
 
     Subject =
         teletype_util:render_subject(
-          wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
-          ,Macros
+          kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+                                    ,Macros
          ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),

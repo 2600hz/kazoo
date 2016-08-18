@@ -1,12 +1,18 @@
 {application, notify,
  [
-  {description, ""},
-  {vsn, "1"},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {description, "Notify - Kazoo"},
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [notify_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , kazoo_apps
+                 , kazoo_amqp
+                 , kazoo_data
+
+                 , lager
                  ]},
-  {mod, { notify_app, []}},
-  {env, []}
+  {mod, {notify_app, []}}
  ]}.

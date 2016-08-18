@@ -1,0 +1,1 @@
+Attempted to top-up account "{{account.name}}" for {{amount}}.  The transaction processor response was {{response}} resulting in a new balance of {{balance}}.

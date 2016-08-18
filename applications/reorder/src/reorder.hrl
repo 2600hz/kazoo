@@ -1,11 +1,14 @@
--ifndef(HANDOFF_HRL).
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/include/wh_databases.hrl").
+-ifndef(REORDER_HRL).
+
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
 
 -define(APP_NAME, <<"reorder">>).
--define(APP_VERSION, <<"1.0.0">> ).
+-define(APP_VERSION, <<"4.0.0">>).
+-define(CONFIG_CAT, ?APP_NAME).
 
+-define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>, <<"sms">>]).
 
--define(HANDOFF_HRL, true).
+-define(REORDER_HRL, true).
 -endif.

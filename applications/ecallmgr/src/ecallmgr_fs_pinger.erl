@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% When connecting to a FreeSWITCH node, we create three processes: one to
@@ -11,16 +11,15 @@
 %%%   James Aimonetti
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_pinger).
-
 -behaviour(gen_server).
 
 -export([start_link/2]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("ecallmgr.hrl").
@@ -28,15 +27,17 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {node = 'undefined' :: atom()
-                ,options = [] :: wh_proplist()
-                ,timeout = 2 * ?MILLISECONDS_IN_SECOND
+               ,options = [] :: kz_proplist()
+               ,timeout = 2 * ?MILLISECONDS_IN_SECOND
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
 %%%===================================================================
+-spec start_link(atom(), kz_proplist()) -> startlink_ret().
 start_link(Node, Options) ->
-    gen_server:start_link(?MODULE, [Node, Options], []).
+    gen_server:start_link(?SERVER, [Node, Options], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -54,7 +55,7 @@ start_link(Node, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Props]) ->
-    wh_util:put_callid(Node),
+    kz_util:put_callid(Node),
     self() ! 'initialize_pinger',
     lager:info("node ~s not responding, periodically retrying connection", [Node]),
     {'ok', #state{node=Node, options=Props}}.
@@ -74,6 +75,7 @@ init([Node, Props]) ->
 %% @end
 %% #state{nodes=[{FSNode, HandlerPid}]}
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, #state{timeout=Timeout}=State) ->
     {'reply', {'error', 'not_implemented'}, State, Timeout}.
 
@@ -87,6 +89,7 @@ handle_call(_Request, _From, #state{timeout=Timeout}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Msg, #state{timeout=Timeout}=State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State, Timeout}.
@@ -101,15 +104,16 @@ handle_cast(_Msg, #state{timeout=Timeout}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('initialize_pinger', #state{node=Node, options=Props}=State) ->
-    wh_notify:system_alert("node ~s disconnected from ~s", [Node, node()]),
+    kz_notify:system_alert("node ~s disconnected from ~s", [Node, node()]),
     _ = case props:get_value('cookie', Props) of
             'undefined' -> 'ok';
             Cookie when is_atom(Cookie) ->
                 lager:debug("setting cookie to ~s for ~s", [Cookie, Node]),
                 erlang:set_cookie(Node, Cookie)
         end,
-    GracePeriod = wh_util:to_integer(ecallmgr_config:get(<<"node_down_grace_period">>, 10 * ?MILLISECONDS_IN_SECOND)),
+    GracePeriod = kz_util:to_integer(ecallmgr_config:get(<<"node_down_grace_period">>, 10 * ?MILLISECONDS_IN_SECOND)),
     erlang:send_after(GracePeriod, self(), {'flush_channels', Node}),
     self() ! 'check_node_status',
     {'noreply', State};
@@ -123,7 +127,7 @@ handle_info('check_node_status', #state{node=Node, timeout=Timeout}=State) ->
         'pong' ->
             %% give the node a moment to init
             timer:sleep(?MILLISECONDS_IN_SECOND),
-            wh_notify:system_alert("node ~s connected to ~s", [Node, node()]),
+            kz_notify:system_alert("node ~s connected to ~s", [Node, node()]),
             'ok' = ecallmgr_fs_nodes:nodeup(Node),
             {'stop', 'normal', State};
         _Else ->
@@ -131,6 +135,8 @@ handle_info('check_node_status', #state{node=Node, timeout=Timeout}=State) ->
             erlang:send_after(Timeout, self(), 'check_node_status'),
             {'noreply', State, 'hibernate'}
     end;
+handle_info('exit', State) ->
+    {stop, normal, State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
@@ -146,6 +152,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{node=Node}) ->
     lager:debug("fs pinger ~p to '~s' termination", [_Reason, Node]).
 
@@ -157,6 +164,7 @@ terminate(_Reason, #state{node=Node}) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

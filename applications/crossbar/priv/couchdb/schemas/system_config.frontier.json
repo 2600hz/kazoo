@@ -1,0 +1,40 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.frontier",
+    "description": "Schema for frontier system_config",
+    "properties": {
+        "rate_limits": {
+            "default": {
+                "account": {
+                    "per_minute": {
+                        "invites": 200,
+                        "registrations": 100,
+                        "total_packets": 2000
+                    },
+                    "per_second": {
+                        "invites": 50,
+                        "registrations": 20,
+                        "total_packets": 100
+                    }
+                },
+                "device": {
+                    "per_minute": {
+                        "invites": 100,
+                        "registrations": 20,
+                        "total_packets": 1000
+                    },
+                    "per_second": {
+                        "invites": 5,
+                        "registrations": 2,
+                        "total_packets": 20
+                    }
+                }
+            },
+            "description": "frontier rate limits",
+            "name": "rate_limits",
+            "type": "object"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

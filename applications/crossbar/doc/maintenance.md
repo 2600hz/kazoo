@@ -1,12 +1,7 @@
-/*
-Section: Crossbar
-Title: Maintenance
-Language: en-US
-*/
 
-# Crossbar Maintenance Functions
+### Crossbar Maintenance Functions
 
-## Migrate Ring Group Callflow
+#### Migrate Ring Group Callflow
 
 The `migrate_ring_group_callflow` function will migrate callflow create with a ring group by **Monster UI before v3.19**.
 

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%% Say something
 %%% Data = {
@@ -16,22 +16,22 @@
 
 -export([handle/2]).
 
--include("../konami.hrl").
+-include("konami.hrl").
 
--spec handle(wh_json:object(), whapps_call:call()) ->
-                    {'continue', whapps_call:call()}.
+-spec handle(kz_json:object(), kapps_call:call()) ->
+                    {'continue', kapps_call:call()}.
 handle(Data, Call) ->
-    Say = wh_json:get_value(<<"text">>, Data),
+    Say = kz_json:get_value(<<"text">>, Data),
     lager:debug("saying '~s'", [Say]),
 
-    SayCommand = whapps_call_command:say_command(Say
-                                                 ,wh_json:get_value(<<"type">>, Data)
-                                                 ,wh_json:get_value(<<"method">>, Data)
-                                                 ,wh_json:get_value(<<"language">>, Data)
-                                                 ,Call
-                                                ),
-    whapps_call_command:send_command(
-      wh_json:set_value(<<"Insert-At">>, <<"now">>, SayCommand)
-      ,Call
+    SayCommand = kapps_call_command:say_command(Say
+                                               ,kz_json:get_value(<<"type">>, Data)
+                                               ,kz_json:get_value(<<"method">>, Data)
+                                               ,kz_json:get_value(<<"language">>, Data)
+                                               ,Call
+                                               ),
+    kapps_call_command:send_command(
+      kz_json:set_value(<<"Insert-At">>, <<"now">>, SayCommand)
+                                   ,Call
      ),
     {'continue', Call}.

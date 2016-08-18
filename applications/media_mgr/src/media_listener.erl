@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -8,53 +8,54 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(media_listener).
-
 -behaviour(gen_listener).
 
 %% API
 -export([start_link/0
-         ,handle_media_req/2
+        ,handle_media_req/2
         ]).
 
 %% gen_server callbacks
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("media.hrl").
+
+-record(state, {}).
+-type state() :: #state{}.
+
+-define(SERVER, ?MODULE).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'bindings', [{'media', []}]}
-                                      ,{'responders', [{{?MODULE, 'handle_media_req'}
-                                                        ,[{<<"media">>, <<"media_req">>}]}
-                                                      ]}
+    gen_listener:start_link(?SERVER, [{'bindings', [{'media', []}]}
+                                     ,{'responders', [{{?MODULE, 'handle_media_req'}
+                                                      ,[{<<"media">>, <<"media_req">>}]}
+                                                     ]}
                                      ], []).
 
 handle_media_req(JObj, _Props) ->
-    'true' = wapi_media:req_v(JObj),
-    _ = wh_util:put_callid(JObj),
-    lager:debug("recv media req for msg id: ~s", [wh_json:get_value(<<"Msg-ID">>, JObj)]),
-    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
-    case wh_media_url:playback(MediaName, JObj) of
+    'true' = kapi_media:req_v(JObj),
+    _ = kz_util:put_callid(JObj),
+    lager:debug("recv media req for msg id: ~s", [kz_json:get_value(<<"Msg-ID">>, JObj)]),
+    MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
+    case kz_media_url:playback(MediaName, JObj) of
         {'error', ErrorMessage} ->
             send_error_resp(JObj, ErrorMessage);
-        {'ok', StreamURL} ->
+        StreamURL ->
             send_media_resp(JObj, StreamURL)
     end.
 
@@ -75,7 +76,7 @@ handle_media_req(JObj, _Props) ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:debug("starting media_mgr listener"),
-    {'ok', 'ok'}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -91,6 +92,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_supported'}, State}.
 
@@ -104,6 +106,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -117,6 +120,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -134,6 +138,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("media listener terminating: ~p", [_Reason]).
 
@@ -145,34 +150,35 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec send_error_resp(wh_json:object(), ne_binary()) -> 'ok'.
+-spec send_error_resp(kz_json:object(), ne_binary()) -> 'ok'.
 send_error_resp(JObj, ErrMsg) ->
-    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
+    MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
     Error = [{<<"Media-Name">>, MediaName}
-             ,{<<"Error-Code">>, <<"other">>}
-             ,{<<"Error-Msg">>, wh_util:to_binary(ErrMsg)}
-             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ,{<<"Error-Code">>, <<"other">>}
+            ,{<<"Error-Msg">>, kz_util:to_binary(ErrMsg)}
+            ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     lager:debug("sending error reply ~s for ~s", [ErrMsg, MediaName]),
-    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
-    Publisher = fun(P) -> wapi_media:publish_error(ServerId, P) end,
-    whapps_util:amqp_pool_send(Error, Publisher).
+    ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
+    Publisher = fun(P) -> kapi_media:publish_error(ServerId, P) end,
+    kapps_util:amqp_pool_send(Error, Publisher).
 
--spec send_media_resp(wh_json:object(), ne_binary()) -> 'ok'.
+-spec send_media_resp(kz_json:object(), ne_binary()) -> 'ok'.
 send_media_resp(JObj, StreamURL) ->
     lager:debug("media stream URL: ~s", [StreamURL]),
-    Resp = [{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
-            ,{<<"Stream-URL">>, StreamURL}
-            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    Resp = [{<<"Media-Name">>, kz_json:get_value(<<"Media-Name">>, JObj)}
+           ,{<<"Stream-URL">>, StreamURL}
+           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
-    Publisher = fun(P) -> wapi_media:publish_resp(ServerId, P) end,
-    whapps_util:amqp_pool_send(Resp, Publisher).
+    ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
+    Publisher = fun(P) -> kapi_media:publish_resp(ServerId, P) end,
+    kapps_util:amqp_pool_send(Resp, Publisher).

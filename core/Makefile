@@ -1,13 +1,16 @@
-ROOT = ../
+ROOT = ..
 
 MAKEDIRS = */Makefile
 
-.PHONY: all compile clean test $(MAKEDIRS)
+.PHONY: all compile compile-test clean clean-test eunit test first $(MAKEDIRS)
 
 all: compile
 
 compile: ACTION = all
-compile: kazoo $(MAKEDIRS)
+compile: $(MAKEDIRS)
+
+compile-test: ACTION = compile-test
+compile-test: $(MAKEDIRS)
 
 clean: ACTION = clean
 clean: $(MAKEDIRS)
@@ -15,11 +18,16 @@ clean: $(MAKEDIRS)
 clean-test: ACTION = clean-test
 clean-test: $(MAKEDIRS)
 
+eunit: ACTION = eunit
+eunit: $(MAKEDIRS)
+
 test: ACTION = test
 test: $(MAKEDIRS)
 
-kazoo:
-	$(MAKE) -C whistle-1.0.0 compile
+first:
+	$(MAKE) -C kazoo/ $(ACTION)
+	$(MAKE) -C kazoo_data/ $(ACTION)
 
-$(MAKEDIRS):
-	$(MAKE) -C $(@D) $(ACTION)
+$(MAKEDIRS): first
+	$(MAKE) -C $(@D)    $(ACTION)
+

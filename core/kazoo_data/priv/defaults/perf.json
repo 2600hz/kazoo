@@ -1,0 +1,102 @@
+{
+    "performance": {
+        "kzs_attachments": {
+            "fetch_attachment": {
+                "arity": 4,
+                "dictionary": [
+                    "plan",
+                    "database"
+                ],
+                "enabled": true,
+                "format": "debug",
+                "level": "debug"
+            }
+        },
+        "kzs_doc": {
+            "del_doc": {
+                "arity": 4,
+                "dictionary": [
+                    "plan",
+                    "database"
+                ],
+                "enabled": true,
+                "format": "debug",
+                "level": "debug"
+            },
+            "del_docs": {
+                "arity": 4,
+                "dictionary": [
+                    "plan",
+                    "database"
+                ],
+                "enabled": true,
+                "format": "debug",
+                "level": "debug"
+            },
+            "ensure_saved": {
+                "arity": 4,
+                "dictionary": [
+                    "plan",
+                    "database"
+                ],
+                "enabled": true,
+                "format": "debug",
+                "level": "debug"
+            },
+            "open_doc": {
+                "arity": 4,
+                "dictionary": [
+                    "plan",
+                    "database"
+                ],
+                "enabled": true,
+                "format": "debug",
+                "level": "debug"
+            },
+            "save_doc": {
+                "arity": 4,
+                "dictionary": [
+                    "plan",
+                    "database"
+                ],
+                "enabled": true,
+                "format": "debug",
+                "level": "debug"
+            },
+            "save_docs": {
+                "arity": 4,
+                "dictionary": [
+                    "plan",
+                    "database"
+                ],
+                "enabled": true,
+                "format": "debug",
+                "level": "debug"
+            }
+        },
+        "kzs_view": {
+            "get_results": {
+                "arity": 4,
+                "dictionary": [
+                    "plan",
+                    "database",
+                    "view"
+                ],
+                "enabled": true,
+                "format": "debug",
+                "level": "debug"
+            },
+            "get_results_count": {
+                "arity": 4,
+                "dictionary": [
+                    "plan",
+                    "database",
+                    "view"
+                ],
+                "enabled": true,
+                "format": "debug",
+                "level": "debug"
+            }
+        }
+    }
+}

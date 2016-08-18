@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -19,8 +19,8 @@
 -define(WHITELIST, ?DEFAULT_WHITELIST).
 -define(BLACKLIST, ?DEFAULT_BLACKLIST).
 -else.
--define(WHITELIST, fun() ->  whapps_config:get(<<"jonny5">>, <<"flat_rate_whitelist">>, ?DEFAULT_WHITELIST) end()).
--define(BLACKLIST, fun() ->  whapps_config:get(<<"jonny5">>, <<"flat_rate_blacklist">>, ?DEFAULT_BLACKLIST) end()).
+-define(WHITELIST, kapps_config:get(?APP_NAME, <<"flat_rate_whitelist">>, ?DEFAULT_WHITELIST)).
+-define(BLACKLIST, kapps_config:get(?APP_NAME, <<"flat_rate_blacklist">>, ?DEFAULT_BLACKLIST)).
 -endif.
 
 %%--------------------------------------------------------------------
@@ -34,12 +34,12 @@ authorize(Request, Limits) ->
     case eligible_for_flat_rate(Request) of
         'true' ->
             lager:debug("checking if account ~s has available flat rate trunks"
-                        ,[j5_limits:account_id(Limits)]
+                       ,[j5_limits:account_id(Limits)]
                        ),
             maybe_consume_flat_rate(Request, Limits);
         'false' ->
             lager:debug("number '~s' is not eligible for flat rate trunks"
-                        ,[j5_request:number(Request)]
+                       ,[j5_request:number(Request)]
                        ),
             Request
     end.
@@ -61,14 +61,14 @@ reconcile_cdr(_, _) -> 'ok'.
 %%--------------------------------------------------------------------
 -spec eligible_for_flat_rate(j5_request:request()) -> boolean().
 eligible_for_flat_rate(Request) ->
-    Number = wnm_util:to_e164(j5_request:number(Request)),
+    Number = knm_converters:normalize(j5_request:number(Request)),
     TrunkWhitelist = ?WHITELIST,
     TrunkBlacklist = ?BLACKLIST,
-    (wh_util:is_empty(TrunkWhitelist)
+    (kz_util:is_empty(TrunkWhitelist)
      orelse re:run(Number, TrunkWhitelist) =/= 'nomatch'
     )
         andalso
-          (wh_util:is_empty(TrunkBlacklist)
+          (kz_util:is_empty(TrunkBlacklist)
            orelse re:run(Number, TrunkBlacklist) =:= 'nomatch'
           ).
 
@@ -168,12 +168,12 @@ consume_limit(Limit, Used, Type) ->
     case Used - Limit of
         Remaining when Remaining > 0 ->
             lager:debug("all ~p ~s trunks consumed leaving ~p channels unaccounted for"
-                        ,[Limit, Type, Remaining]
+                       ,[Limit, Type, Remaining]
                        ),
             Remaining;
         _Else ->
             lager:debug("account is consuming ~p/~p ~s trunks"
-                        ,[Used - 1, Limit, Type]
+                       ,[Used - 1, Limit, Type]
                        ),
             0
     end.

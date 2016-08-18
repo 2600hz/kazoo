@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -12,7 +12,7 @@
 %% Application callbacks
 -export([start/2, stop/1]).
 
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 
 %% ===================================================================
@@ -20,20 +20,24 @@
 %% ===================================================================
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application start behaviour
-%% @end
+%% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(any(), any()) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
-start(_StartType, _StartArgs) -> media_mgr:start_link().
+-spec start(application:start_type(), any()) -> startapp_ret().
+start(_Type, _Args) ->
+    _ = declare_exchanges(),
+    media_mgr_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application stop behaviour
-%% @end
+%% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
-stop(_State) -> media_mgr:stop().
+-spec stop(any()) -> any().
+stop(_State) ->
+    _ = kz_media_proxy:stop(),
+    'ok'.
+
+
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = kapi_media:declare_exchanges(),
+    kapi_self:declare_exchanges().

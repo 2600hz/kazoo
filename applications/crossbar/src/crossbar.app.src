@@ -1,13 +1,22 @@
 {application, crossbar,
  [
   {description, "Crossbar - REST Interface to the stars"}
-  ,{vsn, "0.3.5"}
-  ,{modules, []}
-  ,{registered, []}
-  ,{applications, [
-                   kernel
-                   ,stdlib
-                  ]}
-  ,{mod, { crossbar_app, []} }
-  ,{env, []}
+ ,{vsn, "4.0.0"}
+ ,{modules, []}
+ ,{registered, [crossbar_cache, cb_jobs_listener, crossbar_sup, crossbar_cleanup, crossbar_module_sup]}
+ ,{applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , public_key
+                 , ssl
+                 , inets
+
+                 , kazoo_apps
+
+                 , lager
+                 , ranch
+                 , cowlib
+                 , cowboy
+                 ]}
+ ,{mod, {crossbar_app, []}}
  ]}.

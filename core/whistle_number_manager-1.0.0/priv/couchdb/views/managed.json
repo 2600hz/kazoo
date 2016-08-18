@@ -1,9 +1,0 @@
-{
-    "_id": "_design/numbers",
-    "language": "javascript",
-    "views": {
-        "status": {
-            "map": "function(doc) { emit([doc.pvt_account_id,doc.pvt_number_state, doc._id], null); }"
-        }
-    }
-}

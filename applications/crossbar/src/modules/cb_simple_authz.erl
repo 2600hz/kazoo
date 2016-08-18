@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Simple authorization module
 %%%
@@ -14,19 +14,19 @@
 -module(cb_simple_authz).
 
 -export([init/0
-         ,authorize/1
+        ,authorize/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
 -define(SYS_ADMIN_MODS, [<<"global_resources">>
-                         ,<<"templates">>
-                         ,<<"rates">>
-                         ,<<"acls">>
-                         ,<<"global_provisioner_templates">>
-                         ,<<"sup">>
+                        ,<<"templates">>
+                        ,<<"rates">>
+                        ,<<"acls">>
+                        ,<<"global_provisioner_templates">>
+                        ,<<"sup">>
                         ]).
 
 %% Endpoints performing their own auth
@@ -41,11 +41,9 @@ init() -> crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize').
 authorize(Context) ->
     authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-authorize(Context, Verb, [{?WH_ACCOUNTS_DB, []}]) ->
-    case cb_modules_util:is_superduper_admin(Context) of
-        'true' -> 'true';
-        'false' -> Verb =:= ?HTTP_PUT
-    end;
+authorize(Context, Verb, [{?KZ_ACCOUNTS_DB, []}]) ->
+    cb_modules_util:is_superduper_admin(Context)
+        orelse Verb =:= ?HTTP_PUT;
 authorize(_Context, ?HTTP_GET, [{<<"global_provisioner_templates">>,_}|_]) ->
     'true';
 authorize(Context, Verb, _Nouns) ->
@@ -56,7 +54,9 @@ authorize(Context, Verb, _Nouns) ->
                    andalso account_is_descendant(IsSysAdmin, Context)
                   )
          )
-        orelse (Verb =:= ?HTTP_GET andalso cb_context:magic_pathed(Context))
+        orelse (Verb =:= ?HTTP_GET
+                andalso cb_context:magic_pathed(Context)
+               )
     of
         'true' ->
             lager:debug("authorizing the request"),
@@ -90,7 +90,7 @@ account_is_descendant('false', _Context, 'undefined') ->
 account_is_descendant('false', Context, AuthAccountId) ->
     Nouns = cb_context:req_nouns(Context),
     %% get the accounts/.... component from the URL
-    case props:get_value(?WH_ACCOUNTS_DB, Nouns) of
+    case props:get_value(?KZ_ACCOUNTS_DB, Nouns) of
         %% if the URL did not have the accounts noun then this module denies access
         'undefined' ->
             lager:debug("not authorizing, no accounts in request"),
@@ -102,7 +102,9 @@ account_is_descendant('false', Context, AuthAccountId) ->
             %% we will get the requested account definition from accounts using a view
             %% with a complex key (whose alternate value is useful to use on retrieval)
             lager:debug("checking if account ~s is a descendant of ~s", [ReqAccountId, AuthAccountId]),
-            case ReqAccountId =:= AuthAccountId orelse kz_account:fetch(ReqAccountId) of
+            case ReqAccountId =:= AuthAccountId
+                orelse kz_account:fetch(ReqAccountId)
+            of
                 'true' ->
                     lager:debug("authorizing, requested account is the same as the auth token account"),
                     'true';
@@ -159,6 +161,6 @@ allowed_if_sys_admin_mod(IsSysAdmin, Context) ->
 -spec is_sys_admin_mod(cb_context:context()) -> boolean().
 is_sys_admin_mod(Context) ->
     Nouns = cb_context:req_nouns(Context),
-    lists:any(fun(E) -> E end
-              ,[props:get_value(Mod, Nouns) =/= 'undefined' || Mod <- ?SYS_ADMIN_MODS]
+    lists:any(fun kz_util:identity/1
+             ,[props:get_value(Mod, Nouns) =/= 'undefined' || Mod <- ?SYS_ADMIN_MODS]
              ).

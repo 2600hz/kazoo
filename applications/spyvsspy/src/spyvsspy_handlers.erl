@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -14,13 +14,13 @@
 
 -define(RESOURCE_TYPE_AUDIO, <<"audio">>).
 
--spec handle_eavesdrop_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_eavesdrop_req(kz_json:object(), kz_proplist()) -> any().
 handle_eavesdrop_req(JObj, _Props) ->
-    'true' = wapi_resource:eavesdrop_req_v(JObj),
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    'true' = kapi_resource:eavesdrop_req_v(JObj),
+    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
 
     case get_endpoints(AccountId
-                       ,wh_json:get_value(<<"Endpoint-ID">>, JObj)
+                      ,kz_json:get_value(<<"Endpoint-ID">>, JObj)
                       )
     of
         {'ok', EPs} -> send_eavesdrop(JObj, EPs, AccountId);
@@ -28,75 +28,75 @@ handle_eavesdrop_req(JObj, _Props) ->
     end.
 
 -spec get_endpoints(ne_binary(), ne_binary()) ->
-                           {'ok', wh_json:objects()} |
+                           {'ok', kz_json:objects()} |
                            {'error', any()}.
 get_endpoints(AccountId, EndpointId) ->
-    cf_endpoint:build(EndpointId, new_call(AccountId)).
+    kz_endpoint:build(EndpointId, new_call(AccountId)).
 
--spec new_call(ne_binary()) -> whapps_call:call().
+-spec new_call(ne_binary()) -> kapps_call:call().
 new_call(AccountId) ->
-    whapps_call:from_json(
-      wh_json:from_list(
+    kapps_call:from_json(
+      kz_json:from_list(
         [{<<"Account-ID">>, AccountId}
-         ,{<<"Account-DB">>, wh_util:format_account_id(AccountId, 'encoded')}
-         ,{<<"Resource-Type">>, ?RESOURCE_TYPE_AUDIO}
+        ,{<<"Account-DB">>, kz_util:format_account_id(AccountId, 'encoded')}
+        ,{<<"Resource-Type">>, ?RESOURCE_TYPE_AUDIO}
         ]
        )
      ).
 
--spec get_group_and_call_id(wh_json:object()) -> {api_binary(), api_binary()}.
+-spec get_group_and_call_id(kz_json:object()) -> {api_binary(), api_binary()}.
 get_group_and_call_id(JObj) ->
-    case wh_json:get_value(<<"Eavesdrop-Group-ID">>, JObj) of
-        'undefined' -> {'undefined', wh_json:get_value(<<"Eavesdrop-Call-ID">>, JObj)};
-        GroupId -> {GroupId, wh_json:get_value(<<"Eavesdrop-Call-ID">>, JObj, <<"all">>)}
+    case kz_json:get_value(<<"Eavesdrop-Group-ID">>, JObj) of
+        'undefined' -> {'undefined', kz_json:get_value(<<"Eavesdrop-Call-ID">>, JObj)};
+        GroupId -> {GroupId, kz_json:get_value(<<"Eavesdrop-Call-ID">>, JObj, <<"all">>)}
     end.
 
--spec send_eavesdrop(wh_json:object(), wh_json:objects(), ne_binary()) -> 'ok'.
+-spec send_eavesdrop(kz_json:object(), kz_json:objects(), ne_binary()) -> 'ok'.
 send_eavesdrop(JObj, EPs, AccountId) ->
     {GroupId, CallId} = get_group_and_call_id(JObj),
 
     CCVs = props:filter_undefined([{<<"Account-ID">>, AccountId}]),
-    Timeout = wh_json:get_integer_value(<<"Endpoint-Timeout">>, JObj, 20),
+    Timeout = kz_json:get_integer_value(<<"Endpoint-Timeout">>, JObj, 20),
 
     {CallerIdName, CallerIdNumber} = find_caller_id(JObj),
 
     Prop = props:filter_undefined(
-             [{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
-              ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-              ,{<<"Timeout">>, Timeout}
-              ,{<<"Endpoints">>, [wh_json:set_values([{<<"Endpoint-Timeout">>, Timeout}
-                                                      ,{<<"Outbound-Caller-ID-Name">>, CallerIdName}
-                                                      ,{<<"Outbound-Caller-ID-Number">>, CallerIdNumber}
-                                                     ]
-                                                     ,EP
-                                                    )
-                                  || EP <- EPs
-                                 ]}
-              ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>
-                                                   ,<<"Retain-CID">>
-                                                   ,<<"Authorizing-ID">>
-                                                   ,<<"Authorizing-Type">>
-                                                  ]}
-              ,{<<"Account-ID">>, AccountId}
-              ,{<<"Resource-Type">>, <<"originate">>}
-              ,{<<"Application-Name">>, <<"eavesdrop">>}
-              ,{<<"Eavesdrop-Call-ID">>, CallId}
-              ,{<<"Eavesdrop-Group-ID">>, GroupId}
-              ,{<<"Eavesdrop-Mode">>, wh_json:get_value(<<"Eavesdrop-Mode">>, JObj)}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             [{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
+             ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+             ,{<<"Timeout">>, Timeout}
+             ,{<<"Endpoints">>, [kz_json:set_values([{<<"Endpoint-Timeout">>, Timeout}
+                                                    ,{<<"Outbound-Caller-ID-Name">>, CallerIdName}
+                                                    ,{<<"Outbound-Caller-ID-Number">>, CallerIdNumber}
+                                                    ]
+                                                   ,EP
+                                                   )
+                                 || EP <- EPs
+                                ]}
+             ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>
+                                                 ,<<"Retain-CID">>
+                                                 ,<<"Authorizing-ID">>
+                                                 ,<<"Authorizing-Type">>
+                                                 ]}
+             ,{<<"Account-ID">>, AccountId}
+             ,{<<"Resource-Type">>, <<"originate">>}
+             ,{<<"Application-Name">>, <<"eavesdrop">>}
+             ,{<<"Eavesdrop-Call-ID">>, CallId}
+             ,{<<"Eavesdrop-Group-ID">>, GroupId}
+             ,{<<"Eavesdrop-Mode">>, kz_json:get_value(<<"Eavesdrop-Mode">>, JObj)}
+              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
 
     lager:debug("sending eavesdrop request for ~s:~s", [CallerIdName, CallerIdNumber]),
 
-    case whapps_util:amqp_pool_collect(Prop
-                                       ,fun wapi_resource:publish_originate_req/1
-                                       ,fun until_callback/1
-                                       ,5 * ?MILLISECONDS_IN_SECOND
-                                      )
+    case kapps_util:amqp_pool_collect(Prop
+                                     ,fun kapi_resource:publish_originate_req/1
+                                     ,fun until_callback/1
+                                     ,5 * ?MILLISECONDS_IN_SECOND
+                                     )
     of
         {'ok', [OrigJObj|_]} ->
             lager:debug("originate is ready to execute"),
-            send_originate_execute(OrigJObj, wh_json:get_value(<<"Server-ID">>, OrigJObj)),
+            send_originate_execute(OrigJObj, kz_json:get_value(<<"Server-ID">>, OrigJObj)),
             respond_success(JObj, OrigJObj);
         {'error', E} ->
             lager:debug("error originating: ~p", [E]),
@@ -106,53 +106,53 @@ send_eavesdrop(JObj, EPs, AccountId) ->
             respond_error(JObj, <<"timeout">>)
     end.
 
--spec until_callback(wh_json:objects()) -> boolean().
+-spec until_callback(kz_json:objects()) -> boolean().
 until_callback([JObj | _]) ->
-    wapi_dialplan:originate_ready_v(JObj).
+    kapi_dialplan:originate_ready_v(JObj).
 
--spec respond_success(wh_json:object(), wh_json:object()) -> 'ok'.
+-spec respond_success(kz_json:object(), kz_json:object()) -> 'ok'.
 respond_success(JObj, OrigJObj) ->
-    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
-    EavesdropCallId = wh_json:get_value(<<"Call-ID">>, OrigJObj),
+    ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
+    EavesdropCallId = kz_json:get_value(<<"Call-ID">>, OrigJObj),
     respond(ServerId, [{<<"Status">>, <<"started">>}
-                       ,{<<"Eavesdropper-Call-ID">>, EavesdropCallId}
-                       ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                      ,{<<"Eavesdropper-Call-ID">>, EavesdropCallId}
+                      ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+                       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ]).
 
--spec respond_error(wh_json:object(), ne_binary()) -> 'ok'.
+-spec respond_error(kz_json:object(), ne_binary()) -> 'ok'.
 respond_error(JObj, E) ->
-    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
     respond(ServerId, [{<<"Status">>, <<"error">>}
-                       ,{<<"Error-Msg">>, E}
-                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                      ,{<<"Error-Msg">>, E}
+                       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ]).
 
--spec respond(ne_binary(), wh_proplist()) -> 'ok'.
+-spec respond(ne_binary(), kz_proplist()) -> 'ok'.
 respond(ServerId, Props) ->
     lager:debug("respond to ~s: ~p", [ServerId, Props]),
-    wapi_resource:publish_eavesdrop_resp(ServerId, Props).
+    kapi_resource:publish_eavesdrop_resp(ServerId, Props).
 
--spec send_originate_execute(wh_json:object(), ne_binary()) -> 'ok'.
+-spec send_originate_execute(kz_json:object(), ne_binary()) -> 'ok'.
 send_originate_execute(JObj, Q) ->
-    Prop = [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+    Prop = [{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
+           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+            | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
-    wapi_dialplan:publish_originate_execute(wh_json:get_value(<<"Server-ID">>, JObj), Prop).
+    kapi_dialplan:publish_originate_execute(kz_json:get_value(<<"Server-ID">>, JObj), Prop).
 
--spec find_caller_id(wh_json:object()) ->
+-spec find_caller_id(kz_json:object()) ->
                             {ne_binary(), api_binary()}.
--spec find_caller_id(wh_json:object(), wh_proplist()) ->
+-spec find_caller_id(kz_json:object(), kz_proplist()) ->
                             {ne_binary(), api_binary()}.
 find_caller_id(JObj) ->
     find_caller_id(JObj, [{<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>}
-                          ,{<<"Caller-ID-Name">>, <<"Caller-ID-Number">>}
+                         ,{<<"Caller-ID-Name">>, <<"Caller-ID-Number">>}
                          ]).
 
 find_caller_id(_JObj, []) -> {<<"SpyVsSpy">>, <<"01010101">>};
 find_caller_id(JObj, [{KName, KNum}|Ks]) ->
-    case wh_json:get_value(KName, JObj) of
+    case kz_json:get_value(KName, JObj) of
         'undefined' -> find_caller_id(JObj, Ks);
-        Name -> {Name, wh_json:get_value(KNum, JObj)}
+        Name -> {Name, kz_json:get_value(KNum, JObj)}
     end.

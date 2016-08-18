@@ -1,8 +1,8 @@
 {
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "phone_numbers",
-    "description": "Schema for a phone_number",
-    "name": "Phone Number",
+    "description": "Schema for a number",
+    "name": "Number",
     "properties": {
         "cnam": {
             "properties": {
@@ -229,6 +229,6 @@
             "type": "object"
         }
     },
-    "required": true,
+    "required": false,
     "type": "object"
 }

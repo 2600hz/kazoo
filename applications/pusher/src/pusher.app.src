@@ -1,13 +1,23 @@
 {application, pusher,
  [
   {description, "pusher - wake the dead"},
-  {vsn, "1.0.0"},
+  {vsn, "4.0.0"},
   {modules, []},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {registered, [pusher_cache, pm_google, pm_apple, pusher_sup, pusher_module_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , public_key
+                 , crypto
+                 , asn1
+                 , ssl
+
+                 , kazoo_apps
+                 , kazoo_amqp
+                 , kazoo_data
+                 , apns
+                 , gcm
+
+                 , lager
                  ]},
-  {mod, { pusher_app, []}},
-  {env, []}
+  {mod, {pusher_app, []}}
  ]}.

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -10,26 +10,32 @@
 
 -behaviour(application).
 
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 -export([start/2, stop/1]).
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application start behaviour
-%% @end
+%% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(any(), any()) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
-start(_Type, _Args) -> cccp:start_link().
+-spec start(application:start_type(), any()) -> startapp_ret().
+start(_Type, _Args) ->
+    _ = declare_exchanges(),
+    cccp_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application stop behaviour
-%% @end
+%% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
-stop(_State) -> cccp:stop().
+-spec stop(any()) -> any().
+stop(_State) ->
+    'ok'.
+
+
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    kapi_self:declare_exchanges(),
+    kapi_call:declare_exchanges(),
+    kapi_route:declare_exchanges(),
+    kapi_resource:declare_exchanges(),
+    kapi_offnet_resource:declare_exchanges().

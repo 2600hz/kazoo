@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Hotdesks module
 %%%
@@ -13,12 +13,12 @@
 -module(cb_hotdesks).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
-         ,validate/1
+        ,allowed_methods/0
+        ,resource_exists/0
+        ,validate/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(VIEW_FILE, <<"views/hotdesks.json">>).
 -define(CB_LIST, <<"hotdesks/crossbar_listing">>).
@@ -70,7 +70,6 @@ resource_exists() -> 'true'.
 validate(Context) ->
     validate_hotdesks(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -80,7 +79,7 @@ validate(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_hotdesks(cb_context:context(), http_method(), wh_proplist()) -> cb_context:context().
+-spec validate_hotdesks(cb_context:context(), http_method(), kz_proplist()) -> cb_context:context().
 validate_hotdesks(Context, ?HTTP_GET, [{<<"hotdesks">>, _}, {<<"users">>, [UserId]}|_]) ->
     fetch_device_hotdesks(UserId, Context);
 validate_hotdesks(Context, ?HTTP_GET, [{<<"hotdesks">>, _}, {<<"devices">>, [DeviceId]}|_]) ->
@@ -94,10 +93,10 @@ validate_hotdesks(Context, ?HTTP_GET, _) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) ->
-                                    wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
+                                    kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -110,22 +109,22 @@ fetch_all_hotdesks(Context) ->
 
 -spec fetch_user_hotdesks(ne_binary(), cb_context:context()) -> cb_context:context().
 fetch_user_hotdesks(DeviceId, Context) ->
-    Context1 = crossbar_doc:load(DeviceId, Context),
+    Context1 = crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kz_device:type())),
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
-            Users = wh_json:get_value([<<"hotdesk">>, <<"users">>], JObj, wh_json:new()),
-            fetch_users(wh_json:get_keys(Users), Context1);
+            Users = kz_json:get_value([<<"hotdesk">>, <<"users">>], JObj, kz_json:new()),
+            fetch_users(kz_json:get_keys(Users), Context1);
         _Else -> Context1
     end.
 
 -spec fetch_users(ne_binaries(), cb_context:context()) -> cb_context:context().
 fetch_users(UserIds, Context) ->
-    ViewOptions = [{<<"keys">>, UserIds}],
+    ViewOptions = [{'keys', UserIds}],
     View = <<"users/list_by_id">>,
     crossbar_doc:load_view(View, ViewOptions, Context, fun normalize_view_results/2).
 
 -spec fetch_device_hotdesks(ne_binary(), cb_context:context()) -> cb_context:context().
 fetch_device_hotdesks(UserId, Context) ->
-    ViewOptions = [{<<"key">>, UserId}],
+    ViewOptions = [{'key', UserId}],
     crossbar_doc:load_view(?CB_LIST, ViewOptions, Context, fun normalize_view_results/2).

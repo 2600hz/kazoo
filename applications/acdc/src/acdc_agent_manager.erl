@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%% Manages agent processes:
 %%%   starting when an agent logs in
@@ -11,7 +11,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(acdc_agent_manager).
-
 -behaviour(gen_listener).
 
 %% API
@@ -19,46 +18,49 @@
 
 %% gen_server callbacks
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("acdc.hrl").
--include_lib("whistle_apps/include/wh_hooks.hrl").
+-include_lib("kazoo_apps/include/kz_hooks.hrl").
+
+-record(state, {}).
+-type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{'acdc_agent', [{'restrict_to', ['status', 'stats_req']}]}
-                   ,{'presence', [{'restrict_to', ['probe']}]}
-                   ,{'conf', [{'type', <<"user">>}
-                              ,'federate'
-                             ]}
-                   ,{'conf', [{'type', <<"device">>}
-                              ,'federate'
-                             ]}
+                  ,{'presence', [{'restrict_to', ['probe']}]}
+                  ,{'conf', [{'type', <<"user">>}
+                            ,'federate'
+                            ]}
+                  ,{'conf', [{'type', <<"device">>}
+                            ,'federate'
+                            ]}
                   ]).
 -define(RESPONDERS, [{{'acdc_agent_handler', 'handle_status_update'}
-                      ,[{<<"agent">>, <<"login">>}
-                        ,{<<"agent">>, <<"logout">>}
-                        ,{<<"agent">>, <<"pause">>}
-                        ,{<<"agent">>, <<"resume">>}
-                        ,{<<"agent">>, <<"login_queue">>}
-                        ,{<<"agent">>, <<"logout_queue">>}
-                       ]
+                     ,[{<<"agent">>, <<"login">>}
+                      ,{<<"agent">>, <<"logout">>}
+                      ,{<<"agent">>, <<"pause">>}
+                      ,{<<"agent">>, <<"resume">>}
+                      ,{<<"agent">>, <<"login_queue">>}
+                      ,{<<"agent">>, <<"logout_queue">>}
+                      ]
                      }
-                     ,{{'acdc_agent_handler', 'handle_stats_req'}
-                       ,[{<<"agent">>, <<"stats_req">>}]
-                      }
-                     ,{{'acdc_agent_handler', 'handle_presence_probe'}
-                       ,[{<<"presence">>, <<"probe">>}]
-                      }
-                     ,{{'acdc_agent_handler', 'handle_config_change'}
-                       ,[{<<"configuration">>, <<"*">>}]
-                      }
+                    ,{{'acdc_agent_handler', 'handle_stats_req'}
+                     ,[{<<"agent">>, <<"stats_req">>}]
+                     }
+                    ,{{'acdc_agent_handler', 'handle_presence_probe'}
+                     ,[{<<"presence">>, <<"probe">>}]
+                     }
+                    ,{{'acdc_agent_handler', 'handle_config_change'}
+                     ,[{<<"configuration">>, <<"*">>}]
+                     }
                     ]).
 
 %%%===================================================================
@@ -66,18 +68,15 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}, ?MODULE
-                            ,[{'bindings', ?BINDINGS}
-                              ,{'responders', ?RESPONDERS}
-                             ]
-                            ,[]
+                           ,[{'bindings', ?BINDINGS}
+                            ,{'responders', ?RESPONDERS}
+                            ]
+                           ,[]
                            ).
 
 %%%===================================================================
@@ -86,18 +85,12 @@ start_link() ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
+%% @doc Initializes the server
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
-    wh_hooks:register(),
-    {'ok', 'ok'}.
+    kz_hooks:register(),
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -113,6 +106,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     Reply = 'ok',
     {'reply', Reply, State}.
@@ -127,6 +121,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'created_queue',_QueueName}}, State) ->
@@ -145,12 +140,13 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(?HOOK_EVT(AccountId, <<"CHANNEL_CREATE">>, JObj), State) ->
     lager:debug("channel_create event"),
-    _ = wh_util:spawn('acdc_agent_handler', 'handle_new_channel', [JObj, AccountId]),
+    _ = kz_util:spawn(fun acdc_agent_handler:handle_new_channel/2, [JObj, AccountId]),
     {'noreply', State};
 handle_info(?HOOK_EVT(_AccountId, _EventName, _JObj), State) ->
-    lager:debug("ignoring ~s for account ~s on call ~s", [_EventName, _AccountId, wh_json:get_value(<<"Call-ID">>, _JObj)]),
+    lager:debug("ignoring ~s for account ~s on call ~s", [_EventName, _AccountId, kz_json:get_value(<<"Call-ID">>, _JObj)]),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -170,6 +166,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("agent manager terminating: ~p", [_Reason]).
 
@@ -181,6 +178,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

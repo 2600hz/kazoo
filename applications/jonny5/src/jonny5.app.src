@@ -1,12 +1,18 @@
 {application, jonny5,
  [
   {description, "Jonny 5 - Short circuit accounts exceeding call volume"},
-  {vsn, "1"},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [jonny5_cache, j5_channels, jonny5_listener, jonny5_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , kazoo_apps
+                 , kazoo_amqp
+                 , kazoo_data
+
+                 , lager
                  ]},
-  {mod, { jonny5_app, []}},
-  {env, []}
+  {mod, {jonny5_app, []}}
  ]}.

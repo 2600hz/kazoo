@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%% Handlers for various call events, acdc events, etc
 %%% @end
@@ -10,75 +10,75 @@
 
 %% Listener callbacks
 -export([handle_status_update/2
-         ,handle_sync_req/2
-         ,handle_sync_resp/2
-         ,handle_call_event/2
-         ,handle_new_channel/2
-         ,handle_originate_resp/2
-         ,handle_member_message/2
-         ,handle_agent_message/2
-         ,handle_config_change/2
-         ,handle_presence_probe/2
-         ,handle_destroy/2
+        ,handle_sync_req/2
+        ,handle_sync_resp/2
+        ,handle_call_event/2
+        ,handle_new_channel/2
+        ,handle_originate_resp/2
+        ,handle_member_message/2
+        ,handle_agent_message/2
+        ,handle_config_change/2
+        ,handle_presence_probe/2
+        ,handle_destroy/2
         ]).
 
 -include("acdc.hrl").
--include_lib("whistle/include/wapi_conf.hrl").
+-include_lib("kazoo/include/kapi_conf.hrl").
 
--define(DEFAULT_PAUSE ,whapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)).
+-define(DEFAULT_PAUSE ,kapps_config:get(?CONFIG_CAT, <<"default_agent_pause_timeout">>, 600)).
 
--spec handle_status_update(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_status_update(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_status_update(JObj, _Props) ->
-    _ = wh_util:put_callid(JObj),
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
+    _ = kz_util:put_callid(JObj),
+    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
+    AgentId = kz_json:get_value(<<"Agent-ID">>, JObj),
 
     lager:debug("status update recv for ~s (~s)", [AgentId, AccountId]),
 
-    case wh_json:get_value(<<"Event-Name">>, JObj) of
+    case kz_json:get_value(<<"Event-Name">>, JObj) of
         <<"login">> ->
-            'true' = wapi_acdc_agent:login_v(JObj),
+            'true' = kapi_acdc_agent:login_v(JObj),
             maybe_start_agent(AccountId, AgentId, JObj);
         <<"logout">> ->
-            'true' = wapi_acdc_agent:logout_v(JObj),
+            'true' = kapi_acdc_agent:logout_v(JObj),
             maybe_stop_agent(AccountId, AgentId, JObj);
         <<"pause">> ->
-            'true' = wapi_acdc_agent:pause_v(JObj),
+            'true' = kapi_acdc_agent:pause_v(JObj),
 
-            Timeout = wh_json:get_integer_value(<<"Time-Limit">>, JObj, ?DEFAULT_PAUSE),
+            Timeout = kz_json:get_integer_value(<<"Time-Limit">>, JObj, ?DEFAULT_PAUSE),
 
             maybe_pause_agent(AccountId, AgentId, Timeout, JObj);
         <<"resume">> ->
-            'true' = wapi_acdc_agent:resume_v(JObj),
+            'true' = kapi_acdc_agent:resume_v(JObj),
             maybe_resume_agent(AccountId, AgentId, JObj);
         Event -> maybe_agent_queue_change(AccountId, AgentId, Event
-                                          ,wh_json:get_value(<<"Queue-ID">>, JObj)
-                                          ,JObj
+                                         ,kz_json:get_value(<<"Queue-ID">>, JObj)
+                                         ,JObj
                                          )
     end.
 
 maybe_agent_queue_change(AccountId, AgentId, <<"login_queue">>, QueueId, JObj) ->
     lager:debug("queue login for agent ~s into ~s", [AgentId, QueueId]),
     update_agent(acdc_agents_sup:find_agent_supervisor(AccountId, AgentId)
-                 ,QueueId
-                 ,fun acdc_agent_listener:add_acdc_queue/2
-                 ,AccountId, AgentId, JObj
+                ,QueueId
+                ,fun acdc_agent_listener:add_acdc_queue/2
+                ,AccountId, AgentId, JObj
                 );
 maybe_agent_queue_change(AccountId, AgentId, <<"logout_queue">>, QueueId, JObj) ->
     lager:debug("queue logout for agent ~s into ~s", [AgentId, QueueId]),
     update_agent(acdc_agents_sup:find_agent_supervisor(AccountId, AgentId)
-                 ,QueueId
-                 ,fun acdc_agent_listener:rm_acdc_queue/2
-                 ,JObj
+                ,QueueId
+                ,fun acdc_agent_listener:rm_acdc_queue/2
+                ,JObj
                 );
 maybe_agent_queue_change(_AccountId, _AgentId, _Evt, _QueueId, _JObj) ->
     lager:debug("unhandled evt: ~s for ~s", [_Evt, _QueueId]).
 
 update_agent('undefined', QueueId, _F, AccountId, AgentId, _JObj) ->
     lager:debug("new agent process needs starting"),
-    {'ok', AgentJObj} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
+    {'ok', AgentJObj} = kz_datamgr:open_cache_doc(kz_util:format_account_id(AccountId, 'encoded')
                                                  ,AgentId
-                                                ),
+                                                 ),
     lager:debug("agent loaded"),
     acdc_agent_stats:agent_ready(AccountId, AgentId),
     acdc_agents_sup:new(AccountId, AgentId, AgentJObj, [QueueId]);
@@ -125,16 +125,16 @@ login_success(JObj) ->
     login_resp(JObj, <<"success">>).
 
 login_resp(JObj, Status) ->
-    case {wh_json:get_value(<<"Server-ID">>, JObj), wh_json:get_value(<<"Msg-ID">>, JObj)} of
+    case {kz_json:get_value(<<"Server-ID">>, JObj), kz_json:get_value(<<"Msg-ID">>, JObj)} of
         {'undefined', _} -> lager:debug("not publishing a login resp: no server_id");
         {<<>>, _} -> lager:debug("not publishing a login resp: no server_id");
         {_, 'undefined'} -> lager:debug("not publishing a login resp: no msg_id");
         {ServerID, MsgId} ->
             Prop = [{<<"Status">>, Status}
-                    ,{<<"Msg-ID">>, MsgId}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ,{<<"Msg-ID">>, MsgId}
+                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
-            wapi_acdc_agent:publish_login_resp(ServerID, Prop)
+            kapi_acdc_agent:publish_login_resp(ServerID, Prop)
     end.
 
 -spec maybe_start_agent(api_binary(), api_binary()) ->
@@ -146,7 +146,7 @@ maybe_start_agent(AccountId, AgentId) ->
         'undefined' ->
             lager:debug("agent ~s (~s) not found, starting", [AgentId, AccountId]),
             acdc_agent_stats:agent_ready(AccountId, AgentId),
-            case couch_mgr:open_doc(wh_util:format_account_id(AccountId, 'encoded'), AgentId) of
+            case kz_datamgr:open_doc(kz_util:format_account_id(AccountId, 'encoded'), AgentId) of
                 {'ok', AgentJObj} -> acdc_agents_sup:new(AgentJObj);
                 {'error', _E}=E ->
                     lager:debug("error opening agent doc: ~p", [_E]),
@@ -196,37 +196,37 @@ maybe_resume_agent(AccountId, AgentId, JObj) ->
             acdc_agent_fsm:resume(FSM)
     end.
 
--spec handle_sync_req(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_sync_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_sync_req(JObj, Props) ->
-    'true' = wapi_acdc_agent:sync_req_v(JObj),
+    'true' = kapi_acdc_agent:sync_req_v(JObj),
     acdc_agent_fsm:sync_req(props:get_value('fsm_pid', Props), JObj).
 
--spec handle_sync_resp(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_sync_resp(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_sync_resp(JObj, Props) ->
-    'true' = wapi_acdc_agent:sync_resp_v(JObj),
+    'true' = kapi_acdc_agent:sync_resp_v(JObj),
     acdc_agent_fsm:sync_resp(props:get_value('fsm_pid', Props), JObj).
 
--spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_call_event(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
-    _ = wh_util:put_callid(JObj),
+    _ = kz_util:put_callid(JObj),
     FSM = props:get_value('fsm_pid', Props),
-    case wapi_call:event_v(JObj) of
+    case kapi_call:event_v(JObj) of
         'true' ->
-            {Category, Name} = wh_util:get_event_type(JObj),
+            {Category, Name} = kz_util:get_event_type(JObj),
             handle_call_event(Category, Name, FSM, JObj, Props);
         'false' ->
-            'true' = wh_api:error_resp_v(JObj),
+            'true' = kz_api:error_resp_v(JObj),
 
-            case wh_json:get_value([<<"Request">>, <<"Event-Name">>], JObj) of
+            case kz_json:get_value([<<"Request">>, <<"Event-Name">>], JObj) of
                 <<"originate_req">> -> acdc_agent_fsm:originate_failed(FSM, JObj);
                 _ -> 'ok'
             end
     end.
 
--spec handle_call_event(ne_binary(), ne_binary(), server_ref(), wh_json:object(), wh_proplist()) -> any().
+-spec handle_call_event(ne_binary(), ne_binary(), server_ref(), kz_json:object(), kz_proplist()) -> any().
 handle_call_event(Category, <<"CHANNEL_DESTROY">> = Name, FSM, JObj, Props) ->
     Urls = props:get_value('cdr_urls', Props),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    CallId = kz_json:get_value(<<"Call-ID">>, JObj),
     case catch dict:fetch(CallId, Urls) of
         {'EXIT', _} -> lager:debug("no cdr url for call ~s", [CallId]);
         Url -> acdc_util:send_cdr(Url, JObj)
@@ -239,18 +239,18 @@ handle_call_event(Category, Name, FSM, JObj, _) ->
     acdc_agent_fsm:call_event(FSM, Category, Name, JObj).
 
 handle_new_channel(JObj, AccountId) ->
-    'true' = wapi_call:event_v(JObj),
-    _ = wh_util:put_callid(JObj),
+    'true' = kapi_call:event_v(JObj),
+    _ = kz_util:put_callid(JObj),
     handle_new_channel_acct(JObj, AccountId).
 
--spec handle_new_channel_acct(wh_json:object(), api_binary()) -> 'ok'.
+-spec handle_new_channel_acct(kz_json:object(), api_binary()) -> 'ok'.
 handle_new_channel_acct(_, 'undefined') -> 'ok';
 handle_new_channel_acct(JObj, AccountId) ->
-    [FromUser, _FromHost] = binary:split(wh_json:get_value(<<"From">>, JObj), <<"@">>),
-    [ToUser, _ToHost] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-    [ReqUser, _ReqHost] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
+    [FromUser, _FromHost] = binary:split(kz_json:get_value(<<"From">>, JObj), <<"@">>),
+    [ToUser, _ToHost] = binary:split(kz_json:get_value(<<"To">>, JObj), <<"@">>),
+    [ReqUser, _ReqHost] = binary:split(kz_json:get_value(<<"Request">>, JObj), <<"@">>),
 
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    CallId = kz_json:get_value(<<"Call-ID">>, JObj),
 
     lager:debug("new channel in acct ~s: from ~s to ~s(~s)", [AccountId, FromUser, ToUser, ReqUser]),
 
@@ -259,70 +259,70 @@ handle_new_channel_acct(JObj, AccountId) ->
     gproc:send(?NEW_CHANNEL_REG(AccountId, ReqUser), ?NEW_CHANNEL_TO(CallId)).
 
 handle_originate_resp(JObj, Props) ->
-    case wh_json:get_value(<<"Event-Name">>, JObj) of
+    case kz_json:get_value(<<"Event-Name">>, JObj) of
         <<"originate_resp">> ->
-            'true' = wapi_resource:originate_resp_v(JObj),
+            'true' = kapi_resource:originate_resp_v(JObj),
             acdc_agent_fsm:originate_resp(props:get_value('fsm_pid', Props), JObj);
         <<"originate_started">> ->
-            'true' = wapi_resource:originate_started_v(JObj),
+            'true' = kapi_resource:originate_started_v(JObj),
             acdc_agent_fsm:originate_started(props:get_value('fsm_pid', Props), JObj);
         <<"originate_uuid">> ->
-            'true' = wapi_resource:originate_uuid_v(JObj),
+            'true' = kapi_resource:originate_uuid_v(JObj),
             acdc_agent_fsm:originate_uuid(props:get_value('fsm_pid', Props), JObj)
     end.
 
--spec handle_member_message(wh_json:object(), wh_proplist()) -> 'ok'.
--spec handle_member_message(wh_json:object(), wh_proplist(), ne_binary()) -> 'ok'.
+-spec handle_member_message(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_member_message(kz_json:object(), kz_proplist(), ne_binary()) -> 'ok'.
 handle_member_message(JObj, Props) ->
-    handle_member_message(JObj, Props, wh_json:get_value(<<"Event-Name">>, JObj)).
+    handle_member_message(JObj, Props, kz_json:get_value(<<"Event-Name">>, JObj)).
 
 handle_member_message(JObj, Props, <<"connect_req">>) ->
-    'true' = wapi_acdc_queue:member_connect_req_v(JObj),
+    'true' = kapi_acdc_queue:member_connect_req_v(JObj),
     acdc_agent_fsm:member_connect_req(props:get_value('fsm_pid', Props), JObj);
 handle_member_message(JObj, Props, <<"connect_win">>) ->
-    'true' = wapi_acdc_queue:member_connect_win_v(JObj),
+    'true' = kapi_acdc_queue:member_connect_win_v(JObj),
     acdc_agent_fsm:member_connect_win(props:get_value('fsm_pid', Props), JObj);
 handle_member_message(_, _, EvtName) ->
     lager:debug("not handling member event ~s", [EvtName]).
 
--spec handle_agent_message(wh_json:object(), wh_proplist()) -> 'ok'.
--spec handle_agent_message(wh_json:object(), wh_proplist(), ne_binary()) -> 'ok'.
+-spec handle_agent_message(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_agent_message(kz_json:object(), kz_proplist(), ne_binary()) -> 'ok'.
 handle_agent_message(JObj, Props) ->
-    handle_agent_message(JObj, Props, wh_json:get_value(<<"Event-Name">>, JObj)).
+    handle_agent_message(JObj, Props, kz_json:get_value(<<"Event-Name">>, JObj)).
 
 handle_agent_message(JObj, Props, <<"connect_timeout">>) ->
-    'true' = wapi_acdc_queue:agent_timeout_v(JObj),
+    'true' = kapi_acdc_queue:agent_timeout_v(JObj),
     acdc_agent_fsm:agent_timeout(props:get_value('fsm_pid', Props), JObj);
 handle_agent_message(_, _, _EvtName) ->
     lager:debug("not handling agent event ~s", [_EvtName]).
 
 handle_config_change(JObj, _Props) ->
-    'true' = wapi_conf:doc_update_v(JObj),
+    'true' = kapi_conf:doc_update_v(JObj),
 
-    handle_change(JObj, wh_json:get_value(<<"Type">>, JObj)).
+    handle_change(JObj, kz_json:get_value(<<"Type">>, JObj)).
 
--spec handle_change(wh_json:object(), ne_binary()) -> 'ok'.
+-spec handle_change(kz_json:object(), ne_binary()) -> 'ok'.
 handle_change(JObj, <<"user">>) ->
-    handle_agent_change(wh_json:get_value(<<"Database">>, JObj)
-                        ,wh_json:get_value(<<"Account-ID">>, JObj)
-                        ,wh_json:get_value(<<"ID">>, JObj)
-                        ,wh_json:get_value(<<"Event-Name">>, JObj)
+    handle_agent_change(kz_json:get_value(<<"Database">>, JObj)
+                       ,kz_json:get_value(<<"Account-ID">>, JObj)
+                       ,kz_json:get_value(<<"ID">>, JObj)
+                       ,kz_json:get_value(<<"Event-Name">>, JObj)
                        );
 handle_change(JObj, <<"device">>) ->
-    handle_device_change(wh_json:get_value(<<"Database">>, JObj)
-                         ,wh_json:get_value(<<"Account-ID">>, JObj)
-                         ,wh_json:get_value(<<"ID">>, JObj)
-                         ,wh_json:get_value(<<"Rev">>, JObj)
-                         ,wh_json:get_value(<<"Event-Name">>, JObj)
+    handle_device_change(kz_json:get_value(<<"Database">>, JObj)
+                        ,kz_json:get_value(<<"Account-ID">>, JObj)
+                        ,kz_json:get_value(<<"ID">>, JObj)
+                        ,kz_json:get_value(<<"Rev">>, JObj)
+                        ,kz_json:get_value(<<"Event-Name">>, JObj)
                         );
 handle_change(JObj, <<"undefined">>) ->
     lager:debug("undefined type for change"),
-    case couch_mgr:open_cache_doc(wh_json:get_value(<<"Database">>, JObj)
-                                  ,wh_json:get_value(<<"ID">>, JObj)
-                                 )
+    case kz_datamgr:open_cache_doc(kz_json:get_value(<<"Database">>, JObj)
+                                  ,kz_json:get_value(<<"ID">>, JObj)
+                                  )
     of
         {'ok', Doc} ->
-            Type = wh_doc:type(Doc),
+            Type = kz_doc:type(Doc),
             lager:debug("found doc of type ~s", [Type]),
             handle_change(JObj, Type);
         {'error', _E} ->
@@ -335,12 +335,12 @@ handle_device_change(AccountDb, AccountId, DeviceId, Rev, Type) ->
 handle_device_change(_AccountDb, _AccountId, DeviceId, Rev, _Type, Cnt) when Cnt > 3 ->
     lager:debug("retried ~p times to refresh endpoint ~s(~s), giving up", [Cnt, DeviceId, Rev]);
 handle_device_change(AccountDb, AccountId, DeviceId, Rev, ?DOC_CREATED, Cnt) ->
-    case cf_endpoint:get(DeviceId, AccountDb) of
+    case kz_endpoint:get(DeviceId, AccountDb) of
         {'ok', EP} ->
-            case wh_doc:revision(EP) of
+            case kz_doc:revision(EP) of
                 Rev ->
                     gproc:send(?ENDPOINT_UPDATE_REG(AccountId, DeviceId), ?ENDPOINT_CREATED(EP)),
-                    gproc:send(?OWNER_UPDATE_REG(AccountId, wh_json:get_value(<<"owner_id">>, EP)), ?ENDPOINT_CREATED(EP));
+                    gproc:send(?OWNER_UPDATE_REG(AccountId, kz_json:get_value(<<"owner_id">>, EP)), ?ENDPOINT_CREATED(EP));
                 _OldRev ->
                     timer:sleep(250),
                     handle_device_change(AccountDb, AccountId, DeviceId, Rev, ?DOC_CREATED, Cnt+1)
@@ -348,12 +348,12 @@ handle_device_change(AccountDb, AccountId, DeviceId, Rev, ?DOC_CREATED, Cnt) ->
         _ -> lager:debug("ignoring the fact that device ~s was created", [DeviceId])
     end;
 handle_device_change(AccountDb, AccountId, DeviceId, Rev, ?DOC_EDITED, Cnt) ->
-    case cf_endpoint:get(DeviceId, AccountDb) of
+    case kz_endpoint:get(DeviceId, AccountDb) of
         {'ok', EP} ->
-            case wh_doc:revision(EP) of
+            case kz_doc:revision(EP) of
                 Rev ->
                     gproc:send(?ENDPOINT_UPDATE_REG(AccountId, DeviceId), ?ENDPOINT_EDITED(EP)),
-                    gproc:send(?OWNER_UPDATE_REG(AccountId, wh_json:get_value(<<"owner_id">>, EP)), ?ENDPOINT_EDITED(EP));
+                    gproc:send(?OWNER_UPDATE_REG(AccountId, kz_json:get_value(<<"owner_id">>, EP)), ?ENDPOINT_EDITED(EP));
                 _OldRev ->
                     timer:sleep(250),
                     handle_device_change(AccountDb, AccountId, DeviceId, Rev, ?DOC_EDITED, Cnt+1)
@@ -361,12 +361,12 @@ handle_device_change(AccountDb, AccountId, DeviceId, Rev, ?DOC_EDITED, Cnt) ->
         _ -> lager:debug("ignoring the fact that device ~s was edited", [DeviceId])
     end;
 handle_device_change(AccountDb, AccountId, DeviceId, Rev, ?DOC_DELETED, Cnt) ->
-    case cf_endpoint:get(DeviceId, AccountDb) of
+    case kz_endpoint:get(DeviceId, AccountDb) of
         {'ok', EP} ->
-            case wh_doc:revision(EP) of
+            case kz_doc:revision(EP) of
                 Rev ->
                     gproc:send(?ENDPOINT_UPDATE_REG(AccountId, DeviceId), ?ENDPOINT_DELETED(EP)),
-                    gproc:send(?OWNER_UPDATE_REG(AccountId, wh_json:get_value(<<"owner_id">>, EP)), ?ENDPOINT_DELETED(EP));
+                    gproc:send(?OWNER_UPDATE_REG(AccountId, kz_json:get_value(<<"owner_id">>, EP)), ?ENDPOINT_DELETED(EP));
                 _OldRev ->
                     timer:sleep(250),
                     handle_device_change(AccountDb, AccountId, DeviceId, Rev, ?DOC_DELETED, Cnt+1)
@@ -377,7 +377,7 @@ handle_device_change(AccountDb, AccountId, DeviceId, Rev, ?DOC_DELETED, Cnt) ->
 handle_agent_change(_AccountDb, AccountId, AgentId, ?DOC_CREATED) ->
     lager:debug("new agent ~s(~s) created, hope they log in soon!", [AgentId, AccountId]);
 handle_agent_change(AccountDb, AccountId, AgentId, ?DOC_EDITED) ->
-    {'ok', JObj} = couch_mgr:open_doc(AccountDb, AgentId),
+    {'ok', JObj} = kz_datamgr:open_doc(AccountDb, AgentId),
     lager:debug("agent ~s edited", [AgentId]),
     case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
         'undefined' -> lager:debug("failed to find agent ~s", [AgentId]);
@@ -393,15 +393,15 @@ handle_agent_change(_, AccountId, AgentId, ?DOC_DELETED) ->
     end.
 
 handle_presence_probe(JObj, _Props) ->
-    'true' = wapi_presence:probe_v(JObj),
-    Realm = wh_json:get_value(<<"Realm">>, JObj),
-    case whapps_util:get_account_by_realm(Realm) of
-        {'ok', AcctDb} -> maybe_respond_to_presence_probe(JObj, wh_util:format_account_id(AcctDb, 'raw'));
+    'true' = kapi_presence:probe_v(JObj),
+    Realm = kz_json:get_value(<<"Realm">>, JObj),
+    case kapps_util:get_account_by_realm(Realm) of
+        {'ok', AcctDb} -> maybe_respond_to_presence_probe(JObj, kz_util:format_account_id(AcctDb, 'raw'));
         _ -> lager:debug("ignoring presence probe from realm ~s", [Realm])
     end.
 
 maybe_respond_to_presence_probe(JObj, AccountId) ->
-    case wh_json:get_value(<<"Username">>, JObj) of
+    case kz_json:get_value(<<"Username">>, JObj) of
         'undefined' -> lager:debug("no user on presence probe for ~s", [AccountId]);
         AgentId ->
             update_probe(JObj, acdc_agents_sup:find_agent_supervisor(AccountId, AgentId))
@@ -413,19 +413,19 @@ update_probe(JObj, P) when is_pid(P) ->
     send_probe(JObj, ?PRESENCE_GREEN).
 
 send_probe(JObj, State) ->
-    To = <<(wh_json:get_value(<<"Username">>, JObj))/binary
+    To = <<(kz_json:get_value(<<"Username">>, JObj))/binary
            ,"@"
-           ,(wh_json:get_value(<<"Realm">>, JObj))/binary>>,
+           ,(kz_json:get_value(<<"Realm">>, JObj))/binary>>,
     PresenceUpdate =
         [{<<"State">>, State}
-         ,{<<"Presence-ID">>, To}
-         ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:hash(md5, To))}
-         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+        ,{<<"Presence-ID">>, To}
+        ,{<<"Call-ID">>, kz_util:to_hex_binary(crypto:hash(md5, To))}
+         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
-    wapi_presence:publish_update(PresenceUpdate).
+    kapi_presence:publish_update(PresenceUpdate).
 
 handle_destroy(JObj, Props) ->
-    'true' = wapi_call:event_v(JObj),
+    'true' = kapi_call:event_v(JObj),
     FSM = props:get_value('fsm_pid', Props),
     acdc_agent_fsm:call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, JObj).
 
@@ -433,11 +433,11 @@ presence_id(JObj) ->
     presence_id(JObj, 'undefined').
 presence_id(JObj, AgentId) ->
     lager:debug("find presence in ~p", [JObj]),
-    wh_json:get_value(<<"Presence-ID">>, JObj, AgentId).
+    kz_json:get_value(<<"Presence-ID">>, JObj, AgentId).
 
--spec presence_state(wh_json:object(), api_binary()) -> api_binary().
+-spec presence_state(kz_json:object(), api_binary()) -> api_binary().
 presence_state(JObj, State) ->
-    wh_json:get_value(<<"Presence-State">>, JObj, State).
+    kz_json:get_value(<<"Presence-State">>, JObj, State).
 
 maybe_update_presence(Sup, JObj) ->
     maybe_update_presence(Sup, JObj, 'undefined').

@@ -20,7 +20,13 @@
                 "audio/mpeg3",
                 "audio/x-wav",
                 "audio/wav",
-                "audio/ogg"
+                "audio/ogg",
+                "video/x-flv",
+                "video/h264",
+                "video/mpeg",
+                "video/quicktime",
+                "video/mp4",
+                "video/webm"
             ],
             "name": "Content Type",
             "required": false,

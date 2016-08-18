@@ -1,0 +1,37 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.hangups",
+    "description": "Schema for hangups system_config",
+    "properties": {
+        "hangups_to_monitor": {
+            "default": [
+                "CALL_REJECTED",
+                "MANDATORY_IE_MISSING",
+                "NO_ROUTE_DESTINATION",
+                "PROGRESS_TIMEOUT",
+                "RECOVERY_ON_TIMER_EXPIRE",
+                "WRONG_CALL_STATE"
+            ],
+            "description": "hangups hangups to monitor",
+            "name": "hangups_to_monitor",
+            "type": "array"
+        },
+        "ignore_hangup_causes": {
+            "default": [
+                "ALLOTTED_TIMEOUT",
+                "ATTENDED_TRANSFER",
+                "LOSE_RACE",
+                "NORMAL_CLEARING",
+                "NO_ANSWER",
+                "NO_USER_RESPONSE",
+                "ORIGINATOR_CANCEL",
+                "USER_BUSY"
+            ],
+            "description": "hangups ignore hangup causes",
+            "name": "ignore_hangup_causes",
+            "type": "array"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

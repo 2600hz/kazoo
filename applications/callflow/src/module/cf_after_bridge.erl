@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%% set [park|transfer|hangup]_after_bridge variable
 %%%
@@ -14,7 +14,9 @@
 
 -module(cf_after_bridge).
 
--include("../callflow.hrl").
+-behaviour(gen_cf_action).
+
+-include("callflow.hrl").
 
 -export([handle/2]).
 
@@ -23,22 +25,22 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    PostBridgeAction = wh_json:get_value(<<"action">>, Data),
-    PostBridgeData = wh_json:get_value(<<"data">>, Data),
+    PostBridgeAction = kz_json:get_value(<<"action">>, Data),
+    PostBridgeData = kz_json:get_value(<<"data">>, Data),
     lager:info("injecting ~s(~p)", [PostBridgeAction, PostBridgeData]),
     Action = build_action(PostBridgeAction, PostBridgeData),
-    whapps_call_command:set(Action, wh_json:new(), Call),
+    kapps_call_command:set(Action, kz_json:new(), Call),
     cf_exe:continue(Call).
 
--spec build_action(ne_binary(), ne_binary()) -> wh_json:object().
+-spec build_action(ne_binary(), ne_binary()) -> kz_json:object().
 build_action(<<"park">>, ShouldPark) ->
-    wh_json:from_list([{<<"Park-After-Pickup">>, wh_util:is_true(ShouldPark)}]);
+    kz_json:from_list([{<<"Park-After-Pickup">>, kz_util:is_true(ShouldPark)}]);
 build_action(<<"hangup">>, ShouldHangup) ->
-    wh_json:from_list([{<<"Hangup-After-Pickup">>, wh_util:is_true(ShouldHangup)}]);
+    kz_json:from_list([{<<"Hangup-After-Pickup">>, kz_util:is_true(ShouldHangup)}]);
 build_action(<<"transfer">>, ToExtension) when is_binary(ToExtension) ->
-    wh_json:from_list([{<<"Transfer-After-Pickup">>, ToExtension}]);
+    kz_json:from_list([{<<"Transfer-After-Pickup">>, ToExtension}]);
 build_action(_Cmd, _Data) ->
     lager:info("unknown command: ~s(~p)", [_Cmd, _Data]),
-    wh_json:new().
+    kz_json:new().

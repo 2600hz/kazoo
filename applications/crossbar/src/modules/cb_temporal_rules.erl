@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -10,16 +10,16 @@
 -module(cb_temporal_rules).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
-         ,put/1
-         ,post/2
-         ,patch/2
-         ,delete/2
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,validate/1, validate/2
+        ,put/1
+        ,post/2
+        ,patch/2
+        ,delete/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"temporal_rules/crossbar_listing">>).
 
@@ -134,7 +134,7 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"temporal_rule">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -178,9 +178,9 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), <<"temporal_rule">>));
+    cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"temporal_rule">>));
 on_successful_validation(Id, Context) ->
-    crossbar_doc:load_merge(Id, Context).
+    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"temporal_rule">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -188,6 +188,6 @@ on_successful_validation(Id, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].

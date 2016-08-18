@@ -1,0 +1,175 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.media",
+    "description": "Schema for media system_config",
+    "properties": {
+        "authenticated_playback": {
+            "default": false,
+            "description": "media authenticated playback",
+            "name": "authenticated_playback",
+            "type": "boolean"
+        },
+        "authenticated_store": {
+            "default": true,
+            "description": "media authenticated store",
+            "name": "authenticated_store",
+            "type": "boolean"
+        },
+        "call_recording": {
+            "properties": {
+                "extension": {
+                    "properties": {
+                        "default": "mp3",
+                        "description": "media extension",
+                        "name": "extension",
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "default_language": {
+            "description": "media default language",
+            "name": "default_language"
+        },
+        "fix_media_names": {
+            "default": true,
+            "description": "media fix media names",
+            "name": "fix_media_names",
+            "type": "boolean"
+        },
+        "max_recording_time_limit": {
+            "default": 600,
+            "description": "media max recording time limit",
+            "name": "max_recording_time_limit",
+            "type": "integer"
+        },
+        "normalize_destination_args": {
+            "default": "-r 8000",
+            "description": "media normalize destination args",
+            "name": "normalize_destination_args",
+            "type": "string"
+        },
+        "normalize_executable": {
+            "default": "sox",
+            "description": "media normalize executable",
+            "name": "normalize_executable",
+            "type": "string"
+        },
+        "normalize_source_args": {
+            "default": "",
+            "description": "media normalize source args",
+            "name": "normalize_source_args",
+            "type": "string"
+        },
+        "proxy_listeners": {
+            "default": 25,
+            "description": "media proxy listeners",
+            "name": "proxy_listeners",
+            "type": "integer"
+        },
+        "proxy_password": {
+            "default": "",
+            "description": "media proxy password",
+            "name": "proxy_password",
+            "type": "string"
+        },
+        "proxy_port": {
+            "default": 24517,
+            "description": "media proxy port",
+            "name": "proxy_port",
+            "type": "string"
+        },
+        "proxy_store_acls": {
+            "default": [
+                "127.0.0.0/24"
+            ],
+            "description": "media proxy store acls",
+            "name": "proxy_store_acls",
+            "type": "array"
+        },
+        "proxy_store_authenticate": {
+            "default": true,
+            "description": "media proxy store authenticate",
+            "name": "proxy_store_authenticate",
+            "type": "boolean"
+        },
+        "proxy_username": {
+            "default": "",
+            "description": "media proxy username",
+            "name": "proxy_username",
+            "type": "string"
+        },
+        "record_min_sec": {
+            "default": 0,
+            "description": "media record min sec",
+            "name": "record_min_sec",
+            "type": "integer"
+        },
+        "recorder_module": {
+            "default": "kz_media_recording",
+            "description": "media recorder module",
+            "name": "recorder_module",
+            "type": "string"
+        },
+        "ssl_cert": {
+            "description": "media ssl cert",
+            "name": "ssl_cert",
+            "type": "string"
+        },
+        "ssl_key": {
+            "description": "media ssl key",
+            "name": "ssl_key",
+            "type": "string"
+        },
+        "ssl_password": {
+            "default": "",
+            "description": "media ssl password",
+            "name": "ssl_password",
+            "type": "string"
+        },
+        "ssl_port": {
+            "default": 24518,
+            "description": "media ssl port",
+            "name": "ssl_port",
+            "type": "integer"
+        },
+        "store_recordings": {
+            "default": false,
+            "description": "media store recordings",
+            "name": "store_recordings",
+            "type": "boolean"
+        },
+        "support_account_overrides": {
+            "default": true,
+            "description": "media support account overrides",
+            "name": "support_account_overrides",
+            "type": "boolean"
+        },
+        "tts_cache": {
+            "default": 3600000,
+            "description": "media tts cache",
+            "name": "tts_cache",
+            "type": "integer"
+        },
+        "use_https": {
+            "default": false,
+            "description": "media use https",
+            "name": "use_https",
+            "type": "boolean"
+        },
+        "use_plaintext": {
+            "default": true,
+            "description": "media use plaintext",
+            "name": "use_plaintext",
+            "type": "boolean"
+        },
+        "use_ssl_proxy": {
+            "default": false,
+            "description": "media use ssl proxy",
+            "name": "use_ssl_proxy",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

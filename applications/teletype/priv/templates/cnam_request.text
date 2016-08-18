@@ -1,0 +1,34 @@
+Caller name update request for {{request.number}}
+
+Request
+Display-Name: "{{cnam.display_name}}"
+
+Number
+Number: {{request.number}}
+State: {{request.number_state}}
+Local-Number: {{request.local_number}}
+
+Account
+Account ID: {{account.id}}
+Account Name: {{account.name}}
+Account Realm: {{account.realm}}
+
+{% if admin %}Admin
+First Name: {{user.first_name}}
+Last Name: {{user.last_name}}
+Email: {{user.email}}
+Timezone: {{user.timezone}}
+
+{% endif %}{% if devices %}SIP Credentials
+{% for device in devices %}User: {{device.user.first_name}} {{device.user.last_name}}
+Email: {{device.user.email|default:""}}
+SIP Username: {{device.sip.username}}
+SIP Password: {{device.sip.password}}
+SIP Realm: {{account.realm}}
+
+{% endfor %}{% endif %}{% if account.pvt_wnm_numbers %}Phone Numbers
+{% for number in account.pvt_wnm_numbers %}{{number}}
+{% endfor %}
+{% endif %}
+
+Sent from {{system.hostname}}

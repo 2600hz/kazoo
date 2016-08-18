@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -9,16 +9,16 @@
 -module(cb_blacklists).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
-         ,put/1
-         ,post/2
-         ,patch/2
-         ,delete/2
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,validate/1, validate/2
+        ,put/1
+        ,post/2
+        ,patch/2
+        ,delete/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"blacklists/crossbar_listing">>).
 
@@ -60,8 +60,8 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists() -> true.
-resource_exists(_) -> true.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -75,7 +75,7 @@ resource_exists(_) -> true.
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
-   validate_set(Context, cb_context:req_verb(Context)).
+    validate_set(Context, cb_context:req_verb(Context)).
 
 validate(Context, DocId) ->
     validate_set(Context, cb_context:req_verb(Context), DocId).
@@ -98,15 +98,15 @@ validate_set(Context, ?HTTP_DELETE, DocId) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
-    crossbar_doc:save(Context).
+    crossbar_doc:save(format_numbers(Context)).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _) ->
-    crossbar_doc:save(Context).
+    crossbar_doc:save(format_numbers(Context)).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    crossbar_doc:save(Context).
+    crossbar_doc:save(format_numbers(Context)).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
@@ -135,7 +135,7 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"blacklist">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -180,9 +180,9 @@ summary(Context) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Doc = cb_context:doc(Context),
-    cb_context:set_doc(Context, wh_doc:set_type(Doc, <<"blacklist">>));
+    cb_context:set_doc(Context, kz_doc:set_type(Doc, <<"blacklist">>));
 on_successful_validation(Id, Context) ->
-    crossbar_doc:load_merge(Id, Context).
+    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"blacklist">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -190,6 +190,27 @@ on_successful_validation(Id, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj) | Acc].
+    [kz_json:get_value(<<"value">>, JObj) | Acc].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec format_numbers(cb_context:context()) -> cb_context:context().
+format_numbers(Context) ->
+    Doc = cb_context:doc(Context),
+    Numbers =
+        kz_json:map(fun format_number_map/2
+                   ,kz_json:get_value(<<"numbers">>, Doc, kz_json:new())
+                   ),
+    cb_context:set_doc(Context
+                      ,kz_json:set_value(<<"numbers">>, Numbers, Doc)
+                      ).
+
+-spec format_number_map(ne_binary(), kz_json:object()) ->
+                               {ne_binary(), kz_json:object()}.
+format_number_map(Number, Data) ->
+    {knm_converters:normalize(Number), Data}.

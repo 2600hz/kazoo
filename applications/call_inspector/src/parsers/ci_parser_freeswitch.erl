@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (c) 2010-2015, 2600Hz
+%%% @copyright (c) 2010-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -10,27 +10,27 @@
 
 -behaviour(gen_server).
 
--include("../call_inspector.hrl").
+-include("call_inspector.hrl").
 
 %% API
 -export([start_link/1]).
 
 %% gen_server callbacks
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -record(state, {parser_id :: atom()
-                ,logfile :: file:name()
-                ,iodevice :: file:io_device()
-                ,logip :: ne_binary()
-                ,logport :: pos_integer()
-                ,timer :: reference()
-                ,counter :: pos_integer()
+               ,logfile :: file:name()
+               ,iodevice :: file:io_device()
+               ,logip :: ne_binary()
+               ,logport :: pos_integer()
+               ,timer :: reference()
+               ,counter :: pos_integer()
                }
        ).
 -type state() :: #state{}.
@@ -40,12 +40,9 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link(_) -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(list()) -> startlink_ret().
 start_link(Args) ->
     ServerName = ci_parsers_util:make_name(Args),
     gen_server:start_link({'local', ServerName}, ?MODULE, Args, []).
@@ -67,14 +64,14 @@ start_link(Args) ->
 %%--------------------------------------------------------------------
 init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
     ParserId = ci_parsers_util:make_name(Args),
-    _ = wh_util:put_callid(ParserId),
+    _ = kz_util:put_callid(ParserId),
     NewDev = ci_parsers_util:open_file(LogFile),
     State = #state{parser_id = ParserId
-                   ,logfile = LogFile
-                   ,iodevice = NewDev
-                   ,logip = LogIP
-                   ,logport = LogPort
-                   ,counter = 1
+                  ,logfile = LogFile
+                  ,iodevice = NewDev
+                  ,logip = LogIP
+                  ,logport = LogPort
+                  ,counter = 1
                   },
     self() ! 'start_parsing',
     {'ok', State}.
@@ -109,6 +106,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),
     {'noreply', State}.
@@ -123,12 +121,13 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('start_parsing', State=#state{parser_id = ParserId
-                                          ,iodevice = IoDevice
-                                          ,logip = LogIP
-                                          ,logport = LogPort
-                                          ,timer = OldTimer
-                                          ,counter = Counter
+                                         ,iodevice = IoDevice
+                                         ,logip = LogIP
+                                         ,logport = LogPort
+                                         ,timer = OldTimer
+                                         ,counter = Counter
                                          }) ->
     _ = case OldTimer of
             'undefined' -> 'ok';
@@ -136,11 +135,11 @@ handle_info('start_parsing', State=#state{parser_id = ParserId
         end,
     NewCounter = extract_chunks(ParserId, IoDevice, LogIP, LogPort, Counter),
     NewTimer = erlang:send_after(ci_parsers_util:parse_interval()
-                                 ,self()
-                                 ,'start_parsing'
+                                ,self()
+                                ,'start_parsing'
                                 ),
     {'noreply', State#state{timer = NewTimer
-                            ,counter = NewCounter
+                           ,counter = NewCounter
                            }};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -157,6 +156,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{iodevice = IoDevice}) ->
     'ok' = file:close(IoDevice),
     lager:debug("call inspector freeswitch parser terminated: ~p", [_Reason]).
@@ -169,6 +169,7 @@ terminate(_Reason, #state{iodevice = IoDevice}) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
@@ -196,21 +197,21 @@ make_and_store_chunk(ParserId, LogIP, LogPort, Counter, Data00) ->
             'false' ->                         {Counter, Data00, Counter+1}
         end,
     Cleansers = [fun remove_whitespace_lines/1
-                 ,fun remove_unrelated_lines/1 %% MUST be called before unwrap_lines/1
-                 ,fun unwrap_lines/1
-                 ,fun strip_truncating_pieces/1
-                 ,fun remove_dashes/1
+                ,fun remove_unrelated_lines/1 %% MUST be called before unwrap_lines/1
+                ,fun unwrap_lines/1
+                ,fun strip_truncating_pieces/1
+                ,fun remove_dashes/1
                 ],
     Data = lists:foldl(Apply, Data0, Cleansers),
     Chunk =
         ci_chunk:setters(set_legs(LogIP, LogPort, ci_chunk:new(), Data)
-                         ,[{fun ci_chunk:data/2, Data}
-                           ,{fun ci_chunk:call_id/2, ci_parsers_util:call_id(Data)}
-                           ,{fun ci_chunk:timestamp/2, Timestamp}
-                           ,{fun ci_chunk:parser/2, ParserId}
-                           ,{fun ci_chunk:label/2, label(Data)}
-                           ,{fun ci_chunk:c_seq/2, ci_parsers_util:c_seq(Data)}
-                          ]
+                        ,[{fun ci_chunk:data/2, Data}
+                         ,{fun ci_chunk:call_id/2, ci_parsers_util:call_id(Data)}
+                         ,{fun ci_chunk:timestamp/2, Timestamp}
+                         ,{fun ci_chunk:parser/2, ParserId}
+                         ,{fun ci_chunk:label/2, label(Data)}
+                         ,{fun ci_chunk:c_seq/2, ci_parsers_util:c_seq(Data)}
+                         ]
                         ),
     lager:debug("parsed chunk ~s", [ci_chunk:call_id(Chunk)]),
     ci_datastore:store_chunk(Chunk),
@@ -235,12 +236,10 @@ extract_chunk(Dev, Buffer) ->
     end.
 
 -spec acc(binary(), buffer(), file:io_device()) -> buffer().
-acc(<<"recv ", _/binary>>=Line, Buffer, Dev)
-  when Buffer == [] ->
+acc(<<"recv ", _/binary>>=Line, [], Dev) ->
     %% Start of a new chunk
     extract_chunk(Dev, [Line]);
-acc(<<"send ", _/binary>>=Line, Buffer, Dev)
-  when Buffer == [] ->
+acc(<<"send ", _/binary>>=Line, [], Dev) ->
     %% Start of a new chunk
     extract_chunk(Dev, [Line]);
 acc(<<"   ------------------------------------------------------------------------\n">>, [_]=Buffer, Dev) ->
@@ -288,11 +287,11 @@ set_legs(LogIP, LogPort, Chunk, [FirstLine|_Lines]) ->
             ToPort   = LogPort
     end,
     ci_chunk:setters(Chunk
-                     ,[{fun ci_chunk:src_ip/2, FromIP}
-                       ,{fun ci_chunk:dst_ip/2, ToIP}
-                       ,{fun ci_chunk:src_port/2, FromPort}
-                       ,{fun ci_chunk:dst_port/2, ToPort}
-                      ]
+                    ,[{fun ci_chunk:src_ip/2, FromIP}
+                     ,{fun ci_chunk:dst_ip/2, ToIP}
+                     ,{fun ci_chunk:src_port/2, FromPort}
+                     ,{fun ci_chunk:dst_port/2, ToPort}
+                     ]
                     ).
 
 -spec ip(ne_binary()) -> ne_binary().
@@ -337,7 +336,7 @@ all_whitespace(_) -> 'false'.
 -spec strip_truncating_pieces([ne_binary()]) -> [ne_binary()].
 strip_truncating_pieces(Data) ->
     [case re:run(Line, "(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6} \\[[A-Z]+\\] )") of
-         {'match', [{Offset,_}|_]} -> binary:part(Line, {0,Offset});
+         {'match', [{Offset,_}|_]} -> kz_util:truncate_right_binary(Line, Offset);
          'nomatch' -> Line
      end
      || Line <- Data

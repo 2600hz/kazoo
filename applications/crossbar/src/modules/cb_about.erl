@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% Display various informations
 %%%
@@ -11,16 +11,24 @@
 -module(cb_about).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
-         ,validate/1
+        ,allowed_methods/0
+        ,resource_exists/0
+        ,validate/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Initializes the bindings this module will respond to.
+%% @end
+%%--------------------------------------------------------------------
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.about">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.about">>, ?MODULE, 'resource_exists'),
@@ -29,10 +37,8 @@ init() ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
-%%
-%% Failure here returns 405
+%% Given the path tokens related to this module, what HTTP methods are
+%% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
@@ -69,19 +75,16 @@ validate(Context) ->
 %% @private
 %% @doc
 %%
-%% Display the current version of whistle
+%% Display the current version of kazoo
 %% @end
 %%--------------------------------------------------------------------
 -spec display_version(cb_context:context()) -> cb_context:context().
 display_version(Context) ->
-    crossbar_util:response(
-      wh_json:from_list(
-        [{<<"version">>, wh_util:whistle_version()}
-         ,{<<"used_memory">>, erlang:memory('total')}
-         ,{<<"processes">>, erlang:system_info('process_count')}
-         ,{<<"ports">>, length(erlang:ports())}
-         ,{<<"erlang_version">>, wh_util:to_binary(erlang:system_info('otp_release'))}
-        ]
-       )
-      ,Context
-     ).
+    JObj = kz_json:from_list(
+             [{<<"version">>, kz_util:kazoo_version()}
+             ,{<<"used_memory">>, erlang:memory('total')}
+             ,{<<"processes">>, erlang:system_info('process_count')}
+             ,{<<"ports">>, length(erlang:ports())}
+             ,{<<"erlang_version">>, kz_util:to_binary(erlang:system_info('otp_release'))}
+             ]),
+    crossbar_util:response(JObj, Context).

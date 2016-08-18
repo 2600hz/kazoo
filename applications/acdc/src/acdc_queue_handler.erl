@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -9,22 +9,22 @@
 -module(acdc_queue_handler).
 
 -export([handle_call_event/2
-         ,handle_member_call/3
-         ,handle_member_resp/2
-         ,handle_member_accepted/2
-         ,handle_member_retry/2
-         ,handle_config_change/2
-         ,handle_presence_probe/2
+        ,handle_member_call/3
+        ,handle_member_resp/2
+        ,handle_member_accepted/2
+        ,handle_member_retry/2
+        ,handle_config_change/2
+        ,handle_presence_probe/2
         ]).
 
 -include("acdc.hrl").
--include_lib("whistle/include/wapi_conf.hrl").
+-include_lib("kazoo/include/kapi_conf.hrl").
 
--spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
--spec handle_call_event(ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_call_event(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_call_event(ne_binary(), ne_binary(), kz_json:object(), kz_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
-    'true' = wapi_call:event_v(JObj),
-    {Cat, Name} = wh_util:get_event_type(JObj),
+    'true' = kapi_call:event_v(JObj),
+    {Cat, Name} = kz_util:get_event_type(JObj),
     handle_call_event(Cat, Name, JObj, Props).
 
 handle_call_event(Category, <<"CHANNEL_DESTROY">> = Name, JObj, Props) ->
@@ -34,49 +34,49 @@ handle_call_event(Category, <<"CHANNEL_DESTROY">> = Name, JObj, Props) ->
     end,
 
     Srv = props:get_value('server', Props),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    CallId = kz_json:get_value(<<"Call-ID">>, JObj),
     acdc_util:unbind_from_call_events(CallId, Srv),
     acdc_queue_fsm:call_event(props:get_value('fsm_pid', Props)
-                              ,Category
-                              ,Name
-                              ,JObj
+                             ,Category
+                             ,Name
+                             ,JObj
                              );
 handle_call_event(Category, Name, JObj, Props) ->
     acdc_queue_fsm:call_event(props:get_value('fsm_pid', Props)
-                              ,Category
-                              ,Name
-                              ,JObj
+                             ,Category
+                             ,Name
+                             ,JObj
                              ).
 
--spec handle_member_call(wh_json:object(), wh_proplist(), gen_listener:basic_deliver()) -> 'ok'.
+-spec handle_member_call(kz_json:object(), kz_proplist(), gen_listener:basic_deliver()) -> 'ok'.
 handle_member_call(JObj, Props, Delivery) ->
-    'true' = wapi_acdc_queue:member_call_v(JObj),
+    'true' = kapi_acdc_queue:member_call_v(JObj),
     acdc_queue_fsm:member_call(props:get_value('fsm_pid', Props), JObj, Delivery),
     gen_listener:cast(props:get_value('server', Props), {'delivery', Delivery}).
 
--spec handle_member_resp(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_member_resp(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_member_resp(JObj, Props) ->
-    'true' = wapi_acdc_queue:member_connect_resp_v(JObj),
+    'true' = kapi_acdc_queue:member_connect_resp_v(JObj),
     acdc_queue_fsm:member_connect_resp(props:get_value('fsm_pid', Props), JObj).
 
--spec handle_member_accepted(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_member_accepted(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_member_accepted(JObj, Props) ->
-    'true' = wapi_acdc_queue:member_connect_accepted_v(JObj),
+    'true' = kapi_acdc_queue:member_connect_accepted_v(JObj),
     acdc_queue_fsm:member_accepted(props:get_value('fsm_pid', Props), JObj).
 
--spec handle_member_retry(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_member_retry(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_member_retry(JObj, Props) ->
-    'true' = wapi_acdc_queue:member_connect_retry_v(JObj),
+    'true' = kapi_acdc_queue:member_connect_retry_v(JObj),
     acdc_queue_fsm:member_connect_retry(props:get_value('fsm_pid', Props), JObj).
 
--spec handle_config_change(wh_json:object(), wh_proplist()) -> any().
+-spec handle_config_change(kz_json:object(), kz_proplist()) -> any().
 handle_config_change(JObj, _Props) ->
-    'true' = wapi_conf:doc_update_v(JObj),
+    'true' = kapi_conf:doc_update_v(JObj),
 
-    handle_queue_change(wh_json:get_value(<<"Database">>, JObj)
-                        ,wh_json:get_value(<<"Account-ID">>, JObj)
-                        ,wh_json:get_value(<<"ID">>, JObj)
-                        ,wh_json:get_value(<<"Event-Name">>, JObj)
+    handle_queue_change(kz_json:get_value(<<"Database">>, JObj)
+                       ,kz_json:get_value(<<"Account-ID">>, JObj)
+                       ,kz_json:get_value(<<"ID">>, JObj)
+                       ,kz_json:get_value(<<"Event-Name">>, JObj)
                        ).
 
 -spec handle_queue_change(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
@@ -91,7 +91,7 @@ handle_queue_change(AccountDb, AccountId, QueueId, ?DOC_EDITED) ->
     case acdc_queues_sup:find_queue_supervisor(AccountId, QueueId) of
         'undefined' -> acdc_queues_sup:new(AccountId, QueueId);
         QueueSup when is_pid(QueueSup) ->
-            {'ok', JObj} = couch_mgr:open_doc(AccountDb, QueueId),
+            {'ok', JObj} = kz_datamgr:open_doc(AccountDb, QueueId),
             WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
             _ = [acdc_queue_fsm:refresh(acdc_queue_worker_sup:fsm(WorkerSup), JObj)
                  || WorkerSup <- acdc_queue_workers_sup:workers(WorkersSup)
@@ -109,27 +109,27 @@ handle_queue_change(_, AccountId, QueueId, ?DOC_DELETED) ->
     end.
 
 handle_presence_probe(JObj, _Props) ->
-    'true' = wapi_presence:probe_v(JObj),
+    'true' = kapi_presence:probe_v(JObj),
 
-    Realm = wh_json:get_value(<<"Realm">>, JObj),
-    case whapps_util:get_account_by_realm(Realm) of
-        {'ok', AcctDb} -> maybe_respond_to_presence_probe(JObj, wh_util:format_account_id(AcctDb, raw));
+    Realm = kz_json:get_value(<<"Realm">>, JObj),
+    case kapps_util:get_account_by_realm(Realm) of
+        {'ok', AcctDb} -> maybe_respond_to_presence_probe(JObj, kz_util:format_account_id(AcctDb, raw));
         _ -> 'ok'
     end.
 
 maybe_respond_to_presence_probe(JObj, AcctId) ->
-    case wh_json:get_value(<<"Username">>, JObj) of
+    case kz_json:get_value(<<"Username">>, JObj) of
         'undefined' -> 'ok';
         QueueId ->
             update_probe(JObj
-                         ,acdc_queues_sup:find_queue_supervisor(AcctId, QueueId)
-                         ,AcctId, QueueId
+                        ,acdc_queues_sup:find_queue_supervisor(AcctId, QueueId)
+                        ,AcctId, QueueId
                         )
     end.
 
 update_probe(_JObj, 'undefined', _, _) -> 'ok';
 update_probe(JObj, _Sup, AcctId, QueueId) ->
-    case wapi_acdc_queue:queue_size(AcctId, QueueId) of
+    case kapi_acdc_queue:queue_size(AcctId, QueueId) of
         0 ->
             lager:debug("no calls in queue, ignore!"),
             send_probe(JObj, ?PRESENCE_GREEN);
@@ -141,13 +141,13 @@ update_probe(JObj, _Sup, AcctId, QueueId) ->
     end.
 
 send_probe(JObj, State) ->
-    To = <<(wh_json:get_value(<<"Username">>, JObj))/binary
+    To = <<(kz_json:get_value(<<"Username">>, JObj))/binary
            ,"@"
-           ,(wh_json:get_value(<<"Realm">>, JObj))/binary>>,
+           ,(kz_json:get_value(<<"Realm">>, JObj))/binary>>,
     PresenceUpdate =
         [{<<"State">>, State}
-         ,{<<"Presence-ID">>, To}
-         ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:hash(md5, To))}
-         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+        ,{<<"Presence-ID">>, To}
+        ,{<<"Call-ID">>, kz_util:to_hex_binary(crypto:hash(md5, To))}
+         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
-    wapi_presence:publish_update(PresenceUpdate).
+    kapi_presence:publish_update(PresenceUpdate).

@@ -1,0 +1,83 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.speech",
+    "description": "Schema for speech system_config",
+    "properties": {
+        "asr_content_types": {
+            "default": [
+                "application/mpeg",
+                "application/wav"
+            ],
+            "description": "speech asr content types",
+            "name": "asr_content_types",
+            "type": "array"
+        },
+        "asr_prefered_content_type": {
+            "default": "application/mpeg",
+            "description": "speech asr prefered content type",
+            "name": "asr_prefered_content_type",
+            "type": "string"
+        },
+        "asr_provider": {
+            "default": "",
+            "description": "speech asr provider",
+            "name": "asr_provider",
+            "type": "string"
+        },
+        "asr_url": {
+            "default": "http://api.ispeech.org/api/rest",
+            "description": "speech asr url",
+            "name": "asr_url",
+            "type": "string"
+        },
+        "temporary_storage_path": {
+            "default": "/tmp",
+            "description": "speech temporary storage path",
+            "name": "temporary_storage_path",
+            "type": "string"
+        },
+        "tts_api_key": {
+            "description": "speech tts api key",
+            "name": "tts_api_key",
+            "type": "string"
+        },
+        "tts_args_encode": {
+            "default": "multipart",
+            "description": "speech tts args encode",
+            "name": "tts_args_encode",
+            "type": "string"
+        },
+        "tts_default_voice": {
+            "default": "female/en-US",
+            "description": "speech tts default voice",
+            "name": "tts_default_voice",
+            "type": "string"
+        },
+        "tts_language": {
+            "default": "en-US",
+            "description": "speech tts language",
+            "name": "tts_language",
+            "type": "string"
+        },
+        "tts_provider": {
+            "default": "ispeech",
+            "description": "speech tts provider",
+            "name": "tts_provider",
+            "type": "string"
+        },
+        "tts_url": {
+            "default": "http://api.ispeech.org/api/json",
+            "description": "speech tts url",
+            "name": "tts_url",
+            "type": "string"
+        },
+        "tts_voice": {
+            "default": "male",
+            "description": "speech tts voice",
+            "name": "tts_voice",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz INC
+%%% @copyright (C) 2016, 2600Hz INC
 %%%
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -7,68 +7,61 @@
 -module(webhooks_object).
 
 -export([init/0
-         ,bindings_and_responders/0
-         ,account_bindings/1
-         ,handle_event/2
+        ,bindings_and_responders/0
+        ,account_bindings/1
+        ,handle_event/2
         ]).
 
--include("../webhooks.hrl").
--include_lib("whistle/include/wapi_conf.hrl").
+-include("webhooks.hrl").
+-include_lib("kazoo/include/kapi_conf.hrl").
 
--define(ID, wh_util:to_binary(?MODULE)).
+-define(ID, kz_util:to_binary(?MODULE)).
 -define(NAME, <<"object">>).
 -define(DESC, <<"Receive notifications when objects in Kazoo are changed">>).
 
 -define(
+   OBJECT_TYPES
+       ,kapps_config:get(
+          ?APP_NAME
+                        ,<<"object_types">>
+                        ,?DOC_TYPES
+         )
+  ).
+
+-define(
    TYPE_MODIFIER
-   ,wh_json:from_list(
-      [{<<"type">>, <<"array">>}
-       ,{<<"description">>, <<"A list of object types to handle">>}
-       ,{<<"items">>, ?OBJECT_TYPES}
-      ])
+       ,kz_json:from_list(
+          [{<<"type">>, <<"array">>}
+          ,{<<"description">>, <<"A list of object types to handle">>}
+          ,{<<"items">>, ?OBJECT_TYPES}
+          ])
   ).
 
 -define(
    ACTIONS_MODIFIER
-   ,wh_json:from_list(
-      [{<<"type">>, <<"array">>}
-       ,{<<"description">>, <<"A list of object actions to handle">>}
-       ,{<<"items">>, [?DOC_CREATED, ?DOC_EDITED, ?DOC_DELETED]}
-      ])
+       ,kz_json:from_list(
+          [{<<"type">>, <<"array">>}
+          ,{<<"description">>, <<"A list of object actions to handle">>}
+          ,{<<"items">>, ?DOC_ACTIONS}
+          ])
   ).
 
 -define(
    MODIFIERS
-   ,wh_json:from_list(
-      [{<<"type">>, ?TYPE_MODIFIER}
-       ,{<<"action">>, ?ACTIONS_MODIFIER}
-      ])
+       ,kz_json:from_list(
+          [{<<"type">>, ?TYPE_MODIFIER}
+          ,{<<"action">>, ?ACTIONS_MODIFIER}
+          ])
   ).
 
 -define(
    METADATA
-   ,wh_json:from_list(
-      [{<<"_id">>, ?ID}
-       ,{<<"name">>, ?NAME}
-       ,{<<"description">>, ?DESC}
-       ,{<<"modifiers">>, ?MODIFIERS}
-      ])
-  ).
-
--define(
-   OBJECT_TYPES
-   ,whapps_config:get(
-      ?APP_NAME
-      ,<<"object_types">>
-      ,[kz_account:type()
-        ,kzd_callflow:type()
-        ,kz_device:type()
-        ,kzd_fax_box:type()
-        ,kzd_media:type()
-        ,kzd_user:type()
-        ,kzd_voicemail_box:type()
-       ]
-     )
+       ,kz_json:from_list(
+          [{<<"_id">>, ?ID}
+          ,{<<"name">>, ?NAME}
+          ,{<<"description">>, ?DESC}
+          ,{<<"modifiers">>, ?MODIFIERS}
+          ])
   ).
 
 %%--------------------------------------------------------------------
@@ -98,24 +91,24 @@ bindings_and_responders() ->
 %%--------------------------------------------------------------------
 -spec account_bindings(ne_binary()) -> gen_listener:bindings().
 account_bindings(AccountId) ->
-    bindings([wh_util:format_account_id(AccountId, 'encoded')]).
+    bindings([kz_util:format_account_id(AccountId, 'encoded')]).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(wh_json:object(), wh_proplist()) -> any().
+-spec handle_event(kz_json:object(), kz_proplist()) -> any().
 handle_event(JObj, _Props) ->
-    wh_util:put_callid(JObj),
-    'true' = wapi_conf:doc_update_v(JObj),
+    kz_util:put_callid(JObj),
+    'true' = kapi_conf:doc_update_v(JObj),
 
     AccountId = find_account_id(JObj),
     case webhooks_util:find_webhooks(?NAME, AccountId) of
         [] ->
             lager:debug(
               "no hooks to handle ~s for ~s"
-              ,[wh_api:event_name(JObj), AccountId]
+                       ,[kz_api:event_name(JObj), AccountId]
              );
         Hooks ->
             webhooks_util:fire_hooks(format_event(JObj, AccountId), Hooks)
@@ -133,16 +126,16 @@ handle_event(JObj, _Props) ->
 -spec load_accounts() -> ne_binaries().
 load_accounts() ->
     case
-        couch_mgr:get_results(
+        kz_datamgr:get_results(
           ?KZ_WEBHOOKS_DB
-          ,<<"webhooks/hook_listing">>
-          ,[{'key', ?NAME}]
+                              ,<<"webhooks/hook_listing">>
+                              ,[{'key', ?NAME}]
          )
     of
         {'ok', View} ->
-            [wh_util:format_account_id(
-               wh_json:get_value(<<"value">>, Result)
-               ,'encoded'
+            [kz_util:format_account_id(
+               kz_json:get_value(<<"value">>, Result)
+                                      ,'encoded'
               )
              || Result <- View
             ];
@@ -162,10 +155,11 @@ bindings([]) ->
     [];
 bindings(AccountsWithObjectHook) ->
     [{'conf'
-      ,[{'restrict_to', ['doc_updates']}
-        ,{'type', Type}
-        ,{'db', Account}
-       ]
+     ,[{'restrict_to', ['doc_updates']}
+      ,{'type', Type}
+      ,{'db', Account}
+      ,'federate'
+      ]
      }
      || Type <- ?OBJECT_TYPES,
         Account <- lists:usort(AccountsWithObjectHook)
@@ -176,14 +170,14 @@ bindings(AccountsWithObjectHook) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_event(wh_json:object(), ne_binary()) -> wh_json:object().
+-spec format_event(kz_json:object(), ne_binary()) -> kz_json:object().
 format_event(JObj, AccountId) ->
-    wh_json:from_list(
+    kz_json:from_list(
       props:filter_undefined(
-        [{<<"id">>, wapi_conf:get_id(JObj)}
-         ,{<<"account_id">>, AccountId}
-         ,{<<"action">>, wh_api:event_name(JObj)}
-         ,{<<"type">>, wapi_conf:get_type(JObj)}
+        [{<<"id">>, kapi_conf:get_id(JObj)}
+        ,{<<"account_id">>, AccountId}
+        ,{<<"action">>, kz_api:event_name(JObj)}
+        ,{<<"type">>, kapi_conf:get_type(JObj)}
         ])
      ).
 
@@ -192,10 +186,10 @@ format_event(JObj, AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_id(wh_json:object()) -> ne_binary().
+-spec find_account_id(kz_json:object()) -> ne_binary().
 find_account_id(JObj) ->
-    case wapi_conf:get_account_id(JObj) of
+    case kapi_conf:get_account_id(JObj) of
         'undefined' ->
-            wh_util:format_account_id(wapi_conf:get_account_db(JObj), 'raw');
+            kz_util:format_account_id(kapi_conf:get_account_db(JObj), 'raw');
         AccountId -> AccountId
     end.

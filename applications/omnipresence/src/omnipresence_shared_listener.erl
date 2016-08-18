@@ -1,86 +1,88 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(omnipresence_shared_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
 -export([start_listener/0]).
 
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("omnipresence.hrl").
--include_lib("whistle_apps/include/wh_hooks.hrl").
+-include_lib("kazoo_apps/include/kz_hooks.hrl").
+
+-define(SERVER, ?MODULE).
 
 -record(state, {subs_pid :: pid()
-                ,subs_ref :: reference()
+               ,subs_ref :: reference()
                }).
+-type state() :: #state{}.
 
 -define(BINDINGS, [{'self', []}
                    %% channel events that toggle presence lights
-                   ,{'call', [{'restrict_to', ['CHANNEL_CREATE'
-                                               ,'CHANNEL_ANSWER'
-                                               ,'CHANNEL_DESTROY'
-                                               ,'CHANNEL_CONNECTED'
-                                               ,'CHANNEL_DISCONNECTED'
-                                              ]
-                              }
-                              ,'federate'
-                             ]}
-                   ,{'presence', [{'restrict_to', ['update'
-                                                   ,'mwi_update'
-                                                   ,'reset'
-                                                   ,'flush'
-                                                   ,'search_req'
-                                                  ]
-                                  }
-                                  ,'federate'
-                                 ]}
-                   ,{'omnipresence', [{'restrict_to', ['subscribe']}]}
+                  ,{'call', [{'restrict_to', ['CHANNEL_CREATE'
+                                             ,'CHANNEL_ANSWER'
+                                             ,'CHANNEL_DESTROY'
+                                             ,'CHANNEL_CONNECTED'
+                                             ,'CHANNEL_DISCONNECTED'
+                                             ]
+                             }
+                            ,'federate'
+                            ]}
+                  ,{'presence', [{'restrict_to', ['update'
+                                                 ,'mwi_update'
+                                                 ,'reset'
+                                                 ,'flush'
+                                                 ,'search_req'
+                                                 ]
+                                 }
+                                ,'federate'
+                                ]}
+                  ,{'omnipresence', [{'restrict_to', ['subscribe']}]}
                   ]).
 -define(RESPONDERS, [{{'omnip_subscriptions', 'handle_channel_event'}
-                      ,[{<<"call_event">>, <<"*">>}]
+                     ,[{<<"call_event">>, <<"*">>}]
                      }
-                     ,{{'omnip_subscriptions', 'handle_presence_update'}
-                       ,[{<<"presence">>, <<"update">>}]
-                      }
-                     ,{{'omnip_subscriptions', 'handle_mwi_update'}
-                       ,[{<<"presence">>, <<"mwi_update">>}]
-                      }
-                     ,{{'omnip_subscriptions', 'handle_reset'}
-                       ,[{<<"presence">>, <<"reset">>}]
-                      }
-                     ,{{'omnip_subscriptions', 'handle_flush'}
-                       ,[{<<"presence">>, <<"flush">>}]
-                      }
-                     ,{{'omnip_subscriptions', 'handle_kamailio_subscribe'}
-                       ,[{<<"presence">>, <<"subscription">>}]
-                      }
-                     ,{{'omnip_subscriptions', 'handle_search_req'}
-                       ,[{<<"presence">>, <<"search_req">>}]
-                      }
+                    ,{{'omnip_subscriptions', 'handle_presence_update'}
+                     ,[{<<"presence">>, <<"update">>}]
+                     }
+                    ,{{'omnip_subscriptions', 'handle_mwi_update'}
+                     ,[{<<"presence">>, <<"mwi_update">>}]
+                     }
+                    ,{{'omnip_subscriptions', 'handle_reset'}
+                     ,[{<<"presence">>, <<"reset">>}]
+                     }
+                    ,{{'omnip_subscriptions', 'handle_flush'}
+                     ,[{<<"presence">>, <<"flush">>}]
+                     }
+                    ,{{'omnip_subscriptions', 'handle_kamailio_subscribe'}
+                     ,[{<<"presence">>, <<"subscription">>}]
+                     }
+                    ,{{'omnip_subscriptions', 'handle_search_req'}
+                     ,[{<<"presence">>, <<"search_req">>}]
+                     }
                     ]).
 -define(QUEUE_NAME, <<"omnip_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -define(LISTENER_PARAMS, [{'bindings', ?BINDINGS}
-                          ,{'responders', ?RESPONDERS}
-                          ,{'queue_name', ?QUEUE_NAME}
-                          ,{'queue_options', ?QUEUE_OPTIONS}
-                          ,{'consume_options', ?CONSUME_OPTIONS}
+                         ,{'responders', ?RESPONDERS}
+                         ,{'queue_name', ?QUEUE_NAME}
+                         ,{'queue_options', ?QUEUE_OPTIONS}
+                         ,{'consume_options', ?CONSUME_OPTIONS}
                          ]).
 
 %%%===================================================================
@@ -88,17 +90,14 @@
 %%%===================================================================
 -spec start_listener() -> 'ok'.
 start_listener() ->
-    gen_listener:cast(?MODULE, {'ready'}).
+    gen_listener:cast(?SERVER, {'ready'}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}, ?MODULE, [], []).
+    gen_listener:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -116,7 +115,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     gen_listener:cast(self(), 'find_subscriptions_srv'),
     lager:debug("omnipresence_listener started"),
     {'ok', #state{}}.
@@ -135,6 +134,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -148,6 +148,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('find_subscriptions_srv', #state{subs_pid=_Pid}=State) ->
     case omnipresence_sup:subscriptions_srv() of
         'undefined' ->
@@ -158,7 +159,7 @@ handle_cast('find_subscriptions_srv', #state{subs_pid=_Pid}=State) ->
         P when is_pid(P) ->
             lager:debug("new subs pid: ~p", [P]),
             {'noreply', State#state{subs_pid=P
-                                    ,subs_ref=erlang:monitor('process', P)
+                                   ,subs_ref=erlang:monitor('process', P)
                                    }}
     end;
 handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
@@ -182,12 +183,13 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
-                                                      ,subs_ref=Ref
+                                                     ,subs_ref=Ref
                                                      }=State) ->
     gen_listener:cast(self(), 'find_subscriptions_srv'),
     {'noreply', State#state{subs_pid='undefined'
-                            ,subs_ref='undefined'
+                           ,subs_ref='undefined'
                            }};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
@@ -201,6 +203,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
 handle_event(_JObj, #state{subs_pid=S}) ->
     {'reply', [{'omnip_subscriptions', S}]}.
 
@@ -215,6 +218,7 @@ handle_event(_JObj, #state{subs_pid=S}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
@@ -226,6 +230,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

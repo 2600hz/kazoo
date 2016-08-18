@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -12,44 +12,44 @@
 
 -include("acdc.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% API
 -export([start_link/0
-         ,new/2
-         ,workers/0
-         ,find_acct_supervisors/1
-         ,find_queue_supervisor/2
-         ,queues_running/0
-         ,status/0
+        ,new/2
+        ,workers/0
+        ,find_acct_supervisors/1
+        ,find_queue_supervisor/2
+        ,queues_running/0
+        ,status/0
         ]).
 
 %% Supervisor callbacks
 -export([init/1]).
+
+-define(CHILDREN, [?SUPER_TYPE('acdc_queue_sup', 'transient')]).
 
 %%%===================================================================
 %%% API functions
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec new(ne_binary(), ne_binary()) -> startlink_ret().
 new(AcctId, QueueId) ->
     case find_queue_supervisor(AcctId, QueueId) of
         P when is_pid(P) -> {'ok', P};
-        'undefined' -> supervisor:start_child(?MODULE, [AcctId, QueueId])
+        'undefined' -> supervisor:start_child(?SERVER, [AcctId, QueueId])
     end.
 
 -spec workers() -> pids().
 workers() ->
-    [Pid || {_, Pid, 'supervisor', _} <- supervisor:which_children(?MODULE), is_pid(Pid)].
+    [Pid || {_, Pid, 'supervisor', _} <- supervisor:which_children(?SERVER), is_pid(Pid)].
 
 -spec find_acct_supervisors(ne_binary()) -> pids().
 find_acct_supervisors(AcctId) ->
@@ -80,7 +80,7 @@ find_queue_supervisor(AcctId, QueueId, [Super|Rest]) ->
 status() ->
     lager:info("ACDc Queues Status"),
     Ws = workers(),
-    _ = wh_util:spawn(fun() -> [acdc_queue_sup:status(Sup) || Sup <- Ws] end),
+    _ = kz_util:spawn(fun() -> [acdc_queue_sup:status(Sup) || Sup <- Ws] end),
     'ok'.
 
 -spec queues_running() -> [{pid(), any()}].
@@ -98,12 +98,9 @@ queues_running() ->
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
-%%
-%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
-%%                     ignore |
-%%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 1,
@@ -111,7 +108,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?SUPER_TYPE('acdc_queue_sup', 'transient')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

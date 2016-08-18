@@ -1,0 +1,17 @@
+{application, kazoo_translator,
+ [
+  {description, "Bridging various call control formats to the 2600hz JSON APIs"},
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [ ]},
+  {applications, [ kernel
+                 , stdlib
+
+                 , kazoo
+                 , kazoo_amqp
+                 , kazoo_data
+                 , kazoo_web
+
+                 , lager
+                 ]}
+ ]}.

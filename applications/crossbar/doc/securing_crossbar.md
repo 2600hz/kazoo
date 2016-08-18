@@ -1,10 +1,5 @@
-/*
-Section: Crossbar
-Title: Securing Crossbar
-Language: en-US
-*/
 
-# Setup SSL support for Crossbar
+### Setup SSL support for Crossbar
 
 &tip All commands are run from $KAZOO/applications/crossbar/priv/ssl/
 

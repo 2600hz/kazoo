@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%% Root supervisor tree for stepswitch routing WhApp
 %%% @end
@@ -9,32 +9,25 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
 -include("stepswitch.hrl").
+
+-define(SERVER, ?MODULE).
 
 -export([start_link/0]).
 -export([init/1]).
 
--define(POOL(N), {N, {'poolboy', 'start_link', [[{'worker_module', 'stepswitch_cnam'}
-                                                 ,{'name', {'local', N}}
-                                                 ,{'size', 10}
-                                                 ,{'max_overflow', 50}
-                                                 ,{'neg_resp_threshold', 1}
-                                                ]
-                                               ]}
-                  ,'permanent', 5000, 'worker', ['poolboy']
-                 }).
-
 -define(ORIGIN_BINDINGS, [[{'type', <<"resource">>}]
-                           ,[{'type', <<"number">>}]
-                           ,[{'type', <<"dedicated_ip">>}]
+                         ,[{'type', <<"number">>}]
+                         ,[{'type', <<"dedicated_ip">>}]
                          ]).
--define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
--define(CHILDREN, [?CACHE_ARGS(?STEPSWITCH_CACHE, ?CACHE_PROPS)
-                   ,?POOL(?STEPSWITCH_CNAM_POOL)
-                   ,?SUPER('stepswitch_request_sup')
-                   ,?WORKER('stepswitch_listener')
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
+                     ]).
+
+-define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
+                  ,?SUPER('stepswitch_cnam_pool_sup')
+                  ,?SUPER('stepswitch_request_sup')
+                  ,?WORKER('stepswitch_listener')
                   ]).
 
 %% ===================================================================
@@ -43,12 +36,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
-start_link() -> supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+start_link() ->
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -63,9 +55,9 @@ start_link() -> supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
-    wh_util:set_startup(),
+    kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<content>
+  <status>ok</status>
+  <numbers>
+    <did>
+      <number>9875551234</number>
+      <ratecenter>ANYCITY</ratecenter>
+      <state>ZZ</state>
+    </did>
+    <did>
+      <number>9875559876</number>
+      <ratecenter>ANYCITY</ratecenter>
+      <state>ZZ</state>
+    </did>
+  </numbers>
+</content>

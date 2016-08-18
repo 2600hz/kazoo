@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -13,7 +13,7 @@
 
 %% Application callbacks
 -export([start/2
-         ,stop/1
+        ,stop/1
         ]).
 
 %% ===================================================================
@@ -21,20 +21,23 @@
 %% ===================================================================
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application start behaviour
-%% @end
+%% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(any(), any()) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
-start(_StartType, _StartArgs) -> sysconf:start_link().
+-spec start(application:start_type(), any()) -> startapp_ret().
+start(_StartType, _StartArgs) ->
+    _ = declare_exchanges(),
+    sysconf_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application stop behaviour
-%% @end
+%% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
-stop(_State) -> sysconf:stop().
+-spec stop(any()) -> any().
+stop(_State) ->
+    'ok'.
+
+
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = kapi_sysconf:declare_exchanges(),
+    kapi_self:declare_exchanges().

@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.notify.low_balance",
+    "description": "Schema for notify.low_balance system_config",
+    "properties": {
+        "default_enabled": {
+            "default": false,
+            "description": "notify.low_balance default enabled",
+            "name": "default_enabled",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

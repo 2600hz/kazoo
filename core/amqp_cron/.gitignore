@@ -1,0 +1,11 @@
+erl_crash.dump
+log
+logs
+deps
+ebin
+.eunit
+.leader_cron_plt
+doc
+*.beam
+xref_warnings
+dialyzer_warnings

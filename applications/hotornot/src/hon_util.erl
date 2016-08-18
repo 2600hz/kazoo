@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -9,8 +9,8 @@
 -module(hon_util).
 
 -export([candidate_rates/1, candidate_rates/2
-         ,matching_rates/2, matching_rates/4
-         ,sort_rates/1
+        ,matching_rates/2, matching_rates/4
+        ,sort_rates/1
         ]).
 
 -ifdef(TEST).
@@ -23,66 +23,80 @@
 -define(BOTH_DIRECTIONS, [<<"inbound">>, <<"outbound">>]).
 
 -spec candidate_rates(ne_binary()) ->
-                             {'ok', wh_json:objects()} |
+                             {'ok', kz_json:objects()} |
                              {'error', atom()}.
 -spec candidate_rates(ne_binary(), binary()) ->
-                             {'ok', wh_json:objects()} |
+                             {'ok', kz_json:objects()} |
                              {'error', atom()}.
 candidate_rates(ToDID) ->
     candidate_rates(ToDID, <<>>).
 candidate_rates(ToDID, FromDID) ->
-    E164 = wnm_util:to_e164(ToDID),
+    E164 = knm_converters:normalize(ToDID),
     find_candidate_rates(E164, FromDID).
 
 find_candidate_rates(E164, _FromDID) when byte_size(E164) > ?MIN_PREFIX_LEN ->
     Keys = build_keys(E164),
 
     lager:debug("searching for prefixes for ~s: ~p", [E164, Keys]),
-    case couch_mgr:get_results(?WH_RATES_DB
-                               ,<<"rates/lookup">>
-                               ,[{'keys', Keys}
-                                 ,'include_docs'
-                                ]
-                              )
+    case Keys =/= []
+        andalso kz_datamgr:get_results(?KZ_RATES_DB
+                                      ,<<"rates/lookup">>
+                                      ,[{'keys', Keys}
+                                       ,'include_docs'
+                                       ]
+                                      )
     of
+        'false' -> {'error', 'did_too_short'};
         {'ok', []}=OK -> OK;
         {'error', _}=E -> E;
         {'ok', ViewRows} ->
             {'ok'
-             ,[wh_json:get_value(<<"doc">>, ViewRow)
-               || ViewRow <- ViewRows
-              ]
+            ,[kz_json:get_value(<<"doc">>, ViewRow)
+              || ViewRow <- ViewRows
+             ]
             }
     end;
 find_candidate_rates(DID, _) ->
     lager:debug("DID ~s is too short", [DID]),
     {'error', 'did_too_short'}.
 
-build_keys(<<"+", E164/binary>>) ->
-    build_keys(E164);
-build_keys(<<D:1/binary, Rest/binary>>) ->
-    build_keys(Rest, D, [wh_util:to_integer(D)]).
+-spec build_keys(ne_binary()) -> [integer()].
+build_keys(Number) ->
+    case only_numeric(Number) of
+        <<>> -> [];
+        <<D:1/binary, Rest/binary>> ->
+            build_keys(Rest, D, [kz_util:to_integer(D)])
+    end.
 
+-spec only_numeric(binary()) -> [integer()].
+only_numeric(Number) ->
+    << <<N>> || <<N>> <= Number, is_numeric(N)>>.
+
+-spec is_numeric(integer()) -> boolean().
+is_numeric(N) ->
+    N >= $0 andalso N =< $9.
+
+-spec build_keys(binary(), ne_binary(), [integer()]) -> [integer()].
 build_keys(<<D:1/binary, Rest/binary>>, Prefix, Acc) ->
-    build_keys(Rest, <<Prefix/binary, D/binary>>, [wh_util:to_integer(<<Prefix/binary, D/binary>>) | Acc]);
+    build_keys(Rest, <<Prefix/binary, D/binary>>, [kz_util:to_integer(<<Prefix/binary, D/binary>>) | Acc]);
 build_keys(<<>>, _, Acc) -> Acc.
 
 %% Given a list of rates, return the list of rates whose routes regexes match the given E164
 %% Optionally include direction of the call and options from the client to match against the rate
--spec matching_rates(wh_json:objects(), ne_binary()) ->
-                            wh_json:objects().
--spec matching_rates(wh_json:objects(), ne_binary(), api_binary(), trunking_options()) ->
-                            wh_json:objects().
+-spec matching_rates(kz_json:objects(), ne_binary()) ->
+                            kz_json:objects().
+-spec matching_rates(kz_json:objects(), ne_binary(), api_binary(), trunking_options()) ->
+                            kz_json:objects().
 matching_rates(Rates, DID) ->
     matching_rates(Rates, DID, 'undefined', []).
 
 matching_rates(Rates, DID, Direction, RouteOptions) ->
-    E164 = wnm_util:to_e164(DID),
+    E164 = knm_converters:normalize(DID),
     [Rate || Rate <- Rates,
              matching_rate(Rate, E164, Direction, RouteOptions)
     ].
 
--spec sort_rates(wh_json:objects()) -> wh_json:objects().
+-spec sort_rates(kz_json:objects()) -> kz_json:objects().
 sort_rates(Rates) ->
     lists:usort(fun sort_rate/2, Rates).
 
@@ -91,36 +105,36 @@ sort_rates(Rates) ->
 %% Return whether the given rate is a candidate for the given DID
 %% taking into account direction of the call and options the DID
 %% needs to have available
--spec matching_rate(wh_json:object(), ne_binary(), api_binary(), trunking_options()) -> boolean().
+-spec matching_rate(kz_json:object(), ne_binary(), api_binary(), trunking_options()) -> boolean().
 matching_rate(Rate, E164, Direction, RouteOptions) ->
     matching_direction(Rate, Direction)
         andalso matching_options(Rate, RouteOptions)
         andalso matching_routes(Rate, E164).
 
--spec matching_routes(wh_json:object(), ne_binary()) -> boolean().
+-spec matching_routes(kz_json:object(), ne_binary()) -> boolean().
 matching_routes(Rate, E164) ->
     lists:any(fun(Regex) -> re:run(E164, Regex) =/= 'nomatch' end
-              ,wh_json:get_value([<<"routes">>], Rate, [])
+             ,kz_json:get_value([<<"routes">>], Rate, [])
              ).
 
--spec matching_direction(wh_json:object(), api_binary()) -> boolean().
+-spec matching_direction(kz_json:object(), api_binary()) -> boolean().
 matching_direction(_Rate, 'undefined') ->
     'true';
 matching_direction(Rate, Direction) ->
     lists:member(Direction
-                 ,wh_json:get_value([<<"direction">>], Rate, ?BOTH_DIRECTIONS)
+                ,kz_json:get_value([<<"direction">>], Rate, ?BOTH_DIRECTIONS)
                 ).
 
 %% Return true if RateA has lower weight than RateB
--spec sort_rate(wh_json:object(), wh_json:object()) -> boolean().
+-spec sort_rate(kz_json:object(), kz_json:object()) -> boolean().
 sort_rate(RateA, RateB) ->
-    PrefixA = byte_size(wh_json:get_binary_value(<<"prefix">>, RateA)),
-    PrefixB = byte_size(wh_json:get_binary_value(<<"prefix">>, RateB)),
+    PrefixA = byte_size(kz_json:get_binary_value(<<"prefix">>, RateA)),
+    PrefixB = byte_size(kz_json:get_binary_value(<<"prefix">>, RateB)),
 
     case PrefixA =:= PrefixB of
         'true' ->
-            wh_json:get_integer_value(<<"weight">>, RateA, 100) >
-                wh_json:get_integer_value(<<"weight">>, RateB, 100);
+            kz_json:get_integer_value(<<"weight">>, RateA, 100) <
+                kz_json:get_integer_value(<<"weight">>, RateB, 100);
         'false' ->
             PrefixA > PrefixB
     end.
@@ -129,9 +143,9 @@ sort_rate(RateA, RateB) ->
 %% Rate options come from the carrier providing the trunk
 %% All Route options must exist in a carrier's options to keep the carrier
 %% in the list of carriers capable of handling the call
--spec matching_options(wh_json:object(), trunking_options()) -> boolean().
+-spec matching_options(kz_json:object(), trunking_options()) -> boolean().
 matching_options(Rate, RouteOptions) ->
-    options_match(wh_json:get_value([<<"options">>], Rate, []), RouteOptions).
+    options_match(kz_json:get_value([<<"options">>], Rate, []), RouteOptions).
 
 -spec options_match(trunking_options(), trunking_options()) -> boolean().
 options_match([], []) -> 'true';
@@ -140,5 +154,5 @@ options_match(RateOptions, RouteOptions) ->
     lists:all(fun(RouteOption) ->
                       props:get_value(RouteOption, RateOptions, 'false') =/= 'false'
               end
-              ,RouteOptions
+             ,RouteOptions
              ).

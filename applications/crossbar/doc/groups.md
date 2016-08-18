@@ -1,21 +1,15 @@
-/*
-Section: Crossbar
-Title: Groups
-Language: en-US
-Version: 3.18
-*/
 
-# Groups
+### Groups
 
-## Get groups for a given account
+#### Get groups for a given account
 
-### Request
+##### Request
 
 - Verb: `GET`
 - Url: `/accounts/{{ACCOUNT_ID}}/groups`
 - Payload: None
 
-### Response
+##### Response
 
 ```
 {
@@ -29,9 +23,9 @@ Version: 3.18
 }
 ```
 
-## Create a group for a given account
+#### Create a group for a given account
 
-### Request
+##### Request
 
 - Verb: `PUT`
 - Url: `/accounts/{{ACCOUNT_ID}}/groups`
@@ -42,7 +36,6 @@ Version: 3.18
     "data": {
         "music_on_hold": {},
         "name": "Test group",
-        "resources": {},
         "endpoints": {
             "df9274b450ea6795cdb381055c3f9b45": {
                 "type": "user",
@@ -58,14 +51,13 @@ Version: 3.18
 }
 ```
 
-### Response
+##### Response
 
 ```
 {
     "data": {
         "music_on_hold": {},
         "name": "Test group",
-        "resources": {},
         "endpoints": {
             "df9274b450ea6795cdb381055c3f9b45": {
                 "type": "user",
@@ -82,22 +74,21 @@ Version: 3.18
 }
 ```
 
-## Get a group for a given account
+#### Get a group for a given account
 
-### Request
+##### Request
 
 - Verb: `GET`
 - Url: `/accounts/{{ACCOUNT_ID}}/groups/{{GROUP_ID}}`
 - Payload: None
 
-### Response
+##### Response
 
 ```
 {
     "data": {
         "music_on_hold": {},
         "name": "Test group",
-        "resources": {},
         "endpoints": {
             "df9274b450ea6795cdb381055c3f9b45": {
                 "type": "user",
@@ -117,9 +108,9 @@ Version: 3.18
 }
 ```
 
-## Update a group for a given account
+#### Update a group for a given account
 
-### Request
+##### Request
 
 - Verb: `POST`
 - Url: `/accounts/{{ACCOUNT_ID}}/groups/{{GROUP_ID}}`
@@ -131,7 +122,6 @@ Version: 3.18
         "music_on_hold": {},
         "name": "Test group 2",
         "id": "1743724cd775bf6994380dbc79c1af09",
-        "resources": {},
         "endpoints": {
             "df9274b450ea6795cdb381055c3f9b45": {
                 "type": "user",
@@ -147,14 +137,13 @@ Version: 3.18
 }
 ```
 
-### Response
+##### Response
 
 ```
 {
     "data": {
         "music_on_hold": {},
         "name": "Test group 2",
-        "resources": {},
         "endpoints": {
             "df9274b450ea6795cdb381055c3f9b45": {
                 "type": "user",
@@ -174,15 +163,15 @@ Version: 3.18
 }
 ```
 
-## Update a group for a given account
+#### Update a group for a given account
 
-### Request
+##### Request
 
 - Verb: `DELETE`
 - Url: `/accounts/{{ACCOUNT_ID}}/groups/{{GROUP_ID}}`
 - Payload: None
 
-### Response
+##### Response
 
 ```
 {
@@ -190,7 +179,6 @@ Version: 3.18
         "music_on_hold": {},
         "name": "Test group 2",
         "id": "1743724cd775bf6994380dbc79c1af09",
-        "resources": {},
         "endpoints": {
             "df9274b450ea6795cdb381055c3f9b45": {
                 "type": "user",

@@ -1,12 +1,10 @@
-/*
-Section: Crossbar
-Title: Pivot
-Language: en-US
-*/
+### Pivot
+
+#### About Pivot
 
 The Pivot Crossbar resource allows the client to query and inspect data related to the [Pivot](/applications/pivot) application (real-time call control).
 
-## Enabling in Crossbar
+#### Enabling in Crossbar
 
 The Pivot endpoint is not loaded on start in a default Kazoo installation.
 
@@ -18,12 +16,25 @@ The Pivot endpoint is not loaded on start in a default Kazoo installation.
     * Click the green check box to the right of the input box
     * Click 'Save Document' in top left of the screen
 
-Note: adding cb_pivot to the crossbar system_config doc will not start the endpoint; only on restarting Crossbar will cb_pivot be loaded. Use the *sup* command above to start the endpoint at runtime.
+Note: adding `cb_pivot` to the crossbar `system_config` doc will not start the endpoint; only on restarting Crossbar will `cb_pivot` be loaded. Use the [sup](./sup.md) command above to start the endpoint at runtime.
 
-## Usage
+#### Callflow Schema
+
+Any pivot callflow node must obey this schema.
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`cdr_url` | Optional URL to send the CDR to at the end of the call | `string` |   | `false`
+`debug` | Store debug logs related to processing this Pivot call | `boolean` | `false` | `false`
+`method` | What HTTP verb to send the request(s) with | `string('get', 'post', 'GET', 'POST')` | `get` | `false`
+`req_format` | What format of Pivot will the your server respond with | `string('kazoo', 'twiml')` | `kazoo` | `false`
+`voice_url` | What URL to request the initial Pivot callflow | `string` |   | `true`
+
+#### Debugging pivot attempts
 
 You will need to edit the "data" object in the "pivot" callflow element to include a "debug" flag:
 
+```json
     "flow": {
       "data": {
         "method": "GET",
@@ -35,31 +46,56 @@ You will need to edit the "data" object in the "pivot" callflow element to inclu
       "children": {
       }
     }
+```
 
 All calls to this callflow will now store debug logs to the account's current MODb database.
 
-### Query available debugged calls
 
-    curl -v -H "X-Auth-Token: {AUTH_TOKEN}" 'http://{CROSSBAR_SERVER}:8000/v2/accounts/{ACCOUNT_ID}/pivot/debug'
-    [REQUEST HEADERS]
-    [RESPONSE HEADERS]
-    {"auth_token": "{AUTH_TOKEN}"
-     ,"data": [
-         "829597750@10.26.0.158"
-     ]
+#### Fetch debugged UUIDs
+
+> GET /v2/accounts/{ACCOUNT_ID}/pivot/debug
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/pivot/debug
+{
+    "auth_token": "{AUTH_TOKEN}"
+    ,"data": [
+        {
+            "call_id": "{UUID_1}",
+            "created": 63635231906,
+            "iteration": 1,
+            "node": "{PIVOT_SERVER}",
+            "status_code": "404",
+            "has_schema_errors": false,
+            "uri": "http://127.0.0.1/pivot/kazoo_4786.php?Language=en-us&Caller-ID-Number=user_suyt9r93ng&Caller-ID-Name=user_suyt9r93ng&Direction=inbound&Api-Version=2015-03-01&To-Realm={SIP_REALM}&To=4786&From-Realm={SIP_REALM}&From=user_suyt9r93ng&Account-ID={ACCOUNT_ID}&Call-ID={UUID_1}"
+        },
+        {
+            "call_id": "{UUID_2}",
+            "created": 63635230409,
+            "iteration": 1,
+            "node": "{PIVOT_SERVER}",
+            "has_schema_errors": true
+        }
+      ],
+     ,"page_size": 3,
      ,"request_id": "{REQUEST_ID}"
-     ,"revision": "undefined"
+     ,"revision": {REVISION}
      ,"status": "success"
-    }
+}
+```
 
-The `data` key will contain a list of recently debugged calls.
+#### Fetch debug logs for a UUID
 
-### Query debugged call
+> GET /v2/accounts/{ACCOUNT_ID}/pivot/debug/{UUID}
 
-Take a call-id from the list to query for the debugging details:
-
-    curl -v -H "X-Auth-Token: {AUTH_TOKEN}" 'http://{CROSSBAR_SERVER}:8000/v2/accounts/{ACCOUNT_ID}/pivot/debug/829597750%4010.26.0.158'
-    {"auth_token": "{AUTH_TOKEN}"
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/pivot/debug/{UUID}
+{
+    "auth_token": "{AUTH_TOKEN}"
      ,"data": [{"call_id": "829597750@10.26.0.158"
                 ,"id": "b791e38c9641652a69e297dc9c3a8d66"
                 ,"method": "get"
@@ -86,7 +122,6 @@ Take a call-id from the list to query for the debugging details:
       ,"revision": "f231fd438e5ba812cac542bff00e636d"
       ,"status": "success"
      }
+```
 
 Note: You must URL-encode the call-id in the URL. Typically this would just mean converting `@` to `%40', but you'll need to take care depending on how your call-ids are constructed.
-
-The resulting `data` will be a list of any requests made to your server, and the response headers/body received.

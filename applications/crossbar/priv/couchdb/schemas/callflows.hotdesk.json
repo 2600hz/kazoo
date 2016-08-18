@@ -1,0 +1,16 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.hotdesk",
+    "description": "Validator for the hotdesk callflow's data object",
+    "properties": {
+        "action": {
+            "description": ""
+        },
+        "interdigit_timeout": {
+            "description": "",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

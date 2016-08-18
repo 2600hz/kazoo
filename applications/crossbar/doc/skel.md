@@ -4,7 +4,7 @@ Title: Skel
 Language: en-US
 -->
 
-# Skel
+### Skel
 
 * [Description](#description)
 * [Stuture](#structure)
@@ -17,13 +17,13 @@ Language: en-US
     * [POST](#post-update-a-resource)
     * [DELETE](#delete-delete-a-resource)
 
-# Description
+### Description
 
 Description of the skel module goes here.
 
-# Structure
+### Structure
 
-## Default Properties
+#### Default Properties
 
 Property  | Description | Type | Validation
 ------------- | ------------- | ------------- | -------------
@@ -31,7 +31,7 @@ name   | your name obviously | String | required
 email  | email, we won't spam | String | required, email
 sutff | this is some good stuff | Array | none
 
-### Conditional Properties
+##### Conditional Properties
 
 Property  | Description | Type | Validation
 ------------- | ------------- | ------------- | -------------
@@ -53,7 +53,7 @@ zipcode  | also where you live | Integer | none
 }x
 ```
 
-# Crossbar
+### Crossbar
 
 Using Crossbar to modify Skel is very simple:
 
@@ -66,17 +66,17 @@ Verb  | Url | Description
 [DELETE](#delete-delete-a-resource)  | `v2/accounts/{account_id}/skel/{skel_id}` | delete current resource
 
 
-## GET - Get all resources
+#### GET - Get all resources
 
-### Descripton
+##### Descripton
 
 More description if needed!
 
-### Request
+##### Request
 
     curl -v -X GET -H "X-Auth-Token: {auth_token}" http://server:8000/v2/accounts/{account_id}/skel
 
-### Response
+##### Response
 
 ``` javascript
 {
@@ -109,17 +109,17 @@ More description if needed!
 }
 ```
 
-## GET - Get a resource
+#### GET - Get a resource
 
-### Descripton
+##### Descripton
 
 More description if needed!
 
-### Request
+##### Request
 
     curl -v -X GET -H "X-Auth-Token: {auth_token}" http://server:8000/v2/accounts/{account_id}/skel/{id}
 
-### Response
+##### Response
 
 ``` javascript
 {
@@ -139,17 +139,17 @@ More description if needed!
 }
 ```
 
-## PUT - Create a resource:
+#### PUT - Create a resource:
 
-### Descripton
+##### Descripton
 
 More description if needed!
 
-### Request
+##### Request
 
     curl -v -X PUT -H "X-Auth-Token: {auth_token}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{account_id}/skel -d '{"name": "Jane","email": "Jane@email.com","stuff": ["stuff2"],"age": 28,"city": "San francisco","zipcode": 94109}'
 
-### Response
+##### Response
 
 ``` javascript
 {
@@ -169,17 +169,17 @@ More description if needed!
 }
 ```
 
-## POST - Update a resource:
+#### POST - Update a resource:
 
-### Descripton
+##### Descripton
 
 More description if needed!
 
-### Request
+##### Request
 
     curl -v -X POST -H "X-Auth-Token: {auth_token}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{account_id}/skel -d '{"name": "Jane","email": "jane@email.com","stuff": ["some new stuff"],"age": 29,"city": "San francisco","zipcode": 94109}'
 
-### Response
+##### Response
 
 ``` javascript
 {
@@ -199,17 +199,17 @@ More description if needed!
 }
 ```
 
-## DELETE - Delete a resource:
+#### DELETE - Delete a resource:
 
-### Descripton
+##### Descripton
 
 More description if needed!
 
-### Request
+##### Request
 
     curl -v -X DELETE -H "X-Auth-Token: {auth_token}" http://server:8000/v2/accounts/{account_id}/skel/{id}
 
-### Response
+##### Response
 
 ``` javascript
 {

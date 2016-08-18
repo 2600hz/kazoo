@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% Simple-One-For-One strategy for restarting call event processes
 %%% @end
@@ -17,20 +17,21 @@
 
 -define(SERVER, ?MODULE).
 
+-define(CHILDREN, [?WORKER_TYPE('ecallmgr_originate', 'transient')]).
+
 %%%===================================================================
 %%% API functions
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
-start_link() -> supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
+-spec start_link() -> startlink_ret().
+start_link() ->
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
-start_originate_proc(Node, JObj) -> supervisor:start_child(?SERVER, [Node, JObj]).
+start_originate_proc(Node, JObj) ->
+    supervisor:start_child(?SERVER, [Node, JObj]).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -43,21 +44,17 @@ start_originate_proc(Node, JObj) -> supervisor:start_child(?SERVER, [Node, JObj]
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
-%%
-%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
-%%                     ignore |
-%%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(any()) -> sup_init_ret().
 init([]) ->
-    Restart = 'transient',
-    Shutdown = 2 * ?MILLISECONDS_IN_SECOND,
-    Type = 'worker',
+    RestartStrategy = 'simple_one_for_one',
+    MaxRestarts = 5,
+    MaxSecondsBetweenRestarts = 10,
 
-    AChild = {'ecallmgr_originate', {'ecallmgr_originate', 'start_link', []},
-              Restart, Shutdown, Type, ['ecallmgr_originate']},
+    SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {{'simple_one_for_one', 5, 10}, [AChild]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

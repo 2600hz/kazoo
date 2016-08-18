@@ -1,0 +1,27 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.callflow.call_forward",
+    "description": "Schema for callflow.call_forward system_config",
+    "properties": {
+        "callfwd_number_timeout": {
+            "default": 8000,
+            "description": "callflow.call_forward callfwd number timeout",
+            "name": "callfwd_number_timeout",
+            "type": "integer"
+        },
+        "max_callfwd_number_length": {
+            "default": 20,
+            "description": "callflow.call_forward max callfwd number length",
+            "name": "max_callfwd_number_length",
+            "type": "integer"
+        },
+        "min_callfwd_number_length": {
+            "default": 3,
+            "description": "callflow.call_forward min callfwd number length",
+            "name": "min_callfwd_number_length",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

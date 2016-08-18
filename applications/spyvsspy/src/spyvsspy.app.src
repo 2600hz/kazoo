@@ -1,12 +1,18 @@
 {application, spyvsspy,
  [
   {description, "Spy Vs Spy - Eavesdrop on a call or group of calls"},
-  {vsn, "1"},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [spyvsspy_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , kazoo_apps
+                 , kazoo_amqp
+                 , kazoo_data
+
+                 , lager
                  ]},
-  {mod, { spyvsspy_app, []}},
-  {env, []}
+  {mod, {spyvsspy_app, []}}
  ]}.

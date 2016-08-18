@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -12,31 +12,33 @@
 
 -include("acdc.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% API
 -export([start_link/2
-         ,stop/1
-         ,manager/1
-         ,workers_sup/1
-         ,status/1
+        ,stop/1
+        ,manager/1
+        ,workers_sup/1
+        ,status/1
         ]).
 
 %% Supervisor callbacks
 -export([init/1]).
+
+-define(CHILDREN, [?SUPER('acdc_queue_workers_sup')
+                  ,?WORKER_ARGS('acdc_queue_manager', [self() | Args])
+                  ]).
 
 %%%===================================================================
 %%% api functions
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link(ne_binary(), ne_binary()) -> startlink_ret().
 start_link(AcctId, QueueId) ->
-    supervisor:start_link(?MODULE, [AcctId, QueueId]).
+    supervisor:start_link(?SERVER, [AcctId, QueueId]).
 
 -spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
 stop(Super) ->
@@ -81,10 +83,6 @@ status(Supervisor) ->
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
-%%
-%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
-%%                     ignore |
-%%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
 -spec init(list()) -> sup_init_ret().
@@ -95,12 +93,7 @@ init(Args) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [
-                       ?SUPER('acdc_queue_workers_sup')
-                       ,?WORKER_ARGS('acdc_queue_manager', [self() | Args])
-                      ]
-           }
-    }.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

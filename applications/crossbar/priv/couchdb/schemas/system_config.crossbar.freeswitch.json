@@ -1,0 +1,50 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.freeswitch",
+    "description": "Schema for crossbar.freeswitch system_config",
+    "properties": {
+        "files_to_include": {
+            "default": [
+                "freeswitch_dialplan",
+                "freeswitch_chatplan"
+            ],
+            "description": "crossbar.freeswitch files to include",
+            "name": "files_to_include",
+            "type": "array"
+        },
+        "offline_configuration_key": {
+            "description": "crossbar.freeswitch offline configuration key",
+            "name": "offline_configuration_key",
+            "type": "string"
+        },
+        "realm_templates_to_process": {
+            "default": [
+                "freeswitch_directory_realm"
+            ],
+            "description": "crossbar.freeswitch realm templates to process",
+            "name": "realm_templates_to_process",
+            "type": "array"
+        },
+        "templates_to_process": {
+            "default": [
+                "freeswitch_directory"
+            ],
+            "description": "crossbar.freeswitch templates to process",
+            "name": "templates_to_process",
+            "type": "array"
+        },
+        "work_dir": {
+            "default": "/tmp/",
+            "description": "crossbar.freeswitch work dir",
+            "name": "work_dir",
+            "type": "string"
+        },
+        "{Module}": {
+            "description": "crossbar.freeswitch {Module}",
+            "name": "{Module}",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

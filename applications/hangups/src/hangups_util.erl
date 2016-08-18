@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2015, 2600Hz INC
+%%% @copyright (C) 2013-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -10,10 +10,10 @@
 -module(hangups_util).
 
 -export([meter_name/1, meter_name/2
-         ,meter_prefix/0
-         ,is_hangup_meter/1, is_hangup_meter/2, is_hangup_meter/3
-         ,meter_account_id/1
-         ,meter_hangup_cause/1
+        ,meter_prefix/0
+        ,is_hangup_meter/1, is_hangup_meter/2, is_hangup_meter/3
+        ,meter_account_id/1
+        ,meter_hangup_cause/1
         ]).
 
 -include("hangups.hrl").

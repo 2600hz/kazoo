@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -11,7 +11,6 @@
 -export([fax_properties/1]).
 -export([collect_channel_props/1]).
 -export([save_fax_docs/3, save_fax_attachment/3]).
--export([content_type_to_extension/1, extension_to_content_type/1]).
 -export([notify_email_list/3]).
 -export([filter_numbers/1]).
 -export([is_valid_caller_id/2]).
@@ -19,16 +18,16 @@
 
 -include("fax.hrl").
 
--spec fax_properties(wh_json:object()) -> wh_proplist().
+-spec fax_properties(kz_json:object()) -> kz_proplist().
 fax_properties(JObj) ->
-    [{wh_json:normalize_key(K), V} || {<<"Fax-", K/binary>>, V} <- wh_json:to_proplist(JObj)].
+    [{kz_json:normalize_key(K), V} || {<<"Fax-", K/binary>>, V} <- kz_json:to_proplist(JObj)].
 
--spec collect_channel_props(wh_json:object()) ->
-                                   wh_proplist().
--spec collect_channel_props(wh_json:object(), wh_proplist() | ne_binaries()) ->
-                                   wh_proplist().
--spec collect_channel_props(wh_json:object(), wh_proplist() | ne_binaries(), wh_proplist()) ->
-                                   wh_proplist().
+-spec collect_channel_props(kz_json:object()) ->
+                                   kz_proplist().
+-spec collect_channel_props(kz_json:object(), kz_proplist() | ne_binaries()) ->
+                                   kz_proplist().
+-spec collect_channel_props(kz_json:object(), kz_proplist() | ne_binaries(), kz_proplist()) ->
+                                   kz_proplist().
 collect_channel_props(JObj) ->
     collect_channel_props(JObj, ?FAX_CHANNEL_DESTROY_PROPS).
 
@@ -37,63 +36,18 @@ collect_channel_props(JObj, List) ->
 
 collect_channel_props(JObj, List, Acc) ->
     lists:foldl(fun({Key, Keys}, Acc0) ->
-                        collect_channel_props(wh_json:get_value(Key, JObj), Keys, Acc0);
+                        collect_channel_props(kz_json:get_value(Key, JObj), Keys, Acc0);
                    (Key, Acc0) ->
                         [collect_channel_prop(Key, JObj) | Acc0]
                 end, Acc, List).
 
--spec collect_channel_prop(ne_binary(), wh_json:object()) ->
-                                  {wh_json:key(), wh_json:json_term()}.
+-spec collect_channel_prop(ne_binary(), kz_json:object()) ->
+                                  {kz_json:key(), kz_json:json_term()}.
 collect_channel_prop(<<"Hangup-Code">> = Key, JObj) ->
-    <<"sip:", Code/binary>> = wh_json:get_value(Key, JObj, <<"sip:500">>),
+    <<"sip:", Code/binary>> = kz_json:get_value(Key, JObj, <<"sip:500">>),
     {Key, Code};
 collect_channel_prop(Key, JObj) ->
-    {Key, wh_json:get_value(Key, JObj)}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert known media types to extensions
-%% @end
-%%--------------------------------------------------------------------
--spec content_type_to_extension(ne_binary() | string() | list()) -> ne_binary().
-content_type_to_extension(CT) when not is_binary(CT) ->
-    content_type_to_extension(wh_util:to_binary(CT));
-content_type_to_extension(CT) when is_binary(CT) ->
-    Cmd = binary_to_list(<<"echo -n `grep -E '^", CT/binary, "\\s' /etc/mime.types "
-                           "2> /dev/null "
-                           "| head -n1 "
-                           "| awk '{print $2}'`">>),
-    case os:cmd(Cmd) of
-        [] ->
-            lager:debug("content-type ~s not handled, returning 'tmp'",[CT]),
-            <<"tmp">>;
-        Ext -> wh_util:to_binary(Ext)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert known extensions to media types
-%% @end
-%%--------------------------------------------------------------------
--spec extension_to_content_type(ne_binary() | string() | list()) -> ne_binary().
-extension_to_content_type(Ext) when not is_binary(Ext) ->
-    extension_to_content_type(wh_util:to_binary(Ext));
-extension_to_content_type(<<".", Ext/binary>>) ->
-    extension_to_content_type(Ext);
-extension_to_content_type(Ext) when is_binary(Ext) ->
-    Cmd = binary_to_list(<<"echo -n `grep -E '\\s", Ext/binary, "($|\\s)' /etc/mime.types "
-                           "2> /dev/null "
-                           "| head -n1 "
-                           "| cut -f1`">>),
-    case os:cmd(Cmd) of
-        "" ->
-            lager:debug("extension ~s not handled, returning 'application/octet-stream'",[Ext]),
-            <<"application/octet-stream">>;
-        CT -> CT
-    end.
-
+    {Key, kz_json:get_value(Key, JObj)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -105,30 +59,30 @@ extension_to_content_type(Ext) when is_binary(Ext) ->
 -spec attachment_name(binary(), ne_binary()) -> ne_binary().
 attachment_name(Filename, CT) ->
     Generators = [fun maybe_generate_random_filename/1
-                  ,fun(A) -> maybe_attach_extension(A, CT) end
+                 ,fun(A) -> maybe_attach_extension(A, CT) end
                  ],
     lists:foldl(fun(F, A) -> F(A) end, Filename, Generators).
 
 -spec maybe_generate_random_filename(binary()) -> ne_binary().
 maybe_generate_random_filename(A) ->
-    case wh_util:is_empty(A) of
-        'true' -> wh_util:to_hex_binary(crypto:rand_bytes(16));
+    case kz_util:is_empty(A) of
+        'true' -> kz_util:to_hex_binary(crypto:strong_rand_bytes(16));
         'false' -> A
     end.
 
 -spec maybe_attach_extension(ne_binary(), ne_binary()) -> ne_binary().
 maybe_attach_extension(A, CT) ->
-    case wh_util:is_empty(filename:extension(A)) of
+    case kz_util:is_empty(filename:extension(A)) of
         'false' -> A;
-        'true' -> <<A/binary, ".", (content_type_to_extension(CT))/binary>>
+        'true' -> <<A/binary, ".", (kz_mime:to_extension(CT))/binary>>
     end.
 
--spec save_fax_docs(wh_json:objects(), binary(), ne_binary()) ->
+-spec save_fax_docs(kz_json:objects(), binary(), ne_binary()) ->
                            'ok' |
                            {'error', any()}.
 save_fax_docs([], _FileContents, _CT) -> 'ok';
 save_fax_docs([Doc|Docs], FileContents, CT) ->
-    case couch_mgr:save_doc(?WH_FAXES_DB, Doc) of
+    case kz_datamgr:save_doc(?KZ_FAXES_DB, Doc) of
         {'ok', JObj} ->
             case save_fax_attachment(JObj, FileContents, CT) of
                 {'ok', _} -> save_fax_docs(Docs, FileContents, CT);
@@ -138,58 +92,59 @@ save_fax_docs([Doc|Docs], FileContents, CT) ->
     end.
 
 -spec save_fax_attachment(api_object(), binary(), ne_binary())->
-                                 {'ok', wh_json:object()} |
+                                 {'ok', kz_json:object()} |
                                  {'error', ne_binary()}.
 -spec save_fax_attachment(api_object(), binary(), ne_binary(), non_neg_integer())->
-                                 {'ok', wh_json:object()} |
+                                 {'ok', kz_json:object()} |
                                  {'error', ne_binary()}.
 save_fax_attachment(JObj, FileContents, CT) ->
-    MaxStorageRetry = whapps_config:get_integer(?CONFIG_CAT, <<"max_storage_retry">>, 5),
+    MaxStorageRetry = kapps_config:get_integer(?CONFIG_CAT, <<"max_storage_retry">>, 5),
     save_fax_attachment(JObj, FileContents, CT, MaxStorageRetry).
 
 save_fax_attachment(JObj, _FileContents, _CT, 0) ->
-    DocId = wh_doc:id(JObj),
-    lager:debug("max retry saving attachment on fax id ~s rev ~s",[DocId, wh_doc:revision(JObj)]),
+    DocId = kz_doc:id(JObj),
+    lager:debug("max retry saving attachment on fax id ~s rev ~s",[DocId, kz_doc:revision(JObj)]),
     {'error', <<"max retry saving attachment">>};
 save_fax_attachment(JObj, FileContents, CT, Count) ->
-    DocId = wh_doc:id(JObj),
-    Rev = wh_doc:revision(JObj),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
-            ,{'rev', Rev}
-           ],
+    DocId = kz_doc:id(JObj),
+    Rev = kz_doc:revision(JObj),
+    Opts = [{'content_type', CT} ,{'rev', Rev}],
     Name = attachment_name(<<>>, CT),
-    _ = couch_mgr:put_attachment(?WH_FAXES_DB, DocId, Name, FileContents, Opts),
+    _ = kz_datamgr:put_attachment(?KZ_FAXES_DB, DocId, Name, FileContents, Opts),
     case check_fax_attachment(DocId, Name) of
         {'ok', J} -> save_fax_doc_completed(J);
         {'missing', J} ->
-            lager:debug("Missing fax attachment on fax id ~s rev ~s",[DocId, Rev]),
+            lager:debug("missing fax attachment on fax id ~s rev ~s",[DocId, Rev]),
             save_fax_attachment(J, FileContents, CT, Count-1);
         {'error', _R} ->
-            lager:debug("Error ~p saving fax attachment on fax id ~s rev ~s",[_R, DocId, Rev]),
-            {'ok', J} = couch_mgr:open_doc(?WH_FAXES_DB, DocId),
+            lager:debug("error ~p saving fax attachment on fax id ~s rev ~s",[_R, DocId, Rev]),
+            {'ok', J} = kz_datamgr:open_doc(?KZ_FAXES_DB, DocId),
             save_fax_attachment(J, FileContents, CT, Count-1)
     end.
 
 -spec check_fax_attachment(ne_binary(), ne_binary())->
-                                  {'ok', wh_json:object()} |
-                                  {'missing', wh_json:object()} |
+                                  {'ok', kz_json:object()} |
+                                  {'missing', kz_json:object()} |
                                   {'error', any()}.
 check_fax_attachment(DocId, Name) ->
-    case couch_mgr:open_doc(?WH_FAXES_DB, DocId) of
+    case kz_datamgr:open_doc(?KZ_FAXES_DB, DocId) of
         {'ok', JObj} ->
-            case wh_doc:attachment(JObj, Name) of
+            case kz_doc:attachment(JObj, Name) of
                 'undefined' -> {'missing', JObj};
                 _Else -> {'ok', JObj}
             end;
         {'error', _}=E -> E
     end.
 
--spec save_fax_doc_completed(wh_json:object())->
-                                    {'ok', wh_json:object()} |
+-spec save_fax_doc_completed(kz_json:object())->
+                                    {'ok', kz_json:object()} |
                                     {'error', any()}.
 save_fax_doc_completed(JObj)->
-    DocId = wh_doc:id(JObj),
-    case couch_mgr:save_doc(?WH_FAXES_DB, wh_json:set_values([{<<"pvt_job_status">>, <<"pending">>}], JObj)) of
+    DocId = kz_doc:id(JObj),
+    Updates = [{<<"pvt_job_status">>, <<"pending">>}
+              ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+              ],
+    case kz_datamgr:save_doc(?KZ_FAXES_DB, kz_json:set_values(Updates, JObj)) of
         {'ok', Doc} ->
             lager:debug("fax jobid ~s set to pending", [DocId]),
             {'ok', Doc};
@@ -217,7 +172,7 @@ filter_numbers(Number) ->
 -spec is_valid_caller_id(api_binary(), ne_binary()) -> boolean().
 is_valid_caller_id('undefined', _) -> 'false';
 is_valid_caller_id(Number, AccountId) ->
-    case wh_number_manager:lookup_account_by_number(Number) of
+    case knm_number:lookup_account(Number) of
         {'ok', AccountId, _} -> 'true';
         _Else -> 'false'
     end.
@@ -240,4 +195,4 @@ normalize_content_type(<<"text/pdf">>) -> <<"application/pdf">>;
 normalize_content_type(<<"text/x-pdf">>) -> <<"application/pdf">>;
 normalize_content_type(<<_/binary>> = Else) -> Else;
 normalize_content_type(CT) ->
-    normalize_content_type(wh_util:to_binary(CT)).
+    normalize_content_type(kz_util:to_binary(CT)).

@@ -1,27 +1,27 @@
 #!/bin/sh
 
-cd `dirname $0`
+cd $(dirname $0)
 
 if [ -z "$1" ]; then
-    REMOTE_SHELL="ecallmgr@`hostname -f`"
+    REMOTE_SHELL="ecallmgr@$(hostname -f)"
 else
     REMOTE_SHELL="$1"
 fi
 
 if [ -z "$2" ]; then
-    SHELL_NAME="app_con_$(date +%s)@`hostname -f`"
+    SHELL_NAME="app_con_$(date +%s)@$(hostname -f)"
 else
     SHELL_NAME="$2"
 fi
 
 if [[ ! "$SHELL_NAME" == *@*  ]]; then
-    SHELL_NAME="${SHELL_NAME}@`hostname -f`"
+    SHELL_NAME="${SHELL_NAME}@$(hostname -f)"
 fi
 
 if [[ ! "$REMOTE_SHELL" == *@*  ]]; then
-    REMOTE_SHELL="${REMOTE_SHELL}@`hostname -f`"
+    REMOTE_SHELL="${REMOTE_SHELL}@$(hostname -f)"
 fi
 
-ERL_COOKIE=`../utils/sup/sup erlang get_cookie -n ecallmgr | sed "s/'//g"`
+ERL_COOKIE=$(../make/sup/sup erlang get_cookie -n ecallmgr | sed "s/'//g")
 
 exec erl -setcookie $ERL_COOKIE -name ${SHELL_NAME} -remsh ${REMOTE_SHELL}

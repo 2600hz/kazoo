@@ -1,0 +1,17 @@
+{application, kazoo_oauth,
+ [
+  {description, "OAuth Utilities"},
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [ ]},
+  {applications, [ kernel
+                 , stdlib
+                 , public_key
+
+                 , kazoo
+                 , kazoo_data
+                 , kazoo_web
+
+                 , lager
+                 ]}
+ ]}.

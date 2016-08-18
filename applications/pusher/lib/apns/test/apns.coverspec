@@ -1,9 +1,0 @@
-%% Specific modules to include in cover.
-{
- incl_mods,
- [
-  apns,
-  apns_connection,
-  apns_sup
- ]
-}.

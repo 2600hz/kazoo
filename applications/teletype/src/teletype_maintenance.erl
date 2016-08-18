@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -8,7 +8,10 @@
 %%%-------------------------------------------------------------------
 -module(teletype_maintenance).
 
--export([receipts/0]).
+-export([receipts/0
+         ,restore_system_templates/0
+         ,restore_system_template/1
+        ]).
 
 -include("teletype.hrl").
 
@@ -17,7 +20,7 @@
 -spec receipts() -> 'ok'.
 receipts() ->
     io:format(?RECEIPT_FORMAT, [<<>>, <<"Call or Msg ID">>, <<"Receipt">>, <<"To">>, <<"From">>, <<"Time">>]),
-    Receipts = wh_cache:filter_local(?CACHE_NAME, fun filter_receipts/2),
+    Receipts = kz_cache:filter_local(?CACHE_NAME, fun filter_receipts/2),
     Sorted = lists:usort(fun sort_receipts/2, Receipts),
     lists:foldl(fun print_receipt/2, 1, Sorted),
     'ok'.
@@ -39,18 +42,18 @@ print_receipt({{'receipt', Receipt}
                               }}
               ,Count
              ) ->
-    io:format(?RECEIPT_FORMAT, [wh_util:to_binary(Count)
+    io:format(?RECEIPT_FORMAT, [kz_util:to_binary(Count)
                                 ,CallId
                                 ,receipt_for_printing(Receipt)
                                 ,convert_for_printing(To)
                                 ,convert_for_printing(From)
-                                ,wh_util:pretty_print_datetime(GregSecs)
+                                ,kz_util:pretty_print_datetime(GregSecs)
                                ]),
     Count+1.
 
 -spec convert_for_printing(ne_binary() | ne_binaries()) -> ne_binary().
 convert_for_printing(<<_/binary>>=V) -> V;
-convert_for_printing([_|_]=Vs) -> wh_util:join_binary(Vs, <<",">>).
+convert_for_printing([_|_]=Vs) -> kz_util:join_binary(Vs, <<",">>).
 
 -spec receipt_for_printing(ne_binary()) -> ne_binary().
 receipt_for_printing(Receipt) ->
@@ -65,4 +68,39 @@ receipt_for_printing(Receipt) ->
     end.
 
 default_receipt_printing(Receipt) ->
-    wh_util:strip_binary(Receipt, [$\n, $\r]).
+    kz_util:strip_binary(Receipt, [$\n, $\r]).
+
+restore_system_templates() ->
+    [restore_system_template(Template) || Template <- list_system_templates()],
+    'ok'.
+
+restore_system_template(<<"skel">>) ->
+    'ok';
+restore_system_template(TemplateId) ->
+    DbId = kz_notification:db_id(TemplateId),
+    ModId = kz_notification:resp_id(TemplateId),
+
+    io:format("restoring to default version: ~s(~s)~n", [ModId, DbId]),
+
+    {'ok', TemplateDoc} = kz_datamgr:open_doc(?KZ_CONFIG_DB, DbId),
+    {'ok', _Deleted} = kz_datamgr:del_doc(?KZ_CONFIG_DB, TemplateDoc),
+    io:format("  deleted ~s~n", [TemplateId]),
+
+    Mod = kz_util:to_atom(<<"teletype_", ModId/binary>>, 'true'),
+    io:format("  re-initializing template ~s~n", [ModId]),
+    Mod:init(),
+    io:format("  finished~n").
+
+list_system_templates() ->
+    case kz_datamgr:all_docs(?KZ_CONFIG_DB
+                            ,[{'startkey', <<"notification.">>}
+                             ,{'endkey', <<"notification.zzz">>}
+                             ]
+                            )
+    of
+        {'ok', Results} ->
+            [kz_json:get_value(<<"key">>, Result) || Result <- Results];
+        {'error', _E} ->
+            io:format("failed to query existing notifications: ~p~n", [_E]),
+            []
+    end.

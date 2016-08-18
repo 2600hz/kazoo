@@ -1,13 +1,20 @@
 {application, camper,
  [
   {description, "Camper - wait for the right moment"}
-  ,{vsn, "0.1.0"}
-  ,{modules, []}
-  ,{registered, []}
-  ,{applications, [
-		   kernel
-		   ,stdlib
-		  ]}
-  ,{mod, { camper_app, []} }
-  ,{env, []}
+ ,{vsn, "4.0.0"}
+ ,{modules, []}
+ ,{registered, [camper_sup, camper_offnet_sup, camper_onnet_handler]}
+ ,{applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , kazoo
+                 , kazoo_amqp
+                 , kazoo_data
+                 , kazoo_apps
+                 , callflow
+
+                 , lager
+                 ]}
+ ,{mod, {camper_app, []}}
  ]}.

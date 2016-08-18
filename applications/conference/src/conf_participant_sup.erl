@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz Inc
+%%% @copyright (C) 2012-2016, 2600Hz Inc
 %%% @doc
 %%% Supervisor for running conference participant processes
 %%% @end
@@ -12,6 +12,8 @@
 
 -include("conference.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% API
 -export([start_link/0]).
 -export([start_participant/1]).
@@ -19,24 +21,22 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--define(SERVER, ?MODULE).
+-define(CHILDREN, [?WORKER_TYPE('conf_participant', 'temporary')]).
 
 %%%===================================================================
 %%% API functions
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
-start_link() -> supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
+start_link() ->
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec start_participant(whapps_call:call()) -> sup_startchild_ret().
-start_participant(Call) -> supervisor:start_child(?MODULE, [Call]).
+-spec start_participant(kapps_call:call()) -> sup_startchild_ret().
+start_participant(Call) ->
+    supervisor:start_child(?SERVER, [Call]).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -49,13 +49,9 @@ start_participant(Call) -> supervisor:start_child(?MODULE, [Call]).
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
-%%
-%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
-%%                     ignore |
-%%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 0,
@@ -63,4 +59,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?WORKER_TYPE('conf_participant', 'temporary')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

@@ -16,7 +16,7 @@ To fetch a value, publish a `get_req` to the `sysconf` AMQP exchange using "sysc
 
 * `Event-Category`: "sysconf"
 * `Event-Name`: "get_req"
-* `Category`: The name of the `system_config` document (eg "ecallmgr", "whapps_controller", etc)
+* `Category`: The name of the `system_config` document (eg "ecallmgr", "kapps_controller", etc)
 * `Key`: The key of the value desired (eg "fs_nodes")
 * `Default`: (optional) If no `Key` is found, return this value as the result (will also set `Default` in the config document
 * `Node`: The node to select the config from ("default" or "node@host.com")
@@ -56,7 +56,7 @@ To set a value in a particular config doc, publish a `set_req` to the `sysconf` 
 
 * `Event-Category`: "sysconf"
 * `Event-Name`: "set_req"
-* `Category`: The name of the `system_config` document (eg "ecallmgr", "whapps_controller", etc)
+* `Category`: The name of the `system_config` document (eg "ecallmgr", "kapps_controller", etc)
 * `Key`: The key to set
 * `Value`: The value to set
 * `Node-Specific`: (optional) Set as the "default" config or as a node's specific config ('false' by default - will set in the "default" config)
@@ -80,5 +80,5 @@ Sometimes a change will be made to a document in `system_config` directly in the
 
 * `Event-Category`: "sysconf"
 * `Event-Name`: "flush_req"
-* `Category`: The name of the `system_config` document (eg "ecallmgr", "whapps_controller", etc)
+* `Category`: The name of the `system_config` document (eg "ecallmgr", "kapps_controller", etc)
 * `Key`: (optional) Flush only this key's value from the cached doc

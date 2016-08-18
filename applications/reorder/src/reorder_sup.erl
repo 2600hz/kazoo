@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -9,14 +9,15 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("reorder.hrl").
+
+-define(SERVER, ?MODULE).
 
 -export([start_link/0]).
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE('reorder_cache')
-                   ,?WORKER('reorder_listener')
+-define(CHILDREN, [?WORKER('reorder_listener')
                   ]).
 
 %% ===================================================================
@@ -25,13 +26,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -46,9 +45,9 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
-    wh_util:set_startup(),
+    kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

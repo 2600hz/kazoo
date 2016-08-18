@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%% @end
 %%% @contributors
@@ -10,34 +10,36 @@
 -behaviour(gen_listener).
 
 -export([start_link/3
-         ,relay_amqp/2
+        ,relay_amqp/2
         ]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("callflow.hrl").
 
--record(state, {call :: whapps_call:call()
-                ,callback :: fun()
-                ,args :: list()
-                ,pid :: pid()
-                ,ref ::reference()
-                ,queue :: api_binary()
+-define(SERVER, ?MODULE).
+
+-record(state, {call :: kapps_call:call()
+               ,callback :: fun()
+               ,args :: list()
+               ,pid :: pid()
+               ,ref ::reference()
+               ,queue :: api_binary()
                }).
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS(CallId), [{'call', [{'callid', CallId}]}
-                           ,{'self', []}
+                          ,{'self', []}
                           ]).
 -define(RESPONDERS, [{{?MODULE, 'relay_amqp'}
-                      ,[{<<"*">>, <<"*">>}]
+                     ,[{<<"*">>, <<"*">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -45,20 +47,18 @@
 -define(CONSUME_OPTIONS, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the listener and binds to the call channel destroy events
-%% @end
+%% @doc Starts the listener and binds to the call channel destroy events
 %%--------------------------------------------------------------------
--spec start_link(whapps_call:call(), fun(), list()) -> startlink_ret().
+-spec start_link(kapps_call:call(), fun(), list()) -> startlink_ret().
 start_link(Call, Fun, Args) ->
-    gen_listener:start_link(?MODULE
-                            ,[{'bindings', ?BINDINGS(whapps_call:call_id(Call))}
-                              ,{'responders', ?RESPONDERS}
-                              ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                              ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                              ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                             ]
-                            ,[Call, Fun, Args]
+    gen_listener:start_link(?SERVER
+                           ,[{'bindings', ?BINDINGS(kapps_call:call_id(Call))}
+                            ,{'responders', ?RESPONDERS}
+                            ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                            ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                            ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                            ]
+                           ,[Call, Fun, Args]
                            ).
 
 %%--------------------------------------------------------------------
@@ -68,10 +68,10 @@ start_link(Call, Fun, Args) ->
 %% CHANNEL_DESTROY.
 %% @end
 %%--------------------------------------------------------------------
--spec relay_amqp(wh_json:object(), wh_proplist()) -> any().
+-spec relay_amqp(kz_json:object(), kz_proplist()) -> any().
 relay_amqp(JObj, Props) ->
     Pid = props:get_value('cf_task_pid', Props),
-    whapps_call_command:relay_event(Pid, JObj).
+    kapps_call_command:relay_event(Pid, JObj).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -84,11 +84,11 @@ relay_amqp(JObj, Props) ->
 %%--------------------------------------------------------------------
 -spec init([fun()]) -> {'ok', state()}.
 init([Call, Callback, Args]) ->
-    _ = whapps_call:put_callid(Call),
+    _ = kapps_call:put_callid(Call),
     lager:debug("started event listener for cf_task"),
     {'ok', #state{call=Call
-                  ,callback=Callback
-                  ,args=Args
+                 ,callback=Callback
+                 ,args=Args
                  }}.
 
 %%--------------------------------------------------------------------
@@ -130,9 +130,9 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> {'noreply', state()}.
 handle_info({'DOWN', Ref, 'process', Pid, Reason}
-            ,#state{ref=Ref
-                    ,pid=Pid
-                   }=State
+           ,#state{ref=Ref
+                  ,pid=Pid
+                  }=State
            ) ->
     lager:debug("task in ~p (~p) exited with reason: ~p", [Pid, Ref, Reason]),
     {'stop', 'normal', State};
@@ -146,7 +146,8 @@ handle_info(Info, State) ->
 %% Allows listener to pass options to handlers
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(wh_json:object(), state()) -> {'reply', wh_proplist()}.
+-spec handle_event(kz_json:object(), state()) -> {'reply', kz_proplist()}.
+handle_event(_JObj, #state{pid='undefined'}) -> 'ignore';
 handle_event(_JObj, #state{pid=Pid}) ->
     {'reply', [{'cf_task_pid', Pid}]}.
 
@@ -175,19 +176,20 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec launch_task(state()) -> state().
 launch_task(#state{queue=Q
-                   ,call=Call
-                   ,callback=Callback
-                   ,args=Args
+                  ,call=Call
+                  ,callback=Callback
+                  ,args=Args
                   }=State) ->
-    Self = self(),
-    {Pid, Ref} = spawn_monitor(
-                   fun() ->
-                           whapps_call:put_callid(Call),
-                           wh_amqp_channel:consumer_pid(Self),
-                           Funs = [{fun whapps_call:kvs_store/3, 'consumer_pid', Self}
-                                   ,{fun whapps_call:set_controller_queue/2, Q}
-                                  ],
-                           apply(Callback, Args ++ [whapps_call:exec(Funs, Call)])
-                   end),
+    {Pid, Ref} = kz_util:spawn_monitor(fun task_launched/5, [Q, Call, Callback, Args, self()]),
     lager:debug("watching task execute in ~p (~p)", [Pid, Ref]),
     State#state{pid=Pid, ref=Ref}.
+
+%% @private
+-spec task_launched(api_binary(), kapps_call:call(), fun(), list(), pid()) -> any().
+task_launched(Q, Call, Callback, Args, Parent) ->
+    kapps_call:put_callid(Call),
+    kz_amqp_channel:consumer_pid(Parent),
+    Funs = [{fun kapps_call:kvs_store/3, 'consumer_pid', Parent}
+           ,{fun kapps_call:set_controller_queue/2, Q}
+           ],
+    apply(Callback, Args ++ [kapps_call:exec(Funs, Call)]).

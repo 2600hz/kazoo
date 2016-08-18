@@ -1,12 +1,19 @@
 {application, registrar,
  [
   {description, "Registrar For the Stars"},
-  {vsn, "0.0.3"},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [registrar_cache, registrar_sup, registrar_shared_listener_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , inets
+
+                 , kazoo_apps
+                 , kazoo_amqp
+                 , kazoo_data
+
+                 , lager
                  ]},
-  {mod, { registrar_app, []} },
-  {env, []}
+  {mod, {registrar_app, []}}
  ]}.

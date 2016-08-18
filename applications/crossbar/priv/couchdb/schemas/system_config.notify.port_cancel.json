@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.notify.port_cancel",
+    "description": "Schema for notify.port_cancel system_config",
+    "properties": {
+        "default_from": {
+            "description": "notify.port_cancel default from",
+            "name": "default_from",
+            "type": "string"
+        },
+        "default_to": {
+            "default": "",
+            "description": "notify.port_cancel default to",
+            "name": "default_to",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

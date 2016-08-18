@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.notify.cnam_request",
+    "description": "Schema for notify.cnam_request system_config",
+    "properties": {
+        "default_to": {
+            "default": "",
+            "description": "notify.cnam_request default to",
+            "name": "default_to",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

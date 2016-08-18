@@ -1,5 +1,0 @@
-language: erlang
-otp_release:
-  - R16B02
-  - R15B03
-  - R14B04

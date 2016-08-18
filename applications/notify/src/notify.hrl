@@ -1,15 +1,17 @@
 -ifndef(NOTIFY_HRL).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_databases.hrl").
--include_lib("whistle/include/wh_amqp.hrl").
--include_lib("whistle/include/wh_log.hrl").
--include_lib("notify_templates.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo/include/kz_amqp.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo/include/kz_config.hrl").
+-include("notify_templates.hrl").
 
 -define(NOTIFY_CONFIG_CAT, <<"notify">>).
 
--define(APP_VERSION, <<"1.0.3">>).
+-define(APP_VERSION, <<"4.0.0">>).
 -define(APP_NAME, <<"notify">>).
+-define(APP, 'notify').
 
 -define(NOTIFY_HRL, true).
 -endif.

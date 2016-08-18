@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.kazoo_couch",
+    "description": "Schema for kazoo_couch system_config",
+    "properties": {
+        "allow_maintenance_db_delete": {
+            "default": false,
+            "description": "kazoo_couch allow maintenance db delete",
+            "name": "allow_maintenance_db_delete",
+            "type": "boolean"
+        },
+        "default_chunk_size": {
+            "default": 1000,
+            "description": "kazoo_couch default chunk size",
+            "name": "default_chunk_size",
+            "type": "integer"
+        },
+        "max_concurrent_docs_to_archive": {
+            "default": 500,
+            "description": "kazoo_couch max concurrent docs to archive",
+            "name": "max_concurrent_docs_to_archive",
+            "type": "integer"
+        },
+        "use_bigcouch_direct": {
+            "default": true,
+            "description": "kazoo_couch use bigcouch direct",
+            "name": "use_bigcouch_direct",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

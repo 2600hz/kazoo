@@ -1,0 +1,62 @@
+machine:
+  environment:
+    OTP_VERSION: 18.2
+    PATH: ${HOME}/.kerl/$OTP_VERSION/bin:${PATH}
+    CHANGED: 'git --no-pager diff --name-only HEAD origin/master -- applications core'
+  services:
+    - rabbitmq-server
+#    - couchdb-server
+
+general:
+  branches:
+    ignore:
+      - /3\.[0-9]+/
+      - 4.0
+
+dependencies:
+  cache_directories:
+    - ~/.kerl
+  pre:
+    - |
+      if [[ ! -d ~/.kerl/$OTP_VERSION ]]; then
+        if [[ ! -d ~/.kerl ]]; then
+          mkdir ~/.kerl
+          curl -fsSLo ~/.kerl/kerl https://raw.githubusercontent.com/kerl/kerl/master/kerl
+          chmod +x ~/.kerl/kerl
+          ~/.kerl/kerl update releases
+        fi
+        ~/.kerl/kerl build $OTP_VERSION $OTP_VERSION
+        ~/.kerl/kerl install $OTP_VERSION ~/.kerl/$OTP_VERSION
+      fi
+
+test:
+  pre:
+    - $CHANGED
+    - ./scripts/state-of-docs.sh || true
+    - ./scripts/code_checks.bash $($CHANGED)
+    - |
+      if [[ ! -z "$($CHANGED)" ]]; then
+        TO_FMT="$(echo $($CHANGED))" make fmt
+      fi
+    - make bump-copyright
+    - . ~/.kerl/$OTP_VERSION/activate && make
+    - . ~/.kerl/$OTP_VERSION/activate && make code_checks
+    - ./scripts/validate-js.sh $($CHANGED)
+    - . ~/.kerl/$OTP_VERSION/activate && make apis
+    - |
+      if [[ 0 -ne `git status --porcelain | wc -l` ]]; then
+        echo Unstaged changes!
+        git --no-pager diff
+        exit 1
+      fi
+    - . ~/.kerl/$OTP_VERSION/activate && make elvis
+    - . ~/.kerl/$OTP_VERSION/activate && make xref
+    - . ~/.kerl/$OTP_VERSION/activate && make sup_completion
+    - |
+      . ~/.kerl/$OTP_VERSION/activate
+      if [[ ! -z "$($CHANGED)" ]]; then
+        make build-plt
+        TO_DIALYZE="$(echo $($CHANGED))" make dialyze
+      fi
+    - . ~/.kerl/$OTP_VERSION/activate && make build-ci-release
+    - . ~/.kerl/$OTP_VERSION/activate && ./scripts/check-release-startup.sh

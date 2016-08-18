@@ -2,6 +2,9 @@
     "_id": "_design/port_requests",
     "language": "javascript",
     "views": {
+        "active_port_request": {
+            "map": "function(doc) { if (doc.pvt_type != 'port_request' || doc.pvt_deleted || doc.pvt_port_state == 'unconfirmed' || doc.pvt_port_state == 'completed' || doc.pvt_port_state == 'canceled') return; emit(doc.pvt_account_id, doc.pvt_port_state); }"
+        },
         "all_port_in_numbers": {
             "map": "function(doc) {if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return;for (i in doc.numbers) {emit([doc.pvt_account_id, i], null);}}"
         },
@@ -21,7 +24,7 @@
             "map": "function(doc) {if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return;if(doc.pvt_port_state != 'submitted') return;if(doc.pvt_sent === true) return;emit(doc._id, null);}"
         },
         "port_in_numbers": {
-            "map": "function(doc) { if (doc.pvt_type != 'port_request' || doc.pvt_deleted || doc.pvt_port_state == 'completed' || doc.pvt_port_state == 'waiting') return; for (i in doc.numbers) { emit(i, doc.pvt_account_id); } }"
+            "map": "function(doc) { if (doc.pvt_type != 'port_request' || doc.pvt_deleted || doc.pvt_port_state == 'unconfirmed' || doc.pvt_port_state == 'completed' || doc.pvt_port_state == 'rejected' || doc.pvt_port_state == 'canceled') return; for (i in doc.numbers) { emit(i, doc.pvt_account_id); } }"
         }
     }
 }

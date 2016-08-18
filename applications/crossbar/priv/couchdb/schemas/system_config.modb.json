@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.modb",
+    "description": "Schema for modb system_config",
+    "properties": {
+        "active_modbs": {
+            "default": 6,
+            "description": "modb active modbs",
+            "name": "active_modbs",
+            "type": "integer"
+        },
+        "routines": {
+            "default": [],
+            "description": "modb routines",
+            "name": "routines",
+            "type": "array"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

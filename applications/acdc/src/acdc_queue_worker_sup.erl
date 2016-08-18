@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -13,32 +13,32 @@
 
 -include("acdc.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% API
 -export([start_link/3
-         ,stop/1
-         ,listener/1
-         ,shared_queue/1, start_shared_queue/5
-         ,fsm/1, start_fsm/3
-         ,status/1
+        ,stop/1
+        ,listener/1
+        ,shared_queue/1, start_shared_queue/5
+        ,fsm/1, start_fsm/3
+        ,status/1
         ]).
 
 %% Supervisor callbacks
 -export([init/1]).
+
+-define(CHILDREN, [?WORKER_ARGS('acdc_queue_listener', [self() | Args])]).
 
 %%%===================================================================
 %%% API functions
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link(pid(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(MgrPid, AcctId, QueueId) ->
-    supervisor:start_link(?MODULE, [MgrPid, AcctId, QueueId]).
+    supervisor:start_link(?SERVER, [MgrPid, AcctId, QueueId]).
 
 -spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
 stop(WorkerSup) -> supervisor:terminate_child('acdc_queues_sup', WorkerSup).
@@ -68,7 +68,7 @@ fsm(WorkerSup) ->
         [P] -> P
     end.
 
--spec start_fsm(pid(), pid(), wh_json:object()) -> sup_startchild_ret().
+-spec start_fsm(pid(), pid(), kz_json:object()) -> sup_startchild_ret().
 start_fsm(WorkerSup, MgrPid, QueueJObj) ->
     ListenerPid = self(),
     supervisor:start_child(WorkerSup, ?WORKER_ARGS('acdc_queue_fsm', [MgrPid, ListenerPid, QueueJObj])).
@@ -111,10 +111,6 @@ print_status([{K, V}|T]) ->
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
-%%
-%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
-%%                     ignore |
-%%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
 -spec init(list()) -> sup_init_ret().
@@ -125,7 +121,7 @@ init(Args) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?WORKER_ARGS('acdc_queue_listener', [self() | Args])]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

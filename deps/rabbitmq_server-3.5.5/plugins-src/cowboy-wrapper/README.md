@@ -1,1 +1,0 @@
-Cowboy requires R14

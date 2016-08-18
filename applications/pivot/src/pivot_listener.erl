@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -11,26 +11,27 @@
 
 -export([start_link/0]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("pivot.hrl").
+
+-define(SERVER, ?MODULE).
 
 -record(state, {}).
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'route', []}
-                   ,{'self', []}
-                   ,{'pivot', []}
+-define(BINDINGS, [{'self', []}
+                  ,{'pivot', []}
                   ]).
 -define(RESPONDERS, [{{'pivot_handlers', 'handle_pivot_req'}
-                      ,[{<<"dialplan">>, <<"pivot_req">>}]
+                     ,[{<<"dialplan">>, <<"pivot_req">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<"pivot_listener">>).
@@ -42,19 +43,15 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
+                                     ,{'responders', ?RESPONDERS}
+                                     ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                                     ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                                     ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], []).
 
 %%%===================================================================
@@ -138,7 +135,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(wh_json:object(), state()) -> {'reply', []}.
+-spec handle_event(kz_json:object(), state()) -> {'reply', []}.
 handle_event(_JObj, _State) ->
     {'reply', []}.
 

@@ -1,8 +1,18 @@
 #!/bin/sh
 
-cd `dirname $0`
+cd $(dirname $0)
 
-export ERL_CRASH_DUMP=$PWD/../$(date +%s)_ecallmgr_erl_crash.dump
-export ERL_LIBS="$ERL_LIBS":$PWD/../deps:$PWD/../core:$PWD/../applications/
+ROOT=$PWD/..
 
-exec erl -name ecallmgr -args_file /etc/kazoo/vm.args -s reloader -s ecallmgr
+export ERL_CRASH_DUMP=$ROOT/$(date +%s)_ecallmgr_erl_crash.dump
+export ERL_LIBS="$ERL_LIBS":$ROOT/deps:$ROOT/core:$ROOT/applications:$(echo $ROOT/deps/rabbitmq_erlang_client-*/deps)
+
+NODE_NAME=${1:-ecallmgr}
+
+export KAZOO_APPS=ecallmgr
+
+exec erl \
+     -name $NODE_NAME \
+     -args_file $ROOT/rel/dev-vm.args \
+     -config $ROOT/rel/sys.config \
+     -s reloader

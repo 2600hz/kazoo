@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz INC
+%%% @copyright (C) 2016, 2600Hz INC
 %%% @doc
 %%% This module looks up the Caller ID Name by matching
 %%% numbers/patters with the provided lists.
@@ -14,15 +14,17 @@
 %%%-------------------------------------------------------------------
 -module(cf_lookupcidname).
 
+-behaviour(gen_cf_action).
+
 -export([handle/2]).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    CallerNumber = whapps_call:caller_id_number(Call),
-    ListIds = wh_json:get_value(<<"lists">>, Data, []),
-    AccountDb = whapps_call:account_db(Call),
+    CallerNumber = kapps_call:caller_id_number(Call),
+    ListIds = kz_json:get_value(<<"lists">>, Data, []),
+    AccountDb = kapps_call:account_db(Call),
     lager:debug("matching ~p in ~p", [CallerNumber, AccountDb]),
     CallerName = case match_number_in_lists(AccountDb, CallerNumber, ListIds) of
                      'continue' ->
@@ -34,7 +36,7 @@ handle(Data, Call) ->
         'undefined' -> cf_exe:continue(Call);
         CallerName ->
             lager:info("setting caller name to ~p", [CallerName]),
-            cf_exe:continue(whapps_call:set_caller_id_name(CallerName, Call))
+            cf_exe:continue(kapps_call:set_caller_id_name(CallerName, Call))
     end.
 
 -type match_number_result() :: {'stop', api_binary()} | 'continue'.
@@ -56,14 +58,14 @@ match_prefixes_in_lists(_AccountDb, _Number, []) ->
 -spec match_prefixes_in_list(ne_binary(), ne_binaries(), ne_binary()) -> match_number_result().
 match_prefixes_in_list(AccountDb, Prefixes, ListId) ->
     Keys = [[ListId, Prefix] || Prefix <- Prefixes],
-    case couch_mgr:get_results(AccountDb
+    case kz_datamgr:get_results(AccountDb
                                ,<<"lists/match_prefix_in_list">>
                                ,[{'keys', Keys}, {'include_docs', 'true'}])
     of
         {'ok', [_ | _] = Matched} ->
             lager:debug("matched ~p prefixes, getting longest", [length(Matched)]),
             ListEntry = hd(lists:sort(fun compare_prefixes/2, Matched)),
-            Name = wh_json:get_value([<<"doc">>, <<"displayname">>], ListEntry),
+            Name = kz_json:get_value([<<"doc">>, <<"displayname">>], ListEntry),
             lager:debug("matched prefix ~p", [get_prefix(ListEntry)]),
             {'stop', Name};
         {'ok', []} ->
@@ -73,14 +75,14 @@ match_prefixes_in_list(AccountDb, Prefixes, ListId) ->
             'continue'
     end.
 
--spec compare_prefixes(wh_json:object(), wh_json:object()) -> boolean().
+-spec compare_prefixes(kz_json:object(), kz_json:object()) -> boolean().
 compare_prefixes(JObj1, JObj2) ->
     byte_size(get_prefix(JObj1)) >= byte_size(get_prefix(JObj2)).
 
--spec get_prefix(wh_json:object()) -> binary().
+-spec get_prefix(kz_json:object()) -> binary().
 get_prefix(JObj) ->
-    Doc = wh_json:get_value(<<"doc">>, JObj),
-    wh_json:get_ne_binary_value(<<"number">>, Doc, wh_json:get_ne_binary_value(<<"prefix">>, Doc)).
+    Doc = kz_json:get_value(<<"doc">>, JObj),
+    kz_json:get_ne_binary_value(<<"number">>, Doc, kz_json:get_ne_binary_value(<<"prefix">>, Doc)).
 
 %% TODO: this function from hon_util, may be place it somewhere in library?
 -spec build_keys(binary()) -> binaries().
@@ -95,9 +97,9 @@ build_keys(<<D:1/binary, Rest/binary>>, Prefix, Acc) ->
 build_keys(<<>>, _, Acc) -> Acc.
 
 -spec match_regexp_in_list(ne_binary(), ne_binary(), ne_binary()) ->
-    'continue' | {'stop', api_binary()}.
+                                  'continue' | {'stop', api_binary()}.
 match_regexp_in_list(AccountDb, Number, ListId) when is_binary(ListId) ->
-    case couch_mgr:get_results(AccountDb
+    case kz_datamgr:get_results(AccountDb
                                ,<<"lists/regexps_in_list">>
                                ,[{'keys', [ListId]} , {'include_docs', 'true'}])
     of
@@ -117,14 +119,14 @@ match_regexp_in_lists(AccountDb, Number, [ListId | Rest]) ->
 match_regexp_in_lists(_, _, []) ->
     'undefined'.
 
--spec match_regexp(wh_json:objects(), ne_binary()) ->
-    'continue' | {'stop', api_binary()}.
+-spec match_regexp(kz_json:objects(), ne_binary()) ->
+                          'continue' | {'stop', api_binary()}.
 match_regexp([Re | Rest], Number) ->
-    case re:run(Number, wh_json:get_value(<<"value">>, Re)) of
+    case re:run(Number, kz_json:get_value(<<"value">>, Re)) of
         'nomatch' -> match_regexp(Rest, Number);
         {'match', _} ->
             lager:debug("matched regexp ~p", [Re]),
-            {'stop', wh_json:get_value([<<"doc">>, <<"displayname">>], Re)}
+            {'stop', kz_json:get_value([<<"doc">>, <<"displayname">>], Re)}
     end;
 match_regexp([], _Number) ->
     'continue'.

@@ -6,7 +6,7 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) {if ((doc.pvt_type != 'list') || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'description': doc.description});}"
+            "map": "function(doc) {if ((doc.pvt_type != 'list') || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'description': doc.description, 'list_type': doc.list_type});}"
         },
         "entries": {
             "map": "function(doc) {if ((doc.pvt_type != 'list_entry') || doc.pvt_deleted) return; emit(doc.list_id, doc);}"

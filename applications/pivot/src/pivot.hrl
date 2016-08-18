@@ -1,15 +1,15 @@
 -ifndef(PIVOT_HRL).
 
 %% Typical includes needed
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/include/wh_databases.hrl").
--include_lib("whistle/include/wh_api.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo/include/kz_api.hrl").
 
--define(PIVOT_CACHE, 'pivot_cache').
+-define(CACHE_NAME, 'pivot_cache').
 
 -define(APP_NAME, <<"pivot">>).
--define(APP_VERSION, <<"0.5.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(PIVOT_HRL, 'true').
 -endif.

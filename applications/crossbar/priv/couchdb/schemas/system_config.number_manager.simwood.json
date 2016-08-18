@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.number_manager.simwood",
+    "description": "Schema for number_manager.simwood system_config",
+    "properties": {
+        "numbers_api_url": {
+            "default": "https://api.simwood.com/v3/numbers",
+            "description": "number_manager.simwood numbers api url",
+            "name": "numbers_api_url",
+            "type": "string"
+        },
+        "simwood_account_id": {
+            "default": "",
+            "description": "number_manager.simwood simwood account id",
+            "name": "simwood_account_id",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

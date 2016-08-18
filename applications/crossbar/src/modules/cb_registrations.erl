@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Registration viewer / creator
 %%%
@@ -17,23 +17,23 @@
 -module(cb_registrations).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,authorize/2
-         ,validate/1, validate/2
-         ,lookup_regs/1
-         ,delete/1, delete/2
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,authorize/2
+        ,validate/1, validate/2
+        ,lookup_regs/1
+        ,delete/1, delete/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(MASK_REG_FIELDS, [<<"Account-DB">>
-                          ,<<"Account-ID">>
-                          ,<<"App-Name">>
-                          ,<<"App-Version">>
-                          ,<<"Event-Category">>
-                          ,<<"Event-Name">>
-                          ,<<"Server-ID">>
+                         ,<<"Account-ID">>
+                         ,<<"App-Name">>
+                         ,<<"App-Version">>
+                         ,<<"Event-Category">>
+                         ,<<"Event-Name">>
+                         ,<<"Server-ID">>
                          ]).
 
 -define(COUNT_PATH_TOKEN, <<"count">>).
@@ -104,8 +104,8 @@ validate(Context, Username) ->
 -spec validate_count(cb_context:context()) -> cb_context:context().
 validate_count(Context) ->
     crossbar_util:response(
-      wh_json:from_list([{<<"count">>, count_registrations(Context)}])
-      ,Context
+      kz_json:from_list([{<<"count">>, count_registrations(Context)}])
+                          ,Context
      ).
 
 -spec validate_sip_username(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -119,11 +119,11 @@ validate_sip_username(Context, Username) ->
 
 -spec sip_username_exists(cb_context:context(), ne_binary()) -> boolean().
 sip_username_exists(Context, Username) ->
-    ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Username)}],
-    case couch_mgr:get_results(cb_context:account_db(Context)
+    ViewOptions = [{'key', kz_util:to_lower_binary(Username)}],
+    case kz_datamgr:get_results(cb_context:account_db(Context)
                                ,<<"devices/sip_credentials">>
                                ,ViewOptions
-                              )
+                               )
     of
         {'ok', [_]} -> 'true';
         _ -> 'false'
@@ -139,97 +139,96 @@ delete(Context, Username) ->
     crossbar_util:flush_registration(Username, Context),
     crossbar_util:response(<<"ok">>, Context).
 
--spec lookup_regs(cb_context:context()) -> wh_json:objects().
+-spec lookup_regs(cb_context:context()) -> kz_json:objects().
 lookup_regs(Context) ->
-    AccountRealm = wh_util:get_account_realm(cb_context:account_id(Context)),
-    Req = [{<<"Realm">>, AccountRealm}
-           ,{<<"Fields">>, []}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    Req = [{<<"Realm">>, get_realm(Context)}
+          ,{<<"Fields">>, []}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
-    ReqResp = whapps_util:amqp_pool_collect(Req
-                                            ,fun wapi_registration:publish_query_req/1
-                                            ,{'ecallmgr', 'true'}
-                                           ),
+    ReqResp = kapps_util:amqp_pool_collect(Req
+                                          ,fun kapi_registration:publish_query_req/1
+                                          ,{'ecallmgr', 'true'}
+                                          ),
     case ReqResp of
         {'error', _} -> [];
         {_, JObjs} -> merge_responses(JObjs)
     end.
 
--spec merge_responses(wh_json:objects()) -> wh_json:objects().
+-spec merge_responses(kz_json:objects()) -> kz_json:objects().
 merge_responses(JObjs) ->
     [normalize_registration(JObj)
      || {_, JObj} <- dict:to_list(merge_responses(JObjs, dict:new()))
     ].
 
--spec merge_responses(wh_json:objects(), dict()) -> dict().
+-spec merge_responses(kz_json:objects(), dict:dict()) -> dict:dict().
 merge_responses([], Regs) -> Regs;
 merge_responses([JObj|JObjs], Regs) ->
     merge_responses(JObjs, merge_response(JObj, Regs)).
 
--spec merge_response(wh_json:object(), dict()) -> dict().
+-spec merge_response(kz_json:object(), dict:dict()) -> dict:dict().
 merge_response(JObj, Regs) ->
     lists:foldl(fun(J, R) ->
-                        case wh_json:get_ne_value(<<"Contact">>, J) of
+                        case kz_json:get_ne_value(<<"Contact">>, J) of
                             'undefined' -> R;
                             Contact -> dict:store(Contact, J, R)
                         end
-                end, Regs, wh_json:get_value(<<"Fields">>, JObj, [])).
+                end, Regs, kz_json:get_value(<<"Fields">>, JObj, [])).
 
--spec normalize_registration(wh_json:object()) -> wh_json:object().
+-spec normalize_registration(kz_json:object()) -> kz_json:object().
 normalize_registration(JObj) ->
-    Contact = wh_json:get_binary_value(<<"Contact">>, JObj, <<>>),
-    Updaters = [fun(J) -> wh_json:delete_keys(?MASK_REG_FIELDS, J) end
-                ,fun(J) ->
-                         case re:run(Contact, "sip:[^@]+@(.*?):([0-9]+)", [{'capture', [1, 2], 'binary'}]) of
-                             {'match',[Ip, Port]} ->
-                                 wh_json:set_value(<<"Contact-IP">>, Ip
-                                                   ,wh_json:set_value(<<"Contact-Port">>, Port, J)
-                                                  );
-                             _Else -> J
-                         end
-                 end
-                ,fun(J) ->
-                         case re:run(Contact, "received=sip:([^:;]+):?([0-9]+)?", [{'capture', [1, 2], 'binary'}]) of
-                             {'match',[Ip, Port]} ->
-                                 wh_json:set_value(<<"Received-IP">>, Ip
-                                                   ,wh_json:set_value(<<"Received-Port">>, Port, J)
-                                                  );
-                             _Else -> J
-                         end
-                 end
-                ,fun(J) ->
-                         case re:run(Contact, "fs_path=sip:([^:;]+):?([0-9]+)?", [{'capture', [1, 2], 'binary'}]) of
-                             {'match',[Ip, Port]} ->
-                                 wh_json:set_value(<<"Proxy-IP">>, Ip
-                                                   ,wh_json:set_value(<<"Proxy-Port">>, Port, J)
-                                                  );
-                             _Else -> J
-                         end
-                 end
+    Contact = kz_json:get_binary_value(<<"Contact">>, JObj, <<>>),
+    Updaters = [fun(J) -> kz_json:delete_keys(?MASK_REG_FIELDS, J) end
+               ,fun(J) ->
+                        case re:run(Contact, "sip:[^@]+@(.*?):([0-9]+)", [{'capture', [1, 2], 'binary'}]) of
+                            {'match',[Ip, Port]} ->
+                                kz_json:set_value(<<"Contact-IP">>, Ip
+                                                 ,kz_json:set_value(<<"Contact-Port">>, Port, J)
+                                                 );
+                            _Else -> J
+                        end
+                end
+               ,fun(J) ->
+                        case re:run(Contact, "received=sip:([^:;]+):?([0-9]+)?", [{'capture', [1, 2], 'binary'}]) of
+                            {'match',[Ip, Port]} ->
+                                kz_json:set_value(<<"Received-IP">>, Ip
+                                                 ,kz_json:set_value(<<"Received-Port">>, Port, J)
+                                                 );
+                            _Else -> J
+                        end
+                end
+               ,fun(J) ->
+                        case re:run(Contact, "fs_path=sip:([^:;]+):?([0-9]+)?", [{'capture', [1, 2], 'binary'}]) of
+                            {'match',[Ip, Port]} ->
+                                kz_json:set_value(<<"Proxy-IP">>, Ip
+                                                 ,kz_json:set_value(<<"Proxy-Port">>, Port, J)
+                                                 );
+                            _Else -> J
+                        end
+                end
                ],
-    wh_json:normalize(lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters)).
+    kz_json:normalize(lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters)).
 
 -spec count_registrations(cb_context:context()) -> integer().
 count_registrations(Context) ->
-    Req = [{<<"Realm">>, get_realm_for_counting(Context)}
-           ,{<<"Fields">>, []}
-           ,{<<"Count-Only">>, 'true'}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    Req = [{<<"Realm">>, get_realm(Context)}
+          ,{<<"Fields">>, []}
+          ,{<<"Count-Only">>, 'true'}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    ReqResp = whapps_util:amqp_pool_request(Req
-                                            ,fun wapi_registration:publish_query_req/1
-                                            ,fun wapi_registration:query_resp_v/1
-                                           ),
+    ReqResp = kapps_util:amqp_pool_request(Req
+                                          ,fun kapi_registration:publish_query_req/1
+                                          ,fun kapi_registration:query_resp_v/1
+                                          ),
     case ReqResp of
         {'error', _E} -> lager:debug("no resps found: ~p", [_E]), 0;
-        {'ok', JObj} -> wh_json:get_integer_value(<<"Count">>, JObj, 0);
+        {'ok', JObj} -> kz_json:get_integer_value(<<"Count">>, JObj, 0);
         {'timeout', _} -> lager:debug("timed out query for counting regs"), 0
     end.
 
--spec get_realm_for_counting(cb_context:context()) -> ne_binary().
-get_realm_for_counting(Context) ->
+-spec get_realm(cb_context:context()) -> ne_binary().
+get_realm(Context) ->
     case cb_context:account_id(Context) of
         'undefined' -> <<"all">>;
-        _AccountId -> wh_util:get_account_realm(cb_context:account_id(Context))
+        AccountId -> kz_util:get_account_realm(AccountId)
     end.

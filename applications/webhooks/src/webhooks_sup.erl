@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2015, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -10,28 +10,30 @@
 -behaviour(supervisor).
 
 -export([start_link/0
-         ,listener/0
-         ,shared_listener/0
+        ,listener/0
+        ,shared_listener/0
         ]).
 -export([init/1]).
 
 -include("webhooks.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(ETSMGR_ARGS
-        ,[[{'table_id', webhooks_util:table_id()}
-           ,{'find_me_function', fun ?MODULE:listener/0}
-           ,{'table_options', webhooks_util:table_options()}
-           ,{'gift_data', webhooks_util:gift_data()}
-          ]]
+       ,[[{'table_id', webhooks_util:table_id()}
+         ,{'find_me_function', fun listener/0}
+         ,{'table_options', webhooks_util:table_options()}
+         ,{'gift_data', webhooks_util:gift_data()}
+         ]]
        ).
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE(?CACHE_NAME)
-                   ,?WORKER_ARGS('kazoo_etsmgr_srv', ?ETSMGR_ARGS)
-                   ,?WORKER('webhooks_init')
-                   ,?WORKER('webhooks_disabler')
-                   ,?WORKER('webhooks_listener')
-                   ,?WORKER('webhooks_shared_listener')
+                  ,?WORKER_ARGS('kazoo_etsmgr_srv', ?ETSMGR_ARGS)
+                  ,?WORKER('webhooks_disabler')
+                  ,?WORKER('webhooks_listener')
+                  ,?WORKER('webhooks_shared_listener')
+                  ,?WORKER('webhooks_init')
                   ]).
 
 %% ===================================================================
@@ -40,24 +42,22 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec listener() -> api_pid().
 listener() ->
-    case child_of_type(?MODULE, 'webhooks_listener') of
+    case child_of_type(?SERVER, 'webhooks_listener') of
         [] -> 'undefined';
         [P] -> P
     end.
 
 -spec shared_listener() -> api_pid().
 shared_listener() ->
-    case child_of_type(?MODULE, 'webhooks_shared_listener') of
+    case child_of_type(?SERVER, 'webhooks_shared_listener') of
         [] -> 'undefined';
         [P] -> P
     end.
@@ -81,9 +81,9 @@ child_of_type(S, T) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
-    wh_util:set_startup(),
+    kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

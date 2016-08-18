@@ -1,0 +1,27 @@
+* Kazoo AST
+
+This library is for parsing the Erlang AST (Abstract Syntax Tree) of various Kazoo Erlang modules, looking to automatically pull out information for use by developers or users of Kazoo.
+
+** Existing AST modules
+
+*** cb_api_endpoints
+
+This module primarily looks for what endpoint paths are exposed by each Crossbar endpoint module. This is done by parsing each module's `allowed_methods` exported functions and using the function's arguments and the returned list of HTTP verbs.
+
+Additionally, this module can take a JSON schema (using the module's name to determine the schema file name) and create a Markdown table.
+
+This functionality is utilized in the `to_ref_doc/0` and `to_swagger_json/0` to create [[https://github.com/2600hz/kazoo/tree/master/applications/crossbar/doc/ref][reference documentation files]] for each Crossbar endpoint and to populate/update a [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/swagger/swagger.json][swagger.json]] file. The ref docs are then used as guides in creating/updating the [[https://github.com/2600hz/kazoo/tree/master/applications/crossbar/doc][Crossbar documentation]].
+
+The next step is to create an escript that will, on each PR, run the `to_ref_doc/0`; if there are changes to the ref doc files, there will be unstaged changes that should trigger the committer to fold those into the docs. These unstaged changes can also be detected in CI and fail the build so that committers will be alerted.
+
+*** cf_data_usage
+
+This module looks for callflow action modules and traces the usage of `Data` in the `handle/2` exported function. It then looks for where the call paths get values out of the `Data` JSON object. Once collected, the module attempts to create/update a [[https://github.com/2600hz/kazoo/tree/184b16fe5ae9dd7481f70d1bcff5f21b6510f70b/applications/crossbar/priv/couchdb/schemas][`callflows.{ACTION}.json`]] JSON schema document. The module inserts the keys found, tries to guess the type permitted, and includes the default if applicable.
+
+This functionality is utilized in the `to_schema_docs/0` (to process all callflow actions - that is, modules that implement the gen_cf_action Erlang behaviour) and the `to_schema_doc/1`, which takes the callflow action's module name (eg cf_park, cf_user, cf_voicemail, etc).
+
+Similar to `cb_api_endpoints`, the next step is to make this an escript that runs on each build, creates unstaged changes, and forces a committer to address the detected changes.
+
+*** kapps_config_usage
+
+This module looks in all Kazoo Erlang application modules for calls to kapps_config (docs in the `system_config` database) getters. Similar to `cf_data_usage`, `kapps_config_usage` will create schemas if missing, update existing schemas, guess types, and include defaults if appropriate.

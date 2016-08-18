@@ -1,15 +1,10 @@
-/*
-Section: Crossbar
-Title: Registrations
-Language: en-US
-Version: 3.18
-*/
+
 
 The Registrations API provides an easy way to see and manage current registrations.
 
-## Crossbar Requests
+#### Crossbar Requests
 
-### _GET_ - Fetch account registrations
+##### _GET_ - Fetch account registrations
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/registrations'
     {"auth_token": "{AUTH_TOKEN}",
@@ -46,7 +41,7 @@ The Registrations API provides an easy way to see and manage current registratio
       "status": "success"
      }
 
-### _GET_ - Fetch account registration count
+##### _GET_ - Fetch account registration count
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/registrations/count'
     {"auth_token": "{AUTH_TOKEN}",
@@ -58,7 +53,7 @@ The Registrations API provides an easy way to see and manage current registratio
      "status": "success"
     }
 
-### _DELETE_ - Flush all registrations
+##### _DELETE_ - Flush all registrations
 
     curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/registrations/'
     {"auth_token": "{AUTH_TOKEN}",
@@ -68,7 +63,7 @@ The Registrations API provides an easy way to see and manage current registratio
      "status": "success"
     }
 
-### _DELETE_ - Flush a specific device's registration
+##### _DELETE_ - Flush a specific device's registration
 
     curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/registrations/{SIP_USERNAME}'
     {"auth_token": "{AUTH_TOKEN}",

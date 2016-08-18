@@ -1,13 +1,18 @@
 {application, skel,
  [
   {description, "Skel - A skeleton application useful for quickly creating services"},
-  {vsn, "0.0.1"},
+  {vsn, "4.0.0"},
   {modules, []},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {registered, [skel_cache, skel_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , kazoo_apps
+                 , kazoo_amqp
+                 , kazoo_data
+
+                 , lager
                  ]},
-  {mod, { skel_app, []}},
-  {env, []}
+  {mod, {skel_app, []}}
  ]}.

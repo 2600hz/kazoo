@@ -1,15 +1,9 @@
-/*
-Section: Crossbar
-Title: Apps Store
-Language: en-US
-Version: 3.19
-*/
 
-# Apps Store
+### Apps Store
 
 Apps Store list apps allowed  by your service plan.
 
-## Apps Structure
+#### Apps Structure
 
 Cannot be modified, only accesible by GET requests.
 
@@ -42,7 +36,7 @@ Ex:
 }
 ```
 
-### Install Master applications
+##### Install Master applications
 
 Assuming you've installed your Monster applications to `/path/to/monster-ui/apps`, you can run the following SUP command on the {{SERVER}}:
 
@@ -55,7 +49,7 @@ If you want to install a single Monster application:
     sup crossbar_maintenance init_app '/path/to/monster-ui/apps/{{APP}}' 'http://{{SERVER}}:8000/v2'
 
 
-## App Permission
+#### App Permission
 
 This is located on the account document.
 
@@ -89,7 +83,7 @@ This is located on the account document.
 | All  | Everyone in the account  | all
 | Admins | Only Admins  | admins
 
-## Crossbar
+#### Crossbar
 
 Using Crossbar to modify Apps is very simple:
 
@@ -100,9 +94,9 @@ Using Crossbar to modify Apps is very simple:
 
 `/v2/accounts/{{ACCOUNT_ID}}/apps_store`
 
-### Fetch App(s):
+##### Fetch App(s):
 
-#### Request
+###### Request
 
 `GET` request on:
 
@@ -118,7 +112,7 @@ curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://{{SERVER}}:8000/v2/account
 curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}
 ```
 
-#### Response
+###### Response
 
 ```
 {
@@ -127,11 +121,11 @@ curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://{{SERVER}}:8000/v2/account
 }
 ```
 
-### PUT - Install App:
+##### PUT - Install App:
 
 Install app on your account.
 
-#### Request
+###### Request
 
 `PUT` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}`
 
@@ -150,7 +144,7 @@ Install app on your account.
 curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}} -d '{"data": {"allowed_users": "specific","users": []}}'
 ```
 
-#### Response
+###### Response
 
 ```
 {
@@ -165,11 +159,11 @@ curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/jso
 
 
 
-### POST - Update an App permission:
+##### POST - Update an App permission:
 
 Update app permission on your account.
 
-#### Request
+###### Request
 
 `POST` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}`
 
@@ -186,7 +180,7 @@ Update app permission on your account.
 curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}} -d '{"data": {"allowed_users": "all"}}'
 ```
 
-#### Response
+###### Response
 
 ```
 {
@@ -197,11 +191,11 @@ curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/js
 }
 ```
 
-### DELETE - Uninstall an App:
+##### DELETE - Uninstall an App:
 
 Uninstall app on your account (remove permission for all users).
 
-#### Request
+###### Request
 
 `DELETE` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}`
 
@@ -210,7 +204,7 @@ Uninstall app on your account (remove permission for all users).
 curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}
 ```
 
-#### Response
+###### Response
 
 ```
 {
@@ -219,9 +213,9 @@ curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/
 }
 ```
 
-### Fetch App icon
+##### Fetch App icon
 
-#### Request
+###### Request
 
 `GET` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}/icon`
 
@@ -230,14 +224,14 @@ curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/
 curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://{{SERVER}}:8000/v2/apps_store/accounts/{{ACCOUNT_ID}}/{{APP_ID}}/icon
 ```
 
-#### Response
+###### Response
 
 Application Icon
 
 
-### Fetch App screen shots
+##### Fetch App screen shots
 
-#### Request
+###### Request
 
 `GET` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}/screenshot/{{NUMBER}}`
 
@@ -246,19 +240,19 @@ Application Icon
 curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://{{SERVER}}:8000/v2/apps_store/accounts/{{ACCOUNT_ID}}/{{APP_ID}}/screenshot/{{NUMBER}}
 ```
 
-#### Response
+###### Response
 
 Application Screen shot
 
-### Get Blacklist
+##### Get Blacklist
 
 Need to be reseller
 
-#### Request
+###### Request
 
 `GET` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/blacklist`
 
-#### Response
+###### Response
 
 ```json
 {
@@ -269,11 +263,11 @@ Need to be reseller
 }
 ```
 
-### Update Blacklist
+##### Update Blacklist
 
 Need to be reseller
 
-#### Request
+###### Request
 
 `POST` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/blacklist`
 
@@ -286,7 +280,7 @@ Need to be reseller
 }
 ```
 
-#### Response
+###### Response
 
 ```json
 {

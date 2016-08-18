@@ -1,7 +1,8 @@
 #!/bin/sh
 
-cd `dirname $0`
+cd $(dirname $0)
 
 export ERL_CRASH_DUMP=$PWD/../$(date +%s)_apps_erl_crash.dump
 export ERL_LIBS="$ERL_LIBS":$PWD/../deps:$PWD/../core:$PWD/../applications/
-exec erl -name whistle_apps -args_file /etc/kazoo/vm.args -detached -s whistle_apps
+
+exec erl -name kazoo_apps -args_file '/etc/kazoo/vm.args' -detached -s kazoo_apps

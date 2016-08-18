@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -7,31 +7,35 @@
 %%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(camper_request_listener).
+-behaviour(gen_listener).
 
 -export([start_link/0]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("camper.hrl").
--include_lib("rabbitmq_client/include/amqp_client.hrl").
+-include_lib("amqp_client/include/amqp_client.hrl").
 
--behaviour(gen_listener).
+-record(state, {}).
+-type state() :: #state{}.
+
+-define(SERVER, ?MODULE).
 
 %% gen_listener callbacks
 -export([handle_camper_req/3]).
 
--define(RESPONDERS, [{{'camper_request_listener', 'handle_camper_req'}
-                      ,[{<<"delegate">>, <<"job">>}]
+-define(RESPONDERS, [{{?MODULE, 'handle_camper_req'}
+                     ,[{<<"delegate">>, <<"job">>}]
                      }
                     ]).
 -define(BINDINGS, [{'delegate', [{'app_name', ?APP_NAME}
-                                 ,{'route_key', <<"*">>}
+                                ,{'route_key', <<"*">>}
                                 ]}
                   ]).
 -define(QUEUE_NAME, <<"camper_requests">>).
@@ -43,19 +47,15 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
-                                      ,{'bindings', ?BINDINGS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
+                                     ,{'bindings', ?BINDINGS}
+                                     ,{'queue_name', ?QUEUE_NAME}
+                                     ,{'queue_options', ?QUEUE_OPTIONS}
+                                     ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================
@@ -68,14 +68,14 @@ start_link() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_camper_req(wh_json:object(), wh_proplist(), gen_listener:basic_deliver()) -> any().
+-spec handle_camper_req(kz_json:object(), kz_proplist(), gen_listener:basic_deliver()) -> any().
 handle_camper_req(JObj, _Props, #'basic.deliver'{'routing_key' = Key}) ->
     case binary:split(Key, <<".">>, ['global']) of
         [_, ?APP_NAME, <<"offnet">>] ->
-            Msg = wh_json:get_value(<<"Delegate-Message">>, JObj),
+            Msg = kz_json:get_value(<<"Delegate-Message">>, JObj),
             camper_offnet_handler:add_request(Msg);
         [_, ?APP_NAME, <<"onnet">>] ->
-            Msg = wh_json:get_value(<<"Delegate-Message">>, JObj),
+            Msg = kz_json:get_value(<<"Delegate-Message">>, JObj),
             camper_onnet_handler:add_request(Msg)
     end.
 
@@ -96,7 +96,7 @@ handle_camper_req(JObj, _Props, #'basic.deliver'{'routing_key' = Key}) ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:info("started request listener"),
-    {'ok', 'ok'}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -112,6 +112,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -125,6 +126,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'gen_listener',{'created_queue',_QueueName}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
@@ -143,6 +145,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     lager:info("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
@@ -161,6 +164,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:info("request listener ~p termination", [_Reason]),
     'ok'.
@@ -173,6 +177,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

@@ -162,6 +162,21 @@
             "name": "Default Timezone",
             "required": false,
             "type": "string"
+        },
+        "voicemail": {
+            "properties": {
+                "notify": {
+                    "properties": {
+                        "callback": {
+                            "$ref": "notify.callback"
+                        }
+                    },
+                    "required": false,
+                    "type": "object"
+                }
+            },
+            "required": false,
+            "type": "object"
         }
     },
     "required": true,

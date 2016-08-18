@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
-%%%
-%%% Handle client requests for skel documents
 %%%
 %%% @end
 %%% @contributors
@@ -11,14 +9,14 @@
 -module(cb_schemas).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
-         ,authorize/1
-         ,authenticate/1
-         ,validate/1, validate/2, validate/3
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,authorize/1
+        ,authenticate/1
+        ,validate/1, validate/2, validate/3
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(VALIDATION_PATH_TOKEN, <<"validation">>).
 
@@ -65,9 +63,9 @@ authenticate_nouns(_) -> 'false'.
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
-allowed_methods(_) ->
+allowed_methods(_SchemaDoc) ->
     [?HTTP_GET].
-allowed_methods(_, ?VALIDATION_PATH_TOKEN) ->
+allowed_methods(_SchemaDoc, ?VALIDATION_PATH_TOKEN) ->
     [?HTTP_PUT].
 
 %%--------------------------------------------------------------------
@@ -82,8 +80,8 @@ allowed_methods(_, ?VALIDATION_PATH_TOKEN) ->
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() ->  'true'.
-resource_exists(_) -> 'true'.
-resource_exists(_, ?VALIDATION_PATH_TOKEN) -> 'true'.
+resource_exists(_SchemaName) -> 'true'.
+resource_exists(_SchemaName, ?VALIDATION_PATH_TOKEN) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -98,11 +96,11 @@ resource_exists(_, ?VALIDATION_PATH_TOKEN) -> 'true'.
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
-    lager:debug("load summary of schemas from ~s", [?WH_SCHEMA_DB]),
-    summary(cb_context:set_account_db(Context, ?WH_SCHEMA_DB)).
+    lager:debug("load summary of schemas from ~s", [?KZ_SCHEMA_DB]),
+    summary(cb_context:set_account_db(Context, ?KZ_SCHEMA_DB)).
 
 validate(Context, Id) ->
-    read(Id, cb_context:set_account_db(Context, ?WH_SCHEMA_DB)).
+    read(Id, cb_context:set_account_db(Context, ?KZ_SCHEMA_DB)).
 
 validate(Context, Id, ?VALIDATION_PATH_TOKEN) ->
     cb_context:validate_request_data(Id, Context, fun on_success/1).
@@ -123,7 +121,7 @@ on_success(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION_ANY).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -137,7 +135,7 @@ summary(Context) ->
     Context1 = crossbar_doc:load_docs(Context, fun normalize_view_results/2),
     cb_context:set_resp_data(
       Context1
-      ,lists:sort(cb_context:resp_data(Context1))
+                            ,lists:sort(cb_context:resp_data(Context1))
      ).
 
 %%--------------------------------------------------------------------
@@ -146,9 +144,9 @@ summary(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    case wh_doc:id(JObj) of
+    case kz_doc:id(JObj) of
         <<"_design/", _/binary>> -> Acc;
         ID -> [ID | Acc]
     end.

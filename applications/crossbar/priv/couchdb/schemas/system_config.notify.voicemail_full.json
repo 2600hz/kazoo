@@ -1,0 +1,19 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.notify.voicemail_full",
+    "description": "Schema for notify.voicemail_full system_config",
+    "properties": {
+        "default_enabled": {
+            "default": false,
+            "description": "notify.voicemail_full default enabled",
+            "name": "default_enabled",
+            "type": "boolean"
+        },
+        "default_to": {
+            "description": "notify.voicemail_full default to",
+            "name": "default_to"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

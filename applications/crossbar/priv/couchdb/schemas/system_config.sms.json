@@ -1,0 +1,24 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.sms",
+    "description": "Schema for sms system_config",
+    "properties": {
+        "outbound": {
+            "properties": {
+                "options": {
+                    "properties": {
+                        "default": {
+                            "delivery_mode": 2,
+                            "mandatory": true
+                        },
+                        "description": "sms options",
+                        "name": "options",
+                        "type": "object"
+                    }
+                }
+            }
+        }
+    },
+    "required": true,
+    "type": "object"
+}

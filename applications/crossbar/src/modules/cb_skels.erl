@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -12,27 +12,27 @@
 -module(cb_skels).
 
 -export([init/0
-         ,authenticate/1
-         ,authorize/1
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,content_types_provided/1
-         ,content_types_accepted/1
-         ,languages_provided/1
-         ,charsets_provided/1
-         ,encodings_provided/1
-         ,validate/1, validate/2
-         ,billing/1
-         ,put/1
-         ,post/2
-         ,patch/2
-         ,delete/2
-         ,etag/1
-         ,expires/1
-         ,finish_request/1
+        ,authenticate/1
+        ,authorize/1
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,content_types_provided/1
+        ,content_types_accepted/1
+        ,languages_provided/1
+        ,charsets_provided/1
+        ,encodings_provided/1
+        ,validate/1, validate/2
+        ,billing/1
+        ,put/1
+        ,post/2
+        ,patch/2
+        ,delete/2
+        ,etag/1
+        ,expires/1
+        ,finish_request/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"skels/crossbar_listing">>).
 
@@ -121,7 +121,7 @@ resource_exists(_) -> 'true'.
 %% @doc
 %% What content-types will the module be using to respond (matched against
 %% client's accept header)
-%% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% Of the form {atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
@@ -133,7 +133,7 @@ content_types_provided(Context) ->
 %% @doc
 %% What content-types will the module be requiring (matched to the client's
 %% Content-Type header
-%% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% Of the form {atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
@@ -311,7 +311,7 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"skel">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -355,9 +355,9 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), <<"skel">>));
+    cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"skel">>));
 on_successful_validation(Id, Context) ->
-    crossbar_doc:load_merge(Id, Context).
+    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"skel">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -365,6 +365,6 @@ on_successful_validation(Id, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].

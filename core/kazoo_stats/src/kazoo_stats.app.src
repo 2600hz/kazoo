@@ -1,0 +1,16 @@
+{application, kazoo_stats,
+ [
+  {description, "Kazoo Stats - An application for statistics tracking and analytics"},
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [kazoo_stats_sup, kazoo_stats]},
+  {applications, [ kernel
+                 , stdlib
+
+                 , kazoo
+                 , kazoo_amqp
+
+                 , lager
+                 ]},
+  {mod, {kazoo_stats_app, []}}
+ ]}.

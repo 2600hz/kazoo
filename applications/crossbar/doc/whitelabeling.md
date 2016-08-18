@@ -1,11 +1,5 @@
-/*
-Section: Crossbar
-Title: White-Labeling
-Language: en-US
-Version: 3.21
-*/
 
-## Domains
+#### Domains
 
 When you white label Kazoo's services, DNS settings are needed to make sure your hostname maps appropriate for the various DNS entries (CNAM, A, NAPTR, etc). If the system admin has configured their settings on the backend, you can query Crossbar to show you what your settings should map to.
 
@@ -111,7 +105,7 @@ Assuming your whitelabel domain is "mydomain.com" you should receive a payload s
 
 Here you can see which DNS records are supported and where they should point to access the Kazoo cluster.
 
-### Testing your domains
+##### Testing your domains
 
 Kazoo will attempt to validate your whitelabel settings if you send it a POST to do so:
 
@@ -204,7 +198,7 @@ Similar to the GET, you can include a `domain=` parameter in the request to test
 
 You should be able to compare your hosts in each DNS type against the expected values configured by the system admin and adjust your DNS settins as appropriate.
 
-### Configuring the Domains (System Administrators only)
+##### Configuring the Domains (System Administrators only)
 
 System administrators can set/update the domains object that is used when resellers whitelabel the service. The generic format of the JSON object is:
 
@@ -248,4 +242,4 @@ If you receive a 400 when POSTing with a response like:
      "status": "error"
     }
 
-You will need to run `sup whapps_maintenance refresh system_schemas` to ensure the `domains` schema is available.
+You will need to run `sup kapps_maintenance refresh system_schemas` to ensure the `domains` schema is available.

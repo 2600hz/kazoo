@@ -1,8 +1,0 @@
-{application, nksip_loadtest, [
-    {description, "NkSIP Framework Load Test Sample Application"},
-    {vsn, "0.4.0"},
-    {modules, []},
-    {registered, []},
-    {applications, [kernel, stdlib, nksip]},
-    {env, []}
-]}.

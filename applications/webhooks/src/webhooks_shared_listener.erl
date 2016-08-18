@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -11,37 +11,43 @@
 -behaviour(gen_listener).
 
 -export([start_link/0
-         ,hooks_configured/0
-         ,hooks_configured/1
-         ,handle_doc_type_update/2
+        ,hooks_configured/0
+        ,hooks_configured/1
+        ,handle_doc_type_update/2
 
-         ,add_object_bindings/1
-         ,remove_object_bindings/1
+        ,add_object_bindings/1
+        ,remove_object_bindings/1
+
+        ,add_account_bindings/0
+        ,remove_account_bindings/0
         ]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("webhooks.hrl").
+-include_lib("kazoo/include/kapi_conf.hrl").
+
+-define(SERVER, ?MODULE).
 
 -record(state, {}).
 -type state() :: #state{}.
 
 %% responsible for reloading auto-disabled webhooks
 -define(BINDINGS, [{'conf', [{'restrict_to', ['doc_type_updates']}
-                             ,{'type', kzd_webhook:type()}
+                            ,{'type', kzd_webhook:type()}
                             ]
                    }
                   ]).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_doc_type_update'}
-                       ,[{<<"configuration">>, <<"doc_type_update">>}]
-                      }
+                     ,[{<<"configuration">>, <<"doc_type_update">>}]
+                     }
                     ]).
 -define(QUEUE_NAME, <<"webhooks_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -52,34 +58,31 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
     {Bindings, Responders} = load_module_bindings_and_responders(),
-    gen_listener:start_link(?MODULE
-                            ,[{'bindings', Bindings}
-                              ,{'responders', Responders}
-                              ,{'queue_name', ?QUEUE_NAME}
-                              ,{'queue_options', ?QUEUE_OPTIONS}
-                              ,{'consume_options', ?CONSUME_OPTIONS}
-                             ]
-                            ,[]
+    gen_listener:start_link({'local', ?SERVER}
+                           ,?MODULE
+                           ,[{'bindings', Bindings}
+                            ,{'responders', Responders}
+                            ,{'queue_name', ?QUEUE_NAME}
+                            ,{'queue_options', ?QUEUE_OPTIONS}
+                            ,{'consume_options', ?CONSUME_OPTIONS}
+                            ]
+                           ,[]
                            ).
 
 -type load_acc() :: {gen_listener:bindings()
-                     ,gen_listener:responders()
+                    ,gen_listener:responders()
                     }.
 
 -spec load_module_bindings_and_responders() -> load_acc().
 load_module_bindings_and_responders() ->
     lists:foldl(fun load_module_fold/2
-                ,{?BINDINGS, ?RESPONDERS}
-                ,webhooks_init:existing_modules()
+               ,{?BINDINGS, ?RESPONDERS}
+               ,webhooks_init:existing_modules()
                ).
 
 -spec load_module_fold(atom(), load_acc()) -> load_acc().
@@ -88,7 +91,7 @@ load_module_fold(Module, {Bindings, Responders}=Acc) ->
         {ModBindings, ModResponders} ->
             lager:debug("added ~s bindings and responders", [Module]),
             {ModBindings ++ Bindings
-             ,ModResponders ++ Responders
+            ,ModResponders ++ Responders
             }
     catch
         'error':'undef' ->
@@ -96,50 +99,50 @@ load_module_fold(Module, {Bindings, Responders}=Acc) ->
             Acc;
         _E:_R ->
             lager:debug("~s failed to load bindings or responders: ~s: ~p"
-                        ,[Module, _E, _R]
+                       ,[Module, _E, _R]
                        ),
             Acc
     end.
 
--spec handle_doc_type_update(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_doc_type_update(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_doc_type_update(JObj, _Props) ->
-    'true' = wapi_conf:doc_type_update_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_conf:doc_type_update_v(JObj),
+    kz_util:put_callid(JObj),
 
     lager:debug("re-enabling hooks for ~s: ~s"
-                ,[wapi_conf:get_account_id(JObj)
-                  ,wapi_conf:get_action(JObj)
-                 ]),
-    webhooks_util:reenable(wapi_conf:get_account_id(JObj)
-                           ,wapi_conf:get_action(JObj)
+               ,[kapi_conf:get_account_id(JObj)
+                ,kapi_conf:get_action(JObj)
+                ]),
+    webhooks_util:reenable(kapi_conf:get_account_id(JObj)
+                          ,kapi_conf:get_action(JObj)
                           ),
 
-    ServerId = wh_api:server_id(JObj),
+    ServerId = kz_api:server_id(JObj),
     lager:debug("publishing resp to ~s", [ServerId]),
-    wh_amqp_worker:cast([{<<"status">>, <<"success">>}
-                         ,{<<"Event-Category">>, <<"configuration">>}
-                         ,{<<"Event-Name">>, <<"doc_type_updated">>}
-                         ,{<<"Msg-ID">>, wh_api:msg_id(JObj)}
-                         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    kz_amqp_worker:cast([{<<"status">>, <<"success">>}
+                        ,{<<"Event-Category">>, <<"configuration">>}
+                        ,{<<"Event-Name">>, <<"doc_type_updated">>}
+                        ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+                         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                         ]
-                        ,fun(P) -> wapi_self:publish_message(ServerId, P) end
+                       ,fun(P) -> kapi_self:publish_message(ServerId, P) end
                        ).
 
 -spec hooks_configured() -> 'ok'.
 -spec hooks_configured(ne_binary()) -> 'ok'.
 hooks_configured() ->
     MatchSpec = [{#webhook{_ = '_'}
-                  ,[]
-                  ,['$_']
+                 ,[]
+                 ,['$_']
                  }],
     print_summary(ets:select(webhooks_util:table_id(), MatchSpec, 1)).
 
 hooks_configured(AccountId) ->
     MatchSpec = [{#webhook{account_id = '$1'
-                           ,_ = '_'
+                          ,_ = '_'
                           }
-                  ,[{'=:=', '$1', {'const', AccountId}}]
-                  ,['$_']
+                 ,[{'=:=', '$1', {'const', AccountId}}]
+                 ,['$_']
                  }],
     print_summary(ets:select(webhooks_util:table_id(), MatchSpec, 1)).
 
@@ -151,8 +154,8 @@ print_summary('$end_of_table') ->
     io:format("no webhooks configured~n", []);
 print_summary(Match) ->
     io:format(?FORMAT_STRING_SUMMARY
-                ,[<<"URI">>, <<"VERB">>, <<"EVENT">>, <<"RETRIES">>, <<"ACCOUNT ID">>]
-                ),
+             ,[<<"URI">>, <<"VERB">>, <<"EVENT">>, <<"RETRIES">>, <<"ACCOUNT ID">>]
+             ),
     print_summary(Match, 0).
 
 print_summary('$end_of_table', Count) ->
@@ -162,12 +165,12 @@ print_summary({[#webhook{uri=URI
                         ,hook_event=Event
                         ,retries=Retries
                         ,account_id=AccountId
-                       }]
-               ,Continuation
+                        }]
+              ,Continuation
               }
-              ,Count) ->
+             ,Count) ->
     io:format(?FORMAT_STRING_SUMMARY
-              ,[URI, Verb, Event, wh_util:to_binary(Retries), AccountId]
+             ,[URI, Verb, Event, kz_util:to_binary(Retries), AccountId]
              ),
     print_summary(ets:select(Continuation), Count+1).
 
@@ -191,6 +194,25 @@ remove_object_bindings(AccountId) ->
         ],
     'ok'.
 
+-define(ACCOUNT_BINDING
+       ,{'conf', [{'restrict_to', ['doc_updates']}
+                 ,{'type', <<"database">>}
+                 ]
+        }
+       ).
+
+-spec add_account_bindings() -> 'ok'.
+add_account_bindings() ->
+    gen_listener:add_responder(?SERVER
+                              ,{'webhooks_init', 'maybe_init_account'}
+                              ,[{<<"configuration">>, ?DB_CREATED}]
+                              ),
+    gen_listener:add_binding(?SERVER, ?ACCOUNT_BINDING).
+
+-spec remove_account_bindings() -> 'ok'.
+remove_account_bindings() ->
+    gen_listener:rm_binding(?SERVER, ?ACCOUNT_BINDING).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -208,7 +230,7 @@ remove_object_bindings(AccountId) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -225,6 +247,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -238,6 +261,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
@@ -257,10 +281,10 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
-    _ = wh_util:spawn(?MODULE
-                      ,'maybe_handle_channel_event'
-                      ,[AccountId, EventType, JObj]
+    _ = kz_util:spawn(fun webhooks_channel_util:maybe_handle_channel_event/3
+                     ,[AccountId, EventType, JObj]
                      ),
     {'noreply', State};
 handle_info(_Info, State) ->
@@ -275,8 +299,16 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
 handle_event(_JObj, _State) ->
-    {'reply', []}.
+    WHZones = lists:sort([kz_util:to_binary(Z)
+                          || Z <- kz_nodes:whapp_zones(?APP_NAME)
+                         ]),
+    Options = [{<<"should_handle_federated">>
+               ,kz_util:to_binary(kz_nodes:local_zone()) == hd(WHZones)
+               }
+              ],
+    {'reply', Options}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -289,6 +321,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("shared listener terminating: ~p", [_Reason]).
 
@@ -300,6 +333,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

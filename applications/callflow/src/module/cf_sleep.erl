@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz INC
+%%% @copyright (C) 2016, 2600Hz INC
 %%% @doc
 %%%
 %%% data:{
@@ -15,7 +15,9 @@
 %%%-------------------------------------------------------------------
 -module(cf_sleep).
 
--include("../callflow.hrl").
+-behaviour(gen_cf_action).
+
+-include("callflow.hrl").
 
 -export([handle/2]).
 
@@ -25,19 +27,19 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     DurationMS = get_duration_ms(Data),
     lager:debug("sleeping for ~b ms", [DurationMS]),
-    case whapps_call_command:wait_for_hangup(DurationMS) of
+    case kapps_call_command:wait_for_hangup(DurationMS) of
         {'ok', 'channel_hungup'} -> cf_exe:stop(Call);
         {'error', 'timeout'} -> cf_exe:continue(Call)
     end.
 
--spec get_duration_ms(wh_json:object()) -> non_neg_integer().
+-spec get_duration_ms(kz_json:object()) -> non_neg_integer().
 get_duration_ms(Data) ->
-    Duration = wh_json:get_integer_value(<<"duration">>, Data, 0),
-    Unit = wh_json:get_value(<<"unit">>, Data, <<"s">>),
+    Duration = kz_json:get_integer_value(<<"duration">>, Data, 0),
+    Unit = kz_json:get_value(<<"unit">>, Data, <<"s">>),
     duration_to_ms(Duration, Unit).
 
 -spec duration_to_ms(integer(), ne_binary()) -> non_neg_integer().
@@ -60,8 +62,3 @@ constrain_duration(DurationMS) when DurationMS > ?MILLISECONDS_IN_DAY ->
     ?MILLISECONDS_IN_DAY;
 constrain_duration(DurationMS) ->
     DurationMS.
-
-
-
-
-

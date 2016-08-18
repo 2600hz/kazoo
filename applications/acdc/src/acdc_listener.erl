@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -7,44 +7,41 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(acdc_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
 
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("acdc.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {}).
+-type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'route', []}
-                   ,{'self', []}
-                   ,{'conf', [{'doc_type', <<"queue">>}
-                              ,{'action', <<"created">>}
-                             ]}
+-define(BINDINGS, [{'route', [{'restrict_to', ?RESOURCE_TYPES_HANDLED}]}
+                  ,{'self', []}
+                  ,{'conf', [{'doc_type', <<"queue">>}
+                            ,{'action', <<"created">>}
+                            ]}
                   ]).
 -define(RESPONDERS, [
                      %% Received because of our route binding
                      {{'acdc_handlers', 'handle_route_req'}
-                      ,[{<<"dialplan">>, <<"route_req">>}]
+                     ,[{<<"dialplan">>, <<"route_req">>}]
                      }
-                     %% Received because of our self binding (route_wins are sent to the route_resp's Server-ID
-                     %% which is usually populated with the listener's queue name
-                     ,{{'acdc_handlers', 'handle_route_win'}
-                       ,[{<<"dialplan">>, <<"route_win">>}]
-                      }
-                     ,{{'acdc_queue_handler', 'handle_config_change'}
-                       ,[{<<"configuration">>, <<"*">>}]
-                      }
+                    ,{{'acdc_queue_handler', 'handle_config_change'}
+                     ,[{<<"configuration">>, <<"*">>}]
+                     }
                     ]).
 
 %%%===================================================================
@@ -52,17 +49,14 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE
-                            ,[{'bindings', ?BINDINGS}
-                              ,{'responders', ?RESPONDERS}
-                             ], []).
+    gen_listener:start_link(?SERVER
+                           ,[{'bindings', ?BINDINGS}
+                            ,{'responders', ?RESPONDERS}
+                            ], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -70,15 +64,9 @@ start_link() ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
+%% @doc Initializes the server
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', #state{}}.
 init([]) -> {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -95,6 +83,7 @@ init([]) -> {'ok', #state{}}.
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -108,6 +97,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'created_queue',_QueueName}}, State) ->
@@ -126,6 +116,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -138,6 +129,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -152,6 +144,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("acdc listener terminating: ~p", [_Reason]).
 
@@ -163,6 +156,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

@@ -1,0 +1,61 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.smtp_client",
+    "description": "Schema for smtp_client system_config",
+    "properties": {
+        "auth": {
+            "default": "never",
+            "description": "smtp_client auth",
+            "name": "auth",
+            "type": "string"
+        },
+        "no_mx_lookups": {
+            "default": true,
+            "description": "smtp_client no mx lookups",
+            "name": "no_mx_lookups",
+            "type": "boolean"
+        },
+        "password": {
+            "default": "",
+            "description": "smtp_client password",
+            "name": "password",
+            "type": "string"
+        },
+        "port": {
+            "default": 25,
+            "description": "smtp_client port",
+            "name": "port",
+            "type": "integer"
+        },
+        "relay": {
+            "default": "localhost",
+            "description": "smtp_client relay",
+            "name": "relay",
+            "type": "string"
+        },
+        "retries": {
+            "default": 1,
+            "description": "smtp_client retries",
+            "name": "retries",
+            "type": "integer"
+        },
+        "tls": {
+            "description": "smtp_client tls",
+            "name": "tls"
+        },
+        "use_ssl": {
+            "default": false,
+            "description": "smtp_client use ssl",
+            "name": "use_ssl",
+            "type": "boolean"
+        },
+        "username": {
+            "default": "",
+            "description": "smtp_client username",
+            "name": "username",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

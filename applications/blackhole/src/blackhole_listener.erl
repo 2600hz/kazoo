@@ -1,29 +1,30 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(blackhole_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0
-         ,handle_amqp_event/3
-         ,add_call_binding/1, remove_call_binding/1
-         ,add_binding/2, remove_binding/2
+        ,handle_amqp_event/3
+        ,add_call_binding/1, add_call_binding/2, remove_call_binding/1, remove_call_binding/2
+        ,add_binding/2, remove_binding/2
         ]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("blackhole.hrl").
+
+-define(SERVER, ?MODULE).
 
 -record(state, {}).
 -type state() :: #state{}.
@@ -31,8 +32,8 @@
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, []).
 -define(RESPONDERS, [{{?MODULE, 'handle_amqp_event'}
-                      ,[{<<"*">>, <<"*">>}]
-                      }
+                     ,[{<<"*">>, <<"*">>}]
+                     }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -43,14 +44,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}
+    gen_listener:start_link({'local', ?SERVER}
                            ,?MODULE
                            ,[{'bindings', ?BINDINGS}
                             ,{'responders', ?RESPONDERS}
@@ -59,28 +57,36 @@ start_link() ->
                             ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                             ], []).
 
--spec handle_amqp_event(wh_json:object(), wh_proplist(), gen_listener:basic_deliver() | ne_binary()) -> any().
+-spec handle_amqp_event(kz_json:object(), kz_proplist(), gen_listener:basic_deliver() | ne_binary()) -> any().
 handle_amqp_event(EventJObj, Props, #'basic.deliver'{routing_key=RoutingKey}) ->
     handle_amqp_event(EventJObj, Props, RoutingKey);
 handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->
-    lager:debug("recv event ~p (~s)", [wh_util:get_event_type(EventJObj), RoutingKey]),
+    lager:debug("recv event ~p (~s)", [kz_util:get_event_type(EventJObj), RoutingKey]),
     blackhole_bindings:map(RoutingKey, EventJObj).
 
 -spec add_call_binding(ne_binary()) -> 'ok'.
 add_call_binding(AccountId) ->
-    gen_listener:cast(?MODULE, {'add_call_binding', AccountId}).
+    gen_listener:cast(?SERVER, {'add_call_binding', AccountId}).
+
+-spec add_call_binding(ne_binary(), ne_binary()) -> 'ok'.
+add_call_binding(AccountId, EventName) ->
+    gen_listener:cast(?SERVER, {'add_call_binding', AccountId, EventName}).
 
 -spec remove_call_binding(ne_binary()) -> 'ok'.
 remove_call_binding(AccountId) ->
-    gen_listener:cast(?MODULE, {'remove_call_binding', AccountId}).
+    gen_listener:cast(?SERVER, {'remove_call_binding', AccountId}).
 
--spec add_binding(atom(), wh_proplist()) -> 'ok'.
+-spec remove_call_binding(ne_binary(), ne_binary()) -> 'ok'.
+remove_call_binding(AccountId, Event) ->
+    gen_listener:cast(?SERVER, {'remove_call_binding', AccountId, Event}).
+
+-spec add_binding(atom(), kz_proplist()) -> 'ok'.
 add_binding(Wapi, Options) ->
-    gen_listener:add_binding(?MODULE, Wapi, Options).
+    gen_listener:add_binding(?SERVER, Wapi, Options).
 
--spec remove_binding(atom(), wh_proplist()) -> 'ok'.
+-spec remove_binding(atom(), kz_proplist()) -> 'ok'.
 remove_binding(Wapi, Options) ->
-    gen_listener:rm_binding(?MODULE, Wapi, Options).
+    gen_listener:rm_binding(?SERVER, Wapi, Options).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -114,6 +120,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -127,8 +134,18 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'add_call_binding', AccountId}, State) ->
-    wh_hooks:register(AccountId),
+    kz_hooks:register(AccountId),
+    {'noreply', State};
+handle_cast({'add_call_binding', AccountId, EventName}, State) ->
+    kz_hooks:register(AccountId, EventName),
+    {'noreply', State};
+handle_cast({'remove_call_binding', AccountId}, State) ->
+    kz_hooks:deregister(AccountId),
+    {'noreply', State};
+handle_cast({'remove_call_binding', AccountId, EventName}, State) ->
+    kz_hooks:deregister(AccountId, EventName),
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
@@ -147,17 +164,13 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(?HOOK_EVT(ne_binary(), ne_binary(), wh_json:object()) | _, state()) ->
+-spec handle_info(?HOOK_EVT(ne_binary(), ne_binary(), kz_json:object()), state()) ->
                          {'noreply', state()}.
-handle_info(?HOOK_EVT(_AccountId, EventType, JObj), State) ->
-    _ = wh_util:spawn(?MODULE, 'handle_amqp_event', [JObj, [], call_routing(EventType, JObj)]),
+handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
+    _ = kz_util:spawn(fun handle_hook_event/3, [AccountId, EventType, JObj]),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
-
--spec call_routing(ne_binary(), wh_json:object()) -> ne_binary().
-call_routing(EventType, JObj) ->
-    wapi_call:event_routing_key(EventType, wh_json:get_value(<<"Call-ID">>, JObj)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -167,6 +180,7 @@ call_routing(EventType, JObj) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -181,6 +195,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
@@ -192,9 +207,22 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec encode_call_id(kz_json:object()) -> ne_binary().
+encode_call_id(JObj) ->
+    amqp_util:encode(kz_call_event:call_id(JObj)).
+
+-spec handle_hook_event(ne_binary(), ne_binary(), kz_json:object()) -> any().
+handle_hook_event(AccountId, EventType, JObj) ->
+    RK = kz_util:join_binary([<<"call">>
+                             ,AccountId
+                             ,EventType
+                             ,encode_call_id(JObj)
+                             ], <<".">>),
+    handle_amqp_event(JObj, [], RK).

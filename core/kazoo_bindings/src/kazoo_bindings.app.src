@@ -1,0 +1,16 @@
+{application, kazoo_bindings,
+ [
+  {description, "Bindings Server - routing things to places"},
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [kazoo_bindings, kazoo_bindings_sup]},
+  {applications, [ kernel
+                 , stdlib
+
+                 , kazoo
+                 , kazoo_etsmgr
+
+                 , lager
+                 ]},
+  {mod, {kazoo_bindings_app, []}}
+ ]}.

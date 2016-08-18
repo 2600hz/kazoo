@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%% Manage the ETS table lookup for token server to account/client IP
 %%% @end
@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(acdc_stats_etsmgr).
-
 -behaviour(gen_server).
 
 %% API
@@ -15,11 +14,11 @@
 
 %% gen_server callbacks
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("acdc.hrl").
@@ -27,23 +26,21 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {table_id :: ets:tid()
-                ,etssrv :: pid()
-                ,give_away_ref :: reference()
+               ,etssrv :: pid()
+               ,give_away_ref :: reference()
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(ets:tab(), any()) -> startlink_ret().
 start_link(TableId, TableOptions) ->
-    gen_server:start_link(?MODULE, [TableId, TableOptions], []).
+    gen_server:start_link(?SERVER, [TableId, TableOptions], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -51,18 +48,12 @@ start_link(TableId, TableOptions) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
+%% @doc Initializes the server
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', #state{}}.
 init([TableId, TableOptions]) ->
     process_flag('trap_exit', 'true'),
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     gen_server:cast(self(), {'begin', TableId, TableOptions}),
 
     lager:debug("started etsmgr for stats for ~s", [TableId]),
@@ -83,6 +74,7 @@ init([TableId, TableOptions]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call: ~p", [_Request]),
     {'reply', {'error', 'not_implemented'}, State}.
@@ -97,12 +89,13 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'begin', TableId, TableOptions}, State) ->
     Tbl = ets:new(TableId, TableOptions),
 
     ets:setopts(Tbl, {'heir', self(), 'ok'}),
     {'noreply', State#state{table_id=Tbl
-                            ,give_away_ref=send_give_away_retry(Tbl, 'ok', 0)
+                           ,give_away_ref=send_give_away_retry(Tbl, 'ok', 0)
                            }};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -118,6 +111,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'EXIT', Etssrv, 'killed'}, #state{etssrv=Etssrv}=State) ->
     lager:debug("ets mgr ~p killed", [Etssrv]),
     {'noreply', State#state{etssrv='undefined'}};
@@ -128,28 +122,28 @@ handle_info({'EXIT', EtsMgr, _Reason}, #state{etssrv=EtsMgr}=State) ->
     lager:debug("ets mgr ~p exited: ~p", [EtsMgr, _Reason]),
     {'noreply', State#state{etssrv='undefined'}};
 handle_info({'ETS-TRANSFER', Tbl, Etssrv, Data}, #state{table_id=Tbl
-                                                        ,etssrv=Etssrv
-                                                        ,give_away_ref='undefined'
+                                                       ,etssrv=Etssrv
+                                                       ,give_away_ref='undefined'
                                                        }=State) ->
     lager:debug("ets table ~p transferred back to ourselves", [Tbl]),
     {'noreply', State#state{etssrv='undefined'
-                            ,give_away_ref=send_give_away_retry(Tbl, Data, 0)
+                           ,give_away_ref=send_give_away_retry(Tbl, Data, 0)
                            }};
 handle_info({'give_away', Tbl, Data}, #state{table_id=Tbl
-                                             ,etssrv='undefined'
-                                             ,give_away_ref=Ref
+                                            ,etssrv='undefined'
+                                            ,give_away_ref=Ref
                                             }=State) when is_reference(Ref) ->
     lager:debug("give away ~p: ~p", [Tbl, Data]),
     case find_ets_mgr(Tbl, Data) of
         P when is_pid(P) ->
             lager:debug("handing tbl ~p back to ~p and then to ~p", [Tbl, self(), P]),
             {'noreply', State#state{etssrv=P
-                                    ,give_away_ref='undefined'
+                                   ,give_away_ref='undefined'
                                    }};
         Ref when is_reference(Ref) ->
             lager:debug("ets mgr died already, hasn't resumed life yet; waiting"),
             {'noreply', State#state{etssrv='undefined'
-                                    ,give_away_ref=Ref
+                                   ,give_away_ref=Ref
                                    }}
     end;
 handle_info({'EXIT', _Pid, _Reason}, State) ->
@@ -183,6 +177,7 @@ send_give_away_retry(Tbl, Data, Timeout) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("ETS mgr going down: ~p", [_Reason]).
 
@@ -194,6 +189,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

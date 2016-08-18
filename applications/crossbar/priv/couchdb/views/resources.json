@@ -15,7 +15,7 @@
             "map": "function(doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; emit(doc._id, doc.name); }"
         },
         "listing_uac_gateways": {
-            "map": "function (doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted || !doc.enabled) return; for (var index in doc.gateways) { if (!doc.gateways[index] || !doc.gateways[index].register) { continue; } var gateway = doc.gateways[index]; emit(doc._id, {'username': gateway.username, 'auth_username': gateway.auth_username, 'server': gateway.server, 'password': gateway.password, 'realm': gateway.realm, 'expiration': gateway.expiration, 'proxy': gateway.proxy, 'account_id': doc.pvt_account_id, 'id': doc._id + '-' + index, 'resource_id': doc._id, 'register_extension': gateway.register_extension, 'version': doc._rev})}}"
+            "map": "function (doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted || !doc.enabled) return; for (var index in doc.gateways) { if (!doc.gateways[index] || !doc.gateways[index].register || doc.gateways[index].enabled == false) { continue; } var gateway = doc.gateways[index]; emit(doc._id, {'username': gateway.username, 'auth_username': gateway.auth_username, 'server': gateway.server, 'password': gateway.password, 'realm': gateway.realm, 'expiration': gateway.expiration, 'proxy': gateway.proxy, 'account_id': doc.pvt_account_id, 'id': doc._id + '-' + index, 'resource_id': doc._id, 'register_extension': gateway.register_extension, 'version': doc._rev})}}"
         }
     }
 }

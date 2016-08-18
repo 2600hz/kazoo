@@ -1,13 +1,19 @@
 {application, konami,
  [
   {description, "Konami - Map in-call DTMF sequences to call features"},
-  {vsn, "0.0.1"},
+  {vsn, "4.0.0"},
   {modules, []},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {registered, [konami_event_listener, konami_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , kazoo_apps
+                 , kazoo_amqp
+                 , kazoo_data
+                 , webseq
+
+                 , lager
                  ]},
-  {mod, { konami_app, []}},
-  {env, []}
+  {mod, {konami_app, []}}
  ]}.

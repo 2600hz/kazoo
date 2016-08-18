@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -14,18 +14,22 @@
 
 -include("doodle.hrl").
 
--define(ORIGIN_BINDINGS, [ [{'db', ?WH_SIP_DB }
-                            ,{'type', <<"device">>}
-                           ]
-                         ]).
--define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
+-define(SERVER, ?MODULE).
 
--define(CHILDREN, [?CACHE_ARGS(?DOODLE_CACHE, ?CACHE_PROPS)
-                   ,?WORKER('doodle_listener')
-                   ,?WORKER('doodle_shared_listener')
-                   ,?SUPER('doodle_event_handler_sup')
-                   ,?SUPER('doodle_exe_sup')
-                   ,?SUPER('doodle_inbound_listener_sup')
+-define(ORIGIN_BINDINGS, [[{'db', ?KZ_SIP_DB }
+                          ,{'type', <<"device">>}
+                          ]
+                         ]).
+
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
+                     ]).
+
+-define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
+                  ,?WORKER('doodle_listener')
+                  ,?WORKER('doodle_shared_listener')
+                  ,?SUPER('doodle_event_handler_sup')
+                  ,?SUPER('doodle_exe_sup')
+                  ,?SUPER('doodle_inbound_listener_sup')
                   ]).
 
 %% ===================================================================
@@ -34,13 +38,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -55,9 +57,9 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
-    wh_util:set_startup(),
+    kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

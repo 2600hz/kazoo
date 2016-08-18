@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -12,6 +12,8 @@
 
 -include("pivot.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% API
 -export([start_link/0]).
 -export([new/2]).
@@ -20,9 +22,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(Name, Restart, Shutdown, Type),
-        {Name, {Name, start_link, []}, Restart, Shutdown, Type, [Name]}).
+-define(CHILDREN, [?WORKER_TYPE('pivot_call', 'temporary')]).
 
 %% ===================================================================
 %% API functions
@@ -30,21 +30,20 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec new(whapps_call:call(), wh_json:object()) -> sup_startchild_ret().
+-spec new(kapps_call:call(), kz_json:object()) -> sup_startchild_ret().
 new(Call, JObj) ->
-    supervisor:start_child(?MODULE, [Call, JObj]).
+    ExtraArgs = [Call, JObj],
+    supervisor:start_child(?SERVER, ExtraArgs).
 
 -spec workers() -> [pid()].
 workers() ->
-    [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE)].
+    [Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -59,12 +58,12 @@ workers() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = simple_one_for_one,
+    RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 0,
     MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(pivot_call, temporary, 2000, worker)]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

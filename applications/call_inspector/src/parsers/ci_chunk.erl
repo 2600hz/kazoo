@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -12,7 +12,7 @@
 -export([setters/2]).
 -export([call_id/2, call_id/1]).
 -export([append_data/2
-         ,data/1, data/2
+        ,data/1, data/2
         ]).
 -export([timestamp/2, timestamp/1]).
 -export([ref_timestamp/1]).
@@ -24,13 +24,18 @@
 -export([label/2, label/1]).
 -export([c_seq/2, c_seq/1]).
 -export([to_json/1
-         ,from_json/1
+        ,from_json/1
         ]).
 -export([is_chunk/1]).
 -export([sort_by_timestamp/1
-         ,reorder_dialog/1
+        ,reorder_dialog/1
         ]).
 -export([get_dialog_entities/1]).
+
+-ifdef(TEST).
+- export([do_reorder_dialog/2]).
+- export([pick_ref_parser/1]).
+-endif.
 
 -record(ci_chunk, {call_id :: ne_binary()
                   ,data = [] :: ne_binaries()
@@ -43,22 +48,22 @@
                   ,parser :: ne_binary()
                   ,label :: ne_binary()
                   ,c_seq :: api_binary()  %% Parsing Kamailio logs: this can be undefined (DON'T parse them)
-                 }).
+                  }).
 -type chunk() :: #ci_chunk{}.
 
 -export_type([chunk/0]).
 
--include("../call_inspector.hrl").
+-include("call_inspector.hrl").
 
 -define(SETTER(Field),
         Field(#ci_chunk{}=Chunk, Value) ->
                Chunk#ci_chunk{Field = Value}
-       ).
+                   ).
 
 -define(GETTER(Field),
         Field(#ci_chunk{Field = Value}) ->
                Value
-       ).
+                   ).
 
 %% API
 
@@ -116,7 +121,7 @@ dst_ip(#ci_chunk{}=Chunk, Val) ->
 
 -spec parser(chunk(), atom()) -> chunk().
 parser(#ci_chunk{}=Chunk, Parser) ->
-    Chunk#ci_chunk{parser = wh_util:to_binary(Parser)}.
+    Chunk#ci_chunk{parser = kz_util:to_binary(Parser)}.
 -spec parser(chunk()) -> api_binary().
 ?GETTER(parser).
 
@@ -130,51 +135,51 @@ parser(#ci_chunk{}=Chunk, Parser) ->
 -spec c_seq(chunk()) -> api_binary().
 ?GETTER(c_seq).
 
--spec to_json(chunk()) -> wh_json:object().
+-spec to_json(chunk()) -> kz_json:object().
 to_json(Chunk) ->
-    wh_json:from_list(
+    kz_json:from_list(
       [{<<"call-id">>, call_id(Chunk)}
-       ,{<<"timestamp">>, timestamp(Chunk)}
-       ,{<<"ref_timestamp">>, wh_util:to_binary(ref_timestamp(Chunk))}
-       ,{<<"label">>, label(Chunk)}
-       ,{<<"raw">>, data(Chunk)}
-       ,{<<"src">>, src(Chunk)}
-       ,{<<"dst">>, dst(Chunk)}
-       ,{<<"parser">>, parser(Chunk)}
-       ,{<<"c_seq">>, c_seq(Chunk)}
+      ,{<<"timestamp">>, timestamp(Chunk)}
+      ,{<<"ref_timestamp">>, kz_util:to_binary(ref_timestamp(Chunk))}
+      ,{<<"label">>, label(Chunk)}
+      ,{<<"raw">>, data(Chunk)}
+      ,{<<"src">>, src(Chunk)}
+      ,{<<"dst">>, dst(Chunk)}
+      ,{<<"parser">>, parser(Chunk)}
+      ,{<<"c_seq">>, c_seq(Chunk)}
       ]
      ).
 
--spec from_json(wh_json:object()) -> chunk().
+-spec from_json(kz_json:object()) -> chunk().
 from_json(JObj) ->
-    {SrcIP, SrcPort} = src(wh_json:get_value(<<"src">>, JObj)),
-    {DstIP, DstPort} = dst(wh_json:get_value(<<"dst">>, JObj)),
+    {SrcIP, SrcPort} = src(kz_json:get_value(<<"src">>, JObj)),
+    {DstIP, DstPort} = dst(kz_json:get_value(<<"dst">>, JObj)),
     #ci_chunk{src_ip = SrcIP
-              ,dst_ip = DstIP
-              ,src_port = SrcPort
-              ,dst_port = DstPort
-              ,call_id = wh_json:get_value(<<"call-id">>, JObj)
-              ,timestamp = wh_json:get_value(<<"timestamp">>, JObj)
-              ,ref_timestamp = wh_json:get_float_value(<<"ref_timestamp">>, JObj)
-              ,label = wh_json:get_value(<<"label">>, JObj)
-              ,data = wh_json:get_value(<<"raw">>, JObj)
-              ,parser = wh_json:get_value(<<"parser">>, JObj)
-              ,c_seq = wh_json:get_value(<<"c_seq">>, JObj)
+             ,dst_ip = DstIP
+             ,src_port = SrcPort
+             ,dst_port = DstPort
+             ,call_id = kz_json:get_value(<<"call-id">>, JObj)
+             ,timestamp = kz_json:get_value(<<"timestamp">>, JObj)
+             ,ref_timestamp = kz_json:get_float_value(<<"ref_timestamp">>, JObj)
+             ,label = kz_json:get_value(<<"label">>, JObj)
+             ,data = kz_json:get_value(<<"raw">>, JObj)
+             ,parser = kz_json:get_value(<<"parser">>, JObj)
+             ,c_seq = kz_json:get_value(<<"c_seq">>, JObj)
              }.
 
 -spec src(chunk() | ne_binary()) -> ne_binary() | {ne_binary(), pos_integer()}.
 src(#ci_chunk{src_ip = Ip, src_port = Port}) ->
-    <<Ip/binary, ":", (wh_util:to_binary(Port))/binary>>;
+    <<Ip/binary, ":", (kz_util:to_binary(Port))/binary>>;
 src(Bin = <<_/binary>>) ->
     [IP, Port] = binary:split(Bin, <<":">>),
-    {IP, wh_util:to_integer(Port)}.
+    {IP, kz_util:to_integer(Port)}.
 
 -spec dst(chunk() | ne_binary()) -> ne_binary() | {ne_binary(), pos_integer()}.
 dst(#ci_chunk{dst_ip = Ip, dst_port = Port}) ->
-    <<Ip/binary, ":", (wh_util:to_binary(Port))/binary>>;
+    <<Ip/binary, ":", (kz_util:to_binary(Port))/binary>>;
 dst(Bin = <<_/binary>>) ->
     [IP, Port] = binary:split(Bin, <<":">>),
-    {IP, wh_util:to_integer(Port)}.
+    {IP, kz_util:to_integer(Port)}.
 
 -spec is_chunk(any()) -> boolean().
 is_chunk(#ci_chunk{}) -> 'true';
@@ -233,7 +238,7 @@ do_reorder_dialog(RefParser, Chunks) ->
                           {ReallyDone, NewRest} = second_pass(Done, Rest),
                           ReallyDone ++ NewRest
                   end
-                  ,GroupedByCSeq
+                 ,GroupedByCSeq
                  ).
 
 -spec sort_split_uniq(ne_binary(), [chunk()]) -> {[chunk()], [chunk()]}.
@@ -246,11 +251,11 @@ sort_split_uniq(RefParser, Chunks) ->
 -spec first_pass([chunk()], [chunk()]) -> {[chunk()], [chunk()]}.
 first_pass(InOrder, ToOrder) -> first_pass([], InOrder, ToOrder, []).
 first_pass(Before, [Ordered|InOrder], [Chunk|ToOrder], UnMergeable) ->
-    case {    label(Ordered) =:=    label(Chunk)
-         ,   dst_ip(Ordered) =:=   src_ip(Chunk) andalso
-           dst_port(Ordered) =:= src_port(Chunk)
-         ,   src_ip(Ordered) =:=   dst_ip(Chunk) andalso
-           src_port(Ordered) =:= dst_port(Chunk)
+    case {  label(Ordered) =:=    label(Chunk)
+         , dst_ip(Ordered) =:=   src_ip(Chunk)
+            andalso dst_port(Ordered) =:= src_port(Chunk)
+         , src_ip(Ordered) =:=   dst_ip(Chunk)
+            andalso src_port(Ordered) =:= dst_port(Chunk)
          }
     of
         {'true', 'true', 'true'} ->
@@ -271,9 +276,9 @@ first_pass(Before, InOrder, [], UnMergeable) ->
 
 -spec find_previous_packet(chunk(), [chunk()]) -> chunk() | 'no_previous'.
 find_previous_packet(#ci_chunk{parser = Parser
-                               ,ref_timestamp = RefTimestamp
+                              ,ref_timestamp = RefTimestamp
                               }
-                     ,Chunks) ->
+                    ,Chunks) ->
     RightPackets = [Chunk || Chunk <- Chunks, parser(Chunk) =:= Parser],
     Compare = fun (Chunk) -> ref_timestamp(Chunk) < RefTimestamp end,
     PreviousPackets = lists:takewhile(Compare, RightPackets),
@@ -307,18 +312,18 @@ second_pass(InOrder, [], UnMergeable) ->
 -spec is_duplicate([chunk()], chunk()) -> boolean().
 %% Assumes CSeq and Callid already equal.
 is_duplicate([#ci_chunk{dst_ip = DstIP
-                        ,src_ip = SrcIP
-                        ,dst_port = DstPort
-                        ,src_port = SrcPort
-                        ,label = Label
+                       ,src_ip = SrcIP
+                       ,dst_port = DstPort
+                       ,src_port = SrcPort
+                       ,label = Label
                        }
               |_]
-             ,#ci_chunk{dst_ip = DstIP
-                        ,src_ip = SrcIP
-                        ,dst_port = DstPort
-                        ,src_port = SrcPort
-                        ,label = Label
-                       }) ->
+            ,#ci_chunk{dst_ip = DstIP
+                      ,src_ip = SrcIP
+                      ,dst_port = DstPort
+                      ,src_port = SrcPort
+                      ,label = Label
+                      }) ->
     'true';
 is_duplicate([], _) ->
     'false';
@@ -334,7 +339,7 @@ c_seq_number(Chunk) ->
 group_by(Fun, List) ->
     dict:to_list(group_as_dict(Fun, List)).
 
--spec group_as_dict(fun((V) -> K), [V]) -> dict() when K :: atom().
+-spec group_as_dict(fun((V) -> K), [V]) -> dict:dict() when K :: atom().
 group_as_dict(Fun, List) ->
     F = fun(Value, Dict) ->
                 case Fun(Value) of

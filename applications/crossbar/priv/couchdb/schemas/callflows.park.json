@@ -1,0 +1,31 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.park",
+    "description": "Validator for the park callflow's data object",
+    "properties": {
+        "action": {
+            "default": "park",
+            "description": "",
+            "type": "string"
+        },
+        "default_callback_timeout": {
+            "description": "",
+            "type": "integer"
+        },
+        "default_presence_type": {
+            "description": "",
+            "type": "string"
+        },
+        "default_ringback_timeout": {
+            "description": "",
+            "type": "integer"
+        },
+        "slots": {
+            "default": {},
+            "description": "",
+            "type": "object"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

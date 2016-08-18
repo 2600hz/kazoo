@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz, INC
+%%% @copyright (C) 2012-2016, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -19,18 +19,10 @@
 -export([find_node/1]).
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, 'worker'=T) ->
-                                   {N, {N, 'start_link', []}, 'permanent', 5 * ?MILLISECONDS_IN_SECOND, T, [N]};
-                              (N, 'supervisor'=T) ->
-                                   {N, {N, 'start_link', []}, 'permanent', 'infinity', T, [N]}
-                           end(Name, Type)).
--define(NODE(N, As), {N, {'ecallmgr_fs_node_sup', 'start_link', As}
-                      ,'transient', 50 * ?MILLISECONDS_IN_SECOND, 'supervisor', ['ecallmgr_fs_node_sup']
-                     }).
--define(CHILDREN, [{'ecallmgr_fs_pinger_sup', 'supervisor'}
-                   ,{'ecallmgr_fs_nodes', 'worker'}
-                   ,{'ecallmgr_fs_channels', 'worker'}
-                   ,{'ecallmgr_fs_conferences', 'worker'}
+-define(CHILDREN, [?SUPER('ecallmgr_fs_pinger_sup')
+                  ,?WORKER('ecallmgr_fs_nodes')
+                  ,?WORKER('ecallmgr_fs_channels')
+                  ,?WORKER('ecallmgr_fs_conferences')
                   ]).
 
 %% ===================================================================
@@ -39,26 +31,26 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
-start_link() -> supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
+start_link() ->
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec add_node(atom(), wh_proplist()) ->
-                      {'error', any()} |
-                      {'ok', api_pid()} |
-                      {'ok', api_pid(), any()}.
-add_node(Node, Options) -> supervisor:start_child(?SERVER, ?NODE(Node, [Node, Options])).
+-spec add_node(atom(), kz_proplist()) -> sup_startchild_ret().
+add_node(Node, Options) ->
+    Args = [Node, Options],
+    ChildSpec = ?SUPER_NAME_ARGS_TYPE(Node, 'ecallmgr_fs_node_sup', Args, 'transient'),
+    supervisor:start_child(?SERVER, ChildSpec).
 
-find_node(Node) -> find_node(supervisor:which_children(?MODULE), Node).
+find_node(Node) ->
+    find_node(supervisor:which_children(?SERVER), Node).
 
 find_node([], _) -> 'undefined';
 find_node([{Node, Pid, 'supervisor', _}|_], Node) -> Pid;
 find_node([_|Workers], Node) -> find_node(Workers, Node).
 
--spec remove_node(atom()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
+-spec remove_node(atom()) -> 'ok' | {'error', any()}.
 remove_node(Node) ->
     _ = supervisor:terminate_child(?SERVER, Node),
     supervisor:delete_child(?SERVER, Node).
@@ -76,7 +68,7 @@ remove_node(Node) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
@@ -84,6 +76,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
-
-    {'ok', {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

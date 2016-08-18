@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% SBC Rate limits
@@ -13,15 +13,15 @@
 -module(cb_rate_limits).
 
 -export([init/0
-         ,allowed_methods/0
-         ,authorize/1
-         ,resource_exists/0
-         ,validate/1
-         ,post/1
-         ,delete/1
+        ,allowed_methods/0
+        ,authorize/1
+        ,resource_exists/0
+        ,validate/1
+        ,post/1
+        ,delete/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(LISTING_BY_OWNER, <<"rate_limits/list_by_owner">>).
 
@@ -60,9 +60,10 @@ authorize(Context) ->
     case thing_type_id(Context) of
         'undefined' -> 'false';
         _ ->
-            {'ok', MasterAccount} = whapps_util:get_master_account_id(),
+            {'ok', MasterAccount} = kapps_util:get_master_account_id(),
             AuthAccountId = cb_context:auth_account_id(Context),
-            AuthAccountId =:= MasterAccount orelse wh_services:is_reseller(AuthAccountId)
+            AuthAccountId =:= MasterAccount
+                orelse kz_services:is_reseller(AuthAccountId)
     end.
 
 -type thing_type() :: ne_binary().
@@ -138,17 +139,17 @@ validate_post_rate_limits(Context) ->
 -spec get_rate_limits_id_for_thing(cb_context:context(), ne_binary()) -> api_binaries().
 get_rate_limits_id_for_thing(Context, ThingId) ->
     ViewOpt = [{'key', ThingId}],
-    case couch_mgr:get_results(cb_context:account_db(Context), ?LISTING_BY_OWNER, ViewOpt) of
+    case kz_datamgr:get_results(cb_context:account_db(Context), ?LISTING_BY_OWNER, ViewOpt) of
         {'ok', JObjs} ->
-            lists:map(fun get_id/1, JObjs);
+            [get_id(JB) || JB <- JObjs];
         {'error', _Err} ->
             lager:error("Can't load rate limits due to err: ~p", [_Err]),
             'undefined'
     end.
 
--spec get_id(wh_json:object()) -> api_binary().
+-spec get_id(kz_json:object()) -> api_binary().
 get_id(JObj) ->
-    wh_doc:id(JObj).
+    kz_doc:id(JObj).
 
 -spec validate_get_rate_limits(cb_context:context(), api_binary()) -> cb_context:context().
 validate_get_rate_limits(Context, 'undefined') ->
@@ -156,11 +157,11 @@ validate_get_rate_limits(Context, 'undefined') ->
 validate_get_rate_limits(Context, ThingId) ->
     case get_rate_limits_id_for_thing(Context, ThingId) of
         'undefined' -> crossbar_util:response('fatal', <<"data collection error">>, 503, Context);
-        [] -> crossbar_doc:handle_json_success(wh_json:new(), Context);
-        [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context);
+        [] -> crossbar_doc:handle_json_success(kz_json:new(), Context);
+        [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context, ?TYPE_CHECK_OPTION(<<"rate_limits">>));
         RateLimitsIds ->
             lager:error("Found more than one result, please check ids(from db ~s): ~p"
-                        ,[cb_context:account_db(Context), RateLimitsIds]
+                       ,[cb_context:account_db(Context), RateLimitsIds]
                        ),
             crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
     end.
@@ -171,19 +172,19 @@ validate_delete_rate_limits(Context, 'undefined') ->
 validate_delete_rate_limits(Context, ThingId) ->
     case get_rate_limits_id_for_thing(Context, ThingId) of
         'undefined' -> crossbar_util:response('fatal', <<"data collection error">>, 503, Context);
-        [] -> crossbar_doc:handle_json_success(wh_json:new(), Context);
-        [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context);
+        [] -> crossbar_doc:handle_json_success(kz_json:new(), Context);
+        [RateLimitsId] -> crossbar_doc:load(RateLimitsId, Context, ?TYPE_CHECK_OPTION(<<"rate_limits">>));
         RateLimitsIds ->
             lager:error("Found more than one result, please check ids(from db ~s): ~p"
-                        ,[cb_context:account_db(Context), RateLimitsIds]
+                       ,[cb_context:account_db(Context), RateLimitsIds]
                        ),
             crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
     end.
 
 -spec validate_set_rate_limits(cb_context:context()) ->
-                                    cb_context:context().
+                                      cb_context:context().
 -spec validate_set_rate_limits(cb_context:context(), api_binary()) ->
-                                    cb_context:context().
+                                      cb_context:context().
 validate_set_rate_limits(Context) ->
     lager:debug("rate limits data is valid, setting on thing"),
     validate_set_rate_limits(Context, thing_id(Context)).
@@ -195,10 +196,10 @@ validate_set_rate_limits(Context, ThingId) ->
     case get_rate_limits_id_for_thing(Context, ThingId) of
         'undefined' -> crossbar_util:response('fatal', <<"data collection error">>, 503, Context);
         [] -> Context;
-        [RateLimitsId] -> crossbar_doc:load_merge(RateLimitsId, Context);
+        [RateLimitsId] -> crossbar_doc:load_merge(RateLimitsId, Context, ?TYPE_CHECK_OPTION(<<"rate_limits">>));
         RateLimitsIds ->
             lager:error("Found more than one result, please check ids(from db ~s): ~p"
-                        ,[cb_context:account_db(Context), RateLimitsIds]
+                       ,[cb_context:account_db(Context), RateLimitsIds]
                        ),
             crossbar_util:response('fatal', <<"data collection error">>, 503, Context)
     end.
@@ -206,17 +207,17 @@ validate_set_rate_limits(Context, ThingId) ->
 -spec set_pvt_fields(cb_context:context()) -> cb_context:context().
 set_pvt_fields(Context) ->
     ThingId = thing_id(Context),
-    {'ok', JObj} = couch_mgr:open_cache_doc(cb_context:account_db(Context), ThingId),
-    ThingType = wh_doc:type(JObj),
+    {'ok', JObj} = kz_datamgr:open_cache_doc(cb_context:account_db(Context), ThingId),
+    ThingType = kz_doc:type(JObj),
 
     Props = [{<<"pvt_type">>, <<"rate_limits">>}
-             ,{<<"pvt_owner_id">>, ThingId}
-             ,{<<"pvt_owner_type">>, ThingType}
-             ,{<<"pvt_queryname">>, query_name(ThingType, JObj)}
+            ,{<<"pvt_owner_id">>, ThingId}
+            ,{<<"pvt_owner_type">>, ThingType}
+            ,{<<"pvt_queryname">>, query_name(ThingType, JObj)}
             ],
-    cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context))).
+    cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context))).
 
--spec query_name(ne_binary(), wh_json:object()) -> api_binary().
+-spec query_name(ne_binary(), kz_json:object()) -> api_binary().
 query_name(<<"account">>, JObj) ->
     kz_account:realm(JObj);
 query_name(<<"device">>, JObj) ->

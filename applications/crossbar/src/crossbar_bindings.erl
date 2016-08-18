@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%% Store routing keys/pid bindings. When a binding is fired,
 %%% pass the payload to the pid for evaluation, accumulating
@@ -22,19 +22,22 @@
 
 %% API
 -export([bind/3
-         ,map/2
-         ,fold/2
-         ,flush/0, flush/1, flush_mod/1
-         ,modules_loaded/0
-         ,init/0
+        ,map/2
+        ,fold/2
+        ,flush/0, flush/1, flush_mod/1
+        ,modules_loaded/0
+        ]).
+
+-export([start_link/0
+        ,init/0
         ]).
 
 %% Helper Functions for Results of a map/2
 -export([any/1
-         ,all/1
-         ,succeeded/1
-         ,failed/1
-         ,matches/2
+        ,all/1
+        ,succeeded/1
+        ,failed/1
+        ,matches/2
         ]).
 
 -include("crossbar.hrl").
@@ -43,10 +46,10 @@
                    ne_binary() | % crossbar_cleanup
                    [cb_context:context() | path_token() | 'undefined',...] |
                    cb_context:context() |
-                   {cb_context:context(), wh_proplist()} | % v1_resource:rest_init/2
+                   {cb_context:context(), kz_proplist()} | % v1_resource:rest_init/2
                    {'error', _} | % v1_util:execute_request/2
-                   {wh_json:keys(), cb_context:context(), path_tokens()} |
-                   {wh_datetime(), cowboy_req:req(), cb_context:context()} | % v1_resource:expires/2
+                   {kz_json:keys(), cb_context:context(), path_tokens()} |
+                   {kz_datetime(), cowboy_req:req(), cb_context:context()} | % v1_resource:expires/2
                    {cowboy_req:req(), cb_context:context()}. % mapping over the request/context records
 
 %%%===================================================================
@@ -63,7 +66,7 @@
 -type map_results() :: [boolean() |
                         http_methods() |
                         {boolean() | 'halt', cb_context:context()}
-                        ].
+                       ].
 -spec map(ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     lager:debug("mapping ~s", [Routing]),
@@ -87,11 +90,11 @@ fold(Routing, Payload) ->
 %% Helper functions for working on a result set of bindings
 %% @end
 %%-------------------------------------------------------------------
--spec any(wh_proplist()) -> boolean().
+-spec any(kz_proplist()) -> boolean().
 any(Res) when is_list(Res) ->
     kazoo_bindings:any(Res, fun check_bool/1).
 
--spec all(wh_proplist()) -> boolean().
+-spec all(kz_proplist()) -> boolean().
 all(Res) when is_list(Res) ->
     kazoo_bindings:all(Res, fun check_bool/1).
 
@@ -111,10 +114,8 @@ failed(Res) when is_list(Res) ->
 matches([], _) -> 'false';
 matches([R|Restrictions], Tokens) ->
     Restriction = [cow_qs:urldecode(T) || T <- binary:split(R, <<"/">>, ['global', 'trim'])],
-    case kazoo_bindings:matches(Restriction, Tokens) of
-        'true' -> 'true';
-        'false' -> matches(Restrictions, Tokens)
-    end.
+    kazoo_bindings:matches(Restriction, Tokens)
+        orelse matches(Restrictions, Tokens).
 
 %%-------------------------------------------------------------------------
 %% @doc
@@ -138,7 +139,7 @@ filter_out_failed({'halt', _}) -> 'true';
 filter_out_failed({'false', _}) -> 'false';
 filter_out_failed('false') -> 'false';
 filter_out_failed({'EXIT', _}) -> 'false';
-filter_out_failed(Term) -> not wh_util:is_empty(Term).
+filter_out_failed(Term) -> not kz_util:is_empty(Term).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -152,7 +153,7 @@ filter_out_succeeded({'halt', _}) -> 'true';
 filter_out_succeeded({'false', _}) -> 'true';
 filter_out_succeeded('false') -> 'true';
 filter_out_succeeded({'EXIT', _}) -> 'true';
-filter_out_succeeded(Term) -> wh_util:is_empty(Term).
+filter_out_succeeded(Term) -> kz_util:is_empty(Term).
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
@@ -166,8 +167,7 @@ bind(Binding, Module, Fun) when is_binary(Binding) ->
 
 -spec flush() -> 'ok'.
 flush() ->
-    _ = [kazoo_bindings:flush_mod(Mod) || Mod <- modules_loaded()],
-    'ok'.
+    lists:foreach(fun kazoo_bindings:flush_mod/1, modules_loaded()).
 
 -spec flush(ne_binary()) -> 'ok'.
 flush(Binding) -> kazoo_bindings:flush(Binding).
@@ -186,40 +186,26 @@ modules_loaded() ->
 is_cb_module(<<"cb_", _/binary>>) -> 'true';
 is_cb_module(<<"crossbar_", _binary>>) -> 'true';
 is_cb_module(<<_/binary>>) -> 'false';
-is_cb_module(Mod) -> is_cb_module(wh_util:to_binary(Mod)).
+is_cb_module(Mod) -> is_cb_module(kz_util:to_binary(Mod)).
+
+-spec start_link() -> 'ignore'.
+start_link() ->
+    _ = init(),
+    'ignore'.
 
 -spec init() -> 'ok'.
 init() ->
     lager:debug("initializing bindings"),
 
-    wh_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?LOG_SYSTEM_ID),
     _ = [maybe_init_mod(Mod)
          || Mod <- crossbar_config:autoload_modules(?DEFAULT_MODULES)
-    ],
+        ],
     'ok'.
 
 -spec maybe_init_mod(ne_binary() | atom()) -> 'ok'.
 maybe_init_mod(Mod) ->
-    try (wh_util:to_atom(Mod, 'true')):init() of
-        _ -> 'ok'
-    catch
-        _E:_R ->
-            lager:notice("failed to initialize ~s: ~p (trying other versions)", [Mod, _R]),
-            maybe_init_mod_versions(?VERSION_SUPPORTED, Mod)
-    end.
-
--spec maybe_init_mod_versions(ne_binaries(), ne_binary() | atom()) -> 'ok'.
-maybe_init_mod_versions([], _) -> 'ok';
-maybe_init_mod_versions([Version|Versions], Mod) ->
-    Module = <<(wh_util:to_binary(Mod))/binary
-               , "_", (wh_util:to_binary(Version))/binary
-             >>,
-    try (wh_util:to_atom(Module, 'true')):init() of
-        _ ->
-            lager:notice("module ~s version ~s successfully loaded", [Mod, Version]),
-            maybe_init_mod_versions(Versions, Mod)
-    catch
-        _E:_R ->
-            lager:warning("failed to initialize module ~s version ~s: ~p", [Mod, Version, _R]),
-            maybe_init_mod_versions(Versions, Mod)
+    case crossbar_init:start_mod(Mod) of
+        'ok' -> 'ok';
+        {'error', Error} -> lager:notice("failed to initialize ~s: ~p", [Mod, Error])
     end.

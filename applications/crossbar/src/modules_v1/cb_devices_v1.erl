@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% Devices module
 %%%
@@ -13,19 +13,19 @@
 -module(cb_devices_v1).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/3
-         ,billing/1
-         ,authenticate/1
-         ,authorize/1
-         ,validate/1, validate/2, validate/4
-         ,put/1
-         ,post/2
-         ,delete/2
-         ,lookup_regs/1
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/3
+        ,resource_exists/0, resource_exists/1, resource_exists/3
+        ,billing/1
+        ,authenticate/1
+        ,authorize/1
+        ,validate/1, validate/2, validate/4
+        ,put/1
+        ,post/2
+        ,delete/2
+        ,lookup_regs/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(STATUS_PATH_TOKEN, <<"status">>).
 
@@ -104,11 +104,11 @@ billing(Context) ->
 
 process_billing(Context, [{<<"devices">>, _}|_], ?HTTP_GET) -> Context;
 process_billing(Context, [{<<"devices">>, _}|_], _Verb) ->
-    try wh_services:allow_updates(cb_context:account_id(Context)) of
+    try kz_services:allow_updates(cb_context:account_id(Context)) of
         'true' -> Context
     catch
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
     end;
 process_billing(Context, _Nouns, _Verb) -> Context.
 
@@ -177,14 +177,14 @@ validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, DeviceId) ->
-    _ = wh_util:spawn(fun() -> crossbar_util:flush_registration(Context) end),
+    _ = kz_util:spawn(fun crossbar_util:flush_registration/1, [Context]),
     case changed_mac_address(Context) of
         'true' ->
             _ = crossbar_util:maybe_refresh_fs_xml('device', Context),
             Context1 = cb_modules_util:take_sync_field(Context),
             Context2 = crossbar_doc:save(Context1),
             _ = maybe_aggregate_device(DeviceId, Context2),
-            _ = wh_util:spawn(
+            _ = kz_util:spawn(
                   fun() ->
                           _ = provisioner_util:maybe_provision(Context2),
                           _ = provisioner_util:maybe_sync_sip_data(Context1, 'device')
@@ -198,7 +198,7 @@ post(Context, DeviceId) ->
 put(Context) ->
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_device('undefined', Context1),
-    _ = wh_util:spawn('provisioner_util', 'maybe_provision', [Context1]),
+    _ = kz_util:spawn(fun provisioner_util:maybe_provision/1, [Context1]),
     Context1.
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
@@ -206,7 +206,7 @@ delete(Context, DeviceId) ->
     _ = crossbar_util:refresh_fs_xml(Context),
     Context1 = crossbar_doc:delete(Context),
     _ = crossbar_util:flush_registration(Context),
-    _ = wh_util:spawn('provisioner_util', 'maybe_delete_provision', [Context]),
+    _ = kz_util:spawn(fun provisioner_util:maybe_delete_provision/1, [Context]),
     _ = maybe_remove_aggregate(DeviceId, Context),
     Context1.
 
@@ -229,8 +229,8 @@ load_device_summary(Context) ->
     load_device_summary(Context, cb_context:req_nouns(Context)).
 
 load_device_summary(Context, [{<<"devices">>, []}
-                              ,{<<"users">>, [UserId]}
-                             |_]
+                             ,{<<"users">>, [UserId]}
+                              |_]
                    ) ->
     load_users_device_summary(Context, UserId);
 load_device_summary(Context, _ReqNouns) ->
@@ -240,9 +240,9 @@ load_device_summary(Context, _ReqNouns) ->
                                        cb_context:context().
 load_users_device_summary(Context, UserId) ->
     crossbar_doc:load_view(?OWNER_LIST
-                           ,[{'key', UserId}]
-                           ,Context
-                           ,fun normalize_view_results/2
+                          ,[{'key', UserId}]
+                          ,Context
+                          ,fun normalize_view_results/2
                           ).
 
 %%--------------------------------------------------------------------
@@ -260,12 +260,9 @@ validate_request(DeviceId, Context) ->
 -spec changed_mac_address(cb_context:context()) -> boolean().
 changed_mac_address(Context) ->
     NewAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
-    OldAddress = wh_json:get_ne_value(?KEY_MAC_ADDRESS, cb_context:fetch(Context, 'db_doc')),
-    case NewAddress =:= OldAddress of
-        'true' -> 'true';
-        'false' ->
-            unique_mac_address(NewAddress, Context)
-    end.
+    OldAddress = kz_json:get_ne_value(?KEY_MAC_ADDRESS, cb_context:fetch(Context, 'db_doc')),
+    NewAddress =:= OldAddress
+        orelse unique_mac_address(NewAddress, Context).
 
 -spec check_mac_address(api_binary(), cb_context:context()) -> cb_context:context().
 check_mac_address(DeviceId, Context) ->
@@ -274,7 +271,7 @@ check_mac_address(DeviceId, Context) ->
         'true' ->
             prepare_outbound_flags(DeviceId, Context);
         'false' ->
-           error_used_mac_address(Context)
+            error_used_mac_address(Context)
     end.
 
 -spec unique_mac_address(api_binary(), cb_context:context()) -> boolean().
@@ -289,18 +286,18 @@ error_used_mac_address(Context) ->
     MacAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
     cb_context:add_validation_error(
       ?KEY_MAC_ADDRESS
-      ,<<"unique">>
-      ,wh_json:from_list(
-         [{<<"message">>, <<"Mac address already in use">>}
-          ,{<<"cause">>, MacAddress}
-         ])
-      ,Context
+                                   ,<<"unique">>
+                                   ,kz_json:from_list(
+                                      [{<<"message">>, <<"Mac address already in use">>}
+                                      ,{<<"cause">>, MacAddress}
+                                      ])
+                                   ,Context
      ).
 
 -spec get_mac_addresses(ne_binary()) -> ne_binaries().
 get_mac_addresses(DbName) ->
-    case couch_mgr:get_all_results(DbName, ?CB_LIST_MAC) of
-        {'ok', AdJObj} -> couch_mgr:get_result_keys(AdJObj);
+    case kz_datamgr:get_all_results(DbName, ?CB_LIST_MAC) of
+        {'ok', AdJObj} -> kz_datamgr:get_result_keys(AdJObj);
         _ -> []
     end.
 
@@ -312,22 +309,22 @@ prepare_outbound_flags(DeviceId, Context) ->
             'undefined' -> cb_context:req_data(Context);
             [] -> cb_context:req_data(Context);
             Flags when is_list(Flags) ->
-                OutboundFlags = [wh_util:strip_binary(Flag)
+                OutboundFlags = [kz_util:strip_binary(Flag)
                                  || Flag <- Flags
                                 ],
-                wh_json:set_value(<<"outbound_flags">>, OutboundFlags, cb_context:req_data(Context));
+                kz_json:set_value(<<"outbound_flags">>, OutboundFlags, cb_context:req_data(Context));
             _Else ->
-                wh_json:set_value(<<"outbound_flags">>, [], cb_context:req_data(Context))
+                kz_json:set_value(<<"outbound_flags">>, [], cb_context:req_data(Context))
         end,
     prepare_device_realm(DeviceId, cb_context:set_req_data(Context, JObj)).
 
 -spec prepare_device_realm(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_device_realm(DeviceId, Context) ->
-    AccountRealm = wh_util:get_account_realm(cb_context:account_id(Context)),
+    AccountRealm = kz_util:get_account_realm(cb_context:account_id(Context)),
     Realm = cb_context:req_value(Context, [<<"sip">>, <<"realm">>], AccountRealm),
     case AccountRealm =:= Realm of
         'true' ->
-            JObj = wh_json:delete_key([<<"sip">>, <<"realm">>], cb_context:req_data(Context)),
+            JObj = kz_json:delete_key([<<"sip">>, <<"realm">>], cb_context:req_data(Context)),
             validate_device_creds(Realm, DeviceId, cb_context:set_req_data(Context, JObj));
         'false' ->
             validate_device_creds(Realm, DeviceId, cb_context:store(Context, 'aggregate_device', 'true'))
@@ -344,12 +341,12 @@ validate_device_creds(Realm, DeviceId, Context) ->
         Else ->
             C = cb_context:add_validation_error(
                   [<<"sip">>, <<"method">>]
-                  ,<<"enum">>
-                  ,wh_json:from_list([{<<"message">>, <<"SIP authentication method is invalid">>}
-                                      ,{<<"target">>, [<<"password">>, <<"ip">>]}
-                                      ,{<<"cause">>, Else}
-                                     ])
-                  ,Context
+                                               ,<<"enum">>
+                                               ,kz_json:from_list([{<<"message">>, <<"SIP authentication method is invalid">>}
+                                                                  ,{<<"target">>, [<<"password">>, <<"ip">>]}
+                                                                  ,{<<"cause">>, Else}
+                                                                  ])
+                                               ,Context
                  ),
             check_emergency_caller_id(DeviceId, C)
     end.
@@ -363,11 +360,11 @@ validate_device_password(Realm, DeviceId, Context) ->
         'false' ->
             C = cb_context:add_validation_error(
                   [<<"sip">>, <<"username">>]
-                  ,<<"unique">>
-                  ,wh_json:from_list([{<<"message">>, <<"SIP credentials already in use">>}
-                                      ,{<<"cause">>, Username}
-                                     ])
-                  ,Context
+                                               ,<<"unique">>
+                                               ,kz_json:from_list([{<<"message">>, <<"SIP credentials already in use">>}
+                                                                  ,{<<"cause">>, Username}
+                                                                  ])
+                                               ,Context
                  ),
             check_emergency_caller_id(DeviceId, C)
     end.
@@ -375,16 +372,16 @@ validate_device_password(Realm, DeviceId, Context) ->
 -spec validate_device_ip(ne_binary(), api_binary(), cb_context:context()) ->
                                 cb_context:context().
 validate_device_ip(IP, DeviceId, Context) ->
-    case wh_network_utils:is_ipv4(IP) of
+    case kz_network_utils:is_ipv4(IP) of
         'true' -> validate_device_ip_unique(IP, DeviceId, Context);
         'false' ->
             C = cb_context:add_validation_error(
                   [<<"sip">>, <<"ip">>]
-                  ,<<"type">>
-                  ,wh_json:from_list([{<<"message">>, <<"Must be a valid IPv4 RFC 791">>}
-                                      ,{<<"cause">>, IP}
-                                     ])
-                  ,Context
+                                               ,<<"type">>
+                                               ,kz_json:from_list([{<<"message">>, <<"Must be a valid IPv4 RFC 791">>}
+                                                                  ,{<<"cause">>, IP}
+                                                                  ])
+                                               ,Context
                  ),
             check_emergency_caller_id(DeviceId, C)
     end.
@@ -398,12 +395,12 @@ validate_device_ip_unique(IP, DeviceId, Context) ->
         'false' ->
             C = cb_context:add_validation_error(
                   [<<"sip">>, <<"ip">>]
-                  ,<<"unique">>
-                  ,wh_json:from_list(
-                     [{<<"message">>, <<"SIP IP already in use">>}
-                      ,{<<"cause">>, IP}
-                     ])
-                  ,Context
+                                               ,<<"unique">>
+                                               ,kz_json:from_list(
+                                                  [{<<"message">>, <<"SIP IP already in use">>}
+                                                  ,{<<"cause">>, IP}
+                                                  ])
+                                               ,Context
                  ),
             check_emergency_caller_id(DeviceId, C)
     end.
@@ -419,17 +416,17 @@ check_emergency_caller_id(DeviceId, Context) ->
 check_device_schema(DeviceId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,
     cb_context:validate_request_data(<<"devices">>
-                                     ,Context
-                                     ,OnSuccess
+                                    ,Context
+                                    ,OnSuccess
                                     ).
 
 -spec on_successful_validation(api_binary(), cb_context:context()) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"device">>}],
-    cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
+    cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(DeviceId, Context) ->
-    crossbar_doc:load_merge(DeviceId, Context).
+    crossbar_doc:load_merge(DeviceId, Context, ?TYPE_CHECK_OPTION(kz_device:type())).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -439,7 +436,7 @@ on_successful_validation(DeviceId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_device(ne_binary(), cb_context:context()) -> cb_context:context().
 load_device(DeviceId, Context) ->
-    crossbar_doc:load(DeviceId, Context).
+    crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION(kz_device:type())).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -450,7 +447,7 @@ load_device(DeviceId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_device_status(cb_context:context()) -> cb_context:context().
 load_device_status(Context) ->
-    AccountRealm = wh_util:get_account_realm(cb_context:account_id(Context)),
+    AccountRealm = kz_util:get_account_realm(cb_context:account_id(Context)),
     RegStatuses = lookup_regs(AccountRealm),
     lager:debug("reg statuses: ~p", [RegStatuses]),
     crossbar_util:response(RegStatuses, Context).
@@ -461,10 +458,10 @@ load_device_status(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) ->
-                                    wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
+                                    kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -475,38 +472,38 @@ normalize_view_results(JObj, Acc) ->
 %% accurate enough for the status icons.
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_regs(ne_binary()) -> wh_json:objects().
+-spec lookup_regs(ne_binary()) -> kz_json:objects().
 lookup_regs(AccountRealm) ->
     Req = [{<<"Realm">>, AccountRealm}
-           ,{<<"Fields">>, [<<"Authorizing-ID">>]}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ,{<<"Fields">>, [<<"Authorizing-ID">>]}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case whapps_util:amqp_pool_collect(Req
-                                       ,fun wapi_registration:publish_query_req/1
-                                       ,'ecallmgr'
-                                      )
+    case kapps_util:amqp_pool_collect(Req
+                                     ,fun kapi_registration:publish_query_req/1
+                                     ,'ecallmgr'
+                                     )
     of
         {'error', _E} ->
             lager:debug("error getting reg: ~p", [_E]),
             [];
         {_, JObjs} ->
-            [wh_json:from_list([{<<"device_id">>, AuthorizingId}
-                                ,{<<"registered">>, 'true'}
+            [kz_json:from_list([{<<"device_id">>, AuthorizingId}
+                               ,{<<"registered">>, 'true'}
                                ])
              || AuthorizingId <- extract_device_registrations(JObjs)
             ]
     end.
 
--spec extract_device_registrations(wh_json:objects()) -> ne_binaries().
+-spec extract_device_registrations(kz_json:objects()) -> ne_binaries().
 extract_device_registrations(JObjs) ->
     sets:to_list(extract_device_registrations(JObjs, sets:new())).
 
--spec extract_device_registrations(wh_json:objects(), set()) -> set().
+-spec extract_device_registrations(kz_json:objects(), sets:set()) -> sets:set().
 extract_device_registrations([], Set) -> Set;
 extract_device_registrations([JObj|JObjs], Set) ->
-    Fields = wh_json:get_value(<<"Fields">>, JObj, []),
+    Fields = kz_json:get_value(<<"Fields">>, JObj, []),
     S = lists:foldl(fun(J, S) ->
-                            case wh_json:get_ne_value(<<"Authorizing-ID">>, J) of
+                            case kz_json:get_ne_value(<<"Authorizing-ID">>, J) of
                                 'undefined' -> S;
                                 AuthId -> sets:add_element(AuthId, S)
                             end
@@ -530,23 +527,23 @@ is_sip_creds_unique(AccountDb, Realm, Username, DeviceId) ->
 
 -spec is_creds_locally_unique(ne_binary(), ne_binary(), ne_binary()) -> boolean().
 is_creds_locally_unique(AccountDb, Username, DeviceId) ->
-    ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Username)}],
-    case couch_mgr:get_results(AccountDb, <<"devices/sip_credentials">>, ViewOptions) of
+    ViewOptions = [{'key', kz_util:to_lower_binary(Username)}],
+    case kz_datamgr:get_results(AccountDb, <<"devices/sip_credentials">>, ViewOptions) of
         {'ok', []} -> 'true';
-        {'ok', [JObj]} -> wh_doc:id(JObj) =:= DeviceId;
+        {'ok', [JObj]} -> kz_doc:id(JObj) =:= DeviceId;
         {'error', 'not_found'} -> 'true';
         _ -> 'false'
     end.
 
 -spec is_creds_global_unique(ne_binary(), ne_binary(), ne_binary()) -> boolean().
 is_creds_global_unique(Realm, Username, DeviceId) ->
-    ViewOptions = [{<<"key">>, [wh_util:to_lower_binary(Realm)
-                                , wh_util:to_lower_binary(Username)
-                               ]
+    ViewOptions = [{'key', [kz_util:to_lower_binary(Realm)
+                           ,kz_util:to_lower_binary(Username)
+                           ]
                    }],
-    case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
+    case kz_datamgr:get_results(?KZ_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {'ok', []} -> 'true';
-        {'ok', [JObj]} -> wh_doc:id(JObj) =:= DeviceId;
+        {'ok', [JObj]} -> kz_doc:id(JObj) =:= DeviceId;
         {'error', 'not_found'} -> 'true';
         _ -> 'false'
     end.
@@ -562,15 +559,15 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
 maybe_aggregate_device(DeviceId, Context) ->
     maybe_aggregate_device(DeviceId, Context, cb_context:resp_status(Context)).
 maybe_aggregate_device(DeviceId, Context, 'success') ->
-    case wh_util:is_true(cb_context:fetch(Context, 'aggregate_device'))
-        andalso whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"allow_aggregates">>, <<"true">>)
+    case kz_util:is_true(cb_context:fetch(Context, 'aggregate_device'))
+        andalso kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"allow_aggregates">>, <<"true">>)
     of
         'false' ->
             maybe_remove_aggregate(DeviceId, Context);
         'true' ->
             lager:debug("adding device to the sip auth aggregate"),
-            {'ok', _} = couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(cb_context:doc(Context))),
-            whapps_util:amqp_pool_send([], fun(_) -> wapi_switch:publish_reload_acls() end),
+            {'ok', _} = kz_datamgr:ensure_saved(?KZ_SIP_DB, kz_doc:delete_revision(cb_context:doc(Context))),
+            kapps_util:amqp_pool_send([], fun(_) -> kapi_switch:publish_reload_acls() end),
             'true'
     end;
 maybe_aggregate_device(_, _, _) -> 'false'.
@@ -588,10 +585,10 @@ maybe_remove_aggregate(DeviceId, Context) ->
 
 maybe_remove_aggregate('undefined', _Context, _RespStatus) -> 'false';
 maybe_remove_aggregate(DeviceId, _Context, 'success') ->
-    case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
+    case kz_datamgr:open_doc(?KZ_SIP_DB, DeviceId) of
         {'ok', JObj} ->
-            _ = couch_mgr:del_doc(?WH_SIP_DB, JObj),
-            whapps_util:amqp_pool_send([], fun(_) -> wapi_switch:publish_reload_acls() end),
+            _ = kz_datamgr:del_doc(?KZ_SIP_DB, JObj),
+            kapps_util:amqp_pool_send([], fun(_) -> kapi_switch:publish_reload_acls() end),
             'true';
         {'error', 'not_found'} -> 'false'
     end;

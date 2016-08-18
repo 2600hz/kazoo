@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2015, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -10,27 +10,29 @@
 -behaviour(supervisor).
 
 -export([start_link/0
-         ,render_farm_name/0
+        ,render_farm_name/0
         ]).
 -export([init/1]).
 
 -include("teletype.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(POOL_NAME, 'teletype_render_farm').
--define(POOL_SIZE, whapps_config:get_integer(?APP_NAME, <<"render_farm_workers">>, 50)).
+-define(POOL_SIZE, kapps_config:get_integer(?APP_NAME, <<"render_farm_workers">>, 50)).
 -define(POOL_OVERFLOW, 50).
 
 -define(POOL_ARGS, [[{'worker_module', 'teletype_renderer'}
-                     ,{'name', {'local', ?POOL_NAME}}
-                     ,{'size', ?POOL_SIZE}
-                     ,{'max_overflow', ?POOL_OVERFLOW}
+                    ,{'name', {'local', ?POOL_NAME}}
+                    ,{'size', ?POOL_SIZE}
+                    ,{'max_overflow', ?POOL_OVERFLOW}
                     ]]).
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE(?CACHE_NAME)
-                   ,?WORKER_NAME_ARGS('poolboy', ?POOL_NAME, ?POOL_ARGS)
-                   ,?WORKER('teletype_listener')
-                   ,?WORKER('teletype_shared_listener')
+                  ,?WORKER_NAME_ARGS('poolboy', ?POOL_NAME, ?POOL_ARGS)
+                  ,?WORKER('teletype_listener')
+                  ,?WORKER('teletype_shared_listener')
                   ]).
 
 %% ===================================================================
@@ -39,13 +41,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec render_farm_name() -> ?POOL_NAME.
 render_farm_name() ->
@@ -64,9 +64,9 @@ render_farm_name() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
-    wh_util:set_startup(),
+    kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

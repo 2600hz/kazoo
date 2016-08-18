@@ -1,0 +1,17 @@
+{application, kazoo_ips
+,[
+  {description, "Kazoo Dedicated IP Management"}
+ ,{vsn, "4.0.0"}
+ ,{modules, []}
+ ,{registered, [ ]}
+ ,{applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , kazoo
+                 , kazoo_data
+                 , kazoo_services
+
+                 , lager
+                 ]}
+ ]}.

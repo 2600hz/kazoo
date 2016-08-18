@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -12,13 +12,15 @@
 
 %% API
 -export([start_link/0
-         ,new/1
+        ,new/1
         ]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 -include("cccp.hrl").
+
+-define(SERVER, ?MODULE).
 
 -define(CHILDREN, [?WORKER_TYPE('cccp_callback_listener', 'temporary')]).
 
@@ -27,18 +29,15 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec(start_link() ->
-    {ok, Pid :: pid()} | ignore | {error, Reason :: any()}).
+-spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec new(wh_json:object()) -> sup_startchild_ret().
-new(JObj) -> supervisor:start_child(?MODULE, [JObj]).
+-spec new(kz_json:object()) -> sup_startchild_ret().
+new(JObj) ->
+    supervisor:start_child(?SERVER, [JObj]).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -53,7 +52,7 @@ new(JObj) -> supervisor:start_child(?MODULE, [JObj]).
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 5,

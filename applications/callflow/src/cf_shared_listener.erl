@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% Listener for route requests that can be fulfilled by callflows
 %%% @end
@@ -7,44 +7,46 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_shared_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("callflow.hrl").
 
+-record(state, {}).
+-type state() :: #state{}.
+
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{'notifications'
-                    ,[{'restrict_to', ['register']}]
+                   ,[{'restrict_to', ['register']}]
                    },
                    {'presence'
-                    ,[{'restrict_to', ['probe', 'mwi_query']}
-                      ,{'probe_type', <<"dialog">>}
-                     ]
+                   ,[{'restrict_to', ['probe', 'mwi_query']}
+                    ,{'probe_type', <<"dialog">>}
+                    ]
                    }
-                   ,{'self', []}
-                   ,{'callflow', []}
+                  ,{'self', []}
+                  ,{'callflow', []}
                   ]).
 -define(RESPONDERS, [{{'cf_util', 'presence_probe'}
-                      ,[{<<"presence">>, <<"probe">>}]
+                     ,[{<<"presence">>, <<"probe">>}]
                      }
-                     ,{{'cf_util', 'presence_mwi_query'}
-                       ,[{<<"presence">>, <<"mwi_query">>}]
-                      }
-                     ,{{'cf_util', 'notification_register'}
-                       ,[{<<"notification">>, <<"register">>}]
-                      }
-                     ,{'cf_route_resume', [{<<"callflow">>, <<"resume">>}]}
+                    ,{{'cf_util', 'presence_mwi_query'}
+                     ,[{<<"presence">>, <<"mwi_query">>}]
+                     }
+                    ,{{'cf_util', 'notification_register'}
+                     ,[{<<"notification">>, <<"register">>}]
+                     }
+                    ,{'cf_route_resume', [{<<"callflow">>, <<"resume">>}]}
                     ]).
 -define(QUEUE_NAME, <<"callflow_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -55,18 +57,15 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
-                                      ,{'bindings', ?BINDINGS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
+                                     ,{'bindings', ?BINDINGS}
+                                     ,{'queue_name', ?QUEUE_NAME}
+                                     ,{'queue_options', ?QUEUE_OPTIONS}
+                                     ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================
@@ -86,7 +85,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:debug("starting new callflow shared queue server"),
-    {'ok', []}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -102,6 +101,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Msg, _From, State) ->
     {'noreply', State}.
 
@@ -115,6 +115,7 @@ handle_call(_Msg, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -128,6 +129,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -140,6 +142,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -166,6 +169,7 @@ terminate(_Reason, _) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%% Text To Speech
 %%% Data = {
@@ -17,23 +17,23 @@
 
 -export([handle/2]).
 
--include("../konami.hrl").
+-include("konami.hrl").
 
--spec handle(wh_json:object(), whapps_call:call()) ->
-                    {'continue', whapps_call:call()}.
+-spec handle(kz_json:object(), kapps_call:call()) ->
+                    {'continue', kapps_call:call()}.
 handle(Data, Call) ->
-    TTS = wh_json:get_value(<<"text">>, Data),
+    TTS = kz_json:get_value(<<"text">>, Data),
     lager:debug("tts: '~s'", [TTS]),
 
-    TTSCommand = whapps_call_command:tts_command(TTS
-                                                 ,wh_json:get_value(<<"voice">>, Data)
-                                                 ,wh_json:get_value(<<"language">>, Data)
-                                                 ,wh_json:get_value(<<"terminators">>, Data)
-                                                 ,wh_json:get_value(<<"engine">>, Data)
-                                                 ,Call
-                                                ),
-    whapps_call_command:send_command(
-      wh_json:set_value(<<"Insert-At">>, <<"now">>, TTSCommand)
-      ,Call
+    TTSCommand = kapps_call_command:tts_command(TTS
+                                               ,kz_json:get_value(<<"voice">>, Data)
+                                               ,kz_json:get_value(<<"language">>, Data)
+                                               ,kz_json:get_value(<<"terminators">>, Data)
+                                               ,kz_json:get_value(<<"engine">>, Data)
+                                               ,Call
+                                               ),
+    kapps_call_command:send_command(
+      kz_json:set_value(<<"Insert-At">>, <<"now">>, TTSCommand)
+                                   ,Call
      ),
     {'continue', Call}.

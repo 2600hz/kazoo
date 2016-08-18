@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -20,20 +20,24 @@
 %% ===================================================================
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application start behaviour
-%% @end
+%% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(any(), any()) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
-start(_StartType, _StartArgs) -> registrar:start_link().
+-spec start(application:start_type(), any()) -> startapp_ret().
+start(_StartType, _StartArgs) ->
+    _ = declare_exchanges(),
+    registrar_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application stop behaviour
-%% @end
+%% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
-stop(_State) -> registrar:stop().
+-spec stop(any()) -> any().
+stop(_State) ->
+    'ok'.
+
+
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = kapi_authn:declare_exchanges(),
+    _ = kapi_route:declare_exchanges(),
+    kapi_self:declare_exchanges().

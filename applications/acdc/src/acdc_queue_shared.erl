@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -8,51 +8,53 @@
 %%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(acdc_queue_shared).
-
 -behaviour(gen_listener).
 
 %% API
 -export([start_link/4
-         ,ack/2
-         ,nack/2
-         ,deliveries/1
+        ,ack/2
+        ,nack/2
+        ,deliveries/1
         ]).
 
 %% gen_server callbacks
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("acdc.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {fsm_pid :: pid()
-                ,deliveries = [] :: deliveries()
+               ,deliveries = [] :: deliveries()
                }).
+-type state() :: #state{}.
 
 -define(SHARED_BINDING_OPTIONS(Priority)
-        ,[{'consume_options', [{'no_ack', 'false'}
-                               ,{'exclusive', 'false'}
-                              ]}
-          ,{'basic_qos', 1}
-          ,{'queue_options', [{'exclusive', 'false'}
-                              ,{'arguments', [{<<"x-message-ttl">>, ?MILLISECONDS_IN_DAY}
-                                              ,{<<"x-max-length">>, 1000}
-                                              ,{<<"x-max-priority">>, Priority}
-                                             ]
-                               }
-                             ]
-           }
-         ]).
+       ,[{'consume_options', [{'no_ack', 'false'}
+                             ,{'exclusive', 'false'}
+                             ]}
+        ,{'basic_qos', 1}
+        ,{'queue_options', [{'exclusive', 'false'}
+                           ,{'arguments', [{<<"x-message-ttl">>, ?MILLISECONDS_IN_DAY}
+                                          ,{<<"x-max-length">>, 1000}
+                                          ,{<<"x-max-priority">>, Priority}
+                                          ]
+                            }
+                           ]
+         }
+        ]).
 
 -define(SHARED_QUEUE_BINDINGS(AcctId, QueueId), [{'self', []}]).
 
 -define(RESPONDERS, [{{'acdc_queue_handler', 'handle_member_call'}
-                      ,[{<<"member">>, <<"call">>}]
+                     ,[{<<"member">>, <<"call">>}]
                      }
                     ]).
 
@@ -61,21 +63,17 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(server_ref(), ne_binary(), ne_binary(), api_integer()) -> startlink_ret().
 start_link(FSMPid, AcctId, QueueId, Priority) ->
-    gen_listener:start_link(?MODULE
-                            ,[{'bindings', ?SHARED_QUEUE_BINDINGS(AcctId, QueueId)}
-                              ,{'responders', ?RESPONDERS}
-                              ,{'queue_name', wapi_acdc_queue:shared_queue_name(AcctId, QueueId)}
-                              | ?SHARED_BINDING_OPTIONS(Priority)
-                             ]
-                            ,[FSMPid]
+    gen_listener:start_link(?SERVER
+                           ,[{'bindings', ?SHARED_QUEUE_BINDINGS(AcctId, QueueId)}
+                            ,{'responders', ?RESPONDERS}
+                            ,{'queue_name', kapi_acdc_queue:shared_queue_name(AcctId, QueueId)}
+                             | ?SHARED_BINDING_OPTIONS(Priority)
+                            ]
+                           ,[FSMPid]
                            ).
 
 -spec ack(server_ref(), gen_listener:basic_deliver()) -> 'ok'.
@@ -108,7 +106,7 @@ deliveries(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([FSMPid]) ->
-    wh_util:put_callid(?LOG_SYSTEM_ID),
+    kz_util:put_callid(?LOG_SYSTEM_ID),
 
     lager:debug("shared queue proc started, sending messages to FSM ~p", [FSMPid]),
     {'ok', #state{fsm_pid=FSMPid}}.
@@ -127,6 +125,7 @@ init([FSMPid]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call('deliveries', _From, #state{deliveries=Ds}=State) ->
     {'reply', Ds, State};
 handle_call(_Request, _From, State) ->
@@ -142,6 +141,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'delivery', Delivery}, #state{deliveries=Ds}=State) ->
     {'noreply', State#state{deliveries=[Delivery|Ds]}};
 handle_cast({'ack', Delivery}, #state{deliveries=Ds}=State) ->
@@ -166,6 +166,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'basic.cancel',_,'true'}, State) ->
     lager:debug("recv basic.cancel...no!!!"),
     {'noreply', State};
@@ -182,6 +183,7 @@ handle_info(_Info, State) ->
 %%                                   ignore
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
 handle_event(_JObj, #state{fsm_pid=FSM}) ->
     {'reply', [{'fsm_pid', FSM}]}.
 
@@ -196,6 +198,7 @@ handle_event(_JObj, #state{fsm_pid=FSM}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{deliveries=Ds}) ->
     _ = [catch amqp_util:basic_nack(Delivery) || Delivery <- Ds],
     lager:debug("acdc_queue_shared terminating: ~p", [_Reason]).
@@ -208,6 +211,7 @@ terminate(_Reason, #state{deliveries=Ds}) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

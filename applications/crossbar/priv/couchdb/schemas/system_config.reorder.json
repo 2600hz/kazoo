@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.reorder",
+    "description": "Schema for reorder system_config",
+    "properties": {
+        "assume_inbound_e164": {
+            "description": "reorder assume inbound e164",
+            "name": "assume_inbound_e164",
+            "type": "boolean"
+        },
+        "known-error-code": {
+            "default": "686",
+            "description": "reorder known-error-code",
+            "name": "known-error-code",
+            "type": "string"
+        },
+        "known-error-message": {
+            "default": "PEBCAK",
+            "description": "reorder known-error-message",
+            "name": "known-error-message",
+            "type": "string"
+        },
+        "unknown-error-code": {
+            "default": "604",
+            "description": "reorder unknown-error-code",
+            "name": "unknown-error-code",
+            "type": "string"
+        },
+        "unknown-error-message": {
+            "default": "Nope Nope Nope",
+            "description": "reorder unknown-error-message",
+            "name": "unknown-error-message",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

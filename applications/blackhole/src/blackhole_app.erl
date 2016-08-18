@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -9,29 +9,26 @@
 
 -behaviour(application).
 
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 -export([start/2, stop/1]).
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application start behaviour
-%% @end
+%% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(any(), any()) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
+-spec start(application:start_type(), any()) -> startapp_ret().
 start(_Type, _Args) ->
-    blackhole:start_link().
+    OK = blackhole_sup:start_link(),
+    _ = blackhole_bindings:init(), %% FIXME: the OTP way to supervise this?
+    OK.
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application stop behaviour
-%% @end
+%% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
+-spec stop(any()) -> any().
 stop(_State) ->
-    cowboy:stop_listener('blackhole'),
-    blackhole:stop().
+    _ = cowboy:stop_listener('blackhole'),
+    _ = cowboy:stop_listener('blackhole_http_listener'),
+    'ok'.

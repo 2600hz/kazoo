@@ -1,13 +1,19 @@
 {application, teletype,
  [
   {description, "Teletype - Receive events and send them to interested parties"},
-  {vsn, "0.0.1"},
+  {vsn, "4.0.0"},
   {modules, []},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {registered, [teletype_cache, teletype_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , kazoo_apps
+                 , kazoo_amqp
+                 , kazoo_data
+
+                 , lager
+                 , poolboy
                  ]},
-  {mod, { teletype_app, []}},
-  {env, []}
+  {mod, {teletype_app, []}}
  ]}.

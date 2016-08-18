@@ -1,12 +1,21 @@
 {application, blackhole,
  [
   {description, "blackhole - websocket"},
-  {vsn, "1"},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [blackhole_listener, blackhole_sup, blackhole_tracking]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , public_key
+                 , ssl
+                 , inets
+
+                 , kazoo_apps
+
+                 , lager
+                 , ranch
+                 , cowboy
                  ]},
-  {mod, {blackhole_app, []}},
-  {env, []}
+  {mod, {blackhole_app, []}}
  ]}.

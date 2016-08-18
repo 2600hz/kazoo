@@ -1,0 +1,4 @@
+Welcome {{user.first_name}} {{user.last_name}}.
+
+Your password is: {{user.password}}
+ Please make sure your change it soon!

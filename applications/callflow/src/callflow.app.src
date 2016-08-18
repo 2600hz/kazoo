@@ -1,13 +1,21 @@
 {application, callflow,
  [
   {description, "Callflow - traversing through the tree..."}
-  ,{vsn, "3.0.0"}
-  ,{modules, []}
-  ,{registered, []}
-  ,{applications, [
-		   kernel
-		   ,stdlib
-		  ]}
-  ,{mod, { callflow_app, []} }
-  ,{env, []}
+ ,{vsn, "4.0.0"}
+ ,{modules, []}
+ ,{registered, [callflow_cache, cf_event_handler_sup, callflow_sup, cf_exe_sup]}
+ ,{applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , kazoo_apps
+                 , kazoo_amqp
+                 , kazoo_data
+                 , kazoo_endpoint
+                 , kazoo_token_buckets
+                 , kazoo_voicemail
+
+                 , lager
+                 ]}
+ ,{mod, {callflow_app, []}}
  ]}.

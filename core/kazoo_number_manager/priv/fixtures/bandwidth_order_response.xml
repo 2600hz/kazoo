@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<numberOrderResponse xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.bandwidth.com/api/">
+  <requestID>9bcd3154-0000-4a53-8e3a-96a97fff2e8f</requestID>
+  <dateTimeSent>2015-09-28 16:07:09Z</dateTimeSent>
+  <message>Success</message>
+  <status>success</status>
+  <errors />
+  <warnings />
+  <numberOrder>
+    <orderID>6abd38c5-1111-4546-aeaa-4710744c49eb</orderID>
+    <orderNumber>1000003000001989582</orderNumber>
+    <orderName>Kazoo-63610675620</orderName>
+    <extRefID>82ab360a0cc291910a156fa339a40000</extRefID>
+    <accountID />
+    <accountName />
+    <quantity>1</quantity>
+    <telephoneNumbers>
+      <telephoneNumber>
+        <numberID>D65ADE82-F10A-4B3E-AB11-AE4235ECDEF6</numberID>
+        <tenDigit>2814075037</tenDigit>
+        <formattedNumber>1-281-407-5037</formattedNumber>
+        <e164>+12814075037</e164>
+        <npaNxx>281407</npaNxx>
+        <status>PendingBandwidth</status>
+        <rateCenter>
+          <name>HOUSTON</name>
+          <lata>560</lata>
+          <state>TX</state>
+        </rateCenter>
+      </telephoneNumber>
+    </telephoneNumbers>
+  </numberOrder>
+</numberOrderResponse>

@@ -1,0 +1,15 @@
+The first {{event}} was detected on an account.
+
+Account
+Account ID: {{account.id}}
+Account Name: {{account.name}}
+Account Realm: {{account.realm}}
+
+{% if admin %}Admin
+Name: {{admin.first_name}} {{admin.last_name}}
+Email: {{admin.email}}
+Timezone: {{admin.timezone}}
+
+{% endif %}
+
+Sent from {{system.host}}

@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.play",
+    "description": "Validator for the play callflow's data object",
+    "properties": {
+        "answer": {
+            "description": "",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

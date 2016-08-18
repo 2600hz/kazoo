@@ -6,11 +6,15 @@
 
 -export([main/1]).
 
--define(PLT, ".kazoo.plt").
-
 %% API
 
-main(Args) ->
+main([KazooPLT | Args]) ->
+    case lists:suffix(".plt", KazooPLT) of
+        'true' -> 'ok';
+        'false' ->
+            usage(),
+            halt(1)
+    end,
     case [Arg || Arg <- Args,
                  not is_test(Arg)
                      andalso (
@@ -25,10 +29,13 @@ main(Args) ->
             usage(),
             halt(0);
         Paths ->
-            Count = lists:sum([warn(Path) || Path <- Paths]),
+            Count = lists:sum([warn(KazooPLT,Path) || Path <- Paths]),
             io:format("~p Dialyzer warnings\n", [Count]),
             halt(Count)
-    end.
+    end;
+main(_) ->
+    usage(),
+    halt(0).
 
 %% Internals
 
@@ -58,30 +65,30 @@ file_exists(Filename) ->
         _ -> 'false'
     end.
 
-warn(Path) ->
+warn(PLT, Path) ->
     case {is_beam(Path), is_erl(Path)} of
         {'true',_} ->
-            do_warn(Path);
+            do_warn(PLT, Path);
         {_,'true'} ->
             RootDir = root_dir(Path),
             Module  = filename:basename(Path, ".erl"),
             Beam = filename:join([RootDir, "ebin", Module++".beam"]),
             case file_exists(Beam) of
-                'true' -> do_warn(Beam);
+                'true' -> do_warn(PLT, Beam);
                 'false' -> io:format("file ~s doesn't exist~n", [Beam]),
                            0
             end;
         {_,_} ->
             io:format("going through ~p\n", [Path]),
             Files = filelib:wildcard(filename:join(Path, "*.beam")),
-            R = lists:sum([do_warn(File) || File <- Files]),
+            R = lists:sum([do_warn(PLT, File) || File <- Files]),
             io:format("~p warnings for ~p\n", [R, Path]),
             R
     end.
 
-do_warn(Path) ->
+do_warn(PLT, Path) ->
     length([ print(W)
-             || W <- scan(Path)
+             || W <- scan(PLT, Path)
                     , filter(W)
            ]).
 
@@ -96,53 +103,57 @@ filter(W) ->
         {warn_callgraph, _, {call_to_missing,[application,ensure_all_started,1]}} -> 'false';
         {warn_matching, {"src/konami_code_fsm.erl",_}, {pattern_match,["pattern 'true'","'false'"]}} -> 'false';
 
-        %% MAYBE remove `error_handling` to disable those
+        %% MAYBE remove error_handling to disable those
         {warn_return_only_exit, {"src/modules/cb_sup.erl",_}, {no_return,[only_explicit,system_terminate,4]}} -> 'false';
 
-        %% Dialyzer says `Server` can't matcch but it can
-        {warn_matching, {"src/wh_nodes.erl",_}, {pattern_match_cov,["variable Server","{<<_:8,_:_*8>>,<<_:8,_:_*8>>}"]}} -> 'false';
+        %% Dialyzer says Server can't match but it can
+        {warn_matching, {"src/kz_nodes.erl",_}, {pattern_match_cov,["variable Server","{<<_:8,_:_*8>>,<<_:8,_:_*8>>}"]}} -> 'false';
 
         %% ETS false positives, from core/
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {record_match,["pattern {'wh_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}","{'error','no_channel'}"]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {record_match,["pattern {'wh_amqp_assignment', _, _, _, _, Channel, _, _, _, _, _, _}","{'error','no_channel'}"]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {record_match,["pattern {'wh_amqp_assignment', Timestamp, _, _, _, _, _, _, _, _, _, Watchers}","{'error','no_channel'}"]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}], _}",_]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern Assignment = {'wh_amqp_assignment', _, _, _, _, Channel, _, _, _, _, _, _}","{'error','no_channel'}"]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {'wh_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}","{'error','no_channel'}"]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, _, Ref, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, _, _, _, _, Ref, _, _, _, _, _}], Continuation}",_]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, Consumer, _, _, Channel, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_}, {record_match,["pattern {'kz_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}","{'error','no_channel'}"]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_}, {record_match,["pattern {'kz_amqp_assignment', _, _, _, _, Channel, _, _, _, _, _, _}","{'error','no_channel'}"]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_}, {record_match,["pattern {'kz_amqp_assignment', Timestamp, _, _, _, _, _, _, _, _, _, Watchers}","{'error','no_channel'}"]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'kz_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}], _}",_]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_}, {pattern_match,["pattern Assignment = {'kz_amqp_assignment', _, _, _, _, Channel, _, _, _, _, _, _}","{'error','no_channel'}"]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_}, {pattern_match,["pattern {'kz_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}","{'error','no_channel'}"]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'kz_amqp_assignment', _, _, Ref, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'kz_amqp_assignment', _, _, _, _, _, Ref, _, _, _, _, _}], Continuation}",_]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'kz_amqp_assignment', _, Consumer, _, _, Channel, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
 
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'wh_amqp_assignment', _, _, _, _, Channel, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'wh_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'kz_amqp_assignment', _, _, _, _, Channel, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'kz_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
 
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'wh_amqp_assignment', Timestamp, Consumer, _, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
-        {warn_contract_types, {"src/wh_amqp_assignments.erl",_}, {invalid_contract,[wh_amqp_assignments,maybe_reassign,1,"('$2' | '_' | 'undefined' | pid()) -> 'ok'"]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'wh_amqp_assignment', _, _, _, _, Channel, _, _, _, _, _, _}], _}",_]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, _, _, 'sticky', _, _, _, Broker, _, _, _}], _}",_]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', _, _, _, 'float', _, _, _, _, _, _, _}], _}",_]}} -> 'false';
-        {warn_not_called, {"src/wh_amqp_assignments.erl",_}, {unused_fun,[maybe_reassign,2]}} -> 'false';
-        {warn_contract_types, {"src/wh_amqp_assignments.erl",_}, {invalid_contract,[wh_amqp_assignments,assign_or_reserve,3,"('undefined','undefined','float' | 'sticky') -> #wh_amqp_assignment{timestamp::{non_neg_integer(),non_neg_integer(),non_neg_integer()},consumer::'$2' | '_' | 'undefined' | pid(),consumer_ref::reference(),type::'float' | 'sticky',broker::'$1' | '_' | 'undefined' | binary(),reconnect::'false',watchers::set()}"]}} -> 'false';
-        {warn_not_called, {"src/wh_amqp_assignments.erl",_}, {unused_fun,[unregister_channel_handlers,1]}} -> 'false';
-        {warn_not_called, {"src/wh_amqp_assignments.erl",_}, {unused_fun,[assign_consumer,3]}} -> 'false';
-        {warn_not_called, {"src/wh_amqp_assignments.erl",_}, {unused_fun,[move_channel_to_consumer,2]}} -> 'false';
-        {warn_not_called, {"src/wh_amqp_assignments.erl",_}, {unused_fun,[add_consumer_to_channel,3]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_assignments.erl",_}, {pattern_match,["pattern {[ExistingAssignment = {'wh_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}], _}",_]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_history.erl",_}, {pattern_match,["pattern <{[{'wh_amqp_history', Timestamp, _, Command}], Continuation}, NewTag>",_]}} -> 'false';
-        {warn_matching, {"src/whistle_amqp_maintenance.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', {_, _, _}, 'undefined', 'undefined', _, Channel, ChannelRef, Connection, <<_:8/integer-unit:1,_/binary-unit:8>>, 'undefined', _, _}], Continuation}",_]}} -> 'false';
-        {warn_matching, {"src/whistle_amqp_maintenance.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', {_, _, _}, Consumer, ConsumerRef, 'float', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined', _, _}], Continuation}",_]}} -> 'false';
-        {warn_matching, {"src/whistle_amqp_maintenance.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', {_, _, _}, Consumer, ConsumerRef, 'sticky', 'undefined', 'undefined', 'undefined', <<_:8/integer-unit:1,_/binary-unit:8>>, 'undefined', _, _}], Continuation}",_]}} -> 'false';
-        {warn_matching, {"src/whistle_amqp_maintenance.erl",_}, {pattern_match,["pattern {[Assignment = {'wh_amqp_assignment', {_, _, _}, Consumer, ConsumerRef, _, Channel, ChannelRef, Connection, <<_:8/integer-unit:1,_/binary-unit:8>>, Assigned, _, _}], Continuation}",_]}} -> 'false';
-        {warn_opaque, {"src/whistle_amqp_maintenance.erl",_}, {call_without_opaque,_}} -> 'false';
-        {warn_matching, {"src/whistle_amqp_maintenance.erl",_}, {pattern_match,["pattern Assignment = {'wh_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}","[any()]"]}} -> 'false';
-        {warn_matching, {"src/whistle_amqp_maintenance.erl",_}, {pattern_match,["pattern <{[{'wh_amqp_connections', Connection, _, Broker, Available, _, Zone, _, _, _}], Continuation}, PrimaryBroker>",_]}} -> 'false';
-        {warn_matching, {"src/whistle_amqp_maintenance.erl",_}, {pattern_match,["pattern {'wh_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}","[any()]"]}} -> 'false';
-        {warn_not_called, {"src/whistle_amqp_maintenance.erl",_}, {unused_fun,[channel_summary_age,1]}} -> 'false';
-        {warn_matching, {"src/wh_amqp_assignments.erl",_},{pattern_match,["pattern {'wh_amqp_assignment', Timestamp, _, _, _, _, _, _, _, _, _, Watchers}","{'error','no_channel'}"]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'kz_amqp_assignment', Timestamp, Consumer, _, _, _, _, _, _, _, _, _}], Continuation}",_]}} -> 'false';
+        {warn_contract_types, {"src/kz_amqp_assignments.erl",_}, {invalid_contract,[kz_amqp_assignments,maybe_reassign,1,"('$2' | '_' | 'undefined' | pid()) -> 'ok'"]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_}, {pattern_match,["pattern {[{'kz_amqp_assignment', _, _, _, _, Channel, _, _, _, _, _, _}], _}",_]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'kz_amqp_assignment', _, _, _, 'sticky', _, _, _, Broker, _, _, _}], _}",_]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_}, {pattern_match,["pattern {[Assignment = {'kz_amqp_assignment', _, _, _, 'float', _, _, _, _, _, _, _}], _}",_]}} -> 'false';
+        {warn_not_called, {"src/kz_amqp_assignments.erl",_}, {unused_fun,[maybe_reassign,2]}} -> 'false';
+        {warn_contract_types, {"src/kz_amqp_assignments.erl",_}, {invalid_contract,[kz_amqp_assignments,assign_or_reserve,3,"('undefined','undefined','float' | 'sticky') -> #kz_amqp_assignment{timestamp::{non_neg_integer(),non_neg_integer(),non_neg_integer()},consumer::'$2' | '_' | 'undefined' | pid(),consumer_ref::reference(),type::'float' | 'sticky',broker::'$1' | '_' | 'undefined' | binary(),reconnect::'false',watchers::set()}"]}} -> 'false';
+        {warn_not_called, {"src/kz_amqp_assignments.erl",_}, {unused_fun,[unregister_channel_handlers,1]}} -> 'false';
+        {warn_not_called, {"src/kz_amqp_assignments.erl",_}, {unused_fun,[assign_consumer,3]}} -> 'false';
+        {warn_not_called, {"src/kz_amqp_assignments.erl",_}, {unused_fun,[move_channel_to_consumer,2]}} -> 'false';
+        {warn_not_called, {"src/kz_amqp_assignments.erl",_}, {unused_fun,[add_consumer_to_channel,3]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_}, {pattern_match,["pattern {[ExistingAssignment = {'kz_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}], _}",_]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_history.erl",_}, {pattern_match,["pattern <{[{'kz_amqp_history', Timestamp, _, Command}], Continuation}, NewTag>",_]}} -> 'false';
+
+        {warn_matching, {"src/kazoo_amqp_maintenance.erl",_}, {pattern_match,["pattern {[Assignment = {'kz_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}], Continuation}", _]}} -> 'false';
+        {warn_not_called, {"src/kazoo_amqp_maintenance.erl",_}, {unused_fun,[log_invalid_assignment,1]}} -> 'false';
+
+        {warn_matching, {"src/kazoo_amqp_maintenance.erl",_}, {pattern_match,["pattern {[Assignment = {'kz_amqp_assignment', {_, _, _}, 'undefined', 'undefined', _, Channel, ChannelRef, Connection, <<_:8/integer-unit:1,_/binary-unit:8>>, 'undefined', _, _}], Continuation}",_]}} -> 'false';
+        {warn_matching, {"src/kazoo_amqp_maintenance.erl",_}, {pattern_match,["pattern {[Assignment = {'kz_amqp_assignment', {_, _, _}, Consumer, ConsumerRef, 'float', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined', _, _}], Continuation}",_]}} -> 'false';
+        {warn_matching, {"src/kazoo_amqp_maintenance.erl",_}, {pattern_match,["pattern {[Assignment = {'kz_amqp_assignment', {_, _, _}, Consumer, ConsumerRef, 'sticky', 'undefined', 'undefined', 'undefined', <<_:8/integer-unit:1,_/binary-unit:8>>, 'undefined', _, _}], Continuation}",_]}} -> 'false';
+        {warn_matching, {"src/kazoo_amqp_maintenance.erl",_}, {pattern_match,["pattern {[Assignment = {'kz_amqp_assignment', {_, _, _}, Consumer, ConsumerRef, _, Channel, ChannelRef, Connection, <<_:8/integer-unit:1,_/binary-unit:8>>, Assigned, _, _}], Continuation}",_]}} -> 'false';
+        {warn_opaque, {"src/kazoo_amqp_maintenance.erl",_}, {call_without_opaque,_}} -> 'false';
+        {warn_matching, {"src/kazoo_amqp_maintenance.erl",_}, {pattern_match,["pattern Assignment = {'kz_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}","[any()]"]}} -> 'false';
+        {warn_matching, {"src/kazoo_amqp_maintenance.erl",_}, {pattern_match,["pattern <{[{'kz_amqp_connections', Connection, _, Broker, Available, _, Zone, _, _, _}], Continuation}, PrimaryBroker>",_]}} -> 'false';
+        {warn_matching, {"src/kazoo_amqp_maintenance.erl",_}, {pattern_match,["pattern {'kz_amqp_assignment', _, _, _, _, _, _, _, _, _, _, _}","[any()]"]}} -> 'false';
+        {warn_not_called, {"src/kazoo_amqp_maintenance.erl",_}, {unused_fun,[channel_summary_age,1]}} -> 'false';
+        {warn_matching, {"src/kz_amqp_assignments.erl",_},{pattern_match,["pattern {'kz_amqp_assignment', Timestamp, _, _, _, _, _, _, _, _, _, Watchers}","{'error','no_channel'}"]}} -> 'false';
 
         %% More ETS false positives, from applications/
-        {warn_matching, {"src/ecallmgr_fs_channels.erl",_}, {pattern_match,["pattern <{[Channel = {'channel', CallId, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _}], Continuation}, <<97:8/integer-unit:1,108:8/integer-unit:1,108:8/integer-unit:1>>, Channels>",_]}} -> 'false';
-        {warn_matching, {"src/ecallmgr_fs_channels.erl",_}, {pattern_match,["pattern <{[Channel = {'channel', CallId, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _}], Continuation}, Fields, Channels>",_]}} -> 'false';
+        {warn_matching, {"src/ecallmgr_fs_channels.erl",_}, {pattern_match,["pattern <{[Channel = {'channel', CallId, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _}], Continuation}, <<97:8/integer-unit:1,108:8/integer-unit:1,108:8/integer-unit:1>>, Channels>",_]}} -> 'false';
+        {warn_matching, {"src/ecallmgr_fs_channels.erl",_}, {pattern_match,["pattern <{[Channel = {'channel', CallId, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _}], Continuation}, Fields, Channels>",_]}} -> 'false';
 
         _ ->
             %% io:format("W = ~p\n", [W]),
@@ -154,17 +165,17 @@ print({Tag, _Loc, _Warning} = W) ->
 print(_Err) ->
     _Err.
 
-scan(Thing) ->
-    try do_scan(Thing) of
+scan(PLT, Thing) ->
+    try do_scan(PLT, Thing) of
         Ret -> Ret
     catch 'throw':{'dialyzer_error',Error} ->
             io:format("~s\n", [Error]),
             []
     end.
 
-do_scan(Path) ->
+do_scan(PLT, Path) ->
     io:format("scanning ~p\n", [Path]),
-    dialyzer:run([ {'init_plt', ?PLT}
+    dialyzer:run([ {'init_plt', PLT}
                  , {'analysis_type', 'succ_typings'}
                  %% , {'files_rec', [Path]}
                  , {'files', [Path]}
@@ -193,6 +204,6 @@ do_scan(Path) ->
 usage() ->
     %% ok = io:setopts([{encoding, unicode}]),
     Arg0 = escript:script_name(),
-    io:format("Usage: ~s  <path to ebin/>+\n", [filename:basename(Arg0)]).
+    io:format("Usage: ~s  <path to .kazoo.plt> <path to ebin/>+\n", [filename:basename(Arg0)]).
 
 %% End of Module

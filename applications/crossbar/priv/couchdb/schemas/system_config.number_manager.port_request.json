@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.number_manager.port_request",
+    "description": "Schema for number_manager.port_request system_config",
+    "properties": {
+        "crawler_delay_time_ms": {
+            "default": 60000,
+            "description": "number_manager.port_request crawler delay time in milliseconds",
+            "name": "crawler_delay_time_ms",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

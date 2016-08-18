@@ -1,14 +1,14 @@
 -ifndef(ACDC_HRL).
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/include/wh_databases.hrl").
-
--define(CONFIG_CAT, <<"acdc">>).
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
+-include_lib("kazoo/include/kz_api.hrl").
 
 -define(APP_NAME, <<"acdc">>).
--define(APP_VERSION, <<"1.0.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
+-define(CONFIG_CAT, ?APP_NAME).
 
--define(ACDC_CACHE, 'acdc_cache').
+-define(CACHE_NAME, 'acdc_cache').
 
 -define(ABANDON_TIMEOUT, 'member_timeout').
 -define(ABANDON_EXIT, 'member_exit').
@@ -36,17 +36,18 @@
 -type deliveries() :: [gen_listener:basic_deliver()].
 
 %% Check for cleanup every 5 minutes
--define(CLEANUP_PERIOD, whapps_config:get_integer(?CONFIG_CAT, <<"cleanup_period_ms">>, 360000)).
+-define(CLEANUP_PERIOD, kapps_config:get_integer(?CONFIG_CAT, <<"cleanup_period_ms">>, 360000)).
 
 %% Remove data from ETS
--define(CLEANUP_WINDOW, whapps_config:get_integer(?CONFIG_CAT, <<"cleanup_window_s">>, ?SECONDS_IN_DAY)).
+-define(CLEANUP_WINDOW, kapps_config:get_integer(?CONFIG_CAT, <<"cleanup_window_s">>, ?SECONDS_IN_DAY)).
 
 %% Archive every 60 seconds
--define(ARCHIVE_PERIOD, whapps_config:get_integer(?CONFIG_CAT, <<"archive_period_ms">>, 60000)).
+-define(ARCHIVE_PERIOD, kapps_config:get_integer(?CONFIG_CAT, <<"archive_period_ms">>, 60000)).
 
 %% Save data to the DB
--define(ARCHIVE_WINDOW, whapps_config:get_integer(?CONFIG_CAT, <<"archive_window_s">>, 60)).
+-define(ARCHIVE_WINDOW, kapps_config:get_integer(?CONFIG_CAT, <<"archive_window_s">>, 60)).
 
+-define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
 
 -define(ACDC_HRL, 'true').
 -endif.

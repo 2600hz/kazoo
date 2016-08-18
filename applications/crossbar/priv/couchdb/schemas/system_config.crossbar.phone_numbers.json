@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.phone_numbers",
+    "description": "Schema for crossbar.phone_numbers system_config",
+    "properties": {
+        "default_country": {
+            "default": "US",
+            "description": "crossbar.phone_numbers default country",
+            "name": "default_country",
+            "type": "string"
+        },
+        "phonebook_url": {
+            "description": "crossbar.phone_numbers phonebook url",
+            "name": "phonebook_url",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

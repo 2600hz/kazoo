@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Token auth module
 %%%
@@ -14,14 +14,14 @@
 -module(cb_modb).
 
 -export([init/0
-         ,clean_modb/1
+        ,clean_modb/1
         ]).
 
 -include("crossbar.hrl").
 
 -spec init() -> 'ok'.
 init() ->
-    case whapps_config:get_is_true(?MODULE, <<"maybe_archive_modbs">>, 'false') of
+    case kapps_config:get_is_true(?MODULE, <<"maybe_archive_modbs">>, 'false') of
         'true' ->
             crossbar_bindings:bind(crossbar_cleanup:binding_account_mod(), ?MODULE, 'clean_modb');
         'false' ->

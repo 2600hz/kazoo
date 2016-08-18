@@ -9,14 +9,14 @@
 -module(webhooks_maintenance).
 
 -export([hooks_configured/0, hooks_configured/1
-         ,set_failure_expiry/1, set_failure_expiry/2
-         ,set_disable_threshold/1, set_disable_threshold/2
-         ,failure_status/0, failure_status/1
-         ,enable_account_hooks/1
-         ,enable_descendant_hooks/1
-         ,reset_webhooks_list/0
-         ,flush_account_failures/1
-         ,flush_hook_failures/2
+        ,set_failure_expiry/1, set_failure_expiry/2
+        ,set_disable_threshold/1, set_disable_threshold/2
+        ,failure_status/0, failure_status/1
+        ,enable_account_hooks/1
+        ,enable_descendant_hooks/1
+        ,reset_webhooks_list/0
+        ,flush_account_failures/1
+        ,flush_hook_failures/2
         ]).
 
 -include("webhooks.hrl").
@@ -34,9 +34,9 @@ hooks_configured(AccountId) ->
 -spec set_failure_expiry(ne_binary()) -> 'ok'.
 -spec set_failure_expiry(ne_binary(), ne_binary()) -> 'ok'.
 set_failure_expiry(Expires) ->
-    try wh_util:to_integer(Expires) of
+    try kz_util:to_integer(Expires) of
         I ->
-            whapps_config:set_default(?APP_NAME, ?ATTEMPT_EXPIRY_KEY, I),
+            kapps_config:set_default(?APP_NAME, ?ATTEMPT_EXPIRY_KEY, I),
             io:format("set default expiry for failure attempts to ~pms~n", [I])
     catch
         _:_ ->
@@ -44,10 +44,10 @@ set_failure_expiry(Expires) ->
     end.
 
 set_failure_expiry(Account, Expires) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    try wh_util:to_integer(Expires) of
+    AccountId = kz_util:format_account_id(Account, 'raw'),
+    try kz_util:to_integer(Expires) of
         I ->
-            whapps_account_config:set(AccountId, ?APP_NAME, ?ATTEMPT_EXPIRY_KEY, I),
+            kapps_account_config:set(AccountId, ?APP_NAME, ?ATTEMPT_EXPIRY_KEY, I),
             io:format("set default expiry for failure attempts to ~pms on account ~s~n", [I, AccountId])
     catch
         _:_ ->
@@ -57,9 +57,9 @@ set_failure_expiry(Account, Expires) ->
 -spec set_disable_threshold(ne_binary()) -> 'ok'.
 -spec set_disable_threshold(ne_binary(), ne_binary()) -> 'ok'.
 set_disable_threshold(Count) ->
-    try wh_util:to_integer(Count) of
+    try kz_util:to_integer(Count) of
         I ->
-            whapps_config:set_default(?APP_NAME, ?FAILURE_COUNT_KEY, I),
+            kapps_config:set_default(?APP_NAME, ?FAILURE_COUNT_KEY, I),
             io:format("set default count of failed attempts to disable hook to ~p~n", [I])
     catch
         _:_ ->
@@ -67,10 +67,10 @@ set_disable_threshold(Count) ->
     end.
 
 set_disable_threshold(Account, Count) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    try wh_util:to_integer(Count) of
+    AccountId = kz_util:format_account_id(Account, 'raw'),
+    try kz_util:to_integer(Count) of
         I ->
-            whapps_account_config:set(AccountId, ?APP_NAME, ?FAILURE_COUNT_KEY, I),
+            kapps_account_config:set(AccountId, ?APP_NAME, ?FAILURE_COUNT_KEY, I),
             io:format("set default count of failed attempts to disable hook to ~p~n", [I])
     catch
         _:_ ->
@@ -87,7 +87,7 @@ failure_status() ->
     print_failure_footer().
 
 failure_status(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountId = kz_util:format_account_id(Account, 'raw'),
     Failed = webhooks_disabler:find_failures(),
 
     Sorted = lists:keysort(1, Failed),
@@ -106,7 +106,7 @@ print_failure_footer() ->
     io:format(?FORMAT_FAILURE_HEADER, [$-, $-, $-]).
 
 print_failure_count(AccountId, HookId, Count) ->
-    io:format(?FORMAT_FAILURE_STRING, [AccountId, HookId, wh_util:to_binary(Count)]).
+    io:format(?FORMAT_FAILURE_STRING, [AccountId, HookId, kz_util:to_binary(Count)]).
 
 enable_account_hooks(AccountId) ->
     webhooks_util:reenable(AccountId, <<"account">>).
@@ -116,29 +116,35 @@ enable_descendant_hooks(AccountId) ->
 
 -spec reset_webhooks_list() -> 'ok'.
 reset_webhooks_list() ->
-    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
-    Ids = get_webhooks(MasterAccountDb),
-    _ = couch_mgr:del_docs(MasterAccountDb, Ids),
-    webhooks_init:init_modules().
+    kz_datamgr:db_create(?KZ_WEBHOOKS_DB),
+    kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
+    case kapps_util:get_master_account_db() of
+        {'ok', MasterAccountDb} ->
+            Ids = get_webhooks(MasterAccountDb),
+            _ = kz_datamgr:del_docs(MasterAccountDb, Ids),
+            webhooks_init:init_modules();
+        {'error', _} ->
+            lager:warning("no master account id set, unable to reset webhooks list")
+    end.
 
 -spec get_webhooks(ne_binary()) -> ne_binaries().
 get_webhooks(MasterAccountDb) ->
-    case couch_mgr:get_all_results(MasterAccountDb, ?WEBHOOK_META_LIST) of
+    case kz_datamgr:get_all_results(MasterAccountDb, ?WEBHOOK_META_LIST) of
         {'error', _R} ->
             io:format("failed to load view ~s in ~s", [?WEBHOOK_META_LIST, MasterAccountDb]),
             [];
         {'ok', JObjs} ->
-            [wh_json:get_value(<<"id">>, J) || J <- JObjs]
+            [kz_json:get_value(<<"id">>, J) || J <- JObjs]
     end.
 
 -spec flush_account_failures(ne_binary()) -> 'ok'.
 flush_account_failures(AccountId) ->
     io:format("flushed ~p failure entries~n"
-              ,[webhooks_disabler:flush_failures(AccountId)]
+             ,[webhooks_disabler:flush_failures(AccountId)]
              ).
 
 -spec flush_hook_failures(ne_binary(), ne_binary()) -> 'ok'.
 flush_hook_failures(AccountId, HookId) ->
     io:format("flushed ~p failure entries for ~s~n"
-              ,[webhooks_disabler:flush_failures(AccountId, HookId), HookId]
+             ,[webhooks_disabler:flush_failures(AccountId, HookId), HookId]
              ).

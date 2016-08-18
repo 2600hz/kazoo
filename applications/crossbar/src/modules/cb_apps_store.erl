@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2015, 2600hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -11,18 +11,18 @@
 -module(cb_apps_store).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-         ,authenticate/1
-         ,authorize/1
-         ,validate/1, validate/2, validate/3, validate/4
-         ,content_types_provided/3 ,content_types_provided/4
-         ,put/2
-         ,post/2
-         ,delete/2
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+        ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+        ,authenticate/1
+        ,authorize/1
+        ,validate/1, validate/2, validate/3, validate/4
+        ,content_types_provided/3 ,content_types_provided/4
+        ,put/2
+        ,post/2
+        ,delete/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(ICON, <<"icon">>).
 -define(SCREENSHOT, <<"screenshot">>).
@@ -101,8 +101,8 @@ content_types_provided(Context, Id, ?ICON) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
-            Icon = wh_json:get_value(?ICON, JObj),
-            case wh_doc:attachment_content_type(JObj, Icon) of
+            Icon = kz_json:get_value(?ICON, JObj),
+            case kz_doc:attachment_content_type(JObj, Icon) of
                 'undefined' -> Context1;
                 CT ->
                     [Type, SubType] = binary:split(CT, <<"/">>),
@@ -120,7 +120,7 @@ content_types_provided(Context, Id, ?SCREENSHOT, Number) ->
             case maybe_get_screenshot(Context1, Number) of
                 'error' -> Context;
                 {'ok', _, Attachment} ->
-                    CT = wh_json:get_value(<<"content_type">>, Attachment),
+                    CT = kz_json:get_value(<<"content_type">>, Attachment),
                     [Type, SubType] = binary:split(CT, <<"/">>),
                     cb_context:set_content_types_provided(Context1, [{'to_binary', [{Type, SubType}]}])
             end;
@@ -202,19 +202,19 @@ validate(Context, Id, ?SCREENSHOT, Number) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?BLACKLIST) ->
     ReqData = cb_context:req_data(Context),
-    Blacklist = wh_json:get_value(<<"blacklist">>, ReqData, []),
-    Doc = wh_json:set_value(<<"blacklist">>, Blacklist, cb_context:doc(Context)),
+    Blacklist = kz_json:get_value(<<"blacklist">>, ReqData, []),
+    Doc = kz_json:set_value(<<"blacklist">>, Blacklist, cb_context:doc(Context)),
     return_only_blacklist(
-        crossbar_doc:save(
-            cb_context:set_doc(Context, Doc)
-        )
-    );
+      crossbar_doc:save(
+        cb_context:set_doc(Context, Doc)
+       )
+     );
 post(Context, Id) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
-            RespData = wh_json:get_value(Id, kz_apps_store:apps(JObj)),
+            RespData = kz_json:get_value(Id, kzd_apps_store:apps(JObj)),
             cb_context:set_resp_data(Context, RespData);
         _Status -> Context1
     end.
@@ -230,7 +230,7 @@ put(Context, Id) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
-            RespData = wh_json:get_value(Id, kz_apps_store:apps(JObj)),
+            RespData = kz_json:get_value(Id, kzd_apps_store:apps(JObj)),
             cb_context:set_resp_data(Context, RespData);
         _Status -> Context1
     end.
@@ -245,7 +245,7 @@ delete(Context, _Id) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            cb_context:set_resp_data(Context, wh_json:new());
+            cb_context:set_resp_data(Context, kz_json:new());
         _Status -> Context1
     end.
 
@@ -274,7 +274,7 @@ validate_req(Context, ?HTTP_GET) ->
 validate_blacklist(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     AccountId = cb_context:account_id(Context),
-    case wh_util:is_in_account_hierarchy(AuthAccountId, AccountId) of
+    case kz_util:is_in_account_hierarchy(AuthAccountId, AccountId) of
         'false' -> cb_context:add_system_error('forbidden', Context);
         'true' -> load_apps_store(Context)
     end.
@@ -289,11 +289,11 @@ return_only_blacklist(Context) ->
     case cb_context:resp_status(Context) of
         'success' ->
             RespData = cb_context:resp_data(Context),
-            Blacklist = wh_json:get_value(<<"blacklist">>, RespData, []),
+            Blacklist = kz_json:get_value(<<"blacklist">>, RespData, []),
             NewRespData =
-                wh_json:from_list([
-                    {<<"blacklist">>, Blacklist}
-                ]),
+                kz_json:from_list([
+                                   {<<"blacklist">>, Blacklist}
+                                  ]),
             cb_context:set_resp_data(Context, NewRespData);
         _ -> Context
     end.
@@ -304,9 +304,9 @@ validate_app(Context, Id, ?HTTP_GET) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             cb_context:set_resp_data(
-                Context1
-                ,wh_json:public_fields(cb_context:doc(Context1))
-            );
+              Context1
+                                    ,kz_json:public_fields(cb_context:doc(Context1))
+             );
         _ -> Context1
     end;
 validate_app(Context, Id, ?HTTP_PUT) ->
@@ -315,7 +315,7 @@ validate_app(Context, Id, ?HTTP_PUT) ->
         'success' ->
             Callback =
                 fun() ->
-                    install(Context1, Id)
+                        install(Context1, Id)
                 end,
             crossbar_services:maybe_dry_run(Context1, Callback, <<"app">>);
         _ -> Context1
@@ -332,7 +332,7 @@ validate_app(Context, Id, ?HTTP_POST) ->
         'success' ->
             Callback =
                 fun() ->
-                    update(Context1, Id)
+                        update(Context1, Id)
                 end,
             crossbar_services:maybe_dry_run(Context1, Callback, <<"app">>);
         _ -> Context1
@@ -362,13 +362,13 @@ can_modify(Context, Id) ->
     case cb_apps_util:allowed_app(AccountId, Id) of
         'undefined' ->
             Props = [{'details', Id}],
-            cb_context:add_system_error('forbidden', wh_json:from_list(Props), Context);
+            cb_context:add_system_error('forbidden', kz_json:from_list(Props), Context);
         App ->
             cb_context:store(
-                cb_context:set_resp_status(Context, 'success')
-                ,Id
-                ,App
-            )
+              cb_context:set_resp_status(Context, 'success')
+                            ,Id
+                            ,App
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -382,9 +382,9 @@ load_apps(Context) ->
     Apps = cb_apps_util:allowed_apps(AccountId),
     cb_context:setters(
       Context
-      ,[{fun cb_context:set_resp_status/2, 'success'}
-        ,{fun cb_context:set_resp_data/2, normalize_apps_result(Apps)}
-       ]
+                      ,[{fun cb_context:set_resp_status/2, 'success'}
+                       ,{fun cb_context:set_resp_data/2, normalize_apps_result(Apps)}
+                       ]
      ).
 
 %%--------------------------------------------------------------------
@@ -392,29 +392,30 @@ load_apps(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_apps_result(wh_json:objects()) -> wh_json:objects().
--spec normalize_apps_result(wh_json:objects(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_apps_result(kz_json:objects()) -> kz_json:objects().
+-spec normalize_apps_result(kz_json:objects(), kz_json:objects()) -> kz_json:objects().
 normalize_apps_result(Apps) ->
     normalize_apps_result(Apps, []).
 
 normalize_apps_result([], Acc) -> Acc;
 normalize_apps_result([App|Apps], Acc) ->
-    case wh_json:is_true(<<"published">>, App, 'true') of
+    case kzd_app:is_published(App) of
         'false' -> normalize_apps_result(Apps, Acc);
         'true' ->
             JObj =
-                wh_json:from_list(
-                    props:filter_undefined([
-                        {<<"id">>, wh_doc:id(App)}
-                        ,{<<"name">>, wh_json:get_value(<<"name">>, App)}
-                        ,{<<"i18n">>, wh_json:get_value(<<"i18n">>, App)}
-                        ,{<<"tags">>, wh_json:get_value(<<"tags">>, App)}
-                        ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, App)}
-                        ,{<<"source_url">>, wh_json:get_value(<<"source_url">>, App)}
-                        ,{<<"users">>, wh_json:get_value(<<"users">>, App)}
-                        ,{<<"allowed_users">>, wh_json:get_value(<<"allowed_users">>, App)}
-                        ,{<<"masqueradable">>, wh_json:is_true(<<"masqueradable">>, App, 'true')}
-                    ])
+                kz_json:from_list(
+                  props:filter_undefined([{<<"id">>, kzd_app:id(App)}
+                                         ,{<<"name">>, kzd_app:name(App)}
+                                         ,{<<"i18n">>, kzd_app:i18n(App)}
+                                         ,{<<"tags">>, kzd_app:tags(App)}
+                                         ,{<<"api_url">>, kzd_app:api_url(App)}
+                                         ,{<<"source_url">>, kzd_app:source_url(App)}
+                                         ,{<<"account_id">>, kzd_app:account_id(App)}
+                                         ,{<<"users">>, kzd_app:users(App)}
+                                         ,{<<"allowed_users">>, kzd_app:allowed_users(App)}
+                                         ,{<<"masqueradable">>, kzd_app:masqueradable(App)}
+                                         ,{<<"phase">>, kzd_app:phase(App)}
+                                         ])
                  ),
             normalize_apps_result(Apps, [JObj|Acc])
     end.
@@ -430,28 +431,28 @@ load_app(Context, AppId) ->
     case cb_apps_util:allowed_app(AccountId, AppId) of
         'undefined' -> bad_app_error(Context, AppId);
         App ->
-            cb_context:setters(
-              Context
-              ,[{fun cb_context:set_doc/2, App}
-                ,{fun cb_context:set_resp_status/2, 'success'}
-               ]
-             )
+            cb_context:setters(Context
+                              ,[{fun cb_context:set_doc/2
+                                ,kz_json:set_value(<<"account_id">>, kzd_app:account_id(App), App)}
+                               ,{fun cb_context:set_resp_status/2, 'success'}
+                               ]
+                              )
     end.
 
 %% @private
 -spec load_app_from_master_account(cb_context:context(), ne_binary()) -> cb_context:context().
 load_app_from_master_account(Context, AppId) ->
-    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
-    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
+    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     DefaultApps = cb_apps_util:load_default_apps(),
-    case [JObj || JObj <- DefaultApps, wh_doc:id(JObj) == AppId] of
+    case [JObj || JObj <- DefaultApps, kz_doc:id(JObj) == AppId] of
         [AppJObj] ->
             cb_context:setters(Context
-                               ,[{fun cb_context:set_account_id/2, MasterAccountId}
-                                 ,{fun cb_context:set_account_db/2, MasterAccountDb}
-                                 ,{fun cb_context:set_doc/2, AppJObj}
-                                 ,{fun cb_context:set_resp_status/2, 'success'}
-                                ]
+                              ,[{fun cb_context:set_account_id/2, MasterAccountId}
+                               ,{fun cb_context:set_account_db/2, MasterAccountDb}
+                               ,{fun cb_context:set_doc/2, AppJObj}
+                               ,{fun cb_context:set_resp_status/2, 'success'}
+                               ]
                               );
         _Else ->
             bad_app_error(Context, AppId)
@@ -466,8 +467,8 @@ load_app_from_master_account(Context, AppId) ->
 bad_app_error(Context, AppId) ->
     cb_context:add_system_error(
       'bad_identifier'
-      ,wh_json:from_list([{'details', AppId}])
-      ,Context
+                               ,kz_json:from_list([{'details', AppId}])
+                               ,Context
      ).
 
 %%--------------------------------------------------------------------
@@ -479,18 +480,18 @@ bad_app_error(Context, AppId) ->
 -spec install(cb_context:context(), ne_binary()) -> cb_context:context().
 install(Context, Id) ->
     Doc = cb_context:doc(Context),
-    Apps = kz_apps_store:apps(Doc),
-    case wh_json:get_value(Id, Apps) of
+    Apps = kzd_apps_store:apps(Doc),
+    case kz_json:get_value(Id, Apps) of
         'undefined' ->
             Data = cb_context:req_data(Context),
-            AppName = wh_json:get_value(<<"name">>, cb_context:fetch(Context, Id)),
+            AppName = kz_json:get_value(<<"name">>, cb_context:fetch(Context, Id)),
             UpdatedApps =
-                wh_json:set_value(
+                kz_json:set_value(
                   Id
-                  ,wh_json:set_value(<<"name">>, AppName, Data)
-                  ,Apps
+                                 ,kz_json:set_value(<<"name">>, AppName, Data)
+                                 ,Apps
                  ),
-            UpdatedDoc = kz_apps_store:set_apps(Doc, UpdatedApps),
+            UpdatedDoc = kzd_apps_store:set_apps(Doc, UpdatedApps),
             cb_context:set_doc(Context, UpdatedDoc);
         _ ->
             crossbar_util:response('error', <<"Application already installed">>, 400, Context)
@@ -506,13 +507,13 @@ install(Context, Id) ->
 -spec uninstall(cb_context:context(), ne_binary()) -> cb_context:context().
 uninstall(Context, Id) ->
     Doc = cb_context:doc(Context),
-    Apps = kz_apps_store:apps(Doc),
-    case wh_json:get_value(Id, Apps) of
+    Apps = kzd_apps_store:apps(Doc),
+    case kz_json:get_value(Id, Apps) of
         'undefined' ->
             crossbar_util:response('error', <<"Application is not installed">>, 400, Context);
         _ ->
-            UpdatedApps = wh_json:delete_key(Id, Apps),
-            UpdatedDoc = kz_apps_store:set_apps(Doc, UpdatedApps),
+            UpdatedApps = kz_json:delete_key(Id, Apps),
+            UpdatedDoc = kzd_apps_store:set_apps(Doc, UpdatedApps),
             cb_context:set_doc(Context, UpdatedDoc)
     end.
 
@@ -524,20 +525,20 @@ uninstall(Context, Id) ->
 -spec update(cb_context:context(), ne_binary()) -> cb_context:context().
 update(Context, Id) ->
     Doc = cb_context:doc(Context),
-   Apps = kz_apps_store:apps(Doc),
-    case wh_json:get_value(Id, Apps) of
+    Apps = kzd_apps_store:apps(Doc),
+    case kz_json:get_value(Id, Apps) of
         'undefined' ->
             crossbar_util:response('error', <<"Application is not installed">>, 400, Context);
         _ ->
             Data = cb_context:req_data(Context),
-            AppName = wh_json:get_value(<<"name">>, cb_context:fetch(Context, Id)),
+            AppName = kz_json:get_value(<<"name">>, cb_context:fetch(Context, Id)),
             UpdatedApps =
-                wh_json:set_value(
+                kz_json:set_value(
                   Id
-                  ,wh_json:set_value(<<"name">>, AppName, Data)
-                  ,Apps
+                                 ,kz_json:set_value(<<"name">>, AppName, Data)
+                                 ,Apps
                  ),
-            UpdatedDoc = kz_apps_store:set_apps(Doc, UpdatedApps),
+            UpdatedDoc = kzd_apps_store:set_apps(Doc, UpdatedApps),
             cb_context:set_doc(Context, UpdatedDoc)
     end.
 
@@ -549,7 +550,7 @@ update(Context, Id) ->
 -spec get_icon(cb_context:context()) -> cb_context:context().
 get_icon(Context) ->
     JObj = cb_context:doc(Context),
-    Icon = wh_json:get_value(?ICON, JObj),
+    Icon = kz_json:get_value(?ICON, JObj),
     get_attachment(Context, Icon).
 
 %%--------------------------------------------------------------------
@@ -559,13 +560,13 @@ get_icon(Context) ->
 %%--------------------------------------------------------------------
 -spec maybe_get_screenshot(cb_context:context(), ne_binary()) ->
                                   'error' |
-                                  {'ok', ne_binary(), wh_json:object()}.
+                                  {'ok', ne_binary(), kz_json:object()}.
 maybe_get_screenshot(Context, Number) ->
     JObj = cb_context:doc(Context),
-    Screenshots = wh_json:get_value(<<"screenshots">>, JObj),
-    try lists:nth(wh_util:to_integer(Number)+1, Screenshots) of
+    Screenshots = kz_json:get_value(<<"screenshots">>, JObj),
+    try lists:nth(kz_util:to_integer(Number)+1, Screenshots) of
         Name ->
-            case wh_doc:attachment(JObj, Name) of
+            case kz_doc:attachment(JObj, Name) of
                 'undefined' -> 'error';
                 Attachment ->
                     {'ok', Name, Attachment}
@@ -585,7 +586,7 @@ get_screenshot(Context, Number) ->
         'error' ->
             crossbar_util:response_bad_identifier(
               <<?SCREENSHOT/binary , "/", Number/binary>>
-              ,Context
+                                                 ,Context
              );
         {'ok', Name, _} ->
             get_attachment(Context, Name)
@@ -599,7 +600,20 @@ get_screenshot(Context, Number) ->
 %%--------------------------------------------------------------------
 -spec load_apps_store(cb_context:context()) -> cb_context:context().
 load_apps_store(Context) ->
-    crossbar_doc:load(kz_apps_store:id(), Context).
+    Context1 = crossbar_doc:load(kzd_apps_store:id(), Context, ?TYPE_CHECK_OPTION_ANY),
+    case {cb_context:resp_status(Context1), cb_context:resp_error_code(Context1)} of
+        {'error', 404} ->
+            AccountId = cb_context:account_id(Context),
+            cb_context:setters(
+              Context
+                              ,[{fun cb_context:set_resp_status/2, 'success'}
+                               ,{fun cb_context:set_resp_data/2, kz_json:new()}
+                               ,{fun cb_context:set_doc/2, kzd_apps_store:new(AccountId)}
+                               ]
+             );
+        {'success', _} -> Context1;
+        {'error', _} -> Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -608,41 +622,41 @@ load_apps_store(Context) ->
 %%--------------------------------------------------------------------
 -spec get_attachment(cb_context:context(), ne_binary()) ->
                             cb_context:context().
--spec get_attachment(cb_context:context(), ne_binary(), wh_json:object(), wh_json:object()) ->
+-spec get_attachment(cb_context:context(), ne_binary(), kz_json:object(), kz_json:object()) ->
                             cb_context:context().
 get_attachment(Context, Id) ->
     JObj = cb_context:doc(Context),
-    case wh_doc:attachment(JObj, Id) of
+    case kz_doc:attachment(JObj, Id) of
         'undefined' ->
-            AppId = wh_doc:id(JObj),
+            AppId = kz_doc:id(JObj),
             crossbar_util:response_bad_identifier(AppId, Context);
         Attachment ->
             get_attachment(Context, Id, JObj, Attachment)
     end.
 
 get_attachment(Context, Id, JObj, Attachment) ->
-    Db = wh_doc:account_db(JObj),
-    AppId = wh_doc:id(JObj),
-    case couch_mgr:fetch_attachment(Db, AppId, Id) of
+    Db = kz_doc:account_db(JObj),
+    AppId = kz_doc:id(JObj),
+    case kz_datamgr:fetch_attachment(Db, AppId, Id) of
         {'error', R} ->
-            Reason = wh_util:to_binary(R),
+            Reason = kz_util:to_binary(R),
             lager:error("failed to fetch attachment, ~s in ~s, (account: ~s)", [Id, AppId, Db]),
-            cb_context:add_system_error('datastore_fault', wh_json:from_list([{'details', Reason}]), Context);
+            cb_context:add_system_error('datastore_fault', kz_json:from_list([{'details', Reason}]), Context);
         {'ok', AttachBin} ->
             add_attachment(Context, Id, Attachment, AttachBin)
     end.
 
--spec add_attachment(cb_context:context(), ne_binary(), wh_json:object(), binary()) ->
+-spec add_attachment(cb_context:context(), ne_binary(), kz_json:object(), binary()) ->
                             cb_context:context().
 add_attachment(Context, Id, Attachment, AttachBin) ->
     RespHeaders =
         [{<<"Content-Disposition">>, <<"attachment; filename=", Id/binary>>}
-         ,{<<"Content-Type">>, wh_json:get_value(<<"content_type">>, Attachment)}
-         ,{<<"Content-Length">>, wh_json:get_value(<<"length">>, Attachment)}
+        ,{<<"Content-Type">>, kz_json:get_value(<<"content_type">>, Attachment)}
+        ,{<<"Content-Length">>, kz_json:get_value(<<"length">>, Attachment)}
         ],
     cb_context:setters(
       Context
-      ,[{fun cb_context:set_resp_data/2, AttachBin}
-        ,{fun cb_context:add_resp_headers/2, RespHeaders}
-       ]
+                      ,[{fun cb_context:set_resp_data/2, AttachBin}
+                       ,{fun cb_context:add_resp_headers/2, RespHeaders}
+                       ]
      ).

@@ -1,43 +1,43 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(doodle_shared_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("doodle.hrl").
--include_lib("whistle/include/wapi_conf.hrl").
+-include_lib("kazoo/include/kapi_conf.hrl").
+
+-define(SERVER, ?MODULE).
 
 -record(state, {}).
-
-
+-type state() :: #state{}.
 
 -define(BINDINGS, [{'sms', [{'restrict_to', ['delivery','resume']}]}
-                   ,{'registration', [{'restrict_to', ['reg_success']}]}
-                   ,{'conf',[{'keys', [ [{'action', 'created'}, {'doc_type', <<"sms">>}]
-                                        ,[{'doc_type', <<"device">>}]
-                                        ,[{'doc_type', <<"user">>}]
-                                      ]}]}
-                   ,{'self', []}
+                  ,{'registration', [{'restrict_to', ['reg_success']}]}
+                  ,{'conf',[{'keys', [ [{'action', 'created'}, {'doc_type', <<"sms">>}]
+                                     ,[{'doc_type', <<"device">>}]
+                                     ,[{'doc_type', <<"user">>}]
+                                     ]}]}
+                  ,{'self', []}
                   ]).
 -define(RESPONDERS, [{'doodle_delivery_handler', [{<<"message">>, <<"delivery">>}]}
-                     ,{'doodle_notify_handler', [{<<"directory">>, <<"reg_success">>}]}
-                     ,{'doodle_doc_handler', [{<<"configuration">>, ?DOC_CREATED}]}
-                     ,{'doodle_doc_handler', [{<<"configuration">>, ?DOC_EDITED}]}
+                    ,{'doodle_notify_handler', [{<<"directory">>, <<"reg_success">>}]}
+                    ,{'doodle_doc_handler', [{<<"configuration">>, ?DOC_CREATED}]}
+                    ,{'doodle_doc_handler', [{<<"configuration">>, ?DOC_EDITED}]}
                     ]).
 -define(QUEUE_NAME, <<"doodle_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -48,22 +48,19 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}
-                            ,?MODULE
-                            ,[{'bindings', ?BINDINGS}
-                              ,{'responders', ?RESPONDERS}
-                              ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                              ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                              ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                             ]
-                            ,[]
+    gen_listener:start_link({'local', ?SERVER}
+                           ,?MODULE
+                           ,[{'bindings', ?BINDINGS}
+                            ,{'responders', ?RESPONDERS}
+                            ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                            ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                            ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                            ]
+                           ,[]
                            ).
 
 %%%===================================================================
@@ -98,6 +95,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -111,6 +109,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
@@ -128,6 +127,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -139,6 +139,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -153,6 +154,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
@@ -164,6 +166,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

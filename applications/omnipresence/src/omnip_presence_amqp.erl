@@ -1,43 +1,42 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(omnip_presence_amqp).
-
 -behaviour(gen_server).
 
 -export([start_link/0
-         ,set_presence_state/2
+        ,set_presence_state/2
         ]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("omnipresence.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {}).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -55,7 +54,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    wh_util:put_callid(?MODULE),
+    kz_util:put_callid(?MODULE),
     lager:debug("omnipresence event presence amqp package started"),
     {'ok', #state{}}.
 
@@ -73,6 +72,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -91,17 +91,23 @@ handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
-handle_cast({'omnipresence',{'subscribe_notify', <<"presence">>, _User, #omnip_subscription{}=_Subscription}}, State) ->
+handle_cast({'omnipresence',{'subscribe_notify', <<"presence">>, _User,
+                             #omnip_subscription{call_id=CallId}=_Subscription
+                            }}, State) ->
+    kz_util:put_callid(CallId),
     {'noreply', State};
 handle_cast({'omnipresence',{'presence_update', JObj}}, State) ->
-    _ = wh_util:spawn(fun() -> presence_event(JObj) end),
+    kz_util:put_callid(JObj),
+    _ = kz_util:spawn(fun presence_event/1, [JObj]),
     {'noreply', State};
 handle_cast({'omnipresence',{'presence_reset', JObj}}, State) ->
-    _ = wh_util:spawn(fun() -> presence_reset(JObj) end),
+    kz_util:put_callid(JObj),
+    _ = kz_util:spawn(fun presence_reset/1, [JObj]),
     {'noreply', State};
 handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
-    EventType = wh_json:get_value(<<"Event-Name">>, JObj),
-    _ = wh_util:spawn(fun() -> channel_event(EventType, JObj) end),
+    kz_util:put_callid(JObj),
+    EventType = kz_json:get_value(<<"Event-Name">>, JObj),
+    _ = kz_util:spawn(fun channel_event/2, [EventType, JObj]),
     {'noreply', State};
 handle_cast({'omnipresence', _}, State) ->
     {'noreply', State};
@@ -132,6 +138,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -146,6 +153,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
@@ -157,6 +165,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
@@ -164,7 +173,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec channel_event(ne_binary(), wh_json:object()) -> 'ok'.
+-spec channel_event(ne_binary(), kz_json:object()) -> 'ok'.
 channel_event(<<"CHANNEL_CREATE">>, JObj) -> handle_new_channel(JObj);
 channel_event(<<"CHANNEL_ANSWER">>, JObj) -> handle_answered_channel(JObj);
 channel_event(<<"CHANNEL_DESTROY">>, JObj) -> handle_destroyed_channel(JObj);
@@ -172,52 +181,52 @@ channel_event(<<"CHANNEL_CONNECTED">>, JObj) -> handle_connected_channel(JObj);
 channel_event(<<"CHANNEL_DISCONNECTED">>, JObj) -> handle_disconnected_channel(JObj);
 channel_event(_, _JObj) -> 'ok'.
 
--spec handle_new_channel(wh_json:object()) -> 'ok'.
+-spec handle_new_channel(kz_json:object()) -> 'ok'.
 handle_new_channel(JObj) ->
-    'true' = wapi_call:event_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_call:event_v(JObj),
+    kz_util:put_callid(JObj),
     lager:debug("received channel create, checking for presence subscribers"),
     handle_update(JObj, ?PRESENCE_RINGING).
 
--spec handle_answered_channel(wh_json:object()) -> 'ok'.
+-spec handle_answered_channel(kz_json:object()) -> 'ok'.
 handle_answered_channel(JObj) ->
-    'true' = wapi_call:event_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_call:event_v(JObj),
+    kz_util:put_callid(JObj),
     lager:debug("received channel answer, checking for subscribers"),
     handle_update(JObj, ?PRESENCE_ANSWERED).
 
--spec handle_destroyed_channel(wh_json:object()) -> 'ok'.
+-spec handle_destroyed_channel(kz_json:object()) -> 'ok'.
 handle_destroyed_channel(JObj) ->
-    'true' = wapi_call:event_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_call:event_v(JObj),
+    kz_util:put_callid(JObj),
     lager:debug("received channel destroy, checking for presence subscribers"),
     handle_update(JObj, ?PRESENCE_HANGUP).
 
--spec handle_disconnected_channel(wh_json:object()) -> 'ok'.
+-spec handle_disconnected_channel(kz_json:object()) -> 'ok'.
 handle_disconnected_channel(JObj) ->
-    'true' = wapi_call:event_v(JObj),
-    wh_util:put_callid(JObj),
+    'true' = kapi_call:event_v(JObj),
+    kz_util:put_callid(JObj),
     lager:debug("channel has been disconnected, checking status of channel on the cluster"),
     handle_destroyed_channel(JObj).
 
--spec handle_connected_channel(wh_json:object()) -> 'ok'.
+-spec handle_connected_channel(kz_json:object()) -> 'ok'.
 handle_connected_channel(_JObj) ->
     'ok'.
 
--spec presence_event(wh_json:object()) -> 'ok'.
+-spec presence_event(kz_json:object()) -> 'ok'.
 presence_event(JObj) ->
-    State = wh_json:get_value(<<"State">>, JObj),
+    State = kz_json:get_value(<<"State">>, JObj),
     maybe_handle_presence_state(JObj, State).
 
--spec maybe_handle_presence_state(wh_json:object(), api_binary()) -> 'ok'.
+-spec maybe_handle_presence_state(kz_json:object(), api_binary()) -> 'ok'.
 maybe_handle_presence_state(JObj, <<"online">>=State) ->
     handle_update(JObj, State, 0);
 maybe_handle_presence_state(JObj, <<"offline">>=State) ->
     handle_update(JObj, State, 0);
 maybe_handle_presence_state(JObj, State) ->
-    handle_update(wh_json:delete_keys([<<"From">>, <<"To">>], JObj), State, 0).
+    handle_update(kz_json:delete_keys([<<"From">>, <<"To">>], JObj), State, 0).
 
--spec handle_update(wh_json:object(), ne_binary()) -> 'ok'.
+-spec handle_update(kz_json:object(), ne_binary()) -> 'ok'.
 handle_update(JObj, ?PRESENCE_HANGUP) ->
     handle_update(JObj, ?PRESENCE_HANGUP, 0);
 handle_update(JObj, ?PRESENCE_RINGING) ->
@@ -227,70 +236,70 @@ handle_update(JObj, ?PRESENCE_ANSWERED) ->
 handle_update(JObj, State) ->
     handle_update(JObj, State, 0).
 
--spec handle_update(wh_json:object(), ne_binary(), integer()) -> 'ok'.
+-spec handle_update(kz_json:object(), ne_binary(), integer()) -> 'ok'.
 handle_update(JObj, State, Expires) ->
-    To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
-    From = wh_json:get_first_defined([<<"From">>, <<"Presence-ID">>], JObj),
+    To = kz_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
+    From = kz_json:get_first_defined([<<"From">>, <<"Presence-ID">>], JObj),
 
     case omnip_util:are_valid_uris([To, From]) of
         'true' -> handle_update(JObj, State, From, To, Expires);
         'false' -> lager:warning("presence handler ignoring update from ~s to ~s", [From, To])
     end.
 
--spec handle_update(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), integer()) -> 'ok'.
+-spec handle_update(kz_json:object(), ne_binary(), ne_binary(), ne_binary(), integer()) -> 'ok'.
 handle_update(JObj, State, From, To, Expires) ->
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
     [FromUsername, FromRealm] = binary:split(From, <<"@">>),
-    Direction = wh_json:get_lower_binary(<<"Call-Direction">>, JObj),
+    Direction = kz_json:get_lower_binary(<<"Call-Direction">>, JObj),
     {User, Props} =
         case Direction =:= <<"inbound">> of
             'true' ->
                 {From, props:filter_undefined(
                          [{<<"From">>, <<"sip:", From/binary>>}
-                          ,{<<"From-User">>, FromUsername}
-                          ,{<<"From-Realm">>, FromRealm}
-                          ,{<<"To">>, <<"sip:", To/binary>>}
-                          ,{<<"To-User">>, ToUsername}
-                          ,{<<"To-Realm">>, ToRealm}
-                          ,{<<"State">>, State}
-                          ,{<<"Expires">>, Expires}
-                          ,{<<"Direction">>, <<"initiator">>}
-                          ,{<<"Call-ID">>, ?FAKE_CALLID(From)}
-                          ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                          ,{<<"Event-Package">>, <<"presence">>}
-                          ,{<<"destination">>, ToUsername}
-                          ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-                          ,{<<"user">>, FromUsername}
-                          ,{<<"realm">>, FromRealm}
-                          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                         ,{<<"From-User">>, FromUsername}
+                         ,{<<"From-Realm">>, FromRealm}
+                         ,{<<"To">>, <<"sip:", To/binary>>}
+                         ,{<<"To-User">>, ToUsername}
+                         ,{<<"To-Realm">>, ToRealm}
+                         ,{<<"State">>, State}
+                         ,{<<"Expires">>, Expires}
+                         ,{<<"Direction">>, <<"initiator">>}
+                         ,{<<"Call-ID">>, ?FAKE_CALLID(From)}
+                         ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+                         ,{<<"Event-Package">>, <<"presence">>}
+                         ,{<<"destination">>, ToUsername}
+                         ,{<<"uuid">>, kz_json:get_value(<<"Call-ID">>, JObj)}
+                         ,{<<"user">>, FromUsername}
+                         ,{<<"realm">>, FromRealm}
+                          | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                          ])
                 };
             'false' ->
                 {To, props:filter_undefined(
                        [{<<"From">>, <<"sip:", To/binary>>}
-                        ,{<<"From-User">>, ToUsername}
-                        ,{<<"From-Realm">>, ToRealm}
-                        ,{<<"To">>, <<"sip:", From/binary>>}
-                        ,{<<"To-User">>, FromUsername}
-                        ,{<<"To-Realm">>, FromRealm}
-                        ,{<<"To">>, <<"sip:", From/binary>>}
-                        ,{<<"State">>, State}
-                        ,{<<"Expires">>, Expires}
-                        ,{<<"Direction">>, <<"recipient">>}
-                        ,{<<"Call-ID">>, ?FAKE_CALLID(To)}
-                        ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                        ,{<<"Event-Package">>, <<"presence">>}
-                        ,{<<"destination">>, FromUsername}
-                        ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-                        ,{<<"user">>, ToUsername}
-                        ,{<<"realm">>, ToRealm}
-                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                       ,{<<"From-User">>, ToUsername}
+                       ,{<<"From-Realm">>, ToRealm}
+                       ,{<<"To">>, <<"sip:", From/binary>>}
+                       ,{<<"To-User">>, FromUsername}
+                       ,{<<"To-Realm">>, FromRealm}
+                       ,{<<"To">>, <<"sip:", From/binary>>}
+                       ,{<<"State">>, State}
+                       ,{<<"Expires">>, Expires}
+                       ,{<<"Direction">>, <<"recipient">>}
+                       ,{<<"Call-ID">>, ?FAKE_CALLID(To)}
+                       ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+                       ,{<<"Event-Package">>, <<"presence">>}
+                       ,{<<"destination">>, FromUsername}
+                       ,{<<"uuid">>, kz_json:get_value(<<"Call-ID">>, JObj)}
+                       ,{<<"user">>, ToUsername}
+                       ,{<<"realm">>, ToRealm}
+                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                        ])
                 }
         end,
     maybe_send_update(User, Props).
 
--spec maybe_send_update(ne_binary(), wh_proplist()) -> 'ok'.
+-spec maybe_send_update(ne_binary(), kz_proplist()) -> 'ok'.
 maybe_send_update(User, Props) ->
     case omnip_subscriptions:get_stalkers(?PRESENCE_EVENT, User) of
         {'ok', Stalkers} ->
@@ -299,23 +308,23 @@ maybe_send_update(User, Props) ->
             lager:debug("no ~s subscriptions for ~s",[?PRESENCE_EVENT, User])
     end.
 
--spec send_update(binaries(), wh_proplist()) -> 'ok'.
+-spec send_update(binaries(), kz_proplist()) -> 'ok'.
 send_update(Stalkers, Props) ->
-    {'ok', Worker} = wh_amqp_worker:checkout_worker(),
-    _ = [wh_amqp_worker:cast(Props
-                             ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
-                             ,Worker
+    {'ok', Worker} = kz_amqp_worker:checkout_worker(),
+    _ = [kz_amqp_worker:cast(Props
+                            ,fun(P) -> kapi_omnipresence:publish_update(S, P) end
+                            ,Worker
                             )
          || S <- Stalkers
         ],
-    wh_amqp_worker:checkin_worker(Worker).
+    kz_amqp_worker:checkin_worker(Worker).
 
--spec presence_reset(wh_json:object()) -> any().
+-spec presence_reset(kz_json:object()) -> any().
 presence_reset(JObj) ->
-    User = <<(wh_json:get_value(<<"Username">>, JObj))/binary, "@", (wh_json:get_value(<<"Realm">>, JObj))/binary>>,
+    User = <<(kz_json:get_value(<<"Username">>, JObj))/binary, "@", (kz_json:get_value(<<"Realm">>, JObj))/binary>>,
     set_presence_state(User, ?PRESENCE_HANGUP).
 
 -spec set_presence_state(ne_binary(), ne_binary()) -> 'ok'.
 set_presence_state(PresenceId, State) ->
     Headers = [{<<"Presence-ID">>, PresenceId }],
-    handle_update(wh_json:from_list(Headers), State, 0).
+    handle_update(kz_json:from_list(Headers), State, 0).

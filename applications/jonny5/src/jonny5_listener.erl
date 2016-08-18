@@ -1,38 +1,38 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(jonny5_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("jonny5.hrl").
 
 -record(state, {}).
+-type state() :: #state{}.
 
-
-%% NOTE: do not replace CHANNEL_DESTROY bindings with wh_hooks (which federate)
+%% NOTE: do not replace CHANNEL_DESTROY bindings with kz_hooks (which federate)
 %%   as that will cause duplicate credit/debits at the end of the call since
-%%   the round-robin shared queue thing wont work.
+%%   the round-robin shared queue thing won't work.
 -define(RESPONDERS, [{'j5_authz_req', [{<<"authz">>, <<"authz_req">>}]}
-                     ,{'j5_channel_destroy', [{<<"call_event">>, <<"CHANNEL_DESTROY">>}]}
+                    ,{'j5_balance_check_req', [{<<"authz">>, <<"balance_check_req">>}]}
+                    ,{'j5_channel_destroy', [{<<"call_event">>, <<"CHANNEL_DESTROY">>}]}
                     ]).
 -define(BINDINGS, [{'call', [{'restrict_to', [<<"CHANNEL_DESTROY">>]}]}
-                   ,{'authz', []}
-                   ,{'self', []}
+                  ,{'authz', []}
+                  ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"jonny5_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -45,18 +45,15 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'bindings', ?BINDINGS}
-                                                          ,{'responders', ?RESPONDERS}
-                                                          ,{'queue_name', ?QUEUE_NAME}
-                                                          ,{'queue_options', ?QUEUE_OPTIONS}
-                                                          ,{'consume_options', ?CONSUME_OPTIONS}
+                                                         ,{'responders', ?RESPONDERS}
+                                                         ,{'queue_name', ?QUEUE_NAME}
+                                                         ,{'queue_options', ?QUEUE_OPTIONS}
+                                                         ,{'consume_options', ?CONSUME_OPTIONS}
                                                          ], []).
 
 %%%===================================================================
@@ -91,6 +88,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -104,6 +102,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -117,6 +116,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -128,6 +128,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -142,6 +143,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
@@ -153,6 +155,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

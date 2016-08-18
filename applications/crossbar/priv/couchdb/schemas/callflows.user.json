@@ -1,0 +1,45 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.user",
+    "description": "Validator for the user callflow's data object",
+    "properties": {
+        "can_call_self": {
+            "description": "",
+            "type": "boolean"
+        },
+        "can_text_self": {
+            "description": "",
+            "type": "boolean"
+        },
+        "delay": {
+            "default": 0,
+            "description": "",
+            "type": "integer"
+        },
+        "fail_on_single_reject": {
+            "description": ""
+        },
+        "source": {
+            "description": ""
+        },
+        "static_invite": {
+            "description": ""
+        },
+        "strategy": {
+            "default": "simultaneous",
+            "description": "",
+            "type": "string"
+        },
+        "suppress_clid": {
+            "description": "",
+            "type": "boolean"
+        },
+        "timeout": {
+            "default": 20,
+            "description": "",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

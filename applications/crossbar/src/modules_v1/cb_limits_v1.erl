@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -9,15 +9,15 @@
 -module(cb_limits_v1).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
-         ,billing/1
-         ,validate/1
-         ,post/1
+        ,allowed_methods/0
+        ,resource_exists/0
+        ,billing/1
+        ,validate/1
+        ,post/1
         ]).
 
--include("../crossbar.hrl").
--include_lib("whistle/src/wh_json.hrl").
+-include("crossbar.hrl").
+-include_lib("kazoo/src/kz_json.hrl").
 
 -define(CB_LIST, <<"limits/crossbar_listing">>).
 -define(PVT_TYPE, <<"limits">>).
@@ -74,18 +74,19 @@ process_billing(Context, [{<<"limits">>, _}|_], ?HTTP_GET) ->
     Context;
 process_billing(Context, [{<<"limits">>, _}|_], _Verb) ->
     AccountId = cb_context:account_id(Context),
-    try wh_services:allow_updates(AccountId) andalso is_allowed(Context) of
+    try kz_services:allow_updates(AccountId)
+             andalso is_allowed(Context)
+    of
         'true' -> Context;
         'false' ->
             Message = <<"Please contact your phone provider to add limits.">>,
-            cb_context:add_system_error(
-                'forbidden'
-                ,wh_json:from_list([{<<"message">>, Message}])
-                ,Context
-            )
+            cb_context:add_system_error('forbidden'
+                                       ,kz_json:from_list([{<<"message">>, Message}])
+                                       ,Context
+                                       )
     catch
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
     end;
 process_billing(Context, _Nouns, _Verb) -> Context.
 
@@ -93,9 +94,9 @@ process_billing(Context, _Nouns, _Verb) -> Context.
 is_allowed(Context) ->
     AccountId = cb_context:account_id(Context),
     AuthAccountId = cb_context:auth_account_id(Context),
-    IsSystemAdmin = wh_util:is_system_admin(AuthAccountId),
-    {'ok', MasterAccount} = whapps_util:get_master_account_id(),
-    case wh_services:find_reseller_id(AccountId) of
+    IsSystemAdmin = kz_util:is_system_admin(AuthAccountId),
+    {'ok', MasterAccount} = kapps_util:get_master_account_id(),
+    case kz_services:find_reseller_id(AccountId) of
         AuthAccountId ->
             lager:debug("allowing reseller to update limits"),
             'true';
@@ -143,7 +144,7 @@ post(Context) -> crossbar_doc:save(Context).
 %%--------------------------------------------------------------------
 -spec load_limit(cb_context:context()) -> cb_context:context().
 load_limit(Context) ->
-    maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context)).
+    maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -164,7 +165,7 @@ update_limits(Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
-    maybe_handle_load_failure(crossbar_doc:load_merge(?PVT_TYPE, Context)).
+    maybe_handle_load_failure(crossbar_doc:load_merge(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -181,16 +182,16 @@ maybe_handle_load_failure(Context) ->
 
 maybe_handle_load_failure(Context, 404) ->
     Data = cb_context:req_data(Context),
-    NewLimits = wh_json:from_list([{<<"pvt_type">>, ?PVT_TYPE}
-                                   ,{<<"_id">>, ?PVT_TYPE}
+    NewLimits = kz_json:from_list([{<<"pvt_type">>, ?PVT_TYPE}
+                                  ,{<<"_id">>, ?PVT_TYPE}
                                   ]),
-    JObj = wh_json_schema:add_defaults(wh_json:merge_jobjs(NewLimits, wh_json:public_fields(Data))
-                                       ,<<"limits">>
+    JObj = kz_json_schema:add_defaults(kz_json:merge_jobjs(NewLimits, kz_json:public_fields(Data))
+                                      ,<<"limits">>
                                       ),
 
     cb_context:setters(Context
-                       ,[{fun cb_context:set_resp_status/2, 'success'}
-                         ,{fun cb_context:set_resp_data/2, wh_json:public_fields(JObj)}
-                         ,{fun cb_context:set_doc/2, crossbar_doc:update_pvt_parameters(JObj, Context)}
-                        ]);
+                      ,[{fun cb_context:set_resp_status/2, 'success'}
+                       ,{fun cb_context:set_resp_data/2, kz_json:public_fields(JObj)}
+                       ,{fun cb_context:set_doc/2, crossbar_doc:update_pvt_parameters(JObj, Context)}
+                       ]);
 maybe_handle_load_failure(Context, _RespCode) -> Context.

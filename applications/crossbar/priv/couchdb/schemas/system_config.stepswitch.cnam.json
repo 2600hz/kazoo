@@ -1,0 +1,45 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.stepswitch.cnam",
+    "description": "Schema for stepswitch.cnam system_config",
+    "properties": {
+        "disable_normalize": {
+            "default": false,
+            "description": "stepswitch.cnam disable normalize",
+            "name": "disable_normalize",
+            "type": "boolean"
+        },
+        "http_basic_auth_password": {
+            "default": "",
+            "description": "stepswitch.cnam http basic auth password",
+            "name": "http_basic_auth_password",
+            "type": "string"
+        },
+        "http_basic_auth_username": {
+            "default": "",
+            "description": "stepswitch.cnam http basic auth username",
+            "name": "http_basic_auth_username",
+            "type": "string"
+        },
+        "http_body": {
+            "default": "",
+            "description": "stepswitch.cnam http body",
+            "name": "http_body",
+            "type": "string"
+        },
+        "http_method": {
+            "default": "get",
+            "description": "stepswitch.cnam http method",
+            "name": "http_method",
+            "type": "string"
+        },
+        "http_url": {
+            "default": "https://api.opencnam.com/v2/phone/{{phone_number}}",
+            "description": "stepswitch.cnam http url",
+            "name": "http_url",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

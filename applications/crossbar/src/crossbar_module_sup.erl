@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -12,7 +12,7 @@
 
 %% API
 -export([start_link/0
-         ,start_child/1, start_child/2
+        ,start_child/1, start_child/2
         ]).
 
 %% Supervisor callbacks
@@ -22,17 +22,16 @@
 
 -define(SERVER, ?MODULE).
 
+-define(CHILDREN, []).
+
 %%%===================================================================
 %%% API functions
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
@@ -54,12 +53,9 @@ start_child(Mod, 'supervisor') ->
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
-%%
-%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
-%%                     ignore |
-%%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 1000,
@@ -67,9 +63,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    Children = [],
-
-    {'ok', {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

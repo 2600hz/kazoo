@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.intercom",
+    "description": "Validator for the intercom callflow's data object",
+    "properties": {
+        "barge_calls": {
+            "description": "",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

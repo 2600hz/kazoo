@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for local resource documents
@@ -14,13 +14,13 @@
 -export([init/0]).
 
 -export([validate_request/2
-         ,maybe_remove_aggregate/2
-         ,maybe_aggregate_resources/1
-         ,maybe_aggregate_resource/1
-         ,maybe_remove_aggregates/1
+        ,maybe_remove_aggregate/2
+        ,maybe_aggregate_resources/1
+        ,maybe_aggregate_resource/1
+        ,maybe_remove_aggregates/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".local_resources">>).
 
@@ -28,7 +28,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = couch_mgr:revise_doc_from_file(?WH_SIP_DB, 'crossbar', "views/resources.json"),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_SIP_DB, 'crossbar', "views/resources.json"),
     crossbar_maintenance:start_module('cb_resources').
 
 %%--------------------------------------------------------------------
@@ -44,7 +44,7 @@ validate_request(ResourceId, Context) ->
 -spec check_for_registering_gateways(api_binary(), cb_context:context()) -> cb_context:context().
 check_for_registering_gateways(ResourceId, Context) ->
     case lists:any(fun is_registering_gateway/1
-                   ,cb_context:req_value(Context, <<"gateways">>, [])
+                  ,cb_context:req_value(Context, <<"gateways">>, [])
                   )
     of
         'true' ->
@@ -53,28 +53,28 @@ check_for_registering_gateways(ResourceId, Context) ->
             check_if_peer(ResourceId, Context)
     end.
 
--spec is_registering_gateway(wh_json:object()) -> boolean().
+-spec is_registering_gateway(kz_json:object()) -> boolean().
 is_registering_gateway(Gateway) ->
-    wh_json:is_true(<<"register">>, Gateway)
-        andalso wh_json:is_true(<<"enabled">>, Gateway).
+    kz_json:is_true(<<"register">>, Gateway)
+        andalso kz_json:is_true(<<"enabled">>, Gateway).
 
 -spec check_if_peer(api_binary(), cb_context:context()) -> cb_context:context().
 check_if_peer(ResourceId, Context) ->
-    case {wh_util:is_true(cb_context:req_value(Context, <<"peer">>))
-          ,whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"allow_peers">>, 'false')
+    case {kz_util:is_true(cb_context:req_value(Context, <<"peer">>))
+         ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"allow_peers">>, 'false')
          }
     of
         {'true', 'true'} ->
             check_if_gateways_have_ip(ResourceId, Context);
         {'true', 'false'} ->
             C = cb_context:add_validation_error(
-                    [<<"peer">>]
-                    ,<<"forbidden">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"Peers are currently disabled, please contact the system admin">>}
-                     ])
-                    ,Context
-                ),
+                  [<<"peer">>]
+                                               ,<<"forbidden">>
+                                               ,kz_json:from_list([
+                                                                   {<<"message">>, <<"Peers are currently disabled, please contact the system admin">>}
+                                                                  ])
+                                               ,Context
+                 ),
             check_resource_schema(ResourceId, C);
         {_, _} ->
             check_resource_schema(ResourceId, Context)
@@ -95,52 +95,52 @@ validate_gateway_ips([], _, _, ResourceId, Context, 'success') ->
     check_resource_schema(ResourceId, cb_context:store(Context, 'aggregate_resource', 'true'));
 validate_gateway_ips([{Idx, 'undefined', 'undefined'}|IPs], SIPAuth, ACLs, ResourceId, Context, 'success') ->
     C = cb_context:add_validation_error(
-            [<<"gateways">>, Idx, <<"server">>]
-            ,<<"required">>
-            ,wh_json:from_list([
-                {<<"message">>, <<"Gateway server must be an IP when peering with the resource">>}
-                ,{<<"cause">>, Idx}
-             ])
-            ,Context
-        ),
+          [<<"gateways">>, Idx, <<"server">>]
+                                       ,<<"required">>
+                                       ,kz_json:from_list([
+                                                           {<<"message">>, <<"Gateway server must be an IP when peering with the resource">>}
+                                                          ,{<<"cause">>, Idx}
+                                                          ])
+                                       ,Context
+         ),
     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C, cb_context:resp_status(C));
 validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, ResourceId, Context, 'success') ->
-    case wh_network_utils:is_ipv4(ServerIP) of
+    case kz_network_utils:is_ipv4(ServerIP) of
         'true' ->
             case validate_ip(ServerIP, SIPAuth, ACLs, ResourceId) of
                 'true' ->
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context));
                 'false' ->
                     C = cb_context:add_validation_error(
-                            [<<"gateways">>, Idx, <<"server">>]
-                            ,<<"unique">>
-                            ,wh_json:from_list([
-                                {<<"message">>, <<"Gateway server ip is already in use">>}
-                                ,{<<"cause">>, Idx}
-                             ])
-                            ,Context
-                        ),
+                          [<<"gateways">>, Idx, <<"server">>]
+                                                       ,<<"unique">>
+                                                       ,kz_json:from_list([
+                                                                           {<<"message">>, <<"Gateway server ip is already in use">>}
+                                                                          ,{<<"cause">>, Idx}
+                                                                          ])
+                                                       ,Context
+                         ),
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C, cb_context:resp_status(C))
             end;
         'false' ->
             validate_gateway_ips([{Idx, 'undefined', 'undefined'}|IPs], SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context))
     end;
 validate_gateway_ips([{Idx, InboundIP, ServerIP}|IPs], SIPAuth, ACLs, ResourceId, Context, 'success') ->
-    case wh_network_utils:is_ipv4(InboundIP) of
+    case kz_network_utils:is_ipv4(InboundIP) of
         'true' ->
             case validate_ip(InboundIP, SIPAuth, ACLs, ResourceId) of
                 'true' ->
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context));
                 'false' ->
                     C = cb_context:add_validation_error([
-                            <<"gateways">>, Idx, <<"inbound_ip">>]
-                            ,<<"unique">>
-                            ,wh_json:from_list([
-                                {<<"message">>, <<"Gateway inbound ip is already in use">>}
-                                ,{<<"cause">>, Idx}
-                             ])
-                            ,Context
-                        ),
+                                                         <<"gateways">>, Idx, <<"inbound_ip">>]
+                                                       ,<<"unique">>
+                                                       ,kz_json:from_list([
+                                                                           {<<"message">>, <<"Gateway inbound ip is already in use">>}
+                                                                          ,{<<"cause">>, Idx}
+                                                                          ])
+                                                       ,Context
+                                                       ),
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C, cb_context:resp_status(C))
             end;
         'false' ->
@@ -154,9 +154,9 @@ check_resource_schema(ResourceId, Context) ->
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), <<"resource">>));
+    cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"resource">>));
 on_successful_validation(Id, Context) ->
-    crossbar_doc:load_merge(Id, Context).
+    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"resource">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -170,15 +170,15 @@ maybe_aggregate_resource(Context) ->
     maybe_aggregate_resource(Context, cb_context:resp_status(Context)).
 
 maybe_aggregate_resource(Context, 'success') ->
-    case wh_util:is_true(cb_context:fetch(Context, 'aggregate_resource')) of
+    case kz_util:is_true(cb_context:fetch(Context, 'aggregate_resource')) of
         'false' ->
-            ResourceId = wh_doc:id(cb_context:doc(Context)),
+            ResourceId = kz_doc:id(cb_context:doc(Context)),
             maybe_remove_aggregate(ResourceId, Context);
         'true' ->
             lager:debug("adding resource to the sip auth aggregate"),
-            couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(cb_context:doc(Context))),
-            _ = wapi_switch:publish_reload_gateways(),
-            _ = wapi_switch:publish_reload_acls(),
+            kz_datamgr:ensure_saved(?KZ_SIP_DB, kz_doc:delete_revision(cb_context:doc(Context))),
+            _ = kapi_switch:publish_reload_gateways(),
+            _ = kapi_switch:publish_reload_acls(),
             'true'
     end;
 maybe_aggregate_resource(_Context, _Status) -> 'false'.
@@ -190,11 +190,11 @@ maybe_remove_aggregate(ResourceId, Context) ->
     maybe_remove_aggregate(ResourceId, Context, cb_context:resp_status(Context)).
 
 maybe_remove_aggregate(ResourceId, _Context, 'success') ->
-    case couch_mgr:open_doc(?WH_SIP_DB, ResourceId) of
+    case kz_datamgr:open_doc(?KZ_SIP_DB, ResourceId) of
         {'ok', JObj} ->
-            couch_mgr:del_doc(?WH_SIP_DB, JObj),
-            _ = wapi_switch:publish_reload_gateways(),
-            _ = wapi_switch:publish_reload_acls(),
+            kz_datamgr:del_doc(?KZ_SIP_DB, JObj),
+            _ = kapi_switch:publish_reload_gateways(),
+            _ = kapi_switch:publish_reload_acls(),
             'true';
         {'error', 'not_found'} -> 'false'
     end;
@@ -212,57 +212,57 @@ maybe_remove_aggregate(_ResourceId, _Context, _Status) -> 'false'.
 -spec get_all_sip_auth_ips() -> sip_auth_ips().
 get_all_sip_auth_ips() ->
     ViewOptions = [],
-    case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, ViewOptions) of
+    case kz_datamgr:get_results(?KZ_SIP_DB, <<"credentials/lookup_by_ip">>, ViewOptions) of
         {'ok', JObjs} -> lists:foldr(fun get_sip_auth_ip/2, [], JObjs);
         {'error', _} -> []
     end.
 
--spec get_sip_auth_ip(wh_json:object(), sip_auth_ips()) -> sip_auth_ips().
+-spec get_sip_auth_ip(kz_json:object(), sip_auth_ips()) -> sip_auth_ips().
 get_sip_auth_ip(JObj, IPs) ->
-    [{wh_json:get_value(<<"key">>, JObj), wh_doc:id(JObj)} | IPs].
+    [{kz_json:get_value(<<"key">>, JObj), kz_doc:id(JObj)} | IPs].
 
 -type acl_ips() :: ne_binaries().
 -spec get_all_acl_ips() -> acl_ips().
 get_all_acl_ips() ->
     Req = [{<<"Category">>, <<"ecallmgr">>}
-           ,{<<"Key">>, <<"acls">>}
-           ,{<<"Node">>, <<"all">>}
-           ,{<<"Default">>, wh_json:new()}
-           ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ,{<<"Key">>, <<"acls">>}
+          ,{<<"Node">>, <<"all">>}
+          ,{<<"Default">>, kz_json:new()}
+          ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    Resp = whapps_util:amqp_pool_request(
+    Resp = kapps_util:amqp_pool_request(
              props:filter_undefined(Req)
-             ,fun wapi_sysconf:publish_get_req/1
-             ,fun wapi_sysconf:get_resp_v/1
+                                       ,fun kapi_sysconf:publish_get_req/1
+                                       ,fun kapi_sysconf:get_resp_v/1
             ),
     case Resp of
         {'error', _} -> [];
         {'ok', JObj} ->
-            extract_all_ips(wh_json:get_value(<<"Value">>, JObj, wh_json:new()))
+            extract_all_ips(kz_json:get_value(<<"Value">>, JObj, kz_json:new()))
     end.
 
--spec extract_all_ips(wh_json:object()) -> acl_ips().
+-spec extract_all_ips(kz_json:object()) -> acl_ips().
 extract_all_ips(JObj) ->
-    wh_json:foldl(fun extract_ips_fold/3, [], JObj).
+    kz_json:foldl(fun extract_ips_fold/3, [], JObj).
 
--spec extract_ips_fold(wh_json:key(), wh_json:object(), acl_ips()) -> acl_ips().
+-spec extract_ips_fold(kz_json:key(), kz_json:object(), acl_ips()) -> acl_ips().
 extract_ips_fold(_K, JObj, IPs) ->
-    case wh_json:get_value(<<"cidr">>, JObj) of
+    case kz_json:get_value(<<"cidr">>, JObj) of
         'undefined' -> IPs;
         CIDR ->
-            AuthorizingId = wh_json:get_value(<<"authorizing_id">>, JObj),
+            AuthorizingId = kz_json:get_value(<<"authorizing_id">>, JObj),
             [{CIDR, AuthorizingId} | IPs]
     end.
 
 -type gateway_ip() :: {non_neg_integer(), api_binary(), api_binary()}.
 -type gateway_ips() :: [gateway_ip()].
--spec extract_gateway_ips(wh_json:objects(), non_neg_integer(), gateway_ips()) -> gateway_ips().
+-spec extract_gateway_ips(kz_json:objects(), non_neg_integer(), gateway_ips()) -> gateway_ips().
 extract_gateway_ips([], _, IPs) -> IPs;
 extract_gateway_ips([Gateway|Gateways], Idx, IPs) ->
     IP = {Idx
-          ,wh_json:get_ne_value(<<"inbound_ip">>, Gateway)
-          ,wh_json:get_ne_value(<<"server">>, Gateway)
+         ,kz_json:get_ne_value(<<"inbound_ip">>, Gateway)
+         ,kz_json:get_ne_value(<<"server">>, Gateway)
          },
     extract_gateway_ips(Gateways, Idx + 1, [IP|IPs]).
 
@@ -270,7 +270,7 @@ extract_gateway_ips([Gateway|Gateways], Idx, IPs) ->
 validate_ip(IP, SIPAuth, ACLs, ResourceId) ->
     lists:all(fun({CIDR, AuthId}) ->
                       AuthId =:= ResourceId
-                          orelse not (wh_network_utils:verify_cidr(IP, CIDR))
+                          orelse not (kz_network_utils:verify_cidr(IP, CIDR))
               end, ACLs)
         andalso lists:all(fun({AuthIp, Id}) ->
                                   IP =/= AuthIp
@@ -282,20 +282,20 @@ validate_ip(IP, SIPAuth, ACLs, ResourceId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_aggregate_resources(wh_json:objects()) -> 'ok'.
+-spec maybe_aggregate_resources(kz_json:objects()) -> 'ok'.
 maybe_aggregate_resources([]) -> 'ok';
 maybe_aggregate_resources([Resource|Resources]) ->
     case lists:any(fun(Gateway) ->
-                           wh_json:is_true(<<"register">>, Gateway)
+                           kz_json:is_true(<<"register">>, Gateway)
                                andalso
-                                 (not wh_json:is_false(<<"enabled">>, Gateway))
-                   end, wh_json:get_value(<<"gateways">>, Resource, []))
+                                 (not kz_json:is_false(<<"enabled">>, Gateway))
+                   end, kz_json:get_value(<<"gateways">>, Resource, []))
     of
         'true' ->
             lager:debug("adding resource to the sip auth aggregate"),
-            couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(Resource)),
-            _ = wapi_switch:publish_reload_gateways(),
-            _ = wapi_switch:publish_reload_acls(),
+            kz_datamgr:ensure_saved(?KZ_SIP_DB, kz_doc:delete_revision(Resource)),
+            _ = kapi_switch:publish_reload_gateways(),
+            _ = kapi_switch:publish_reload_acls(),
             maybe_aggregate_resources(Resources);
         'false' ->
             _ = maybe_remove_aggregates([Resource]),
@@ -306,14 +306,14 @@ maybe_aggregate_resources([Resource|Resources]) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_remove_aggregates(wh_json:objects()) -> 'ok'.
+-spec maybe_remove_aggregates(kz_json:objects()) -> 'ok'.
 maybe_remove_aggregates([]) -> 'ok';
 maybe_remove_aggregates([Resource|Resources]) ->
-    case couch_mgr:open_doc(?WH_SIP_DB, wh_doc:id(Resource)) of
+    case kz_datamgr:open_doc(?KZ_SIP_DB, kz_doc:id(Resource)) of
         {'ok', JObj} ->
-            couch_mgr:del_doc(?WH_SIP_DB, JObj),
-            _ = wapi_switch:publish_reload_gateways(),
-            _ = wapi_switch:publish_reload_acls(),
+            kz_datamgr:del_doc(?KZ_SIP_DB, JObj),
+            _ = kapi_switch:publish_reload_gateways(),
+            _ = kapi_switch:publish_reload_acls(),
             maybe_remove_aggregates(Resources);
         {'error', 'not_found'} ->
             maybe_remove_aggregates(Resources)

@@ -1,6 +1,6 @@
  *** Setup SSL support for Media_Mgr ***
 
- * All commands are run from whistle_apps/apps/media_mgr/priv/ssl/ *
+ * All commands are run from kazoo_apps/apps/media_mgr/priv/ssl/ *
 
 Create the root key (skip if you have a root key already that you want to use):
 

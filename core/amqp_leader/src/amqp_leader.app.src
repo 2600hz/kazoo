@@ -1,0 +1,16 @@
+{application, amqp_leader,
+ [
+  {description, "a leader for AMQP"},
+  {vsn, "1.0.0"},
+  {modules, []},
+  {registered, [amqp_leader_sup]},
+  {applications, [ kernel
+                 , stdlib
+
+                 , kazoo_amqp
+
+                 , lager
+                 ]},
+  {mod, {amqp_leader_app, []}},
+  {env, []}
+ ]}.

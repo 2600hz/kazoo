@@ -1,5 +1,5 @@
 #!/usr/bin/env escript
-%%! -sname xref
+%%! -sname kazoo_xref
 %% -*- coding: utf-8 -*-
 
 -mode('compile').
@@ -14,8 +14,7 @@ main([]) ->
     usage(),
     halt(-1);
 main(Paths) ->
-    'ok' = code:add_pathsa(Paths),
-    AllPaths = code:get_path(),
+    AllPaths = all_paths(Paths),
     {'ok', _Pid} = xref:start(?SERVER),
     'ok' = xref:set_library_path(?SERVER, AllPaths),
     'ok' = xref:set_default(?SERVER, [ {'warnings', 'false'}
@@ -57,11 +56,18 @@ main(Paths) ->
 
 %% Internals
 
+all_paths(Paths) ->
+    OfARelease = fun (Path) -> lists:member("_rel", filename:split(Path)) end,
+    case lists:any(OfARelease, Paths) of
+        false ->
+            %% ie: we are not Xref-ing an Erlang release.
+            'ok' = code:add_pathsa(Paths),
+            code:get_path();
+        true -> Paths
+    end.
+
 filter('undefined_function_calls', Results) ->
     ToKeep = fun
-                 %% apns:start/0 calls the fun only if it exists
-                 ({{apns,start,0}, {application,ensure_all_started,1}}) -> 'false';
-
                  %% OTP Xref errors
                  ({{eunit_test,_,_}, {_,_,_}}) -> 'false';
                  ({{cerl_to_icode,_,_}, {_,_,_}}) -> 'false';
@@ -99,14 +105,14 @@ filter(_Xref, Results) ->
     Results.
 
 print('undefined_function_calls'=Xref, Results) ->
-    io:format("Xref: ~p\n", [Xref]),
+    io:format("Xref: listing ~p\n", [Xref]),
     lists:foreach(
       fun ({{M1,F1,A1}, {M2,F2,A2}}) ->
               io:format( "~30.. s:~-30..,s/~p ~30.. s ~30.. s:~s/~p\n"
                        , [M1,F1,A1, "calls undefined", M2,F2,A2] )
       end, Results );
 print(Xref, Results) ->
-    io:format("Xref: ~p\n\t~p\n", [Xref, Results]).
+    io:format("Xref: listing ~p\n\t~p\n", [Xref, Results]).
 
 usage() ->
     %% ok = io:setopts([{encoding, unicode}]),

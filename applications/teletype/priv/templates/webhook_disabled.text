@@ -1,0 +1,3 @@
+Webhook '{{hook.name}}' has been auto-disabled in account '{{account.name}}' because {{hook.disable_reason}}.
+
+Check the webhook history API for more information on why the hook was disabled.

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -19,9 +19,21 @@
 %% Application callbacks
 %% ===================================================================
 
--spec start(any(), any()) ->
-                   {'ok', pid()} |
-                   {'error', any()}.
-start(_StartType, _StartArgs) -> trunkstore:start_link().
+-spec start(application:start_type(), any()) -> startapp_ret().
+start(_StartType, _StartArgs) ->
+    _ = declare_exchanges(),
+    trunkstore_sup:start_link().
 
-stop(_State) -> trunkstore:stop().
+-spec stop(any()) -> any().
+stop(_State) ->
+    'ok'.
+
+
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = kapi_call:declare_exchanges(),
+    _ = kapi_dialplan:declare_exchanges(),
+    _ = kapi_offnet_resource:declare_exchanges(),
+    _ = kapi_route:declare_exchanges(),
+    _ = kapi_notifications:declare_exchanges(),
+    kapi_self:declare_exchanges().

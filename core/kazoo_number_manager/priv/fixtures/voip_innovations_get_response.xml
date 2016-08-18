@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <soap:Body>
+    <getDIDsResponse xmlns="http://tempuri.org/">
+      <getDIDsResult>
+        <responseCode>100</responseCode>
+        <responseMessage>Success</responseMessage>
+        <DIDs/>
+        <DIDLocators>
+          <DIDLocator>
+            <tn>4352016526</tn>
+            <rateCenter>RICHFIELD</rateCenter>
+            <state>UT</state>
+            <tier>4</tier>
+            <lataId>660</lataId>
+            <outboundCNAM>true</outboundCNAM>
+            <t38>true</t38>
+          </DIDLocator>
+          <DIDLocator>
+            <tn>4352016527</tn>
+            <rateCenter>RICHFIELD</rateCenter>
+            <state>UT</state>
+            <tier>4</tier>
+            <lataId>660</lataId>
+            <outboundCNAM>true</outboundCNAM>
+            <t38>true</t38>
+          </DIDLocator>
+          <DIDLocator>
+            <tn>4352165994</tn>
+            <rateCenter>ST GEORGE</rateCenter>
+            <state>UT</state>
+            <tier>2</tier>
+            <lataId>660</lataId>
+            <outboundCNAM>true</outboundCNAM>
+            <t38>true</t38>
+          </DIDLocator>
+        </DIDLocators>
+        <DIDCounts/>
+      </getDIDsResult>
+    </getDIDsResponse>
+  </soap:Body>
+</soap:Envelope>

@@ -1,0 +1,46 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.datamgr",
+    "description": "Schema for datamgr system_config",
+    "properties": {
+        "cache_policy": {
+            "default": {
+                "account": 900,
+                "aggregate": 900,
+                "deprecated": 900,
+                "modb": 900,
+                "numbers": 900,
+                "system": 900,
+                "system_config": "infinity",
+                "system_data": "infinity"
+            },
+            "description": "datamgr cache policy",
+            "name": "cache_policy",
+            "type": "object"
+        },
+        "default_archive_folder": {
+            "default": "/tmp",
+            "description": "datamgr default archive folder",
+            "name": "default_archive_folder",
+            "type": "string"
+        },
+        "no_caching_doc_types": {
+            "default": [
+                "media",
+                "private_media",
+                "call_recording",
+                "fax",
+                "mailbox_message"
+            ],
+            "description": "datamgr no caching doc types",
+            "name": "no_caching_doc_types",
+            "type": "array"
+        },
+        "performance": {
+            "description": "datamgr performance",
+            "name": "performance"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

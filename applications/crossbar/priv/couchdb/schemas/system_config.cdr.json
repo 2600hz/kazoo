@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.cdr",
+    "description": "Schema for cdr system_config",
+    "properties": {
+        "store_anonymous": {
+            "default": false,
+            "description": "cdr store anonymous",
+            "name": "store_anonymous",
+            "type": "boolean"
+        },
+        "v3_migrate_num_months": {
+            "default": 4,
+            "description": "cdr v3 migrate num months",
+            "name": "v3_migrate_num_months",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

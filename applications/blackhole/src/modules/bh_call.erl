@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz Inc
+%%% @copyright (C) 2012-2016, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -11,40 +11,69 @@
 -module(bh_call).
 
 -export([handle_event/2
-        ,add_amqp_binding/2, rm_amqp_binding/2
+        ,subscribe/2, unsubscribe/2
         ]).
 
--include("../blackhole.hrl").
+-include("blackhole.hrl").
 
--spec handle_event(bh_context:context(), wh_json:object()) -> 'ok'.
+-define(LISTEN_TO, [
+                    <<"CHANNEL_CREATE">>, <<"CHANNEL_ANSWER">>, <<"CHANNEL_DESTROY">>, <<"CHANNEL_BRIDGE">>
+                   ,<<"PARK_PARKED">>, <<"PARK_RETRIEVED">>, <<"PARK_ABANDONED">>
+                   ]).
+
+-spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
 handle_event(Context, EventJObj) ->
-    wh_util:put_callid(EventJObj),
-    lager:debug("handle_event fired for ~s ~s", [bh_context:account_id(Context), bh_context:websocket_session_id(Context)]),
-    'true' = wapi_call:event_v(EventJObj) andalso is_account_event(Context, EventJObj),
-    lager:debug("valid event and emitting to ~p: ~s", [bh_context:websocket_pid(Context), event_name(EventJObj)]),
-    blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), EventJObj).
+    'true' = kapi_call:event_v(EventJObj),
+    blackhole_util:handle_event(Context, EventJObj, event_name(EventJObj)).
 
-is_account_event(Context, EventJObj) ->
-    wh_json:get_first_defined([<<"Account-ID">>
-                               ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
-                              ], EventJObj
-                             ) =:=
-        bh_context:account_id(Context).
-
--spec event_name(wh_json:object()) -> ne_binary().
+-spec event_name(kz_json:object()) -> ne_binary().
 event_name(JObj) ->
-    wh_json:get_value(<<"Event-Name">>, JObj).
+    kz_json:get_value(<<"Event-Name">>, JObj).
 
--spec add_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
-add_amqp_binding(<<"call.", _/binary>>, Context) ->
-    blackhole_listener:add_call_binding(bh_context:account_id(Context));
-add_amqp_binding(_Binding, _Context) ->
-    lager:debug("unmatched binding ~s", [_Binding]),
-    'ok'.
+-spec subscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
+subscribe(Context, <<"call.*.*">>) ->
+    AccountId = bh_context:account_id(Context),
+    add_call_binding(AccountId, Context, ?LISTEN_TO),
+    {'ok', Context};
+subscribe(Context, <<"call.", Binding/binary>>) ->
+    case binary:split(Binding, <<".">>, ['global']) of
+        [Event, <<"*">>] ->
+            AccountId = bh_context:account_id(Context),
+            add_call_binding(AccountId, Context, [Event]),
+            {'ok', Context};
+        _ ->
+            {'error', <<"Unmatched binding">>}
+    end;
+subscribe(_Context, _Binding) ->
+    {'error', <<"Unmatched binding">>}.
 
--spec rm_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
-rm_amqp_binding(<<"call.", _/binary>>, Context) ->
-    blackhole_listener:remove_call_binding(bh_context:account_id(Context));
-rm_amqp_binding(_Binding, _Context) ->
-    lager:debug("unmatched binding ~s", [_Binding]),
-    'ok'.
+-spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
+unsubscribe(Context, <<"call.*.*">>) ->
+    AccountId = bh_context:account_id(Context),
+    rm_call_binding(AccountId, Context, ?LISTEN_TO),
+    {'ok', Context};
+unsubscribe(Context, <<"call.", Binding/binary>>) ->
+    case binary:split(Binding, <<".">>, ['global']) of
+        [Event, <<"*">>] ->
+            AccountId = bh_context:account_id(Context),
+            rm_call_binding(AccountId, Context, [Event]),
+            {'ok', Context};
+        _ ->
+            {'error', <<"Unmatched binding">>}
+    end;
+unsubscribe(_Context, _Binding) ->
+    {'error', <<"Unmatched binding">>}.
+
+-spec add_call_binding(ne_binary(), bh_context:context(), [ne_binary()]) -> ok.
+add_call_binding(_AccountId, _Context, []) -> ok;
+add_call_binding(AccountId, Context, [Event | Events]) ->
+    blackhole_bindings:bind(<<"call.", AccountId/binary, ".", Event/binary, ".*">>, ?MODULE, 'handle_event', Context),
+    blackhole_listener:add_call_binding(AccountId, Event),
+    add_call_binding(AccountId, Context, Events).
+
+-spec rm_call_binding(ne_binary(), bh_context:context(), [ne_binary()]) -> ok.
+rm_call_binding(_AccountId, _Context, []) -> ok;
+rm_call_binding(AccountId, Context, [Event | Events]) ->
+    blackhole_bindings:unbind(<<"call.", AccountId/binary, ".", Event/binary, ".*">>, ?MODULE, 'handle_event', Context),
+    blackhole_listener:remove_call_binding(AccountId, Event),
+    rm_call_binding(AccountId, Context, Events).

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Token auth module
 %%%
@@ -14,32 +14,32 @@
 -module(cb_token_auth).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
-         ,validate/1
-         ,delete/1
-         ,authenticate/1
-         ,authorize/1
-         ,finish_request/1
-         ,clean_expired/0, clean_expired/1
+        ,allowed_methods/0
+        ,resource_exists/0
+        ,validate/1
+        ,delete/1
+        ,authenticate/1
+        ,authorize/1
+        ,finish_request/1
+        ,clean_expired/0, clean_expired/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(LOOP_TIMEOUT
-        ,whapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)
+       ,kapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)
        ).
 -define(PERCENT_OF_TIMEOUT
-        ,whapps_config:get_integer(?APP_NAME, <<"expiry_percentage">>, 75)
+       ,kapps_config:get_integer(?APP_NAME, <<"expiry_percentage">>, 75)
        ).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
-    couch_mgr:db_create(?KZ_TOKEN_DB),
+    kz_datamgr:db_create(?KZ_TOKEN_DB),
 
-    _ = couch_mgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
 
     crossbar_bindings:bind(crossbar_cleanup:binding_hour(), ?MODULE, 'clean_expired'),
 
@@ -65,10 +65,10 @@ validate(Context) ->
 -spec validate(cb_context:context(), ne_binary()) -> cb_context:context().
 validate(Context, ?HTTP_GET) ->
     JObj = crossbar_util:response_auth(
-             wh_json:public_fields(cb_context:auth_doc(Context))
+             kz_json:public_fields(cb_context:auth_doc(Context))
             ),
     Setters = [{fun cb_context:set_resp_status/2, 'success'}
-               ,{fun cb_context:set_resp_data/2, JObj}
+              ,{fun cb_context:set_resp_data/2, JObj}
               ],
     cb_context:setters(Context, Setters);
 validate(Context, ?HTTP_DELETE) ->
@@ -76,24 +76,24 @@ validate(Context, ?HTTP_DELETE) ->
         'undefined' -> Context;
         AuthDoc ->
             cb_context:setters(Context
-                               ,[{fun cb_context:set_resp_status/2, 'success'}
-                                 ,{fun cb_context:set_doc/2, AuthDoc}
-                                ])
+                              ,[{fun cb_context:set_resp_status/2, 'success'}
+                               ,{fun cb_context:set_doc/2, AuthDoc}
+                               ])
     end.
 
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
     AuthToken = cb_context:auth_token(Context),
-    case couch_mgr:del_doc(?KZ_TOKEN_DB, AuthToken) of
+    case kz_datamgr:del_doc(?KZ_TOKEN_DB, AuthToken) of
         {'ok', _} ->
             cb_context:setters(Context
-                               ,[{fun cb_context:set_resp_status/2, 'success'}
-                                 ,{fun cb_context:set_resp_data/2, 'undefined'}
-                                 ,{fun cb_context:set_doc/2, 'undefined'}
-                                 ,{fun cb_context:set_auth_doc/2, 'undefined'}
-                                 ,{fun cb_context:set_auth_token/2, 'undefined'}
-                                 ,{fun cb_context:set_auth_account_id/2, 'undefined'}
-                                ]);
+                              ,[{fun cb_context:set_resp_status/2, 'success'}
+                               ,{fun cb_context:set_resp_data/2, 'undefined'}
+                               ,{fun cb_context:set_doc/2, 'undefined'}
+                               ,{fun cb_context:set_auth_doc/2, 'undefined'}
+                               ,{fun cb_context:set_auth_token/2, 'undefined'}
+                               ,{fun cb_context:set_auth_account_id/2, 'undefined'}
+                               ]);
         {'error', _E} ->
             lager:debug("failed to delete auth token ~s: ~p", [AuthToken, _E]),
             Context
@@ -109,10 +109,10 @@ finish_request(Context, AuthDoc) ->
     cb_context:put_reqid(Context),
     maybe_save_auth_doc(AuthDoc).
 
--spec maybe_save_auth_doc(wh_json:object()) -> any().
+-spec maybe_save_auth_doc(kz_json:object()) -> any().
 maybe_save_auth_doc(OldAuthDoc) ->
-    OldAuthModified = wh_doc:modified(OldAuthDoc),
-    Now = wh_util:current_tstamp(),
+    OldAuthModified = kz_doc:modified(OldAuthDoc),
+    Now = kz_util:current_tstamp(),
 
     ToSaveTimeout = (?LOOP_TIMEOUT * ?PERCENT_OF_TIMEOUT) div 100,
 
@@ -121,9 +121,9 @@ maybe_save_auth_doc(OldAuthDoc) ->
     case TimeLeft > 0 of
         'true' ->
             lager:debug("auth doc is past time (~ps after) to be saved, saving", [TimeLeft]),
-            couch_mgr:ensure_saved(?KZ_TOKEN_DB
-                                   ,wh_doc:set_modified(OldAuthDoc, Now)
-                                  );
+            kz_datamgr:ensure_saved(?KZ_TOKEN_DB
+                                   ,kz_doc:set_modified(OldAuthDoc, Now)
+                                   );
         'false' ->
             lager:debug("auth doc is too new (~ps to go), not saving", [TimeLeft*-1])
     end.
@@ -131,23 +131,23 @@ maybe_save_auth_doc(OldAuthDoc) ->
 -spec clean_expired() -> 'ok'.
 -spec clean_expired(gregorian_seconds()) -> 'ok'.
 clean_expired() ->
-    clean_expired(wh_util:current_tstamp() - ?LOOP_TIMEOUT).
+    clean_expired(kz_util:current_tstamp() - ?LOOP_TIMEOUT).
 
 clean_expired(CreatedBefore) ->
     ViewOpts = [{'startkey', 0}
-                ,{'endkey', CreatedBefore}
-                ,{'limit', couch_util:max_bulk_insert()}
+               ,{'endkey', CreatedBefore}
+               ,{'limit', kz_datamgr:max_bulk_insert()}
                ],
 
-    case couch_mgr:get_results(?KZ_TOKEN_DB, <<"token_auth/listing_by_mtime">>, ViewOpts) of
+    case kz_datamgr:get_results(?KZ_TOKEN_DB, <<"token_auth/listing_by_mtime">>, ViewOpts) of
         {'error', _E} -> lager:debug("failed to lookup expired tokens: ~p", [_E]);
         {'ok', []} -> lager:debug("no expired tokens found");
         {'ok', L} ->
             lager:debug("removing ~b expired tokens", [length(L)]),
 
-            couch_mgr:suppress_change_notice(),
-            _ = couch_mgr:del_docs(?KZ_TOKEN_DB, L),
-            couch_mgr:enable_change_notice(),
+            kz_datamgr:suppress_change_notice(),
+            _ = kz_datamgr:del_docs(?KZ_TOKEN_DB, L),
+            kz_datamgr:enable_change_notice(),
 
             lager:debug("removed tokens")
     end.
@@ -180,14 +180,14 @@ authenticate(Context) ->
 authenticate(Context, 'x-auth-token') ->
     _ = cb_context:put_reqid(Context),
     case kz_buckets:consume_tokens(?APP_NAME
-                                   ,cb_modules_util:bucket_name(Context)
-                                   ,cb_modules_util:token_cost(Context)
+                                  ,cb_modules_util:bucket_name(Context)
+                                  ,cb_modules_util:token_cost(Context)
                                   )
     of
         'true' ->
             check_auth_token(Context
-                             ,cb_context:auth_token(Context)
-                             ,cb_context:magic_pathed(Context)
+                            ,cb_context:auth_token(Context)
+                            ,cb_context:magic_pathed(Context)
                             );
         'false' ->
             lager:warning("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
@@ -202,66 +202,47 @@ check_auth_token(_Context, <<>>, MagicPathed) -> MagicPathed;
 check_auth_token(_Context, 'undefined', MagicPathed) -> MagicPathed;
 check_auth_token(Context, AuthToken, _MagicPathed) ->
     lager:debug("checking auth token: '~s'", [AuthToken]),
-    case couch_mgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken) of
+    case kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken) of
         {'ok', JObj} -> is_expired(Context, JObj);
         {'error', R} ->
             lager:debug("failed to authenticate token auth, ~p", [R]),
             'false'
     end.
 
--spec is_expired(cb_context:context(), wh_json:object()) ->
+-spec is_expired(cb_context:context(), kz_json:object()) ->
                         boolean() |
                         {'halt', cb_context:context()}.
 is_expired(Context, JObj) ->
-    AccountId = wh_json:get_value(<<"account_id">>, JObj),
-    case wh_util:is_account_expired(AccountId) of
+    AccountId = kz_json:get_value(<<"account_id">>, JObj),
+    case kz_util:is_account_expired(AccountId) of
         'false' -> check_as(Context, JObj);
         {'true', Expired} ->
-            _ = wh_util:spawn(fun() -> maybe_disable_account(AccountId) end),
+            _ = kz_util:spawn(fun kz_util:maybe_disable_account/1, [AccountId]),
             Cause =
-                wh_json:from_list(
+                kz_json:from_list(
                   [{<<"message">>, <<"account expired">>}
-                   ,{<<"cause">>, Expired}
+                  ,{<<"cause">>, Expired}
                   ]
                  ),
             Context1 = cb_context:add_validation_error(<<"account">>, <<"expired">>, Cause, Context),
             {'halt', Context1}
     end.
 
--spec maybe_disable_account(ne_binary()) -> 'ok'.
-maybe_disable_account(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', JObj} ->
-            case kz_account:is_enabled(JObj) of
-                'false' -> 'ok';
-                'true' -> disable_account(AccountId)
-            end;
-        {'error', _R} -> disable_account(AccountId)
-    end.
-
--spec disable_account(ne_binary()) -> 'ok'.
-disable_account(AccountId) ->
-    case crossbar_maintenance:disable_account(AccountId) of
-        'ok' -> lager:info("account ~s disabled because expired", [AccountId]);
-        'failed' -> lager:error("falied to disable account ~s", [AccountId])
-    end.
-
--spec check_as(cb_context:context(), wh_json:object()) ->
+-spec check_as(cb_context:context(), kz_json:object()) ->
                       boolean() |
                       {'true', cb_context:context()}.
 check_as(Context, JObj) ->
-    case wh_json:get_value(<<"account_id">>, JObj, 'undefined') of
+    case kz_json:get_value(<<"account_id">>, JObj, 'undefined') of
         'undefined' -> {'true', set_auth_doc(Context, JObj)};
         AccountId -> check_as_payload(Context, JObj, AccountId)
     end.
 
--spec check_as_payload(cb_context:context(), wh_json:object(), ne_binary()) ->
+-spec check_as_payload(cb_context:context(), kz_json:object(), ne_binary()) ->
                               boolean() |
                               {'true', cb_context:context()}.
 check_as_payload(Context, JObj, AccountId) ->
-    case {wh_json:get_value([<<"as">>, <<"account_id">>], JObj, 'undefined')
-          ,wh_json:get_value([<<"as">>, <<"owner_id">>], JObj, 'undefined')
+    case {kz_json:get_value([<<"as">>, <<"account_id">>], JObj, 'undefined')
+         ,kz_json:get_value([<<"as">>, <<"owner_id">>], JObj, 'undefined')
          }
     of
         {'undefined', _} -> {'true', set_auth_doc(Context, JObj)};
@@ -269,8 +250,8 @@ check_as_payload(Context, JObj, AccountId) ->
         {AsAccountId, AsOwnerId} -> check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId)
     end.
 
--spec check_descendants(cb_context:context(), wh_json:object()
-                        ,ne_binary() ,ne_binary() ,ne_binary()
+-spec check_descendants(cb_context:context(), kz_json:object()
+                       ,ne_binary() ,ne_binary() ,ne_binary()
                        ) ->
                                boolean() |
                                {'true', cb_context:context()}.
@@ -281,11 +262,11 @@ check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->
             case lists:member(AsAccountId, Descendants) of
                 'false' -> 'false';
                 'true' ->
-                    JObj1 = wh_json:set_values(
+                    JObj1 = kz_json:set_values(
                               [{<<"account_id">>, AsAccountId}
-                               ,{<<"owner_id">>, AsOwnerId}
+                              ,{<<"owner_id">>, AsOwnerId}
                               ]
-                              ,JObj
+                                              ,JObj
                              ),
                     {'true', set_auth_doc(Context, JObj1)}
             end
@@ -293,26 +274,26 @@ check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->
 
 -spec get_descendants(ne_binary()) ->
                              {'ok', ne_binaries()} |
-                             couch_mgr:couchbeam_error().
+                             kz_data:data_error().
 get_descendants(AccountId) ->
-    case couch_mgr:get_results(<<"accounts">>
+    case kz_datamgr:get_results(<<"accounts">>
                                ,<<"accounts/listing_by_descendants">>
                                ,[{'startkey', [AccountId]}
-                                 ,{'endkey', [AccountId, wh_json:new()]}
+                                ,{'endkey', [AccountId, kz_json:new()]}
                                 ]
-                              )
+                               )
     of
         {'error', _}=Error -> Error;
         {'ok', JObjs} ->
-            {'ok', [wh_doc:id(JObj) || JObj <- JObjs]}
+            {'ok', [kz_doc:id(JObj) || JObj <- JObjs]}
     end.
 
--spec set_auth_doc(cb_context:context(), wh_json:object()) ->
+-spec set_auth_doc(cb_context:context(), kz_json:object()) ->
                           cb_context:context().
 set_auth_doc(Context, JObj) ->
     Setters = [{fun cb_context:set_auth_doc/2, JObj}
-               ,{fun cb_context:set_auth_account_id/2
-                 ,wh_json:get_ne_value(<<"account_id">>, JObj)
-                }
+              ,{fun cb_context:set_auth_account_id/2
+               ,kz_json:get_ne_value(<<"account_id">>, JObj)
+               }
               ],
     cb_context:setters(Context, Setters).

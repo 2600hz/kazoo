@@ -1,0 +1,13 @@
+{application, kazoo_ledgers,
+ [
+  {description, "Kazoo ledgers management"},
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [ ]},
+  {applications, [ kernel
+                 , stdlib
+
+                 , kazoo
+                 , kazoo_modb
+                 ]}
+ ]}.

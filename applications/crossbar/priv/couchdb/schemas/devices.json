@@ -353,6 +353,12 @@
             "required": false,
             "type": "string"
         },
+        "presence_id": {
+            "description": "Static presence ID (used instead of SIP username)",
+            "name": "Presence ID",
+            "required": false,
+            "type": "string"
+        },
         "provision": {
             "description": "Provision data",
             "name": "Provision",
@@ -440,6 +446,13 @@
                     "required": false,
                     "type": "object"
                 },
+                "expire_seconds": {
+                    "default": 300,
+                    "description": "The time, in seconds, sent to the provisioner for the registration period that the device should be configured with.",
+                    "name": "Minimum Registration (seconds)",
+                    "required": false,
+                    "type": "integer"
+                },
                 "ignore_completed_elsewhere": {
                     "description": "When set to false the phone should not consider ring group calls answered elsewhere as missed",
                     "name": "Show Calls Answered Elsewhere as Missed?",
@@ -497,13 +510,6 @@
                     "name": "Realm",
                     "required": false,
                     "type": "string"
-                },
-                "registration_expiration": {
-                    "default": 300,
-                    "description": "The time, in seconds, to force registrations to expire",
-                    "name": "Minimum Registration (seconds)",
-                    "required": false,
-                    "type": "integer"
                 },
                 "route": {
                     "description": "The SIP URL used if the invite format is 'route'",

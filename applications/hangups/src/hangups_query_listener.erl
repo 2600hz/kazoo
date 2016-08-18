@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -8,28 +8,32 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(hangups_query_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0
-         ,handle_query/2
-         ,meter_resp/1
+        ,handle_query/2
+        ,meter_resp/1
         ]).
 
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,handle_event/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -include("hangups.hrl").
 -include_lib("folsom/include/folsom.hrl").
 
+-record(state, {}).
+-type state() :: #state{}.
+
+-define(SERVER, ?MODULE).
+
 -define(RESPONDERS, [{{?MODULE, 'handle_query'}
-                      ,[{<<"hangups">>, <<"query_req">>}]
+                     ,[{<<"hangups">>, <<"query_req">>}]
                      }
                     ]).
 -define(BINDINGS, [{'hangups', []}]).
@@ -42,114 +46,79 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
-                                      ,{'bindings', ?BINDINGS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
+                                     ,{'bindings', ?BINDINGS}
+                                     ,{'queue_name', ?QUEUE_NAME}
+                                     ,{'queue_options', ?QUEUE_OPTIONS}
+                                     ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
--spec handle_query(wh_json:object(), wh_proplist()) -> any().
--spec handle_query(wh_json:object(), ne_binary(), boolean()) -> any().
+-spec handle_query(kz_json:object(), kz_proplist()) -> any().
+-spec handle_query(kz_json:object(), ne_binary(), boolean()) -> any().
 handle_query(JObj, _Props) ->
-    'true' = wapi_hangups:query_req_v(JObj),
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj),
+    'true' = kapi_hangups:query_req_v(JObj),
+    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
+    HangupCause = kz_json:get_value(<<"Hangup-Cause">>, JObj),
     N = hangups_util:meter_name(HangupCause, AccountId),
 
-    handle_query(JObj, N, wh_json:is_true(<<"Raw-Data">>, JObj)).
+    handle_query(JObj, N, kz_json:is_true(<<"Raw-Data">>, JObj)).
 
-handle_query(JObj, N, 'true') ->
-    lager:debug("finding raw stats for ~s", [N]),
-    publish_resp(JObj, raw_resp(N));
+handle_query(_JObj, _N, 'true') ->
+    lager:error("who is using this ?");
 handle_query(JObj, N, 'false') ->
     lager:debug("finding meter stats for '~p'", [N]),
     publish_resp(JObj, meter_resp(N)).
 
--spec raw_resp(#meter{} | ne_binary()) -> wh_proplist().
-raw_resp(#meter{one = OneMin
-                ,five = FiveMin
-                ,fifteen = FifteenMin
-                ,day = OneDay
-                ,count = Count
-                ,start_time = StartTime
-               }) ->
-    [{<<"one">>, ewma_to_json(OneMin)}
-     ,{<<"five">>, ewma_to_json(FiveMin)}
-     ,{<<"fifteen">>, ewma_to_json(FifteenMin)}
-     ,{<<"day">>, ewma_to_json(OneDay)}
-     ,{<<"count">>, Count}
-     ,{<<"start_time">>, StartTime}
-    ];
-raw_resp(Name) ->
-    raw_resp(folsom_metrics_meter:get_value(Name)).
-
--spec ewma_to_json(#ewma{}) -> wh_json:object().
-ewma_to_json(#ewma{alpha=Alpha
-                   ,interval=Interval
-                   ,initialized=Init
-                   ,rate=Rate
-                   ,total=Total
-                  }) ->
-    wh_json:from_list(
-      props:filter_undefined(
-        [{<<"alpha">>, Alpha}
-         ,{<<"interval">>, Interval}
-         ,{<<"initialized">>, Init}
-         ,{<<"rate">>, Rate}
-         ,{<<"total">>, Total}
-        ])).
-
--spec meter_resp(ne_binary()) -> wh_proplist().
--spec meter_resp(ne_binary(), wh_proplist()) -> wh_proplist().
+-spec meter_resp(ne_binary()) -> kz_proplist().
+-spec meter_resp(ne_binary(), kz_proplist()) -> kz_proplist().
 meter_resp(<<"*">>) ->
-    [{<<"meters">>, [wh_json:from_list(meter_resp(Name))
+    [{<<"meters">>, [kz_json:from_list(meter_resp(Name))
                      || {Name, _Info} <- folsom_metrics:get_metrics_info()
-                    ]}];
+                    ]
+     }
+    ];
 meter_resp(N) ->
     meter_resp(N, folsom_metrics_meter:get_values(N)).
 
+meter_resp(_, []) -> [];
 meter_resp(N, [_|_]=Values) ->
-    Vs = [{wh_util:to_binary(K), V}
+    Vs = [{kz_util:to_binary(K), V}
           || {K, V} <- Values,
              K =/= 'acceleration'
          ],
     props:filter_undefined(
       [{<<"hangup_cause">>, hangups_util:meter_hangup_cause(N)}
-       ,{<<"account_id">>, hangups_util:meter_account_id(N)}
+      ,{<<"account_id">>, hangups_util:meter_account_id(N)}
        | get_accel(props:get_value('acceleration', Values))
-      ] ++ Vs);
-meter_resp(_, []) -> [].
+      ]
+      ++ Vs
+     ).
 
--spec publish_resp(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec publish_resp(kz_json:object(), kz_proplist()) -> 'ok'.
 publish_resp(JObj, Resp) ->
-    Queue = wh_json:get_value(<<"Server-ID">>, JObj),
-    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
+    Queue = kz_api:server_id(JObj),
+    MsgId = kz_api:msg_id(JObj),
 
     PublishFun = fun(API) ->
                          publish_to(Queue, API)
                  end,
-    whapps_util:amqp_pool_send([{<<"Msg-ID">>, MsgId} | Resp]
-                               ,PublishFun
-                              ).
+    kz_amqp_worker:cast([{<<"Msg-ID">>, MsgId} | Resp]
+                       ,PublishFun
+                       ).
 
--spec publish_to(ne_binary(), wh_proplist()) -> 'ok'.
+-spec publish_to(ne_binary(), kz_proplist()) -> 'ok'.
 publish_to(Queue, API) ->
-    wapi_hangups:publish_query_resp(Queue
-                                    ,wh_api:default_headers(?APP_NAME, ?APP_VERSION) ++ API
+    kapi_hangups:publish_query_resp(Queue
+                                   ,kz_api:default_headers(?APP_NAME, ?APP_VERSION) ++ API
                                    ).
 
--spec get_accel(wh_proplist()) -> wh_proplist().
+-spec get_accel(kz_proplist()) -> kz_proplist().
 get_accel(AccelVs) ->
-    [{wh_util:to_binary(K), V}
+    [{kz_util:to_binary(K), V}
      || {K, V} <- AccelVs
     ].
 
@@ -186,6 +155,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -199,6 +169,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'gen_listener',{'created_queue',_QueueName}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
@@ -217,6 +188,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
@@ -229,6 +201,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -243,6 +216,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("hangups listener ~p termination", [_Reason]),
     'ok'.
@@ -255,5 +229,6 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.

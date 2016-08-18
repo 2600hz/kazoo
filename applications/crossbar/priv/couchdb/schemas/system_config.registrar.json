@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.registrar",
+    "description": "Schema for registrar system_config",
+    "properties": {
+        "device_enabled_default": {
+            "default": true,
+            "description": "registrar device enabled default",
+            "name": "device_enabled_default",
+            "type": "boolean"
+        },
+        "listeners": {
+            "default": 1,
+            "description": "registrar listeners",
+            "name": "listeners",
+            "type": "integer"
+        },
+        "owner_enabled_default": {
+            "default": true,
+            "description": "registrar owner enabled default",
+            "name": "owner_enabled_default",
+            "type": "boolean"
+        },
+        "use_aggregate": {
+            "default": true,
+            "description": "registrar use aggregate",
+            "name": "use_aggregate",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

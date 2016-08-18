@@ -1,13 +1,18 @@
 {application, doodle,
  [
   {description, "doodle - sms store and forward"},
-  {vsn, "0.0.1"},
+  {vsn, "4.0.0"},
   {modules, []},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {registered, [doodle_cache, doodle_shared_listener, doodle_sup, doodle_exe_sup, doodle_event_handler_sup, doodle_inbound_listener_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , kazoo_apps
+                 , kazoo_amqp
+                 , kazoo_data
+
+                 , lager
                  ]},
-  {mod, { doodle_app, []}},
-  {env, []}
+  {mod, {doodle_app, []}}
  ]}.

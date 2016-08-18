@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -12,18 +12,18 @@
 -module(cb_comments).
 
 -export([init/0
-         ,authenticate/1
-         ,authorize/1
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
-         ,put/1
-         ,post/2
-         ,delete/1 ,delete/2
-         ,finish_request/1
+        ,authenticate/1
+        ,authorize/1
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,validate/1, validate/2
+        ,put/1
+        ,post/2
+        ,delete/1 ,delete/2
+        ,finish_request/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(COMMENTS, <<"comments">>).
 
@@ -256,17 +256,12 @@ read(Context, Id) ->
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     Doc = cb_context:doc(Context),
-    Comments = wh_json:get_value(?COMMENTS, Doc, []),
+    Comments = kz_json:get_value(?COMMENTS, Doc, []),
 
     ReqData = cb_context:req_data(Context),
-    NewComments = wh_json:get_value(?COMMENTS, ReqData, []),
+    NewComments = kz_json:get_value(?COMMENTS, ReqData, []),
 
-    Doc1 =
-        wh_json:set_value(
-          ?COMMENTS
-          ,lists:append(Comments, NewComments)
-          ,Doc
-         ),
+    Doc1 = kz_json:set_value(?COMMENTS, Comments ++ NewComments, Doc),
     crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
 
 %%--------------------------------------------------------------------
@@ -277,7 +272,7 @@ create(Context) ->
 -spec update(cb_context:context(), ne_binary()) -> cb_context:context().
 update(Context, Id) ->
     Doc = cb_context:doc(Context),
-    Comments = wh_json:get_value(?COMMENTS, Doc, []),
+    Comments = kz_json:get_value(?COMMENTS, Doc, []),
     Number = id_to_number(Id),
 
     Comment = cb_context:req_data(Context),
@@ -285,10 +280,10 @@ update(Context, Id) ->
     Head1 = lists:delete(lists:last(Head), Head),
 
     Doc1 =
-        wh_json:set_value(
+        kz_json:set_value(
           ?COMMENTS
-          ,lists:append([Head1, [Comment], Tail])
-          ,Doc
+                         ,lists:append([Head1, [Comment], Tail])
+                         ,Doc
          ),
     crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
 
@@ -301,23 +296,23 @@ update(Context, Id) ->
 -spec remove(cb_context:context(), ne_binary()) -> cb_context:context().
 remove(Context) ->
     Doc =
-        wh_json:set_value(
+        kz_json:set_value(
           ?COMMENTS
-          ,[]
-          ,cb_context:doc(Context)
+                         ,[]
+                         ,cb_context:doc(Context)
          ),
     crossbar_doc:save(cb_context:set_doc(Context, Doc)).
 
 remove(Context, Id) ->
     Doc = cb_context:doc(Context),
-    Comments = wh_json:get_value(?COMMENTS, Doc, []),
+    Comments = kz_json:get_value(?COMMENTS, Doc, []),
     Number = id_to_number(Id),
     Comment = lists:nth(Number, Comments),
     Doc1 =
-        wh_json:set_value(
+        kz_json:set_value(
           ?COMMENTS
-          ,lists:delete(Comment, Comments)
-          ,Doc
+                         ,lists:delete(Comment, Comments)
+                         ,Doc
          ),
     crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
 
@@ -328,7 +323,7 @@ remove(Context, Id) ->
 %%--------------------------------------------------------------------
 -spec finish_req(cb_context:context(), path_token(), http_method()) -> 'ok'.
 finish_req(Context, <<"port_requests">>, ?HTTP_PUT) ->
-   send_port_comment_notification(Context);
+    send_port_comment_notification(Context);
 finish_req(Context, <<"port_requests">>, ?HTTP_POST) ->
     send_port_comment_notification(Context);
 finish_req(_Context, _Type, _Verb) -> 'ok'.
@@ -345,7 +340,7 @@ check_comment_number(Context, Id) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             Doc = cb_context:doc(Context1),
-            Comments = wh_json:get_value(?COMMENTS, Doc, []),
+            Comments = kz_json:get_value(?COMMENTS, Doc, []),
             Number = id_to_number(Id),
             case erlang:length(Comments) of
                 Length when Length < Number ->
@@ -369,9 +364,11 @@ load_doc(Context) ->
     load_doc(Context, Type, Id).
 
 load_doc(Context, <<"port_requests">>, [Id]) ->
-    crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB));
+    crossbar_doc:load(Id
+                     ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                     ,?TYPE_CHECK_OPTION(<<"port_request">>));
 load_doc(Context, _Type, [Id]) ->
-    crossbar_doc:load(Id, Context);
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION_ANY);
 load_doc(Context, _Type, _) ->
     cb_context:add_system_error('bad_identifier', Context).
 
@@ -383,10 +380,10 @@ load_doc(Context, _Type, _) ->
 -spec only_return_comments(cb_context:context()) -> cb_context:context().
 only_return_comments(Context) ->
     Doc = cb_context:doc(Context),
-    Comments = wh_json:get_value(?COMMENTS, Doc, []),
+    Comments = kz_json:get_value(?COMMENTS, Doc, []),
     cb_context:set_resp_data(
       Context
-      ,wh_json:from_list([{?COMMENTS, Comments}])
+                            ,kz_json:from_list([{?COMMENTS, Comments}])
      ).
 
 %%--------------------------------------------------------------------
@@ -398,11 +395,11 @@ only_return_comments(Context) ->
                                  cb_context:context().
 only_return_comment(Context, Id) ->
     Doc = cb_context:doc(Context),
-    Comments = wh_json:get_value(?COMMENTS, Doc, []),
+    Comments = kz_json:get_value(?COMMENTS, Doc, []),
     Number = id_to_number(Id),
     cb_context:set_resp_data(
       Context
-      ,lists:nth(Number, Comments)
+                            ,lists:nth(Number, Comments)
      ).
 
 %%--------------------------------------------------------------------
@@ -411,7 +408,7 @@ only_return_comment(Context, Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec id_to_number(ne_binary()) -> pos_integer().
-id_to_number(Id) -> wh_util:to_integer(Id) + 1.
+id_to_number(Id) -> kz_util:to_integer(Id) + 1.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -427,9 +424,9 @@ send_port_comment_notification(Context) ->
 
 send_port_comment_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
-           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
-           ,{<<"Port-Request-ID">>, Id}
-           ,{<<"Version">>, cb_context:api_version(Context)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
+          ,{<<"Port-Request-ID">>, Id}
+          ,{<<"Version">>, cb_context:api_version(Context)}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wh_amqp_worker:cast(Req, fun wapi_notifications:publish_port_comment/1).
+    kz_amqp_worker:cast(Req, fun kapi_notifications:publish_port_comment/1).

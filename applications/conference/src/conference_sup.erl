@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz, INC
+%%% @copyright (C) 2012-2016, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -11,17 +11,14 @@
 
 -include("conference.hrl").
 
+-define(SERVER, ?MODULE).
+
 -export([start_link/0]).
 -export([init/1]).
 
--define(CACHE, {?CONFERENCE_CACHE, {'wh_cache', 'start_link', [?CONFERENCE_CACHE]}
-                ,'permanent', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['wh_cache']
-               }).
-
--define(CHILDREN, [?CACHE
-                   ,?SUPER('conf_participant_sup')
-                   ,?WORKER('conference_shared_listener')
-                   ,?WORKER('conference_listener')
+-define(CHILDREN, [?SUPER('conf_participant_sup')
+                  ,?WORKER('conference_shared_listener')
+                  ,?WORKER('conference_listener')
                   ]).
 
 %% ===================================================================
@@ -35,13 +32,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -56,9 +51,9 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
-    wh_util:set_startup(),
+    kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

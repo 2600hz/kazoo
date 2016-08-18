@@ -1,12 +1,17 @@
 {application, stats,
  [
-  {description, ""},
-  {vsn, "1"},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {description, "Stats - Kazoo"},
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [stats_cache, stats_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , kazoo_apps
+                 , kazoo_amqp
+
+                 , lager
                  ]},
-  {mod, { stats_app, []}},
-  {env, []}
+  {mod, {stats_app, []}}
  ]}.

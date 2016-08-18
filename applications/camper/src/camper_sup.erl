@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -18,25 +18,24 @@
 
 -include("camper.hrl").
 
--define(CHILDREN, [?WORKER('camper_onnet_handler')
-                   ,?SUPER('camper_offnet_sup')
-                   ,?WORKER('camper_request_listener')
-                   ]).
+-define(SERVER, ?MODULE).
+
+-define(CHILDREN, [?WORKER('camper_init')
+                  ,?WORKER('camper_onnet_handler')
+                  ,?SUPER('camper_offnet_sup')
+                  ,?WORKER('camper_request_listener')
+                  ]).
 
 %%%===================================================================
 %%% API functions
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec(start_link() ->
-    {ok, Pid :: pid()} | ignore | {error, Reason :: any()}).
+-spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -51,9 +50,9 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
-    wh_util:set_startup(),
+    kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

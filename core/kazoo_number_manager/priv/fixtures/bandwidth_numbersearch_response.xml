@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<numberSearchResponse xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.bandwidth.com/api/">
+  <requestID>2ed932b6-5e9d-4504-b455-69cf5ee5ad5b</requestID>
+  <dateTimeSent>2015-09-28 17:25:46Z</dateTimeSent>
+  <message>Successfully executed specified number search.</message>
+  <status>success</status>
+  <errors />
+  <warnings />
+  <quantity>1</quantity>
+  <telephoneNumbers>
+    <telephoneNumber>
+      <numberID>D0204A79-4F3C-41DE-96E4-9A0230CD76A8</numberID>
+      <tenDigit>4158867900</tenDigit>
+      <formattedNumber>1-415-886-7900</formattedNumber>
+      <e164>+14158867900</e164>
+      <npaNxx>415886</npaNxx>
+      <status>Available</status>
+      <rateCenter>
+        <name>CORTE MADERA</name>
+        <lata>722</lata>
+        <state>CA</state>
+      </rateCenter>
+    </telephoneNumber>
+  </telephoneNumbers>
+</numberSearchResponse>

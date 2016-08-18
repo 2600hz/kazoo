@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz
+%%% @copyright (C) 2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -12,7 +12,7 @@
 
 %% API
 -export([start_link/0
-         ,new/2
+        ,new/2
         ]).
 
 %% Supervisor callbacks
@@ -22,23 +22,22 @@
 
 -define(SERVER, ?MODULE).
 
+-define(CHILDREN, [?WORKER_TYPE('kz_media_recording', 'transient')]).
+
 %%%===================================================================
 %%% API functions
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec new(whapps_call:call(), wh_json:object()) -> startlink_ret().
+-spec new(kapps_call:call(), kz_json:object()) -> startlink_ret().
 new(Call, Data) ->
-    supervisor:start_child(?MODULE, [Call, Data]).
+    supervisor:start_child(?SERVER, [Call, Data]).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -51,12 +50,9 @@ new(Call, Data) ->
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
-%%
-%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
-%%                     ignore |
-%%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 1,
@@ -64,7 +60,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?WORKER_TYPE('wh_media_recording', 'transient')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

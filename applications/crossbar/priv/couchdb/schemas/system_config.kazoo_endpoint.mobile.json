@@ -1,0 +1,85 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.kazoo_endpoint.mobile",
+    "description": "Schema for kazoo_endpoint.mobile system_config",
+    "properties": {
+        "codecs": {
+            "default": [
+                "PCMU"
+            ],
+            "description": "kazoo_endpoint.mobile codecs",
+            "name": "codecs",
+            "type": "array"
+        },
+        "create_sip_endpoint": {
+            "default": false,
+            "description": "kazoo_endpoint.mobile create sip endpoint",
+            "name": "create_sip_endpoint",
+            "type": "boolean"
+        },
+        "custom_sip_interface": {
+            "description": "kazoo_endpoint.mobile custom sip interface",
+            "name": "custom_sip_interface",
+            "type": "string"
+        },
+        "formatter": {
+            "default": "^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$",
+            "description": "kazoo_endpoint.mobile formatter",
+            "name": "formatter",
+            "type": "string"
+        },
+        "path": {
+            "default": "",
+            "description": "kazoo_endpoint.mobile path",
+            "name": "path",
+            "type": "string"
+        },
+        "prefix": {
+            "default": "",
+            "description": "kazoo_endpoint.mobile prefix",
+            "name": "prefix",
+            "type": "string"
+        },
+        "realm": {
+            "default": "mobile.k.zswitch.net",
+            "description": "kazoo_endpoint.mobile realm",
+            "name": "realm",
+            "type": "string"
+        },
+        "sms": {
+            "properties": {
+                "connections": {
+                    "properties": {
+                        "default": {
+                            "default": {
+                                "exchange": "sms",
+                                "options": {
+                                    "passive": true
+                                },
+                                "route": "sprint",
+                                "type": "topic"
+                            }
+                        },
+                        "description": "kazoo_endpoint.mobile connections",
+                        "name": "connections",
+                        "type": "object"
+                    }
+                }
+            }
+        },
+        "sms_interface": {
+            "default": "amqp",
+            "description": "kazoo_endpoint.mobile sms interface",
+            "name": "sms_interface",
+            "type": "string"
+        },
+        "suffix": {
+            "default": "",
+            "description": "kazoo_endpoint.mobile suffix",
+            "name": "suffix",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

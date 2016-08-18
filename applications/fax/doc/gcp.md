@@ -4,7 +4,7 @@ Title: Google Cloud Printer
 Language: en-US
 */
 
-#Google Cloud Printer
+# Google Cloud Printer
 ## Features
 * No problem rendering. Google will render the document and deliver it as pdf to kazoo
 * Printer can be shared among people with google account without being tied to kazoo
@@ -23,14 +23,14 @@ note down the following
 
 You will need a reseller account or your master account id.
 
-You can retrieve your master account with `sup whapps_util get_master_account_id`
+You can retrieve your master account with `sup kapps_util get_master_account_id`
 
 issue the following sup commands replacing with proper values, do not include the []
 
 * `sup kazoo_oauth_maintenance register_common_providers`
 * `sup kazoo_oauth_maintenance register_oauth_app [AccountId] [OAuthId] [EMail] [Secret] google`
-* `sup whapps_account_config set [accounId] fax cloud_oauth_app [OAuthId]`
-* `sup whapps_account_config set [accountId] fax enable_cloud_connector true`
+* `sup kapps_account_config set [accounId] fax cloud_oauth_app [OAuthId]`
+* `sup kapps_account_config set [accountId] fax enable_cloud_connector true`
 
 every new faxbox will register a new google cloud printer waiting to be claimed.
 the url for claiming the printer is in the document and is also returned on a faxbox creation.

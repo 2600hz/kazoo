@@ -1,0 +1,27 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.sms_command",
+    "description": "Schema for sms_command system_config",
+    "properties": {
+        "application_timeout": {
+            "default": 500000,
+            "description": "sms_command application timeout",
+            "name": "application_timeout",
+            "type": "integer"
+        },
+        "collect_timeout": {
+            "default": 60000,
+            "description": "sms_command collect timeout",
+            "name": "collect_timeout",
+            "type": "integer"
+        },
+        "message_timeout": {
+            "default": 60000,
+            "description": "sms_command message timeout",
+            "name": "message_timeout",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

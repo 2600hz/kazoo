@@ -1,8 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
-%%%
-%%% Listing of all expected v1 callbacks
 %%%
 %%% @end
 %%% @contributors:
@@ -12,16 +10,16 @@
 -module(cb_channels).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,content_types_provided/1
-         ,validate/1, validate/2
-         ,post/2
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,content_types_provided/1
+        ,validate/1, validate/2
+        ,post/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
--type endpoints_return() :: {wh_json:objects(), cb_context:context()}.
+-type endpoints_return() :: {kz_json:objects(), cb_context:context()}.
 
 %%%===================================================================
 %%% API
@@ -36,12 +34,12 @@
 -spec init() -> 'ok'.
 init() ->
     cb_modules_util:bind(?MODULE
-                         ,[{<<"*.allowed_methods.channels">>, 'allowed_methods'}
-                           ,{<<"*.resource_exists.channels">>, 'resource_exists'}
-                           ,{<<"*.content_types_provided.channels">>, 'content_types_provided'}
-                           ,{<<"*.validate.channels">>, 'validate'}
-                           ,{<<"*.execute.post.channels">>, 'post'}
-                          ]).
+                        ,[{<<"*.allowed_methods.channels">>, 'allowed_methods'}
+                         ,{<<"*.resource_exists.channels">>, 'resource_exists'}
+                         ,{<<"*.content_types_provided.channels">>, 'content_types_provided'}
+                         ,{<<"*.validate.channels">>, 'validate'}
+                         ,{<<"*.execute.post.channels">>, 'post'}
+                         ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -54,7 +52,7 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
-allowed_methods(_) ->
+allowed_methods(_UUID) ->
     [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
@@ -69,7 +67,7 @@ allowed_methods(_) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
-resource_exists(_) -> 'true'.
+resource_exists(_UUID) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -81,10 +79,10 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
 content_types_provided(Context) ->
-    CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
-            ,{'to_csv', ?CSV_CONTENT_TYPES}
-           ],
-    cb_context:add_content_types_provided(Context, CTPs).
+    cb_context:add_content_types_provided(Context
+                                         ,[{'to_json', ?JSON_CONTENT_TYPES}
+                                          ,{'to_csv', ?CSV_CONTENT_TYPES}
+                                          ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -109,7 +107,7 @@ validate_channels(Context, ?HTTP_GET) ->
 
 -spec validate_channel(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_channel(Context, Id, ?HTTP_GET) ->
-    read(cb_context:set_resp_data(Context, wh_json:new()), Id);
+    read(cb_context:set_resp_data(Context, kz_json:new()), Id);
 validate_channel(Context, Id, ?HTTP_POST) ->
     update(Context, Id).
 
@@ -121,7 +119,7 @@ validate_channel(Context, Id, ?HTTP_POST) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, _) ->
+post(Context, _UUID) ->
     cb_context:set_resp_status(Context, 'success').
 
 %%--------------------------------------------------------------------
@@ -132,16 +130,7 @@ post(Context, _) ->
 %%--------------------------------------------------------------------
 -spec read(cb_context:context(), ne_binary()) -> cb_context:context().
 read(Context, CallId) ->
-    Req = [{<<"Call-ID">>, CallId}
-           ,{<<"Fields">>, <<"all">>}
-           ,{<<"Active-Only">>, 'true'}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    case wh_amqp_worker:call_collect(Req
-                                     ,fun wapi_call:publish_query_channels_req/1
-                                     ,{'ecallmgr', fun wapi_call:query_channels_resp_v/1}
-                                    )
-    of
+    case channels_query(CallId) of
         {'ok', []} ->
             lager:debug("no channel resp for ~s", [CallId]),
             crossbar_util:response_bad_identifier(CallId, Context);
@@ -164,11 +153,24 @@ read(Context, CallId) ->
             crossbar_util:response_datastore_timeout(Context)
     end.
 
--spec find_channel(ne_binary(), ne_binary(), wh_json:objects()) -> api_object().
+-spec channels_query(ne_binary()) -> kz_amqp_worker:request_return().
+channels_query(CallId) ->
+    Req = [{<<"Call-ID">>, CallId}
+          ,{<<"Fields">>, <<"all">>}
+          ,{<<"Active-Only">>, 'true'}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+
+    kz_amqp_worker:call_collect(Req
+                               ,fun kapi_call:publish_query_channels_req/1
+                               ,{'ecallmgr', fun kapi_call:query_channels_resp_v/1}
+                               ).
+
+-spec find_channel(ne_binary(), ne_binary(), kz_json:objects()) -> api_object().
 find_channel(_AccountId, _CallId, []) -> 'undefined';
 find_channel(AccountId, CallId, [StatusJObj|JObjs]) ->
-    Channel = wh_json:get_value([<<"Channels">>, CallId], StatusJObj),
-    case wh_json:get_value(<<"Account-ID">>, Channel) of
+    Channel = kz_json:get_value([<<"Channels">>, CallId], StatusJObj),
+    case kz_json:get_value(<<"Account-ID">>, Channel) of
         AccountId -> Channel;
         _AccountId -> find_channel(AccountId, CallId, JObjs)
     end.
@@ -198,6 +200,12 @@ maybe_execute_command(Context, Transferor, <<"transfer">>) ->
     maybe_transfer(Context, Transferor);
 maybe_execute_command(Context, CallId, <<"hangup">>) ->
     maybe_hangup(Context, CallId);
+maybe_execute_command(Context, CallId, <<"break">>) ->
+    maybe_break(Context, CallId);
+maybe_execute_command(Context, CallId, <<"callflow">>) ->
+    maybe_callflow(Context, CallId);
+maybe_execute_command(Context, CallId, <<"intercept">>) ->
+    maybe_intercept(Context, CallId);
 maybe_execute_command(Context, _CallId, _Command) ->
     lager:debug("unknown command: ~s", [_Command]),
     crossbar_util:response_invalid_data(cb_context:doc(Context), Context).
@@ -227,8 +235,8 @@ summary(Context) ->
     end.
 
 -spec device_summary(cb_context:context(), ne_binary()) -> cb_context:context().
-device_summary(Context, _DeviceId) ->
-    get_channels(Context, [cb_context:doc(Context)], fun wapi_call:publish_query_user_channels_req/1).
+device_summary(Context, DeviceId) ->
+    get_channels(Context, [cb_context:doc(crossbar_doc:load(DeviceId, Context))], fun kapi_call:publish_query_user_channels_req/1).
 
 -spec user_summary(cb_context:context(), ne_binary()) -> cb_context:context().
 user_summary(Context, UserId) ->
@@ -237,8 +245,8 @@ user_summary(Context, UserId) ->
         'true' -> Context1;
         'false' ->
             get_channels(Context
-                         ,UserEndpoints
-                         ,fun wapi_call:publish_query_user_channels_req/1
+                        ,UserEndpoints
+                        ,fun kapi_call:publish_query_user_channels_req/1
                         )
     end.
 
@@ -246,10 +254,9 @@ user_summary(Context, UserId) ->
                             endpoints_return().
 user_endpoints(Context, UserId) ->
     Options = [{'key', [UserId, <<"device">>]}
-               ,'include_docs'
+              ,'include_docs'
               ],
-    %% TODO: Using the cf_attributes from crossbar isn't exactly kosher
-    Context1 = crossbar_doc:load_view(<<"cf_attributes/owned">>, Options, Context),
+    Context1 = crossbar_doc:load_view(<<"attributes/owned">>, Options, Context),
     {cb_context:doc(Context1), Context1}.
 
 -spec group_summary(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -259,27 +266,27 @@ group_summary(Context, GroupId) ->
         'true' -> Context1;
         'false' ->
             get_channels(Context
-                         ,GroupEndpoints
-                         ,fun wapi_call:publish_query_user_channels_req/1
+                        ,GroupEndpoints
+                        ,fun kapi_call:publish_query_user_channels_req/1
                         )
     end.
 
 -spec group_endpoints(cb_context:context(), ne_binary()) -> endpoints_return().
 group_endpoints(Context, _GroupId) ->
-    wh_json:foldl(fun group_endpoints_fold/3
-                  ,{[], Context}
-                  ,wh_json:get_value(<<"endpoints">>, cb_context:doc(Context), wh_json:new())
+    kz_json:foldl(fun group_endpoints_fold/3
+                 ,{[], Context}
+                 ,kz_json:get_value(<<"endpoints">>, cb_context:doc(Context), kz_json:new())
                  ).
 
--spec group_endpoints_fold(ne_binary(), wh_json:object(), endpoints_return()) ->
+-spec group_endpoints_fold(ne_binary(), kz_json:object(), endpoints_return()) ->
                                   endpoints_return().
 group_endpoints_fold(EndpointId, EndpointData, {Acc, Context}) ->
-    case wh_json:get_value(<<"type">>, EndpointData) of
+    case kz_json:get_value(<<"type">>, EndpointData) of
         <<"user">> ->
             {EPs, Context1} = user_endpoints(Context, EndpointId),
             {EPs ++ Acc, Context1};
         <<"device">> ->
-            Context1 = crossbar_doc:load(EndpointId, Context),
+            Context1 = crossbar_doc:load(EndpointId, Context, ?TYPE_CHECK_OPTION(kz_device:type())),
             {[cb_context:doc(Context1) | Acc], Context1};
         _Type ->
             lager:debug("skipping type ~s", [_Type]),
@@ -288,38 +295,41 @@ group_endpoints_fold(EndpointId, EndpointData, {Acc, Context}) ->
 
 -spec account_summary(cb_context:context()) -> cb_context:context().
 account_summary(Context) ->
-    get_channels(Context, [], fun wapi_call:publish_query_account_channels_req/1).
+    get_channels(Context, [], fun kapi_call:publish_query_account_channels_req/1).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_channels(cb_context:context(), wh_json:objects(), function()) -> cb_context:context().
+-spec get_channels(cb_context:context(), kz_json:objects(), function()) -> cb_context:context().
 get_channels(Context, Devices, PublisherFun) ->
-    Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
+    Realm = kz_util:get_account_realm(cb_context:account_id(Context)),
 
     Usernames = [Username
                  || JObj <- Devices,
-                    (Username = wh_json:get_first_defined(
+                    (Username = kz_json:get_first_defined(
                                   [[<<"doc">>, <<"sip">>, <<"username">>]
-                                   ,[<<"sip">>, <<"username">>]
-                                  ], JObj))
+                                  ,[<<"sip">>, <<"username">>]
+                                  ]
+                                                         ,JObj
+                                 )
+                    )
                         =/= 'undefined'
                 ],
 
     Req = [{<<"Realm">>, Realm}
-           ,{<<"Usernames">>, lists:usort(Usernames)} % unique list of usernames
-           ,{<<"Account-ID">>, cb_context:account_id(Context)}
-           ,{<<"Active-Only">>, 'false'}
-           ,{<<"Msg-ID">>, cb_context:req_id(Context)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ,{<<"Usernames">>, lists:usort(Usernames)} % unique list of usernames
+          ,{<<"Account-ID">>, cb_context:account_id(Context)}
+          ,{<<"Active-Only">>, 'false'}
+          ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
-    case whapps_util:amqp_pool_collect(Req
-                                       ,PublisherFun
-                                       ,{'ecallmgr', 'true'}
-                                      )
+    case kz_amqp_worker:call_collect(Req
+                                    ,PublisherFun
+                                    ,{'ecallmgr', 'true'}
+                                    )
     of
         {'error', _R} ->
             lager:error("could not reach ecallmgr channels: ~p", [_R]),
@@ -329,54 +339,54 @@ get_channels(Context, Devices, PublisherFun) ->
             crossbar_util:response(Channels, Context)
     end.
 
--spec merge_user_channels_jobjs(wh_json:objects()) -> wh_json:objects().
+-spec merge_user_channels_jobjs(kz_json:objects()) -> kz_json:objects().
 merge_user_channels_jobjs(JObjs) ->
     merge_user_channels_jobjs(JObjs, dict:new()).
 
--spec merge_user_channels_jobjs(wh_json:objects(), dict()) -> wh_json:objects().
+-spec merge_user_channels_jobjs(kz_json:objects(), dict:dict()) -> kz_json:objects().
 merge_user_channels_jobjs([], Dict) ->
     [delete_keys(Channel) || {_, Channel} <- dict:to_list(Dict)];
 merge_user_channels_jobjs([JObj|JObjs], Dict) ->
     merge_user_channels_jobjs(JObjs, merge_user_channels_jobj(JObj, Dict)).
 
--spec merge_user_channels_jobj(wh_json:object(), dict()) -> dict().
+-spec merge_user_channels_jobj(kz_json:object(), dict:dict()) -> dict:dict().
 merge_user_channels_jobj(JObj, Dict) ->
-    lists:foldl(fun merge_user_channels_fold/2, Dict, wh_json:get_value(<<"Channels">>, JObj, [])).
+    lists:foldl(fun merge_user_channels_fold/2, Dict, kz_json:get_value(<<"Channels">>, JObj, [])).
 
--spec merge_user_channels_fold(wh_json:object(), dict()) -> dict().
+-spec merge_user_channels_fold(kz_json:object(), dict:dict()) -> dict:dict().
 merge_user_channels_fold(Channel, D) ->
-    UUID = wh_json:get_value(<<"uuid">>, Channel),
+    UUID = kz_json:get_value(<<"uuid">>, Channel),
     dict:store(UUID, Channel, D).
 
--spec delete_keys(wh_json:object()) -> wh_json:object().
+-spec delete_keys(kz_json:object()) -> kz_json:object().
 delete_keys(JObj) ->
-    wh_json:delete_keys([<<"account_id">>
-                         ,<<"bridge_id">>
-                         ,<<"context">>
-                         ,<<"dialplan">>
-                         ,<<"handling_locally">>
-                         ,<<"node">>
-                         ,<<"precedence">>
-                         ,<<"profile">>
-                         ,<<"realm">>
-                         ,<<"app_name">>
-                         ,<<"app_version">>
-                         ,<<"event_category">>
-                         ,<<"event_name">>
-                         ,<<"msg_id">>
-                         ,<<"node">>
-                         ,<<"server_id">>
-                         ,<<"switch_hostname">>
-                         ,<<"switch_nodename">>
-                         ,<<"switch_url">>
-                         ,<<"media_node">>
-                         ,<<"fetch_id">>
+    kz_json:delete_keys([<<"account_id">>
+                        ,<<"bridge_id">>
+                        ,<<"context">>
+                        ,<<"dialplan">>
+                        ,<<"handling_locally">>
+                        ,<<"node">>
+                        ,<<"precedence">>
+                        ,<<"profile">>
+                        ,<<"realm">>
+                        ,<<"app_name">>
+                        ,<<"app_version">>
+                        ,<<"event_category">>
+                        ,<<"event_name">>
+                        ,<<"msg_id">>
+                        ,<<"node">>
+                        ,<<"server_id">>
+                        ,<<"switch_hostname">>
+                        ,<<"switch_nodename">>
+                        ,<<"switch_url">>
+                        ,<<"media_node">>
+                        ,<<"fetch_id">>
                         ], JObj).
 
--spec normalize_channel(wh_json:object()) -> wh_json:object().
+-spec normalize_channel(kz_json:object()) -> kz_json:object().
 normalize_channel(JObj) ->
     delete_keys(
-      wh_json:normalize(JObj)
+      kz_json:normalize(JObj)
      ).
 
 -spec maybe_transfer(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -384,17 +394,14 @@ normalize_channel(JObj) ->
 -spec maybe_transfer(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) -> cb_context:context().
 maybe_transfer(Context, Transferor) ->
     Channel = cb_context:resp_data(Context),
-    case wh_json:get_value(<<"other_leg_call_id">>, Channel) of
+    case kz_json:get_value(<<"other_leg_call_id">>, Channel) of
         'undefined' ->
             lager:debug("no transferee leg found"),
-            cb_context:add_validation_error(
-                <<"other_leg_call_id">>
-                ,<<"required">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Channel is not bridged">>}
-                 ])
-                ,Context
-            );
+            cb_context:add_validation_error(<<"other_leg_call_id">>
+                                           ,<<"required">>
+                                           ,kz_json:from_list([{<<"message">>, <<"Channel is not bridged">>}])
+                                           ,Context
+                                           );
         Transferee ->
             maybe_transfer(Context, Transferor, Transferee)
     end.
@@ -403,41 +410,101 @@ maybe_transfer(Context, Transferor, Transferee) ->
     case cb_context:req_value(Context, <<"target">>) of
         'undefined' ->
             lager:debug("no target destination"),
-            cb_context:add_validation_error(
-                <<"target">>
-                ,<<"required">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"No target destination specified">>}
-                 ])
-                ,Context
-            );
+            cb_context:add_validation_error(<<"target">>
+                                           ,<<"required">>
+                                           ,kz_json:from_list([{<<"message">>, <<"No target destination specified">>}])
+                                           ,Context
+                                           );
         Target ->
             maybe_transfer(Context, Transferor, Transferee, Target)
     end.
 
 maybe_transfer(Context, Transferor, _Transferee, Target) ->
     API = [{<<"Call-ID">>, Transferor}
-           ,{<<"Action">>, <<"transfer">>}
-           ,{<<"Data">>, wh_json:from_list(
-                           [{<<"target">>, Target}
-                            ,{<<"takeback_dtmf">>, cb_context:req_value(Context, <<"takeback_dtmf">>)}
-                            ,{<<"moh">>, cb_context:req_value(Context, <<"moh">>)}
-                           ])
-            }
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ,{<<"Action">>, <<"transfer">>}
+          ,{<<"Data">>, kz_json:from_list(
+                          [{<<"target">>, Target}
+                          ,{<<"takeback_dtmf">>, cb_context:req_value(Context, <<"takeback_dtmf">>)}
+                          ,{<<"moh">>, cb_context:req_value(Context, <<"moh">>)}
+                          ])
+           }
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
     lager:debug("attempting to transfer ~s to ~s by ~s", [_Transferee, Target, Transferor]),
-    wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
     crossbar_util:response_202(<<"transfer initiated">>, Context).
 
 -spec maybe_hangup(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_hangup(Context, CallId) ->
     API = [{<<"Call-ID">>, CallId}
-           ,{<<"Action">>, <<"hangup">>}
-           ,{<<"Data">>, wh_json:new()}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ,{<<"Action">>, <<"hangup">>}
+          ,{<<"Data">>, kz_json:new()}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("attempting to hangup ~s", [CallId]),
-    wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
     crossbar_util:response_202(<<"hangup initiated">>, Context).
+
+-spec maybe_break(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_break(Context, CallId) ->
+    API = [{<<"Call-ID">>, CallId}
+          ,{<<"Action">>, <<"break">>}
+          ,{<<"Data">>, kz_json:new()}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    lager:debug("attempting to break ~s", [CallId]),
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
+    crossbar_util:response_202(<<"break initiated">>, Context).
+
+-spec maybe_callflow(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_callflow(Context, CallId) ->
+    CallflowId = cb_context:req_value(Context, <<"id">>),
+    API = [{<<"Call-ID">>, CallId}
+          ,{<<"Action">>, <<"callflow">>}
+          ,{<<"Data">>, kz_json:from_list(
+                          [{<<"id">>, CallflowId}
+                          ,{<<"captures">>, cb_context:req_value(Context, <<"captures">>)}
+                          ,{<<"collected">>, cb_context:req_value(Context, <<"collected">>)}
+                          ])
+           }
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+
+    lager:debug("attempting to running callflow ~s on ~s", [CallflowId, CallId]),
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
+    crossbar_util:response_202(<<"callflow initiated">>, Context).
+
+-spec maybe_intercept(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_intercept(Context, CallId) ->
+    TargetType = cb_context:req_value(Context, <<"target_type">>),
+    TargetId = cb_context:req_value(Context, <<"target_id">>),
+    maybe_intercept(Context, CallId, TargetType, TargetId).
+
+-spec maybe_intercept(cb_context:context(), ne_binary(), api_binary(), api_binary()) -> cb_context:context().
+maybe_intercept(Context, _CallId, 'undefined', _TargetId) ->
+    cb_context:add_validation_error(<<"target_type">>
+                                   ,<<"required">>
+                                   ,kz_json:from_list([{<<"message">>, <<"No target type specified">>}])
+                                   ,Context
+                                   );
+maybe_intercept(Context, _CallId, _TargetType, 'undefined') ->
+    cb_context:add_validation_error(<<"target_id">>
+                                   ,<<"required">>
+                                   ,kz_json:from_list([{<<"message">>, <<"No target id specified">>}])
+                                   ,Context
+                                   );
+maybe_intercept(Context, CallId, TargetType, TargetId) ->
+    UnbridgedOnly = cb_context:req_value(Context, <<"unbridged_only">>),
+    API = [{<<"Action">>, <<"intercept">>}
+          ,{<<"Call-ID">>, CallId}
+          ,{<<"Data">>, kz_json:from_list([{<<"target_type">>, TargetType}
+                                          ,{<<"target_id">>, TargetId}
+                                          ,{<<"unbridged_only">>, UnbridgedOnly}
+                                          ])}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+
+    lager:debug("attempting to move ~s to ~s(~s)", [CallId, TargetId, TargetType]),
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
+    crossbar_util:response_202(<<"intercept initiated">>, Context).

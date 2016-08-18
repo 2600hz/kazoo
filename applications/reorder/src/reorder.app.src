@@ -1,12 +1,18 @@
 {application, reorder,
  [
   {description, "Reorder - "},
-  {vsn, "1.0.0"},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [reorder_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , kazoo_apps
+                 , kazoo_amqp
+                 , kazoo_data
+
+                 , lager
                  ]},
-  {mod, { reorder_app, []}},
-  {env, []}
+  {mod, {reorder_app, []}}
  ]}.

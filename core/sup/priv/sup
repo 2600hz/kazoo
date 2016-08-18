@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# The file to copy/symlink under /usr/bin or similar
+DEFAULT_REL='sup@`hostname -f`'
+
+if [[ ! -z "$KAZOO_ROOT" ]]; then
+    DEFAULT_ROOT="$KAZOO_ROOT"
+elif [[ -d _rel/kazoo ]]; then
+    DEFAULT_ROOT=_rel/kazoo
+else
+    DEFAULT_ROOT=/opt/kazoo
+fi
+
+export NAME_ARG="-name ${DEFAULT_REL}"
+
+RELX_REPLACE_OS_VARS=true KZname="-name ${DEFAULT_REL}" "${DEFAULT_ROOT}"/bin/kazoo escript lib/sup-*/priv/sup.escript "$*"
+
+exit $?

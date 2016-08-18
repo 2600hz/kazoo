@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -9,6 +9,7 @@
 
 -export([authorize/2]).
 -export([reconcile_cdr/2]).
+-export([maybe_credit_available/2, maybe_credit_available/3]).
 
 -include("jonny5.hrl").
 
@@ -21,7 +22,7 @@
 -spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 authorize(Request, Limits) ->
     lager:debug("checking if account ~s has available per-minute credit"
-                ,[j5_limits:account_id(Limits)]
+               ,[j5_limits:account_id(Limits)]
                ),
     Amount = j5_limits:reserve_amount(Limits),
     case maybe_credit_available(Amount, Limits) of
@@ -44,10 +45,10 @@ reconcile_cdr(Request, Limits) ->
 
 -spec reconcile_call_cost(j5_request:request(), j5_limits:limits()) -> 'ok'.
 reconcile_call_cost(Request, Limits) ->
-    case j5_request:call_cost(Request) of
-        0 -> 'ok';
-        Amount ->
-            create_debit_transaction(<<"end">>, Amount, Request, Limits)
+    case j5_request:calculate_call(Request) of
+        {_, 0} -> 'ok';
+        {Seconds, Amount} ->
+            create_ledger_usage(Seconds, Amount, Request, Limits)
     end.
 
 %%--------------------------------------------------------------------
@@ -57,19 +58,25 @@ reconcile_call_cost(Request, Limits) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_credit_available(integer(), j5_limits:limits()) -> boolean().
-maybe_credit_available(Amount, Limits) ->
+maybe_credit_available(Amount, Limits) -> maybe_credit_available(Amount, Limits, 'false').
+
+-spec maybe_credit_available(integer(), j5_limits:limits(), boolean()) -> boolean().
+maybe_credit_available(Amount, Limits, IsReal) ->
     AccountId = j5_limits:account_id(Limits),
-    Balance = wht_util:current_balance(AccountId)
-        - j5_channels:per_minute_cost(AccountId),
-    maybe_prepay_credit_available(Balance, Amount, Limits)
-        orelse maybe_postpay_credit_available(Balance, Amount, Limits).
+    Balance = wht_util:current_balance(AccountId),
+    PerMinuteCost = case kz_util:is_true(IsReal) of
+                        'true' -> j5_channels:real_per_minute_cost(AccountId);
+                        'false' -> j5_channels:per_minute_cost(AccountId)
+                    end,
+    maybe_prepay_credit_available(Balance - PerMinuteCost, Amount, Limits)
+        orelse maybe_postpay_credit_available(Balance - PerMinuteCost, Amount, Limits).
 
 -spec maybe_prepay_credit_available(integer(), integer(), j5_limits:limits()) -> boolean().
 maybe_prepay_credit_available(Balance, Amount, Limits) ->
     AccountId = j5_limits:account_id(Limits),
     Dbg = [AccountId
-           ,wht_util:units_to_dollars(Amount)
-           ,wht_util:units_to_dollars(Balance)
+          ,wht_util:units_to_dollars(Amount)
+          ,wht_util:units_to_dollars(Balance)
           ],
     case j5_limits:allow_prepay(Limits) of
         'false' ->
@@ -90,23 +97,23 @@ maybe_postpay_credit_available(Balance, Amount, Limits) ->
     case j5_limits:allow_postpay(Limits) of
         'false' ->
             lager:debug("account ~s is restricted from using postpay"
-                        ,[AccountId]
+                       ,[AccountId]
                        ),
             'false';
         'true' when (Balance - Amount) > MaxPostpay ->
             lager:debug("using postpay from account ~s $~w/$~w"
-                        ,[AccountId
-                          ,wht_util:units_to_dollars(Amount)
-                          ,wht_util:units_to_dollars(Balance)
-                         ]
+                       ,[AccountId
+                        ,wht_util:units_to_dollars(Amount)
+                        ,wht_util:units_to_dollars(Balance)
+                        ]
                        ),
             'true';
         'true' ->
             lager:debug("account ~s would exceed the maxium postpay amount $~w/$~w"
-                        ,[AccountId
-                          ,wht_util:units_to_dollars(Balance)
-                          ,wht_util:units_to_dollars(MaxPostpay)
-                         ]
+                       ,[AccountId
+                        ,wht_util:units_to_dollars(Balance)
+                        ,wht_util:units_to_dollars(MaxPostpay)
+                        ]
                        ),
             'false'
     end.
@@ -117,42 +124,43 @@ maybe_postpay_credit_available(Balance, Amount, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_debit_transaction(ne_binary(), integer(), j5_request:request(), j5_limits:limits()) -> any().
-create_debit_transaction(Event, Amount, Request, Limits) ->
+-spec create_ledger_usage(integer(), integer(), j5_request:request(), j5_limits:limits()) -> any().
+create_ledger_usage(Seconds, Amount, Request, Limits) ->
+    SrcService = <<"per-minute-voip">>,
+    SrcId = j5_request:call_id(Request),
     LedgerId = j5_limits:account_id(Limits),
-    lager:debug("creating debit transaction in ledger ~s for $~w"
-                ,[LedgerId, wht_util:units_to_dollars(Amount)]
+    AccountId = j5_request:account_id(Request),
+    lager:debug("creating debit transaction in ledger ~s / ~s for $~w"
+               ,[LedgerId, SrcService, wht_util:units_to_dollars(Amount)]
                ),
-    Routines = [fun(T) ->
-                        case j5_request:account_id(Request) of
-                            LedgerId ->
-                                wh_transaction:set_reason(<<"per_minute_call">>, T);
-                            AccountId ->
-                                T1 = wh_transaction:set_reason(<<"sub_account_per_minute_call">>, T),
-                                wh_transaction:set_sub_account_info(AccountId, T1)
-                        end
-                end
-                ,fun(T) -> wh_transaction:set_event(Event, T) end
-                ,fun(T) -> wh_transaction:set_call_id(j5_request:call_id(Request), T) end
-                ,fun(T) ->  wh_transaction:set_description(<<"per minute call">>, T) end
-                ,fun(T) when Event =:= <<"end">> ->
-                         wh_transaction:set_metadata(metadata(Request), T);
-                    (T) -> T
-                 end
-               ],
-    wh_transaction:save(
-      lists:foldl(fun(F, T) -> F(T) end
-                  ,wh_transaction:debit(LedgerId, Amount)
-                  ,Routines
-                 )
-     ).
+    Usage = [{<<"type">>, <<"voice">>}
+            ,{<<"quantity">>, Seconds}
+            ,{<<"unit">>, <<"sec">>}
+            ],
 
--spec metadata(j5_request:request()) -> wh_json:object().
+    Extra = [{<<"amount">>, Amount}
+            ,{<<"description">>, j5_request:rate_name(Request)}
+            ,{<<"period_start">>, j5_request:timestamp(Request)}
+            ,{<<"metadata">>, metadata(Request)}
+            ],
+
+    kz_ledger:debit(LedgerId, SrcService, SrcId, Usage, Extra, AccountId).
+
+-spec metadata(j5_request:request()) -> kz_json:object().
 metadata(Request) ->
-    wh_json:from_list(
-      [{<<"direction">>, j5_request:call_direction(Request)}
-       ,{<<"duration">>, j5_request:billing_seconds(Request)}
-       ,{<<"account_id">>, j5_request:account_id(Request)}
-       ,{<<"to">>, j5_request:to(Request)}
-       ,{<<"from">>, j5_request:from(Request)}
+    RateObj = kz_json:from_list(
+                [{<<"name">>, j5_request:rate_name(Request)}
+                ,{<<"description">>, j5_request:rate_description(Request)}
+                ,{<<"value">>, j5_request:rate(Request)}
+                ,{<<"increment">>, j5_request:rate_increment(Request)}
+                ,{<<"minimum">>, j5_request:rate_minimum(Request)}
+                ,{<<"nocharge_time">>, j5_request:rate_nocharge_time(Request)}
+                ]),
+    kz_json:from_list(
+      [{<<"to">>, j5_request:to(Request)}
+      ,{<<"from">>, j5_request:from(Request)}
+      ,{<<"direction">>, j5_request:call_direction(Request)}
+      ,{<<"caller_id_number">>, j5_request:caller_id_number(Request)}
+      ,{<<"callee_id_number">>, j5_request:callee_id_number(Request)}
+      ,{<<"rate">>, RateObj}
       ]).

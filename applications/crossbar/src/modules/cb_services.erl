@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -11,16 +11,16 @@
 -module(cb_services).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,content_types_provided/2
-         ,validate/1, validate/2
-         ,get/1, get/2
-         ,post/1
-         ,cleanup/1
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,content_types_provided/2
+        ,validate/1, validate/2
+        ,get/1, get/2
+        ,post/1
+        ,cleanup/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".services">>).
 
@@ -45,14 +45,14 @@
 -spec init() -> 'ok'.
 init() ->
     Bindings = [{<<"*.allowed_methods.services">>, 'allowed_methods'}
-                ,{<<"*.resource_exists.services">>, 'resource_exists'}
-                ,{<<"*.content_types_provided.services">>, 'content_types_provided'}
-                ,{<<"*.validate.services">>, 'validate'}
-                ,{<<"*.execute.get.services">>, 'get'}
-                ,{<<"*.execute.put.services">>, 'put'}
-                ,{<<"*.execute.post.services">>, 'post'}
-                ,{<<"*.execute.delete.services">>, 'delete'}
-                ,{crossbar_cleanup:binding_system(), 'cleanup'}
+               ,{<<"*.resource_exists.services">>, 'resource_exists'}
+               ,{<<"*.content_types_provided.services">>, 'content_types_provided'}
+               ,{<<"*.validate.services">>, 'validate'}
+               ,{<<"*.execute.get.services">>, 'get'}
+               ,{<<"*.execute.put.services">>, 'put'}
+               ,{<<"*.execute.post.services">>, 'post'}
+               ,{<<"*.execute.delete.services">>, 'delete'}
+               ,{crossbar_cleanup:binding_system(), 'cleanup'}
                ],
     cb_modules_util:bind(?MODULE, Bindings).
 
@@ -72,9 +72,7 @@ allowed_methods() ->
 allowed_methods(?PATH_PLAN) ->
     [?HTTP_GET];
 allowed_methods(?PATH_AUDIT) ->
-    [?HTTP_GET];
-allowed_methods(_) ->
-    [].
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -95,10 +93,10 @@ resource_exists(_) -> 'false'.
 
 -spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
 content_types_provided(Context, ?PATH_AUDIT) ->
-    CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
-            ,{'to_csv', ?CSV_CONTENT_TYPES}
-           ],
-    cb_context:add_content_types_provided(Context, CTPs).
+    cb_context:add_content_types_provided(Context
+                                         ,[{'to_json', ?JSON_CONTENT_TYPES}
+                                          ,{'to_csv', ?CSV_CONTENT_TYPES}
+                                          ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -117,29 +115,29 @@ validate(Context) ->
     validate_services(Context, cb_context:req_verb(Context)).
 
 validate_services(Context, ?HTTP_GET) ->
-    crossbar_util:response(wh_services:public_json(cb_context:account_id(Context)), Context);
+    crossbar_util:response(kz_services:public_json(cb_context:account_id(Context)), Context);
 validate_services(Context, ?HTTP_POST) ->
-    BillingId = wh_json:get_value(<<"billing_id">>, cb_context:req_data(Context)),
-    try wh_services:set_billing_id(BillingId, cb_context:account_id(Context)) of
+    BillingId = kz_json:get_value(<<"billing_id">>, cb_context:req_data(Context)),
+    try kz_services:set_billing_id(BillingId, cb_context:account_id(Context)) of
         'undefined' ->
             cb_context:setters(Context
-                               ,[{fun cb_context:set_doc/2, 'undefined'}
-                                 ,{fun cb_context:set_resp_status/2, 'success'}
-                                ]);
+                              ,[{fun cb_context:set_doc/2, 'undefined'}
+                               ,{fun cb_context:set_resp_status/2, 'success'}
+                               ]);
         ServicesRec ->
             cb_context:setters(Context
-                               ,[{fun cb_context:set_doc/2, wh_services:public_json(ServicesRec)}
-                                 ,{fun cb_context:store/3, 'services', ServicesRec}
-                                 ,{fun cb_context:set_resp_status/2, 'success'}
-                                ])
+                              ,[{fun cb_context:set_doc/2, kz_services:public_json(ServicesRec)}
+                               ,{fun cb_context:store/3, 'services', ServicesRec}
+                               ,{fun cb_context:set_resp_status/2, 'success'}
+                               ])
     catch
         'throw':{Error, Reason} ->
-            R = wh_json:set_value([<<"billing_id">>, <<"invalid">>], Reason, wh_json:new()),
-            crossbar_util:response('error', wh_util:to_binary(Error), 400, R, Context)
+            R = kz_json:set_value([<<"billing_id">>, <<"invalid">>], Reason, kz_json:new()),
+            crossbar_util:response('error', kz_util:to_binary(Error), 400, R, Context)
     end.
 
 validate(Context, ?PATH_PLAN) ->
-    crossbar_util:response(wh_services:service_plan_json(cb_context:account_id(Context)), Context);
+    crossbar_util:response(kz_services:service_plan_json(cb_context:account_id(Context)), Context);
 validate(Context, ?PATH_AUDIT) ->
     load_audit_logs(Context).
 
@@ -175,12 +173,12 @@ post(Context) ->
 
 post(Context, 'undefined') -> Context;
 post(Context, Services) ->
-    try wh_services:save(Services) of
+    try kz_services:save(Services) of
         NewServices ->
-            crossbar_util:response(wh_services:public_json(NewServices), Context)
+            crossbar_util:response(kz_services:public_json(NewServices), Context)
     catch
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
     end.
 
 -spec load_audit_logs(cb_context:context()) -> cb_context:context().
@@ -188,16 +186,16 @@ load_audit_logs(Context) ->
     case create_view_options(Context) of
         {'ok', ViewOptions} ->
             crossbar_doc:load_view(?AUDIT_LOG_LIST
-                                   ,ViewOptions
-                                   ,Context
-                                   ,fun normalize_audit_logs/2
+                                  ,ViewOptions
+                                  ,Context
+                                  ,fun normalize_audit_logs/2
                                   );
         Context1 -> Context1
     end.
 
--spec normalize_audit_logs(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_audit_logs(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_audit_logs(JObj, Acc) ->
-    [wh_json:get_value(<<"doc">>, JObj) || Acc].
+    [kz_json:get_value(<<"doc">>, JObj) || Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -217,13 +215,13 @@ pagination_page_size(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_view_options(cb_context:context()) ->
-                                 {'ok', wh_proplist()} |
+                                 {'ok', kz_proplist()} |
                                  cb_context:context().
 create_view_options(Context) ->
-    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT
-                                         ,<<"maximum_range">>
-                                         ,(?SECONDS_IN_DAY * 31  + ?SECONDS_IN_HOUR)
-                                        ),
+    MaxRange = kapps_config:get_integer(?MOD_CONFIG_CAT
+                                       ,<<"maximum_range">>
+                                       ,(?SECONDS_IN_DAY * 31  + ?SECONDS_IN_HOUR)
+                                       ),
     case cb_modules_util:range_view_options(Context, MaxRange) of
         {CreatedFrom, CreatedTo} ->
             create_view_options(Context, CreatedFrom, CreatedTo);
@@ -231,14 +229,14 @@ create_view_options(Context) ->
     end.
 
 -spec create_view_options(cb_context:context(), gregorian_seconds(), gregorian_seconds()) ->
-                                 {'ok', wh_proplist()}.
+                                 {'ok', kz_proplist()}.
 create_view_options(Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', CreatedTo}
-            ,{'endkey', CreatedFrom}
-            ,{'limit', pagination_page_size(Context)}
-            ,{'databases', ranged_modbs(Context, CreatedFrom, CreatedTo)}
-            ,'descending'
-            ,'include_docs'
+           ,{'endkey', CreatedFrom}
+           ,{'limit', pagination_page_size(Context)}
+           ,{'databases', ranged_modbs(Context, CreatedFrom, CreatedTo)}
+           ,'descending'
+           ,'include_docs'
            ]}.
 
 -spec ranged_modbs(cb_context:context(), gregorian_seconds(), gregorian_seconds()) ->
@@ -247,19 +245,19 @@ ranged_modbs(Context, From, To) ->
     kazoo_modb:get_range(cb_context:account_id(Context), From, To).
 
 -spec cleanup(ne_binary()) -> 'ok'.
-cleanup(?WH_SERVICES_DB) ->
-    lager:debug("checking ~s for abandoned accounts", [?WH_SERVICES_DB]),
+cleanup(?KZ_SERVICES_DB) ->
+    lager:debug("checking ~s for abandoned accounts", [?KZ_SERVICES_DB]),
     cleanup_orphaned_services_docs();
 cleanup(_SystemDb) -> 'ok'.
 
 -spec cleanup_orphaned_services_docs() -> 'ok'.
--spec cleanup_orphaned_services_docs(wh_json:objects()) -> 'ok'.
+-spec cleanup_orphaned_services_docs(kz_json:objects()) -> 'ok'.
 cleanup_orphaned_services_docs() ->
-    case couch_mgr:all_docs(?WH_SERVICES_DB) of
+    case kz_datamgr:all_docs(?KZ_SERVICES_DB) of
         {'ok', Docs} ->
             cleanup_orphaned_services_docs(Docs);
         {'error', _E} ->
-            lager:debug("failed to get all docs from ~s: ~p", [?WH_SERVICES_DB, _E])
+            lager:debug("failed to get all docs from ~s: ~p", [?KZ_SERVICES_DB, _E])
     end.
 
 cleanup_orphaned_services_docs([]) -> 'ok';
@@ -267,15 +265,15 @@ cleanup_orphaned_services_docs([View|Views]) ->
     cleanup_orphaned_services_doc(View),
     cleanup_orphaned_services_docs(Views).
 
--spec cleanup_orphaned_services_doc(wh_json:object() | ne_binary()) -> 'ok'.
+-spec cleanup_orphaned_services_doc(kz_json:object() | ne_binary()) -> 'ok'.
 cleanup_orphaned_services_doc(<<"_design/", _/binary>>) -> 'ok';
 cleanup_orphaned_services_doc(<<_/binary>> = AccountId) ->
-    case couch_mgr:db_exists(wh_util:format_account_id(AccountId, 'encoded')) of
+    case kz_datamgr:db_exists(kz_util:format_account_id(AccountId, 'encoded')) of
         'true' -> 'ok';
         'false' ->
             lager:info("account ~s no longer exists but has a services doc", [AccountId]),
-            couch_mgr:del_doc(?WH_SERVICES_DB, AccountId),
+            kz_datamgr:del_doc(?KZ_SERVICES_DB, AccountId),
             timer:sleep(5 * ?MILLISECONDS_IN_SECOND)
     end;
 cleanup_orphaned_services_doc(View) ->
-    cleanup_orphaned_services_doc(wh_doc:id(View)).
+    cleanup_orphaned_services_doc(kz_doc:id(View)).

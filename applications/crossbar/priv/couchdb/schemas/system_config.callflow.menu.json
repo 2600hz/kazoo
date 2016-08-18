@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.callflow.menu",
+    "description": "Schema for callflow.menu system_config",
+    "properties": {
+        "min_greeting_length": {
+            "default": 1500,
+            "description": "callflow.menu min greeting length",
+            "name": "min_greeting_length",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -1,0 +1,11 @@
+<p>Port request submitted for {{account.name}} by {{port_request.customer_contact}}.</p>
+<p>The account's tree:</p>
+<ul><li>{{ account.name }} ({{ account.id }})</li>
+{% for id, name in account_tree %}<li>{{ name }} ({{ id }})</li>
+{% endfor %}</ul>
+<p>Request to port numbers: {{ port_request.numbers }}</p>
+
+<p>Port Details:</p>
+
+<ul>{% for k,v in port_request %}<li>{{ k }} : {{ v }}</li>
+{% endfor %}</ul>

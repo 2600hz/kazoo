@@ -1,159 +1,180 @@
-/*
-Section: Crossbar
-Title: Webhooks
-Language: en-US
-Version: 3.22
-*/
+### Webhooks
+
+#### About Webhooks
 
 Webhooks allow Kazoo to send HTTP requests to a third-party webserver, alerting that server of events occuring within Kazoo. Typically, events would be fired for new calls, when a call is answered, and when a call is finished, though other events will be added in the future.
 
-## Schema
+#### Schema
 
-* `name`: Friendly name for the webhook
-* `uri`: The HTTP URI of the third-party webserver (required)
-* `http_verb`: The HTTP Verb to send the request with (`get` or `post`)
-* `hook`: The event(s) in Kazoo that will trigger a request to `uri`
-    * `channel_create`: A new channel has begun
-    * `channel_answer`: A channel has been answered
-    * `channel_destroy`: A channel has finished
-    * `all`: All available webhook events
-* `retries`: How many times to retry sending the webhook to `uri`
-* `custom_data`: JSON object of custom data to be sent along with the event data to the `uri`
-* `enabled`: Boolean, is this webhook enabled for operation
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`custom_data` | These properties will be added to the event and will overwrite existing values. | `object` |   | `false`
+`enabled` | Is the webhook enabled and running | `boolean` | `true` | `false`
+`hook` | The trigger event for a request being made to 'callback_uri'. | `string` |   | `true`
+`http_verb` | What HTTP method to use when contacting the server | `string('get', 'post')` | `post` | `false`
+`name` | A friendly name for the webhook | `string` |   | `true`
+`retries` | Retry the request this many times (if it fails) | `integer` | `2` | `false`
+`uri` | The 3rd party URI to call out to an event | `string` |   | `true`
 
-## List Installed Webhooks
+#### List Installed Webhooks
 
-Webhooks are installed by the system administrator. You can query Crossbar to see which are installed:
-
-    curl -v -X GET \
-    -H "Content-Type:application/json" \
-    -H "X-Auth-Token: {AUTH_TOKEN} \
-    http://{SERVER}:8000/v2/webhooks
-
-    {"auth_token": "{AUTH_TOKEN}",
-     "data": [
-         {
-             "description": "Events when calls end",
-             "id": "channel_destroy",
-             "name": "channel_destroy"
-         },
-         {
-             "description": "Events when new calls start",
-             "id": "channel_create",
-             "name": "channel_create"
-         },
-         {
-             "description": "Events for when the channel is answered by the endpoint",
-             "id": "channel_answer",
-             "name": "channel_answer"
-        },
-        {
-            "description": "Receive notifications when objects in Kazoo are changed",
-            "id": "object",
-            "modifiers": {
-                "action": {
-                    "description": "A list of object actions to handle",
-                    "items": [
-                        "doc_created",
-                        "doc_edited",
-                        "doc_deleted"
-                    ],
-                    "type": "array"
-                },
-                "type": {
-                    "description": "A list of object types to handle",
-                    "items": [
-                        "account",
-                        "callflow",
-                        "device",
-                        "faxbox",
-                        "media",
-                        "user",
-                        "vmbox"
-                    ],
-                    "type": "array"
-                },
-                "types": {
-                    "description": "A list of object types to handle",
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "array"
-                }
-            },
-            "name": "object"
-        }
-
-     ],
-     "page_size": 4,
-     "request_id": "{REQUEST_ID}",
-     "revision": "{REVISION}",
-     "status": "success"
-     }
+Webhooks are installed by the system administrator. You can query Crossbar to see which are installed.
 
 Some webhooks will also include a `modifiers` object; these are parameters specific to that webhook that can be used to modify the behaviour of the webhook.
 
-## Sample cURL Requests
+> GET http://{SERVER}:8000/v2/webhooks
 
-### List webhooks
+```shell
+curl -v -X GET \
+    -H "Content-Type:application/json" \
+    -H "X-Auth-Token: {AUTH_TOKEN} \
+    http://{SERVER}:8000/v2/webhooks
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "description": "Events when calls end",
+            "id": "channel_destroy",
+            "name": "channel_destroy"
+        },
+        {
+            "description": "Events when new calls start",
+            "id": "channel_create",
+            "name": "channel_create"
+        },
+        {
+            "description": "Events for when the channel is answered by the endpoint",
+            "id": "channel_answer",
+            "name": "channel_answer"
+        },
+        {
+           "description": "Receive notifications when objects in Kazoo are changed",
+           "id": "object",
+           "modifiers": {
+               "action": {
+                   "description": "A list of object actions to handle",
+                   "items": [
+                       "doc_created",
+                       "doc_edited",
+                       "doc_deleted"
+                   ],
+                   "type": "array"
+               },
+               "type": {
+                   "description": "A list of object types to handle",
+                   "items": [
+                       "account",
+                       "callflow",
+                       "device",
+                       "faxbox",
+                       "media",
+                       "user",
+                       "vmbox"
+                   ],
+                   "type": "array"
+               },
+               "types": {
+                   "description": "A list of object types to handle",
+                   "items": {
+                       "type": "string"
+                   },
+                   "type": "array"
+               }
+           },
+           "name": "object"
+       }
+   ],
+   "page_size": 4,
+   "request_id": "{REQUEST_ID}",
+   "revision": "{REVISION}",
+   "status": "success"
+}
+```
 
-    curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
+#### List webhooks
+
+> GET /v2/accounts/{ACCOUNT_ID}/webhooks
 
 Any webhooks with *disable_reason* in the summary has been auto-disabled.
 
-### Create webhook
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
+```
 
-    curl -v -X PUT \
+#### Create webhook
+
+> PUT /v2/accounts/{ACCOUNT_ID}/webhooks
+
+```shell
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks \
     -d '{"data":{"name":"New Calls", "uri":"http://my.{SERVER}/calls/new.php", \
     "http_verb":"post", "hook":"channel_create", "retries":3}}'
+```
 
-### Get details of the webhook
+#### Get details of the webhook
 
-    curl -v -X GET \
+> GET /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+
+```shell
+curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+```
 
-### Edit webhook
+#### Edit webhook
 
-    curl -v -X POST \
+> POST /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+
+```shell
+curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID} \
     -d '{"data":{"name":"New Calls", "uri":"http://my.{SERVER}/calls/new_calls.php", \
     "http_verb":"post", "hook":"channel_create", "retries":3}}'
+```
 
-### Patch webhook
+#### Patch webhook
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
 You can also patch an existing webhook:
 
-    curl -v -X POST \
+```shell
+curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID} \
     -d '{"data":{"enabled":true}}'
+```
 
-### Delete a webhook
+#### Delete a webhook
 
-    curl -v -X DELETE \
+> DELETE /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+```
 
-### List Attempts
+#### List Webhook Attempts
 
 Webhooks tracks attempts to send the hook payloads to your URIs. You can get a listing of the more recent attempts to help debug what went wrong.
 
-#### Account Attempts
+> GET /v2/accounts/{ACCOUNT_ID}/webhooks/attempts
 
-    curl -v -X GET \
+```shell
+curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/attempts
-
-    {"auth_token": "c89bc20fd8954f6e67614b99e31b4f58",
+{
+    "auth_token": "c89bc20fd8954f6e67614b99e31b4f58",
     "data": [
         {
             "client_error": "nxdomain",
@@ -173,35 +194,49 @@ Webhooks tracks attempts to send the hook payloads to your URIs. You can get a l
     "request_id": "{REQUEST_ID}",
     "status": "success"
     }
+```
 
+List attempts for a specific attempt
 
-#### Hook Attempts
+> GET /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
 
-    curl -v -X GET \
+```shell
+curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
+```
 
-### Re-enable auto-disabled hooks in bulk
+#### Re-enable auto-disabled hooks in bulk
 
 Webhooks will auto-disable failing hooks (if Kazoo can't reach your server, or you take too long to respond with `200 OK`, for instance). Especially if you're a reseller with webhooks in your client accounts, it can be tedious to have to iterate through all your accounts and re-enable each hook. Fortunately, you can perform this bulk-enable action against an account or an account and its descendants.
 
-#### Enable an account's hooks
+Enable an account's hooks
 
-    curl -v -X PATCH \
+> PATCH /v2/accounts/{ACCOUNT_ID}/webhooks
+
+```shell
+curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks \
     -d '{"data":{"re-enable":true}}'
+```
 
-#### Enable an account's and descendant accounts' hooks
+Enable an account's and descendant accounts' hooks
 
-    curl -v -X PATCH \
+> PATCH /v2/accounts/{ACCOUNT_ID}/descendants/webhooks
+
+```shell
+curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants/webhooks \
     -d '{"data":{"re-enable":true}}'
+```
 
-## Hook Payload
+#### Hook Payload
 
-### Base Payload
+Here's what you can expect to receive when a webhook fires to your server:
+
+**Base Payload**
 
 * hook_event: The type of hook being fired
 * call_direction: "inbound" or "outbound", relative to Kazoo
@@ -219,7 +254,7 @@ Webhooks will auto-disable failing hooks (if Kazoo can't reach your server, or y
 
 Most of these fields should be present on all payloads.
 
-### Hook Specific
+**Hook Specific**
 
 * channel_create
     * hook_event: channel_create
@@ -234,11 +269,9 @@ Most of these fields should be present on all payloads.
     * action: doc_created, doc_updated, doc_deleted
     * type: user, vmbox, callflow, account, device, faxbox, media
 
-### Hook Specific Custom Data
+#### Hook Specific Custom Data
 
-#### Doc
-
-To restrict the kind of doc or the action or both. You can set the custom data to:
+To restrict the kind of document or the action or both. You can set the custom data to:
 
 ```json
 {

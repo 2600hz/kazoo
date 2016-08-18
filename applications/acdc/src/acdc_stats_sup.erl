@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%% Manage the bucket servers
 %%% @end
@@ -12,7 +12,7 @@
 
 %% API
 -export([start_link/0
-         ,stats_srv/0
+        ,stats_srv/0
         ]).
 
 %% Supervisor callbacks
@@ -23,8 +23,8 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILDREN, [?WORKER_NAME_ARGS('acdc_stats_etsmgr', 'acdc_stats_call', [acdc_stats:call_table_id(), acdc_stats:call_table_opts()])
-                   ,?WORKER_NAME_ARGS('acdc_stats_etsmgr', 'acdc_stats_status', [acdc_agent_stats:status_table_id(), acdc_agent_stats:status_table_opts()])
-                   ,?WORKER('acdc_stats')
+                  ,?WORKER_NAME_ARGS('acdc_stats_etsmgr', 'acdc_stats_status', [acdc_agent_stats:status_table_id(), acdc_agent_stats:status_table_opts()])
+                  ,?WORKER('acdc_stats')
                   ]).
 
 %%%===================================================================
@@ -32,12 +32,9 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
@@ -45,7 +42,7 @@ start_link() ->
                        {'ok', pid()} |
                        {'error', 'not_found'}.
 stats_srv() ->
-    case [P || {'acdc_stats', P, _, _} <- supervisor:which_children(?MODULE)] of
+    case [P || {'acdc_stats', P, _, _} <- supervisor:which_children(?SERVER)] of
         [P] when is_pid(P) -> {'ok', P};
         _ -> {'error', 'not_found'}
     end.
@@ -61,12 +58,9 @@ stats_srv() ->
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
-%%
-%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
-%%                     ignore |
-%%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 1,

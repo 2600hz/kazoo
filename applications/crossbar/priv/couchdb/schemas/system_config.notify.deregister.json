@@ -1,0 +1,27 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.notify.deregister",
+    "description": "Schema for notify.deregister system_config",
+    "properties": {
+        "default_to": {
+            "default": "",
+            "description": "notify.deregister default to",
+            "name": "default_to",
+            "type": "string"
+        },
+        "html_content_transfer_encoding": {
+            "default": "7BIT",
+            "description": "notify.deregister html content transfer encoding",
+            "name": "html_content_transfer_encoding",
+            "type": "string"
+        },
+        "text_content_transfer_encoding": {
+            "default": "7BIT",
+            "description": "notify.deregister text content transfer encoding",
+            "name": "text_content_transfer_encoding",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

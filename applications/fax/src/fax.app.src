@@ -1,13 +1,28 @@
 {application, fax,
  [
   {description, "Fax - Why is everyone faxinated with fax?"},
-  {vsn, "1.0.0"},
-  {registered, []},
+  {vsn, "4.0.0"},
   {modules, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {registered, [fax_cache, fax_worker_pool_sup, fax_requests_sup, fax_xmpp_sup, fax_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , public_key
+                 , inets
+
+                 , kazoo
+                 , kazoo_amqp
+                 , kazoo_data
+                 , kazoo_apps
+                 , kazoo_modb
+                 , kazoo_oauth
+
+                 , lager
+                 , ranch
+                 , cowboy
+                 , escalus
+                 , poolboy
+                 , gen_smtp
                  ]},
-  {mod, { fax_app, []}},
-  {env, []}
+  {mod, {fax_app, []}}
  ]}.

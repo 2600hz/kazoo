@@ -1,16 +1,10 @@
-/*
-Section: ACDC
-Title: Automatic Call Distributor
-Language: en-US
-*/
-
-# ACDc *Your friendly automatic call distribution commander*
+### ACDc *Your friendly automatic call distribution commander*
 
 First, the "commander" part is a stretch, I know.
 
 High level concepts involved here are queues and agents. There's a many-many relationship between queues and agents: a queue can have many agents, and an agent can be part of many queues. As such, there needs to be a distinct differentiation between what an agent is responsible for and what a queue tracks.
 
-## Agents
+#### Agents
 
 An agent represents an account user with a device (and possibly many devices). The agent tracks:
 
@@ -21,65 +15,68 @@ An agent represents an account user with a device (and possibly many devices). T
 5. the agent id
 6. the agent's account db
 
-### Agent Statuses
+> Agent Statuses
 
-*init*: the agent process is starting up. Will not accept member connection requests.
+```asciidoc
+**init**: the agent process is starting up. Will not accept member connection requests.
 
-*sync*: Waits for agent status event to know what state to transition to out of *sync*.
+**sync**: Waits for agent status event to know what state to transition to out of **sync**.
 
-*ready*: the agent process is awaiting member connection requests.
+**ready**: the agent process is awaiting member connection requests.
 
-*ringing*: the agent process has received a member connection win and is currently dialing the agent's device.
+**ringing**: the agent process has received a member connection win and is currently dialing the agent's device.
 
-*answered*: the agent device has successfully bridged to the member. Waiting for the call to hangup.
+**answered**: the agent device has successfully bridged to the member. Waiting for the call to hangup.
 
-*wrapup*: configurable wait time after a call has ended before the agent is ready to accept another call.
+**wrapup**: configurable wait time after a call has ended before the agent is ready to accept another call.
 
-*paused*: the agent is on break or otherwise not taking calls. An optional timer can be set to limit how long the agent may remain in the paused state.
+**paused**: the agent is on break or otherwise not taking calls. An optional timer can be set to limit how long the agent may remain in the paused state.
+```
 
-### Agent Process Initialization
+##### Agent Process Initialization
 
 An agent can be represented by one or more Erlang processes, on any number of nodes, and in any one of the statuses above. As such, startup of the agent process is a tricky matter.
 
-An agent process that has started up cannot just jump into the *ready* status, as the agent could be on the phone, away on break, or otherwise in-disposed. So before the process can leave the *init* status, the agent process published a sync_req message for all agent processes monitoring the agent. Any existing agent processes will receive the sync_req and reply with their current status. The intializing agent process will collect responses (or none) for a specified timeout and either sync with the "most active" agent process or, if no responses are received, enter the *ready* status.
+An agent process that has started up cannot just jump into the **ready** status, as the agent could be on the phone, away on break, or otherwise in-disposed. So before the process can leave the **init** status, the agent process published a `sync_req` message for all agent processes monitoring the agent. Any existing agent processes will receive the `sync_req` and reply with their current status. The intializing agent process will collect responses (or none) for a specified timeout and either sync with the "most active" agent process or, if no responses are received, enter the **ready** status.
 
-If the sync_resp is in the *init* status as well, the agent process will move to *ready* to avoid deadlocking the two (or more) agent processes.
+If the `sync_resp` is in the **init** status as well, the agent process will move to **ready** to avoid deadlocking the two (or more) agent processes.
 
-If the sync_resp is in the *ready* status, the initializing agent will enter the *ready* status as well. Member requests will now come to both (or all) agent processes.
+If the `sync_resp` is in the **ready** status, the initializing agent will enter the **ready** status as well. Member requests will now come to both (or all) agent processes.
 
-If the sync_resp is in the *waiting* status, the initializing agent process will wait the wait_timeout time (how long a process waits to see if it 'won' the member), and send another sync_req.
+If the `sync_resp` is in the **waiting** status, the initializing agent process will wait the `wait_timeout` time (how long a process waits to see if it 'won' the member), and send another `sync_req`.
 
-If a sync_resp is in the *ringing* status, the initializing agent process will wait the wait_timeout time and send the sync_req again.
+If a `sync_resp` is in the **ringing** status, the initializing agent process will wait the `wait_timeout` time and send the `sync_req` again.
 
-If a sync_resp is in the *answered* status, the response will include the call-id of the call being vied for (and possibly the b-leg call-id as well). The initializing agent will enter the same state and monitor the call for hangup. Upon receiving the hangup, the initializing agent process will enter the *wrapup* status, and after the wrap-up timeout, will enter the *ready* status (as other agent processes should too).
+If a `sync_resp` is in the **answered** status, the response will include the `call_id` of the call being vied for (and possibly the b-leg `call_id` as well). The initializing agent will enter the same state and monitor the call for hangup. Upon receiving the hangup, the initializing agent process will enter the **wrapup** status, and after the wrap-up timeout, will enter the **ready** status (as other agent processes should too).
 
-If a sync_resp is in the *wrapup* status, the resp should include the time left (otherwise use the full amount). The initializing agent will enter the *wrapup* status with the calculated timeout, then transition to *ready*.
+If a `sync_resp` is in the **wrapup** status, the resp should include the time left (otherwise use the full amount). The initializing agent will enter the **wrapup** status with the calculated timeout, then transition to **ready**.
 
-If a sync_resp is in the *paused* status, the resp should include the time left (if on a timed break). If no time is included, the initializing agent process will enter the *paused* status indefinitely, until an agent_status event instructs the agent process to come back to *ready*.
+If a `sync_resp` is in the **paused** status, the resp should include the time left (if on a timed break). If no time is included, the initializing agent process will enter the **paused** status indefinitely, until an `agent_status` event instructs the agent process to come back to **ready**.
 
-### Happy case for a member call
+##### Happy case for a member call
 
-agent status: *ready*
-Agent process receives a member_connect_req message off the message bus. Agent publishes a member_connect_resp to the requesting queue's AMQP queue and enters the *waiting* state.
+agent status: **ready**
+Agent process receives a `member_connect_req` message off the message bus. Agent publishes a `member_connect_resp` to the requesting queue's AMQP queue and enters the **waiting** state.
 
-agent status: *waiting*
-Agent process receives member_connect_win, including the whapps_call json payload. Agent process publishes a bridge_req to the call control process. Agent publishes agent_state_change to other agent processes monitoring this agent_id. Agent process enters the *ringing* state.
+agent status: **waiting**
+Agent process receives `member_connect_win`, including the `kapps_call` json payload. Agent process publishes a bridge_req to the call control process. Agent publishes `agent_state_change` to other agent processes monitoring this `agent_id`. Agent process enters the **ringing** state.
 
-agent status: *ringing*
-Agent process receives (eventually) the successful bridge event. Agent enters the *answered* state. Send the queue a member_connected message.
+agent status: **ringing**
+Agent process receives (eventually) the successful bridge event. Agent enters the **answered** state. Send the queue a `member_connected` message.
 
-agent status: *answered*
-Agent process monitors the call's event stream, waiting for a hangup event. Upon reception, enter the *wrapup* state.
+agent status: **answered**
+Agent process monitors the call's event stream, waiting for a hangup event. Upon reception, enter the **wrapup** state.
 
-agent status: *wrapup*
-Queue may optionally specify a wrapup_timeout, delaying how long an agent must wait before returning to *ready*.
-
-#### An attempt at a message flowchart
+agent status: **wrapup**
+Queue may optionally specify a wrapup_timeout, delaying how long an agent must wait before returning to **ready**.
 
 Q = A queue in an account
 AX(Y)(S) = Agent with id X, process Y, status S
 Status: (R)eady, (A)nswered, (W)aiting, (Ri)nging, (Wr)apup, (P)aused
 
+> An attempt at a message flowchart
+
+```asciidoc
 1. Q sends a member_connect_req to all agents bound for the queue
                             ----> A1(1)(R)
 Q ---> member_connect_req --|---> A1(2)(R)
@@ -95,44 +92,46 @@ Q <--- member_connect_resp <-|--- A1(2)(W)
 Q ---> member_connect_win ----> A1(1)(Ri)
 
 3b. Q sends A1(2) a member_connect_monitor to let it know an agent process has won the member_connect
-    A1(2) enters the *ringing* status without dialing the endpoint
+    A1(2) enters the **ringing** status without dialing the endpoint
 Q ---> member_connect_monitor ----> A1(2)(Ri)
 
 3c. Q sends the A2(1) process a member_connect_ignore so it knows it failed to win the member.
-    A2(1) re-enters the *ready* status
+    A2(1) re-enters the **ready** status
 Q ---> member_connect_ignore ----> A2(2)(R)
 
 4a. A1(\_) receives a failed dial to agent endpoint, alerts Q
-    A1(\_) notes failed dial; if threshold reached, agent goes to *paused*, else *wrapup*
+    A1(\_) notes failed dial; if threshold reached, agent goes to **paused**, else **wrapup**
 Q <--- member_retry --- A1(_)(Wr | P)
 
 4b. A1(\_) receives bridged event, alerts Q
-    A1(\_) enters the *answered* status
+    A1(\_) enters the **answered** status
 Q <--- member_connected --- A1(_)(A)
 
 5. A1(\_) receives hangup, alerts Q
-   A1(\_) enters the *wrapup* status
+   A1(\_) enters the **wrapup** status
 Q <--- member_hungup --- A1(_)(Wr)
 
-5. Agent's wrapup timer expires, enters *ready* status
+5. Agent's wrapup timer expires, enters **ready** status
 Q                        A1(_)(R)
+```
 
-## Queues
+#### Queues
 
-Queues manage the dispersal of member calls to agents. Because the queue won't know if an agent is busy in another queue, the queue will broadcast a member_connect_req to all known agents. The queue will collect member_connect_resps and choose one agent, based on routing strategy, to send the member_connect_win message. If the agent is unable to connect the call and send the queue a member_connected, the agent will attempt the next appropriate member_connect_resp. If the list is exhausted, the queue will wait a configurable amount of time before sending another member_connect_req and repeating the process.
+Queues manage the dispersal of member calls to agents. Because the queue won't know if an agent is busy in another queue, the queue will broadcast a `member_connect_req` to all known agents. The queue will collect `member_connect_resp`s and choose one agent, based on routing strategy, to send the `member_connect_win` message. If the agent is unable to connect the call and send the queue a `member_connected`, the agent will attempt the next appropriate `member_connect_resp`. If the list is exhausted, the queue will wait a configurable amount of time before sending another `member_connect_req` and repeating the process.
 
-### Queue Process Initialization
+##### Queue Process Initialization
 
 As with agents, multiple queue processes can (and should) be started per acdc queue. The challenge becomes how to coordinate member calls being distributed to agents with multiple queue processes running for the same queue.
 
-Unlike agents, we don't want to consume as quickly as possible from the AMQP queue. We want a 'blocking' read from the AMQP queue while we process the caller. As soon as the caller is connected to the agent, the queue process should ACK the member_call message. Because of this constraint, we need a shared AMQP queue with auto_ack disabled.
+Unlike agents, we don't want to consume as quickly as possible from the AMQP queue. We want a 'blocking' read from the AMQP queue while we process the caller. As soon as the caller is connected to the agent, the queue process should ACK the `member_call` message. Because of this constraint, we need a shared AMQP queue with auto_ack disabled.
 
-Startup of a queue process should declare the AMQP queue as acdc.queue.ACCT.QID and set the auto_ack flag to false (will require manually ACK or NACK of the AMQP payload). Becoming a consumer of the queue will put the queue process into round-robin with other queue processes. At that point, the queue process is ready to receive the next member_call.
+Startup of a queue process should declare the AMQP queue as `acdc.queue.ACCT.QID` and set the `auto_ack` flag to false (will require manually ACK or NACK of the AMQP payload). Becoming a consumer of the queue will put the queue process into round-robin with other queue processes. At that point, the queue process is ready to receive the next `member_call`.
 
 Of course, communication with the agent processes will occur with the queue processes dedicated AMQP queue. So each queue process will consume from both the shared AMQP queue and from their own private AMQP queue.
 
-### Queue Call Handling
+> Queue Call Handling
 
+```asciidoc
 1. member_call published from callflow module to shared AMQP queue acdc.queue.ACCT.QID
 CF -- member_call --> Q1(1)
                       Q1(2)
@@ -160,3 +159,4 @@ Q1(1) <-- member_connected -- A
 Q1(\*) <-- member_hungup -- A
 
 6. If the agent process sends the member_connect_retry, it is published and consumed like the member_call message (meaning goto 2 and substitute member_call with member_connect_retry.
+```

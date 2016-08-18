@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz INC
+%%% @copyright (C) 2016, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "digits":"#123" // what sequence to send
@@ -10,7 +10,9 @@
 %%%-------------------------------------------------------------------
 -module(cf_send_dtmf).
 
--include("../callflow.hrl").
+-behaviour(gen_cf_action).
+
+-include("callflow.hrl").
 
 -export([handle/2]).
 
@@ -20,12 +22,12 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    DTMFs = wh_json:get_value(<<"digits">>, Data),
-    Duration = wh_json:get_binary_value(<<"duration_ms">>, Data),
+    DTMFs = kz_json:get_value(<<"digits">>, Data),
+    Duration = kz_json:get_binary_value(<<"duration_ms">>, Data),
 
-    whapps_call_command:send_dtmf(DTMFs, Duration, Call),
+    kapps_call_command:send_dtmf(DTMFs, Duration, Call),
     lager:debug("sent '~s' @ '~s' duration", [DTMFs, Duration]),
 
     cf_exe:continue(Call).

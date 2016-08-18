@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -18,6 +18,8 @@
 
 -include("stepswitch.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(CHILDREN, []).
 
 %% ===================================================================
@@ -26,64 +28,63 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec bridge(wh_json:objects(), wh_json:object()) -> sup_startchild_ret().
-bridge(Endpoints, JObj) ->
-    Name = <<(wh_json:get_value(<<"Call-ID">>, JObj))/binary
-             ,"-", (wh_util:rand_hex_binary(3))/binary
-           >>,
-    supervisor:start_child(?MODULE
-                           ,?WORKER_NAME_ARGS_TYPE(Name
-                                                   ,'stepswitch_bridge'
-                                                   ,[Endpoints, JObj]
-                                                   ,'temporary'
-                                                  )
+-spec child_name(kapi_offnet_resource:req()) -> ne_binary().
+child_name(OffnetReq) ->
+    <<(kapi_offnet_resource:call_id(OffnetReq))/binary
+      ,"-", (kz_util:rand_hex_binary(3))/binary
+    >>.
+
+-spec outbound_child_name(kapi_offnet_resource:req()) -> ne_binary().
+outbound_child_name(OffnetReq) ->
+    <<(kapi_offnet_resource:outbound_call_id(OffnetReq))/binary
+      ,"-", (kz_util:rand_hex_binary(3))/binary
+    >>.
+
+-spec bridge(kz_json:objects(), kapi_offnet_resource:req()) -> sup_startchild_ret().
+bridge(Endpoints, OffnetReq) ->
+    supervisor:start_child(?SERVER
+                          ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)
+                                                 ,'stepswitch_bridge'
+                                                 ,[Endpoints, OffnetReq]
+                                                 ,'temporary'
+                                                 )
                           ).
 
--spec local_extension(wh_proplist(), wh_json:object()) -> sup_startchild_ret().
-local_extension(Props, JObj) ->
-    Name = <<(wh_json:get_value(<<"Call-ID">>, JObj))/binary
-             ,"-", (wh_util:rand_hex_binary(3))/binary
-           >>,
-    supervisor:start_child(?MODULE
-                           ,?WORKER_NAME_ARGS_TYPE(Name
-                                                   ,'stepswitch_local_extension'
-                                                   ,[Props, JObj]
-                                                   ,'temporary'
-                                                  )
+-spec local_extension(knm_number_options:extra_options(), kapi_offnet_resource:req()) ->
+                             sup_startchild_ret().
+local_extension(Props, OffnetReq) ->
+    supervisor:start_child(?SERVER
+                          ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)
+                                                 ,'stepswitch_local_extension'
+                                                 ,[Props, OffnetReq]
+                                                 ,'temporary'
+                                                 )
                           ).
 
--spec originate(wh_json:objects(), wh_json:object()) -> sup_startchild_ret().
-originate(Endpoints, JObj) ->
-    Name = <<(wh_json:get_value(<<"Outbound-Call-ID">>, JObj))/binary
-             ,"-", (wh_util:rand_hex_binary(3))/binary
-           >>,
-    supervisor:start_child(?MODULE
-                           ,?WORKER_NAME_ARGS_TYPE(Name
-                                                   ,'stepswitch_originate'
-                                                   ,[Endpoints, JObj]
-                                                   ,'temporary'
-                                                  )
+-spec originate(kz_json:objects(), kapi_offnet_resource:req()) -> sup_startchild_ret().
+originate(Endpoints, OffnetReq) ->
+    supervisor:start_child(?SERVER
+                          ,?WORKER_NAME_ARGS_TYPE(outbound_child_name(OffnetReq)
+                                                 ,'stepswitch_originate'
+                                                 ,[Endpoints, OffnetReq]
+                                                 ,'temporary'
+                                                 )
                           ).
 
--spec sms(wh_json:objects(), wh_json:object()) -> sup_startchild_ret().
-sms(Endpoints, JObj) ->
-    Name = <<(wh_json:get_value(<<"Call-ID">>, JObj))/binary
-             ,"-", (wh_util:rand_hex_binary(3))/binary
-           >>,
-    supervisor:start_child(?MODULE
-                           ,?WORKER_NAME_ARGS_TYPE(Name
-                                                   ,'stepswitch_sms'
-                                                   ,[Endpoints, JObj]
-                                                   ,'temporary'
-                                                  )
+-spec sms(kz_json:objects(), kapi_offnet_resource:req()) -> sup_startchild_ret().
+sms(Endpoints, OffnetReq) ->
+    supervisor:start_child(?SERVER
+                          ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)
+                                                 ,'stepswitch_sms'
+                                                 ,[Endpoints, OffnetReq]
+                                                 ,'temporary'
+                                                 )
                           ).
 
 %% ===================================================================
@@ -99,7 +100,7 @@ sms(Endpoints, JObj) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,

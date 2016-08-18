@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -15,11 +15,12 @@
 
 -include("cccp.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [
-                    ?SUPER('cccp_platform_sup')
-                   ,?SUPER('cccp_callback_sup')
-                   ,?WORKER('cccp_listener')
+-define(CHILDREN, [?SUPER('cccp_platform_sup')
+                  ,?SUPER('cccp_callback_sup')
+                  ,?WORKER('cccp_listener')
                   ]).
 
 %% ===================================================================
@@ -28,13 +29,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -49,9 +48,9 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
-    wh_util:set_startup(),
+    kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

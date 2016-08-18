@@ -1,0 +1,4 @@
+Hi {{user.first_name}} {{user.last_name}}.
+
+This is the skeleton template
+Brought to you by VoIP Services

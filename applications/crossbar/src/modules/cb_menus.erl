@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Menus module
 %%%
@@ -13,16 +13,16 @@
 -module(cb_menus).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
-         ,put/1
-         ,post/2
-         ,patch/2
-         ,delete/2
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,validate/1, validate/2
+        ,put/1
+        ,post/2
+        ,patch/2
+        ,delete/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"menus/crossbar_listing">>).
 
@@ -147,7 +147,7 @@ create_menu(Context) ->
 %%--------------------------------------------------------------------
 -spec load_menu(ne_binary(), cb_context:context()) -> cb_context:context().
 load_menu(DocId, Context) ->
-    crossbar_doc:load(DocId, Context).
+    crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(<<"menu">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -181,13 +181,13 @@ validate_patch(DocId, Context) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, wh_json:set_values([{<<"pvt_type">>, <<"menu">>}
-                                                    ,{<<"pvt_vsn">>, <<"2">>}
+    cb_context:set_doc(Context, kz_json:set_values([{<<"pvt_type">>, <<"menu">>}
+                                                   ,{<<"pvt_vsn">>, <<"2">>}
                                                    ]
-                                                   ,cb_context:doc(Context)
+                                                  ,cb_context:doc(Context)
                                                   ));
 on_successful_validation(DocId, Context) ->
-    crossbar_doc:load_merge(DocId, Context).
+    crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"menu">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -195,6 +195,6 @@ on_successful_validation(DocId, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_json:get_value(<<"value">>, JObj)|Acc].

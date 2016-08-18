@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -24,10 +24,9 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(any(), any()) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
-start(_StartType, _StartArgs) -> acdc:start_link().
+-spec start(application:start_type(), any()) -> startapp_ret().
+start(_StartType, _StartArgs) ->
+    acdc_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -35,5 +34,6 @@ start(_StartType, _StartArgs) -> acdc:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
-stop(_State) -> acdc:stop().
+-spec stop(any()) -> any().
+stop(_State) ->
+    'ok'.

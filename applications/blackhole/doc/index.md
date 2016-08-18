@@ -6,10 +6,12 @@ Language: en-US
 
 # Blackhole *Realtime HTTP Websocket Events*
 
+
+
 ## Setting up
 
 1. Start the Blackhole Crossbar module
-    * `sup whapps_controller restart_app blackhole`
+    * `sup kapps_controller restart_app blackhole`
 1. Find your Account ID (e.g. `4b31dd1d32ce6d249897c06332375d65`)
 1. [Obtain an Auth Token](https://2600hz.atlassian.net/wiki/display/APIs/Generating+an+Authentication+Token) (e.g. `7b70f69a2a4976d80bfa0382894d1553`)
 1. Copy the **Example Client** code into an HTML file (named e.g. `kazoo_example_ws_client.html`)
@@ -28,49 +30,97 @@ From here, you can write your own Javascript callbacks, triggered everytime a re
 ```html
 <html>
   <head>
-    <script src="http://cdnjs.cloudflare.com/ajax/libs/socket.io/0.9.6/socket.io.min.js"></script>
   </head>
   <body>
     <script>
-      var socket = io.connect('http://{BLACKHOLE_IP_ADDRESS}:5555');
-      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_CREATE.*' });
-      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_ANSWER.*' });
-      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_DESTROY.*' });
-      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'conference.event.*' });
+        var socket = new WebSocket("ws://{BLACKHOLE_IP_ADDRESS}:5555");
 
-      socket.on('participants_event', function (data) {
-        console.log(data);
-      });
-      socket.on('CHANNEL_CREATE', function (EventJObj) {
-        console.log(EventJObj);
-      });
-      socket.on('CHANNEL_ANSWER', function (EventJObj) {
-        console.log(EventJObj);
-      });
-      socket.on('CHANNEL_DESTROY', function (EventJObj) {
-        console.log(EventJObj);
-      });
+        function send(data) {
+            socket.send(JSON.stringify(data));
+        }
 
+        socket.onopen = function() {
+            send({
+                action: 'subscribe',
+                account_id: '{ACCOUNT_ID}',
+                auth_token: '{AUTH_TOKEN}',
+                binding: 'call.CHANNEL_CREATE.*'
+            });
 
-      var Events = ['connect', 'error', 'disconnect', 'reconnect', 'reconnect_attempt', 'reconnecting', 'reconnect_error', 'reconnect_failed'];
-      for (idx in Events) {
-        socket.on(Events[idx], function (_evt) { console.log('=ERROR REPORT==== ' + Events[idx]); });
-      }
+            send({
+                action: 'subscribe',
+                account_id: '{ACCOUNT_ID}',
+                auth_token: '{AUTH_TOKEN}',
+                bindings: ['call.CHANNEL_ANSWER.*', 'call.CHANNEL_DESTROY.*']
+            });
+
+            send({
+                action: 'subscribe',
+                account_id: accountId,
+                auth_token: token,
+                bindings: ['doc_created.*.user.*', 'doc_edited.*.user.*']
+            });
+        }
+
+        socket.onmessage = function(raw_message) {
+            var json_data = JSON.parse(raw_message.data);
+
+            console.log(json_data);
+        };
+
     </script>
   </body>
 </html>
-
-
 ```
+
+You can add one or multiple bindings by using:
+
+`note: binding will be picked first over bindings in case both are added`
+
+``` javascript
+// For one use: binding
+send({
+    action: 'subscribe',
+    account_id: '{ACCOUNT_ID}',
+    auth_token: '{AUTH_TOKEN}',
+    binding: 'doc_edited.*.user.*'
+});
+
+// For multiple use: bindings
+send({
+    action: 'subscribe',
+    account_id: '{ACCOUNT_ID}',
+    auth_token: '{AUTH_TOKEN}',
+    bindings: ['doc_edited.*.user.*', 'doc_deleted.*.user.*']
+});
+```
+
+You can also add a friendly name and some metadata to any subscribe command.
+
+``` javascript
+send({
+    action: 'subscribe',
+    account_id: '{ACCOUNT_ID}',
+    auth_token: '{AUTH_TOKEN}',
+    name: "My new socket",
+    metadata: {
+        test: "test"
+    },
+    binding: 'doc_edited.*.user.*'
+});
+```
+
+
 To remove unnecessary bindings use 'unsubscribe' event:
 
 For particular subscription:
 ```
-socket.emit('unsubscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_CREATE.*' });
+send({ action: 'unsubscribe', account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_CREATE.*' });
 ```
+
 For all previous subscriptions:
 ```
-socket.emit('unsubscribe', { auth_token: '{AUTH_TOKEN}' });
+send({ action: 'unsubscribe', auth_token: '{AUTH_TOKEN}' });
 ```
 
 
@@ -78,7 +128,7 @@ socket.emit('unsubscribe', { auth_token: '{AUTH_TOKEN}' });
 
 The Blackhole application listens to events from AMQP.
 It will send an event to you through Websockets if there is an active binding that matches this event.
-To learn more about how they are routed from your Kazoo cluster to this app, [read on on `wh_hook`](https://github.com/2600hz/kazoo/tree/master/core/whistle_apps-1.0.0/src).
+To learn more about how they are routed from your Kazoo cluster to this app, [read on on `kz_hook`](https://github.com/2600hz/kazoo/tree/master/core/kazoo_apps/src).
 
 Events are plain AMQP event messages.
 Here are a few complete `call.*.*` JSON events:
@@ -142,7 +192,7 @@ Here are a few complete `call.*.*` JSON events:
             "Account-Name": "wefwefwefwef",
             "Account-Realm": "wefwefwefwef.2600hz.com",
             "Application-Name": "callflow",
-            "Application-Node": "whistle_apps@wef.2600hz.com",
+            "Application-Node": "kazoo_apps@wef.2600hz.com",
             "Authorizing-ID": "d509114b66efabf32dfd78dc464b46dd",
             "Authorizing-Type": "device",
             "Bridge-ID": "at6dmu4ffk97vnlp6qfq",
@@ -197,7 +247,7 @@ Here are a few complete `call.*.*` JSON events:
             "Account-Name": "wefwefwefwef",
             "Account-Realm": "wefwefwefwef.2600hz.com",
             "Application-Name": "callflow",
-            "Application-Node": "whistle_apps@wef.2600hz.com",
+            "Application-Node": "kazoo_apps@wef.2600hz.com",
             "Authorizing-ID": "d509114b66efabf32dfd78dc464b46dd",
             "Authorizing-Type": "device",
             "Bridge-ID": "at6dmu4ffk97vnlp6qfq",

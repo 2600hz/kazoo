@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz INC
+%%% @copyright (C) 2016, 2600Hz INC
 %%%
 %%% @contributors
 %%% Peter Defebvre
@@ -8,20 +8,20 @@
 -module(webhooks_parking).
 
 -export([init/0
-         ,bindings_and_responders/0
-         ,handle/2
+        ,bindings_and_responders/0
+        ,handle/2
         ]).
 
--include("../webhooks.hrl").
+-include("webhooks.hrl").
 
--define(ID, wh_util:to_binary(?MODULE)).
+-define(ID, kz_util:to_binary(?MODULE)).
 -define(NAME, <<"parking">>).
 -define(DESC, <<"Events when calls get parked/retrieved">>).
 -define(METADATA
-        ,wh_json:from_list([{<<"_id">>, ?ID}
-                            ,{<<"name">>, ?NAME}
-                            ,{<<"description">>, ?DESC}
-                           ])
+       ,kz_json:from_list([{<<"_id">>, ?ID}
+                          ,{<<"name">>, ?NAME}
+                          ,{<<"description">>, ?DESC}
+                          ])
        ).
 
 %%--------------------------------------------------------------------
@@ -41,16 +41,16 @@ init() ->
 -spec bindings_and_responders() -> {gen_listener:bindings(), gen_listener:responders()}.
 bindings_and_responders() ->
     {[{'call', [{'restrict_to', ['PARK_PARKED', 'PARK_RETRIEVED', 'PARK_ABANDONED']}
-                ,'federate'
+               ,'federate'
                ]
       }
      ]
-     ,[{{?MODULE, 'handle'}
-        ,[{<<"call_event">>, <<"PARK_PARKED">>}
-          ,{<<"call_event">>, <<"PARK_RETRIEVED">>}
-          ,{<<"call_event">>, <<"PARK_ABANDONED">>}]
-       }
-      ]
+    ,[{{?MODULE, 'handle'}
+      ,[{<<"call_event">>, <<"PARK_PARKED">>}
+       ,{<<"call_event">>, <<"PARK_RETRIEVED">>}
+       ,{<<"call_event">>, <<"PARK_ABANDONED">>}]
+      }
+     ]
     }.
 
 %%--------------------------------------------------------------------
@@ -59,8 +59,8 @@ bindings_and_responders() ->
 %% @end
 %%--------------------------------------------------------------------
 handle(JObj, _Props) ->
-    'true' = wapi_call:event_v(JObj),
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    'true' = kapi_call:event_v(JObj),
+    AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     maybe_send_event(AccountId, format(JObj)).
 
 %%--------------------------------------------------------------------
@@ -68,7 +68,7 @@ handle(JObj, _Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_send_event(api_binary(), wh_json:object()) -> 'ok'.
+-spec maybe_send_event(api_binary(), kz_json:object()) -> 'ok'.
 maybe_send_event('undefined', _JObj) -> 'ok';
 maybe_send_event(AccountId, JObj) ->
     case webhooks_util:find_webhooks(?NAME, AccountId) of
@@ -81,14 +81,14 @@ maybe_send_event(AccountId, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format(wh_json:object()) -> wh_json:object().
+-spec format(kz_json:object()) -> kz_json:object().
 format(JObj) ->
     RemoveKeys = [
-        <<"Node">>
-        ,<<"Msg-ID">>
-        ,<<"App-Version">>
-        ,<<"App-Name">>
-        ,<<"Event-Category">>
-        ,<<"Custom-Channel-Vars">>
-    ],
-    wh_json:normalize_jobj(JObj, RemoveKeys, []).
+                  <<"Node">>
+                 ,<<"Msg-ID">>
+                 ,<<"App-Version">>
+                 ,<<"App-Name">>
+                 ,<<"Event-Category">>
+                 ,<<"Custom-Channel-Vars">>
+                 ],
+    kz_json:normalize_jobj(JObj, RemoveKeys, []).

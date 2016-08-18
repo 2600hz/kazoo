@@ -1,0 +1,3 @@
+Port request scheduled for {{port_request.scheduled_date |date:"D d M Y"}}.
+
+ Request to port numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}.

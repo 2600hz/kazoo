@@ -1,0 +1,24 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.devices",
+    "description": "Schema for crossbar.devices system_config",
+    "properties": {
+        "allow_aggregates": {
+            "default": "true",
+            "description": "crossbar.devices allow aggregates",
+            "name": "allow_aggregates",
+            "type": "boolean"
+        },
+        "provisioning_type": {
+            "description": "crossbar.devices provisioning type",
+            "name": "provisioning_type"
+        },
+        "provisioning_url": {
+            "description": "crossbar.devices provisioning url",
+            "name": "provisioning_url",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

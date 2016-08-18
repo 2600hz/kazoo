@@ -1,3 +1,0 @@
-Messages-Waiting: {{ waiting|default:'no' }}
-Message-Account: sip:{{user}}@{{realm}}
-Voice-Message: {{ new|default:'0' }}/{{ saved|default:'0' }} ({{urgent|default:'0'}}/{{urgent_saved|default:'0'}})

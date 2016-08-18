@@ -1,0 +1,15 @@
+{application, kazoo_etsmgr
+,[
+  {description, "Kazoo ETS Manager - Protect the ETS"}
+ ,{vsn, "4.0.0"}
+ ,{modules, []}
+ ,{registered, [ ]}
+ ,{applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , kazoo
+
+                 , lager
+                 ]}
+ ]}.

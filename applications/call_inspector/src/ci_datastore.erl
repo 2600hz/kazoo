@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -12,6 +12,8 @@
 
 -include("call_inspector.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% API
 -export([start_link/0]).
 -export([store_chunk/1]).
@@ -19,25 +21,25 @@
 -export([lookup_callid/1]).
 -export([callid_exists/1]).
 -export([flush/0
-         ,flush/1
+        ,flush/1
         ]).
 
 %% gen_server callbacks
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
         ]).
 
 -record(state, {}).
 -type state() :: #state{}.
 
 -record(object, {call_id
-                 ,timestamp
-                 ,type
-                 ,value
+                ,timestamp
+                ,type
+                ,value
                 }).
 -type object() :: #object{}.
 
@@ -47,7 +49,6 @@
 
 -export_type([data/0]).
 
--define(SERVER, ?MODULE).
 -define(CI_DIR, "/tmp/2600hz-call_inspector").
 
 %%%===================================================================
@@ -55,12 +56,9 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
@@ -84,10 +82,10 @@ callid_exists(CallId) ->
 -spec lookup_callid(ne_binary()) -> data().
 lookup_callid(CallId) ->
     Props = lists:foldl(fun lookup_callid_fold/2
-                        ,[{'chunks', []}
-                          ,{'analysis', []}
-                         ]
-                        ,lookup_objects(CallId)
+                       ,[{'chunks', []}
+                        ,{'analysis', []}
+                        ]
+                       ,lookup_objects(CallId)
                        ),
     Chunks = ci_chunk:reorder_dialog(props:get_value('chunks', Props)),
     props:set_value('chunks', Chunks, Props).
@@ -113,15 +111,9 @@ flush(CallId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
+%% @doc Initializes the server
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', #state{}}.
 init([]) ->
     mkdir(?CI_DIR),
     {'ok', #state{}}.
@@ -156,9 +148,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'store_chunk', CallId, Chunk}, State) ->
     Object = #object{call_id=CallId
-                    ,timestamp=wh_util:current_tstamp()
+                    ,timestamp=kz_util:current_tstamp()
                     ,type='chunk'
                     ,value=Chunk
                     },
@@ -167,7 +160,7 @@ handle_cast({'store_chunk', CallId, Chunk}, State) ->
     {'noreply', State};
 handle_cast({'store_analysis', CallId, Analysis}, State) ->
     Object = #object{call_id=CallId
-                    ,timestamp=wh_util:current_tstamp()
+                    ,timestamp=kz_util:current_tstamp()
                     ,type='analysis'
                     ,value=Analysis
                     },
@@ -177,7 +170,7 @@ handle_cast('flush', State) ->
     recursive_remove(),
     {'noreply', State};
 handle_cast({'flush', CallId}, State) ->
-    wh_util:delete_file(make_name(CallId)),
+    kz_util:delete_file(make_name(CallId)),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),
@@ -193,6 +186,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -208,6 +202,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{}=_State) ->
     lager:debug("call inspector datastore terminated: ~p", [_Reason]),
     'ok'.
@@ -220,6 +215,7 @@ terminate(_Reason, #state{}=_State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
@@ -229,7 +225,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec make_name(ne_binary()) -> file:filename().
 make_name(CallId) ->
-    <<D1:2/binary, D2:2/binary, Rest/binary>> = wh_util:binary_md5(CallId),
+    <<D1:2/binary, D2:2/binary, Rest/binary>> = kz_util:binary_md5(CallId),
     filename:join([?CI_DIR, D1, D2, Rest]).
 
 -spec ensure_path_exists(file:filename()) -> 'ok'.
@@ -242,7 +238,7 @@ insert_object(#object{call_id = CallId} = Object) ->
     Path = make_name(CallId),
     ensure_path_exists(Path),
     IoData = io_lib:fwrite("~p.\n", [Object]),
-    wh_util:write_file(Path, IoData, ['append']).
+    kz_util:write_file(Path, IoData, ['append']).
 
 -spec lookup_objects(ne_binary()) -> [object()].
 lookup_objects(CallId) ->

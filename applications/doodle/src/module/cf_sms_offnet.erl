@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_sms_offnet).
 
--include("../doodle.hrl").
+-include("doodle.hrl").
 
 -export([handle/2]).
 
@@ -21,6 +21,6 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    cf_sms_resources:handle(wh_json:set_value(<<"use_local_resources">>, 'false', Data), Call).
+    cf_sms_resources:handle(kz_json:set_value(<<"use_local_resources">>, 'false', Data), Call).

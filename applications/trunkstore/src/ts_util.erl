@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%% utility functions for Trunkstore
 %%%
@@ -13,38 +13,38 @@
 -module(ts_util).
 
 -export([find_ip/1
-         ,filter_active_calls/2
-         ,get_media_handling/1
+        ,filter_active_calls/2
+        ,get_media_handling/1
         ]).
 -export([constrain_weight/1]).
 
 -export([get_call_duration/1
-         ,lookup_user_flags/3
-         ,lookup_user_flags/4
-         ,lookup_did/2
+        ,lookup_user_flags/3
+        ,lookup_user_flags/4
+        ,lookup_did/2
         ]).
 -export([invite_format/2]).
 
 %% Cascading settings
 -export([sip_headers/1
-         ,failover/1
-         ,progress_timeout/1
-         ,bypass_media/1
-         ,delay/1
-         ,ignore_early_media/1
-         ,ep_timeout/1
-         ,caller_id/1
-         ,offnet_flags/1
+        ,failover/1
+        ,progress_timeout/1
+        ,bypass_media/1
+        ,delay/1
+        ,ignore_early_media/1
+        ,ep_timeout/1
+        ,caller_id/1
+        ,offnet_flags/1
         ]).
 
 -export([maybe_ensure_cid_valid/4
-         ,maybe_restrict_call/2
+        ,maybe_restrict_call/2
         ]).
 
 -include("ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
 
--define(VALIDATE_CALLER_ID, whapps_config:get_is_true(<<"trunkstore">>, <<"ensure_valid_caller_id">>, 'false')).
+-define(VALIDATE_CALLER_ID, kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_caller_id">>, 'false')).
 
 -spec find_ip(ne_binary() | nonempty_string()) -> nonempty_string().
 find_ip(Domain) when is_binary(Domain) ->
@@ -79,7 +79,7 @@ filter_active_calls(CallID, ActiveCalls) ->
                     (_) -> 'true'
                  end, ActiveCalls).
 
--spec get_media_handling(wh_json:objects() | api_binaries()) -> ne_binary().
+-spec get_media_handling(kz_json:objects() | api_binaries()) -> ne_binary().
 get_media_handling(L) ->
     case simple_extract(L) of
         <<"process">> -> <<"process">>;
@@ -88,18 +88,18 @@ get_media_handling(L) ->
 
 -spec constrain_weight(ne_binary() | integer()) -> integer().
 constrain_weight(W) when not is_integer(W) ->
-    constrain_weight(wh_util:to_integer(W));
+    constrain_weight(kz_util:to_integer(W));
 constrain_weight(W) when W > 100 -> 100;
 constrain_weight(W) when W < 1 -> 1;
 constrain_weight(W) -> W.
 
 -spec lookup_did(ne_binary(), ne_binary()) ->
-                        {'ok', wh_json:object()} |
+                        {'ok', kz_json:object()} |
                         {'error', 'no_did_found' | atom()}.
 lookup_did(DID, AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case wh_cache:fetch_local(?TRUNKSTORE_CACHE
-                              ,{'lookup_did', DID, AccountId}
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    case kz_cache:fetch_local(?CACHE_NAME
+                             ,{'lookup_did', DID, AccountId}
                              )
     of
         {'ok', _}=Resp ->
@@ -107,30 +107,30 @@ lookup_did(DID, AccountId) ->
             Resp;
         {'error', 'not_found'} ->
             Options = [{'key', DID}],
-            CacheProps = [{'origin', [{'db', wnm_util:number_to_db_name(DID), DID}, {'type', <<"number">>}]}],
-            case couch_mgr:get_results(AccountDb, ?TS_VIEW_DIDLOOKUP, Options) of
+            CacheProps = [{'origin', [{'db', knm_converters:to_db(DID), DID}, {'type', <<"number">>}]}],
+            case kz_datamgr:get_results(AccountDb, ?TS_VIEW_DIDLOOKUP, Options) of
                 {'ok', []} ->
                     lager:info("cache miss for ~s, no results", [DID]),
                     {'error', 'no_did_found'};
                 {'ok', [ViewJObj]} ->
-                    lager:info("cache miss for ~s, found result with id ~s", [DID, wh_doc:id(ViewJObj)]),
-                    ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
-                    Resp = wh_json:set_value(<<"id">>, wh_doc:id(ViewJObj), ValueJObj),
-                    wh_cache:store_local(?TRUNKSTORE_CACHE
-                                         ,{'lookup_did', DID, AccountId}
-                                         ,Resp
-                                         ,CacheProps
+                    lager:info("cache miss for ~s, found result with id ~s", [DID, kz_doc:id(ViewJObj)]),
+                    ValueJObj = kz_json:get_value(<<"value">>, ViewJObj),
+                    Resp = kz_json:set_value(<<"id">>, kz_doc:id(ViewJObj), ValueJObj),
+                    kz_cache:store_local(?CACHE_NAME
+                                        ,{'lookup_did', DID, AccountId}
+                                        ,Resp
+                                        ,CacheProps
                                         ),
                     {'ok', Resp};
                 {'ok', [ViewJObj | _Rest]} ->
                     lager:notice("multiple results for did ~s in acct ~s", [DID, AccountId]),
-                    lager:info("cache miss for ~s, found multiple results, using first with id ~s", [DID, wh_doc:id(ViewJObj)]),
-                    ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
-                    Resp = wh_json:set_value(<<"id">>, wh_doc:id(ViewJObj), ValueJObj),
-                    wh_cache:store_local(?TRUNKSTORE_CACHE
-                                         ,{'lookup_did', DID, AccountId}
-                                         ,Resp
-                                         ,CacheProps
+                    lager:info("cache miss for ~s, found multiple results, using first with id ~s", [DID, kz_doc:id(ViewJObj)]),
+                    ValueJObj = kz_json:get_value(<<"value">>, ViewJObj),
+                    Resp = kz_json:set_value(<<"id">>, kz_doc:id(ViewJObj), ValueJObj),
+                    kz_cache:store_local(?CACHE_NAME
+                                        ,{'lookup_did', DID, AccountId}
+                                        ,Resp
+                                        ,CacheProps
                                         ),
                     {'ok', Resp};
                 {'error', _}=E ->
@@ -140,13 +140,13 @@ lookup_did(DID, AccountId) ->
     end.
 
 -spec lookup_user_flags(ne_binary(), ne_binary(), ne_binary()) ->
-                               {'ok', wh_json:object()} |
+                               {'ok', kz_json:object()} |
                                {'error', atom()}.
 lookup_user_flags(Name, Realm, AccountId) ->
     lookup_user_flags(Name, Realm, AccountId, 'undefined').
 
 -spec lookup_user_flags(ne_binary(), ne_binary(), ne_binary(), api_binary()) ->
-                               {'ok', wh_json:object()} |
+                               {'ok', kz_json:object()} |
                                {'error', atom()}.
 lookup_user_flags('undefined', _, _, 'undefined') ->
     {'error', 'insufficient_info'};
@@ -154,100 +154,100 @@ lookup_user_flags('undefined', _, AccountId, DID) ->
     case lookup_did(DID, AccountId) of
         {'error', _}=E -> E;
         {'ok', JObj} ->
-            DIDs = wh_json:from_list([{DID, wh_json:get_value(<<"DID_Opts">>, JObj, wh_json:new())}]),
-            Server = wh_json:from_list(
+            DIDs = kz_json:from_list([{DID, kz_json:get_value(<<"DID_Opts">>, JObj, kz_json:new())}]),
+            Server = kz_json:from_list(
                        [{<<"DIDs">>, DIDs}
-                       ,{<<"options">>, wh_json:get_value(<<"server">>, JObj, wh_json:new())}
-                       ,{<<"permissions">>, wh_json:new()}
-                       ,{<<"monitor">>, wh_json:from_list([{<<"monitor_enabled">>, 'false'}])}
-                       ,{<<"auth">>, wh_json:get_value(<<"auth">>, JObj, wh_json:new())}
+                       ,{<<"options">>, kz_json:get_value(<<"server">>, JObj, kz_json:new())}
+                       ,{<<"permissions">>, kz_json:new()}
+                       ,{<<"monitor">>, kz_json:from_list([{<<"monitor_enabled">>, 'false'}])}
+                       ,{<<"auth">>, kz_json:get_value(<<"auth">>, JObj, kz_json:new())}
                        ,{<<"server_name">>, <<>>}
                        ,{<<"server_type">>, <<>>}
                        ]),
-            {'ok', wh_json:from_list(
+            {'ok', kz_json:from_list(
                      [{<<"server">>, Server}
-                     ,{<<"account">>, wh_json:get_value(<<"account">>, JObj, wh_json:new())}
-                     ,{<<"call_restriction">>, wh_json:new()}
+                     ,{<<"account">>, kz_json:get_value(<<"account">>, JObj, kz_json:new())}
+                     ,{<<"call_restriction">>, kz_json:new()}
                      ])
             }
     end;
 lookup_user_flags(Name, Realm, AccountId, _) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case wh_cache:fetch_local(?TRUNKSTORE_CACHE
-                              ,{'lookup_user_flags', Realm, Name, AccountId}
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    case kz_cache:fetch_local(?CACHE_NAME
+                             ,{'lookup_user_flags', Realm, Name, AccountId}
                              )
     of
         {'ok', _}=Result ->
             lager:info("cache hit for ~s@~s", [Name, Realm]),
             Result;
         {'error', 'not_found'} ->
-            Options = [{'key', [wh_util:to_lower_binary(Realm)
-                                ,wh_util:to_lower_binary(Name)
+            Options = [{'key', [kz_util:to_lower_binary(Realm)
+                               ,kz_util:to_lower_binary(Name)
                                ]
                        }],
-            case couch_mgr:get_results(AccountDb, <<"trunkstore/LookUpUserFlags">>, Options) of
+            case kz_datamgr:get_results(AccountDb, <<"trunkstore/lookup_user_flags">>, Options) of
                 {'error', _}=E ->
                     lager:info("cache miss for ~s@~s, err: ~p", [Name, Realm, E]),
                     E;
                 {'ok', []} ->
                     lager:info("cache miss for ~s@~s, no results", [Name, Realm]),
-                    {'ok', wh_json:new()};
+                    {'ok', kz_json:new()};
                 {'ok', [User|_]} ->
-                    lager:info("cache miss, found view result for ~s@~s with id ~s", [Name, Realm, wh_doc:id(User)]),
-                    ValJObj = wh_json:get_value(<<"value">>, User),
-                    JObj = wh_json:set_value(<<"id">>, wh_doc:id(User), ValJObj),
+                    lager:info("cache miss, found view result for ~s@~s with id ~s", [Name, Realm, kz_doc:id(User)]),
+                    ValJObj = kz_json:get_value(<<"value">>, User),
+                    JObj = kz_json:set_value(<<"id">>, kz_doc:id(User), ValJObj),
 
                     {'ok', AccountJObj} = kz_account:fetch(AccountId),
-                    Restriction = wh_json:get_value(<<"call_restriction">>, AccountJObj, wh_json:new()),
-                    FlagsJObj = wh_json:set_value(<<"call_restriction">>, Restriction, JObj),
-                    wh_cache:store_local(?TRUNKSTORE_CACHE
-                                         ,{'lookup_user_flags', Realm, Name, AccountId}
-                                         ,FlagsJObj
+                    Restriction = kz_json:get_value(<<"call_restriction">>, AccountJObj, kz_json:new()),
+                    FlagsJObj = kz_json:set_value(<<"call_restriction">>, Restriction, JObj),
+                    kz_cache:store_local(?CACHE_NAME
+                                        ,{'lookup_user_flags', Realm, Name, AccountId}
+                                        ,FlagsJObj
                                         ),
                     {'ok', FlagsJObj}
             end
     end.
 
--spec get_call_duration(wh_json:object()) -> integer().
+-spec get_call_duration(kz_json:object()) -> integer().
 get_call_duration(JObj) ->
-    wh_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj)).
+    kz_util:to_integer(kz_json:get_value(<<"Billing-Seconds">>, JObj)).
 
--spec invite_format(ne_binary(), ne_binary()) -> wh_proplist().
+-spec invite_format(ne_binary(), ne_binary()) -> kz_proplist().
 invite_format(<<"e.164">>, To) ->
     [{<<"Invite-Format">>, <<"e164">>}
-     ,{<<"To-DID">>, wnm_util:to_e164(To)}
+    ,{<<"To-DID">>, knm_converters:normalize(To)}
     ];
 invite_format(<<"e164">>, To) ->
     [{<<"Invite-Format">>, <<"e164">>}
-     ,{<<"To-DID">>, wnm_util:to_e164(To)}
+    ,{<<"To-DID">>, knm_converters:normalize(To)}
     ];
 invite_format(<<"e164_without_plus">>, To) ->
-    case wnm_util:to_e164(To) of
+    case knm_converters:normalize(To) of
         <<$+, PluslessDID/binary>> ->
             lager:info("while processing 'e164_without_plus' flag, DID ~s converted to E.164 with truncated '+': ~s",[To, PluslessDID]),
             [{<<"Invite-Format">>, <<"e164">>}
-             ,{<<"To-DID">>, PluslessDID}
+            ,{<<"To-DID">>, PluslessDID}
             ];
         AsIsDID ->
             [{<<"Invite-Format">>, <<"e164">>}
-             ,{<<"To-DID">>, AsIsDID}
+            ,{<<"To-DID">>, AsIsDID}
             ]
     end;
 invite_format(<<"1npanxxxxxx">>, To) ->
     [{<<"Invite-Format">>, <<"1npan">>}
-     ,{<<"To-DID">>, wnm_util:to_1npan(To)}
+    ,{<<"To-DID">>, knm_converters:to_1npan(To)}
     ];
 invite_format(<<"1npan">>, To) ->
     [{<<"Invite-Format">>, <<"1npan">>}
-     ,{<<"To-DID">>, wnm_util:to_1npan(To)}
+    ,{<<"To-DID">>, knm_converters:to_1npan(To)}
     ];
 invite_format(<<"npanxxxxxx">>, To) ->
     [{<<"Invite-Format">>, <<"npan">>}
-     ,{<<"To-DID">>, wnm_util:to_npan(To)}
+    ,{<<"To-DID">>, knm_converters:to_npan(To)}
     ];
 invite_format(<<"npan">>, To) ->
     [{<<"Invite-Format">>, <<"npan">>}
-     ,{<<"To-DID">>, wnm_util:to_npan(To)}
+    ,{<<"To-DID">>, knm_converters:to_npan(To)}
     ];
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>}].
@@ -256,8 +256,8 @@ invite_format(_, _) ->
 caller_id([]) -> {'undefined', 'undefined'};
 caller_id(['undefined'|T]) -> caller_id(T);
 caller_id([CID|T]) ->
-    case {wh_json:get_value(<<"cid_name">>, CID)
-          ,wh_json:get_value(<<"cid_number">>, CID)
+    case {kz_json:get_value(<<"cid_name">>, CID)
+         ,kz_json:get_value(<<"cid_number">>, CID)
          }
     of
         {'undefined', 'undefined'} -> caller_id(T);
@@ -268,15 +268,15 @@ caller_id([CID|T]) ->
 sip_headers([]) -> 'undefined';
 sip_headers(L) when is_list(L) ->
     case [Headers || Headers <- L,
-                     wh_json:is_json_object(Headers),
-                     not wh_json:is_empty(Headers)
+                     kz_json:is_json_object(Headers),
+                     not kz_json:is_empty(Headers)
          ]
     of
         [Res] -> Res;
         _ -> 'undefined'
     end.
 
--spec failover(wh_json:objects() | api_binaries()) ->
+-spec failover(kz_json:objects() | api_binaries()) ->
                       api_object().
 %% cascade from DID to Srv to Account
 failover(L) ->
@@ -285,27 +285,27 @@ failover(L) ->
         Other -> Other
     end.
 
--spec progress_timeout(wh_json:objects() | api_binaries()) ->
-                              wh_json:object() | api_binary().
+-spec progress_timeout(kz_json:objects() | api_binaries()) ->
+                              kz_json:object() | api_binary().
 progress_timeout(L) -> simple_extract(L).
 
--spec bypass_media(wh_json:objects() | api_binaries()) -> ne_binary().
+-spec bypass_media(kz_json:objects() | api_binaries()) -> ne_binary().
 bypass_media(L) ->
     case simple_extract(L) of
         <<"process">> -> <<"false">>;
         _ -> <<"true">>
     end.
 
--spec delay(wh_json:objects() | api_binaries()) ->
-                   wh_json:object() | api_binary().
+-spec delay(kz_json:objects() | api_binaries()) ->
+                   kz_json:object() | api_binary().
 delay(L) -> simple_extract(L).
 
--spec ignore_early_media(wh_json:objects() | api_binaries()) ->
-                                wh_json:object() | api_binary().
+-spec ignore_early_media(kz_json:objects() | api_binaries()) ->
+                                kz_json:object() | api_binary().
 ignore_early_media(L) -> simple_extract(L).
 
--spec ep_timeout(wh_json:objects() | api_binaries()) ->
-                        wh_json:object() | api_binary().
+-spec ep_timeout(kz_json:objects() | api_binaries()) ->
+                        kz_json:object() | api_binary().
 ep_timeout(L) -> simple_extract(L).
 
 -spec offnet_flags(list()) -> 'undefined' | list().
@@ -313,14 +313,16 @@ offnet_flags([]) -> 'undefined';
 offnet_flags([H|_]) when is_list(H) -> H;
 offnet_flags([_|T]) -> offnet_flags(T).
 
--spec simple_extract(wh_json:objects() | api_binaries()) ->
-                            wh_json:object() | api_binary().
+-spec simple_extract(kz_json:objects() | api_binaries()) ->
+                            kz_json:object() | api_binary().
 simple_extract([]) -> 'undefined';
 simple_extract(['undefined'|T]) -> simple_extract(T);
 simple_extract([<<>> | T]) -> simple_extract(T);
 simple_extract([B | _T]) when is_binary(B) -> B;
 simple_extract([JObj | T]) ->
-    case wh_json:is_json_object(JObj) andalso (not wh_json:is_empty(JObj)) of
+    case kz_json:is_json_object(JObj)
+        andalso (not kz_json:is_empty(JObj))
+    of
         'true' -> JObj;
         'false' -> simple_extract(T)
     end.
@@ -340,34 +342,34 @@ maybe_ensure_cid_valid('emergency', ECIDNum, _FromUser, _AccountId) ->
 -spec validate_external_cid(api_binary(), ne_binary(), ne_binary()) -> ne_binary().
 validate_external_cid(CIDNum, FromUser, AccountId) ->
     lager:info("ensure_valid_caller_id flag detected, will check whether CID is legal..."),
-    case wh_number_manager:lookup_account_by_number(CIDNum) of
+    case knm_number:lookup_account(CIDNum) of
         {'ok', AccountId, _} -> CIDNum;
         _Else -> validate_from_user(FromUser, AccountId)
     end.
 
 -spec validate_from_user(ne_binary(), ne_binary()) -> ne_binary().
 validate_from_user(FromUser, AccountId) ->
-    NormalizedFromUser = wnm_util:normalize_number(FromUser),
-    case wh_number_manager:lookup_account_by_number(NormalizedFromUser) of
+    NormalizedFromUser = knm_converters:normalize(FromUser),
+    case knm_number:lookup_account(NormalizedFromUser) of
         {'ok', AccountId, _} ->
             lager:info("CID Number derived from CID Name, normalized and set to: ~s", [NormalizedFromUser]),
             NormalizedFromUser;
         _NothingLeft ->
-            DefaultCID = whapps_config:get(<<"trunkstore">>, <<"default_caller_id_number">>, wh_util:anonymous_caller_id_number()),
+            DefaultCID = kapps_config:get(?CONFIG_CAT, <<"default_caller_id_number">>, kz_util:anonymous_caller_id_number()),
             lager:info("no valid caller id identified! Will use default trunkstore caller id: ~s", [DefaultCID]),
             DefaultCID
     end.
 
--spec maybe_restrict_call(ts_callflow:state(), wh_proplist()) -> boolean().
+-spec maybe_restrict_call(ts_callflow:state(), kz_proplist()) -> boolean().
 maybe_restrict_call(#ts_callflow_state{acctid=AccountId
-                                       ,route_req_jobj=RRObj
+                                      ,route_req_jobj=RRObj
                                       }
-                    ,Command) ->
+                   ,Command) ->
     Number = props:get_value(<<"To-DID">>, Command),
-    Classification = wnm_util:classify_number(Number),
+    Classification = knm_converters:classify(Number),
     lager:debug("Trunkstore classified number as ~p", [Classification]),
-    Username = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Username">>], RRObj),
-    Realm = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Realm">>], RRObj),
-    {'ok', Opts} = ?MODULE:lookup_user_flags(Username, Realm, AccountId),
+    Username = kz_json:get_value([<<"Custom-Channel-Vars">>,<<"Username">>], RRObj),
+    Realm = kz_json:get_value([<<"Custom-Channel-Vars">>,<<"Realm">>], RRObj),
+    {'ok', Opts} = lookup_user_flags(Username, Realm, AccountId),
     lager:debug("Trunkstore lookup_user_flag results: ~p", [Opts]),
-    wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], Opts) =:= <<"deny">>.
+    kz_json:get_value([<<"call_restriction">>, Classification, <<"action">>], Opts) =:= <<"deny">>.

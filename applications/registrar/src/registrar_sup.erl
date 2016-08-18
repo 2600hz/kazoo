@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -9,14 +9,16 @@
 
 -behaviour(supervisor).
 
--include_lib("reg.hrl").
+-include("reg.hrl").
+
+-define(SERVER, ?MODULE).
 
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILDREN, [?CACHE(?REG_CACHE)
-                   ,?WORKER('registrar_init')
-                   ,?SUPER('registrar_shared_listener_sup')
+-define(CHILDREN, [?CACHE(?CACHE_NAME)
+                  ,?WORKER('registrar_init')
+                  ,?SUPER('registrar_shared_listener_sup')
                   ]).
 
 %% ===================================================================
@@ -25,13 +27,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -46,9 +46,9 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
-    wh_util:set_startup(),
+    kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

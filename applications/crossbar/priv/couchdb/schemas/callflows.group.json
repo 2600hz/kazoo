@@ -1,0 +1,40 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.group",
+    "description": "Validator for the group callflow's data object",
+    "properties": {
+        "endpoints": {
+            "default": [],
+            "description": "",
+            "type": "array"
+        },
+        "fail_on_single_reject": {
+            "description": ""
+        },
+        "ignore_forward": {
+            "default": true,
+            "description": "",
+            "type": "boolean"
+        },
+        "repeats": {
+            "default": 1,
+            "description": "",
+            "type": "integer"
+        },
+        "ringback": {
+            "description": ""
+        },
+        "strategy": {
+            "default": "simultaneous",
+            "description": "",
+            "type": "string"
+        },
+        "timeout": {
+            "default": 20,
+            "description": "",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -1,11 +1,5 @@
-/*
-Section: ACDC
-Title: TODO
-Language: en-US
-*/
-
-# TODO
-## Scenario 1
+### TODO
+#### Scenario 1
 * No agents logged in
 * Customer calls in...eventually hangs up
 * Agent logs in

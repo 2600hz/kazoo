@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% handler for route wins, bootstraps callflow execution
 %%% @end
@@ -8,63 +8,57 @@
 %%%-------------------------------------------------------------------
 -module(cf_route_win).
 
--export([handle_req/2
-         ,maybe_restrict_call/2
+-export([execute_callflow/2
         ]).
 
 -include("callflow.hrl").
 
--define(JSON(L), wh_json:from_list(L)).
+-define(JSON(L), kz_json:from_list(L)).
 
 -define(DEFAULT_SERVICES
-        ,?JSON([{<<"audio">>, ?JSON([{<<"enabled">>, 'true'}])}
-                ,{<<"video">>,?JSON([{<<"enabled">>, 'true'}])}
-                ,{<<"sms">>,  ?JSON([{<<"enabled">>, 'true'}])}
-               ]
-              )
+       ,?JSON([{<<"audio">>, ?JSON([{<<"enabled">>, 'true'}])}
+              ,{<<"video">>,?JSON([{<<"enabled">>, 'true'}])}
+              ,{<<"sms">>,  ?JSON([{<<"enabled">>, 'true'}])}
+              ]
+             )
        ).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> any().
-handle_req(JObj, _Options) ->
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    wh_util:put_callid(CallId),
-    lager:info("callflow has received a route win, taking control of the call"),
-    case whapps_call:retrieve(CallId, ?APP_NAME) of
-        {'ok', Call} ->
-            maybe_restrict_call(JObj, whapps_call:from_route_win(JObj, Call));
-        {'error', R} ->
-            lager:info("unable to find callflow during second lookup (HUH?) ~p", [R])
-    end.
-
--spec maybe_restrict_call(wh_json:object(), whapps_call:call()) ->
-                                 'ok' | {'ok', pid()}.
-maybe_restrict_call(JObj, Call) ->
+-spec execute_callflow(kz_json:object(), kapps_call:call()) ->
+                              'ok' | {'ok', pid()}.
+execute_callflow(JObj, Call) ->
     case should_restrict_call(Call) of
         'true' ->
             lager:debug("endpoint is restricted from making this call, terminate", []),
-            _ = whapps_call_command:answer(Call),
-            _ = whapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
-            _ = whapps_call_command:queued_hangup(Call),
+            _ = kapps_call_command:answer(Call),
+            _ = kapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
+            _ = kapps_call_command:queued_hangup(Call),
             'ok';
         'false' ->
             lager:info("setting initial information about the call"),
             bootstrap_callflow_executer(JObj, Call)
     end.
 
--spec should_restrict_call(whapps_call:call()) -> boolean().
+-spec should_restrict_call(kapps_call:call()) -> boolean().
 should_restrict_call(Call) ->
-    case cf_endpoint:get(Call) of
+    DefaultEndpointId = kapps_call:authorizing_id(Call),
+    EndpointId = kapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, DefaultEndpointId, Call),
+    should_restrict_call(EndpointId, Call).
+
+-spec should_restrict_call(api_binary(), kapps_call:call()) -> boolean().
+should_restrict_call('undefined', _Call) -> 'false';
+should_restrict_call(EndpointId, Call) ->
+    case kz_endpoint:get(EndpointId, Call) of
         {'error', _R} -> 'false';
         {'ok', JObj} -> maybe_service_unavailable(JObj, Call)
     end.
 
--spec maybe_service_unavailable(wh_json:object(), whapps_call:call()) -> boolean().
+-spec maybe_service_unavailable(kz_json:object(), kapps_call:call()) -> boolean().
 maybe_service_unavailable(JObj, Call) ->
-    Id = wh_doc:id(JObj),
-    Services = wh_json:merge_recursive(
-                 wh_json:get_value(<<"services">>, JObj, ?DEFAULT_SERVICES),
-                 wh_json:get_value(<<"pvt_services">>, JObj, wh_json:new())),
-    case wh_json:is_true([<<"audio">>,<<"enabled">>], Services, 'true') of
+    Id = kz_doc:id(JObj),
+    Services = kz_json:merge_recursive(
+                 kz_json:get_value(<<"services">>, JObj, ?DEFAULT_SERVICES),
+                 kz_json:get_value(<<"pvt_services">>, JObj, kz_json:new())),
+    case kz_json:is_true([<<"audio">>,<<"enabled">>], Services, 'true') of
         'true' ->
             maybe_account_service_unavailable(JObj, Call);
         'false' ->
@@ -72,14 +66,14 @@ maybe_service_unavailable(JObj, Call) ->
             'true'
     end.
 
--spec maybe_account_service_unavailable(wh_json:object(), whapps_call:call()) -> boolean().
+-spec maybe_account_service_unavailable(kz_json:object(), kapps_call:call()) -> boolean().
 maybe_account_service_unavailable(JObj, Call) ->
-    AccountId = whapps_call:account_id(Call),
+    AccountId = kapps_call:account_id(Call),
     {'ok', Doc} = kz_account:fetch(AccountId),
-    Services = wh_json:merge_recursive(
-                 wh_json:get_value(<<"services">>, Doc, ?DEFAULT_SERVICES),
-                 wh_json:get_value(<<"pvt_services">>, Doc, wh_json:new())),
-    case wh_json:is_true([<<"audio">>,<<"enabled">>], Services, 'true') of
+    Services = kz_json:merge_recursive(
+                 kz_json:get_value(<<"services">>, Doc, ?DEFAULT_SERVICES),
+                 kz_json:get_value(<<"pvt_services">>, Doc, kz_json:new())),
+    case kz_json:is_true([<<"audio">>,<<"enabled">>], Services, 'true') of
         'true' ->
             maybe_closed_group_restriction(JObj, Call);
         'false' ->
@@ -87,40 +81,40 @@ maybe_account_service_unavailable(JObj, Call) ->
             'true'
     end.
 
--spec maybe_closed_group_restriction(wh_json:object(), whapps_call:call()) ->
+-spec maybe_closed_group_restriction(kz_json:object(), kapps_call:call()) ->
                                             boolean().
 maybe_closed_group_restriction(JObj, Call) ->
-    case wh_json:get_value([<<"call_restriction">>, <<"closed_groups">>, <<"action">>], JObj) of
+    case kz_json:get_value([<<"call_restriction">>, <<"closed_groups">>, <<"action">>], JObj) of
         <<"deny">> -> enforce_closed_groups(JObj, Call);
         _Else -> maybe_classification_restriction(JObj, Call)
     end.
 
--spec maybe_classification_restriction(wh_json:object(), whapps_call:call()) ->
+-spec maybe_classification_restriction(kz_json:object(), kapps_call:call()) ->
                                               boolean().
 maybe_classification_restriction(JObj, Call) ->
     Request = find_request(Call),
-    AccountId = whapps_call:account_id(Call),
-    DialPlan = wh_json:get_value(<<"dial_plan">>, JObj, wh_json:new()),
-    Number = wnm_util:to_e164(Request, AccountId, DialPlan),
-    Classification = wnm_util:classify_number(Number, AccountId),
+    AccountId = kapps_call:account_id(Call),
+    DialPlan = kz_json:get_value(<<"dial_plan">>, JObj, kz_json:new()),
+    Number = knm_converters:normalize(Request, AccountId, DialPlan),
+    Classification = knm_converters:classify(Number),
     lager:debug("classified number ~s as ~s, testing for call restrictions"
-                ,[Number, Classification]
+               ,[Number, Classification]
                ),
-    wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>.
+    kz_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>.
 
--spec find_request(whapps_call:call()) -> ne_binary().
+-spec find_request(kapps_call:call()) -> ne_binary().
 find_request(Call) ->
-    case whapps_call:kvs_fetch('cf_capture_group', Call) of
+    case kapps_call:kvs_fetch('cf_capture_group', Call) of
         'undefined' ->
-            whapps_call:request_user(Call);
+            kapps_call:request_user(Call);
         CaptureGroup ->
             lager:debug("capture group ~s being used instead of request ~s"
-                        ,[CaptureGroup, whapps_call:request_user(Call)]
+                       ,[CaptureGroup, kapps_call:request_user(Call)]
                        ),
             CaptureGroup
     end.
 
--spec enforce_closed_groups(wh_json:object(), whapps_call:call()) -> boolean().
+-spec enforce_closed_groups(kz_json:object(), kapps_call:call()) -> boolean().
 enforce_closed_groups(JObj, Call) ->
     case get_callee_extension_info(Call) of
         'undefined' ->
@@ -128,32 +122,32 @@ enforce_closed_groups(JObj, Call) ->
             maybe_classification_restriction(JObj, Call);
         {<<"user">>, CalleeId} ->
             lager:info("dialed number is user ~s extension, checking groups", [CalleeId]),
-            Groups = cf_attributes:groups(Call),
+            Groups = kz_attributes:groups(Call),
             CallerGroups = get_caller_groups(Groups, JObj, Call),
             CalleeGroups = get_group_associations(CalleeId, Groups),
             sets:size(sets:intersection(CallerGroups, CalleeGroups)) =:= 0;
         {<<"device">>, CalleeId} ->
             lager:info("dialed number is device ~s extension, checking groups", [CalleeId]),
-            Groups = cf_attributes:groups(Call),
+            Groups = kz_attributes:groups(Call),
             CallerGroups = get_caller_groups(Groups, JObj, Call),
             maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call)
     end.
 
--spec get_caller_groups(wh_json:objects(), wh_json:object(), whapps_call:call()) -> set().
+-spec get_caller_groups(kz_json:objects(), kz_json:object(), kapps_call:call()) -> sets:set().
 get_caller_groups(Groups, JObj, Call) ->
-    Ids = [whapps_call:authorizing_id(Call)
-           ,wh_json:get_value(<<"owner_id">>, JObj)
-           | wh_json:get_keys([<<"hotdesk">>, <<"users">>], JObj)
+    Ids = [kapps_call:authorizing_id(Call)
+          ,kz_json:get_value(<<"owner_id">>, JObj)
+           | kz_json:get_keys([<<"hotdesk">>, <<"users">>], JObj)
           ],
     lists:foldl(fun('undefined', Set) -> Set;
                    (Id, Set) ->
                         get_group_associations(Id, Groups, Set)
                 end
-                ,sets:new()
-                ,Ids
+               ,sets:new()
+               ,Ids
                ).
 
--spec maybe_device_groups_intersect(ne_binary(), set(), wh_json:objects(), whapps_call:call()) -> boolean().
+-spec maybe_device_groups_intersect(ne_binary(), sets:set(), kz_json:objects(), kapps_call:call()) -> boolean().
 maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call) ->
     CalleeGroups = get_group_associations(CalleeId, Groups),
     case sets:size(sets:intersection(CallerGroups, CalleeGroups)) =:= 0 of
@@ -161,40 +155,42 @@ maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call) ->
         'true' ->
             %% In this case the callee-id is a device id, find out if
             %% the owner of the device shares any groups with the caller
-            UserIds = cf_attributes:owner_ids(CalleeId, Call),
+            UserIds = kz_attributes:owner_ids(CalleeId, Call),
             UsersGroups = lists:foldl(fun(UserId, Set) ->
                                               get_group_associations(UserId, Groups, Set)
                                       end
-                                      ,sets:new()
-                                      ,UserIds
+                                     ,sets:new()
+                                     ,UserIds
                                      ),
             sets:size(sets:intersection(CallerGroups, UsersGroups)) =:= 0
     end.
 
--spec get_group_associations(ne_binary(), wh_json:objects()) -> set().
+-spec get_group_associations(ne_binary(), kz_json:objects()) -> sets:set().
 get_group_associations(Id, Groups) ->
     get_group_associations(Id, Groups, sets:new()).
 
--spec get_group_associations(ne_binary(), wh_json:objects(), set()) -> set().
+-spec get_group_associations(ne_binary(), kz_json:objects(), sets:set()) -> sets:set().
 get_group_associations(Id, Groups, Set) ->
     lists:foldl(fun(Group, S) ->
-                        case wh_json:get_value([<<"value">>, Id], Group) of
+                        case kz_json:get_value([<<"value">>, Id], Group) of
                             'undefined' -> S;
-                            _Else -> sets:add_element(wh_doc:id(Group), S)
+                            _Else -> sets:add_element(kz_doc:id(Group), S)
                         end
                 end, Set, Groups).
 
--spec get_callee_extension_info(whapps_call:call()) -> {ne_binary(), ne_binary()} | 'undefined'.
+-spec get_callee_extension_info(kapps_call:call()) -> {ne_binary(), ne_binary()} | 'undefined'.
 get_callee_extension_info(Call) ->
-    Flow = whapps_call:kvs_fetch('cf_flow', Call),
-    FirstModule = wh_json:get_value(<<"module">>, Flow),
-    FirstId = wh_json:get_value([<<"data">>, <<"id">>], Flow),
-    SecondModule = wh_json:get_value([<<"_">>, <<"module">>], Flow),
-    case (FirstModule =:= <<"device">> orelse FirstModule =:= <<"user">>)
-        andalso
-        (SecondModule =:= <<"voicemail">> orelse SecondModule =:= 'undefined')
-        andalso
-        FirstId =/= 'undefined'
+    Flow = kapps_call:kvs_fetch('cf_flow', Call),
+    FirstModule = kz_json:get_value(<<"module">>, Flow),
+    FirstId = kz_json:get_value([<<"data">>, <<"id">>], Flow),
+    SecondModule = kz_json:get_value([<<"_">>, <<"module">>], Flow),
+    case (FirstModule =:= <<"device">>
+              orelse FirstModule =:= <<"user">>
+         )
+        andalso (SecondModule =:= <<"voicemail">>
+                     orelse SecondModule =:= 'undefined'
+                )
+        andalso FirstId =/= 'undefined'
     of
         'true' -> {FirstModule, FirstId};
         'false' -> 'undefined'
@@ -206,16 +202,16 @@ get_callee_extension_info(Call) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec bootstrap_callflow_executer(wh_json:object(), whapps_call:call()) -> {'ok', pid()}.
+-spec bootstrap_callflow_executer(kz_json:object(), kapps_call:call()) -> {'ok', pid()}.
 bootstrap_callflow_executer(_JObj, Call) ->
     Routines = [fun store_owner_id/1
-                ,fun set_language/1
-                ,fun update_ccvs/1
-                %% all funs above here return whapps_call:call()
-                ,fun execute_callflow/1
-                ,fun maybe_start_metaflow/1
+               ,fun set_language/1
+               ,fun update_ccvs/1
+               ,fun maybe_start_recording/1
+               ,fun execute_callflow/1
+               ,fun maybe_start_metaflow/1
                ],
-    lists:foldl(fun(F, C) -> F(C) end, Call, Routines).
+    kapps_call:exec(Routines, Call).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -223,10 +219,10 @@ bootstrap_callflow_executer(_JObj, Call) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec store_owner_id(whapps_call:call()) -> whapps_call:call().
+-spec store_owner_id(kapps_call:call()) -> kapps_call:call().
 store_owner_id(Call) ->
-    OwnerId = cf_attributes:owner_id(Call),
-    whapps_call:kvs_store('owner_id', OwnerId, Call).
+    OwnerId = kz_attributes:owner_id(Call),
+    kapps_call:kvs_store('owner_id', OwnerId, Call).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -234,17 +230,17 @@ store_owner_id(Call) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec set_language(whapps_call:call()) -> whapps_call:call().
+-spec set_language(kapps_call:call()) -> kapps_call:call().
 set_language(Call) ->
-    Default = wh_media_util:prompt_language(whapps_call:account_id(Call)),
-    case cf_endpoint:get(Call) of
+    Default = kz_media_util:prompt_language(kapps_call:account_id(Call)),
+    case kz_endpoint:get(Call) of
         {'ok', Endpoint} ->
             Language = kz_device:language(Endpoint, Default),
             lager:debug("setting language '~s' for this call", [Language]),
-            whapps_call:set_language(wh_util:to_lower_binary(Language), Call);
+            kapps_call:set_language(kz_util:to_lower_binary(Language), Call);
         {'error', _E} ->
             lager:debug("no source endpoint for this call, setting language to default ~s", [Default]),
-            whapps_call:set_language(Default, Call)
+            kapps_call:set_language(Default, Call)
     end.
 
 %%-----------------------------------------------------------------------------
@@ -253,54 +249,69 @@ set_language(Call) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec update_ccvs(whapps_call:call()) -> whapps_call:call().
+-spec update_ccvs(kapps_call:call()) -> kapps_call:call().
 update_ccvs(Call) ->
-    CallerIdType = case whapps_call:inception(Call) of
+    CallerIdType = case kapps_call:inception(Call) of
                        'undefined' -> <<"internal">>;
                        _Else -> <<"external">>
                    end,
+
     {CIDNumber, CIDName} =
-        cf_attributes:caller_id(
-          CallerIdType
-          ,whapps_call:kvs_erase('prepend_cid_name', Call)
-         ),
+        kz_attributes:caller_id(CallerIdType
+                               ,kapps_call:kvs_erase('prepend_cid_name', Call)
+                               ),
+
     lager:info("bootstrapping with caller id type ~s: \"~s\" ~s"
-               ,[CallerIdType, CIDName, CIDNumber]
+              ,[CallerIdType, CIDName, CIDNumber]
               ),
+
     Props = props:filter_undefined(
-              [{<<"Hold-Media">>, cf_attributes:moh_attributes(<<"media_id">>, Call)}
-               ,{<<"Caller-ID-Name">>, CIDName}
-               ,{<<"Caller-ID-Number">>, CIDNumber}
+              [{<<"Hold-Media">>, kz_attributes:moh_attributes(<<"media_id">>, Call)}
+              ,{<<"Caller-ID-Name">>, CIDName}
+              ,{<<"Caller-ID-Number">>, CIDNumber}
                | get_incoming_security(Call)
               ]),
-    whapps_call:set_custom_channel_vars(Props, Call).
+    kapps_call:set_custom_channel_vars(Props, Call).
 
--spec maybe_start_metaflow(whapps_call:call()) -> whapps_call:call().
+-spec maybe_start_metaflow(kapps_call:call()) -> kapps_call:call().
+-spec maybe_start_metaflow(kapps_call:call(), api_binary()) -> kapps_call:call().
 maybe_start_metaflow(Call) ->
-    maybe_start_endpoint_metaflow(Call, whapps_call:authorizing_id(Call)),
+    maybe_start_metaflow(Call, kapps_call:custom_channel_var(<<"Metaflow-App">>, Call)).
+
+maybe_start_metaflow(Call, 'undefined') ->
+    maybe_start_endpoint_metaflow(Call, kapps_call:authorizing_id(Call)),
+    Call;
+maybe_start_metaflow(Call, App) ->
+    lager:debug("metaflow app ~s", [App]),
     Call.
 
--spec maybe_start_endpoint_metaflow(whapps_call:call(), api_binary()) -> 'ok'.
-maybe_start_endpoint_metaflow(Call, 'undefined') ->
-    Account = whapps_call:account_id(Call),
-    HackedCall = whapps_call:set_authorizing_id(Account, Call),
-    maybe_start_endpoint_metaflow(HackedCall, Account);
+-spec maybe_start_endpoint_metaflow(kapps_call:call(), api_binary()) -> 'ok'.
+maybe_start_endpoint_metaflow(_Call, 'undefined') -> 'ok';
 maybe_start_endpoint_metaflow(Call, EndpointId) ->
     lager:debug("looking up endpoint for ~s", [EndpointId]),
-    case cf_endpoint:get(EndpointId, Call) of
+    case kz_endpoint:get(EndpointId, Call) of
         {'ok', Endpoint} ->
             lager:debug("trying to send metaflow for a-leg endpoint ~s", [EndpointId]),
-            cf_util:maybe_start_metaflow(Call, Endpoint);
+            kz_endpoint:maybe_start_metaflow(Call, Endpoint);
         {'error', _E} -> 'ok'
     end.
 
--spec get_incoming_security(whapps_call:call()) -> wh_proplist().
- get_incoming_security(Call) ->
-    case cf_endpoint:get(Call) of
+-spec maybe_start_recording(kapps_call:call()) -> kapps_call:call().
+maybe_start_recording(Call) ->
+    case kz_endpoint:get(Call) of
+        {'ok', Endpoint} ->
+            Data = kz_json:get_value(<<"record_call">>, Endpoint, kz_json:new()),
+            kz_endpoint:maybe_start_call_recording(Data, Call);
+        {'error', _} -> Call
+    end.
+
+-spec get_incoming_security(kapps_call:call()) -> kz_proplist().
+get_incoming_security(Call) ->
+    case kz_endpoint:get(Call) of
         {'error', _R} -> [];
         {'ok', JObj} ->
-            wh_json:to_proplist(
-              cf_util:encryption_method_map(wh_json:new(), JObj)
+            kz_json:to_proplist(
+              kz_endpoint:encryption_method_map(kz_json:new(), JObj)
              )
     end.
 
@@ -311,7 +322,7 @@ maybe_start_endpoint_metaflow(Call, EndpointId) ->
 %% cf_exe_sup tree.
 %% @end
 %%-----------------------------------------------------------------------------
--spec execute_callflow(whapps_call:call()) -> whapps_call:call().
+-spec execute_callflow(kapps_call:call()) -> kapps_call:call().
 execute_callflow(Call) ->
     lager:info("call has been setup, beginning to process the call"),
     {'ok', _P} = cf_exe_sup:new(Call),

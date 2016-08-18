@@ -1,0 +1,67 @@
+%% @author root
+%% @doc @todo Add description to kz_datafactory.
+
+
+-module(kz_dataconfig).
+
+-include("kz_data.hrl").
+%% ====================================================================
+%% API functions
+%% ====================================================================
+-export([connection/0, connection/1]).
+
+
+-spec ensure_driver_app(map()) -> any().
+ensure_driver_app(#{app := App}) ->
+    application:ensure_all_started(App);
+ensure_driver_app(#{driver := App}) ->
+    application:ensure_all_started(App).
+
+-spec is_driver_app(atom()) -> boolean().
+is_driver_app(App) ->
+    Funs = kz_data:behaviour_info(callbacks),
+    lists:all(fun({Fun, Arity}) -> erlang:function_exported(App, Fun, Arity) end, Funs).
+
+-spec connection() -> data_connection().
+connection() ->
+    [Section] = kz_config:get('data', 'config', ['bigcouch']),
+    Props = props:get_value('generic', kz_config:get(Section), []),
+    connection(connection_options(Props)).
+
+-spec connection_options(kz_proplist()) -> kz_proplist().
+connection_options(Props) ->
+    case props:get_value('connect_options', Props) of
+        'undefined' -> Props;
+        Section ->
+            Options = props:get_value('generic', kz_config:get(Section), []),
+            [{'connect_options', Options} | props:delete('connect_options', Props)]
+    end.
+
+-spec connection(kz_proplist() | map()) -> data_connection().
+connection(List) when is_list(List) ->
+    connection(maps:from_list(props:filter_undefined(List)));
+connection(#{driver := App}=Map)
+  when not is_atom(App) ->
+    connection(Map#{driver => kz_util:to_atom(App, 'true')});
+connection(#{app := App}=Map)
+  when not is_atom(App) ->
+    connection(Map#{app => kz_util:to_atom(App, 'true')});
+connection(#{module := App}=Map)
+  when not is_atom(App) ->
+    connection(Map#{module => kz_util:to_atom(App, 'true')});
+connection(#{module := App, tag := Tag}=Map) ->
+    _ = ensure_driver_app(Map),
+    is_driver_app(App),
+    #data_connection{props=Map, app=App, tag=Tag};
+connection(#{driver := App, tag := Tag}=Map) ->
+    _ = ensure_driver_app(Map),
+    is_driver_app(App),
+    #data_connection{props=Map, app=App, tag=Tag};
+connection(#{}=Map) ->
+    connection(maps:merge(?MERGE_MAP, Map)).
+
+%% ====================================================================
+%% Internal functions
+%% ====================================================================
+
+

@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.crossbar.callflows",
+    "description": "Schema for crossbar.callflows system_config",
+    "properties": {
+        "default_reconcile_numbers": {
+            "default": false,
+            "description": "crossbar.callflows default reconcile numbers",
+            "name": "default_reconcile_numbers",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

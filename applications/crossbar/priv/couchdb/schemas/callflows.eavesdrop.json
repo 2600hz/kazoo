@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.eavesdrop",
+    "description": "Validator for the eavesdrop callflow's data object",
+    "properties": {
+        "device_id": {
+            "description": ""
+        },
+        "user_id": {
+            "description": ""
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -1,5 +1,5 @@
 {
-    "_id": "_design/cf_attributes",
+    "_id": "_design/attributes",
     "language": "javascript",
     "views": {
         "active_resources_by_rules": {
@@ -28,10 +28,6 @@
         },
         "temporal_rules": {
             "map": "function(doc) { if (doc.pvt_type != 'temporal_rule' || doc.pvt_deleted) return; emit(doc._id, null); }"
-        },
-        "vm_count_by_owner": {
-            "map": "function(doc) { if (doc.pvt_type != 'vmbox' || !doc.owner_id || doc.pvt_deleted) return; doc.messages.forEach(function (message) { if (message.folder != 'deleted') emit([doc.owner_id, message.folder], 1); }); }",
-            "reduce": "function (key, values, rereduce) { return sum(values) }"
         }
     }
 }

@@ -1,14 +1,10 @@
-/*
-Section: Crossbar
-Title: SUP
-Language: en-US
-*/
+
 
 The SUP API is meant to mirror command-line interactions with the SUP tool. It will only run on the local API server.
 
 You must be super\_duper\_admin to access the SUP endpoint.
 
-## Activation
+#### Activation
 
 To update the running Crossbar system with this endpoint, issue the following sup command:
 
@@ -16,7 +12,7 @@ To update the running Crossbar system with this endpoint, issue the following su
 
 If you want this endpoint to load by default, modify the crossbar doc in the system\_config database, and add cb\_sup to the autoload\_modules list.
 
-## URL mapping
+#### URL mapping
 
 Remember that SUP commands follow the format of:
 
@@ -31,7 +27,7 @@ The important differences are:
 * No need to specify the *_maintenance* portion of the module
 * *function* is optional and defaults to status/0 if not supplied
 
-### Examples
+##### Examples
 
 <table border=1>
   <thead>
@@ -39,8 +35,8 @@ The important differences are:
   </thead>
   <tbody>
     <tr>
-      <td>`sup whistle_maintenance syslog_level debug`</td>
-      <td>`curl /v1/sup/whistle/syslog_level/debug`</td>
+      <td>`sup kazoo_maintenance syslog_level debug`</td>
+      <td>`curl /v1/sup/kazoo/syslog_level/debug`</td>
     </tr>
   </tbody>
 </table>

@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "system_config.alerts",
+    "description": "Schema for alerts system_config",
+    "properties": {
+        "enabled": {
+            "default": true,
+            "description": "alerts enabled",
+            "name": "enabled",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

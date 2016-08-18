@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2015, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -11,15 +11,15 @@
 -export([handle_req/2]).
 
 -include("doodle.hrl").
--include_lib("whistle/include/wapi_conf.hrl").
+-include_lib("kazoo/include/kapi_conf.hrl").
 
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    'true' = wapi_conf:doc_update_v(JObj),
-    Id = wh_json:get_value(<<"ID">>, JObj),
-    Db = wh_json:get_value(<<"Database">>, JObj),
-    Type = wh_json:get_value(<<"Type">>, JObj),
-    Action = wh_json:get_value(<<"Event-Name">>, JObj),
+    'true' = kapi_conf:doc_update_v(JObj),
+    Id = kz_json:get_value(<<"ID">>, JObj),
+    Db = kz_json:get_value(<<"Database">>, JObj),
+    Type = kz_json:get_value(<<"Type">>, JObj),
+    Action = kz_json:get_value(<<"Event-Name">>, JObj),
     handle_doc(Action, Type, Db, Id).
 
 -spec handle_doc(api_binary(), api_binary(), api_binary(), api_binary()) -> 'ok'.

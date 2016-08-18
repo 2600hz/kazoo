@@ -1,140 +1,175 @@
-/*
-Section: Crossbar
-Title: CDRs
-Language: en-US
-*/
+### CDRs
+
+#### About CDRs
 
 CDRs (Call Detail Records) provide a summary view of a call leg.
 
-## CDR structure
+#### Schema
 
-The CDR is a list of attributes related to the processing and execution of a call leg. There are a number of properties that will always exist and a handful of fields that will conditionally exist, depending on the type of call made. There is also a sub-object, under the key 'Custom-Channel-Vars', that represent Kazoo-specific key/value pairs.
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`app_name` | The Kazoo application that issued the CDR | `string` |   | `false`
+`app_version` | The internal Kazoo version number of the application that issued the CDR | `string` |   | `false`
+`billing_seconds` | The number of seconds the call leg can be billed for (typically from when the call leg is answered | `string` |   | `false`
+`call_direction` | Direction of the call, relative to the media switch | `string('inbound', 'outbound')` |   | `false`
+`call_id` | Unique identifier of the call leg | `string` |   | `true`
+`callee_id_name` | The indicated name of the callee | `string` |   | `false`
+`callee_id_number` | The indicated number of the callee | `string` |   | `false`
+`caller_id_name` | The indicated name of the caller | `string` |   | `false`
+`caller_id_number` | The indicated number of the caller | `string` |   | `false`
+`custom_channel_vars` | Kazoo-specific key/value pairs set on the channel | `object` |   | `false`
+`custom_sip_headers` | A property list of SIP headers beging with the prefix 'X-' | `object` |   | `false`
+`digits_dialed` | All the DTMF tones detected on this leg of the call | `string` |   | `false`
+`disposition` | Who sent the SIP BYE message | `string` |   | `false`
+`duration_seconds` | The duration of the call leg, in seconds | `string` |   | `false`
+`fax_bad_rows` |   | `string` |   | `false`
+`fax_ecm_used` |   | `string` |   | `false`
+`fax_result_code` |   | `string` |   | `false`
+`fax_result_text` |   | `string` |   | `false`
+`fax_success` |   | `string` |   | `false`
+`fax_total_pages` |   | `string` |   | `false`
+`fax_transfer_rate` |   | `string` |   | `false`
+`fax_transferred_pages` |   | `string` |   | `false`
+`from` | Built by Kazoo, depending on direction, to represent the From user | `string` |   | `false`
+`from_uri` | The From SIP URI | `string` |   | `false`
+`hangup_cause` | The reason for the call leg's termination | `string` |   | `false`
+`hangup_code` | The SIP hangup code, if available | `string` |   | `false`
+`local_sdp` | The SDP negotiated by the local agent | `string` |   | `false`
+`media_server` | The hostname of the media server that processed the call | `string` |   | `false`
+`node` | The ecallmgr which issued the CDR | `string` |   | `false`
+`other_leg_call_id` | If this leg was bridged, the call-id of the opposite leg | `string` |   | `false`
+`other_leg_caller_id_name` | Caller ID name of the bridged leg | `string` |   | `false`
+`other_leg_caller_id_number` | Caller ID number of the bridged leg | `string` |   | `false`
+`other_leg_destination_number` | Dialed number of the other leg | `string` |   | `false`
+`other_leg_direction` | direction of the other leg, relative to the media server | `string` |   | `false`
+`presence_id` | ID used in NOTIFY SIP messages | `string` |   | `false`
+`remote_sdp` | The SDP negotiated by the remote agent | `string` |   | `false`
+`request` | Built by Kazoo this is the processed request URI | `string` |   | `false`
+`ringing_seconds` | How many seconds the leg was ringing (pre-answer) | `string` |   | `false`
+`timestamp` | UTC timestamp, in gregorian seconds, of when the CDR was generated | `string` |   | `false`
+`to` | Built by Kazoo, depending on direction, to represent the To user | `string` |   | `false`
+`to_uri` | The To SIP URI | `string` |   | `false`
+`user_agent` | User agent header from SIP packet | `string` |   | `false`
 
-### Default Properties
+#### Fetch a summary of CDRs
 
-These properties should appear in both the summary and detail view for all CDRs:
+> GET /v2/accounts/{ACCOUNT_ID}/cdrs
 
-* call\_id - identifier for the call leg
-* call\_direction - direction of the leg, relative to the media switch
-  * inbound - leg came into the media switch (typically the A-leg)
-  * outbound - leg started on the media switch (typically the B-leg)
-* duration\_seconds - how long the call lasted
-* hangup\_cause - The reason why the call leg ended. See the [FreeSWITCH Hangup Causes](http://wiki.freeswitch.org/wiki/Hangup_causes) page for descriptions.
-* timestamp - UTC timestamp (in gregorian seconds) of when the CDR was generated
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
+```
 
-### Conditional Properties
+Get a time range of CDRs (using gregorian seconds for timestamps):
 
-The existence of these properties will vary depending on the nature of the call. This list is not meant to be exhaustive:
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?created_from={FROM_TIMESTAMP}&created_to={TO_TIMESTAMP}
+```
 
-* billing\_seconds - How many seconds of the call are billable (post answer, normally)
-* callee\_id\_name - Name of the callee
-* callee\_id\_number - Number of the callee
-* caller\_id\_name - Name of the caller
-* caller\_id\_number - Number of the caller
-* channel\_authorized - Boolean of whether the channel was authorized to continue
-* disposition - Information about how the leg ended
-  * SUCCESS - The leg terminated, while bridged, normally (successfully)
-  * ANSWER - The leg terminated normally without being bridged
-  * ORIGINATOR\_CANCEL - Caller hung up
-  * DELAYED NEGOTIATION -
-* from - Depends on the direction of the leg
-  * outbound - finds the value from the caller id number and realm if the SIP From URI is missing
-  * inbound - Checks against the presence ID or From-URI if available
-* from\_uri - the SIP From header
-* hangup\_code - the SIP code of the hangup, if available
-* inception - From where was the call started
-  * on-net - Call is from a known account's device
-  * off-net - Call is from outside of the cluster
-* local\_sdp - SDP information for the local (media server) side
-* media\_server - The handling media server hostname
-* other\_leg\_call\_id - if the call was bridged, the call-id of the other leg
-* other\_leg\_caller\_id\_name - Caller ID name of the bridged leg
-* other\_leg\_caller\_id\_number - Caller ID number of the bridged leg
-* other\_leg\_destination\_number - The dialed number of the other leg
-* other\_leg\_direction - direction, relative to the media server, of the other leg (should be the opposite of call\_direction).
-* presence\_id - Presence ID used to send NOTIFYs if needed
-* remote\_sdp - SDP information for the remote side (the endpoint's side)
-* request - SIP Request URI
-* ringing\_seconds - how many seconds the endpoint was ringing before answering
-* to - Depends on the direction of the leg
+Get CDRs as CSV:
+
+```shell
+curl -v -X GET \
+    -H "Accept: text/csv" \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
+```
+
+#### Fetch a CDR's details
+
+> GET /v2/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}
+```
+
+#### Fetch interaction summary
+
+> GET /v2/accounts/{ACCOUNT_ID}/cdrs/interaction
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs/interaction
+```
+
+#### Fetch all legs related to an interaction
+
+Crossbar cdrs was extended to provide simplified interaction call detail records. It groups all CDRs that interacted with eachouther to form a list of calls.
+
+> GET /v2/accounts/{ACCOUNT_ID}/cdrs/legs/{INTERACTION_ID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs/legs/{INTERACTION_ID}
+```
+
+#### Variations
+
+You can select CDRs/interactions for a specific user by adding them to the URI:
+
+> GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/cdrs
+
+#### Notes on fields
+
+Some fields need a little more explanation to help you understand what they are telling you about the call leg.
+
+* `call_direction` - direction of the leg, relative to the media switch
+  * `inbound` - leg came into the media switch (typically the A-leg)
+  * `outbound` - leg started on the media switch (typically the B-leg)
+* `hangup_cause` - The reason why the call leg ended. See the [FreeSWITCH Hangup Causes](http://wiki.freeswitch.org/wiki/Hangup_causes) page for descriptions.
+* `billing_seconds` - How many seconds of the call are billable (post answer, normally)
+* `to` - Depends on the direction of the leg
   * outbound - Uses the presence-id or else it uses the SIP Request address
   * inbound - the SIP To header
-* to\_uri - SIP To header
-* user\_agent - User Agent of the endpoint
-* bridge\_id - Bridge ID
 
-### Kazoo-specific Properties
+#### Kazoo-specific properties
 
-These are properties set by Kazoo for internal purposes. These are the properties found under the _custom\_channel\_vars_ property at the top-level of the CDR JSON object. The non-exhaustive list of properties:
+These are properties set by Kazoo for internal purposes. These are the properties found under the `custom_channel_vars` property at the top-level of the CDR JSON object. The non-exhaustive list of properties:
 
-* account\_id - Account ID this leg belongs to
-* authorizing\_id - Document ID used to authorize this call leg
-* authorizing\_type - Type of ducument used to authorize call
-  * device - the call leg is to/from a known Kazoo device
-  * resource - the call leg is from a known offnet carrier
-  * outbound\_fax
-* bridge\_id - Typically the A-leg's call-id; helps with tracking transfers
-* ecallmgr\_node - Which ecallmgr node is processing the call leg
-* fetch\_id - The dialplan XML fetch ID from FreeSWITCH
-* realm - the SIP realm of the account
-* resource\_id - Resource ID used for the leg; typically a carrier, local or global, that the call was routed to
-* username - the SIP username of the endpoint that started the leg
+* `account_id` - Account ID this leg belongs to
+* `authorizing_id` - Document ID used to authorize this call leg
+* `authorizing_type` - Type of ducument used to authorize call
+  * `device` - the call leg is to/from a known Kazoo device
+  * `resource` - the call leg is from a known offnet carrier
+  * `outbound_fax`
+* `bridge_id` - Typically the A-leg's call-id; helps with tracking transfers
+* `ecallmgr_node` - Which ecallmgr node is processing the call leg
+* `fetch_id` - The dialplan XML fetch ID from FreeSWITCH
+* `realm` - the SIP realm of the account
+* `resource_id` - Resource ID used for the leg; typically a carrier, local or global, that the call was routed to
+* `username` - the SIP username of the endpoint that started the leg
 
-### Billing-related Properties
+##### Billing-related Properties
 
 These properties relate to how the leg was rated and billed. Some of these properties are not accessible via Crossbar, but may exist on the CDR
 
-* reseller\_billing - tag describing what billing was used for the reseller
-* reseller\_id - Account ID of the reseller for the account of this leg
-* account\_billing - tag describing what billing was used for the account
-* rate - Rate of the call
-* base\_cost - How much the call costs to start (if per-minute)
-* rate_name - Name of the rate doc used
-* surcharge - Surcharge added to the leg
-* rate\_minimum - Minimum number of seconds to bill for
-* rate_increment - Increment of seconds to bill for
+* `reseller_billing` - tag describing what billing was used for the reseller
+* `reseller_id` - Account ID of the reseller for the account of this leg
+* `account_billing` - tag describing what billing was used for the account
+* `rate` - Rate of the call
+* `base_cost` - How much the call costs to start (if per-minute)
+* `rate_name` - Name of the rate doc used
+* `surcharge` - Surcharge added to the leg
+* `rate_minimum` - Minimum number of seconds to bill for
+* `rate_increment` - Increment of seconds to bill for
 
-### Fax-specific Properties
+##### Fax-specific Properties
 
 These properties may exist on a CDR for a fax request (inbound or outbound):
 
-* fax\_transfer\_rate - Baud of the fax transfer
-* fax\_bad\_rows - Number of rows that failed to transfer
-* fax\_total\_pages - Number of pages in the fax (see fax\_transferred\_pages for how many made it)
-* fax\_transferred\_pages - Number of pages transferred
-* fax\_ecm\_used - Was ECM (error correction mode) used on the fax
-* fax\_result\_text - Error String, if any, or 'OK' if successful
-* fax\_result\_code - [Result code](http://wiki.freeswitch.org/wiki/Variable_fax_result_code) of the transmission
-* fax\_success - boolean for whether the fax was considered a success
-
-## Crossbar
-
-Using Crossbar to modify metaflows is very simple. There are only three GETs
-
-* GET /v1/accounts/{account\_id}/cdrs - Gets the current CDRs for the account
-* GET /v1/accounts/{account\_id}/cdrs/{cdr\_id} - Gets details of the CDR
-* GET /v1/accounts/{account\_id}/users/{user\_id}/cdrs - Gets the current CDRs for the user
-
-### Sample Requests
-
-#### _GET_ - Fetch account CDRs:
-
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs
-
-#### _GET_ - Fetch user CDRs:
-
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/users/{USER_ID}/cdrs
-
-####  _GET_ - Fetch a CDR:
-
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}
-
-#### _GET_ - Fetch a time-range of CDRs
-
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs?created_from={FROM_TIMESTAMP}&created_to={TO_TIMESTAMP}
-
-&tip All timestamps will be in Gregorian seconds (not Unix epoch).
-
-#### _GET_ - Fetch account CDRs in csv format:
-
-    curl -v -X GET -H "Accept: text/csv" -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs
+* `fax_transfer_rate` - Baud of the fax transfer
+* `fax_bad_rows` - Number of rows that failed to transfer
+* `fax_total_pages` - Number of pages in the fax (see `fax_transferred_pages` for how many made it)
+* `fax_transferred_pages` - Number of pages transferred
+* `fax_ecm_used` - Was ECM (error correction mode) used on the fax
+* `fax_result_text` - Error String, if any, or 'OK' if successful
+* `fax_result_code` - [Result code](http://wiki.freeswitch.org/wiki/Variable_fax_result_code) of the transmission
+* `fax_success` - boolean for whether the fax was considered a success
+* `fax_t38` - boolean for whether the fax T.38 was used

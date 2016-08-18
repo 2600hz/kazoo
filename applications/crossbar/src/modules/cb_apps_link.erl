@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -12,13 +12,13 @@
 -module(cb_apps_link).
 
 -export([init/0
-         ,authorize/1
-         ,allowed_methods/1
-         ,resource_exists/1
-         ,validate/2
+        ,authorize/1
+        ,allowed_methods/1
+        ,resource_exists/1
+        ,validate/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(DEFAULT_LANGUAGE, <<"en-US">>).
 -define(AUTHORIZE, <<"authorize">>).
@@ -92,43 +92,43 @@ resource_exists(?AUTHORIZE) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?AUTHORIZE) ->
-    JObj = wh_json:from_list(
+    JObj = kz_json:from_list(
              [{<<"auth_token">>, auth_info(Context)}
-              ,{<<"account">>, account_info(Context)}
+             ,{<<"account">>, account_info(Context)}
              ]
             ),
     crossbar_util:response(JObj, Context).
 
--spec account_info(cb_context:context()) -> wh_json:object().
+-spec account_info(cb_context:context()) -> kz_json:object().
 account_info(Context) ->
     AccountId = get_request_account(Context),
-    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-    wh_json:from_list(
+    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+    kz_json:from_list(
       [{<<"account_id">>, AccountId}
-      ,{<<"account_name">>, whapps_util:get_account_name(AccountId)}
+      ,{<<"account_name">>, kapps_util:get_account_name(AccountId)}
       ,{<<"language">>, crossbar_util:get_language(AccountId)}
-      ,{<<"is_reseller">>, wh_services:is_reseller(AccountId)}
-      ,{<<"reseller_id">>, wh_services:find_reseller_id(AccountId)}
+      ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}
+      ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
       ,{<<"is_master">>, AccountId =:= MasterAccountId}
       ]
      ).
 
--spec auth_info(cb_context:context()) -> wh_json:object().
+-spec auth_info(cb_context:context()) -> kz_json:object().
 auth_info(Context) ->
     JObj = cb_context:auth_doc(Context),
     AccountId = cb_context:auth_account_id(Context),
-    OwnerId = wh_json:get_value(<<"owner_id">>, JObj),
-    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-    wh_json:from_list(
+    OwnerId = kz_json:get_value(<<"owner_id">>, JObj),
+    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+    kz_json:from_list(
       props:filter_undefined(
         [{<<"account_id">>, AccountId}
         ,{<<"owner_id">>, OwnerId}
-        ,{<<"account_name">>, whapps_util:get_account_name(AccountId)}
-        ,{<<"method">>, wh_json:get_value(<<"method">>, JObj)}
-        ,{<<"created">>, wh_doc:created(JObj)}
+        ,{<<"account_name">>, kapps_util:get_account_name(AccountId)}
+        ,{<<"method">>, kz_json:get_value(<<"method">>, JObj)}
+        ,{<<"created">>, kz_doc:created(JObj)}
         ,{<<"language">>, crossbar_util:get_language(AccountId, OwnerId)}
-        ,{<<"is_reseller">>, wh_services:is_reseller(AccountId)}
-        ,{<<"reseller_id">>, wh_services:find_reseller_id(AccountId)}
+        ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}
+        ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
         ,{<<"apps">>, crossbar_util:load_apps(AccountId, OwnerId)}
         ,{<<"is_master">>, AccountId =:= MasterAccountId}
         ]
