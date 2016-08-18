@@ -26,6 +26,7 @@
         ,default_headers/4
         ,default_headers/5
 
+        ,account_id/1
         ,server_id/1
         ,queue_id/1
         ,msg_id/1
@@ -106,6 +107,12 @@ msg_reply_id(Props) when is_list(Props) ->
     props:get_value(?KEY_MSG_REPLY_ID, Props, msg_id(Props));
 msg_reply_id(JObj) ->
     kz_json:get_value(?KEY_MSG_REPLY_ID, JObj, msg_id(JObj)).
+
+-spec account_id(api_terms()) -> api_binary().
+account_id(Props) when is_list(Props) ->
+    props:get_value(?KEY_MSG_ACCOUNT_ID, Props);
+account_id(JObj) ->
+    kz_json:get_value(?KEY_MSG_ACCOUNT_ID, JObj).
 
 %%--------------------------------------------------------------------
 %% @doc Default Headers in all messages - see wiki

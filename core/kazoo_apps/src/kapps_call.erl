@@ -258,6 +258,7 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
         ,fetch_id = kz_json:get_ne_value(<<"Fetch-ID">>, CCVs, fetch_id(Call))
         ,bridge_id = kz_json:get_ne_value(<<"Bridge-ID">>, CCVs, bridge_id(Call))
         ,caller_id_name = kz_json:get_value(<<"Caller-ID-Name">>, RouteReq, caller_id_name(Call))
+        ,callee_id_name = kz_json:get_value(<<"Callee-ID-Name">>, RouteReq, callee_id_name(Call))
         ,caller_id_number = kz_json:get_value(<<"Caller-ID-Number">>, RouteReq, caller_id_number(Call))
         ,callee_id_number = kz_json:get_value(<<"Callee-ID-Number">>, RouteReq, ToUser)
         ,ccvs = CCVs

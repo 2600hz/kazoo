@@ -222,6 +222,7 @@ to_props(Channel) ->
       ,{<<"is_loopback">>, Channel#channel.is_loopback}
       ,{<<"loopback_leg_name">>, Channel#channel.loopback_leg_name}
       ,{<<"loopback_other_leg">>, Channel#channel.loopback_other_leg}
+      ,{<<"callflow_id">>, Channel#channel.callflow_id}
       ]).
 
 -spec to_api_json(channel()) -> kz_json:object().
@@ -260,9 +261,10 @@ to_api_props(Channel) ->
       ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
       ,{<<"Elapsed-Seconds">>, kz_util:elapsed_s(Channel#channel.timestamp)}
       ,{<<?CALL_INTERACTION_ID>>, Channel#channel.interaction_id}
-      ,{<<"is_loopback">>, Channel#channel.is_loopback}
-      ,{<<"loopback_leg_name">>, Channel#channel.loopback_leg_name}
-      ,{<<"loopback_other_leg">>, Channel#channel.loopback_other_leg}
+      ,{<<"Is-Loopback">>, Channel#channel.is_loopback}
+      ,{<<"Loopback-Leg-Name">>, Channel#channel.loopback_leg_name}
+      ,{<<"Loopback-Other-Leg">>, Channel#channel.loopback_other_leg}
+      ,{<<"CallFlow-ID">>, Channel#channel.callflow_id}
       ]).
 
 -spec channel_ccvs(channel() | kz_json:object() | kz_proplist()) -> kz_proplist().
@@ -283,6 +285,7 @@ channel_ccvs(#channel{}=Channel) ->
       ,{<<"Realm">>, Channel#channel.realm}
       ,{<<"Username">>, Channel#channel.username}
       ,{<<?CALL_INTERACTION_ID>>, Channel#channel.interaction_id}
+      ,{<<"CallFlow-ID">>, Channel#channel.callflow_id}
       ]);
 channel_ccvs([_|_]=Props) ->
     props:filter_undefined(
@@ -301,6 +304,7 @@ channel_ccvs([_|_]=Props) ->
       ,{<<"Realm">>, props:get_value(<<"realm">>, Props)}
       ,{<<"Username">>, props:get_value(<<"username">>, Props)}
       ,{<<?CALL_INTERACTION_ID>>, props:get_value(<<"interaction_id">>, Props)}
+      ,{<<"callflow_id">>, props:get_value(<<"callflow_id">>, Props)}
       ]);
 channel_ccvs(JObj) ->
     channel_ccvs(kz_json:to_proplist(JObj)).
@@ -672,6 +676,7 @@ props_to_record(Props, Node) ->
             ,is_loopback=kzd_freeswitch:is_loopback(Props)
             ,loopback_leg_name=kzd_freeswitch:loopback_leg_name(Props)
             ,loopback_other_leg=kzd_freeswitch:loopback_other_leg(Props)
+            ,callflow_id=props:get_value(<<"CallFlow-ID">>, CCVs)
             }.
 
 -spec handling_locally(kz_proplist()) -> boolean().
@@ -734,6 +739,7 @@ props_to_update(Props) ->
                            ,{#channel.is_loopback, kzd_freeswitch:is_loopback(Props)}
                            ,{#channel.loopback_leg_name, kzd_freeswitch:loopback_leg_name(Props)}
                            ,{#channel.loopback_other_leg, kzd_freeswitch:loopback_other_leg(Props)}
+                           ,{#channel.callflow_id, props:get_value(<<"CallFlow-ID">>, CCVs)}
                             | update_callee(UUID, Props)
                            ]).
 

@@ -1556,12 +1556,17 @@ transfer(Node, UUID, <<"attended">>, TransferTo, JObj) ->
                 Value -> Value
             end,
     ReqURI = <<TransferTo/binary, "@", Realm/binary>>,
-    Vars = [{<<"Ignore-Early-Media">>, <<"ring_ready">>}
-           ,{<<"Simplify-Loopback">>, <<"false">>}
-           ,{<<"Loopback-Bowout">>, <<"false">>}
-           ,{<<"Loopback-Request-URI">>, ReqURI}
-           ,{<<"SIP-Invite-Domain">>, Realm}
-           ],
+    Vars = props:filter_undefined(
+             [{<<"Ignore-Early-Media">>, <<"ring_ready">>}
+             ,{<<"Simplify-Loopback">>, <<"false">>}
+             ,{<<"Loopback-Bowout">>, <<"false">>}
+             ,{<<"Loopback-Request-URI">>, ReqURI}
+             ,{<<"SIP-Invite-Domain">>, Realm}
+             ,{<<"Outbound-Caller-ID-Number">>, kz_json:get_value(<<"Caller-ID-Number">>, JObj)}
+             ,{<<"Outbound-Caller-ID-Name">>, kz_json:get_value(<<"Caller-ID-Name">>, JObj)}
+             ,{<<"Outbound-Callee-ID-Number">>, TransferTo}
+             ,{<<"Outbound-Callee-ID-Name">>, TransferTo}
+             ]),
     Props = [KV || {K,_V} = KV <- CCVs,
                    lists:member(K, CCVList)
             ]  ++ Vars,
