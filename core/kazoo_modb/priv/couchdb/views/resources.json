@@ -3,7 +3,20 @@
     "language": "javascript",
     "views": {
         "jobs_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'resource_job' || doc.pvt_deleted) return; emit(doc.pvt_created, {'id':doc._id, 'timestamp':doc.pvt_modified, 'status':doc.pvt_status, 'failures':((doc.errors && Object.keys(doc.errors).length) || 0), 'successes':((doc.success  && Object.keys(doc.success).length) || 0), 'resource_id':doc.resource_id, 'name':doc.name}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'resource_job' || doc.pvt_deleted) return;",
+                "  emit(doc.pvt_created, {",
+                "    'id': doc._id,",
+                "    'timestamp': doc.pvt_modified,",
+                "    'status': doc.pvt_status,",
+                "    'failures': ((doc.errors && Object.keys(doc.errors).length) || 0),",
+                "    'successes': ((doc.success  && Object.keys(doc.success).length) || 0),",
+                "    'resource_id': doc.resource_id,",
+                "    'name': doc.name",
+                "  });",
+                "}"
+            ]
         },
         "status_listing": {
             "map": "function(doc) { if (doc.pvt_type != 'resource_job' || doc.pvt_deleted) return; emit(doc.pvt_status, null); }"
