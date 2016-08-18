@@ -1,6 +1,7 @@
 {application,kazoo_ledgers,
-             [{applications,[kazoo,kazoo_modb,stdlib]},
-              {description,"Kazoo ledgers management"},
-              {vsn,"4.0.0"},
-              {modules,[]},
-              {registered,[]}]}.
+ [{applications,[kazoo,kazoo_modb,stdlib]},
+  {description,"Kazoo ledgers management"},
+  {vsn,"4.0.0"},
+  {modules,[]},
+  {registered,[]}
+ ]}.
