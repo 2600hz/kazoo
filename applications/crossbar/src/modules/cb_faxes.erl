@@ -380,7 +380,7 @@ maybe_add_faxbox_data(FaxBoxDoc, Context) ->
                                   case kz_json:get_value(K, Acc) of
                                       'undefined' -> kz_json:set_value(K, V, Acc);
                                       _ -> Acc
-                                   end
+                                  end
                           end
                          ,cb_context:req_data(Context)
                          ,Props),
