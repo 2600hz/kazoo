@@ -14706,6 +14706,24 @@
                         "type": "string"
                     }
                 ]
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "faxes",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/faxes"
+                        }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
             }
         },
         "/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment": {
