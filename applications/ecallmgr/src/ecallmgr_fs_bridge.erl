@@ -19,6 +19,7 @@
 
 -define(BYPASS_MEDIA_AFTER_BRIDGE, ecallmgr_config:get_boolean(<<"use_bypass_media_after_bridge">>, 'false')).
 
+-spec call_command(atom(), ne_binary(), kz_json:object()) -> {'error', binary()} | {binary(), kz_proplist()}.
 call_command(Node, UUID, JObj) ->
     Endpoints = kz_json:get_ne_value(<<"Endpoints">>, JObj, []),
     case kapi_dialplan:bridge_v(JObj) of
@@ -29,11 +30,12 @@ call_command(Node, UUID, JObj) ->
             %% execute ring_ready so we dont leave the caller hanging with dead air.
             %% this does not test how many are ACTUALLY dialed (registered)
             %% since that is one of the things we want to be ringing during
-            _ = handle_ringback(Node, UUID, JObj),
-            _ = maybe_early_media(Node, UUID, JObj),
-            _ = maybe_b_leg_events(Node, UUID, JObj),
 
             {'ok', Channel} = ecallmgr_fs_channel:fetch(UUID, 'record'),
+
+            _ = handle_ringback(Node, UUID, JObj),
+            _ = maybe_early_media(Node, UUID, JObj, Channel),
+            _ = maybe_b_leg_events(Node, UUID, JObj),
 
             Routines = [fun handle_hold_media/5
                        ,fun handle_secure_rtp/5
@@ -89,17 +91,27 @@ handle_ringback(Node, UUID, JObj) ->
             ecallmgr_fs_command:set(Node, UUID, [{<<"ringback">>, Stream}])
     end.
 
--spec maybe_early_media(atom(), ne_binary(), kz_json:object()) -> 'ok'.
-maybe_early_media(Node, UUID, JObj) ->
+-spec maybe_issue_ring_ready(atom(), ne_binary(), channel()) -> 'ok'.
+maybe_issue_ring_ready(Node, UUID, #channel{is_loopback='true', loopback_leg_name = <<"B">>}) ->
+    %% this is a hack to mitigate the absence of early media in freeswitch loopback
+    lager:debug("bridge is to loopback channel, starting local ringing"),
+    ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, ""),
+    'ok';
+maybe_issue_ring_ready(_Node, _UUID, _) ->
+    'ok'.
+
+-spec maybe_early_media(atom(), ne_binary(), kz_json:object(), channel()) -> 'ok'.
+maybe_early_media(Node, UUID, JObj, Channel) ->
     Endpoints = kz_json:get_ne_value(<<"Endpoints">>, JObj, []),
-    case ecallmgr_util:get_dial_separator(JObj, Endpoints) of
-        ?SEPARATOR_SINGLE -> 'ok';
+    Separator = ecallmgr_util:get_dial_separator(JObj, Endpoints),
+    case Separator of
         ?SEPARATOR_SIMULTANEOUS ->
             lager:debug("bridge is simultaneous to multiple endpoints, starting local ringing"),
-            %% we don't really care if this succeeds, the call will fail later on
-            ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, ""),
-            'ok'
-    end.
+            ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, "");
+        ?SEPARATOR_SINGLE ->
+            maybe_issue_ring_ready(Node, UUID, Channel)
+    end,
+    'ok'.
 
 -spec handle_hold_media(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
 handle_hold_media(DP, _Node, UUID, _Channel, JObj) ->
