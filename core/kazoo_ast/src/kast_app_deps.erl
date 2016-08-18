@@ -7,6 +7,8 @@
         ,fix_app_deps/1
         ]).
 
+-export([remote_calls/1]).
+
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 
 fix_project_deps() ->
@@ -75,11 +77,10 @@ process_app(App) ->
 
 process_app('kazoo_ast', Acc) -> Acc;
 process_app(App, Acc) ->
-    AppModules = kz_ast_util:app_modules(App),
     {'ok', ExistingApps} = application:get_key(App, 'applications'),
     KnownApps = ordsets:from_list(ExistingApps -- ['kernel']),
 
-    RemoteModules = remote_calls(AppModules),
+    RemoteModules = remote_calls(App),
     RemoteApps = ordsets:from_list(modules_as_apps(App, RemoteModules)),
 
     Missing = ordsets:subtract(RemoteApps, KnownApps),
@@ -90,11 +91,13 @@ process_app(App, Acc) ->
         _ -> [{App, Missing, Unneeded} | Acc]
     end.
 
-remote_calls(AppModules) ->
-    lists:foldl(fun remote_calls_from_module/2
-               ,[]
-               ,AppModules
-               ).
+remote_calls(App) ->
+    lists:usort(
+      lists:foldl(fun remote_calls_from_module/2
+                 ,[]
+                 ,kz_ast_util:app_modules(App)
+                 )
+     ).
 
 remote_calls_from_module(Module, Acc) ->
     io:format("."),
@@ -181,8 +184,8 @@ remote_calls_from_expression(?RECORD_FIELD_REST, Acc) ->
     Acc;
 remote_calls_from_expression(?DYN_FUN_ARGS(_F, Args), Acc) ->
     remote_calls_from_expressions(Args, Acc);
-remote_calls_from_expression(?DYN_MOD_FUN_ARGS(M, _F, Args), Acc) ->
-    remote_calls_from_expressions(Args, add_remote_module(M, Acc));
+remote_calls_from_expression(?DYN_MOD_FUN_ARGS(_M, _F, Args), Acc) ->
+    remote_calls_from_expressions(Args, Acc);
 remote_calls_from_expression(?MOD_DYN_FUN_ARGS(M, _F, Args), Acc) ->
     remote_calls_from_expressions(Args, add_remote_module(M, Acc));
 remote_calls_from_expression(?GEN_MOD_FUN_ARGS(MExpr, FExpr, Args), Acc) ->
@@ -224,8 +227,7 @@ remote_calls_from_expression(?MAP_FIELD_EXACT(K, V), Acc) ->
 
 add_remote_module(?ATOM(M)=_A, Acc) ->
     add_remote_module(M, Acc);
-add_remote_module(?VAR(_Name)=_V, Acc) ->
-    Acc;
+add_remote_module(?VAR(_Name)=_V, Acc) -> Acc;
 add_remote_module(M, Acc) ->
     case lists:member(M, Acc) of
         'true' -> Acc;
@@ -241,7 +243,7 @@ modules_as_apps(App, Modules) ->
                ).
 
 app_of(Module) ->
-    case code:which(Module)of
+    case code:which(Module) of
         'non_existing' -> 'undefined';
         'preloaded' -> 'undefined';
         Path ->
