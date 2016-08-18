@@ -60,6 +60,9 @@
 -define(OUTBOX_ACTION_RESUBMIT, <<"resubmit">>).
 -define(OUTBOX_ACTIONS, [?OUTBOX_ACTION_RESUBMIT]).
 
+-define(INBOX_ACTION_FORWARD, <<"forward">>).
+-define(INBOX_ACTIONS, [?INBOX_ACTION_FORWARD]).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -111,7 +114,7 @@ allowed_methods(?SMTP_LOG, _AttemptId) ->
 allowed_methods(?INCOMING, _FaxId) ->
     [?HTTP_GET];
 allowed_methods(?INBOX, _FaxId) ->
-    [?HTTP_GET, ?HTTP_DELETE];
+    [?HTTP_GET, ?HTTP_DELETE, ?HTTP_PUT];
 allowed_methods(?OUTBOX, _FaxId) ->
     [?HTTP_GET, ?HTTP_DELETE, ?HTTP_PUT];
 allowed_methods(?OUTGOING, _FaxJobId) ->
@@ -253,7 +256,7 @@ validate(Context, ?SMTP_LOG, Id) ->
 validate(Context, ?INCOMING, Id) ->
     load_modb_fax_doc(Id, ?INCOMING, Context);
 validate(Context, ?INBOX, Id) ->
-    load_modb_fax_doc(Id, ?INBOX, Context);
+    validate_inbox_fax(Context, Id, cb_context:req_verb(Context));
 validate(Context, ?OUTBOX, Id) ->
     validate_outbox_fax(Context, Id, cb_context:req_verb(Context));
 validate(Context, ?OUTGOING, Id) ->
@@ -281,17 +284,34 @@ validate_outbox_fax(Context, Id, ?HTTP_PUT) ->
 validate_outbox_fax(Context, Id, _) ->
     load_modb_fax_doc(Id, ?OUTBOX, Context).
 
+-spec validate_inbox_fax(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+validate_inbox_fax(Context, Id, ?HTTP_PUT) ->
+    Action = kz_json:get_value(<<"action">>, cb_context:req_json(Context)),
+    validate_inbox_fax_action(Action, Id, Context);
+validate_inbox_fax(Context, Id, _) ->
+    load_modb_fax_doc(Id, ?INBOX, Context).
+
 -spec validate_modb_fax_attachment(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
 validate_modb_fax_attachment(Context, Id, Folder, ?HTTP_GET) ->
     load_fax_binary(Id, Folder, Context);
 validate_modb_fax_attachment(Context, Id, Folder, ?HTTP_DELETE) ->
     load_modb_fax_doc(Id, Folder, Context).
 
+-spec validate_outbox_fax_action(api_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
 validate_outbox_fax_action('undefined', _Id, Context) ->
     cb_context:add_system_error(<<"action required">>, Context);
 validate_outbox_fax_action(Action, Id, Context) ->
     case lists:member(Action, ?OUTBOX_ACTIONS) of
         'true' -> load_modb_fax_doc(Id, ?OUTBOX, Context);
+        'false' -> cb_context:add_system_error(<<"invalid action">>, Context)
+    end.
+
+-spec validate_inbox_fax_action(api_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+validate_inbox_fax_action('undefined', _Id, Context) ->
+    cb_context:add_system_error(<<"action required">>, Context);
+validate_inbox_fax_action(Action, Id, Context) ->
+    case lists:member(Action, ?INBOX_ACTIONS) of
+        'true' -> load_modb_fax_doc(Id, ?INBOX, Context);
         'false' -> cb_context:add_system_error(<<"invalid action">>, Context)
     end.
 
@@ -310,8 +330,10 @@ put(Context, ?OUTGOING) ->
     maybe_save_attachment(crossbar_doc:save(Context)).
 put(Context, ?OUTBOX, Id) ->
     Action = kz_json:get_value(<<"action">>, cb_context:req_json(Context)),
+    do_put_action(Context, ?OUTBOX, Action, Id);
+put(Context, ?INBOX, Id) ->
+    Action = kz_json:get_value(<<"action">>, cb_context:req_json(Context)),
     do_put_action(Context, ?OUTBOX, Action, Id).
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -339,8 +361,30 @@ delete(Context, _, Id, ?ATTACHMENT) ->
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
+    FaxBoxDoc = cb_context:fetch(Context, <<"faxbox">>),
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
-    cb_context:validate_request_data(<<"faxes">>, Context, OnSuccess).
+    cb_context:validate_request_data(<<"faxes">>, maybe_add_faxbox_data(FaxBoxDoc, Context), OnSuccess).
+
+maybe_add_faxbox_data('undefined', Context) -> Context;
+maybe_add_faxbox_data(FaxBoxDoc, Context) ->
+    Props = props:filter_undefined(
+              [{<<"from_name">>, kz_json:get_value(<<"caller_name">>, FaxBoxDoc)}
+              ,{<<"fax_identity_name">>, kz_json:get_value(<<"fax_header">>, FaxBoxDoc)}
+              ,{<<"from_number">>, kz_json:get_value(<<"caller_id">>, FaxBoxDoc)}
+              ,{<<"fax_identity_number">>, kz_json:get_value(<<"fax_identity">>, FaxBoxDoc)}
+              ,{<<"fax_timezone">>, kzd_fax_box:timezone(FaxBoxDoc)}
+              ,{<<"retries">>, kzd_fax_box:retries(FaxBoxDoc, 3)}
+              ,{<<"faxbox_id">>, kz_doc:id(FaxBoxDoc)}
+              ]),
+    ReqData = lists:foldl(fun({K,V}, Acc) ->
+                                  case kz_json:get_value(K, Acc) of
+                                      'undefined' -> kz_json:set_value(K, V, Acc);
+                                      _ -> Acc
+                                   end
+                          end
+                         ,cb_context:req_data(Context)
+                         ,Props),
+    cb_context:set_req_data(Context, ReqData).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -437,6 +481,25 @@ load_fax_meta(FaxId, Folder, Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
+    case cb_context:req_files(Context) =:= []
+        andalso kzd_fax:document_url(cb_context:doc(Context)) =:= 'undefined'
+    of
+        'true' ->
+            Property = [<<"document">>,<<"url">>],
+            Code = <<"required">>,
+            Message = <<"add document url or upload a document">>,
+            cb_context:add_validation_error(Property, Code, Message, Context);
+        'false' -> on_success('undefined', Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec on_success(api_binary(), cb_context:context()) -> cb_context:context().
+on_success('undefined', Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_db(Context),
     ResellerId = cb_context:reseller_id(Context),
@@ -668,11 +731,40 @@ do_put_action(Context, ?OUTBOX, ?OUTBOX_ACTION_RESUBMIT, Id) ->
         {'error', Error} ->
             lager:error("error resubmitting fax : ~p", [Error]),
             cb_context:add_system_error(<<"error when resubmitting fax">>, Context)
+    end;
+do_put_action(Context, ?INBOX, ?INBOX_ACTION_FORWARD, Id) ->
+    ReqData = kz_json:public_fields(cb_context:req_data(Context)),
+    Fun = fun(_Source, Target) -> set_forward_data(kz_json:merge_jobjs(ReqData, Target)) end,
+    Options = [{'transform', Fun}],
+    FromDB = cb_context:account_db(Context),
+    NewId = kz_util:rand_hex_binary(16),
+    case kz_datamgr:copy_doc(FromDB, Id, ?KZ_FAXES_DB, NewId, Options) of
+        {'ok', _Doc} ->
+            Updates = [{<<"pvt_job_status">>, <<"pending">>}],
+            {'ok', UpdatedDoc} = kz_datamgr:update_doc(?KZ_FAXES_DB, NewId, Updates),
+            cb_context:set_resp_data(Context, kz_json:public_fields(UpdatedDoc));
+        {'error', Error} ->
+            lager:error("error resubmitting fax : ~p", [Error]),
+            cb_context:add_system_error(<<"error when forwarding fax">>, Context)
     end.
 
 -spec set_resubmit_data(kz_json:object()) -> kz_json:object().
 set_resubmit_data(TargetDoc) ->
     Keys = [<<"tx_result">>
+           ,<<"retry_after">>
+           ,<<"pvt_job_node">>
+           ],
+    Values = [{<<"pvt_created">>, kz_util:current_tstamp()}
+             ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+             ,{<<"pvt_job_status">>, <<"resubmitting">>}
+             ,{<<"attempts">>, 0}
+             ],
+    kz_json:set_values(Values, kz_json:delete_keys(Keys, TargetDoc)).
+
+-spec set_forward_data(kz_json:object()) -> kz_json:object().
+set_forward_data(TargetDoc) ->
+    Keys = [<<"tx_result">>
+           ,<<"rx_result">>
            ,<<"retry_after">>
            ,<<"pvt_job_node">>
            ],
