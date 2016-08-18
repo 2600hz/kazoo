@@ -4143,7 +4143,7 @@
                         "url": {
                             "description": "The url of the fax document",
                             "name": "Document URL",
-                            "required": false,
+                            "required": true,
                             "type": "string"
                         }
                     },
@@ -4159,7 +4159,7 @@
                 "from_number": {
                     "description": "The sender number for the fax",
                     "name": "Sender Number",
-                    "required": false,
+                    "required": true,
                     "type": "string"
                 },
                 "notifications": {
@@ -4229,11 +4229,10 @@
                 "to_number": {
                     "description": "The recipient number for the fax",
                     "name": "Recipient Number",
-                    "required": false,
+                    "required": true,
                     "type": "string"
                 },
                 "tx_result": {
-                    "default": {},
                     "description": "The result of a transmission attempt",
                     "properties": {
                         "error_message": {
@@ -8763,7 +8762,6 @@
             "description": "Schema for fax system_config",
             "properties": {
                 "allow_all_addresses_when_empty": {
-                    "default": false,
                     "description": "fax allow all addresses when empty",
                     "name": "allow_all_addresses_when_empty",
                     "type": "boolean"
@@ -8844,7 +8842,6 @@
                     "type": "integer"
                 },
                 "delete_empty_faxes": {
-                    "default": false,
                     "description": "fax delete empty faxes",
                     "name": "delete_empty_faxes",
                     "type": "boolean"
@@ -8893,7 +8890,6 @@
                     "type": "string"
                 },
                 "ignore_early_media": {
-                    "default": false,
                     "description": "fax ignore early media",
                     "name": "ignore_early_media",
                     "type": "boolean"
@@ -8935,7 +8931,6 @@
                     "type": "integer"
                 },
                 "report_anonymous_system_errors": {
-                    "default": false,
                     "description": "fax report anonymous system errors",
                     "name": "report_anonymous_system_errors",
                     "type": "boolean"
@@ -8947,7 +8942,6 @@
                     "type": "boolean"
                 },
                 "reschedule": {
-                    "default": {},
                     "description": "fax reschedule",
                     "name": "reschedule",
                     "type": "object"
@@ -12680,6 +12674,138 @@
             "required": true,
             "type": "object"
         },
+        "whitelabel": {
+            "description": "Whitelabel settings",
+            "name": "Whitelabel",
+            "properties": {
+                "company_name": {
+                    "description": "The company name to display to users",
+                    "name": "Company Name",
+                    "required": false,
+                    "type": "string"
+                },
+                "domain": {
+                    "description": "This is the whitelabeled domain that users will be entering to reach the UI",
+                    "format": "uri",
+                    "name": "Domain",
+                    "required": false,
+                    "type": "string"
+                },
+                "fake_api_url": {
+                    "description": "This is a whitelabeled API URL, primarily used by the developer application",
+                    "format": "uri",
+                    "name": "API URL",
+                    "required": false,
+                    "type": "string"
+                },
+                "hide_credits": {
+                    "default": false,
+                    "description": "When checkef this hides the credits",
+                    "name": "Hide Credits?",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "hide_powered": {
+                    "default": false,
+                    "description": "When checked this hides the powered by 2600hz on the bottom right",
+                    "name": "Hide Powered?",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "hide_registration": {
+                    "default": false,
+                    "description": "When checked this hides the ability to register for a new account",
+                    "name": "Hide Registration?",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "inbound_trunks_price": {
+                    "description": "The price to show for inbound trunks, this is currently only for display purposes",
+                    "name": "Inbound Trunk Price",
+                    "required": false,
+                    "type": "string"
+                },
+                "nav": {
+                    "description": "Properties related to navigation in the UI",
+                    "name": "Navigation Parameters",
+                    "properties": {
+                        "help": {
+                            "description": "The URL to use when the help link is clicked",
+                            "format": "uri",
+                            "name": "Help URL",
+                            "required": false,
+                            "type": "string"
+                        },
+                        "learn_more": {
+                            "description": "The URL to use when the 'Learn More!' link is clicked",
+                            "format": "uri",
+                            "name": "Learn More URL",
+                            "required": false,
+                            "type": "string"
+                        }
+                    },
+                    "required": false,
+                    "type": "object"
+                },
+                "outbound_trunks_price": {
+                    "description": "The price to show for outbound trunks, this is currently only for display purposes",
+                    "name": "Outbound Trunk Price",
+                    "required": false,
+                    "type": "string"
+                },
+                "port": {
+                    "description": "Parameters releated to whitelabeling port requests",
+                    "name": "Port Paramaters",
+                    "properties": {
+                        "features": {
+                            "description": "The URL to use when the features link is clicked",
+                            "format": "uri",
+                            "name": "Features URL",
+                            "required": false,
+                            "type": "string"
+                        },
+                        "loa": {
+                            "description": "The URL to use when the LOA link is clicked",
+                            "format": "uri",
+                            "name": "LOA URL",
+                            "required": false,
+                            "type": "string"
+                        },
+                        "resporg": {
+                            "description": "The URL to use when the resporg link is clicked",
+                            "format": "uri",
+                            "name": "Resporg URL",
+                            "required": false,
+                            "type": "string"
+                        },
+                        "support_email": {
+                            "description": "The support email address to display to the user",
+                            "format": "email",
+                            "name": "Support Email",
+                            "required": false,
+                            "type": "string"
+                        },
+                        "terms": {
+                            "description": "The URL to use when the terms and conditions link is clicked",
+                            "format": "uri",
+                            "name": "Terms URL",
+                            "required": false,
+                            "type": "string"
+                        }
+                    },
+                    "required": false,
+                    "type": "object"
+                },
+                "twoway_trunks_price": {
+                    "description": "The price to show for twoway trunks, this is currently only for display purposes",
+                    "name": "Twoway Trunk Price",
+                    "required": false,
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
         "whitelabels": {
             "description": "Whitelabel settings",
             "name": "Whitelabel",
@@ -14707,6 +14833,24 @@
                         "type": "string"
                     }
                 ]
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "faxes",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/faxes"
+                        }
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
             }
         },
         "/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment": {
@@ -15875,6 +16019,50 @@
                 ]
             }
         },
+        "/accounts/{ACCOUNT_ID}/mms": {
+            "get": {
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/mms/{_ID}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            },
+            "get": {
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
         "/accounts/{ACCOUNT_ID}/move": {
             "post": {
                 "parameters": [
@@ -16020,6 +16208,30 @@
                             "$ref": "#/definitions/notifications"
                         }
                     },
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/oauth": {
+            "get": {
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/oauth/callback": {
+            "get": {
+                "parameters": [
                     {
                         "in": "header",
                         "name": "X-Auth-Token",
@@ -17765,6 +17977,48 @@
                 ]
             }
         },
+        "/accounts/{ACCOUNT_ID}/slack_hooks": {
+            "delete": {
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            },
+            "get": {
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
         "/accounts/{ACCOUNT_ID}/sms": {
             "get": {
                 "parameters": [
@@ -18798,6 +19052,30 @@
                 }
             }
         },
+        "/accounts/{ACCOUNT_ID}/webphone": {
+            "get": {
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/webphone/{ID}": {
+            "get": {
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
         "/accounts/{ACCOUNT_ID}/websockets": {
             "get": {
                 "parameters": [
@@ -18846,6 +19124,14 @@
             "post": {
                 "parameters": [
                     {
+                        "in": "body",
+                        "name": "whitelabel",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/whitelabel"
+                        }
+                    },
+                    {
                         "in": "header",
                         "name": "X-Auth-Token",
                         "required": true,
@@ -18855,6 +19141,14 @@
             },
             "put": {
                 "parameters": [
+                    {
+                        "in": "body",
+                        "name": "whitelabel",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/whitelabel"
+                        }
+                    },
                     {
                         "in": "header",
                         "name": "X-Auth-Token",
@@ -18878,6 +19172,14 @@
             "post": {
                 "parameters": [
                     {
+                        "in": "body",
+                        "name": "whitelabel",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/whitelabel"
+                        }
+                    },
+                    {
                         "in": "header",
                         "name": "X-Auth-Token",
                         "required": true,
@@ -18899,6 +19201,14 @@
             },
             "post": {
                 "parameters": [
+                    {
+                        "in": "body",
+                        "name": "whitelabel",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/whitelabel"
+                        }
+                    },
                     {
                         "in": "header",
                         "name": "X-Auth-Token",
@@ -18922,6 +19232,14 @@
             "post": {
                 "parameters": [
                     {
+                        "in": "body",
+                        "name": "whitelabel",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/whitelabel"
+                        }
+                    },
+                    {
                         "in": "header",
                         "name": "X-Auth-Token",
                         "required": true,
@@ -18943,6 +19261,14 @@
             },
             "post": {
                 "parameters": [
+                    {
+                        "in": "body",
+                        "name": "whitelabel",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/whitelabel"
+                        }
+                    },
                     {
                         "in": "header",
                         "name": "X-Auth-Token",
