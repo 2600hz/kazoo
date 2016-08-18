@@ -10,10 +10,12 @@
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 
 fix_project_deps() ->
+    Deps = process_project(),
+    io:format("processing app files "),
     [fix_app_deps(App, Missing, Unneeded)
-     || {App, Missing, Unneeded} <- process_project()
+     || {App, Missing, Unneeded} <- Deps
     ],
-    'ok'.
+    io:format(" done.~n").
 
 fix_app_deps(App) ->
     [fix_app_deps(App, Missing, Unneeded)
@@ -32,8 +34,10 @@ fix_app_deps(App, Missing, Unneeded) ->
                          ,Unneeded
                          )
     of
-        ConfiguredApps -> 'ok';
+        ConfiguredApps ->
+            io:format(".");
         UpdatedApps ->
+            io:format("x"),
             write_app_src(App
                          ,{'application'
                           ,App
