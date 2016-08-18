@@ -91,19 +91,16 @@ handle_ringback(Node, UUID, JObj) ->
             ecallmgr_fs_command:set(Node, UUID, [{<<"ringback">>, Stream}])
     end.
 
--spec maybe_issue_ring_ready(atom(), ne_binary(), #channel{}) -> 'ok' | 'skip'.
-maybe_issue_ring_ready(Node, UUID, #channel{is_loopback=IsLoopBack, loopback_leg_name=LoopBackLeg}) ->
+-spec maybe_issue_ring_ready(atom(), ne_binary(), channel()) -> 'ok'.
+maybe_issue_ring_ready(Node, UUID, #channel{is_loopback='true', loopback_leg_name = <<"B">>}) ->
     %% this is a hack to mitigate the absence of early media in freeswitch loopback
-    case (IsLoopBack and (LoopBackLeg == <<"B">>)) of
-        'true' ->
-            lager:debug("bridge is to loopback channel, starting local ringing"),
-            ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, ""),
-            'ok';
-        _Else ->
-            'skip'
-    end.
+    lager:debug("bridge is to loopback channel, starting local ringing"),
+    ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, ""),
+    'ok';
+maybe_issue_ring_ready(_Node, _UUID, _) ->
+    'ok'.
 
--spec maybe_early_media(atom(), ne_binary(), kz_json:object(), boolean()) -> 'ok'.
+-spec maybe_early_media(atom(), ne_binary(), kz_json:object(), channel()) -> 'ok'.
 maybe_early_media(Node, UUID, JObj, Channel) ->
     Endpoints = kz_json:get_ne_value(<<"Endpoints">>, JObj, []),
     Separator = ecallmgr_util:get_dial_separator(JObj, Endpoints),
