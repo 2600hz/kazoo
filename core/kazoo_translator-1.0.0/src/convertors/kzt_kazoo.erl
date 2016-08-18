@@ -50,6 +50,8 @@ req_params(Call) ->
        ,{<<"From-Realm">>, whapps_call:from_realm(Call)}
        ,{<<"To">>, whapps_call:to_user(Call)}
        ,{<<"To-Realm">>, whapps_call:to_realm(Call)}
+       ,{<<"Request">>, whapps_call:request_user(Call)}
+       ,{<<"Request-Realm">>, whapps_call:request_realm(Call)}
        ,{<<"Call-Status">>, kzt_util:get_call_status(Call)}
        ,{<<"Api-Version">>, <<"2015-03-01">>}
        ,{<<"Direction">>, <<"inbound">>}
