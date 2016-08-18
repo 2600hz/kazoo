@@ -7,7 +7,9 @@
         ,fix_app_deps/1
         ]).
 
--export([remote_calls/1]).
+-export([remote_calls/1
+        ,remote_apps/1
+        ]).
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 
@@ -90,6 +92,9 @@ process_app(App, Acc) ->
         {[], []} -> Acc;
         _ -> [{App, Missing, Unneeded} | Acc]
     end.
+
+remote_apps(App) ->
+    modules_with_apps(App, remote_calls(App)).
 
 remote_calls(App) ->
     lists:usort(
@@ -233,6 +238,14 @@ add_remote_module(M, Acc) ->
         'true' -> Acc;
         'false' -> [M | Acc]
     end.
+
+modules_with_apps(App, Modules) ->
+    lists:usort([{M, AppOf}
+                 || M <- Modules,
+                    (AppOf = app_of(M)) =/= 'undefined',
+                    AppOf =/= App
+                ]
+               ).
 
 modules_as_apps(App, Modules) ->
     lists:usort([AppOf
