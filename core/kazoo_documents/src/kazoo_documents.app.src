@@ -1,7 +1,7 @@
 {application,kazoo_documents,
              [{applications,[cowboy,erlang_localtime,kazoo,kazoo_apps,
                              kazoo_config,kazoo_data,kazoo_media,kazoo_modb,
-                             kazoo_services,kernel,lager,stdlib]},
+                             kazoo_services,lager,stdlib]},
               {description,"Kazoo Document helper modules"},
               {vsn,"4.0.0"},
               {modules,[]},

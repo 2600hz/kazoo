@@ -1,16 +1,7 @@
-{application, media_mgr,
- [
-  {description, "Media Manager - Stream media via Shout from Couch"}
- ,{vsn, "4.0.0"}
- ,{modules, []}
- ,{registered, [media_mgr_sup]}
- ,{applications, [ stdlib
-
-                 , kazoo
-                 , kazoo_media
-                 , kazoo_apps
-
-                 , lager
-                 ]}
- ,{mod, {media_mgr_app, []}}
- ]}.
+{application,media_mgr,
+             [{applications,[kazoo,kazoo_apps,kazoo_media,lager,stdlib]},
+              {description,"Media Manager - Stream media via Shout from Couch"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[media_mgr_sup]},
+              {mod,{media_mgr_app,[]}}]}.

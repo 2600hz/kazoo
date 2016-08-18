@@ -1,16 +1,6 @@
-{application, webseq,
- [ {description, "Web Sequence Diagram Builder"}
- , {vsn, "4.0.0"}
- , {modules, []}
- , {registered, [ ]}
- , {applications, [ kernel
-                  , stdlib
-
-                  , kazoo
-                  , kazoo_apps
-                  , kazoo_data
-
-                  , gproc
-                  , lager
-                  ]}
- ]}.
+{application,webseq,
+             [{applications,[gproc,kazoo,kazoo_apps,kazoo_data,lager,stdlib]},
+              {description,"Web Sequence Diagram Builder"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[]}]}.

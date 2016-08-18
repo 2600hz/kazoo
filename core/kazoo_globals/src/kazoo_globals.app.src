@@ -1,6 +1,6 @@
 {application,kazoo_globals,
              [{applications,[crypto,ecallmgr,kazoo,kazoo_amqp,kazoo_apps,
-                             kazoo_config,kernel,lager,stdlib]},
+                             kazoo_config,lager,stdlib]},
               {description,"Register processes across the cluster"},
               {id,[]},
               {vsn,"4.0.0"},

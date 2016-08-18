@@ -1,5 +1,5 @@
 {application,apns,
-             [{applications,[kazoo,kernel,ssl,stdlib]},
+             [{applications,[kazoo,ssl,stdlib]},
               {description,[]},
               {vsn,"1.0.2"},
               {modules,[]},

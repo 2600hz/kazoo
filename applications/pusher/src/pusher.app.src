@@ -1,24 +1,10 @@
-{application, pusher,
- [
-  {description, "pusher - wake the dead"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [pusher_cache, pm_google, pm_apple, pusher_sup, pusher_module_sup]},
-  {applications, [ kernel
-                 , public_key
-                 , stdlib
-
-
-                 , apns
-                 , gcm
-                 , kazoo
-                 , kazoo_amqp
-                 , kazoo_caches
-                 , kazoo_config
-                 , kazoo_data
-                 , kazoo_sip
-
-                 , lager
-                 ]},
-  {mod, {pusher_app, []}}
- ]}.
+{application,pusher,
+             [{applications,[apns,gcm,kazoo,kazoo_amqp,kazoo_caches,
+                             kazoo_config,kazoo_data,kazoo_sip,lager,
+                             public_key,stdlib]},
+              {description,"pusher - wake the dead"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[pusher_cache,pm_google,pm_apple,pusher_sup,
+                           pusher_module_sup]},
+              {mod,{pusher_app,[]}}]}.

@@ -1,19 +1,9 @@
-{application, registrar,
- [
-  {description, "Registrar For the Stars"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [registrar_cache, registrar_sup, registrar_shared_listener_sup]},
-  {applications, [ kernel
-                 , stdlib
-
-                 , kazoo
-                 , kazoo_apps
-                 , kazoo_config
-                 , kazoo_data
-                 , kazoo_documents
-
-                 , lager
-                 ]},
-  {mod, {registrar_app, []}}
- ]}.
+{application,registrar,
+             [{applications,[kazoo,kazoo_apps,kazoo_config,kazoo_data,
+                             kazoo_documents,lager,stdlib]},
+              {description,"Registrar For the Stars"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[registrar_cache,registrar_sup,
+                           registrar_shared_listener_sup]},
+              {mod,{registrar_app,[]}}]}.

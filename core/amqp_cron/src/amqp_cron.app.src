@@ -1,5 +1,5 @@
 {application,amqp_cron,
-             [{applications,[amqp_leader,kernel,stdlib]},
+             [{applications,[amqp_leader,stdlib]},
               {description,"scheduled tasks execution"},
               {vsn,"0.2.1"},
               {modules,[]},

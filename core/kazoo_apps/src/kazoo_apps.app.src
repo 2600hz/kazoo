@@ -3,7 +3,7 @@
                              kazoo_caches,kazoo_config,kazoo_data,
                              kazoo_documents,kazoo_ips,kazoo_media,kazoo_modb,
                              kazoo_number_manager,kazoo_oauth,kazoo_services,
-                             kazoo_web,kernel,lager,stdlib]},
+                             kazoo_web,lager,stdlib]},
               {description,"Applications on top of Kazoo"},
               {id,"9fd3b140-8727-11e0-9d78-0800200c9a66"},
               {vsn,"4.0.0"},

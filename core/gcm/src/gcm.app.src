@@ -1,5 +1,5 @@
 {application,gcm,
-             [{applications,[inets,kazoo,kernel,lager,stdlib]},
+             [{applications,[inets,kazoo,lager,stdlib]},
               {description,"An Erlang client for Google Cloud Messaging (GCM)"},
               {vsn,"1.0.0"},
               {modules,[]},

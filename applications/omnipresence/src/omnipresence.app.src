@@ -1,20 +1,13 @@
-{application, omnipresence,
- [
-  {description, "Omnipresence - Who's doing what when"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [omnipresence_cache, omnip_message_summary_sip, omnipresence_proxy, omnip_message_summary_amqp, omnipresence_shared_listener, omnip_subscriptions, omnip_sup, omnipresence_sup, omnip_dialog_sip, omnip_dialog_amqp, omnip_presence_amqp, omnip_presence_sip]},
-  {applications, [ crypto
-                 , stdlib
-
-                 , kazoo
-                 , kazoo_caches
-                 , kazoo_config
-                 , kazoo_sip
-                 , kazoo_apps
-                 , kazoo_amqp
-
-                 , lager
-                 ]},
-  {mod, {omnipresence_app, []}}
- ]}.
+{application,omnipresence,
+             [{applications,[crypto,kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
+                             kazoo_config,kazoo_sip,lager,stdlib]},
+              {description,"Omnipresence - Who's doing what when"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[omnipresence_cache,omnip_message_summary_sip,
+                           omnipresence_proxy,omnip_message_summary_amqp,
+                           omnipresence_shared_listener,omnip_subscriptions,
+                           omnip_sup,omnipresence_sup,omnip_dialog_sip,
+                           omnip_dialog_amqp,omnip_presence_amqp,
+                           omnip_presence_sip]},
+              {mod,{omnipresence_app,[]}}]}.

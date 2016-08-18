@@ -1,16 +1,7 @@
-{application, kazoo_token_buckets,
- [
-  {description, "Token Buckets - Throttling mechanism"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [kz_buckets, kazoo_token_buckets_sup, kz_buckets_sup]},
-  {applications, [ stdlib
-
-                 , kazoo
-                 , kazoo_etsmgr
-                 , kazoo_config
-
-                 , lager
-                 ]},
-  {mod, {kazoo_token_buckets_app, []}}
- ]}.
+{application,kazoo_token_buckets,
+             [{applications,[kazoo,kazoo_config,kazoo_etsmgr,lager,stdlib]},
+              {description,"Token Buckets - Throttling mechanism"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[kz_buckets,kazoo_token_buckets_sup,kz_buckets_sup]},
+              {mod,{kazoo_token_buckets_app,[]}}]}.

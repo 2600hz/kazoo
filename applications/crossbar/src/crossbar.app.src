@@ -9,7 +9,7 @@
                              kazoo_number_manager,kazoo_oauth,kazoo_perf,
                              kazoo_services,kazoo_tasks,kazoo_token_buckets,
                              kazoo_transactions,kazoo_voicemail,kazoo_web,
-                             kernel,lager,omnipresence,ssl,stdlib,tools]},
+                             lager,omnipresence,ssl,stdlib,tools]},
               {description,"Crossbar - REST Interface to the stars"},
               {vsn,"4.0.0"},
               {modules,[]},

@@ -1,17 +1,7 @@
-{application, kazoo_perf,
- [
-  {description, "Kazoo Peformance testing"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, []},
-  {applications, [ kernel
-                 , stdlib
-                 , runtime_tools
-
-                 , kazoo
-                 , kazoo_caches
-                 , kazoo_data
-
-                 , eflame
-                 ]}
- ]}.
+{application,kazoo_perf,
+             [{applications,[eflame,kazoo,kazoo_caches,kazoo_data,
+                             runtime_tools,stdlib]},
+              {description,"Kazoo Peformance testing"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[]}]}.

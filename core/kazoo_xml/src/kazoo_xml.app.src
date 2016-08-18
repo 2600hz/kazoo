@@ -1,10 +1,6 @@
-{application, kazoo_xml,
- [
-  {description, "Helpers for manipulating XML records"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [ ]},
-  {applications, [stdlib
-                 , kazoo
-                 ]}
- ]}.
+{application,kazoo_xml,
+             [{applications,[kazoo,stdlib]},
+              {description,"Helpers for manipulating XML records"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[]}]}.

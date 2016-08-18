@@ -1,13 +1,6 @@
-{application, kazoo_web, [
-                          {description, "Utility functions for HTTP / HTML manipulation"},
-                          {vsn, "4.0.0"},
-                          {modules, []},
-                          {registered, [ ]},
-                          {applications, [ inets
-                                         , stdlib
-
-                                         , kazoo
-
-                                         , lager
-                                         ]}
-                         ]}.
+{application,kazoo_web,
+             [{applications,[inets,kazoo,lager,stdlib]},
+              {description,"Utility functions for HTTP / HTML manipulation"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[]}]}.

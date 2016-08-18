@@ -4,7 +4,7 @@
                              kazoo_data,kazoo_documents,kazoo_endpoint,
                              kazoo_globals,kazoo_media,kazoo_number_manager,
                              kazoo_token_buckets,kazoo_voicemail,kazoo_web,
-                             kernel,lager,pivot,stdlib]},
+                             lager,pivot,stdlib]},
               {description,"Callflow - traversing through the tree..."},
               {vsn,"4.0.0"},
               {modules,[]},

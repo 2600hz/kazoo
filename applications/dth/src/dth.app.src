@@ -1,7 +1,6 @@
 {application,dth,
              [{applications,[detergent,kazoo,kazoo_amqp,kazoo_caches,
-                             kazoo_number_manager,kazoo_web,kernel,lager,
-                             stdlib]},
+                             kazoo_number_manager,kazoo_web,lager,stdlib]},
               {description,"DTH - Integration with DTH Billing System"},
               {vsn,"4.0.0"},
               {modules,[]},

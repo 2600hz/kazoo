@@ -2,7 +2,7 @@
              [{applications,[cowboy,kazoo,kazoo_amqp,kazoo_apps,
                              kazoo_bindings,kazoo_config,kazoo_data,
                              kazoo_documents,kazoo_modb,kazoo_token_buckets,
-                             kernel,lager,stdlib]},
+                             lager,stdlib]},
               {description,"blackhole - websocket"},
               {vsn,"4.0.0"},
               {modules,[]},

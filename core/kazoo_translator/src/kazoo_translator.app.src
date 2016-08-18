@@ -1,23 +1,9 @@
-{application, kazoo_translator,
- [
-  {description, "Bridging various call control formats to the 2600hz JSON APIs"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [ ]},
-  {applications, [ kernel
-                 , stdlib
-                 , xmerl
-
-                 , kazoo
-                 , kazoo_amqp
-                 , kazoo_apps
-                 , kazoo_config
-                 , kazoo_data
-                 , kazoo_documents
-                 , kazoo_endpoint
-                 , kazoo_number_manager
-                 , kazoo_xml
-
-                 , lager
-                 ]}
- ]}.
+{application,kazoo_translator,
+             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_config,
+                             kazoo_data,kazoo_documents,kazoo_endpoint,
+                             kazoo_number_manager,kazoo_xml,lager,stdlib,
+                             xmerl]},
+              {description,"Bridging various call control formats to the 2600hz JSON APIs"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[]}]}.

@@ -1,24 +1,10 @@
-{application, webhooks,
- [
-  {description, "Webhooks - Notify external HTTP endpoint(s) of events in Kazoo"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [webhooks_cache, webhooks_sup, webhooks_shared_listener]},
-  {applications, [ kernel
-                 , stdlib
-
-                 , kazoo
-                 , kazoo_amqp
-                 , kazoo_apps
-                 , kazoo_caches
-                 , kazoo_config
-                 , kazoo_data
-                 , kazoo_documents
-                 , kazoo_globals
-                 , kazoo_modb
-                 , kazoo_web
-
-                 , lager
-                 ]},
-  {mod, {webhooks_app, []}}
- ]}.
+{application,webhooks,
+             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
+                             kazoo_config,kazoo_data,kazoo_documents,
+                             kazoo_globals,kazoo_modb,kazoo_web,lager,stdlib]},
+              {description,"Webhooks - Notify external HTTP endpoint(s) of events in Kazoo"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[webhooks_cache,webhooks_sup,
+                           webhooks_shared_listener]},
+              {mod,{webhooks_app,[]}}]}.

@@ -1,15 +1,7 @@
-{application, kazoo_stats,
- [
-  {description, "Kazoo Stats - An application for statistics tracking and analytics"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [kazoo_stats_sup, kazoo_stats]},
-  {applications, [ stdlib
-
-                 , kazoo
-                 , kazoo_amqp
-
-                 , lager
-                 ]},
-  {mod, {kazoo_stats_app, []}}
- ]}.
+{application,kazoo_stats,
+             [{applications,[kazoo,kazoo_amqp,lager,stdlib]},
+              {description,"Kazoo Stats - An application for statistics tracking and analytics"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[kazoo_stats_sup,kazoo_stats]},
+              {mod,{kazoo_stats_app,[]}}]}.

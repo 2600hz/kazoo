@@ -1,14 +1,6 @@
-{application, kazoo_sip,
- [
-  {description, "Kazoo SIP Utilities"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [ ]},
-  {applications, [ stdlib
-
-                 , kazoo
-                 , kazoo_number_manager
-
-                 , nklib
-                 ]}
- ]}.
+{application,kazoo_sip,
+             [{applications,[kazoo,kazoo_number_manager,nklib,stdlib]},
+              {description,"Kazoo SIP Utilities"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[]}]}.

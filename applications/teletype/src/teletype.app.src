@@ -1,32 +1,11 @@
-{application, teletype,
- [
-  {description, "Teletype - Receive events and send them to interested parties"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [teletype_cache, teletype_sup]},
-  {applications, [ kernel
-                 , stdlib
-
-                 , kazoo
-                 , kazoo_amqp
-                 , kazoo_apps
-                 , kazoo_caches
-                 , kazoo_config
-                 , kazoo_data
-                 , kazoo_documents
-                 , kazoo_modb
-                 , kazoo_number_manager
-                 , kazoo_services
-                 , kazoo_transactions
-                 , kazoo_voicemail
-                 , kazoo_web
-
-                 , cowlib
-                 , erlydtl
-                 , gen_smtp
-                 , lager
-                 , poolboy
-
-                 ]},
-  {mod, {teletype_app, []}}
- ]}.
+{application,teletype,
+             [{applications,[cowlib,erlydtl,gen_smtp,kazoo,kazoo_amqp,
+                             kazoo_apps,kazoo_caches,kazoo_config,kazoo_data,
+                             kazoo_documents,kazoo_modb,kazoo_number_manager,
+                             kazoo_services,kazoo_transactions,
+                             kazoo_voicemail,kazoo_web,lager,poolboy,stdlib]},
+              {description,"Teletype - Receive events and send them to interested parties"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[teletype_cache,teletype_sup]},
+              {mod,{teletype_app,[]}}]}.

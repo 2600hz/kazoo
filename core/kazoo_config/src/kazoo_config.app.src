@@ -1,6 +1,6 @@
 {application,kazoo_config,
              [{applications,[kazoo,kazoo_apps,kazoo_caches,kazoo_data,
-                             kazoo_services,kernel,lager,stdlib,zucchini]},
+                             kazoo_services,lager,stdlib,zucchini]},
               {description,"Kazoo Configuration Helper"},
               {vsn,"4.0.0"},
               {modules,[]},

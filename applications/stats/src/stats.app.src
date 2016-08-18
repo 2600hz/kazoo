@@ -1,18 +1,7 @@
-{application, stats,
- [
-  {description, "Stats - Kazoo"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [stats_cache, stats_sup]},
-  {applications, [ kernel
-                 , snmp
-                 , stdlib
-
-                 , kazoo
-                 , kazoo_amqp
-                 , kazoo_caches
-
-                 , lager
-                 ]},
-  {mod, {stats_app, []}}
- ]}.
+{application,stats,
+             [{applications,[kazoo,kazoo_amqp,kazoo_caches,lager,snmp,stdlib]},
+              {description,"Stats - Kazoo"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[stats_cache,stats_sup]},
+              {mod,{stats_app,[]}}]}.

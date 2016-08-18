@@ -1,17 +1,7 @@
-{application, kazoo_transactions,
- [
-  {description, "Abstract transactions to be sent to bookkeepers for processing"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [ ]},
-  {applications, [ stdlib
-
-                 , kazoo
-                 , kazoo_data
-                 , kazoo_documents
-                 , kazoo_config
-                 , kazoo_modb
-
-                 , lager
-                 ]}
- ]}.
+{application,kazoo_transactions,
+             [{applications,[kazoo,kazoo_config,kazoo_data,kazoo_documents,
+                             kazoo_modb,lager,stdlib]},
+              {description,"Abstract transactions to be sent to bookkeepers for processing"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[]}]}.
