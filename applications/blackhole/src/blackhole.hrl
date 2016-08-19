@@ -11,7 +11,7 @@
 -define(APP_VERSION, <<"4.0.0">>).
 -define(BLACKHOLE_CONFIG_CAT, <<"blackhole">>).
 
--define(DEFAULT_MODULES, []]).
+-define(DEFAULT_MODULES, []).
 
 -define(VERSION_SUPPORTED, [<<"v1">>]).
 
