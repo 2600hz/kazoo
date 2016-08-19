@@ -401,9 +401,7 @@ send_request(JObj, Url) ->
     Headers = [{"Content-Type", "application/json"}
               ,{"User-Agent", kz_util:to_list(node())}
               ],
-
     Uri = kz_util:to_list(<<Url/binary, "/", (kz_doc:id(JObj))/binary>>),
-
     Remove = [?PVT_REV
              ,<<"ui_metadata">>
              ,<<"_attachments">>
@@ -419,7 +417,6 @@ send_request(JObj, Url) ->
               ,{?PVT_MODIFIED, <<"modified">>}
               ],
     Data = kz_json:encode(kz_json:normalize_jobj(JObj, Remove, Replace)),
-
     case kz_http:post(Uri, Headers, Data) of
         {'ok', 200, _Headers, _Resp} ->
             lager:debug("submitted_port_request successfully sent");
@@ -450,20 +447,16 @@ send_attachements(Url, JObj) ->
 fetch_and_send(Url, JObj) ->
     Id = kz_doc:id(JObj),
     Attachments = kz_doc:attachments(JObj, kz_json:new()),
-
-    kz_json:foldl(
-      fun(Key, Value, 'ok') ->
-              case kz_datamgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, Id, Key) of
-                  {'error', _R} ->
-                      lager:error("failed to fetch attachment ~s : ~p", [Key, _R]),
-                      throw('error');
-                  {'ok', Attachment} ->
-                      send_attachment(Url, Id, Key, Value, Attachment)
-              end
-      end
-                 ,'ok'
-                 ,Attachments
-     ).
+    F = fun(Key, Value, 'ok') ->
+                case kz_datamgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, Id, Key) of
+                    {'error', _R} ->
+                        lager:error("failed to fetch attachment ~s : ~p", [Key, _R]),
+                        throw('error');
+                    {'ok', Attachment} ->
+                        send_attachment(Url, Id, Key, Value, Attachment)
+                end
+        end,
+    kz_json:foldl(F, 'ok', Attachments).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -474,13 +467,10 @@ fetch_and_send(Url, JObj) ->
                              'error' | 'ok'.
 send_attachment(Url, Id, Name, Options, Attachment) ->
     ContentType = kz_json:get_value(<<"content_type">>, Options),
-
     Headers = [{"Content-Type", kz_util:to_list(ContentType)}
               ,{"User-Agent", kz_util:to_list(node())}
               ],
-
     Uri = kz_util:to_list(<<Url/binary, "/", Id/binary, "/", Name/binary>>),
-
     case kz_http:post(Uri, Headers, Attachment) of
         {'ok', 200, _Headers, _Resp} ->
             lager:debug("attachment ~s for submitted_port_request successfully sent", [Name]);
