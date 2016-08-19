@@ -1,0 +1,10 @@
+{application, kazoo_call,
+ [
+  {description, "Representing calls in Kazoo since 2011"}
+ ,{id, ""}
+ ,{vsn, "4.0.0"}
+ ,{modules, []}
+ ,{registered, []}
+ ,{applications, [stdlib]}
+ ,{env, []}
+ ]}.

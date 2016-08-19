@@ -3,7 +3,7 @@
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_api.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
--include_lib("kazoo_apps/src/kapps_call_command_types.hrl").
+-include_lib("kazoo_call/include/kapps_call_command_types.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
 -type cf_exe_response() :: {'stop'} |
