@@ -372,15 +372,15 @@ subscribe_notify(#omnip_subscription{event=Package
 
 -spec probe(subscription()) -> 'ok'.
 probe(#omnip_subscription{event=Package
-                                    ,user=User
-                                    }=Subscription) ->
+			 ,user=User
+			 }=Subscription) ->
     Msg = {'omnipresence', {'probe', Package, User, Subscription}},
     notify_packages(Msg).
 
 -spec maybe_probe(subscription()) -> 'ok'.
 maybe_probe(#omnip_subscription{event=Package
-                                    ,user=User
-                                    }=Subscription) ->
+			       ,user=User
+			       }=Subscription) ->
     case count_subscriptions(Package, User) > 1 of
         'true' -> 'ok';
         'false' -> probe(Subscription)
