@@ -113,6 +113,12 @@ handle_cast({'omnipresence',{'presence_reset', JObj}}, State) ->
     kz_util:put_callid(JObj),
     _ = kz_util:spawn(fun presence_reset/1, [JObj]),
     {'noreply', State};
+handle_cast({'omnipresence',{'probe', <<"dialog">> = Package, User,
+                             #omnip_subscription{call_id=CallId}=_Subscription
+                            }}, State) ->
+    kz_util:put_callid(CallId),
+    omnip_util:request_probe(Package, User),
+    {'noreply', State};
 handle_cast({'omnipresence', _}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
