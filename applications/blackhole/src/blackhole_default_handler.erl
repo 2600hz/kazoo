@@ -67,12 +67,17 @@ error_message(Error) when is_atom(Error) ->
     make_error_message(erlang:atom_to_binary(Error, utf8));
 error_message(Error) when is_binary(Error) ->
     make_error_message(Error);
+error_message({'badmatch', L})  ->
+    Term = erlang:list_to_binary(io_lib:format("~p", [L])),
+    make_error_message(<<"unmatched_parameter: ", Term/binary>>);
 error_message(Error) ->
     lager:error("unhandled error:~p", [Error]),
     make_error_message(<<"internal">>).
 
 -spec make_error_message(ne_binary()) -> kz_json:object().
 make_error_message(<<"not_authenticated">> = Error) ->
+    kz_json:encode(kz_json:from_list([{<<"error">>, Error}]));
+make_error_message(<<"unmatched_parameter", _/binary>> = Error) ->
     kz_json:encode(kz_json:from_list([{<<"error">>, Error}]));
 make_error_message(Error) ->
     lager:error("blackhole error:~p", [Error]),
