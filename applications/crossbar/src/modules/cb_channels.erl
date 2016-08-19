@@ -19,6 +19,8 @@
 
 -include("crossbar.hrl").
 
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".channels">>).
+
 -type endpoints_return() :: {kz_json:objects(), cb_context:context()}.
 
 %%%===================================================================
@@ -229,6 +231,9 @@ summary(Context) ->
         [{<<"channels">>, []}, {<<"accounts">>, [_AccountId]} | _] ->
             lager:debug("getting account summary"),
             account_summary(Context);
+        [{<<"channels">>,[]}] ->
+            lager:debug("getting system-wide summary"),
+            account_summary(Context);
         _Nouns ->
             lager:debug("unexpected nouns: ~p", [_Nouns]),
             crossbar_util:response_faulty_request(Context)
@@ -318,13 +323,14 @@ get_channels(Context, Devices, PublisherFun) ->
                         =/= 'undefined'
                 ],
 
-    Req = [{<<"Realm">>, Realm}
-          ,{<<"Usernames">>, lists:usort(Usernames)} % unique list of usernames
-          ,{<<"Account-ID">>, cb_context:account_id(Context)}
-          ,{<<"Active-Only">>, 'false'}
-          ,{<<"Msg-ID">>, cb_context:req_id(Context)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
+    Req = props:filter_undefined(
+            [{<<"Realm">>, Realm}
+            ,{<<"Usernames">>, lists:usort(Usernames)} % unique list of usernames
+            ,{<<"Account-ID">>, get_account_id(Context)}
+            ,{<<"Active-Only">>, 'false'}
+            ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ]),
 
     case kz_amqp_worker:call_collect(Req
                                     ,PublisherFun
@@ -508,3 +514,14 @@ maybe_intercept(Context, CallId, TargetType, TargetId) ->
     lager:debug("attempting to move ~s to ~s(~s)", [CallId, TargetId, TargetType]),
     kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
     crossbar_util:response_202(<<"intercept initiated">>, Context).
+
+-spec get_account_id(cb_context:context()) -> ne_binary().
+get_account_id(Context) ->
+    case cb_context:account_id(Context) of
+        'undefined' ->
+            case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"system_wide_channels_list">>, 'false') of
+                'true' ->  <<"all">>;
+                'false' -> 'undefined'
+            end;
+        AccountId -> AccountId
+    end.

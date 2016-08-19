@@ -659,6 +659,14 @@ find_by_user_realm(Username, Realm) ->
 -spec find_account_channels(ne_binary()) ->
                                    {'ok', kz_json:objects()} |
                                    {'error', 'not_found'}.
+find_account_channels(<<"all">>) ->
+    case ets:match_object(?CHANNELS_TBL, #channel{_='_'}) of
+        [] -> {'error', 'not_found'};
+        Channels ->
+            {'ok', [ecallmgr_fs_channel:to_json(Channel)
+                    || Channel <- Channels
+                   ]}
+    end;
 find_account_channels(AccountId) ->
     case ets:match_object(?CHANNELS_TBL, #channel{account_id=AccountId, _='_'}) of
         [] -> {'error', 'not_found'};

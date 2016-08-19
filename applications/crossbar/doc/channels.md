@@ -5,7 +5,21 @@
 
 The Channels API allows queries to find active channels for an account, a user, or a device. Given a call-id for a channel, a limited set of commands are allowed to be executed against that channel (such as hangup, transfer, or play media).
 
-#### Fetch active channels
+#### Fetch active channels system wide.
+
+For superduper admin only.
+Be sure to set system_config->crossbar.channels->system_wide_channels_list flag to 'true'. 
+
+> GET /v2/channels
+
+```shell
+curl -v -X GET \
+    -H "Content-Type: application/json" \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/channels
+```
+
+#### Fetch active channels for an account
 
 > GET /v2/accounts/{ACCOUNT_ID}/channels
 
