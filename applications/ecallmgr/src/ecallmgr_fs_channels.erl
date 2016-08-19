@@ -275,10 +275,7 @@ send_user_query_resp(JObj, Cs) ->
 
 -spec handle_query_account_channels(kz_json:object(), ne_binary()) -> 'ok'.
 handle_query_account_channels(JObj, _) ->
-    AccountId = case kz_json:get_value(<<"Account-ID">>, JObj) of
-                    <<"all">> -> '_';
-                    Value -> Value
-                end,
+    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     case find_account_channels(AccountId) of
         {'error', 'not_found'} -> send_account_query_resp(JObj, []);
         {'ok', Cs} -> send_account_query_resp(JObj, Cs)
@@ -662,6 +659,14 @@ find_by_user_realm(Username, Realm) ->
 -spec find_account_channels(ne_binary()) ->
                                    {'ok', kz_json:objects()} |
                                    {'error', 'not_found'}.
+find_account_channels(<<"all">>) ->
+    case ets:match_object(?CHANNELS_TBL, #channel{_='_'}) of
+        [] -> {'error', 'not_found'};
+        Channels ->
+            {'ok', [ecallmgr_fs_channel:to_json(Channel)
+                    || Channel <- Channels
+                   ]}
+    end;
 find_account_channels(AccountId) ->
     case ets:match_object(?CHANNELS_TBL, #channel{account_id=AccountId, _='_'}) of
         [] -> {'error', 'not_found'};
