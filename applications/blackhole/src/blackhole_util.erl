@@ -7,9 +7,9 @@
 %%% James Aimonetti
 %%% Peter Defebvre
 %%% Ben Wann
+%%% Roman Galeev
 %%%-------------------------------------------------------------------
 -module(blackhole_util).
-
 -include("blackhole.hrl").
 
 -export([get_callback_module/1]).

@@ -6,9 +6,7 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(blackhole_app).
-
 -behaviour(application).
-
 -include_lib("kazoo/include/kz_types.hrl").
 
 -export([start/2, stop/1]).

@@ -20,6 +20,7 @@
 %%%   Ben Wann
 %%%-------------------------------------------------------------------
 -module(blackhole_bindings).
+-include("blackhole.hrl").
 
 %% API
 -export([bind/3,bind/4
@@ -38,8 +39,6 @@
         ,succeeded/1
         ,failed/1
         ]).
-
--include("blackhole.hrl").
 
 -type payload() :: bh_context:context() | ne_binary().
 

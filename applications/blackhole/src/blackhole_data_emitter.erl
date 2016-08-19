@@ -5,9 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
-
 -module(blackhole_data_emitter).
-
 -include("blackhole.hrl").
 
 -export([emit/3, msg/2]).

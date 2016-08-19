@@ -8,6 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(blackhole_auth).
 -include("blackhole.hrl").
+
 -export([authenticate/3]).
 
 -spec authenticate(ne_binary(), kz_json:object(), bh_context:context()) -> #bh_context{}.

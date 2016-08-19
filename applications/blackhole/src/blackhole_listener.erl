@@ -7,22 +7,15 @@
 %%%-------------------------------------------------------------------
 -module(blackhole_listener).
 -behaviour(gen_listener).
+-include("blackhole.hrl").
 
 -export([start_link/0
         ,handle_amqp_event/3
         ,add_call_binding/1, add_call_binding/2, remove_call_binding/1, remove_call_binding/2
         ,add_binding/2, remove_binding/2
         ]).
--export([init/1
-        ,handle_call/3
-        ,handle_cast/2
-        ,handle_info/2
-        ,handle_event/2
-        ,terminate/2
-        ,code_change/3
-        ]).
 
--include("blackhole.hrl").
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2, terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
 

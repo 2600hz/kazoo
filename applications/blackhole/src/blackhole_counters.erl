@@ -6,7 +6,6 @@
 %%% @contributors
 %%% Roman Galeev
 %%%-------------------------------------------------------------------
-
 -module(blackhole_counters).
 -behaviour(gen_server).
 

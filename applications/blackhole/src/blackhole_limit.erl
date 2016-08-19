@@ -1,3 +1,11 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2012-2016, 2600Hz
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%   Roman Galeev
+%%%-------------------------------------------------------------------
 -module(blackhole_limit).
 -include("blackhole.hrl").
 -behaviour(gen_server).

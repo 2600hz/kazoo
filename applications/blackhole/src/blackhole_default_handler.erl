@@ -7,6 +7,7 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(blackhole_default_handler).
+-include("blackhole.hrl").
 
 -export([
          init/3,
@@ -16,7 +17,7 @@
          websocket_terminate/3
         ]).
 
--include("blackhole.hrl").
+
 
 init({_Any, 'http'}, _Req0, _HandlerOpts) ->
     {'upgrade', 'protocol', 'cowboy_websocket'}.

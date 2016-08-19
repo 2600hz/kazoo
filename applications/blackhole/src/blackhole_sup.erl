@@ -10,13 +10,10 @@
 %%% Ben Wann
 %%%-------------------------------------------------------------------
 -module(blackhole_sup).
-
+-include("blackhole.hrl").
 -behaviour(supervisor).
 
--export([start_link/0]).
--export([init/1]).
-
--include("blackhole.hrl").
+-export([start_link/0, init/1]).
 
 -define(SERVER, ?MODULE).
 
