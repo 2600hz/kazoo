@@ -155,7 +155,7 @@ init([]) ->
     Tab = ets:new(?SERVER, ['set'
                            ,'protected'
                            ,'named_table'
-                           ,{'keypos', #bh_context.websocket_session_id}
+                           ,{'keypos', #bh_context.req_id}
                            ]),
     {'ok', Tab}.
 
@@ -174,8 +174,8 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
-handle_call({'get_sockets', AccountId}, _From, State) ->
-    Pattern = #bh_context{account_id=AccountId, _='_'},
+handle_call({'get_sockets', AuthAccountId}, _From, State) ->
+    Pattern = #bh_context{auth_account_id=AuthAccountId, _='_'},
     Result =
         case ets:match_object(State, Pattern) of
             [] -> {'error', 'not_found'};
@@ -183,7 +183,7 @@ handle_call({'get_sockets', AccountId}, _From, State) ->
         end,
     {'reply', Result, State};
 handle_call({'get_socket', Id}, _From, State) ->
-    Pattern = #bh_context{websocket_session_id=Id, _='_'},
+    Pattern = #bh_context{req_id=Id, _='_'},
     Result =
         case ets:match_object(State, Pattern) of
             [] -> {'error', 'not_found'};

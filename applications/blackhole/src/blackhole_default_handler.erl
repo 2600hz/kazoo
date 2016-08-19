@@ -25,40 +25,43 @@ websocket_init(_Type, Req, _Opts) ->
     try
         {Peer, _}  = cowboy_req:peer(Req),
         {RemIp, _} = Peer,
-        {'ok', State} = blackhole_socket_callback:open(RemIp),
-        {'ok', Req, State}
+        {'ok', Context} = blackhole_socket_callback:open(RemIp),
+        blackhole_tracking:add_socket(Context),
+        {'ok', Req, Context}
     catch
         _:Error ->
             lager:error("error init websocket:~p", [Error]),
             {'shutdown', Req}
     end.
 
-websocket_handle({'text', Data}, Req, State) ->
+websocket_handle({'text', Data}, Req, Context) ->
     try
         JObj = kz_json:decode(Data),
-        NewState = #bh_context{} = blackhole_socket_callback:recv(JObj, State),
-        {'ok', Req, NewState}
+        NewContext = #bh_context{} = blackhole_socket_callback:recv(JObj, Context),
+        blackhole_tracking:update_socket(Context),
+        {'ok', Req, NewContext}
     catch
         _:Error ->
-            {reply, {'text', error_message(Error)}, Req, State}
+            {reply, {'text', error_message(Error)}, Req, Context}
     end.
 
-websocket_info({'$gen_cast', _}, Req, State) ->
-    {'ok', Req, State};
+websocket_info({'$gen_cast', _}, Req, Context) ->
+    {'ok', Req, Context};
 
-websocket_info({'send_event', Event, Data}, Req, State) ->
+websocket_info({'send_event', Event, Data}, Req, Context) ->
     Msg = kz_json:set_value(<<"routing_key">>, Event, Data),
-    {'reply', {'text', kz_json:encode(Msg)}, Req, State};
+    {'reply', {'text', kz_json:encode(Msg)}, Req, Context};
 
-websocket_info({'send_message', Msg}, Req, State) ->
-    {'reply', {'text', kz_json:encode(Msg)}, Req, State};
+websocket_info({'send_message', Msg}, Req, Context) ->
+    {'reply', {'text', kz_json:encode(Msg)}, Req, Context};
 
-websocket_info(Info, Req, State) ->
+websocket_info(Info, Req, Context) ->
     lager:info("unhandled websocket info: ~p", [Info]),
-    {'ok', Req, State}.
+    {'ok', Req, Context}.
 
-websocket_terminate(_Reason, _Req, State) ->
-    blackhole_socket_callback:close(State).
+websocket_terminate(_Reason, _Req, Context) ->
+    blackhole_tracking:remove_socket(Context),
+    blackhole_socket_callback:close(Context).
 
 -spec error_message(binary() | atom()) -> binary().
 error_message(Error) when is_atom(Error) ->
