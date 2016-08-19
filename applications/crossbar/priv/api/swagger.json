@@ -17021,7 +17021,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/registrations/{ID}": {
+        "/accounts/{ACCOUNT_ID}/registrations/{USERNAME}": {
             "delete": {
                 "parameters": [
                     {
