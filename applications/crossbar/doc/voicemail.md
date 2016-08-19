@@ -111,6 +111,57 @@ curl -v -X PUT \
 }
 ```
 
+#### list all voicemail messages on an account
+
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/messages
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages?paginate=true
+```
+
+##### Response
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "0e820108c0f4ca391500f3be1b02bdfa": {
+                "timestamp": 63630058722,
+                "from": "1001@aeac33.sip.2600hz.com",
+                "to": "1000@aeac33.sip.2600hz.com",
+                "caller_id_number": "1001",
+                "caller_id_name": "userb userb",
+                "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
+                "folder": "new",
+                "length": 3140,
+                "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba"
+            }
+        },
+        {
+            "0e820108c0f4ca391500f3be1b02bdfa": {
+                "timestamp": 63630058413,
+                "from": "1002@aeac33.sip.2600hz.com",
+                "to": "1000@aeac33.sip.2600hz.com",
+                "caller_id_number": "1002",
+                "caller_id_name": "userd userd",
+                "call_id": "79959MmNiMmJiMTIxODhjZjk0ZDhmOGNkMjJkN2MwNGQyNWY",
+                "folder": "new",
+                "length": 5500,
+                "media_id": "201605-f0c3c16551a5ff7b5753a381892e2e01"
+            }
+        }
+    ],
+    "next_start_key": [],
+    "page_size": 50,
+    "revision": "{REVERSION}",
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```
+
 #### Remove a voicemail box
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}

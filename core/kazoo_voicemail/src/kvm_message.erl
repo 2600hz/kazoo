@@ -100,11 +100,10 @@ fetch(AccountId, MediaId, BoxId) ->
     case kvm_util:open_accountdb_doc(AccountId, MediaId, ?PVT_LEGACY_TYPE) of
         {'ok', MediaJObj} ->
             SourceId = kzd_box_message:source_id(MediaJObj),
-            case kvm_util:check_msg_belonging(BoxId, MediaJObj)
-                andalso kvm_messages:get_from_vmbox(AccountId, SourceId) of
-                {'ok', VMBoxMsgs} ->
+            case kvm_util:check_msg_belonging(BoxId, MediaJObj) of
+                'true' ->
+                    VMBoxMsgs = kvm_messages:get_from_vmbox(AccountId, SourceId),
                     merge_metadata(MediaId, MediaJObj, VMBoxMsgs);
-                {'error', _}  = Error -> Error;
                 'false' -> {'error', 'not_found'}
             end;
         {'error', _R}=E ->

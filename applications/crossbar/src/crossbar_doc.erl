@@ -451,7 +451,7 @@ load_view(#load_view_params{view=View
     lager:debug("kz_datamgr:get_results(~p, ~p, ~p)", [Db, View, ViewOptions]),
 
     case kz_datamgr:get_results(Db, View, ViewOptions) of
-                                                % There were more dbs, so move to the next one
+        %% There were more dbs, so move to the next one
         {'error', 'not_found'} when Dbs =:= [] ->
             lager:debug("either the db ~s or view ~s was not found", [Db, View]),
             crossbar_util:response_missing_view(Context);

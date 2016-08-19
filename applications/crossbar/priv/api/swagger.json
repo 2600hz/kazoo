@@ -18424,6 +18424,24 @@
                 }
             }
         },
+        "/accounts/{ACCOUNT_ID}/vmboxes/messages": {
+            "get": {
+                "description": "Listing of all messages on an account",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A list of messages"
+                    }
+                }
+            }
+        },
         "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}": {
             "delete": {
                 "description": "Deletes the voicemail box from the account",

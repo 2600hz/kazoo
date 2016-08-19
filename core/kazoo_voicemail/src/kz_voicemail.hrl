@@ -33,6 +33,8 @@
 -type db_ret() :: 'ok' | {'ok', kz_json:object() | kz_json:objects()} | {'error', any()}.
 -type vm_folder() :: ne_binary() | {ne_binary(), boolean()}.
 
+-type count_result() :: {non_neg_integer(), non_neg_integer()}.
+
 -define(CHANGE_VMBOX_FUNS(AccountId, NewBoxId, NBoxJ, OldBoxId)
        ,[fun(DocJ) -> kzd_box_message:set_source_id(NewBoxId, DocJ) end
         ,fun(DocJ) -> kzd_box_message:apply_folder(?VM_FOLDER_NEW, DocJ) end

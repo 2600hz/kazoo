@@ -64,6 +64,8 @@ init() ->
 -spec allowed_methods(path_token(), path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+allowed_methods(?MESSAGES_RESOURCE) ->
+    [?HTTP_GET];
 allowed_methods(_VMBoxID) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE) ->
@@ -135,6 +137,8 @@ validate_vmboxes(Context, ?HTTP_GET) ->
 validate_vmboxes(Context, ?HTTP_PUT) ->
     validate_request('undefined', Context).
 
+validate(Context, ?MESSAGES_RESOURCE) ->
+    validate_messages(Context, 'undefined', cb_context:req_verb(Context));
 validate(Context, DocId) ->
     validate_vmbox(Context, DocId, cb_context:req_verb(Context)).
 
@@ -302,7 +306,7 @@ validate_message(Context, DocId, MediaId, ?HTTP_DELETE) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_messages(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+-spec validate_messages(cb_context:context(), api_binary(), http_method()) -> cb_context:context().
 validate_messages(Context, DocId, ?HTTP_GET) ->
     load_message_summary(DocId, Context);
 validate_messages(Context, DocId, ?HTTP_POST) ->
@@ -408,12 +412,8 @@ validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
     case check_uniqueness(VMBoxId, Context) of
         'true' -> check_vmbox_schema(VMBoxId, Context);
         'false' ->
-            C = cb_context:add_validation_error(
-                  <<"mailbox">>
-                                               ,<<"unique">>
-                                               ,kz_json:from_list([{<<"message">>, <<"Invalid mailbox number or already exists">>}])
-                                               ,Context
-                 ),
+            Msg = kz_json:from_list([{<<"message">>, <<"Invalid mailbox number or already exists">>}]),
+            C = cb_context:add_validation_error(<<"mailbox">>, <<"unique">>, Msg, Context),
             check_vmbox_schema(VMBoxId, C)
     end.
 
@@ -484,7 +484,7 @@ validate_patch(Context, DocId)->
 -spec load_vmbox_summary(cb_context:context()) -> cb_context:context().
 load_vmbox_summary(Context) ->
     Context1 = crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2),
-    MODBSummary = kvm_messages:count_by_modb(cb_context:account_id(Context)),
+    MODBSummary = kvm_messages:count_from_modb(cb_context:account_id(Context)),
     RspData = merge_summary_results(cb_context:doc(Context1), MODBSummary),
     cb_context:set_resp_data(cb_context:set_doc(Context1, RspData), RspData).
 
@@ -495,20 +495,21 @@ normalize_view_results(JObj, Acc) ->
 -spec merge_summary_results(kz_json:objects(), kz_json:objects()) -> kz_json:objects().
 merge_summary_results(BoxSummary, MODBSummary) ->
     MergeFun = fun(JObj, Acc) ->
-		       [merge_summary_fold(JObj, MODBSummary) | Acc]
+                       [merge_summary_fold(JObj, MODBSummary) | Acc]
                end,
     lists:foldl(MergeFun, [], BoxSummary).
 
--spec merge_summary_fold(kz_json:object(), kz_json:objects()) -> kz_json:object().
+-spec merge_summary_fold(kz_json:object(), kz_json:object()) -> kz_json:object().
 merge_summary_fold(JObj, MODBSummary) ->
     BoxId = kz_json:get_value(<<"id">>, JObj),
-    case kz_json:find_value(<<"key">>, BoxId, MODBSummary) of
+    case kz_json:get_value(BoxId, MODBSummary) of
         'undefined' ->
             JObj;
         J ->
             BCount = kz_json:get_integer_value(?VM_KEY_MESSAGES, JObj, 0),
-            MCount = kz_json:get_integer_value(<<"value">>, J, 0),
-            kz_json:set_value(?VM_KEY_MESSAGES, BCount + MCount, JObj)
+            New = kz_json:get_integer_value(?VM_FOLDER_NEW, J, 0),
+            Saved = kz_json:get_integer_value(?VM_FOLDER_SAVED, J, 0),
+            kz_json:set_value(?VM_KEY_MESSAGES, BCount + New + Saved, JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -540,11 +541,84 @@ load_vmbox(DocId, Context) ->
 %% Get messages summary for a given mailbox
 %% @end
 %%--------------------------------------------------------------------
--spec load_message_summary(ne_binary(), cb_context:context()) -> cb_context:context().
-load_message_summary(DocId, Context) ->
-    Messages = kvm_messages:get(cb_context:account_id(Context), DocId),
-    Filtered = maybe_filter_docs_by_qs(Messages, Context),
-    crossbar_util:response(Filtered, cb_context:set_resp_status(Context, 'success')).
+-spec load_message_summary(api_binary(), cb_context:context()) -> cb_context:context().
+load_message_summary(BoxId, Context) ->
+    case normalize_view_options(Context, BoxId) of
+        {'ok', ViewOptions} ->
+            NormlizeFun = case BoxId of
+                              'undefined' ->
+                                  fun normalize_account_view_results/2;
+                              _ ->
+                                  fun normalize_view_results/2
+                          end,
+            crossbar_doc:load_view(<<"mailbox_messages/listing_by_mailbox">>
+                                  ,ViewOptions
+                                  ,cb_context:set_resp_status(Context, 'success')
+                                  ,NormlizeFun
+                                  );
+        Ctx -> Ctx
+    end.
+
+-spec normalize_account_view_results(kz_json:object(), kz_json:objects()) ->
+                                            kz_json:objects().
+normalize_account_view_results(JObj, Acc) ->
+    [kz_json:from_list([{kz_json:get_value([<<"key">>, 1], JObj)
+                        ,kz_json:get_value(<<"value">>, JObj)
+                        }
+                       ])
+     | Acc
+    ].
+
+-spec normalize_view_options(cb_context:context(), api_binary()) ->
+                                    {'ok', crossbar_doc:view_options()} |
+                                    cb_context:context().
+normalize_view_options(Context, 'undefined') ->
+    C1 = check_created_from(Context),
+    case cb_context:resp_status(C1) == 'success'
+        andalso cb_modules_util:range_view_options(C1) of
+        {CreatedFrom, CreatedTo} ->
+            MODBs = kazoo_modb:get_range(cb_context:account_id(Context), CreatedFrom, CreatedTo),
+            Databases = lists:reverse([cb_context:account_db(Context)
+                                       | MODBs
+                                      ]),
+            {'ok', [{'databases', Databases}]};
+        'false' -> C1;
+        Ctx -> Ctx
+    end;
+normalize_view_options(Context, BoxId) ->
+    C1 = check_created_from(Context),
+    case cb_context:resp_status(C1) == 'success'
+        andalso cb_modules_util:range_modb_view_options(C1, [BoxId], 'undefined') of
+        {'ok', MODBViewOptions} ->
+            Databases = lists:reverse([cb_context:account_db(Context)
+                                       | props:get_value('databases', MODBViewOptions)
+                                      ]),
+            {'ok', props:set_value('databases', Databases, MODBViewOptions)};
+        'false' -> C1;
+        Ctx -> Ctx
+    end.
+
+-spec check_created_from(cb_context:context()) -> cb_context:context().
+check_created_from(Context) ->
+    RetentionDays = kvm_util:retention_days(),
+    MaxFrom = kz_util:current_tstamp() - RetentionDays,
+    case kz_util:to_integer(cb_context:req_value(Context, <<"created_from">>, MaxFrom)) of
+        N when N < MaxFrom ->
+            Message = <<"created_from is more than "
+                        ,(kz_util:to_binary(RetentionDays))/binary
+                        ," seconds of voicemail messages retention duration"
+                      >>,
+            cb_context:add_validation_error(<<"created_from">>
+                                           ,<<"date_range">>
+                                           ,kz_json:from_list(
+                                              [{<<"message">>, Message}
+                                              ,{<<"cause">>, N}
+                                              ])
+                                           ,Context
+                                           );
+        _N ->
+            cb_context:set_resp_status(Context, 'success')
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -686,13 +760,6 @@ update_message_folder(BoxId, MediaId, Context, DefaultFolder) ->
         {'error', Error} ->
             crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)
     end.
-
--spec maybe_filter_docs_by_qs(kz_json:objects(), cb_context:context()) -> kz_json:objects().
-maybe_filter_docs_by_qs(JObjs, Context) ->
-    [J
-     || J <- JObjs
-	    ,should_filter_by_qs(J, crossbar_doc:has_qs_filter(Context), Context)
-    ].
 
 -spec should_filter_by_qs(kz_json:object(), boolean(), cb_context:context()) -> boolean().
 should_filter_by_qs(_, 'false', _) -> 'true';
