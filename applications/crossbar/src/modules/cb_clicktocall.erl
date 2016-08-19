@@ -223,9 +223,13 @@ load_c2c(C2CId, Context) ->
     crossbar_doc:load(C2CId, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)).
 
 -spec load_c2c_history(ne_binary(), cb_context:context()) -> cb_context:context().
-load_c2c_history(_C2CId, Context) ->
+load_c2c_history(C2CId, Context) ->
+    Options = ['include_docs'
+              ,{'startkey', [C2CId]}
+              ,{'endkey', [C2CId, kz_json:new()]}
+              ],
     crossbar_doc:load_view(?HISTORY_LIST
-                          ,['include_docs']
+                          ,Options
                           ,cb_context:set_account_db(Context, cb_context:account_modb(Context))
                           ,fun normalize_history_results/2
                           ).
