@@ -111,7 +111,7 @@ get(DID=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_active_ports(ne_binary()) -> {'ok', kz_json:object()} |
+-spec account_active_ports(ne_binary()) -> {'ok', kz_json:objects()} |
                                            {'error', 'not_found'}.
 account_active_ports(AccountId) ->
     ViewOptions = [{'key', AccountId}

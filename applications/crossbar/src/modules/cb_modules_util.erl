@@ -579,14 +579,39 @@ remove_plaintext_password(Context) ->
                              ),
     cb_context:set_doc(Context, Doc).
 
--type assignment_updates() :: [{ne_binary(), knm_number:knm_number_return()}].
+-type assignment_update() :: {ne_binary(), knm_number:knm_number_return()}.
+-type assignment_updates() :: [assignment_update()].
 
 -spec apply_assignment_updates([{ne_binary(), api_binary()}]) ->
                                       assignment_updates().
 apply_assignment_updates(Updates) ->
-    [{DID, knm_number:assign_to_app(DID, Assign)}
+    [maybe_assign_to_port_number(DID, Assign)
      || {DID, Assign} <- Updates
     ].
+
+-spec maybe_assign_to_port_number(ne_binary(), api_binary()) ->
+                                         assignment_update().
+maybe_assign_to_port_number(DID, Assign) ->
+    Num = knm_converters:normalize(DID),
+    case knm_port_request:get(Num) of
+        {'error', _} ->
+            {DID, knm_number:assign_to_app(DID, Assign)};
+        {'ok', JObj} ->
+            NewPortJObj = update_port_request(Num, Assign, JObj),
+            {DID, kz_datamgr:save_doc(?KZ_PORT_REQUESTS_DB, NewPortJObj)}
+    end.
+
+-spec update_port_request(ne_binary(), api_binary(), kz_json:object()) ->
+                                 kz_json:object().
+update_port_request(Number, 'undefined', JObj) ->
+    Meta = kz_json:get_value([<<"numbers">>, Number], JObj, kz_json:new()),
+    kz_json:set_value([<<"numbers">>, Number]
+                     ,kz_json:delete_key(<<"used_by">>, Meta)
+                     ,JObj);
+update_port_request(Number, Assign, JObj) ->
+    Meta = kz_json:get_value([<<"numbers">>, Number], JObj, kz_json:new()),
+    AssignJObj = kz_json:set_value(<<"used_by">>, Assign, Meta),
+    kz_json:set_value([<<"numbers">>, Number], AssignJObj, JObj).
 
 -spec log_assignment_updates(assignment_updates()) -> 'ok'.
 log_assignment_updates(Updates) ->

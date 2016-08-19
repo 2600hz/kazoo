@@ -432,13 +432,52 @@ summary(Context) ->
 view_account_phone_numbers(Context) ->
     Context1 = crossbar_doc:load_view(?CB_LIST, [], rename_qs_filters(Context), fun normalize_view_results/2),
     ListOfNumProps = cb_context:resp_data(Context1),
-    NumbersJObj = lists:foldl(fun kz_json:merge_jobjs/2, kz_json:new(), ListOfNumProps),
+    PortNumberJObj = get_port_request_numbers(Context),
+    NumbersJObj = lists:foldl(fun kz_json:merge_jobjs/2, PortNumberJObj, ListOfNumProps),
     Service = kz_services:fetch(cb_context:account_id(Context)),
     Quantity = kz_services:cascade_category_quantity(<<"phone_numbers">>, [], Service),
     NewRespData = kz_json:from_list([{<<"numbers">>, NumbersJObj}
                                     ,{<<"casquade_quantity">>, Quantity}
                                     ]),
     cb_context:set_resp_data(Context1, NewRespData).
+
+%% @private
+-spec get_port_request_numbers(cb_context:context()) -> kz_json:object().
+get_port_request_numbers(Context) ->
+    AccountId = cb_context:account_id(Context),
+    case knm_port_request:account_active_ports(AccountId) of
+        {'error', _} -> kz_json:new();
+        {'ok', Ports} ->
+            PortNumberList = [create_port_number_object(P, Context) || P <- Ports],
+            lists:foldl(fun kz_json:merge_jobjs/2, kz_json:new(), PortNumberList)
+    end.
+
+%% @private
+-spec create_port_number_object(kz_json:object(), cb_context:context()) ->
+                                       kz_json:object().
+create_port_number_object(Port, Context) ->
+    AccountId = cb_context:account_id(Context),
+    Numbers = kz_json:get_value(<<"numbers">>, Port, kz_json:new()),
+    Fun = fun(N, Meta) -> port_number_object(AccountId, Port, N, Meta) end,
+    kz_json:map(Fun, Numbers).
+
+-spec port_number_object(ne_binary(), kz_json:object(), ne_binary(), kz_json:object()) ->
+                                {ne_binary(), kz_json:object()}.
+port_number_object(AccountId, Port, Number, JObj) ->
+    Meta = kz_json:from_list(
+             props:filter_undefined(
+               [{<<"state">>, <<"in_service">>}
+               ,{<<"features">>, []}
+               ,{<<"assign_to">>, AccountId}
+               ,{<<"used_by">>, kz_json:get_value(<<"used_by">>, JObj)}
+               ,{<<"created">>, kz_doc:created(Port)}
+               ,{<<"updated">>, kz_doc:modified(Port)}
+               ,{<<"port_id">>, kz_doc:id(Port)}
+               ,{<<"port_state">>
+                ,kz_json:get_value(<<"pvt_port_state">>, Port, <<"submitted">>)
+                }
+               ])),
+    {knm_converters:normalize(Number), Meta}.
 
 %% @private
 -spec rename_qs_filters(cb_context:context()) -> cb_context:context().
