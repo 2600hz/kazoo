@@ -24,6 +24,7 @@
 -define(CHILDREN, [?WORKER('blackhole_listener')
                   ,?WORKER('blackhole_tracking')
                   ,?WORKER('blackhole_limit')
+                  ,?WORKER('blackhole_counters')
                   ]).
 
 %% ===================================================================

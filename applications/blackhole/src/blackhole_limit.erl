@@ -46,13 +46,13 @@ handle_call({'message', Pid}, _From, S=#state{buckets=Buckets}) ->
         end,
     {reply, kz_token_bucket:consume(Bucket, 1), S#state{buckets=Buckets#{ Pid => Bucket }}};
 handle_call({'release', #bh_context{source=SrcIp, auth_account_id=AuthAccountId, websocket_pid=Pid}}, _From, S=#state{buckets=Buckets}) ->
-    kz_counters:dec({?APP_NAME, 'source_ip', SrcIp}),
-    kz_counters:dec({?APP_NAME, 'account', AuthAccountId}),
+    blackhole_counters:dec({?APP_NAME, 'source_ip', SrcIp}),
+    blackhole_counters:dec({?APP_NAME, 'account', AuthAccountId}),
     {'reply', 'ok', S#state{buckets=maps:remove(Pid, Buckets)}};
 handle_call({'ip', Ip}, _From, #state{connections_per_source_ip=Limit} = S) ->
-    {'reply', kz_counters:inc({?APP_NAME, 'source_ip', Ip}) < Limit, S};
+    {'reply', blackhole_counters:inc({?APP_NAME, 'source_ip', Ip}) < Limit, S};
 handle_call({'account', AccountId}, _From, #state{connections_per_source_ip=Limit} = S) ->
-    {'reply', kz_counters:inc({?APP_NAME, 'account', AccountId}) < Limit, S};
+    {'reply', blackhole_counters:inc({?APP_NAME, 'account', AccountId}) < Limit, S};
 handle_call(_Request, _From, S=#state{}) -> {'reply', 'ok', S}.
 
 handle_cast({'reload'}, S=#state{}) ->

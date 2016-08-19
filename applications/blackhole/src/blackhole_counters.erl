@@ -7,11 +7,11 @@
 %%% Roman Galeev
 %%%-------------------------------------------------------------------
 
--module(kz_counters).
+-module(blackhole_counters).
 -behaviour(gen_server).
 
 %% api
--export([start/0, inc/1, dec/1, get/1]).
+-export([start_link/0, stop/0, inc/1, dec/1, get/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -26,7 +26,8 @@
 -spec dec(binary()) -> integer().
 -spec get(binary()) -> integer().
 
-start() -> gen_server:start({local, ?MODULE}, ?MODULE, [], []).
+start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+stop() -> gen_server:cast(?MODULE, {'stop'}).
 inc(Key) -> gen_server:call(?MODULE, {'inc', Key}).
 dec(Key) -> gen_server:call(?MODULE, {'dec', Key}).
 get(Key) -> gen_server:call(?MODULE, {'get', Key}).
@@ -45,7 +46,10 @@ handle_call({'get', Key}, _From, S=#state{counters=T}) ->
     {'reply', V, S};
 handle_call(_Request, _From, S=#state{}) -> {'reply', 'ok', S}.
 
+handle_cast({'stop'}, S=#state{}) ->
+    {'stop', 'normal', S};
 handle_cast(_Msg, S=#state{}) -> {'noreply', S}.
+
 handle_info(_Info, S=#state{}) -> {'noreply', S}.
 terminate(_Reason, _S) -> 'ok'.
 code_change(_OldVsn, S=#state{}, _Extra) -> {'ok', S}.
