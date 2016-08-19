@@ -10,12 +10,9 @@
 %%%   Roman Galeev
 %%%-------------------------------------------------------------------
 -module(bh_conference).
-
--export([handle_event/2
-        ,subscribe/3, unsubscribe/3
-        ]).
-
 -include("blackhole.hrl").
+
+-export([handle_event/2, subscribe/3, unsubscribe/3]).
 
 -spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
 handle_event(Context, EventJObj) ->

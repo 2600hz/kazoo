@@ -9,12 +9,9 @@
 %%% Ben Wann
 %%%-------------------------------------------------------------------
 -module(bh_call).
-
--export([handle_event/2
-        ,subscribe/3, unsubscribe/3
-        ]).
-
 -include("blackhole.hrl").
+
+-export([handle_event/2, subscribe/3, unsubscribe/3]).
 
 -define(LISTEN_TO, [
                     <<"CHANNEL_CREATE">>, <<"CHANNEL_ANSWER">>, <<"CHANNEL_DESTROY">>, <<"CHANNEL_BRIDGE">>

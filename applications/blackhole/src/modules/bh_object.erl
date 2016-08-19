@@ -8,13 +8,10 @@
 %%% Roman Galeev
 %%%-------------------------------------------------------------------
 -module(bh_object).
-
--export([handle_event/2
-        ,subscribe/3, unsubscribe/3
-        ]).
-
 -include("blackhole.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
+
+-export([handle_event/2, subscribe/3, unsubscribe/3]).
 
 -spec doc_binding(ne_binary(), ne_binary()) -> ne_binary().
 doc_binding(Type, Action) -> <<Action/binary, ".*.", Type/binary, ".*">>.
