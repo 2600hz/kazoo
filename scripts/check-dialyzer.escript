@@ -152,8 +152,8 @@ filter(W) ->
         {warn_matching, {"src/kz_amqp_assignments.erl",_},{pattern_match,["pattern {'kz_amqp_assignment', Timestamp, _, _, _, _, _, _, _, _, _, Watchers}","{'error','no_channel'}"]}} -> 'false';
 
         %% More ETS false positives, from applications/
-        {warn_matching, {"src/ecallmgr_fs_channels.erl",_}, {pattern_match,["pattern <{[Channel = {'channel', CallId, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _}], Continuation}, <<97:8/integer-unit:1,108:8/integer-unit:1,108:8/integer-unit:1>>, Channels>",_]}} -> 'false';
-        {warn_matching, {"src/ecallmgr_fs_channels.erl",_}, {pattern_match,["pattern <{[Channel = {'channel', CallId, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _}], Continuation}, Fields, Channels>",_]}} -> 'false';
+        {warn_matching, {"src/ecallmgr_fs_channels.erl",_}, {pattern_match,["pattern <{[Channel = {'channel', CallId, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _}], Continuation}, <<97:8/integer-unit:1,108:8/integer-unit:1,108:8/integer-unit:1>>, Channels>",_]}} -> 'false';
+        {warn_matching, {"src/ecallmgr_fs_channels.erl",_}, {pattern_match,["pattern <{[Channel = {'channel', CallId, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _}], Continuation}, Fields, Channels>",_]}} -> 'false';
 
         _ ->
             %% io:format("W = ~p\n", [W]),
