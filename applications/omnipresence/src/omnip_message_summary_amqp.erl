@@ -89,7 +89,7 @@ handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
-handle_cast({'omnipresence',{'subscribe_notify', <<"message-summary">>, User,
+handle_cast({'omnipresence',{'probe', <<"message-summary">>, User,
                              #omnip_subscription{call_id=CallId}=_Subscription
                             }}, State) ->
     kz_util:put_callid(CallId),

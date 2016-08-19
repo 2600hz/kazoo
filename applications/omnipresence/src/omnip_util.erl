@@ -13,6 +13,8 @@
         ,are_valid_uris/1, is_valid_uri/1
         ]).
 
+-export([request_probe/2, request_probe/3]).
+
 -include("omnipresence.hrl").
 -include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
@@ -35,3 +37,19 @@ is_valid_uri(Uri) ->
         [_User, _Host] -> 'true';
         _ -> 'false'
     end.
+
+-spec request_probe(binary(), binary()) -> 'ok'.
+request_probe(Package, User) ->
+    case binary:split(User, <<"@">>, ['global']) of
+        [Username, Realm | _] -> request_probe(Package, Username, Realm);
+        _Other -> lager:warning("request probe for ~p failed", [_Other])
+    end.
+
+-spec request_probe(binary(), binary(), binary()) -> 'ok'.
+request_probe(Package, Username, Realm) ->
+    API = [{<<"Event-Package">>, Package}
+          ,{<<"Username">>, Username}
+          ,{<<"Realm">>, Realm}
+	   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kz_amqp_worker:cast(API, fun kapi_presence:publish_probe/1).

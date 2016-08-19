@@ -120,11 +120,12 @@ handle_kamailio_subscribe(JObj, _Props) ->
         {Count, {'unsubscribe', _}} ->
             distribute_subscribe(Count, JObj);
         {Count, {'resubscribe', Subscription}} ->
-            _ = resubscribe_notify(Subscription),
-            distribute_subscribe(Count, JObj);
+            _ = distribute_subscribe(Count, JObj),
+            resubscribe_notify(Subscription);
         {Count, {'subscribe', Subscription}} ->
-            _ = subscribe_notify(Subscription),
-            distribute_subscribe(Count, JObj)
+            _ = distribute_subscribe(Count, JObj),
+            _ = maybe_probe(Subscription),
+            subscribe_notify(Subscription)
     end.
 
 -spec proxy_subscribe(kz_proplist()) -> 'ok'.
@@ -369,6 +370,22 @@ subscribe_notify(#omnip_subscription{event=Package
     Msg = {'omnipresence', {'subscribe_notify', Package, User, Subscription}},
     notify_packages(Msg).
 
+-spec probe(subscription()) -> 'ok'.
+probe(#omnip_subscription{event=Package
+			 ,user=User
+			 }=Subscription) ->
+    Msg = {'omnipresence', {'probe', Package, User, Subscription}},
+    notify_packages(Msg).
+
+-spec maybe_probe(subscription()) -> 'ok'.
+maybe_probe(#omnip_subscription{event=Package
+			       ,user=User
+			       }=Subscription) ->
+    case count_subscriptions(Package, User) > 1 of
+        'true' -> 'ok';
+        'false' -> probe(Subscription)
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -493,6 +510,18 @@ expire_old_subscriptions() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec count_subscriptions(binary(), binary()) -> integer().
+count_subscriptions(Event, User) ->
+    U = kz_util:to_lower_binary(User),
+    MatchSpec = [{#omnip_subscription{normalized_user='$1'
+                                     ,event=Event
+                                     ,_='_'
+                                     }
+                 ,[{'=:=', '$1', {'const', U}}]
+                 ,['$_']
+                 }],
+    ets:select_count(table_id(), MatchSpec).
+
 -spec find_subscription(ne_binary()) ->
                                {'ok', subscription()} |
                                {'error', 'not_found'}.
@@ -531,6 +560,7 @@ find_subscriptions(Event, User) when is_binary(User) ->
         [] -> {'error', 'not_found'};
         Subs -> {'ok', dedup(Subs)}
     end.
+
 
 -spec find_user_subscriptions(ne_binary(), ne_binary()) ->
                                      {'ok', subscriptions()} |
