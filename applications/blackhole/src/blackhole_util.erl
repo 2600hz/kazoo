@@ -48,19 +48,19 @@ handle_event(#bh_context{binding=Binding} = Context, EventJObj, EventName) ->
 
 send_error(Context, Message, Detail) ->
     JObj = kz_json:from_list([{<<"status">>, <<"error">>}
-                                ,{<<"error">>, Message}
-                                ,{<<"detail">>, Detail}]),
+                             ,{<<"error">>, Message}
+                             ,{<<"detail">>, Detail}]),
     blackhole_data_emitter:msg(bh_context:websocket_pid(Context), JObj).
 
 send_success(Context, Message, Detail) ->
     JObj = kz_json:from_list([{<<"status">>, <<"success">>}
-                                ,{<<"message">>, Message}
-                                ,{<<"detail">>, Detail}]),
+                             ,{<<"message">>, Message}
+                             ,{<<"detail">>, Detail}]),
     blackhole_data_emitter:msg(bh_context:websocket_pid(Context), JObj).
 
 send_success(Context, Message) ->
     JObj = kz_json:from_list([{<<"status">>, <<"success">>}
-                                ,{<<"message">>, Message}]),
+                             ,{<<"message">>, Message}]),
     blackhole_data_emitter:msg(bh_context:websocket_pid(Context), JObj).
 
 get_account(#bh_context{auth_account_id=_AuthAccountId}, JObj) ->

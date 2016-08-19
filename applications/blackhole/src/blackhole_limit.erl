@@ -6,11 +6,11 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -record(state, {buckets :: #{}
-                ,message_bucket_size
-                ,message_bucket_rate
-                ,connections_per_source_ip
-                ,connections_per_account
-        }).
+               ,message_bucket_size
+               ,message_bucket_rate
+               ,connections_per_source_ip
+               ,connections_per_account
+               }).
 
 %% API
 start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
@@ -30,7 +30,7 @@ fetch_config(#state{}=S) ->
            ,message_bucket_rate=BucketRate
            ,connections_per_source_ip=SourceIpLimit
            ,connections_per_account=AccountLimit
-    }.
+           }.
 
 init([]) -> 
     {'ok', fetch_config(#state{ buckets = #{} })}.

@@ -64,7 +64,7 @@ handle_req(ApiJObj, _Props) ->
         handle_get_req_data(kz_json:get_value(<<"Account-ID">>, ApiJObj)
                            ,kz_json:get_value(<<"Socket-ID">>, ApiJObj)
                            ,Node
-         ),
+                           ),
     case RespData of
         'ok' -> 'ok';
         RespData ->

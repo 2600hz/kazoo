@@ -29,7 +29,7 @@
                     ,metadata :: any() | '_'
                     ,destination = kz_util:node_hostname() :: ne_binary() | '_'
                     ,source :: api_binary() | '_'
-         }).
+                    }).
 
 -define(BLACKHOLE_HRL, 'true').
 
