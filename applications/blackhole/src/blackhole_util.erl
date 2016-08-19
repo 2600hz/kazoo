@@ -17,28 +17,25 @@
 -export([send_error/3, send_success/3, send_success/2]).
 -export([get_account/2]).
 
--spec get_callback_module(ne_binary()) -> atom().
-get_callback_module(Binding) ->
-    case binary:split(Binding, <<".">>) of
-        [M|_] ->
-            Mod = special_bindings(M),
-            try kz_util:to_atom(<<"bh_", Mod/binary>>, 'true')
-            catch
-                'error':'badarg' -> 'undefined'
-            end;
-        _ -> 'undefined'
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec special_bindings(ne_binary()) -> ne_binary().
 special_bindings(<<"doc_edited">>) -> <<"object">>;
 special_bindings(<<"doc_created">>) -> <<"object">>;
 special_bindings(<<"doc_deleted">>) -> <<"object">>;
 special_bindings(M) -> M.
+
+-spec get_callback_module(ne_binary()) -> atom().
+get_callback_module(Binding) ->
+    case binary:split(Binding, <<".">>) of
+        [M|_] ->
+            Mod = special_bindings(M),
+            try
+                kz_util:to_atom(<<"bh_", Mod/binary>>, 'true')
+            catch
+                'error':'badarg' -> erlang:error('unknown_handler_module')
+            end;
+        _ ->
+            erlang:error('bad_binding_format')
+    end.
 
 -spec handle_event(bh_context:context(), kz_json:object(), ne_binary()) -> 'ok'.
 handle_event(#bh_context{binding=Binding} = Context, EventJObj, EventName) ->
