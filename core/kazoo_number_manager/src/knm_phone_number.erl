@@ -128,12 +128,18 @@ fetch(_DID, _Options) ->
 fetch(Num, Options) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
-    case kz_datamgr:open_cache_doc(NumberDb, NormalizedNum) of
+    case fetch(NumberDb, NormalizedNum, Options) of
         {'error', _R}=Error ->
             lager:debug("failed to open ~s in ~s: ~p", [NormalizedNum, NumberDb, _R]),
             Error;
         {'ok', JObj} ->
             handle_fetched_result(JObj, Options)
+    end.
+
+fetch(NumberDb, NormalizedNum, Options) ->
+    case knm_number_options:batch_run(Options) of
+        'false' -> kz_datamgr:open_cache_doc(NumberDb, NormalizedNum);
+        'true' -> kz_datamgr:open_doc(NumberDb, NormalizedNum)
     end.
 -endif.
 
