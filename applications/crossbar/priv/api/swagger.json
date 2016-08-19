@@ -6941,9 +6941,7 @@
             "description": "Schema for blackhole system_config",
             "properties": {
                 "autoload_modules": {
-                    "default": [
-                        "bh_token_auth"
-                    ],
+                    "default": [],
                     "description": "blackhole autoload modules",
                     "name": "autoload_modules",
                     "type": "array"
