@@ -12,16 +12,9 @@
 -module(blackhole_util).
 -include("blackhole.hrl").
 
--export([get_callback_module/1]).
 -export([handle_event/3]).
 -export([send_error/3, send_success/3, send_success/2]).
 -export([get_account/2]).
-
--spec special_bindings(ne_binary()) -> ne_binary().
-special_bindings(<<"doc_edited">>) -> <<"object">>;
-special_bindings(<<"doc_created">>) -> <<"object">>;
-special_bindings(<<"doc_deleted">>) -> <<"object">>;
-special_bindings(M) -> M.
 
 -spec handle_event(bh_context:context(), kz_json:object(), ne_binary()) -> 'ok'.
 handle_event(#bh_context{binding=Binding} = Context, EventJObj, EventName) ->
