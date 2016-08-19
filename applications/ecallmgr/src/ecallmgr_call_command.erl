@@ -329,6 +329,7 @@ get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
                                 ,{"application", <<"export sip_auto_answer=true">>}
                                 ,{"application", <<"export alert_info=intercom">>}
                                 ,{"application", <<"set conference_auto_outcall_flags=mute">>}
+                                ,{"application", <<"set conference_auto_outcall_skip_member_beep=true">>}
                                  |DP
                                 ]
                         end
