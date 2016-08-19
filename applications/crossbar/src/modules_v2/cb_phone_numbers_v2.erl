@@ -432,7 +432,7 @@ summary(Context) ->
 view_account_phone_numbers(Context) ->
     Context1 = crossbar_doc:load_view(?CB_LIST, [], rename_qs_filters(Context), fun normalize_view_results/2),
     ListOfNumProps = cb_context:resp_data(Context1),
-    PortNumberJObj = get_port_request_numbers(Context),
+    PortNumberJObj = maybe_add_port_request_numbers(Context),
     NumbersJObj = lists:foldl(fun kz_json:merge_jobjs/2, PortNumberJObj, ListOfNumProps),
     Service = kz_services:fetch(cb_context:account_id(Context)),
     Quantity = kz_services:cascade_category_quantity(<<"phone_numbers">>, [], Service),
@@ -442,14 +442,31 @@ view_account_phone_numbers(Context) ->
     cb_context:set_resp_data(Context1, NewRespData).
 
 %% @private
--spec get_port_request_numbers(cb_context:context()) -> kz_json:object().
-get_port_request_numbers(Context) ->
+-spec maybe_add_port_request_numbers(cb_context:context()) -> kz_json:object().
+maybe_add_port_request_numbers(Context) ->
     AccountId = cb_context:account_id(Context),
-    case knm_port_request:account_active_ports(AccountId) of
+    FilterState = kz_json:get_value(<<"filter_state">>
+                                   ,cb_context:query_string(Context)),
+    case check_filter_state(kz_util:to_binary(FilterState))
+        andalso knm_port_request:account_active_ports(AccountId)
+    of
+        'false' -> kz_json:new();
         {'error', _} -> kz_json:new();
         {'ok', Ports} ->
             PortNumberList = [create_port_number_object(P, Context) || P <- Ports],
             lists:foldl(fun kz_json:merge_jobjs/2, kz_json:new(), PortNumberList)
+    end.
+
+-spec check_filter_state(api_ne_binary() | ne_binaries()) -> boolean().
+check_filter_state(<<"available">>) -> 'false';
+check_filter_state(FilterVal) ->
+    try kz_json:unsafe_decode(FilterVal) of
+        List when is_list(List) ->
+            not lists:member(<<"available">>, List);
+        <<"available">> -> 'false';
+        _ -> 'true'
+    catch
+        _Error -> 'true'
     end.
 
 %% @private
