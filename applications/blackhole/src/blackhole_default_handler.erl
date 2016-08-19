@@ -17,8 +17,6 @@
          websocket_terminate/3
         ]).
 
-
-
 init({_Any, 'http'}, _Req0, _HandlerOpts) ->
     {'upgrade', 'protocol', 'cowboy_websocket'}.
 
