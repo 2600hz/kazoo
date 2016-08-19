@@ -8,17 +8,17 @@
 %%%-------------------------------------------------------------------
 -module(blackhole_auth).
 -include("blackhole.hrl").
--export([check_auth/3]).
+-export([authenticate/3]).
 
--spec check_auth(ne_binary(), kz_json:object(), bh_context:context()) -> #bh_context{}.
-check_auth(<<"authorize">>, JMsg, Context=#bh_context{}) ->
+-spec authenticate(ne_binary(), kz_json:object(), bh_context:context()) -> #bh_context{}.
+authenticate(<<"authenticate">>, JMsg, Context=#bh_context{}) ->
     Token = kz_json:get_value(<<"token">>, JMsg),
     AuthAccountId = get_account_id(Token),
     lager:debug("auth_token:~p found, auth_account_id:~p", [Token, AuthAccountId]),
     Context#bh_context{auth_account_id=AuthAccountId, auth_token=Token};
-check_auth(_, _JMsg, #bh_context{auth_token = <<>>}) ->
-    erlang:error('not_authorized');
-check_auth(_, _JMsg, Context) ->
+authenticate(_, _JMsg, #bh_context{auth_token = <<>>}) ->
+    erlang:error('not_authenticated');
+authenticate(_, _JMsg, Context) ->
     Context.
 
 -spec get_account_id(ne_binary()) -> ne_binary().

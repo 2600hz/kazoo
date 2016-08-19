@@ -73,7 +73,7 @@ error_message(Error) ->
     make_error_message(<<"internal">>).
 
 -spec make_error_message(ne_binary()) -> kz_json:object().
-make_error_message(<<"not_authorized">> = Error) ->
+make_error_message(<<"not_authenticated">> = Error) ->
     kz_json:encode(kz_json:from_list([{<<"error">>, Error}]));
 make_error_message(Error) ->
     lager:error("blackhole error:~p", [Error]),
