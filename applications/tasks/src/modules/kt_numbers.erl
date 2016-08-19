@@ -282,6 +282,7 @@ list_number_row(E164) ->
     list_number_row(?KNM_DEFAULT_AUTH_BY, E164).
 list_number_row(AuthBy, E164) ->
     Options = [{'auth_by', AuthBy}
+              ,{'batch_run', 'true'}
               ],
     case knm_number:get(E164, Options) of
         {'ok', KNMNumber} ->
