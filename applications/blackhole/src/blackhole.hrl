@@ -23,7 +23,7 @@
                     ,timestamp :: gregorian_seconds() | '_'
                     ,websocket_pid :: api_pid() | '_'
                     ,binding :: api_binary() | '_'
-                    %% is used to globally distinguish ws connections (blackhole_tracking)
+                                %% is used to globally distinguish ws connections (blackhole_tracking)
                     ,req_id = <<(kz_util:rand_hex_binary(16))/binary, "-bh">> :: ne_binary() | '_'
 
                     ,name :: api_binary() | '_'
