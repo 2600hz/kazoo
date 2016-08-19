@@ -10,7 +10,7 @@
 -module(bh_fax).
 -include("blackhole.hrl").
 
--export([handle_event/2, handle_object_event/2, subscribe/3, unsubscribe/3]).
+-export([handle_event/2, handle_object_event/2, handle_ws_message/3]).
 
 -spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
 handle_event(Context, EventJObj) ->
@@ -20,6 +20,11 @@ handle_event(Context, EventJObj) ->
 -spec handle_object_event(bh_context:context(), kz_json:object()) -> 'ok'.
 handle_object_event(Context, EventJObj) ->
     blackhole_util:handle_event(Context, EventJObj, <<"fax.object">>).
+
+handle_ws_message(<<"subscribe">>, Context, JObj) ->
+    subscribe(Context, kz_json:get_value(<<"binding">>, JObj), JObj);
+handle_ws_message(<<"unsubscribe">>, Context, JObj) ->
+    unsubscribe(Context, kz_json:get_value(<<"binding">>, JObj), JObj).
 
 -spec subscribe(bh_context:context(), ne_binary(), kz_json:object()) -> bh_subscribe_result().
 subscribe(Context, <<"fax.status.", FaxId/binary>> = Binding, JObj) ->

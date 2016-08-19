@@ -12,11 +12,16 @@
 -module(bh_conference).
 -include("blackhole.hrl").
 
--export([handle_event/2, subscribe/3, unsubscribe/3]).
+-export([handle_event/2, handle_ws_message/3]).
 
 -spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
 handle_event(Context, EventJObj) ->
     blackhole_util:handle_event(Context, EventJObj, get_response_key(EventJObj)).
+
+handle_ws_message(<<"subscribe">>, Context, JObj) ->
+    subscribe(Context, kz_json:get_value(<<"binding">>, JObj), JObj);
+handle_ws_message(<<"unsubscribe">>, Context, JObj) ->
+    unsubscribe(Context, kz_json:get_value(<<"binding">>, JObj), JObj).
 
 -spec subscribe(ne_binary(), bh_context:context(), kz_json:object()) -> bh_subscribe_result().
 subscribe(_Context, <<"conference.command.*">> = _Binding, _JObj) ->

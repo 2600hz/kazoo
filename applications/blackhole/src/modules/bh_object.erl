@@ -11,7 +11,7 @@
 -include("blackhole.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
 
--export([handle_event/2, subscribe/3, unsubscribe/3]).
+-export([handle_event/2, handle_ws_message/3]).
 
 -spec doc_binding(ne_binary(), ne_binary()) -> ne_binary().
 doc_binding(Type, Action) -> <<Action/binary, ".*.", Type/binary, ".*">>.
@@ -19,6 +19,11 @@ doc_binding(Type, Action) -> <<Action/binary, ".*.", Type/binary, ".*">>.
 -spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
 handle_event(Context, EventJObj) ->
     blackhole_util:handle_event(Context, EventJObj, event_name(EventJObj)).
+
+handle_ws_message(<<"subscribe">>, Context, JObj) ->
+    subscribe(Context, kz_json:get_value(<<"binding">>, JObj), JObj);
+handle_ws_message(<<"unsubscribe">>, Context, JObj) ->
+    unsubscribe(Context, kz_json:get_value(<<"binding">>, JObj), JObj).
 
 %% example event: fax.doc_update
 -spec event_name(kz_json:object()) -> ne_binary().

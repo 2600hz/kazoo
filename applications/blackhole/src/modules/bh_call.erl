@@ -11,7 +11,7 @@
 -module(bh_call).
 -include("blackhole.hrl").
 
--export([handle_event/2, subscribe/3, unsubscribe/3]).
+-export([handle_event/2, handle_ws_message/3]).
 
 -define(LISTEN_TO, [
                     <<"CHANNEL_CREATE">>, <<"CHANNEL_ANSWER">>, <<"CHANNEL_DESTROY">>, <<"CHANNEL_BRIDGE">>
@@ -26,6 +26,11 @@ handle_event(Context, EventJObj) ->
 -spec event_name(kz_json:object()) -> ne_binary().
 event_name(JObj) ->
     kz_json:get_value(<<"Event-Name">>, JObj).
+
+handle_ws_message(<<"subscribe">>, Context, JObj) ->
+    subscribe(Context, kz_json:get_value(<<"binding">>, JObj), JObj);
+handle_ws_message(<<"unsubscribe">>, Context, JObj) ->
+    unsubscribe(Context, kz_json:get_value(<<"binding">>, JObj), JObj).
 
 -spec subscribe(bh_context:context(), ne_binary(), kz_json:object()) -> bh_subscribe_result().
 subscribe(Context, <<"call.*.*">>, JObj) ->
