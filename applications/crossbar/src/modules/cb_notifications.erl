@@ -693,8 +693,8 @@ note_notification_preference(AccountDb, AccountJObj) ->
                                                                    )
                            )
     of
-        {'ok', AccountJObj} ->
-            _ = cb_accounts:replicate_account_definition(AccountJObj),
+        {'ok', UpdatedAccountJObj} ->
+            _ = cb_accounts:replicate_account_definition(UpdatedAccountJObj),
             lager:debug("updated pref for account");
         {'error', _E} ->
             lager:debug("failed to note preference: ~p", [_E])
