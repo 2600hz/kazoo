@@ -6940,11 +6940,47 @@
         "system_config.blackhole": {
             "description": "Schema for blackhole system_config",
             "properties": {
+                "account_bucket_rate": {
+                    "default": 10,
+                    "description": "blackhole account bucket rate",
+                    "name": "account_bucket_rate",
+                    "type": "integer"
+                },
+                "account_bucket_size": {
+                    "default": 100,
+                    "description": "blackhole account bucket size",
+                    "name": "account_bucket_size",
+                    "type": "integer"
+                },
                 "autoload_modules": {
                     "default": [],
                     "description": "blackhole autoload modules",
                     "name": "autoload_modules",
                     "type": "array"
+                },
+                "connection_bucket_size": {
+                    "default": 100,
+                    "description": "blackhole connection bucket size",
+                    "name": "connection_bucket_size",
+                    "type": "integer"
+                },
+                "connections_per_account": {
+                    "default": 100,
+                    "description": "blackhole connections per account",
+                    "name": "connections_per_account",
+                    "type": "integer"
+                },
+                "connections_per_source_ip": {
+                    "default": 100,
+                    "description": "blackhole connections per source ip",
+                    "name": "connections_per_source_ip",
+                    "type": "integer"
+                },
+                "connecttion_bucket_rate": {
+                    "default": 10,
+                    "description": "blackhole connecttion bucket rate",
+                    "name": "connecttion_bucket_rate",
+                    "type": "integer"
                 },
                 "port": {
                     "default": 5555,
