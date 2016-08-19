@@ -87,6 +87,7 @@
                  ,is_loopback :: boolean() | '_'
                  ,loopback_leg_name :: api_binary() | '_'
                  ,loopback_other_leg :: api_binary() | '_'
+                 ,callflow_id :: api_binary() | '_'
                  }).
 
 -type channel() :: #channel{}.
@@ -175,6 +176,7 @@
 -define(SET_CCV(Key, Value), <<?CHANNEL_VAR_PREFIX, Key/binary, "=", Value/binary>>).
 -define(GET_CCV_HEADER(Key), <<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>).
 -define(GET_CUSTOM_HEADER(Key), <<"variable_sip_h_X-", Key/binary>>).
+-define(GET_VAR(Key), <<"variable_", Key/binary>>).
 
 -define(CREDS_KEY(Realm, Username), {'authn', Username, Realm}).
 
@@ -288,6 +290,7 @@
                               ,{<<"Loopback-Request-URI">>, <<"sip_loopback_req_uri">>}
                               ,{<<"Hold-Media">>, <<"hold_music">>}
                               ,{<<"Diversions">>, <<"sip_h_Diversion">>}
+                              ,{<<"Bridge-Execute-On-Answer">>, <<"execute_on_answer">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}]

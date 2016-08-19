@@ -4143,7 +4143,7 @@
                         "url": {
                             "description": "The url of the fax document",
                             "name": "Document URL",
-                            "required": false,
+                            "required": true,
                             "type": "string"
                         }
                     },
@@ -4159,7 +4159,7 @@
                 "from_number": {
                     "description": "The sender number for the fax",
                     "name": "Sender Number",
-                    "required": false,
+                    "required": true,
                     "type": "string"
                 },
                 "notifications": {
@@ -4229,11 +4229,10 @@
                 "to_number": {
                     "description": "The recipient number for the fax",
                     "name": "Recipient Number",
-                    "required": false,
+                    "required": true,
                     "type": "string"
                 },
                 "tx_result": {
-                    "default": {},
                     "description": "The result of a transmission attempt",
                     "properties": {
                         "error_message": {
@@ -14700,6 +14699,24 @@
             },
             "get": {
                 "parameters": [
+                    {
+                        "in": "header",
+                        "name": "X-Auth-Token",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "faxes",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/faxes"
+                        }
+                    },
                     {
                         "in": "header",
                         "name": "X-Auth-Token",

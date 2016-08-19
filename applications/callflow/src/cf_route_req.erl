@@ -276,6 +276,7 @@ update_call(Flow, NoMatch, ControllerQ, Call) ->
                ,{fun kapps_call:set_controller_queue/2, ControllerQ}
                ,{fun kapps_call:set_application_name/2, ?APP_NAME}
                ,{fun kapps_call:set_application_version/2, ?APP_VERSION}
+               ,{fun kapps_call:insert_custom_channel_var/3, <<"CallFlow-ID">>, kz_doc:id(Flow)}
                ],
     kapps_call:exec(Updaters, Call).
 

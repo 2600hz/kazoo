@@ -3067,6 +3067,8 @@ transfer_command(TransferType, TransferTo, TransferLeg, Call) ->
         ,{<<"Transfer-Type">>, TransferType}
         ,{<<"Transfer-To">>, TransferTo}
         ,{<<"Transfer-Leg">>, TransferLeg}
+        ,{<<"Caller-ID-Number">>, kapps_call:callee_id_number(Call)}
+        ,{<<"Caller-ID-Name">>, kapps_call:callee_id_name(Call)}
         ,{<<"Insert-At">>, <<"now">>}
         ,{<<"Call-ID">>, kapps_call:call_id(Call)}
         ])).

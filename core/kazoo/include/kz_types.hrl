@@ -198,7 +198,9 @@
                                       {'stop', any(), State}.
 
 -type handle_event_ret() :: 'ignore' |
-                            {'reply', kz_proplist()}.
+                            {'ignore', any()} |
+                            {'reply', kz_proplist()} |
+                            {'reply', kz_proplist(), any()}.
 
 -type handle_fsm_ret(State) :: {'next_state', atom(), State} |
                                {'next_state', atom(), State, timeout() | 'hibernate'} |

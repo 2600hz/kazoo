@@ -282,11 +282,6 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
-handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
-    _ = kz_util:spawn(fun webhooks_channel_util:maybe_handle_channel_event/3
-                     ,[AccountId, EventType, JObj]
-                     ),
-    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.

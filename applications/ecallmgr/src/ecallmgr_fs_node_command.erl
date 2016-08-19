@@ -82,7 +82,7 @@ send_http_cb('ok', <<"+OK", _/binary>>, [JobId, JObj, DeleteOnSuccess, File, Nod
     lager:debug("processed http_send command with success : ~s", [JobId]),
     _ = maybe_delete_file(Node, File, DeleteOnSuccess),
     reply_success(JObj);
-send_http_cb(_, Reply, [JobId, JObj]) ->
+send_http_cb(_, Reply, [JobId, JObj | _]) ->
     lager:debug("error processing http_send : ~p : ~s", [Reply, JobId]),
     reply_error(Reply, JObj).
 

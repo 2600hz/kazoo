@@ -13,9 +13,9 @@ Key | Description | Type | Default | Required
 `document.host` | The host header to be used when fetching for transmission | `string` |   | `false`
 `document.method` | The method that should be used to reteive the document | `string('get', 'post')` | `get` | `false`
 `document.referer` | The referer header to be used when fetching for transmission | `string` |   | `false`
-`document.url` | The url of the fax document | `string` |   | `false`
+`document.url` | The url of the fax document | `string` |   | `true`
 `from_name` | The sender name for the fax | `string` |   | `false`
-`from_number` | The sender number for the fax | `string` |   | `false`
+`from_number` | The sender number for the fax | `string` |   | `true`
 `notifications` | Status notifications | `object` |   | `false`
 `notifications.email` | Email notifications | `object` |   | `false`
 `notifications.email.send_to` | A list or string of email recipent(s) | `string, array(string)` |   | `false`
@@ -23,8 +23,8 @@ Key | Description | Type | Default | Required
 `notifications.sms.send_to` | A list or string of sms recipent(s) | `string, array(string)` |   | `false`
 `retries` | The number of times to retry | `integer` | `1` | `false`
 `to_name` | The recipient name for the fax | `string` |   | `false`
-`to_number` | The recipient number for the fax | `string` |   | `false`
-`tx_result` | The result of a transmission attempt | `object` | `{}` | `false`
+`to_number` | The recipient number for the fax | `string` |   | `true`
+`tx_result` | The result of a transmission attempt | `object` |   | `false`
 `tx_result.error_message` | A description of any error that occured | `string` | "" | `false`
 `tx_result.fax_bad_rows` | The number of bad rows | `integer` | `0` | `false`
 `tx_result.fax_error_correction` | True if fax error correction was used | `boolean` | `false` | `false`
@@ -161,6 +161,16 @@ curl -v -X DELETE \
 
 ```shell
 curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
+```
+
+#### Create
+
+> PUT /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
+
+```shell
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
 ```
