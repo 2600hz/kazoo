@@ -152,7 +152,7 @@ subscribe(Context, _JObj, Binding, Module) ->
 unsubscribe(Context, JObj, SessionPid, SessionId) ->
     Context1 = bh_context:from_json(Context, JObj),
     IsAuthorized = blackhole_util:is_authorized(Context1),
-    unsubscribe(Context, JObj, SessionPid, SessionId, IsAuthorized).
+    unsubscribe(Context1, JObj, SessionPid, SessionId, IsAuthorized).
 
 unsubscribe(Context, _JObj, _SessionPid, _SessionId, 'false') ->
     {'ok', blackhole_util:respond_with_authn_failure(Context)};
