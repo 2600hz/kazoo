@@ -455,12 +455,12 @@ extract_integers([], Min, Max, Acc) ->
     lists:foreach(
       fun
           (Int) when Int < Min ->
-              throw({'error', {'out_of_range', {'min', Min}, {'value', Int}}});
+                         throw({'error', {'out_of_range', {'min', Min}, {'value', Int}}});
           (Int) when Int > Max ->
-              throw({'error', {'out_of_range', {'max', Max}, {'value', Int}}});
+                         throw({'error', {'out_of_range', {'max', Max}, {'value', Int}}});
           (_Int) ->
-              'ok'
-      end, Integers),
+                         'ok'
+                 end, Integers),
     Integers;
 extract_integers(Spec, Min, Max, Acc) ->
     [H|T] = Spec,
