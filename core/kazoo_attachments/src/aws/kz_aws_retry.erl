@@ -46,7 +46,7 @@ default_retry(#aws_request{attempt = Attempt} = Request, _) ->
     backoff(Attempt),
     {'retry', Request}.
 
--spec request(aws_config(), #aws_request{}, retry_fun()) -> should_retry().
+-spec request(aws_config(), #aws_request{}, retry_fun()) -> #aws_request{}.
 request(Config, #aws_request{attempt = 0} = Request, ResultFun) ->
     request_and_retry(Config, ResultFun, {'retry', Request}).
 
