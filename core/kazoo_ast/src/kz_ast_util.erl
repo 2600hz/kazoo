@@ -25,7 +25,7 @@ module_ast(M) ->
             {Module, AST}
     end.
 
--spec add_module_ast(list(), module(), ast()) -> ast().
+-spec add_module_ast(list(), module(), {'raw_abstract_v1',ast()}) -> ast().
 add_module_ast(Fs, Module, AST) ->
     ast_functions(Module, AST) ++ Fs.
 
