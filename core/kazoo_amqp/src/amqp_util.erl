@@ -393,7 +393,7 @@ conference_publish(Payload, 'event', ConfId, Options, ContentType) ->
 conference_publish(Payload, 'command', ConfId, Options, ContentType) ->
     basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, Payload, ContentType, Options).
 
--spec conference_publish(amqp_payload(), 'event', ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
+-spec conference_publish(amqp_payload(), 'event', ne_binary(), ne_binary(), kz_proplist(), ne_binary()) -> 'ok'.
 conference_publish(Payload, 'event', ConfId, CallId, Options, ContentType) ->
     RoutingKey = <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary, ".", CallId/binary>>,
     basic_publish(?EXCHANGE_CONFERENCE, RoutingKey, Payload, ContentType, Options).
