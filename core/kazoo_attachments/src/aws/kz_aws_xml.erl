@@ -14,6 +14,7 @@
 -include("kz_aws.hrl").
 
 -type xml() :: tuple().
+-type xpath() :: {string(), string()}.
 -type attribute() :: {atom(), string(), fun()}.
 
 -spec decode([attribute()], xml()) -> [{atom(), any()}].
@@ -90,7 +91,7 @@ get_value(XPath, Type, Node) ->
             [decode(List, SubNode) || SubNode <- xmerl_xpath:string(XPath, Node)]
     end.
 
--spec get_float(string(), xml()) -> float().
+-spec get_float(xpath(), xml()) -> float().
 get_float(XPath, Node) ->
     list_to_float(get_text(XPath, Node)).
 
@@ -99,8 +100,8 @@ get_text(#xmlText{value=Value}) -> Value;
 get_text(#xmlElement{content=Content}) ->
     lists:flatten([get_text(Node) || Node <- Content]).
 
--spec get_text(string(), xml()) -> string().
--spec get_text({string(), string()}, xml(), Default) -> string() | Default.
+-spec get_text(xpath(), xml()) -> string().
+-spec get_text(xpath(), xml(), Default) -> string() | Default.
 get_text(XPath, Doc) -> get_text(XPath, Doc, "").
 get_text({XPath, AttrName}, Doc, Default) ->
     case xmerl_xpath:string(XPath ++ "/@" ++ AttrName, Doc) of
@@ -114,12 +115,12 @@ get_text(XPath, Doc, Default) ->
             lists:flatten([Node#xmlText.value || Node <- TextNodes])
     end.
 
--spec get_list(string(), xml()) -> [string()].
+-spec get_list(xpath(), xml()) -> [string()].
 get_list(XPath, Doc) ->
     [get_text(Node) || Node <- xmerl_xpath:string(XPath, Doc)].
 
--spec get_integer(string(), xml()) -> integer().
--spec get_integer(string(), xml(), Default) -> integer() | Default.
+-spec get_integer(xpath(), xml()) -> integer().
+-spec get_integer(xpath(), xml(), Default) -> integer() | Default.
 get_integer(XPath, Doc) -> get_integer(XPath, Doc, 0).
 get_integer(XPath, Doc, Default) ->
     case get_text(XPath, Doc) of
@@ -127,13 +128,13 @@ get_integer(XPath, Doc, Default) ->
         Text -> list_to_integer(Text)
     end.
 
--spec get_bool(string(), xml()) -> boolean().
+-spec get_bool(xpath(), xml()) -> boolean().
 get_bool(XPath, Doc) ->
     get_text(XPath, Doc, "false") =:= "true".
 
--spec get_time(string(), xml()) -> calendar:datetime() |
-                                   'undefined' |
-                                   'error'.
+-spec get_time(xpath(), xml()) -> calendar:datetime() |
+                                  'undefined' |
+                                  'error'.
 get_time(XPath, Doc) ->
     case get_text(XPath, Doc, 'undefined') of
         'undefined' -> 'undefined';
