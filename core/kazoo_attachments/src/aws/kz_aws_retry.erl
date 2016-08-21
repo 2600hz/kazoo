@@ -1,9 +1,6 @@
 %% @author root
 %% @doc @todo Add description to kz_aws_retry.
-
-
 -module(kz_aws_retry).
-
 
 -include("kz_aws.hrl").
 
@@ -49,7 +46,7 @@ default_retry(#aws_request{attempt = Attempt} = Request, _) ->
     backoff(Attempt),
     {'retry', Request}.
 
--spec request(kz_aws:config(), #aws_request{}, retry_fun()) -> should_retry().
+-spec request(aws_config(), #aws_request{}, retry_fun()) -> should_retry().
 request(Config, #aws_request{attempt = 0} = Request, ResultFun) ->
     request_and_retry(Config, ResultFun, {'retry', Request}).
 

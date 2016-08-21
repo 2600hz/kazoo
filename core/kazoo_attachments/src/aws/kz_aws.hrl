@@ -57,7 +57,7 @@
           %% See erlcloud_retry for full documentation.
           retry = fun kz_aws_retry:no_retry/1 :: kz_aws_retry:retry_fun()
          }).
--type(aws_config() :: #aws_config{}).
+-type aws_config() :: #aws_config{}.
 
 -define(DEFAULT_TIMEOUT, 10000).
 

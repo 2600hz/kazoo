@@ -20,9 +20,8 @@
 
 -include("kz_aws.hrl").
 
--opaque config() :: #aws_config{}.
--type method() :: 'head' | 'get' | 'put' | 'post' | 'trace' | 'options' | 'delete'.
--type headers() :: list({binary(), binary()}).
+-type method() :: 'delete' | 'get' | 'head' | 'options' | 'post' | 'put' | 'trace'.
+-type headers() :: list({nonempty_string(), string()}).
 
 -record(metadata_credentials, {access_key_id :: string()
                               ,secret_access_key :: string()
@@ -30,17 +29,16 @@
                               ,expiration_gregorian_seconds :: integer()
                               }).
 
--export_type([config/0
-             ,method/0
+-export_type([method/0
              ,headers/0
              ]).
 
 -type xml() :: tuple().
 
 
--spec aws_request_xml(method(), string(), string(), headers(), config()) -> xml().
+-spec aws_request_xml(method(), string(), string(), headers(), aws_config()) -> xml().
 -spec aws_request_xml(method(), string(), string(), headers(), string(), string()) -> xml().
--spec aws_request_xml(method(), string(), string(), pos_integer(), string(), headers(), config()) -> xml().
+-spec aws_request_xml(method(), string(), string(), pos_integer(), string(), headers(), aws_config()) -> xml().
 -spec aws_request_xml(method(), string(), string(), pos_integer(), string(), headers(), string(), string()) -> xml().
 aws_request_xml(Method, Host, Path, Params, #aws_config{} = Config) ->
     Body = aws_request(Method, Host, Path, Params, Config),
@@ -55,8 +53,8 @@ aws_request_xml(Method, Protocol, Host, Port, Path, Params, AccessKeyID, SecretA
     Body = aws_request(Method, Protocol, Host, Port, Path, Params, AccessKeyID, SecretAccessKey),
     element(1, xmerl_scan:string(binary_to_list(Body))).
 
--spec aws_request_xml2(method(), string(), string(), headers(), config()) -> xml().
--spec aws_request_xml2(method(), string(), string(), pos_integer(), string(), headers(), config()) -> xml().
+-spec aws_request_xml2(method(), string(), string(), headers(), aws_config()) -> xml().
+-spec aws_request_xml2(method(), api_string(), string(), api_pos_integer(), string(), headers(), aws_config()) -> xml().
 aws_request_xml2(Method, Host, Path, Params, #aws_config{} = Config) ->
     aws_request_xml2(Method, 'undefined', Host, 'undefined', Path, Params, Config).
 aws_request_xml2(Method, Protocol, Host, Port, Path, Params, #aws_config{} = Config) ->
@@ -67,30 +65,28 @@ aws_request_xml2(Method, Protocol, Host, Port, Path, Params, #aws_config{} = Con
             Error
     end.
 
--spec aws_request_xml4(method(), string(), string(), headers(), string(), config()) -> xml().
--spec aws_request_xml4(method(), string(), string(), pos_integer(), string(), config(), string(), config()) -> xml().
+-spec aws_request_xml4(method(), string(), string(), headers(), string(), aws_config()) -> xml().
+-spec aws_request_xml4(method(), api_string(), string(), api_pos_integer(), string(), headers(), string(), aws_config()) -> xml().
 aws_request_xml4(Method, Host, Path, Params, Service, #aws_config{} = Config) ->
     aws_request_xml4(Method, 'undefined', Host, 'undefined', Path, Params, Service, Config).
 aws_request_xml4(Method, Protocol, Host, Port, Path, Params, Service, #aws_config{} = Config) ->
     case aws_request4(Method, Protocol, Host, Port, Path, Params, Service, Config) of
+        {'error', _Reason}=Error -> Error;
         {'ok', Body} ->
-            {'ok', element(1, xmerl_scan:string(binary_to_list(Body)))};
-        {'error', _Reason}=Error ->
-            Error
+            {'ok', element(1, xmerl_scan:string(binary_to_list(Body)))}
     end.
 
--spec aws_request(method(), string(), string(), headers(), config()) -> binary().
+-spec aws_request(method(), string(), string(), headers(), aws_config()) -> binary().
 -spec aws_request(method(), string(), string(), headers(), string(), string()) -> binary().
--spec aws_request(method(), string(), string(), pos_integer(), string(), headers(), config()) -> binary().
--spec aws_request(method(), string(), string(), pos_integer(), string(), headers(), string(), string()) -> binary().
+-spec aws_request(method(), api_string(), string(), api_pos_integer(), string(), headers(), aws_config()) -> binary().
+-spec aws_request(method(), api_string(), string(), api_pos_integer(), string(), headers(), string(), string()) -> binary().
 aws_request(Method, Host, Path, Params, #aws_config{} = Config) ->
     aws_request(Method, 'undefined', Host, 'undefined', Path, Params, Config).
 aws_request(Method, Host, Path, Params, AccessKeyID, SecretAccessKey) ->
     aws_request(Method, 'undefined', Host, 'undefined', Path, Params, AccessKeyID, SecretAccessKey).
 aws_request(Method, Protocol, Host, Port, Path, Params, #aws_config{} = Config) ->
     case aws_request2(Method, Protocol, Host, Port, Path, Params, Config) of
-        {'ok', Body} ->
-            Body;
+        {'ok', Body} -> Body;
         {'error', Reason} ->
             erlang:error({'aws_error', Reason})
     end.
@@ -102,7 +98,7 @@ aws_request(Method, Protocol, Host, Port, Path, Params, AccessKeyID, SecretAcces
 
 %% aws_request2 returns {ok, Body} or {error, Reason} instead of throwing as aws_request does
 %% This is the preferred pattern for new APIs
--spec aws_request2(method(), string(), string(), pos_integer(), string(), headers(), config()) ->
+-spec aws_request2(method(), api_string(), string(), api_pos_integer(), string(), headers(), aws_config()) ->
                           {'ok', binary()} | {'error', any()}.
 aws_request2(Method, Protocol, Host, Port, Path, Params, Config) ->
     case update_config(Config) of
@@ -155,29 +151,28 @@ aws_region_from_host(Host) ->
         _ -> "us-east-1"
     end.
 
--spec aws_request4(method(), string(), string(), pos_integer(), string(), headers(), string(), config()) ->
+-spec aws_request4(method(), api_string(), string(), api_pos_integer(), string(), headers(), string(), aws_config()) ->
                           {'ok', binary()} | {'error', any()}.
 aws_request4(Method, Protocol, Host, Port, Path, Params, Service, Config) ->
     case update_config(Config) of
+        {'error', _Reason}=Error -> Error;
         {'ok', Config1} ->
-            aws_request4_no_update(Method, Protocol, Host, Port, Path, Params, Service, Config1);
-        {'error', _Reason}=Error ->
-            Error
+            aws_request4_no_update(Method, Protocol, Host, Port, Path, Params, Service, Config1)
     end.
 
 aws_request4_no_update(Method, Protocol, Host, Port, Path, Params, Service, #aws_config{} = Config) ->
     Query = kz_aws_http:make_query_string(Params),
     Region = aws_region_from_host(Host),
 
-    SignedHeaders = case Method of
-                        'post' ->
-                            sign_v4(Method, Path, Config,
-                                    [{"host", Host}], list_to_binary(Query),
-                                    Region, Service, []);
-                        'get' ->
-                            sign_v4(Method, Path, Config, [{"host", Host}],
-                                    <<>>, Region, Service, Params)
-                    end,
+    SignedHeaders =
+        case Method of
+            'post' ->
+                sign_v4(Method, Path, Config, [{"host", Host}],
+                        list_to_binary(Query), Region, Service, []);
+            'get' ->
+                sign_v4(Method, Path, Config, [{"host", Host}],
+                        <<>>, Region, Service, Params)
+        end,
 
     aws_request_form(Method, Protocol, Host, Port, Path, Query, SignedHeaders, Config).
 
@@ -255,7 +250,7 @@ format_timestamp({{Yr, Mo, Da}, {H, M, S}}) ->
       io_lib:format("~4.10.0b-~2.10.0b-~2.10.0bT~2.10.0b:~2.10.0b:~2.10.0bZ",
                     [Yr, Mo, Da, H, M, S])).
 
--spec default_config() -> config().
+-spec default_config() -> aws_config().
 default_config() ->
     case get('aws_config') of
         'undefined' ->
@@ -405,7 +400,7 @@ request_to_return(#aws_request{response_type = 'error'
 sign_v4_headers(Config, Headers, Payload, Region, Service) ->
     sign_v4('post', "/", Config, Headers, Payload, Region, Service, []).
 
--spec sign_v4(atom(), list(), aws_config(), headers(), binary(), string(), string(), list()) -> headers().
+-spec sign_v4(method(), string(), aws_config(), headers(), binary(), nonempty_string(), string(), list()) -> headers().
 sign_v4(Method, Uri, Config, Headers, Payload, Region, Service, QueryParams) ->
     Date = iso_8601_basic_time(),
     PayloadHash = hash_encode(Payload),
