@@ -447,26 +447,12 @@ maybe_add_port_request_numbers(Context) ->
     AccountId = cb_context:account_id(Context),
     FilterState = kz_json:get_value(<<"filter_state">>
                                    ,cb_context:query_string(Context)),
-    case check_filter_state(kz_util:to_binary(FilterState))
-        andalso knm_port_request:account_active_ports(AccountId)
-    of
-        'false' -> kz_json:new();
+
+    case knm_port_request:account_active_ports(AccountId) of
         {'error', _} -> kz_json:new();
         {'ok', Ports} ->
             PortNumberList = [create_port_number_object(P, Context) || P <- Ports],
             lists:foldl(fun kz_json:merge_jobjs/2, kz_json:new(), PortNumberList)
-    end.
-
--spec check_filter_state(api_ne_binary() | ne_binaries()) -> boolean().
-check_filter_state(<<"available">>) -> 'false';
-check_filter_state(FilterVal) ->
-    try kz_json:unsafe_decode(FilterVal) of
-        List when is_list(List) ->
-            not lists:member(<<"available">>, List);
-        <<"available">> -> 'false';
-        _ -> 'true'
-    catch
-        _Error -> 'true'
     end.
 
 %% @private
@@ -475,26 +461,35 @@ check_filter_state(FilterVal) ->
 create_port_number_object(Port, Context) ->
     AccountId = cb_context:account_id(Context),
     Numbers = kz_json:get_value(<<"numbers">>, Port, kz_json:new()),
-    Fun = fun(N, Meta) -> port_number_object(AccountId, Port, N, Meta) end,
-    kz_json:map(Fun, Numbers).
+    Fun = fun(K, V, Acc) ->
+                  Meta = port_number_meta_object(AccountId, Port, V),
+                  IsFiltered = crossbar_doc:filtered_doc_by_qs(Meta, Context),
+                  maybe_add_port_number(K, Meta, IsFiltered, Acc)
+          end,
+    kz_json:foldl(Fun, kz_json:new(), Numbers).
 
--spec port_number_object(ne_binary(), kz_json:object(), ne_binary(), kz_json:object()) ->
-                                {ne_binary(), kz_json:object()}.
-port_number_object(AccountId, Port, Number, JObj) ->
-    Meta = kz_json:from_list(
-             props:filter_undefined(
-               [{<<"state">>, <<"in_service">>}
-               ,{<<"features">>, []}
-               ,{<<"assign_to">>, AccountId}
-               ,{<<"used_by">>, kz_json:get_value(<<"used_by">>, JObj)}
-               ,{<<"created">>, kz_doc:created(Port)}
-               ,{<<"updated">>, kz_doc:modified(Port)}
-               ,{<<"port_id">>, kz_doc:id(Port)}
-               ,{<<"port_state">>
-                ,kz_json:get_value(<<"pvt_port_state">>, Port, <<"submitted">>)
-                }
-               ])),
-    {knm_converters:normalize(Number), Meta}.
+-spec port_number_meta_object(ne_binary(), kz_json:object(), kz_json:object()) ->
+                                     {ne_binary(), kz_json:object()}.
+port_number_meta_object(AccountId, Port, JObj) ->
+    kz_json:from_list(
+      props:filter_undefined(
+        [{<<"state">>, <<"port_in">>}
+        ,{<<"features">>, []}
+        ,{<<"assign_to">>, AccountId}
+        ,{<<"used_by">>, kz_json:get_value(<<"used_by">>, JObj)}
+        ,{<<"created">>, kz_doc:created(Port)}
+        ,{<<"updated">>, kz_doc:modified(Port)}
+        ,{<<"port_id">>, kz_doc:id(Port)}
+        ,{<<"port_state">>
+         ,kz_json:get_value(<<"pvt_port_state">>, Port, <<"submitted">>)
+         }
+        ])).
+
+-spec maybe_add_port_number(ne_binary(), kz_json:object(), boolean(), kz_json:objects()) ->
+                                   kz_json:object().
+maybe_add_port_number(_Number, _Meta, 'false', Acc) -> Acc;
+maybe_add_port_number(Number, Meta, 'true', Acc) ->
+    kz_json:set_value(knm_converters:normalize(Number), Meta, Acc).
 
 %% @private
 -spec rename_qs_filters(cb_context:context()) -> cb_context:context().
