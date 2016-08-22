@@ -40,6 +40,8 @@
         ,failed/1
         ]).
 
+-export([bindings/0]).
+
 -type payload() :: bh_context:context() | ne_binary().
 
 %%%===================================================================
@@ -56,7 +58,7 @@
 -type map_results() :: list().
 -spec map(ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
-    kazoo_bindings:map(Routing, Payload).
+    kazoo_bindings:map(<<"blackhole.",Routing/binary>>, Payload).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -68,7 +70,7 @@ map(Routing, Payload) ->
 -type fold_results() :: payload().
 -spec fold(ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
-    kazoo_bindings:fold(Routing, Payload).
+    kazoo_bindings:fold(<<"blackhole.", Routing/binary>>, Payload).
 
 %%-------------------------------------------------------------------
 %% @doc
@@ -142,7 +144,7 @@ bind(Bindings, Module, Fun) ->
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
 bind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
-    kazoo_bindings:bind(Binding, Module, Fun, Payload).
+    kazoo_bindings:bind(<<"blackhole.", Binding/binary>>, Module, Fun, Payload).
 
 -spec unbind(ne_binary() | ne_binaries(), atom(), atom()) -> 'ok'.
 unbind(Bindings, Module, Fun) ->
@@ -153,13 +155,13 @@ unbind([_|_]=Bindings, Module, Fun, Payload) ->
     _ = [unbind(Binding, Module, Fun, Payload) || Binding <- Bindings],
     'ok';
 unbind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
-    kazoo_bindings:unbind(Binding, Module, Fun, Payload).
+    kazoo_bindings:unbind(<<"blackhole.", Binding/binary>>, Module, Fun, Payload).
 
 -spec flush() -> 'ok'.
 flush() -> kazoo_bindings:flush().
 
 -spec flush(ne_binary()) -> 'ok'.
-flush(Binding) -> kazoo_bindings:flush(Binding).
+flush(Binding) -> kazoo_bindings:flush(<<"blackhole.", Binding>>).
 
 -spec flush_mod(atom()) -> 'ok'.
 flush_mod(BHMod) -> kazoo_bindings:flush(BHMod).
@@ -191,3 +193,6 @@ maybe_init_mod(ModuleName) ->
         _E:_R ->
             lager:warning("failed to initialize ~s: ~p, ~p.", [ModuleName, _E, _R])
     end.
+
+bindings() ->
+    lists:filter(fun(<<"blackhole", _/binary>>) -> 'true'; (_) -> 'false' end, kazoo_bindings:bindings()).
