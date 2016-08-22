@@ -58,6 +58,7 @@
 -define(CARRIER_INUM, <<"knm_inum">>).
 -define(CARRIER_LOCAL, <<"knm_local">>).
 -define(CARRIER_MANAGED, <<"knm_managed">>).
+-define(CARRIER_MDN, <<"knm_mdn">>).
 -define(CARRIER_OTHER, <<"knm_other">>).
 -define(CARRIER_RESERVED, <<"knm_reserved">>).
 -define(CARRIER_RESERVED_RESELLER, <<"knm_reserved_reseller">>).
