@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(knm_sip).
+-module(kzsip_uris).
 
 -export([parse/1
         ,encode/1
@@ -23,7 +23,7 @@
 -export([parse_until/2]).
 -endif.
 
--include("knm.hrl").
+-include("kazoo_sip.hrl").
 
 -type scheme() :: 'sip' | 'sips'.
 -record(sip_uri, {scheme = 'sip' :: scheme()

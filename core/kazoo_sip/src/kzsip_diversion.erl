@@ -27,6 +27,8 @@
 -export([parse_name_addr_header/1]).
 -endif.
 
+-include("kazoo_sip.hrl").
+
 -define(PARAM_REASON, <<"reason">>).
 -define(PARAM_COUNTER, <<"counter">>).
 -define(PARAM_LIMIT, <<"limit">>).
@@ -36,8 +38,6 @@
 -define(PARAM_ADDRESS, <<"address">>).
 
 -define(SOLO_EXTENSION, <<"_solo_">>).
-
--include("kazoo_sip.hrl").
 
 -type diversion() :: kz_json:object().
 -export_type([diversion/0]).
@@ -341,4 +341,5 @@ encode_param(Param, Literals) ->
     end.
 
 -spec quote_param(ne_binary()) -> ne_binary().
-quote_param(Param) -> <<"\"", Param/binary, "\"">>.
+quote_param(Param) ->
+    <<"\"", Param/binary, "\"">>.
