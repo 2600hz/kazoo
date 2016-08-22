@@ -149,6 +149,7 @@ base_service_object(AccountId, AccountJObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec from_service_json(kz_json:object()) -> services().
+-spec from_service_json(kz_json:object(), boolean()) -> services().
 from_service_json(JObj) ->
     from_service_json(JObj, 'true').
 
@@ -873,6 +874,7 @@ maybe_update_diff(Key, ItemQuantity, UpdateQuantity, Updates) ->
     lager:debug("updating ~p from ~p to ~p", [Key, ItemQuantity, UpdateQuantity]),
     kz_json:set_value(Key, UpdateQuantity - ItemQuantity, Updates).
 
+-spec diff_quantity(ne_binary(), ne_binary(), services()) -> integer().
 diff_quantity(_, _, #kz_services{deleted='true'}) -> 0;
 diff_quantity(CategoryId, ItemId, #kz_services{jobj=JObj
                                               ,updates=Updates

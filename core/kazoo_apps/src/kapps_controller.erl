@@ -100,6 +100,7 @@ start_link() ->
     _ = kz_util:spawn(fun initialize_kapps/0),
     'ignore'.
 
+-spec start_default_apps() -> [{atom(), 'ok' | {'error', any()}}].
 start_default_apps() ->
     [{App, start_app(App)} || App <- ?DEFAULT_KAPPS].
 

@@ -137,9 +137,10 @@ get_accel(AccelVs) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     lager:debug("started hangups query listener"),
-    {'ok', 'ok'}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -218,8 +219,7 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
-    lager:debug("hangups listener ~p termination", [_Reason]),
-    'ok'.
+    lager:debug("hangups listener ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

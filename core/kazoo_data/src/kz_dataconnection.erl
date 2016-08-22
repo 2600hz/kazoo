@@ -49,6 +49,7 @@ start_link(#data_connection{}=Connection) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', state()}.
 init([Connection]) ->
     lager:info("start connection"),
     self() ! 'maintain_connection',

@@ -55,6 +55,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state(), timeout()}.
 init([]) ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
     add_zones(get_config()),

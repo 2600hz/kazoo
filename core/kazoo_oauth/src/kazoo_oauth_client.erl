@@ -1,19 +1,24 @@
 %% @author root
 %% @doc @todo Add description to kazoo_oauth_client.
-
-
 -module(kazoo_oauth_client).
 
 -include("kazoo_oauth.hrl").
 
+-export([authenticate/1, authenticate/3]).
+
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([authenticate/1, authenticate/3]).
 
+-spec authenticate(kz_json:object()) -> {'ok', kz_json:object()} |
+                                        {'error', ne_binary()}.
+-spec authenticate(ne_binary(), ne_binary(), kz_json:object()) ->
+                          {'ok', kz_json:object()} |
+                          {'error', ne_binary()}.
 authenticate(JObj) ->
     case {kz_json:get_value(<<"access_token">>, JObj)
-         ,kz_json:get_value(<<"provider">>, JObj)}
+         ,kz_json:get_value(<<"provider">>, JObj)
+         }
     of
         {'undefined', 'undefined'} ->
             {'error', <<"OAUTH missing parameters AccessToken and Provider">>};

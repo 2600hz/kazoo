@@ -1,5 +1,4 @@
 -module(amqp_leader_proc).
-
 -behaviour(gen_server).
 
 -compile({no_auto_import,[node/1]}).
@@ -33,23 +32,23 @@
          code_change/3]).
 
 -record(state, {name                    :: atom()
-                ,leader                 :: sign()
-                ,role                   :: role()
-                ,elected = 0            :: integer()
-                ,restarted = 0          :: integer()
-                ,callback_module        :: atom()
-                ,callback_state         :: any()
-                ,down = []              :: atoms()
-                ,candidates = [node()]  :: atoms()
+               ,leader                 :: sign()
+               ,role                   :: role()
+               ,elected = 0            :: integer()
+               ,restarted = 0          :: integer()
+               ,callback_module        :: atom()
+               ,callback_state         :: any()
+               ,down = []              :: atoms()
+               ,candidates = [node()]  :: atoms()
                }).
 
 -record(sign, {elected                  :: integer()
-               ,restarted               :: integer()
-               ,node = node()           :: atom()
-               ,name                    :: atom()
-               ,sync                    :: any()
-%               ,candidates             :: atoms()
-              }).
+              ,restarted               :: integer()
+              ,node = node()           :: atom()
+              ,name                    :: atom()
+              ,sync                    :: any()
+%              ,candidates             :: atoms()
+             }).
 
 -record(?MODULE, {from, msg}).
 
@@ -146,6 +145,7 @@ broadcast(Msg, _Nodes, #sign{name = Name} = Sign) ->
 -spec leader_node(sign()) -> atom().
 leader_node(#sign{node = Node}) -> Node.
 
+-spec s(any()) -> {pid(), state()}.
 s(Name) ->
     gen_server:call(Name, s).
 

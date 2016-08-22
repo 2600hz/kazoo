@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(kazoo_apps_sup).
-
 -behaviour(supervisor).
 
 -export([start_link/0
@@ -40,6 +39,7 @@ start_link() ->
 initialize_kapps(Whapps) ->
     supervisor:start_child(?SERVER, ?SUPER_ARGS('kapps_sup', Whapps)).
 
+-spec start_child(supervisor:child_spec()) -> sup_startchild_ret().
 start_child(Spec) ->
     supervisor:start_child(?SERVER, Spec).
 

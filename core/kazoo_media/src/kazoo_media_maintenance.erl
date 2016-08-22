@@ -375,6 +375,7 @@ fix_media_name(JObj) ->
         {'error', Error} -> lager:info("error renaming media doc from ~s to ~s : ~p", [FromId, ToId, Error])
     end.
 
+-spec fix_media_names() -> any().
 fix_media_names() ->
     {'ok', JObjs} = kz_datamgr:all_docs(?KZ_MEDIA_DB),
     case [ JObj || JObj <- JObjs, filter_media_names(JObj)] of

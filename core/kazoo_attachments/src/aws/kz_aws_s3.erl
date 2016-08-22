@@ -42,14 +42,12 @@
 %%%   functions here, from a URL such as https://s3.amazonaws.com/some_bucket/path_to_file
 
 -spec new(string(), string()) -> aws_config().
-
 new(AccessKeyID, SecretAccessKey) ->
     #aws_config{access_key_id=AccessKeyID
                ,secret_access_key=SecretAccessKey
                }.
 
 -spec new(string(), string(), string()) -> aws_config().
-
 new(AccessKeyID, SecretAccessKey, Host) ->
     #aws_config{access_key_id=AccessKeyID
                ,secret_access_key=SecretAccessKey
@@ -58,7 +56,6 @@ new(AccessKeyID, SecretAccessKey, Host) ->
 
 
 -spec new(string(), string(), string(), non_neg_integer()) -> aws_config().
-
 new(AccessKeyID, SecretAccessKey, Host, Port) ->
     #aws_config{access_key_id=AccessKeyID
                ,secret_access_key=SecretAccessKey
@@ -67,7 +64,6 @@ new(AccessKeyID, SecretAccessKey, Host, Port) ->
                }.
 
 -spec new(string(), string(), string(), non_neg_integer(), string()) -> aws_config().
-
 new(AccessKeyID, SecretAccessKey, Host, Port, Scheme) ->
     #aws_config{access_key_id=AccessKeyID
                ,secret_access_key=SecretAccessKey
@@ -77,25 +73,21 @@ new(AccessKeyID, SecretAccessKey, Host, Port, Scheme) ->
                }.
 
 -spec configure(string(), string()) -> 'ok'.
-
 configure(AccessKeyID, SecretAccessKey) ->
     put('aws_config', new(AccessKeyID, SecretAccessKey)),
     'ok'.
 
 -spec configure(string(), string(), string()) -> 'ok'.
-
 configure(AccessKeyID, SecretAccessKey, Host) ->
     put('aws_config', new(AccessKeyID, SecretAccessKey, Host)),
     'ok'.
 
 -spec configure(string(), string(), string(), non_neg_integer()) -> 'ok'.
-
 configure(AccessKeyID, SecretAccessKey, Host, Port) ->
     put('aws_config', new(AccessKeyID, SecretAccessKey, Host, Port)),
     'ok'.
 
 -spec configure(string(), string(), string(), non_neg_integer(), string()) -> 'ok'.
-
 configure(AccessKeyID, SecretAccessKey, Host, Port, Scheme) ->
     put('aws_config', new(AccessKeyID, SecretAccessKey, Host, Port, Scheme)),
     'ok'.
@@ -121,17 +113,15 @@ configure(AccessKeyID, SecretAccessKey, Host, Port, Scheme) ->
 
 -spec copy_object(string(), string(), string(), string()) ->
                          {'ok', kz_proplist()} |
-                         {'error', any()} .
-
+                         {'error', any()}.
 copy_object(DestBucketName, DestKeyName, SrcBucketName, SrcKeyName) ->
     copy_object(DestBucketName, DestKeyName, SrcBucketName, SrcKeyName, []).
 
 -spec copy_object(string(), string(), string(), string(), kz_proplist() | aws_config()) ->
                          {'ok', kz_proplist()} |
-                         {'error', any()} .
+                         {'error', any()}.
 copy_object(DestBucketName, DestKeyName, SrcBucketName, SrcKeyName, #aws_config{} = Config) ->
     copy_object(DestBucketName, DestKeyName, SrcBucketName, SrcKeyName, [], Config);
-
 copy_object(DestBucketName, DestKeyName, SrcBucketName, SrcKeyName, Options) ->
     copy_object(DestBucketName, DestKeyName, SrcBucketName, SrcKeyName
                ,Options, default_config()
@@ -162,70 +152,59 @@ copy_object(DestBucketName, DestKeyName, SrcBucketName, SrcKeyName, Options, Con
         {'error', _}=E -> E
     end.
 
--spec create_bucket(string()) -> {'ok', kz_proplist()} | {'error', any()} .
-
-
+-spec create_bucket(string()) -> {'ok', kz_proplist()} | {'error', any()}.
 create_bucket(BucketName) ->
     create_bucket(BucketName, 'private').
 
 -spec create_bucket(string(), s3_bucket_acl() | aws_config()) ->
-                           {'ok', kz_proplist()} | {'error', any()} .
-
-
+                           {'ok', kz_proplist()} | {'error', any()}.
 create_bucket(BucketName, #aws_config{} = Config) ->
-    create_bucket(BucketName, private, Config);
-
+    create_bucket(BucketName, 'private', Config);
 create_bucket(BucketName, ACL) ->
-    create_bucket(BucketName, ACL, none).
+    create_bucket(BucketName, ACL, 'none').
 
 -spec create_bucket(string(), s3_bucket_acl(), s3_location_constraint() | aws_config()) ->
-                           {'ok', kz_proplist()} | {'error', any()} .
-
-
+                           {'ok', kz_proplist()} | {'error', any()}.
 create_bucket(BucketName, ACL, #aws_config{} = Config) ->
-    create_bucket(BucketName, ACL, none, Config);
-
+    create_bucket(BucketName, ACL, 'none', Config);
 create_bucket(BucketName, ACL, LocationConstraint) ->
     create_bucket(BucketName, ACL, LocationConstraint, default_config()).
 
 -spec create_bucket(string(), s3_bucket_acl(), s3_location_constraint(), aws_config()) ->
-                           {'ok', kz_proplist()} | {'error', any()} .
-
-
+                           {'ok', kz_proplist()} | {'error', any()}.
 create_bucket(BucketName, ACL, LocationConstraint, Config)
   when is_list(BucketName), is_atom(ACL), is_atom(LocationConstraint) ->
     Headers = case ACL of
-                  private -> [];  %% private is the default
-                  _       -> [{"x-amz-acl", encode_acl(ACL)}]
+                  'private' -> [];  %% private is the default
+                  _         -> [{"x-amz-acl", encode_acl(ACL)}]
               end,
     POSTData = case LocationConstraint of
-                   none -> <<>>;
-                   Location when Location =:= eu; Location =:= us_west_1 ->
-                       LocationName = case Location of eu -> "EU"; us_west_1 -> "us-west-1" end,
+                   'none' -> <<>>;
+                   Location when Location =:= 'eu';
+                                 Location =:= 'us_west_1' ->
+                       LocationName = case Location of eu -> "EU"; 'us_west_1' -> "us-west-1" end,
                        XML = {'CreateBucketConfiguration', [{'xmlns:xsi', ?XMLNS_S3}],
                               [{'LocationConstraint', [LocationName]}]},
-                       list_to_binary(xmerl:export_simple([XML], xmerl_xml))
+                       list_to_binary(xmerl:export_simple([XML], 'xmerl_xml'))
                end,
-    s3_simple_request(Config, put, BucketName, "/", "", [], POSTData, Headers).
+    s3_simple_request(Config, 'put', BucketName, "/", "", [], POSTData, Headers).
 
-encode_acl(undefined)                 -> undefined;
-encode_acl(private)                   -> "private";
-encode_acl(public_read)               -> "public-read";
-encode_acl(public_read_write)         -> "public-read-write";
-encode_acl(authenticated_read)        -> "authenticated-read";
-encode_acl(bucket_owner_read)         -> "bucket-owner-read";
-encode_acl(bucket_owner_full_control) -> "bucket-owner-full-control".
+encode_acl('undefined')                 -> 'undefined';
+encode_acl('private')                   -> "private";
+encode_acl('public_read')               -> "public-read";
+encode_acl('public_read_write')         -> "public-read-write";
+encode_acl('authenticated_read')        -> "authenticated-read";
+encode_acl('bucket_owner_read')         -> "bucket-owner-read";
+encode_acl('bucket_owner_full_control') -> "bucket-owner-full-control".
 
 -spec delete_bucket(string()) -> {'ok', kz_proplist()} | {'error', any()} .
-
 delete_bucket(BucketName) ->
     delete_bucket(BucketName, default_config()).
 
 -spec delete_bucket(string(), aws_config()) -> {'ok', kz_proplist()} | {'error', any()} .
-
 delete_bucket(BucketName, Config)
   when is_list(BucketName) ->
-    s3_simple_request(Config, delete, BucketName, "/", "", [], <<>>, []).
+    s3_simple_request(Config, 'delete', BucketName, "/", "", [], <<>>, []).
 
 
 -spec delete_objects_batch(string(), list()) -> no_return().
@@ -238,7 +217,7 @@ delete_objects_batch(Bucket, KeyList, Config) ->
             || Item <- KeyList],
     Payload = unicode:characters_to_list(
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Delete>" ++ Data ++ "</Delete>",
-                utf8),
+                'utf8'),
 
     Len = integer_to_list(string:len(Payload)),
     Url = lists:flatten([Config#aws_config.s3_scheme,
@@ -252,59 +231,53 @@ delete_objects_batch(Bucket, KeyList, Config) ->
                Url, "POST", Headers, Payload, delete_objects_batch_timeout(Config), Config),
     kz_aws:http_headers_body(Result).
 
-delete_objects_batch_timeout(#aws_config{timeout = undefined}) ->
-    1000;
-delete_objects_batch_timeout(#aws_config{timeout = Timeout}) ->
-    Timeout.
+delete_objects_batch_timeout(#aws_config{timeout = 'undefined'}) -> 1000;
+delete_objects_batch_timeout(#aws_config{timeout = Timeout}) -> Timeout.
 
-                                                % returns paths list from AWS S3 root directory, used as input to delete_objects_batch
-                                                % example :
-                                                %    25> rp(kz_aws_s3:explore_dirstructure("xmppfiledev", ["sailfish/deleteme"], [])).
-                                                %    ["sailfish/deleteme/deep/deep1/deep4/ZZZ_1.txt",
-                                                %     "sailfish/deleteme/deep/deep1/deep4/ZZZ_0.txt",
-                                                %     "sailfish/deleteme/deep/deep1/ZZZ_0.txt",
-                                                %     "sailfish/deleteme/deep/ZZZ_0.txt"]
-                                                %    'ok'
-                                                %
+%% returns paths list from AWS S3 root directory, used as input to delete_objects_batch
+%% example :
+%%    25> rp(kz_aws_s3:explore_dirstructure("xmppfiledev", ["sailfish/deleteme"], [])).
+%%    ["sailfish/deleteme/deep/deep1/deep4/ZZZ_1.txt",
+%%     "sailfish/deleteme/deep/deep1/deep4/ZZZ_0.txt",
+%%     "sailfish/deleteme/deep/deep1/ZZZ_0.txt",
+%%     "sailfish/deleteme/deep/ZZZ_0.txt"]
+%%    'ok'
+%%
 -spec explore_dirstructure(string(), list(), list()) -> list().
-
 explore_dirstructure(_, [], Result) ->
     lists:append(Result);
 explore_dirstructure(Bucketname, [Branch|Tail], Accum) ->
     ProcessContent = fun(Data)->
-                             Content = props:get_value(contents, Data),
-                             lists:foldl(fun(I,Acc)-> R = props:get_value(key, I), [R|Acc] end, [], Content)
+                             Content = props:get_value('contents', Data),
+                             lists:foldl(fun(I,Acc)-> [props:get_value('key', I) | Acc] end, [], Content)
                      end,
-
-    Data = list_objects(Bucketname,[{prefix, Branch}, {delimiter, "/"}]),
-    case props:get_value(common_prefixes, Data) of
+    Data = list_objects(Bucketname, [{'prefix', Branch}, {'delimiter', "/"}]),
+    case props:get_value('common_prefixes', Data) of
         [] -> % it has reached end of the branch
             Files = ProcessContent(Data),
             explore_dirstructure(Bucketname, Tail, [Files|Accum]);
         Sub ->
             Files = ProcessContent(Data),
-            List = lists:foldl(fun(I,Acc)-> R = props:get_value(prefix, I), [R|Acc] end, [], Sub),
+            List = lists:foldl(fun(I,Acc)-> [props:get_value('prefix', I) | Acc] end, [], Sub),
             Result = explore_dirstructure(Bucketname, List, Accum),
             explore_dirstructure(Bucketname, Tail, [Result, Files|Accum])
     end.
 
 -spec delete_object(string(), string()) -> {'ok', kz_proplist()} | {'error', any()} .
-
 delete_object(BucketName, Key) ->
     delete_object(BucketName, Key, default_config()).
 
 -spec delete_object(string(), string(), aws_config()) ->
                            {'ok', kz_proplist()} | {'error', any()} .
-
 delete_object(BucketName, Key, Config)
   when is_list(BucketName), is_list(Key) ->
-    case s3_request(Config, delete, BucketName, [$/|Key], "", [], <<>>, []) of
+    case s3_request(Config, 'delete', BucketName, [$/|Key], "", [], <<>>, []) of
         {'ok', {Headers, _Body}} ->
             Marker = props:get_value("x-amz-delete-marker", Headers, "false"),
             Id = props:get_value("x-amz-version-id", Headers, "null"),
             Props = props:filter_undefined(
-                      [{delete_marker, list_to_existing_atom(Marker)}
-                      ,{version_id, Id}
+                      [{'delete_marker', list_to_existing_atom(Marker)}
+                      ,{'version_id', Id}
                       ]),
             {'ok', Props};
         {'error', _}=E -> E
@@ -312,64 +285,61 @@ delete_object(BucketName, Key, Config)
 
 -spec delete_object_version(string(), string(), string()) ->
                                    {'ok', kz_proplist()} | {'error', any()} .
-
 delete_object_version(BucketName, Key, Version) ->
     delete_object_version(BucketName, Key, Version, default_config()).
 
 -spec delete_object_version(string(), string(), string(), aws_config()) ->
                                    {'ok', kz_proplist()} | {'error', any()} .
-
 delete_object_version(BucketName, Key, Version, Config)
   when is_list(BucketName),
        is_list(Key),
        is_list(Version)->
-    case s3_request(Config, delete, BucketName, [$/|Key], ["versionId=", Version], [], <<>>, []) of
+    case s3_request(Config, 'delete', BucketName, [$/|Key], ["versionId=", Version], [], <<>>, []) of
         {'ok', {Headers, _Body}} ->
             Marker = props:get_value("x-amz-delete-marker", Headers, "false"),
             Id = props:get_value("x-amz-version-id", Headers, "null"),
             Props = props:filter_undefined(
-                      [{delete_marker, list_to_existing_atom(Marker)}
-                      ,{version_id, Id}
+                      [{'delete_marker', list_to_existing_atom(Marker)}
+                      ,{'version_id', Id}
                       ]),
             {'ok', Props};
         {'error', _}=E -> E
     end.
 
 -spec list_buckets() -> kz_proplist().
-
 list_buckets() ->
     list_buckets(default_config()).
 
 -spec list_buckets(aws_config()) -> kz_proplist().
-
 list_buckets(Config) ->
-    Doc = s3_xml_request(Config, get, "", "/", "", [], <<>>, []),
+    Doc = s3_xml_request(Config, 'get', "", "/", "", [], <<>>, []),
     Buckets = [extract_bucket(Node) || Node <- xmerl_xpath:string("/*/Buckets/Bucket", Doc)],
-    [{buckets, Buckets}].
+    [{'buckets', Buckets}].
 
-                                                %
-                                                % @doc Get S3 bucket policy JSON object
-                                                % API Document: http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGETacl.html
-                                                %
--spec(get_bucket_policy(BucketName::string()) -> 'ok' | {'error', Reason::term()}).
+%%
+%% @doc Get S3 bucket policy JSON object
+%% API Document: http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGETacl.html
+%%
+-spec get_bucket_policy(BucketName::string()) -> 'ok' | {'error', Reason::term()}.
 get_bucket_policy(BucketName) ->
     get_bucket_policy(BucketName, default_config()).
 
-                                                %
-                                                % Example request: kz_aws_s3:get_bucket_policy("bucket1234", Config).
-                                                % Example success repsonse: {ok, "{\"Version\":\"2012-10-17\",\"Statement\": ..........}
-                                                % Example error response: {error,{http_error,404,"Not Found",
-                                                %                               "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n
-                                                %                               <Error>
-                                                %                                   <Code>NoSuchBucket</Code>
-                                                %                                   <Message>The specified bucket does not exist</Message>
-                                                %                                   <BucketName>bucket1234</BucketName>
-                                                %                                   <RequestId>DC1EA9456B266EF5</RequestId>
-                                                %                                   <HostId>DRtkAB80cAeom+4ffSGU3PFCxS7QvtiW+wxLnPF0dM2nxoaRqQk1SK/z62ZJVHAD</HostId>
-                                                %                               </Error>"}}
--spec(get_bucket_policy(BucketName::string(), Config::aws_config()) -> {'ok', Policy::string()} | {'error', Reason::term()}).
+%%
+%% Example request: kz_aws_s3:get_bucket_policy("bucket1234", Config).
+%% Example success repsonse: {ok, "{\"Version\":\"2012-10-17\",\"Statement\": ..........}
+%% Example error response: {error,{http_error,404,"Not Found",
+%%                               "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n
+%%                               <Error>
+%%                                   <Code>NoSuchBucket</Code>
+%%                                   <Message>The specified bucket does not exist</Message>
+%%                                   <BucketName>bucket1234</BucketName>
+%%                                   <RequestId>DC1EA9456B266EF5</RequestId>
+%%                                   <HostId>DRtkAB80cAeom+4ffSGU3PFCxS7QvtiW+wxLnPF0dM2nxoaRqQk1SK/z62ZJVHAD</HostId>
+%%                               </Error>"}}
+-spec get_bucket_policy(BucketName::string(), Config::aws_config()) ->
+                               {'ok', Policy::string()} | {'error', Reason::term()}.
 get_bucket_policy(BucketName, #aws_config{} = Config) ->
-    case s3_request(Config, get, BucketName, "/", "policy", [], <<>>, []) of
+    case s3_request(Config, 'get', BucketName, "/", "policy", [], <<>>, []) of
         {'ok', {_Headers, Body}} ->
             {'ok', binary_to_list(Body)};
         Error ->
@@ -385,7 +355,7 @@ put_bucket_policy(BucketName, Policy) ->
                                {'ok', kz_proplist()} | {'error', any()} .
 put_bucket_policy(BucketName, Policy, #aws_config{} = Config)
   when is_list(BucketName), is_binary(Policy) ->
-    s3_simple_request(Config, put, BucketName, "/", "policy", [], Policy, []).
+    s3_simple_request(Config, 'put', BucketName, "/", "policy", [], Policy, []).
 
 
 -spec list_objects(string()) -> kz_proplist().
@@ -406,40 +376,41 @@ list_objects(BucketName, Options) ->
 list_objects(BucketName, Options, Config)
   when is_list(BucketName),
        is_list(Options) ->
-    Params = [{"delimiter", props:get_value(delimiter, Options)},
-              {"marker", props:get_value(marker, Options)},
-              {"max-keys", props:get_value(max_keys, Options)},
-              {"prefix", props:get_value(prefix, Options)}],
-    Doc = s3_xml_request(Config, get, BucketName, "/", "", Params, <<>>, []),
-    Attributes = [{name, "Name", text},
-                  {prefix, "Prefix", text},
-                  {marker, "Marker", text},
-                  {delimiter, "Delimiter", text},
-                  {max_keys, "MaxKeys", integer},
-                  {is_truncated, "IsTruncated", boolean},
-                  {common_prefixes, "CommonPrefixes", fun extract_prefixes/1},
-                  {contents, "Contents", fun extract_contents/1}],
+    Params = [{"delimiter", props:get_value('delimiter', Options)},
+              {"marker", props:get_value('marker', Options)},
+              {"max-keys", props:get_value('max_keys', Options)},
+              {"prefix", props:get_value('prefix', Options)}],
+    Doc = s3_xml_request(Config, 'get', BucketName, "/", "", Params, <<>>, []),
+    Attributes = [{'name', "Name", 'text'}
+                 ,{'prefix', "Prefix", 'text'}
+                 ,{'marker', "Marker", 'text'}
+                 ,{'delimiter', "Delimiter", 'text'}
+                 ,{'max_keys', "MaxKeys", 'integer'}
+                 ,{'is_truncated', "IsTruncated", 'boolean'}
+                 ,{'common_prefixes', "CommonPrefixes", fun extract_prefixes/1}
+                 ,{'contents', "Contents", fun extract_contents/1}
+                 ],
     kz_aws_xml:decode(Attributes, Doc).
 
 extract_prefixes(Nodes) ->
-    Attributes = [{prefix, "Prefix", text}],
+    Attributes = [{'prefix', "Prefix", 'text'}],
     [kz_aws_xml:decode(Attributes, Node) || Node <- Nodes].
 
 extract_contents(Nodes) ->
-    Attributes = [{key, "Key", text},
-                  {last_modified, "LastModified", time},
-                  {etag, "ETag", text},
-                  {size, "Size", integer},
-                  {storage_class, "StorageClass", text},
-                  {owner, "Owner", fun extract_user/1}],
+    Attributes = [{'key', "Key", 'text'}
+                 ,{'last_modified', "LastModified", 'time'}
+                 ,{'etag', "ETag", 'text'}
+                 ,{'size', "Size", 'integer'}
+                 ,{'storage_class', "StorageClass", 'text'}
+                 ,{'owner', "Owner", fun extract_user/1}
+                 ],
     [kz_aws_xml:decode(Attributes, Node) || Node <- Nodes].
 
-extract_user([]) ->
-    [];
+extract_user([]) -> [];
 extract_user([Node]) ->
-    Attributes = [{id, "ID", optional_text},
-                  {display_name, "DisplayName", optional_text},
-                  {uri, "URI", optional_text}
+    Attributes = [{'id', "ID", 'optional_text'}
+                 ,{'display_name', "DisplayName", 'optional_text'}
+                 ,{'uri', "URI", 'optional_text'}
                  ],
     kz_aws_xml:decode(Attributes, Node).
 
@@ -453,19 +424,20 @@ get_bucket_attribute(BucketName, AttributeName) ->
 get_bucket_attribute(BucketName, AttributeName, Config)
   when is_list(BucketName), is_atom(AttributeName) ->
     Attr = case AttributeName of
-               acl             -> "acl";
-               location        -> "location";
-               logging         -> "logging";
-               request_payment -> "requestPayment";
-               versioning      -> "versioning"
+               'acl'             -> "acl";
+               'location'        -> "location";
+               'logging'         -> "logging";
+               'request_payment' -> "requestPayment";
+               'versioning'      -> "versioning"
            end,
-    Doc = s3_xml_request(Config, get, BucketName, "/", Attr, [], <<>>, []),
+    Doc = s3_xml_request(Config, 'get', BucketName, "/", Attr, [], <<>>, []),
     case AttributeName of
-        acl ->
-            Attributes = [{owner, "Owner", fun extract_user/1},
-                          {access_control_list, "AccessControlList/Grant", fun extract_acl/1}],
+        'acl' ->
+            Attributes = [{'owner', "Owner", fun extract_user/1}
+                         ,{'access_control_list', "AccessControlList/Grant", fun extract_acl/1}
+                         ],
             kz_aws_xml:decode(Attributes, Doc);
-        location ->
+        'location' ->
             case kz_aws_xml:get_text("/LocationConstraint", Doc) of
                 %% logic according to http://s3tools.org/s3cmd
                 %% s3cmd-1.5.2/S3/S3.py : line 342 (function get_bucket_location)
@@ -474,26 +446,25 @@ get_bucket_attribute(BucketName, AttributeName, Config)
                 ["EU"] -> "eu-west-1";
                 Loc -> Loc
             end;
-        logging ->
+        'logging' ->
             case xmerl_xpath:string("/BucketLoggingStatus/LoggingEnabled", Doc) of
-                [] ->
-                    {enabled, 'false'};
+                [] -> {'enabled', 'false'};
                 [LoggingEnabled] ->
-                    Attributes = [{target_bucket, "TargetBucket", text},
-                                  {target_prefix, "TargetPrefix", text},
-                                  {target_trants, "TargetGrants/Grant", fun extract_acl/1}],
-                    [{enabled, 'true'}|kz_aws_xml:decode(Attributes, LoggingEnabled)]
+                    Attributes = [{'target_bucket', "TargetBucket", 'text'},
+                                  {'target_prefix', "TargetPrefix", 'text'},
+                                  {'target_trants', "TargetGrants/Grant", fun extract_acl/1}],
+                    [{'enabled', 'true'} | kz_aws_xml:decode(Attributes, LoggingEnabled)]
             end;
-        request_payment ->
+        'request_payment' ->
             case kz_aws_xml:get_text("/RequestPaymentConfiguration/Payer", Doc) of
-                "Requester" -> requester;
-                _           -> bucket_owner
+                "Requester" -> 'requester';
+                _           -> 'bucket_owner'
             end;
-        versioning ->
+        'versioning' ->
             case kz_aws_xml:get_text("/VersioningConfiguration/Status", Doc) of
-                "Enabled"   -> enabled;
-                "Suspended" -> suspended;
-                _           -> disabled
+                "Enabled"   -> 'enabled';
+                "Suspended" -> 'suspended';
+                _           -> 'disabled'
             end
     end.
 
@@ -501,20 +472,21 @@ extract_acl(ACL) ->
     [extract_grant(Item) || Item <- ACL].
 
 extract_grant(Node) ->
-    [{grantee, extract_user(xmerl_xpath:string("Grantee", Node))},
-     {permission, decode_permission(kz_aws_xml:get_text("Permission", Node))}].
+    [{'grantee', extract_user(xmerl_xpath:string("Grantee", Node))}
+    ,{'permission', decode_permission(kz_aws_xml:get_text("Permission", Node))}
+    ].
 
-encode_permission(full_control) -> "FULL_CONTROL";
-encode_permission(write)        -> "WRITE";
-encode_permission(write_acp)    -> "WRITE_ACP";
-encode_permission(read)         -> "READ";
-encode_permission(read_acp) -> "READ_ACP".
+encode_permission('full_control') -> "FULL_CONTROL";
+encode_permission('write')        -> "WRITE";
+encode_permission('write_acp')    -> "WRITE_ACP";
+encode_permission('read')         -> "READ";
+encode_permission('read_acp') -> "READ_ACP".
 
-decode_permission("FULL_CONTROL") -> full_control;
-decode_permission("WRITE")        -> write;
-decode_permission("WRITE_ACP")    -> write_acp;
-decode_permission("READ")         -> read;
-decode_permission("READ_ACP")     -> read_acp.
+decode_permission("FULL_CONTROL") -> 'full_control';
+decode_permission("WRITE")        -> 'write';
+decode_permission("WRITE_ACP")    -> 'write_acp';
+decode_permission("READ")         -> 'read';
+decode_permission("READ_ACP")     -> 'read_acp'.
 
 -spec get_object(string(), string()) -> {'ok', kz_proplist()} | {'error', any()} .
 
@@ -534,26 +506,26 @@ get_object(BucketName, Key, Options) ->
                         {'ok', kz_proplist()} | {'error', any()} .
 
 get_object(BucketName, Key, Options, Config) ->
-    RequestHeaders = [{"Range", props:get_value(range, Options)},
-                      {"If-Modified-Since", props:get_value(if_modified_since, Options)},
-                      {"If-Unmodified-Since", props:get_value(if_unmodified_since, Options)},
-                      {"If-Match", props:get_value(if_match, Options)},
-                      {"If-None-Match", props:get_value(if_none_match, Options)}],
-    Subresource = case props:get_value(version_id, Options) of
-                      undefined -> "";
+    RequestHeaders = [{"Range", props:get_value('range', Options)},
+                      {"If-Modified-Since", props:get_value('if_modified_since', Options)},
+                      {"If-Unmodified-Since", props:get_value('if_unmodified_since', Options)},
+                      {"If-Match", props:get_value('if_match', Options)},
+                      {"If-None-Match", props:get_value('if_none_match', Options)}],
+    Subresource = case props:get_value('version_id', Options) of
+                      'undefined' -> "";
                       Version   -> ["versionId=", Version]
                   end,
-    case s3_request(Config, get, BucketName, [$/|Key], Subresource, [], <<>>, RequestHeaders) of
+    case s3_request(Config, 'get', BucketName, [$/|Key], Subresource, [], <<>>, RequestHeaders) of
         {'ok', {Headers, Body}} ->
             Props = props:filter_undefined(
-                      [{etag, props:get_value("etag", Headers)}
-                      ,{content_length, props:get_value("content-length", Headers)}
-                      ,{content_type, props:get_value("content-type", Headers)}
-                      ,{content_encoding, props:get_value("content-encoding", Headers)}
-                      ,{delete_marker, list_to_existing_atom(props:get_value("x-amz-delete-marker", Headers, "false"))}
-                      ,{version_id, props:get_value("x-amz-version-id", Headers, "null")}
-                      ,{headers, Headers}
-                      ,{content, Body}
+                      [{'etag', props:get_value("etag", Headers)}
+                      ,{'content_length', props:get_value("content-length", Headers)}
+                      ,{'content_type', props:get_value("content-type", Headers)}
+                      ,{'content_encoding', props:get_value("content-encoding", Headers)}
+                      ,{'delete_marker', list_to_existing_atom(props:get_value("x-amz-delete-marker", Headers, "false"))}
+                      ,{'version_id', props:get_value("x-amz-version-id", Headers, "null")}
+                      ,{'headers', Headers}
+                      ,{'content', Body}
                        | extract_metadata(Headers)
                       ]),
             {'ok', Props};
@@ -577,13 +549,14 @@ get_object_acl(BucketName, Key, Options) ->
 
 get_object_acl(BucketName, Key, Options, Config)
   when is_list(BucketName), is_list(Key), is_list(Options) ->
-    Subresource = case props:get_value(version_id, Options) of
-                      undefined -> "";
+    Subresource = case props:get_value('version_id', Options) of
+                      'undefined' -> "";
                       Version   -> ["&versionId=", Version]
                   end,
-    Doc = s3_xml_request(Config, get, BucketName, [$/|Key], "acl" ++ Subresource, [], <<>>, []),
-    Attributes = [{owner, "Owner", fun extract_user/1},
-                  {access_control_list, "AccessControlList/Grant", fun extract_acl/1}],
+    Doc = s3_xml_request(Config, 'get', BucketName, [$/|Key], "acl" ++ Subresource, [], <<>>, []),
+    Attributes = [{'owner', "Owner", fun extract_user/1}
+                 ,{'access_control_list', "AccessControlList/Grant", fun extract_acl/1}
+                 ],
     kz_aws_xml:decode(Attributes, Doc).
 
 -spec get_object_metadata(string(), string()) ->
@@ -605,31 +578,33 @@ get_object_metadata(BucketName, Key, Options) ->
                                  {'ok', kz_proplist()} | {'error', any()} .
 
 get_object_metadata(BucketName, Key, Options, Config) ->
-    RequestHeaders = [{"If-Modified-Since", props:get_value(if_modified_since, Options)},
-                      {"If-Unmodified-Since", props:get_value(if_unmodified_since, Options)},
-                      {"If-Match", props:get_value(if_match, Options)},
-                      {"If-None-Match", props:get_value(if_none_match, Options)}],
-    Subresource = case props:get_value(version_id, Options) of
-                      undefined -> "";
+    RequestHeaders = [{"If-Modified-Since", props:get_value('if_modified_since', Options)},
+                      {"If-Unmodified-Since", props:get_value('if_unmodified_since', Options)},
+                      {"If-Match", props:get_value('if_match', Options)},
+                      {"If-None-Match", props:get_value('if_none_match', Options)}],
+    Subresource = case props:get_value('version_id', Options) of
+                      'undefined' -> "";
                       Version   -> ["versionId=", Version]
                   end,
-    case s3_request(Config, head, BucketName, [$/|Key], Subresource, [], <<>>, RequestHeaders) of
+    case s3_request(Config, 'head', BucketName, [$/|Key], Subresource, [], <<>>, RequestHeaders) of
         {'ok', {Headers, _Body}} ->
             Props = props:filter_undefined(
-                      [{last_modified, props:get_value("last-modified", Headers)}
-                      ,{etag, props:get_value("etag", Headers)}
-                      ,{content_length, props:get_value("content-length", Headers)}
-                      ,{content_type, props:get_value("content-type", Headers)}
-                      ,{content_encoding, props:get_value("content-encoding", Headers)}
-                      ,{delete_marker, list_to_existing_atom(props:get_value("x-amz-delete-marker", Headers, "false"))}
-                      ,{version_id, props:get_value("x-amz-version-id", Headers, "false")}|extract_metadata(Headers)
+                      [{'last_modified', props:get_value("last-modified", Headers)}
+                      ,{'etag', props:get_value("etag", Headers)}
+                      ,{'content_length', props:get_value("content-length", Headers)}
+                      ,{'content_type', props:get_value("content-type", Headers)}
+                      ,{'content_encoding', props:get_value("content-encoding", Headers)}
+                      ,{'delete_marker', list_to_existing_atom(props:get_value("x-amz-delete-marker", Headers, "false"))}
+                      ,{'version_id', props:get_value("x-amz-version-id", Headers, "false")}
+                       | extract_metadata(Headers)
                       ]),
             {'ok', Props};
         {'error', _}=E -> E
     end.
 
+-spec extract_metadata([{nonempty_string(), string()}]) -> [{nonempty_string(), string()}].
 extract_metadata(Headers) ->
-    [{Key, Value} || {Key = "x-amz-meta-" ++ _, Value} <- Headers].
+    [{Key, Value} || {"x-amz-meta-"++_=Key, Value} <- Headers].
 
 -spec get_object_torrent(string(), string()) ->
                                 {'ok', kz_proplist()} | {'error', any()} .
@@ -641,12 +616,12 @@ get_object_torrent(BucketName, Key) ->
                                 {'ok', kz_proplist()} | {'error', any()} .
 
 get_object_torrent(BucketName, Key, Config) ->
-    case s3_request(Config, get, BucketName, [$/|Key], "torrent", [], <<>>, []) of
+    case s3_request(Config, 'get', BucketName, [$/|Key], "torrent", [], <<>>, []) of
         {'ok', {Headers, Body}} ->
             Props = props:filter_undefined(
-                      [{delete_marker, list_to_existing_atom(props:get_value("x-amz-delete-marker", Headers, "false"))}
-                      ,{version_id, props:get_value("x-amz-version-id", Headers, "null")}
-                      ,{torrent, Body}
+                      [{'delete_marker', list_to_existing_atom(props:get_value("x-amz-delete-marker", Headers, "false"))}
+                      ,{'version_id', props:get_value("x-amz-version-id", Headers, "null")}
+                      ,{'torrent', Body}
                       ]),
             {'ok', Props};
         {'error', _}=E -> E
@@ -669,51 +644,55 @@ list_object_versions(BucketName, Options) ->
 
 list_object_versions(BucketName, Options, Config)
   when is_list(BucketName), is_list(Options) ->
-    Params = [{"delimiter", props:get_value(delimiter, Options)},
-              {"key-marker", props:get_value(key_marker, Options)},
-              {"max-keys", props:get_value(max_keys, Options)},
-              {"prefix", props:get_value(prefix, Options)},
-              {"version-id-marker", props:get_value(version_id_marker, Options)}],
-    Doc = s3_xml_request(Config, get, BucketName, "/", "versions", Params, <<>>, []),
-    Attributes = [{name, "Name", text},
-                  {prefix, "Prefix", text},
-                  {key_marker, "KeyMarker", text},
-                  {next_key_marker, "NextKeyMarker", optional_text},
-                  {version_id_marker, "VersionIdMarker", text},
-                  {next_version_id_marker, "NextVersionIdMarker", optional_text},
-                  {max_keys, "MaxKeys", integer},
-                  {is_truncated, "Istruncated", boolean},
-                  {versions, "Version", fun extract_versions/1},
-                  {delete_markers, "DeleteMarker", fun extract_delete_markers/1}],
+    Params = [{"delimiter", props:get_value('delimiter', Options)},
+              {"key-marker", props:get_value('key_marker', Options)},
+              {"max-keys", props:get_value('max_keys', Options)},
+              {"prefix", props:get_value('prefix', Options)},
+              {"version-id-marker", props:get_value('version_id_marker', Options)}],
+    Doc = s3_xml_request(Config, 'get', BucketName, "/", "versions", Params, <<>>, []),
+    Attributes = [{'name', "Name", 'text'}
+                 ,{'prefix', "Prefix", 'text'}
+                 ,{'key_marker', "KeyMarker", 'text'}
+                 ,{'next_key_marker', "NextKeyMarker", 'optional_text'}
+                 ,{'version_id_marker', "VersionIdMarker", 'text'}
+                 ,{'next_version_id_marker', "NextVersionIdMarker", 'optional_text'}
+                 ,{'max_keys', "MaxKeys", 'integer'}
+                 ,{'is_truncated', "Istruncated", 'boolean'}
+                 ,{'versions', "Version", fun extract_versions/1}
+                 ,{'delete_markers', "DeleteMarker", fun extract_delete_markers/1}
+                 ],
     kz_aws_xml:decode(Attributes, Doc).
 
 extract_versions(Nodes) ->
     [extract_version(Node) || Node <- Nodes].
 
 extract_version(Node) ->
-    Attributes = [{key, "Key", text},
-                  {version_id, "VersionId", text},
-                  {is_latest, "IsLatest", boolean},
-                  {etag, "ETag", text},
-                  {size, "Size", integer},
-                  {owner, "Owner", fun extract_user/1},
-                  {storage_class, "StorageClass", text},
-                  {last_modified, "LastModified", time}],
+    Attributes = [{'key', "Key", 'text'}
+                 ,{'version_id', "VersionId", 'text'}
+                 ,{'is_latest', "IsLatest", 'boolean'}
+                 ,{'etag', "ETag", 'text'}
+                 ,{'size', "Size", 'integer'}
+                 ,{'owner', "Owner", fun extract_user/1}
+                 ,{'storage_class', "StorageClass", 'text'}
+                 ,{'last_modified', "LastModified", 'time'}
+                 ],
     kz_aws_xml:decode(Attributes, Node).
 
 extract_delete_markers(Nodes) ->
     [extract_delete_marker(Node) || Node <- Nodes].
 
 extract_delete_marker(Node) ->
-    Attributes = [{key, "Key", text},
-                  {version_id, "VersionId", text},
-                  {is_latest, "IsLatest", boolean},
-                  {owner, "Owner", fun extract_user/1}],
+    Attributes = [{'key', "Key", 'text'}
+                 ,{'version_id', "VersionId", 'text'}
+                 ,{'is_latest', "IsLatest", 'boolean'}
+                 ,{'owner', "Owner", fun extract_user/1}
+                 ],
     kz_aws_xml:decode(Attributes, Node).
 
 extract_bucket(Node) ->
-    kz_aws_xml:decode([{name, "Name", text},
-                       {creation_date, "CreationDate", time}],
+    kz_aws_xml:decode([{'name', "Name", 'text'}
+                      ,{'creation_date', "CreationDate", 'time'}
+                      ],
                       Node).
 
 -spec put_object(string(), string(), iodata()) ->
@@ -773,14 +752,15 @@ set_object_acl(BucketName, Key, ACL) ->
 
 set_object_acl(BucketName, Key, ACL, Config)
   when is_list(BucketName), is_list(Key), is_list(ACL) ->
-    Id = props:get_value(id, props:get_value(owner, ACL)),
-    DisplayName = props:get_value(display_name, props:get_value(owner, ACL)),
-    ACL1 = props:get_value(access_control_list, ACL),
+    Id = props:get_value('id', props:get_value('owner', ACL)),
+    DisplayName = props:get_value('display_name', props:get_value('owner', ACL)),
+    ACL1 = props:get_value('access_control_list', ACL),
     XML = {'AccessControlPolicy',
-           [{'Owner', [{'ID', [Id]}, {'DisplayName', [DisplayName]}]},
-            {'AccessControlList', encode_grants(ACL1)}]},
-    XMLText = list_to_binary(xmerl:export_simple([XML], xmerl_xml)),
-    s3_simple_request(Config, put, BucketName, [$/|Key], "acl", [], XMLText, [{"content-type", "application/xml"}]).
+           [{'Owner', [{'ID', [Id]}, {'DisplayName', [DisplayName]}]}
+           ,{'AccessControlList', encode_grants(ACL1)}
+           ]},
+    XMLText = list_to_binary(xmerl:export_simple([XML], 'xmerl_xml')),
+    s3_simple_request(Config, 'put', BucketName, [$/|Key], "acl", [], XMLText, [{"content-type", "application/xml"}]).
 
 -spec sign_get(integer(), string(), string(), aws_config()) -> {binary(), string()}.
 sign_get(Expire_time, BucketName, Key, Config)
@@ -789,7 +769,7 @@ sign_get(Expire_time, BucketName, Key, Config)
     Datetime = (Mega * 1000000) + Sec,
     Expires = integer_to_list(Expire_time + Datetime),
     SecurityTokenToSign = case Config#aws_config.security_token of
-                              undefined -> "";
+                              'undefined' -> "";
                               SecurityToken -> "x-amz-security-token:" ++ SecurityToken ++ "\n"
                           end,
     To_sign = lists:flatten(["GET\n\n\n", Expires, "\n", SecurityTokenToSign, "/", BucketName, "/", Key]),
@@ -808,13 +788,19 @@ make_link(Expire_time, BucketName, Key, Config) ->
     {Sig, Expires} = sign_get(Expire_time, BucketName, EncodedKey, Config),
     Host = lists:flatten([Config#aws_config.s3_scheme, BucketName, ".", Config#aws_config.s3_host, port_spec(Config)]),
     SecurityTokenQS = case Config#aws_config.security_token of
-                          undefined -> "";
+                          'undefined' -> "";
                           SecurityToken -> "&x-amz-security-token=" ++ kz_aws_http:url_encode(SecurityToken)
                       end,
-    URI = lists:flatten(["/", EncodedKey, "?AWSAccessKeyId=", kz_aws_http:url_encode(Config#aws_config.access_key_id), "&Signature=", kz_aws_http:url_encode(Sig), "&Expires=", Expires, SecurityTokenQS]),
-    {list_to_integer(Expires),
-     binary_to_list(erlang:iolist_to_binary(Host)),
-     binary_to_list(erlang:iolist_to_binary(URI))}.
+    URI = lists:flatten(["/", EncodedKey
+                        ,"?AWSAccessKeyId=", kz_aws_http:url_encode(Config#aws_config.access_key_id)
+                        ,"&Signature=", kz_aws_http:url_encode(Sig)
+                        ,"&Expires=", Expires
+                        ,SecurityTokenQS
+                        ]),
+    {list_to_integer(Expires)
+    ,binary_to_list(erlang:iolist_to_binary(Host))
+    ,binary_to_list(erlang:iolist_to_binary(URI))
+    }.
 
 -spec get_object_url(string(), string()) -> string().
 
@@ -839,8 +825,9 @@ make_get_url(Expire_time, BucketName, Key) ->
 make_get_url(Expire_time, BucketName, Key, Config) ->
     {Sig, Expires} = sign_get(Expire_time, BucketName, kz_aws_http:url_encode_loose(Key), Config),
     SecurityTokenQS = case Config#aws_config.security_token of
-                          undefined -> "";
-                          SecurityToken -> "&x-amz-security-token=" ++ kz_aws_http:url_encode(SecurityToken)
+                          'undefined' -> "";
+                          SecurityToken ->
+                              "&x-amz-security-token=" ++ kz_aws_http:url_encode(SecurityToken)
                       end,
     lists:flatten([get_object_url(BucketName, Key, Config),
                    "?AWSAccessKeyId=", kz_aws_http:url_encode(Config#aws_config.access_key_id),
@@ -859,12 +846,12 @@ start_multipart(BucketName, Key, Options, HTTPHeaders, #aws_config{} = Config)
 
     RequestHeaders = [{"x-amz-acl", encode_acl(props:get_value(acl, Options))}|HTTPHeaders]
         ++ [{"x-amz-meta-" ++ string:to_lower(MKey), MValue} ||
-               {MKey, MValue} <- props:get_value(meta, Options, [])],
+               {MKey, MValue} <- props:get_value('meta', Options, [])],
     POSTData = <<>>,
-    case s3_xml_request2(Config, post, BucketName, [$/|Key], "uploads", [],
+    case s3_xml_request2(Config, 'post', BucketName, [$/|Key], "uploads", [],
                          POSTData, RequestHeaders) of
         {'ok', Doc} ->
-            Attributes = [{uploadId, "UploadId", text}],
+            Attributes = [{'uploadId', "UploadId", 'text'}],
             {'ok', kz_aws_xml:decode(Attributes, Doc)};
 
         Error ->
@@ -942,7 +929,7 @@ abort_multipart(BucketName, Key, UploadId)
 abort_multipart(BucketName, Key, UploadId, Options, HTTPHeaders, #aws_config{} = Config)
   when is_list(BucketName), is_list(Key), is_list(UploadId), is_list(Options), is_list(HTTPHeaders) ->
 
-    case s3_request(Config, delete, BucketName, [$/|Key], [], [{"uploadId", UploadId}],
+    case s3_request(Config, 'delete', BucketName, [$/|Key], [], [{"uploadId", UploadId}],
                     <<>>, HTTPHeaders) of
         {'ok', _} ->
             'ok';
@@ -1007,14 +994,14 @@ set_bucket_attribute(BucketName, AttributeName, Value, Config)
   when is_list(BucketName) ->
     {Subresource, XML} =
         case AttributeName of
-            acl ->
+            'acl' ->
                 ACLXML = {'AccessControlPolicy',
                           [{'Owner',
                             [{'ID', [props:get_value('id', props:get_value('owner', Value))]},
                              {'DisplayName', [props:get_value('display_name', props:get_value('owner', Value))]}]},
                            {'AccessControlList', encode_grants(props:get_value('access_control_list', Value))}]},
                 {"acl", ACLXML};
-            logging ->
+            'logging' ->
                 LoggingXML = {'BucketLoggingStatus',
                               [{'xmlns:xsi', ?XMLNS_S3}],
                               case props:get_is_true('enabled', Value) of

@@ -82,6 +82,7 @@ extensions_fold({K, ?SOLO_EXTENSION}, Acc) ->
 extensions_fold({_K, _V}=Extention, Acc) ->
     [Extention | Acc].
 
+-spec set_user(diversion(), ne_binary()) -> diversion().
 -spec set_address(diversion(), ne_binary()) -> diversion().
 -spec set_reason(diversion(), ne_binary()) -> diversion().
 -spec set_counter(diversion(), non_neg_integer()) -> diversion().

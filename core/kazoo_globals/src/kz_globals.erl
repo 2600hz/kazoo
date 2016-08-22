@@ -162,6 +162,7 @@ register_name(Name, Pid) ->
         _Pid -> 'no'
     end.
 
+-spec registered() -> kz_global:names().
 registered() ->
     kz_global:all_names(?TAB_NAME).
 
@@ -212,6 +213,7 @@ find_me() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', globals_state()}.
 init([]) ->
     process_flag('trap_exit', 'true'),
     lager:debug("starting globals registry"),

@@ -516,6 +516,7 @@ request_proplist_filter(_) -> 'true'.
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', state()}.
 init([Args]) ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
     lager:debug("starting amqp worker"),

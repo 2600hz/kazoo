@@ -133,6 +133,8 @@ max_recording_time_limit() ->
 %%     Port = kz_couch_connections:get_port(),
 %%     base_url(Host, Port).
 
+-spec base_url(text(), text()) -> ne_binary().
+-spec base_url(text(), text(), atom()) -> ne_binary().
 base_url(Host, Port) ->
     base_url(Host, Port, 'proxy_playback').
 
@@ -176,6 +178,7 @@ build_url(H, P, User, Pwd) ->
                    ,"@", kz_util:to_binary(H), ":", kz_util:to_binary(P), "/"
                    ]).
 
+-spec convert_stream_type(ne_binary()) -> ne_binary().
 convert_stream_type(<<"extant">>) -> <<"continuous">>;
 convert_stream_type(<<"store">>) -> <<"store">>;
 convert_stream_type(_) -> <<"single">>.

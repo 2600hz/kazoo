@@ -10,9 +10,11 @@
 
 -include_lib("kazoo_data/src/kz_data.hrl").
 
+-spec add_trace(pid()) -> 'ok'.
 add_trace(Pid) ->
     add_trace(Pid, 100*1000).
 
+-spec add_trace(pid(), pos_integer()) -> 'ok'.
 add_trace(Pid, CollectFor) ->
     spawn(fun() ->
                   io:format("started trace for ~p in ~p~n", [Pid, self()]),
@@ -29,11 +31,13 @@ add_trace(Pid, CollectFor) ->
           end),
     'ok'.
 
+-spec gen_load(non_neg_integer()) -> 'ok'.
+-spec gen_load(non_neg_integer(), non_neg_integer()) -> 'ok'.
 gen_load(N) ->
     gen_load(N, 1000).
 gen_load(N, D) ->
     Start = os:timestamp(),
-    _ = rand:seed(exsplus, Start),
+    _ = rand:seed('exsplus', Start),
 
     {PointerTab, MonitorTab} = gen_listener:call(?CACHE_NAME, {'tables'}),
     Tables = [?CACHE_NAME, PointerTab, MonitorTab],
@@ -82,7 +86,7 @@ do_load_gen(Ds) ->
     Docs = [new_doc(AccountDb, Doc) || Doc <- lists:seq(1,Ds)],
 
     Start = os:timestamp(),
-    _ = rand:seed(exsplus, Start),
+    _ = rand:seed('exsplus', Start),
 
     case rand:uniform(100) of
         42 ->

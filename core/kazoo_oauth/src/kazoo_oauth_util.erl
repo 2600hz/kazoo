@@ -1,7 +1,5 @@
 %% @author root
 %% @doc @todo Add description to kazoo_oauth_util.
-
-
 -module(kazoo_oauth_util).
 
 -include("kazoo_oauth.hrl").
@@ -23,6 +21,8 @@
 authorization_header(#oauth_token{type=Type,token=Token}) ->
     <<Type/binary, " ", Token/binary>>.
 
+-spec get_oauth_provider(ne_binary()) -> {'ok', oauth_provider()} |
+                                         {'error', ne_binary()}.
 get_oauth_provider(ProviderId) ->
     case kz_datamgr:open_doc(?KZ_OAUTH_DB, ProviderId) of
         {'ok', JObj} -> {'ok', oauth_provider_from_jobj(ProviderId, JObj)};
@@ -38,6 +38,8 @@ oauth_provider_from_jobj(ProviderId, JObj) ->
                    ,scopes= kz_json:get_value(<<"scopes">>, JObj)
                    }.
 
+-spec get_oauth_app(ne_binary()) -> {'ok', oauth_provider()} |
+                                    {'error', ne_binary()}.
 get_oauth_app(AppId) ->
     case kz_datamgr:open_doc(?KZ_OAUTH_DB, AppId) of
         {'ok', JObj} ->
@@ -56,6 +58,9 @@ oauth_app_from_jobj(AppId, Provider, JObj) ->
               ,user_prefix = kz_json:get_value(<<"pvt_user_prefix">>, JObj)
               ,provider = Provider}.
 
+-spec get_oauth_service_app(ne_binary()) ->
+                                   {'ok', oauth_service_app()} |
+                                   {'error', any()}.
 get_oauth_service_app(AppId) ->
     case kz_datamgr:open_doc(?KZ_OAUTH_DB, AppId) of
         {'ok', JObj} ->
@@ -74,7 +79,8 @@ oauth_service_from_jobj(AppId, Provider, JObj) ->
                       ,account_id = kz_doc:account_id(JObj)
                       ,email = kz_json:get_value(<<"email">>, JObj)
                       ,public_key_fingerprints = kz_json:get_value(<<"public_key_fingerprints">>, JObj)
-                      ,provider = Provider}.
+                      ,provider = Provider
+                      }.
 
 -spec load_service_app_keys(oauth_service_app()) ->
                                    {'ok', oauth_service_app()} |

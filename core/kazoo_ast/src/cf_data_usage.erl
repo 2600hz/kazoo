@@ -20,10 +20,12 @@
                ,visited = [] %% MFAs visited (to stop recursion)
                }).
 
+-spec to_schema_docs() -> 'ok'.
 to_schema_docs() ->
     _ = [to_schema_doc(M, Usage) || {M, Usage} <- process()],
     'ok'.
 
+-spec to_schema_doc(module()) -> 'ok'.
 to_schema_doc(M) ->
     to_schema_doc(M, process(M)).
 
@@ -145,6 +147,7 @@ guess_type(_F, _D) ->
     ?DEBUG("couldn't guess ~p(~p)~n", [_F, _D]),
     'undefined'.
 
+-spec process() -> [{module(), list()}].
 process() ->
     io:format("processing callflow data usage: "),
     Usages = [{Module, Usages} ||
@@ -154,6 +157,7 @@ process() ->
     io:format(" done~n"),
     Usages.
 
+-spec process(module()) -> list().
 process(Module) when is_atom(Module) ->
     case is_action_module(Module) of
         'false' -> 'undefined';

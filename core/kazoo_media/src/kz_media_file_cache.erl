@@ -32,8 +32,7 @@
 -define(TIMEOUT_LIFETIME, 600 * ?MILLISECONDS_IN_SECOND).
 -define(TIMEOUT_MESSAGE, {'$kz_media_file_cache', 'file_timeout'}).
 
--record(state, {
-          db :: ne_binary()
+-record(state, {db :: ne_binary()
                ,doc :: ne_binary()
                ,attach :: ne_binary()
                ,meta :: kz_json:object()
@@ -42,7 +41,7 @@
                ,status :: 'streaming' | 'ready'
                ,reqs :: [{pid(), reference()}]
                ,timer_ref :: reference()
-         }).
+               }).
 -type state() :: #state{}.
 
 %%%===================================================================
@@ -77,6 +76,8 @@ continuous(Srv) -> gen_server:call(Srv, 'continuous').
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', state()} |
+                      {'stop', any()}.
 init([Db, Id, Attachment, CallId]) ->
     case kz_util:is_empty(CallId) of
         'true' -> kz_util:put_callid(?LOG_SYSTEM_ID);

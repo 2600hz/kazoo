@@ -126,6 +126,7 @@ test_conn(Tag) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(?LOG_SYSTEM_ID),

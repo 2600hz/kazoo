@@ -36,7 +36,7 @@
 
 -export_type([global/0
              ,globals/0
-             ,name/0
+             ,name/0, names/0
              ]).
 
 -include("kazoo_globals.hrl").

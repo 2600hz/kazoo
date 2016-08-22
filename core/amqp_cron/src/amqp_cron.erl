@@ -80,7 +80,9 @@
                  amqp_cron_task:execargs()}.
 %% Task definition.
 
--record(state, {tasks = [], is_leader = false}).
+-record(state, {tasks = []
+               ,is_leader = 'false'
+               }).
 -type state() :: #state{}.
 
 %%%===================================================================
@@ -107,12 +109,10 @@ start_link(Nodes) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-
 -spec status() -> Status when
-      Status :: {[term()]}.
-
+      Status :: {[any()]}.
 status() ->
-    amqp_leader_proc:call(?SERVER, status).
+    amqp_leader_proc:call(?SERVER, 'status').
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -121,13 +121,11 @@ status() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-
--spec schedule_task(Schedule, Exec) -> {ok, pid()} | {error, term()} when
+-spec schedule_task(Schedule, Exec) -> {'ok', pid()} | {'error', any()} when
       Schedule :: amqp_cron_task:schedule(),
       Exec :: amqp_cron_task:execargs().
-
 schedule_task(Schedule, Exec) ->
-    amqp_leader_proc:leader_call(?SERVER, {schedule, {undefined, Schedule, Exec}}).
+    amqp_leader_proc:leader_call(?SERVER, {'schedule', {'undefined', Schedule, Exec}}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -140,15 +138,13 @@ schedule_task(Schedule, Exec) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-
 -spec schedule_task(ident(), Schedule, Exec) ->
-                           {ok, pid()} | {error, term()} when
+                           {'ok', pid()} | {'error', any()} when
       Schedule :: amqp_cron_task:schedule(),
       Exec :: amqp_cron_task:execargs().
-
 schedule_task(Name, Schedule, Exec) when
-      is_binary(Name); is_atom(Name), Name /= undefined ->
-    amqp_leader_proc:leader_call(?SERVER, {schedule, {Name, Schedule, Exec}}).
+      is_binary(Name); is_atom(Name), Name =/= 'undefined' ->
+    amqp_leader_proc:leader_call(?SERVER, {'schedule', {Name, Schedule, Exec}}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -156,12 +152,10 @@ schedule_task(Name, Schedule, Exec) when
 %%
 %% @end
 %%--------------------------------------------------------------------
-
--spec cancel_task(ident()) -> ok | {error, Reason} when
-      Reason :: term().
-
+-spec cancel_task(ident()) -> 'ok' | {'error', Reason} when
+      Reason :: any().
 cancel_task(Ident) ->
-    amqp_leader_proc:leader_call(?SERVER, {cancel, Ident}).
+    amqp_leader_proc:leader_call(?SERVER, {'cancel', Ident}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -169,14 +163,12 @@ cancel_task(Ident) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-
 -spec task_status(ident()) -> {Status, ScheduleTime, TaskPid} when
       Status :: amqp_cron_task:status(),
       ScheduleTime :: amqp_cron_task:datetime(),
       TaskPid :: pid().
-
 task_status(Ident) ->
-    amqp_leader_proc:leader_call(?SERVER, {task_status, Ident}).
+    amqp_leader_proc:leader_call(?SERVER, {'task_status', Ident}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -184,11 +176,9 @@ task_status(Ident) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-
 -spec task_list() -> [task()].
-
 task_list() ->
-    amqp_leader_proc:leader_call(?SERVER, task_list).
+    amqp_leader_proc:leader_call(?SERVER, 'task_list').
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -196,149 +186,142 @@ task_list() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-
--spec remove_done_tasks() -> ok.
-
+-spec remove_done_tasks() -> 'ok'.
 remove_done_tasks() ->
-    amqp_leader_proc:leader_call(?SERVER, remove_done_tasks).
+    amqp_leader_proc:leader_call(?SERVER, 'remove_done_tasks').
 
 %%%===================================================================
 %%% gen_leader callbacks
 %%%===================================================================
 
-%% @private
+-spec init([]) -> {'ok', state()}.
 init([]) ->
-    {ok, #state{}}.
+    {'ok', #state{}}.
 
-%% @private
-elected(State, _Election, undefined) ->
+-spec elected(state(), any(), any()) -> {'ok', state()} | {'reply', any(), state()}.
+elected(State, _Election, 'undefined') ->
     State1 = case State#state.is_leader of
-                 false ->
-                     start_tasks(State);
-                 true ->
-                     State
+                 'false' -> start_tasks(State);
+                 'true' -> State
              end,
-    State2 = State1#state{is_leader = true},
-    {ok, State2#state.tasks, State2};
+    State2 = State1#state{is_leader = 'true'},
+    {'ok', State2#state.tasks, State2};
 elected(State, _Election, _Node) ->
     State1 = case State#state.is_leader of
-                 false ->
-                     start_tasks(State);
-                 true ->
-                     State
+                 'false' -> start_tasks(State);
+                 'true' -> State
              end,
-    State2 = State1#state{is_leader = true},
-    {reply, State2#state.tasks, State2}.
+    State2 = State1#state{is_leader = 'true'},
+    {'reply', State2#state.tasks, State2}.
 
-%% @private
+-spec surrendered(state(), any(), any()) -> {'ok', state()}.
 surrendered(State, Sync, _Election) ->
     State1 = stop_tasks(State),
     State2 = save_tasks(State1, Sync),
-    State3 = State2#state{is_leader = false},
-    {ok, State3}.
+    State3 = State2#state{is_leader = 'false'},
+    {'ok', State3}.
 
-%% @private
-handle_leader_call({cancel, Name}, From, State, Election) when
+-spec handle_leader_call(any(), pid_ref(), state(), any()) -> handle_call_ret_state(state()).
+handle_leader_call({'cancel', Name}, From, State, Election) when
       is_binary(Name); is_atom(Name) ->
     case pid_for_name(Name, State#state.tasks) of
-        {error, _Reason} = Error ->
-            {reply, Error, State};
+        {'error', _Reason} = Error ->
+            {'reply', Error, State};
         Pid ->
-            handle_leader_call({cancel, Pid}, From, State, Election)
+            handle_leader_call({'cancel', Pid}, From, State, Election)
     end;
-handle_leader_call({cancel, Pid}, _From, State, Election) ->
+handle_leader_call({'cancel', Pid}, _From, State, Election) ->
     Tasks = State#state.tasks,
     {Reply, State1} =
         case lists:keyfind(Pid, 2, Tasks) of
-            false ->
-                {{error, no_such_pid}, State};
+            'false' ->
+                {{'error', 'no_such_pid'}, State};
             {_, Pid, _, _} ->
-                ok = amqp_cron_task:stop(Pid),
+                'ok' = amqp_cron_task:stop(Pid),
                 Tasks1 = lists:keydelete(Pid, 2, Tasks),
                 send_tasks(Tasks1, Election),
-                {ok, State#state{tasks = Tasks1}}
+                {'ok', State#state{tasks = Tasks1}}
         end,
-    {reply, Reply, State1};
-handle_leader_call({schedule, {Name, Schedule, Exec}}, _From, State, Election) ->
-    case (Name =/= undefined)
+    {'reply', Reply, State1};
+handle_leader_call({'schedule', {Name, Schedule, Exec}}, _From, State, Election) ->
+    case (Name =/= 'undefined')
         andalso lists:keymember(Name, 1, State#state.tasks) of
-        true ->
-            {reply, {error, already_exists}, State};
-        false ->
+        'true' ->
+            {'reply', {'error', 'already_exists'}, State};
+        'false' ->
             case amqp_cron_task:start_link(Schedule, Exec) of
-                {ok, Pid} = Ok ->
+                {'ok', Pid} = Ok ->
                     Task = {Name, Pid, Schedule, Exec},
                     TaskList = [Task|State#state.tasks],
                     State1 = State#state{tasks = TaskList},
-                    ok = send_tasks(TaskList, Election),
-                    {reply, Ok, State1};
-                {error, _Reason} = Error ->
-                    {reply, Error, State}
+                    'ok' = send_tasks(TaskList, Election),
+                    {'reply', Ok, State1};
+                {'error', _Reason} = Error ->
+                    {'reply', Error, State}
             end
     end;
-handle_leader_call({task_status, Name}, From, State, Election) when
+handle_leader_call({'task_status', Name}, From, State, Election) when
       is_binary(Name); is_atom(Name) ->
     case pid_for_name(Name, State#state.tasks) of
-        {error, _Reason} = Error ->
-            {reply, Error, State};
+        {'error', _Reason} = Error ->
+            {'reply', Error, State};
         Pid ->
-            handle_leader_call({task_status, Pid}, From, State, Election)
+            handle_leader_call({'task_status', Pid}, From, State, Election)
     end;
-handle_leader_call({task_status, Pid}, _From, State, _Election) ->
+handle_leader_call({'task_status', Pid}, _From, State, _Election) ->
     Status = amqp_cron_task:status(Pid),
-    {reply, Status, State};
-handle_leader_call(task_list, _From, State, _Election) ->
+    {'reply', Status, State};
+handle_leader_call('task_list', _From, State, _Election) ->
     Tasks = State#state.tasks,
-    {reply, Tasks, State};
-handle_leader_call(remove_done_tasks, _From, State, Election) ->
+    {'reply', Tasks, State};
+handle_leader_call('remove_done_tasks', _From, State, Election) ->
     Tasks = State#state.tasks,
     Tasks1 = lists:foldl(fun remove_task_if_done/2, [], Tasks),
-    State1 = State#state{tasks = Tasks1},
-    ok = send_tasks(Tasks1, Election),
-    {reply, ok, State1}.
+    State1 = State#state{'tasks' = Tasks1},
+    'ok' = send_tasks(Tasks1, Election),
+    {'reply', 'ok', State1}.
 
-%% @private
+-spec handle_leader_cast(any(), state(), any()) -> handle_cast_ret_state(state()).
 handle_leader_cast(_Request, State, _Election) ->
-    {noreply, State}.
+    {'noreply', State}.
 
-%% @private
-from_leader({tasks, Tasks}, State, _Election) ->
+-spec from_leader(any(), state(), any()) -> {'ok', state()}.
+from_leader({'tasks', Tasks}, State, _Election) ->
     State1 = save_tasks(State, Tasks),
-    {ok, State1}.
+    {'ok', State1}.
 
-%% @private
+-spec handle_DOWN(node(), state(), any()) -> {'ok', state()}.
 handle_DOWN(_Node, State, _Election) ->
-    {ok, State}.
+    {'ok', State}.
 
-%% @private
-handle_call(status, _From, State, Election) ->
-    Reply = [{leader, amqp_leader_proc:leader_node(Election)},
-             {alive, amqp_leader_proc:alive(Election)},
-             {down, amqp_leader_proc:down(Election)},
-             {candidates, amqp_leader_proc:candidates(Election)},
-             {workers, amqp_leader_proc:workers(Election)},
-             {me, node()}
+-spec handle_call(any(), pid_ref(), state(), any()) -> handle_call_ret_state(state()).
+handle_call('status', _From, State, Election) ->
+    Reply = [{'leader', amqp_leader_proc:leader_node(Election)}
+            ,{'alive', amqp_leader_proc:alive(Election)}
+            ,{'down', amqp_leader_proc:down(Election)}
+            ,{'candidates', amqp_leader_proc:candidates(Election)}
+            ,{'workers', amqp_leader_proc:workers(Election)}
+            ,{'me', node()}
             ],
-    {reply, Reply, State};
+    {'reply', Reply, State};
 handle_call(_Request, _From, State, _Election) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {'reply', 'ok', State}.
 
-%% @private
+-spec handle_cast(any(), state(), any()) -> handle_cast_ret_state(state()).
 handle_cast(_Msg, State, _Election) ->
-    {noreply, State}.
+    {'noreply', State}.
 
-%% @private
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
-%% @private
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
-    ok.
+    'ok'.
 
-%% @private
+-spec code_change(any(), state(), any(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Election, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
@@ -347,50 +330,46 @@ code_change(_OldVsn, State, _Election, _Extra) ->
 save_tasks(State, Tasks) ->
     State#state{tasks = Tasks}.
 
--spec send_tasks(Tasks, Election) -> ok when
+-spec send_tasks(Tasks, Election) -> 'ok' when
       Tasks :: [task()],
-      Election :: term().
-
+      Election :: any().
 send_tasks(Tasks, Election) ->
     case amqp_leader_proc:alive(Election) -- [node()] of
-        [] ->
-            ok;
+        [] -> 'ok';
         Alive ->
-            Election = amqp_leader_proc:broadcast({from_leader, {tasks, Tasks}},
+            Election = amqp_leader_proc:broadcast({'from_leader', {'tasks', Tasks}},
                                                   Alive,
                                                   Election),
-            ok
+            'ok'
     end.
 
 -spec stop_tasks(State :: state()) -> state().
-
 stop_tasks(State) ->
     Tasks = State#state.tasks,
     Tasks1 = lists:foldl(
                fun({Name, Pid, Schedule, Exec}, Acc) when node(Pid) =:= node() ->
-                       ok = amqp_cron_task:stop(Pid),
-                       [{Name, undefined, Schedule, Exec}|Acc];
+                       'ok' = amqp_cron_task:stop(Pid),
+                       [{Name, 'undefined', Schedule, Exec}|Acc];
                   (Task, Acc) ->
                        [Task | Acc]
                end, [], Tasks),
     State#state{tasks = Tasks1}.
 
 -spec start_tasks(state()) -> state().
-
 start_tasks(State) ->
     TaskList = State#state.tasks,
     TaskList1 = lists:foldl(
                   fun(Task, Acc) ->
                           {Name, _, Schedule, Exec} = Task,
                           case amqp_cron_task:start_link(Schedule, Exec) of
-                              {ok, Pid} ->
+                              {'ok', Pid} ->
                                   [{Name, Pid, Schedule, Exec}|Acc];
-                              {error, Reason} ->
+                              {'error', Reason} ->
                                   Format = "Could not start task ~p ~p, name: ~p",
                                   Message = io_lib:format(Format,
                                                           [Exec, Reason, Name]),
                                   error_logger:error_report(Message),
-                                  [{Name, undefined, Schedule, Exec}|Acc]
+                                  [{Name, 'undefined', Schedule, Exec}|Acc]
                           end
                   end, [], TaskList),
     State#state{tasks = TaskList1}.
@@ -398,8 +377,8 @@ start_tasks(State) ->
 remove_task_if_done(Task, Acc) ->
     {_, Pid, _, _} = Task,
     case amqp_cron_task:status(Pid) of
-        {done, _, _} ->
-            ok = amqp_cron_task:stop(Pid),
+        {'done', _, _} ->
+            'ok' = amqp_cron_task:stop(Pid),
             Acc;
         _ ->
             [Task|Acc]
@@ -407,8 +386,8 @@ remove_task_if_done(Task, Acc) ->
 
 pid_for_name(Name, Tasks) ->
     case lists:keyfind(Name, 1, Tasks) of
-        false ->
-            {error, no_such_name};
+        'false' ->
+            {'error', 'no_such_name'};
         {_, Pid, _, _} ->
             Pid
     end.

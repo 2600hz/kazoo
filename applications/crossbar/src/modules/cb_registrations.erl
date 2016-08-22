@@ -41,6 +41,14 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Initializes the bindings this module will respond to.
+%% @end
+%%--------------------------------------------------------------------
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.registrations">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.registrations">>, ?MODULE, 'resource_exists'),
@@ -48,18 +56,33 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.registrations">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.registrations">>, ?MODULE, 'delete').
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given the path tokens related to this module, what HTTP methods are
+%% going to be responded to.
+%% @end
+%%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_DELETE].
 allowed_methods(?COUNT_PATH_TOKEN) ->
     [?HTTP_GET];
-allowed_methods(_) ->
+allowed_methods(_Username) ->
     [?HTTP_DELETE].
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Does the path point to a valid resource
+%% @end
+%%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(?COUNT_PATH_TOKEN) -> 'true';
-resource_exists(_) -> 'true'.
+resource_exists(_Username) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public

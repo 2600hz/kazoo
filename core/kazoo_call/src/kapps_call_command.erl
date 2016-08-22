@@ -502,6 +502,11 @@ pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, 
     Command = pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call),
     send_command(Command, Call).
 
+-spec pickup_command(ne_binary(), kapps_call:call()) -> kz_proplist().
+-spec pickup_command(ne_binary(), ne_binary(), kapps_call:call()) -> kz_proplist().
+-spec pickup_command(ne_binary(), ne_binary(), boolean(), kapps_call:call()) -> kz_proplist().
+-spec pickup_command(ne_binary(), ne_binary(), boolean(), boolean(), kapps_call:call()) -> kz_proplist().
+-spec pickup_command(ne_binary(), ne_binary(), boolean(), boolean(), boolean(), kapps_call:call()) -> kz_proplist().
 pickup_command(TargetCallId, Call) ->
     pickup_command(TargetCallId, <<"tail">>, Call).
 pickup_command(TargetCallId, Insert, Call) ->
@@ -577,6 +582,11 @@ connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterCon
     Command = connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterConnect_Leg, Call),
     send_command(Command, Call).
 
+-spec connect_leg_command(ne_binary(), kapps_call:call()) -> kz_proplist().
+-spec connect_leg_command(ne_binary(), ne_binary(), kapps_call:call()) -> kz_proplist().
+-spec connect_leg_command(ne_binary(), ne_binary(), boolean(), kapps_call:call()) -> kz_proplist().
+-spec connect_leg_command(ne_binary(), ne_binary(), boolean(), boolean(), kapps_call:call()) -> kz_proplist().
+-spec connect_leg_command(ne_binary(), ne_binary(), boolean(), boolean(), boolean(), kapps_call:call()) -> kz_proplist().
 connect_leg_command(TargetCallId, Call) ->
     connect_leg_command(TargetCallId, <<"tail">>, Call).
 connect_leg_command(TargetCallId, Insert, Call) ->
@@ -708,6 +718,7 @@ set(ChannelVars, CallVars, Call) ->
             send_command(Command, Call)
     end.
 
+-spec set_terminators(api_binaries(), kapps_call:call()) -> 'ok'.
 set_terminators(Terminators, Call) ->
     Command = [{<<"Application-Name">>, <<"set_terminators">>}
               ,{<<"Terminators">>, Terminators}
@@ -1143,7 +1154,7 @@ hold(MOH, Call) ->
 
 hold_command(Call) ->
     hold_command('undefined', Call).
-hold_command(MOH, <<_/binary>> = CallId) ->
+hold_command(MOH, CallId=?NE_BINARY) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"Application-Name">>, <<"hold">>}
@@ -1156,8 +1167,8 @@ hold_command(MOH, Call) ->
 
 b_hold(Call) -> b_hold('infinity', 'undefined', Call).
 
-b_hold(Timeout, Call) when is_integer(Timeout)
-                           orelse Timeout =:= 'infinity' ->
+b_hold(Timeout, Call) when is_integer(Timeout);
+                           Timeout =:= 'infinity' ->
     b_hold(Timeout, 'undefined', Call);
 b_hold(MOH, Call) -> b_hold('infinity', MOH, Call).
 
@@ -1170,7 +1181,8 @@ park(Call) ->
     Command = park_command(Call),
     send_command(Command, Call).
 
-park_command(<<_/binary>> = CallId) ->
+-spec park_command(ne_binary()) -> kz_json:object().
+park_command(CallId=?NE_BINARY) ->
     kz_json:from_list(
       [{<<"Application-Name">>, <<"park">>}
       ,{<<"Insert-At">>, <<"now">>}
@@ -1235,7 +1247,7 @@ play_command(Media, Call) ->
     play_command(Media, ?ANY_DIGIT, Call).
 play_command(Media, Terminators, Call) ->
     play_command(Media, Terminators, 'undefined', Call).
-play_command(Media, Terminators, Leg, <<_/binary>> = CallId) ->
+play_command(Media, Terminators, Leg, CallId=?NE_BINARY) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"Application-Name">>, <<"play">>}
@@ -1551,6 +1563,8 @@ b_store(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
     store(MediaName, Transfer, Method, Headers, SuppressReport, Call),
     wait_for_headless_application(<<"store">>).
 
+-spec b_store_vm(ne_binary(), ne_binary(), ne_binary(), kz_json:objects(), boolean(), kapps_call:call()) ->
+                        wait_for_headless_application_return().
 b_store_vm(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
     Command = [{<<"Application-Name">>, <<"store_vm">>}
               ,{<<"Media-Name">>, MediaName}
@@ -1563,6 +1577,7 @@ b_store_vm(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
     send_command(Command, Call),
     wait_for_headless_application(<<"store_vm">>).
 
+-spec audio_level(kapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 audio_level(Call, Mode, Action, Level) ->
     Command = [{<<"Application-Name">>, <<"audio_level">>}
               ,{<<"Action">>, Action}

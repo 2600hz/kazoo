@@ -93,6 +93,7 @@ valid_options(Opts) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', state()}.
 init([Opts]) ->
     process_flag('trap_exit', 'true'),
 
@@ -110,6 +111,7 @@ init([Opts]) ->
                  }}.
 
 -define(DEFAULT_TABLE_OPTIONS, ['set', 'protected', {'keypos', 2}]).
+-spec default_table_options() -> list().
 default_table_options() ->
     ?DEFAULT_TABLE_OPTIONS.
 

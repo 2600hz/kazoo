@@ -261,6 +261,7 @@ configuration_publish(RoutingKey, Payload, ContentType, Props) ->
       Type :: ne_binary(),
       Id :: ne_binary(),
       Payload :: amqp_payload().
+-spec document_change_publish(atom(), ne_binary(), ne_binary(), ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
 document_change_publish(Action, Db, Type, Id, JSON) ->
     document_change_publish(Action, Db, Type, Id, JSON, ?DEFAULT_CONTENT_TYPE).
 document_change_publish(Action, Db, Type, Id, Payload, ContentType) ->
@@ -392,12 +393,10 @@ conference_publish(Payload, 'event', ConfId, Options, ContentType) ->
 conference_publish(Payload, 'command', ConfId, Options, ContentType) ->
     basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, Payload, ContentType, Options).
 
+-spec conference_publish(amqp_payload(), 'event', ne_binary(), ne_binary(), kz_proplist(), ne_binary()) -> 'ok'.
 conference_publish(Payload, 'event', ConfId, CallId, Options, ContentType) ->
-    basic_publish(?EXCHANGE_CONFERENCE
-                 , <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary, ".", CallId/binary>>
-                 , Payload
-                 , ContentType
-                 , Options).
+    RoutingKey = <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary, ".", CallId/binary>>,
+    basic_publish(?EXCHANGE_CONFERENCE, RoutingKey, Payload, ContentType, Options).
 
 -spec registrar_publish(ne_binary(), amqp_payload()) -> 'ok'.
 -spec registrar_publish(ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
@@ -799,29 +798,45 @@ message_ttl(Args, Acc) ->
 %% Delete AMQP queue
 %% @end
 %%------------------------------------------------------------------------------
-delete_targeted_queue(Queue) -> queue_delete(Queue, []).
-delete_nodes_queue(Queue) -> queue_delete(Queue, []).
-delete_kapps_queue(Queue) -> queue_delete(Queue, []).
-delete_presence_queue(Queue) -> queue_delete(Queue, []).
-delete_notifications_queue(Queue) -> queue_delete(Queue, []).
-delete_sysconf_queue(Queue) -> queue_delete(Queue, []).
-delete_callmgr_queue(Queue) -> queue_delete(Queue, []).
-delete_resource_queue(Queue) -> queue_delete(Queue, []).
-delete_configuration_queue(Queue) -> queue_delete(Queue, []).
-delete_conference_queue(Queue) -> queue_delete(Queue, []).
-delete_monitor_queue(Queue) -> queue_delete(Queue, []).
-delete_registrar_queue(Queue) -> queue_delete(Queue, []).
-delete_tasks_queue(Queue) -> queue_delete(Queue, []).
+-spec delete_targeted_queue(ne_binary()) -> command_ret().
+-spec delete_nodes_queue(ne_binary()) -> command_ret().
+-spec delete_kapps_queue(ne_binary()) -> command_ret().
+-spec delete_presence_queue(ne_binary()) -> command_ret().
+-spec delete_notifications_queue(ne_binary()) -> command_ret().
+-spec delete_sysconf_queue(ne_binary()) -> command_ret().
+-spec delete_callmgr_queue(ne_binary()) -> command_ret().
+-spec delete_resource_queue(ne_binary()) -> command_ret().
+-spec delete_configuration_queue(ne_binary()) -> command_ret().
+-spec delete_conference_queue(ne_binary()) -> command_ret().
+-spec delete_monitor_queue(ne_binary()) -> command_ret().
+-spec delete_registrar_queue(ne_binary()) -> command_ret().
+-spec delete_tasks_queue(ne_binary()) -> command_ret().
+delete_targeted_queue(Queue) -> queue_delete(Queue).
+delete_nodes_queue(Queue) -> queue_delete(Queue).
+delete_kapps_queue(Queue) -> queue_delete(Queue).
+delete_presence_queue(Queue) -> queue_delete(Queue).
+delete_notifications_queue(Queue) -> queue_delete(Queue).
+delete_sysconf_queue(Queue) -> queue_delete(Queue).
+delete_callmgr_queue(Queue) -> queue_delete(Queue).
+delete_resource_queue(Queue) -> queue_delete(Queue).
+delete_configuration_queue(Queue) -> queue_delete(Queue).
+delete_conference_queue(Queue) -> queue_delete(Queue).
+delete_monitor_queue(Queue) -> queue_delete(Queue).
+delete_registrar_queue(Queue) -> queue_delete(Queue).
+delete_tasks_queue(Queue) -> queue_delete(Queue).
 
+-spec delete_callevt_queue(ne_binary()) -> command_ret().
 delete_callevt_queue(CallID) -> delete_callevt_queue(CallID, []).
 delete_callevt_queue(CallID, Prop) ->
     queue_delete(list_to_binary([?EXCHANGE_CALLEVT, ".", encode(CallID)]), Prop).
 
+-spec delete_callctl_queue(ne_binary()) -> command_ret().
 delete_callctl_queue(CallID) -> delete_callctl_queue(CallID, []).
 delete_callctl_queue(CallID, Prop) ->
     queue_delete(list_to_binary([?EXCHANGE_CALLCTL, ".", encode(CallID)]), Prop).
 
-
+-spec queue_delete(ne_binary()) -> command_ret().
+-spec queue_delete(ne_binary(), kz_proplist()) -> command_ret().
 queue_delete(Queue) -> queue_delete(Queue, []).
 queue_delete(Queue, _Prop) when not is_binary(Queue) ->
     {'error', 'invalid_queue_name'};
@@ -841,12 +856,14 @@ queue_delete(Queue, Prop) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec bind_q_to_targeted(ne_binary()) -> 'ok'.
+-spec bind_q_to_targeted(ne_binary(), ne_binary()) -> 'ok'.
 bind_q_to_targeted(Queue) ->
     bind_q_to_exchange(Queue, Queue, ?EXCHANGE_TARGETED).
 bind_q_to_targeted(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TARGETED).
 
 -spec bind_q_to_nodes(ne_binary()) -> 'ok'.
+-spec bind_q_to_nodes(ne_binary(), ne_binary()) -> 'ok'.
 bind_q_to_nodes(Queue) ->
     bind_q_to_exchange(Queue, Queue, ?EXCHANGE_NODES).
 bind_q_to_nodes(Queue, Routing) ->
@@ -1008,45 +1025,73 @@ unbind_q_from_conference(Queue, 'config', ConfProfile) ->
 unbind_q_from_conference(Queue, 'command', ConfId) ->
     unbind_q_from_exchange(Queue, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE).
 
+-spec unbind_q_from_conference(ne_binary(), 'event', ne_binary(), ne_binary()) ->
+                                      'ok' | {'error', any()}.
 unbind_q_from_conference(Queue, 'event', ConfId, CallId) ->
     unbind_q_from_exchange(Queue, <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary, ".", CallId/binary>>, ?EXCHANGE_CONFERENCE).
 
+-spec unbind_q_from_callctl(ne_binary()) ->
+                                   'ok' | {'error', any()}.
 unbind_q_from_callctl(Queue) ->
     unbind_q_from_exchange(Queue, Queue, ?EXCHANGE_CALLCTL).
 
+-spec unbind_q_from_notifications(ne_binary(), ne_binary()) ->
+                                         'ok' | {'error', any()}.
 unbind_q_from_notifications(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_NOTIFICATIONS).
 
+-spec unbind_q_from_sysconf(ne_binary(), ne_binary()) ->
+                                   'ok' | {'error', any()}.
 unbind_q_from_sysconf(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_SYSCONF).
 
+-spec unbind_q_from_resource(ne_binary(), ne_binary()) ->
+                                    'ok' | {'error', any()}.
 unbind_q_from_resource(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_RESOURCE).
 
+-spec unbind_q_from_callevt(ne_binary(), ne_binary()) ->
+                                   'ok' | {'error', any()}.
 unbind_q_from_callevt(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
+-spec unbind_q_from_callmgr(ne_binary(), ne_binary()) ->
+                                   'ok' | {'error', any()}.
 unbind_q_from_callmgr(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CALLMGR).
 
+-spec unbind_q_from_configuration(ne_binary(), ne_binary()) ->
+                                         'ok' | {'error', any()}.
 unbind_q_from_configuration(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CONFIGURATION).
 
+-spec unbind_q_from_targeted(ne_binary()) ->
+                                    'ok' | {'error', any()}.
 unbind_q_from_targeted(Queue) ->
     unbind_q_from_exchange(Queue, Queue, ?EXCHANGE_TARGETED).
 
+-spec unbind_q_from_nodes(ne_binary()) ->
+                                 'ok' | {'error', any()}.
 unbind_q_from_nodes(Queue) ->
     unbind_q_from_exchange(Queue, Queue, ?EXCHANGE_NODES).
 
+-spec unbind_q_from_kapps(ne_binary(), ne_binary()) ->
+                                 'ok' | {'error', any()}.
 unbind_q_from_kapps(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_KAPPS).
 
+-spec unbind_q_from_presence(ne_binary(), ne_binary()) ->
+                                    'ok' | {'error', any()}.
 unbind_q_from_presence(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_PRESENCE).
 
+-spec unbind_q_from_registrar(ne_binary(), ne_binary()) ->
+                                     'ok' | {'error', any()}.
 unbind_q_from_registrar(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_REGISTRAR).
 
+-spec unbind_q_from_tasks(ne_binary(), ne_binary()) ->
+                                 'ok' | {'error', any()}.
 unbind_q_from_tasks(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_TASKS).
 
@@ -1054,13 +1099,12 @@ unbind_q_from_tasks(Queue, Routing) ->
 -spec unbind_q_from_exchange(ne_binary(), ne_binary(), ne_binary()) ->
                                     'ok' | {'error', any()}.
 unbind_q_from_exchange(Queue, Routing, Exchange) ->
-    QU = #'queue.unbind'{
-            queue = Queue
-                        ,exchange = Exchange
-                        ,routing_key = Routing
-                        ,arguments = []
-           },
-    kz_amqp_channel:command(QU).
+    kz_amqp_channel:command(
+      #'queue.unbind'{queue = Queue
+                     ,exchange = Exchange
+                     ,routing_key = Routing
+                     ,arguments = []
+                     }).
 
 %%------------------------------------------------------------------------------
 %% @public

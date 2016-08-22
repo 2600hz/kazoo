@@ -56,6 +56,8 @@ binding({Common, Specific}) when is_atom(Common), is_binary(Specific) ->
     CommonPath = binding(Common),
     <<CommonPath/binary, ".", Specific/binary>>.
 
+-spec bind(atom() | {atom(), binary()}, module(), atom()) -> any().
+-spec unbind(atom() | {atom(), binary()}, module(), atom()) -> any().
 bind(Event, M, F) -> kazoo_bindings:bind(binding(Event), M, F).
 unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 

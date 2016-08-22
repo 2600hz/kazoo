@@ -126,16 +126,18 @@ consume_tokens(App, Key, Count, StartIfMissing) ->
 consume_tokens_until(Key, Count) ->
     consume_tokens_until(?DEFAULT_APP, Key, Count, 'true').
 
-consume_tokens_until(<<_/binary>> = App, <<_/binary>> = Key, Count) when is_integer(Count) ->
+consume_tokens_until(App=?NE_BINARY, Key=?NE_BINARY, Count)
+  when is_integer(Count) ->
     consume_tokens_until(App, Key, Count, 'true');
-consume_tokens_until(<<_/binary>> = Key, Count, StartIfMissing) when is_integer(Count),
-                                                                     is_boolean(StartIfMissing)
-                                                                     ->
+consume_tokens_until(Key=?NE_BINARY, Count, StartIfMissing)
+  when is_integer(Count),
+       is_boolean(StartIfMissing) ->
     consume_tokens(?DEFAULT_APP, Key, Count, StartIfMissing).
 
-consume_tokens_until(<<_/binary>> = App, <<_/binary>> = Key, Count, StartIfMissing) when is_integer(Count),
-                                                                                         is_boolean(StartIfMissing)
-                                                                                         ->
+-spec consume_tokens_until(ne_binary(), ne_binary(), pos_integer(), boolean()) -> boolean().
+consume_tokens_until(App=?NE_BINARY, Key=?NE_BINARY, Count, StartIfMissing)
+  when is_integer(Count),
+       is_boolean(StartIfMissing) ->
     consume_tokens(App, Key, Count, StartIfMissing, fun kz_token_bucket:consume_until/2).
 
 -spec consume_tokens(ne_binary(), ne_binary(), integer(), boolean(), fun()) -> boolean().
@@ -280,6 +282,7 @@ gift_data() -> 'ok'.
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?MODULE),
     {'ok', #state{inactivity_timer_ref=start_inactivity_timer()}}.

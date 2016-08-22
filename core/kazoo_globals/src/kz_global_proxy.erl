@@ -7,7 +7,6 @@
 %%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(kz_global_proxy).
-
 -behaviour(gen_server).
 
 -export([start_link/1
@@ -25,24 +24,33 @@
 
 -include("kazoo_globals.hrl").
 
+-type state() :: any().
+
+-spec start_link(any()) -> startlink_ret().
 start_link(Global) ->
     gen_server:start_link(?MODULE, [Global], []).
 
+-spec stop(pid()) -> 'ok'.
+-spec stop(pid(), any()) -> 'ok'.
 stop(Pid) ->
     stop(Pid, 'normal').
 
 stop(Pid, Reason) ->
     gen_server:cast(Pid, {'$proxy_stop', Reason}).
 
+-spec send(pid(), any()) -> any().
 send(Pid, Message) ->
     Pid ! Message.
 
+-spec init(list()) -> {'ok', state()}.
 init([Global]) ->
     {'ok', Global}.
 
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(Request, _From, Global) ->
     {'reply', amqp_call(Global, Request), Global}.
 
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'$proxy_stop', Reason}, Global) ->
     gen_server:call('kz_globals', {'delete_remote', self()}),
     {'stop', Reason, Global};
@@ -51,14 +59,17 @@ handle_cast(Message, Global) ->
     amqp_send(Global, {'$gen_cast', Message}),
     {'noreply', Global}.
 
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(Message, Global) ->
     lager:debug("relaying msg: ~p", [Message]),
     amqp_send(Global, Message),
     {'noreply', Global}.
 
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _Global) ->
     lager:debug("global proxy ~p down: ~p", [_Global, _Reason]).
 
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, Global, _Extra) ->
     {'ok', Global}.
 

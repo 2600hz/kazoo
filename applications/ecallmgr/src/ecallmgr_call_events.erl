@@ -59,8 +59,7 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, [{'no_local', 'true'}]).
 
--record(state, {
-          node :: atom()
+-record(state, {node :: atom()
                ,call_id :: api_binary()
                ,other_leg :: api_binary()
                ,other_leg_events = [] :: ne_binaries()
@@ -70,7 +69,7 @@
                ,sanity_check_tref :: reference()
                ,ref = kz_util:rand_hex_binary(12) :: ne_binary()
                ,passive = 'false' :: boolean()
-         }).
+               }).
 -type state() :: #state{}.
 
 %%%===================================================================
@@ -122,6 +121,7 @@ callid(Srv) -> gen_listener:call(Srv, 'callid', ?MILLISECONDS_IN_SECOND).
 -spec node(pid()) -> ne_binary().
 node(Srv) -> gen_listener:call(Srv, 'node', ?MILLISECONDS_IN_SECOND).
 
+-spec update_node(pid(), atom()) -> 'ok'.
 update_node(Srv, Node) -> gen_listener:cast(Srv, {'update_node', Node}).
 
 -spec transfer(pid(), atom(), kz_proplist()) -> 'ok'.

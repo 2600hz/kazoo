@@ -7,7 +7,6 @@
 %%%
 %%%-------------------------------------------------------------------
 -module(kz_amqp_connections).
-
 -behaviour(gen_server).
 
 -export([new/1
@@ -50,7 +49,8 @@
 
 -define(TAB, ?MODULE).
 
--record(state, {watchers=sets:new()}).
+-record(state, {watchers = sets:new()
+               }).
 -type state() :: #state{}.
 
 %%%===================================================================
@@ -144,7 +144,7 @@ remove(Connection) when is_pid(Connection) ->
     kz_amqp_connection_sup:remove(Connection);
 remove(Broker) when not is_binary(Broker) ->
     remove(kz_util:to_binary(Broker));
-remove(<<_/binary>> = Broker) ->
+remove(Broker=?NE_BINARY) ->
     Pattern = #kz_amqp_connections{broker=Broker
                                   ,connection='$1'
                                   ,_='_'
@@ -276,6 +276,7 @@ wait_for_available(Fun, Timeout) ->
 %%                     {'stop', Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
     _ = ets:new(?TAB, ['named_table'

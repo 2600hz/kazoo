@@ -147,6 +147,9 @@ delete_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Options) ->
     kzs_cache:flush_cache_doc(DbName, DocId),
     App:delete_attachment(Conn, DbName, DocId, AName, Options).
 
+-spec attachment_url(map(), ne_binary(), ne_binary(), ne_binary(), api_atom(), kz_proplist()) ->
+                            ne_binary() |
+                            {'proxy', tuple()}.
 attachment_url(#{att_proxy := 'true'}, DbName, DocId, AttachmentId, 'undefined', Options) ->
     {'proxy', {DbName, DocId, AttachmentId, Options}};
 attachment_url(#{server := {App, Conn}}, DbName, DocId, AttachmentId, 'undefined', Options) ->

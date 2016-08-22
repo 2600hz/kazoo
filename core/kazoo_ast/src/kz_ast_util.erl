@@ -13,9 +13,9 @@
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 
--spec module_ast(atom()) ->
-                        {atom(), [erl_parse:abstract_form()]} |
-                        'undefined'.
+-type ast() :: [erl_parse:abstract_form()].
+
+-spec module_ast(atom()) -> {atom(), ast()} | 'undefined'.
 module_ast(M) ->
     case code:which(M) of
         'non_existing' -> 'undefined';
@@ -25,6 +25,7 @@ module_ast(M) ->
             {Module, AST}
     end.
 
+-spec add_module_ast(list(), module(), {'raw_abstract_v1',ast()}) -> ast().
 add_module_ast(Fs, Module, AST) ->
     ast_functions(Module, AST) ++ Fs.
 
@@ -33,6 +34,7 @@ ast_functions(Module, {'raw_abstract_v1', Attributes}) ->
      || {'function', _Line, F, Arity, Clauses} <- Attributes
     ].
 
+-spec binary_match_to_binary(ast()) -> binary().
 binary_match_to_binary(?ATOM(A)) -> kz_util:to_binary(A);
 binary_match_to_binary(?BINARY_STRING(V)) ->
     kz_util:to_binary(V);
@@ -48,6 +50,7 @@ binary_part_to_binary(?BINARY_VAR(N)) -> [${, kz_util:to_binary(N), $}];
 binary_part_to_binary(?SUB_BINARY(V)) -> V;
 binary_part_to_binary(?BINARY_MATCH(Ms)) -> binary_match_to_binary(Ms).
 
+-spec schema_path(binary()) -> binary().
 schema_path(Base) ->
     filename:join([code:priv_dir('crossbar')
                   ,<<"couchdb">>
@@ -55,16 +58,19 @@ schema_path(Base) ->
                   ,Base
                   ]).
 
+-spec ensure_file_exists(binary()) -> 'ok' | {'ok', any()}.
 ensure_file_exists(Path) ->
     case filelib:is_regular(Path) of
         'false' -> create_schema(Path);
         'true' -> 'ok'
     end.
 
+-spec create_schema(binary()) -> {'ok', any()}.
 create_schema(Path) ->
     Skel = schema_path(<<"skel.json">>),
     {'ok', _} = file:copy(Skel, Path).
 
+-spec project_apps() -> [atom()].
 project_apps() ->
     Core = siblings_of('kazoo'),
     Apps = siblings_of('sysconf'),
@@ -79,6 +85,7 @@ siblings_of(App) ->
 dir_to_app_name(Dir) ->
     kz_util:to_atom(filename:basename(Dir), 'true').
 
+-spec app_modules(atom()) -> [atom()].
 app_modules(App) ->
     case application:get_key(App, 'modules') of
         {'ok', Modules} -> Modules;

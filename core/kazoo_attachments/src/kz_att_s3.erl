@@ -6,20 +6,19 @@
 %%% @contributors
 %%%   Luis Azedo
 %%%-----------------------------------------------------------------------------
-
-
 -module(kz_att_s3).
 
 -include("kz_att.hrl").
-
-%% ====================================================================
-%% API functions
-%% ====================================================================
 
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
 
+%% ====================================================================
+%% API functions
+%% ====================================================================
+
+-spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
 put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
     #{bucket := Bucket
      ,key := Key
@@ -39,6 +38,7 @@ put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
         _E -> _E
     end.
 
+-spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) -> any().
 fetch_attachment(HandlerProps, DbName, DocId, AName) ->
     case kz_json:get_value(<<"S3">>, HandlerProps) of
         'undefined' -> {'error', 'invalid_data'};

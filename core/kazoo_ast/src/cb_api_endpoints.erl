@@ -21,6 +21,7 @@
 -define(ACCOUNTS_PREFIX, "accounts/{ACCOUNT_ID}").
 
 
+-spec to_ref_doc() -> 'ok'.
 to_ref_doc() ->
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
 
@@ -131,7 +132,8 @@ schema_to_doc(Schema, Doc) ->
         ,?TABLE_ROW(<<"---">>, <<"-----------">>, <<"----">>, <<"-------">>, <<"--------">>)
         ]).
 
-schema_to_table(<<_/binary>> = Schema) ->
+-spec schema_to_table(ne_binary() | kz_json:object()) -> ne_binaries().
+schema_to_table(Schema=?NE_BINARY) ->
     {'ok', JObj} = kz_json_schema:load(Schema),
     schema_to_table(JObj);
 schema_to_table(SchemaJObj) ->
@@ -139,7 +141,7 @@ schema_to_table(SchemaJObj) ->
     Reversed = kz_json:foldl(fun property_to_row/3, [?TABLE_HEADER], Properties),
     lists:reverse(Reversed).
 
-property_to_row(<<_/binary>> = Name, Settings, Acc) ->
+property_to_row(Name=?NE_BINARY, Settings, Acc) ->
     property_to_row([Name], Settings, Acc);
 property_to_row(Name, Settings, Acc) ->
     maybe_sub_properties_to_row(kz_json:get_value(<<"type">>, Settings)
@@ -249,6 +251,7 @@ maybe_object_properties_to_row(Key, Acc0, Names, Settings) ->
                           ])
        ).
 
+-spec to_swagger_json() -> 'ok'.
 to_swagger_json() ->
     BaseSwagger = read_swagger_json(),
     BasePaths = kz_json:get_value(<<"paths">>, BaseSwagger),
@@ -478,8 +481,11 @@ path_name(Module) ->
 
 %% API
 
-%% get() -> [{module, config()}]
-%% config() :: [{callback(), [{path(), methods()}]}]
+-type config() :: [{callback(), [{path(), methods()}]}].
+-type callback() :: module().
+-type path() :: ne_binary().
+-type methods() :: ne_binaries().
+-spec get() -> [{'module', config()}].
 get() ->
     process_application('crossbar').
 

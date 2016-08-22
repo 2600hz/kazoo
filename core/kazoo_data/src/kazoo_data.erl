@@ -21,17 +21,22 @@
         ]
        ).
 
+-spec trace_file() -> any().
 trace_file() ->
     trace_file([{'function', '*'}]).
 
+-spec trace_file(any()) -> any().
 trace_file(Query) ->
     trace_file(Query, <<"/tmp/", (kz_util:rand_hex_binary(16))/binary, ".log">>).
 
+-spec trace_file(any(), ne_binary()) -> any().
 trace_file(Query, Filename) ->
     trace_file(Query, Filename, ?DEFAULT_TRACE_PROPS).
 
+-spec trace_file(any(), ne_binary(), any()) -> any().
 trace_file(Query, Filename, Format) ->
     lager:trace_file(kz_util:to_list(Filename), [{'sink', 'data_lager_event'} | Query], 'debug', Format).
 
+-spec stop_trace(any()) -> any().
 stop_trace(Trace) ->
     lager:stop_trace(Trace).

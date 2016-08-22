@@ -38,7 +38,7 @@ get_db({App, Conn}, DbName) ->
     {'ok', Db} = App:get_db(Conn, DbName),
     #db{app=App, server=Conn, db=Db, name=DbName}.
 
-
+-spec format_error(any()) -> any().
 format_error({'failure', 404}) -> 'not_found';
 format_error({'failure', 400}) -> 'client_error';
 format_error({'http_error', {'status', 504}}) -> 'gateway_timeout';

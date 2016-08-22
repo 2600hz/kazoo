@@ -113,6 +113,7 @@ activate_monitors(AccountId, ThresholdOneMinute) ->
         end,
     lists:foreach(F, hangups_config:monitored_hangup_causes()).
 
+-spec set_metric(ne_binary(), ne_binary()) -> 'ok'.
 set_metric(Metric, LoadAvg) ->
     case is_valid_request(Metric, LoadAvg) of
         'false' -> 'ok';
@@ -124,6 +125,7 @@ set_metric(Metric, LoadAvg) ->
                          )
     end.
 
+-spec set_metric(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 set_metric(AccountId, Metric, LoadAvg) ->
     case is_valid_request(Metric, LoadAvg) of
         'false' -> 'ok';

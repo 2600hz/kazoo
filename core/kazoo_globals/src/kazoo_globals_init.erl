@@ -12,6 +12,7 @@
 
 -include("kazoo_globals.hrl").
 
+-spec start_link() -> startlink_ret().
 start_link() ->
     wait_for_globals('false').
 

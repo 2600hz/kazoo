@@ -61,7 +61,8 @@ delete_attachment(#server{}=Conn, DbName, DocId, AName, Options) ->
     do_del_attachment(Db, DocId, AName,  kz_couch_util:maybe_add_rev(Db, DocId, Options)).
 
 -spec attachment_url(server(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
-                            {'ok', ne_binary()} | {'proxy', tuple()}.
+                            ne_binary() |
+                            {'proxy', tuple()}.
 attachment_url(#server{}=Conn, DbName, DocId, AName, Options) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"use_bigcouch_direct">>, 'true') of
         'true' ->

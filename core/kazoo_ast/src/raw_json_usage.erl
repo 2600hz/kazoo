@@ -7,6 +7,7 @@
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 
+-spec process_project() -> [{module(), list()}].
 process_project() ->
     io:format("processing raw_json: "),
     Raw = lists:foldl(fun process_app/2
@@ -16,6 +17,7 @@ process_project() ->
     io:format(" done~n"),
     Raw.
 
+-spec process_app(atom()) -> [{module(), list()}].
 process_app(App) ->
     process_app(App, []).
 
@@ -25,6 +27,7 @@ process_app(App, Acc) ->
                ,kz_ast_util:app_modules(App)
                ).
 
+-spec process_module(module()) -> [{module(), list()}].
 process_module(Module) ->
     process_module(Module, []).
 

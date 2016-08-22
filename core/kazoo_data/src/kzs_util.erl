@@ -65,6 +65,7 @@ db_classification(_Database) ->
     lager:debug("unknown type for database ~s", [_Database]),
     'undefined'.
 
+-spec map_keys_to_atoms(map()) -> map().
 map_keys_to_atoms(Map) ->
     maps:fold(fun map_keys_to_atoms_fold/3, #{}, Map).
 

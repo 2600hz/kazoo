@@ -197,6 +197,7 @@ get_db(#server{}=Conn, DbName) ->
     {'ok', Db} = couchbeam:open_db(Conn, DbName),
     Db.
 
+-spec format_error(any()) -> any().
 format_error({'failure', 404}) -> 'not_found';
 format_error({'failure', 400}) -> 'client_error';
 format_error({'http_error', {'status', 504}}) -> 'gateway_timeout';

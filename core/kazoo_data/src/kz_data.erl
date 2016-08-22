@@ -9,7 +9,7 @@
 
 -include("kz_data.hrl").
 
--type connection() :: any().
+-type connection() :: server() | any().
 -type options() :: kz_proplist().
 -type document() :: kz_json:object().
 -type documents() :: [document()].

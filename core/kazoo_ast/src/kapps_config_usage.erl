@@ -6,6 +6,7 @@
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 
+-spec to_schema_docs() -> 'ok'.
 to_schema_docs() ->
     to_schema_docs(process_project()).
 
@@ -37,6 +38,7 @@ ensure_id(Name, JObj) ->
                              )
     end.
 
+-spec process_project() -> kz_json:objects().
 process_project() ->
     io:format("processing kapps_config usage: "),
     Usage = lists:foldl(fun process_app/2
@@ -53,6 +55,7 @@ process_app(App) ->
 process_app(App, Schemas) ->
     lists:foldl(fun module_to_schema/2, Schemas, kz_ast_util:app_modules(App)).
 
+-spec process_module(module()) -> kz_json:object().
 process_module(Module) ->
     module_to_schema(Module, kz_json:new()).
 
