@@ -801,6 +801,7 @@ add_mobile_mdn(Context) ->
     Normalized = knm_converters:normalize(get_mdn(Context)),
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
+              ,{'state', ?NUMBER_STATE_IN_SERVICE}
               ],
     case knm_number:reconcile(Normalized, Options) of
         {'error', _R} ->
