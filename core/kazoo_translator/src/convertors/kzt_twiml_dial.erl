@@ -283,7 +283,7 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Sip'
                                  | EPs], Acc) ->
     _Props = kz_xml:attributes_to_proplist(Attrs),
 
-    try knm_sip:parse(kz_xml:texts_to_binary(Number)) of
+    try kzsip_uris:parse(kz_xml:texts_to_binary(Number)) of
         URI ->
             xml_elements_to_endpoints(Call, EPs, [sip_uri(Call, URI)|Acc])
     catch
@@ -298,7 +298,7 @@ xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
 
 -spec sip_uri(kapps_call:call(), ne_binary()) -> kz_json:object().
 sip_uri(Call, URI) ->
-    lager:debug("maybe adding SIP endpoint: ~s", [knm_sip:encode(URI)]),
+    lager:debug("maybe adding SIP endpoint: ~s", [kzsip_uris:encode(URI)]),
     SIPDevice = sip_device(URI),
     kz_endpoint:create_sip_endpoint(SIPDevice, kz_json:new(), Call).
 
@@ -307,7 +307,7 @@ sip_device(URI) ->
     lists:foldl(fun({F, V}, D) -> F(D, V) end
                ,kz_device:new()
                ,[{fun kz_device:set_sip_invite_format/2, <<"route">>}
-                ,{fun kz_device:set_sip_route/2, knm_sip:encode(URI)}
+                ,{fun kz_device:set_sip_route/2, kzsip_uris:encode(URI)}
                 ]).
 
 request_id(N, Call) -> iolist_to_binary([N, <<"@">>, kapps_call:from_realm(Call)]).

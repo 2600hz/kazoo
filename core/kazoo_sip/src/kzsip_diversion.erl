@@ -55,7 +55,7 @@ new() -> kz_json:new().
 -spec user(diversion()) -> api_binary().
 
 user(JObj) ->
-    knm_sip:user(knm_sip:parse(address(JObj))).
+    kzsip_uris:user(kzsip_uris:parse(address(JObj))).
 address(JObj) ->
     kz_json:get_ne_binary_value(?PARAM_ADDRESS, JObj).
 reason(JObj) ->
@@ -88,9 +88,9 @@ extensions_fold({_K, _V}=Extention, Acc) ->
 -spec set_counter(diversion(), non_neg_integer()) -> diversion().
 
 set_user(JObj, User) ->
-    Address = knm_sip:parse(address(JObj)),
-    Address1 = knm_sip:set_user(Address, User),
-    set_address(JObj, list_to_binary([<<"<">>, knm_sip:encode(Address1), <<">">>])).
+    Address = kzsip_uris:parse(address(JObj)),
+    Address1 = kzsip_uris:set_user(Address, User),
+    set_address(JObj, list_to_binary([<<"<">>, kzsip_uris:encode(Address1), <<">">>])).
 set_address(JObj, Address) ->
     kz_json:set_value(?PARAM_ADDRESS, Address, JObj).
 set_reason(JObj, Reason) ->
