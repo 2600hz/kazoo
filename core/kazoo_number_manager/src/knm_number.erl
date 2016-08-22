@@ -469,9 +469,7 @@ release_number(Number, Options) ->
     {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),
     N1 = knm_providers:delete(set_phone_number(Number, PhoneNumber)),
     N = unwind_or_disconnect(N1, Options),
-    wrap_phone_number_return(knm_phone_number:save(phone_number(N))
-                            ,N
-                            ).
+    wrap_phone_number_return(knm_phone_number:save(phone_number(N)), N).
 
 -spec unwind_or_disconnect(knm_number(), knm_number_options:options()) -> knm_number().
 unwind_or_disconnect(Number, Options) ->

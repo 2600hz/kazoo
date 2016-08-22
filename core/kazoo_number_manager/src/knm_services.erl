@@ -176,11 +176,10 @@ activate_phone_number(Number, BillingId, Units) ->
         'true' ->
             Transaction = create_transaction(Number, Units),
 
-            knm_number:set_charges(
-              knm_number:add_transaction(Number, Transaction)
+            knm_number:set_charges(knm_number:add_transaction(Number, Transaction)
                                   ,?KEY_NUMBER_ACTIVATION_CHARGES
                                   ,TotalCharges
-             )
+                                  )
     end.
 
 %%%===================================================================
