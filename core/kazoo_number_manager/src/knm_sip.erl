@@ -25,7 +25,8 @@
 
 -include("knm.hrl").
 
--record(sip_uri, {scheme = 'sip' :: 'sip' | 'sips'
+-type scheme() :: 'sip' | 'sips'.
+-record(sip_uri, {scheme = 'sip' :: scheme()
                  ,user :: ne_binary()
                  ,host :: ne_binary()
                  ,port = 5060 :: pos_integer()
@@ -82,8 +83,8 @@ parse_until(C, Bin) ->
         [Pre, Post] -> {Pre, Post}
     end.
 
--spec scheme(sip_uri()) -> 'sip' | 'sips'.
--spec set_scheme(sip_uri(), number()) -> sip_uri().
+-spec scheme(sip_uri()) -> scheme().
+-spec set_scheme(sip_uri(), scheme()) -> sip_uri().
 scheme(#sip_uri{scheme=S}) -> S.
 set_scheme(#sip_uri{}=Sip, S) ->
     Sip#sip_uri{scheme=S}.
