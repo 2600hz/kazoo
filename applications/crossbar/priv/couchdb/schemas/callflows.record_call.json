@@ -23,6 +23,12 @@
             "name": "Format",
             "type": "string"
         },
+        "media_name": {
+            "description": "the name of media",
+            "name": "media_name",
+            "required": false,
+            "type": "string"
+        },
         "record_min_sec": {
             "description": "The minimum length, in seconds, the recording must be to be considered successful. Otherwise it is deleted",
             "name": "Minimum recording seconds",

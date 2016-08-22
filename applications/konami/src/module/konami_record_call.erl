@@ -29,19 +29,7 @@ handle(Data, Call) ->
 
 handle(Data, Call, <<"start">>) ->
     lager:debug("starting recording, see you on the other side"),
-    case kz_json:is_true(<<"record_on_answer">>, Data, 'false') of
-        'true' -> kz_media_recording:start_recording(Call, Data);
-        'false' ->
-            Format = kz_media_recording:get_format(kz_json:get_value(<<"format">>, Data)),
-            MediaName = kz_media_recording:get_media_name(kapps_call:call_id(Call), Format),
-            Props = [{<<"Media-Name">>, MediaName}
-                    ,{<<"Media-Transfer-Method">>, kz_json:get_value(<<"method">>, Data, <<"put">>)}
-                    ,{<<"Media-Transfer-Destination">>, kz_json:get_value(<<"url">>, Data)}
-                    ,{<<"Additional-Headers">>, kz_json:get_value(<<"additional_headers">>, Data)}
-                    ,{<<"Time-Limit">>, kz_json:get_value(<<"time_limit">>, Data)}
-                    ],
-            _ = kapps_call_command:record_call(Props, <<"start">>, Call)
-    end;
+    kz_media:start_recording(Call, Data);
 handle(Data, Call, <<"stop">> = Action) ->
     Format = kz_media_recording:get_format(kz_json:get_value(<<"format">>, Data)),
     MediaName = kz_media_recording:get_media_name(kapps_call:call_id(Call), Format),

@@ -301,8 +301,15 @@ maybe_start_recording(Call) ->
     case kz_endpoint:get(Call) of
         {'ok', Endpoint} ->
             Data = kz_json:get_value(<<"record_call">>, Endpoint, kz_json:new()),
-            kz_endpoint:maybe_start_call_recording(Data, Call);
+            maybe_start_call_recording(Data, Call);
         {'error', _} -> Call
+    end.
+
+-spec maybe_start_call_recording(kz_json:object(), kapps_call:call()) -> kapps_call:call().
+maybe_start_call_recording(RecordCall, Call) ->
+    case kz_util:is_empty(RecordCall) of
+        'true' -> Call;
+        'false' -> kapps_call:start_recording(RecordCall, Call)
     end.
 
 -spec get_incoming_security(kapps_call:call()) -> kz_proplist().

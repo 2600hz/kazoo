@@ -93,7 +93,7 @@ maybe_enter_queue(#member_call{call=Call
                  ,'false') ->
     lager:info("asking for an agent, waiting up to ~p ms", [MaxWait]),
 
-    cf_exe:send_amqp(Call, MemberCall, fun kapi_acdc_queue:publish_member_call/1),
+    cf_exe:amqp_send(Call, MemberCall, fun kapi_acdc_queue:publish_member_call/1),
     _ = kapps_call_command:flush_dtmf(Call),
     wait_for_bridge(MC#member_call{call=kapps_call:kvs_store('queue_id', QueueId, Call)}
                    ,MaxWait

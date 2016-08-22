@@ -1471,30 +1471,15 @@ record_call(Media, Action, Call) ->
 record_call(Media, Action, TimeLimit, Call) ->
     record_call(Media, Action, TimeLimit, ?ANY_DIGIT, Call).
 record_call(Media, Action, TimeLimit, Terminators, Call) ->
-    MediaName = props:get_value(<<"Media-Name">>, Media),
-    Method = props:get_value(<<"Media-Transfer-Method">>, Media),
-    Destination = props:get_value(<<"Media-Transfer-Destination">>, Media),
-    Headers = props:get_value(<<"Additional-Headers">>, Media),
     Limit = props:get_value(<<"Time-Limit">>, Media, kz_util:to_binary(TimeLimit)),
-    SampleRate = props:get_value(<<"Record-Sample-Rate">>, Media),
-    RecordMinSec = props:get_value(<<"Record-Min-Sec">>, Media),
-    MediaRecorder = props:get_value(<<"Media-Recorder">>, Media),
-
     Command = props:filter_undefined(
                 [{<<"Application-Name">>, <<"record_call">>}
-                ,{<<"Media-Name">>, MediaName}
-                ,{<<"Media-Recorder">>, MediaRecorder}
                 ,{<<"Record-Action">>, Action}
                 ,{<<"Time-Limit">>, Limit}
                 ,{<<"Terminators">>, Terminators}
                 ,{<<"Insert-At">>, <<"now">>}
-                ,{<<"Media-Transfer-Method">>, Method}
-                ,{<<"Media-Transfer-Destination">>, Destination}
-                ,{<<"Additional-Headers">>, Headers}
-                ,{<<"Record-Sample-Rate">>, SampleRate}
-                ,{<<"Record-Min-Sec">>, RecordMinSec}
+                 | Media
                 ]),
-
     send_command(Command, Call).
 
 -spec b_record_call(kz_proplist(), kapps_call:call()) ->

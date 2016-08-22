@@ -105,12 +105,6 @@
             "name": "record_min_sec",
             "type": "integer"
         },
-        "recorder_module": {
-            "default": "kz_media_recording",
-            "description": "media recorder module",
-            "name": "recorder_module",
-            "type": "string"
-        },
         "ssl_cert": {
             "description": "media ssl cert",
             "name": "ssl_cert",

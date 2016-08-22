@@ -18,7 +18,6 @@
         ,maybe_start_metaflow/2
         ,encryption_method_map/2
         ,get_sip_realm/2, get_sip_realm/3
-        ,maybe_start_call_recording/2, start_call_recording/2
         ]).
 
 -include("kazoo_endpoint.hrl").
@@ -993,6 +992,13 @@ maybe_record_call(Endpoint, Call) ->
             'ok'
     end.
 
+-spec maybe_start_call_recording(kz_json:object(), kapps_call:call()) -> kapps_call:call().
+maybe_start_call_recording(RecordCall, Call) ->
+    case kz_util:is_empty(RecordCall) of
+        'true' -> Call;
+        'false' -> kapps_call:start_recording(RecordCall, Call)
+    end.
+
 -spec create_sip_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                  kz_json:object().
 create_sip_endpoint(Endpoint, Properties, Call) ->
@@ -1752,28 +1758,3 @@ get_account_realm(AccountId, Default) ->
         'undefined' -> Default;
         Else -> Else
     end.
-
--spec maybe_start_call_recording(kz_json:object(), kapps_call:call()) -> kapps_call:call().
-maybe_start_call_recording(RecordCall, Call) ->
-    case kz_util:is_empty(RecordCall) of
-        'true' -> Call;
-        'false' -> start_call_recording(RecordCall, Call)
-    end.
-
--spec start_call_recording(kz_json:object(), kapps_call:call()) -> kapps_call:call().
-start_call_recording(Data, Call) ->
-    _Worker =
-        case kz_media_recording:recording_module(Call) of
-            'kz_media_recording'=Mod ->
-                kz_media_recording_sup:new(?RECORDING_ARGS(Call, Data));
-            Mod ->
-                Name = event_listener_name(Call, Mod),
-                kz_event_handler_sup:new(Name, Mod, ?RECORDING_ARGS(Call, Data))
-        end,
-
-    lager:debug("started ~s process: ~p", [Mod, _Worker]),
-    Call.
-
--spec event_listener_name(kapps_call:call(), atom() | ne_binary()) -> ne_binary().
-event_listener_name(Call, Module) ->
-    <<(kapps_call:call_id_direct(Call))/binary, "-", (kz_util:to_binary(Module))/binary>>.
