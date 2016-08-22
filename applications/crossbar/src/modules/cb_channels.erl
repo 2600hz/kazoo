@@ -241,7 +241,7 @@ summary(Context) ->
 
 -spec device_summary(cb_context:context(), ne_binary()) -> cb_context:context().
 device_summary(Context, DeviceId) ->
-    get_channels(Context, [cb_context:doc(crossbar_doc:load(DeviceId, Context))], fun kapi_call:publish_query_user_channels_req/1).
+    get_channels(Context, [cb_context:doc(crossbar_doc:load(DeviceId, Context, ?TYPE_CHECK_OPTION_ANY))], fun kapi_call:publish_query_user_channels_req/1).
 
 -spec user_summary(cb_context:context(), ne_binary()) -> cb_context:context().
 user_summary(Context, UserId) ->
@@ -438,7 +438,7 @@ maybe_transfer(Context, Transferor, _Transferee, Target) ->
           ],
 
     lager:debug("attempting to transfer ~s to ~s by ~s", [_Transferee, Target, Transferor]),
-    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"transfer initiated">>, Context).
 
 -spec maybe_hangup(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -449,7 +449,7 @@ maybe_hangup(Context, CallId) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("attempting to hangup ~s", [CallId]),
-    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"hangup initiated">>, Context).
 
 -spec maybe_break(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -460,7 +460,7 @@ maybe_break(Context, CallId) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("attempting to break ~s", [CallId]),
-    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"break initiated">>, Context).
 
 -spec maybe_callflow(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -478,7 +478,7 @@ maybe_callflow(Context, CallId) ->
           ],
 
     lager:debug("attempting to running callflow ~s on ~s", [CallflowId, CallId]),
-    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"callflow initiated">>, Context).
 
 -spec maybe_intercept(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -512,7 +512,7 @@ maybe_intercept(Context, CallId, TargetType, TargetId) ->
           ],
 
     lager:debug("attempting to move ~s to ~s(~s)", [CallId, TargetId, TargetType]),
-    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1),
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"intercept initiated">>, Context).
 
 -spec get_account_id(cb_context:context()) -> ne_binary().

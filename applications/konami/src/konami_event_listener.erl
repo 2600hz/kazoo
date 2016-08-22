@@ -85,6 +85,7 @@
                                       }).
 -define(META_BINDINGS(CallId), {'metaflow', [{'callid', CallId}
                                             ,{'action', <<"*">>}
+                                            ,{'restrict_to', ['action']}
                                             ,'federate'
                                             ]
                                }).
@@ -224,7 +225,7 @@ handle_originate_event(JObj, _Props) ->
 
 -spec handle_metaflow_req(kz_json:object(), kz_proplist()) -> any().
 handle_metaflow_req(JObj, _Props) ->
-    'true' = kapi_metaflow:req_v(JObj),
+    'true' = kapi_metaflow:action_v(JObj),
 
     CallId = kz_call_event:call_id(JObj),
     Evt = kz_json:from_list(
