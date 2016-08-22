@@ -264,21 +264,34 @@ distribute_jobs(#state{account_id=AccountId
   when map_size(Pending) + map_size(Running) >= MaxAccount ->
     lager:warning("fax outbound limits (~b) reached for account ~s", [MaxAccount, AccountId]),
     State;
-distribute_jobs(#state{account_id=AccountId
-                      ,queue=Q
-                      ,jobs=#{distribute := [Job | Jobs]
-                             ,pending := Pending
-                             ,serialize := Serialize
-                             ,numbers := Numbers
-                             }=Map
-                      }=State) ->
+distribute_jobs(#state{jobs=#{distribute := [Job | Jobs]}=Map}=State) ->
+    maybe_distribute_job(Job, State#state{jobs=Map#{distribute => Jobs}}).
+
+-spec maybe_distribute_job(kz_json:object(), state()) -> state().
+maybe_distribute_job(Job, #state{account_id=AccountId}=State) ->
+    Number = number(Job),
+    case is_number_valid(Number, AccountId) of
+        'true' -> distribute_job(knm_converters:normalize(Number, AccountId), Job, State);
+        'false' -> invalidate_job(Job, State)
+    end.
+
+-spec invalidate_job(kz_json:object(), state()) -> state().
+invalidate_job(Job, #state{account_id=AccountId}=State) ->
+    lager:error("fax job ~s of account ~s is invalid. removing it.", [kz_doc:id(Job), AccountId]),
+    kz_datamgr:del_doc(?KZ_FAXES_DB, kz_doc:id(Job)),
+    State.
+
+-spec distribute_job(ne_binary(), kz_json:object(), state()) -> state().
+distribute_job(ToNumber, Job, #state{account_id=AccountId
+                                    ,queue=Q
+                                    ,jobs=#{pending := Pending
+                                           ,serialize := Serialize
+                                           ,numbers := Numbers
+                                           }=Map
+                                    }=State) ->
     JobId = kz_doc:id(Job),
-    Number = kz_json:get_value([<<"value">>, <<"to">>], Job),
-    ToNumber = knm_converters:normalize(Number, AccountId),
     case maps:is_key(ToNumber, Numbers) of
-        'true' -> distribute_jobs(State#state{jobs=Map#{distribute => Jobs
-                                                       ,serialize => [Job | Serialize]
-                                                       }});
+        'true' -> distribute_jobs(State#state{jobs=Map#{serialize => [Job | Serialize]}});
         'false' ->
             Payload = [{<<"Job-ID">>, JobId}
                       ,{<<"Account-ID">>, AccountId}
@@ -286,8 +299,7 @@ distribute_jobs(#state{account_id=AccountId
                        | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                       ],
             kz_amqp_worker:cast(Payload, fun kapi_fax:publish_start_job/1),
-            distribute_jobs(State#state{jobs=Map#{distribute => Jobs
-                                                 ,pending => Pending#{JobId => ToNumber}
+            distribute_jobs(State#state{jobs=Map#{pending => Pending#{JobId => ToNumber}
                                                  ,numbers => Numbers#{ToNumber => JobId}
                                                  }})
     end.
@@ -305,3 +317,17 @@ handle_start_account(JObj, _Props) ->
 -spec is_running(ne_binary()) -> boolean().
 is_running(AccountId) ->
     kz_globals:where_is(?FAX_OUTBOUND_SERVER(AccountId)) =/= 'undefined'.
+
+-spec is_number_valid(api_binary(), ne_binary()) -> boolean().
+is_number_valid('undefined', _AccountId) -> 'false';
+is_number_valid(<<>>, _AccountId) -> 'false';
+is_number_valid(Number, AccountId) ->
+    knm_converters:is_reconcilable(Number, AccountId).
+
+-spec number(kz_json:object()) -> binary().
+number(JObj) ->
+    case kz_json:get_value([<<"value">>, <<"to">>], JObj) of
+        'undefined' -> 'undefined';
+        <<>> -> <<>>;
+        Number -> Number
+    end.
