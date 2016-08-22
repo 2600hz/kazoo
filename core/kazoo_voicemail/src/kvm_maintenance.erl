@@ -26,8 +26,7 @@
 %%--------------------------------------------------------------------
 -spec migrate() -> 'ok'.
 migrate() ->
-    _ = [migrate(Id)|| Id <- kapps_util:get_all_accounts('raw')],
-    'ok'.
+    lists:foreach(fun migrate/1, kapps_util:get_all_accounts('raw')).
 
 -spec migrate(ne_binary()) -> 'ok'.
 migrate(AccountId) ->

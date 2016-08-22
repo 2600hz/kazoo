@@ -65,7 +65,7 @@ stop() ->
 crawl_numbers() ->
     kz_util:put_callid(?MODULE),
     lager:debug("beginning a number crawl"),
-    _ = [crawl_number_db(Db) || Db <- knm_util:get_all_number_dbs()],
+    lists:foreach(fun crawl_number_db/1, knm_util:get_all_number_dbs()),
     lager:debug("finished the number crawl").
 
 %%%===================================================================

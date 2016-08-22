@@ -271,8 +271,7 @@ process_realm(Realm, Dir, Module) ->
             lager:debug("wrote file ~s", [XMLFile]);
         {'error', E} ->
             lager:debug("error rendering template ~s for realm ~s: ~p"
-                       ,[Module, Realm, E]
-                       )
+                       ,[Module, Realm, E])
     end.
 
 %% @private
@@ -302,8 +301,7 @@ crawl_numbers_db(NumberDb) ->
             maybe_export_numbers(Db, Numbers);
         {'error', _R} ->
             lager:debug("error getting number docs from ~s: ~p"
-                       ,[NumberDb, _R]
-                       )
+                       ,[NumberDb, _R])
     catch
         _E:_R ->
             lager:debug("~s getting number docs from ~s: ~p"
@@ -313,11 +311,11 @@ crawl_numbers_db(NumberDb) ->
 -spec get_numbers(kz_json:objects()) -> ne_binaries().
 get_numbers(JObjs) ->
     [Number
-     || JObj <- JObjs
-            ,case (Number = kz_doc:id(JObj)) of
-                 <<"_design/", _/binary>> -> 'false';
-                 _Else -> 'true'
-             end
+     || JObj <- JObjs,
+        case (Number = kz_doc:id(JObj)) of
+            <<"_design/", _/binary>> -> 'false';
+            _Else -> 'true'
+        end
     ].
 
 -spec maybe_export_numbers(ne_binary(), ne_binaries()) -> 'ok'.
@@ -331,8 +329,7 @@ maybe_export_numbers(Db, [Number|Numbers]) ->
                                    );
             {'error', _R} ->
                 lager:debug("error fetching number ~s from ~d: ~p"
-                           ,[Number, Db, _R]
-                           )
+                           ,[Number, Db, _R])
         end,
     maybe_export_numbers(Db, Numbers).
 

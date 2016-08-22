@@ -196,16 +196,14 @@ start_link() ->
 -spec init() -> 'ok'.
 init() ->
     lager:debug("initializing bindings"),
-
     kz_util:put_callid(?LOG_SYSTEM_ID),
-    _ = [maybe_init_mod(Mod)
-         || Mod <- crossbar_config:autoload_modules(?DEFAULT_MODULES)
-        ],
-    'ok'.
+    lists:foreach(fun maybe_init_mod/1
+                 ,crossbar_config:autoload_modules(?DEFAULT_MODULES)).
 
 -spec maybe_init_mod(ne_binary() | atom()) -> 'ok'.
 maybe_init_mod(Mod) ->
     case crossbar_init:start_mod(Mod) of
         'ok' -> 'ok';
-        {'error', Error} -> lager:notice("failed to initialize ~s: ~p", [Mod, Error])
+        {'error', Error} ->
+            lager:notice("failed to initialize ~s: ~p", [Mod, Error])
     end.

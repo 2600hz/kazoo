@@ -47,16 +47,13 @@ start_link() ->
 status() ->
     lager:info("ACDc Agents Status"),
     Ws = workers(),
-    _ = kz_util:spawn(fun() -> [acdc_agent_sup:status(Sup) || Sup <- Ws] end),
+    _ = kz_util:spawn(fun() -> lists:foreach(fun acdc_agent_sup:status/1, Ws) end),
     'ok'.
 
 -spec new(kz_json:object()) -> sup_startchild_ret().
 -spec new(ne_binary(), ne_binary()) -> sup_startchild_ret().
 new(JObj) ->
-    case find_agent_supervisor(kz_doc:account_id(JObj)
-                              ,kz_doc:id(JObj)
-                              )
-    of
+    case find_agent_supervisor(kz_doc:account_id(JObj), kz_doc:id(JObj)) of
         'undefined' -> supervisor:start_child(?SERVER, [JObj]);
         P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
     end.

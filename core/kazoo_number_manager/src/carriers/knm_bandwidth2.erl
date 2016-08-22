@@ -216,7 +216,7 @@ sites() ->
     {'ok', Xml} = api_get(url(["sites"])),
     io:format("listing all sites for account ~p~n", [?BW2_ACCOUNT_ID]),
     Sites = xmerl_xpath:string("Sites/Site", Xml),
-    _ = [process_site(X) || X <- Sites],
+    lists:foreach(fun process_site/1, Sites),
     io:format("done.~n").
 
 -spec process_site(xml_el()) -> 'ok'.
@@ -231,7 +231,7 @@ peers(SiteId) ->
     {'ok', Xml} = api_get(url(["sippeers"])),
     io:format("listing all peers for account ~p, site ~p~n", [?BW2_ACCOUNT_ID, SiteId]),
     Peers = xmerl_xpath:string("SipPeers/SipPeer", Xml),
-    _ = [process_peer(X) || X <- Peers],
+    lists:foreach(fun process_peer/1, Peers),
     io:format("done.~n").
 
 -spec process_peer(xml_el()) -> 'ok'.
@@ -245,8 +245,8 @@ process_peer(Peer) ->
 -spec url([nonempty_string()]) -> nonempty_string().
 url(RelativePath) ->
     lists:flatten(
-      [ io_lib:format("~s/accounts/~s/", [?BW2_BASE_URL, ?BW2_ACCOUNT_ID])
-        | RelativePath
+      [io_lib:format("~s/accounts/~s/", [?BW2_BASE_URL, ?BW2_ACCOUNT_ID])
+       | RelativePath
       ]).
 
 -type api_res() :: {'ok', xml_el()} | {'error', atom()}.

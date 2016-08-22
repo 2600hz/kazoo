@@ -142,8 +142,7 @@ delete_test_accounts() ->
         {'error', _E} -> lager:debug("error retrieving accounts: ~p", [_E]);
         [] -> 'ok';
         Accounts ->
-            _ = [maybe_delete_test_account(AccountDb) || AccountDb <- Accounts],
-            'ok'
+            lists:foreach(fun maybe_delete_test_account/1, Accounts)
     end.
 
 -spec maybe_get_migrate_account(account_db()) -> 'false' | kz_json:object().
@@ -153,8 +152,9 @@ maybe_get_migrate_account(AccountDb) ->
         [] -> 'false';
         {'ok', Results} ->
             [kz_json:get_value(<<"doc">>, Result)
-             || Result <- Results
-                    ,matches_realm(kz_json:get_value(<<"key">>, Result))]
+             || Result <- Results,
+                matches_realm(kz_json:get_value(<<"key">>, Result))
+            ]
     end.
 
 -spec matches_realm(ne_binary()) -> boolean().

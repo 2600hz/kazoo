@@ -41,6 +41,9 @@
 
 -include("blackhole.hrl").
 
+-define(BH_MODULES,
+        kapps_config:get(?BLACKHOLE_CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES)).
+
 -type payload() :: bh_context:context() | ne_binary().
 
 %%%===================================================================
@@ -175,10 +178,7 @@ modules_loaded() -> kazoo_bindings:modules_loaded().
 init() ->
     lager:debug("initializing blackhole bindings"),
     kz_util:put_callid(?LOG_SYSTEM_ID),
-    _ = [init_mod(Mod)
-         || Mod <- kapps_config:get(?BLACKHOLE_CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES)
-        ],
-    'ok'.
+    lists:foreach(fun init_mod/1, ?BH_MODULES).
 
 init_mod(ModuleName) ->
     lager:debug("initializing module: ~p", [ModuleName]),

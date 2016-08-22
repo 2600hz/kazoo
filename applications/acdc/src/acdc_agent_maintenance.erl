@@ -26,8 +26,7 @@ acct_status(AcctId) ->
         [] -> lager:info("no agents with account id ~s available", [AcctId]);
         As ->
             lager:info("Agent Statuses in ~s", [AcctId]),
-            _ = [acdc_agent_sup:status(Sup) || Sup <- As],
-            'ok'
+            lists:foreach(fun acdc_agent_sup:status/1, As)
     end.
 
 agent_status(AcctId, AgentId) when (not is_binary(AcctId))

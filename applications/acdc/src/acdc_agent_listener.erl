@@ -553,7 +553,7 @@ handle_cast({'member_connect_retry', CallId}, #state{my_id=MyId
             lager:debug("need to retry member connect, agent isn't able to take it"),
             send_member_connect_retry(Server, CallId, MyId, AgentId),
 
-            _ = [acdc_util:unbind_from_call_events(ACallId) || ACallId <- ACallIds],
+            lists:foreach(fun acdc_util:unbind_from_call_events/1, ACallIds),
             acdc_util:unbind_from_call_events(CallId),
 
             kz_util:put_callid(AgentId),
