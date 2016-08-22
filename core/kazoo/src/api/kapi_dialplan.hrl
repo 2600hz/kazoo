@@ -240,23 +240,6 @@
                           ]).
 -define(SEND_DTMF_TYPES, [{<<"DTMFs">>, fun is_binary/1}]).
 
--define(METAFLOW_HEADERS, [<<"Call">>]).
--define(OPTIONAL_METAFLOW_HEADERS, [<<"Numbers">>, <<"Patterns">>
-                                   ,<<"Binding-Digit">>, <<"Digit-Timeout">>
-                                   ,<<"Endpoint-ID">>, <<"Listen-On">>
-                                   ]).
--define(METAFLOW_VALUES, [{<<"Event-Category">>, <<"call">>}
-                         ,{<<"Event-Name">>, <<"command">>}
-                         ,{<<"Application-Name">>, <<"metaflow">>}
-                         ,{<<"Binding-Digit">>, ?ANY_DIGIT}
-                         ,{<<"Listen-On">>, [<<"both">>, <<"self">>, <<"peer">>]}
-                         ]).
--define(METAFLOW_TYPES, [{<<"Numbers">>, fun kz_json:is_json_object/1}
-                        ,{<<"Patterns">>, fun kz_json:is_json_object/1}
-                        ,{<<"Digit-Timeout">>, fun metaflow_digit_timeout_v/1}
-                        ]).
--define(METAFLOW_ROUTING_KEY(CallId), <<"call.metaflow.", (amqp_util:encode(CallId))/binary>>).
-
 %% Tones Request
 -define(TONES_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tones">>]).
 -define(OPTIONAL_TONES_REQ_HEADERS, [<<"Insert-At">>, <<"Terminators">>
@@ -786,6 +769,8 @@
 -define(OPTIONAL_TRANSFER_HEADERS, [<<"Insert-At">>
                                    ,<<"Transfer-Leg">>
                                    ,<<"Transfer-Context">>
+                                   ,<<"Caller-ID-Name">>
+                                   ,<<"Caller-ID-Number">>
                                    ]).
 -define(TRANSFER_VALUES, [{<<"Event-Category">>, <<"call">>}
                          ,{<<"Event-Name">>, <<"command">>}

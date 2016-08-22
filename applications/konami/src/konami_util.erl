@@ -32,7 +32,7 @@ send_hangup_req(CallId) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("attempting to hangup ~s", [CallId]),
-    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1).
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1).
 
 -spec send_break_req(ne_binary()) -> 'ok'.
 send_break_req(CallId) ->
@@ -42,4 +42,4 @@ send_break_req(CallId) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("attempting to break ~s", [CallId]),
-    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_req/1).
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1).

@@ -31,11 +31,11 @@
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'dialplan', ['metaflow']}
+-define(BINDINGS, [{'metaflow', [{'restrict_to', ['bindings']}]}
                   ,{'route', []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_metaflow'}
-                     ,[{<<"call">>, <<"command">>}]
+                     ,[{<<"metaflow">>, <<"bindings">>}]
                      }
                     ,{{?MODULE, 'handle_channel_create'}
                      ,[{<<"call_event">>, <<"CHANNEL_CREATE">>}]
@@ -66,7 +66,7 @@ start_link() ->
 
 -spec handle_metaflow(kz_json:object(), kz_proplist()) -> no_return().
 handle_metaflow(JObj, Props) ->
-    'true' = kapi_dialplan:metaflow_v(JObj),
+    'true' = kapi_metaflow:binding_v(JObj),
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),
     kapps_call:put_callid(Call),
 

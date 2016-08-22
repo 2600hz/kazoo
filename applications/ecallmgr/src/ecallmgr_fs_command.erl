@@ -152,10 +152,10 @@ maybe_export_vars(Node, UUID, Props) ->
                 end, [], Props).
 
 -spec api(atom(), atom(), binary()) -> ecallmgr_util:send_cmd_ret().
--spec api(atom(), atom(), binary(), binary() | list()) -> ecallmgr_util:send_cmd_ret().
 api(Node, Cmd, Args) ->
     freeswitch:api(Node, Cmd, Args).
 
+-spec api(atom(), binary(), atom(), binary() | list()) -> ecallmgr_util:send_cmd_ret().
 api(_, _, _, []) -> 'ok';
 api(Node, UUID, Cmd, Args)
   when is_list(Args)->
@@ -163,11 +163,11 @@ api(Node, UUID, Cmd, Args)
 api(Node, UUID, Cmd, Args) ->
     api(Node, Cmd, <<UUID/binary, " ", Args/binary>>).
 
--spec bgapi(atom(), binary(), binary()) -> ecallmgr_util:send_cmd_ret().
--spec bgapi(atom(), binary(), binary(), binary() | list()) -> ecallmgr_util:send_cmd_ret().
+-spec bgapi(atom(), atom(), binary()) -> ecallmgr_util:send_cmd_ret().
 bgapi(Node, Cmd, Args) ->
     freeswitch:bgapi(Node, Cmd, Args).
 
+-spec bgapi(atom(), binary(), atom(), binary() | list()) -> ecallmgr_util:send_cmd_ret().
 bgapi(_, _, _, []) -> 'ok';
 bgapi(Node, UUID, Cmd, Args)
   when is_list(Args)->
