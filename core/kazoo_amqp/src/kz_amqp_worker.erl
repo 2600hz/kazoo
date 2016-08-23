@@ -488,6 +488,7 @@ send_request(CallId, Self, PublishFun, ReqProps)
     catch
         _R:E ->
             lager:debug("failed to publish: ~s: ~p", [_R, E]),
+            kz_util:log_stacktrace(),
             {'error', E}
     end.
 
