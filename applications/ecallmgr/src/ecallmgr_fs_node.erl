@@ -599,7 +599,7 @@ was_not_successful_cmd(_) -> 'true'.
 -spec print_api_responses(cmd_results()) -> 'ok'.
 print_api_responses(Res) ->
     lager:debug("start cmd results:"),
-    _ = [ print_api_response(ApiRes) || ApiRes <- lists:flatten(Res)],
+    lists:foreach(fun print_api_response/1, lists:flatten(Res)),
     lager:debug("end cmd results").
 
 -spec print_api_response(cmd_result()) -> 'ok'.
@@ -620,7 +620,7 @@ channels_as_json(Node) ->
                     Keys = binary:split(Header, <<"|||">>, ['global']),
                     [kz_json:from_list(lists:zip(Keys, Values))
                      || Line <- Rest,
-                        ((Values = binary:split(Line, <<"|||">>, ['global'])) =/= [Line])
+                        (Values = binary:split(Line, <<"|||">>, ['global'])) =/= [Line]
                     ]
             end;
         {'error', _} -> []

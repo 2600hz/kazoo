@@ -87,8 +87,7 @@ current_queues(AccountId) ->
 
 log_current_queues(Agents) ->
     io:format(" ~35s | ~s~n", [<<"Agent ID">>, <<"Queue IDs">>]),
-    _ = [log_current_queue(Agent) || Agent <- Agents],
-    'ok'.
+    lists:foreach(fun log_current_queue/1, Agents).
 log_current_queue(AgentSup) ->
     AgentL = acdc_agent_sup:listener(AgentSup),
     io:format(" ~35s | ~s~n", [acdc_agent_listener:id(AgentL)
@@ -104,8 +103,7 @@ current_agents(AccountId) ->
     end.
 log_current_agents(Queues) ->
     io:format(" ~35s | ~s~n", [<<"Queue ID">>, <<"Agent IDs">>]),
-    _ = [log_current_agent(Queue) || Queue <- Queues],
-    'ok'.
+    lists:foreach(fun log_current_agent/1, Queues).
 log_current_agent(QueueSup) ->
     QueueM = acdc_queue_sup:manager(QueueSup),
     {_AccountId, QueueId} = acdc_queue_manager:config(QueueM),
@@ -209,7 +207,7 @@ migrate_to_acdc_db() ->
     {'ok', Accounts} = kz_datamgr:all_docs(?KZ_ACDC_DB),
     _ = [maybe_remove_acdc_account(kz_doc:id(Account)) || Account <- Accounts],
     io:format("removed any missing accounts from ~s~n", [?KZ_ACDC_DB]),
-    _ = [migrate_to_acdc_db(Acct) || Acct <- kapps_util:get_all_accounts('raw')],
+    lists:foreach(fun migrate_to_acdc_db/1, kapps_util:get_all_accounts('raw')),
     io:format("migration complete~n").
 
 -spec maybe_remove_acdc_account(ne_binary()) -> 'ok'.
@@ -322,10 +320,8 @@ queues_detail() ->
     acdc_queues_sup:status().
 queues_detail(AcctId) ->
     kz_util:put_callid(?MODULE),
-    _ = [acdc_queue_sup:status(S)
-         || S <- acdc_queues_sup:find_acct_supervisors(AcctId)
-        ],
-    'ok'.
+    lists:foreach(fun acdc_queue_sup:status/1
+                 ,acdc_queues_sup:find_acct_supervisors(AcctId)).
 queue_detail(AcctId, QueueId) ->
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
         'undefined' -> lager:info("no queue ~s in account ~s", [QueueId, AcctId]);
@@ -410,10 +406,8 @@ agents_detail() ->
     acdc_agents_sup:status().
 agents_detail(AcctId) ->
     kz_util:put_callid(?MODULE),
-    _ = [acdc_agent_sup:status(S)
-         || S <- acdc_agents_sup:find_acct_supervisors(AcctId)
-        ],
-    'ok'.
+    lists:foreach(fun acdc_agent_sup:status/1
+                 ,acdc_agents_sup:find_acct_supervisors(AcctId)).
 agent_detail(AcctId, AgentId) ->
     kz_util:put_callid(?MODULE),
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of

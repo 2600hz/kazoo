@@ -276,8 +276,7 @@ maybe_print_media_servers(#kz_node{media_servers=MediaServers
             io:format("Channels      : ~B~n", [Channels]),
             io:format("Registrations : ~B~n", [Registrations]),
             print_media_server(Server, ?MEDIA_SERVERS_HEADER),
-            _ =[print_media_server(OtherServer) || OtherServer <- Servers],
-            'ok'
+            lists:foreach(fun print_media_server/1, Servers)
     end.
 
 -spec print_media_server(media_server()) -> 'ok'.

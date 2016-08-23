@@ -17,8 +17,7 @@
 
 -type bh_subscribe_result() :: {'ok', bh_context:context()} | {'error', ne_binary()}.
 
--record(bh_context, {
-          auth_token = <<>> :: api_binary() | '_'
+-record(bh_context, {auth_token = <<>> :: api_binary() | '_'
                     ,auth_account_id :: api_binary() | '_'
                     ,account_id :: api_binary() | '_'
                     ,bindings = [] :: ne_binaries() | '_'
@@ -31,7 +30,7 @@
                     ,destination = kz_util:node_hostname() :: ne_binary() | '_'
                     ,source :: api_binary() | '_'
                     ,binding :: api_binary() | '_'
-         }).
+                    }).
 
 -define(BLACKHOLE_HRL, 'true').
 

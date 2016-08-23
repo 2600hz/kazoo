@@ -42,8 +42,7 @@ start_inbound_listener(Connection) ->
 
 -spec start_listeners() -> 'ok'.
 start_listeners() ->
-    _ = [start_inbound_listener(C) || C <- connections()],
-    'ok'.
+    lists:foreach(fun start_inbound_listener/1, connections()).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -61,9 +61,7 @@ stop() ->
 
     case gproc:select('n', [{MatchHead, Guard, [Result]}]) of
         [] -> 'ok';
-        Pids ->
-            _ = [stop_pid(Pid) || Pid <- Pids],
-            'ok'
+        Pids -> lists:foreach(fun stop_pid/1, Pids)
     end.
 
 stop(Type) ->

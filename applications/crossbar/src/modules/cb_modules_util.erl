@@ -572,11 +572,11 @@ take_sync_field(Context) ->
 %% @public
 -spec remove_plaintext_password(cb_context:context()) -> cb_context:context().
 remove_plaintext_password(Context) ->
-    Doc = kz_json:delete_keys(
-            [<<"password">>,
-             <<"confirm_password">>
-            ], cb_context:doc(Context)
-           ),
+    Doc = kz_json:delete_keys([<<"password">>
+                              ,<<"confirm_password">>
+                              ]
+                             ,cb_context:doc(Context)
+                             ),
     cb_context:set_doc(Context, Doc).
 
 -type assignment_updates() :: [{ne_binary(), knm_number:knm_number_return()}].
@@ -590,8 +590,7 @@ apply_assignment_updates(Updates) ->
 
 -spec log_assignment_updates(assignment_updates()) -> 'ok'.
 log_assignment_updates(Updates) ->
-    _ = [log_assignment_update(Update) || Update <- Updates],
-    'ok'.
+    lists:foreach(fun log_assignment_update/1, Updates).
 
 -spec log_assignment_update({ne_binary(), knm_number:knm_number_return()}) -> 'ok'.
 log_assignment_update({DID, {'ok', _Number}}) ->

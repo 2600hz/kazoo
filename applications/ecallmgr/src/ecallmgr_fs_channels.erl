@@ -892,12 +892,10 @@ cleanup_old_channels(MaxAge) ->
 
 -spec hangup_old_channels(old_channels()) -> 'ok'.
 hangup_old_channels(OldChannels) ->
-    _ = [hangup_old_channel(C) || C <- OldChannels],
-    'ok'.
+    lists:foreach(fun hangup_old_channel/1, OldChannels).
 
 -spec hangup_old_channel(old_channel()) -> 'ok'.
 hangup_old_channel([UUID, Node, Started]) ->
     lager:debug("killing channel ~s on ~s, started ~s"
-               ,[UUID, Node, kz_util:pretty_print_datetime(Started)]
-               ),
+               ,[UUID, Node, kz_util:pretty_print_datetime(Started)]),
     freeswitch:api(Node, 'uuid_kill', UUID).

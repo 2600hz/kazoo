@@ -422,17 +422,15 @@ channel_details(UUID) ->
 
 -spec sync_channels() -> 'ok'.
 sync_channels() ->
-    _ = [ecallmgr_fs_node:sync_channels(Srv)
-         || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
-        ],
-    'ok'.
+    lists:foreach(fun ecallmgr_fs_node:sync_channels/1
+                 ,gproc:lookup_pids({'p', 'l', 'fs_node'})).
 
 -spec sync_channels(text()) -> 'ok'.
 sync_channels(Node) ->
     N = kz_util:to_atom(Node, 'true'),
     _ = [ecallmgr_fs_node:sync_channels(Srv)
-         || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
-                ,ecallmgr_fs_node:fs_node(Srv) =:= N
+         || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'}),
+            ecallmgr_fs_node:fs_node(Srv) =:= N
         ],
     'ok'.
 
@@ -458,10 +456,8 @@ conference_details(UUID) ->
 
 -spec sync_conferences() -> 'ok'.
 sync_conferences() ->
-    _ = [ecallmgr_fs_conferences:sync_node(N)
-         || N <- ecallmgr_fs_nodes:connected()
-        ],
-    'ok'.
+    lists:foreach(fun ecallmgr_fs_conferences:sync_node/1
+                 ,ecallmgr_fs_nodes:connected()).
 
 -spec sync_conferences(text()) -> 'ok'.
 sync_conferences(Node) ->

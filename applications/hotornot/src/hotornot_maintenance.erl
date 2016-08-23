@@ -15,10 +15,12 @@
 
 -include("hotornot.hrl").
 
--define(LOCAL_SUMMARY_ROW_FORMAT, " ~45.s | ~9.s | ~9.s | ~9.s | ~9.s | ~9.s | ~15.s |~n").
--define(LOCAL_SUMMARY_HEADER, io:format(?LOCAL_SUMMARY_ROW_FORMAT, [<<"RATE NAME">>, <<"COST">>, <<"INCREMENT">>, <<"MINIMUM">>
-                                                                   ,<<"SURCHARGE">>, <<"WEIGHT">>, <<"PREFIX">>
-                                                                   ])).
+-define(LOCAL_SUMMARY_ROW_FORMAT,
+        " ~45.s | ~9.s | ~9.s | ~9.s | ~9.s | ~9.s | ~15.s |~n").
+-define(LOCAL_SUMMARY_HEADER,
+        io:format(?LOCAL_SUMMARY_ROW_FORMAT, [<<"RATE NAME">>, <<"COST">>, <<"INCREMENT">>, <<"MINIMUM">>
+                                             ,<<"SURCHARGE">>, <<"WEIGHT">>, <<"PREFIX">>
+                                             ])).
 
 -spec local_summary() -> 'ok'.
 local_summary() ->
@@ -35,7 +37,7 @@ rates_for_did(DID, Direction, RouteOptions) when is_list(RouteOptions) ->
         {'ok', Rates} ->
             io:format("Candidates:~n", []),
             ?LOCAL_SUMMARY_HEADER,
-            _ = [print_rate(R) || R <- Rates],
+            lists:foreach(fun print_rate/1, Rates),
 
             print_matching(hon_util:matching_rates(Rates, DID, Direction, RouteOptions))
     end;
@@ -52,11 +54,10 @@ print_matching(Matching) ->
     [Winning|Sorted] = hon_util:sort_rates(Matching),
     Name = kz_json:get_value(<<"rate_name">>, Winning),
 
-    _ = [print_rate(R)
-         || R <- [kz_json:set_value(<<"rate_name">>, <<"* ", Name/binary>>, Winning)
-                  | Sorted]
-        ],
-    'ok'.
+    lists:foreach(fun print_rate/1
+                 ,[kz_json:set_value(<<"rate_name">>, <<"* ", Name/binary>>, Winning)
+                   | Sorted
+                  ]).
 
 -spec rates_between(ne_binary(), ne_binary()) -> 'ok'.
 rates_between(Pre, Post) ->

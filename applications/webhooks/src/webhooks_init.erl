@@ -62,9 +62,7 @@ init_master_account_db(MasterAccountDb) ->
 
 -spec init_modules() -> 'ok'.
 init_modules() ->
-    _ = [init_module(Mod)
-         || Mod <- existing_modules()
-        ],
+    lists:foreach(fun init_module/1, existing_modules()),
     lager:debug("finished initializing modules").
 
 -spec init_module(atom()) -> 'ok'.

@@ -507,8 +507,7 @@ enable_descendant_hooks(Account) ->
 
 -spec maybe_enable_descendants_hooks(ne_binaries()) -> 'ok'.
 maybe_enable_descendants_hooks(Accounts) ->
-    _ = [maybe_enable_descendant_hooks(Account) || Account <- Accounts],
-    'ok'.
+    lists:foreach(fun maybe_enable_descendant_hooks/1, Accounts).
 
 -spec maybe_enable_descendant_hooks(ne_binary()) -> 'ok'.
 maybe_enable_descendant_hooks(Account) ->

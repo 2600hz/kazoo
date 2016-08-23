@@ -526,7 +526,7 @@ handle_cast({'start_listener', _Params}, State) ->
     {'noreply', State};
 
 handle_cast({'pause_consumers'}, #state{is_consuming='true', consumer_tags=Tags}=State) ->
-    _ = [amqp_util:basic_cancel(Tag) || Tag <- Tags],
+    lists:foreach(fun amqp_util:basic_cancel/1, Tags),
     {'noreply', State};
 
 handle_cast({'resume_consumers'}, #state{queue='undefined'}=State) ->
