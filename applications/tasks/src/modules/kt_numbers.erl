@@ -69,6 +69,12 @@ output_header(<<"dump">>) ->
     list_output_header().
 
 -spec cleanup(ne_binary(), any()) -> any().
+cleanup(<<"list">>, _) ->
+    knm_phone_number:push_stored();
+cleanup(<<"list_all">>, _) ->
+    knm_phone_number:push_stored();
+cleanup(<<"dump">>, _) ->
+    knm_phone_number:push_stored();
 cleanup(<<"import">>, 'init') ->
     %% Hit iff no rows at all succeeded.
     'ok';
@@ -77,7 +83,16 @@ cleanup(<<"import">>, AccountIds) ->
                 lager:debug("reconciling account ~s", [AccountId]),
                 kz_services:reconcile(AccountId, <<"phone_numbers">>)
         end,
-    lists:foreach(F, sets:to_list(AccountIds)).
+    lists:foreach(F, sets:to_list(AccountIds)),
+    knm_phone_number:push_stored();
+cleanup(<<"assign_to">>, _) ->
+    knm_phone_number:push_stored();
+cleanup(<<"release">>, _) ->
+    knm_phone_number:push_stored();
+cleanup(<<"reserve">>, _) ->
+    knm_phone_number:push_stored();
+cleanup(<<"delete">>, _) ->
+    knm_phone_number:push_stored().
 
 -spec list_output_header() -> kz_csv:row().
 list_output_header() ->

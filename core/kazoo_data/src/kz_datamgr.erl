@@ -723,7 +723,7 @@ lookup_doc_rev(DbName, DocId, Options) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% save document to the db
+%% Save document to database
 %% @end
 %%--------------------------------------------------------------------
 -spec save_doc(text(), kz_json:object() | kz_json:objects()) ->
@@ -734,8 +734,13 @@ save_doc(DbName, Docs) when is_list(Docs) ->
 save_doc(DbName, Doc) ->
     save_doc(DbName, Doc, []).
 
-%% save a document; if it fails to save because of conflict, pull the latest revision and try saving again.
-%% any other error is returned
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Save a document. If it fails because of conflict, pulls latest
+%% revision and tries saving again. Otherwise return.
+%% @end
+%%--------------------------------------------------------------------
 -spec ensure_saved(text(), kz_json:object()) ->
                           {'ok', kz_json:object()} |
                           data_error().
