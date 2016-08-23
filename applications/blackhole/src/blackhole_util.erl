@@ -15,6 +15,7 @@
 -export([handle_event/3]).
 -export([send_error/3, send_success/3, send_success/2]).
 -export([ensure_value/2]).
+-export([get_descendants/1]).
 
 -spec handle_event(bh_context:context(), kz_json:object(), ne_binary()) -> 'ok'.
 handle_event(#bh_context{binding=Binding} = Context, EventJObj, EventName) ->
@@ -41,3 +42,18 @@ send_success(WsPid, Message) ->
 
 ensure_value('undefined', Error) -> erlang:error(Error);
 ensure_value(V, _) -> V.
+
+-spec get_descendants(ne_binary()) -> ne_binaries().
+get_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    ViewOptions = [{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
+                  ],
+    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
+        {'ok', JObjs} ->
+            [Id || JObj <- JObjs,
+                   (Id = kz_doc:id(JObj)) =/= AccountId
+            ];
+        {'error', _R} ->
+            lager:debug("unable to get descendants of ~s: ~p", [AccountId, _R]),
+            []
+    end.

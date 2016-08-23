@@ -19,6 +19,7 @@
 
 -record(bh_context, {auth_token = <<>> :: api_binary() | '_'
                     ,auth_account_id :: api_binary() | '_'
+                    ,auth_descendants :: [ne_binary()] | '_'
                     ,bindings = [] :: ne_binaries() | '_'
                     ,timestamp :: gregorian_seconds() | '_'
                     ,websocket_pid :: api_pid() | '_'

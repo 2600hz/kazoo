@@ -17,6 +17,14 @@ subscribe(Context=#bh_context{websocket_pid=WsPid}, Cmd, JMsg) ->
             blackhole_util:send_error(WsPid, <<"unspecified error">>, Cmd), Context
     end.
 
+authenticate(Context=#bh_context{websocket_pid=WsPid}, Cmd, JMsg) ->
+    try
+        authenticate_t(Context, Cmd, JMsg)
+    catch
+        _:_ ->
+            blackhole_util:send_error(WsPid, <<"unspecified error">>, Cmd), Context
+    end.
+
 subscribe_t(Context=#bh_context{websocket_pid=WsPid}, Cmd, JMsg) ->
     Binding = kz_json:get_value(<<"binding">>, JMsg),
     case {Cmd, bh_context:is_bound(Context, Binding)} of
@@ -39,12 +47,13 @@ execute(Cmd, Context=#bh_context{}, JMsg) ->
     _Ctx2 = #bh_call{} = blackhole_bindings:fold(<<"command.", Cmd/binary, ".", Module/binary, ".execute">>, [Ctx1, Cmd | Args]),
     Context.
 
-authenticate(Context=#bh_context{}, <<"authenticate">>, JMsg) ->
+authenticate_t(Context=#bh_context{}, <<"authenticate">>, JMsg) ->
     Token = kz_json:get_value(<<"token">>, JMsg),
-    AuthAccountId = get_account_id(Token),
-    lager:debug("auth_token:~p found, auth_account_id:~p", [Token, AuthAccountId]),
-    Context#bh_context{auth_account_id=AuthAccountId, auth_token=Token};
-authenticate(_, _, _) ->
+    AuthAccountId = blackhole_util:ensure_value(get_account_id(Token), <<"no such account">>),
+    Descendants = blackhole_util:get_descendants(AuthAccountId),
+    lager:debug("auth_token:~p found, auth_account_id:~p descendants:~p", [Token, AuthAccountId, Descendants]),
+    Context#bh_context{auth_account_id=AuthAccountId, auth_token=Token, auth_descendants=[AuthAccountId|Descendants]};
+authenticate_t(_, _, _) ->
     {'error', 'unhandled_authenticate'}.
 
 manage_context(<<"subscribe">>, Context=#bh_context{}, Binding) ->
