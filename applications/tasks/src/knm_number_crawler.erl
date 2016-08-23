@@ -27,11 +27,14 @@
 
 -define(KNM_CONFIG_CAT, <<"number_manager">>).
 
+-define(DELETED_EXPIRY,
+        kapps_config:get_integer(?KNM_CONFIG_CAT, <<"deleted_expiry_d">>, 90)).
+
 -define(DISCOVERY_EXPIRY,
         kapps_config:get_integer(?KNM_CONFIG_CAT, <<"discovery_expiry_d">>, 90)).
 
--define(DELETED_EXPIRY,
-        kapps_config:get_integer(?KNM_CONFIG_CAT, <<"deleted_expiry_d">>, 90)).
+-define(AGING_EXPIRY,
+        kapps_config:get_integer(?KNM_CONFIG_CAT, <<"aging_expiry_d">>, 90)).
 
 -define(NUMBERS_TO_CRAWL,
         kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)).
@@ -172,6 +175,7 @@ crawl_number_docs(_Db, {'ok', Docs}) ->
 crawl_number_doc(PhoneNumber) ->
     Fs = [fun maybe_remove_deleted/1
          ,fun maybe_remove_discovery/1
+         ,fun maybe_transition_aging/1
          ],
     try lists:foldl(fun(F, PN) -> F(PN) end, PhoneNumber, Fs) of
         _ -> 'ok'
@@ -187,32 +191,54 @@ crawl_number_doc(PhoneNumber) ->
                                   knm_phone_number:knm_phone_number().
 maybe_remove_deleted(PhoneNumber) ->
     case knm_phone_number:state(PhoneNumber) of
-        ?NUMBER_STATE_DELETED ->
-            Created = knm_phone_number:created(PhoneNumber),
-            maybe_remove(PhoneNumber, Created, ?DELETED_EXPIRY * ?SECONDS_IN_DAY);
-        _State ->
-            PhoneNumber
+        ?NUMBER_STATE_DELETED -> maybe_remove(PhoneNumber, ?DELETED_EXPIRY);
+        _State -> PhoneNumber
     end.
 
 -spec maybe_remove_discovery(knm_phone_number:knm_phone_number()) ->
                                     knm_phone_number:knm_phone_number().
 maybe_remove_discovery(PhoneNumber) ->
     case knm_phone_number:state(PhoneNumber) of
-        ?NUMBER_STATE_DISCOVERY ->
-            Created = knm_phone_number:created(PhoneNumber),
-            maybe_remove(PhoneNumber, Created, ?DISCOVERY_EXPIRY * ?SECONDS_IN_DAY);
-        _State ->
-            PhoneNumber
+        ?NUMBER_STATE_DISCOVERY -> maybe_remove(PhoneNumber, ?DISCOVERY_EXPIRY);
+        _State -> PhoneNumber
     end.
 
--spec maybe_remove(knm_phone_number:knm_phone_number(), gregorian_seconds(), pos_integer()) ->
+-spec maybe_transition_aging(knm_phone_number:knm_phone_number()) ->
+                                    knm_phone_number:knm_phone_number().
+maybe_transition_aging(PhoneNumber) ->
+    case knm_phone_number:state(PhoneNumber) of
+        ?NUMBER_STATE_AGING -> maybe_update(PhoneNumber, ?AGING_EXPIRY);
+        _State -> PhoneNumber
+    end.
+
+-spec is_old_enough(knm_phone_number:knm_phone_number(), pos_integer()) -> boolean().
+is_old_enough(PhoneNumber, Expiry) ->
+    knm_phone_number:created(PhoneNumber)
+        > (kz_util:current_tstamp() - Expiry * ?SECONDS_IN_DAY).
+
+-spec maybe_remove(knm_phone_number:knm_phone_number(), pos_integer()) ->
                           knm_phone_number:knm_phone_number().
-maybe_remove(PhoneNumber, Created, Expiry) ->
-    case (kz_util:current_tstamp() - Expiry) > Created of
-        'true' -> PhoneNumber;
-        'false' ->
-            PN =  knm_phone_number:delete(PhoneNumber),
-            lager:debug(" number '~s' was purged from the sytem"
+maybe_remove(PhoneNumber, Expiry) ->
+    case is_old_enough(PhoneNumber, Expiry) of
+        'false' -> PhoneNumber;
+        'true' ->
+            lager:debug(" purging number '~s' from the sytem"
                        ,[knm_phone_number:number(PhoneNumber)]),
-            PN
+            knm_phone_number:delete(PhoneNumber)
+    end.
+
+-spec maybe_update(knm_phone_number:knm_phone_number(), pos_integer()) ->
+                          knm_phone_number:knm_phone_number().
+maybe_update(PhoneNumber, Expiry) ->
+    case is_old_enough(PhoneNumber, Expiry) of
+        'false' -> PhoneNumber;
+        'true' ->
+            lager:debug(" transitioning number '~s' from ~s to ~s"
+                       ,[knm_phone_number:number(PhoneNumber)
+                        ,?NUMBER_STATE_AGING
+                        ,?NUMBER_STATE_AVAILABLE
+                        ]),
+            knm_phone_number:save(
+              knm_phone_number:set_state(PhoneNumber, ?NUMBER_STATE_AVAILABLE)
+             )
     end.
