@@ -324,7 +324,7 @@ is_number_valid(<<>>, _AccountId) -> 'false';
 is_number_valid(Number, AccountId) ->
     knm_converters:is_reconcilable(Number, AccountId).
 
--spec number(kz_json:object()) -> binary().
+-spec number(kz_json:object()) -> api_binary().
 number(JObj) ->
     case kz_json:get_value([<<"value">>, <<"to">>], JObj) of
         'undefined' -> 'undefined';
