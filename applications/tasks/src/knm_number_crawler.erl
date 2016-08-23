@@ -170,8 +170,8 @@ crawl_number_docs(_Db, {'ok', Docs}) ->
 
 -spec crawl_number_doc(knm_phone_number:knm_phone_number()) -> 'ok'.
 crawl_number_doc(PhoneNumber) ->
-    Fs = [fun maybe_remove_discovery/1
-         ,fun maybe_remove_deleted/1
+    Fs = [fun maybe_remove_deleted/1
+         ,fun maybe_remove_discovery/1
          ],
     try lists:foldl(fun(F, PN) -> F(PN) end, PhoneNumber, Fs) of
         _ -> 'ok'
@@ -183,17 +183,6 @@ crawl_number_doc(PhoneNumber) ->
             kz_util:log_stacktrace(ST)
     end.
 
--spec maybe_remove_discovery(knm_phone_number:knm_phone_number()) ->
-                                    knm_phone_number:knm_phone_number().
-maybe_remove_discovery(PhoneNumber) ->
-    case knm_phone_number:state(PhoneNumber) of
-        ?NUMBER_STATE_DISCOVERY ->
-            Created = knm_phone_number:created(PhoneNumber),
-            maybe_remove(PhoneNumber, Created, ?DISCOVERY_EXPIRY * ?SECONDS_IN_DAY);
-        _State ->
-            PhoneNumber
-    end.
-
 -spec maybe_remove_deleted(knm_phone_number:knm_phone_number()) ->
                                   knm_phone_number:knm_phone_number().
 maybe_remove_deleted(PhoneNumber) ->
@@ -201,6 +190,17 @@ maybe_remove_deleted(PhoneNumber) ->
         ?NUMBER_STATE_DELETED ->
             Created = knm_phone_number:created(PhoneNumber),
             maybe_remove(PhoneNumber, Created, ?DELETED_EXPIRY * ?SECONDS_IN_DAY);
+        _State ->
+            PhoneNumber
+    end.
+
+-spec maybe_remove_discovery(knm_phone_number:knm_phone_number()) ->
+                                    knm_phone_number:knm_phone_number().
+maybe_remove_discovery(PhoneNumber) ->
+    case knm_phone_number:state(PhoneNumber) of
+        ?NUMBER_STATE_DISCOVERY ->
+            Created = knm_phone_number:created(PhoneNumber),
+            maybe_remove(PhoneNumber, Created, ?DISCOVERY_EXPIRY * ?SECONDS_IN_DAY);
         _State ->
             PhoneNumber
     end.
