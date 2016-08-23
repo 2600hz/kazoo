@@ -724,7 +724,7 @@ cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
 %%--------------------------------------------------------------------
 -spec amqp_send_message(api_terms(), kz_amqp_worker:publish_fun(), ne_binary()) -> 'ok'.
 amqp_send_message(API, PubFun, Q) ->
-    PubFun(add_server_id(API, Q)).
+    PubFun(add_server_id(Q, API)).
 
 -spec amqp_call_message(api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), ne_binary()) -> 'ok'.
 amqp_call_message(API, PubFun, VerifyFun, Q) ->
@@ -743,10 +743,10 @@ send_command(Command, ControlQ, CallId) ->
                        ],
     kapps_util:amqp_pool_send(Props, fun(P) -> kapi_dialplan:publish_command(ControlQ, P) end).
 
--spec add_server_id(api_terms(), ne_binary()) -> api_terms().
-add_server_id(API, Q) when is_list(API) ->
+-spec add_server_id(ne_binary(), api_terms()) -> api_terms().
+add_server_id(Q, API) when is_list(API) ->
     [{<<"Server-ID">>, Q} | props:delete(<<"Server-ID">>, API)];
-add_server_id(API, Q) ->
+add_server_id(Q, API) ->
     kz_json:set_value(<<"Server-ID">>, Q, API).
 
 -spec add_message_id(api_terms()) -> api_terms().
