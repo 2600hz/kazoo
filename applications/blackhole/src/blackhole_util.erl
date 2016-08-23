@@ -14,7 +14,7 @@
 
 -export([handle_event/3]).
 -export([send_error/3, send_success/3, send_success/2]).
--export([ensure_value/2]).
+-export([ensure_value/2, ensure_true/2]).
 -export([get_descendants/1]).
 
 -spec handle_event(bh_context:context(), kz_json:object(), ne_binary()) -> 'ok'.
@@ -42,6 +42,9 @@ send_success(WsPid, Message) ->
 
 ensure_value('undefined', Error) -> erlang:error(Error);
 ensure_value(V, _) -> V.
+
+ensure_true('true', _) -> 'true';
+ensure_true(_, Error) -> erlang:error(Error).
 
 -spec get_descendants(ne_binary()) -> ne_binaries().
 get_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->

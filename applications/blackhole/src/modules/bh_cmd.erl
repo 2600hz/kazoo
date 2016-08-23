@@ -12,9 +12,11 @@ subscribe(Context=#bh_context{websocket_pid=WsPid}, Cmd, JMsg) ->
         subscribe_t(Context, Cmd, JMsg)
     catch
         _:{badmatch,{error,E}} when is_binary(E) ->
-            blackhole_util:send_error(WsPid, <<"validation failed">>, E), Context;
+            blackhole_util:send_error(WsPid, <<"validation failed">>, E),
+            {'error', <<"validation failed">>};
         _:_ ->
-            blackhole_util:send_error(WsPid, <<"unspecified error">>, Cmd), Context
+            blackhole_util:send_error(WsPid, <<"unspecified error">>, Cmd),
+            {'error', <<"unspecified error">>}
     end.
 
 authenticate(Context=#bh_context{websocket_pid=WsPid}, Cmd, JMsg) ->
@@ -23,7 +25,9 @@ authenticate(Context=#bh_context{websocket_pid=WsPid}, Cmd, JMsg) ->
     catch
         _:_ ->
             blackhole_util:send_error(WsPid, <<"unspecified error">>, Cmd), Context
-    end.
+    end;
+authenticate(_, _, _) ->
+    {'error', <<"unhandled_authenticate">>}.
 
 subscribe_t(Context=#bh_context{websocket_pid=WsPid}, Cmd, JMsg) ->
     Binding = kz_json:get_value(<<"binding">>, JMsg),
@@ -43,8 +47,8 @@ subscribe_t(Context=#bh_context{websocket_pid=WsPid}, Cmd, JMsg) ->
 execute(Cmd, Context=#bh_context{}, JMsg) ->
     Binding = blackhole_util:ensure_value(kz_json:get_value(<<"binding">>, JMsg), 'missing_parameter'),
     [Module|Args] = binary:split(Binding, <<".">>, ['global']),
-    Ctx1 = #bh_call{} = blackhole_bindings:fold(<<"command.", Cmd/binary, ".", Module/binary, ".validate">>, [Context, JMsg | Args]),
-    _Ctx2 = #bh_call{} = blackhole_bindings:fold(<<"command.", Cmd/binary, ".", Module/binary, ".execute">>, [Ctx1, Cmd | Args]),
+    Ctx1 = blackhole_bindings:fold(<<"command.", Cmd/binary, ".", Module/binary, ".validate">>, [Context, JMsg | Args]),
+    _Ctx2 = blackhole_bindings:fold(<<"command.", Cmd/binary, ".", Module/binary, ".execute">>, [Ctx1, Cmd | Args]),
     Context.
 
 authenticate_t(Context=#bh_context{}, <<"authenticate">>, JMsg) ->
@@ -52,9 +56,7 @@ authenticate_t(Context=#bh_context{}, <<"authenticate">>, JMsg) ->
     AuthAccountId = blackhole_util:ensure_value(get_account_id(Token), <<"no such account">>),
     Descendants = blackhole_util:get_descendants(AuthAccountId),
     lager:debug("auth_token:~p found, auth_account_id:~p descendants:~p", [Token, AuthAccountId, Descendants]),
-    Context#bh_context{auth_account_id=AuthAccountId, auth_token=Token, auth_descendants=[AuthAccountId|Descendants]};
-authenticate_t(_, _, _) ->
-    {'error', 'unhandled_authenticate'}.
+    Context#bh_context{auth_account_id=AuthAccountId, auth_token=Token, auth_descendants=[AuthAccountId|Descendants]}.
 
 manage_context(<<"subscribe">>, Context=#bh_context{}, Binding) ->
     bh_context:add_binding(Context, Binding);

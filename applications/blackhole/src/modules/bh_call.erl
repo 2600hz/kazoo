@@ -41,9 +41,15 @@ execute(#bh_call{account_id=AccountId}=State, <<"unsubscribe">>, <<"*">>, <<"*">
 execute(#bh_call{account_id=AccountId}=State, <<"unsubscribe">>, Event, <<"*">>) ->
     rm_call_binding(AccountId, State, [Event]).
 
-validate_msg(#bh_context{websocket_pid=WsPid}, JMsg) ->
-    AccountId = blackhole_util:ensure_value(kz_json:get_value(<<"account_id">>, JMsg), 'no_account_id'),
-    #bh_call{account_id=AccountId, ws_pid=WsPid}.
+validate_msg(#bh_context{websocket_pid=WsPid, auth_descendants=Descendants}, JMsg) ->
+    try
+        AccountId = blackhole_util:ensure_value(kz_json:get_value(<<"account_id">>, JMsg), 'no_account_id'),
+        blackhole_util:ensure_true(lists:member(AccountId, Descendants), <<"not authorized">>),
+        #bh_call{account_id=AccountId, ws_pid=WsPid}
+    catch
+        _:_ ->
+            {'error', <<"validation error">>}
+    end.
 
 -spec handle_amqp_event(#bh_call{}, kz_json:object()) -> 'ok'.
 handle_amqp_event(#bh_call{ws_pid=WsPid}, EventJObj) ->
