@@ -176,14 +176,10 @@ match_invite_format(JObj, <<"Diversions">> = Key, [<<_/binary>> = Value|_]) ->
     match_invite_format(JObj, Key, kzsip_diversion:from_binary(Value));
 match_invite_format(JObj, <<"Diversions">> = Key, Value) ->
     FormatFun = invite_format_fun(JObj),
-
     Address = kzsip_diversion:address(Value),
-
-    SIP = knm_sip:parse(Address),
-    SIP1 = knm_sip:set_user(SIP, FormatFun(knm_sip:user(SIP))),
-
-    Address1 =  knm_sip:encode(SIP1),
-
+    SIP = kzsip_uri:parse(Address),
+    SIP1 = kzsip_uri:set_user(SIP, FormatFun(kzsip_uri:user(SIP))),
+    Address1 =  kzsip_uri:encode(SIP1),
     kz_json:set_value(Key, kzsip_diversion:set_address(Value, Address1), JObj);
 match_invite_format(JObj, Key, Value) ->
     FormatFun = invite_format_fun(JObj),
@@ -206,8 +202,7 @@ maybe_match(JObj, <<"Diversions">> = Key, Value, Formatter) ->
             kz_json:set_value(Key, kzsip_diversion:set_user(Value, User), JObj);
         'nomatch' ->
             lager:debug("diversion ~s didn't match ~s"
-                       ,[kzsip_diversion:user(Value), kz_json:get_value(<<"regex">>, Formatter)]
-                       ),
+                       ,[kzsip_diversion:user(Value), kz_json:get_value(<<"regex">>, Formatter)]),
             'false'
     end;
 maybe_match(JObj, Key, Value, Formatter) ->

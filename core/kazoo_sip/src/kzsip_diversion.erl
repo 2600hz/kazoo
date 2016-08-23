@@ -27,6 +27,8 @@
 -export([parse_name_addr_header/1]).
 -endif.
 
+-include("kazoo_sip.hrl").
+
 -define(PARAM_REASON, <<"reason">>).
 -define(PARAM_COUNTER, <<"counter">>).
 -define(PARAM_LIMIT, <<"limit">>).
@@ -36,8 +38,6 @@
 -define(PARAM_ADDRESS, <<"address">>).
 
 -define(SOLO_EXTENSION, <<"_solo_">>).
-
--include("kazoo_sip.hrl").
 
 -type diversion() :: kz_json:object().
 -export_type([diversion/0]).
@@ -55,7 +55,7 @@ new() -> kz_json:new().
 -spec user(diversion()) -> api_binary().
 
 user(JObj) ->
-    knm_sip:user(knm_sip:parse(address(JObj))).
+    kzsip_uri:user(kzsip_uri:parse(address(JObj))).
 address(JObj) ->
     kz_json:get_ne_binary_value(?PARAM_ADDRESS, JObj).
 reason(JObj) ->
@@ -88,9 +88,9 @@ extensions_fold({_K, _V}=Extention, Acc) ->
 -spec set_counter(diversion(), non_neg_integer()) -> diversion().
 
 set_user(JObj, User) ->
-    Address = knm_sip:parse(address(JObj)),
-    Address1 = knm_sip:set_user(Address, User),
-    set_address(JObj, list_to_binary([<<"<">>, knm_sip:encode(Address1), <<">">>])).
+    Address = kzsip_uri:parse(address(JObj)),
+    Address1 = kzsip_uri:set_user(Address, User),
+    set_address(JObj, list_to_binary([<<"<">>, kzsip_uri:encode(Address1), <<">">>])).
 set_address(JObj, Address) ->
     kz_json:set_value(?PARAM_ADDRESS, Address, JObj).
 set_reason(JObj, Reason) ->
@@ -341,4 +341,5 @@ encode_param(Param, Literals) ->
     end.
 
 -spec quote_param(ne_binary()) -> ne_binary().
-quote_param(Param) -> <<"\"", Param/binary, "\"">>.
+quote_param(Param) ->
+    <<"\"", Param/binary, "\"">>.

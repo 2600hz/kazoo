@@ -1,25 +1,50 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2016, 2600Hz INC
+%%% @copyright (C) 2013-2016, 2600Hz INC
 %%% @doc
-%%% Uri Parse/Unparse
+%%% Parse and manipulate SIP URIs
 %%% @end
 %%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kzsip_uri).
-
--include("kazoo_sip.hrl").
 
 -export([uris/1
         ,ruri/1
         ,uri/1
         ]).
 
+-export([parse/1
+        ,encode/1
+        ]).
+
+-export([scheme/1, set_scheme/2
+        ,user/1, set_user/2
+        ,host/1, set_host/2
+        ,port/1, set_port/2
+        ]).
+
+-ifdef(TEST).
+-export([parse_until/2]).
+-endif.
+
+-include("kazoo_sip.hrl").
+
+-type uri() :: nklib:uri().
+-type uris() :: nklib_parse_uri:uris().
 -export_type([uri/0, uris/0]).
 
--spec uris(binary() | string() | #uri{}) ->
-                  [#uri{}] | error.
-uris(Uri) -> nklib_parse_uri:uris(Uri).
+-type scheme() :: 'sip' | 'sips'.
+-record(sip_uri, {scheme = 'sip' :: scheme()
+                 ,user :: ne_binary()
+                 ,host :: ne_binary()
+                 ,port = 5060 :: pos_integer()
+                 }).
+-type sip_uri() :: #sip_uri{}.
+-export_type([sip_uri/0]).
 
+
+-spec uris(binary() | string() | uri()) -> [uri()] | 'error'.
+uris(Uri) -> nklib_parse_uri:uris(Uri).
 
 -spec ruri(uri()) -> binary().
 ruri(#uri{scheme='undefined'}=Uri) -> nklib_unparse:uri3(Uri#uri{scheme='sip'});
@@ -28,3 +53,78 @@ ruri(Uri) -> nklib_unparse:uri3(Uri).
 -spec uri(uri()) -> binary().
 uri(#uri{scheme='undefined'}=Uri) -> nklib_unparse:uri(Uri#uri{scheme='sip'});
 uri(Uri) -> nklib_unparse:uri(Uri).
+
+
+
+-spec parse(ne_binary()) -> sip_uri().
+parse(Bin) ->
+    parse_scheme(Bin, #sip_uri{}).
+
+parse_scheme(<<"<", Bin/binary>>, Uri) ->
+    parse_scheme(Bin, Uri);
+parse_scheme(<<"sip:", Bin/binary>>, Uri) ->
+    parse_user(Bin, Uri#sip_uri{scheme='sip'});
+parse_scheme(<<"sips:", Bin/binary>>, Uri) ->
+    parse_user(Bin, Uri#sip_uri{scheme='sips'});
+parse_scheme(Bin, Uri) ->
+    parse_user(Bin, Uri#sip_uri{scheme='sip'}).
+
+-spec encode(sip_uri()) -> ne_binary().
+encode(#sip_uri{scheme=S, user=U, host=H, port=5060}) ->
+    list_to_binary([atom_to_list(S), ":", U, "@", H]);
+encode(#sip_uri{scheme=S, user=U, host=H, port=P}) ->
+    list_to_binary([atom_to_list(S), ":", U, "@", H, ":", integer_to_list(P)]).
+
+-spec parse_user(binary(), sip_uri()) -> sip_uri().
+parse_user(Bin, Uri) ->
+    case parse_until(<<"@">>, Bin) of
+        {_, <<>>} -> throw({'invalid_uri_user', Bin});
+        {User, Rest} -> parse_host(Rest, Uri#sip_uri{user=User})
+    end.
+
+-spec parse_host(binary(), sip_uri()) -> sip_uri().
+parse_host(Bin, Uri) ->
+    case parse_until(<<":">>, Bin) of
+        {<<>>, _} -> throw({'invalid_uri_host', Bin});
+        {H, <<>>} -> Uri#sip_uri{host=kz_util:strip_right_binary(H, $>), port=5060};
+        {H, <<">">>} -> Uri#sip_uri{host=H, port=5060};
+        {H, P} -> Uri#sip_uri{host=H, port=parse_port(P)}
+    end.
+
+-spec parse_port(binary()) -> pos_integer().
+parse_port(P) ->
+    case parse_until(<<">">>, P) of
+        {<<>>, _} -> throw({'invalid_uri_port', P});
+        {Port, _} -> kz_util:to_integer(Port)
+    end.
+
+-spec parse_until(ne_binary(), ne_binary()) -> {binary(), binary()}.
+parse_until(C, Bin) ->
+    case binary:split(Bin, C) of
+        [B] -> {B, <<>>};
+        [Pre, Post] -> {Pre, Post}
+    end.
+
+-spec scheme(sip_uri()) -> scheme().
+-spec set_scheme(sip_uri(), scheme()) -> sip_uri().
+scheme(#sip_uri{scheme=S}) -> S.
+set_scheme(#sip_uri{}=Sip, S) ->
+    Sip#sip_uri{scheme=S}.
+
+-spec user(sip_uri()) -> ne_binary().
+-spec set_user(sip_uri(), ne_binary()) -> sip_uri().
+user(#sip_uri{user=U}) -> U.
+set_user(#sip_uri{}=Sip, U) ->
+    Sip#sip_uri{user=U}.
+
+-spec host(sip_uri()) -> ne_binary().
+-spec set_host(sip_uri(), ne_binary()) -> sip_uri().
+host(#sip_uri{host=H}) -> H.
+set_host(#sip_uri{}=Sip, H) ->
+    Sip#sip_uri{host=H}.
+
+-spec port(sip_uri()) -> pos_integer().
+-spec set_port(sip_uri(), pos_integer()) -> sip_uri().
+port(#sip_uri{port=P}) -> P.
+set_port(#sip_uri{}=Sip, P) ->
+    Sip#sip_uri{port=P}.
