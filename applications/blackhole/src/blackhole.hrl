@@ -29,8 +29,8 @@
                     }).
 
 -record(bh_call, {account_id :: ne_binary()
-        , ws_pid :: pid()
-    }).
+                 , ws_pid :: pid()
+                 }).
 
 -define(BLACKHOLE_HRL, 'true').
 
