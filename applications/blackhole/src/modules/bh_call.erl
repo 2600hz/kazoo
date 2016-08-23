@@ -28,9 +28,9 @@ validate(Context=#bh_context{}, JMsg, <<"*">>, <<"*">>) ->
 validate(Context=#bh_context{}, JMsg, Event, <<"*">>) ->
     case lists:member(Event, ?LISTEN_TO) of
         'true' -> validate_msg(Context, JMsg);
-        'false' -> {'error', 'invalid_call_event'}
+        'false' -> {'error', <<"invalid_call_event">>}
     end;
-validate(_Context, _JMsg, _Event, _CallId) -> {'error', 'invalid_binding'}.
+validate(_Context, _JMsg, _Event, _CallId) -> {'error', <<"invalid_binding">>}.
 
 execute(#bh_call{account_id=AccountId}=State, <<"subscribe">>, <<"*">>, <<"*">>) ->
     add_call_binding(AccountId, State, ?LISTEN_TO);

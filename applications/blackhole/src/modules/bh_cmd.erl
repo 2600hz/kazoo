@@ -8,6 +8,16 @@ init() ->
     blackhole_bindings:bind(<<"command.unsubscribe">>, ?MODULE, 'subscribe').
 
 subscribe(Context=#bh_context{websocket_pid=WsPid}, Cmd, JMsg) ->
+    try
+        subscribe_t(Context, Cmd, JMsg)
+    catch
+        _:{badmatch,{error,E}} when is_binary(E) ->
+            blackhole_util:send_error(WsPid, <<"validation failed">>, E), Context;
+        _:_ ->
+            blackhole_util:send_error(WsPid, <<"unspecified error">>, Cmd), Context
+    end.
+
+subscribe_t(Context=#bh_context{websocket_pid=WsPid}, Cmd, JMsg) ->
     Binding = kz_json:get_value(<<"binding">>, JMsg),
     case {Cmd, bh_context:is_bound(Context, Binding)} of
         {<<"subscribe">>, 'true'} ->
@@ -25,8 +35,8 @@ subscribe(Context=#bh_context{websocket_pid=WsPid}, Cmd, JMsg) ->
 execute(Cmd, Context=#bh_context{}, JMsg) ->
     Binding = blackhole_util:ensure_value(kz_json:get_value(<<"binding">>, JMsg), 'missing_parameter'),
     [Module|Args] = binary:split(Binding, <<".">>, ['global']),
-    Ctx1 = blackhole_bindings:fold(<<"command.", Cmd/binary, ".", Module/binary, ".validate">>, [Context, JMsg | Args]),
-    _Ctx2 = blackhole_bindings:fold(<<"command.", Cmd/binary, ".", Module/binary, ".execute">>, [Ctx1, Cmd | Args]),
+    Ctx1 = #bh_call{} = blackhole_bindings:fold(<<"command.", Cmd/binary, ".", Module/binary, ".validate">>, [Context, JMsg | Args]),
+    _Ctx2 = #bh_call{} = blackhole_bindings:fold(<<"command.", Cmd/binary, ".", Module/binary, ".execute">>, [Ctx1, Cmd | Args]),
     Context.
 
 authenticate(Context=#bh_context{}, <<"authenticate">>, JMsg) ->
@@ -37,8 +47,12 @@ authenticate(Context=#bh_context{}, <<"authenticate">>, JMsg) ->
 authenticate(_, _, _) ->
     {'error', 'unhandled_authenticate'}.
 
-manage_context(<<"subscribe">>, Context, Binding) -> bh_context:add_binding(Context, Binding);
-manage_context(<<"unsubscribe">>, Context, Binding) -> bh_context:remove_binding(Context, Binding).
+manage_context(<<"subscribe">>, Context=#bh_context{websocket_pid=WsPid}, Binding) ->
+    blackhole_util:send_success(WsPid, <<"successfuly subscribed">>, Binding),
+    bh_context:add_binding(Context, Binding);
+manage_context(<<"unsubscribe">>, Context=#bh_context{websocket_pid=WsPid}, Binding) ->
+    blackhole_util:send_success(WsPid, <<"successfuly unsubscribed">>, Binding),
+    bh_context:remove_binding(Context, Binding).
 
 -spec get_account_id(ne_binary()) -> ne_binary().
 get_account_id(AuthToken) ->
