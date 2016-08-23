@@ -19,6 +19,6 @@ emit(SessionPids, Event, Data) when is_list(SessionPids) ->
     _ = [emit(SessionPid, Event, Data) || SessionPid <- SessionPids],
     'ok'.
 
--spec msg(pid(), ne_binary()) -> 'ok'.
+-spec msg(pid(), ne_binary()) -> term().
 msg(Pid, Data) ->
     Pid ! {'send_message', Data}.

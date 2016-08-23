@@ -39,11 +39,12 @@ execute(Cmd, Context=#bh_context{}, JMsg) ->
     _Ctx2 = #bh_call{} = blackhole_bindings:fold(<<"command.", Cmd/binary, ".", Module/binary, ".execute">>, [Ctx1, Cmd | Args]),
     Context.
 
-authenticate(Context=#bh_context{}, <<"authenticate">>, JMsg) ->
+authenticate(Context=#bh_context{}, <<"authenticate">> = Cmd, JMsg) ->
     Token = kz_json:get_value(<<"token">>, JMsg),
     AuthAccountId = get_account_id(Token),
     lager:debug("auth_token:~p found, auth_account_id:~p", [Token, AuthAccountId]),
-    Context#bh_context{auth_account_id=AuthAccountId, auth_token=Token};
+    AuthContext = Context#bh_context{auth_account_id=AuthAccountId, auth_token=Token},
+    blackhole_bindings:fold(<<"authenticated">>, [AuthContext, Cmd, JMsg]);
 authenticate(_, _, _) ->
     {'error', 'unhandled_authenticate'}.
 

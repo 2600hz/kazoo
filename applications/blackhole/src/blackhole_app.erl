@@ -11,7 +11,7 @@
 
 -export([start/2, stop/1]).
 
--define(MODULES, [bh_auth, bh_cmd, bh_call]).
+-define(MODULES, [bh_auth, bh_limit, bh_cmd, bh_call]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -21,7 +21,7 @@
 start(_Type, _Args) ->
     OK = blackhole_sup:start_link(),
     _ = blackhole_bindings:init(), %% FIXME: the OTP way to supervise this?
-    load_binding_modules(),
+    _ = load_binding_modules(),
     OK.
 
 load_binding_modules() -> [ M:init() || M <- ?MODULES].
