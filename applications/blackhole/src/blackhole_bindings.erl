@@ -40,7 +40,7 @@
         ,failed/1
         ]).
 
--export([bindings/0]).
+-export([list/0]).
 
 -type payload() :: bh_context:context() | ne_binary().
 
@@ -158,7 +158,9 @@ unbind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
     kazoo_bindings:unbind(<<"v1.blackhole.", Binding/binary>>, Module, Fun, Payload).
 
 -spec flush() -> 'ok'.
-flush() -> [ kazoo_bindings:flush(Binding) || Binding <- bindings() ].
+flush() ->
+    _ = [ kazoo_bindings:flush(Binding) || Binding <- list() ],
+    'ok'.
 
 -spec flush(ne_binary()) -> 'ok'.
 flush(Binding) -> kazoo_bindings:flush(<<"v1.blackhole.", Binding/binary>>).
@@ -194,5 +196,5 @@ maybe_init_mod(ModuleName) ->
             lager:warning("failed to initialize ~s: ~p, ~p.", [ModuleName, _E, _R])
     end.
 
-bindings() ->
-    lists:filter(fun(<<"v1.blackhole", _/binary>>) -> 'true'; (_) -> 'false' end, kazoo_bindings:bindings()).
+list() ->
+    lists:filter(fun(<<"v1.blackhole", _/binary>>) -> 'true'; (_) -> 'false' end, kazoo_bindings:list()).

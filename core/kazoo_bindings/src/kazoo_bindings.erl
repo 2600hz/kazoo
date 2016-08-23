@@ -50,7 +50,7 @@
         ]).
 
 %% Informational
--export([bindings/0]).
+-export([list/0]).
 
 %% gen_server callbacks
 -export([init/1
@@ -797,5 +797,5 @@ matches(Routing) ->
 routing_parts(Routing) ->
     lists:reverse(binary:split(Routing, <<".">>, ['global'])).
 
-bindings() ->
+list() ->
     [ Binding || [#kz_binding{binding=Binding}] <- ets:match(table_id(), '$1') ].
