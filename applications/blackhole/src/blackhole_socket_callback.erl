@@ -28,18 +28,24 @@ recv(JObj, Context) ->
     lists:foldl(
       fun
           (Binding, Ctx=#bh_context{}) ->
-                       execute_binding(Binding, [Ctx, Command, Msg]);
+                       #bh_context{} = execute_binding(Binding, [Ctx, Command, Msg]);
           (Binding, Error) ->
                        erlang:error({Binding, Error})
                end,
       Context, Bindings).
 
-%% special case: issue authenticated event only in case fold is successful
+%% special case: issue authenticated event only in case command.authenticate fold is successful
 execute_binding(<<"command.authenticate">> = Binding, [_Context, Command, Msg] = Payload) ->
     Ctx = #bh_context{} = blackhole_bindings:fold(Binding, Payload),
-    blackhole_binding:fold(<<"authenticated">>, [Ctx, Command, Msg]);
-execute_binding(Binding, Payload) -> 
+    success(Binding, blackhole_bindings:fold(<<"authenticated">>, [Ctx, Command, Msg]));
+execute_binding(<<"command", _/binary>> = Binding, Payload) ->
+    success(Binding, blackhole_bindings:fold(Binding, Payload));
+execute_binding(Binding, Payload) ->
     blackhole_bindings:fold(Binding, Payload).
+
+success(Binding, #bh_context{websocket_pid=WsPid} = Context) ->
+    blackhole_util:send_success(WsPid, <<"successfully executed">>, Binding),
+    Context.
 
 -spec close(bh_context:context()) -> 'ok'.
 close(Context = #bh_context{websocket_pid=Pid}) ->

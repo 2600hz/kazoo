@@ -47,11 +47,9 @@ authenticate(Context=#bh_context{}, <<"authenticate">>, JMsg) ->
 authenticate(_, _, _) ->
     {'error', 'unhandled_authenticate'}.
 
-manage_context(<<"subscribe">>, Context=#bh_context{websocket_pid=WsPid}, Binding) ->
-    blackhole_util:send_success(WsPid, <<"successfuly subscribed">>, Binding),
+manage_context(<<"subscribe">>, Context=#bh_context{}, Binding) ->
     bh_context:add_binding(Context, Binding);
-manage_context(<<"unsubscribe">>, Context=#bh_context{websocket_pid=WsPid}, Binding) ->
-    blackhole_util:send_success(WsPid, <<"successfuly unsubscribed">>, Binding),
+manage_context(<<"unsubscribe">>, Context=#bh_context{}, Binding) ->
     bh_context:remove_binding(Context, Binding).
 
 -spec get_account_id(ne_binary()) -> ne_binary().
