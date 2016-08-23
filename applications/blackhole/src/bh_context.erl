@@ -20,11 +20,8 @@
         ,add_binding/2, remove_binding/2, is_bound/2
         ,websocket_pid/1, set_websocket_pid/2
         ,timestamp/1, set_timestamp/2
-        ,name/1, set_name/2
-        ,metadata/1, set_metadata/2
-        ,destination/1, set_destination/2
-        ,source/1, set_source/2
         ,req_id/1
+        ,get_pid/1
         ]).
 
 -include("blackhole.hrl").
@@ -69,10 +66,6 @@ to_json(Context) ->
                              ,{<<"auth_account_id">>, auth_account_id(Context)}
                              ,{<<"bindings">>, bindings(Context)}
                              ,{<<"timestamp">>, timestamp(Context)}
-                             ,{<<"name">>, name(Context)}
-                             ,{<<"metadata">>, metadata(Context)}
-                             ,{<<"destination">>, destination(Context)}
-                             ,{<<"source">>, source(Context)}
                              ,{<<"req_id">>, req_id(Context)}
                              ])
      ).
@@ -187,58 +180,6 @@ set_timestamp(#bh_context{}=Context, Timestamp) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec name(context()) -> ne_binary().
-name(#bh_context{name=Name}) ->
-    Name.
-
--spec set_name(context(), ne_binary()) -> context().
-set_name(#bh_context{}=Context, Name) ->
-    Context#bh_context{name=Name}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec metadata(context()) -> any().
-metadata(#bh_context{metadata=Meta}) ->
-    Meta.
-
--spec set_metadata(context(), any()) -> context().
-set_metadata(#bh_context{}=Context, Meta) ->
-    Context#bh_context{metadata=Meta}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec source(context()) -> ne_binary().
-source(#bh_context{source=Source}) ->
-    Source.
-
--spec set_source(context(), ne_binary()) -> context().
-set_source(#bh_context{}=Context, Source) ->
-    Context#bh_context{source=Source}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec destination(context()) -> ne_binary().
-destination(#bh_context{destination=Destination}) ->
-    Destination.
-
--spec set_destination(context(), ne_binary()) -> context().
-set_destination(#bh_context{}=Context, Destination) ->
-    Context#bh_context{destination=Destination}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec req_id(context()) -> ne_binary().
 req_id(#bh_context{req_id=Id}) ->
     Id.
@@ -266,3 +207,6 @@ put_reqid(#bh_context{req_id = ReqId} = Context) ->
 setters_fold({F, V}, C) -> F(C, V);
 setters_fold({F, K, V}, C) -> F(C, K, V);
 setters_fold(F, C) when is_function(F, 1) -> F(C).
+
+get_pid(#bh_call{ws_pid=WsPid}) -> WsPid;
+get_pid(_) -> undefined.

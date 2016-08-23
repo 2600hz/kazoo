@@ -25,12 +25,12 @@
                     ,binding :: api_binary() | '_'
                                 %% is used to globally distinguish ws connections (blackhole_tracking)
                     ,req_id = <<(kz_util:rand_hex_binary(16))/binary, "-bh">> :: ne_binary() | '_'
-
-                    ,name :: api_binary() | '_'
-                    ,metadata :: any() | '_'
-                    ,destination = kz_util:node_hostname() :: ne_binary() | '_'
-                    ,source :: api_binary() | '_'
+                    ,session :: term()
                     }).
+
+-record(bh_call, {account_id :: ne_binary()
+        , ws_pid :: pid()
+    }).
 
 -define(BLACKHOLE_HRL, 'true').
 

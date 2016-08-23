@@ -11,6 +11,8 @@
 
 -export([start/2, stop/1]).
 
+-define(MODULES, [bh_cmd, bh_call]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Implement the application start behaviour
@@ -19,7 +21,10 @@
 start(_Type, _Args) ->
     OK = blackhole_sup:start_link(),
     _ = blackhole_bindings:init(), %% FIXME: the OTP way to supervise this?
+    load_binding_modules(),
     OK.
+
+load_binding_modules() -> [ M:init() || M <- ?MODULES].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -31,4 +36,5 @@ stop(_State) ->
     _ = cowboy:stop_listener('blackhole_http_listener'),
     _ = blackhole_limit:stop(),
     _ = blackhole_counters:stop(),
+    _ = blackhole_bindings:flush(),
     'ok'.

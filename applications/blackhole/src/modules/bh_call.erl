@@ -11,75 +11,59 @@
 -module(bh_call).
 -include("blackhole.hrl").
 
--export([handle_event/2, validate_ws_message/3, authorize_ws_message/2, handle_ws_message/2]).
+-export([handle_amqp_event/2, init/0]).
+-export([validate/4, execute/4]).
 
 -define(LISTEN_TO, [
                     <<"CHANNEL_CREATE">>, <<"CHANNEL_ANSWER">>, <<"CHANNEL_DESTROY">>, <<"CHANNEL_BRIDGE">>
                    ,<<"PARK_PARKED">>, <<"PARK_RETRIEVED">>, <<"PARK_ABANDONED">>
                    ]).
 
--record(state, {account_id :: ne_binary()
-                ,call_event
-                ,call_id
-                ,context :: bh_context:context()
-        }).
+init() ->
+    blackhole_bindings:bind(<<"command.subscribe.call.validate">>, ?MODULE, 'validate'),
+    blackhole_bindings:bind(<<"command.subscribe.call.execute">>, ?MODULE, 'execute').
 
--spec validate_ws_message(ne_binary(), bh_context:context(), kz_json:object()) -> #state{}.
-validate_ws_message(_Event, #bh_context{} = Context, JObj) ->
-    Binding = kz_json:get_value(<<"binding">>, JObj),
-    [Event, CallId] = binary:split(Binding, <<".">>, ['global']),
-    validate_binding(Event, CallId),
-    AccountId = blackhole_util:get_account(Context, JObj),
-    #state{account_id=AccountId, call_event=Event, call_id=CallId, context=Context}.
-
--spec authorize_ws_message(ne_binary(), #state{}) -> #state{}.
-authorize_ws_message(_Event, #state{account_id=AccountId, context=#bh_context{auth_account_id=AuthAccountId}} = State) ->
-    % XXX: check actual tree here
-    case AccountId of
-        AuthAccountId -> 'ok';
-        _ -> erlang:error('not_authorized')
-    end,
-    State.
-
--spec validate_binding(ne_binary(), ne_binary()) -> 'ok'.
-validate_binding(<<"*">>, <<"*">>) -> 'ok';
-validate_binding(Event, <<"*">>) -> 
+validate(Context=#bh_context{}, JMsg, <<"*">>, <<"*">>) ->
+    validate_msg(Context, JMsg);
+validate(Context=#bh_context{}, JMsg, Event, <<"*">>) ->
     case lists:member(Event, ?LISTEN_TO) of
-        'true' -> 'ok';
-        'false' -> erlang:error('invalid_call_event')
+        'true' -> validate_msg(Context, JMsg);
+        'false' -> {'error', 'invalid_call_event'}
     end;
-validate_binding(_Event, _CallId) ->
-    erlang:error('invalid_call_binding').
+validate(_Context, _JMsg, _Event, _CallId) -> {'error', 'invalid_binding'}.
 
--spec handle_event(#state{}, kz_json:object()) -> 'ok'.
-handle_event(#state{context=Context}, EventJObj) ->
+execute(#bh_call{account_id=AccountId}=State, <<"subscribe">>, <<"*">>, <<"*">>) ->
+    add_call_binding(AccountId, State, ?LISTEN_TO);
+execute(#bh_call{account_id=AccountId}=State, <<"subscribe">>, Event, <<"*">>) ->
+    add_call_binding(AccountId, State, [Event]);
+execute(#bh_call{account_id=AccountId}=State, <<"unsubscribe">>, <<"*">>, <<"*">>) ->
+    rm_call_binding(AccountId, State, ?LISTEN_TO);
+execute(#bh_call{account_id=AccountId}=State, <<"unsubscribe">>, Event, <<"*">>) ->
+    rm_call_binding(AccountId, State, [Event]).
+
+validate_msg(#bh_context{websocket_pid=WsPid}, JMsg) ->
+    AccountId = blackhole_util:ensure_value(kz_json:get_value(<<"account_id">>, JMsg), 'no_account_id'),
+    #bh_call{account_id=AccountId, ws_pid=WsPid}.
+
+-spec handle_amqp_event(#bh_call{}, kz_json:object()) -> 'ok'.
+handle_amqp_event(#bh_call{ws_pid=WsPid}, EventJObj) ->
     'true' = kapi_call:event_v(EventJObj),
-    blackhole_util:handle_event(Context, EventJObj, event_name(EventJObj)).
+    blackhole_util:handle_event(WsPid, EventJObj, event_name(EventJObj)).
 
 -spec event_name(kz_json:object()) -> ne_binary().
 event_name(JObj) ->
     kz_json:get_value(<<"Event-Name">>, JObj).
 
--spec handle_ws_message(ne_binary(), #state{}) -> #state{}.
-handle_ws_message(<<"subscribe">>, #state{account_id=AccountId, call_event = <<"*">>, call_id = <<"*">>} = State) ->
-    add_call_binding(AccountId, State, ?LISTEN_TO);
-handle_ws_message(<<"subscribe">>, #state{account_id=AccountId, call_event=Event, call_id = <<"*">>} = State) ->
-    add_call_binding(AccountId, State, [Event]);
-handle_ws_message(<<"unsubscribe">>, #state{account_id=AccountId, call_event = <<"*">>, call_id = <<"*">>} = State) ->
-    rm_call_binding(AccountId, State, ?LISTEN_TO);
-handle_ws_message(<<"unsubscribe">>, #state{account_id=AccountId, call_event=Event, call_id = <<"*">>} = State) ->
-    rm_call_binding(AccountId, State, [Event]).
-
--spec add_call_binding(ne_binary(), bh_context:context(), [ne_binary()]) -> #state{}.
-add_call_binding(_AccountId, State, []) -> State;
-add_call_binding(AccountId, State, [Event | Events]) ->
-    blackhole_bindings:bind(<<"call.", AccountId/binary, ".", Event/binary, ".*">>, ?MODULE, 'handle_event', State),
+-spec add_call_binding(ne_binary(), #bh_call{}, [ne_binary()]) -> #bh_call{}.
+add_call_binding(_AccountId, State=#bh_call{}, []) -> State;
+add_call_binding(AccountId, State=#bh_call{}, [Event | Events]) ->
+    blackhole_bindings:bind(<<"call.", AccountId/binary, ".", Event/binary, ".*">>, ?MODULE, 'handle_amqp_event', State),
     blackhole_listener:add_call_binding(AccountId, Event),
     add_call_binding(AccountId, State, Events).
 
--spec rm_call_binding(ne_binary(), bh_context:context(), [ne_binary()]) -> #state{}.
-rm_call_binding(_AccountId, State, []) -> State;
+-spec rm_call_binding(ne_binary(), #bh_call{}, [ne_binary()]) -> #bh_call{}.
+rm_call_binding(_AccountId, State=#bh_call{}, []) -> State;
 rm_call_binding(AccountId, State, [Event | Events]) ->
-    blackhole_bindings:unbind(<<"call.", AccountId/binary, ".", Event/binary, ".*">>, ?MODULE, 'handle_event', State),
+    blackhole_bindings:unbind(<<"call.", AccountId/binary, ".", Event/binary, ".*">>, ?MODULE, 'handle_amqp_event', State),
     blackhole_listener:remove_call_binding(AccountId, Event),
     rm_call_binding(AccountId, State, Events).

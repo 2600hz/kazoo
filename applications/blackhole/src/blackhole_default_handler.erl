@@ -77,8 +77,6 @@ error_message(Error) ->
 -spec make_error_message(ne_binary()) -> kz_json:object().
 make_error_message(<<"not_authenticated">> = Error) ->
     kz_json:encode(kz_json:from_list([{<<"error">>, Error}]));
-make_error_message(<<"unmatched_parameter", _/binary>> = Error) ->
-    kz_json:encode(kz_json:from_list([{<<"error">>, Error}]));
 make_error_message(Error) ->
     lager:error("blackhole error:~p", [Error]),
     kz_util:log_stacktrace(),
