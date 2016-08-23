@@ -177,9 +177,9 @@ match_invite_format(JObj, <<"Diversions">> = Key, [<<_/binary>> = Value|_]) ->
 match_invite_format(JObj, <<"Diversions">> = Key, Value) ->
     FormatFun = invite_format_fun(JObj),
     Address = kzsip_diversion:address(Value),
-    SIP = kzsip_uris:parse(Address),
-    SIP1 = kzsip_uris:set_user(SIP, FormatFun(kzsip_uris:user(SIP))),
-    Address1 =  kzsip_uris:encode(SIP1),
+    SIP = kzsip_uri:parse(Address),
+    SIP1 = kzsip_uri:set_user(SIP, FormatFun(kzsip_uri:user(SIP))),
+    Address1 =  kzsip_uri:encode(SIP1),
     kz_json:set_value(Key, kzsip_diversion:set_address(Value, Address1), JObj);
 match_invite_format(JObj, Key, Value) ->
     FormatFun = invite_format_fun(JObj),
