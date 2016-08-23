@@ -11,7 +11,7 @@
 
 -export([start/2, stop/1]).
 
--define(MODULES, [bh_cmd, bh_call]).
+-define(MODULES, [bh_auth, bh_cmd, bh_call]).
 
 %%--------------------------------------------------------------------
 %% @public
