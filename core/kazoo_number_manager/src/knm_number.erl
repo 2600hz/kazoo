@@ -509,8 +509,8 @@ delete_phone_number(Number) ->
 
 -spec maybe_age(knm_number()) -> knm_number().
 maybe_age(Number) ->
-    case knm_config:should_age() andalso
-        knm_phone_number:state(knm_number:phone_number(Number))
+    case knm_config:should_age()
+        andalso knm_phone_number:state(phone_number(Number))
     of
         ?NUMBER_STATE_AVAILABLE ->
             lager:debug("aging available number for some time"),

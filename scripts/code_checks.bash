@@ -4,7 +4,7 @@
 
 function check_andalso_orelse {
     echo 'Check for andalso/orelse dropped lines'
-    ! grep -Ern '[a-zA-Z\)] +(andalso|orelse)' -- $@
+    ! grep -Ern '[^ ] +(andalso|orelse)' -- $@
 }
 
 function check_MODULE {
