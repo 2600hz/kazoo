@@ -133,7 +133,6 @@ bucket_cost(Flow) ->
 send_route_response(_Flow, JObj, Call) ->
     lager:info("doodle knows how to route the message! sending sms response"),
     Resp = props:filter_undefined([{?KEY_MSG_ID, wh_api:msg_id(JObj)}
-                                   ,{?KEY_MSG_REPLY_ID, whapps_call:call_id_direct(Call)}
                                    ,{<<"Routes">>, []}
                                    ,{<<"Method">>, <<"sms">>}
                                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
