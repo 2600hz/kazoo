@@ -153,7 +153,7 @@ sup_completion: kazoo
 
 
 $(ELVIS):
-	wget 'https://github.com/inaka/elvis/releases/download/0.2.11/elvis' -O $@
+	wget 'https://github.com/inaka/elvis/releases/download/0.2.12/elvis' -O $@
 	chmod +x $@
 
 elvis: $(ELVIS)
