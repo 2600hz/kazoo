@@ -23,6 +23,7 @@ recv(JObj, Context) ->
     {Command, Msg} = parse_incoming_message(JObj),
     Bindings = [<<"message">>
                ,<<"authenticate">>
+               ,<<"authenticated">>
                ,<<"command.", Command/binary>>
                ],
     lists:foldl(

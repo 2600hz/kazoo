@@ -6,10 +6,11 @@ init() ->
     blackhole_bindings:bind(<<"message">>, ?MODULE, 'message'),
     blackhole_bindings:bind(<<"authenticated">>, ?MODULE, 'connection').
 
-connection(Context=#bh_context{auth_account_id=AuthAccountId}, <<"authenticate">>, _JMsg) ->
+connection(Context=#bh_context{auth_account_id=AuthAccountId, websocket_pid=WsPid}, <<"authenticate">>, _JMsg) ->
     lager:debug("check connections per account limit: ~p", [AuthAccountId]),
     try
         blackhole_limit:account(AuthAccountId),
+        blackhole_util:send_success(WsPid, <<"successfully authenticated">>),
         Context
     catch
         _:_ -> {'error', <<"account connections limit">>}
