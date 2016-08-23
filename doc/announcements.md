@@ -67,6 +67,10 @@ The media prompts that we used to keep in the code repository for historical rea
 
 The Callflow modules `cf_endpoint` and `cf_attributes` were used by multiple applications creating undesired dependencies between applications.  This was done to avoid copy-pasting common code but is a clear indication that this functionality belongs in core.  We have removed these modules from Callflows and moved them to https://github.com/2600hz/kazoo/tree/master/core/kazoo_endpoint.
 
+#### Moved `knm_sip` to inside `kzsip_uri`
+
+The `knm_sip` module shares a lot of functionality with the `kazoo_sip` core application.  Its innards have thus been moved.
+
 ### 3.22
 
 #### FreeSWITCH 1.4.26+ / 1.6+
