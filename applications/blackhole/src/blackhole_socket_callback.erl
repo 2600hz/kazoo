@@ -16,7 +16,7 @@
 open(Ipaddr) ->
     lager:debug("ws open pid:~p ip:~p", [self(), kz_util:to_binary(inet_parse:ntoa(Ipaddr))]),
     blackhole_limit:ip(Ipaddr),
-    {'ok', bh_context:new(self())}.
+    {'ok', #bh_context{websocket_pid=self(), source_ip=Ipaddr}}.
 
 -spec recv(kz_json:object(), bc_context:context()) -> bc_context:context().
 recv(JObj, Context) ->

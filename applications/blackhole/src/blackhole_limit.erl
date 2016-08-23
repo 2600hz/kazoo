@@ -54,8 +54,8 @@ handle_call({'conn_rate', Key}, _From, S=#state{buckets=Buckets, conn_bs=Bs, con
 handle_call({'acc_rate', Key}, _From, S=#state{buckets=Buckets, acc_bs=Bs, acc_br=Br}) ->
     Bucket = get_bucket(Key, Buckets, Bs, Br),
     {reply, kz_token_bucket:consume(Bucket, 1), S#state{buckets=Buckets#{ Key => Bucket }}};
-handle_call({'release', #bh_context{auth_account_id=AuthAccountId, websocket_pid=Pid}}, _From, S=#state{buckets=Buckets}) ->
-%%% XXX: blackhole_counters:dec({?APP_NAME, 'source_ip', SrcIp}),
+handle_call({'release', #bh_context{auth_account_id=AuthAccountId, websocket_pid=Pid, source_ip=SrcIp}}, _From, S=#state{buckets=Buckets}) ->
+    blackhole_counters:dec({?APP_NAME, 'source_ip', SrcIp}),
     blackhole_counters:dec({?APP_NAME, 'account', AuthAccountId}),
     {'reply', 'ok', S#state{buckets=maps:remove(Pid, maps:remove(AuthAccountId, Buckets))}};
 handle_call({'ip', Ip}, _From, #state{connections_per_source_ip=Limit} = S) ->

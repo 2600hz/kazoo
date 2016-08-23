@@ -26,6 +26,7 @@
                                 %% is used to globally distinguish ws connections (blackhole_tracking)
                     ,req_id = <<(kz_util:rand_hex_binary(16))/binary, "-bh">> :: ne_binary() | '_'
                     ,session :: term()
+                    ,source_ip :: binary()
                     }).
 
 -record(bh_call, {account_id :: ne_binary()
