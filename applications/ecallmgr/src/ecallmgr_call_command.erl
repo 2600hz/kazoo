@@ -177,8 +177,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
 get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
     case kapi_dialplan:record_call_v(JObj) of
         'false' -> {'error', <<"record_call failed to execute as JObj did not validate">>};
-        'true' ->
-            record_call(Node, UUID, JObj)
+        'true' -> record_call(Node, UUID, JObj)
     end;
 
 get_fs_app(Node, UUID, JObj, <<"store">>) ->
@@ -1394,35 +1393,59 @@ maybe_set_park_timeout(Node, UUID, JObj) ->
 
 -spec record_call(atom(), ne_binary(), kz_json:object()) -> fs_app().
 record_call(Node, UUID, JObj) ->
-    set_record_call_vars(Node, UUID, JObj),
+    Action = kz_json:get_value(<<"Record-Action">>, JObj),
+    record_call(Node, UUID, Action, JObj).
+
+-spec record_call(atom(), ne_binary(), ne_binary(), kz_json:object()) -> fs_app().
+record_call(Node, UUID, <<"start">>, JObj) ->
+    Vars = props:filter_undefined(record_call_vars(JObj)),
+    Args = ecallmgr_util:process_fs_kv(Node, UUID, Vars, 'set'),
+    AppArgs = ecallmgr_util:fs_args_to_binary(Args),
 
     MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
     RecordingName = ecallmgr_util:recording_filename(MediaName),
+    RecodingBaseName = filename:basename(RecordingName),
+    RecordingId = kz_json:get_value(<<"Media-Recording-ID">>, JObj),
 
-    RecArg = case kz_json:get_value(<<"Record-Action">>, JObj) of
-                 <<"start">> ->
-                     start_record_call_args(Node, UUID, JObj, RecordingName);
-                 <<"stop">> ->
-                     list_to_binary([UUID, <<" stop ">>, RecordingName])
-             end,
-    ecallmgr_fs_command:record_call(Node, UUID, RecArg),
-    {<<"record_call">>, 'noop'}.
+    [{<<"kz_multiset">>, AppArgs}
+    ,{<<"unshift">>, <<"media_recordings,", RecordingName/binary>>}
+    ,{<<"unshift">>, <<(?CCV(<<"Media-Names">>))/binary, ",", RecodingBaseName/binary>>}
+    ,{<<"unshift">>, <<(?CCV(<<"Media-Recordings">>))/binary, ",", RecordingId/binary>>}
+    ,{<<"record_session">>, RecordingName}
+    ];
+record_call(_Node, _UUID, <<"stop">>, JObj) ->
+    RecordingName = case kz_json:get_value(<<"Media-Name">>, JObj) of
+                        'undefined' -> <<"${media_recordings[0]}">>;
+                        MediaName -> ecallmgr_util:recording_filename(MediaName)
+                    end,
+    {<<"stop_record_session">>, RecordingName}.
 
--spec set_record_call_vars(atom(), ne_binary(), kz_json:object()) -> 'ok'.
-set_record_call_vars(Node, UUID, JObj) ->
+-spec record_call_vars(kz_json:object()) -> kz_proplist().
+record_call_vars(JObj) ->
     Routines = [fun maybe_waste_resources/1
                ,fun(Acc) -> maybe_get_terminators(Acc, JObj) end
                ],
 
-    Vars = lists:foldl(fun(F, V) -> F(V) end
-                      ,[{<<"RECORD_APPEND">>, <<"true">>}
-                       ,{<<"enable_file_write_buffering">>, <<"false">>}
-                       ,{<<"RECORD_STEREO">>, should_record_stereo(JObj)}
-                       ,{<<"RECORD_SOFTWARE">>, ?RECORD_SOFTWARE}
-                       ]
-                      ,Routines
-                      ),
-    ecallmgr_fs_command:set(Node, UUID, Vars).
+    FollowTransfer = kz_json:get_binary_boolean(<<"Follow-Transfer">>, JObj, <<"true">>),
+    RecordMinSec = kz_json:get_binary_value(<<"Record-Min-Sec">>, JObj),
+    SampleRate = get_sample_rate(JObj),
+
+    lists:foldl(fun(F, V) -> F(V) end
+	       ,[{<<"RECORD_APPEND">>, <<"true">>}
+		,{<<"enable_file_write_buffering">>, <<"false">>}
+		,{<<"RECORD_STEREO">>, should_record_stereo(JObj)}
+		,{<<"RECORD_SOFTWARE">>, ?RECORD_SOFTWARE}
+		,{<<"recording_follow_transfer">>, FollowTransfer}
+		,{<<"recording_follow_attxfer">>, FollowTransfer}
+		,{<<"Record-Min-Sec">>, RecordMinSec}
+		,{<<"record_sample_rate">>, kz_util:to_binary(SampleRate)}
+		,{<<"Media-Recorder">>, kz_json:get_value(<<"Media-Recorder">>, JObj)}
+		,{<<"Time-Limit">>, kz_json:get_value(<<"Time-Limit">>, JObj)}
+		,{<<"Media-Name">>, kz_json:get_value(<<"Media-Name">>, JObj)}
+		,{<<"Media-Recording-ID">>, kz_json:get_value(<<"Media-Recording-ID">>, JObj)}
+		]
+	       ,Routines
+               ).
 
 -spec maybe_waste_resources(kz_proplist()) -> kz_proplist().
 maybe_waste_resources(Acc) ->
@@ -1444,34 +1467,6 @@ should_record_stereo(JObj) ->
         'true'  -> <<"true">>;
         'false' -> <<"false">>
     end.
-
--spec start_record_call_args(atom(), ne_binary(), kz_json:object(), ne_binary()) -> ne_binary().
-start_record_call_args(Node, UUID, JObj, RecordingName) ->
-    FollowTransfer = kz_json:get_binary_boolean(<<"Follow-Transfer">>, JObj, <<"true">>),
-    RecordMinSec = kz_json:get_binary_value(<<"Record-Min-Sec">>, JObj),
-    SampleRate = get_sample_rate(JObj),
-
-    Vars = props:filter_undefined(
-             [{<<"recording_follow_transfer">>, FollowTransfer}
-             ,{<<"recording_follow_attxfer">>, FollowTransfer}
-             ,{<<"Record-Min-Sec">>, RecordMinSec}
-             ,{<<"record_sample_rate">>, kz_util:to_binary(SampleRate)}
-             ,{<<"Media-Recorder">>, kz_json:get_value(<<"Media-Recorder">>, JObj)}
-             ]),
-    _ = ecallmgr_fs_command:set(Node, UUID, Vars),
-    ExportVars = props:filter_undefined(
-                   [{<<"Time-Limit">>, kz_json:get_value(<<"Time-Limit">>, JObj)}
-                   ,{<<"Media-Name">>, kz_json:get_value(<<"Media-Name">>, JObj)}
-                   ,{<<"Media-Transfer-Method">>, kz_json:get_value(<<"Media-Transfer-Method">>, JObj)}
-                   ,{<<"Media-Transfer-Destination">>, kz_json:get_value(<<"Media-Transfer-Destination">>, JObj)}
-                   ,{<<"Additional-Headers">>, kz_json:get_value(<<"Additional-Headers">>, JObj)}
-                   ]),
-    _ = ecallmgr_fs_command:export(Node, UUID, ExportVars),
-
-    list_to_binary([UUID, <<" start ">>
-                   ,RecordingName, <<" ">>
-                   ,kz_json:get_string_value(<<"Time-Limit">>, JObj, "3600") % one hour
-                   ]).
 
 -spec get_sample_rate(kz_json:object()) -> pos_integer().
 get_sample_rate(JObj) ->

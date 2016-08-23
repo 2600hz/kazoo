@@ -21,9 +21,7 @@
 -behaviour(gen_listener).
 
 -export([start_link/2
-        ,start_recording/2
         ,handle_call_event/2
-        ,recording_module/1
 
         ,get_timelimit/1
         ,get_format/1
@@ -31,7 +29,6 @@
         ,get_media_name/2
         ,get_response_media/1
         ,should_store_recording/1
-        ,stop_recording/1
         ]).
 
 -export([init/1
@@ -109,7 +106,7 @@
 -define(CONSUME_OPTIONS, []).
 -define(MAX_RECORDING_LIMIT, kz_media_util:max_recording_time_limit()).
 -define(CHECK_CHANNEL_STATUS_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
--define(RECORDING_ID_KEY, <<"Recording-ID">>).
+-define(RECORDING_ID_KEY, <<"media_name">>).
 
 -spec start_link(kapps_call:call(), kz_json:object()) -> startlink_ret().
 start_link(Call, Data) ->
@@ -119,16 +116,6 @@ start_link(Call, Data) ->
                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], [Call, Data]).
-
--spec start_recording(kapps_call:call(), kz_json:object()) -> no_return().
-start_recording(Call, Data) ->
-    {'ok', State} = init([Call, Data]),
-    gen_listener:enter_loop(?SERVER, [{'bindings', ?BINDINGS(kapps_call:call_id(Call))}
-                                     ,{'responders', ?RESPONDERS}
-                                     ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                                     ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                                     ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                     ], State).
 
 -spec get_response_media(kz_json:object()) -> media().
 get_response_media(JObj) ->
@@ -272,8 +259,9 @@ handle_cast('maybe_start_recording_on_bridge', #state{is_recording='false'
                                                      ,time_limit=TimeLimit
                                                      ,sample_rate = SampleRate
                                                      ,record_min_sec = RecordMinSec
+                                                     ,doc_id=Id
                                                      }=State) ->
-    start_recording(Call, MediaName, TimeLimit, <<"kz_media_recording">>, SampleRate, RecordMinSec),
+    start_recording(Call, MediaName, TimeLimit, Id, SampleRate, RecordMinSec),
     {'noreply', State};
 handle_cast('maybe_start_recording_on_answer', #state{is_recording='true'}=State) ->
     {'noreply', State};
@@ -284,8 +272,9 @@ handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
                                                      ,time_limit=TimeLimit
                                                      ,sample_rate = SampleRate
                                                      ,record_min_sec = RecordMinSec
+                                                     ,doc_id=Id
                                                      }=State) ->
-    start_recording(Call, MediaName, TimeLimit, <<"kz_media_recording">>, SampleRate, RecordMinSec),
+    start_recording(Call, MediaName, TimeLimit, Id, SampleRate, RecordMinSec),
     {'noreply', State};
 handle_cast('recording_started', #state{should_store='false'}=State) ->
     lager:debug("recording started and we are not storing, exiting"),
@@ -328,7 +317,10 @@ handle_cast({'gen_listener',{'created_queue', Queue}}, #state{call=Call}=State) 
     {'noreply', State#state{call=kapps_call:exec(Funs, Call)}};
 
 handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{record_on_answer='true'}=State) ->
-    lager:debug("waiting for bridge or answer to start recording"),
+    lager:debug("waiting for answer to start recording"),
+    {'noreply', State};
+handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{record_on_bridge='true'}=State) ->
+    lager:debug("waiting for bridge to start recording"),
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{record_on_answer='false'
                                                              ,record_on_bridge='false'
@@ -338,8 +330,9 @@ handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{record_on_answer='
                                                              ,time_limit=TimeLimit
                                                              ,sample_rate = SampleRate
                                                              ,record_min_sec = RecordMinSec
+                                                             ,doc_id=Id
                                                              }=State) ->
-    start_recording(Call, MediaName, TimeLimit, <<"kz_media_recording">>, SampleRate, RecordMinSec),
+    start_recording(Call, MediaName, TimeLimit, Id, SampleRate, RecordMinSec),
     lager:debug("started the recording"),
     {'noreply', State};
 
@@ -472,8 +465,11 @@ maybe_store_recording_meta(#state{doc_db=Db, doc_id=DocId}=State) ->
 
 
 -spec get_media_name(ne_binary(), api_binary()) -> ne_binary().
-get_media_name(CallId, Ext) ->
-    <<CallId/binary, ".", Ext/binary>>.
+get_media_name(Name, Ext) ->
+    case filename:extension(Name) of
+        Ext -> Name;
+        _ -> <<Name/binary, ".", Ext/binary>>
+    end.
 
 -spec get_url(kz_json:object()) -> api_binary().
 get_url(Data) ->
@@ -546,12 +542,13 @@ append_path(Url, {_, MediaName}) ->
     end.
 
 -spec start_recording(kapps_call:call(), ne_binary(), pos_integer(), ne_binary(), api_integer(), api_integer()) -> 'ok'.
-start_recording(Call, MediaName, TimeLimit, MediaRecorder, SampleRate, RecordMinSec) ->
+start_recording(Call, MediaName, TimeLimit, MediaDocId, SampleRate, RecordMinSec) ->
     lager:debug("starting recording of ~s", [MediaName]),
     Props = [{<<"Media-Name">>, MediaName}
+            ,{<<"Media-Recording-ID">>, MediaDocId}
             ,{<<"Record-Sample-Rate">>, SampleRate}
             ,{<<"Record-Min-Sec">>, kz_util:to_binary(RecordMinSec)}
-            ,{<<"Media-Recorder">>, MediaRecorder}
+            ,{<<"Media-Recorder">>, <<"kz_media_recording">>}
             ],
     kapps_call_command:start_record_call(Props, TimeLimit, Call),
     gen_server:cast(self(), 'recording_started').
@@ -562,16 +559,4 @@ store({DirName, MediaName}, StoreUrl, Call) ->
     case kapps_call_command:store_file(Filename, StoreUrl, Call) of
         {'error', 'timeout'} -> gen_server:cast(self(), 'store_failed');
         'ok' -> gen_server:cast(self(), 'store_succeeded')
-    end.
-
--spec stop_recording(pid()) -> 'ok'.
-stop_recording(Pid) ->
-    gen_server:cast(Pid, 'stop_recording').
-
--spec recording_module(kapps_call:call()) -> atom().
-recording_module(Call) ->
-    AccountId = kapps_call:account_id(Call),
-    case kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"recorder_module">>) of
-        'undefined' -> kapps_config:get_atom(?CONFIG_CAT, <<"recorder_module">>, ?MODULE);
-        Mod -> kz_util:to_atom(Mod, 'true')
     end.

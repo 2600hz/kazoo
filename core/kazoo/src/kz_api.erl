@@ -40,6 +40,7 @@
 
 -export([is_federated_event/1
         ,event_zone/1
+        ,exec/2
         ]).
 
 -export([prepare_api_payload/2, prepare_api_payload/3]).
@@ -530,3 +531,25 @@ is_federated_event(JObj) ->
 -spec event_zone(kz_json:object()) -> ne_binary().
 event_zone(JObj) ->
     kz_json:get_ne_binary_value(?KEY_AMQP_ZONE, JObj).
+
+-type exec_fun_1() :: fun((api_terms()) -> api_terms()).
+-type exec_fun_2() :: {fun((_, api_terms()) -> api_terms()), _}.
+-type exec_fun_3() :: {fun((_, _, api_terms()) -> api_terms()), _, _}.
+-type exec_fun() :: exec_fun_1() | exec_fun_2() | exec_fun_3().
+-type exec_funs() :: [exec_fun(),...].
+
+-define(is_json(Obj), is_tuple(Obj)
+        andalso is_list(element(1, Obj))
+       ).
+
+-spec exec(exec_funs(), api_terms()) -> api_terms().
+exec(Funs, API)
+  when is_list(API);
+       ?is_json(API) ->
+    lists:foldl(fun exec_fold/2, API, Funs).
+
+-spec exec_fold(exec_fun(), api_terms()) -> api_terms().
+exec_fold({F, K, V}, C) when is_function(F, 3) -> F(K, V, C);
+exec_fold({F, V}, C) when is_function(F, 2) -> F(V, C);
+exec_fold(F, C) when is_function(F, 1) -> F(C);
+exec_fold(_, C) -> C.

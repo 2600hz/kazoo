@@ -11,7 +11,7 @@
 
 %% API
 -export([start_link/1]).
--export([send_amqp/3]).
+-export([amqp_send/3, amqp_call/4]).
 -export([get_call/1, set_call/1]).
 -export([callid/1, callid/2]).
 -export([queue_name/1]).
@@ -33,7 +33,7 @@
 -export([callid_update/2]).
 -export([add_event_listener/2]).
 -export([next/1, next/2]).
--export([update_call/2]).
+-export([update_call/1, update_call/2]).
 
 %% gen_listener callbacks
 -export([init/1
@@ -104,6 +104,11 @@ get_call(Call) ->
 set_call(Call) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     gen_server:cast(Srv, {'set_call', Call}).
+
+-spec update_call(kapps_call:call()) -> kapps_call:call().
+update_call(Call) ->
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
+    gen_server:call(Srv, {'set_call', Call}).
 
 -spec update_call(kapps_call:call(), list()) -> kapps_call:call().
 update_call(Call, Routines) ->
@@ -270,11 +275,17 @@ wildcard_is_empty(Call) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     wildcard_is_empty(Srv).
 
--spec send_amqp(pid() | kapps_call:call(), api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
-send_amqp(Srv, API, PubFun) when is_pid(Srv), is_function(PubFun, 1) ->
-    gen_listener:cast(Srv, {'send_amqp', API, PubFun});
-send_amqp(Call, API, PubFun) when is_function(PubFun, 1) ->
-    send_amqp(kapps_call:kvs_fetch('consumer_pid', Call), API, PubFun).
+-spec amqp_send(pid() | kapps_call:call(), api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
+amqp_send(Srv, API, PubFun) when is_pid(Srv), is_function(PubFun, 1) ->
+    gen_listener:cast(Srv, {'amqp_send', API, PubFun});
+amqp_send(Call, API, PubFun) when is_function(PubFun, 1) ->
+    amqp_send(kapps_call:kvs_fetch('consumer_pid', Call), API, PubFun).
+
+-spec amqp_call(pid() | kapps_call:call(), api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun()) -> 'ok'.
+amqp_call(Srv, API, PubFun, VerifyFun) when is_pid(Srv), is_function(PubFun, 1) ->
+    gen_listener:call(Srv, {'amqp_call', API, PubFun, VerifyFun});
+amqp_call(Call, API, PubFun, VerifyFun) when is_function(PubFun, 1) ->
+    amqp_call(kapps_call:kvs_fetch('consumer_pid', Call), API, PubFun, VerifyFun).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -318,6 +329,8 @@ init([Call]) ->
 handle_call({'update_call', Routines}, _From, #state{call=Call}=State) ->
     NewCall = kapps_call:exec(Routines, Call),
     {'reply', NewCall, State#state{call=NewCall}};
+handle_call({'set_call', Call},  _From, State) ->
+    {'reply', Call, State#state{call=Call}};
 handle_call('get_call', _From, #state{call=Call}=State) ->
     {'reply', {'ok', Call}, State};
 handle_call('callid', _From, #state{call=Call}=State) ->
@@ -357,6 +370,9 @@ handle_call({'next', Key}, _From, #state{flow=Flow}=State) ->
                               )
     ,State
     };
+handle_call({'amqp_call', API, PubFun, VerifyFun}, _From, #state{queue=Q}=State) ->
+    Reply = amqp_call_message(API, PubFun, VerifyFun, Q),
+    {'reply', Reply, State};
 handle_call(_Request, _From, State) ->
     Reply = {'error', 'unimplemented'},
     {'reply', Reply, State}.
@@ -464,8 +480,8 @@ handle_cast({'gen_listener', {'created_queue', Q}}, #state{call=Call}=State) ->
     {'noreply', State#state{queue=Q
                            ,call=kapps_call:set_controller_queue(Q, Call)
                            }};
-handle_cast({'send_amqp', API, PubFun}, #state{queue=Q}=State) ->
-    send_amqp_message(API, PubFun, Q),
+handle_cast({'amqp_send', API, PubFun}, #state{queue=Q}=State) ->
+    amqp_send_message(API, PubFun, Q),
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', 'true'}}
            ,#state{cf_module_pid='undefined'}=State
@@ -706,9 +722,17 @@ cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
 %% a hangup command without relying on the (now terminated) cf_exe.
 %% @end
 %%--------------------------------------------------------------------
--spec send_amqp_message(api_terms(), kz_amqp_worker:publish_fun(), ne_binary()) -> 'ok'.
-send_amqp_message(API, PubFun, Q) ->
-    PubFun(add_server_id(API, Q)).
+-spec amqp_send_message(api_terms(), kz_amqp_worker:publish_fun(), ne_binary()) -> 'ok'.
+amqp_send_message(API, PubFun, Q) ->
+    PubFun(add_server_id(Q, API)).
+
+-spec amqp_call_message(api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), ne_binary()) -> 'ok'.
+amqp_call_message(API, PubFun, VerifyFun, Q) ->
+    Routines = [{fun add_server_id/2, Q}
+               ,fun add_message_id/1
+               ],
+    Request = kz_api:exec(Routines, API),
+    kz_amqp_worker:call(Request, PubFun, VerifyFun).
 
 -spec send_command(kz_proplist(), api_binary(), api_binary()) -> 'ok'.
 send_command(_, 'undefined', _) -> lager:debug("no control queue to send command to");
@@ -719,11 +743,17 @@ send_command(Command, ControlQ, CallId) ->
                        ],
     kapps_util:amqp_pool_send(Props, fun(P) -> kapi_dialplan:publish_command(ControlQ, P) end).
 
--spec add_server_id(api_terms(), ne_binary()) -> api_terms().
-add_server_id(API, Q) when is_list(API) ->
+-spec add_server_id(ne_binary(), api_terms()) -> api_terms().
+add_server_id(Q, API) when is_list(API) ->
     [{<<"Server-ID">>, Q} | props:delete(<<"Server-ID">>, API)];
-add_server_id(API, Q) ->
+add_server_id(Q, API) ->
     kz_json:set_value(<<"Server-ID">>, Q, API).
+
+-spec add_message_id(api_terms()) -> api_terms().
+add_message_id(API) when is_list(API) ->
+    [{<<"Msg-ID">>, kz_util:rand_hex_binary(16)} | props:delete(<<"Msg-ID">>, API)];
+add_message_id(API) ->
+    kz_json:set_value(<<"Msg-ID">>, kz_util:rand_hex_binary(16), API).
 
 -spec log_call_information(kapps_call:call()) -> 'ok'.
 log_call_information(Call) ->

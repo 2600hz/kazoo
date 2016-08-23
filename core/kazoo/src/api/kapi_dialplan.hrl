@@ -560,6 +560,7 @@
                                           ,<<"Record-Sample-Rate">>
                                           ,<<"Time-Limit">>
                                           ,<<"Media-Recorder">>
+                                          ,<<"Media-Recording-ID">>
                                           ]).
 -define(RECORD_CALL_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                 ,{<<"Event-Name">>, <<"command">>}

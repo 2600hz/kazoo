@@ -119,6 +119,10 @@
 
 -export([default_helper_function/2]).
 
+-export([start_recording/1, start_recording/2
+        ,stop_recording/1
+        ]).
+
 -record(kapps_call, {call_id :: api_binary()                       %% The UUID of the call
                       ,call_id_helper = fun default_helper_function/2 :: kapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
                       ,control_q :: api_binary()                   %% The control queue provided on route win
@@ -1160,6 +1164,66 @@ retrieve(CallId) ->
 
 retrieve(CallId, AppName) ->
     kz_cache:fetch_local(?KAPPS_CALL_CACHE, {?MODULE, 'call', AppName, CallId}).
+
+-define(RECORDING_ID_KEY, <<"media_name">>).
+-define(RECORDINGS_KEY, <<"recordings">>).
+
+-spec start_recording(call()) -> call().
+start_recording(Call) ->
+    start_recording(kz_json:new(), Call).
+
+-spec start_recording(api_object(), call()) -> call().
+start_recording('undefined', Call) -> Call;
+start_recording(Data, Call) ->
+    RecID = kz_util:rand_hex_binary(16),
+    Format = kz_media_recording:get_format(kz_json:get_value(<<"format">>, Data)),
+    DefaultMediaName = kz_media_recording:get_media_name(RecID, Format),
+    MediaName = kz_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
+    Args = kz_json:set_value(?RECORDING_ID_KEY, MediaName, Data),
+    case kz_media:start_recording(clear_helpers(Call), Args) of
+        {'ok', RecorderPid} ->
+            Routines = [{fun store_recording/3, MediaName, RecorderPid}],
+            exec(Routines, Call);
+        _Err -> lager:debug("error starting recording ~p", [_Err]),
+                Call
+    end.
+
+-spec stop_recording(call()) -> call().
+stop_recording(OriginalCall) ->
+    case retrieve_recording(OriginalCall) of
+        {'ok', {_MediaName, RecorderPid}, Call} ->
+            kz_media:stop_recording(RecorderPid),
+            Call;
+        {'empty', Call} ->
+            lager:debug("no recording to stop"),
+            Call
+    end.
+
+-spec store_recording(ne_binary(), pid(), call()) -> call().
+store_recording(MediaName, Pid, Call) ->
+    Q = queue:in({MediaName, Pid}, get_recordings(Call)),
+    kvs_store(?RECORDINGS_KEY, Q, Call).
+
+
+-type recording_ref() :: {ne_binary(), pid()}.
+-type store_return() :: {'ok', recording_ref(), call()} | {'empty', call()}.
+
+-spec retrieve_recording(call()) -> store_return().
+retrieve_recording(Call) ->
+    case queue:out_r(get_recordings(Call)) of
+        {{'value', MediaRef}, Q} ->
+            Routines = [{fun kvs_store/3, ?RECORDINGS_KEY, Q}],
+            {'ok', MediaRef, exec(Routines, Call)};
+        {'empty', _} ->
+            {'empty', Call}
+    end.
+
+-spec get_recordings(call()) -> queue:queue().
+get_recordings(Call) ->
+    case kvs_fetch(?RECORDINGS_KEY, Call) of
+        'undefined' -> queue:new();
+        Q -> Q
+    end.
 
 %% EUNIT TESTING
 -ifdef(TEST).
