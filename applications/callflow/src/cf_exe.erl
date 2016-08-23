@@ -731,11 +731,7 @@ amqp_call_message(API, PubFun, VerifyFun, Q) ->
     Routines = [{fun add_server_id/2, Q}
                ,fun add_message_id/1
                ],
-    Request = lists:foldl(fun({Fun, Arg1}, Acc) ->
-                                  Fun(Acc, Arg1);
-                             (Fun, Acc) ->
-                                  Fun(Acc)
-                          end, API, Routines),
+    Request = kz_api:exec(Routines, API),
     kz_amqp_worker:call(Request, PubFun, VerifyFun).
 
 -spec send_command(kz_proplist(), api_binary(), api_binary()) -> 'ok'.
