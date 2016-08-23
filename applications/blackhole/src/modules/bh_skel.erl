@@ -9,31 +9,32 @@
 %%% Ben Wann
 %%%-------------------------------------------------------------------
 -module(bh_skel).
-
--export([handle_event/2
-        ,subscribe/2
-        , unsubscribe/2
-        ]).
-
 -include("blackhole.hrl").
+
+-export([handle_event/2, handle_ws_message/3]).
 
 -spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
 handle_event(Context, EventJObj) ->
     blackhole_util:handle_event(Context, EventJObj, event_name(EventJObj)).
+
+handle_ws_message(<<"subscribe">>, Context, JObj) ->
+    subscribe(Context, kz_json:get_value(<<"binding">>, JObj), JObj);
+handle_ws_message(<<"unsubscribe">>, Context, JObj) ->
+    unsubscribe(Context, kz_json:get_value(<<"binding">>, JObj), JObj).
 
 -spec event_name(kz_json:object()) -> ne_binary().
 event_name(JObj) ->
     kz_json:get_value(<<"Event-Name">>, JObj).
 
 %% Binding must match module name
--spec subscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-subscribe(Context, <<"skel.", _Args/binary>> = _Binding) ->
+-spec subscribe(bh_context:context(), ne_binary(), kz_json:object()) -> bh_subscribe_result().
+subscribe(Context, <<"skel.", _Args/binary>> = _Binding, _JObj) ->
     {'ok', Context};
-subscribe(_Context, _Binding) ->
+subscribe(_Context, _Binding, _JObj) ->
     {'error', <<"Unmatched binding">>}.
 
--spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-unsubscribe(Context, <<"skel.", _Args/binary>> = _Binding) ->
+-spec unsubscribe(bh_context:context(), ne_binary(), kz_json:object()) -> bh_subscribe_result().
+unsubscribe(Context, <<"skel.", _Args/binary>> = _Binding, _JObj) ->
     {'ok', Context};
-unsubscribe(_Context, _Binding) ->
+unsubscribe(_Context, _Binding, _JObj) ->
     {'error', <<"Unmatched binding">>}.

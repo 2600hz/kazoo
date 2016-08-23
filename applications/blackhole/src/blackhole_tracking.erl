@@ -8,26 +8,15 @@
 %%%-------------------------------------------------------------------
 -module(blackhole_tracking).
 -behaviour(gen_listener).
+-include("blackhole.hrl").
 
 -export([start_link/0
         ,handle_req/2
-        ,add_socket/1
-        ,remove_socket/1
-        ,update_socket/1
-        ,get_sockets/1
-        ,get_socket/1
+        ,add_socket/1, remove_socket/1, update_socket/1
+        ,get_sockets/1, get_socket/1, get_sockets/0
         ]).
 
--export([init/1
-        ,handle_call/3
-        ,handle_cast/2
-        ,handle_info/2
-        ,handle_event/2
-        ,terminate/2
-        ,code_change/3
-        ]).
-
--include("blackhole.hrl").
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2, terminate/2, code_change/3]).
 
 -type state() :: ets:tid() | atom().
 
@@ -72,11 +61,10 @@ handle_req(ApiJObj, _Props) ->
 
     Node = kz_json:get_binary_value(<<"Node">>, ApiJObj),
     RespData =
-        handle_get_req_data(
-          kz_json:get_value(<<"Account-ID">>, ApiJObj)
+        handle_get_req_data(kz_json:get_value(<<"Account-ID">>, ApiJObj)
                            ,kz_json:get_value(<<"Socket-ID">>, ApiJObj)
                            ,Node
-         ),
+                           ),
     case RespData of
         'ok' -> 'ok';
         RespData ->
@@ -89,50 +77,20 @@ handle_req(ApiJObj, _Props) ->
             kapi_blackhole:publish_get_resp(RespQ, Resp)
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
+%% API
 -spec add_socket(bh_context:context()) -> 'ok'.
-add_socket(Context) ->
-    gen_server:cast(?SERVER, {'add_socket', Context}).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec remove_socket(bh_context:context()) -> 'ok'.
-remove_socket(Context) ->
-    gen_server:cast(?SERVER, {'remove_socket', Context}).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec update_socket(bh_context:context()) -> 'ok'.
-update_socket(Context) ->
-    gen_server:cast(?SERVER, {'update_socket', Context}).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec get_sockets(ne_binary()) -> [bh_context:context(), ...] | {'error', 'not_found'}.
-get_sockets(AccountId) ->
-    gen_server:call(?SERVER, {'get_sockets', AccountId}).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
+-spec get_sockets() -> [bh_context:context()] | {'error', 'not_found'}.
 -spec get_socket(ne_binary()) -> {'ok', bh_context:context()} | {'error', 'not_found'}.
-get_socket(Id) ->
-    gen_server:call(?SERVER, {'get_socket', Id}).
+
+add_socket(Context) -> gen_server:cast(?SERVER, {'add_socket', Context}).
+remove_socket(Context) -> gen_server:cast(?SERVER, {'remove_socket', Context}).
+update_socket(Context) -> gen_server:cast(?SERVER, {'update_socket', Context}).
+get_sockets(AccountId) -> gen_server:call(?SERVER, {'get_sockets', AccountId}).
+get_sockets() -> gen_server:call(?SERVER, {'get_sockets'}).
+get_socket(Id) -> gen_server:call(?SERVER, {'get_socket', Id}).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -155,7 +113,7 @@ init([]) ->
     Tab = ets:new(?SERVER, ['set'
                            ,'protected'
                            ,'named_table'
-                           ,{'keypos', #bh_context.websocket_session_id}
+                           ,{'keypos', #bh_context.req_id}
                            ]),
     {'ok', Tab}.
 
@@ -174,23 +132,15 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
-handle_call({'get_sockets', AccountId}, _From, State) ->
-    Pattern = #bh_context{account_id=AccountId, _='_'},
-    Result =
-        case ets:match_object(State, Pattern) of
-            [] -> {'error', 'not_found'};
-            Contexts -> Contexts
-        end,
-    {'reply', Result, State};
+handle_call({'get_sockets', AuthAccountId}, _From, State) ->
+    Pattern = #bh_context{auth_account_id=AuthAccountId, _='_'},
+    {'reply', ensure_many(ets:match_object(State, Pattern)), State};
+handle_call({'get_sockets'}, _From, State) ->
+    Pattern = #bh_context{_='_'},
+    {'reply', ensure_many(ets:match_object(State, Pattern)), State};
 handle_call({'get_socket', Id}, _From, State) ->
-    Pattern = #bh_context{websocket_session_id=Id, _='_'},
-    Result =
-        case ets:match_object(State, Pattern) of
-            [] -> {'error', 'not_found'};
-            [Context] ->
-                {'ok', Context}
-        end,
-    {'reply', Result, State};
+    Pattern = #bh_context{req_id=Id, _='_'},
+    {'reply', ensure_one(ets:match_object(State, Pattern)), State};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -301,3 +251,9 @@ handle_get_req_data('undefined', SocketId, Node) ->
         {'ok', Context} ->
             bh_context:to_json(Context)
     end.
+
+ensure_many([]) -> {'error', 'not_found'};
+ensure_many(V) when is_list(V)-> {'ok', V}.
+
+ensure_one([]) -> {'error', 'not_found'};
+ensure_one([V]) -> {'ok', V}.

@@ -11,27 +11,26 @@
 -define(APP_VERSION, <<"4.0.0">>).
 -define(BLACKHOLE_CONFIG_CAT, <<"blackhole">>).
 
--define(DEFAULT_MODULES, ['bh_token_auth']).
+-define(DEFAULT_MODULES, []).
 
 -define(VERSION_SUPPORTED, [<<"v1">>]).
 
 -type bh_subscribe_result() :: {'ok', bh_context:context()} | {'error', ne_binary()}.
 
--record(bh_context, {
-          auth_token = <<>> :: api_binary() | '_'
+-record(bh_context, {auth_token = <<>> :: api_binary() | '_'
                     ,auth_account_id :: api_binary() | '_'
-                    ,account_id :: api_binary() | '_'
                     ,bindings = [] :: ne_binaries() | '_'
-                    ,websocket_session_id :: api_binary() | '_'
-                    ,websocket_pid :: api_pid() | '_'
-                    ,req_id = <<(kz_util:rand_hex_binary(16))/binary, "-bh">> :: ne_binary() | '_'
                     ,timestamp :: gregorian_seconds() | '_'
-                    ,name :: api_binary() | '_'
-                    ,metadata :: any() | '_'
-                    ,destination = kz_util:node_hostname() :: ne_binary() | '_'
-                    ,source :: api_binary() | '_'
+                    ,websocket_pid :: api_pid() | '_'
                     ,binding :: api_binary() | '_'
-         }).
+                                %% is used to globally distinguish ws connections (blackhole_tracking)
+                    ,req_id = <<(kz_util:rand_hex_binary(16))/binary, "-bh">> :: ne_binary() | '_'
+                    ,session :: term()
+                    }).
+
+-record(bh_call, {account_id :: ne_binary()
+                 , ws_pid :: pid()
+                 }).
 
 -define(BLACKHOLE_HRL, 'true').
 

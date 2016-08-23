@@ -49,6 +49,9 @@
         ,gift_data/0
         ]).
 
+%% Informational
+-export([list/0]).
+
 %% gen_server callbacks
 -export([init/1
         ,handle_call/3
@@ -793,3 +796,6 @@ matches(Routing) ->
 -spec routing_parts(ne_binary()) -> ne_binaries().
 routing_parts(Routing) ->
     lists:reverse(binary:split(Routing, <<".">>, ['global'])).
+
+list() ->
+    [ Binding || [#kz_binding{binding=Binding}] <- ets:match(table_id(), '$1') ].
