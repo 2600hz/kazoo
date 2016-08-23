@@ -24,7 +24,7 @@ recv(JObj, Context) ->
     Bindings = [<<"message">>
                ,<<"authenticate">>
                ,<<"command.", Command/binary>>
-    ],
+               ],
     lists:foldl(
       fun
           (Binding, Ctx=#bh_context{}) ->
