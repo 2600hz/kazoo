@@ -3,12 +3,12 @@
 [[ $# -eq 0 ]] && echo "Usage: $0  ‹path to check›+" && exit 0
 
 function check_andalso_orelse {
-    # Check for andalso/orelse dropped lines
+    echo 'Check for andalso/orelse dropped lines'
     ! grep -Ern '[a-zA-Z\)] +(andalso|orelse)' -- $@
 }
 
 function check_MODULE {
-    # Check for uses of module in lieu of ?MODULE
+    echo 'Check for uses of module in lieu of ?MODULE'
     local errors=0
     for f in "$@"; do
         m0=$(grep -E module'\(' "$f"  2>/dev/null)
