@@ -192,7 +192,7 @@
 
 -export([get_outbound_t38_settings/1, get_outbound_t38_settings/2]).
 -export([get_inbound_t38_settings/1, get_inbound_t38_settings/2]).
--export([audio_level/4]).
+-export([audio_level_command/4, audio_level/4]).
 -export([store_file/3, store_file/4]).
 
 -export([attended_transfer/2, attended_transfer/3
@@ -1562,16 +1562,19 @@ b_store_vm(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
     send_command(Command, Call),
     wait_for_headless_application(<<"store_vm">>).
 
--spec audio_level(kapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-audio_level(Call, Mode, Action, Level) ->
+-spec audio_level_command(kapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> kz_proplist().
+audio_level_command(Call, Mode, Action, Level) ->
     Command = [{<<"Application-Name">>, <<"audio_level">>}
               ,{<<"Action">>, Action}
               ,{<<"Level">>, Level}
               ,{<<"Mode">>, Mode}
               ,{<<"Insert-At">>, <<"now">>}
-              ],
-    send_command(Command, Call).
+              ].
 
+-spec audio_level(kapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+audio_level(Call, Mode, Action, Level) ->
+    Command = audio_level_command(Call, Mode, Action, Level),
+    send_command(Command, Call).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -3071,4 +3074,5 @@ transfer_command(TransferType, TransferTo, TransferLeg, Call) ->
         ,{<<"Caller-ID-Name">>, kapps_call:callee_id_name(Call)}
         ,{<<"Insert-At">>, <<"now">>}
         ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+        ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
         ])).

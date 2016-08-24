@@ -7,12 +7,11 @@
 %%%   James Aimonetti
 %%%   Karl Anderson
 %%%
-%%% Fix KAZOO-3406: Sponsored by Velvetech LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_command).
 
 -export([exec_cmd/4]).
--export([get_fs_app/4]).
+-export([fetch_dialplan/4]).
 
 -ifdef(TEST).
 -export([get_conference_flags/1
@@ -49,6 +48,17 @@ exec_cmd(Node, UUID, JObj, ControlPid, UUID) ->
 exec_cmd(_Node, _UUID, JObj, _ControlPid, _DestId) ->
     lager:debug("command ~s not meant for us but for ~s", [kz_json:get_value(<<"Application-Name">>, JObj), _DestId]),
     throw(<<"call command provided with a command for a different call id">>).
+
+-spec fetch_dialplan(atom(), ne_binary(), kz_json:object(), api_pid()) -> fs_apps().
+fetch_dialplan(Node, UUID, JObj, _ControlPid) ->
+    App = kz_json:get_value(<<"Application-Name">>, JObj),
+    case get_fs_app(Node, UUID, JObj, App) of
+        {'error', Msg} -> throw({'msg', Msg});
+        {'return', _Result} -> [];
+        {_AppName, _AppData, _NewNode} -> [];
+        {AppName, AppData} -> [{AppName, AppData}];
+        [_|_]=Apps -> Apps
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1547,10 +1557,7 @@ transfer(Node, UUID, <<"attended">>, TransferTo, JObj) ->
               ,<<"Authorizing-Type">>
               ,<<"Channel-Authorized">>
               ],
-    Realm = case props:get_value(<<"Account-Realm">>, CCVs) of
-                'undefined' -> kz_json:get_value(<<"From-Realm">>, JObj);
-                Value -> Value
-            end,
+    Realm = props:get_first_defined([<<"Account-Realm">>, <<"Realm">>], CCVs, <<"norealm">>),
     ReqURI = <<TransferTo/binary, "@", Realm/binary>>,
     Vars = props:filter_undefined(
              [{<<"Ignore-Early-Media">>, <<"ring_ready">>}

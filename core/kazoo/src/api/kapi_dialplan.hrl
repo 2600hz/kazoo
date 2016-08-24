@@ -772,6 +772,7 @@
                                    ,<<"Transfer-Context">>
                                    ,<<"Caller-ID-Name">>
                                    ,<<"Caller-ID-Number">>
+                                   ,<<"Custom-Channel-Vars">>
                                    ]).
 -define(TRANSFER_VALUES, [{<<"Event-Category">>, <<"call">>}
                          ,{<<"Event-Name">>, <<"command">>}
