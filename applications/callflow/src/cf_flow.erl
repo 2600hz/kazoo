@@ -194,7 +194,7 @@ test_callflow_patterns([#pattern{regex=Regex}=Pattern |T], Number, {Matched, P}=
         {'match', Groups} ->
             case hd(lists:sort(fun(A, B) -> byte_size(A) >= byte_size(B) end, Groups)) of
                 Match when P =:= 'undefined'
-			   orelse byte_size(Match) > byte_size(Matched) ->
+                           orelse byte_size(Match) > byte_size(Matched) ->
                     test_callflow_patterns(T, Number, {Match, Pattern});
                 _ -> test_callflow_patterns(T, Number, Result)
             end;

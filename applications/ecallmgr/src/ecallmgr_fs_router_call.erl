@@ -179,9 +179,9 @@ process_route_req(Section, Node, FetchId, CallId, Props) ->
 do_process_route_req(Section, Node, FetchId, CallId, Props) ->
     Filtered = ecallmgr_fs_loopback:filter(Node, CallId, Props),
     case ecallmgr_fs_router_util:search_for_route(Section, Node, FetchId, CallId, Filtered) of
-	'ok' ->
+        'ok' ->
             lager:debug("xml fetch dialplan ~s finished without success", [FetchId]);
-	{'ok', JObj} ->
+        {'ok', JObj} ->
             ecallmgr_fs_channels:update(CallId, #channel.handling_locally, 'true'),
             maybe_start_call_handling(Node, FetchId, CallId, JObj)
     end.

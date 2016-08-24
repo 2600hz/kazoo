@@ -1431,20 +1431,20 @@ record_call_vars(JObj) ->
     SampleRate = get_sample_rate(JObj),
 
     lists:foldl(fun(F, V) -> F(V) end
-	       ,[{<<"RECORD_APPEND">>, <<"true">>}
-		,{<<"enable_file_write_buffering">>, <<"false">>}
-		,{<<"RECORD_STEREO">>, should_record_stereo(JObj)}
-		,{<<"RECORD_SOFTWARE">>, ?RECORD_SOFTWARE}
-		,{<<"recording_follow_transfer">>, FollowTransfer}
-		,{<<"recording_follow_attxfer">>, FollowTransfer}
-		,{<<"Record-Min-Sec">>, RecordMinSec}
-		,{<<"record_sample_rate">>, kz_util:to_binary(SampleRate)}
-		,{<<"Media-Recorder">>, kz_json:get_value(<<"Media-Recorder">>, JObj)}
-		,{<<"Time-Limit">>, kz_json:get_value(<<"Time-Limit">>, JObj)}
-		,{<<"Media-Name">>, kz_json:get_value(<<"Media-Name">>, JObj)}
-		,{<<"Media-Recording-ID">>, kz_json:get_value(<<"Media-Recording-ID">>, JObj)}
-		]
-	       ,Routines
+               ,[{<<"RECORD_APPEND">>, <<"true">>}
+                ,{<<"enable_file_write_buffering">>, <<"false">>}
+                ,{<<"RECORD_STEREO">>, should_record_stereo(JObj)}
+                ,{<<"RECORD_SOFTWARE">>, ?RECORD_SOFTWARE}
+                ,{<<"recording_follow_transfer">>, FollowTransfer}
+                ,{<<"recording_follow_attxfer">>, FollowTransfer}
+                ,{<<"Record-Min-Sec">>, RecordMinSec}
+                ,{<<"record_sample_rate">>, kz_util:to_binary(SampleRate)}
+                ,{<<"Media-Recorder">>, kz_json:get_value(<<"Media-Recorder">>, JObj)}
+                ,{<<"Time-Limit">>, kz_json:get_value(<<"Time-Limit">>, JObj)}
+                ,{<<"Media-Name">>, kz_json:get_value(<<"Media-Name">>, JObj)}
+                ,{<<"Media-Recording-ID">>, kz_json:get_value(<<"Media-Recording-ID">>, JObj)}
+                ]
+               ,Routines
                ).
 
 -spec maybe_waste_resources(kz_proplist()) -> kz_proplist().
