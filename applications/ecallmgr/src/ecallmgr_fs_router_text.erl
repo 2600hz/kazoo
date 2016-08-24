@@ -185,7 +185,7 @@ add_message_missing_props(Props) ->
       ,{<<"Caller-Caller-ID-Number">>, props:get_value(<<"from_user">>, Props)}
       ,{<<"Caller-Destination-Number">>, props:get_value(<<"to_user">>, Props)}
       ]
-		       ,Props
+                       ,Props
      ).
 
 -spec expand_message_vars(kz_proplist()) -> kz_proplist().
@@ -210,9 +210,9 @@ process_route_req(Section, Node, FetchId, MsgId, Props) ->
 -spec do_process_route_req(atom(), atom(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
 do_process_route_req(Section, Node, FetchId, MsgId, Props) ->
     case ecallmgr_fs_router_util:search_for_route(Section, Node, FetchId, MsgId, Props) of
-	'ok' ->
+        'ok' ->
             lager:debug("xml fetch chatplan ~s finished without success", [FetchId]);
-	{'ok', JObj} ->
+        {'ok', JObj} ->
             start_message_handling(Node, FetchId, MsgId, JObj)
     end.
 

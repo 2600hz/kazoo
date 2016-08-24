@@ -30,25 +30,25 @@
 -define(METAFLOW_ACTION_HEADERS, [<<"Action">>, <<"Call-ID">>]).
 -define(OPTIONAL_METAFLOW_ACTION_HEADERS, [<<"Data">>]).
 -define(METAFLOW_ACTION_VALUES, [{<<"Event-Category">>, <<"metaflow">>}
-				,{<<"Event-Name">>, <<"action">>}
-				,{<<"Action">>, [<<"transfer">>
-						,<<"hangup">>
-						,<<"callflow">>
-						,<<"break">>
-						,<<"intercept">>
-						,<<"move">>
-						,<<"park">>
-						,<<"unpark">>
-						,<<"play">>
-						,<<"say">>
-						,<<"audio_level">>
-						,<<"hold">>
-						,<<"record_call">>
-						,<<"resume">>
-						,<<"tts">>
-						]
-				 }
-				]).
+                                ,{<<"Event-Name">>, <<"action">>}
+                                ,{<<"Action">>, [<<"transfer">>
+                                                ,<<"hangup">>
+                                                ,<<"callflow">>
+                                                ,<<"break">>
+                                                ,<<"intercept">>
+                                                ,<<"move">>
+                                                ,<<"park">>
+                                                ,<<"unpark">>
+                                                ,<<"play">>
+                                                ,<<"say">>
+                                                ,<<"audio_level">>
+                                                ,<<"hold">>
+                                                ,<<"record_call">>
+                                                ,<<"resume">>
+                                                ,<<"tts">>
+                                                ]
+                                 }
+                                ]).
 -define(METAFLOW_ACTION_TYPES, []).
 
 -define(METAFLOW_ACTION_ROUTING_KEY(CallId, Action)
@@ -79,14 +79,14 @@
                                         ,<<"Endpoint-ID">>, <<"Listen-On">>
                                         ]).
 -define(METAFLOW_BIND_VALUES, [{<<"Event-Category">>, <<"metaflow">>}
-			      ,{<<"Event-Name">>, <<"bind">>}
-			      ,{<<"Binding-Digit">>, ?ANY_DIGIT}
-			      ,{<<"Listen-On">>, [<<"both">>, <<"self">>, <<"peer">>, <<"aleg">>, <<"bleg">>]}
-			      ]).
+                              ,{<<"Event-Name">>, <<"bind">>}
+                              ,{<<"Binding-Digit">>, ?ANY_DIGIT}
+                              ,{<<"Listen-On">>, [<<"both">>, <<"self">>, <<"peer">>, <<"aleg">>, <<"bleg">>]}
+                              ]).
 -define(METAFLOW_BIND_TYPES, [{<<"Numbers">>, fun kz_json:is_json_object/1}
-			     ,{<<"Patterns">>, fun kz_json:is_json_object/1}
-			     ,{<<"Digit-Timeout">>, fun binding_digit_timeout_v/1}
-			     ]).
+                             ,{<<"Patterns">>, fun kz_json:is_json_object/1}
+                             ,{<<"Digit-Timeout">>, fun binding_digit_timeout_v/1}
+                             ]).
 -define(METAFLOW_BIND_ROUTING_KEY(AccountId, CallId), <<"metaflow.bind.", (amqp_util:encode(AccountId))/binary, ".", (amqp_util:encode(CallId))/binary>>).
 
 %%--------------------------------------------------------------------
@@ -95,8 +95,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec action(kz_json:object() | kz_proplist()) ->
-		    {'ok', iolist()} |
-		    {'error', string()}.
+                    {'ok', iolist()} |
+                    {'error', string()}.
 action(Prop) when is_list(Prop) ->
     case action_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?METAFLOW_ACTION_HEADERS, ?OPTIONAL_METAFLOW_ACTION_HEADERS);
@@ -116,8 +116,8 @@ action_v(JObj) -> action_v(kz_json:to_proplist(JObj)).
 %% @end
 %%--------------------------------------------------------------------
 -spec bind_req(kz_json:object() | kz_proplist()) ->
-		      {'ok', iolist()} |
-		      {'error', string()}.
+                      {'ok', iolist()} |
+                      {'error', string()}.
 bind_req(Prop) when is_list(Prop) ->
     case bind_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?METAFLOW_BIND_REQ_HEADERS, ?OPTIONAL_METAFLOW_BIND_REQ_HEADERS);

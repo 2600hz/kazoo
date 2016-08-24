@@ -36,18 +36,18 @@
 -define(NODE_SUPERVISOR, ?NODE_CHILD_TYPE(<<"supervisor">>)).
 
 -define(CHILDREN, kz_json:from_list(
-		    [{<<"node">>, ?NODE_WORKER}
-		    ,{<<"authn">>, ?NODE_WORKER}
-		    ,{<<"channel">>, ?NODE_WORKER}
-		    ,{<<"conference">>, ?NODE_WORKER}
-		    ,{<<"config">>, ?NODE_WORKER}
-		    ,{<<"event_stream_sup">>, ?NODE_SUPERVISOR}
-		    ,{<<"msg">>, ?NODE_WORKER}
-		    ,{<<"notify">>, ?NODE_WORKER}
-            ,{<<"recordings">>, ?NODE_WORKER}
-		    ,{<<"resource">>, ?NODE_WORKER}
-		    ,{<<"route_sup">>, ?NODE_SUPERVISOR}
-		    ])).
+                    [{<<"node">>, ?NODE_WORKER}
+                    ,{<<"authn">>, ?NODE_WORKER}
+                    ,{<<"channel">>, ?NODE_WORKER}
+                    ,{<<"conference">>, ?NODE_WORKER}
+                    ,{<<"config">>, ?NODE_WORKER}
+                    ,{<<"event_stream_sup">>, ?NODE_SUPERVISOR}
+                    ,{<<"msg">>, ?NODE_WORKER}
+                    ,{<<"notify">>, ?NODE_WORKER}
+                    ,{<<"recordings">>, ?NODE_WORKER}
+                    ,{<<"resource">>, ?NODE_WORKER}
+                    ,{<<"route_sup">>, ?NODE_SUPERVISOR}
+                    ])).
 
 %% ===================================================================
 %% API functions

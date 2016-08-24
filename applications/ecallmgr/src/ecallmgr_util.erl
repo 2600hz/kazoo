@@ -196,9 +196,9 @@ get_sip_from(Props, <<"outbound">>) ->
                             ,<<"variable_sip_req_uri">>
                             ,<<"variable_sip_from_uri">>
                             ]
-                   ,Props
-                   ,<<User/binary, "@", Realm/binary>>
-                   );
+                           ,Props
+                           ,<<User/binary, "@", Realm/binary>>
+                           );
 get_sip_from(Props, _) ->
     Default = <<(props:get_value(<<"variable_sip_from_user">>, Props, <<"nouser">>))/binary
                 ,"@"

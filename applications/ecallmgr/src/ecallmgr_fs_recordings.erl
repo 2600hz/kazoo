@@ -160,10 +160,10 @@ process_specific_event(_Event, _UUID, _Props, _Node) ->
     lager:debug("event ~s for callid ~s not handled in recordings (~s)", [_Event, _UUID, _Node]).
 
 -spec maybe_store_recording(api_binary(), kz_proplist(), ne_binary(), atom()) ->
-				   'ok' |
-				   'error' |
-				   ecallmgr_util:send_cmd_ret() |
-				   [ecallmgr_util:send_cmd_ret(),...].
+                                   'ok' |
+                                   'error' |
+                                   ecallmgr_util:send_cmd_ret() |
+                                   [ecallmgr_util:send_cmd_ret(),...].
 maybe_store_recording(<<"kz_media_recording">>, _Props, _CallId, _Node) -> 'ok';
 maybe_store_recording(_, Props, CallId, Node) ->
     case kzd_freeswitch:ccv(Props, <<"Media-Transfer-Destination">>) of

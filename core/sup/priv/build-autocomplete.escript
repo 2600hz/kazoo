@@ -63,9 +63,9 @@ dump(CompFile) ->
     'ok' = file:write(Dev, case_sup()),
 
     lists:foreach(
-     fun (M) ->
-             'ok' = file:write(Dev, case_prev(M))
-     end, get('modules')),
+      fun (M) ->
+              'ok' = file:write(Dev, case_prev(M))
+      end, get('modules')),
     'ok' = file:write(Dev,  "\n"
                       "        *) args ;;\n"
                       "    esac\n"
