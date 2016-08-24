@@ -7,6 +7,7 @@
  ,{applications, [ kernel
                  , stdlib
                  , crypto
+                 , inet_cidr
 
                  , lager
                  ]}
