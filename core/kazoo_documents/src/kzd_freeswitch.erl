@@ -126,7 +126,10 @@ other_leg_call_id(Props) ->
 
 -spec call_direction(kz_proplist()) -> api_binary().
 call_direction(Props) ->
-    props:get_binary_value([<<"Caller-Logical-Direction">>, <<"Call-Direction">>], Props).
+    props:get_binary_value([<<"Application-Logical-Direction">>
+                           ,<<"Caller-Logical-Direction">>
+                           ,<<"Call-Direction">>
+                           ], Props).
 
 -spec resource_type(kz_proplist()) -> api_binary().
 -spec resource_type(kz_proplist(), Default) -> ne_binary() | Default.
