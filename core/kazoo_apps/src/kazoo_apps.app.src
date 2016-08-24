@@ -10,6 +10,7 @@
 
                  , kazoo
                  , kazoo_bindings
+                 , kazoo_call
                  , kazoo_config
                  , kazoo_data
                  , kazoo_amqp
