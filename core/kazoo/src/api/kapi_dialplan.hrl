@@ -547,7 +547,6 @@
 %% Stream-To = remote will stream the recording to the handling ecallmgr server
 -define(RECORD_CALL_REQ_HEADERS, [<<"Application-Name">>
                                  ,<<"Call-ID">>
-                                 ,<<"Media-Name">>
                                  ,<<"Record-Action">>
                                  ]).
 -define(OPTIONAL_RECORD_CALL_REQ_HEADERS, [<<"Additional-Headers">>
@@ -559,6 +558,7 @@
                                           ,<<"Record-Min-Sec">>
                                           ,<<"Record-Sample-Rate">>
                                           ,<<"Time-Limit">>
+                                          ,<<"Media-Name">>
                                           ,<<"Media-Recorder">>
                                           ,<<"Media-Recording-ID">>
                                           ]).
