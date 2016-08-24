@@ -18,7 +18,7 @@
 -export([get_expires/1]).
 -export([get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, get_orig_port/1]).
--export([custom_channel_vars/1, custom_channel_vars/2]).
+-export([custom_channel_vars/1]).
 -export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
 -export([is_node_up/1, is_node_up/2]).
 -export([build_bridge_string/1, build_bridge_string/2]).
@@ -180,19 +180,25 @@ get_sip_from(Props) ->
     get_sip_from(Props, kzd_freeswitch:call_direction(Props)).
 
 get_sip_from(Props, <<"outbound">>) ->
-    case props:get_value(<<"Other-Leg-Channel-Name">>, Props) of
-        'undefined' ->
-            Number = props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props, <<"nouser">>),
-            Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                            ,<<"variable_sip_auth_realm">>
-                                            ], Props, ?DEFAULT_REALM),
-            props:get_value(<<"variable_sip_from_uri">>
-                           ,Props
-                           ,<<Number/binary, "@", Realm/binary>>
-                           );
-        OtherChannel ->
-            lists:last(binary:split(OtherChannel, <<"/">>, ['global']))
-    end;
+    Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
+                                    ,<<"variable_sip_invite_domain">>
+                                    ,<<"variable_sip_auth_realm">>
+                                    ,<<"variable_sip_to_host">>
+                                    ], Props, ?DEFAULT_REALM),
+    User = props:get_first_defined([?GET_CCV(<<"Username">>)
+                                   ,<<"Hunt-Callee-ID-Number">>
+                                   ,<<"variable_sip_contact_user">>
+                                   ,<<"Other-Leg-Callee-ID-Number">>
+                                   ,<<"Caller-Callee-ID-Number">>
+                                   ,<<"variable_sip_from_user">>
+                                   ], Props, <<"nouser">>),
+    props:get_first_defined([<<"variable_presence_id">>
+                            ,<<"variable_sip_req_uri">>
+                            ,<<"variable_sip_from_uri">>
+                            ]
+                   ,Props
+                   ,<<User/binary, "@", Realm/binary>>
+                   );
 get_sip_from(Props, _) ->
     Default = <<(props:get_value(<<"variable_sip_from_user">>, Props, <<"nouser">>))/binary
                 ,"@"
@@ -206,6 +212,7 @@ get_sip_from(Props, _) ->
                  )/binary
               >>,
     props:get_first_defined([<<"Channel-Presence-ID">>
+                            ,<<"variable_presence_id">>
                             ,<<"variable_sip_from_uri">>
                             ]
                            ,Props
@@ -275,12 +282,17 @@ map_fs_path_to_sip_profile(FsPath, NetworkMap) ->
             kz_json:get_ne_value(<<"custom_sip_interface">>, V)
     end.
 
+-spec channel_var_map({ne_binary(), ne_binary()}) -> {ne_binary(), ne_binary() | ne_binaries()}.
+channel_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
+    {Key, binary:split(Serialized, <<"|:">>, ['global'])};
+channel_var_map({Key, Other}) -> {Key, Other}.
+
 %% Extract custom channel variables to include in the event
 -spec custom_channel_vars(kz_proplist()) -> kz_proplist().
 -spec custom_channel_vars(kz_proplist(), kz_proplist()) -> kz_proplist().
 -spec custom_channel_vars_fold({ne_binary(), ne_binary()}, kz_proplist()) -> kz_proplist().
 custom_channel_vars(Props) ->
-    custom_channel_vars(Props, []).
+    lists:map(fun channel_var_map/1, custom_channel_vars(Props, [])).
 
 custom_channel_vars(Props, Initial) ->
     maybe_update_referred_ccv(
