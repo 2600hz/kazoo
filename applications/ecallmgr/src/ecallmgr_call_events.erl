@@ -376,16 +376,8 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
             lager:debug("buffering call events for 1 second post transfer"),
             timer:sleep(?MILLISECONDS_IN_SECOND),
             {'noreply', State};
-        {<<"RECORD_STOP">>, _} ->
-            _ = case props:get_value(?GET_CCV(<<"Media-Recorder">>), Props) of
-                    <<"kz_media_recording">> ->
-                        lager:debug("kz_media_recording is handling call recording publishing record stop");
-                    _ ->
-                        lager:debug("no one is handling call recording, storing recording"),
-                        kz_util:spawn(fun store_recording/3, [Props, CallId, Node])
-                end,
-            process_channel_event(Props),
-            {'noreply', State};
+        {<<"RECORD_STOP">>, _} -> {'noreply', State};
+        {<<"RECORD_START">>, _} -> {'noreply', State};
         {_A, _B} ->
             process_channel_event(Props),
             {'noreply', State}
@@ -1139,45 +1131,6 @@ usurp_other_publishers(#state{node=Node
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     kapi_call:publish_usurp_publisher(CallId, Usurp).
-
--spec store_recording(kz_proplist(), ne_binary(), atom()) ->
-                             'ok' |
-                             'error' |
-                             ecallmgr_util:send_cmd_ret() |
-                             [ecallmgr_util:send_cmd_ret(),...].
-store_recording(Props, CallId, Node) ->
-    case kzd_freeswitch:ccv(Props, <<"Media-Transfer-Destination">>) of
-        'undefined' -> 'ok';
-        <<>> -> 'ok';
-        <<_/binary>> = Destination ->
-            kz_util:put_callid(CallId),
-
-            MediaName = kzd_freeswitch:ccv(Props, <<"Media-Name">>),
-            %% TODO: if you change this logic be sure it matches kz_media_util as well!
-            Url = kz_util:join_binary([kz_util:strip_right_binary(Destination, $/)
-                                      ,MediaName
-                                      ]
-                                     ,<<"/">>
-                                     ),
-
-            JObj = kz_json:from_list(
-                     [{<<"Call-ID">>, CallId}
-                     ,{<<"Msg-ID">>, CallId}
-                     ,{<<"Media-Name">>, MediaName}
-                     ,{<<"Media-Transfer-Destination">>, Url}
-                     ,{<<"Insert-At">>, <<"now">>}
-                     ,{<<"Media-Transfer-Method">>, media_transfer_method(Props)}
-                     ,{<<"Application-Name">>, <<"store">>}
-                     ,{<<"Event-Category">>, <<"call">>}
-                     ,{<<"Event-Name">>, <<"command">>}
-                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                     ]),
-            ecallmgr_call_command:exec_cmd(Node, CallId, JObj, 'undefined')
-    end.
-
--spec media_transfer_method(kz_proplist()) -> ne_binary().
-media_transfer_method(Props) ->
-    kzd_freeswitch:ccv(Props, <<"Media-Transfer-Method">>, <<"put">>).
 
 -spec get_is_loopback(api_binary()) -> atom().
 get_is_loopback('undefined') -> 'undefined';

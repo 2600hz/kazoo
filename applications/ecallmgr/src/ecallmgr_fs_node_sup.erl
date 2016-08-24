@@ -44,6 +44,7 @@
 		    ,{<<"event_stream_sup">>, ?NODE_SUPERVISOR}
 		    ,{<<"msg">>, ?NODE_WORKER}
 		    ,{<<"notify">>, ?NODE_WORKER}
+            ,{<<"recordings">>, ?NODE_WORKER}
 		    ,{<<"resource">>, ?NODE_WORKER}
 		    ,{<<"route_sup">>, ?NODE_SUPERVISOR}
 		    ])).
@@ -165,8 +166,8 @@ srv([{Name, Pid, _, _} | Children], Suffix) ->
 maybe_correct_modules(Modules)
   when is_list(Modules) ->
     FixedModules = [fix_module(Mod) || Mod <- Modules],
-    kz_json:from_list(FixedModules);
-maybe_correct_modules(JObj) -> JObj.
+    maybe_correct_modules(kz_json:from_list(FixedModules));
+maybe_correct_modules(JObj) -> kz_json:merge_jobjs(JObj, ?CHILDREN).
 
 fix_module_type(<<"pus_", _/binary>>) ->
     kz_json:from_list([{<<"type">>, <<"supervisor">>}]);
