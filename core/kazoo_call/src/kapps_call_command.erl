@@ -1563,13 +1563,13 @@ b_store_vm(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
     wait_for_headless_application(<<"store_vm">>).
 
 -spec audio_level_command(kapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> kz_proplist().
-audio_level_command(Call, Mode, Action, Level) ->
-    Command = [{<<"Application-Name">>, <<"audio_level">>}
-              ,{<<"Action">>, Action}
-              ,{<<"Level">>, Level}
-              ,{<<"Mode">>, Mode}
-              ,{<<"Insert-At">>, <<"now">>}
-              ].
+audio_level_command(_Call, Mode, Action, Level) ->
+    [{<<"Application-Name">>, <<"audio_level">>}
+    ,{<<"Action">>, Action}
+    ,{<<"Level">>, Level}
+    ,{<<"Mode">>, Mode}
+    ,{<<"Insert-At">>, <<"now">>}
+    ].
 
 -spec audio_level(kapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 audio_level(Call, Mode, Action, Level) ->
