@@ -37,6 +37,7 @@
                                     ,<<"Orig-IP">>, <<"Orig-Port">>, <<"Call-ID">>
                                     ,<<"Auth-Nonce">>, <<"Auth-Response">>
                                     ,<<"User-Agent">>, <<"Expires">>
+                                    ,<<"Contact">>
                                     ,<<"Custom-SIP-Headers">>
                                     ]).
 -define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
