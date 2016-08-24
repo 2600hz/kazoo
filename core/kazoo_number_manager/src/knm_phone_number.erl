@@ -17,7 +17,7 @@
 
 -export([to_json/1
         ,to_public_json/1
-        ,from_json/1
+        ,from_json/1, from_json_with_options/2
         ,is_phone_number/1
         ]).
 
@@ -374,11 +374,10 @@ from_json_with_options(JObj, Options)
     {'ok', PhoneNumber} = setters(from_json(JObj), Updates),
     PhoneNumber;
 from_json_with_options(JObj, PhoneNumber) ->
-    from_json_with_options(JObj
-                          ,[{'dry_run', dry_run(PhoneNumber)}
-                           ,{'batch_run', batch_run(PhoneNumber)}
-                           ]
-                          ).
+    Options = [{'dry_run', dry_run(PhoneNumber)}
+              ,{'batch_run', batch_run(PhoneNumber)}
+              ],
+    from_json_with_options(JObj, Options).
 
 %%--------------------------------------------------------------------
 %% @public

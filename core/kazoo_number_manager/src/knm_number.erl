@@ -493,10 +493,9 @@ disconnect(Number, Options) ->
     ShouldDelete = knm_config:should_permanently_delete(
                      knm_number_options:should_delete(Options)
                     ),
-    lager:debug("will delete permanently: ~p", [ShouldDelete]),
     try knm_carriers:disconnect(Number) of
         N when ShouldDelete -> delete_phone_number(N);
-        N -> N
+        N -> maybe_age(N)
     catch
         _E:_R when ShouldDelete ->
             ?LOG_WARN("failed to disconnect number: ~s: ~p", [_E, _R]),
@@ -505,7 +504,19 @@ disconnect(Number, Options) ->
 
 -spec delete_phone_number(knm_number()) -> knm_number().
 delete_phone_number(Number) ->
+    lager:debug("deleting permanently"),
     knm_number_states:to_deleted(Number).
+
+-spec maybe_age(knm_number()) -> knm_number().
+maybe_age(Number) ->
+    case knm_config:should_age()
+        andalso knm_phone_number:state(phone_number(Number))
+    of
+        ?NUMBER_STATE_AVAILABLE ->
+            lager:debug("aging available number for some time"),
+            knm_number_states:to_aging(Number);
+        _ -> Number
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

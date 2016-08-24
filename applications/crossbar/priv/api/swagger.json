@@ -10122,6 +10122,12 @@
         "system_config.number_manager": {
             "description": "Schema for number_manager system_config",
             "properties": {
+                "aging_expiry_d": {
+                    "default": 90,
+                    "description": "number_manager aging expiry in days",
+                    "name": "aging_expiry_d",
+                    "type": "integer"
+                },
                 "allowed_features": {
                     "default": [
                         "cnam",
@@ -10263,6 +10269,12 @@
                     "description": "number_manager released state",
                     "name": "released_state",
                     "type": "string"
+                },
+                "should_age": {
+                    "default": false,
+                    "description": "number_manager should age",
+                    "name": "should_age",
+                    "type": "boolean"
                 },
                 "should_permanently_delete": {
                     "description": "number_manager should permanently delete",

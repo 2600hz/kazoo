@@ -4,35 +4,30 @@
         ,released_state/0, released_state/1
         ,default_locality_url/0, default_locality_url/1
         ,locality_url/0, locality_url/1
+        ,should_age/0
         ]).
 
 -include("knm.hrl").
 
 -define(LOCALITY_CONFIG_CAT, <<"number_manager.locality">>).
 
+-spec should_age() -> boolean().
+should_age() ->
+    kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_age">>, 'false').
+
 -spec should_permanently_delete() -> boolean().
 -spec should_permanently_delete(boolean()) -> boolean().
--ifdef(TEST).
-should_permanently_delete() -> 'false'.
-should_permanently_delete(Default) -> Default.
--else.
 should_permanently_delete() ->
     should_permanently_delete('false').
 should_permanently_delete(Default) ->
     kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_permanently_delete">>, Default).
--endif.
 
 -spec released_state() -> ne_binary().
 -spec released_state(ne_binary()) -> ne_binary().
 released_state() ->
     released_state(?NUMBER_STATE_AVAILABLE).
-
--ifdef(TEST).
-released_state(Default) -> Default.
--else.
 released_state(Default) ->
     kapps_config:get_binary(?KNM_CONFIG_CAT, <<"released_state">>, Default).
--endif.
 
 -spec default_locality_url() -> api_binary().
 -spec default_locality_url(api_binary()) -> api_binary().
