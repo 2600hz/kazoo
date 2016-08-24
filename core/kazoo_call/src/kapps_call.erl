@@ -1191,11 +1191,13 @@ start_recording(Data, Call) ->
 -spec stop_recording(call()) -> call().
 stop_recording(OriginalCall) ->
     case retrieve_recording(OriginalCall) of
-        {'ok', {_MediaName, RecorderPid}, Call} ->
-            kz_media:stop_recording(RecorderPid),
+        {'ok', {MediaName, _RecorderPid}, Call} ->
+            kapps_call_command:stop_record_call([{<<"Media-Name">>, MediaName}], Call),
             Call;
         {'empty', Call} ->
-            lager:debug("no recording to stop"),
+            MediaName = custom_channel_var(<<"Media-Name">>, Call),
+            API = props:filter_undefined([{<<"Media-Name">>, MediaName}]),
+            kapps_call_command:stop_record_call(API, Call),
             Call
     end.
 
