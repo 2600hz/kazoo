@@ -66,7 +66,7 @@
 
 -export([queue/1, queue_v/1
         ,error/1, error_v/1
-        ,dialplan/1, dialplan/2
+        ,build_command/1, build_command/2
         ]).
 
 %% API Helpers
@@ -1065,17 +1065,17 @@ publish_command(CtrlQ, JObj) ->
     publish_command(CtrlQ, kz_json:to_proplist(JObj)).
 
 publish_command(CtrlQ, Prop, DPApp) ->
-    {'ok', Payload} = dialplan(Prop, DPApp),
+    {'ok', Payload} = build_command(Prop, DPApp),
     amqp_util:callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE).
 
--spec dialplan(api_terms()) -> {'ok', api_terms()}.
-dialplan(Prop) when is_list(Prop) ->
-    dialplan(Prop, props:get_value(<<"Application-Name">>, Prop));
-dialplan(JObj) ->
-    dialplan(kz_json:to_proplist(JObj)).
+-spec build_command(api_terms()) -> {'ok', api_terms()}.
+build_command(Prop) when is_list(Prop) ->
+    build_command(Prop, props:get_value(<<"Application-Name">>, Prop));
+build_command(JObj) ->
+    build_command(kz_json:to_proplist(JObj)).
 
--spec dialplan(api_terms(), ne_binary()) -> {'ok', api_terms()}.
-dialplan(Prop, DPApp) when is_list(Prop) ->
+-spec build_command(api_terms(), ne_binary()) -> {'ok', api_terms()}.
+build_command(Prop, DPApp) when is_list(Prop) ->
     try kz_util:to_atom(<<DPApp/binary>>) of
         BuildMsgFun ->
             case lists:keyfind(BuildMsgFun, 1, ?MODULE:module_info('exports')) of
@@ -1087,8 +1087,8 @@ dialplan(Prop, DPApp) when is_list(Prop) ->
     catch
         _:R -> throw({R, Prop})
     end;
-dialplan(JObj, DPApp) ->
-    dialplan(kz_json:to_proplist(JObj), DPApp).
+build_command(JObj, DPApp) ->
+    build_command(kz_json:to_proplist(JObj), DPApp).
 
 %% sending DP actions to CallControl Queue
 -spec publish_action(ne_binary(), iodata()) -> 'ok'.

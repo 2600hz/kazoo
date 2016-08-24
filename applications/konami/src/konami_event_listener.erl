@@ -60,7 +60,7 @@
                       ]
                      }
                     ,{{?MODULE, 'handle_metaflow_req'}
-                     ,[{<<"metaflow">>, <<"req">>}]
+                     ,[{<<"metaflow">>, <<"action">>}]
                      }
                     ,{{?MODULE, 'handle_konami'}
                      ,[{?APP_NAME, <<"*">>}]
