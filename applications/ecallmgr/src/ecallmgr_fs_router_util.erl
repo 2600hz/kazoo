@@ -48,7 +48,8 @@ search_for_route(Section, Node, FetchId, CallId, Props, 'true' = Authz) ->
 
 -spec do_search_for_route(atom(), atom(), ne_binary(), ne_binary(), kz_proplist(), boolean()) -> search_ret().
 do_search_for_route(Section, Node, FetchId, CallId, Props, Authz) ->
-    ReqResp = kz_amqp_worker:call(route_req(CallId, FetchId, Props, Node)
+    Request = route_req(CallId, FetchId, Props, Node),
+    ReqResp = kz_amqp_worker:call(Request
                                  ,fun kapi_route:publish_req/1
                                  ,fun kapi_route:is_actionable_resp/1
                                  ,ecallmgr_fs_node:fetch_timeout(Node)
@@ -127,32 +128,33 @@ route_req(CallId, FetchId, Props, Node) ->
     SwitchURL = ecallmgr_fs_node:sip_url(Node),
     [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
     SwitchURI = <<"sip:", SwitchURIHost/binary>>,
-    [{<<"Msg-ID">>, FetchId}
-    ,{<<"Call-ID">>, CallId}
-    ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
-    ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
-    ,{<<"Caller-ID-Name">>, caller_id_name(Props)}
-    ,{<<"Caller-ID-Number">>, caller_id_number(Props)}
-    ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
-    ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
-    ,{<<"User-Agent">>, kzd_freeswitch:user_agent(Props)}
-    ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
-    ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
-    ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
-    ,{<<"Body">>, get_body(Props) }
-    ,{<<"SIP-Request-Host">>, props:get_value(<<"variable_sip_req_host">>, Props)}
-    ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
-    ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
-    ,{<<"Switch-URL">>, SwitchURL}
-    ,{<<"Switch-URI">>, SwitchURI}
-    ,{<<"Custom-Channel-Vars">>, kz_json:from_list(route_req_ccvs(FetchId, Props))}
-    ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
-    ,{<<"Resource-Type">>, kzd_freeswitch:resource_type(Props, <<"audio">>)}
-    ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
-    ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
-    ,{<<"Custom-Routing-Headers">>, props:get_value(<<"Custom-Routing-Headers">>, Props)}
-     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-    ].
+    props:filter_empty(
+      [{<<"Msg-ID">>, FetchId}
+      ,{<<"Call-ID">>, CallId}
+      ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
+      ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
+      ,{<<"Caller-ID-Name">>, caller_id_name(Props)}
+      ,{<<"Caller-ID-Number">>, caller_id_number(Props)}
+      ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
+      ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
+      ,{<<"User-Agent">>, kzd_freeswitch:user_agent(Props)}
+      ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
+      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
+      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
+      ,{<<"Body">>, get_body(Props) }
+      ,{<<"SIP-Request-Host">>, props:get_value(<<"variable_sip_req_host">>, Props)}
+      ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
+      ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
+      ,{<<"Switch-URL">>, SwitchURL}
+      ,{<<"Switch-URI">>, SwitchURI}
+      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(route_req_ccvs(FetchId, Props))}
+      ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
+      ,{<<"Resource-Type">>, kzd_freeswitch:resource_type(Props, <<"audio">>)}
+      ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
+      ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
+      ,{<<"Custom-Routing-Headers">>, props:get_value(<<"Custom-Routing-Headers">>, Props)}
+       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+      ]).
 
 -spec route_req_ccvs(ne_binary(), kz_proplist()) -> kz_proplist().
 route_req_ccvs(FetchId, Props) ->
