@@ -46,6 +46,8 @@
         ,ccv/2, ccv/3
 
         ,is_loopback/1, loopback_other_leg/1, loopback_leg_name/1
+
+        ,media_recorder/1
         ]).
 
 -include("kz_documents.hrl").
@@ -298,3 +300,6 @@ is_loopback(Props) ->
 -spec loopback_other_leg(kz_proplist()) -> api_binary().
 loopback_other_leg(Props) ->
     props:get_value(<<"variable_other_loopback_leg_uuid">>, Props).
+
+-spec media_recorder(kz_proplist()) -> api_binary().
+media_recorder(Props) -> ccv(Props, <<"Media-Recorder">>).
