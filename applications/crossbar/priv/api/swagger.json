@@ -2639,6 +2639,7 @@
                     "default": [],
                     "description": "Defines conference numbers that can be used by members or moderators",
                     "items": {
+                        "regex": "^\\d+$",
                         "required": false,
                         "type": "string"
                     },
@@ -2676,6 +2677,7 @@
                             "default": [],
                             "description": "Defines the conference number(s) for members",
                             "items": {
+                                "regex": "^\\d+$",
                                 "required": false,
                                 "type": "string"
                             },
@@ -2689,6 +2691,7 @@
                             "default": [],
                             "description": "Defines the pin number(s) for members",
                             "items": {
+                                "regex": "^\\d+$",
                                 "required": false,
                                 "type": "string"
                             },
@@ -2723,6 +2726,7 @@
                             "default": [],
                             "description": "Defines the conference number(s) for moderators",
                             "items": {
+                                "regex": "^\\d+$",
                                 "required": false,
                                 "type": "string"
                             },
@@ -2735,6 +2739,7 @@
                             "default": [],
                             "description": "Defines the pin number(s) for moderators",
                             "items": {
+                                "regex": "^\\d+$",
                                 "required": false,
                                 "type": "string"
                             },

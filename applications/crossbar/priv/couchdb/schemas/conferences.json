@@ -8,8 +8,8 @@
             "default": [],
             "description": "Defines conference numbers that can be used by members or moderators",
             "items": {
-                "required": false,
                 "regex": "^\\d+$",
+                "required": false,
                 "type": "string"
             },
             "name": "General Call In Numbers",
@@ -46,8 +46,8 @@
                     "default": [],
                     "description": "Defines the conference number(s) for members",
                     "items": {
-                        "required": false,
                         "regex": "^\\d+$",
+                        "required": false,
                         "type": "string"
                     },
                     "minItems": 0,
@@ -60,8 +60,8 @@
                     "default": [],
                     "description": "Defines the pin number(s) for members",
                     "items": {
-                        "required": false,
                         "regex": "^\\d+$",
+                        "required": false,
                         "type": "string"
                     },
                     "name": "Pin Numbers",
@@ -95,8 +95,8 @@
                     "default": [],
                     "description": "Defines the conference number(s) for moderators",
                     "items": {
-                        "required": false,
                         "regex": "^\\d+$",
+                        "required": false,
                         "type": "string"
                     },
                     "name": "Call In Numbers",
@@ -108,8 +108,8 @@
                     "default": [],
                     "description": "Defines the pin number(s) for moderators",
                     "items": {
-                        "required": false,
                         "regex": "^\\d+$",
+                        "required": false,
                         "type": "string"
                     },
                     "name": "Pin Numbers",
