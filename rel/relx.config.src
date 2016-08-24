@@ -12,7 +12,7 @@ Filter = ['rabbitmq_codegen'
          ],
 Base = lists:filter(fun(A) -> not lists:member(A, Filter) end, Apps ++ Core ++ Deps),
 Based = [{A, 'load'} || A <- lists:sort(Base) ],
-Included = [runtime_tools,wx,observer,orber],
+Included = [runtime_tools,wx,observer],
 
 Config = "/etc/kazoo/app.config", %% SHOULD rename app.config to sys.config as OTP prefers it.
 case filelib:is_regular(Config) of
