@@ -296,6 +296,9 @@
                 "notify": {
                     "type": "worker"
                 },
+                "recordings": {
+                    "type": "worker"
+                },
                 "resource": {
                     "type": "worker"
                 },

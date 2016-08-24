@@ -30,20 +30,29 @@
 -define(METAFLOW_ACTION_HEADERS, [<<"Action">>, <<"Call-ID">>]).
 -define(OPTIONAL_METAFLOW_ACTION_HEADERS, [<<"Data">>]).
 -define(METAFLOW_ACTION_VALUES, [{<<"Event-Category">>, <<"metaflow">>}
-				,{<<"Event-Name">>, <<"req">>}
+				,{<<"Event-Name">>, <<"action">>}
 				,{<<"Action">>, [<<"transfer">>
 						,<<"hangup">>
 						,<<"callflow">>
 						,<<"break">>
 						,<<"intercept">>
 						,<<"move">>
+						,<<"park">>
+						,<<"unpark">>
+						,<<"play">>
+						,<<"say">>
+						,<<"audio_level">>
+						,<<"hold">>
+						,<<"record_call">>
+						,<<"resume">>
+						,<<"tts">>
 						]
 				 }
 				]).
 -define(METAFLOW_ACTION_TYPES, []).
 
 -define(METAFLOW_ACTION_ROUTING_KEY(CallId, Action)
-       ,<<"metaflow.req.", (amqp_util:encode(CallId))/binary, ".", (Action)/binary>>
+       ,<<"metaflow.action.", (amqp_util:encode(CallId))/binary, ".", (Action)/binary>>
        ).
 
 %% Metaflow Bind
