@@ -92,6 +92,7 @@ build_offnet_request(Data, Call) ->
       ,{<<"Outbound-Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
       ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
       ,{<<"Call-ID">>, doodle_exe:callid(Call)}
+      ,{<<"Control-Queue">>, doodle_exe:control_queue(Call)}
       ,{<<"Presence-ID">>, kz_attributes:presence_id(Call)}
       ,{<<"Account-ID">>, kapps_call:account_id(Call)}
       ,{<<"Account-Realm">>, kapps_call:from_realm(Call)}
