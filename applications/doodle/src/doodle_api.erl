@@ -43,7 +43,7 @@ process_sms_api_document(FetchId, <<_:7/binary, CallId/binary>> = _Id, APIJObj) 
 send_route_win(FetchId, CallId, JObj) ->
     ServerQ = kz_json:get_value(<<"Server-ID">>, JObj),
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
-    Win = [{<<"Msg-ID">>, FetchId}
+    Win = [{<<"Msg-ID">>, CallId}
           ,{<<"Call-ID">>, CallId}
           ,{<<"Control-Queue">>, <<"chatplan_ignored">>}
           ,{<<"Custom-Channel-Vars">>, CCVs}
