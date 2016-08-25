@@ -799,6 +799,7 @@ maybe_start_metaflow(Call, Endpoint) ->
             Id = kz_json:get_first_defined([<<"_id">>, <<"Endpoint-ID">>], Endpoint),
             API = props:filter_undefined(
                     [{<<"Endpoint-ID">>, Id}
+                    ,{<<"Account-ID">>, kapps_call:account_id(Call)}
                     ,{<<"Call">>, kapps_call:to_json(Call)}
                     ,{<<"Numbers">>, kz_json:get_value(<<"numbers">>, JObj)}
                     ,{<<"Patterns">>, kz_json:get_value(<<"patterns">>, JObj)}
