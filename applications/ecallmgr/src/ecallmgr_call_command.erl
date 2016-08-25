@@ -1311,9 +1311,35 @@ tts(Node, UUID, JObj) ->
 %% Playback command helpers
 %% @end
 %%--------------------------------------------------------------------
--spec play(atom(), ne_binary(), kz_json:object()) ->
-                  {ne_binary(), ne_binary()}.
+-spec play(atom(), ne_binary(), kz_json:object()) -> fs_apps().
 play(Node, UUID, JObj) ->
+    [play_vars(Node, UUID, JObj)
+    ,play_app(UUID, JObj)
+    ].
+
+-spec play_app(ne_binary(), kz_json:object()) -> fs_app().
+play_app(UUID, JObj) ->
+    MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
+    F = ecallmgr_util:media_path(MediaName, 'new', UUID, JObj),
+    %% if Leg is set, use uuid_broadcast; otherwise use playback
+    case ecallmgr_fs_channel:is_bridged(UUID) of
+        'false' -> {<<"playback">>, F};
+        'true' -> play_bridged(UUID, JObj, F)
+    end.
+
+-spec play_bridged(ne_binary(), kz_json:object(), ne_binary()) -> fs_app().
+play_bridged(UUID, JObj, F) ->
+    case kz_json:get_value(<<"Leg">>, JObj) of
+        <<"self">> ->  {<<"set">>, list_to_binary([<<"api_result=${uuid_broadcast(">>, UUID, " '", F, <<"' aleg">>, ")}"])};
+        <<"A">> ->     {<<"set">>, list_to_binary([<<"api_result=${uuid_broadcast(">>, UUID, " '", F, <<"' aleg">>, ")}"])};
+        <<"peer">> ->  {<<"set">>, list_to_binary([<<"api_result=${uuid_broadcast(">>, UUID, " '", F, <<"' bleg">>, ")}"])};
+        <<"B">> ->     {<<"set">>, list_to_binary([<<"api_result=${uuid_broadcast(">>, UUID, " '", F, <<"' bleg">>, ")}"])};
+        <<"Both">> ->  {<<"set">>, list_to_binary([<<"api_result=${uuid_broadcast(">>, UUID, " '", F, <<"' both">>, ")}"])};
+        'undefined' -> {<<"set">>, list_to_binary([<<"api_result=${uuid_broadcast(">>, UUID, " '", F, <<"' both">>, ")}"])}
+    end.
+
+-spec play_vars(atom(), ne_binary(), kz_json:object()) -> fs_app().
+play_vars(Node, UUID, JObj) ->
     Routines = [fun(V) ->
                         case kz_json:get_value(<<"Group-ID">>, JObj) of
                             'undefined' -> V;
@@ -1328,26 +1354,8 @@ play(Node, UUID, JObj) ->
                 end
                ],
     Vars = lists:foldl(fun(F, V) -> F(V) end, [], Routines),
-    _ = ecallmgr_fs_command:set(Node, UUID, Vars),
-
-    MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
-    F = ecallmgr_util:media_path(MediaName, 'new', UUID, JObj),
-
-    %% if Leg is set, use uuid_broadcast; otherwise use playback
-    case ecallmgr_fs_channel:is_bridged(UUID) of
-        'false' -> {<<"playback">>, F};
-        'true' -> play_bridged(UUID, JObj, F)
-    end.
-
--spec play_bridged(ne_binary(), kz_json:object(), ne_binary()) ->
-                          {ne_binary(), ne_binary()}.
-play_bridged(UUID, JObj, F) ->
-    case kz_json:get_value(<<"Leg">>, JObj) of
-        <<"B">> ->     {<<"broadcast">>, list_to_binary([UUID, <<" '">>, F, <<"' bleg">>])};
-        <<"A">> ->     {<<"broadcast">>, list_to_binary([UUID, <<" '">>, F, <<"' aleg">>])};
-        <<"Both">> ->  {<<"broadcast">>, list_to_binary([UUID, <<" '">>, F, <<"' both">>])};
-        'undefined' -> {<<"broadcast">>, list_to_binary([UUID, <<" '">>, F, <<"' both">>])}
-    end.
+    Args = ecallmgr_util:process_fs_kv(Node, UUID, Vars, 'set'),
+    {<<"kz_multiset">>, ecallmgr_util:fs_args_to_binary(Args)}.
 
 %%--------------------------------------------------------------------
 %% @private
