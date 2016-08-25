@@ -40,7 +40,7 @@ process_sms_api_document(FetchId, <<_:7/binary, CallId/binary>> = _Id, APIJObj) 
     end.
 
 -spec send_route_win(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-send_route_win(FetchId, CallId, JObj) ->
+send_route_win(_FetchId, CallId, JObj) ->
     ServerQ = wh_json:get_value(<<"Server-ID">>, JObj),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
     Win = [{<<"Msg-ID">>, CallId}
