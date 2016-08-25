@@ -449,6 +449,7 @@ maybe_fetch_conference_profile(Node, Id, Profile) ->
                       {'ok', Resp} = ecallmgr_fs_xml:not_found(),
                       Resp
               end,
+    lager:error("CONFIG:~p", [XmlResp]),
     send_conference_profile_xml(Node, Id, XmlResp).
 
 -spec send_conference_profile_xml(atom(), ne_binary(), iolist()) -> fs_sendmsg_ret().
