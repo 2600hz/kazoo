@@ -1032,18 +1032,18 @@ store_maybe_push(Db, Doc) ->
             put({Db,1}, [Doc]),
             {'ok', Doc};
         BelowMax ->
-            erase(Db),
-            Key = {Db, BelowMax},
-            Docs = get(Key),
-            erase(Key),
-            erase(Db),
-            kz_datamgr:save_docs(Db, [Doc|Docs]);
+            store_doc(Db, Doc, BelowMax),
+            push_stored(Db, {Db, BelowMax + 1});
         Count ->
-            NewCount = Count + 1,
-            put(Db, NewCount),
-            put({Db,NewCount}, [Doc | get({Db,Count})]),
+            store_doc(Db, Doc, Count),
             {'ok', Doc}
     end.
+
+store_doc(Db, Doc, Count) ->
+    NewCount = Count + 1,
+    put(Db, NewCount),
+    put({Db,NewCount}, [Doc | get({Db,Count})]),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1059,8 +1059,9 @@ push_stored() ->
     lists:foreach(fun push_stored/1, DBs).
 
 push_stored(Db) ->
-    Count = get(Db),
-    Key = {Db, Count},
+    push_stored(Db, {Db, get(Db)}).
+
+push_stored(Db, Key) ->
     Docs = get(Key),
     erase(Key),
     erase(Db),
