@@ -65,14 +65,15 @@ handle_result_status(Call, <<"pending">>) ->
     doodle_util:maybe_reschedule_sms(Call);
 handle_result_status(Call, _Status) ->
     lager:info("completed successful message to the device"),
-    doodle_exe:continue(Call).
+    doodle_exe:stop(Call).
 
 -spec handle_bridge_failure(api_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 handle_bridge_failure(Cause, Code, Call) ->
     lager:info("offnet request error, attempting to find failure branch for ~s:~s", [Code, Cause]),
     case doodle_util:handle_bridge_failure(Cause, Code, Call) of
         'ok' ->
-            lager:debug("found bridge failure child");
+            lager:debug("found bridge failure child"),
+            doodle_exe:stop(Call);
         'not_found' ->
             doodle_util:maybe_reschedule_sms(Code, Cause, Call)
     end.
