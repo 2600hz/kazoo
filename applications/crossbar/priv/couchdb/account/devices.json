@@ -9,6 +9,7 @@
                 "  emit(doc._id, {",
                 "    'id': doc._id,",
                 "    'name': doc.name,",
+                "    'username': (doc.sip) ? doc.sip.username : undefined,",
                 "    'mac_address': doc.mac_address || '',",
                 "    'owner_id': doc.owner_id,",
                 "    'enabled': doc.enabled,",
