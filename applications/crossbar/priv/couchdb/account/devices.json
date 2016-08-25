@@ -3,7 +3,20 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'mac_address': doc.mac_address || '', 'owner_id': doc.owner_id, 'enabled':doc.enabled, 'device_type':doc.device_type || 'sip_device', 'mobile': doc.mobile}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'device' || doc.pvt_deleted) return;",
+                "  emit(doc._id, {",
+                "    'id': doc._id,",
+                "    'name': doc.name,",
+                "    'mac_address': doc.mac_address || '',",
+                "    'owner_id': doc.owner_id,",
+                "    'enabled': doc.enabled,",
+                "    'device_type': doc.device_type || 'sip_device',",
+                "    'mobile': doc.mobile",
+                "  });",
+                "}"
+            ]
         },
         "listing_by_macaddress": {
             "map": "function (doc) {if (doc.pvt_type != 'device' || doc.pvt_deleted) return; if(doc.mac_address) {emit(doc.mac_address, null)}}"
