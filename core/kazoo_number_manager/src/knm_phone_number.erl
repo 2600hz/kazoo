@@ -274,22 +274,19 @@ to_public_json(Number) ->
     ReadOnly =
         kz_json:from_list(
           props:filter_empty(
-            [ {<<"created">>, kz_doc:created(JObj)}
-            , {<<"modified">>, kz_doc:modified(JObj)}
-            , State
-            , UsedBy
-            , Features
+            [{<<"created">>, kz_doc:created(JObj)}
+            ,{<<"modified">>, kz_doc:modified(JObj)}
+            ,State
+            ,UsedBy
+            ,Features
             ])
          ),
-    Root =
-        kz_json:set_values(
-          props:filter_empty(
-            [ State
-            , UsedBy
-            , Features
-            ])
-                          ,kz_json:public_fields(JObj)
-         ),
+    Values = props:filter_empty(
+               [State
+               ,UsedBy
+               ,Features
+               ]),
+    Root = kz_json:set_values(Values, kz_json:public_fields(JObj)),
     kz_json:set_value(<<"_read_only">>, ReadOnly, Root).
 
 %%--------------------------------------------------------------------
