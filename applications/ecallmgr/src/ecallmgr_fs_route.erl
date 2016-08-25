@@ -123,7 +123,8 @@ handle_cast(_Msg, State) ->
 handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}, #state{node=Node}=State) ->
     EventName = props:get_value(<<"Event-Name">>, FSData),
     SubClass = props:get_value(<<"Event-Subclass">>, FSData),
-    Context = props:get_value(<<"Hunt-Context">>, FSData),
+    DefContext = props:get_value(<<"context">>, FSData, ?DEFAULT_FREESWITCH_CONTEXT),
+    Context = props:get_value(<<"Hunt-Context">>, FSData, DefContext),
     Msg = {'route', Section, EventName, SubClass, Context, FSId, CallId, FSData},
     _ = gproc:send({'p', 'l', ?FS_ROUTE_MSG(Node, Section, Context)}, Msg),
     _ = gproc:send({'p', 'l', ?FS_ROUTE_MSG(Node, Section, <<"*">>)}, Msg),

@@ -218,7 +218,7 @@ do_process_route_req(Section, Node, FetchId, MsgId, Props) ->
 
 -spec start_message_handling(atom(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 start_message_handling(_Node, _FetchId, MsgId, JObj) ->
-    ServerQ = kz_json:get_value(<<"Server-ID">>, JObj),
+    ServerQ = kz_api:server_id(JObj),
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     Win = [{<<"Msg-ID">>, MsgId}
           ,{<<"Call-ID">>, MsgId}
