@@ -21,6 +21,12 @@
                         "name": "{ConfigName}",
                         "type": "array"
                     }
+                },
+                "{ControlsName}": {
+                    "properties": {
+                        "description": "conferences {ControlsName}",
+                        "name": "{ControlsName}"
+                    }
                 }
             }
         },
@@ -57,6 +63,7 @@
                 "default": {
                     "properties": {
                         "default": {
+                            "caller-controls": "default",
                             "comfort-noise": 1000,
                             "energy-level": 20,
                             "enter-sound": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
@@ -72,6 +79,7 @@
                 "page": {
                     "properties": {
                         "default": {
+                            "caller-controls": "default",
                             "comfort-noise": 1000,
                             "energy-level": 20,
                             "enter-sound": "",
