@@ -365,10 +365,10 @@ start_call_handling(Node, FetchId, CallId, JObj) ->
     ecallmgr_fs_command:set(Node, CallId, wh_json:to_proplist(CCVs)).
 
 -spec start_message_handling(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-start_message_handling(_Node, _FetchId, CallId, JObj) ->
+start_message_handling(_Node, FetchId, CallId, JObj) ->
     ServerQ = wh_json:get_value(<<"Server-ID">>, JObj),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
-    Win = [{<<"Msg-ID">>, CallId}
+    Win = [{<<"Msg-ID">>, FetchId}
            ,{<<"Call-ID">>, CallId}
            ,{<<"Control-Queue">>, <<"chatplan_ignored">>}
            ,{<<"Custom-Channel-Vars">>, CCVs}
