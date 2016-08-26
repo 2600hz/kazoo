@@ -15,6 +15,7 @@
 -export([get_fs_kv/2, get_fs_kv/3, get_fs_key_and_value/3]).
 -export([get_fs_key/1]).
 -export([process_fs_kv/4, format_fs_kv/4, fs_args_to_binary/1]).
+-export([multi_set_args/3, multi_unset_args/3]).
 -export([get_expires/1]).
 -export([get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, get_orig_port/1]).
@@ -391,6 +392,14 @@ is_node_up(Node, UUID) ->
 %% set channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
+-spec multi_set_args(atom(), ne_binary(), kz_proplist()) -> binary().
+multi_set_args(Node, UUID, KVs) ->
+    fs_args_to_binary(process_fs_kv(Node, UUID, KVs, 'set')).
+
+-spec multi_unset_args(atom(), ne_binary(), kz_proplist()) -> binary().
+multi_unset_args(Node, UUID, KVs) ->
+    fs_args_to_binary(process_fs_kv(Node, UUID, KVs, 'unset')).
+
 -spec fs_args_to_binary(list()) -> binary().
 fs_args_to_binary([_]=Args) ->
     list_to_binary(Args);

@@ -1330,12 +1330,12 @@ play_app(UUID, JObj) ->
 -spec play_bridged(ne_binary(), kz_json:object(), ne_binary()) -> fs_app().
 play_bridged(UUID, JObj, F) ->
     case kz_json:get_value(<<"Leg">>, JObj) of
-        <<"self">> ->  {<<"set">>, list_to_binary([<<"api_result=${uuid_broadcast(">>, UUID, " '", F, <<"' aleg">>, ")}"])};
-        <<"A">> ->     {<<"set">>, list_to_binary([<<"api_result=${uuid_broadcast(">>, UUID, " '", F, <<"' aleg">>, ")}"])};
-        <<"peer">> ->  {<<"set">>, list_to_binary([<<"api_result=${uuid_broadcast(">>, UUID, " '", F, <<"' bleg">>, ")}"])};
-        <<"B">> ->     {<<"set">>, list_to_binary([<<"api_result=${uuid_broadcast(">>, UUID, " '", F, <<"' bleg">>, ")}"])};
-        <<"Both">> ->  {<<"set">>, list_to_binary([<<"api_result=${uuid_broadcast(">>, UUID, " '", F, <<"' both">>, ")}"])};
-        'undefined' -> {<<"set">>, list_to_binary([<<"api_result=${uuid_broadcast(">>, UUID, " '", F, <<"' both">>, ")}"])}
+        <<"self">> ->  {<<"broadcast">>, list_to_binary([UUID, " '", F, <<"' aleg">>])};
+        <<"A">> ->     {<<"broadcast">>, list_to_binary([UUID, " '", F, <<"' aleg">>])};
+        <<"peer">> ->  {<<"broadcast">>, list_to_binary([UUID, " '", F, <<"' bleg">>])};
+        <<"B">> ->     {<<"broadcast">>, list_to_binary([UUID, " '", F, <<"' bleg">>])};
+        <<"Both">> ->  {<<"broadcast">>, list_to_binary([UUID, " '", F, <<"' both">>])};
+        'undefined' -> {<<"broadcast">>, list_to_binary([UUID, " '", F, <<"' both">>])}
     end.
 
 -spec play_vars(atom(), ne_binary(), kz_json:object()) -> fs_app().
