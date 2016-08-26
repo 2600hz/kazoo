@@ -29,14 +29,8 @@ schema_doc(Name, Path) ->
 
 ensure_id(Name, JObj) ->
     ID = <<"system_config.", Name/binary>>,
-    case kz_doc:id(JObj) of
-        ID -> JObj;
-        _ ->
-            kz_json:set_value(<<"description">>
-                             ,<<"Schema for ", Name/binary, " system_config">>
-                             ,kz_doc:set_id(JObj, ID)
-                             )
-    end.
+    Description = <<"Schema for ", Name/binary, " system_config">>,
+    kz_json:set_value(<<"description">>, Description, kz_doc:set_id(JObj, ID)).
 
 -spec process_project() -> kz_json:objects().
 process_project() ->
