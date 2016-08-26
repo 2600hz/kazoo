@@ -11,7 +11,7 @@
                 "description": "CIDR IP to use on access lists",
                 "type": "string"
             },
-            "required": true,
+            "minItems": 1,
             "type": "array"
         },
         "order": {
