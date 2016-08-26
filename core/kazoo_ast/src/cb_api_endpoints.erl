@@ -280,7 +280,7 @@ to_swagger_definitions() ->
 -spec process_schema(ne_binary(), kz_json:object()) -> kz_json:object().
 process_schema(Filename, Definitions) ->
     {'ok', Bin} = file:read_file(Filename),
-    JObj = kz_json:delete_keys([<<"_id">>, <<"$schema">>], kz_json:decode(Bin)),
+    JObj = kz_json:delete_keys([<<"_id">>, <<"$schema">>, <<"name">>], kz_json:decode(Bin)),
     Name = kz_util:to_binary(filename:basename(Filename, ".json")),
     kz_json:set_value(Name, JObj, Definitions).
 
