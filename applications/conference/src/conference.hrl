@@ -55,5 +55,65 @@
 
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
 
+-define(DEFAULT_CALLER_CONTROLS, [
+    ["mute", "*1"],
+    ["mute on", "*2"],
+    ["mute off", "*3"],
+    ["deaf mute", ""],
+    ["energy up", ""],
+    ["energy dn", ""],
+    ["energy equ", ""],
+    ["vol talk up", ""],
+    ["vol talk dn", ""],
+    ["vol talk zero", ""],
+    ["vol listen up", ""],
+    ["vol listen dn", ""],
+    ["vol listen zero", ""],
+    ["hangup", "#"],
+    ["event", "", ""],
+    ["lock", ""],
+    ["transfer", ""],
+    ["execute_application", "", ""],
+    ["floor", ""],
+    ["vid-floor", ""],
+    ["vid-floor-force", ""],
+    ["vmute", ""],
+    ["vmute on", ""],
+    ["vmute off", ""],
+    ["vmute snap", ""],
+    ["vmute snapoff", ""]
+    ]
+).
+
+-define(DEFAULT_MODERATOR_CONTROLS, [
+    ["mute", "*1"],
+    ["mute on", "*2"],
+    ["mute off", "*3"],
+    ["deaf mute", ""],
+    ["energy up", ""],
+    ["energy dn", ""],
+    ["energy equ", ""],
+    ["vol talk up", ""],
+    ["vol talk dn", ""],
+    ["vol talk zero", ""],
+    ["vol listen up", ""],
+    ["vol listen dn", ""],
+    ["vol listen zero", ""],
+    ["hangup", "#"],
+    ["event", "", ""],
+    ["lock", ""],
+    ["transfer", ""],
+    ["execute_application", "", ""],
+    ["floor", ""],
+    ["vid-floor", ""],
+    ["vid-floor-force", ""],
+    ["vmute", ""],
+    ["vmute on", ""],
+    ["vmute off", ""],
+    ["vmute snap", ""],
+    ["vmute snapoff", ""]
+    ]
+).
+
 -define(CONFERENCE_HRL, 'true').
 -endif.

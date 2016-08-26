@@ -167,35 +167,7 @@ get_default_caller_controls() ->
 
 %% see: https://freeswitch.org/confluence/display/FREESWITCH/mod_conference
 default_caller_controls() ->
-    Controls = [
-        ["mute", "*1"],
-        ["mute on", "*2"],
-        ["mute off", "*3"],
-        ["deaf mute", ""],
-        ["energy up", ""],
-        ["energy dn", ""],
-        ["energy equ", ""],
-        ["vol talk up", ""],
-        ["vol talk dn", ""],
-        ["vol talk zero", ""],
-        ["vol listen up", ""],
-        ["vol listen dn", ""],
-        ["vol listen zero", ""],
-        ["hangup", "#"],
-        ["event", "", ""],
-        ["lock", ""],
-        ["transfer", ""],
-        ["execute_application", "", ""],
-        ["floor", ""],
-        ["vid-floor", ""],
-        ["vid-floor-force", ""],
-        ["vmute", ""],
-        ["vmute on", ""],
-        ["vmute off", ""],
-        ["vmute snap", ""],
-        ["vmute snapoff", ""]
-    ],
-    [ controls_to_json(Control) || Control <- Controls ].
+    [ controls_to_json(Control) || Control <- ?DEFAULT_CALLER_CONTROLS ].
 
 controls_to_json([Action, Digits]) ->
     kz_json:from_list([{<<"action">>, list_to_binary(Action)}, {<<"digits">>, list_to_binary(Digits)}]);
