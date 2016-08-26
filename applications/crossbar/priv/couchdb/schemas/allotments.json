@@ -29,25 +29,25 @@
                         "type": "string"
                     },
                     "name": "Group consuming",
-                    "requred": false,
+                    "required": false,
                     "type": "array"
                 },
                 "increment": {
-                    "minimym": 1,
+                    "minimum": 1,
                     "name": "Increment",
-                    "requred": false,
+                    "required": false,
                     "type": "integer"
                 },
                 "minimum": {
-                    "minimym": 0,
+                    "minimum": 0,
                     "name": "Increment",
-                    "requred": false,
+                    "required": false,
                     "type": "integer"
                 },
                 "no_consume_time": {
-                    "minimym": 0,
+                    "minimum": 0,
                     "name": "No consume time",
-                    "requred": false,
+                    "required": false,
                     "type": "integer"
                 }
             }

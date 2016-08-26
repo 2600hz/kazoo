@@ -1,7 +1,7 @@
 {
+    "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "connectivity",
     "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
-    "id": "http://json-schema.org/draft-03/schema#",
     "properties": {
         "account": {
             "description": "Information that applies to the account as a whole",

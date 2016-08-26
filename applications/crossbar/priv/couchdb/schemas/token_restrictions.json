@@ -47,12 +47,12 @@
                                                             "type": "string"
                                                         },
                                                         "name": "verbs",
-                                                        "requred": false,
+                                                        "required": false,
                                                         "type": "array",
                                                         "uniqueItems": true
                                                     }
                                                 },
-                                                "requred": false,
+                                                "required": false,
                                                 "type": "object"
                                             }
                                         },

@@ -14,7 +14,6 @@
                         "description": "CIDR IP to use on access lists",
                         "type": "string"
                     },
-                    "name": "CIDR",
                     "required": true,
                     "type": "array"
                 },
@@ -24,13 +23,11 @@
                         "allow,deny",
                         "deny,allow"
                     ],
-                    "name": "order",
                     "required": true,
                     "type": "string"
                 },
                 "user_agent": {
                     "description": "RegExp to match valid user agent strings",
-                    "name": "User-Agent",
                     "required": false,
                     "type": "string"
                 }
@@ -303,25 +300,25 @@
                                 "type": "string"
                             },
                             "name": "Group consuming",
-                            "requred": false,
+                            "required": false,
                             "type": "array"
                         },
                         "increment": {
-                            "minimym": 1,
+                            "minimum": 1,
                             "name": "Increment",
-                            "requred": false,
+                            "required": false,
                             "type": "integer"
                         },
                         "minimum": {
-                            "minimym": 0,
+                            "minimum": 0,
                             "name": "Increment",
-                            "requred": false,
+                            "required": false,
                             "type": "integer"
                         },
                         "no_consume_time": {
-                            "minimym": 0,
+                            "minimum": 0,
                             "name": "No consume time",
-                            "requred": false,
+                            "required": false,
                             "type": "integer"
                         }
                     }
@@ -2250,7 +2247,6 @@
         },
         "cccps": {
             "description": "Calling cards callback platform user's info",
-            "id": "http://json-schema.org/draft-03/schema#",
             "properties": {
                 "active": {
                     "default": false,
@@ -2770,7 +2766,6 @@
         },
         "connectivity": {
             "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
-            "id": "http://json-schema.org/draft-03/schema#",
             "properties": {
                 "account": {
                     "description": "Information that applies to the account as a whole",
@@ -11469,12 +11464,12 @@
                                                                     "type": "string"
                                                                 },
                                                                 "name": "verbs",
-                                                                "requred": false,
+                                                                "required": false,
                                                                 "type": "array",
                                                                 "uniqueItems": true
                                                             }
                                                         },
-                                                        "requred": false,
+                                                        "required": false,
                                                         "type": "object"
                                                     }
                                                 },
@@ -11501,7 +11496,6 @@
         },
         "trunkstore": {
             "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
-            "id": "http://json-schema.org/draft-03/schema#",
             "properties": {
                 "account": {
                     "description": "Information that applies to the account as a whole",
