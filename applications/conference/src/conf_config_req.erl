@@ -14,8 +14,16 @@
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Options) ->
     'true' = kapi_conference:config_req_v(JObj),
+    Request = kz_json:get_ne_value(<<"Request">>, JObj),
+    handle_request(Request, JObj).
+
+handle_request(<<"Conference">>, JObj) ->
     ConfigName = kz_json:get_ne_value(<<"Profile">>, JObj, ?DEFAULT_PROFILE_NAME),
-    fetch_config(JObj, ConfigName).
+    fetch_config(JObj, ConfigName);
+handle_request(<<"Controls">>, JObj) ->
+    ControlsName = kz_json:get_ne_value(<<"Controls">>, JObj),
+    Controls = kapps_config:get(?CONFIG_CAT, [<<"caller-controls">>, ControlsName]),
+    fetch_controls_config(JObj, ControlsName, Controls).
 
 -spec fetch_config(kz_json:object(), ne_binary()) -> 'ok'.
 fetch_config(JObj, ?DEFAULT_PROFILE_NAME = ConfigName) ->
@@ -33,7 +41,6 @@ fetch_config(JObj, ConfigName, 'undefined') ->
 fetch_config(JObj, ConfigName, Profile) ->
     lager:debug("profile '~s' found", [ConfigName]),
     Resp = [{<<"Profiles">>, profiles(ConfigName, Profile)}
-           ,{<<"Caller-Controls">>, caller_controls(ConfigName)}
            ,{<<"Advertise">>, advertise(ConfigName)}
            ,{<<"Chat-Permissions">>, chat_permissions(ConfigName)}
            ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
@@ -42,6 +49,19 @@ fetch_config(JObj, ConfigName, Profile) ->
     try kapi_conference:publish_config_resp(kz_json:get_value(<<"Server-ID">>, JObj)
                                            ,props:filter_undefined(Resp)
                                            )
+    of
+        'ok' -> 'ok'
+    catch
+        _E:_R ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("failed: ~s: ~p", [_E, _R]),
+            kz_util:log_stacktrace(ST)
+    end.
+
+fetch_controls_config(JObj, ControlsName, Controls) ->
+    Resp = [{<<"Caller-Controls">>, caller_controls(ControlsName, Controls)},
+            {<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)} | kz_api:default_headers(?APP_NAME, ?APP_VERSION)],
+    try kapi_conference:publish_config_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp)
     of
         'ok' -> 'ok'
     catch
@@ -110,12 +130,11 @@ get_conference(ConferenceID) ->
             kapps_conference:new()
     end.
 
--spec caller_controls(ne_binary()) -> api_object().
 -spec caller_controls(ne_binary(), api_object()) -> api_object().
-caller_controls(ConfigName) ->
-    caller_controls(ConfigName, ?CALLER_CONTROLS(ConfigName)).
-
-caller_controls(_ConfigName, 'undefined') -> 'undefined';
+caller_controls(ConfigName, 'undefined') ->
+    kz_json:from_list([{ConfigName, get_default_caller_controls()}]);
+caller_controls(ConfigName, []) ->
+    kz_json:from_list([{ConfigName, get_default_caller_controls()}]);
 caller_controls(ConfigName, Controls) ->
     kz_json:from_list([{ConfigName, Controls}]).
 
@@ -142,3 +161,43 @@ chat_permissions(ConfigName) ->
 
 chat_permissions(_ConfigName, 'undefined') -> 'undefined';
 chat_permissions(ConfigName, Chat) -> kz_json:from_list([{ConfigName, Chat}]).
+
+get_default_caller_controls() ->
+    default_caller_controls().
+
+%% see: https://freeswitch.org/confluence/display/FREESWITCH/mod_conference
+default_caller_controls() ->
+    Controls = [
+        ["mute", "*1"],
+        ["mute on", "*2"],
+        ["mute off", "*3"],
+        ["deaf mute", ""],
+        ["energy up", ""],
+        ["energy dn", ""],
+        ["energy equ", ""],
+        ["vol talk up", ""],
+        ["vol talk dn", ""],
+        ["vol talk zero", ""],
+        ["vol listen up", ""],
+        ["vol listen dn", ""],
+        ["vol listen zero", ""],
+        ["hangup", "#"],
+        ["event", "", ""],
+        ["lock", ""],
+        ["transfer", ""],
+        ["execute_application", "", ""],
+        ["floor", ""],
+        ["vid-floor", ""],
+        ["vid-floor-force", ""],
+        ["vmute", ""],
+        ["vmute on", ""],
+        ["vmute off", ""],
+        ["vmute snap", ""],
+        ["vmute snapoff", ""]
+    ],
+    [ controls_to_json(Control) || Control <- Controls ].
+
+controls_to_json([Action, Digits]) ->
+    kz_json:from_list([{<<"action">>, list_to_binary(Action)}, {<<"digits">>, list_to_binary(Digits)}]);
+controls_to_json([Action, Digits, Data]) ->
+    kz_json:from_list([{<<"action">>, list_to_binary(Action)}, {<<"digits">>, list_to_binary(Digits)}, {<<"data">>, list_to_binary(Data)}]).
