@@ -115,15 +115,15 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'fetch', 'configuration', <<"configuration">>, <<"name">>, Conf, ID, []}, #state{node=Node}=State) ->
-    lager:debug("fetch configuration request from ~s: ~s", [Node, ID]),
+    lager:debug("fetch configuration request for:~s from node:~s id:~s ", [Conf, Node, ID]),
     _ = kz_util:spawn(fun handle_config_req/4, [Node, ID, Conf, 'undefined']),
     {'noreply', State};
 handle_info({'fetch', 'configuration', <<"configuration">>, <<"name">>, Conf, ID, ['undefined' | Data]}, #state{node=Node}=State) ->
-    lager:debug("fetch configuration request from ~s: ~s", [Node, ID]),
+    lager:debug("fetch configuration request for:~s from node:~s id:~s", [Conf, Node, ID]),
     _ = kz_util:spawn(fun handle_config_req/4, [Node, ID, Conf, Data]),
     {'noreply', State};
 handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, _Data}, #state{node=Node}=State) ->
-    lager:debug("unhandled fetch from section ~s for ~s:~s", [_Section, _Something, _Key]),
+    lager:debug("unhandled fetch for section:~s something:~s key:~s from:~s id:~s", [_Section, _Something, _Key, Node, ID]),
     {'ok', Resp} = ecallmgr_fs_xml:not_found(),
     _ = freeswitch:fetch_reply(Node, ID, 'configuration', iolist_to_binary(Resp)),
     {'noreply', State};
@@ -394,6 +394,7 @@ fix_conference_profile(Resp) ->
 fix_conference_profile(Name, Profile) ->
     Routines = [fun maybe_fix_profile_tts/1
                ,fun maybe_set_verbose_events/1
+               ,fun(JObj) -> kz_json:set_value(<<"caller-controls">>, Name, JObj) end
                ],
     {Name, kz_json:exec(Routines, Profile)}.
 
