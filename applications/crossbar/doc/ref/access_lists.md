@@ -8,7 +8,7 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `cidrs` | Classless Inter-Domain Routing IP notation for use on the access lists | `array(string)` |   | `false`
 `cidrs.[]` |   | `string` |   | `false`
-`order` | Allow-Deny or Deny-Allow? | `string('allow,deny', 'deny,allow')` |   | `true`
+`order` | Allow-Deny or Deny-Allow? | `string('allow,deny', 'deny,allow')` |   | `false`
 `user_agent` | RegExp to match valid user agent strings | `string` |   | `false`
 
 

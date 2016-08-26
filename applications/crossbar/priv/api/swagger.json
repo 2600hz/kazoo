@@ -14,7 +14,6 @@
                         "description": "CIDR IP to use on access lists",
                         "type": "string"
                     },
-                    "minItems": 1,
                     "type": "array"
                 },
                 "order": {
@@ -23,16 +22,17 @@
                         "allow,deny",
                         "deny,allow"
                     ],
-                    "required": true,
                     "type": "string"
                 },
                 "user_agent": {
                     "description": "RegExp to match valid user agent strings",
-                    "required": false,
                     "type": "string"
                 }
             },
-            "required": false,
+            "required": [
+                "cidrs",
+                "order"
+            ],
             "type": "object"
         },
         "account_rate_limits": {
