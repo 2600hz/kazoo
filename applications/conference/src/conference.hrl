@@ -22,7 +22,6 @@
 -define(SUPPORT_NAME_ANNOUNCEMENT, kapps_config:get_is_true(?CONFIG_CAT, <<"support_name_announcement">>, 'true')).
 
 -define(DEFAULT_PROFILE_CONFIG, [{<<"rate">>, 8000}
-                                ,{<<"caller-controls">>, <<"default">>}
                                 ,{<<"interval">>, 20}
                                 ,{<<"energy-level">>, 20}
                                 ,{<<"comfort-noise">>, 1000}
@@ -31,7 +30,6 @@
                                 ]).
 
 -define(PAGE_PROFILE_CONFIG, [{<<"rate">>, 8000}
-                             ,{<<"caller-controls">>, <<"default">>}
                              ,{<<"interval">>, 20}
                              ,{<<"energy-level">>, 20}
                              ,{<<"comfort-noise">>, 1000}
