@@ -46,7 +46,10 @@
                     "$ref": "device_rate_limits"
                 }
             },
-            "required": true,
+            "required": [
+                "account",
+                "device"
+            ],
             "type": "object"
         },
         "accounts": {
