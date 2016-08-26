@@ -21,8 +21,9 @@ handle_request(<<"Conference">>, JObj) ->
     ConfigName = kz_json:get_ne_value(<<"Profile">>, JObj, ?DEFAULT_PROFILE_NAME),
     fetch_config(JObj, ConfigName);
 handle_request(<<"Controls">>, JObj) ->
+    ConferenceName = kz_json:get_ne_value(<<"Profile">>, JObj, ?DEFAULT_PROFILE_NAME),
     ControlsName = kz_json:get_ne_value(<<"Controls">>, JObj),
-    Controls = kapps_config:get(?CONFIG_CAT, [<<"caller-controls">>, ControlsName]),
+    Controls = get_controls(ConferenceName, ControlsName),
     fetch_controls_config(JObj, ControlsName, Controls).
 
 -spec fetch_config(kz_json:object(), ne_binary()) -> 'ok'.
@@ -131,10 +132,14 @@ get_conference(ConferenceID) ->
     end.
 
 -spec caller_controls(ne_binary(), api_object()) -> api_object().
-caller_controls(ConfigName, 'undefined') ->
-    kz_json:from_list([{ConfigName, get_default_caller_controls()}]);
-caller_controls(ConfigName, []) ->
-    kz_json:from_list([{ConfigName, get_default_caller_controls()}]);
+caller_controls(<<"caller-controls">> = ConfigName, 'undefined') ->
+    kz_json:from_list([{ConfigName, default_caller_controls()}]);
+caller_controls(<<"caller-controls">> = ConfigName, []) ->
+    kz_json:from_list([{ConfigName, default_caller_controls()}]);
+caller_controls(<<"moderator-controls">> = ConfigName, 'undefined') ->
+    kz_json:from_list([{ConfigName, default_moderator_controls()}]);
+caller_controls(<<"moderator-controls">> = ConfigName, []) ->
+    kz_json:from_list([{ConfigName, default_moderator_controls()}]);
 caller_controls(ConfigName, Controls) ->
     kz_json:from_list([{ConfigName, Controls}]).
 
@@ -162,14 +167,17 @@ chat_permissions(ConfigName) ->
 chat_permissions(_ConfigName, 'undefined') -> 'undefined';
 chat_permissions(ConfigName, Chat) -> kz_json:from_list([{ConfigName, Chat}]).
 
-get_default_caller_controls() ->
-    default_caller_controls().
-
 %% see: https://freeswitch.org/confluence/display/FREESWITCH/mod_conference
 default_caller_controls() ->
     [ controls_to_json(Control) || Control <- ?DEFAULT_CALLER_CONTROLS ].
+default_moderator_controls() ->
+    [ controls_to_json(Control) || Control <- ?DEFAULT_MODERATOR_CONTROLS ].
 
 controls_to_json([Action, Digits]) ->
     kz_json:from_list([{<<"action">>, list_to_binary(Action)}, {<<"digits">>, list_to_binary(Digits)}]);
 controls_to_json([Action, Digits, Data]) ->
     kz_json:from_list([{<<"action">>, list_to_binary(Action)}, {<<"digits">>, list_to_binary(Digits)}, {<<"data">>, list_to_binary(Data)}]).
+
+%% TODO: get configured controls per account
+get_controls(_ConferenceName, ControlsName) ->
+    kapps_config:get(?CONFIG_CAT, ControlsName).

@@ -395,7 +395,8 @@ fix_conference_profile(Resp) ->
 fix_conference_profile(Name, Profile) ->
     Routines = [fun maybe_fix_profile_tts/1
                ,fun maybe_set_verbose_events/1
-               ,fun(JObj) -> kz_json:set_value(<<"caller-controls">>, Name, JObj) end
+               ,fun(JObj) -> kz_json:set_value(<<"caller-controls">>, <<"caller-controls">>, JObj) end
+               ,fun(JObj) -> kz_json:set_value(<<"moderator-controls">>, <<"moderator-controls">>, JObj) end
                ],
     {Name, kz_json:exec(Routines, Profile)}.
 
