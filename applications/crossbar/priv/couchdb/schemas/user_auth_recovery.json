@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "user_auth_recovery",
     "description": "Send a reset-your-password email via user credentials",
-    "name": "Password Recovery",
     "properties": {
         "account_name": {
             "description": "The account name of the user",

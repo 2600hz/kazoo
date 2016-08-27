@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "faxbox",
     "description": "FaxBoxes allow configuration of individual fax virtual machines",
-    "name": "Fax Box",
     "properties": {
         "attempts": {
             "default": 0,

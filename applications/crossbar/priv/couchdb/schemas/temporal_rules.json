@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "temporal_rules",
     "description": "Schema for a temporal rules",
-    "name": "Temporal Rule",
     "properties": {
         "cycle": {
             "description": "The recurrence cycle for this rule",

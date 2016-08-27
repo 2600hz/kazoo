@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "ubiquiti_auth",
     "description": "Provides an auth-token via Ubiquiti's SSO",
-    "name": "Unbiquit Auth",
     "properties": {
         "password": {
             "description": "Ubiquiti SSO Password",

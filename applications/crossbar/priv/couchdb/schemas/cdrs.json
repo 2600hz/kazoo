@@ -3,7 +3,6 @@
     "_id": "cdrs",
     "additionalProperties": false,
     "description": "Call Detail Records",
-    "name": "CDR",
     "properties": {
         "app_name": {
             "description": "The Kazoo application that issued the CDR",

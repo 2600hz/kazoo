@@ -3,7 +3,6 @@
     "_id": "domain_hosts",
     "additionalProperties": false,
     "description": "Domain host settings for white-labelling",
-    "name": "domain_hosts",
     "patternProperties": {
         ".*[\\{]{2}domain[\\}]{2}.*": {
             "description": "White-label template for hostname",

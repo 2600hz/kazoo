@@ -3,7 +3,6 @@
     "_id": "access_lists",
     "additionalProperties": true,
     "description": "Access Control List entries for device or account",
-    "name": "ACL Entry",
     "properties": {
         "cidrs": {
             "description": "Classless Inter-Domain Routing IP notation for use on the access lists",

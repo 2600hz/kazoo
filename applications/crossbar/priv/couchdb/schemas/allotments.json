@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "allotments",
     "description": "",
-    "name": "Allotments",
     "patternProperties": {
         "^\\w+$": {
             "properties": {

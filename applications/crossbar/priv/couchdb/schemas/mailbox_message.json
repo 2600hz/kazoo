@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "mailbox_message",
     "description": "Schema for mailbox message",
-    "name": "Mailbox Message",
     "properties": {
         "call_id": {
             "description": "The SIP call-id",

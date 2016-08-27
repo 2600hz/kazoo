@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "directories",
     "description": "Allow a caller to search for a user/device by name instead of extension/DID",
-    "name": "Directory",
     "properties": {
         "confirm_match": {
             "default": true,

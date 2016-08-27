@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "resources",
     "description": "Schema for resources",
-    "name": "Resource",
     "properties": {
         "emergency": {
             "default": false,

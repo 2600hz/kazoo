@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "domains",
     "description": "Domain settings for white-labelling",
-    "name": "domains",
     "properties": {
         "A": {
             "description": "A records",

@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "whitelabels",
     "description": "Whitelabel settings",
-    "name": "Whitelabel",
     "properties": {
         "company_name": {
             "description": "The company name to display to users",

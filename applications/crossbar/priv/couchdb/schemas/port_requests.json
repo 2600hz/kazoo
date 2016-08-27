@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "port_requests",
     "description": "Schema for a port request",
-    "name": "Port Request",
     "properties": {
         "bill": {
             "description": "Billing information of the losing carrier",

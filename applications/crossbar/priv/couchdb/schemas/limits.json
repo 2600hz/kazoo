@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "limits",
     "description": "Limit an account's ability to place concurrent calls using flat rate trunks",
-    "name": "Limits",
     "properties": {
         "allow_prepay": {
             "default": true,

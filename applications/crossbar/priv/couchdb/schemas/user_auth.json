@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "user_auth",
     "description": "Provides an auth-token via user credentials",
-    "name": "User Auth",
     "properties": {
         "account_name": {
             "description": "The account name of the user",

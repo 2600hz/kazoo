@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "queues",
     "description": "Call Queues - FIFO call queues for serializing callers connecting to agents",
-    "name": "Call Queue",
     "properties": {
         "agent_ring_timeout": {
             "default": 15,

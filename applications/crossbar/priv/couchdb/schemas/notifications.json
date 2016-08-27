@@ -2,11 +2,9 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "notifications",
     "description": "Notifications templates",
-    "name": "Notifications",
     "properties": {
         "bcc": {
             "description": "Bcc email field",
-            "name": "Bcc",
             "properties": {
                 "email_addresses": {
                     "description": "BCC Email Addresses",

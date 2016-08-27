@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "ips",
     "description": "IP addresses assigned to the account",
-    "name": "IP Addresses",
     "properties": {
         "ips": {
             "description": "List of IP addresses",

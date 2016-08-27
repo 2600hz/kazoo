@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "webhooks",
     "description": "Web Hooks are subscriptions to allowed events that, when the event occurs, the event data is sent to the uri set in the Web Hook document.",
-    "name": "Webhook",
     "properties": {
         "custom_data": {
             "additionalProperties": {

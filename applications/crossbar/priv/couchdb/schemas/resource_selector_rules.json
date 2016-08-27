@@ -3,7 +3,6 @@
     "_id": "resource_selector_rules",
     "default": {},
     "description": "Schema for resource selector rules",
-    "name": "Resource Selectord Rules",
     "required": true,
     "type": "object"
 }

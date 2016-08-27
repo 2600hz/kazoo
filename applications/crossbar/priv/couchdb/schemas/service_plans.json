@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "service_plans",
     "description": "Describes services offered to sub-accounts",
-    "name": "Service Plan",
     "properties": {
         "bookkeepers": {
             "$ref": "bookkeepers",

@@ -7,7 +7,6 @@
         "access_lists": {
             "additionalProperties": true,
             "description": "Access Control List entries for device or account",
-            "name": "ACL Entry",
             "properties": {
                 "cidrs": {
                     "description": "Classless Inter-Domain Routing IP notation for use on the access lists",
@@ -39,7 +38,6 @@
         "account_rate_limits": {
             "additionalProperties": true,
             "description": "describe limits for SIP requests",
-            "name": "Rate limits",
             "properties": {
                 "account": {
                     "$ref": "device_rate_limits"
@@ -56,7 +54,6 @@
         },
         "accounts": {
             "description": "Accounts represent tenants or customers on the system. Each account represents an individual dataset or sandbox that only one tenant can access. The data set is architecturally independent from other tenants.",
-            "name": "Account",
             "properties": {
                 "call_restriction": {
                     "additionalProperties": {
@@ -221,7 +218,6 @@
         "acls": {
             "additionalProperties": false,
             "description": "Access Control List entries",
-            "name": "ACL Entry",
             "properties": {
                 "cidr": {
                     "description": "Classless Inter-Domain Routing IP notation for use on the ACL",
@@ -259,7 +255,6 @@
         },
         "allotments": {
             "description": "",
-            "name": "Allotments",
             "patternProperties": {
                 "^\\w+$": {
                     "properties": {
@@ -313,7 +308,6 @@
         "api_auth": {
             "additionalProperties": false,
             "description": "Provides an auth-token via an Account API key",
-            "name": "API Auth",
             "properties": {
                 "api_key": {
                     "description": "The Accounts API key",
@@ -329,7 +323,6 @@
         "app": {
             "additionalProperties": false,
             "description": "Appstore applications",
-            "name": "Application",
             "properties": {
                 "api_url": {
                     "description": "Application api url",
@@ -440,7 +433,6 @@
         },
         "audit_logs": {
             "description": "Audit log of what caused a billing event to occur",
-            "name": "Audit Log",
             "properties": {
                 "audit": {
                     "description": "Contains the accounts involved in the billable event (initial account and resellers)",
@@ -505,7 +497,6 @@
         },
         "blacklists": {
             "description": "Schema for a blacklists",
-            "name": "Blacklists",
             "properties": {
                 "name": {
                     "description": "A friendly name for the temporal rule set",
@@ -527,7 +518,6 @@
         },
         "bookkeepers": {
             "description": "The bookkeeper modules provided by Kazoo",
-            "name": "Bookkeepers",
             "properties": {
                 "braintree": {
                     "type": "object"
@@ -541,7 +531,6 @@
         },
         "call_waiting": {
             "description": "Parameters for server-side call waiting",
-            "name": "Call waiting",
             "properties": {
                 "enabled": {
                     "description": "Determines if server side call waiting is enabled/disabled",
@@ -554,7 +543,6 @@
         },
         "caller_id": {
             "description": "Defines caller ID settings based on the type of call being made",
-            "name": "Caller ID",
             "properties": {
                 "emergency": {
                     "description": "The caller ID used when a resource is flagged as 'emergency'",
@@ -619,7 +607,6 @@
         },
         "callflows": {
             "description": "Call flows describe steps to take in order to process a phone call. They are trees of information related to a phone call such as \"answer, play file, record file\" etc. that are logically grouped together and ordered.",
-            "name": "Callflow",
             "properties": {
                 "featurecode": {
                     "description": "When the callflow is used as a featurecode this object tracks the intended match of the pattern and name of the feature",
@@ -2187,7 +2174,6 @@
         "cdrs": {
             "additionalProperties": false,
             "description": "Call Detail Records",
-            "name": "CDR",
             "properties": {
                 "app_name": {
                     "description": "The Kazoo application that issued the CDR",
@@ -2409,7 +2395,6 @@
         },
         "clicktocall": {
             "description": "Click-to-call allows you to create URLs that can be POSTed to with a phone number or SIP URI and create a phone call from the provided contact information to a destination you have pre-determined.",
-            "name": "Click-to-Call",
             "properties": {
                 "auth_required": {
                     "default": true,
@@ -2474,7 +2459,6 @@
         },
         "conferences": {
             "description": "Schema for conferences",
-            "name": "Conference",
             "properties": {
                 "conference_numbers": {
                     "default": [],
@@ -2611,7 +2595,6 @@
         },
         "connectivity": {
             "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
-            "name": "Connectivity",
             "properties": {
                 "account": {
                     "description": "Information that applies to the account as a whole",
@@ -2868,7 +2851,6 @@
         "device_rate_limits": {
             "additionalProperties": true,
             "description": "describe limits for SIP requests",
-            "name": "Rate limits",
             "properties": {
                 "per_minute": {
                     "additionalProperties": false,
@@ -2922,7 +2904,6 @@
         },
         "devices": {
             "description": "A device be it a SIP phone or landline number",
-            "name": "Device",
             "properties": {
                 "call_forward": {
                     "description": "The device call forward parameters",
@@ -3454,7 +3435,6 @@
         },
         "directories": {
             "description": "Allow a caller to search for a user/device by name instead of extension/DID",
-            "name": "Directory",
             "properties": {
                 "confirm_match": {
                     "default": true,
@@ -3509,7 +3489,6 @@
         "domain_hosts": {
             "additionalProperties": false,
             "description": "Domain host settings for white-labelling",
-            "name": "domain_hosts",
             "patternProperties": {
                 ".*[\\{]{2}domain[\\}]{2}.*": {
                     "description": "White-label template for hostname",
@@ -3535,7 +3514,6 @@
         },
         "domains": {
             "description": "Domain settings for white-labelling",
-            "name": "domains",
             "properties": {
                 "A": {
                     "description": "A records",
@@ -3572,7 +3550,6 @@
         },
         "faxbox": {
             "description": "FaxBoxes allow configuration of individual fax virtual machines",
-            "name": "Fax Box",
             "properties": {
                 "attempts": {
                     "default": 0,
@@ -3819,7 +3796,6 @@
         },
         "faxes": {
             "description": "Faxes API allows you to update and access fax jobs for both sending and receiving",
-            "name": "Fax",
             "properties": {
                 "attempts": {
                     "default": 0,
@@ -4064,7 +4040,6 @@
         },
         "ips": {
             "description": "IP addresses assigned to the account",
-            "name": "IP Addresses",
             "properties": {
                 "ips": {
                     "description": "List of IP addresses",
@@ -4080,7 +4055,6 @@
         },
         "ledgers": {
             "description": "ledgers document",
-            "name": "ledgers",
             "properties": {
                 "account": {
                     "description": "Account info",
@@ -4177,7 +4151,6 @@
         },
         "limits": {
             "description": "Limit an account's ability to place concurrent calls using flat rate trunks",
-            "name": "Limits",
             "properties": {
                 "allow_prepay": {
                     "default": true,
@@ -4309,7 +4282,6 @@
         },
         "mailbox_message": {
             "description": "Schema for mailbox message",
-            "name": "Mailbox Message",
             "properties": {
                 "call_id": {
                     "description": "The SIP call-id",
@@ -4370,7 +4342,6 @@
         },
         "media": {
             "description": "Schema for media",
-            "name": "Media",
             "properties": {
                 "content_length": {
                     "description": "Length, in bytes, of the file",
@@ -4530,7 +4501,6 @@
         },
         "menus": {
             "description": "Schema for a menus",
-            "name": "Menu",
             "properties": {
                 "allow_record_from_offnet": {
                     "default": false,
@@ -4653,7 +4623,6 @@
         },
         "metaflows": {
             "description": "Actions applied to a call outside of the normal callflow, initiated by the caller(s)",
-            "name": "Metaflow",
             "properties": {
                 "binding_digit": {
                     "default": "*",
@@ -4737,11 +4706,9 @@
         },
         "notifications": {
             "description": "Notifications templates",
-            "name": "Notifications",
             "properties": {
                 "bcc": {
                     "description": "Bcc email field",
-                    "name": "Bcc",
                     "properties": {
                         "email_addresses": {
                             "description": "BCC Email Addresses",
@@ -4876,7 +4843,6 @@
         },
         "notify.callback": {
             "description": "Schema for a callback options",
-            "name": "Callback notification options",
             "properties": {
                 "attempts": {
                     "description": "How many attempts without answer will system do",
@@ -4918,7 +4884,6 @@
         },
         "phone_numbers": {
             "description": "Schema for a number",
-            "name": "Number",
             "properties": {
                 "cnam": {
                     "properties": {
@@ -5119,7 +5084,6 @@
         },
         "port_requests": {
             "description": "Schema for a port request",
-            "name": "Port Request",
             "properties": {
                 "bill": {
                     "description": "Billing information of the losing carrier",
@@ -5244,7 +5208,6 @@
         },
         "profile": {
             "description": "Defines user extended properties",
-            "name": "User extended properties",
             "properties": {
                 "addresses": {
                     "description": "To specify the components of the addresses",
@@ -5321,7 +5284,6 @@
         },
         "provisioner_v5": {
             "description": "Provisioner schema",
-            "name": "Provisioner V5",
             "properties": {
                 "brand": {
                     "default": "",
@@ -5472,7 +5434,6 @@
         },
         "queue_update": {
             "description": "Schema for queue update request",
-            "name": "Call Update",
             "properties": {
                 "action": {
                     "description": "Action to perform",
@@ -5496,7 +5457,6 @@
         },
         "queues": {
             "description": "Call Queues - FIFO call queues for serializing callers connecting to agents",
-            "name": "Call Queue",
             "properties": {
                 "agent_ring_timeout": {
                     "default": 15,
@@ -5616,7 +5576,6 @@
         },
         "rates": {
             "description": "Defines a rate for a given prefix",
-            "name": "Rate",
             "properties": {
                 "carrier": {
                     "description": "Friendly name for the carrier providing this rate",
@@ -5731,7 +5690,6 @@
         },
         "resource_jobs": {
             "description": "Schema for resource jobs (bulk number uploads)",
-            "name": "Resource Job",
             "properties": {
                 "name": {
                     "description": "A friendly name for the job, if you like",
@@ -5762,13 +5720,11 @@
         "resource_selector_rules": {
             "default": {},
             "description": "Schema for resource selector rules",
-            "name": "Resource Selectord Rules",
             "required": true,
             "type": "object"
         },
         "resource_selectors": {
             "description": "Schema for resource selectors",
-            "name": "Resource Selectors",
             "properties": {
                 "selectors": {
                     "description": "Data used for selectors",
@@ -5781,7 +5737,6 @@
         },
         "resources": {
             "description": "Schema for resources",
-            "name": "Resource",
             "properties": {
                 "emergency": {
                     "default": false,
@@ -6142,7 +6097,6 @@
         },
         "service_plans": {
             "description": "Describes services offered to sub-accounts",
-            "name": "Service Plan",
             "properties": {
                 "bookkeepers": {
                     "$ref": "bookkeepers",
@@ -6172,7 +6126,6 @@
         "shared_auth": {
             "additionalProperties": false,
             "description": "Provides a local auth-token via a shared auth-token",
-            "name": "Shared Auth",
             "properties": {
                 "shared_auth": {
                     "description": "The shared token",
@@ -6193,7 +6146,6 @@
         },
         "sms": {
             "description": "sms document",
-            "name": "sms",
             "properties": {
                 "body": {
                     "description": "text message",
@@ -10189,7 +10141,6 @@
         "tasks": {
             "additionalProperties": true,
             "description": "Input data to go through as part of a background task",
-            "name": "Task records",
             "properties": {
                 "records": {
                     "description": "List the rows of input data",
@@ -10205,7 +10156,6 @@
         },
         "temporal_rules": {
             "description": "Schema for a temporal rules",
-            "name": "Temporal Rule",
             "properties": {
                 "cycle": {
                     "description": "The recurrence cycle for this rule",
@@ -10302,7 +10252,6 @@
         },
         "temporal_rules_sets": {
             "description": "Schema for a temporal rules sets",
-            "name": "Temporal Rule Set",
             "properties": {
                 "name": {
                     "description": "A friendly name for the temporal rule set",
@@ -10327,7 +10276,6 @@
         },
         "token_restrictions": {
             "description": "Schema for token restrictions",
-            "name": "Token restrictions",
             "properties": {
                 "restrictions": {
                     "patternProperties": {
@@ -10679,7 +10627,6 @@
         },
         "ubiquiti_auth": {
             "description": "Provides an auth-token via Ubiquiti's SSO",
-            "name": "Unbiquit Auth",
             "properties": {
                 "password": {
                     "description": "Ubiquiti SSO Password",
@@ -10701,7 +10648,6 @@
         },
         "user_auth": {
             "description": "Provides an auth-token via user credentials",
-            "name": "User Auth",
             "properties": {
                 "account_name": {
                     "description": "The account name of the user",
@@ -10748,7 +10694,6 @@
         },
         "user_auth_recovery": {
             "description": "Send a reset-your-password email via user credentials",
-            "name": "Password Recovery",
             "properties": {
                 "account_name": {
                     "description": "The account name of the user",
@@ -10791,7 +10736,6 @@
         },
         "user_auth_recovery_reset": {
             "description": "Request a password reset from a trusted source",
-            "name": "Password Reset",
             "properties": {
                 "reset_id": {
                     "description": "The UUID that is part of the password-reset link",
@@ -10805,7 +10749,6 @@
         },
         "users": {
             "description": "Schema for a user",
-            "name": "User",
             "properties": {
                 "call_forward": {
                     "description": "The device call forward parameters",
@@ -11256,7 +11199,6 @@
         },
         "vmboxes": {
             "description": "Schema for a voicemail box",
-            "name": "Voicemail Box",
             "properties": {
                 "check_if_owner": {
                     "default": true,
@@ -11383,7 +11325,6 @@
         },
         "webhook_attempts": {
             "description": "Log of an attempt to send a webhook to a third-party server",
-            "name": "Webhook Attempt",
             "properties": {
                 "client_error": {
                     "description": "Kazoo-side error string, if any",
@@ -11425,7 +11366,6 @@
         },
         "webhooks": {
             "description": "Web Hooks are subscriptions to allowed events that, when the event occurs, the event data is sent to the uri set in the Web Hook document.",
-            "name": "Webhook",
             "properties": {
                 "custom_data": {
                     "additionalProperties": {
@@ -11481,7 +11421,6 @@
         },
         "whitelabels": {
             "description": "Whitelabel settings",
-            "name": "Whitelabel",
             "properties": {
                 "company_name": {
                     "description": "The company name to display to users",

@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "queue_update",
     "description": "Schema for queue update request",
-    "name": "Call Update",
     "properties": {
         "action": {
             "description": "Action to perform",

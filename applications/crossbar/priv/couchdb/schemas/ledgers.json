@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "ledgers",
     "description": "ledgers document",
-    "name": "ledgers",
     "properties": {
         "account": {
             "description": "Account info",

@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "profile",
     "description": "Defines user extended properties",
-    "name": "User extended properties",
     "properties": {
         "addresses": {
             "description": "To specify the components of the addresses",

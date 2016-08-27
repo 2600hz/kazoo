@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "metaflows",
     "description": "Actions applied to a call outside of the normal callflow, initiated by the caller(s)",
-    "name": "Metaflow",
     "properties": {
         "binding_digit": {
             "default": "*",

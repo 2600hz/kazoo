@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "devices",
     "description": "A device be it a SIP phone or landline number",
-    "name": "Device",
     "properties": {
         "call_forward": {
             "description": "The device call forward parameters",

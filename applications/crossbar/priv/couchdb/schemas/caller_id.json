@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "caller_id",
     "description": "Defines caller ID settings based on the type of call being made",
-    "name": "Caller ID",
     "properties": {
         "emergency": {
             "description": "The caller ID used when a resource is flagged as 'emergency'",

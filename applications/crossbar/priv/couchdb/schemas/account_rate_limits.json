@@ -3,7 +3,6 @@
     "_id": "account_rate_limits",
     "additionalProperties": true,
     "description": "describe limits for SIP requests",
-    "name": "Rate limits",
     "properties": {
         "account": {
             "$ref": "device_rate_limits"

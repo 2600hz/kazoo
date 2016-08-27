@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "faxes",
     "description": "Faxes API allows you to update and access fax jobs for both sending and receiving",
-    "name": "Fax",
     "properties": {
         "attempts": {
             "default": 0,

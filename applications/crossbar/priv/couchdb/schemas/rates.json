@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "rates",
     "description": "Defines a rate for a given prefix",
-    "name": "Rate",
     "properties": {
         "carrier": {
             "description": "Friendly name for the carrier providing this rate",

@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "menus",
     "description": "Schema for a menus",
-    "name": "Menu",
     "properties": {
         "allow_record_from_offnet": {
             "default": false,

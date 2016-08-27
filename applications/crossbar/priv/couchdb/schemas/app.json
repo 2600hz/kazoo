@@ -3,7 +3,6 @@
     "_id": "app",
     "additionalProperties": false,
     "description": "Appstore applications",
-    "name": "Application",
     "properties": {
         "api_url": {
             "description": "Application api url",

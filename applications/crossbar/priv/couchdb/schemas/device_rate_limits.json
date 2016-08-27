@@ -3,7 +3,6 @@
     "_id": "device_rate_limits",
     "additionalProperties": true,
     "description": "describe limits for SIP requests",
-    "name": "Rate limits",
     "properties": {
         "per_minute": {
             "additionalProperties": false,

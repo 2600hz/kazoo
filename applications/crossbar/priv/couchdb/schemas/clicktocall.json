@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "clicktocall",
     "description": "Click-to-call allows you to create URLs that can be POSTed to with a phone number or SIP URI and create a phone call from the provided contact information to a destination you have pre-determined.",
-    "name": "Click-to-Call",
     "properties": {
         "auth_required": {
             "default": true,

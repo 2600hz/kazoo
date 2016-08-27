@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "user_auth_recovery_reset",
     "description": "Request a password reset from a trusted source",
-    "name": "Password Reset",
     "properties": {
         "reset_id": {
             "description": "The UUID that is part of the password-reset link",

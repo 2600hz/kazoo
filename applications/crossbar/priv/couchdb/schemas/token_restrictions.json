@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "token_restrictions",
     "description": "Schema for token restrictions",
-    "name": "Token restrictions",
     "properties": {
         "restrictions": {
             "patternProperties": {

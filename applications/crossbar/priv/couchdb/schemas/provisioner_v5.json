@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "provisioner_v5",
     "description": "Provisioner schema",
-    "name": "Provisioner V5",
     "properties": {
         "brand": {
             "default": "",

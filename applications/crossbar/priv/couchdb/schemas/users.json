@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "users",
     "description": "Schema for a user",
-    "name": "User",
     "properties": {
         "call_forward": {
             "description": "The device call forward parameters",

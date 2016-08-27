@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "webhook_attempts",
     "description": "Log of an attempt to send a webhook to a third-party server",
-    "name": "Webhook Attempt",
     "properties": {
         "client_error": {
             "description": "Kazoo-side error string, if any",

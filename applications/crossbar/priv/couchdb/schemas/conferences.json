@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "conferences",
     "description": "Schema for conferences",
-    "name": "Conference",
     "properties": {
         "conference_numbers": {
             "default": [],

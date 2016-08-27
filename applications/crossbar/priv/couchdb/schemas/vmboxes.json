@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "vmboxes",
     "description": "Schema for a voicemail box",
-    "name": "Voicemail Box",
     "properties": {
         "check_if_owner": {
             "default": true,
