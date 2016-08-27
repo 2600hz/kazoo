@@ -13,7 +13,6 @@
                 "monthly",
                 "yearly"
             ],
-            "name": "Cycle",
             "required": true,
             "type": "string"
         },
@@ -25,7 +24,6 @@
                 "required": false,
                 "type": "integer"
             },
-            "name": "Days",
             "required": false,
             "type": "array"
         },
@@ -33,7 +31,6 @@
             "default": 1,
             "description": "The recurrence interval for this rule",
             "minimum": 1,
-            "name": "Interval",
             "required": false,
             "type": "integer"
         },
@@ -41,7 +38,6 @@
             "description": "The recurrence month for this rule",
             "maximum": 12,
             "minimum": 1,
-            "name": "Month",
             "required": false,
             "type": "integer"
         },
@@ -49,7 +45,6 @@
             "description": "A friendly name for the temporal rule",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Name",
             "required": true,
             "type": "string"
         },
@@ -64,14 +59,12 @@
                 "fifth",
                 "last"
             ],
-            "name": "Ordinal",
             "required": false,
             "type": "string"
         },
         "start_date": {
             "default": 62586115200,
             "description": "The date that any recurrence should be calculated as starting on",
-            "name": "Start Date",
             "required": false,
             "type": "integer"
         },
@@ -79,7 +72,6 @@
             "description": "Seconds from the start of a day to stop considering this rule valid",
             "maximum": 86400,
             "minimum": 0,
-            "name": "Time Window Start",
             "required": false,
             "type": "integer"
         },
@@ -98,7 +90,6 @@
                 ],
                 "type": "string"
             },
-            "name": "Week Days",
             "required": false,
             "type": "array"
         }

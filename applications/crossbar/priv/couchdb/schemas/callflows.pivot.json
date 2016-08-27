@@ -5,14 +5,12 @@
     "properties": {
         "cdr_url": {
             "description": "Optional URL to send the CDR to at the end of the call",
-            "name": "CDR URL",
             "required": false,
             "type": "string"
         },
         "debug": {
             "default": false,
             "description": "Store debug logs related to processing this Pivot call",
-            "name": "Debug?",
             "required": false,
             "type": "boolean"
         },
@@ -25,7 +23,6 @@
                 "GET",
                 "POST"
             ],
-            "name": "Method",
             "required": false,
             "type": "string"
         },
@@ -36,13 +33,11 @@
                 "kazoo",
                 "twiml"
             ],
-            "name": "Payload Type",
             "required": false,
             "type": "string"
         },
         "voice_url": {
             "description": "What URL to request the initial Pivot callflow",
-            "name": "Script URL",
             "required": true,
             "type": "string"
         }

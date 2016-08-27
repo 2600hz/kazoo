@@ -7,13 +7,11 @@
         "auth_required": {
             "default": true,
             "description": "Determines if this click to call requires valid auth-tokens when invoked",
-            "name": "Is Auth Required?",
             "required": false,
             "type": "boolean"
         },
         "caller_id_number": {
             "description": "Explicitly set caller id number",
-            "name": "Keep Original Caller ID?",
             "required": false,
             "type": "string"
         },
@@ -23,13 +21,11 @@
                 "extension",
                 "contact"
             ],
-            "name": "Dial first",
             "required": false,
             "type": "string"
         },
         "extension": {
             "description": "The extension to connect to when the click to call is invoked",
-            "name": "Extension Number",
             "required": true,
             "type": "string"
         },
@@ -37,25 +33,21 @@
             "description": "A friendly name for the click to call",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Name",
             "required": true,
             "type": "string"
         },
         "outbound_callee_id_name": {
             "description": "Callee ID Name of the device calling out to the contact number",
-            "name": "Outbound Callee ID Name",
             "required": false,
             "type": "string"
         },
         "outbound_callee_id_number": {
             "description": "Callee ID Number of the device calling out to the contact number",
-            "name": "Outbound Callee ID Number",
             "required": false,
             "type": "string"
         },
         "throttle": {
             "description": "The rate that this click to call can be invoked",
-            "name": "Rate Limit",
             "required": false,
             "type": "integer"
         },
@@ -66,7 +58,6 @@
                 "required": false,
                 "type": "string"
             },
-            "name": "Allowed Numbers",
             "required": false,
             "type": "array"
         }

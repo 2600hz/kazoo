@@ -27,7 +27,7 @@ Key | Description | Type | Default | Required
 `gateways.[].from_uri_realm` | When formating SIP From on outbound requests this can be used to override the realm | `string` |   | `false`
 `gateways.[].invite_format` | The format of the DID needed by the underlying hardware/gateway | `string('route', 'username', 'e164', 'npan', '1npan')` | `route` | `false`
 `gateways.[].media` | The media parameters for the resource gateway | `object` |   | `false`
-`gateways.[].media.fax_option` | Support T.38 | `boolean` |   | `false`
+`gateways.[].media.fax_option` | Is T.38 Supported? | `boolean` |   | `false`
 `gateways.[].password` | SIP authentication password | `string(0..32)` |   | `false`
 `gateways.[].port` | This resource gateway port | `integer` | `5060` | `false`
 `gateways.[].prefix` | A string to prepend to the dialed number or capture group of the matching rule | `string(0..64)` |   | `false`
@@ -46,7 +46,7 @@ Key | Description | Type | Default | Required
 `media.audio.codecs` | A list of default codecs to use | `array(string('OPUS', 'CELT@32000h', 'G7221@32000h', 'G7221@16000h', 'G722', 'speex@32000h', 'speex@16000h', 'PCMU', 'PCMA', 'G729', 'GSM', 'CELT@48000h', 'CELT@64000h', 'G722_16', 'G722_32', 'CELT_48', 'CELT_64', 'Speex', 'speex'))` | `["PCMU"]` | `false`
 `media.audio.codecs.[]` |   | `string` |   | `false`
 `media.bypass_media` | Default bypass media mode | `boolean` |   | `false`
-`media.fax_option` | Support T.38 | `boolean` |   | `false`
+`media.fax_option` | Is T.38 Supported? | `boolean` |   | `false`
 `media.video` | The default video media parameters | `object` | `{}` | `false`
 `media.video.codecs` | A list of default codecs to use | `array(string('H261', 'H263', 'H264', 'VP8'))` | `[]` | `false`
 `media.video.codecs.[]` |   | `string` |   | `false`

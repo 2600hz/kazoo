@@ -16,7 +16,7 @@ Key | Description | Type | Default | Required
 `comments` | The history of comments made on a port request | `array(object)` |   | `false`
 `name` | A friendly name for the port request | `string(1..128)` |   | `true`
 `notifications` | Status notifications | `object` |   | `false`
-`notifications.email` | Email notifications | `object` |   | `false`
+`notifications.email` | Inbound Email Notifications | `object` |   | `false`
 `notifications.email.send_to` | A list or string of email recipent(s) | `string, array(string)` |   | `false`
 `numbers` | The numbers to port in | `object` |   | `true`
 `numbers.\+?[0-9]+` |   | `object` |   | `false`

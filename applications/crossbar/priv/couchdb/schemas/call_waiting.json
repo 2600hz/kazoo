@@ -6,7 +6,6 @@
     "properties": {
         "enabled": {
             "description": "Determines if server side call waiting is enabled/disabled",
-            "name": "Is Enabled?",
             "required": false,
             "type": "boolean"
         }

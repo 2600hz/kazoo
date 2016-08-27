@@ -6,7 +6,6 @@
         "config": {
             "$schema": "conferences.json",
             "description": "Build an ad-hoc conference using the conferences JSON schema",
-            "name": "Ad-Hoc Config",
             "required": false,
             "type": "object"
         },
@@ -14,21 +13,18 @@
             "description": "Kazoo ID of the conference",
             "maxLength": 32,
             "minLength": 32,
-            "name": "Conference ID",
             "required": false,
             "type": "string"
         },
         "moderator": {
             "default": false,
             "description": "Is the caller entering the conference as a moderator",
-            "name": "Moderator",
             "required": false,
             "type": "boolean"
         },
         "play_entry_tone": {
             "default": true,
             "description": "Should the Entry Tone be played",
-            "name": "Play Entry Tone",
             "required": false,
             "type": [
                 "boolean",
@@ -38,7 +34,6 @@
         "play_exit_tone": {
             "default": true,
             "description": "Should the Exit Tone be played",
-            "name": "Play Exit Tone",
             "required": false,
             "type": [
                 "boolean",
@@ -47,18 +42,15 @@
         },
         "welcome_prompt": {
             "description": "Describes how the caller is greeted on entering a conference",
-            "name": "Welcome Prompt",
             "properties": {
                 "media_id": {
                     "description": "Media to play, either Kazoo media ID or URL",
-                    "name": "Media",
                     "required": false,
                     "type": "string"
                 },
                 "play": {
                     "default": true,
                     "description": "Should the Welcome Prompt be played",
-                    "name": "Play Welcome Prompt",
                     "required": false,
                     "type": "boolean"
                 }

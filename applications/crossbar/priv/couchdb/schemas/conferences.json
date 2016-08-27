@@ -12,46 +12,40 @@
                 "required": false,
                 "type": "string"
             },
-            "name": "General Call In Numbers",
             "required": false,
             "type": "array",
             "uniqueItems": true
         },
         "focus": {
             "description": "This is a read-only property indicating the media server hosting the conference",
-            "name": "Focus",
             "required": false,
             "type": "string"
         },
         "member": {
             "default": {},
-            "description": "Defines the discovery properties for a member",
-            "name": "Member Call In",
+            "description": "Defines the discovery (call in) properties for a member",
             "properties": {
                 "join_deaf": {
                     "default": false,
                     "description": "Determines if a member will join deaf",
-                    "name": "Join Deaf?",
                     "required": false,
                     "type": "boolean"
                 },
                 "join_muted": {
                     "default": true,
                     "description": "Determines if a member will join muted",
-                    "name": "Join Muted?",
                     "required": false,
                     "type": "boolean"
                 },
                 "numbers": {
                     "default": [],
-                    "description": "Defines the conference number(s) for members",
+                    "description": "Defines the conference (call in) number(s) for members",
                     "items": {
                         "regex": "^\\d+$",
                         "required": false,
                         "type": "string"
                     },
                     "minItems": 0,
-                    "name": "Call In Numbers",
                     "required": false,
                     "type": "array",
                     "uniqueItems": true
@@ -64,7 +58,6 @@
                         "required": false,
                         "type": "string"
                     },
-                    "name": "Pin Numbers",
                     "required": false,
                     "type": "array"
                 }
@@ -74,32 +67,28 @@
         },
         "moderator": {
             "default": {},
-            "description": "Defines the discovery properties for a moderator",
-            "name": "Moderator Call In",
+            "description": "Defines the discovery (call in) properties for a moderator",
             "properties": {
                 "join_deaf": {
                     "default": false,
                     "description": "Determines if a moderator will join deaf",
-                    "name": "Join Deaf?",
                     "required": false,
                     "type": "boolean"
                 },
                 "join_muted": {
                     "default": false,
                     "description": "Determines if a moderator will join muted",
-                    "name": "Join Muted?",
                     "required": false,
                     "type": "boolean"
                 },
                 "numbers": {
                     "default": [],
-                    "description": "Defines the conference number(s) for moderators",
+                    "description": "Defines the conference (call in) number(s) for moderators",
                     "items": {
                         "regex": "^\\d+$",
                         "required": false,
                         "type": "string"
                     },
-                    "name": "Call In Numbers",
                     "required": false,
                     "type": "array",
                     "uniqueItems": true
@@ -112,7 +101,6 @@
                         "required": false,
                         "type": "string"
                     },
-                    "name": "Pin Numbers",
                     "required": false,
                     "type": "array"
                 }
@@ -124,7 +112,6 @@
             "description": "A friendly name for the conference",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Name",
             "required": false,
             "type": "string"
         },
@@ -132,20 +119,17 @@
             "description": "The user ID who manages this conference",
             "maxLength": 32,
             "minLength": 32,
-            "name": "Owner ID",
             "required": false,
             "type": "string"
         },
         "play_name": {
             "default": false,
             "description": "Do we need to announce new conference members?",
-            "name": "Play name",
             "required": false,
             "type": "boolean"
         },
         "profile": {
             "description": "The XML profile name used to configure the conference",
-            "name": "Profile",
             "required": false,
             "type": "string"
         }

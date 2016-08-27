@@ -13,7 +13,6 @@
                             "inherit",
                             "deny"
                         ],
-                        "name": "Action",
                         "required": false,
                         "type": "string"
                     }
@@ -23,7 +22,6 @@
             },
             "default": {},
             "description": "Account level call restrictions for each available number classification",
-            "name": "Call Restrictions",
             "required": false,
             "type": "object"
         },
@@ -34,7 +32,6 @@
             "$ref": "caller_id",
             "default": {},
             "description": "The account default caller ID parameters",
-            "name": "Default Caller ID",
             "required": false,
             "type": "object"
         },
@@ -42,16 +39,13 @@
             "$ref": "dialplans",
             "default": {},
             "description": "A list of default rules used to modify dialed numbers",
-            "name": "Default Dialplan",
             "required": false,
             "type": "object"
         },
         "do_not_disturb": {
-            "name": "DND Parameters",
             "properties": {
                 "enabled": {
                     "description": "The default value for do-not-disturb",
-                    "name": "Enabled?",
                     "required": false,
                     "type": "boolean"
                 }
@@ -62,14 +56,12 @@
         "enabled": {
             "default": true,
             "description": "Determines if the account is currently enabled",
-            "name": "Is Enabled?",
             "required": false,
             "type": "boolean"
         },
         "language": {
             "default": "en-us",
             "description": "The language for this account",
-            "name": "Language",
             "required": false,
             "type": "string"
         },
@@ -79,12 +71,10 @@
         "music_on_hold": {
             "default": {},
             "description": "The default music on hold parameters",
-            "name": "Music on Hold",
             "properties": {
                 "media_id": {
                     "description": "The ID of a media object that should be used as the default music on hold",
                     "maxLength": 128,
-                    "name": "Media ID",
                     "required": false,
                     "type": "string"
                 }
@@ -96,13 +86,11 @@
             "description": "A friendly name for the account",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Name",
             "required": true,
             "type": "string"
         },
         "org": {
             "description": "Full legal name of the organization",
-            "name": "Organizational name",
             "required": false,
             "type": "string"
         },
@@ -110,11 +98,9 @@
             "additionalProperties": false,
             "default": {},
             "description": "Each property provides functionality that can be applied to calls using the callflow application",
-            "name": "Preflows",
             "properties": {
                 "always": {
                     "description": "The ID of a callflow to always execute prior to processing the callflow with numbers/patterns matching the request",
-                    "name": "Callflow ID",
                     "required": false,
                     "type": "string"
                 }
@@ -127,26 +113,23 @@
             "format": "uri",
             "maxLength": 253,
             "minLength": 4,
-            "name": "Realm",
             "pattern": "^([.\\w_-]+)$",
             "required": false,
             "type": "string"
         },
         "ringtones": {
             "default": {},
-            "name": "Ringtone Parameters",
+            "description": "Ringtone Parameters",
             "properties": {
                 "external": {
                     "description": "The alert info SIP header added when the call is from internal sources",
                     "maxLength": 256,
-                    "name": "External",
                     "required": false,
                     "type": "string"
                 },
                 "internal": {
                     "description": "The alert info SIP header added when the call is from external sources",
                     "maxLength": 256,
-                    "name": "Internal",
                     "required": false,
                     "type": "string"
                 }
@@ -159,7 +142,6 @@
             "description": "The default timezone",
             "maxLength": 32,
             "minLength": 5,
-            "name": "Default Timezone",
             "required": false,
             "type": "string"
         },

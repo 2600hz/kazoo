@@ -29,7 +29,7 @@ Key | Description | Type | Default | Required
 `tx_result.fax_bad_rows` | The number of bad rows | `integer` | `0` | `false`
 `tx_result.fax_error_correction` | True if fax error correction was used | `boolean` | `false` | `false`
 `tx_result.fax_receiver_id` | The receiver id reported by the remote fax device | `string` | "" | `false`
-`tx_result.fax_speed` | The speed achieved during transmission | `integer` | `0` | `false`
+`tx_result.fax_speed` | The speed (Baud-Rate) achieved during transmission | `integer` | `0` | `false`
 `tx_result.pages_sent` | The number of pages transmitted | `integer` | `0` | `false`
 `tx_result.success` | True if the fax transmission was successful | `boolean` | `false` | `false`
 `tx_result.time_elapsed` | The amount of time from submition to completion | `integer` | `0` | `false`

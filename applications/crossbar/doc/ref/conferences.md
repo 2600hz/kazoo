@@ -9,17 +9,17 @@ Key | Description | Type | Default | Required
 `conference_numbers` | Defines conference numbers that can be used by members or moderators | `array(string)` | `[]` | `false`
 `conference_numbers.[]` |   | `string` |   | `false`
 `focus` | This is a read-only property indicating the media server hosting the conference | `string` |   | `false`
-`member` | Defines the discovery properties for a member | `object` | `{}` | `false`
+`member` | Defines the discovery (call in) properties for a member | `object` | `{}` | `false`
 `member.join_deaf` | Determines if a member will join deaf | `boolean` | `false` | `false`
 `member.join_muted` | Determines if a member will join muted | `boolean` | `true` | `false`
-`member.numbers` | Defines the conference number(s) for members | `array(string)` | `[]` | `false`
+`member.numbers` | Defines the conference (call in) number(s) for members | `array(string)` | `[]` | `false`
 `member.numbers.[]` |   | `string` |   | `false`
 `member.pins` | Defines the pin number(s) for members | `array(string)` | `[]` | `false`
 `member.pins.[]` |   | `string` |   | `false`
-`moderator` | Defines the discovery properties for a moderator | `object` | `{}` | `false`
+`moderator` | Defines the discovery (call in) properties for a moderator | `object` | `{}` | `false`
 `moderator.join_deaf` | Determines if a moderator will join deaf | `boolean` | `false` | `false`
 `moderator.join_muted` | Determines if a moderator will join muted | `boolean` | `false` | `false`
-`moderator.numbers` | Defines the conference number(s) for moderators | `array(string)` | `[]` | `false`
+`moderator.numbers` | Defines the conference (call in) number(s) for moderators | `array(string)` | `[]` | `false`
 `moderator.numbers.[]` |   | `string` |   | `false`
 `moderator.pins` | Defines the pin number(s) for moderators | `array(string)` | `[]` | `false`
 `moderator.pins.[]` |   | `string` |   | `false`

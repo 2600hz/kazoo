@@ -6,38 +6,32 @@
     "properties": {
         "A": {
             "description": "A records",
-            "name": "A",
             "required": false,
             "type": "object"
         },
         "CNAME": {
             "$ref": "domain_hosts",
             "description": "CNAME records",
-            "name": "CNAME",
             "required": false,
             "type": "object"
         },
         "MX": {
             "description": "MX records, typically for email servers",
-            "name": "MX",
             "required": false,
             "type": "object"
         },
         "NAPTR": {
             "description": "NAPTR records",
-            "name": "NAPTR",
             "required": false,
             "type": "object"
         },
         "SRV": {
             "description": "SRV records",
-            "name": "SRV",
             "required": false,
             "type": "object"
         },
         "TXT": {
             "description": "TXT records",
-            "name": "TXT",
             "required": false,
             "type": "object"
         }

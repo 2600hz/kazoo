@@ -18,11 +18,11 @@ Key | Description | Type | Default | Required
 `call_restriction` | Device level call restrictions for each available number classification | `object` | `{}` | `false`
 `call_waiting` |   | `#/definitions/call_waiting` |   | `false`
 `caller_id` | The device caller ID parameters | `object` | `{}` | `false`
-`contact_list` |   | `object` | `{}` | `false`
+`contact_list` | Contect List Parameters | `object` | `{}` | `false`
 `contact_list.exclude` | If set to true the device is excluded from the contact list | `boolean` |   | `false`
 `device_type` | Arbitrary device type used by the UI and billing system | `string` |   | `false`
 `dial_plan` | A list of rules used to modify dialed numbers | `object` | `{}` | `false`
-`do_not_disturb` |   | `object` |   | `false`
+`do_not_disturb` | DND Parameters | `object` |   | `false`
 `do_not_disturb.enabled` | Is do-not-disturb enabled for this device? | `boolean` |   | `false`
 `enabled` | Determines if the device is currently enabled | `boolean` | `true` | `false`
 `exclude_from_queues` | Do not ring this device when calling user/agent in queue | `boolean` | `false` | `false`
@@ -32,13 +32,13 @@ Key | Description | Type | Default | Required
 `media.audio.codecs` | A list of audio codecs the device supports | `array(string('OPUS', 'CELT@32000h', 'G7221@32000h', 'G7221@16000h', 'G722', 'speex@32000h', 'speex@16000h', 'PCMU', 'PCMA', 'G729', 'GSM', 'CELT@48000h', 'CELT@64000h', 'G722_16', 'G722_32', 'CELT_48', 'CELT_64', 'Speex', 'speex'))` | `["PCMU"]` | `false`
 `media.audio.codecs.[]` |   | `string` |   | `false`
 `media.bypass_media` | Default bypass media mode | `boolean, string('true', 'false', 'auto')` |   | `false`
-`media.encryption` |   | `object` | `{}` | `false`
-`media.encryption.enforce_security` |   | `boolean` | `false` | `false`
-`media.encryption.methods` |   | `array(string('zrtp', 'srtp'))` | `[]` | `false`
+`media.encryption` | Encryption Parameters | `object` | `{}` | `false`
+`media.encryption.enforce_security` | Is Encryption Enabled? | `boolean` | `false` | `false`
+`media.encryption.methods` | Supported Encryption Types | `array(string('zrtp', 'srtp'))` | `[]` | `false`
 `media.encryption.methods.[]` |   | `string` |   | `false`
-`media.fax_option` | Support T.38 | `boolean` |   | `false`
+`media.fax_option` | Is T.38 Supported? | `boolean` |   | `false`
 `media.ignore_early_media` | The option to determine if early media from the device should always be ignored | `boolean` |   | `false`
-`media.progress_timeout` | The progress timeout to apply to the device | `integer` |   | `false`
+`media.progress_timeout` | The progress timeout to apply to the device (seconds) | `integer` |   | `false`
 `media.video` | The video media parameters | `object` | `{}` | `false`
 `media.video.codecs` | A list of video codecs the device supports | `array(string('VP8', 'H264', 'H263', 'H261'))` | `[]` | `false`
 `media.video.codecs.[]` |   | `string` |   | `false`
@@ -52,15 +52,15 @@ Key | Description | Type | Default | Required
 `owner_id` | The ID of the user object that 'owns' the device | `string(32)` |   | `false`
 `presence_id` | Static presence ID (used instead of SIP username) | `string` |   | `false`
 `provision` | Provision data | `object` |   | `false`
-`provision.feature_keys` |   | `object` |   | `false`
+`provision.feature_keys` | Feature Keys | `object` |   | `false`
 `provision.feature_keys.^[0-9]+$` |   | `object` |   | `false`
 `provision.feature_keys.^[0-9]+$.type` | Feature key type | `string('presence', 'parking', 'personal_parking', 'speed_dial')` |   | `true`
 `provision.feature_keys.^[0-9]+$.value` | Feature key value | `string, integer` |   | `true`
 `register_overwrite_notify` | When true enables overwrite notifications | `boolean` | `false` | `false`
-`ringtones` |   | `object` | `{}` | `false`
+`ringtones` | Ringtone Parameters | `object` | `{}` | `false`
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false`
 `ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false`
-`sip` |   | `object` | `{}` | `false`
+`sip` | SIP Parameters | `object` | `{}` | `false`
 `sip.custom_sip_headers` | A property list of SIP headers beging with the prefix 'X-' | `object` |   | `false`
 `sip.expire_seconds` | The time, in seconds, sent to the provisioner for the registration period that the device should be configured with. | `integer` | `300` | `false`
 `sip.ignore_completed_elsewhere` | When set to false the phone should not consider ring group calls answered elsewhere as missed | `boolean` |   | `false`

@@ -6,7 +6,6 @@
     "properties": {
         "featurecode": {
             "description": "When the callflow is used as a featurecode this object tracks the intended match of the pattern and name of the feature",
-            "name": "Feature Code Parameters",
             "properties": {
                 "name": {
                     "maxLength": 128,
@@ -26,19 +25,16 @@
         },
         "flow": {
             "description": "A callflow node defines a module to execute, data to provide to that module, and one or more children to branch to",
-            "name": "Callflow",
             "properties": {
                 "children": {
                     "default": {},
                     "description": "Children callflows",
-                    "name": "Children Callflows",
                     "required": false,
                     "type": "object"
                 },
                 "data": {
                     "default": {},
                     "description": "The data/arguments of the callflow module",
-                    "name": "Module Data",
                     "required": true,
                     "type": "object"
                 },
@@ -46,7 +42,6 @@
                     "description": "The name of the callflow module to excute at this node",
                     "maxLength": 64,
                     "minLength": 1,
-                    "name": "Module Name",
                     "required": true,
                     "type": "string"
                 }
@@ -67,7 +62,6 @@
                 "required": false,
                 "type": "string"
             },
-            "name": "Numbers",
             "required": false,
             "type": "array"
         },
@@ -79,7 +73,6 @@
                 "required": false,
                 "type": "string"
             },
-            "name": "Patterns",
             "required": false,
             "type": "array"
         }

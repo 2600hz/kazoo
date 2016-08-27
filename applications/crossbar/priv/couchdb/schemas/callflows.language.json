@@ -5,7 +5,6 @@
     "properties": {
         "language": {
             "description": "The language to default to for the rest of the call",
-            "name": "Language",
             "pattern": "^[A-Za-z]{2}(-[A-Za-z]{2})?$",
             "required": true,
             "type": "string"

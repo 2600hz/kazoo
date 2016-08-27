@@ -19,7 +19,7 @@ Key | Description | Type | Default | Required
 `rate_increment` | The time slice, in seconds, to bill in. | `integer` | `60` | `false`
 `rate_minimum` | The minimum time slice, in seconds to bill a call | `integer` | `60` | `false`
 `rate_name` | Friendly name of the rate | `string` |   | `false`
-`rate_nocharge_time` | If the call duration is shorter than this threshold, the call is not billed | `integer` | `0` | `false`
+`rate_nocharge_time` | If the call duration is shorter than this threshold (seconds), the call is not billed | `integer` | `0` | `false`
 `rate_surcharge` | The upfront cost of connecting the call | `number` | `0` | `false`
 `routes` | List of regexs that match valid DIDs for this rate | `array(string)` | `[]` | `false`
 `routes.[]` |   | `string` |   | `false`

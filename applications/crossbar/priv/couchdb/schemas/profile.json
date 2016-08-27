@@ -10,7 +10,6 @@
                 "properties": {
                     "address": {
                         "description": "To specify the address",
-                        "name": "Address",
                         "required": false,
                         "type": "string"
                     },
@@ -27,26 +26,22 @@
                                 "pref"
                             ]
                         },
-                        "name": "Address type",
                         "required": false,
                         "type": "array"
                     }
                 },
                 "type": "object"
             },
-            "name": "Addresses",
             "required": false,
             "type": "array"
         },
         "assistant": {
             "description": "To specify the user's assistant",
-            "name": "Assistant",
             "required": false,
             "type": "string"
         },
         "birthday": {
             "description": "To specify the birth date of the user",
-            "name": "Birthday",
             "required": false,
             "type": "string"
         },
@@ -55,31 +50,26 @@
             "items": {
                 "type": "string"
             },
-            "name": "Nicknames",
             "required": false,
             "type": "array"
         },
         "note": {
             "description": "To specify supplemental information or a comment that is associated with the user",
-            "name": "Note",
             "required": false,
             "type": "string"
         },
         "role": {
             "description": "To specify the function or part played in a particular situation by the user",
-            "name": "Role",
             "required": false,
             "type": "string"
         },
         "sort-string": {
             "description": "To specify the family name or given name text to be used for national-language-specific sorting of the FN and N types",
-            "name": "Sort string",
             "required": false,
             "type": "string"
         },
         "title": {
             "description": "To specify the position or job of the user",
-            "name": "Title",
             "required": false,
             "type": "string"
         }

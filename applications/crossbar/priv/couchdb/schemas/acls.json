@@ -7,14 +7,12 @@
     "properties": {
         "cidr": {
             "description": "Classless Inter-Domain Routing IP notation for use on the ACL",
-            "name": "CIDR",
             "required": true,
             "type": "string"
         },
         "description": {
             "description": "Will be added as a comment for quick identification later",
             "maxLen": 30,
-            "name": "Name",
             "required": false,
             "type": "string"
         },
@@ -24,7 +22,6 @@
                 "authoritative",
                 "trusted"
             ],
-            "name": "ACL List",
             "required": true,
             "type": "string"
         },
@@ -35,7 +32,6 @@
                 "allow",
                 "deny"
             ],
-            "name": "Type",
             "required": true,
             "type": "string"
         }

@@ -8,7 +8,6 @@
             "description": "A friendly name for the temporal rule set",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Name",
             "required": true,
             "type": "string"
         },

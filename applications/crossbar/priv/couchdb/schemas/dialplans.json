@@ -5,19 +5,16 @@
         "properties": {
             "description": {
                 "description": "Friendly name for this regex dialplan",
-                "name": "Name",
                 "required": false,
                 "type": "string"
             },
             "prefix": {
                 "description": "Prefix the prepend to the capture group after applying the regex",
-                "name": "Prefix",
                 "required": false,
                 "type": "string"
             },
             "suffix": {
                 "description": "Suffix the append to the capture group after applying the regex",
-                "name": "Suffix",
                 "required": false,
                 "type": "string"
             }
@@ -26,11 +23,9 @@
         "type": "object"
     },
     "description": "",
-    "name": "Dialplans",
     "properties": {
         "system": {
             "description": "List of system dial plans",
-            "name": "System",
             "required": false,
             "type": "array"
         }

@@ -9,18 +9,16 @@
             "name": "Bcc",
             "properties": {
                 "email_addresses": {
-                    "description": "",
+                    "description": "BCC Email Addresses",
                     "itmes": {
                         "format": "email",
                         "required": false,
                         "type": "string"
                     },
-                    "name": "BCC Email Addresses",
                     "required": false,
                     "type": "array"
                 },
                 "type": {
-                    "description": "",
                     "enum": [
                         "original",
                         "specified",
@@ -28,7 +26,6 @@
                     ],
                     "maxLength": 253,
                     "minLength": 2,
-                    "name": "Type",
                     "required": false,
                     "type": "string"
                 }
@@ -44,27 +41,23 @@
         },
         "cc": {
             "description": "CC email field",
-            "name": "Cc",
             "properties": {
                 "email_addresses": {
-                    "description": "",
+                    "description": "CC Email Addresses",
                     "items": {
                         "format": "email",
                         "required": false,
                         "type": "string"
                     },
-                    "name": "CC Email Addresses",
                     "required": false,
                     "type": "array"
                 },
                 "type": {
-                    "description": "",
                     "enum": [
                         "original",
                         "specified",
                         "admins"
                     ],
-                    "name": "Type",
                     "required": false,
                     "type": "string"
                 }
@@ -75,7 +68,6 @@
         "enabled": {
             "default": true,
             "description": "Enable notification",
-            "name": "Enabled",
             "required": false,
             "type": "boolean"
         },
@@ -88,14 +80,11 @@
         "from": {
             "description": "From: email address",
             "format": "email",
-            "name": "From",
             "required": true,
             "type": "string"
         },
         "macros": {
             "default": {},
-            "description": "",
-            "name": "Macros",
             "properties": {},
             "required": false,
             "type": "object"
@@ -103,7 +92,6 @@
         "reply_to": {
             "description": "Reply-To: email address",
             "format": "email",
-            "name": "Reply-To",
             "required": false,
             "type": "string"
         },
@@ -111,35 +99,28 @@
             "description": "Email subject",
             "maxLength": 200,
             "minLength": 1,
-            "name": "Subject",
             "required": true,
             "type": "string"
         },
         "template_charset": {
             "default": "utf-8",
-            "description": "",
             "minLength": 1,
-            "name": "Template charset",
             "required": false,
             "type": "string"
         },
         "to": {
             "description": "To email field",
-            "name": "To",
             "properties": {
                 "email_addresses": {
-                    "description": "",
                     "items": {
                         "format": "email",
                         "required": false,
                         "type": "string"
                     },
-                    "name": "Email Addresses",
                     "required": false,
                     "type": "array"
                 },
                 "type": {
-                    "description": "",
                     "enum": [
                         "original",
                         "specified",
@@ -147,7 +128,6 @@
                     ],
                     "maxLength": 253,
                     "minLength": 2,
-                    "name": "Type",
                     "required": false,
                     "type": "string"
                 }

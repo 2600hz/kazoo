@@ -17,7 +17,6 @@
             "description": "A friendly name for the service plan",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Service Plan Name",
             "required": true,
             "type": "string"
         },

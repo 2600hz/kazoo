@@ -10,14 +10,12 @@
                 "type": "string"
             },
             "description": "These properties will be added to the event and will overwrite existing values.",
-            "name": "Custom Data",
             "required": false,
             "type": "object"
         },
         "enabled": {
             "default": true,
             "description": "Is the webhook enabled and running",
-            "name": "Enabled",
             "required": false,
             "type": "boolean"
         },
@@ -33,12 +31,10 @@
                 "get",
                 "post"
             ],
-            "name": "Method",
             "type": "string"
         },
         "name": {
             "description": "A friendly name for the webhook",
-            "name": "Name",
             "required": true,
             "type": "string"
         },
@@ -47,14 +43,12 @@
             "description": "Retry the request this many times (if it fails)",
             "maximum": 4,
             "minimum": 0,
-            "name": "Retries",
             "required": false,
             "type": "integer"
         },
         "uri": {
             "description": "The 3rd party URI to call out to an event",
             "format": "uri",
-            "name": "URI",
             "required": true,
             "type": "string"
         }

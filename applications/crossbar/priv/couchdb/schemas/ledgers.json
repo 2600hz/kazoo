@@ -6,17 +6,14 @@
     "properties": {
         "account": {
             "description": "Account info",
-            "name": "Account",
             "properties": {
                 "id": {
                     "description": "Account ID",
-                    "name": "ID",
                     "required": false,
                     "type": "string"
                 },
                 "name": {
                     "description": "Account name",
-                    "name": "Name",
                     "required": false,
                     "type": "string"
                 }
@@ -27,35 +24,29 @@
         "amount": {
             "description": "Ledger amount",
             "minimum": 1,
-            "name": "amount",
             "required": false,
             "type": "integer"
         },
         "description": {
             "description": "Useful description for ledger",
-            "name": "Description",
             "required": false,
             "type": "string"
         },
         "metadata": {
             "description": "Metadata for ledger document",
-            "name": "Metadata",
             "required": false,
             "type": "object"
         },
         "period": {
             "description": "Period of ledger",
-            "name": "Period",
             "properties": {
                 "end": {
                     "description": "Period end",
-                    "name": "End",
                     "required": false,
                     "type": "integer"
                 },
                 "start": {
                     "description": "Period start",
-                    "name": "Start",
                     "required": false,
                     "type": "integer"
                 }
@@ -65,17 +56,14 @@
         },
         "source": {
             "description": "Origin of ledger",
-            "name": "Source",
             "properties": {
                 "id": {
                     "description": "Source ID",
-                    "name": "Id",
                     "required": true,
                     "type": "string"
                 },
                 "service": {
                     "description": "Source service",
-                    "name": "Service",
                     "required": true,
                     "type": "string"
                 }
@@ -85,23 +73,19 @@
         },
         "usage": {
             "description": "Usage for ledger",
-            "name": "Usage",
             "properties": {
                 "quantity": {
                     "description": "Usage quantity",
-                    "name": "Quantity",
                     "required": true,
                     "type": "integer"
                 },
                 "type": {
                     "description": "Usage type",
-                    "name": "Service",
                     "required": true,
                     "type": "string"
                 },
                 "unit": {
                     "description": "Usage unit",
-                    "name": "Unit",
                     "required": true,
                     "type": "string"
                 }

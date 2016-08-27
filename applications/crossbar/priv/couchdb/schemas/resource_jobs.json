@@ -8,7 +8,6 @@
             "description": "A friendly name for the job, if you like",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Name",
             "required": false,
             "type": "string"
         },

@@ -10,7 +10,6 @@
         },
         "hook_id": {
             "description": "Id of the hook attempted",
-            "name": "Hook Id",
             "required": true,
             "type": "string"
         },

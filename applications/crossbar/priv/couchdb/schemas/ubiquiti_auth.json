@@ -8,7 +8,6 @@
             "description": "Ubiquiti SSO Password",
             "maxLength": 64,
             "minLength": 1,
-            "name": "Password",
             "required": true,
             "type": "string"
         },
@@ -16,7 +15,6 @@
             "description": "Ubiquiti SSO Username",
             "maxLength": 64,
             "minLength": 1,
-            "name": "Username",
             "required": true,
             "type": "string"
         }

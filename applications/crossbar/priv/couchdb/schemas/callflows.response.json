@@ -6,19 +6,16 @@
         "code": {
             "default": "486",
             "description": "The SIP Hangup code to respond with",
-            "name": "Code",
             "required": true,
             "type": "integer"
         },
         "media": {
             "description": "Optional media file to play before responding with the hangup code/cause",
-            "name": "Media",
             "required": false,
             "type": "string"
         },
         "message": {
             "description": "The SIP Hangup cause to respond with",
-            "name": "Message",
             "required": false,
             "type": "string"
         }

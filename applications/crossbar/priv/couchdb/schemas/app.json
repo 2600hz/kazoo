@@ -8,7 +8,6 @@
         "api_url": {
             "description": "Application api url",
             "format": "uri",
-            "name": "Api url",
             "required": true,
             "type": "string"
         },
@@ -16,24 +15,20 @@
             "description": "Application author",
             "maxLength": 64,
             "minLength": 2,
-            "name": "Author",
             "required": true,
             "type": "string"
         },
         "i18n": {
             "description": "Application source url",
-            "name": "i18n",
             "patternProperties": {
                 "[a-z]{2}\\-[A-Z]{2}": {
                     "properties": {
                         "description": {
                             "minLength": 3,
-                            "name": "Description",
                             "required": true,
                             "type": "string"
                         },
                         "extended_description": {
-                            "name": "Extended Description",
                             "required": false,
                             "type": "string"
                         },
@@ -42,14 +37,12 @@
                                 "required": false,
                                 "type": "string"
                             },
-                            "name": "Features",
                             "required": false,
                             "type": "array"
                         },
                         "label": {
                             "maxLength": 64,
                             "minLength": 3,
-                            "name": "Label",
                             "required": true,
                             "type": "string"
                         }
@@ -63,13 +56,11 @@
         },
         "icon": {
             "description": "Application icon",
-            "name": "Icon",
             "required": true,
             "type": "string"
         },
         "license": {
             "description": "Application license",
-            "name": "License",
             "required": true,
             "type": "string"
         },
@@ -77,14 +68,12 @@
             "description": "Application name",
             "maxLength": 64,
             "minLength": 3,
-            "name": "Name",
             "required": true,
             "type": "string"
         },
         "price": {
             "description": "Application price",
             "minimum": 0,
-            "name": "Price",
             "required": true,
             "type": "integer"
         },
@@ -93,14 +82,12 @@
                 "required": false,
                 "type": "string"
             },
-            "name": "Screenshots",
             "required": false,
             "type": "array"
         },
         "source_url": {
             "description": "Application source url",
             "format": "uri",
-            "name": "Source Url",
             "required": false,
             "type": "string"
         },
@@ -109,18 +96,15 @@
                 "required": false,
                 "type": "string"
             },
-            "name": "Tags",
             "required": false,
             "type": "array"
         },
         "urls": {
-            "name": "Urls",
             "required": false,
             "type": "object"
         },
         "version": {
             "description": "Application version",
-            "name": "Version",
             "required": true,
             "type": "string"
         }

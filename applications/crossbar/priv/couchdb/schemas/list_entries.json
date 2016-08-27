@@ -7,7 +7,6 @@
             "description": "Display name",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Display Name",
             "required": false,
             "type": "string"
         },
@@ -15,7 +14,6 @@
             "description": "A friendly firstname",
             "maxLength": 128,
             "minLength": 1,
-            "name": "First name",
             "required": false,
             "type": "string"
         },
@@ -23,25 +21,21 @@
             "description": "A friendly lastname",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Last name",
             "required": false,
             "type": "string"
         },
         "list_id": {
             "description": "List id",
-            "name": "List id",
             "required": true,
             "type": "string"
         },
         "number": {
             "description": "Phone number",
-            "name": "Number",
             "required": false,
             "type": "string"
         },
         "pattern": {
             "description": "Match pattern",
-            "name": "Pattern",
             "required": false,
             "type": "string"
         },
@@ -55,7 +49,6 @@
         "type": {
             "maxLength": 128,
             "minLength": 1,
-            "name": "type",
             "required": false,
             "type": "string"
         }

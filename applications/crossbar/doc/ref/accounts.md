@@ -22,7 +22,7 @@ Key | Description | Type | Default | Required
 `preflow` | Each property provides functionality that can be applied to calls using the callflow application | `object` | `{}` | `false`
 `preflow.always` | The ID of a callflow to always execute prior to processing the callflow with numbers/patterns matching the request | `string` |   | `false`
 `realm` | The realm of the account, ie: 'account1.2600hz.com' | `string(4..253)` |   | `false`
-`ringtones` |   | `object` | `{}` | `false`
+`ringtones` | Ringtone Parameters | `object` | `{}` | `false`
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false`
 `ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false`
 `timezone` | The default timezone | `string(5..32)` | `America/Los_Angeles` | `false`

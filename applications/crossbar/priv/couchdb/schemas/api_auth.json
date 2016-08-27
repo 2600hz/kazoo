@@ -9,7 +9,6 @@
             "description": "The Accounts API key",
             "maxLength": 64,
             "minLength": 64,
-            "name": "API Key",
             "required": true,
             "type": "string"
         }

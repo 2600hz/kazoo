@@ -8,18 +8,16 @@
             "description": "A friendly name for the temporal rule set",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Name",
             "required": true,
             "type": "string"
         },
         "temporal_rules": {
-            "description": "Rules",
+            "description": "Temporal Rules",
             "items": {
                 "required": false,
                 "type": "string"
             },
             "minItems": 1,
-            "name": "Temporal Rules",
             "required": false,
             "type": "array"
         }

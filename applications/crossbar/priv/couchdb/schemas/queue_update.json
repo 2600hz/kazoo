@@ -10,7 +10,6 @@
                 "login",
                 "logout"
             ],
-            "name": "Action",
             "required": true,
             "type": "string"
         },
@@ -18,7 +17,6 @@
             "description": "Queue Identifier",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Queue ID",
             "required": true,
             "type": "string"
         }

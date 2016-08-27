@@ -9,7 +9,6 @@
             "items": {
                 "type": "string"
             },
-            "name": "Array of list ids",
             "required": "true",
             "type": "array"
         }

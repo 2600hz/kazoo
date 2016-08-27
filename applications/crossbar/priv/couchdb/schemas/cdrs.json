@@ -7,19 +7,16 @@
     "properties": {
         "app_name": {
             "description": "The Kazoo application that issued the CDR",
-            "name": "Application Name",
             "required": false,
             "type": "string"
         },
         "app_version": {
             "description": "The internal Kazoo version number of the application that issued the CDR",
-            "name": "Application Version",
             "required": false,
             "type": "string"
         },
         "billing_seconds": {
             "description": "The number of seconds the call leg can be billed for (typically from when the call leg is answered",
-            "name": "Billing (seconds)",
             "required": false,
             "type": "string"
         },
@@ -29,37 +26,31 @@
                 "inbound",
                 "outbound"
             ],
-            "name": "Direction",
             "required": false,
             "type": "string"
         },
         "call_id": {
             "description": "Unique identifier of the call leg",
-            "name": "Call ID",
             "required": true,
             "type": "string"
         },
         "callee_id_name": {
             "description": "The indicated name of the callee",
-            "name": "Callee ID Name",
             "required": false,
             "type": "string"
         },
         "callee_id_number": {
             "description": "The indicated number of the callee",
-            "name": "Callee ID Number",
             "required": false,
             "type": "string"
         },
         "caller_id_name": {
             "description": "The indicated name of the caller",
-            "name": "Caller ID Name",
             "required": false,
             "type": "string"
         },
         "caller_id_number": {
             "description": "The indicated number of the caller",
-            "name": "Caller ID Number",
             "required": false,
             "type": "string"
         },
@@ -69,7 +60,6 @@
                 "type": "string"
             },
             "description": "Kazoo-specific key/value pairs set on the channel",
-            "name": "CCVs",
             "required": false,
             "type": "object"
         },
@@ -79,25 +69,21 @@
                 "type": "string"
             },
             "description": "A property list of SIP headers beging with the prefix 'X-'",
-            "name": "Custom SIP Headers",
             "required": false,
             "type": "object"
         },
         "digits_dialed": {
             "description": "All the DTMF tones detected on this leg of the call",
-            "name": "Digits Dialed",
             "required": false,
             "type": "string"
         },
         "disposition": {
             "description": "Who sent the SIP BYE message",
-            "name": "Hangup Disposition",
             "required": false,
             "type": "string"
         },
         "duration_seconds": {
             "description": "The duration of the call leg, in seconds",
-            "name": "Duration (seconds)",
             "required": false,
             "type": "string"
         },
@@ -135,121 +121,101 @@
         },
         "from": {
             "description": "Built by Kazoo, depending on direction, to represent the From user",
-            "name": "From",
             "required": false,
             "type": "string"
         },
         "from_uri": {
             "description": "The From SIP URI",
-            "name": "SIP From",
             "required": false,
             "type": "string"
         },
         "hangup_cause": {
             "description": "The reason for the call leg's termination",
-            "name": "Hangup Cause",
             "required": false,
             "type": "string"
         },
         "hangup_code": {
             "description": "The SIP hangup code, if available",
-            "name": "Hangup Code",
             "required": false,
             "type": "string"
         },
         "local_sdp": {
             "description": "The SDP negotiated by the local agent",
-            "name": "Local SDP",
             "required": false,
             "type": "string"
         },
         "media_server": {
             "description": "The hostname of the media server that processed the call",
-            "name": "Media Server",
             "required": false,
             "type": "string"
         },
         "node": {
             "description": "The ecallmgr which issued the CDR",
-            "name": "Erlang Node",
             "required": false,
             "type": "string"
         },
         "other_leg_call_id": {
             "description": "If this leg was bridged, the call-id of the opposite leg",
-            "name": "Other Leg Call ID",
             "required": false,
             "type": "string"
         },
         "other_leg_caller_id_name": {
             "description": "Caller ID name of the bridged leg",
-            "name": "Other Leg Caller ID Name",
             "required": false,
             "type": "string"
         },
         "other_leg_caller_id_number": {
             "description": "Caller ID number of the bridged leg",
-            "name": "Other Leg Caller ID Number",
             "required": false,
             "type": "string"
         },
         "other_leg_destination_number": {
             "description": "Dialed number of the other leg",
-            "name": "Other Leg Destination",
             "required": false,
             "type": "string"
         },
         "other_leg_direction": {
             "description": "direction of the other leg, relative to the media server",
-            "name": "Other Leg Direction",
             "required": false,
             "type": "string"
         },
         "presence_id": {
             "description": "ID used in NOTIFY SIP messages",
-            "name": "Presence ID",
             "required": false,
             "type": "string"
         },
         "remote_sdp": {
             "description": "The SDP negotiated by the remote agent",
-            "name": "Remote SDP",
             "required": false,
             "type": "string"
         },
         "request": {
             "description": "Built by Kazoo this is the processed request URI",
-            "name": "Request",
             "required": false,
             "type": "string"
         },
         "ringing_seconds": {
             "description": "How many seconds the leg was ringing (pre-answer)",
-            "name": "Ringing (seconds)",
             "required": false,
             "type": "string"
         },
         "timestamp": {
             "description": "UTC timestamp, in gregorian seconds, of when the CDR was generated",
-            "name": "Timestamp (Gregorian seconds)",
             "required": false,
             "type": "string"
         },
         "to": {
             "description": "Built by Kazoo, depending on direction, to represent the To user",
-            "name": "To",
             "required": false,
             "type": "string"
         },
         "to_uri": {
             "description": "The To SIP URI",
-            "name": "SIP To",
             "required": false,
             "type": "string"
         },
         "user_agent": {
             "description": "User agent header from SIP packet",
-            "name": "SIP User Agent",
             "required": false,
             "type": "string"
         }

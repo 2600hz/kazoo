@@ -9,37 +9,31 @@
             "properties": {
                 "extended_address": {
                     "description": "The suite/floor/apt of the billing address the losing carrier has on record",
-                    "name": "Address",
                     "required": false,
                     "type": "string"
                 },
                 "locality": {
                     "description": "The locality (city) of the billing address the losing carrier has on record",
-                    "name": "City",
                     "required": false,
                     "type": "string"
                 },
                 "name": {
                     "description": "The losing carrier billing/account name",
-                    "name": "Account Name",
                     "required": false,
                     "type": "string"
                 },
                 "postal_code": {
                     "description": "The zip/postal code of the billing address the losing carrier has on record",
-                    "name": "Zip Code",
                     "required": false,
                     "type": "string"
                 },
                 "region": {
                     "description": "The region (state) of the billing address the losing carrier has on record",
-                    "name": "State",
                     "required": false,
                     "type": "string"
                 },
                 "street_address": {
                     "description": "The address of the billing address the losing carrier has on record",
-                    "name": "Address",
                     "required": false,
                     "type": "string"
                 }
@@ -53,7 +47,6 @@
                 "required": false,
                 "type": "object"
             },
-            "name": "Comments",
             "required": false,
             "type": "array"
         },
@@ -61,7 +54,6 @@
             "description": "A friendly name for the port request",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Name",
             "required": true,
             "type": "string"
         },
@@ -69,8 +61,7 @@
             "description": "Status notifications",
             "properties": {
                 "email": {
-                    "description": "Email notifications",
-                    "name": "Inbound Email Notifications",
+                    "description": "Inbound Email Notifications",
                     "properties": {
                         "send_to": {
                             "description": "A list or string of email recipent(s)",
@@ -80,7 +71,6 @@
                                 "required": false,
                                 "type": "string"
                             },
-                            "name": "Email Address",
                             "required": false,
                             "type": [
                                 "string",
@@ -98,7 +88,6 @@
         "numbers": {
             "description": "The numbers to port in",
             "minProperties": 1,
-            "name": "Numbers",
             "patternProperties": {
                 "\\+?[0-9]+": {
                     "type": "object"
@@ -119,19 +108,16 @@
                 "rejected",
                 "canceled"
             ],
-            "name": "Port State",
             "required": false,
             "type": "string"
         },
         "scheduled_date": {
             "description": "Requested scheduled date in gregorain timestamp",
-            "name": "Scheduled Date",
             "required": false,
             "type": "integer"
         },
         "transfer_date": {
             "description": "Requested transfer date in gregorain timestamp",
-            "name": "Transfer Date",
             "required": false,
             "type": "integer"
         }

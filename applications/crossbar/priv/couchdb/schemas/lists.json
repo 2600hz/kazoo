@@ -7,7 +7,6 @@
             "description": "A friendly list description",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Description",
             "required": false,
             "type": "string"
         },
@@ -15,13 +14,11 @@
             "description": "A friendly match list name",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Name",
             "required": true,
             "type": "string"
         },
         "org": {
             "description": "Full legal name of the organization",
-            "name": "Organizational name",
             "required": false,
             "type": "string"
         }

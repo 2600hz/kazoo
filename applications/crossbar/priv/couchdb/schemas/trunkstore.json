@@ -75,7 +75,6 @@
                             "inherit",
                             "deny"
                         ],
-                        "name": "Action",
                         "required": false,
                         "type": "string"
                     }
@@ -85,7 +84,6 @@
             },
             "default": {},
             "description": "Trunk level call restrictions for each available number classification",
-            "name": "Call Restrictions",
             "required": false,
             "type": "object"
         },

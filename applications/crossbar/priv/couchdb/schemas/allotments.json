@@ -8,7 +8,6 @@
             "properties": {
                 "amount": {
                     "minimum": 0,
-                    "name": "Amount",
                     "required": true,
                     "type": "integer"
                 },
@@ -20,7 +19,6 @@
                         "weekly",
                         "monthly"
                     ],
-                    "name": "Cycle",
                     "required": true,
                     "type": "string"
                 },
@@ -28,32 +26,27 @@
                     "items": {
                         "type": "string"
                     },
-                    "name": "Group consuming",
                     "required": false,
                     "type": "array"
                 },
                 "increment": {
                     "minimum": 1,
-                    "name": "Increment",
                     "required": false,
                     "type": "integer"
                 },
                 "minimum": {
                     "minimum": 0,
-                    "name": "Increment",
                     "required": false,
                     "type": "integer"
                 },
                 "no_consume_time": {
                     "minimum": 0,
-                    "name": "No consume time",
                     "required": false,
                     "type": "integer"
                 }
             }
         },
-        "description": "Allotment object.",
-        "name": "Allotment object",
+        "description": "Allotment object",
         "required": false,
         "type": "object"
     },
