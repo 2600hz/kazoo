@@ -39,6 +39,8 @@
                              ,{<<"enter-sound">>, <<"">>}
                              ]).
 
+-define(CALLER_CONTROLS(ConfigName), kapps_config:get(?CONFIG_CAT, [<<"caller-controls">>, ConfigName])).
+
 -define(DEFAULT_ADVERTISE_CONFIG, 'undefined').
 -define(PAGE_ADVERTISE_CONFIG, 'undefined').
 -define(ADVERTISE(ConfigName, Default)
