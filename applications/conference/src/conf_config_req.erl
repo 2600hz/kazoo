@@ -59,6 +59,7 @@ fetch_config(JObj, ConfigName, Profile) ->
             kz_util:log_stacktrace(ST)
     end.
 
+-spec fetch_controls_config(kz_json:object(), ne_binary(), [kz_json:object()]) -> 'ok'.
 fetch_controls_config(JObj, ControlsName, Controls) ->
     Resp = [{<<"Caller-Controls">>, caller_controls(ControlsName, Controls)},
             {<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)} | kz_api:default_headers(?APP_NAME, ?APP_VERSION)],
@@ -168,16 +169,20 @@ chat_permissions(_ConfigName, 'undefined') -> 'undefined';
 chat_permissions(ConfigName, Chat) -> kz_json:from_list([{ConfigName, Chat}]).
 
 %% see: https://freeswitch.org/confluence/display/FREESWITCH/mod_conference
+-spec default_caller_controls() -> [kz_json:object()].
 default_caller_controls() ->
     [ controls_to_json(Control) || Control <- ?DEFAULT_CALLER_CONTROLS ].
+-spec default_moderator_controls() -> [kz_json:object()].
 default_moderator_controls() ->
     [ controls_to_json(Control) || Control <- ?DEFAULT_MODERATOR_CONTROLS ].
 
+-spec controls_to_json([ne_binary()]) -> kz_json:object().
 controls_to_json([Action, Digits]) ->
     kz_json:from_list([{<<"action">>, list_to_binary(Action)}, {<<"digits">>, list_to_binary(Digits)}]);
 controls_to_json([Action, Digits, Data]) ->
     kz_json:from_list([{<<"action">>, list_to_binary(Action)}, {<<"digits">>, list_to_binary(Digits)}, {<<"data">>, list_to_binary(Data)}]).
 
 %% TODO: get configured controls per account
+-spec get_controls(ne_binary(), ne_binary()) -> [kz_json:object()] | 'undefined'.
 get_controls(_ConferenceName, ControlsName) ->
     kapps_config:get(?CONFIG_CAT, ControlsName).
