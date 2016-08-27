@@ -205,7 +205,7 @@ handle_config_req(Node, Id, <<"sofia.conf">>, _Props) ->
     end;
 handle_config_req(Node, Id, <<"conference.conf">>, Data) ->
     kz_util:put_callid(Id),
-    maybe_fetch_conference_profile(Node, Id, props:get_value(<<"profile_name">>, Data));
+    fetch_conference_config(Node, Id, kzd_freeswitch:event_name(Data), Data);
 handle_config_req(Node, Id, Conf, Data) ->
     kz_util:put_callid(Id),
     handle_config_req(Node, Id, Conf, Data, ecallmgr_config:get(<<"configuration_handlers">>)).
@@ -394,6 +394,8 @@ fix_conference_profile(Resp) ->
 fix_conference_profile(Name, Profile) ->
     Routines = [fun maybe_fix_profile_tts/1
                ,fun maybe_set_verbose_events/1
+               ,{fun kz_json:set_value/3, <<"caller-controls">>, <<"caller-controls">>}
+               ,{fun kz_json:set_value/3, <<"moderator-controls">>, <<"moderator-controls">>}
                ],
     {Name, kz_json:exec(Routines, Profile)}.
 
@@ -417,6 +419,42 @@ fix_flite_tts(Profile) ->
     Voice = kz_json:get_value(<<"tts-voice">>, Profile),
     kz_json:set_value(<<"tts-voice">>, ecallmgr_fs_flite:voice(Voice), Profile).
 
+-spec fetch_conference_config(atom(), ne_binary(), ne_binary(), kz_proplist()) -> fs_sendmsg_ret().
+fetch_conference_config(Node, Id, <<"COMMAND">>, Data) ->
+    maybe_fetch_conference_profile(Node, Id, props:get_value(<<"profile_name">>, Data));
+fetch_conference_config(Node, Id, <<"REQUEST_PARAMS">>, Data) ->
+    Action = props:get_value(<<"Action">>, Data),
+    ConfName = props:get_value(<<"Conf-Name">>, Data),
+    lager:debug("request conference:~p params:~p", [ConfName, Action]),
+    fetch_conference_params(Node, Id, Action, ConfName, Data).
+
+fetch_conference_params(Node, Id, <<"request-controls">>, ConfName, Data) ->
+    Controls = props:get_value(<<"Controls">>, Data),
+    lager:debug("request controls:~p for conference:~p", [Controls, ConfName]),
+    Cmd = [{<<"Request">>, <<"Controls">>}
+           ,{<<"Profile">>, ConfName}
+           ,{<<"Controls">>, Controls} | kz_api:default_headers(?APP_NAME, ?APP_VERSION)],
+    Resp = kz_amqp_worker:call(Cmd
+                               ,fun kapi_conference:publish_config_req/1
+                               ,fun kapi_conference:config_resp_v/1
+                               ,ecallmgr_fs_node:fetch_timeout(Node)
+                               ),
+    {'ok', Xml} = handle_conference_params_response(Resp),
+    send_conference_profile_xml(Node, Id, Xml);
+fetch_conference_params(Node, Id, Action, ConfName, _Data) ->
+    lager:debug("undefined request_params action:~p conference:~p", [Action, ConfName]),
+    {'ok', XmlResp} = ecallmgr_fs_xml:not_found(),
+    send_conference_profile_xml(Node, Id, XmlResp).
+
+handle_conference_params_response({'ok', Resp}) ->
+    lager:debug("replying with xml response for conference params request"),
+    ecallmgr_fs_xml:conference_resp_xml(Resp);
+handle_conference_params_response({'error', 'timeout'}) ->
+    lager:debug("timed out waiting for conference params"),
+    ecallmgr_fs_xml:not_found();
+handle_conference_params_response(_Error) ->
+    lager:debug("failed to lookup conference params, error:~p", [_Error]),
+    ecallmgr_fs_xml:not_found().
 
 -spec maybe_fetch_conference_profile(atom(), ne_binary(), api_binary()) -> fs_sendmsg_ret().
 maybe_fetch_conference_profile(Node, Id, 'undefined') ->
@@ -425,7 +463,8 @@ maybe_fetch_conference_profile(Node, Id, 'undefined') ->
     send_conference_profile_xml(Node, Id, XmlResp);
 
 maybe_fetch_conference_profile(Node, Id, Profile) ->
-    Cmd = [{<<"Profile">>, Profile}
+    Cmd = [{<<"Request">>, <<"Conference">>}
+           ,{<<"Profile">>, Profile}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("fetching profile '~s'", [Profile]),
