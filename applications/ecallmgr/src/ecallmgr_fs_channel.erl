@@ -370,6 +370,7 @@ handle_cast('bind_to_events', #state{node=Node}=State) ->
         andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_ANSWER">>)}) =:= 'true'
         andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_BRIDGE">>)}) =:= 'true'
         andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_UNBRIDGE">>)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CALL_UPDATE">>)}) =:= 'true'
     of
         'true' -> {'noreply', State};
         'false' -> {'stop', 'gproc_badarg', State}
@@ -596,6 +597,8 @@ process_specific_event(<<"CHANNEL_ANSWER">>, UUID, Props, Node) ->
     maybe_publish_channel_state(Props, Node);
 process_specific_event(<<"CHANNEL_DATA">>, UUID, Props, _) ->
     ecallmgr_fs_channels:updates(UUID, props_to_update(Props));
+process_specific_event(<<"CALL_UPDATE">>, UUID, Props, _) ->
+    ecallmgr_fs_channels:updates(UUID, props_to_update(Props));
 process_specific_event(<<"CHANNEL_BRIDGE">>, UUID, Props, _) ->
     OtherLeg = get_other_leg(UUID, Props),
     ecallmgr_fs_channels:updates(UUID, props:filter_undefined(
@@ -642,6 +645,7 @@ maybe_publish_restricted(Props) ->
 props_to_record(Props, Node) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
     CCVs = ecallmgr_util:custom_channel_vars(Props),
+    OtherLeg = get_other_leg(props:get_value(<<"Unique-ID">>, Props), Props),
     #channel{uuid=UUID
             ,destination=props:get_value(<<"Caller-Destination-Number">>, Props)
             ,direction=kzd_freeswitch:call_direction(Props)
@@ -669,8 +673,8 @@ props_to_record(Props, Node) ->
             ,profile=props:get_value(<<"variable_sofia_profile_name">>, Props, ?DEFAULT_FS_PROFILE)
             ,context=props:get_value(<<"Caller-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT)
             ,dialplan=props:get_value(<<"Caller-Dialplan">>, Props, ?DEFAULT_FS_DIALPLAN)
-            ,other_leg=get_other_leg(props:get_value(<<"Unique-ID">>, Props), Props)
-            ,handling_locally=handling_locally(Props)
+            ,other_leg=OtherLeg
+            ,handling_locally=handling_locally(Props, OtherLeg)
             ,to_tag=props:get_value(<<"variable_sip_to_tag">>, Props)
             ,from_tag=props:get_value(<<"variable_sip_from_tag">>, Props)
             ,interaction_id=props:get_value(<<?CALL_INTERACTION_ID>>, CCVs)
@@ -680,10 +684,23 @@ props_to_record(Props, Node) ->
             ,callflow_id=props:get_value(<<"CallFlow-ID">>, CCVs)
             }.
 
--spec handling_locally(kz_proplist()) -> boolean().
-handling_locally(Props) ->
+-spec other_leg_handling_locally(ne_binary()) -> boolean().
+other_leg_handling_locally(OtherLeg) ->
+    case fetch(OtherLeg, 'record') of
+        {'ok', #channel{handling_locally=HandleLocally}} -> HandleLocally;
+        _ -> 'false'
+    end.
+
+-spec handling_locally(kz_proplist(), api_binary()) -> boolean().
+handling_locally(Props, 'undefined') ->
     props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
-        =:= kz_util:to_binary(node()).
+        =:= kz_util:to_binary(node());
+handling_locally(Props, OtherLeg) ->
+    Node = kz_util:to_binary(node()),
+    case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props) of
+        Node -> 'true';
+        'undefined' -> other_leg_handling_locally(OtherLeg)
+    end.
 
 -spec get_username(kz_proplist()) -> api_binary().
 get_username(Props) ->

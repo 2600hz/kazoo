@@ -11,6 +11,7 @@
 -export([register_binding/3, register_bindings/3]).
 -export([search_for_route/5, search_for_route/6]).
 -export([reply_affirmative/6]).
+-export([route_req/4]).
 
 -include_lib("kazoo_sip/include/kzsip_uri.hrl").
 -include("ecallmgr.hrl").

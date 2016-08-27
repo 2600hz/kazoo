@@ -347,6 +347,22 @@ process_stream(<<"sofia::transferor">> = EventName, UUID, Props, Node) ->
     end,
     maybe_send_event(EventName, UUID, Props, Node),
     process_event(EventName, UUID, Props, Node);
+process_stream(<<"sofia::intercepted">> = EventName, UUID, Props, Node) ->
+    InterceptedBy = props:get_value(<<"intercepted_by">>, Props),
+    case ecallmgr_fs_channel:fetch(UUID, 'record') of
+        {'ok', #channel{interaction_id=InterAction
+                       ,direction=Direction
+                       }
+        } ->
+            lager:debug("sofia::intercepted: channel ~s Intercepted by ~s", [UUID, InterceptedBy]),
+            Vars = [{<<"Application-Logical-Direction">>, Direction}
+                   ,{<<?CALL_INTERACTION_ID>>, InterAction}
+                   ],
+            ecallmgr_fs_command:set(Node, InterceptedBy, Vars);
+        _ -> 'ok'
+    end,
+    maybe_send_event(EventName, UUID, Props, Node),
+    process_event(EventName, UUID, Props, Node);
 process_stream(EventName, UUID, EventProps, Node) ->
     maybe_send_event(EventName, UUID, EventProps, Node),
     process_event(EventName, UUID, EventProps, Node).
@@ -386,7 +402,7 @@ maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
     kz_util:put_callid(UUID),
     BridgeID = props:get_value(<<"variable_bridge_uuid">>, Props),
     DialPlan = props:get_value(<<"Caller-Dialplan">>, Props),
-    Direction = kzd_freeswitch:call_direction(Props),
+    Direction = props:get_value(?GET_CCV(<<"Application-Logical-Direction">>), Props),
     App = props:get_value(<<"variable_current_application">>, Props),
     Destination = props:get_value(<<"Caller-Destination-Number">>, Props),
 
@@ -394,10 +410,21 @@ maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
         {'undefined', _, _, _, _} ->
             gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
             maybe_send_call_event(UUID, Props, Node);
-        {BridgeID, <<"inbound">>, <<"inline">>, <<"intercept">>, 'undefined'} ->
-            SwappedProps = ecallmgr_call_events:swap_call_legs(Props),
-            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [BridgeID | SwappedProps]}),
-            maybe_send_call_event(BridgeID, SwappedProps, Node);
+        {BridgeID, <<"outbound">>, <<"inline">>, <<"intercept">>, 'undefined'} ->
+            ALeg = props:get_value(<<"Bridge-A-Unique-ID">>, Props),
+            BLeg = props:get_value(<<"Bridge-B-Unique-ID">>, Props),
+            lager:debug("channel bridge intercept: UUID: ~s, A : ~s, B : ~s", [UUID, ALeg, BLeg]),
+            case ecallmgr_fs_channel:channel_data(Node, BLeg) of
+                {'ok', CData} ->
+                    Data = props:filter_undefined(
+                             [{<<"Event-Subclass">>, props:get_value(<<"Event-Subclass">>, Props)}
+                             ,{<<"Event-Name">>, props:get_value(<<"Event-Name">>, Props)}
+                             ]) ++ CData,
+                    gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [BLeg | Data]}),
+                    gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, BLeg)}, {'event', [BLeg | Data]});
+                _ ->
+                    lager:debug("channel bridge intercept: failed to get channel data for ~s", [BLeg])
+            end;
         _Else ->
             gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
             maybe_send_call_event(UUID, Props, Node)

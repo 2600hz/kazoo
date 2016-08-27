@@ -51,6 +51,7 @@
 -define(KEY_QUEUE_ID, <<"Server-Queue-ID">>).
 -define(KEY_LOG_ID, <<"System-Log-ID">>).
 -define(KEY_MSG_ACCOUNT_ID, <<"Account-ID">>).
+-define(KEY_MSG_CALL_ID, <<"Call-ID">>).
 
 -define(KEY_AMQP_BROKER, <<"AMQP-Broker">>).
 -define(KEY_AMQP_ZONE, <<"AMQP-Broker-Zone">>).
@@ -67,7 +68,7 @@
                                   ,<<"Geo-Location">>, <<"Access-Group">>
                                   ,?KEY_NODE, ?KEY_SERVER_ID, ?KEY_QUEUE_ID
                                   ,<<"Defer-Response">>, ?KEY_LOG_ID
-                                  ,?KEY_MSG_ACCOUNT_ID
+                                  ,?KEY_MSG_ACCOUNT_ID, ?KEY_MSG_CALL_ID
                                   ]).
 -define(DEFAULT_VALUES, [{?KEY_NODE, kz_util:to_binary(node())}
                         ,{?KEY_MSG_ID, kz_util:rand_hex_binary(16)}

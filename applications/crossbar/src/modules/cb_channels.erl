@@ -397,7 +397,6 @@ normalize_channel(JObj) ->
 
 -spec maybe_transfer(cb_context:context(), ne_binary()) -> cb_context:context().
 -spec maybe_transfer(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
--spec maybe_transfer(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) -> cb_context:context().
 maybe_transfer(Context, Transferor) ->
     Channel = cb_context:resp_data(Context),
     case kz_json:get_value(<<"other_leg_call_id">>, Channel) of
@@ -422,22 +421,24 @@ maybe_transfer(Context, Transferor, Transferee) ->
                                            ,Context
                                            );
         Target ->
-            maybe_transfer(Context, Transferor, Transferee, Target)
+            transfer(Context, Transferor, Transferee, Target)
     end.
 
-maybe_transfer(Context, Transferor, _Transferee, Target) ->
+-spec transfer(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) -> cb_context:context().
+transfer(Context, Transferor, _Transferee, Target) ->
+    TransferType = cb_context:req_value(Context, <<"transfer-type">>, <<"blind">>),
     API = [{<<"Call-ID">>, Transferor}
           ,{<<"Action">>, <<"transfer">>}
           ,{<<"Data">>, kz_json:from_list(
                           [{<<"target">>, Target}
-                          ,{<<"takeback_dtmf">>, cb_context:req_value(Context, <<"takeback_dtmf">>)}
+                          ,{<<"Transfer-Type">>, TransferType}
                           ,{<<"moh">>, cb_context:req_value(Context, <<"moh">>)}
                           ])
            }
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
-    lager:debug("attempting to transfer ~s to ~s by ~s", [_Transferee, Target, Transferor]),
+    lager:debug("attempting ~s transfer ~s to ~s by ~s", [TransferType, _Transferee, Target, Transferor]),
     kz_amqp_worker:cast(API, fun kapi_metaflow:publish_action/1),
     crossbar_util:response_202(<<"transfer initiated">>, Context).
 

@@ -26,6 +26,7 @@
         ,default_headers/4
         ,default_headers/5
 
+        ,call_id/1
         ,account_id/1
         ,server_id/1
         ,queue_id/1
@@ -114,6 +115,12 @@ account_id(Props) when is_list(Props) ->
     props:get_value(?KEY_MSG_ACCOUNT_ID, Props);
 account_id(JObj) ->
     kz_json:get_value(?KEY_MSG_ACCOUNT_ID, JObj).
+
+-spec call_id(api_terms()) -> api_binary().
+call_id(Props) when is_list(Props) ->
+    props:get_value(?KEY_MSG_CALL_ID, Props);
+call_id(JObj) ->
+    kz_json:get_value(?KEY_MSG_CALL_ID, JObj).
 
 %%--------------------------------------------------------------------
 %% @doc Default Headers in all messages - see wiki
@@ -358,8 +365,8 @@ build_message(JObj, ReqH, OptH) ->
 build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {'error', _Reason} = Error ->
-            lager:debug("API message does not have the required headers ~s: ~p"
-                       ,[kz_util:join_binary(ReqH, <<",">>), Error]
+            lager:debug("API message does not have the required headers ~s: ~p : ~p"
+                       ,[kz_util:join_binary(ReqH, <<",">>), Error, ReqH]
                        ),
             Error;
         {Headers1, Prop1} ->
@@ -399,7 +406,7 @@ headers_to_json([_|_]=HeadersProp) ->
 -spec defaults(api_terms(), kz_proplist()) ->
                       {kz_proplist(), kz_proplist()} |
                       {'error', string()}.
-defaults(Prop, MsgHeaders) -> defaults(Prop, MsgHeaders, []).
+defaults(Prop, MsgHeaders) -> defaults(Prop, expand_headers(MsgHeaders), []).
 defaults(Prop, MsgHeaders, Headers) ->
     case update_required_headers(Prop, ?DEFAULT_HEADERS -- MsgHeaders, Headers) of
         {'error', _Reason} = Error ->
@@ -407,6 +414,16 @@ defaults(Prop, MsgHeaders, Headers) ->
         {Headers1, Prop1} ->
             update_optional_headers(Prop1, ?OPTIONAL_DEFAULT_HEADERS -- MsgHeaders, Headers1)
     end.
+
+-spec expand_headers(list()) -> ne_binaries().
+expand_headers(Headers) ->
+    lists:foldr(fun expand_header/2, [], Headers).
+
+-spec expand_header(ne_binary() | ne_binaries(), ne_binaries()) -> ne_binaries().
+expand_header(Header, Acc)
+  when is_binary(Header) -> [Header | Acc];
+expand_header(Headers, Acc)
+  when is_list(Headers) -> expand_headers(Headers) ++ Acc.
 
 -spec update_required_headers(kz_proplist(), api_headers(), kz_proplist()) ->
                                      {kz_proplist(), kz_proplist()} |
@@ -449,7 +466,11 @@ add_optional_headers(Prop, Fields, Headers) ->
 -spec has_all(kz_proplist(), api_headers()) -> boolean().
 has_all(Prop, Headers) ->
     lists:all(fun(Header) when is_list(Header) ->
-                      has_any(Prop, Header);
+                      case has_any(Prop, Header) of
+                          'true' -> 'true';
+                          'false' -> lager:debug("failed to find one of keys '~p' on API message", [Header]),
+                                     'false'
+                      end;
                  (Header) ->
                       case props:is_defined(Header, Prop) of
                           'true' -> 'true';

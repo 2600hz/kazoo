@@ -1585,7 +1585,7 @@ transfer(Node, UUID, <<"attended">>, TransferTo, JObj) ->
     Arg = [Export, [[",", Exported] || Exported <- Exports] ],
     {<<"att_xfer">>, list_to_binary(["{", Arg, "}loopback/", TransferTo, <<"/">>, transfer_context(JObj)])};
 transfer(_Node, _UUID, <<"blind">>, TransferTo, JObj) ->
-    {<<"transfer">>, list_to_binary([transfer_leg(JObj), " ", TransferTo, <<" XML ">>, transfer_context(JObj)])}.
+    {<<"blind_xfer">>, list_to_binary([transfer_leg(JObj), " ", TransferTo, <<" XML ">>, transfer_context(JObj)])}.
 
 -spec transfer_leg(kz_json:object()) -> binary().
 transfer_leg(JObj) ->

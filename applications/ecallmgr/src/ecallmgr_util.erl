@@ -124,7 +124,8 @@ send_cmd(Node, UUID, "conference", Args) ->
 send_cmd(Node, _UUID, "transfer", Args) ->
     lager:debug("transfering on ~s: ~s", [Node, Args]),
     freeswitch:api(Node, 'uuid_transfer', kz_util:to_list(Args));
-send_cmd(Node, UUID, AppName, Args) ->
+send_cmd(Node, UUID, App, Args) ->
+    AppName = dialplan_application(App),
     Result = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
                                             ,{"execute-app-name", AppName}
                                             ,{"execute-app-arg", kz_util:to_list(Args)}
@@ -133,6 +134,10 @@ send_cmd(Node, UUID, AppName, Args) ->
                ,[Node, UUID, AppName, Args, Result]
                ),
     Result.
+
+-spec dialplan_application(string()) -> string().
+dialplan_application("blind_xfer") -> "transfer";
+dialplan_application(App) -> App.
 
 -spec get_expires(kz_proplist()) -> integer().
 get_expires(Props) ->

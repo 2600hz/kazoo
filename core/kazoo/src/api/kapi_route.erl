@@ -42,7 +42,6 @@
 
 %% Route Requests
 -define(ROUTE_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>, ?KEY_CALL_ID
-                           ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                            ]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Orig-Port">>
                                     ,<<"Max-Call-Length">>, <<"Media">>
@@ -60,6 +59,8 @@
                                     ,<<"Prepend-CID-Name">>
                                     ,<<"Call-Direction">>
                                     ,<<"Custom-Routing-Headers">>
+                                    ,<<"Caller-ID-Name">>
+                                    ,<<"Caller-ID-Number">>
                                     ]).
 -define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                           ,{<<"Event-Name">>, ?ROUTE_REQ_EVENT_NAME}
