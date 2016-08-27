@@ -6,13 +6,11 @@
         "default_to": {
             "default": "",
             "description": "notify.ported default to",
-            "name": "default_to",
             "type": "string"
         },
         "send_from_admin_email": {
             "default": true,
             "description": "notify.ported send from admin email",
-            "name": "send_from_admin_email",
             "type": "boolean"
         }
     },

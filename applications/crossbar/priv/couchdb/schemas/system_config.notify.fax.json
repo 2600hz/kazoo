@@ -6,13 +6,11 @@
         "attachment_format": {
             "default": "pdf",
             "description": "notify.fax attachment format",
-            "name": "attachment_format",
             "type": "string"
         },
         "tiff_to_pdf_conversion_command": {
             "default": "tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"",
             "description": "notify.fax tiff to pdf conversion command",
-            "name": "tiff_to_pdf_conversion_command",
             "type": "string"
         }
     },

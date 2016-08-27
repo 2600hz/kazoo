@@ -7,8 +7,7 @@
             "properties": {
                 "{ConfigName}": {
                     "properties": {
-                        "description": "conferences {ConfigName}",
-                        "name": "{ConfigName}"
+                        "description": "conferences {ConfigName}"
                     }
                 }
             }
@@ -17,8 +16,7 @@
             "properties": {
                 "{ConfigName}": {
                     "properties": {
-                        "description": "conferences {ConfigName}",
-                        "name": "{ConfigName}"
+                        "description": "conferences {ConfigName}"
                     }
                 }
             }
@@ -27,8 +25,7 @@
             "properties": {
                 "{ConfigName}": {
                     "properties": {
-                        "description": "conferences {ConfigName}",
-                        "name": "{ConfigName}"
+                        "description": "conferences {ConfigName}"
                     }
                 }
             }
@@ -36,19 +33,16 @@
         "entry_tone": {
             "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
             "description": "conferences entry tone",
-            "name": "entry_tone",
             "type": "string"
         },
         "exit_tone": {
             "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)",
             "description": "conferences exit tone",
-            "name": "exit_tone",
             "type": "string"
         },
         "moderator_entry_tone": {
             "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
             "description": "conferences moderator entry tone",
-            "name": "moderator_entry_tone",
             "type": "string"
         },
         "profiles": {
@@ -65,7 +59,6 @@
                             "rate": 8000
                         },
                         "description": "conferences default",
-                        "name": "default",
                         "type": "object"
                     }
                 },
@@ -81,14 +74,12 @@
                             "rate": 8000
                         },
                         "description": "conferences page",
-                        "name": "page",
                         "type": "object"
                     }
                 },
                 "{ConfigName}": {
                     "properties": {
-                        "description": "conferences {ConfigName}",
-                        "name": "{ConfigName}"
+                        "description": "conferences {ConfigName}"
                     }
                 }
             }
@@ -96,19 +87,16 @@
         "review_name": {
             "default": false,
             "description": "conferences review name",
-            "name": "review_name",
             "type": "boolean"
         },
         "route_win_timeout": {
             "default": 3000,
             "description": "conferences route win timeout",
-            "name": "route_win_timeout",
             "type": "integer"
         },
         "support_name_announcement": {
             "default": true,
             "description": "conferences support name announcement",
-            "name": "support_name_announcement",
             "type": "boolean"
         }
     },

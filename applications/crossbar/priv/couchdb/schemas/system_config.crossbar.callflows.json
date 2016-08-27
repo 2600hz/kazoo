@@ -6,7 +6,6 @@
         "default_reconcile_numbers": {
             "default": false,
             "description": "crossbar.callflows default reconcile numbers",
-            "name": "default_reconcile_numbers",
             "type": "boolean"
         }
     },

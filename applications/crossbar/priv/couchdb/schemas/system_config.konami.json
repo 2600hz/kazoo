@@ -6,7 +6,6 @@
         "event_cleanup_timeout_ms": {
             "default": 3600000,
             "description": "konami event cleanup timeout in milliseconds",
-            "name": "event_cleanup_timeout_ms",
             "type": "integer"
         },
         "transfer": {
@@ -15,7 +14,6 @@
                     "properties": {
                         "default": "*1",
                         "description": "konami default takeback dtmf",
-                        "name": "default_takeback_dtmf",
                         "type": "string"
                     }
                 }
@@ -24,13 +22,11 @@
         "use_fast_rearm": {
             "default": false,
             "description": "konami use fast rearm",
-            "name": "use_fast_rearm",
             "type": "boolean"
         },
         "webseq_enabled": {
             "default": false,
             "description": "konami webseq enabled",
-            "name": "webseq_enabled",
             "type": "boolean"
         }
     },

@@ -6,7 +6,6 @@
         "max_account_credit": {
             "default": 500.0,
             "description": "crossbar.braintree max account credit",
-            "name": "max_account_credit",
             "type": "number"
         }
     },

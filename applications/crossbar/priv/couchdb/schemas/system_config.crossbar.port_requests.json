@@ -6,7 +6,6 @@
         "unfinished_port_request_lifetime_s": {
             "default": 2592000,
             "description": "crossbar.port_requests unfinished port request lifetime in seconds",
-            "name": "unfinished_port_request_lifetime_s",
             "type": "integer"
         }
     },

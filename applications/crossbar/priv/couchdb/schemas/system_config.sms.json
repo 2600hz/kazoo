@@ -12,7 +12,6 @@
                             "mandatory": true
                         },
                         "description": "sms options",
-                        "name": "options",
                         "type": "object"
                     }
                 }

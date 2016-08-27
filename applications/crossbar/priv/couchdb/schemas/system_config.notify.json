@@ -6,7 +6,6 @@
         "backoff_fudge_ms": {
             "default": 5000,
             "description": "notify backoff fudge in milliseconds",
-            "name": "backoff_fudge_ms",
             "type": "integer"
         },
         "mime-encoding": {
@@ -16,7 +15,6 @@
                         "content_transfer_encoding": {
                             "properties": {
                                 "description": "notify content transfer encoding",
-                                "name": "content_transfer_encoding",
                                 "type": "string"
                             }
                         }
@@ -27,13 +25,11 @@
         "notification_app": {
             "default": "notify",
             "description": "notify notification app",
-            "name": "notification_app",
             "type": "string"
         },
         "search_rep_email": {
             "default": true,
             "description": "notify search rep email",
-            "name": "search_rep_email",
             "type": "boolean"
         }
     },

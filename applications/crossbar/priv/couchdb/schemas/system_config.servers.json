@@ -6,7 +6,6 @@
         "clock_timezone": {
             "default": "UTC",
             "description": "servers clock timezone",
-            "name": "clock_timezone",
             "type": "string"
         }
     },

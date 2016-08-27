@@ -4,28 +4,23 @@
     "description": "Schema for jonny5 system_config",
     "properties": {
         "default_inbound_trunks": {
-            "description": "jonny5 default inbound trunks",
-            "name": "default_inbound_trunks"
+            "description": "jonny5 default inbound trunks"
         },
         "default_twoway_trunks": {
-            "description": "jonny5 default twoway trunks",
-            "name": "default_twoway_trunks"
+            "description": "jonny5 default twoway trunks"
         },
         "default_{Key}": {
             "description": "jonny5 default {Key}",
-            "name": "default_{Key}",
             "type": "integer"
         },
         "flat_rate_blacklist": {
             "default": "^\\+?1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340|900|8(?:[0,2,3,4,5,6,7]{2}|8[0-9]))\\d{7}$",
             "description": "jonny5 flat rate blacklist",
-            "name": "flat_rate_blacklist",
             "type": "string"
         },
         "flat_rate_whitelist": {
             "default": "^\\+?1\\d{10}$",
             "description": "jonny5 flat rate whitelist",
-            "name": "flat_rate_whitelist",
             "type": "string"
         }
     },

@@ -5,7 +5,6 @@
     "properties": {
         "authoritative_crossbar": {
             "description": "crossbar.shared_auth authoritative crossbar",
-            "name": "authoritative_crossbar",
             "type": "string"
         }
     },

@@ -6,25 +6,21 @@
         "stop_after": {
             "default": 31,
             "description": "camper stop after",
-            "name": "stop_after",
             "type": "integer"
         },
         "timeout": {
             "default": 15,
             "description": "camper timeout",
-            "name": "timeout",
             "type": "integer"
         },
         "tries": {
             "default": 10,
             "description": "camper tries",
-            "name": "tries",
             "type": "integer"
         },
         "try_interval": {
             "default": 3,
             "description": "camper try interval",
-            "name": "try_interval",
             "type": "integer"
         }
     },

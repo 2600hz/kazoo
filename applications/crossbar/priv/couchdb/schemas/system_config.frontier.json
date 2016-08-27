@@ -31,7 +31,6 @@
                 }
             },
             "description": "frontier rate limits",
-            "name": "rate_limits",
             "type": "object"
         }
     },

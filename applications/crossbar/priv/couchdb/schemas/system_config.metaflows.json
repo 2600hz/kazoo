@@ -6,25 +6,21 @@
         "binding_digit": {
             "default": "*",
             "description": "metaflows binding digit",
-            "name": "binding_digit",
             "type": "string"
         },
         "default_metaflow": {
             "default": {},
             "description": "metaflows default metaflow",
-            "name": "default_metaflow",
             "type": "object"
         },
         "digit_timeout_ms": {
             "default": 800,
             "description": "metaflows digit timeout in milliseconds",
-            "name": "digit_timeout_ms",
             "type": "integer"
         },
         "listen_on": {
             "default": "a",
             "description": "metaflows listen on",
-            "name": "listen_on",
             "type": "string"
         },
         "numbers": {
@@ -37,7 +33,6 @@
                 }
             },
             "description": "metaflows numbers",
-            "name": "numbers",
             "type": "object"
         },
         "patterns": {
@@ -50,7 +45,6 @@
                 }
             },
             "description": "metaflows patterns",
-            "name": "patterns",
             "type": "object"
         }
     },

@@ -6,13 +6,11 @@
         "job_recovery_threshold_s": {
             "default": 3600,
             "description": "crossbar.resources job recovery threshold in seconds",
-            "name": "job_recovery_threshold_s",
             "type": "integer"
         },
         "job_recovery_timeout_s": {
             "default": 21600,
             "description": "crossbar.resources job recovery timeout in seconds",
-            "name": "job_recovery_timeout_s",
             "type": "integer"
         }
     },

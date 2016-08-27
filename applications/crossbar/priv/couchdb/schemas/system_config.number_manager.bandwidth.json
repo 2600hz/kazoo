@@ -6,35 +6,29 @@
         "debug": {
             "default": false,
             "description": "number_manager.bandwidth debug",
-            "name": "debug",
             "type": "boolean"
         },
         "enable_provisioning": {
             "default": true,
             "description": "number_manager.bandwidth enable provisioning",
-            "name": "enable_provisioning",
             "type": "boolean"
         },
         "endpoints": {
-            "description": "number_manager.bandwidth endpoints",
-            "name": "endpoints"
+            "description": "number_manager.bandwidth endpoints"
         },
         "numbers_api_url": {
             "default": "https://api.bandwidth.com/public/v2/numbers.api",
             "description": "number_manager.bandwidth numbers api url",
-            "name": "numbers_api_url",
             "type": "string"
         },
         "order_name_prefix": {
             "default": "Kazoo",
             "description": "number_manager.bandwidth order name prefix",
-            "name": "order_name_prefix",
             "type": "string"
         },
         "sandbox_provisioning": {
             "default": true,
             "description": "number_manager.bandwidth sandbox provisioning",
-            "name": "sandbox_provisioning",
             "type": "boolean"
         }
     },

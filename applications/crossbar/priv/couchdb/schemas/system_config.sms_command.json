@@ -6,19 +6,16 @@
         "application_timeout": {
             "default": 500000,
             "description": "sms_command application timeout",
-            "name": "application_timeout",
             "type": "integer"
         },
         "collect_timeout": {
             "default": 60000,
             "description": "sms_command collect timeout",
-            "name": "collect_timeout",
             "type": "integer"
         },
         "message_timeout": {
             "default": 60000,
             "description": "sms_command message timeout",
-            "name": "message_timeout",
             "type": "integer"
         }
     },

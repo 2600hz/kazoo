@@ -308,7 +308,6 @@ guess_properties(Document, Key, Type, Default)
       props:filter_undefined(
         [{<<"type">>, Type}
         ,{<<"description">>, guess_description(Document, Key, Type)}
-        ,{<<"name">>, Key}
         ,{<<"default">>, try default_value(Default) catch _:_ -> 'default' end}
         ]
        )

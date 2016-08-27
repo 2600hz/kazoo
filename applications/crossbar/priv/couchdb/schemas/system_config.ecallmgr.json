@@ -6,55 +6,46 @@
         "acls": {
             "default": {},
             "description": "ecallmgr acls",
-            "name": "acls",
             "type": "object"
         },
         "authz_default_action": {
             "default": "deny",
             "description": "ecallmgr authz default action",
-            "name": "authz_default_action",
             "type": "string"
         },
         "authz_dry_run": {
             "default": false,
             "description": "ecallmgr authz dry run",
-            "name": "authz_dry_run",
             "type": "boolean"
         },
         "authz_enabled": {
             "default": false,
             "description": "ecallmgr authz enabled",
-            "name": "authz_enabled",
             "type": "boolean"
         },
         "authz_local_resources": {
             "default": false,
             "description": "ecallmgr authz local resources",
-            "name": "authz_local_resources",
             "type": "boolean"
         },
         "balance_crawler_cycle_ms": {
             "default": 60000,
             "description": "ecallmgr balance crawler cycle in milliseconds",
-            "name": "balance_crawler_cycle_ms",
             "type": "integer"
         },
         "balance_crawler_enabled": {
             "default": false,
             "description": "ecallmgr balance crawler enabled",
-            "name": "balance_crawler_enabled",
             "type": "boolean"
         },
         "balance_crawler_fetch_timeout_ms": {
             "default": 10000,
             "description": "ecallmgr balance crawler fetch timeout in milliseconds",
-            "name": "balance_crawler_fetch_timeout_ms",
             "type": "integer"
         },
         "balance_crawler_interaccount_delay_ms": {
             "default": 10,
             "description": "ecallmgr balance crawler interaccount delay in milliseconds",
-            "name": "balance_crawler_interaccount_delay_ms",
             "type": "integer"
         },
         "call_routing_bindings": {
@@ -62,7 +53,6 @@
                 "context_2"
             ],
             "description": "ecallmgr call routing bindings",
-            "name": "call_routing_bindings",
             "type": "array"
         },
         "capabilities": {
@@ -129,74 +119,61 @@
                 }
             ],
             "description": "ecallmgr capabilities",
-            "name": "capabilities",
             "type": "array"
         },
         "configuration_handlers": {
-            "description": "ecallmgr configuration handlers",
-            "name": "configuration_handlers"
+            "description": "ecallmgr configuration handlers"
         },
         "debug_channel": {
             "default": false,
             "description": "ecallmgr debug channel",
-            "name": "debug_channel",
             "type": "boolean"
         },
         "default_fax_extension": {
             "default": ".tiff",
             "description": "ecallmgr default fax extension",
-            "name": "default_fax_extension",
             "type": "string"
         },
         "default_realm": {
             "default": "nodomain.com",
             "description": "ecallmgr default realm",
-            "name": "default_realm",
             "type": "string"
         },
         "default_recording_extension": {
             "default": ".mp3",
             "description": "ecallmgr default recording extension",
-            "name": "default_recording_extension",
             "type": "string"
         },
         "default_ringback": {
-            "description": "ecallmgr default ringback",
-            "name": "default_ringback"
+            "description": "ecallmgr default ringback"
         },
         "event_stream_idle_alert": {
             "default": 0,
             "description": "ecallmgr event stream idle alert",
-            "name": "event_stream_idle_alert",
             "type": "integer"
         },
         "expires_deviation_time": {
             "default": 0,
             "description": "ecallmgr expires deviation time",
-            "name": "expires_deviation_time",
             "type": "integer"
         },
         "fax_file_path": {
             "default": "/tmp/",
             "description": "ecallmgr fax file path",
-            "name": "fax_file_path",
             "type": "string"
         },
         "fetch_timeout": {
             "default": 2600,
             "description": "ecallmgr fetch timeout",
-            "name": "fetch_timeout",
             "type": "integer"
         },
         "force_conference_verbose_events": {
             "description": "ecallmgr force conference verbose events",
-            "name": "force_conference_verbose_events",
             "type": "boolean"
         },
         "freeswitch_context": {
             "default": "context_2",
             "description": "ecallmgr freeswitch context",
-            "name": "freeswitch_context",
             "type": "string"
         },
         "fs_cmds": {
@@ -209,65 +186,54 @@
                 }
             ],
             "description": "ecallmgr fs cmds",
-            "name": "fs_cmds",
             "type": "array"
         },
         "fs_cmds_wait_ms": {
             "default": 5000,
             "description": "ecallmgr fs cmds wait in milliseconds",
-            "name": "fs_cmds_wait_ms",
             "type": "integer"
         },
         "fs_node_uptime_s": {
             "default": 600,
             "description": "ecallmgr fs node uptime in seconds",
-            "name": "fs_node_uptime_s",
             "type": "integer"
         },
         "fs_nodes": {
             "default": [],
             "description": "ecallmgr fs nodes",
-            "name": "fs_nodes",
             "type": "array"
         },
         "fs_profiles": {
             "default": {},
             "description": "ecallmgr fs profiles",
-            "name": "fs_profiles",
             "type": "object"
         },
         "fs_reconnect_cmds": {
-            "description": "ecallmgr fs reconnect cmds",
-            "name": "fs_reconnect_cmds"
+            "description": "ecallmgr fs reconnect cmds"
         },
         "gateways": {
             "default": {},
             "description": "ecallmgr gateways",
-            "name": "gateways",
             "type": "object"
         },
         "insert_fetched_registration_locally": {
             "default": false,
             "description": "ecallmgr insert fetched registration locally",
-            "name": "insert_fetched_registration_locally",
             "type": "boolean"
         },
         "max_channel_cleanup_timeout_ms": {
             "default": 60000,
             "description": "ecallmgr max channel cleanup timeout in milliseconds",
-            "name": "max_channel_cleanup_timeout_ms",
             "type": "integer"
         },
         "max_channel_uptime_s": {
             "default": 0,
             "description": "ecallmgr max channel uptime in seconds",
-            "name": "max_channel_uptime_s",
             "type": "integer"
         },
         "max_timeout_for_node_restart": {
             "default": 10000,
             "description": "ecallmgr max timeout for node restart",
-            "name": "max_timeout_for_node_restart",
             "type": "integer"
         },
         "modules": {
@@ -307,13 +273,11 @@
                 }
             },
             "description": "ecallmgr modules",
-            "name": "modules",
             "type": "object"
         },
         "network_map": {
             "default": {},
             "description": "ecallmgr network map",
-            "name": "network_map",
             "type": "object"
         },
         "node_commands": {
@@ -324,7 +288,6 @@
                             "properties": {
                                 "default": false,
                                 "description": "ecallmgr delete on success",
-                                "name": "delete_on_success",
                                 "type": "boolean"
                             }
                         }
@@ -335,76 +298,63 @@
         "node_down_grace_period": {
             "default": 10000,
             "description": "ecallmgr node down grace period",
-            "name": "node_down_grace_period",
             "type": "integer"
         },
         "process_gateways": {
             "default": false,
             "description": "ecallmgr process gateways",
-            "name": "process_gateways",
             "type": "boolean"
         },
         "publish_channel_reconnect": {
             "default": false,
             "description": "ecallmgr publish channel reconnect",
-            "name": "publish_channel_reconnect",
             "type": "boolean"
         },
         "publish_channel_state": {
             "default": true,
             "description": "ecallmgr publish channel state",
-            "name": "publish_channel_state",
             "type": "boolean"
         },
         "record_sample_rate": {
             "default": 8000,
             "description": "ecallmgr record sample rate",
-            "name": "record_sample_rate",
             "type": "integer"
         },
         "record_stereo_sample_rate": {
             "default": 16000,
             "description": "ecallmgr record stereo sample rate",
-            "name": "record_stereo_sample_rate",
             "type": "integer"
         },
         "record_waste_resources": {
             "default": false,
             "description": "ecallmgr record waste resources",
-            "name": "record_waste_resources",
             "type": "boolean"
         },
         "recording_file_path": {
             "default": "/tmp/",
             "description": "ecallmgr recording file path",
-            "name": "recording_file_path",
             "type": "string"
         },
         "redirect_via_proxy": {
             "default": true,
             "description": "ecallmgr redirect via proxy",
-            "name": "redirect_via_proxy",
             "type": "boolean"
         },
         "restrict_channel_state_publisher": {
             "default": false,
             "description": "ecallmgr restrict channel state publisher",
-            "name": "restrict_channel_state_publisher",
             "type": "boolean"
         },
         "should_detect_inband_dtmf": {
             "description": "ecallmgr should detect inband dtmf",
-            "name": "should_detect_inband_dtmf",
             "type": "boolean"
         },
         "sofia_conf": {
-            "description": "ecallmgr sofia conf",
-            "name": "sofia_conf"
+            "description": "ecallmgr sofia conf"
         },
         "tcp_packet_type": {
             "default": 2,
             "description": "ecallmgr tcp packet type",
-            "name": "tcp_packet_type",
             "type": "integer"
         },
         "text_routing_bindings": {
@@ -412,43 +362,36 @@
                 "context_2"
             ],
             "description": "ecallmgr text routing bindings",
-            "name": "text_routing_bindings",
             "type": "array"
         },
         "use_bypass_media_after_bridge": {
             "default": false,
             "description": "ecallmgr use bypass media after bridge",
-            "name": "use_bypass_media_after_bridge",
             "type": "boolean"
         },
         "use_http_cache": {
             "default": true,
             "description": "ecallmgr use http cache",
-            "name": "use_http_cache",
             "type": "boolean"
         },
         "use_shout": {
             "default": false,
             "description": "ecallmgr use shout",
-            "name": "use_shout",
             "type": "boolean"
         },
         "use_vlc": {
             "default": false,
             "description": "ecallmgr use vlc",
-            "name": "use_vlc",
             "type": "boolean"
         },
         "{Direction}_rate_required": {
             "default": false,
             "description": "ecallmgr {Direction} rate required",
-            "name": "{Direction}_rate_required",
             "type": "boolean"
         },
         "{Direction}_rate_resp_timeout": {
             "default": 10000,
             "description": "ecallmgr {Direction} rate resp timeout",
-            "name": "{Direction}_rate_resp_timeout",
             "type": "integer"
         }
     },

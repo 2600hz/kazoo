@@ -6,12 +6,10 @@
         "default_enabled": {
             "default": true,
             "description": "notify.fax_outbound_error_to_email default enabled",
-            "name": "default_enabled",
             "type": "boolean"
         },
         "default_to": {
-            "description": "notify.fax_outbound_error_to_email default to",
-            "name": "default_to"
+            "description": "notify.fax_outbound_error_to_email default to"
         }
     },
     "required": true,

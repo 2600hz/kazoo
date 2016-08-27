@@ -6,17 +6,14 @@
         "User-Agents": {
             "default": {},
             "description": "pusher User-Agents",
-            "name": "User-Agents",
             "type": "object"
         },
         "apple": {
             "description": "pusher apple",
-            "name": "apple",
             "type": "string"
         },
         "google": {
             "description": "pusher google",
-            "name": "google",
             "type": "string"
         }
     },

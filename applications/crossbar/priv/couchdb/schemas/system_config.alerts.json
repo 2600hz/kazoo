@@ -6,7 +6,6 @@
         "enabled": {
             "default": true,
             "description": "alerts enabled",
-            "name": "enabled",
             "type": "boolean"
         }
     },

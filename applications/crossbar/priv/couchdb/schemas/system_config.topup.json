@@ -6,7 +6,6 @@
         "enable": {
             "default": true,
             "description": "topup enable",
-            "name": "enable",
             "type": "boolean"
         }
     },

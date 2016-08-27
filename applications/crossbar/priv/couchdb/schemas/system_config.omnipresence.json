@@ -6,25 +6,21 @@
         "expire_check_ms": {
             "default": 1000,
             "description": "omnipresence expire check in milliseconds",
-            "name": "expire_check_ms",
             "type": "integer"
         },
         "expires_fudge_s": {
             "default": 20,
             "description": "omnipresence expires fudge in seconds",
-            "name": "expires_fudge_s",
             "type": "integer"
         },
         "subscriptions_sync_enabled": {
             "default": false,
             "description": "omnipresence subscriptions sync enabled",
-            "name": "subscriptions_sync_enabled",
             "type": "boolean"
         },
         "use_fast_pickup_cookies": {
             "default": true,
             "description": "omnipresence use fast pickup cookies",
-            "name": "use_fast_pickup_cookies",
             "type": "boolean"
         }
     },

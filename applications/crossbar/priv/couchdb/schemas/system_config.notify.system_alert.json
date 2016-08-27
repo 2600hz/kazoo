@@ -6,30 +6,25 @@
         "default_to": {
             "default": "",
             "description": "notify.system_alert default to",
-            "name": "default_to",
             "type": "string"
         },
         "enable_email_alerts": {
             "default": true,
             "description": "notify.system_alert enable email alerts",
-            "name": "enable_email_alerts",
             "type": "boolean"
         },
         "html_content_transfer_encoding": {
             "default": "7BIT",
             "description": "notify.system_alert html content transfer encoding",
-            "name": "html_content_transfer_encoding",
             "type": "string"
         },
         "subscriber_url": {
             "description": "notify.system_alert subscriber url",
-            "name": "subscriber_url",
             "type": "string"
         },
         "text_content_transfer_encoding": {
             "default": "7BIT",
             "description": "notify.system_alert text content transfer encoding",
-            "name": "text_content_transfer_encoding",
             "type": "string"
         }
     },
