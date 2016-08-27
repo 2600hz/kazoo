@@ -22,7 +22,6 @@
 -define(SUPPORT_NAME_ANNOUNCEMENT, kapps_config:get_is_true(?CONFIG_CAT, <<"support_name_announcement">>, 'true')).
 
 -define(DEFAULT_PROFILE_CONFIG, [{<<"rate">>, 8000}
-                                ,{<<"caller-controls">>, <<"default">>}
                                 ,{<<"interval">>, 20}
                                 ,{<<"energy-level">>, 20}
                                 ,{<<"comfort-noise">>, 1000}
@@ -31,15 +30,12 @@
                                 ]).
 
 -define(PAGE_PROFILE_CONFIG, [{<<"rate">>, 8000}
-                             ,{<<"caller-controls">>, <<"default">>}
                              ,{<<"interval">>, 20}
                              ,{<<"energy-level">>, 20}
                              ,{<<"comfort-noise">>, 1000}
                              ,{<<"moh-sound">>, <<"">>}
                              ,{<<"enter-sound">>, <<"">>}
                              ]).
-
--define(CALLER_CONTROLS(ConfigName), kapps_config:get(?CONFIG_CAT, [<<"caller-controls">>, ConfigName])).
 
 -define(DEFAULT_ADVERTISE_CONFIG, 'undefined').
 -define(PAGE_ADVERTISE_CONFIG, 'undefined').
@@ -58,6 +54,66 @@
 -define(DEFAULT_MAX_MEMBERS_MEDIA, <<"conf-max_participants">>).
 
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
+
+-define(DEFAULT_CALLER_CONTROLS, [
+                                  ["mute", "*1"],
+                                  ["mute on", "*2"],
+                                  ["mute off", "*3"],
+                                  ["deaf mute", ""],
+                                  ["energy up", ""],
+                                  ["energy dn", ""],
+                                  ["energy equ", ""],
+                                  ["vol talk up", ""],
+                                  ["vol talk dn", ""],
+                                  ["vol talk zero", ""],
+                                  ["vol listen up", ""],
+                                  ["vol listen dn", ""],
+                                  ["vol listen zero", ""],
+                                  ["hangup", "#"],
+                                  ["event", "", ""],
+                                  ["lock", ""],
+                                  ["transfer", ""],
+                                  ["execute_application", "", ""],
+                                  ["floor", ""],
+                                  ["vid-floor", ""],
+                                  ["vid-floor-force", ""],
+                                  ["vmute", ""],
+                                  ["vmute on", ""],
+                                  ["vmute off", ""],
+                                  ["vmute snap", ""],
+                                  ["vmute snapoff", ""]
+                                 ]
+       ).
+
+-define(DEFAULT_MODERATOR_CONTROLS, [
+                                     ["mute", "*1"],
+                                     ["mute on", "*2"],
+                                     ["mute off", "*3"],
+                                     ["deaf mute", ""],
+                                     ["energy up", ""],
+                                     ["energy dn", ""],
+                                     ["energy equ", ""],
+                                     ["vol talk up", ""],
+                                     ["vol talk dn", ""],
+                                     ["vol talk zero", ""],
+                                     ["vol listen up", ""],
+                                     ["vol listen dn", ""],
+                                     ["vol listen zero", ""],
+                                     ["hangup", "#"],
+                                     ["event", "", ""],
+                                     ["lock", ""],
+                                     ["transfer", ""],
+                                     ["execute_application", "", ""],
+                                     ["floor", ""],
+                                     ["vid-floor", ""],
+                                     ["vid-floor-force", ""],
+                                     ["vmute", ""],
+                                     ["vmute on", ""],
+                                     ["vmute off", ""],
+                                     ["vmute snap", ""],
+                                     ["vmute snapoff", ""]
+                                    ]
+       ).
 
 -define(CONFERENCE_HRL, 'true').
 -endif.

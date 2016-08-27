@@ -7464,6 +7464,12 @@
                                 "name": "{ConfigName}",
                                 "type": "array"
                             }
+                        },
+                        "{ControlsName}": {
+                            "properties": {
+                                "description": "conferences {ControlsName}",
+                                "name": "{ControlsName}"
+                            }
                         }
                     }
                 },

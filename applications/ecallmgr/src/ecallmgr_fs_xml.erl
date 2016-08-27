@@ -17,6 +17,7 @@
         ,sip_channel_xml/1
         ,escape/2
         ,conference_resp_xml/1
+        ,caller_controls_xml/1
         ]).
 
 -export([config_el/2, config_el/3]).
