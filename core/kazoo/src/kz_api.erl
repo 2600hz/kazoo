@@ -447,7 +447,8 @@ update_optional_headers(Prop, Fields, Headers) ->
                          {kz_proplist(), kz_proplist()}.
 add_headers(Prop, Fields, Headers) ->
     lists:foldl(fun(K, {Headers1, KVs}) when is_list(K) ->
-                        add_headers(KVs, K, Headers1);
+                        K1 = [Ki || Ki <- K, props:is_defined(Ki, KVs)],
+                        add_headers(KVs, K1, Headers1);
                    (K, {Headers1, KVs}) ->
                         {[{K, props:get_value(K, KVs)} | Headers1], props:delete(K, KVs)}
                 end, {Headers, Prop}, Fields).
