@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "accounts",
     "description": "Accounts represent tenants or customers on the system. Each account represents an individual dataset or sandbox that only one tenant can access. The data set is architecturally independent from other tenants.",
     "properties": {
@@ -21,7 +21,8 @@
             },
             "default": {},
             "description": "Account level call restrictions for each available number classification",
-            "required": false,
+            "required": [
+            ],
             "type": "object"
         },
         "call_waiting": {
@@ -160,6 +161,8 @@
             "type": "object"
         }
     },
-    "required": true,
+    "required": [
+        "name"
+    ],
     "type": "object"
 }
