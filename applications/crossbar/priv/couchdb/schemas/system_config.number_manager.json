@@ -130,16 +130,6 @@
             "name": "force_port_out_outbound",
             "type": "boolean"
         },
-        "providers": {
-            "default": [
-                "cnam_notifier",
-                "port_notifier",
-                "failover",
-                "prepend"
-            ],
-            "name": "providers",
-            "type": "array"
-        },
         "reconcile_regex": {
             "default": "^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$",
             "description": "number_manager reconcile regex",

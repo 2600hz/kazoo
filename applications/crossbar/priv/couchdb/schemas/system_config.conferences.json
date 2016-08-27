@@ -18,8 +18,7 @@
                 "{ConfigName}": {
                     "properties": {
                         "description": "conferences {ConfigName}",
-                        "name": "{ConfigName}",
-                        "type": "array"
+                        "name": "{ConfigName}"
                     }
                 }
             }

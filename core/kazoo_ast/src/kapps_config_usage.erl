@@ -15,22 +15,18 @@ to_schema_docs(Schemas) ->
 
 update_schema({Name, AutoGenSchema}) ->
     Path = kz_ast_util:schema_path(<<"system_config.", Name/binary, ".json">>),
-    SchemaDoc = schema_doc(Name, Path),
-    Updated = kz_json:merge_recursive(AutoGenSchema, SchemaDoc, fun merger/2),
-    'ok' = file:write_file(Path, kz_json:encode(Updated)).
+    JObj = static_fields(Name, AutoGenSchema),
+    'ok' = file:write_file(Path, kz_json:encode(JObj)).
 
-merger(JObj1, JObj2) ->
-    kz_util:is_empty(JObj1) and not kz_util:is_empty(JObj2).
-
-schema_doc(Name, Path) ->
-    kz_ast_util:ensure_file_exists(Path),
-    {'ok', Bin} = file:read_file(Path),
-    ensure_id(Name, kz_json:decode(Bin)).
-
-ensure_id(Name, JObj) ->
-    ID = <<"system_config.", Name/binary>>,
+static_fields(Name, JObj) ->
+    Id = <<"system_config.", Name/binary>>,
     Description = <<"Schema for ", Name/binary, " system_config">>,
-    kz_json:set_value(<<"description">>, Description, kz_doc:set_id(JObj, ID)).
+    Values = [{<<"description">>, Description}
+             ,{<<"$schema">>, <<"http://json-schema.org/draft-03/schema#">>}
+             ,{<<"required">>, 'true'}
+             ,{<<"type">>, <<"object">>}
+             ],
+    kz_json:set_values(Values, kz_doc:set_id(JObj, Id)).
 
 -spec process_project() -> kz_json:objects().
 process_project() ->

@@ -7412,8 +7412,7 @@
                         "{ConfigName}": {
                             "properties": {
                                 "description": "conferences {ConfigName}",
-                                "name": "{ConfigName}",
-                                "type": "array"
+                                "name": "{ConfigName}"
                             }
                         }
                     }
@@ -9659,12 +9658,6 @@
                     "name": "crawl_for_low_balance",
                     "type": "boolean"
                 },
-                "cycle_delay_time": {
-                    "default": 300000,
-                    "description": "notify.account_crawler cycle delay time",
-                    "name": "cycle_delay_time",
-                    "type": "integer"
-                },
                 "interaccount_delay": {
                     "default": 10000,
                     "description": "notify.account_crawler interaccount delay",
@@ -10199,16 +10192,6 @@
                     "description": "number_manager force port out outbound",
                     "name": "force_port_out_outbound",
                     "type": "boolean"
-                },
-                "providers": {
-                    "default": [
-                        "cnam_notifier",
-                        "port_notifier",
-                        "failover",
-                        "prepend"
-                    ],
-                    "name": "providers",
-                    "type": "array"
                 },
                 "reconcile_regex": {
                     "default": "^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$",
