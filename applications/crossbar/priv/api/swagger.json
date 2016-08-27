@@ -64,16 +64,13 @@
                                     "inherit",
                                     "deny"
                                 ],
-                                "required": false,
                                 "type": "string"
                             }
                         },
-                        "required": false,
                         "type": "object"
                     },
                     "default": {},
                     "description": "Account level call restrictions for each available number classification",
-                    "required": false,
                     "type": "object"
                 },
                 "call_waiting": {
@@ -83,37 +80,31 @@
                     "$ref": "caller_id",
                     "default": {},
                     "description": "The account default caller ID parameters",
-                    "required": false,
                     "type": "object"
                 },
                 "dial_plan": {
                     "$ref": "dialplans",
                     "default": {},
                     "description": "A list of default rules used to modify dialed numbers",
-                    "required": false,
                     "type": "object"
                 },
                 "do_not_disturb": {
                     "properties": {
                         "enabled": {
                             "description": "The default value for do-not-disturb",
-                            "required": false,
                             "type": "boolean"
                         }
                     },
-                    "required": false,
                     "type": "object"
                 },
                 "enabled": {
                     "default": true,
                     "description": "Determines if the account is currently enabled",
-                    "required": false,
                     "type": "boolean"
                 },
                 "language": {
                     "default": "en-us",
                     "description": "The language for this account",
-                    "required": false,
                     "type": "string"
                 },
                 "metaflows": {
@@ -126,23 +117,19 @@
                         "media_id": {
                             "description": "The ID of a media object that should be used as the default music on hold",
                             "maxLength": 128,
-                            "required": false,
                             "type": "string"
                         }
                     },
-                    "required": false,
                     "type": "object"
                 },
                 "name": {
                     "description": "A friendly name for the account",
                     "maxLength": 128,
                     "minLength": 1,
-                    "required": true,
                     "type": "string"
                 },
                 "org": {
                     "description": "Full legal name of the organization",
-                    "required": false,
                     "type": "string"
                 },
                 "preflow": {
@@ -152,11 +139,9 @@
                     "properties": {
                         "always": {
                             "description": "The ID of a callflow to always execute prior to processing the callflow with numbers/patterns matching the request",
-                            "required": false,
                             "type": "string"
                         }
                     },
-                    "required": false,
                     "type": "object"
                 },
                 "realm": {
@@ -165,7 +150,6 @@
                     "maxLength": 253,
                     "minLength": 4,
                     "pattern": "^([.\\w_-]+)$",
-                    "required": false,
                     "type": "string"
                 },
                 "ringtones": {
@@ -175,17 +159,14 @@
                         "external": {
                             "description": "The alert info SIP header added when the call is from internal sources",
                             "maxLength": 256,
-                            "required": false,
                             "type": "string"
                         },
                         "internal": {
                             "description": "The alert info SIP header added when the call is from external sources",
                             "maxLength": 256,
-                            "required": false,
                             "type": "string"
                         }
                     },
-                    "required": false,
                     "type": "object"
                 },
                 "timezone": {
@@ -193,7 +174,6 @@
                     "description": "The default timezone",
                     "maxLength": 32,
                     "minLength": 5,
-                    "required": false,
                     "type": "string"
                 },
                 "voicemail": {
@@ -204,15 +184,15 @@
                                     "$ref": "notify.callback"
                                 }
                             },
-                            "required": false,
                             "type": "object"
                         }
                     },
-                    "required": false,
                     "type": "object"
                 }
             },
-            "required": true,
+            "required": [
+                "name"
+            ],
             "type": "object"
         },
         "acls": {
