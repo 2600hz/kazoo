@@ -6743,15 +6743,6 @@
                         }
                     }
                 },
-                "caller-controls": {
-                    "properties": {
-                        "{ConfigName}": {
-                            "properties": {
-                                "description": "conferences {ConfigName}"
-                            }
-                        }
-                    }
-                },
                 "chat-permissions": {
                     "properties": {
                         "{ConfigName}": {
@@ -6806,11 +6797,6 @@
                                 },
                                 "description": "conferences page",
                                 "type": "object"
-                            }
-                        },
-                        "{ConfigName}": {
-                            "properties": {
-                                "description": "conferences {ConfigName}"
                             }
                         }
                     }
