@@ -85,6 +85,9 @@
              ,set_functions/0
              ]).
 
+-define(BULK_BATCH_WRITES,
+        kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_bulk_batch_writes">>, false)).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -1019,7 +1022,9 @@ maybe_remove_number_from_account(Number) ->
                           {'ok', kz_json:object()} |
                           kz_data:data_error().
 datamgr_save(PhoneNumber, Db, JObj) ->
-    case batch_run(PhoneNumber) of
+    case batch_run(PhoneNumber)
+        andalso ?BULK_BATCH_WRITES
+    of
         'false' -> kz_datamgr:ensure_saved(Db, JObj);
         'true' -> store_maybe_push(Db, JObj)
     end.
@@ -1052,11 +1057,16 @@ store_doc(Db, Doc, Count) ->
 %%--------------------------------------------------------------------
 -spec push_stored() -> 'ok'.
 push_stored() ->
-    lager:debug("pushing stored writes"),
-    DBs = [Db || {Db=?NE_BINARY, I} <- get(),
-                 is_integer(I)
-          ],
-    lists:foreach(fun push_stored/1, DBs).
+    case ?BULK_BATCH_WRITES of
+        true ->
+            lager:debug("pushing stored writes"),
+            DBs = [Db || {Db=?NE_BINARY, I} <- get(),
+                         is_integer(I)
+                  ],
+            lists:foreach(fun push_stored/1, DBs);
+        false ->
+            ok
+    end.
 
 push_stored(Db) ->
     push_stored(Db, {Db, get(Db)}).
