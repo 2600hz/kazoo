@@ -1,18 +1,8 @@
-{application, pivot,
- [
-  {description, "Pivot - Accept 3rd party dialplan commands to control calls"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, [pivot_cache, pivot_calls_sup, pivot_sup]},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
-
-                 , kazoo_apps
-                 , kazoo_amqp
-                 , kazoo_data
-
-                 , lager
-                 ]},
-  {mod, {pivot_app, []}}
- ]}.
+{application,pivot,
+             [{applications,[kazoo,kazoo_amqp,kazoo_call,kazoo_modb,
+                             kazoo_translator,kazoo_web,lager,stdlib]},
+              {description,"Pivot - Accept 3rd party dialplan commands to control calls"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[pivot_cache,pivot_calls_sup,pivot_sup]},
+              {mod,{pivot_app,[]}}]}.

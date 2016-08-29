@@ -1,17 +1,10 @@
-{application, kazoo_endpoint,
- [
-  {description, "Building endpoints and managing attributes of those endpoints"}
- ,{vsn, "4.0.0"}
- ,{modules, []}
- ,{registered, [kazoo_endpoint_cache]}
- ,{applications, [ kernel
-                 , stdlib
-                 , crypto
-
-                 , kazoo_apps
-                 , kazoo_data
-
-                 , lager
-                 ]}
- ,{mod, {kazoo_endpoint_app, []}}
- ]}.
+{application,kazoo_endpoint,
+             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
+                             kazoo_call,kazoo_config,kazoo_data,
+                             kazoo_documents,kazoo_media,kazoo_number_manager,
+                             kazoo_sip,lager,stdlib]},
+              {description,"Building endpoints and managing attributes of those endpoints"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[kazoo_endpoint_cache]},
+              {mod,{kazoo_endpoint_app,[]}}]}.

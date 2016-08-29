@@ -12,6 +12,8 @@
         ]).
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+
 
 -type ast() :: [erl_parse:abstract_form()].
 
@@ -74,7 +76,7 @@ create_schema(Path) ->
 project_apps() ->
     Core = siblings_of('kazoo'),
     Apps = siblings_of('sysconf'),
-    Core ++ Apps.
+    Core ++ Apps -- ['kazoo_ast'].
 
 siblings_of(App) ->
     [dir_to_app_name(Dir)
