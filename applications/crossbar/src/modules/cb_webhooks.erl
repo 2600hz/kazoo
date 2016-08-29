@@ -495,7 +495,7 @@ get_start_key(Context, Default, Formatter) ->
 -spec summary_attempts_fetch(cb_context:context(), crossbar_doc:view_options(), ne_binary()) ->
                                     cb_context:context().
 summary_attempts_fetch(Context, ViewOptions, View) ->
-    Db = kz_util:format_account_mod_id(cb_context:account_id(Context), kz_util:current_tstamp()),
+    Db = get_modb(Context),
     lager:debug("loading view ~s with options ~p", [View, ViewOptions]),
     maybe_fix_envelope(
       crossbar_doc:load_view(View
@@ -514,6 +514,14 @@ normalize_attempt_results(JObj, Acc) ->
                         )
      | Acc
     ].
+
+-spec get_modb(cb_context:context()) -> ne_binary().
+get_modb(Context) ->
+    AccountId = cb_context:account_id(Context),
+    case cb_context:req_value(Context, <<"created_from">>) of
+        'undefined' -> kz_util:format_account_mod_id(AccountId);
+        From -> kz_util:format_account_mod_id(AccountId, kz_util:to_integer(From))
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -38,7 +38,7 @@
 
 -type httpc_ret() :: {'ok', httpc_result()} |
                      {'ok', 'saved_to_file'} |
-                     {'error', {'connect_failed', any()} |
+                     {'error', {'connect_failed' | 'malformed_url', any()} |
                       {'send_failed', any()} |
                       any()
                      }.
