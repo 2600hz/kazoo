@@ -29,7 +29,6 @@
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
 -define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
-                  ,?SUPER('kz_event_handler_sup')
                   ]
        ).
 
