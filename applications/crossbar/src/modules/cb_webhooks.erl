@@ -494,16 +494,19 @@ get_start_key(Context, Default, Formatter) ->
 
 -spec summary_attempts_fetch(cb_context:context(), crossbar_doc:view_options(), ne_binary()) ->
                                     cb_context:context().
-summary_attempts_fetch(Context, ViewOptions, View) ->
-    Db = get_modb(Context),
-    lager:debug("loading view ~s with options ~p", [View, ViewOptions]),
-    maybe_fix_envelope(
-      crossbar_doc:load_view(View
-                            ,ViewOptions
-                            ,cb_context:set_account_db(Context, Db)
-                            ,fun normalize_attempt_results/2
-                            )
-     ).
+summary_attempts_fetch(Context, ViewOpts, View) ->
+    case get_modb(Context) of
+        {'ok', Dbs} ->
+            ViewOptions = ViewOpts ++ Dbs,
+            lager:debug("loading view ~s with options ~p", [View, ViewOptions]),
+            maybe_fix_envelope(
+              crossbar_doc:load_view(View
+                                    ,ViewOptions
+                                    ,Context,
+                                    fun normalize_attempt_results/2
+                                    ));
+        Ctx -> Ctx
+    end.
 
 -spec normalize_attempt_results(kz_json:object(), kz_json:objects()) ->
                                        kz_json:objects().
@@ -515,12 +518,16 @@ normalize_attempt_results(JObj, Acc) ->
      | Acc
     ].
 
--spec get_modb(cb_context:context()) -> ne_binary().
+-spec get_modb(cb_context:context()) ->
+                       {'ok', crossbar_doc:view_options()} |
+                       cb_context:context().
 get_modb(Context) ->
     AccountId = cb_context:account_id(Context),
-    case cb_context:req_value(Context, <<"created_from">>) of
-        'undefined' -> kz_util:format_account_mod_id(AccountId);
-        From -> kz_util:format_account_mod_id(AccountId, kz_util:to_integer(From))
+    case cb_modules_util:range_view_options(Context) of
+        {CreatedFrom, CreatedTo} ->
+            Databases = kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo),
+            {'ok', [{'databases', lists:reverse(Databases)}]};
+        Ctx -> Ctx
     end.
 
 %%--------------------------------------------------------------------
