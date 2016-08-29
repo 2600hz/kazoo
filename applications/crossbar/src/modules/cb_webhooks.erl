@@ -502,8 +502,8 @@ summary_attempts_fetch(Context, ViewOpts, View) ->
             maybe_fix_envelope(
               crossbar_doc:load_view(View
                                     ,ViewOptions
-                                    ,Context,
-                                    fun normalize_attempt_results/2
+                                    ,Context
+                                    ,fun normalize_attempt_results/2
                                     ));
         Ctx -> Ctx
     end.
@@ -519,8 +519,8 @@ normalize_attempt_results(JObj, Acc) ->
     ].
 
 -spec get_modb(cb_context:context()) ->
-                       {'ok', crossbar_doc:view_options()} |
-                       cb_context:context().
+                      {'ok', crossbar_doc:view_options()} |
+                      cb_context:context().
 get_modb(Context) ->
     AccountId = cb_context:account_id(Context),
     case cb_modules_util:range_view_options(Context) of

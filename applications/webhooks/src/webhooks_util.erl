@@ -56,7 +56,7 @@
 
 -define(CONF_LOG_SUCCESS, <<"log_successful_attempts">>).
 -define(SHOULD_LOG_SUCCESS
-       ,kapps_config:get_is_true(?APP_NAME, ?CONF_LOG_SUCCESS, 'true')
+       ,kapps_config:get_is_true(?APP_NAME, ?CONF_LOG_SUCCESS, 'false')
        ).
 
 -spec table_id() -> ?TABLE.
@@ -164,7 +164,7 @@ do_fire(#webhook{uri = URI
     lager:debug("sending event ~s via 'get'(~b): ~s", [EventId, Retries, URI]),
 
     Url = kz_util:to_list(<<(kz_util:to_binary(URI))/binary
-                           ,(kz_util:to_binary([$? | kz_json:to_querystring(JObj)]))/binary
+                            ,(kz_util:to_binary([$? | kz_json:to_querystring(JObj)]))/binary
                           >>),
     Headers = ?HTTP_REQ_HEADERS(Hook),
     Debug = debug_req(Hook, EventId, URI, Headers, <<>>),
@@ -247,7 +247,7 @@ save_attempt(AccountId, Attempt) ->
     'ok'.
 
 -spec debug_req(webhook(), ne_binary(), string() | ne_binary(), kz_proplist(), binary()) ->
-                        kz_proplist().
+                       kz_proplist().
 debug_req(#webhook{hook_id=HookId
                   ,http_verb = Method
                   }, EventId, URI, ReqHeaders, ReqBody) ->
@@ -290,7 +290,7 @@ debug_resp({'ok', RespCode, RespHeaders, RespBody}, Debug, Retries) ->
         ,{<<"try">>, Retries}
         ,{<<"retries_left">>, RetriesLeft}
          | Result ++ Debug
-         ]));
+        ]));
 debug_resp({'error', E}, Debug, Retries) ->
     Error = try fix_error_value(E) of
                 Bin -> Bin
@@ -320,8 +320,8 @@ fix_value(O) -> kz_util:to_lower_binary(O).
 -spec fix_error_value(atom() | {atom(), atom()}) -> ne_binary().
 fix_error_value({E, R}) ->
     <<(kz_util:to_binary(E))/binary
-     ,": "
-     ,(kz_util:to_binary(R))/binary
+      ,": "
+      ,(kz_util:to_binary(R))/binary
     >>;
 fix_error_value(E) ->
     kz_util:to_binary(E).
