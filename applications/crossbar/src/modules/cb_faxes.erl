@@ -621,10 +621,11 @@ do_load_fax_binary(FaxId, Folder, Context) ->
 
 -spec set_fax_binary(cb_context:context(), ne_binary()) -> cb_context:context().
 set_fax_binary(Context, AttachmentId) ->
+    Disposition = cb_context:req_param(Context, <<"disposition">>, <<"attachment">>),
     cb_context:setters(crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, ?TYPE_CHECK_OPTION(<<"fax">>), Context)
                       ,[{fun cb_context:set_resp_etag/2, 'undefined'}
                        ,{fun cb_context:add_resp_headers/2
-                        ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
+                        ,[{<<"Content-Disposition">>, <<Disposition/binary, "; filename=", AttachmentId/binary>>}
                          ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
                          ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
                          ]
