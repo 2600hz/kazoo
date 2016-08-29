@@ -43,6 +43,7 @@ test:
     - . ~/.kerl/$OTP_VERSION/activate && make code_checks
     - ./scripts/validate-js.sh $($CHANGED)
     - . ~/.kerl/$OTP_VERSION/activate && make apis
+    - make validate-swagger
     - |
       if [[ 0 -ne `git status --porcelain | wc -l` ]]; then
         echo Unstaged changes!
@@ -57,7 +58,6 @@ test:
         make build-plt
         TO_DIALYZE="$(echo $($CHANGED))" make dialyze
       fi
-    - make validate-swagger
     - . ~/.kerl/$OTP_VERSION/activate && make elvis
     - . ~/.kerl/$OTP_VERSION/activate && make build-ci-release
     - . ~/.kerl/$OTP_VERSION/activate && ./scripts/check-release-startup.sh

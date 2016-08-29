@@ -184,4 +184,4 @@ apis:
 	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/api/swagger.json
 
 validate-swagger:
-	$(ROOT)/scripts/validate-swagger.sh 'qf-swagger'
+	$(ROOT)/scripts/validate-swagger.sh
