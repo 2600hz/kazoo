@@ -19,6 +19,7 @@
         ,transition_to_complete/1
         ,maybe_transition/2
         ,charge_for_port/1, charge_for_port/2
+        ,assign_to_app/3
         ,send_submitted_requests/0
         ,migrate/0
         ]).
@@ -30,12 +31,14 @@
 
 -define(VIEW_LISTING_SUBMITTED, <<"port_requests/listing_submitted">>).
 -define(ACTIVE_PORT_LISTING, <<"port_requests/active_port_request">>).
+-define(ACTIVE_PORT_IN_NUMBERS, <<"port_requests/port_in_numbers">>).
 
 -type transition_response() :: {'ok', kz_json:object()} |
                                {'error', 'invalid_state_transition'}.
 
 -define(NAME_KEY, <<"name">>).
 -define(NUMBERS_KEY, <<"numbers">>).
+-define(USED_BY_KEY, <<"used_by">>).
 -define(PVT_ACCOUNT_DB, <<"pvt_account_db">>).
 -define(PVT_ACCOUNT_ID, <<"pvt_account_id">>).
 -define(PVT_ID, <<"_id">>).
@@ -96,7 +99,7 @@ public_fields(JObj) ->
 get(DID=?NE_BINARY) ->
     ViewOptions = [{'key', DID}, 'include_docs'],
     case kz_datamgr:get_single_result(?KZ_PORT_REQUESTS_DB
-                                     ,<<"port_requests/port_in_numbers">>
+                                     ,?ACTIVE_PORT_IN_NUMBERS
                                      ,ViewOptions
                                      )
     of
@@ -257,6 +260,31 @@ charge_for_port(_JObj, AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec assign_to_app(ne_binary(), api_ne_binary(), kz_json:object()) ->
+                           {'ok', kz_json:object()} |
+                           {'error', any()}.
+assign_to_app(Number, NewApp, JObj) ->
+    case kz_json:get_value([?NUMBERS_KEY, Number, ?USED_BY_KEY], JObj) of
+        NewApp -> {'ok', JObj};
+        _OldApp ->
+            lager:debug("assigning number ~s in port request ~s to ~s"
+                       ,[Number, kz_doc:id(JObj), NewApp]),
+            NumberJObj = kz_json:from_list(
+                           props:filter_empty(
+                             [{?USED_BY_KEY, NewApp}
+                              | kz_json:to_proplist(
+                                  kz_json:get_value([?NUMBERS_KEY, Number], JObj)
+                                 )
+                             ])
+                          ),
+            save_doc(kz_json:set_value([?NUMBERS_KEY, Number], NumberJObj, JObj))
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec send_submitted_requests() -> 'ok'.
 send_submitted_requests() ->
     case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB
@@ -348,7 +376,7 @@ was_number_operation_successul({_Num, _Error}) ->
 -spec clear_numbers_from_port(kz_json:object()) -> kz_json:object().
 clear_numbers_from_port(PortReq) ->
     Cleared = kz_json:set_value(?NUMBERS_KEY, kz_json:new(), PortReq),
-    case kz_datamgr:save_doc(?KZ_PORT_REQUESTS_DB, Cleared) of
+    case save_doc(Cleared) of
         {'ok', PortReq1} ->
             lager:debug("port numbers cleared"),
             PortReq1;
@@ -487,7 +515,7 @@ send_attachment(Url, Id, Name, Options, Attachment) ->
 -spec set_flag(kz_json:object()) -> 'ok'.
 set_flag(JObj) ->
     Doc = kz_json:set_value(?PVT_SENT, 'true', JObj),
-    case kz_datamgr:save_doc(?KZ_PORT_REQUESTS_DB, Doc) of
+    case save_doc(Doc) of
         {'ok', _} ->
             lager:debug("flag for submitted_port_request successfully set");
         {'error', _R} ->
@@ -554,3 +582,11 @@ fetch_docs(StartKey, Limit) ->
                   ,'include_docs'
                   ],
     kz_datamgr:all_docs(?KZ_PORT_REQUESTS_DB, ViewOptions).
+
+-spec save_doc(kz_json:object()) -> {'ok', kz_json:object()} |
+                                    {'error', any()}.
+save_doc(JObj) ->
+    case kz_datamgr:save_doc(?KZ_PORT_REQUESTS_DB, JObj) of
+        {'ok', _} = PortReq -> PortReq;
+        {'error', _} = Error -> Error
+    end.
