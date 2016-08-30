@@ -16,7 +16,10 @@
         ,server_url/1
         ,db_url/2
         ,server_info/1
+        ,connection_info/1
         ,format_error/1
+        ,is_couchdb/1
+        ,start_compactor/1
         ]).
 
 -export([maybe_add_rev/3]).
@@ -92,15 +95,8 @@ retry504s(Fun, Cnt) ->
 -spec new_connection(couch_connection() | #{}) ->
                             server() |
                             {'error', 'timeout' | 'ehostunreach' | _}.
-new_connection(#kz_couch_connection{host=Host
-                                   ,port=Port
-                                   ,username=User
-                                   ,password=Pass
-                                   ,options=Options
-                                   }) ->
-    get_new_conn(Host, Port, maybe_add_auth(User, Pass, check_options(Options)));
 new_connection(#{}=Map) ->
-    new_connection(maps:fold(fun connection_parse/3, #kz_couch_connection{}, Map)).
+    connect(maps:fold(fun connection_parse/3, #kz_couch_connection{}, Map)).
 
 -spec maybe_add_auth(string(), string(), kz_proplist()) -> kz_proplist().
 maybe_add_auth("", _Pass, Options) -> Options;
@@ -140,31 +136,29 @@ connection_parse(password, V, Conn) ->
 connection_parse(K, V, #kz_couch_connection{options=Options}=Conn) ->
     Conn#kz_couch_connection{options = [{K, V} | Options]}.
 
-
--spec get_new_conn(nonempty_string() | ne_binary(), pos_integer(), kz_proplist()) ->
+-spec connect(couch_connection()) ->
                           {'ok', server()} |
                           {'error', 'timeout'} |
                           {'error', 'ehostunreach'}.
-get_new_conn(Host, Port, Opts) ->
+connect(#kz_couch_connection{host=Host
+                            ,port=Port
+                            ,username=User
+                            ,password=Pass
+                            ,options=Options
+                            }) ->
+    ConnMap = #{host => Host
+               ,port => Port
+               ,username => User
+               ,password => Pass
+               ,options => Options
+               },
+    Opts = [{'connection_map', ConnMap} | maybe_add_auth(User, Pass, check_options(Options))],
     Conn = couchbeam:server_connection(kz_util:to_list(Host), Port, "", Opts),
     lager:debug("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
-    case server_info(Conn) of
-        {'ok', ConnData} ->
-            CouchVersion = kz_json:get_ne_binary_value(<<"version">>, ConnData),
-            BigCouchVersion = kz_json:get_ne_binary_value(<<"bigcouch">>, ConnData),
-            lager:info("connected successfully to ~s:~b", [Host, Port]),
-            lager:debug("responding CouchDB version: ~p", [CouchVersion]),
-            lager:debug("responding BigCouch version: ~p", [BigCouchVersion]),
-            {'ok', add_couch_version(CouchVersion, BigCouchVersion, Conn)};
-        {'error', {'conn_failed', {'error', 'timeout'}}} ->
-            lager:warning("connection timed out for ~s:~p", [Host, Port]),
-            {'error', 'timeout'};
-        {'error', {'conn_failed', {'error', 'ehostunreach'}}} ->
-            lager:warning("connection to ~s:~p failed: Host is unreachable", [Host, Port]),
-            {'error', 'ehostunreach'};
-        {'error', _E}=E ->
-            lager:warning("connection to ~s:~p failed: ~p", [Host, Port, _E]),
-            E
+    case connection_info(Conn) of
+        {'ok', Server} ->
+            {'ok', maybe_start_compactor(Server)};
+        Error -> Error
     end.
 
 add_couch_version(<<"1.6", _/binary>>, 'undefined', #server{options=Options}=Conn) ->
@@ -260,3 +254,72 @@ do_fetch_rev(#db{}=Db, DocId) ->
         'true' -> {'error', 'empty_doc_id'};
         'false' -> ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId))
     end.
+
+-spec maybe_start_compactor(server()) -> server().
+maybe_start_compactor(#server{options=Opts}=Server) ->
+    maybe_start_compactor(props:get_value('connection_map', Opts), Server).
+
+-spec maybe_start_compactor(map(), server()) -> server().
+maybe_start_compactor(#{options := Options}=Map, Server) ->
+    case props:is_defined('admin_port', Options) of
+        'true' -> start_compactor(Map, Server);
+        'false' -> Server
+    end.
+
+-spec start_compactor(map(), server()) -> server().
+start_compactor(#{options := Options
+                 ,host := Host
+                 ,username := User
+                 ,password := Pass
+                 }, #server{options=Opts}=Server) ->
+    AdminPort = props:get_value('admin_port', Options),
+    AdminUser = props:get_value('admin_username', Options, User),
+    AdminPass = props:get_value('admin_password', Options, Pass),
+    AdminOptions = maybe_add_auth(AdminUser, AdminPass, props:delete('basic_auth', Opts)),
+    AdminConn = couchbeam:server_connection(kz_util:to_list(Host), AdminPort, "", AdminOptions),
+    Compact = props:is_defined('compact_automatically', Options),
+    case connection_info(AdminConn) of
+        {'ok', AdminServer} ->
+            lager:debug("new admin connection to host ~s:~b, testing: ~p", [Host, AdminPort, AdminConn]),
+            {'ok', NodeUserPort} = couchbeam:get_config(AdminServer, <<"chttpd">>, <<"port">>),
+            {'ok', NodeAdminPort} = couchbeam:get_config(AdminServer, <<"httpd">>, <<"port">>),
+            NewServerOpts = props:set_values(
+                              [{'admin_connection', AdminServer}
+                              ,{'node_ports', {kz_util:to_integer(NodeUserPort)
+                                              ,kz_util:to_integer(NodeAdminPort)
+                                              }
+                               }
+                              ], Opts),
+            NewServer = Server#server{options = NewServerOpts},
+            kz_couch_compactor:set_connection(NewServer, Compact),
+            NewServer;
+        _Error -> Server
+    end.
+
+-spec connection_info(server()) -> {'ok', server()} | {'error', term()}.
+connection_info(#server{url=Url}=Conn) ->
+    case server_info(Conn) of
+        {'ok', ConnData} ->
+            CouchVersion = kz_json:get_ne_binary_value(<<"version">>, ConnData),
+            BigCouchVersion = kz_json:get_ne_binary_value(<<"bigcouch">>, ConnData),
+            lager:info("connected successfully to ~s", [Url]),
+            lager:debug("responding CouchDB version: ~p", [CouchVersion]),
+            lager:debug("responding BigCouch version: ~p", [BigCouchVersion]),
+            {'ok', add_couch_version(CouchVersion, BigCouchVersion, Conn)};
+        {'error', {'conn_failed', {'error', 'timeout'}}} ->
+            lager:warning("connection timed out for ~s", [Url]),
+            {'error', 'timeout'};
+        {'error', {'conn_failed', {'error', 'ehostunreach'}}} ->
+            lager:warning("connection to ~s failed: Host is unreachable", [Url]),
+            {'error', 'ehostunreach'};
+        {'error', _E}=E ->
+            lager:warning("connection to ~s failed: ~p", [Url, _E]),
+            E
+    end.
+
+is_couchdb(#server{}) -> 'true';
+is_couchdb(_) -> 'false'.
+
+-spec start_compactor(server()) -> 'ok' | {'error', 'compactor_down'}. 
+start_compactor(NewServer) ->
+    kz_couch_compactor:set_connection(NewServer, 'true').

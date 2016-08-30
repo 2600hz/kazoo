@@ -9,7 +9,7 @@
 -module(kz_couch_doc).
 
 %% Doc related
--export([open_doc/4
+-export([open_doc/3, open_doc/4
         ,lookup_doc_rev/3
         ,save_doc/4
         ,save_docs/4
@@ -43,6 +43,11 @@ get_db(#server{}=Conn, DbName) ->
 
 %% Document related functions --------------------------------------------------
 
+-spec open_doc(server(), ne_binary(), ne_binary()) ->
+                      {'ok', kz_json:object()} |
+                      couchbeam_error().
+open_doc(Conn, DbName, DocId) ->
+    open_doc(Conn, DbName, DocId, []).
 
 -spec open_doc(server(), ne_binary(), ne_binary(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
