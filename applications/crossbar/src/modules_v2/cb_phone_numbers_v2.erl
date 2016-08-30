@@ -29,6 +29,7 @@
 
 -define(CB_LIST, <<"phone_numbers/crossbar_listing">>).
 -define(PORT_NUM_LISTING, <<"port_requests/phone_numbers_listing">>).
+-define(PORT_NUMBER_IDX_KEY, 2).
 
 -define(ACTIVATE, <<"activate">>).
 -define(RESERVE, <<"reserve">>).
@@ -543,7 +544,7 @@ normalize_view_results(JObj, Acc) ->
 %% @private
 -spec normalize_port_view_result(kz_json:object()) -> kz_json:object().
 normalize_port_view_result(JObj) ->
-    Number = kz_json:get_value([<<"key">>, 2], JObj),
+    Number = kz_json:get_value([<<"key">>, ?PORT_NUMBER_IDX_KEY], JObj),
     Properties = kz_json:get_value(<<"value">>, JObj),
     kz_json:set_value(Number, Properties, kz_json:new()).
 

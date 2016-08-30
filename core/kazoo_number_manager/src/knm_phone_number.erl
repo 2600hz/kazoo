@@ -287,7 +287,7 @@ to_public_json(Number) ->
             , UsedBy
             , Features
             ])
-          ,kz_json:public_fields(JObj)
+                          ,kz_json:public_fields(JObj)
          ),
     kz_json:set_value(<<"_read_only">>, ReadOnly, Root).
 
@@ -301,20 +301,20 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
     kz_json:from_list(
       props:filter_empty(
         [{<<"_id">>, number(N)}
-         ,{?PVT_DB_NAME, number_db(N)}
-         ,{?PVT_ASSIGNED_TO, assigned_to(N)}
-         ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
-         ,{?PVT_USED_BY, used_by(N)}
-         ,{?PVT_FEATURES, features(N)}
-         ,{?PVT_STATE, state(N)}
-         ,{?PVT_RESERVE_HISTORY, reserve_history(N)}
-         ,{?PVT_PORTED_IN, ported_in(N)}
-         ,{?PVT_MODULE_NAME, module_name(N)}
-         ,{?PVT_CARRIER_DATA, carrier_data(N)}
-         ,{?PVT_REGION, region(N)}
-         ,{?PVT_MODIFIED, modified(N)}
-         ,{?PVT_CREATED, created(N)}
-         ,{?PVT_TYPE, <<"number">>}
+        ,{?PVT_DB_NAME, number_db(N)}
+        ,{?PVT_ASSIGNED_TO, assigned_to(N)}
+        ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
+        ,{?PVT_USED_BY, used_by(N)}
+        ,{?PVT_FEATURES, features(N)}
+        ,{?PVT_STATE, state(N)}
+        ,{?PVT_RESERVE_HISTORY, reserve_history(N)}
+        ,{?PVT_PORTED_IN, ported_in(N)}
+        ,{?PVT_MODULE_NAME, module_name(N)}
+        ,{?PVT_CARRIER_DATA, carrier_data(N)}
+        ,{?PVT_REGION, region(N)}
+        ,{?PVT_MODIFIED, modified(N)}
+        ,{?PVT_CREATED, created(N)}
+        ,{?PVT_TYPE, <<"number">>}
          | kz_json:to_proplist(
              kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))
             )
