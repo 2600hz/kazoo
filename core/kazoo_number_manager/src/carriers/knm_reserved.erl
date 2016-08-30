@@ -41,7 +41,7 @@ is_local() -> 'true'.
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(Number, Quantity, Options) ->
-    case props:get_value(?KNM_ACCOUNTID_CARRIER, Options) of
+    case knm_carriers:account_id(Options) of
         'undefined' -> {'error', 'not_available'};
         AccountId ->
             do_find_numbers(Number, Quantity, AccountId)

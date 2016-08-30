@@ -11,8 +11,8 @@
 -include("knm.hrl").
 
 api_test_() ->
-    Options = [{?KNM_ACCOUNTID_CARRIER, ?RESELLER_ACCOUNT_ID}
-              ,{<<"carriers">>, [<<"knm_bandwidth2">>]}
+    Options = [{'account_id', ?RESELLER_ACCOUNT_ID}
+              ,{'carriers', [<<"knm_bandwidth2">>]}
               ],
     [find_numbers(Options)
     ,find_tollfree_numbers(Options)

@@ -41,11 +41,10 @@ is_local() -> 'true'.
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(Number, Quantity, Options) ->
-    case props:get_value(?KNM_ACCOUNTID_CARRIER, Options) of
+    case knm_carriers:account_id(Options) of
         'undefined' -> {'error', 'not_available'};
         _AccountId ->
-            ResellerId = props:get_value(?KNM_RESELLERID_CARRIER, Options),
-            do_find_numbers(Number, Quantity, ResellerId)
+            do_find_numbers(Number, Quantity, knm_carriers:reseller_id(Options))
     end.
 
 -spec do_find_numbers(ne_binary(), pos_integer(), ne_binary()) ->

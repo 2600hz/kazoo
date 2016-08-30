@@ -108,7 +108,7 @@ find_numbers(Search, Quanity, Options) ->
                                          {'ok', knm_number:knm_numbers()}.
 process_numbers_search_resp(Xml, Options) ->
     TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
-    AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
+    AccountId = knm_carriers:account_id(Options),
     {'ok', [N
             || Number <- xmerl_xpath:string(TelephoneNumbers, Xml),
                {'ok', N} <- [found_number_to_KNM(Number, AccountId)]

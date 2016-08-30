@@ -47,7 +47,7 @@ is_local() -> 'true'.
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(<<"+", _/binary>>=Number, Quantity, Options) ->
-    AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
+    AccountId = knm_carriers:account_id(Options),
     find_numbers_in_account(Number, Quantity, AccountId, Options);
 find_numbers(Number, Quantity, Options) ->
     find_numbers(<<"+",Number/binary>>, Quantity, Options).
@@ -58,7 +58,7 @@ find_numbers(Number, Quantity, Options) ->
 find_numbers_in_account(Number, Quantity, AccountId, Options) ->
     case do_find_numbers_in_account(Number, Quantity, AccountId) of
         {'error', 'not_available'}=Error ->
-            ResellerId = props:get_value(?KNM_RESELLERID_CARRIER, Options),
+            ResellerId = knm_carriers:reseller_id(Options),
             case AccountId =:= 'undefined'
                 orelse AccountId =:= ResellerId
             of

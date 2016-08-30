@@ -125,7 +125,7 @@ find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_T
                "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
     Result = search(Num, Params),
-    AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
+    AccountId = knm_carriers:account_id(Options),
     {'ok', [N
             || X <- xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result),
                {'ok', N} <- [tollfree_search_response_to_KNM(X, AccountId)]
@@ -147,7 +147,7 @@ find_numbers(Search, Quantity, Options) ->
 
 -spec process_search_response(xml_el(), knm_carriers:options()) -> knm_number:knm_numbers().
 process_search_response(Result, Options) ->
-    AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
+    AccountId = knm_carriers:account_id(Options),
     [N
      || X <- xmerl_xpath:string("TelephoneNumberDetailList/TelephoneNumberDetail", Result),
         {'ok', N} <- [search_response_to_KNM(X, AccountId)]

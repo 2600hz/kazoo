@@ -18,6 +18,13 @@
         ,default_carriers/0, default_carrier/0
         ,acquire/1
         ,disconnect/1
+
+        ,quantity/1
+        ,prefix/1
+        ,country/1
+        ,blocks/1
+        ,account_id/1
+        ,reseller_id/1
         ]).
 
 %%% For knm carriers only
@@ -31,7 +38,24 @@
         ]).
 -endif.
 
--type option() :: {ne_binary(), any()}.
+-ifdef(TEST).
+-type option() :: {'quantity', pos_integer()} |
+                  {'carriers', ne_binaries()} |
+                  {'phonebook_url', ne_binary()} |
+                  {'tollfree', boolean()} |
+                  {'prefix', ne_binary()} |
+                  {'country', knm_util:country()} |
+                  {'blocks', boolean()} |
+                  {'account_id', ne_binary()} |
+                  {'reseller_id', ne_binary()}.
+-else.
+-type option() :: {'quantity', pos_integer()} |
+                  {'prefix', ne_binary()} |
+                  {'country', knm_util:country()} |
+                  {'blocks', boolean()} |
+                  {'account_id', ne_binary()} |
+                  {'reseller_id', ne_binary()}.
+-endif.
 -type options() :: [option()].
 -export_type([option/0, options/0]).
 
@@ -233,7 +257,7 @@ check(Numbers, Options) ->
 -spec available_carriers(options()) -> atoms().
 -ifdef(TEST).
 available_carriers(Options) ->
-    case props:get_value(<<"carriers">>, Options) of
+    case props:get_value('carriers', Options) of
         Cs=[_|_] -> keep_only_reachable(Cs);
         _ -> get_available_carriers(Options)
     end.
@@ -244,11 +268,11 @@ available_carriers(Options) ->
 
 -spec get_available_carriers(options()) -> atoms().
 get_available_carriers(Options) ->
-    case props:get_value(?KNM_ACCOUNTID_CARRIER, Options) of
+    case account_id(Options) of
         'undefined' ->
             keep_only_reachable(?CARRIER_MODULES);
         _AccountId ->
-            ResellerId = props:get_value(?KNM_RESELLERID_CARRIER, Options),
+            ResellerId = reseller_id(Options),
             First = [?CARRIER_RESERVED, ?CARRIER_RESERVED_RESELLER, ?CARRIER_LOCAL],
             keep_only_reachable(First ++ (?CARRIER_MODULES(ResellerId) -- First))
     end.
@@ -328,12 +352,30 @@ create_found(DID=?NE_BINARY, Carrier, ?MATCH_ACCOUNT_RAW(AuthBy), Data, State=?N
                       ,{'module_name', kz_util:to_binary(Carrier)}
                       ],
             {'ok', PhoneNumber} =
-                knm_phone_number:setters(
-                  knm_phone_number:new(DID, Options)
+                knm_phone_number:setters(knm_phone_number:new(DID, Options)
                                         ,[{fun knm_phone_number:set_carrier_data/2, Data}
                                          ]),
             knm_number:save(knm_number:set_phone_number(knm_number:new(), PhoneNumber))
     end.
+
+
+-spec quantity(options()) -> pos_integer().
+quantity(Options) -> props:get_integer_value('quantity', Options).
+
+-spec prefix(options()) -> ne_binary().
+prefix(Options) -> props:get_value('prefix', Options).
+
+-spec country(options()) -> knm_util:country().
+country(Options) -> props:get_value('country', Options).
+
+-spec blocks(options()) -> boolean().
+blocks(Options) -> props:get_value('blocks', Options).
+
+-spec account_id(options()) -> ne_binary().
+account_id(Options) -> props:get_value('account_id', Options).
+
+-spec reseller_id(options()) -> ne_binary().
+reseller_id(Options) -> props:get_value('reseller_id', Options).
 
 
 %%%===================================================================

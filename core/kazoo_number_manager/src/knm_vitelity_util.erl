@@ -52,11 +52,10 @@ add_options_fold({K, V}, Options) ->
 get_query_value(Key, Options) ->
     props:get_value(Key, Options).
 -else.
--spec get_query_value(atom() | ne_binary(), query_options()) -> term().
+-spec get_query_value(ne_binary(), knm_carriers:options()) -> any().
 get_query_value(Key, Options) ->
     case props:get_value(Key, Options) of
-        'undefined' ->
-            kapps_config:get(?KNM_VITELITY_CONFIG_CAT, Key);
+        'undefined' -> kapps_config:get(?KNM_VITELITY_CONFIG_CAT, Key);
         Value -> Value
     end.
 -endif.

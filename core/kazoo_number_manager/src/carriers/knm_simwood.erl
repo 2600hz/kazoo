@@ -168,7 +168,7 @@ sw_quantity(_Quantity) -> <<"100">>.
 -spec process_response(kz_json:objects(), knm_carriers:options()) ->
                               {'ok', knm_number:knm_numbers()}.
 process_response(JObjs, Options) ->
-    AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
+    AccountId = knm_carriers:account_id(Options),
     {'ok', [N || JObj <- JObjs,
                  {'ok', N} <- [response_jobj_to_number(JObj, AccountId)]
            ]}.
