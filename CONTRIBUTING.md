@@ -121,6 +121,16 @@ Some 2600Hz specifics:
   do_x() ->
       lists:foldl(fun(F, Acc) -> F(Acc) end, lookup(), [fun do_y/1, do_z/1]).
   ```
+* No [magic numbers](https://en.wikipedia.org/wiki/Magic_number_(programming)#Unnamed_numerical_constants) please
+  * If you are doing timeouts and similar, there are [macros](https://github.com/2600hz/kazoo/blob/master/core/kazoo/include/kz_types.hrl#L4-L15) that can help make it more apparent what the unit of time is, for instance:
+  ```erlang
+  receive
+      X -> do_something_with(X)
+  after
+      5 * ?MILLISECONDS_IN_SECOND -> fail()
+  end
+  ```
+  Now we can easily see that the receive will block for 5 seconds (but the value is in milliseconds)
 
 Some additional guidance can be found:
 * http://www.erlang.se/doc/programming_rules.shtml
