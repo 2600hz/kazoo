@@ -279,9 +279,11 @@ handle_call({'conference_destroy', UUID}, _, State) ->
     _ = ets:select_delete(?PARTICIPANTS_TBL, MatchSpecP),
     {'reply', 'ok', State};
 handle_call({'participant_create', Props, Node, CallInfo}, _, State) ->
-    Participant = participant_from_props(Props, Node, CallInfo),
-    _ = ets:insert_new(?PARTICIPANTS_TBL, Participant),
+    Participant = #participant{uuid=ParticipantId} = participant_from_props(Props, Node, CallInfo),
     UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
+    ConferenceId = props:get_value(<<"Conference-Name">>, Props),
+    IsModerator = conf_participant:moderator_status(ConferenceId, ParticipantId),
+    _ = ets:insert_new(?PARTICIPANTS_TBL, Participant),
     _ = case ets:lookup(?CONFERENCES_TBL, UUID) of
             [#conference{}] -> 'ok';
             _Else ->
@@ -289,7 +291,7 @@ handle_call({'participant_create', Props, Node, CallInfo}, _, State) ->
                 Conference = conference_from_props(Props, Node),
                 _ = ets:insert_new(?CONFERENCES_TBL, Conference)
         end,
-    {'reply', Participant, State};
+    {'reply', Participant#participant{is_moderator=IsModerator}, State};
 handle_call({'participant_update', CallId, Update}, _, State) ->
     _ = ets:update_element(?PARTICIPANTS_TBL, CallId, Update),
     {'reply', 'ok', State};

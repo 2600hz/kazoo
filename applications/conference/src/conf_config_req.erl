@@ -122,9 +122,7 @@ max_members_sound(Conference) ->
 get_conference(?DEFAULT_PROFILE_NAME) -> kapps_conference:new();
 get_conference(?PAGE_PROFILE_NAME) -> kapps_conference:new();
 get_conference(ConferenceID) ->
-    Participants =
-        [Pid ||
-            {_,Pid,'worker',['conf_participant']} <- supervisor:which_children('conf_participant_sup')],
+    Participants = conf_participant_sup:all(),
     Conferences = [conf_participant:conference(Pid) || Pid <- Participants],
     case [Conference || {'ok',Conference} <- Conferences,
                         kapps_conference:id(Conference) =:= ConferenceID]

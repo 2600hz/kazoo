@@ -442,12 +442,14 @@ send_conference_event(Action, Props, CustomProps) ->
 
 make_participant_event(Action, CallId, Props, Node) ->
     ConferenceName = props:get_value(<<"Conference-Name">>, Props),
+    IsModerator = conf_participant:moderator_status(ConferenceName, CallId),
     [{<<"Event">>, Action}
     ,{<<"Call-ID">>, CallId}
     ,{<<"Focus">>, kz_util:to_binary(Node)}
     ,{<<"Conference-ID">>, ConferenceName}
     ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
     ,{<<"Participant-ID">>, props:get_integer_value(<<"Member-ID">>, Props, 0)}
+    ,{<<"Moderator">>, IsModerator}
     ,{<<"Floor">>, props:get_is_true(<<"Floor">>, Props, 'false')}
     ,{<<"Hear">>, props:get_is_true(<<"Hear">>, Props, 'true')}
     ,{<<"Speak">>, props:get_is_true(<<"Speak">>, Props, 'true')}

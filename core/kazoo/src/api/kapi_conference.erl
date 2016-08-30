@@ -311,6 +311,7 @@
                                    ,<<"Conference-ID">>
                                    ,<<"Instance-ID">>
                                    ,<<"Participant-ID">>
+                                   ,<<"Moderator">>
                                    ,<<"Floor">>
                                    ,<<"Hear">>
                                    ,<<"Speak">>
