@@ -22,6 +22,7 @@
         ,quantity/1
         ,prefix/1
         ,country/1
+        ,offset/1
         ,blocks/1
         ,account_id/1
         ,reseller_id/1
@@ -45,6 +46,7 @@
                   {'tollfree', boolean()} |
                   {'prefix', ne_binary()} |
                   {'country', knm_util:country()} |
+                  {'offset', non_neg_integer()} |
                   {'blocks', boolean()} |
                   {'account_id', ne_binary()} |
                   {'reseller_id', ne_binary()}.
@@ -52,6 +54,7 @@
 -type option() :: {'quantity', pos_integer()} |
                   {'prefix', ne_binary()} |
                   {'country', knm_util:country()} |
+                  {'offset', non_neg_integer()} |
                   {'blocks', boolean()} |
                   {'account_id', ne_binary()} |
                   {'reseller_id', ne_binary()}.
@@ -367,6 +370,9 @@ prefix(Options) -> props:get_value('prefix', Options).
 
 -spec country(options()) -> knm_util:country().
 country(Options) -> props:get_value('country', Options).
+
+-spec offset(options()) -> non_neg_integer().
+offset(Options) -> props:get_integer_value('offset', Options, 0).
 
 -spec blocks(options()) -> boolean().
 blocks(Options) -> props:get_value('blocks', Options).

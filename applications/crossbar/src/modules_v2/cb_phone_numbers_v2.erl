@@ -58,6 +58,8 @@
 -define(DEFAULT_COUNTRY, <<"US">>).
 -define(KEY_PHONEBOOK_FREE_URL, <<"phonebook_url">>).
 -define(PREFIX, <<"prefix">>).
+-define(QUANTITY, <<"quantity">>).
+-define(OFFSET, <<"offset">>).
 -define(LOCALITY, <<"locality">>).
 -define(CHECK, <<"check">>).
 -define(COUNTRY, <<"country">>).
@@ -560,6 +562,7 @@ find_numbers(Context) ->
     Prefix = <<CountryPrefix/binary, (knm_carriers:prefix(Options))/binary>>,
     OnSuccess =
         fun(C) ->
+                lager:debug("carriers find: ~p", [Options]),
                 Found = knm_carriers:find(Prefix, knm_carriers:quantity(Options), Options),
                 cb_context:setters(C
                                   ,[{fun cb_context:set_resp_data/2, Found}
@@ -575,9 +578,10 @@ get_find_numbers_req(Context) ->
                     Account -> Account
                 end,
     QS = cb_context:query_string(Context),
-    [{'quantity', max(1, kz_json:get_integer_value(<<"quantity">>, QS, 1))}
+    [{'quantity', max(1, kz_json:get_integer_value(?QUANTITY, QS, 1))}
     ,{'prefix', kz_json:get_ne_value(?PREFIX, QS)}
     ,{'country', kz_json:get_ne_value(?COUNTRY, QS, ?DEFAULT_COUNTRY)}
+    ,{'offset', kz_json:get_integer_value(?OFFSET, QS, 0)}
     ,{'account_id', AccountId}
     ,{'reseller_id', cb_context:reseller_id(Context)}
     ].

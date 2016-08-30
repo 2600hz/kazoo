@@ -216,7 +216,7 @@ format_check_numbers_success(Body) ->
                          {'ok', knm_number:knm_numbers()} |
                          {'error', 'not_available'}.
 get_numbers(Url, Number, Quantity, Options) ->
-    Offset = props:get_binary_value(<<"offset">>, Options, <<"0">>),
+    Offset = props:get_binary_value('offset', Options, <<"0">>),
     Country = ?COUNTRY,
     ReqBody = <<"?prefix=", Number/binary, "&limit=", (kz_util:to_binary(Quantity))/binary, "&offset=", Offset/binary>>,
     Uri = <<Url/binary, "/numbers/", Country/binary, "/search", ReqBody/binary>>,
@@ -277,7 +277,7 @@ get_blocks(?BLOCK_PHONEBOOK_URL, _Number, _Quantity, Options) ->
     format_blocks_resp(?BLOCKS_RESP, Options).
 -else.
 get_blocks(Url, Number, Quantity, Options) ->
-    Offset = props:get_binary_value(<<"offset">>, Options, <<"0">>),
+    Offset = props:get_binary_value('offset', Options, <<"0">>),
     Limit = props:get_binary_value('blocks', Options, <<"0">>),
     Country = kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
     ReqBody = <<"?prefix=", (kz_util:uri_encode(Number))/binary
