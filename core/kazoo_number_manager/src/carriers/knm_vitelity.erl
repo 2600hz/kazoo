@@ -40,19 +40,15 @@ is_local() -> 'false'.
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) ->
+-spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(Prefix, Quantity, Options) ->
     case props:is_true(<<"tollfree">>, Options, 'false') of
+        'false' -> classify_and_find(Prefix, Quantity, Options);
         'true' ->
-            find(Prefix
-                ,Quantity
-                ,Options
-                ,tollfree_options(Quantity, Options)
-                );
-        'false' ->
-            classify_and_find(Prefix, Quantity, Options)
+            TFOpts = tollfree_options(Quantity, Options),
+            find(Prefix, Quantity, Options, TFOpts)
     end.
 
 %%--------------------------------------------------------------------
@@ -68,26 +64,23 @@ acquire_number(Number) ->
     DID = knm_phone_number:number(PhoneNumber),
     case knm_converters:classify(DID) of
         <<"tollfree_us">> ->
-            query_vitelity(
-              Number
+            query_vitelity(Number
                           ,knm_vitelity_util:build_uri(
                              purchase_tollfree_options(DID)
                             )
-             );
+                          );
         <<"tollfree">> ->
-            query_vitelity(
-              Number
+            query_vitelity(Number
                           ,knm_vitelity_util:build_uri(
                              purchase_tollfree_options(DID)
                             )
-             );
+                          );
         _ ->
-            query_vitelity(
-              Number
+            query_vitelity(Number
                           ,knm_vitelity_util:build_uri(
                              purchase_local_options(DID)
                             )
-             )
+                          )
     end.
 
 %%--------------------------------------------------------------------
@@ -102,12 +95,11 @@ disconnect_number(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     DID = knm_phone_number:number(PhoneNumber),
     lager:debug("attempting to disconnect ~s", [DID]),
-    query_vitelity(
-      Number
+    query_vitelity(Number
                   ,knm_vitelity_util:build_uri(
                      release_did_options(DID)
                     )
-     ).
+                  ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -137,7 +129,7 @@ is_number_billable(_) -> 'true'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec classify_and_find(ne_binary(), pos_integer(), knm_vitelity_util:query_options()) ->
+-spec classify_and_find(ne_binary(), pos_integer(), knm_carriers:options()) ->
                                {'ok', knm_number:knm_numbers()} |
                                {'error', any()}.
 classify_and_find(Prefix, Quantity, Options) ->
@@ -156,7 +148,7 @@ classify_and_find(Prefix, Quantity, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec tollfree_options(pos_integer(), knm_vitelity_util:query_options()) ->
+-spec tollfree_options(pos_integer(), knm_carriers:options()) ->
                               knm_vitelity_util:query_options().
 tollfree_options(Quantity, Options) ->
     TollFreeOptions = [{'qs', [{'cmd', <<"listtollfree">>}
@@ -166,10 +158,8 @@ tollfree_options(Quantity, Options) ->
                               ]}
                       ,{'uri', knm_vitelity_util:api_uri()}
                       ],
-    lists:foldl(fun knm_vitelity_util:add_options_fold/2
-               ,[]
-               ,TollFreeOptions
-               ).
+    F = fun knm_vitelity_util:add_options_fold/2,
+    lists:foldl(F, [], TollFreeOptions).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -177,7 +167,7 @@ tollfree_options(Quantity, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec local_options(ne_binary(), knm_vitelity_util:query_options()) ->
+-spec local_options(ne_binary(), knm_carriers:options()) ->
                            knm_vitelity_util:query_options().
 local_options(Prefix, Options) when byte_size(Prefix) =< 3 ->
     LocalOptions = [{'qs', [{'npa', Prefix}
@@ -191,10 +181,9 @@ local_options(Prefix, Options) when byte_size(Prefix) =< 3 ->
                            ]}
                    ,{'uri', knm_vitelity_util:api_uri()}
                    ],
-    lists:foldl(fun knm_vitelity_util:add_options_fold/2
-               ,[]
-               ,LocalOptions
-               );
+    F = fun knm_vitelity_util:add_options_fold/2,
+    lists:foldl(F, [], LocalOptions);
+
 local_options(Prefix, Options) ->
     LocalOptions = [{'qs', [{'npanxx', Prefix}
                            ,{'cmd', <<"listnpanxx">>}
@@ -207,10 +196,8 @@ local_options(Prefix, Options) ->
                            ]}
                    ,{'uri', knm_vitelity_util:api_uri()}
                    ],
-    lists:foldl(fun knm_vitelity_util:add_options_fold/2
-               ,[]
-               ,LocalOptions
-               ).
+    F = fun knm_vitelity_util:add_options_fold/2,
+    lists:foldl(F, [], LocalOptions).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -218,7 +205,7 @@ local_options(Prefix, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find(ne_binary(), pos_integer(), kz_proplist(), knm_vitelity_util:query_options()) ->
+-spec find(ne_binary(), pos_integer(), knm_carriers:options(), knm_vitelity_util:query_options()) ->
                   {'ok', knm_number:knm_numbers()} |
                   {'error', any()}.
 find(Prefix, Quantity, Options, VitelityOptions) ->
@@ -231,7 +218,7 @@ find(Prefix, Quantity, Options, VitelityOptions) ->
         {'ok', JObj} -> response_to_numbers(JObj, Options)
     end.
 
--spec response_to_numbers(kz_json:object(), kz_proplist()) ->
+-spec response_to_numbers(kz_json:object(), knm_carriers:options()) ->
                                  {'ok', knm_number:knm_numbers()}.
 response_to_numbers(JObj, Options) ->
     AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
@@ -455,8 +442,7 @@ purchase_tollfree_options(DID) ->
 %%--------------------------------------------------------------------
 -spec get_routesip() -> api_binary().
 -ifdef(TEST).
-get_routesip() ->
-    <<"1.2.3.4">>.
+get_routesip() -> <<"1.2.3.4">>.
 -else.
 get_routesip() ->
     case knm_vitelity_util:get_routesip() of

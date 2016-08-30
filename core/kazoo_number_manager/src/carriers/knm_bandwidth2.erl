@@ -112,7 +112,7 @@ is_number_billable(_Number) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -type search_ret() :: {'ok', knm_number:knm_numbers()} | {'error', any()}.
--spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) -> search_ret().
+-spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) -> search_ret().
 find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
     find_numbers(Rest, Quantity, Options);
 
@@ -145,7 +145,7 @@ find_numbers(Search, Quantity, Options) ->
              ],
     {'ok', process_search_response(search(Search, Params), Options)}.
 
--spec process_search_response(xml_el(), kz_proplist()) -> knm_number:knm_numbers().
+-spec process_search_response(xml_el(), knm_carriers:options()) -> knm_number:knm_numbers().
 process_search_response(Result, Options) ->
     AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
     [N

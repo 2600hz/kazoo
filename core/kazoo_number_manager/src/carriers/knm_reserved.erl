@@ -37,7 +37,7 @@ is_local() -> 'true'.
 %% assigned to an account's reseller account.
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) ->
+-spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(Number, Quantity, Options) ->

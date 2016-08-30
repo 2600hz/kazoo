@@ -31,6 +31,10 @@
         ]).
 -endif.
 
+-type option() :: {ne_binary(), any()}.
+-type options() :: [option()].
+-export_type([option/0, options/0]).
+
 -define(DEFAULT_CARRIER_MODULE
        ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)).
 -define(CARRIER_MODULES
@@ -45,7 +49,7 @@
 %%--------------------------------------------------------------------
 -spec find(ne_binary()) -> kz_json:objects().
 -spec find(ne_binary(), integer()) -> kz_json:objects().
--spec find(ne_binary(), integer(), kz_proplist()) -> kz_json:objects().
+-spec find(ne_binary(), integer(), options()) -> kz_json:objects().
 
 find(Num) ->
     find(Num, 1).
@@ -79,7 +83,7 @@ find(Num, Quantity, Options) ->
                      ,left => pos_integer()
                      ,should_continue => boolean()
                      }.
--spec find_fold(atom(), ne_binary(), kz_proplist(), find_acc()) -> find_acc().
+-spec find_fold(atom(), ne_binary(), options(), find_acc()) -> find_acc().
 find_fold(_Carrier, _, _, Acc=#{should_continue := ShouldContinue
                                ,count := _Count
                                ,left := Left
@@ -211,7 +215,7 @@ activation_charge(DID, AccountId) ->
                              {'EXIT', any()}
                             }].
 -spec check(ne_binaries()) -> checked_numbers().
--spec check(ne_binaries(), kz_proplist()) -> checked_numbers().
+-spec check(ne_binaries(), options()) -> checked_numbers().
 check(Numbers) ->
     check(Numbers, []).
 
@@ -226,7 +230,7 @@ check(Numbers, Options) ->
 %% @public
 %% @doc Create a list of all available carrier modules
 %%--------------------------------------------------------------------
--spec available_carriers(kz_proplist()) -> atoms().
+-spec available_carriers(options()) -> atoms().
 -ifdef(TEST).
 available_carriers(Options) ->
     case props:get_value(<<"carriers">>, Options) of
@@ -238,7 +242,7 @@ available_carriers(Options) ->
     get_available_carriers(Options).
 -endif.
 
--spec get_available_carriers(kz_proplist()) -> atoms().
+-spec get_available_carriers(options()) -> atoms().
 get_available_carriers(Options) ->
     case props:get_value(?KNM_ACCOUNTID_CARRIER, Options) of
         'undefined' ->

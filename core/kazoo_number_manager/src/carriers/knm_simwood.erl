@@ -52,7 +52,7 @@ is_local() -> 'false'.
 %% Query Simwood.com for available numbers
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) ->
+-spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) ->
                           {'ok', knm_number:knm_numbers()}.
 find_numbers(Prefix, Quantity, Options) ->
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/available/standard/">>, sw_quantity(Quantity), "?pattern=", Prefix, "*"]),
@@ -157,7 +157,7 @@ query_simwood(URL, Verb) ->
 %%--------------------------------------------------------------------
 -spec sw_quantity(pos_integer()) -> ne_binary().
 sw_quantity(Quantity) when Quantity == 1 -> <<"1">>;
-sw_quantity(Quantity) when Quantity > 1, Quantity =< 10  -> <<"10">>;
+sw_quantity(Quantity) when Quantity > 1, Quantity =< 10 -> <<"10">>;
 sw_quantity(_Quantity) -> <<"100">>.
 
 %%--------------------------------------------------------------------
@@ -165,7 +165,7 @@ sw_quantity(_Quantity) -> <<"100">>.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec process_response(kz_json:objects(), kz_proplist()) ->
+-spec process_response(kz_json:objects(), knm_carriers:options()) ->
                               {'ok', knm_number:knm_numbers()}.
 process_response(JObjs, Options) ->
     AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
