@@ -811,11 +811,7 @@ migrate_template_attachment(MasterAccountDb, Id, AName, AMeta, Context) ->
         {'ok', Bin} ->
             ContentType = kz_json:get_value(<<"content_type">>, AMeta),
             lager:debug("saving attachment for ~s(~s): ~s", [Id, AName, ContentType]),
-            Opts = [{'headers'
-                    ,[{'content_type', kz_util:to_list(ContentType)}]
-                    }
-                    | ?TYPE_CHECK_OPTION(kz_notification:pvt_type())
-                   ],
+            Opts = [{'content_type', kz_util:to_list(ContentType)}],
             crossbar_doc:save_attachment(Id
                                         ,attachment_name_by_content_type(ContentType)
                                         ,Bin
@@ -927,13 +923,10 @@ update_template(Context, Id, FileJObj) ->
     CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     lager:debug("file content type for ~s: ~s", [Id, CT]),
 
-    Opts = [{'content_type', kz_util:to_list(CT)} | ?TYPE_CHECK_OPTION(kz_notification:pvt_type())], % Temporary until couchbeam update
+    Opts = [{'content_type', kz_util:to_list(CT)}],
 
-    AttachmentName = attachment_name_by_content_type(CT),
-
-    crossbar_doc:save_attachment(
-      Id
-                                ,AttachmentName
+    crossbar_doc:save_attachment(Id
+                                ,attachment_name_by_content_type(CT)
                                 ,Contents
                                 ,Context
                                 ,Opts

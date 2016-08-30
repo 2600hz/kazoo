@@ -1498,7 +1498,6 @@ get_node_connections(N, #server{options=Options}) ->
     [_, Host] = binary:split(N, <<"@">>),
     Hostname = kz_util:to_list(Host),
     #server{options=AdminOptions} = props:get_value('admin_connection', Options),
-                                                %    #{port := Port, options := Options} = props:get_value('connection_map', UserOptions),
     {NodeUserPort, NodeAdminPort} = props:get_value('node_ports', Options),
     AdminAuth = [KV || {'basic_auth', _}=KV <- AdminOptions],
     UserAuth = [KV || {'basic_auth', _}=KV <- Options],
