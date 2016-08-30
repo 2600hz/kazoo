@@ -32,7 +32,7 @@ handle_req(ApiJObj, _Props) ->
     RespQ = kz_json:get_value(<<"Server-ID">>, ApiJObj),
 
     lager:debug("sending reply for ~s.~s(~s): ~p"
-               ,[Category, Key, Node, Value]
+               ,[Category, format_key(Key), Node, Value]
                ),
     Resp = [{<<"Category">>, Category}
            ,{<<"Key">>, Key}
@@ -41,6 +41,12 @@ handle_req(ApiJObj, _Props) ->
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_sysconf:publish_get_resp(RespQ, Resp).
+
+format_key(Key)
+  when is_binary(Key) -> Key;
+format_key(Keys)
+  when is_list(Keys) ->
+    kz_util:join_binary(Keys, <<".">>).
 
 -spec get_value(ne_binary(), ne_binary(), any(), ne_binary()) -> any().
 get_value(_, <<"acls">>, _, Node) ->

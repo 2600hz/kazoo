@@ -954,7 +954,7 @@ put_attachment(DbName, DocId, AName, Contents, Options) when ?VALID_DBNAME ->
                                                             ,DocId
                                                             ,AName
                                                             ,Contents
-                                                            ,NewOptions
+                                                            ,props:delete('plan_override', NewOptions)
                                                             );
         {'error', _} = Error -> Error
     end;
@@ -996,7 +996,7 @@ attachment_url(DbName, {DocType, DocId}, AttachmentId, Options) when ?VALID_DBNA
     attachment_url(DbName, DocId, AttachmentId, maybe_add_doc_type(DocType, Options));
 attachment_url(DbName, DocId, AttachmentId, Options) when ?VALID_DBNAME ->
     Plan = kzs_plan:plan(DbName, Options),
-    case kzs_doc:open_doc(Plan, DbName, DocId, Options) of
+    case kzs_doc:open_doc(Plan, DbName, DocId, props:delete('plan_override', Options)) of
         {'ok', JObj} ->
             NewOptions = [{'rev', kz_doc:revision(JObj)}
                           | maybe_add_doc_type(kz_doc:type(JObj), Options)
@@ -1021,7 +1021,7 @@ attachment_options(DbName, DocId, Options) ->
     attachment_options(DbName, DocId, Options, RequiredOptions).
 
 attachment_options(DbName, DocId, Options, RequiredOptions) ->
-    Fun = fun() -> case open_cache_doc(DbName, DocId, Options) of
+    Fun = fun() -> case open_cache_doc(DbName, DocId, props:delete('plan_override', Options)) of
                        {'ok', JObj} -> JObj;
                        _ -> kz_json:new()
                    end

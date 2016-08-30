@@ -40,7 +40,10 @@ plan(DbName) ->
 plan(DbName, DocType) when is_binary(DocType) ->
     plan(DbName, DocType, 'undefined');
 plan(DbName, Props) when is_list(Props) ->
-    plan(DbName, props:get_value('doc_type', Props), props:get_first_defined(['storage_id', 'doc_owner'], Props));
+    Type = props:get_value('doc_type', Props),
+    Owner = props:get_first_defined(['storage_id', 'doc_owner'], Props),
+    Plan = plan(DbName, Type, Owner),
+    maybe_override_plan(Plan, props:get_value('plan_override', Props));
 plan(DbName, Doc) when ?IS_JSON_GUARD(Doc) ->
     plan(DbName, kz_doc:type(Doc));
 plan(DbName, 'undefined')  ->
@@ -56,6 +59,10 @@ plan(DbName, DocType, 'undefined') ->
     get_dataplan(DbName, DocType);
 plan(DbName, DocType, DocOwner) ->
     get_dataplan(DbName, DocType, DocOwner).
+
+maybe_override_plan(Plan, 'undefined') -> Plan;
+maybe_override_plan(Plan, #{}=Map) ->
+    maps:merge(Plan, Map).
 
 get_dataplan(DBName) ->
     case kzs_util:db_classification(DBName) of
