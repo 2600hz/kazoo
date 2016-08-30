@@ -19,6 +19,7 @@ dep_nklib = git https://github.com/NetComposer/nklib
 dep_couchbeam = git https://github.com/lazedo/couchbeam ccc80359707ce386fec6ea9a42803369d33f089a
 ###dep_couchbeam = git https://github.com/benoitc/couchbeam 1.3.1
 ### waiting for pull request
+### https://github.com/benoitc/couchbeam/pull/149
 
 dep_lager = git https://github.com/basho/lager 3.2.1
 dep_fs_sync = git https://github.com/jamhed/fs_sync

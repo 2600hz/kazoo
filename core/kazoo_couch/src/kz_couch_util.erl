@@ -317,6 +317,7 @@ connection_info(#server{url=Url}=Conn) ->
             E
     end.
 
+-spec is_couchdb(term()) -> boolean().
 is_couchdb(#server{}) -> 'true';
 is_couchdb(_) -> 'false'.
 

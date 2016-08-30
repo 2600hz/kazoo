@@ -24,9 +24,9 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     Args = [{<<"attachment">>, AName}
            ,{<<"id">>, DocId}
            ],
-    Fields = maps:get(field_list, Params, default_format()),
-    FieldSeparator = maps:get(field_separator, Params, <<"/">>),
-    DocUrlField = maps:get(document_url_field, Params, 'undefined'),
+    Fields = maps:get('field_list', Params, default_format()),
+    FieldSeparator = maps:get('field_separator', Params, <<"/">>),
+    DocUrlField = maps:get('document_url_field', Params, 'undefined'),
     BaseUrl = kz_util:strip_right_binary(BaseUrlParam, $/),
     Url = list_to_binary([BaseUrl, "/", format_url(Fields, JObj, Args, FieldSeparator)]),
     Headers = [{'content_type', props:get_value('content_type', Options, kz_mime:from_filename(AName))}],

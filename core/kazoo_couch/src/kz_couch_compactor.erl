@@ -97,8 +97,8 @@
 
 -type node_with_options() :: {ne_binary(), kz_proplist()}.
 -type nodes_with_options() :: [node_with_options()].
--record(state, {
-          nodes :: ne_binaries() | nodes_with_options()
+
+-record(state, {nodes :: ne_binaries() | nodes_with_options()
                ,dbs :: ne_binaries()
                ,wait_ref :: reference()
                ,shards_pid_ref :: {pid(), reference()}  %% proc/monitor for pid of shard compactor
@@ -110,13 +110,14 @@
                ,admin_conn :: server()
                ,connection :: server()
 
-                              %% [ {Job, Pid, Ref},...]
-               ,queued_jobs = queue:new() :: queue:queue()
+               ,queued_jobs = queue:new() :: queue:queue() %% [ {Job, Pid, Ref},...]
                ,current_job_pid :: pid()
                ,current_job_ref :: reference()
                ,current_job_heuristic = ?HEUR_NONE :: compactor_heuristic()
                ,current_job_start :: kz_now() | 'undefined'
-         }).
+               }).
+
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -131,6 +132,7 @@
 %% @spec start_link() -> {'ok', Pid} | ignore | {'error', Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() -> gen_fsm:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 -spec compact() -> {'queued', reference()} | not_compacting().
@@ -217,43 +219,59 @@ cancel_all_jobs() ->
                                  {'queued', reference()} |
                                  not_compacting().
 start_auto_compaction() ->
-    case is_compactor_running() of
-        'true' ->
-            case compact_automatically() of
-                'true' -> {'ok', 'already_started'};
-                'false' ->
-                    _ = compact_automatically('true'),
-                    compact()
-            end;
-        'false' -> {'error', 'compactor_down'}
+    start_auto_compaction(is_compactor_running()).
+
+-spec start_auto_compaction(boolean()) -> {'ok', 'already_started'} |
+                                          {'queued', reference()} |
+                                          not_compacting().
+
+start_auto_compaction('false') -> {'error', 'compactor_down'};
+start_auto_compaction('true') ->
+    case compact_automatically() of
+        'true' -> {'ok', 'already_started'};
+        'false' ->
+            _ = compact_automatically('true'),
+            compact()
     end.
 
 -spec stop_auto_compaction() -> {'ok', 'updated' | 'already_stopped'} |
                                 not_compacting().
 stop_auto_compaction() ->
-    case is_compactor_running() of
+    stop_auto_compaction(is_compactor_running()).
+
+-spec stop_auto_compaction(boolean()) -> {'ok', 'updated' | 'already_stopped'} |
+                                         not_compacting().
+
+stop_auto_compaction('false') -> {'error', 'compactor_down'};
+stop_auto_compaction('true') ->
+    case compact_automatically() of
+        'false' -> {'ok', 'already_stopped'};
         'true' ->
-            case compact_automatically() of
-                'false' -> {'ok', 'already_stopped'};
-                'true' ->
-                    _ = compact_automatically('false'),
-                    {'ok', 'updated'}
-            end;
-        'false' -> {'error', 'compactor_down'}
+            _ = compact_automatically('false'),
+            {'ok', 'updated'}
     end.
 
 -spec is_compactor_running() -> boolean().
 is_compactor_running() ->
     is_pid(kazoo_couch_sup:compactor_pid()).
 
+-spec nodes_left() -> ne_binaries().
 nodes_left() -> gen_fsm:sync_send_all_state_event(?SERVER, 'nodes_left').
+
+-spec dbs_left() -> ne_binaries().
 dbs_left() -> gen_fsm:sync_send_all_state_event(?SERVER, 'dbs_left').
+
+-spec current_node() -> ne_binary() | node_with_options().
 current_node() ->
     {N,_} = gen_fsm:sync_send_all_state_event(?SERVER, 'current'),
     N.
+
+-spec current_db() -> ne_binary().
 current_db() ->
     {_,D} = gen_fsm:sync_send_all_state_event(?SERVER, 'current'),
     D.
+
+-spec current() -> {ne_binary() | node_with_options(), ne_binary()}.
 current() -> gen_fsm:sync_send_all_state_event(?SERVER, 'current').
 
 %%%===================================================================
@@ -273,6 +291,7 @@ current() -> gen_fsm:sync_send_all_state_event(?SERVER, 'current').
 %%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', atom(), state()}.
 init([]) ->
     _ = random:seed(kz_util:now()),
     kz_util:put_callid(?MODULE),
@@ -282,6 +301,7 @@ init([]) ->
                           }}.
 
 %%--------------------------------------------------------------------
+-spec ready(any(), state()) -> handle_fsm_ret(state()).
 ready(_, #state{connection='undefined'}=State) ->
     lager:debug("connection not set"),
     {'next_state', 'ready', State};
@@ -357,6 +377,7 @@ ready(_Msg, State) ->
     lager:debug("unhandled msg in ready: ~p", [_Msg]),
     {'next_state', 'ready', State}.
 
+-spec ready(any(), atom(), state()) -> handle_sync_event_ret(state()).
 ready('status', _, #state{}=State) ->
     {'reply', {'ok', 'ready'}, 'ready', State};
 
@@ -423,6 +444,7 @@ queue_job({'req_compact_db', Node, Db, Opts}, Pid, Jobs) ->
     {Ref, queue:in({{'compact_db', Node, Db, Opts}, Pid, Ref}, Jobs)}.
 
 %%--------------------------------------------------------------------
+-spec compact(any(), state()) -> handle_fsm_ret(state()).
 compact({'compact', N}, #state{conn='undefined'
                               ,admin_conn='undefined'
                               ,nodes=[]
@@ -905,6 +927,7 @@ compact(_Msg, State) ->
     lager:debug("unhandled compact/2 msg: ~p", [_Msg]),
     {'next_state', 'compact', State}.
 
+-spec compact(any(), atom(), state()) -> handle_sync_event_ret(state()).
 compact('status', _, #state{current_node=N
                            ,current_db=D
                            ,queued_jobs=Jobs
@@ -983,6 +1006,7 @@ compact(Msg, {NewP, _}, #state{queued_jobs=Jobs}=State) ->
     {'reply', {'queued', Ref}, 'compact', State#state{queued_jobs=Jobs1}}.
 
 %%--------------------------------------------------------------------
+-spec wait(any(), state()) -> handle_fsm_ret(state()).
 wait({'timeout', Ref, Msg}, #state{wait_ref=Ref}=State) ->
     gen_fsm:send_event(self(), Msg),
     lager:debug("done waiting for ~p, compacting with ~p", [Ref, Msg]),
@@ -991,6 +1015,7 @@ wait(_Msg, State) ->
     lager:debug("unhandled wait/2 msg: ~p", [_Msg]),
     {'next_state', 'wait', State, 'hibernate'}.
 
+-spec wait(any(), atom(), state()) -> handle_sync_event_ret(state()).
 wait('status', _, #state{current_node=N
                         ,current_db=D
                         ,wait_ref=Ref
@@ -1092,6 +1117,7 @@ wait(Msg, {NewP, _}, #state{queued_jobs=Jobs}=State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(any(), atom(), state()) -> handle_fsm_ret(state()).
 handle_event({'set_connection', Server, 'true'}, 'ready', #state{connection='undefined'}=State) ->
     gen_fsm:send_event(self(), 'compact'),
     {'next_state', 'ready', State#state{connection=Server}};
@@ -1121,6 +1147,7 @@ handle_event(_Event, StateName, State) ->
 %%                   {stop, Reason, Reply, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_sync_event(any(), {pid(),any()}, atom(), state()) -> handle_sync_event_ret(state()).
 handle_sync_event('nodes_left', _, StateName, #state{nodes=Ns}=State) ->
     {'reply', Ns, StateName, State};
 handle_sync_event('dbs_left', _, StateName, #state{dbs=DBs}=State) ->
@@ -1146,6 +1173,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), atom(), state()) -> handle_fsm_ret(state()).
 handle_info('$maybe_start_auto_compaction_job', 'ready'=CurrentState, #state{connection='undefined'}=State) ->
     {'next_state', CurrentState, State, 'hibernate'};
 handle_info('$maybe_start_auto_compaction_job', 'ready'=CurrentState, State) ->
@@ -1185,6 +1213,7 @@ handle_info(_Info, StateName, #state{}=State) ->
 %% @spec terminate(Reason, StateName, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), atom(), state()) -> 'ok'.
 terminate(_Reason, _StateName, _State) ->
     lager:debug("compactor FSM going down in ~s: ~p", [_StateName, _Reason]).
 
@@ -1197,6 +1226,7 @@ terminate(_Reason, _StateName, _State) ->
 %%                   {'ok', StateName, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), atom(), state(), any()) -> {'ok', atom(), state()}.
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
