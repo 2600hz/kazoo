@@ -124,9 +124,9 @@ get(Srv) -> gen_listener:call(Srv, {'get'}).
 moderator_status(ConferenceId, ParticipantId) ->
     All = [ get(Pid) || Pid <- conf_participant_sup:all() ],
     [IsModerator] = [ P#participant.moderator || P <- All,
-        kapps_conference:id(P#participant.conference) == ConferenceId,
-        kapps_call:call_id(P#participant.call) == ParticipantId
-    ],
+                                                 kapps_conference:id(P#participant.conference) == ConferenceId,
+                                                 kapps_call:call_id(P#participant.call) == ParticipantId
+                    ],
     IsModerator.
 
 -spec join_local(pid()) -> 'ok'.
