@@ -50,9 +50,14 @@
        ).
 
 -define(HTTP_REQ_HEADERS(Hook)
-       ,[{"X-Hook-ID", Hook#webhook.hook_id}
-        ,{"X-Account-ID", Hook#webhook.account_id}
+       ,[{"X-Hook-ID", kz_util:to_list(Hook#webhook.hook_id)}
+        ,{"X-Account-ID", kz_util:to_list(Hook#webhook.account_id)}
         ]).
+
+-define(CONF_LOG_SUCCESS, <<"log_successful_attempts">>).
+-define(SHOULD_LOG_SUCCESS
+       ,kapps_config:get_is_true(?APP_NAME, ?CONF_LOG_SUCCESS, 'false')
+       ).
 
 -spec table_id() -> ?TABLE.
 table_id() -> ?TABLE.
@@ -142,143 +147,91 @@ maybe_fire_foldl(Key, Value, {_ShouldFire, JObj}) ->
     end.
 
 -spec fire_hook(kz_json:object(), webhook()) -> 'ok'.
--spec fire_hook(kz_json:object(), webhook(), string(), http_verb(), 0 | hook_retries()) -> 'ok'.
-fire_hook(JObj, #webhook{uri=URI
-                        ,http_verb=Method
-                        ,retries=Retries
-                        ,custom_data='undefined'
-                        }=Hook) ->
-    fire_hook(JObj
-             ,Hook
-             ,kz_util:to_list(URI)
-             ,Method
-             ,Retries
-             );
-fire_hook(JObj, #webhook{uri=URI
-                        ,http_verb=Method
-                        ,retries=Retries
-                        ,custom_data=CustomData
-                        }=Hook) ->
-    fire_hook(kz_json:merge_jobjs(CustomData, JObj)
-             ,Hook
-             ,kz_util:to_list(URI)
-             ,Method
-             ,Retries
-             ).
+fire_hook(JObj, #webhook{custom_data = 'undefined'
+                        } = Hook) ->
+    EventId = kz_util:rand_hex_binary(16),
+    do_fire(Hook, EventId, JObj);
+fire_hook(JObj, #webhook{custom_data = CustomData
+                        } = Hook) ->
+    EventId = kz_util:rand_hex_binary(16),
+    do_fire(Hook, EventId, kz_json:merge_jobjs(CustomData, JObj)).
 
-fire_hook(_JObj, Hook, _URI, _Method, 0) ->
-    failed_hook(Hook),
-    lager:debug("retries exhausted for ~s", [_URI]);
-fire_hook(JObj, Hook, URI, 'get', Retries) ->
-    lager:debug("sending event via 'get'(~b): ~s", [Retries, URI]),
-    Fired = kz_http:get(URI ++ [$?|kz_json:to_querystring(JObj)], ?HTTP_REQ_HEADERS(Hook), ?HTTP_OPTS),
-    fire_hook(JObj, Hook, URI, 'get', Retries, Fired);
-fire_hook(JObj, Hook, URI, 'post', Retries) ->
-    lager:debug("sending event via 'post'(~b): ~s", [Retries, URI]),
-    Fired = kz_http:post(URI
-                        ,[{"Content-Type", "application/x-www-form-urlencoded"}
-                          | ?HTTP_REQ_HEADERS(Hook)
-                         ]
-                        ,kz_json:to_querystring(JObj)
-                        ,?HTTP_OPTS
-                        ),
+-spec do_fire(webhook(), ne_binary(), kz_json:object()) -> 'ok'.
+do_fire(#webhook{uri = URI
+                ,http_verb = 'get'
+                ,retries = Retries
+                } = Hook, EventId, JObj) ->
+    lager:debug("sending event ~s via 'get'(~b): ~s", [EventId, Retries, URI]),
 
-    fire_hook(JObj, Hook, URI, 'post', Retries, Fired).
+    Url = kz_util:to_list(<<(kz_util:to_binary(URI))/binary
+                            ,(kz_util:to_binary([$? | kz_json:to_querystring(JObj)]))/binary
+                          >>),
+    Headers = ?HTTP_REQ_HEADERS(Hook),
+    Debug = debug_req(Hook, EventId, URI, Headers, <<>>),
+    Fired = kz_http:get(Url, Headers, ?HTTP_OPTS),
+    handle_resp(Hook, EventId, JObj, Debug, Fired);
+do_fire(#webhook{uri = URI
+                ,http_verb = 'post'
+                ,retries = Retries
+                } = Hook, EventId, JObj) ->
+    lager:debug("sending event ~s via 'post'(~b): ~s", [EventId, Retries, URI]),
 
--spec fire_hook(kz_json:object(), webhook(), string(), http_verb(), hook_retries(), kz_http:ret()) -> 'ok'.
-fire_hook(_JObj, Hook, _URI, _Method, _Retries, {'ok', 200, _, _RespBody}) ->
-    lager:debug("sent hook call event successfully"),
-    successful_hook(Hook);
-fire_hook(_JObj, Hook, _URI, _Method, Retries, {'ok', RespCode, _, RespBody}) ->
-    _ = failed_hook(Hook, Retries, integer_to_binary(RespCode), RespBody),
-    lager:debug("non-200 response code: ~p on account ~s", [RespCode, Hook#webhook.account_id]);
-fire_hook(JObj, Hook, URI, Method, Retries, {'error', E}) ->
-    lager:debug("failed to fire hook: ~p", [E]),
-    _ = failed_hook(Hook, Retries, E),
-    retry_hook(JObj, Hook, URI, Method, Retries).
+    Body = kz_json:to_querystring(JObj),
+    Headers = [{"Content-Type", "application/x-www-form-urlencoded"}
+               | ?HTTP_REQ_HEADERS(Hook)
+              ],
+    Debug = debug_req(Hook, EventId, URI, Headers, Body),
+    Fired = kz_http:post(URI, Headers, Body, ?HTTP_OPTS),
 
--spec retry_hook(kz_json:object(), webhook(), string(), http_verb(), hook_retries()) -> 'ok'.
-retry_hook(JObj, Hook, URI, Method, Retries) ->
+    handle_resp(Hook, EventId, JObj, Debug, Fired).
+
+-spec handle_resp(webhook(), ne_binary(), kz_json:object(), kz_proplist(), kz_http:ret()) -> 'ok'.
+handle_resp(Hook, _EventId, _JObj, Debug, {'ok', 200, _, _} = Resp) ->
+    lager:debug("sent hook call event(~s) successfully", _EventId),
+    successful_hook(Hook, Debug, Resp);
+handle_resp(Hook, _EventId, _JObj, Debug, {'ok', RespCode, _, _} = Resp) ->
+    _ = failed_hook(Hook, Debug, Resp),
+    lager:debug("non-200 response code: ~p on account ~s for event ~s"
+               ,[RespCode, Hook#webhook.account_id, _EventId]);
+handle_resp(Hook, EventId, JObj, Debug, {'error', _E} = Resp) ->
+    lager:debug("failed to fire hook(~s): ~p", [EventId, _E]),
+    _ = failed_hook(Hook, Debug, Resp),
+    retry_hook(Hook, EventId, JObj).
+
+-spec retry_hook(webhook(), ne_binary(), kz_json:object()) -> 'ok'.
+retry_hook(#webhook{uri = _URI
+                   ,retries = 1
+                   }, _EventId, _JObj) ->
+    lager:debug("retries exhausted for ~s(~s)", [_URI, _EventId]);
+retry_hook(#webhook{retries = Retries} = Hook, EventId, JObj) ->
     timer:sleep(2000),
-    fire_hook(JObj, Hook, URI, Method, Retries-1).
+    do_fire(Hook#webhook{retries = Retries - 1}, EventId, JObj).
 
--spec successful_hook(webhook()) -> 'ok'.
--spec successful_hook(webhook(), boolean()) -> 'ok'.
-successful_hook(Hook) ->
-    successful_hook(Hook, kapps_config:get_is_true(?APP_NAME, <<"log_successful_attempts">>, 'false')).
+-spec successful_hook(webhook(), kz_proplist(), kz_http:ret()) -> 'ok'.
+-spec successful_hook(webhook(), kz_proplist(), kz_http:ret(), boolean()) -> 'ok'.
+successful_hook(Hook, Debug, Resp) ->
+    successful_hook(Hook, Debug, Resp, ?SHOULD_LOG_SUCCESS).
 
-successful_hook(_Hook, 'false') -> 'ok';
-successful_hook(#webhook{hook_id=HookId
-                        ,account_id=AccountId
-                        }
-               ,'true'
-               ) ->
-    Attempt = kz_json:from_list([{<<"hook_id">>, HookId}
-                                ,{<<"result">>, <<"success">>}
-                                ]),
-    save_attempt(Attempt, AccountId).
+successful_hook(_Hook, _Debug, _Resp, 'false') -> 'ok';
+successful_hook(#webhook{account_id = AccountId}, Debug, Resp, 'true') ->
+    DebugJObj = debug_resp(Resp, Debug, 'undefined'),
+    save_attempt(AccountId, DebugJObj).
 
--spec failed_hook(webhook()) -> 'ok'.
--spec failed_hook(webhook(), hook_retries(), any()) -> 'ok'.
--spec failed_hook(webhook(), hook_retries(), ne_binary(), binary()) -> 'ok'.
-failed_hook(#webhook{hook_id=HookId
-                    ,account_id=AccountId
-                    }) ->
+-spec failed_hook(webhook(), kz_proplist(), kz_http:ret()) -> 'ok'.
+failed_hook(#webhook{hook_id = HookId
+                    ,account_id = AccountId
+                    ,retries = Retries
+                    }, Debug, Resp) ->
     note_failed_attempt(AccountId, HookId),
-    Attempt = kz_json:from_list(
-                [{<<"hook_id">>, HookId}
-                ,{<<"result">>, <<"failure">>}
-                ,{<<"reason">>, <<"retries exceeded">>}
-                ]),
-    save_attempt(Attempt, AccountId).
-
-failed_hook(#webhook{hook_id=HookId
-                    ,account_id=AccountId
-                    }
-           ,Retries
-           ,RespCode
-           ,RespBody
-           ) ->
-    note_failed_attempt(AccountId, HookId),
-    Attempt = kz_json:from_list(
-                [{<<"hook_id">>, HookId}
-                ,{<<"result">>, <<"failure">>}
-                ,{<<"reason">>, <<"bad response code">>}
-                ,{<<"response_code">>, RespCode}
-                ,{<<"response_body">>, RespBody}
-                ,{<<"retries_left">>, Retries - 1}
-                ]),
-    save_attempt(Attempt, AccountId).
-
-failed_hook(#webhook{hook_id=HookId
-                    ,account_id=AccountId
-                    }
-           ,Retries
-           ,E
-           ) ->
-    note_failed_attempt(AccountId, HookId),
-    Error = try kz_util:to_binary(E) of
-                Bin -> Bin
-            catch
-                _E:_R ->
-                    lager:debug("failed to convert error ~p", [E]),
-                    <<"unknown">>
-            end,
-    Attempt = kz_json:from_list(
-                [{<<"hook_id">>, HookId}
-                ,{<<"result">>, <<"failure">>}
-                ,{<<"reason">>, <<"kazoo http client error">>}
-                ,{<<"retries_left">>, Retries - 1}
-                ,{<<"client_error">>, Error}
-                ]),
-    save_attempt(Attempt, AccountId).
+    DebugJObj = debug_resp(Resp, Debug, Retries),
+    save_attempt(AccountId, DebugJObj).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
--spec save_attempt(kz_json:object(), api_binary()) -> 'ok'.
-save_attempt(Attempt, AccountId) ->
+-spec save_attempt(api_binary(), kz_json:object()) -> 'ok'.
+save_attempt(AccountId, Attempt) ->
     Now = kz_util:current_tstamp(),
     ModDb = kz_util:format_account_mod_id(AccountId, Now),
 
@@ -289,12 +242,89 @@ save_attempt(Attempt, AccountId) ->
               ,{<<"pvt_type">>, <<"webhook_attempt">>}
               ,{<<"pvt_created">>, Now}
               ,{<<"pvt_modified">>, Now}
-              ])
-                            ,Attempt
-           ),
-
+              ]), Attempt),
     _ = kz_datamgr:save_doc(ModDb, Doc, [{'publish_change_notice', 'false'}]),
     'ok'.
+
+-spec debug_req(webhook(), ne_binary(), string() | ne_binary(), kz_proplist(), binary()) ->
+                       kz_proplist().
+debug_req(#webhook{hook_id=HookId
+                  ,http_verb = Method
+                  }, EventId, URI, ReqHeaders, ReqBody) ->
+    Headers = kz_json:from_list(
+                [{fix_value(K), fix_value(V)}
+                 || {K, V} <- ReqHeaders
+                ]),
+    [{<<"hook_id">>, HookId}
+    ,{<<"event_id">>, EventId}
+    ,{<<"uri">>, kz_util:to_binary(URI)}
+    ,{<<"method">>, kz_util:to_binary(Method)}
+    ,{<<"req_headers">>, Headers}
+    ,{<<"req_body">>, ReqBody}
+    ].
+
+-spec debug_resp(kz_http:ret(), kz_proplist(), hook_retries() | 'undefined') ->
+                        kz_json:object().
+debug_resp({'ok', RespCode, RespHeaders, RespBody}, Debug, Retries) ->
+    Headers = kz_json:from_list(
+                [{fix_value(K), fix_value(V)}
+                 || {K, V} <- RespHeaders
+                ]),
+    Result = case RespCode of
+                 200 -> [{<<"result">>, <<"success">>}];
+                 _ ->
+                     [{<<"result">>, <<"failure">>}
+                     ,{<<"reason">>, <<"bad response code">>}
+                     ]
+             end,
+    RetriesLeft = case Retries of
+                      'undefined' -> 'undefined';
+                      1 -> <<"retries exceeded">>;
+                      _ -> Retries - 1
+                  end,
+    kz_json:from_list(
+      props:filter_undefined(
+        [{<<"resp_status_code">>, kz_util:to_binary(RespCode)}
+        ,{<<"resp_headers">>, Headers}
+        ,{<<"resp_body">>, RespBody}
+        ,{<<"try">>, Retries}
+        ,{<<"retries_left">>, RetriesLeft}
+         | Result ++ Debug
+        ]));
+debug_resp({'error', E}, Debug, Retries) ->
+    Error = try fix_error_value(E) of
+                Bin -> Bin
+            catch
+                _E:_R ->
+                    lager:debug("failed to convert error ~p", [E]),
+                    <<"unknown">>
+            end,
+    RetriesLeft = case Retries of
+                      'undefined' -> 'undefined';
+                      1 -> <<"retries exceeded">>;
+                      _ -> Retries
+                  end,
+    kz_json:from_list(
+      [{<<"result">>, <<"failure">>}
+      ,{<<"reason">>, <<"kazoo http client error">>}
+      ,{<<"retries">>, Retries}
+      ,{<<"retries_left">>, RetriesLeft}
+      ,{<<"client_error">>, Error}
+       | Debug
+      ]).
+
+-spec fix_value(number() | list()) -> number() | ne_binary().
+fix_value(N) when is_number(N) -> N;
+fix_value(O) -> kz_util:to_lower_binary(O).
+
+-spec fix_error_value(atom() | {atom(), atom()}) -> ne_binary().
+fix_error_value({E, R}) ->
+    <<(kz_util:to_binary(E))/binary
+      ,": "
+      ,(kz_util:to_binary(R))/binary
+    >>;
+fix_error_value(E) ->
+    kz_util:to_binary(E).
 
 -spec hook_id(kz_json:object()) -> ne_binary().
 -spec hook_id(ne_binary(), ne_binary()) -> ne_binary().
