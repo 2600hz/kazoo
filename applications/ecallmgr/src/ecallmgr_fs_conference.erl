@@ -509,7 +509,7 @@ exec(Focus, ConferenceId, JObj) ->
                                          {<<"play">>, AppData2} = get_conf_command(<<"play">>, Focus, ConferenceId, Command),
                                          Command2 = list_to_binary([ConferenceId, " play ", AppData2]),
                                          Focus =/= 'undefined'
-                                            andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command2]),
+                                             andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command2]),
                                          lager:debug("api to ~s: conference ~s", [Focus, Command2]),
                                          freeswitch:api(Focus, 'conference', Command2)
                                  end, 'undefined', Commands),
@@ -624,8 +624,8 @@ get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
             {<<"stop">>, Args}
     end;
 get_conf_command(Say, _Focus, _ConferenceId, JObj)
-    when Say =:= <<"say">>
-        orelse Say =:= <<"tts">> ->
+  when Say =:= <<"say">>
+       orelse Say =:= <<"tts">> ->
     case kapi_conference:say_v(JObj) of
         'false' -> {'error', <<"conference say failed to validate">>};
         'true'->
