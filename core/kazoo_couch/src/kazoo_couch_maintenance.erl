@@ -11,15 +11,15 @@
 -include("kz_couch.hrl").
 
 -export([start_auto_compaction/0
-         ,stop_auto_compaction/0
-         ,compaction_status/0
-         ,cancel_compaction_job/0
-         ,cancel_compaction_jobs/0
+        ,stop_auto_compaction/0
+        ,compaction_status/0
+        ,cancel_compaction_job/0
+        ,cancel_compaction_jobs/0
 
-         ,compact_all/0
-         ,compact_node/1
-         ,compact_db/1
-         ,compact_db/2
+        ,compact_all/0
+        ,compact_node/1
+        ,compact_db/1
+        ,compact_db/2
 
         ]).
 

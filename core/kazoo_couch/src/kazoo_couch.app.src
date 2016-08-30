@@ -12,5 +12,5 @@
                  , couchbeam
                  , lager
                  ]}
-,{mod, {kazoo_couch_app, []}}
+ ,{mod, {kazoo_couch_app, []}}
  ]}.

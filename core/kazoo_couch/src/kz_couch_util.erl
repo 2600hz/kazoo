@@ -137,9 +137,9 @@ connection_parse(K, V, #kz_couch_connection{options=Options}=Conn) ->
     Conn#kz_couch_connection{options = [{K, V} | Options]}.
 
 -spec connect(couch_connection()) ->
-                          {'ok', server()} |
-                          {'error', 'timeout'} |
-                          {'error', 'ehostunreach'}.
+                     {'ok', server()} |
+                     {'error', 'timeout'} |
+                     {'error', 'ehostunreach'}.
 connect(#kz_couch_connection{host=Host
                             ,port=Port
                             ,username=User

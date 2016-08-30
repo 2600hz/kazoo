@@ -11,8 +11,8 @@
 -include("kz_data.hrl").
 
 -export([flush/0
-         ,flush/1
-         ,flush/2
+        ,flush/1
+        ,flush/2
         ]).
 
 -spec flush() -> 'ok'.
