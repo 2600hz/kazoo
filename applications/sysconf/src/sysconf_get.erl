@@ -22,7 +22,7 @@ handle_req(ApiJObj, _Props) ->
     kz_util:put_callid(ApiJObj),
 
     Category = kz_json:get_binary_value(<<"Category">>, ApiJObj),
-    Key = kz_json:get_binary_value(<<"Key">>, ApiJObj),
+    Key = kz_json:get_value(<<"Key">>, ApiJObj),
     Default = kz_json:get_value(<<"Default">>, ApiJObj),
     Node = kz_json:get_binary_value(<<"Node">>, ApiJObj),
 
