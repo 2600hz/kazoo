@@ -1212,7 +1212,7 @@ get_nodes(Server) ->
 get_nodes(Server, Database) ->
     case kz_couch_doc:open_doc(Server, <<"dbs">>, Database) of
         {'ok', DbDoc} ->
-            shuffle(wh_json:get_keys(wh_json:get_value(<<"by_node">>, DbDoc)));
+            shuffle(kz_json:get_keys(kz_json:get_value(<<"by_node">>, DbDoc)));
         {'error', 'not_found'} ->
             lager:debug("database '~s' not found", [Database]),
             [];
