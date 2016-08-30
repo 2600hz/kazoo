@@ -42,14 +42,14 @@ handle_req(ApiJObj, _Props) ->
            ],
     kapi_sysconf:publish_get_resp(RespQ, Resp).
 
--spec format_key(binary() | binaries()) -> binary().
+-spec format_key(ne_binary() | ne_binaries()) -> ne_binary().
 format_key(Key)
   when is_binary(Key) -> Key;
 format_key(Keys)
   when is_list(Keys) ->
     kz_util:join_binary(Keys, <<".">>).
 
--spec get_value(ne_binary(), ne_binary(), any(), ne_binary()) -> any().
+-spec get_value(ne_binary(), ne_binary() | ne_binaries(), any(), ne_binary()) -> any().
 get_value(_, <<"acls">>, _, Node) ->
     sysconf_acls:build(Node);
 get_value(_, <<"gateways">>, _, Node) ->

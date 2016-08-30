@@ -307,8 +307,9 @@ ready({'compact_node', N, Opts}, State) ->
                                          ,current_job_heuristic=?HEUR_RATIO
                                          ,current_job_start=os:timestamp()
                                          }};
-ready({'compact_db', D}, State) ->
-    [N|Ns] = get_nodes(D),
+ready({'compact_db', D}, #state{connection=#server{options=Opts}}=State) ->
+    Server = props:get_value('admin_connection', Opts),
+    [N|Ns] = get_nodes(Server, D),
     lager:debug("start compaction on node's db"),
     gen_fsm:send_event(self(), {'compact_db', N, D}),
     {'next_state', 'compact', State#state{nodes=Ns
@@ -654,8 +655,8 @@ compact({'compact', N, D}, #state{conn=Conn
     lager:debug("checking if we should compact ~s on ~s", [D, N]),
 
     Encoded = encode_db(D),
-    case kz_couch_db:db_exists(Conn, Encoded) andalso
-        should_compact(Conn, Encoded, Heur)
+    case kz_couch_db:db_exists(Conn, Encoded)
+        andalso should_compact(Conn, Encoded, Heur)
     of
         'false' ->
             lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
@@ -712,8 +713,8 @@ compact({'compact_db', N, D}, #state{conn=Conn
                                     }=State) ->
     lager:debug("checking if we should compact ~s on ~s", [D, N]),
     Encoded = encode_db(D),
-    case kz_couch_db:db_exists(Conn, Encoded) andalso
-        should_compact(Conn, Encoded, Heur)
+    case kz_couch_db:db_exists(Conn, Encoded)
+        andalso should_compact(Conn, Encoded, Heur)
     of
         'false' ->
             lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
@@ -750,8 +751,8 @@ compact({'compact_db', N, D}, #state{conn=Conn
     lager:debug("checking if we should compact ~s on ~s", [D, N]),
 
     Encoded = encode_db(D),
-    case kz_couch_db:db_exists(Conn, Encoded) andalso
-        should_compact(Conn, Encoded, Heur)
+    case kz_couch_db:db_exists(Conn, Encoded)
+        andalso should_compact(Conn, Encoded, Heur)
     of
         'false' ->
             lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
@@ -1207,6 +1208,19 @@ get_nodes(Server) ->
     {'ok', Nodes} = kz_couch_view:all_docs(Server, <<"nodes">>, []),
     shuffle([kz_doc:id(Node) || Node <- Nodes]).
 
+-spec get_nodes(server(), ne_binary()) -> ne_binaries().
+get_nodes(Server, Database) ->
+    case kz_couch_doc:open_doc(Server, <<"dbs">>, Database) of
+        {'ok', DbDoc} ->
+            shuffle(wh_json:get_keys(wh_json:get_value(<<"by_node">>, DbDoc)));
+        {'error', 'not_found'} ->
+            lager:debug("database '~s' not found", [Database]),
+            [];
+        {'error', _E} ->
+            lager:debug("failed to get nodes for db '~s': ~p", [Database, _E]),
+            []
+    end.
+
 -spec shuffle(ne_binaries()) -> ne_binaries().
 shuffle(L) -> [O || {_, O} <- lists:keysort(1, [{random:uniform(), N} || N <- L])].
 
@@ -1445,7 +1459,7 @@ wait_for_compaction(AdminConn, S, {'ok', ShardData}) ->
     end.
 
 
--spec get_node_connections({ne_binary(), list()} | ne_binary(), atom()) ->
+-spec get_node_connections({ne_binary(), list()} | ne_binary(), server()) ->
                                   {server(), server()} |
                                   {'error', 'no_connection'}.
 get_node_connections({N, _Opts}, Server) ->
@@ -1455,7 +1469,7 @@ get_node_connections(N, #server{options=Options}) ->
     Hostname = kz_util:to_list(Host),
     #server{options=AdminOptions} = props:get_value('admin_connection', Options),
                                                 %    #{port := Port, options := Options} = props:get_value('connection_map', UserOptions),
-    {NodeUserPort, NodeAdminPort} = props:get_value('node_ports', Options),    
+    {NodeUserPort, NodeAdminPort} = props:get_value('node_ports', Options),
     AdminAuth = [KV || {'basic_auth', _}=KV <- AdminOptions],
     UserAuth = [KV || {'basic_auth', _}=KV <- Options],
     lager:info("getting connection information for ~s, ~p and ~p", [Host, NodeUserPort, NodeAdminPort]),
@@ -1572,7 +1586,8 @@ get_db_disk_and_data(Conn, Encoded, N) ->
 
 -spec should_compact_ratio(integer(), integer()) -> boolean().
 should_compact_ratio(Disk, Data) ->
-    min_data_met(Data, ?MIN_DATA) andalso min_ratio_met(Disk, Data, ?MIN_RATIO).
+    min_data_met(Data, ?MIN_DATA)
+        andalso min_ratio_met(Disk, Data, ?MIN_RATIO).
 
 -spec min_data_met(integer(), integer()) -> boolean().
 min_data_met(Data, Min) when Data > Min ->

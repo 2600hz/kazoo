@@ -320,6 +320,6 @@ connection_info(#server{url=Url}=Conn) ->
 is_couchdb(#server{}) -> 'true';
 is_couchdb(_) -> 'false'.
 
--spec start_compactor(server()) -> 'ok' | {'error', 'compactor_down'}. 
+-spec start_compactor(server()) -> 'ok' | {'error', 'compactor_down'}.
 start_compactor(NewServer) ->
     kz_couch_compactor:set_connection(NewServer, 'true').
