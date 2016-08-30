@@ -22,7 +22,7 @@ handle_req(ApiJObj, _Props) ->
     kz_util:put_callid(ApiJObj),
 
     Category = kz_json:get_binary_value(<<"Category">>, ApiJObj),
-    Key = kz_json:get_binary_value(<<"Key">>, ApiJObj),
+    Key = kz_json:get_value(<<"Key">>, ApiJObj),
     Default = kz_json:get_value(<<"Default">>, ApiJObj),
     Node = kz_json:get_binary_value(<<"Node">>, ApiJObj),
 
@@ -32,7 +32,7 @@ handle_req(ApiJObj, _Props) ->
     RespQ = kz_json:get_value(<<"Server-ID">>, ApiJObj),
 
     lager:debug("sending reply for ~s.~s(~s): ~p"
-               ,[Category, Key, Node, Value]
+               ,[Category, format_key(Key), Node, Value]
                ),
     Resp = [{<<"Category">>, Category}
            ,{<<"Key">>, Key}
@@ -42,7 +42,14 @@ handle_req(ApiJObj, _Props) ->
            ],
     kapi_sysconf:publish_get_resp(RespQ, Resp).
 
--spec get_value(ne_binary(), ne_binary(), any(), ne_binary()) -> any().
+-spec format_key(ne_binary() | ne_binaries()) -> ne_binary().
+format_key(Key)
+  when is_binary(Key) -> Key;
+format_key(Keys)
+  when is_list(Keys) ->
+    kz_util:join_binary(Keys, <<".">>).
+
+-spec get_value(ne_binary(), ne_binary() | ne_binaries(), any(), ne_binary()) -> any().
 get_value(_, <<"acls">>, _, Node) ->
     sysconf_acls:build(Node);
 get_value(_, <<"gateways">>, _, Node) ->

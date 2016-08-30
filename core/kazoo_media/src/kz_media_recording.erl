@@ -25,7 +25,6 @@
 
         ,get_timelimit/1
         ,get_format/1
-        ,get_url/1
         ,get_media_name/2
         ,get_response_media/1
         ,should_store_recording/1
@@ -166,7 +165,7 @@ init([Call, Data]) ->
     InteractionId = kapps_call:custom_channel_var(?CALL_INTERACTION_ID, Call),
     DefaultMediaName = get_media_name(kz_util:rand_hex_binary(16), Format),
     MediaName = kz_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
-    Url = get_url(Data),
+    Url = kz_json:get_value(<<"url">>, Data),
     ShouldStore = should_store_recording(Url),
 
     {'ok', #state{url=Url
@@ -413,6 +412,7 @@ get_timelimit(Data) ->
 -spec get_format(api_binary()) -> ne_binary().
 get_format('undefined') -> kapps_config:get(?CONFIG_CAT, [<<"call_recording">>, <<"extension">>], <<"mp3">>);
 get_format(<<"mp3">> = MP3) -> MP3;
+get_format(<<"mp4">> = MP4) -> MP4;
 get_format(<<"wav">> = WAV) -> WAV;
 get_format(_) -> get_format('undefined').
 
@@ -471,10 +471,6 @@ get_media_name(Name, Ext) ->
         _ -> <<Name/binary, ".", Ext/binary>>
     end.
 
--spec get_url(kz_json:object()) -> api_binary().
-get_url(Data) ->
-    kz_json:get_value(<<"url">>, Data).
-
 -spec store_url(state(), ne_binary()) -> ne_binary().
 store_url(#state{doc_db=Db
                 ,doc_id=MediaId
@@ -482,7 +478,27 @@ store_url(#state{doc_db=Db
                 ,format=_Ext
                 ,should_store={'true', 'local'}
                 }, _Rev) ->
-    kz_media_url:store(Db, {<<"call_recording">>, MediaId}, MediaName).
+    kz_media_url:store(Db, {<<"call_recording">>, MediaId}, MediaName, []);
+store_url(#state{doc_db=Db
+                ,doc_id=MediaId
+                ,media={_,MediaName}
+                ,format=Ext
+                ,should_store={'true', 'other', Url}
+                }, _Rev) ->
+    HttpOptions = #{url => Url
+                   ,verb => 'put'
+                   ,field_separator => <<>>
+                   ,field_list => [<<"call_recording_">>
+                                  ,{field, <<"call_id">>}
+                                  ,<<".", Ext/binary>>
+                                  ]
+                   },
+    Handler = #{att_proxy => 'true'
+               ,att_post_handler => 'external'
+               ,att_handler => {'kz_att_http', HttpOptions}
+               },
+    Options = [{'plan_override', Handler}],
+    kz_media_url:store(Db, {<<"call_recording">>, MediaId}, MediaName, Options).
 
 -spec should_store_recording() -> store_url().
 -spec should_store_recording(api_binary()) -> store_url().
@@ -502,7 +518,7 @@ should_store_recording() ->
 save_recording(#state{media={_, MediaName}}, 'false') ->
     lager:info("not configured to store recording ~s", [MediaName]),
     gen_server:cast(self(), 'stop');
-save_recording(#state{call=Call, media=Media}=State, {'true', 'local'}) ->
+save_recording(#state{call=Call, media=Media}=State, _) ->
     case maybe_store_recording_meta(State) of
         {'error', Err} ->
             lager:warning("error storing metadata : ~p", [Err]),
@@ -510,35 +526,7 @@ save_recording(#state{call=Call, media=Media}=State, {'true', 'local'}) ->
         Rev ->
             StoreUrl = store_url(State, Rev),
             lager:info("store url: ~s", [StoreUrl]),
-            store_recording(Media, StoreUrl, Call, 'local')
-    end;
-save_recording(#state{call=Call, media=Media}=State, {'true', 'other', Url}) ->
-    case maybe_store_recording_meta(State) of
-        {'error', Err} ->
-            lager:warning("error storing metadata : ~p", [Err]),
-            gen_server:cast(self(), 'store_failed');
-        _Rev ->
-            lager:info("store remote url: ~s", [Url]),
-            store_recording(Media, Url, Call, 'other')
-    end.
-
--spec store_recording({ne_binary(), ne_binary()}, ne_binary(), kapps_call:call(), 'local' | 'other') -> 'ok'.
-store_recording(Media, Url, Call, 'other') ->
-    StoreUrl = append_path(Url, Media),
-    lager:debug("appending filename to url: ~s", [StoreUrl]),
-    store(Media, StoreUrl, Call);
-store_recording(Media, StoreUrl, Call, 'local') ->
-    store(Media, StoreUrl, Call).
-
--spec append_path(ne_binary(), {ne_binary(), ne_binary()}) -> ne_binary().
-append_path(Url, {_, MediaName}) ->
-    S = byte_size(Url)-1,
-
-    Encoded = kz_util:uri_encode(MediaName),
-
-    case Url of
-        <<_:S/binary, "/">> -> <<Url/binary, Encoded/binary>>;
-        _ -> <<Url/binary, "/", Encoded/binary>>
+            store_recording(Media, StoreUrl, Call)
     end.
 
 -spec start_recording(kapps_call:call(), ne_binary(), pos_integer(), ne_binary(), api_integer(), api_integer()) -> 'ok'.
@@ -553,10 +541,13 @@ start_recording(Call, MediaName, TimeLimit, MediaDocId, SampleRate, RecordMinSec
     kapps_call_command:start_record_call(Props, TimeLimit, Call),
     gen_server:cast(self(), 'recording_started').
 
--spec store({ne_binary(), ne_binary()}, ne_binary(), kapps_call:call()) -> 'ok'.
-store({DirName, MediaName}, StoreUrl, Call) ->
+-spec store_recording({ne_binary(), ne_binary()}, ne_binary(), kapps_call:call()) -> 'ok'.
+store_recording({DirName, MediaName}, StoreUrl, Call) ->
     Filename = filename:join(DirName, MediaName),
     case kapps_call_command:store_file(Filename, StoreUrl, Call) of
         {'error', 'timeout'} -> gen_server:cast(self(), 'store_failed');
+        {'error', Error} ->
+            lager:error("error storing recording : ~p", [Error]),
+            gen_server:cast(self(), 'store_failed');
         'ok' -> gen_server:cast(self(), 'store_succeeded')
     end.
