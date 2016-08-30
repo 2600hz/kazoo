@@ -586,7 +586,4 @@ fetch_docs(StartKey, Limit) ->
 -spec save_doc(kz_json:object()) -> {'ok', kz_json:object()} |
                                     {'error', any()}.
 save_doc(JObj) ->
-    case kz_datamgr:save_doc(?KZ_PORT_REQUESTS_DB, JObj) of
-        {'ok', _} = PortReq -> PortReq;
-        {'error', _} = Error -> Error
-    end.
+    kz_datamgr:save_doc(?KZ_PORT_REQUESTS_DB, JObj).

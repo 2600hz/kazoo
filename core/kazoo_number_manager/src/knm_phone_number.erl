@@ -416,7 +416,8 @@ setters(Number, Routines) ->
 -type set_function() :: fun((knm_phone_number()) -> setter_acc()) |
                         fun((knm_phone_number(), V) -> setter_acc()) |
                         {fun((knm_phone_number(), V) -> setter_acc()), V} |
-                        {fun((knm_phone_number(), K, V) -> setter_acc()), [K | V,...]}.
+                        {fun((knm_phone_number(), K, V) -> setter_acc()), [K | V,...]} |
+                        {fun((knm_phone_number(), K, V) -> setter_acc()), K, V}.
 -type set_functions() :: [set_function()].
 
 -type setter_acc() :: knm_phone_number_return() |
@@ -425,6 +426,8 @@ setters(Number, Routines) ->
 -spec setters_fold(set_function(), setter_acc()) -> setter_acc().
 setters_fold(_, {'error', _R}=Error) ->
     throw({'stop', Error});
+setters_fold({Fun, Key, Value}, PhoneNumber) when is_function(Fun, 3) ->
+    setters_fold_apply(Fun, [PhoneNumber, Key, Value]);
 setters_fold({Fun, Value}, PhoneNumber) when is_function(Fun, 2) ->
     setters_fold_apply(Fun, [PhoneNumber, Value]);
 setters_fold(Fun, PhoneNumber) when is_function(Fun, 1) ->
