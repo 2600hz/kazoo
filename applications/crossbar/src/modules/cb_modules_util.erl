@@ -579,20 +579,34 @@ remove_plaintext_password(Context) ->
                              ),
     cb_context:set_doc(Context, Doc).
 
--type assignment_updates() :: [{ne_binary(), knm_number:knm_number_return()}].
+-type assignment_update() :: {ne_binary(), knm_number:knm_number_return()} |
+                             {ne_binary(), {'ok', kz_json:object()}} |
+                             {ne_binary(), {'error', any()}}.
+-type assignment_updates() :: [assignment_update()].
 
 -spec apply_assignment_updates([{ne_binary(), api_binary()}]) ->
                                       assignment_updates().
 apply_assignment_updates(Updates) ->
-    [{DID, knm_number:assign_to_app(DID, Assign)}
+    [maybe_assign_to_port_number(DID, Assign)
      || {DID, Assign} <- Updates
     ].
+
+-spec maybe_assign_to_port_number(ne_binary(), api_binary()) ->
+                                         assignment_update().
+maybe_assign_to_port_number(DID, Assign) ->
+    Num = knm_converters:normalize(DID),
+    case knm_port_request:get(Num) of
+        {'error', _} ->
+            {DID, knm_number:assign_to_app(DID, Assign)};
+        {'ok', JObj} ->
+            {DID, knm_port_request:assign_to_app(Num, Assign, JObj)}
+    end.
 
 -spec log_assignment_updates(assignment_updates()) -> 'ok'.
 log_assignment_updates(Updates) ->
     lists:foreach(fun log_assignment_update/1, Updates).
 
--spec log_assignment_update({ne_binary(), knm_number:knm_number_return()}) -> 'ok'.
+-spec log_assignment_update(assignment_update()) -> 'ok'.
 log_assignment_update({DID, {'ok', _Number}}) ->
     lager:debug("successfully updated ~s", [DID]);
 log_assignment_update({DID, {'error', E}}) ->
