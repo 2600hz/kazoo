@@ -59,7 +59,7 @@ init([]) ->
 
 -spec compactor_pid() -> pid() | 'undefined'.
 compactor_pid() ->
-    case [P || {'kz_couch_compactor', P, 'worker', _} <- supervisor:which_children('kazoo_couch_sup')] of
+    case [P || {'kz_couch_compactor', P, 'worker', _} <- supervisor:which_children(?MODULE)] of
         [Pid] -> Pid;
         [] -> 'undefined'
     end.
