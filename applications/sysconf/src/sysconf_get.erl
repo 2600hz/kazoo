@@ -42,6 +42,7 @@ handle_req(ApiJObj, _Props) ->
            ],
     kapi_sysconf:publish_get_resp(RespQ, Resp).
 
+-spec format_key(binary() | binaries()) -> binary().
 format_key(Key)
   when is_binary(Key) -> Key;
 format_key(Keys)
