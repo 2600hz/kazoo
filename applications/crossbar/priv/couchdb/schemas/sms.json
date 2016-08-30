@@ -2,31 +2,26 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "sms",
     "description": "sms document",
-    "name": "sms",
     "properties": {
         "body": {
             "description": "text message",
             "maxLength": 700,
             "minLength": 1,
-            "name": "body",
             "required": true,
             "type": "string"
         },
         "from": {
             "description": "caller-id-number, taken from user if absent",
-            "name": "From",
             "required": false,
             "type": "string"
         },
         "scheduled": {
             "description": "The timestamp to start delivering the message",
-            "name": "Scheduled Delivery Date",
             "required": false,
             "type": "integer"
         },
         "to": {
             "description": "callee-id-number",
-            "name": "To",
             "required": true,
             "type": "string"
         }

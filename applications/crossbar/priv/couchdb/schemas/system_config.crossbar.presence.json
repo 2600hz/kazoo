@@ -6,7 +6,6 @@
         "query_presence_timeout": {
             "default": 1000,
             "description": "crossbar.presence query presence timeout",
-            "name": "query_presence_timeout",
             "type": "integer"
         }
     },

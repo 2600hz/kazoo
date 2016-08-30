@@ -5,13 +5,11 @@
     "properties": {
         "digits": {
             "description": "String of DTMF tones to send",
-            "name": "Digits",
             "required": true,
             "type": "string"
         },
         "duration_ms": {
             "description": "How long, in milliseconds, to send each DTMF",
-            "name": "Duration(ms)",
             "required": false,
             "type": [
                 "string",

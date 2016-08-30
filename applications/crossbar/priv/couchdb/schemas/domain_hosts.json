@@ -3,11 +3,9 @@
     "_id": "domain_hosts",
     "additionalProperties": false,
     "description": "Domain host settings for white-labelling",
-    "name": "domain_hosts",
     "patternProperties": {
         ".*[\\{]{2}domain[\\}]{2}.*": {
             "description": "White-label template for hostname",
-            "name": "Host",
             "properties": {
                 "mapping": {
                     "description": "List of hosts or IPs this host should resolve to",
@@ -15,13 +13,11 @@
                         "type": "string"
                     },
                     "minItems": 1,
-                    "name": "Mapping",
                     "required": true,
                     "type": "array"
                 },
                 "name": {
                     "description": "Human-friendly name of the Host",
-                    "name": "Name",
                     "required": true,
                     "type": "string"
                 }

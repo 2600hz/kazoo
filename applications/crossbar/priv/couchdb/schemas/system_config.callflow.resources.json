@@ -6,7 +6,6 @@
         "default_emit_account_id": {
             "default": false,
             "description": "callflow.resources default emit account id",
-            "name": "default_emit_account_id",
             "type": "boolean"
         }
     },

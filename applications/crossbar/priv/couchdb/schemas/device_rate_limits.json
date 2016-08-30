@@ -3,28 +3,23 @@
     "_id": "device_rate_limits",
     "additionalProperties": true,
     "description": "describe limits for SIP requests",
-    "name": "Rate limits",
     "properties": {
         "per_minute": {
             "additionalProperties": false,
             "description": "The limits to apply by a minute",
-            "name": "Per minute",
             "properties": {
                 "invites": {
                     "description": "Count for the specified SIP method",
-                    "name": "Invites",
                     "required": false,
                     "type": "integer"
                 },
                 "registrations": {
                     "description": "Count for the specified SIP method",
-                    "name": "Registrations",
                     "required": false,
                     "type": "integer"
                 },
                 "total_packets": {
                     "description": "Summary count for all of the SIP methods",
-                    "name": "Total packets",
                     "required": true,
                     "type": "integer"
                 }
@@ -35,23 +30,19 @@
         "per_second": {
             "additionalProperties": false,
             "description": "The limits to apply by a second",
-            "name": "Per second",
             "properties": {
                 "invites": {
                     "description": "Count for the specified SIP method",
-                    "name": "Invites",
                     "required": false,
                     "type": "integer"
                 },
                 "registrations": {
                     "description": "Count for the specified SIP method",
-                    "name": "Registrations",
                     "required": false,
                     "type": "integer"
                 },
                 "total_packets": {
                     "description": "Summary count for all of the SIP methods",
-                    "name": "Total packets",
                     "required": true,
                     "type": "integer"
                 }

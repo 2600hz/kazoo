@@ -5,13 +5,11 @@
     "properties": {
         "_": {
             "description": "crossbar.token_restrictions  ",
-            "name": "_",
             "type": "object"
         },
         "default_priv_level": {
             "default": "admin",
             "description": "crossbar.token_restrictions default priv level",
-            "name": "default_priv_level",
             "type": "string"
         }
     },

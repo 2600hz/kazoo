@@ -9,13 +9,11 @@
                 "value_column": 2
             },
             "description": "crossbar.resource_selectors csv config",
-            "name": "csv_config",
             "type": "object"
         },
         "suppress_selectors_change_notice": {
             "default": false,
             "description": "crossbar.resource_selectors suppress selectors change notice",
-            "name": "suppress_selectors_change_notice",
             "type": "boolean"
         }
     },

@@ -5,13 +5,11 @@
     "properties": {
         "default_from": {
             "description": "notify.port_request default from",
-            "name": "default_from",
             "type": "string"
         },
         "default_to": {
             "default": "",
             "description": "notify.port_request default to",
-            "name": "default_to",
             "type": "string"
         }
     },

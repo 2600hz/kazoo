@@ -5,7 +5,6 @@
     "properties": {
         "presence_id": {
             "description": "The Presence ID to send a presence notification about",
-            "name": "Presence ID",
             "required": true,
             "type": "string"
         },
@@ -17,7 +16,6 @@
                 "ringing",
                 "busy"
             ],
-            "name": "Presence Status",
             "required": false,
             "type": "string"
         }

@@ -6,7 +6,6 @@
         "maybe_archive_modbs": {
             "default": false,
             "description": "cb_modb maybe archive modbs",
-            "name": "maybe_archive_modbs",
             "type": "boolean"
         }
     },

@@ -2,13 +2,11 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "allotments",
     "description": "",
-    "name": "Allotments",
     "patternProperties": {
         "^\\w+$": {
             "properties": {
                 "amount": {
                     "minimum": 0,
-                    "name": "Amount",
                     "required": true,
                     "type": "integer"
                 },
@@ -20,7 +18,6 @@
                         "weekly",
                         "monthly"
                     ],
-                    "name": "Cycle",
                     "required": true,
                     "type": "string"
                 },
@@ -28,32 +25,27 @@
                     "items": {
                         "type": "string"
                     },
-                    "name": "Group consuming",
-                    "requred": false,
+                    "required": false,
                     "type": "array"
                 },
                 "increment": {
-                    "minimym": 1,
-                    "name": "Increment",
-                    "requred": false,
+                    "minimum": 1,
+                    "required": false,
                     "type": "integer"
                 },
                 "minimum": {
-                    "minimym": 0,
-                    "name": "Increment",
-                    "requred": false,
+                    "minimum": 0,
+                    "required": false,
                     "type": "integer"
                 },
                 "no_consume_time": {
-                    "minimym": 0,
-                    "name": "No consume time",
-                    "requred": false,
+                    "minimum": 0,
+                    "required": false,
                     "type": "integer"
                 }
             }
         },
-        "description": "Allotment object.",
-        "name": "Allotment object",
+        "description": "Allotment object",
         "required": false,
         "type": "object"
     },

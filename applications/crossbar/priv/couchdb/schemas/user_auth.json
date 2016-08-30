@@ -2,13 +2,11 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "user_auth",
     "description": "Provides an auth-token via user credentials",
-    "name": "User Auth",
     "properties": {
         "account_name": {
             "description": "The account name of the user",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Account Name",
             "required": false,
             "type": "string"
         },
@@ -17,7 +15,6 @@
             "format": "uri",
             "maxLength": 64,
             "minLength": 1,
-            "name": "Account Realm",
             "required": false,
             "type": "string"
         },
@@ -25,7 +22,6 @@
             "description": "A hash of the uses credentials",
             "maxLength": 64,
             "minLength": 1,
-            "name": "Credentials",
             "required": true,
             "type": "string"
         },
@@ -36,7 +32,6 @@
                 "md5",
                 "sha"
             ],
-            "name": "Method",
             "required": false,
             "type": "string"
         },
@@ -44,7 +39,6 @@
             "description": "A phone number assigned to the users account",
             "maxLength": 64,
             "minLength": 1,
-            "name": "Phone Number",
             "required": false,
             "type": "string"
         }

@@ -3,13 +3,11 @@
     "_id": "shared_auth",
     "additionalProperties": false,
     "description": "Provides a local auth-token via a shared auth-token",
-    "name": "Shared Auth",
     "properties": {
         "shared_auth": {
             "description": "The shared token",
             "maxLength": 64,
             "minLength": 64,
-            "name": "Token",
             "required": true,
             "type": "string"
         }

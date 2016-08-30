@@ -5,7 +5,6 @@
     "properties": {
         "url": {
             "description": "mobile_manager url",
-            "name": "url",
             "type": "string"
         }
     },

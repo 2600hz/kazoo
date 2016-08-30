@@ -2,13 +2,11 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "media",
     "description": "Schema for media",
-    "name": "Media",
     "properties": {
         "content_length": {
             "description": "Length, in bytes, of the file",
             "maximum": 5242880,
             "minimum": 1,
-            "name": "Content Length",
             "required": false,
             "type": "integer"
         },
@@ -28,7 +26,6 @@
                 "video/mp4",
                 "video/webm"
             ],
-            "name": "Content Type",
             "required": false,
             "type": "string"
         },
@@ -36,14 +33,12 @@
             "description": "A breif description of the media update, usally the original file name",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Description",
             "required": false,
             "type": "string"
         },
         "language": {
             "default": "en-us",
             "description": "The language of the media file or text",
-            "name": "Language",
             "required": false,
             "type": "string"
         },
@@ -55,7 +50,6 @@
                 "upload",
                 "tts"
             ],
-            "name": "Media Source",
             "required": false,
             "type": "string"
         },
@@ -63,13 +57,11 @@
             "description": "A friendly name for the media",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Name",
             "required": true,
             "type": "string"
         },
         "prompt_id": {
             "description": "The prompt this media file represents",
-            "name": "Prompt ID",
             "required": false,
             "type": "string"
         },
@@ -77,32 +69,27 @@
             "description": "If the media was generated from a callflow module, this is ID of the properties",
             "maxLength": 32,
             "minLength": 32,
-            "name": "Source ID",
             "required": false,
             "type": "string"
         },
         "source_type": {
             "description": "If the media was generated from a callflow module, this is the module name",
-            "name": "Source Type",
             "required": false,
             "type": "string"
         },
         "streamable": {
             "default": true,
             "description": "Determines if the media can be streamed",
-            "name": "Streamable",
             "required": false,
             "type": "boolean"
         },
         "tts": {
             "default": {},
             "description": "Text-to-speech options used to create audio files from text",
-            "name": "TTS Parameters",
             "properties": {
                 "text": {
                     "description": "The text to be converted into audio",
                     "minLength": 1,
-                    "name": "Text TTS",
                     "required": false,
                     "type": "string"
                 },
@@ -161,7 +148,6 @@
                         "female/ru-RU/Maria",
                         "female/ru-RU/Lidia"
                     ],
-                    "name": "Voice TTS",
                     "required": false,
                     "type": "string"
                 }

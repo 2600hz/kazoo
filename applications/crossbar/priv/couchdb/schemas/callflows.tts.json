@@ -9,14 +9,12 @@
                 "flite",
                 "ispeech"
             ],
-            "name": "Engine",
             "required": false,
             "type": "string"
         },
         "language": {
             "default": "en",
             "description": "The language of the speaker",
-            "name": "Language",
             "required": false,
             "type": "string"
         },
@@ -24,14 +22,12 @@
             "description": "The text to speak",
             "maxLength": 1000,
             "minLength": 1,
-            "name": "Text To Speak",
             "required": true,
             "type": "string"
         },
         "voice": {
             "default": "female",
             "description": "What voice to use when speaking the text",
-            "name": "Voice of speaker",
             "required": false,
             "type": "string"
         }

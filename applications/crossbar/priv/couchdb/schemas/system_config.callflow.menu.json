@@ -6,7 +6,6 @@
         "min_greeting_length": {
             "default": 1500,
             "description": "callflow.menu min greeting length",
-            "name": "min_greeting_length",
             "type": "integer"
         }
     },

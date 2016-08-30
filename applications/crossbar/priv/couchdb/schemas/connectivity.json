@@ -1,7 +1,7 @@
 {
+    "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "connectivity",
     "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
-    "id": "http://json-schema.org/draft-03/schema#",
     "properties": {
         "account": {
             "description": "Information that applies to the account as a whole",
@@ -132,14 +132,12 @@
                                 "type": "string"
                             },
                             "ip": {
-                                "description": "IP address for this device",
-                                "name": "IP (sip)",
+                                "description": "IP (sip) address for this device",
                                 "required": false,
                                 "type": "string"
                             },
                             "port": {
                                 "description": "Port to send SIP traffic for the remote device",
-                                "name": "Port (sip)",
                                 "required": false,
                                 "type": "integer"
                             }
@@ -214,8 +212,7 @@
                             "type": "string"
                         },
                         "ip": {
-                            "description": "IP address for this device",
-                            "name": "IP (sip)",
+                            "description": "IP (sip) address for this device",
                             "required": false,
                             "type": "string"
                         },
@@ -230,7 +227,6 @@
                         },
                         "port": {
                             "description": "Port to send SIP traffic for the remote device",
-                            "name": "Port (sip)",
                             "required": false,
                             "type": "integer"
                         },

@@ -6,7 +6,6 @@
         "default_enabled": {
             "default": false,
             "description": "notify.low_balance default enabled",
-            "name": "default_enabled",
             "type": "boolean"
         }
     },

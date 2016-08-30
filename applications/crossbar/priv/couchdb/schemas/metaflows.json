@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "metaflows",
     "description": "Actions applied to a call outside of the normal callflow, initiated by the caller(s)",
-    "name": "Metaflow",
     "properties": {
         "binding_digit": {
             "default": "*",
@@ -23,14 +22,12 @@
             ],
             "maxLength": 1,
             "minLength": 1,
-            "name": "Binding Digit",
             "required": false,
             "type": "string"
         },
         "digit_timeout": {
-            "description": "How long to wait between DTMF presses before processing the collected sequence",
+            "description": "How long to wait between DTMF presses before processing the collected sequence (milliseconds)",
             "minimum": 0,
-            "name": "Timeout (milliseconds)",
             "required": false,
             "type": "integer"
         },
@@ -41,31 +38,27 @@
                 "self",
                 "peer"
             ],
-            "name": "Listen On",
             "required": false,
             "type": "string"
         },
         "numbers": {
             "description": "A list of static numbers that the metaflow should match for",
-            "name": "Numbers",
             "patternProperties": {
                 "[0-9\\*\\#]+": {
                     "properties": {
                         "children": {
                             "default": {},
-                            "name": "Children",
                             "required": false,
                             "type": "#/flow"
                         },
                         "data": {
                             "default": {},
-                            "name": "Module Data",
+                            "description": "Module Data",
                             "required": true,
                             "type": "object"
                         },
                         "module": {
                             "maxLength": 15,
-                            "name": "Module",
                             "required": true,
                             "type": "string"
                         }
@@ -83,7 +76,6 @@
                 "required": false,
                 "type": "string"
             },
-            "name": "Patterns",
             "required": false,
             "type": "object"
         }

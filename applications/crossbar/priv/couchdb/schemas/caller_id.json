@@ -2,23 +2,19 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "caller_id",
     "description": "Defines caller ID settings based on the type of call being made",
-    "name": "Caller ID",
     "properties": {
         "emergency": {
             "description": "The caller ID used when a resource is flagged as 'emergency'",
-            "name": "Emergency",
             "properties": {
                 "name": {
                     "description": "The caller id name for the object type",
                     "maxLength": 35,
-                    "name": "Name",
                     "required": false,
                     "type": "string"
                 },
                 "number": {
                     "description": "The caller id name for the object type",
                     "maxLength": 35,
-                    "name": "Number",
                     "required": false,
                     "type": "string"
                 }
@@ -28,19 +24,16 @@
         },
         "external": {
             "description": "The default caller ID used when dialing external numbers",
-            "name": "External",
             "properties": {
                 "name": {
                     "description": "The caller id name for the object type",
                     "maxLength": 35,
-                    "name": "Name",
                     "required": false,
                     "type": "string"
                 },
                 "number": {
                     "description": "The caller id name for the object type",
                     "maxLength": 35,
-                    "name": "Number",
                     "required": false,
                     "type": "string"
                 }
@@ -50,19 +43,16 @@
         },
         "internal": {
             "description": "The default caller ID used when dialing internal extensions",
-            "name": "Internal",
             "properties": {
                 "name": {
                     "description": "The caller id name for the object type",
                     "maxLength": 35,
-                    "name": "Name",
                     "required": false,
                     "type": "string"
                 },
                 "number": {
                     "description": "The caller id name for the object type",
                     "maxLength": 35,
-                    "name": "Number",
                     "required": false,
                     "type": "string"
                 }

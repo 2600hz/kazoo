@@ -6,25 +6,21 @@
         "default_caller_id_number": {
             "default": "default",
             "description": "trunkstore default caller id number",
-            "name": "default_caller_id_number",
             "type": "string"
         },
         "default_hunt_non_reconcilable": {
             "default": false,
             "description": "trunkstore default hunt non reconcilable",
-            "name": "default_hunt_non_reconcilable",
             "type": "boolean"
         },
         "ensure_valid_caller_id": {
             "default": false,
             "description": "trunkstore ensure valid caller id",
-            "name": "ensure_valid_caller_id",
             "type": "boolean"
         },
         "ring_ready_offnet": {
             "default": true,
             "description": "trunkstore ring ready offnet",
-            "name": "ring_ready_offnet",
             "type": "boolean"
         }
     },

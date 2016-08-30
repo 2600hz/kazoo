@@ -4,8 +4,7 @@
     "description": "Schema for number_manager.locality system_config",
     "properties": {
         "url": {
-            "description": "number_manager.locality url",
-            "name": "url"
+            "description": "number_manager.locality url"
         }
     },
     "required": true,

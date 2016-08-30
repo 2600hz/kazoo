@@ -111,23 +111,18 @@ curl -v -X GET \
 {
     "auth_token": "",
     "data": {
-        "$schema": "http://json-schema.org/draft-03/schema#",
+        "$schema": "http://json-schema.org/draft-04/schema#",
         "additionalProperties": false,
         "description": "Access Control List entries",
         "id": "acls",
-        "name": "ACL Entry",
         "properties": {
             "cidr": {
                 "description": "Classless Inter-Domain Routing IP notation for use on the ACL",
-                "name": "CIDR",
-                "required": true,
                 "type": "string"
             },
             "description": {
                 "description": "Will be added as a comment for quick identification later",
-                "maxLen": 30,
-                "name": "Name",
-                "required": false,
+                "maxLength": 30,
                 "type": "string"
             },
             "network-list-name": {
@@ -136,8 +131,6 @@ curl -v -X GET \
                     "authoritative",
                     "trusted"
                 ],
-                "name": "ACL List",
-                "required": true,
                 "type": "string"
             },
             "type": {
@@ -147,12 +140,14 @@ curl -v -X GET \
                     "allow",
                     "deny"
                 ],
-                "name": "Type",
-                "required": true,
                 "type": "string"
             }
         },
-        "required": true,
+        "required": [
+            "cird",
+            "network-list-name",
+            "type"
+        ],
         "type": "object"
     },
     "request_id": "{REQUEST_ID}",

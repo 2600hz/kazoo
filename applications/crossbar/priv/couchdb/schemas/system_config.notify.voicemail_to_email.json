@@ -6,13 +6,11 @@
         "html_content_transfer_encoding": {
             "default": "7BIT",
             "description": "notify.voicemail_to_email html content transfer encoding",
-            "name": "html_content_transfer_encoding",
             "type": "string"
         },
         "text_content_transfer_encoding": {
             "default": "7BIT",
             "description": "notify.voicemail_to_email text content transfer encoding",
-            "name": "text_content_transfer_encoding",
             "type": "string"
         }
     },

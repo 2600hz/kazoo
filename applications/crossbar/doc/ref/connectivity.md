@@ -32,7 +32,7 @@ Key | Description | Type | Default | Required
 `servers.[].auth.auth_method` | What type of auth mechanism to use | `string('password', 'Password', 'IP', 'ip')` | `password` | `true`
 `servers.[].auth.auth_password` | Password of the user@auth_realm | `string(1..)` |   | `false`
 `servers.[].auth.auth_user` | Username for authentication | `string(1..)` |   | `false`
-`servers.[].auth.ip` | IP address for this device | `string` |   | `false`
+`servers.[].auth.ip` | IP (sip) address for this device | `string` |   | `false`
 `servers.[].auth.port` | Port to send SIP traffic for the remote device | `integer` |   | `false`
 `servers.[].name` | Human-friendly name of the server | `string(1..)` |   | `false`
 `servers.[].options` |   | `object` |   | `false`

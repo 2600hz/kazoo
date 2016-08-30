@@ -13,7 +13,6 @@
                 "WRONG_CALL_STATE"
             ],
             "description": "hangups hangups to monitor",
-            "name": "hangups_to_monitor",
             "type": "array"
         },
         "ignore_hangup_causes": {
@@ -28,7 +27,6 @@
                 "USER_BUSY"
             ],
             "description": "hangups ignore hangup causes",
-            "name": "ignore_hangup_causes",
             "type": "array"
         }
     },

@@ -2,13 +2,11 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "ubiquiti_auth",
     "description": "Provides an auth-token via Ubiquiti's SSO",
-    "name": "Unbiquit Auth",
     "properties": {
         "password": {
             "description": "Ubiquiti SSO Password",
             "maxLength": 64,
             "minLength": 1,
-            "name": "Password",
             "required": true,
             "type": "string"
         },
@@ -16,7 +14,6 @@
             "description": "Ubiquiti SSO Username",
             "maxLength": 64,
             "minLength": 1,
-            "name": "Username",
             "required": true,
             "type": "string"
         }

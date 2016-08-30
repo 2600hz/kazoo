@@ -2,38 +2,32 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "provisioner_v5",
     "description": "Provisioner schema",
-    "name": "Provisioner V5",
     "properties": {
         "brand": {
             "default": "",
             "description": "Brand of the phone",
-            "name": "Brand",
             "required": true,
             "type": "string"
         },
         "family": {
             "default": "",
             "description": "Family name of the phone",
-            "name": "Family",
             "required": true,
             "type": "string"
         },
         "model": {
             "default": "",
             "description": "Model name of the phone",
-            "name": "Model",
             "required": true,
             "type": "string"
         },
         "name": {
             "description": "Name of the phone",
-            "name": "Name",
             "required": false,
             "type": "string"
         },
         "settings": {
             "description": "Phone's settings",
-            "name": "Settings",
             "properties": {
                 "codecs": {
                     "description": "Phone's codecs",
@@ -41,17 +35,14 @@
                         "properties": {
                             "audio": {
                                 "description": "Audio codecs",
-                                "name": "Audio",
                                 "properties": {
                                     "primary_codec": {
-                                        "description": "First codec",
-                                        "name": "Primary Codec",
+                                        "description": "Primary codec",
                                         "required": false,
                                         "type": "string"
                                     },
                                     "secondary_codec": {
-                                        "description": "Second codec",
-                                        "name": "Secondary Codec",
+                                        "description": "Secondary codec",
                                         "required": false,
                                         "type": "string"
                                     }
@@ -62,20 +53,16 @@
                         },
                         "type": "object"
                     },
-                    "name": "Codecs",
                     "type": "object"
                 },
                 "datetime": {
                     "description": "Date and time settings",
-                    "name": "Date/Time",
                     "properties": {
                         "time": {
                             "description": "Time settings",
-                            "name": "Time",
                             "properties": {
                                 "timezone": {
                                     "description": "Phone's timezone",
-                                    "name": "Timezone",
                                     "required": false,
                                     "type": "string"
                                 }
@@ -90,22 +77,18 @@
                 "lines": {
                     "description": "Phone lines",
                     "minItems": 1,
-                    "name": "Lines",
                     "properties": {
                         "properties": {
                             "advanced": {
                                 "description": "Advanced settings",
-                                "name": "advanced",
                                 "properties": {
                                     "expire": {
                                         "default": 360,
-                                        "name": "Expire",
                                         "required": false,
                                         "type": "integer"
                                     },
                                     "srtp": {
                                         "default": false,
-                                        "name": "srtp",
                                         "required": false,
                                         "type": "boolean"
                                     }
@@ -115,18 +98,15 @@
                             },
                             "basic": {
                                 "description": "Basic settings",
-                                "name": "Basic",
                                 "properties": {
                                     "display_name": {
                                         "description": "Friendly name for phone",
-                                        "name": "Display Name",
                                         "required": false,
                                         "type": "string"
                                     },
                                     "enabled": {
                                         "default": true,
                                         "description": "Enable line",
-                                        "name": "Enabled",
                                         "required": false,
                                         "type": "boolean"
                                     }
@@ -136,23 +116,19 @@
                             },
                             "sip": {
                                 "description": "Sip settings",
-                                "name": "Sip",
                                 "properties": {
                                     "password": {
                                         "description": "Line's password",
-                                        "name": "Password",
                                         "required": true,
                                         "type": "string"
                                     },
                                     "realm": {
                                         "description": "Line's Sip realm",
-                                        "name": "Realm",
                                         "required": false,
                                         "type": "string"
                                     },
                                     "username": {
                                         "description": "Line's username",
-                                        "name": "Username",
                                         "required": true,
                                         "type": "string"
                                     }

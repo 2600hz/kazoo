@@ -2,14 +2,12 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "faxes",
     "description": "Faxes API allows you to update and access fax jobs for both sending and receiving",
-    "name": "Fax",
     "properties": {
         "attempts": {
             "default": 0,
             "description": "The number of attempts made, this will be set by the system and reset automaticly on put/post",
             "maximum": 4,
             "minimum": 0,
-            "name": "Attempts",
             "required": false,
             "type": "integer"
         },
@@ -19,19 +17,16 @@
                 "content": {
                     "description": "The content provided in the body when fetching for transmission as a post",
                     "maxLength": 256,
-                    "name": "HTTP Body",
                     "required": false,
                     "type": "string"
                 },
                 "content_type": {
                     "description": "The content type header to be used when fetching for transmission as a post",
-                    "name": "HTTP Content-Type",
                     "required": false,
                     "type": "string"
                 },
                 "host": {
                     "description": "The host header to be used when fetching for transmission",
-                    "name": "HTTP Host",
                     "required": false,
                     "type": "string"
                 },
@@ -42,19 +37,16 @@
                         "get",
                         "post"
                     ],
-                    "name": "Method",
                     "required": false,
                     "type": "string"
                 },
                 "referer": {
                     "description": "The referer header to be used when fetching for transmission",
-                    "name": "HTTP Referer",
                     "required": false,
                     "type": "string"
                 },
                 "url": {
                     "description": "The url of the fax document",
-                    "name": "Document URL",
                     "required": true,
                     "type": "string"
                 }
@@ -64,13 +56,11 @@
         },
         "from_name": {
             "description": "The sender name for the fax",
-            "name": "Sender Name",
             "required": false,
             "type": "string"
         },
         "from_number": {
             "description": "The sender number for the fax",
-            "name": "Sender Number",
             "required": true,
             "type": "string"
         },
@@ -88,7 +78,6 @@
                                 "required": false,
                                 "type": "string"
                             },
-                            "name": "Email Address",
                             "required": false,
                             "type": [
                                 "string",
@@ -108,7 +97,6 @@
                                 "required": false,
                                 "type": "string"
                             },
-                            "name": "SMS Number",
                             "required": false,
                             "type": [
                                 "string",
@@ -128,19 +116,16 @@
             "description": "The number of times to retry",
             "maximum": 4,
             "minimum": 0,
-            "name": "Retries",
             "required": false,
             "type": "integer"
         },
         "to_name": {
             "description": "The recipient name for the fax",
-            "name": "Recipient Name",
             "required": false,
             "type": "string"
         },
         "to_number": {
             "description": "The recipient number for the fax",
-            "name": "Recipient Number",
             "required": true,
             "type": "string"
         },
@@ -150,56 +135,48 @@
                 "error_message": {
                     "default": "",
                     "description": "A description of any error that occured",
-                    "name": "Error Message",
                     "required": false,
                     "type": "string"
                 },
                 "fax_bad_rows": {
                     "default": 0,
                     "description": "The number of bad rows",
-                    "name": "Bad Rows",
                     "required": false,
                     "type": "integer"
                 },
                 "fax_error_correction": {
                     "default": false,
                     "description": "True if fax error correction was used",
-                    "name": "Error Correction",
                     "required": false,
                     "type": "boolean"
                 },
                 "fax_receiver_id": {
                     "default": "",
                     "description": "The receiver id reported by the remote fax device",
-                    "name": "Reciever ID",
                     "required": false,
                     "type": "string"
                 },
                 "fax_speed": {
                     "default": 0,
-                    "description": "The speed achieved during transmission",
-                    "name": "Baud Rate",
+                    "description": "The speed (Baud-Rate) achieved during transmission",
                     "required": false,
                     "type": "integer"
                 },
                 "pages_sent": {
                     "default": 0,
                     "description": "The number of pages transmitted",
-                    "name": "Pages Sent",
                     "required": false,
                     "type": "integer"
                 },
                 "success": {
                     "default": false,
                     "description": "True if the fax transmission was successful",
-                    "name": "Success",
                     "required": false,
                     "type": "boolean"
                 },
                 "time_elapsed": {
                     "default": 0,
                     "description": "The amount of time from submition to completion",
-                    "name": "Elapsed Time",
                     "required": false,
                     "type": "integer"
                 }

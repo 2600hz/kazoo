@@ -4,8 +4,7 @@
     "description": "Schema for notify.fax_inbound_to_email system_config",
     "properties": {
         "default_to": {
-            "description": "notify.fax_inbound_to_email default to",
-            "name": "default_to"
+            "description": "notify.fax_inbound_to_email default to"
         }
     },
     "required": true,

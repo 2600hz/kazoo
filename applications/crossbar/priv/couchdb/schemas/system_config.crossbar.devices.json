@@ -6,16 +6,13 @@
         "allow_aggregates": {
             "default": "true",
             "description": "crossbar.devices allow aggregates",
-            "name": "allow_aggregates",
             "type": "boolean"
         },
         "provisioning_type": {
-            "description": "crossbar.devices provisioning type",
-            "name": "provisioning_type"
+            "description": "crossbar.devices provisioning type"
         },
         "provisioning_url": {
             "description": "crossbar.devices provisioning url",
-            "name": "provisioning_url",
             "type": "string"
         }
     },

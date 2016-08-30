@@ -6,12 +6,10 @@
         "default_country": {
             "default": "US",
             "description": "crossbar.phone_numbers default country",
-            "name": "default_country",
             "type": "string"
         },
         "phonebook_url": {
             "description": "crossbar.phone_numbers phonebook url",
-            "name": "phonebook_url",
             "type": "string"
         }
     },

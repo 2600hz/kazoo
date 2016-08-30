@@ -2,19 +2,16 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "vmboxes",
     "description": "Schema for a voicemail box",
-    "name": "Voicemail Box",
     "properties": {
         "check_if_owner": {
             "default": true,
             "description": "Determines if when the user calls their own voicemail they should be prompted to sign in",
-            "name": "Check if Owner?",
             "required": false,
             "type": "boolean"
         },
         "delete_after_notify": {
             "default": false,
             "description": "Delete the voicemail after the notification has been sent",
-            "name": "Delete after Notify?",
             "required": false,
             "type": "boolean",
             "warning": "Voicemail is not stored in the database if this option is selected"
@@ -22,7 +19,6 @@
         "is_setup": {
             "default": false,
             "description": "Determines if the user has completed the initial configuration",
-            "name": "Is Setup?",
             "required": false,
             "type": "boolean"
         },
@@ -36,13 +32,11 @@
         "media": {
             "default": {},
             "description": "The media (prompt) parameters",
-            "name": "Media Parameters",
             "properties": {
                 "unavailable": {
                     "description": "The ID of a media object that should be used as the unavailable greeting",
                     "maxLength": 32,
                     "minLength": 32,
-                    "name": "Media ID",
                     "required": false,
                     "type": "string"
                 }
@@ -54,14 +48,12 @@
             "description": "A friendly name for the voicemail box",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Name",
             "required": true,
             "type": "string"
         },
         "not_configurable": {
             "default": false,
             "description": "Determines if the user can configure this voicemail.",
-            "name": "Is configurable?",
             "required": false,
             "type": "boolean"
         },
@@ -81,7 +73,6 @@
                 "format": "email",
                 "type": "string"
             },
-            "name": "Email Addresses",
             "required": false,
             "type": "array"
         },
@@ -89,7 +80,6 @@
             "description": "The ID of the user object that 'owns' the voicemail box",
             "maxLength": 32,
             "minLength": 32,
-            "name": "Owner ID",
             "required": false,
             "type": "string"
         },
@@ -97,21 +87,18 @@
             "description": "The pin number for the voicemail box",
             "maxLength": 15,
             "minLength": 4,
-            "name": "Pin",
             "required": false,
             "type": "string"
         },
         "require_pin": {
             "default": false,
             "description": "Determines if a pin is required to check the voicemail from the users devices",
-            "name": "Require Pin?",
             "required": false,
             "type": "boolean"
         },
         "save_after_notify": {
             "default": false,
             "description": "Save the voicemail after the notification has been sent",
-            "name": "Save after Notify?",
             "required": false,
             "type": "boolean",
             "warning": "This setting will override delete_after_notify"
@@ -119,14 +106,12 @@
         "skip_greeting": {
             "default": false,
             "description": "Determines if the greeting should be skipped",
-            "name": "Skip Greeting?",
             "required": false,
             "type": "boolean"
         },
         "skip_instructions": {
             "default": false,
             "description": "Determines if the instructions after the greeting and prior to composing a message should be played",
-            "name": "Skip Instructions?",
             "required": false,
             "type": "boolean"
         },
@@ -134,7 +119,6 @@
             "description": "The default timezone",
             "maxLength": 32,
             "minLength": 5,
-            "name": "Timezone",
             "required": false,
             "type": "string"
         }

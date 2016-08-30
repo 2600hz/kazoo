@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "service_plans",
     "description": "Describes services offered to sub-accounts",
-    "name": "Service Plan",
     "properties": {
         "bookkeepers": {
             "$ref": "bookkeepers",
@@ -17,7 +16,6 @@
             "description": "A friendly name for the service plan",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Service Plan Name",
             "required": true,
             "type": "string"
         },

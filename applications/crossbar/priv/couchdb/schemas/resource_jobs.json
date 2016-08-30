@@ -2,13 +2,11 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "resource_jobs",
     "description": "Schema for resource jobs (bulk number uploads)",
-    "name": "Resource Job",
     "properties": {
         "name": {
             "description": "A friendly name for the job, if you like",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Name",
             "required": false,
             "type": "string"
         },

@@ -6,7 +6,6 @@
         "iterate_over_bcc": {
             "default": true,
             "description": "teletype iterate over bcc",
-            "name": "iterate_over_bcc",
             "type": "boolean"
         }
     },

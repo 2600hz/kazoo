@@ -6,16 +6,13 @@
         "default_country": {
             "default": "US",
             "description": "number_manager.other default country",
-            "name": "default_country",
             "type": "string"
         },
         "endpoints": {
-            "description": "number_manager.other endpoints",
-            "name": "endpoints"
+            "description": "number_manager.other endpoints"
         },
         "phonebook_url": {
-            "description": "number_manager.other phonebook url",
-            "name": "phonebook_url"
+            "description": "number_manager.other phonebook url"
         }
     },
     "required": true,

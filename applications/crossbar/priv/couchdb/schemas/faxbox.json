@@ -2,63 +2,53 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "faxbox",
     "description": "FaxBoxes allow configuration of individual fax virtual machines",
-    "name": "Fax Box",
     "properties": {
         "attempts": {
             "default": 0,
             "description": "The number of attempts made, this will be set by the system and reset automaticly on put/post",
             "maximum": 4,
             "minimum": 0,
-            "name": "Attempts",
             "required": false,
             "type": "integer"
         },
         "caller_id": {
             "description": "The Caller-ID-Number",
-            "name": "Caller ID Number",
             "required": false,
             "type": "string"
         },
         "caller_name": {
             "default": "Kazoo Fax Printer",
             "description": "The Caller-ID-Name",
-            "name": "Caller ID Name",
             "required": false,
             "type": "string"
         },
         "custom_smtp_email_address": {
             "description": "custom smtp address",
-            "name": "SMTP Address",
             "required": false,
             "type": "string"
         },
         "fax_header": {
             "default": "Kazoo Fax Printer",
             "description": "The name printed at the top of the fax",
-            "name": "Fax Header Name",
             "required": false,
             "type": "string"
         },
         "fax_identity": {
             "description": "The number printed at the top of the fax",
-            "name": "Fax Header Number",
             "required": false,
             "type": "string"
         },
         "fax_timezone": {
             "description": "The timezone announced",
-            "name": "Fax Header Timezone",
             "required": false,
             "type": "string"
         },
         "media": {
             "default": {},
             "description": "The device media parameters",
-            "name": "Media Parameters",
             "properties": {
                 "fax_option": {
-                    "description": "Support T.38",
-                    "name": "Is T.38 Supported?",
+                    "description": "Is T.38 Supported?",
                     "required": false,
                     "type": "boolean"
                 }
@@ -70,7 +60,6 @@
             "description": "A friendly name for the faxbox",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Name",
             "required": true,
             "type": "string"
         },
@@ -82,7 +71,6 @@
                     "properties": {
                         "callback": {
                             "description": "A URL to send results to",
-                            "name": "Callback Parameters",
                             "properties": {
                                 "method": {
                                     "description": "The http method to use when sending the results",
@@ -90,7 +78,6 @@
                                         "post",
                                         "put"
                                     ],
-                                    "name": "Method",
                                     "required": false,
                                     "type": "string"
                                 },
@@ -100,13 +87,11 @@
                                         "json",
                                         "www-url-form-encoded"
                                     ],
-                                    "name": "Content-Type",
                                     "required": false,
                                     "type": "string"
                                 },
                                 "url": {
                                     "description": "The URL to call back with the results",
-                                    "name": "URL",
                                     "required": false,
                                     "type": "string"
                                 }
@@ -115,8 +100,7 @@
                             "type": "object"
                         },
                         "email": {
-                            "description": "Email notifications",
-                            "name": "Inbound Email Notifications",
+                            "description": "Inbound Email Notifications",
                             "properties": {
                                 "send_to": {
                                     "description": "A list or string of email recipent(s)",
@@ -126,7 +110,6 @@
                                         "required": false,
                                         "type": "string"
                                     },
-                                    "name": "Email Address",
                                     "required": false,
                                     "type": [
                                         "string",
@@ -172,7 +155,6 @@
                                         "post",
                                         "put"
                                     ],
-                                    "name": "Method",
                                     "required": false,
                                     "type": "string"
                                 },
@@ -182,13 +164,11 @@
                                         "json",
                                         "www-url-form-encoded"
                                     ],
-                                    "name": "Content-Type",
                                     "required": false,
                                     "type": "string"
                                 },
                                 "url": {
                                     "description": "The URL to call back with the results",
-                                    "name": "URL",
                                     "required": false,
                                     "type": "string"
                                 }
@@ -207,7 +187,6 @@
                                         "required": false,
                                         "type": "string"
                                     },
-                                    "name": "Email Address",
                                     "required": false,
                                     "type": [
                                         "string",
@@ -227,7 +206,6 @@
                                         "required": false,
                                         "type": "string"
                                     },
-                                    "name": "SMS Number",
                                     "required": false,
                                     "type": [
                                         "string",
@@ -251,7 +229,6 @@
             "description": "The number of times to retry",
             "maximum": 4,
             "minimum": 0,
-            "name": "Retries",
             "required": false,
             "type": "integer"
         },
@@ -262,7 +239,6 @@
                 "required": false,
                 "type": "string"
             },
-            "name": "SMTP Permissions",
             "required": false,
             "type": "array"
         }

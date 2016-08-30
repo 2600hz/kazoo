@@ -1,7 +1,7 @@
 {
+    "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "trunkstore",
     "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
-    "id": "http://json-schema.org/draft-03/schema#",
     "properties": {
         "account": {
             "description": "Information that applies to the account as a whole",
@@ -75,7 +75,6 @@
                             "inherit",
                             "deny"
                         ],
-                        "name": "Action",
                         "required": false,
                         "type": "string"
                     }
@@ -85,7 +84,6 @@
             },
             "default": {},
             "description": "Trunk level call restrictions for each available number classification",
-            "name": "Call Restrictions",
             "required": false,
             "type": "object"
         },

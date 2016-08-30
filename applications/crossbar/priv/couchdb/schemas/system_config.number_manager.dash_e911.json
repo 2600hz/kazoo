@@ -6,13 +6,11 @@
         "debug": {
             "default": false,
             "description": "number_manager.dash_e911 debug",
-            "name": "debug",
             "type": "boolean"
         },
         "emergency_provisioning_url": {
             "default": "https://service.dashcs.com/dash-api/xml/emergencyprovisioning/v1",
             "description": "number_manager.dash_e911 emergency provisioning url",
-            "name": "emergency_provisioning_url",
             "type": "string"
         }
     },

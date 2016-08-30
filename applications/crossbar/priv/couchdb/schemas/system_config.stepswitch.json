@@ -6,134 +6,111 @@
         "assume_inbound_e164": {
             "default": false,
             "description": "stepswitch assume inbound e164",
-            "name": "assume_inbound_e164",
             "type": "boolean"
         },
         "cid_rules_honor_diversions": {
             "default": false,
             "description": "stepswitch cid rules honor diversions",
-            "name": "cid_rules_honor_diversions",
             "type": "boolean"
         },
         "default_audio_codecs": {
             "default": [],
             "description": "stepswitch default audio codecs",
-            "name": "default_audio_codecs",
             "type": "array"
         },
         "default_bypass_media": {
             "default": false,
             "description": "stepswitch default bypass media",
-            "name": "default_bypass_media",
             "type": "boolean"
         },
         "default_caller_id_type": {
             "default": "external",
             "description": "stepswitch default caller id type",
-            "name": "default_caller_id_type",
             "type": "string"
         },
         "default_codecs": {
             "default": [],
             "description": "stepswitch default codecs",
-            "name": "default_codecs",
             "type": "array"
         },
         "default_emergency_cid_number": {
-            "description": "stepswitch default emergency cid number",
-            "name": "default_emergency_cid_number"
+            "description": "stepswitch default emergency cid number"
         },
         "default_formatters": {
-            "description": "stepswitch default formatters",
-            "name": "default_formatters"
+            "description": "stepswitch default formatters"
         },
         "default_prefix": {
             "default": "",
             "description": "stepswitch default prefix",
-            "name": "default_prefix",
             "type": "string"
         },
         "default_progress_timeout": {
             "default": 8,
             "description": "stepswitch default progress timeout",
-            "name": "default_progress_timeout",
             "type": "integer"
         },
         "default_route": {
             "description": "stepswitch default route",
-            "name": "default_route",
             "type": "string"
         },
         "default_suffix": {
             "default": "",
             "description": "stepswitch default suffix",
-            "name": "default_suffix",
             "type": "string"
         },
         "default_video_codecs": {
             "default": [],
             "description": "stepswitch default video codecs",
-            "name": "default_video_codecs",
             "type": "array"
         },
         "default_weight": {
             "default": 3,
             "description": "stepswitch default weight",
-            "name": "default_weight",
             "type": "integer"
         },
         "deny_emergency_bridge_cause": {
             "default": "Emergency service not configured",
             "description": "stepswitch deny emergency bridge cause",
-            "name": "deny_emergency_bridge_cause",
             "type": "string"
         },
         "deny_emergency_bridge_code": {
             "default": 486,
             "description": "stepswitch deny emergency bridge code",
-            "name": "deny_emergency_bridge_code",
             "type": "string"
         },
         "deny_emergency_bridge_media": {
             "default": "prompt://system_media/stepswitch-emergency_not_configured/",
             "description": "stepswitch deny emergency bridge media",
-            "name": "deny_emergency_bridge_media",
             "type": "string"
         },
         "deny_invalid_emergency_cid": {
             "default": false,
             "description": "stepswitch deny invalid emergency cid",
-            "name": "deny_invalid_emergency_cid",
             "type": "boolean"
         },
         "ensure_valid_emergency_cid": {
             "default": false,
             "description": "stepswitch ensure valid emergency cid",
-            "name": "ensure_valid_emergency_cid",
             "type": "boolean"
         },
         "format_from_uri": {
             "default": false,
             "description": "stepswitch format from uri",
-            "name": "format_from_uri",
             "type": "boolean"
         },
         "max_shortdial_correction": {
             "default": 5,
             "description": "stepswitch max shortdial correction",
-            "name": "max_shortdial_correction",
             "type": "integer"
         },
         "min_shortdial_correction": {
             "default": 2,
             "description": "stepswitch min shortdial correction",
-            "name": "min_shortdial_correction",
             "type": "integer"
         },
         "route_by": {
             "default": "stepswitch_resources",
             "description": "stepswitch route by",
-            "name": "route_by",
             "type": "string"
         }
     },

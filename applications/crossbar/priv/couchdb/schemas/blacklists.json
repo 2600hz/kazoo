@@ -2,13 +2,11 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "blacklists",
     "description": "Schema for a blacklists",
-    "name": "Blacklists",
     "properties": {
         "name": {
             "description": "A friendly name for the temporal rule set",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Name",
             "required": true,
             "type": "string"
         },

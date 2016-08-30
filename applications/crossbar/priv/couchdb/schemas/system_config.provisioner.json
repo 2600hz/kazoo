@@ -5,7 +5,6 @@
     "properties": {
         "cluster_id": {
             "description": "provisioner cluster id",
-            "name": "cluster_id",
             "type": "string"
         },
         "feature_keys": {
@@ -36,16 +35,13 @@
                 }
             },
             "description": "provisioner feature keys",
-            "name": "feature_keys",
             "type": "object"
         },
         "provisioning_type": {
-            "description": "provisioner provisioning type",
-            "name": "provisioning_type"
+            "description": "provisioner provisioning type"
         },
         "provisioning_url": {
             "description": "provisioner provisioning url",
-            "name": "provisioning_url",
             "type": "string"
         }
     },

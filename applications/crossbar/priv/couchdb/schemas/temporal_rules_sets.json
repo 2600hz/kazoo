@@ -2,24 +2,21 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "temporal_rules_sets",
     "description": "Schema for a temporal rules sets",
-    "name": "Temporal Rule Set",
     "properties": {
         "name": {
             "description": "A friendly name for the temporal rule set",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Name",
             "required": true,
             "type": "string"
         },
         "temporal_rules": {
-            "description": "Rules",
+            "description": "Temporal Rules",
             "items": {
                 "required": false,
                 "type": "string"
             },
             "minItems": 1,
-            "name": "Temporal Rules",
             "required": false,
             "type": "array"
         }

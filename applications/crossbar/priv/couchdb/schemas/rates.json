@@ -2,17 +2,14 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "rates",
     "description": "Defines a rate for a given prefix",
-    "name": "Rate",
     "properties": {
         "carrier": {
             "description": "Friendly name for the carrier providing this rate",
-            "name": "Carrier Name",
             "required": false,
             "type": "string"
         },
         "description": {
             "description": "Friendly description of the rate",
-            "name": "Description",
             "required": false,
             "type": "string"
         },
@@ -29,20 +26,17 @@
                 ],
                 "type": "string"
             },
-            "name": "Direction",
             "required": false,
             "type": "array"
         },
         "internal_rate_cost": {
             "description": "The per-min rate charged by the upstream provider",
             "minimum": 0,
-            "name": "Internal Cost",
             "required": false,
             "type": "number"
         },
         "iso_country_code": {
             "description": "Country code this rate applies to",
-            "name": "Country Code",
             "required": false,
             "type": "string"
         },
@@ -52,20 +46,17 @@
                 "required": false,
                 "type": "string"
             },
-            "name": "Options",
             "required": false,
             "type": "array"
         },
         "prefix": {
             "description": "E.164 prefix (ignoring the +)",
-            "name": "Prefix",
             "required": true,
             "type": "integer"
         },
         "rate_cost": {
             "description": "The per-min rate charged to the downstream customer",
             "minimum": 0,
-            "name": "Cost",
             "required": true,
             "type": "number"
         },
@@ -73,7 +64,6 @@
             "default": 60,
             "description": "The time slice, in seconds, to bill in.",
             "minimum": 10,
-            "name": "Increment (seconds)",
             "required": false,
             "type": "integer"
         },
@@ -81,21 +71,18 @@
             "default": 60,
             "description": "The minimum time slice, in seconds to bill a call",
             "minimum": 10,
-            "name": "Minimum Increment (seconds)",
             "required": false,
             "type": "integer"
         },
         "rate_name": {
             "description": "Friendly name of the rate",
-            "name": "Name",
             "required": false,
             "type": "string"
         },
         "rate_nocharge_time": {
             "default": 0,
-            "description": "If the call duration is shorter than this threshold, the call is not billed",
+            "description": "If the call duration is shorter than this threshold (seconds), the call is not billed",
             "minimum": 0,
-            "name": "No Charge Time (seconds)",
             "required": false,
             "type": "integer"
         },
@@ -103,7 +90,6 @@
             "default": 0,
             "description": "The upfront cost of connecting the call",
             "minimum": 0,
-            "name": "Surcharge",
             "required": false,
             "type": "number"
         },
@@ -114,7 +100,6 @@
                 "required": false,
                 "type": "string"
             },
-            "name": "Routes",
             "required": false,
             "type": "array"
         },
@@ -122,7 +107,6 @@
             "description": "Ordering against other rates, 1 being most preferred, 100 being least preferred",
             "maximum": 100,
             "minimum": 1,
-            "name": "Weight",
             "required": false,
             "type": "integer"
         }

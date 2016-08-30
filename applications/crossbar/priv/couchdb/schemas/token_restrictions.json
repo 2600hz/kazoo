@@ -2,22 +2,18 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "token_restrictions",
     "description": "Schema for token restrictions",
-    "name": "Token restrictions",
     "properties": {
         "restrictions": {
             "patternProperties": {
                 "^\\w+$": {
                     "description": "Name of athentication metod used when creating token. \"_\" for match any auth method",
-                    "name": "Auth method",
                     "patternProperties": {
                         "^\\w+$": {
                             "description": "User privelege level. \"_\" for match any priv level",
-                            "name": "User priv level",
                             "patternProperties": {
                                 "^\\w+$": {
                                     "items": {
                                         "description": "Endpoint (first path token) to wich apply restrictions. \"_\" for match any endpoint",
-                                        "name": "Endpoint",
                                         "properties": {
                                             "allowed_accounts": {
                                                 "description": "Account allowed to match this item",
@@ -25,16 +21,15 @@
                                                     "required": false,
                                                     "type": "string"
                                                 },
-                                                "name": "Allowed accounts",
                                                 "required": false,
                                                 "type": "array",
                                                 "uniqueItems": true
                                             },
                                             "rules": {
                                                 "description": "Rules applied to endpoint parameters",
-                                                "name": "Rules",
                                                 "patternProperties": {
                                                     "^[\\w/#*]+$": {
+                                                        "description": "verbs",
                                                         "items": {
                                                             "enum": [
                                                                 "GET",
@@ -46,13 +41,12 @@
                                                             ],
                                                             "type": "string"
                                                         },
-                                                        "name": "verbs",
-                                                        "requred": false,
+                                                        "required": false,
                                                         "type": "array",
                                                         "uniqueItems": true
                                                     }
                                                 },
-                                                "requred": false,
+                                                "required": false,
                                                 "type": "object"
                                             }
                                         },

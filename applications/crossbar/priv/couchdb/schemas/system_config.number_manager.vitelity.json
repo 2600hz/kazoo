@@ -6,12 +6,10 @@
         "api_uri": {
             "default": "http://api.vitelity.net/api.php",
             "description": "number_manager.vitelity api uri",
-            "name": "api_uri",
             "type": "string"
         },
         "routesip": {
-            "description": "number_manager.vitelity routesip",
-            "name": "routesip"
+            "description": "number_manager.vitelity routesip"
         }
     },
     "required": true,

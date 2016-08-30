@@ -2,7 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "audit_logs",
     "description": "Audit log of what caused a billing event to occur",
-    "name": "Audit Log",
     "properties": {
         "audit": {
             "description": "Contains the accounts involved in the billable event (initial account and resellers)",

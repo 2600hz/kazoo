@@ -3,13 +3,11 @@
     "_id": "api_auth",
     "additionalProperties": false,
     "description": "Provides an auth-token via an Account API key",
-    "name": "API Auth",
     "properties": {
         "api_key": {
             "description": "The Accounts API key",
             "maxLength": 64,
             "minLength": 64,
-            "name": "API Key",
             "required": true,
             "type": "string"
         }

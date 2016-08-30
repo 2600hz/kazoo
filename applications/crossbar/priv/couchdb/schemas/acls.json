@@ -1,21 +1,16 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "acls",
     "additionalProperties": false,
     "description": "Access Control List entries",
-    "name": "ACL Entry",
     "properties": {
         "cidr": {
             "description": "Classless Inter-Domain Routing IP notation for use on the ACL",
-            "name": "CIDR",
-            "required": true,
             "type": "string"
         },
         "description": {
             "description": "Will be added as a comment for quick identification later",
-            "maxLen": 30,
-            "name": "Name",
-            "required": false,
+            "maxLength": 30,
             "type": "string"
         },
         "network-list-name": {
@@ -24,8 +19,6 @@
                 "authoritative",
                 "trusted"
             ],
-            "name": "ACL List",
-            "required": true,
             "type": "string"
         },
         "type": {
@@ -35,11 +28,13 @@
                 "allow",
                 "deny"
             ],
-            "name": "Type",
-            "required": true,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "cidr",
+        "network-list-name",
+        "type"
+    ],
     "type": "object"
 }

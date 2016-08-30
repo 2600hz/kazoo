@@ -3,7 +3,6 @@
     "_id": "tasks",
     "additionalProperties": true,
     "description": "Input data to go through as part of a background task",
-    "name": "Task records",
     "properties": {
         "records": {
             "description": "List the rows of input data",
@@ -12,7 +11,6 @@
                 "type": "object"
             },
             "minItems": 1,
-            "name": "Records",
             "required": false,
             "type": "array"
         }

@@ -6,19 +6,16 @@
         "default_to": {
             "default": "",
             "description": "notify.first_occurrence default to",
-            "name": "default_to",
             "type": "string"
         },
         "html_content_transfer_encoding": {
             "default": "7BIT",
             "description": "notify.first_occurrence html content transfer encoding",
-            "name": "html_content_transfer_encoding",
             "type": "string"
         },
         "text_content_transfer_encoding": {
             "default": "7BIT",
             "description": "notify.first_occurrence text content transfer encoding",
-            "name": "text_content_transfer_encoding",
             "type": "string"
         }
     },

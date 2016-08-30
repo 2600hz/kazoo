@@ -2,19 +2,16 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "resources",
     "description": "Schema for resources",
-    "name": "Resource",
     "properties": {
         "emergency": {
             "default": false,
             "description": "Determines if the resource represents emergency services",
-            "name": "Is Emergency?",
             "required": false,
             "type": "boolean"
         },
         "enabled": {
             "default": true,
             "description": "Determines if the resource is currently enabled",
-            "name": "Is Enabled?",
             "required": false,
             "type": "boolean"
         },
@@ -25,19 +22,16 @@
                 "required": false,
                 "type": "string"
             },
-            "name": "Flags",
             "required": false,
             "type": "array"
         },
         "format_from_uri": {
             "description": "When set to true requests to this resource will have a re-formated SIP From Header",
-            "name": "Format SIP From?",
             "required": false,
             "type": "boolean"
         },
         "from_uri_realm": {
             "description": "When formating SIP From on outbound requests this can be used to override the realm",
-            "name": "SIP From Realm",
             "required": false,
             "type": "string"
         },
@@ -48,7 +42,6 @@
                 "properties": {
                     "bypass_media": {
                         "description": "The resource gateway bypass media mode",
-                        "name": "Is Media Direct?",
                         "required": false,
                         "type": "boolean"
                     },
@@ -59,7 +52,6 @@
                             "external",
                             "emergency"
                         ],
-                        "name": "Caller ID Type",
                         "required": false,
                         "type": "string"
                     },
@@ -70,7 +62,6 @@
                             "ascending",
                             "descending"
                         ],
-                        "name": "Channel Selection (gateways)",
                         "required": false,
                         "type": "string"
                     },
@@ -95,27 +86,23 @@
                             ],
                             "type": "string"
                         },
-                        "name": "Codecs",
                         "required": false,
                         "type": "array",
                         "uniqueItems": true
                     },
                     "custom_sip_headers": {
                         "default": {},
-                        "name": "Custom SIP Header",
                         "required": false,
                         "type": "object"
                     },
                     "custom_sip_interface": {
                         "description": "The name of a custom SIP interface",
-                        "name": "SIP Inteface",
                         "required": false,
                         "type": "string"
                     },
                     "enabled": {
                         "default": true,
                         "description": "Determines if the resource gateway is currently enabled",
-                        "name": "Enabled",
                         "required": false,
                         "type": "boolean"
                     },
@@ -128,26 +115,22 @@
                             "skype",
                             "amqp"
                         ],
-                        "name": "Endpoint Type",
                         "required": false,
                         "type": "string"
                     },
                     "force_port": {
                         "default": false,
                         "description": "Allow request only from this port",
-                        "name": "Force port",
                         "required": false,
                         "type": "boolean"
                     },
                     "format_from_uri": {
                         "description": "When set to true requests to this resource gateway will have a re-formated SIP From Header",
-                        "name": "Format SIP From?",
                         "required": false,
                         "type": "boolean"
                     },
                     "from_uri_realm": {
                         "description": "When formating SIP From on outbound requests this can be used to override the realm",
-                        "name": "SIP From Realm",
                         "required": false,
                         "type": "string"
                     },
@@ -161,17 +144,14 @@
                             "npan",
                             "1npan"
                         ],
-                        "name": "Invite Format",
                         "required": false,
                         "type": "string"
                     },
                     "media": {
                         "description": "The media parameters for the resource gateway",
-                        "name": "Media Options",
                         "properties": {
                             "fax_option": {
-                                "description": "Support T.38",
-                                "name": "Is T.38 Supported?",
+                                "description": "Is T.38 Supported?",
                                 "required": false,
                                 "type": "boolean"
                             }
@@ -182,40 +162,34 @@
                     "password": {
                         "description": "SIP authentication password",
                         "maxLength": 32,
-                        "name": "Password",
                         "required": false,
                         "type": "string"
                     },
                     "port": {
                         "default": 5060,
                         "description": "This resource gateway port",
-                        "name": "Port",
                         "required": false,
                         "type": "integer"
                     },
                     "prefix": {
                         "description": "A string to prepend to the dialed number or capture group of the matching rule",
                         "maxLength": 64,
-                        "name": "Prefix",
                         "required": false,
                         "type": "string"
                     },
                     "progress_timeout": {
                         "description": "The progress timeout to apply to the resource gateway",
-                        "name": "Progress Timeout",
                         "required": false,
                         "type": "integer"
                     },
                     "realm": {
                         "description": "This resource gateway authentication realm",
                         "maxLength": 64,
-                        "name": "Realm",
                         "required": false,
                         "type": "string"
                     },
                     "route": {
                         "description": "A staticly configured SIP URI to route all call to",
-                        "name": "Route",
                         "required": false,
                         "type": "string"
                     },
@@ -223,40 +197,34 @@
                         "description": "This resource gateway server",
                         "maxLength": 64,
                         "minLength": 1,
-                        "name": "Server",
                         "required": true,
                         "type": "string"
                     },
                     "skype_interface": {
                         "description": "The name of the Skype interface to route the call over",
-                        "name": "Skype Interface",
                         "required": false,
                         "type": "string"
                     },
                     "skype_rr": {
                         "default": true,
                         "description": "Determines whether to round-robin calls amongst all interfaces (overrides \"skype_interface\" setting)",
-                        "name": "Skype Round-Robin",
                         "required": false,
                         "type": "boolean"
                     },
                     "span": {
                         "description": "The identity of the hardware on the media server",
-                        "name": "Span",
                         "required": false,
                         "type": "string"
                     },
                     "suffix": {
                         "description": "A string to append to the dialed number or capture group of the matching rule",
                         "maxLength": 64,
-                        "name": "Suffix",
                         "required": false,
                         "type": "string"
                     },
                     "username": {
                         "description": "SIP authentication username",
                         "maxLength": 32,
-                        "name": "Username",
                         "required": false,
                         "type": "string"
                     }
@@ -272,19 +240,16 @@
             "description": "The amount of time, in seconds, to wait before starting another resource",
             "maximum": 20,
             "minimum": 1,
-            "name": "Grace Period",
             "required": false,
             "type": "integer"
         },
         "media": {
             "default": {},
             "description": "The default resouce media parameters applied if not present to all specified gateways",
-            "name": "Default Resource Media Parameters",
             "properties": {
                 "audio": {
                     "default": {},
                     "description": "The default audio media parameters",
-                    "name": "Audio Options",
                     "properties": {
                         "codecs": {
                             "default": [
@@ -315,7 +280,6 @@
                                 ],
                                 "type": "string"
                             },
-                            "name": "Codecs",
                             "required": false,
                             "type": "array",
                             "uniqueItems": true
@@ -326,20 +290,17 @@
                 },
                 "bypass_media": {
                     "description": "Default bypass media mode",
-                    "name": "Is Media Direct?",
                     "required": false,
                     "type": "boolean"
                 },
                 "fax_option": {
-                    "description": "Support T.38",
-                    "name": "Is T.38 Supported?",
+                    "description": "Is T.38 Supported?",
                     "required": false,
                     "type": "boolean"
                 },
                 "video": {
                     "default": {},
                     "description": "The default video media parameters",
-                    "name": "Video Options",
                     "properties": {
                         "codecs": {
                             "default": [],
@@ -369,13 +330,11 @@
             "description": "A friendly name for the resource",
             "maxLength": 128,
             "minLength": 1,
-            "name": "Name",
             "required": true,
             "type": "string"
         },
         "require_flags": {
             "description": "When set to true this resource is ignored if the request does not specify outbound flags",
-            "name": "Require Flags?",
             "required": false,
             "type": "boolean"
         },
@@ -386,7 +345,6 @@
                 "required": false,
                 "type": "string"
             },
-            "name": "Rules",
             "required": false,
             "type": "array"
         },
@@ -395,7 +353,6 @@
             "description": "A value between 0 and 100 that determines the order of resources when multiple can be used",
             "maximum": 100,
             "minimum": 0,
-            "name": "Weight Cost",
             "required": false,
             "type": "integer"
         }
