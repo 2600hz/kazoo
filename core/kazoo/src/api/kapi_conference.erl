@@ -311,7 +311,6 @@
                                    ,<<"Conference-ID">>
                                    ,<<"Instance-ID">>
                                    ,<<"Participant-ID">>
-                                   ,<<"Moderator">>
                                    ,<<"Floor">>
                                    ,<<"Hear">>
                                    ,<<"Speak">>
@@ -325,7 +324,7 @@
                                    ,<<"Channel-Presence-ID">>
                                    ,<<"Custom-Channel-Vars">>
                                    ]).
--define(OPTIONAL_PARTICIPANT_EVENT_HEADERS, []).
+-define(OPTIONAL_PARTICIPANT_EVENT_HEADERS, [<<"Moderator">>]).
 -define(PARTICIPANT_EVENT_VALUES, [{<<"Event-Category">>, <<"conference">>}, {<<"Event-Name">>, <<"participant_event">>}]).
 -define(PARTICIPANT_EVENT_TYPES, []).
 

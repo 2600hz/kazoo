@@ -203,7 +203,8 @@ handle_info({'event', [CallId | Props]}, #state{node=Node, publish_participant_e
                 send_participant_event(Event, Props),
                 publish_participant_event(lists:member(Action, EventsToPublish), Event, CallId, Props);
             {'continue', CustomProps} ->
-                send_participant_event(Event, Props, CustomProps)
+                send_participant_event(Event ++ CustomProps, Props),
+                publish_participant_event(lists:member(Action, EventsToPublish), Event ++ CustomProps, CallId, Props)
         end,
     finalize_processing(Action, CallId),
     {'noreply', State};
@@ -266,8 +267,8 @@ finalize_processing(_, _) -> 'ok'.
                                        'stop'.
 process_participant_event(<<"add-member">>, Props, Node, CallId) ->
     CallInfo = request_call_details(CallId),
-    _ = ecallmgr_fs_conferences:participant_create(Props, Node, CallInfo),
-    'continue';
+    #participant{is_moderator=IsModerator} = ecallmgr_fs_conferences:participant_create(Props, Node, CallInfo),
+    {'continue', [{<<"Moderator">>, IsModerator}]};
 process_participant_event(<<"del-member">>, _Props, _Node, _CallId) -> 'continue';
 process_participant_event(<<"stop-talking">>, _, _, _) -> 'continue';
 process_participant_event(<<"start-talking">>, _, _, _) -> 'continue';
@@ -442,14 +443,12 @@ send_conference_event(Action, Props, CustomProps) ->
 
 make_participant_event(Action, CallId, Props, Node) ->
     ConferenceName = props:get_value(<<"Conference-Name">>, Props),
-    IsModerator = conf_participant:moderator_status(ConferenceName, CallId),
     [{<<"Event">>, Action}
     ,{<<"Call-ID">>, CallId}
     ,{<<"Focus">>, kz_util:to_binary(Node)}
     ,{<<"Conference-ID">>, ConferenceName}
     ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
     ,{<<"Participant-ID">>, props:get_integer_value(<<"Member-ID">>, Props, 0)}
-    ,{<<"Moderator">>, IsModerator}
     ,{<<"Floor">>, props:get_is_true(<<"Floor">>, Props, 'false')}
     ,{<<"Hear">>, props:get_is_true(<<"Hear">>, Props, 'true')}
     ,{<<"Speak">>, props:get_is_true(<<"Speak">>, Props, 'true')}
@@ -467,11 +466,7 @@ make_participant_event(Action, CallId, Props, Node) ->
 
 -spec send_participant_event(kz_proplist(), kz_proplist()) -> 'ok'.
 send_participant_event(Event, Props) ->
-    send_participant_event(Event, Props, []).
-
--spec send_participant_event(kz_proplist(), kz_proplist(), kz_proplist()) -> 'ok'.
-send_participant_event(Event, Props, CustomProps) ->
-    relay_event(Event ++ CustomProps ++ props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)).
+    relay_event(Event ++ props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)).
 
 -spec exec(atom(), ne_binary(), kz_json:object()) -> 'ok'.
 exec(Focus, ConferenceId, JObj) ->
