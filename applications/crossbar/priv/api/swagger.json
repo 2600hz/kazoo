@@ -9246,7 +9246,6 @@
                 "should_bulk_batch_writes": {
                     "default": false,
                     "description": "number_manager should bulk batch writes",
-                    "name": "should_bulk_batch_writes",
                     "type": "boolean"
                 },
                 "should_permanently_delete": {
