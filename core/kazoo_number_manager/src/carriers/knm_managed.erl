@@ -55,7 +55,8 @@ find_numbers(Prefix, Quantity, Options) ->
                                      {'ok', knm_number:knm_numbers()} |
                                      {'error', any()}.
 find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
-    case do_find_numbers_in_account(Prefix, Quantity, AccountId) of
+    Offset = knm_carriers:offset(Options),
+    case do_find_numbers_in_account(Prefix, Quantity, Offset, AccountId) of
         {'error', 'not_available'}=Error ->
             ResellerId = knm_carriers:reseller_id(Options),
             case AccountId =:= 'undefined'
@@ -63,18 +64,20 @@ find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
             of
                 'true' -> Error;
                 'false' ->
-                    find_numbers_in_account(Prefix, Quantity, ResellerId, Options)
+                    NewOptions = [{offset, 0} | Options],
+                    find_numbers_in_account(Prefix, Quantity, ResellerId, NewOptions)
             end;
         Result -> Result
     end.
 
--spec do_find_numbers_in_account(ne_binary(), pos_integer(), api_binary()) ->
+-spec do_find_numbers_in_account(ne_binary(), pos_integer(), non_neg_integer(), api_binary()) ->
                                         {'ok', knm_number:knm_numbers()} |
                                         {'error', any()}.
-do_find_numbers_in_account(Prefix, Quantity, AccountId) ->
+do_find_numbers_in_account(Prefix, Quantity, Offset, AccountId) ->
     ViewOptions = [{'startkey', [AccountId, ?NUMBER_STATE_AVAILABLE, Prefix]}
                   ,{'endkey', [AccountId, ?NUMBER_STATE_AVAILABLE, <<Prefix/binary,"\ufff0">>]}
                   ,{'limit', Quantity}
+                  ,{skip, Offset}
                   ,'include_docs'
                   ],
     case kz_datamgr:get_results(?KZ_MANAGED, <<"numbers_managed/status">>, ViewOptions) of
