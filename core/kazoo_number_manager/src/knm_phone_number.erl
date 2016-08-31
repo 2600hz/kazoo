@@ -47,6 +47,9 @@
         ]).
 
 -export([list_attachments/2]).
+-ifndef(TEST).
+-export([push_stored/0]).
+-endif.
 
 -include("knm.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
@@ -81,6 +84,9 @@
              ,set_function/0
              ,set_functions/0
              ]).
+
+-define(BULK_BATCH_WRITES,
+        kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_bulk_batch_writes">>, false)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -273,22 +279,19 @@ to_public_json(Number) ->
     ReadOnly =
         kz_json:from_list(
           props:filter_empty(
-            [ {<<"created">>, kz_doc:created(JObj)}
-            , {<<"modified">>, kz_doc:modified(JObj)}
-            , State
-            , UsedBy
-            , Features
+            [{<<"created">>, kz_doc:created(JObj)}
+            ,{<<"modified">>, kz_doc:modified(JObj)}
+            ,State
+            ,UsedBy
+            ,Features
             ])
          ),
-    Root =
-        kz_json:set_values(
-          props:filter_empty(
-            [ State
-            , UsedBy
-            , Features
-            ])
-                          ,kz_json:public_fields(JObj)
-         ),
+    Values = props:filter_empty(
+               [State
+               ,UsedBy
+               ,Features
+               ]),
+    Root = kz_json:set_values(Values, kz_json:public_fields(JObj)),
     kz_json:set_value(<<"_read_only">>, ReadOnly, Root).
 
 %%--------------------------------------------------------------------
@@ -857,7 +860,7 @@ save_to_number_db(PhoneNumber) -> PhoneNumber.
 save_to_number_db(PhoneNumber) ->
     NumberDb = number_db(PhoneNumber),
     JObj = to_json(PhoneNumber),
-    case kz_datamgr:ensure_saved(NumberDb, JObj) of
+    case datamgr_save(PhoneNumber, NumberDb, JObj) of
         {'ok', Doc} -> from_json_with_options(Doc, PhoneNumber);
         {'error', 'not_found'} ->
             lager:debug("creating new db '~s' for number '~s'", [NumberDb, number(PhoneNumber)]),
@@ -902,7 +905,7 @@ assign(PhoneNumber, _AssignedTo) ->
 -else.
 assign(PhoneNumber, AssignedTo) ->
     AccountDb = kz_util:format_account_db(AssignedTo),
-    case kz_datamgr:ensure_saved(AccountDb, to_json(PhoneNumber)) of
+    case datamgr_save(PhoneNumber, AccountDb, to_json(PhoneNumber)) of
         {'error', E} ->
             lager:error("failed to assign number ~s to ~s"
                        ,[number(PhoneNumber), AccountDb]),
@@ -1008,3 +1011,73 @@ maybe_remove_number_from_account(Number) ->
                 {'ok', _} -> {'ok', Number}
             end
     end.
+
+-ifndef(TEST).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec datamgr_save(knm_phone_number(), ne_binary(), kz_json:object()) ->
+                          {'ok', kz_json:object()} |
+                          kz_data:data_error().
+datamgr_save(PhoneNumber, Db, JObj) ->
+    case batch_run(PhoneNumber)
+        andalso ?BULK_BATCH_WRITES
+    of
+        'false' -> kz_datamgr:ensure_saved(Db, JObj);
+        'true' -> store_maybe_push(Db, JObj)
+    end.
+
+store_maybe_push(Db, Doc) ->
+    BelowMax = kz_datamgr:max_bulk_insert() - 1,
+    case get(Db) of
+        'undefined' ->
+            put(Db, 1),
+            put({Db,1}, [Doc]),
+            {'ok', Doc};
+        BelowMax ->
+            store_doc(Db, Doc, BelowMax),
+            push_stored(Db, {Db, BelowMax + 1});
+        Count ->
+            store_doc(Db, Doc, Count),
+            {'ok', Doc}
+    end.
+
+store_doc(Db, Doc, Count) ->
+    NewCount = Count + 1,
+    put(Db, NewCount),
+    put({Db,NewCount}, [Doc | get({Db,Count})]),
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec push_stored() -> 'ok'.
+push_stored() ->
+    case ?BULK_BATCH_WRITES of
+        true ->
+            lager:debug("pushing stored writes"),
+            DBs = [Db || {Db=?NE_BINARY, I} <- get(),
+                         is_integer(I)
+                  ],
+            lists:foreach(fun push_stored/1, DBs);
+        false ->
+            ok
+    end.
+
+push_stored(Db) ->
+    push_stored(Db, {Db, get(Db)}).
+
+push_stored(Db, Key) ->
+    Docs = get(Key),
+    erase(Key),
+    erase(Db),
+    R = kz_datamgr:save_docs(Db, Docs),
+    element(1, R) =:= 'error'
+        andalso lager:debug("save_docs ~p failed: ~p",
+                            [[kz_doc:id(Doc) || Doc <- Docs], element(2,R)]),
+    R.
+-endif.

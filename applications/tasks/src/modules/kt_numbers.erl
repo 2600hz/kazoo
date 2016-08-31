@@ -55,6 +55,7 @@
 init() ->
     _ = tasks_bindings:bind(<<"tasks.help."?CATEGORY>>, ?MODULE, 'help'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".output_header">>, ?MODULE, 'output_header'),
+    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".cleanup">>, ?MODULE, 'cleanup'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".e164">>, ?MODULE, 'e164'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".account_id">>, ?MODULE, 'account_id'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".carrier_module">>, ?MODULE, 'carrier_module'),
@@ -69,6 +70,12 @@ output_header(<<"dump">>) ->
     list_output_header().
 
 -spec cleanup(ne_binary(), any()) -> any().
+cleanup(<<"list">>, _) ->
+    knm_phone_number:push_stored();
+cleanup(<<"list_all">>, _) ->
+    knm_phone_number:push_stored();
+cleanup(<<"dump">>, _) ->
+    knm_phone_number:push_stored();
 cleanup(<<"import">>, 'init') ->
     %% Hit iff no rows at all succeeded.
     'ok';
@@ -77,7 +84,16 @@ cleanup(<<"import">>, AccountIds) ->
                 lager:debug("reconciling account ~s", [AccountId]),
                 kz_services:reconcile(AccountId, <<"phone_numbers">>)
         end,
-    lists:foreach(F, sets:to_list(AccountIds)).
+    lists:foreach(F, sets:to_list(AccountIds)),
+    knm_phone_number:push_stored();
+cleanup(<<"assign_to">>, _) ->
+    knm_phone_number:push_stored();
+cleanup(<<"release">>, _) ->
+    knm_phone_number:push_stored();
+cleanup(<<"reserve">>, _) ->
+    knm_phone_number:push_stored();
+cleanup(<<"delete">>, _) ->
+    knm_phone_number:push_stored().
 
 -spec list_output_header() -> kz_csv:row().
 list_output_header() ->
