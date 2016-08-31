@@ -5,7 +5,7 @@
     "properties": {
         "max_length": {
             "default": 3600,
-            "description": "kzt_twiml_util max length",
+            "description": "kzt_twiml_util maximum length",
             "type": "integer"
         }
     },

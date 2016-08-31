@@ -34,7 +34,7 @@
         },
         "max_recording_time_limit": {
             "default": 600,
-            "description": "media max recording time limit",
+            "description": "media maximum recording time limit",
             "type": "integer"
         },
         "normalize_destination_args": {
@@ -86,7 +86,7 @@
         },
         "record_min_sec": {
             "default": 0,
-            "description": "media record min sec",
+            "description": "media record minimum sec",
             "type": "integer"
         },
         "ssl_cert": {

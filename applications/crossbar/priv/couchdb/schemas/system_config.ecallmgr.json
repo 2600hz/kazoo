@@ -223,17 +223,17 @@
         },
         "max_channel_cleanup_timeout_ms": {
             "default": 60000,
-            "description": "ecallmgr max channel cleanup timeout in milliseconds",
+            "description": "ecallmgr maximum channel cleanup timeout in milliseconds",
             "type": "integer"
         },
         "max_channel_uptime_s": {
             "default": 0,
-            "description": "ecallmgr max channel uptime in seconds",
+            "description": "ecallmgr maximum channel uptime in seconds",
             "type": "integer"
         },
         "max_timeout_for_node_restart": {
             "default": 10000,
-            "description": "ecallmgr max timeout for node restart",
+            "description": "ecallmgr maximum timeout for node restart",
             "type": "integer"
         },
         "modules": {

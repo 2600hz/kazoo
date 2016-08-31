@@ -122,7 +122,7 @@
         },
         "image_min_size": {
             "default": "700x10",
-            "description": "fax image min size",
+            "description": "fax image minimum size",
             "type": "string"
         },
         "image_size_cmd_format": {
@@ -137,7 +137,7 @@
         },
         "max_storage_retry": {
             "default": 5,
-            "description": "fax max storage retry",
+            "description": "fax maximum storage retry",
             "type": "integer"
         },
         "openoffice_server": {

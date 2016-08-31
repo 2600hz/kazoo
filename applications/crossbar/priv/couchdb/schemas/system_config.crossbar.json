@@ -47,7 +47,7 @@
         },
         "max_upload_size": {
             "default": 8000000,
-            "description": "crossbar max upload size",
+            "description": "crossbar maximum upload size",
             "type": "integer"
         },
         "maximum_range": {

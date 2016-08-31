@@ -25,32 +25,32 @@
         },
         "max_compacting_shards": {
             "default": 2,
-            "description": "kazoo_couch max compacting shards",
+            "description": "kazoo_couch maximum compacting shards",
             "type": "integer"
         },
         "max_compacting_views": {
             "default": 2,
-            "description": "kazoo_couch max compacting views",
+            "description": "kazoo_couch maximum compacting views",
             "type": "integer"
         },
         "max_concurrent_docs_to_archive": {
             "default": 500,
-            "description": "kazoo_couch max concurrent docs to archive",
+            "description": "kazoo_couch maximum concurrent docs to archive",
             "type": "integer"
         },
         "max_wait_for_compaction_pids": {
             "default": 360000,
-            "description": "kazoo_couch max wait for compaction pids",
+            "description": "kazoo_couch maximum wait for compaction pids",
             "type": "integer"
         },
         "min_data_size": {
             "default": 131072,
-            "description": "kazoo_couch min data size",
+            "description": "kazoo_couch minimum data size",
             "type": "integer"
         },
         "min_ratio": {
             "default": 1.2,
-            "description": "kazoo_couch min ratio",
+            "description": "kazoo_couch minimum ratio",
             "type": "number"
         },
         "sleep_between_compaction": {

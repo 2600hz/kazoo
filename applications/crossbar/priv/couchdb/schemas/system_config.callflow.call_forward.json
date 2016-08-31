@@ -10,12 +10,12 @@
         },
         "max_callfwd_number_length": {
             "default": 20,
-            "description": "callflow.call_forward max callfwd number length",
+            "description": "callflow.call_forward maximum callfwd number length",
             "type": "integer"
         },
         "min_callfwd_number_length": {
             "default": 3,
-            "description": "callflow.call_forward min callfwd number length",
+            "description": "callflow.call_forward minimum callfwd number length",
             "type": "integer"
         }
     },
