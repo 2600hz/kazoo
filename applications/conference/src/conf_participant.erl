@@ -123,7 +123,7 @@ get(Srv) -> gen_listener:call(Srv, {'get'}).
 -spec moderator_status(ne_binary(), ne_binary()) -> boolean().
 moderator_status(ConferenceId, ParticipantId) ->
     All = [ get(Pid) || Pid <- conf_participant_sup:all() ],
-    [IsModerator] = [ P#participant.moderator || P <- All,
+    [IsModerator] = [ kapps_conference:moderator(P#participant.conference) || P <- All,
                                                  kapps_conference:id(P#participant.conference) == ConferenceId,
                                                  kapps_call:call_id(P#participant.call) == ParticipantId
                     ],
