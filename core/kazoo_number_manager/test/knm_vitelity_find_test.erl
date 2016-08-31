@@ -21,8 +21,9 @@ tollfree_tests() ->
               ,{'carriers', [<<"knm_vitelity">>]}
               ],
     Limit = 1,
-    [Result] = knm_carriers:find(?TEST_CREATE_TOLL, Limit, Options),
-    [Result] = knm_carriers:find(?TEST_CREATE_TOLL, Limit, [{'tollfree', 'true'} | Options]),
+    <<"+1", Num/binary>> = ?TEST_CREATE_TOLL,
+    [Result] = knm_carriers:find(Num, Limit, Options),
+    [Result] = knm_carriers:find(Num, Limit, [{'tollfree', 'true'} | Options]),
 
     [{"Verify found number"
      ,?_assertEqual(?TEST_CREATE_TOLL, kz_json:get_value(<<"number">>, Result))
@@ -37,7 +38,7 @@ local_number_tests() ->
               ,{'carriers', [<<"knm_vitelity">>]}
               ],
     Limit = 1,
-    Results = knm_carriers:find(<<"+19875559876">>, Limit, Options),
+    Results = knm_carriers:find(<<"9875559876">>, Limit, Options),
 
     [{"Verify local number search result size"
      ,?_assertEqual(Limit, length(Results))

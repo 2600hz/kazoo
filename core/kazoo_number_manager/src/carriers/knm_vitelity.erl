@@ -44,7 +44,7 @@ is_local() -> 'false'.
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(Prefix, Quantity, Options) ->
-    case props:is_true(<<"tollfree">>, Options, 'false') of
+    case props:is_true(tollfree, Options, 'false') of
         'false' -> classify_and_find(Prefix, Quantity, Options);
         'true' ->
             TFOpts = tollfree_options(Quantity, Options),

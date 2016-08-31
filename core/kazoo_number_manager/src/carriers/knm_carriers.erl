@@ -78,17 +78,16 @@
 -spec find(ne_binary(), integer()) -> kz_json:objects().
 -spec find(ne_binary(), integer(), options()) -> kz_json:objects().
 
-find(Num) ->
-    find(Num, 1).
+find(Prefix) ->
+    find(Prefix, 1).
 
-find(Num, Quantity) ->
-    find(Num, Quantity, []).
+find(Prefix, Quantity) ->
+    find(Prefix, Quantity, []).
 
-find(Num, Quantity, Options) ->
-    Prefix = <<(knm_util:prefix_for_country(country(Options)))/binary
-               ,(prefix(Options, Num))/binary
+find(Prefix, Quantity, Options) ->
+    NormalizedPrefix = <<(knm_util:prefix_for_country(country(Options)))/binary
+               ,(prefix(Options, Prefix))/binary
              >>,
-    NormalizedNumber = knm_converters:normalize(Prefix),
     Carriers = available_carriers(Options),
     lager:debug("contacting, in order: ~p", [Carriers]),
     Acc0 = #{found => []
@@ -100,12 +99,12 @@ find(Num, Quantity, Options) ->
      ,count := _Count
      } =
         lists:foldl(fun(Carrier, Acc) ->
-                            find_fold(Carrier, NormalizedNumber, Options, Acc)
+                            find_fold(Carrier, NormalizedPrefix, Options, Acc)
                     end
                    ,Acc0
                    ,Carriers
                    ),
-    lager:debug("found ~p/~p numbers", [_Count, Quantity]),
+    lager:debug("~s found ~p/~p numbers", [NormalizedPrefix, _Count, Quantity]),
     Found.
 
 -type find_acc() :: #{found => kz_json:objects()
