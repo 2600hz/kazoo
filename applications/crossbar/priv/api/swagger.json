@@ -6218,12 +6218,12 @@
                 },
                 "max_connect_failures": {
                     "default": 3,
-                    "description": "acdc max connect failures",
+                    "description": "acdc maximum connect failures",
                     "type": "integer"
                 },
                 "max_result_set": {
                     "default": 25,
-                    "description": "acdc max result set",
+                    "description": "acdc maximum result set",
                     "type": "integer"
                 },
                 "queue_collect_resp_timeout": {
@@ -6336,12 +6336,12 @@
                 },
                 "max_amount": {
                     "default": 200.0,
-                    "description": "braintree max amount",
+                    "description": "braintree maximum amount",
                     "type": "number"
                 },
                 "min_amount": {
                     "default": 5.0,
-                    "description": "braintree min amount",
+                    "description": "braintree minimum amount",
                     "type": "number"
                 },
                 "should_prorate": {
@@ -6448,7 +6448,7 @@
                 },
                 "min_bucket_cost": {
                     "default": 5,
-                    "description": "callflow min bucket cost",
+                    "description": "callflow minimum bucket cost",
                     "type": "integer"
                 },
                 "mwi_send_unsoliciated_updates": {
@@ -6495,28 +6495,28 @@
                         "max_box_number_length": {
                             "properties": {
                                 "default": 15,
-                                "description": "callflow max box number length",
+                                "description": "callflow maximum box number length",
                                 "type": "integer"
                             }
                         },
                         "max_message_count": {
                             "properties": {
                                 "default": 100,
-                                "description": "callflow max message count",
+                                "description": "callflow maximum message count",
                                 "type": "integer"
                             }
                         },
                         "max_message_length": {
                             "properties": {
                                 "default": 500,
-                                "description": "callflow max message length",
+                                "description": "callflow maximum message length",
                                 "type": "integer"
                             }
                         },
                         "max_pin_length": {
                             "properties": {
                                 "default": 6,
-                                "description": "callflow max pin length",
+                                "description": "callflow maximum pin length",
                                 "type": "integer"
                             }
                         },
@@ -6530,7 +6530,7 @@
                         "min_message_size": {
                             "properties": {
                                 "default": 500,
-                                "description": "callflow min message size",
+                                "description": "callflow minimum message size",
                                 "type": "integer"
                             }
                         },
@@ -6557,12 +6557,12 @@
                 },
                 "max_callfwd_number_length": {
                     "default": 20,
-                    "description": "callflow.call_forward max callfwd number length",
+                    "description": "callflow.call_forward maximum callfwd number length",
                     "type": "integer"
                 },
                 "min_callfwd_number_length": {
                     "default": 3,
-                    "description": "callflow.call_forward min callfwd number length",
+                    "description": "callflow.call_forward minimum callfwd number length",
                     "type": "integer"
                 }
             },
@@ -6574,17 +6574,17 @@
             "properties": {
                 "max_hotdesk_id_length": {
                     "default": 10,
-                    "description": "callflow.hotdesk max hotdesk id length",
+                    "description": "callflow.hotdesk maximum hotdesk id length",
                     "type": "integer"
                 },
                 "max_login_attempts": {
                     "default": 3,
-                    "description": "callflow.hotdesk max login attempts",
+                    "description": "callflow.hotdesk maximum login attempts",
                     "type": "integer"
                 },
                 "max_pin_length": {
                     "default": 6,
-                    "description": "callflow.hotdesk max pin length",
+                    "description": "callflow.hotdesk maximum pin length",
                     "type": "integer"
                 }
             },
@@ -6596,7 +6596,7 @@
             "properties": {
                 "min_greeting_length": {
                     "default": 1500,
-                    "description": "callflow.menu min greeting length",
+                    "description": "callflow.menu minimum greeting length",
                     "type": "integer"
                 }
             },
@@ -6867,7 +6867,7 @@
                 },
                 "max_upload_size": {
                     "default": 8000000,
-                    "description": "crossbar max upload size",
+                    "description": "crossbar maximum upload size",
                     "type": "integer"
                 },
                 "maximum_range": {
@@ -7032,7 +7032,7 @@
             "properties": {
                 "max_account_credit": {
                     "default": 500.0,
-                    "description": "crossbar.braintree max account credit",
+                    "description": "crossbar.braintree maximum account credit",
                     "type": "number"
                 }
             },
@@ -7473,7 +7473,7 @@
                 },
                 "min_bucket_cost": {
                     "default": 1,
-                    "description": "doodle min bucket cost",
+                    "description": "doodle minimum bucket cost",
                     "type": "integer"
                 },
                 "reschedule": {
@@ -7718,17 +7718,17 @@
                 },
                 "max_channel_cleanup_timeout_ms": {
                     "default": 60000,
-                    "description": "ecallmgr max channel cleanup timeout in milliseconds",
+                    "description": "ecallmgr maximum channel cleanup timeout in milliseconds",
                     "type": "integer"
                 },
                 "max_channel_uptime_s": {
                     "default": 0,
-                    "description": "ecallmgr max channel uptime in seconds",
+                    "description": "ecallmgr maximum channel uptime in seconds",
                     "type": "integer"
                 },
                 "max_timeout_for_node_restart": {
                     "default": 10000,
-                    "description": "ecallmgr max timeout for node restart",
+                    "description": "ecallmgr maximum timeout for node restart",
                     "type": "integer"
                 },
                 "modules": {
@@ -8015,7 +8015,7 @@
                 },
                 "image_min_size": {
                     "default": "700x10",
-                    "description": "fax image min size",
+                    "description": "fax image minimum size",
                     "type": "string"
                 },
                 "image_size_cmd_format": {
@@ -8030,7 +8030,7 @@
                 },
                 "max_storage_retry": {
                     "default": 5,
-                    "description": "fax max storage retry",
+                    "description": "fax maximum storage retry",
                     "type": "integer"
                 },
                 "openoffice_server": {
@@ -8259,32 +8259,32 @@
                 },
                 "max_compacting_shards": {
                     "default": 2,
-                    "description": "kazoo_couch max compacting shards",
+                    "description": "kazoo_couch maximum compacting shards",
                     "type": "integer"
                 },
                 "max_compacting_views": {
                     "default": 2,
-                    "description": "kazoo_couch max compacting views",
+                    "description": "kazoo_couch maximum compacting views",
                     "type": "integer"
                 },
                 "max_concurrent_docs_to_archive": {
                     "default": 500,
-                    "description": "kazoo_couch max concurrent docs to archive",
+                    "description": "kazoo_couch maximum concurrent docs to archive",
                     "type": "integer"
                 },
                 "max_wait_for_compaction_pids": {
                     "default": 360000,
-                    "description": "kazoo_couch max wait for compaction pids",
+                    "description": "kazoo_couch maximum wait for compaction pids",
                     "type": "integer"
                 },
                 "min_data_size": {
                     "default": 131072,
-                    "description": "kazoo_couch min data size",
+                    "description": "kazoo_couch minimum data size",
                     "type": "integer"
                 },
                 "min_ratio": {
                     "default": 1.2,
-                    "description": "kazoo_couch min ratio",
+                    "description": "kazoo_couch minimum ratio",
                     "type": "number"
                 },
                 "sleep_between_compaction": {
@@ -8460,7 +8460,7 @@
             "properties": {
                 "max_length": {
                     "default": 3600,
-                    "description": "kzt_twiml_util max length",
+                    "description": "kzt_twiml_util maximum length",
                     "type": "integer"
                 }
             },
@@ -8501,7 +8501,7 @@
                 },
                 "max_recording_time_limit": {
                     "default": 600,
-                    "description": "media max recording time limit",
+                    "description": "media maximum recording time limit",
                     "type": "integer"
                 },
                 "normalize_destination_args": {
@@ -8553,7 +8553,7 @@
                 },
                 "record_min_sec": {
                     "default": 0,
-                    "description": "media record min sec",
+                    "description": "media record minimum sec",
                     "type": "integer"
                 },
                 "ssl_cert": {
@@ -9943,12 +9943,12 @@
                 },
                 "max_shortdial_correction": {
                     "default": 5,
-                    "description": "stepswitch max shortdial correction",
+                    "description": "stepswitch maximum shortdial correction",
                     "type": "integer"
                 },
                 "min_shortdial_correction": {
                     "default": 2,
-                    "description": "stepswitch min shortdial correction",
+                    "description": "stepswitch minimum shortdial correction",
                     "type": "integer"
                 },
                 "route_by": {
@@ -10056,7 +10056,7 @@
                         "max_bucket_tokens": {
                             "properties": {
                                 "default": 100,
-                                "description": "token_buckets max bucket tokens",
+                                "description": "token_buckets maximum bucket tokens",
                                 "type": "integer"
                             }
                         },

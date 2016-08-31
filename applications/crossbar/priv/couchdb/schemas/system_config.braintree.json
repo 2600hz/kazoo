@@ -20,12 +20,12 @@
         },
         "max_amount": {
             "default": 200.0,
-            "description": "braintree max amount",
+            "description": "braintree maximum amount",
             "type": "number"
         },
         "min_amount": {
             "default": 5.0,
-            "description": "braintree min amount",
+            "description": "braintree minimum amount",
             "type": "number"
         },
         "should_prorate": {

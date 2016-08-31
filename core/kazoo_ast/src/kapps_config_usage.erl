@@ -330,6 +330,8 @@ guess_description(Key) ->
          <<"s">> -> <<"in seconds">>;
          <<"ms">> -> <<"in milliseconds">>;
          <<"d">> -> <<"in days">>;
+         <<"max">> -> <<"maximum">>;
+         <<"min">> -> <<"minimum">>;
          _ -> Word
      end
      || Word <- binary:split(Key, <<$_>>, ['global'])

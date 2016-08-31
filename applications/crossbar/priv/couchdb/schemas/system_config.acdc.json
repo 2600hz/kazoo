@@ -40,12 +40,12 @@
         },
         "max_connect_failures": {
             "default": 3,
-            "description": "acdc max connect failures",
+            "description": "acdc maximum connect failures",
             "type": "integer"
         },
         "max_result_set": {
             "default": 25,
-            "description": "acdc max result set",
+            "description": "acdc maximum result set",
             "type": "integer"
         },
         "queue_collect_resp_timeout": {

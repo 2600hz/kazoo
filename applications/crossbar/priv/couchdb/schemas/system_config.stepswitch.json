@@ -100,12 +100,12 @@
         },
         "max_shortdial_correction": {
             "default": 5,
-            "description": "stepswitch max shortdial correction",
+            "description": "stepswitch maximum shortdial correction",
             "type": "integer"
         },
         "min_shortdial_correction": {
             "default": 2,
-            "description": "stepswitch min shortdial correction",
+            "description": "stepswitch minimum shortdial correction",
             "type": "integer"
         },
         "route_by": {

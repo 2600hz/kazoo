@@ -41,7 +41,7 @@
         },
         "min_bucket_cost": {
             "default": 5,
-            "description": "callflow min bucket cost",
+            "description": "callflow minimum bucket cost",
             "type": "integer"
         },
         "mwi_send_unsoliciated_updates": {
@@ -88,28 +88,28 @@
                 "max_box_number_length": {
                     "properties": {
                         "default": 15,
-                        "description": "callflow max box number length",
+                        "description": "callflow maximum box number length",
                         "type": "integer"
                     }
                 },
                 "max_message_count": {
                     "properties": {
                         "default": 100,
-                        "description": "callflow max message count",
+                        "description": "callflow maximum message count",
                         "type": "integer"
                     }
                 },
                 "max_message_length": {
                     "properties": {
                         "default": 500,
-                        "description": "callflow max message length",
+                        "description": "callflow maximum message length",
                         "type": "integer"
                     }
                 },
                 "max_pin_length": {
                     "properties": {
                         "default": 6,
-                        "description": "callflow max pin length",
+                        "description": "callflow maximum pin length",
                         "type": "integer"
                     }
                 },
@@ -123,7 +123,7 @@
                 "min_message_size": {
                     "properties": {
                         "default": 500,
-                        "description": "callflow min message size",
+                        "description": "callflow minimum message size",
                         "type": "integer"
                     }
                 },
