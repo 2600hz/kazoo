@@ -120,8 +120,8 @@ find_fold(_Carrier, _, _, Acc=#{should_continue := ShouldContinue
   when ShouldContinue == 'false'; Left < 1 ->
     lager:debug("stopping ~s with ~p (~p) numbers found", [_Carrier, _Count, Left]),
     Acc;
-find_fold(Carrier, NormalizedNumber, Options, Acc=#{left := Quantity}) ->
-    try Carrier:find_numbers(NormalizedNumber, Quantity, Options) of
+find_fold(Carrier, Prefix, Options, Acc=#{left := Quantity}) ->
+    try Carrier:find_numbers(Prefix, Quantity, Options) of
         {'ok', []} -> Acc;
         {'ok', Numbers} -> process_carrier_results(Numbers, Acc);
         {'bulk', []} -> Acc;

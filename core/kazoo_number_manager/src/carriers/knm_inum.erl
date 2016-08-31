@@ -46,17 +46,17 @@ is_local() -> 'true'.
 -spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
-find_numbers(<<"+", _/binary>>=Number, Quantity, Options) ->
+find_numbers(<<"+", _/binary>>=Prefix, Quantity, Options) ->
     AccountId = knm_carriers:account_id(Options),
-    find_numbers_in_account(Number, Quantity, AccountId, Options);
-find_numbers(Number, Quantity, Options) ->
-    find_numbers(<<"+",Number/binary>>, Quantity, Options).
+    find_numbers_in_account(Prefix, Quantity, AccountId, Options);
+find_numbers(Prefix, Quantity, Options) ->
+    find_numbers(<<"+",Prefix/binary>>, Quantity, Options).
 
 -spec find_numbers_in_account(ne_binary(), pos_integer(), api_binary(), knm_carriers:options()) ->
                                      {'ok', knm_number:knm_numbers()} |
                                      {'error', any()}.
-find_numbers_in_account(Number, Quantity, AccountId, Options) ->
-    case do_find_numbers_in_account(Number, Quantity, AccountId) of
+find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
+    case do_find_numbers_in_account(Prefix, Quantity, AccountId) of
         {'error', 'not_available'}=Error ->
             ResellerId = knm_carriers:reseller_id(Options),
             case AccountId =:= 'undefined'
@@ -64,7 +64,7 @@ find_numbers_in_account(Number, Quantity, AccountId, Options) ->
             of
                 'true' -> Error;
                 'false' ->
-                    find_numbers_in_account(Number, Quantity, ResellerId, Options)
+                    find_numbers_in_account(Prefix, Quantity, ResellerId, Options)
             end;
         Result -> Result
     end.
@@ -72,9 +72,9 @@ find_numbers_in_account(Number, Quantity, AccountId, Options) ->
 -spec do_find_numbers_in_account(ne_binary(), pos_integer(), api_binary()) ->
                                         {'ok', knm_number:knm_numbers()} |
                                         {'error', any()}.
-do_find_numbers_in_account(Number, Quantity, AccountId) ->
-    ViewOptions = [{'startkey', [AccountId, ?NUMBER_STATE_AVAILABLE, Number]}
-                  ,{'endkey', [AccountId, ?NUMBER_STATE_AVAILABLE, <<Number/binary,"\ufff0">>]}
+do_find_numbers_in_account(Prefix, Quantity, AccountId) ->
+    ViewOptions = [{'startkey', [AccountId, ?NUMBER_STATE_AVAILABLE, Prefix]}
+                  ,{'endkey', [AccountId, ?NUMBER_STATE_AVAILABLE, <<Prefix/binary,"\ufff0">>]}
                   ,{'limit', Quantity}
                   ,'include_docs'
                   ],
