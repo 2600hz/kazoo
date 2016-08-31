@@ -279,11 +279,8 @@ handle_call({'conference_destroy', UUID}, _, State) ->
     _ = ets:select_delete(?PARTICIPANTS_TBL, MatchSpecP),
     {'reply', 'ok', State};
 handle_call({'participant_create', Props, Node, CallInfo}, _, State) ->
-    P = #participant{uuid=ParticipantId} = participant_from_props(Props, Node, CallInfo),
+    Participant = participant_from_props(Props, Node, CallInfo),
     UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
-    ConferenceId = props:get_value(<<"Conference-Name">>, Props),
-    IsModerator = conf_participant:moderator_status(ConferenceId, ParticipantId),
-    Participant = P#participant{ is_moderator = IsModerator },
     _ = ets:insert_new(?PARTICIPANTS_TBL, Participant),
     _ = case ets:lookup(?CONFERENCES_TBL, UUID) of
             [#conference{}] -> 'ok';
@@ -423,13 +420,14 @@ conference_from_props(Props, Node, Conference) ->
                          }.
 
 -spec participant_from_props(kz_proplist(), atom(), ne_binary()) -> participant().
-participant_from_props(Props, Node, CallInfo) ->
-    participant_from_props(Props, Node, CallInfo, #participant{}).
+participant_from_props(Props, Node, CCV) ->
+    participant_from_props(Props, Node, CCV, #participant{}).
 
 -spec participant_from_props(kz_proplist(), atom(), ne_binary(), participant()) -> participant().
-participant_from_props(Props, Node, CallInfo, Participant) ->
+participant_from_props(Props, Node, CCV, Participant) ->
     Participant#participant{node=Node
-                           ,uuid=kz_json:get_value(<<"Call-ID">>, CallInfo)
+                           ,uuid=props:get_value(<<"Unique-ID">>, Props)
+                           ,is_moderator=kz_json:get_value(<<"Moderator">>, CCV)
                            ,conference_uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
                            ,conference_name=props:get_value(<<"Conference-Name">>, Props)
                            ,floor=props:get_is_true(<<"Floor">>, Props, 'false')
@@ -445,7 +443,7 @@ participant_from_props(Props, Node, CallInfo, Participant) ->
                            ,join_time=props:get_integer_value(<<"Join-Time">>, Props, kz_util:current_tstamp())
                            ,caller_id_number=props:get_value(<<"Caller-Caller-ID-Number">>, Props)
                            ,caller_id_name=props:get_value(<<"Caller-Caller-ID-Name">>, Props)
-                           ,call_info=kz_json:get_value(<<"Custom-Channel-Vars">>, CallInfo)
+                           ,call_info=CCV
                            }.
 
 -spec participants_to_json(participants(), kz_json:objects()) -> kz_json:objects().
@@ -493,7 +491,7 @@ participant_to_props(#participant{uuid=UUID
       ,{<<"Energy-Level">>, EnergyLevel}
       ,{<<"Current-Energy">>, CurrentEnergy}
       ,{<<"Video">>, Video}
-      ,{<<"Is-Moderator">>, IsMod}
+      ,{<<"Moderator">>, IsMod}
       ,{<<"Join-Time">>, JoinTime}
       ,{<<"Caller-ID-Name">>, CallerIDName}
       ,{<<"Caller-ID-Number">>, CallerIDNumber}

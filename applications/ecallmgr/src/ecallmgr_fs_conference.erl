@@ -265,9 +265,9 @@ finalize_processing(_, _) -> 'ok'.
                                        {'continue', kz_proplist()} |
                                        'continue' |
                                        'stop'.
-process_participant_event(<<"add-member">>, Props, Node, CallId) ->
-    CallInfo = request_call_details(CallId),
-    #participant{is_moderator=IsModerator} = ecallmgr_fs_conferences:participant_create(Props, Node, CallInfo),
+process_participant_event(<<"add-member">>, Props, Node, _CallId) ->
+    CCV = ecallmgr_util:custom_channel_vars(Props),
+    _ = #participant{is_moderator=IsModerator} = ecallmgr_fs_conferences:participant_create(Props, Node, kz_json:from_list(CCV)),
     {'continue', [{<<"Moderator">>, IsModerator}]};
 process_participant_event(<<"del-member">>, _Props, _Node, _CallId) -> 'continue';
 process_participant_event(<<"stop-talking">>, _, _, _) -> 'continue';
@@ -808,18 +808,12 @@ relay_event(UUID, Node, Props) ->
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, Payload),
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)}, Payload).
 
--spec maybe_get_ccv(ne_binary()) -> kz_json:object().
-maybe_get_ccv(CallId) ->
-    case ecallmgr_fs_conferences:participant_get(CallId) of
-        #participant{call_info=CCV} -> CCV;
-        _ -> kz_json:new()
-    end.
-
 -spec publish_participant_event(boolean(), kz_proplist(), ne_binary(), kz_proplist()) -> ok | skip.
 publish_participant_event(true=_Publish, Event, CallId, Props) ->
+    CCV = ecallmgr_util:custom_channel_vars(Props),
     Ev = [{<<"Event-Category">>, <<"conference">>}
          ,{<<"Event-Name">>, <<"participant_event">>}
-         ,{<<"Custom-Channel-Vars">>, maybe_get_ccv(CallId)}
+         ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCV)}
           | Event],
     ConferenceId = props:get_value(<<"Conference-Name">>, Props),
     Publisher = fun(P) -> kapi_conference:publish_participant_event(ConferenceId, CallId, P) end,
@@ -827,15 +821,3 @@ publish_participant_event(true=_Publish, Event, CallId, Props) ->
     ok;
 publish_participant_event(_, _, _, _) -> 'skip'.
 
--spec request_call_details(CallId :: ne_binary()) ->  kz_json:object().
-request_call_details(CallId) ->
-    Req = [{<<"Call-ID">>, CallId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    case kapps_util:amqp_pool_request(Req
-                                     ,fun kapi_call:publish_channel_status_req/1
-                                     ,fun kapi_call:channel_status_resp_v/1
-                                     ) of
-        {'error', _E} -> kz_json:new();
-        {'ok', Resp} -> Resp
-    end.
