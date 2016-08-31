@@ -42,23 +42,26 @@ is_local() -> 'true'.
 -spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
-find_numbers(Number, Quantity, Options) ->
+find_numbers(Prefix, Quantity, Options) ->
     case knm_carriers:account_id(Options) of
         'undefined' -> {'error', 'not_available'};
-        AccountId -> do_find_numbers(Number, Quantity, AccountId)
+        AccountId ->
+            Offset = knm_carriers:offset(Options),
+            do_find_numbers(Prefix, Quantity, Offset, AccountId)
     end.
 
--spec do_find_numbers(ne_binary(), pos_integer(), ne_binary()) ->
+-spec do_find_numbers(ne_binary(), pos_integer(), non_neg_integer(), ne_binary()) ->
                              {'ok', knm_number:knm_numbers()} |
                              {'error', any()}.
-do_find_numbers(<<"+",_/binary>>=Number, Quantity, AccountId)
+do_find_numbers(<<"+",_/binary>>=Prefix, Quantity, Offset, AccountId)
   when is_integer(Quantity), Quantity > 0 ->
-    ViewOptions = [{'startkey', [?NUMBER_STATE_AVAILABLE, Number]}
+    ViewOptions = [{'startkey', [?NUMBER_STATE_AVAILABLE, Prefix]}
                   ,{'endkey', [?NUMBER_STATE_AVAILABLE, <<"\ufff0">>]}
                   ,{'limit', Quantity}
+                  ,{skip, Offset}
                   ],
     case
-        'undefined' /= (DB = knm_converters:to_db(Number))
+        'undefined' /= (DB = knm_converters:to_db(Prefix))
         andalso kz_datamgr:get_results(DB, <<"numbers/status">>, ViewOptions)
     of
         'false' -> {'error', 'not_available'};
@@ -68,24 +71,23 @@ do_find_numbers(<<"+",_/binary>>=Number, Quantity, AccountId)
         {'ok', JObjs} ->
             lager:debug("found available local numbers for account ~s", [AccountId]),
             Numbers = format_numbers(JObjs),
-            find_more(Quantity, AccountId, length(Numbers), Numbers);
+            find_more(Prefix, Quantity, Offset, AccountId, length(Numbers), Numbers);
         {'error', _R}=E ->
             lager:debug("failed to lookup available local numbers: ~p", [_R]),
             E
     end;
-do_find_numbers(_, _, _) ->
+do_find_numbers(_, _, _, _) ->
     {'error', 'not_available'}.
 
--spec find_more(pos_integer(), ne_binary(), pos_integer(), knm_number:knm_numbers()) ->
+-spec find_more(ne_binary(), pos_integer(), non_neg_integer(), ne_binary(), pos_integer(), knm_number:knm_numbers()) ->
                        knm_number:knm_numbers().
-find_more(Quantity, AccountId, NotEnough, Numbers)
+find_more(Prefix, Quantity, Offset, AccountId, NotEnough, Numbers)
   when NotEnough < Quantity ->
-    NewStart = bump(knm_phone_number:number(knm_number:phone_number(lists:last(Numbers)))),
-    case do_find_numbers(NewStart, Quantity - NotEnough, AccountId) of
+    case do_find_numbers(Prefix, Quantity - NotEnough, Offset + NotEnough, AccountId) of
         {'ok', MoreNumbers} -> {'ok', Numbers ++ MoreNumbers};
         _Error -> {'ok', Numbers}
     end;
-find_more(_, _, _Enough, Numbers) ->
+find_more(_, _, _, _, _Enough, Numbers) ->
     {'ok', Numbers}.
 
 -spec format_numbers(kz_json:objects()) -> knm_number:knm_numbers().
@@ -94,11 +96,6 @@ format_numbers(JObjs) ->
     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ],
     [Number || {_Num,{'ok',Number}} <- knm_numbers:get(Nums, Options)].
-
--spec bump(ne_binary()) -> ne_binary().
-bump(<<"+", Num/binary>>) ->
-    Bumped = erlang:integer_to_binary(1 + erlang:binary_to_integer(Num)),
-    <<"+", Bumped/binary>>.
 
 %%--------------------------------------------------------------------
 %% @public
