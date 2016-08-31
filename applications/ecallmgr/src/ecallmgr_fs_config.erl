@@ -396,6 +396,7 @@ fix_conference_profile(Name, Profile) ->
                ,fun maybe_set_verbose_events/1
                ,{fun kz_json:set_value/3, <<"caller-controls">>, <<"caller-controls">>}
                ,{fun kz_json:set_value/3, <<"moderator-controls">>, <<"moderator-controls">>}
+               ,{fun kz_json:set_value/3, <<"verbose-events">>, <<"true">>}
                ],
     {Name, kz_json:exec(Routines, Profile)}.
 
