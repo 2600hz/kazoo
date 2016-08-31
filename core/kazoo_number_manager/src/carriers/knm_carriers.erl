@@ -86,8 +86,8 @@ find(Prefix, Quantity) ->
 
 find(Prefix, Quantity, Options) ->
     NormalizedPrefix = <<(knm_util:prefix_for_country(country(Options)))/binary
-               ,(prefix(Options, Prefix))/binary
-             >>,
+                         ,(prefix(Options, Prefix))/binary
+                       >>,
     Carriers = available_carriers(Options),
     lager:debug("contacting, in order: ~p", [Carriers]),
     Acc0 = #{found => []
