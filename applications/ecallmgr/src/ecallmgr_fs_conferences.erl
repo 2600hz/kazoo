@@ -436,7 +436,6 @@ participant_from_props(Props, Node, CCV, Participant) ->
                            ,talking=props:get_is_true(<<"Talking">>, Props, 'false')
                            ,mute_detect=props:get_is_true(<<"Mute-Detect">>, Props, 'false')
                            ,member_id=props:get_integer_value(<<"Member-ID">>, Props, 0)
-                           ,member_type=props:get_value(<<"Member-Type">>, Props)
                            ,energy_level=props:get_integer_value(<<"Energy-Level">>, Props, 0)
                            ,current_energy=props:get_integer_value(<<"Current-Energy">>, Props, 0)
                            ,video=props:get_is_true(<<"Video">>, Props, 'false')
@@ -466,7 +465,6 @@ participant_to_props(#participant{uuid=UUID
                                  ,talking=Talking
                                  ,mute_detect=MuteDetect
                                  ,member_id=MemberId
-                                 ,member_type=MemberType
                                  ,energy_level=EnergyLevel
                                  ,current_energy=CurrentEnergy
                                  ,video=Video
@@ -487,7 +485,6 @@ participant_to_props(#participant{uuid=UUID
       ,{<<"Talking">>, Talking}
       ,{<<"Mute-Detect">>, MuteDetect}
       ,{<<"Participant-ID">>, MemberId}
-      ,{<<"Participant-Type">>, MemberType}
       ,{<<"Energy-Level">>, EnergyLevel}
       ,{<<"Current-Energy">>, CurrentEnergy}
       ,{<<"Video">>, Video}

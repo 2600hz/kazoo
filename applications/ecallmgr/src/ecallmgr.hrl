@@ -127,7 +127,6 @@
                      ,talking = 'false' :: boolean() | '_'
                      ,mute_detect = 'false' :: boolean() | '_'
                      ,member_id = 0 :: non_neg_integer() | '_'
-                     ,member_type :: api_binary() | '_'
                      ,energy_level = 0 :: non_neg_integer() | '_'
                      ,volume_level = 0 :: non_neg_integer() | '_'
                      ,gain_level = 0 :: non_neg_integer() | '_'
