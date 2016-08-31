@@ -377,7 +377,7 @@ offset(Options) -> props:get_integer_value('offset', Options, 0).
 -spec blocks(options()) -> boolean().
 blocks(Options) -> props:get_value('blocks', Options).
 
--spec account_id(options()) -> ne_binary().
+-spec account_id(options()) -> api_ne_binary().
 account_id(Options) -> props:get_value('account_id', Options).
 
 -spec reseller_id(options()) -> ne_binary().
