@@ -51,7 +51,6 @@
 
 -define(MAX_TOKENS, kapps_config:get_integer(?PHONE_NUMBERS_CONFIG_CAT, <<"activations_per_day">>, 100)).
 
--define(DEFAULT_COUNTRY, <<"US">>).
 -define(PREFIX, <<"prefix">>).
 -define(COUNTRY, <<"country">>).
 
@@ -370,15 +369,14 @@ read(Context, Number) ->
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
     Options = get_find_numbers_req(Context),
-    Context1 = cb_context:set_req_data(Context, kz_json:from_list(Options)),
-    CountryPrefix = knm_util:prefix_for_country(knm_carriers:country(Options)),
-    Prefix = <<CountryPrefix/binary, (knm_carriers:prefix(Options))/binary>>,
     OnSuccess =
         fun(C) ->
                 lager:debug("carriers find: ~p", [Options]),
+                Prefix = knm_carriers:prefix(Options),
+                Quantity = knm_carriers:quantity(Options),
                 Found =
                     [kz_json:get_value(<<"number">>, JObj)
-                     || JObj <- knm_carriers:find(Prefix, knm_carriers:quantity(Options), Options)
+                     || JObj <- knm_carriers:find(Prefix, Quantity, Options)
                     ],
                 cb_context:setters(C
                                   ,[{fun cb_context:set_resp_data/2, Found}
@@ -386,6 +384,7 @@ find_numbers(Context) ->
                                    ])
         end,
     Schema = kz_json:decode(?FIND_NUMBER_SCHEMA),
+    Context1 = cb_context:set_req_data(Context, kz_json:from_list(Options)),
     cb_context:validate_request_data(Schema, Context1, OnSuccess).
 
 -spec get_find_numbers_req(cb_context:context()) -> kz_json:object().
@@ -393,7 +392,7 @@ get_find_numbers_req(Context) ->
     QS = cb_context:query_string(Context),
     [{'quantity', kz_json:get_ne_value(<<"quantity">>, QS, 1)}
     ,{'prefix', kz_json:get_ne_value(?PREFIX, QS)}
-    ,{'country', kz_json:get_ne_value(?COUNTRY, QS, ?DEFAULT_COUNTRY)}
+    ,{'country', kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY)}
     ,{'offset', kz_json:get_integer_value(<<"offset">>, QS, 0)}
     ,{'account_id', cb_context:auth_account_id(Context)}
     ,{'reseller_id', cb_context:reseller_id(Context)}

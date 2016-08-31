@@ -55,7 +55,6 @@
 -define(SCHEMA_PHONE_NUMBERS, <<"phone_numbers">>).
 -define(SCHEMA_FIND_NUMBERS, <<"find_numbers">>).
 
--define(DEFAULT_COUNTRY, <<"US">>).
 -define(KEY_PHONEBOOK_FREE_URL, <<"phonebook_url">>).
 -define(PREFIX, <<"prefix">>).
 -define(QUANTITY, <<"quantity">>).
@@ -557,18 +556,18 @@ normalize_port_view_result(JObj) ->
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
     Options = get_find_numbers_req(Context),
-    Context1 = cb_context:set_req_data(Context, kz_json:from_list(Options)),
-    CountryPrefix = knm_util:prefix_for_country(knm_carriers:country(Options)),
-    Prefix = <<CountryPrefix/binary, (knm_carriers:prefix(Options))/binary>>,
     OnSuccess =
         fun(C) ->
                 lager:debug("carriers find: ~p", [Options]),
-                Found = knm_carriers:find(Prefix, knm_carriers:quantity(Options), Options),
+                Prefix = knm_carriers:prefix(Options),
+                Quantity = knm_carriers:quantity(Options),
+                Found = knm_carriers:find(Prefix, Quantity, Options),
                 cb_context:setters(C
                                   ,[{fun cb_context:set_resp_data/2, Found}
                                    ,{fun cb_context:set_resp_status/2, 'success'}
                                    ])
         end,
+    Context1 = cb_context:set_req_data(Context, kz_json:from_list(Options)),
     cb_context:validate_request_data(?SCHEMA_FIND_NUMBERS, Context1, OnSuccess).
 
 -spec get_find_numbers_req(cb_context:context()) -> knm_carriers:options().
@@ -580,7 +579,7 @@ get_find_numbers_req(Context) ->
     QS = cb_context:query_string(Context),
     [{'quantity', max(1, kz_json:get_integer_value(?QUANTITY, QS, 1))}
     ,{'prefix', kz_json:get_ne_value(?PREFIX, QS)}
-    ,{'country', kz_json:get_ne_value(?COUNTRY, QS, ?DEFAULT_COUNTRY)}
+    ,{'country', kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY)}
     ,{'offset', kz_json:get_integer_value(?OFFSET, QS, 0)}
     ,{'account_id', AccountId}
     ,{'reseller_id', cb_context:reseller_id(Context)}
@@ -681,7 +680,7 @@ get_prefix(City) ->
         Url ->
             Country = kapps_config:get_string(?PHONE_NUMBERS_CONFIG_CAT
                                              ,<<"default_country">>
-                                             ,?DEFAULT_COUNTRY
+                                             ,?KNM_DEFAULT_COUNTRY
                                              ),
             knm_locality:prefix(Url, Country, City)
     end.

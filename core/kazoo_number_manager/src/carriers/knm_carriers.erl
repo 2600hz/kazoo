@@ -20,7 +20,7 @@
         ,disconnect/1
 
         ,quantity/1
-        ,prefix/1
+        ,prefix/1, prefix/2
         ,country/1
         ,offset/1
         ,blocks/1
@@ -85,7 +85,10 @@ find(Num, Quantity) ->
     find(Num, Quantity, []).
 
 find(Num, Quantity, Options) ->
-    NormalizedNumber = knm_converters:normalize(Num),
+    Prefix = <<(knm_util:prefix_for_country(country(Options)))/binary
+               ,(prefix(Options, Num))/binary
+             >>,
+    NormalizedNumber = knm_converters:normalize(Prefix),
     Carriers = available_carriers(Options),
     lager:debug("contacting, in order: ~p", [Carriers]),
     Acc0 = #{found => []
@@ -363,25 +366,40 @@ create_found(DID=?NE_BINARY, Carrier, ?MATCH_ACCOUNT_RAW(AuthBy), Data, State=?N
 
 
 -spec quantity(options()) -> pos_integer().
-quantity(Options) -> props:get_integer_value('quantity', Options).
+quantity(Options) ->
+    props:get_integer_value('quantity', Options, 1).
 
 -spec prefix(options()) -> ne_binary().
-prefix(Options) -> props:get_value('prefix', Options).
+-spec prefix(options(), ne_binary()) -> ne_binary().
+prefix(Options) ->
+    props:get_ne_binary_value('prefix', Options).
+prefix(Options, Default) ->
+    props:get_ne_binary_value('prefix', Options, Default).
 
--spec country(options()) -> knm_util:country().
-country(Options) -> props:get_value('country', Options).
+-spec country(options()) -> knm_util:country_iso3166a2().
+country(Options) ->
+    case props:get_ne_binary_value('country', Options, ?KNM_DEFAULT_COUNTRY) of
+        <<_:8, _:8>>=Country -> Country;
+        _Else ->
+            lager:debug("~p is not iso3166a2, using default"),
+            ?KNM_DEFAULT_COUNTRY
+    end.
 
 -spec offset(options()) -> non_neg_integer().
-offset(Options) -> props:get_integer_value('offset', Options, 0).
+offset(Options) ->
+    props:get_integer_value('offset', Options, 0).
 
 -spec blocks(options()) -> boolean().
-blocks(Options) -> props:get_value('blocks', Options).
+blocks(Options) ->
+    props:get_value('blocks', Options).
 
 -spec account_id(options()) -> api_ne_binary().
-account_id(Options) -> props:get_value('account_id', Options).
+account_id(Options) ->
+    props:get_value('account_id', Options).
 
 -spec reseller_id(options()) -> ne_binary().
-reseller_id(Options) -> props:get_value('reseller_id', Options).
+reseller_id(Options) ->
+    props:get_value('reseller_id', Options).
 
 
 %%%===================================================================

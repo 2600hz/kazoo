@@ -22,14 +22,13 @@
 
 -include("knm.hrl").
 
--define(DEFAULT_COUNTRY, <<"US">>).
 -define(KNM_OTHER_CONFIG_CAT, <<?KNM_CONFIG_CAT/binary, ".other">>).
 
 -ifdef(TEST).
--define(COUNTRY, ?DEFAULT_COUNTRY).
+-define(COUNTRY, ?KNM_DEFAULT_COUNTRY).
 -else.
 -define(COUNTRY
-       ,kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY)).
+       ,kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?KNM_DEFAULT_COUNTRY)).
 -endif.
 
 -ifdef(TEST).
@@ -87,7 +86,7 @@ check_numbers(Numbers, _Options) ->
     case kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
         'undefined' -> {'error', 'not_available'};
         Url ->
-            DefaultCountry = kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
+            DefaultCountry = kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?KNM_DEFAULT_COUNTRY),
             ReqBody = kz_json:set_value(<<"data">>, FormatedNumbers, kz_json:new()),
             Uri = <<Url/binary,  "/numbers/", DefaultCountry/binary, "/status">>,
             lager:debug("making request to ~s with body ~p", [Uri, ReqBody]),
@@ -123,7 +122,7 @@ is_number_billable(_Number) -> 'true'.
                             knm_number:knm_number().
 acquire_number(Number) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
-    DefaultCountry = kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
+    DefaultCountry = kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?KNM_DEFAULT_COUNTRY),
     case kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
         'undefined' ->
             knm_errors:unspecified('missing_provider_url', Num);
@@ -279,7 +278,7 @@ get_blocks(?BLOCK_PHONEBOOK_URL, _Number, _Quantity, Options) ->
 get_blocks(Url, Number, Quantity, Options) ->
     Offset = props:get_binary_value('offset', Options, <<"0">>),
     Limit = props:get_binary_value('blocks', Options, <<"0">>),
-    Country = kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
+    Country = kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?KNM_DEFAULT_COUNTRY),
     ReqBody = <<"?prefix=", (kz_util:uri_encode(Number))/binary
                 ,"&size=", (kz_util:to_binary(Quantity))/binary
                 ,"&offset=", Offset/binary

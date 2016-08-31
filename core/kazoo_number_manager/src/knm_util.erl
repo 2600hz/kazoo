@@ -18,8 +18,8 @@
 
 -include("knm.hrl").
 
--type country() :: <<_:(8*2)>>.
--export_type([country/0]).
+-type country_iso3166a2() :: <<_:(8*2)>>.
+-export_type([country_iso3166a2/0]).
 
 
 -spec get_all_number_dbs() -> ne_binaries().
@@ -135,6 +135,6 @@ read_fixture({'error', 'enoent'}, F) ->
 %% TODO
 %% This should be replaced with a call to elibphonenumber
 %% when/if we integrate that lib or do it ourselves
--spec prefix_for_country(ne_binary()) -> ne_binary().
+-spec prefix_for_country(country_iso3166a2()) -> ne_binary().
 prefix_for_country(Country) ->
     knm_iso3166a2_itu:to_itu(kz_util:to_upper_binary(Country)).
