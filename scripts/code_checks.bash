@@ -16,10 +16,10 @@ function check_MODULE {
     P 'Check for uses of module in lieu of ?MODULE'
     local errors=0
     for f in "$@"; do
-        m0=$(grep -E module'\(' "$f"  2>/dev/null)
-        [[ $? -ne 0 ]] && continue
+        base=$(basename "$f")
+        [[ 'erl' != ${base##*.} ]] && continue
         local err=0
-        m=$(echo $m0 | cut -d'(' -f2 | cut -d')' -f1)
+        m=$(grep -Fe '-module(' "$f"  2>/dev/null | cut -d'(' -f2 | cut -d')' -f1)
         grep -nE '^[^%]*[^a-zA-Z0-9_]'$m: "$f"
         [[ $? -ne 1 ]] && ((err++))
         grep -nE "^[^%]*'$m'" "$f"
