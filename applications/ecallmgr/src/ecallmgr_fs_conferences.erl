@@ -278,8 +278,8 @@ handle_call({'conference_destroy', UUID}, _, State) ->
     MatchSpecP = [{#participant{conference_uuid=UUID, _ = '_'}, [], ['true']}],
     _ = ets:select_delete(?PARTICIPANTS_TBL, MatchSpecP),
     {'reply', 'ok', State};
-handle_call({'participant_create', Props, Node, CallInfo}, _, State) ->
-    Participant = participant_from_props(Props, Node, CallInfo),
+handle_call({'participant_create', Props, Node}, _, State) ->
+    Participant = participant_from_props(Props, Node),
     _ = ets:insert_new(?PARTICIPANTS_TBL, Participant),
     UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
     _ = case ets:lookup(?CONFERENCES_TBL, UUID) of
@@ -419,12 +419,12 @@ conference_from_props(Props, Node, Conference) ->
                          ,switch_external_ip=ecallmgr_fs_nodes:sip_external_ip(Node)
                          }.
 
--spec participant_from_props(kz_proplist(), atom(), ne_binary()) -> participant().
-participant_from_props(Props, Node, CCV) ->
-    participant_from_props(Props, Node, CCV, #participant{}).
+-spec participant_from_props(kz_proplist(), atom()) -> participant().
+participant_from_props(Props, Node) ->
+    participant_from_props(Props, Node, #participant{}).
 
--spec participant_from_props(kz_proplist(), atom(), ne_binary(), participant()) -> participant().
-participant_from_props(Props, Node, CCV, Participant) ->
+-spec participant_from_props(kz_proplist(), atom(), participant()) -> participant().
+participant_from_props(Props, Node, Participant) ->
     ConfVars = ecallmgr_util:channel_conference_vars(Props),
     Participant#participant{node=Node
                            ,uuid=props:get_value(<<"Unique-ID">>, Props)
@@ -444,7 +444,7 @@ participant_from_props(Props, Node, CCV, Participant) ->
                            ,join_time=props:get_integer_value(<<"Join-Time">>, Props, kz_util:current_tstamp())
                            ,caller_id_number=props:get_value(<<"Caller-Caller-ID-Number">>, Props)
                            ,caller_id_name=props:get_value(<<"Caller-Caller-ID-Name">>, Props)
-                           ,ccv=CCV
+                           ,ccv=ecallmgr_util:custom_channel_vars(Props)
                            }.
 
 -spec participants_to_json(participants(), kz_json:objects()) -> kz_json:objects().

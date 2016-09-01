@@ -266,8 +266,7 @@ finalize_processing(_, _) -> 'ok'.
                                        'continue' |
                                        'stop'.
 process_participant_event(<<"add-member">>, Props, Node, _CallId) ->
-    CCV = ecallmgr_util:custom_channel_vars(Props),
-    _ = ecallmgr_fs_conferences:participant_create(Props, Node, kz_json:from_list(CCV)),
+    _ = ecallmgr_fs_conferences:participant_create(Props, Node),
     'continue';
 process_participant_event(<<"del-member">>, _Props, _Node, _CallId) -> 'continue';
 process_participant_event(<<"stop-talking">>, _, _, _) -> 'continue';
