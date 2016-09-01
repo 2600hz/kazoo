@@ -2,6 +2,7 @@ ROOT = .
 RELX = $(ROOT)/deps/relx
 ELVIS = $(ROOT)/deps/elvis
 FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
+QUOTE = $(ROOT)/make/quote-tool/fmt
 
 KAZOODIRS = core/Makefile applications/Makefile
 
@@ -173,6 +174,13 @@ $(FMT):
 fmt: TO_FMT ?= $(shell find applications core -iname '*.erl' -or -iname '*.hrl' -or -iname '*.app.src')
 fmt: $(FMT)
 	@$(FMT) $(TO_FMT)
+
+$(QUOTE):
+	git clone https://github.com/jamhed/erl-tools $(ROOT)/make/quote-tool
+
+quote: TMPFILE:=$(shell mktemp quote.XXXXXX)
+quote: $(QUOTE)
+	$(QUOTE) tick $(TO_QUOTE) > $(TMPFILE) && mv $(TMPFILE) $(TO_QUOTE)
 
 code_checks:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
