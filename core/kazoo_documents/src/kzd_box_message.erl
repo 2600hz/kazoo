@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kzd_box_message).
 
--export([new/2, build_metadata_object/6
+-export([new/2, build_metadata_object/6, fake_private_media/3
         ,count_folder/2
         ,create_message_name/3
         ,type/0
@@ -59,12 +59,17 @@
 -define(KEY_META_LENGTH, <<"length">>).
 
 -define(PVT_TYPE, <<"mailbox_message">>).
+-define(PVT_LEGACY_TYPE, <<"private_media">>).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Generate a mailbox message doc with the given properties
 %% expected options in Props:
-%%    [{<<"Box-Id">>, BoxId}]
+%%    [{<<"Attachment-Name">>, AttachmentName}
+%%    ,{<<"Box-Id">>, BoxId}
+%%    ,{<<"Box-Num">>, BoxNum}
+%%    ,{<<"Timezone">>, Timezone}
+%%    ]
 %% @end
 %%--------------------------------------------------------------------
 -spec new(ne_binary(), kz_proplist()) -> doc().
@@ -95,6 +100,27 @@ new(AccountId, Props) ->
                  ]),
     kz_doc:update_pvt_parameters(
       kz_json:from_list(DocProps), Db, [{'type', type()}]
+     ).
+
+-spec fake_private_media(ne_binary(), ne_binary(), doc()) -> doc().
+fake_private_media(AccountId, BoxId, MsgJObj) ->
+    Db = kvm_util:get_db(AccountId),
+    MediaId = media_id(MsgJObj),
+    UtcSeconds = kz_json:get_integer_value(?KEY_META_TIMESTAMP, MsgJObj),
+    Name = create_message_name(<<"unknown">>, 'undefined', UtcSeconds),
+
+    DocProps = props:filter_undefined(
+                 [{<<"_id">>, MediaId}
+                 ,{?KEY_NAME, Name}
+                 ,{?KEY_DESC, <<"mailbox message media">>}
+                 ,{?KEY_SOURCE_TYPE, ?KEY_VOICEMAIL}
+                 ,{?KEY_SOURCE_ID, BoxId}
+                 ,{?KEY_MEDIA_SOURCE, <<"recording">>}
+                 ,{?KEY_UTC_SEC, UtcSeconds}
+                 ,{?KEY_METADATA, MsgJObj}
+                 ]),
+    kz_doc:update_pvt_parameters(
+      kz_json:from_list(DocProps), Db, [{'type', ?PVT_LEGACY_TYPE}]
      ).
 
 %%--------------------------------------------------------------------

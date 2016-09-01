@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kvm_util).
 
--export([get_db/1, get_db/2
+-export([get_db/1, get_db/2, get_range_db/1, get_range_db/2
         ,open_modb_doc/3, open_accountdb_doc/3
         ,update_result/2, bulk_update_result/2, bulk_update_result/3
         ,retry_conflict/1, check_doc_type/3
@@ -32,10 +32,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec get_db(ne_binary()) -> ne_binary().
+-spec get_db(ne_binary(), kazoo_data:docid() | kz_json:object()) -> ne_binary().
+-spec get_db(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 get_db(AccountId) ->
     kz_util:format_account_db(AccountId).
 
--spec get_db(ne_binary(), kazoo_data:docid() | kz_json:object()) -> ne_binary().
 get_db(AccountId, {_, ?MATCH_MODB_PREFIX(Year, Month, _)}) ->
     get_db(AccountId, Year, Month);
 get_db(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)) ->
@@ -45,9 +46,25 @@ get_db(AccountId, ?NE_BINARY = _DocId) ->
 get_db(AccountId, Doc) ->
     get_db(AccountId, kz_doc:id(Doc)).
 
--spec get_db(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 get_db(AccountId, Year, Month) ->
     kazoo_modb:get_modb(AccountId, kz_util:to_integer(Year), kz_util:to_integer(Month)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Generate a range of database names
+%% Options:
+%%   'modb': only return modb range
+%% @end
+%%--------------------------------------------------------------------
+-spec get_range_db(ne_binary()) -> ne_binaries().
+-spec get_range_db(ne_binary(), atom()) -> ne_binaries().
+get_range_db(AccountId) ->
+    get_range_db(AccountId, 'modb') ++ [get_db(AccountId)].
+
+get_range_db(AccountId, 'modb') ->
+    To = kz_util:current_tstamp(),
+    From = To - ?RETENTION_DAYS(?RETENTION_DURATION),
+    lists:reverse([Db || Db <- kazoo_modb:get_range(AccountId, From, To)]).
 
 %%--------------------------------------------------------------------
 %% @public

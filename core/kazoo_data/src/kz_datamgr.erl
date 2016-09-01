@@ -1145,7 +1145,7 @@ get_single_result(DbName, DesignDoc, Options) ->
         {'ok', [Result]} -> {'ok', Result};
         {'ok', []} -> {'error', 'not_found'};
         {'ok', Results} ->
-            case props:is_true('first_when_multiple', Options) of
+            case props:is_true('first_when_multiple', Options, 'false') of
                 'true' -> {'ok', hd(Results)};
                 'false' -> {'error', 'multiple_results'}
             end;
