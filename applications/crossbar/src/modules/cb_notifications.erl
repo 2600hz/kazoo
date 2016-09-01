@@ -930,7 +930,7 @@ update_template(Context, Id, FileJObj) ->
                                 ,Contents
                                 ,Context
                                 ,Opts
-                                ).
+     ).
 
 -spec attachment_name_by_content_type(ne_binary()) -> ne_binary().
 attachment_name_by_content_type(CT) ->
