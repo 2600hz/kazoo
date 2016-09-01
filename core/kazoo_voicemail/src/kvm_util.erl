@@ -59,7 +59,7 @@ get_db(AccountId, Year, Month) ->
 -spec get_range_db(ne_binary()) -> ne_binaries().
 -spec get_range_db(ne_binary(), atom()) -> ne_binaries().
 get_range_db(AccountId) ->
-    get_range_db(AccountId, 'modb') ++ [kvm_util:get_db(AccountId)].
+    get_range_db(AccountId, 'modb') ++ [get_db(AccountId)].
 
 get_range_db(AccountId, 'modb') ->
     To = kz_util:current_tstamp(),
