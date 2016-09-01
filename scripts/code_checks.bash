@@ -39,8 +39,14 @@ function check_TABs {
     return $errors
 }
 
+function check_trailing_whitespace {
+    P 'Check for trailing whitespaces'
+    ! grep -Ern '\s$' --include '*.escript' --include '*.erl' --include '*.hrl' --include '*.app.src' -r $@
+}
+
 errs=0
 check_andalso_orelse "$@" || ((errs++))
 check_MODULE "$@" || ((errs++))
 check_TABs "$@" || ((errs++))
+check_trailing_whitespace "$@" || ((errs++))
 exit $errs
