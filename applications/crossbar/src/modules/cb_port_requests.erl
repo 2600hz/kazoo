@@ -831,7 +831,7 @@ private_comment_filter(Comment, Acc) ->
 
 -spec filter_private_comments(cb_context:context(), kz_json:object()) -> kz_json:object().
 filter_private_comments(Context, JObj) ->
-    case cb_modules_util:is_superduper_admin(Context) of
+    case cb_context:is_superduper_admin(Context) of
         'false' -> run_comment_filter(JObj);
         'true'  -> JObj
     end.
@@ -989,7 +989,7 @@ can_update_port_request(_Context, ?PORT_UNCONFIRMED) ->
 can_update_port_request(_Context, ?PORT_REJECTED) ->
     'true';
 can_update_port_request(Context, _) ->
-    cb_modules_util:is_superduper_admin(cb_context:auth_account_id(Context)).
+    cb_context:is_superduper_admin(cb_context:auth_account_id(Context)).
 
 %%--------------------------------------------------------------------
 %% @private

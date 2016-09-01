@@ -117,7 +117,7 @@ authorize_request(Context, _, ?HTTP_GET) ->
 -spec authorize_create(cb_context:context()) -> boolean().
 authorize_create(Context) ->
     IsAuthenticated = cb_context:is_authenticated(Context),
-    IsSuperDuperAdmin = cb_modules_util:is_superduper_admin(Context),
+    IsSuperDuperAdmin = cb_context:is_superduper_admin(Context),
     IsReseller = cb_context:reseller_id(Context) =:= cb_context:auth_account_id(Context),
     case IsAuthenticated
         andalso (IsSuperDuperAdmin

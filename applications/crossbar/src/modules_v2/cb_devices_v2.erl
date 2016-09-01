@@ -376,7 +376,7 @@ error_mdn_undefined(Context) ->
 check_mdn_changed('undefined', Context) ->
     check_mdn_taken('undefined', Context);
 check_mdn_changed(DeviceId, Context) ->
-    IsSuperAdmin = cb_modules_util:is_superduper_admin(Context),
+    IsSuperAdmin = cb_context:is_superduper_admin(Context),
     case has_mdn_changed(Context) of
         'true' when IsSuperAdmin ->
             Context1 = cb_context:store(Context, 'remove_mobile_mdn', 'true'),
@@ -578,7 +578,7 @@ check_device_type_change('undefined', Context) ->
     check_device_schema('undefined', Context);
 check_device_type_change(DeviceId, Context) ->
     NewDeviceType = kz_device:device_type(cb_context:req_data(Context)),
-    IsSuperAdmin = cb_modules_util:is_superduper_admin(Context),
+    IsSuperAdmin = cb_context:is_superduper_admin(Context),
     OldDeviceType = kz_device:device_type(cb_context:fetch(Context, 'db_doc')),
     case {NewDeviceType, OldDeviceType} of
         {Same, Same} -> check_device_schema(DeviceId, Context);

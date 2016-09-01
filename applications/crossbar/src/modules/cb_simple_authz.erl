@@ -42,13 +42,13 @@ authorize(Context) ->
     authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 authorize(Context, Verb, [{?KZ_ACCOUNTS_DB, []}]) ->
-    cb_modules_util:is_superduper_admin(Context)
+    cb_context:is_superduper_admin(Context)
         orelse Verb =:= ?HTTP_PUT;
 authorize(_Context, ?HTTP_GET, [{<<"global_provisioner_templates">>,_}|_]) ->
     'true';
 authorize(Context, Verb, _Nouns) ->
     AuthAccountId = cb_context:auth_account_id(Context),
-    IsSysAdmin = cb_modules_util:is_superduper_admin(AuthAccountId),
+    IsSysAdmin = cb_context:is_superduper_admin(AuthAccountId),
     case (not should_ignore(Context)
           andalso (allowed_if_sys_admin_mod(IsSysAdmin, Context)
                    andalso account_is_descendant(IsSysAdmin, Context)

@@ -200,12 +200,12 @@ validate_account_path(Context, AccountId, ?SIBLINGS, ?HTTP_GET) ->
 validate_account_path(Context, AccountId, ?PARENTS, ?HTTP_GET) ->
     load_parents(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?RESELLER, ?HTTP_PUT) ->
-    case cb_modules_util:is_superduper_admin(Context) of
+    case cb_context:is_superduper_admin(Context) of
         'true' -> load_account(AccountId, prepare_context(AccountId, Context));
         'false' -> cb_context:add_system_error('forbidden', Context)
     end;
 validate_account_path(Context, AccountId, ?RESELLER, ?HTTP_DELETE) ->
-    case cb_modules_util:is_superduper_admin(Context) of
+    case cb_context:is_superduper_admin(Context) of
         'true' -> load_account(AccountId, prepare_context(AccountId, Context));
         'false' -> cb_context:add_system_error('forbidden', Context)
     end;

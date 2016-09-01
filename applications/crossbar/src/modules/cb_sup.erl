@@ -140,13 +140,13 @@ authorize(_Context) ->
     'false'.
 
 authorize(Context, _Module) ->
-    cb_modules_util:is_superduper_admin(Context).
+    cb_context:is_superduper_admin(Context).
 
 authorize(Context, _Module, _Function) ->
-    cb_modules_util:is_superduper_admin(Context).
+    cb_context:is_superduper_admin(Context).
 
 authorize(Context, _Module, _Function, _Args) ->
-    cb_modules_util:is_superduper_admin(Context).
+    cb_context:is_superduper_admin(Context).
 
 %%--------------------------------------------------------------------
 %% @public
