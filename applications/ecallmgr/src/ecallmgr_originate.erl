@@ -263,7 +263,10 @@ handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                             ,fetch_id=FetchId
                                             ,dialstrings='undefined'
                                             }=State) ->
-    gen_listener:cast(self(), {'originate_execute'}),
+    case kz_json:is_true(<<"Originate-Immediate">>, JObj, 'true') of
+        'true'  -> gen_listener:cast(self(), {'originate_execute'});
+        'false' -> gen_listener:cast(self(), {'originate_ready'})
+    end,
     {'noreply', State#state{dialstrings=build_originate_args(Action, State, JObj, FetchId)}};
 
 handle_cast({'originate_ready'}, #state{node=_Node}=State) ->
