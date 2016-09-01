@@ -14,6 +14,13 @@ main([]) ->
     usage(),
     halt(-1);
 main(Paths) ->
+    Errors = xref(Paths),
+    io:format("Done\n"),
+    halt(Errors).
+
+%% Internals
+
+xref(Paths) ->
     AllPaths = all_paths(Paths),
     {'ok', _Pid} = xref:start(?SERVER),
     'ok' = xref:set_library_path(?SERVER, AllPaths),
@@ -21,25 +28,7 @@ main(Paths) ->
                                      ,{'verbose', 'false'}
                                      ]),
     io:format("Loading modules...\n"),
-    _ = [case xref:add_directory(?SERVER, Dir) of
-             {'ok', _Modules} -> 'ok';
-             {'error', _XrefModule, Reason} ->
-                 show_error('add_directory', Reason)
-         end
-         || Dir <- AllPaths,
-            Dir =/= ".",
-            %% Don't include deps
-            not lists:prefix("./deps/", Dir)
-            %% Note: OTP's dirs usually start with "/"
-        ],
-    Xrefs = ['undefined_function_calls'
-             %% ,'undefined_functions'        %%
-             %% ,'locals_not_used'            %% Compilation discovers this
-             %% ,'exports_not_used'           %% Compilation discovers this
-             %% ,'deprecated_function_calls'  %% Concerns not kazoo
-             %% ,'deprecated_functions'       %% Concerns not kazoo
-             %% Want moar? http://www.erlang.org/doc/man/xref.html
-            ],
+    lists:foreach(fun add_dir/1, AllPaths),
     io:format("Running xref analysis...\n"),
     ErrorsCount =
         lists:sum(
@@ -49,13 +38,10 @@ main(Paths) ->
                print(Xref, Filtered),
                length(Filtered)
            end
-           || Xref <- Xrefs
+           || Xref <- xrefs()
           ]),
     'stopped' = xref:stop(?SERVER),
-    io:format("Done\n"),
-    halt(ErrorsCount).
-
-%% Internals
+    ErrorsCount.
 
 all_paths(Paths) ->
     OfARelease = fun (Path) -> lists:member("_rel", filename:split(Path)) end,
@@ -66,6 +52,29 @@ all_paths(Paths) ->
             code:get_path();
         true -> Paths
     end.
+
+add_dir(Dir) ->
+    case Dir =/= "."
+        %% Don't include deps
+        andalso not lists:prefix("./deps/", Dir)
+        %% Note: OTP's dirs usually start with "/"
+        andalso xref:add_directory(?SERVER, Dir)
+    of
+        false -> ok;
+        {'ok', _Modules} -> 'ok';
+        {'error', _XrefModule, Reason} ->
+            show_error('add_directory', Reason)
+    end.
+
+xrefs() ->
+    ['undefined_function_calls'
+     %% ,'undefined_functions'        %%
+     %% ,'locals_not_used'            %% Compilation discovers this
+     %% ,'exports_not_used'           %% Compilation discovers this
+     %% ,'deprecated_function_calls'  %% Concerns not kazoo
+     %% ,'deprecated_functions'       %% Concerns not kazoo
+     %% Want moar? http://www.erlang.org/doc/man/xref.html
+    ].
 
 filter('undefined_function_calls', Results) ->
     ToKeep = fun
