@@ -13,10 +13,10 @@
 
 -include("knm.hrl").
 
--callback find_numbers(ne_binary(), pos_integer(), kz_proplist()) ->
-    {'error', any()} |
+-callback find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) ->
+    {'ok', knm_number:knm_numbers()} |
     {'bulk', knm_number:knm_numbers()} |
-    {'ok', knm_number:knm_numbers()}.
+    {'error', any()}.
 
 -callback acquire_number(knm_number:knm_number()) ->
     knm_number:knm_number().

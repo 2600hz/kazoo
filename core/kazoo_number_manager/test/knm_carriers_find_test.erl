@@ -28,7 +28,7 @@ find_other_test_() ->
     ].
 
 find_no_phonebook() ->
-    Options = [{<<"carriers">>, [?CARRIER_OTHER]}],
+    Options = [{'carriers', [?CARRIER_OTHER]}],
 
     [{"Verify no phonebook url yields no results"
      ,?_assertEqual([], knm_carriers:find(<<"415">>, 1, Options))
@@ -36,10 +36,10 @@ find_no_phonebook() ->
     ].
 
 find_blocks() ->
-    Options = [{<<"phonebook_url">>, ?BLOCK_PHONEBOOK_URL}
-              ,{<<"blocks">>, 'true'}
-              ,{?KNM_ACCOUNTID_CARRIER, ?RESELLER_ACCOUNT_ID}
-              ,{<<"carriers">>, [?CARRIER_OTHER]}
+    Options = [{'phonebook_url', ?BLOCK_PHONEBOOK_URL}
+              ,{'blocks', 'true'}
+              ,{'account_id', ?RESELLER_ACCOUNT_ID}
+              ,{'carriers', [?CARRIER_OTHER]}
               ],
     Limit = 10,
 
@@ -89,9 +89,9 @@ verify_block(PhoneNumber, JObj, DID, Activation) ->
     ].
 
 find_numbers() ->
-    Options = [{<<"phonebook_url">>, ?NUMBER_PHONEBOOK_URL}
-              ,{?KNM_ACCOUNTID_CARRIER, ?MASTER_ACCOUNT_ID}
-              ,{<<"carriers">>, [?CARRIER_OTHER]}
+    Options = [{'phonebook_url', ?NUMBER_PHONEBOOK_URL}
+              ,{'account_id', ?MASTER_ACCOUNT_ID}
+              ,{'carriers', [?CARRIER_OTHER]}
               ],
     Limit = 10,
     Results = knm_carriers:find(<<"415">>, Limit, Options),

@@ -5,6 +5,8 @@
 
 -define(KNM_DEFAULT_AUTH_BY, <<"system">>).
 
+-define(KNM_DEFAULT_COUNTRY, <<"US">>).
+
 -type knm_phone_number_return() ::
         {'ok', knm_phone_number:knm_phone_number()} |
         {'error', any()}.
@@ -63,9 +65,6 @@
 -define(CARRIER_OTHER, <<"knm_other">>).
 -define(CARRIER_RESERVED, <<"knm_reserved">>).
 -define(CARRIER_RESERVED_RESELLER, <<"knm_reserved_reseller">>).
-
--define(KNM_ACCOUNTID_CARRIER, <<"account_id">>).
--define(KNM_RESELLERID_CARRIER, <<"reseller_id">>).
 
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.

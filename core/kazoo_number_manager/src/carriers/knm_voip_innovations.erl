@@ -84,7 +84,7 @@ is_number_billable(_Number) -> 'true'.
 %% Query the system for a quantity of available numbers in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) ->
+-spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
@@ -94,11 +94,11 @@ find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
 find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     Resp = soap("getDIDs", [{"npa", NPA}]),
     MaybeJson = to_json('find_numbers', Quantity, Resp),
-    to_numbers(MaybeJson, props:get_value(?KNM_ACCOUNTID_CARRIER, Options));
+    to_numbers(MaybeJson, knm_carriers:account_id(Options));
 find_numbers(<<NXX:6/binary,_/binary>>, Quantity, Options) ->
     Resp = soap("getDIDs", [{"nxx", NXX}]),
     MaybeJson = to_json('find_numbers', Quantity, Resp),
-    to_numbers(MaybeJson, props:get_value(?KNM_ACCOUNTID_CARRIER, Options)).
+    to_numbers(MaybeJson, knm_carriers:account_id(Options)).
 
 %%--------------------------------------------------------------------
 %% @public

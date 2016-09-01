@@ -79,7 +79,7 @@ is_local() -> 'false'.
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) ->
+-spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(<<"+", Rest/binary>>, Quanity, Options) ->
@@ -104,11 +104,11 @@ find_numbers(Search, Quanity, Options) ->
         {'ok', Xml} -> process_numbers_search_resp(Xml, Options)
     end.
 
--spec process_numbers_search_resp(xml_el(), kz_proplist()) ->
+-spec process_numbers_search_resp(xml_el(), knm_carriers:options()) ->
                                          {'ok', knm_number:knm_numbers()}.
 process_numbers_search_resp(Xml, Options) ->
     TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
-    AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
+    AccountId = knm_carriers:account_id(Options),
     {'ok', [N
             || Number <- xmerl_xpath:string(TelephoneNumbers, Xml),
                {'ok', N} <- [found_number_to_KNM(Number, AccountId)]

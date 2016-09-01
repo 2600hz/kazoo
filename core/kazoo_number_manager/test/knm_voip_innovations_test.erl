@@ -11,8 +11,8 @@
 -include("knm.hrl").
 
 api_test_() ->
-    Options = [{?KNM_ACCOUNTID_CARRIER, ?RESELLER_ACCOUNT_ID}
-              ,{<<"carriers">>, [<<"knm_voip_innovations">>]}
+    Options = [{'account_id', ?RESELLER_ACCOUNT_ID}
+              ,{'carriers', [<<"knm_voip_innovations">>]}
               ],
     [find_numbers(Options)
     ,acquire_number()

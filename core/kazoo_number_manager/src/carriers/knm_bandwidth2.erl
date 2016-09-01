@@ -112,7 +112,7 @@ is_number_billable(_Number) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -type search_ret() :: {'ok', knm_number:knm_numbers()} | {'error', any()}.
--spec find_numbers(ne_binary(), pos_integer(), kz_proplist()) -> search_ret().
+-spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) -> search_ret().
 find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
     find_numbers(Rest, Quantity, Options);
 
@@ -125,7 +125,7 @@ find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_T
                "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
              ],
     Result = search(Num, Params),
-    AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
+    AccountId = knm_carriers:account_id(Options),
     {'ok', [N
             || X <- xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result),
                {'ok', N} <- [tollfree_search_response_to_KNM(X, AccountId)]
@@ -145,9 +145,9 @@ find_numbers(Search, Quantity, Options) ->
              ],
     {'ok', process_search_response(search(Search, Params), Options)}.
 
--spec process_search_response(xml_el(), kz_proplist()) -> knm_number:knm_numbers().
+-spec process_search_response(xml_el(), knm_carriers:options()) -> knm_number:knm_numbers().
 process_search_response(Result, Options) ->
-    AccountId = props:get_value(?KNM_ACCOUNTID_CARRIER, Options),
+    AccountId = knm_carriers:account_id(Options),
     [N
      || X <- xmerl_xpath:string("TelephoneNumberDetailList/TelephoneNumberDetail", Result),
         {'ok', N} <- [search_response_to_KNM(X, AccountId)]
