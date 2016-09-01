@@ -105,7 +105,7 @@ fetch(AccountId, MessageId, BoxId) ->
                     {'ok', kzd_box_message:fake_private_media(AccountId, BoxId, Msg)}
             end;
         {'error', _R} = E ->
-            lager:error("failed to get old format voicemail message ~s: ~p", [MessageId, _R]),
+            lager:debug("failed to get old format voicemail message ~s: ~p", [MessageId, _R]),
             E
     end.
 
@@ -139,7 +139,7 @@ message(AccountId, MessageId, BoxId) ->
     case kz_datamgr:get_single_result(Db, ?MSG_LISTING_BY_MEDIA_ID, ViewOpt) of
         {'ok', JObj} -> {'ok', kz_json:get_value(<<"value">>, JObj)};
         {'error', _R} = Error ->
-            lager:error("failed to get old format voicemail message ~s: ~p", [MessageId, _R]),
+            lager:debug("failed to get old format voicemail message ~s: ~p", [MessageId, _R]),
             Error
     end.
 
@@ -193,7 +193,7 @@ change_folder(Folder, MessageId, AccountId, BoxId) ->
     case update(AccountId, BoxId, MessageId, Fun) of
         {'ok', J} -> {'ok', kzd_box_message:metadata(J)};
         {'error', R}=E ->
-            lager:error("error while updating folder ~s ~p", [Folder, R]),
+            lager:debug("error while updating folder ~s ~p", [Folder, R]),
             E
     end.
 
