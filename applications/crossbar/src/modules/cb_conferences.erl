@@ -43,7 +43,7 @@
 
 -define(PUT_ACTION, <<"action">>).
 
--define(PARTICIPANT_INFO_FIELDS, [<<"Moderator">>
+-define(PARTICIPANT_INFO_FIELDS, [<<"Is-Moderator">>
                                  ,<<"Video">>
                                  ,<<"Current-Energy">>
                                  ,<<"Energy-Level">>
