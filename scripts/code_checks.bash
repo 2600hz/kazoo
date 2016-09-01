@@ -2,13 +2,18 @@
 
 [[ $# -eq 0 ]] && echo "Usage: $0  ‹path to check›+" && exit 0
 
+function P () {
+    printf "\e[1;3m%s\e[0m\n" "$1"
+}
+
+
 function check_andalso_orelse {
-    echo 'Check for andalso/orelse dropped lines'
+    P 'Check for andalso/orelse dropped lines'
     ! grep -Ern '[^ ] +(andalso|orelse)' -- $@
 }
 
 function check_MODULE {
-    echo 'Check for uses of module in lieu of ?MODULE'
+    P 'Check for uses of module in lieu of ?MODULE'
     local errors=0
     for f in "$@"; do
         m0=$(grep -E module'\(' "$f"  2>/dev/null)
@@ -25,7 +30,7 @@ function check_MODULE {
 }
 
 function check_TABs {
-    echo 'Check for TAB characters'
+    P 'Check for TAB characters'
     local errors=0
     for f in "$@"; do
         grep -Fn $'\t' --include '*.escript' --include '*.erl' --include '*.hrl' --include '*.app.src' -r "$f"
