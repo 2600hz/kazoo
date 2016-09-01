@@ -9,7 +9,7 @@ function P () {
 
 function check_andalso_orelse {
     P 'Check for andalso/orelse dropped lines'
-    ! grep -Ern '[^ ] +(andalso|orelse)' --include '*.escript' --include '*.erl' --include '*.hrl' --include '*.app.src' -- $@
+    ! grep -Ern '[^ %] +(andalso|orelse)' --include '*.escript' --include '*.erl' --include '*.hrl' --include '*.app.src' -- $@
 }
 
 function check_MODULE {
