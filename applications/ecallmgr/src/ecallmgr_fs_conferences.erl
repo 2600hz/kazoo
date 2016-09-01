@@ -22,7 +22,7 @@
 -export([node/1]).
 -export([participants/1]).
 -export([participants_to_json/1]).
--export([participant_create/3]).
+-export([participant_create/2]).
 -export([participant_update/2]).
 -export([participant_destroy/1]).
 -export([participant_callid/2]).
@@ -147,9 +147,9 @@ participants(Name) ->
 participants_to_json(Participants) ->
     participants_to_json(Participants, []).
 
--spec participant_create(kz_proplist(), atom(), ne_binary()) -> participant().
-participant_create(Props, Node, CallInfo) ->
-    gen_server:call(?SERVER, {'participant_create', Props, Node, CallInfo}).
+-spec participant_create(kz_proplist(), atom()) -> participant().
+participant_create(Props, Node) ->
+    gen_server:call(?SERVER, {'participant_create', Props, Node}).
 
 -spec participant_update(ne_binary(), kz_proplist()) -> 'ok'.
 participant_update(CallId, Update) ->
