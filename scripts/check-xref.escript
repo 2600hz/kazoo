@@ -17,39 +17,40 @@ main(Paths) ->
     AllPaths = all_paths(Paths),
     {'ok', _Pid} = xref:start(?SERVER),
     'ok' = xref:set_library_path(?SERVER, AllPaths),
-    'ok' = xref:set_default(?SERVER, [ {'warnings', 'false'}
-                                     , {'verbose', 'false'}
+    'ok' = xref:set_default(?SERVER, [{'warnings', 'false'}
+                                     ,{'verbose', 'false'}
                                      ]),
     io:format("Loading modules...\n"),
-    _ = [ case xref:add_directory(?SERVER, Dir) of
-              {'ok', _Modules} -> 'ok';
-              {'error', _XrefModule, Reason} ->
-                  show_error('add_directory', Reason)
-          end || Dir <- AllPaths
-                     , Dir =/= "."
-                 %% Don't include deps
-                     , not lists:prefix("./deps/", Dir)
-                 %% Note: OTP's dirs usually start with "/"
+    _ = [case xref:add_directory(?SERVER, Dir) of
+             {'ok', _Modules} -> 'ok';
+             {'error', _XrefModule, Reason} ->
+                 show_error('add_directory', Reason)
+         end
+         || Dir <- AllPaths,
+            Dir =/= ".",
+            %% Don't include deps
+            not lists:prefix("./deps/", Dir)
+            %% Note: OTP's dirs usually start with "/"
         ],
-    Xrefs = [ 'undefined_function_calls'
-            %% , 'undefined_functions'        %%
-            %% , 'locals_not_used'            %% Compilation discovers this
-            %% , 'exports_not_used'           %% Compilation discovers this
-            %% , 'deprecated_function_calls'  %% Concerns not kazoo
-            %% , 'deprecated_functions'       %% Concerns not kazoo
-              %% Want moar? http://www.erlang.org/doc/man/xref.html
+    Xrefs = ['undefined_function_calls'
+             %% ,'undefined_functions'        %%
+             %% ,'locals_not_used'            %% Compilation discovers this
+             %% ,'exports_not_used'           %% Compilation discovers this
+             %% ,'deprecated_function_calls'  %% Concerns not kazoo
+             %% ,'deprecated_functions'       %% Concerns not kazoo
+             %% Want moar? http://www.erlang.org/doc/man/xref.html
             ],
     io:format("Running xref analysis...\n"),
     ErrorsCount =
         lists:sum(
-          lists:map( fun (Xref) ->
-                             {'ok', Res} = xref:analyze(?SERVER, Xref),
-                             Filtered = filter(Xref, Res),
-                             print(Xref, Filtered),
-                             length(Filtered)
-                     end
-                   , Xrefs )
-         ),
+          [begin
+               {'ok', Res} = xref:analyze(?SERVER, Xref),
+               Filtered = filter(Xref, Res),
+               print(Xref, Filtered),
+               length(Filtered)
+           end
+           || Xref <- Xrefs
+          ]),
     'stopped' = xref:stop(?SERVER),
     io:format("Done\n"),
     halt(ErrorsCount).
@@ -106,11 +107,11 @@ filter(_Xref, Results) ->
 
 print('undefined_function_calls'=Xref, Results) ->
     io:format("Xref: listing ~p\n", [Xref]),
-    lists:foreach(
-      fun ({{M1,F1,A1}, {M2,F2,A2}}) ->
-              io:format( "~30.. s:~-30..,s/~p ~30.. s ~30.. s:~s/~p\n"
-                       , [M1,F1,A1, "calls undefined", M2,F2,A2] )
-      end, Results );
+    F = fun ({{M1,F1,A1}, {M2,F2,A2}}) ->
+                io:format("~30.. s:~-30..,s/~p ~30.. s ~30.. s:~s/~p\n"
+                         ,[M1,F1,A1, "calls undefined", M2,F2,A2])
+        end,
+    lists:foreach(F, Results);
 print(Xref, Results) ->
     io:format("Xref: listing ~p\n\t~p\n", [Xref, Results]).
 
@@ -120,8 +121,8 @@ usage() ->
     io:format("Usage: ~s  <path to ebin/>+\n", [filename:basename(Arg0)]).
 
 show_error('add_directory', {'module_clash', {Module, BEAM1, BEAM2}}) ->
-    io:format( "Module clash: ~s (~s & ~s)\n"
-             , [Module, filename:dirname(BEAM1), filename:dirname(BEAM2)] );
+    io:format("Module clash: ~s (~s & ~s)\n"
+             ,[Module, filename:dirname(BEAM1), filename:dirname(BEAM2)]);
 show_error(Fun, Reason) ->
     io:format("Error with ~s: ~p\n", [Fun, Reason]).
 
