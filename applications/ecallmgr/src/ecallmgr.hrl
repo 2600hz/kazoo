@@ -133,7 +133,6 @@
                      ,gain_level = 0 :: non_neg_integer() | '_'
                      ,current_energy = 0 :: non_neg_integer() | '_'
                      ,video = 'false' :: boolean() | '_'
-                     ,is_moderator = 'false' :: boolean() | '_'
                      ,join_time = kz_util:current_tstamp() :: non_neg_integer() | '_'
                      ,caller_id_name :: api_binary() | '_'
                      ,caller_id_number :: api_binary() | '_'

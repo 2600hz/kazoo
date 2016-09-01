@@ -425,10 +425,8 @@ participant_from_props(Props, Node) ->
 
 -spec participant_from_props(kz_proplist(), atom(), participant()) -> participant().
 participant_from_props(Props, Node, Participant) ->
-    ConfVars = ecallmgr_util:channel_conference_vars(Props),
     Participant#participant{node=Node
                            ,uuid=props:get_value(<<"Unique-ID">>, Props)
-                           ,is_moderator=props:get_value(<<"moderator">>, ConfVars)
                            ,conference_uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
                            ,conference_name=props:get_value(<<"Conference-Name">>, Props)
                            ,floor=props:get_is_true(<<"Floor">>, Props, 'false')
@@ -444,7 +442,7 @@ participant_from_props(Props, Node, Participant) ->
                            ,join_time=props:get_integer_value(<<"Join-Time">>, Props, kz_util:current_tstamp())
                            ,caller_id_number=props:get_value(<<"Caller-Caller-ID-Number">>, Props)
                            ,caller_id_name=props:get_value(<<"Caller-Caller-ID-Name">>, Props)
-                           ,ccv=ecallmgr_util:custom_channel_vars(Props)
+                           ,ccv=kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))
                            }.
 
 -spec participants_to_json(participants(), kz_json:objects()) -> kz_json:objects().
@@ -471,7 +469,6 @@ participant_to_props(#participant{uuid=UUID
                                  ,energy_level=EnergyLevel
                                  ,current_energy=CurrentEnergy
                                  ,video=Video
-                                 ,is_moderator=IsMod
                                  ,node=Node
                                  ,join_time=JoinTime
                                  ,caller_id_name=CallerIDName
@@ -493,7 +490,6 @@ participant_to_props(#participant{uuid=UUID
       ,{<<"Energy-Level">>, EnergyLevel}
       ,{<<"Current-Energy">>, CurrentEnergy}
       ,{<<"Video">>, Video}
-      ,{<<"Is-Moderator">>, IsMod}
       ,{<<"Join-Time">>, JoinTime}
       ,{<<"Caller-ID-Name">>, CallerIDName}
       ,{<<"Caller-ID-Number">>, CallerIDNumber}
@@ -704,9 +700,14 @@ xml_member_flags_to_participant([#xmlElement{name='is_moderator'
                                             }
                                  | XmlElements
                                 ], Participant) ->
-    Value = kz_util:is_true(xml_text_to_binary(IsMod)),
-    xml_member_flags_to_participant(XmlElements
-                                   ,Participant#participant{is_moderator=Value});
+    case kz_util:is_true(xml_text_to_binary(IsMod)) of
+        true ->
+            xml_member_flags_to_participant(XmlElements
+                                   ,Participant#participant{member_type = <<"moderator">>});
+        false ->
+            xml_member_flags_to_participant(XmlElements
+                                   ,Participant#participant{member_type = <<"member">>})
+    end;
 xml_member_flags_to_participant([#xmlElement{name='can_hear'
                                             ,content=Hear
                                             }

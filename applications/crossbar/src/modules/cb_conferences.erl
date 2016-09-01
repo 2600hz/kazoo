@@ -454,8 +454,8 @@ filter_fields(Participant) ->
 
 -spec count_admins(kz_json:objects()) -> integer().
 count_admins(Participants) ->
-    erlang:length([ P || P <- Participants, kz_json:is_true(<<"Is-Moderator">>, P) ]).
+    erlang:length([ P || P <- Participants, kz_json:get_value(<<"Participant-Type">>, P) == <<"moderator">> ]).
 
 -spec count_members(kz_json:objects()) -> integer().
 count_members(Participants) ->
-    erlang:length([ P || P <- Participants, kz_json:is_false(<<"Is-Moderator">>, P) ]).
+    erlang:length([ P || P <- Participants, kz_json:get_value(<<"Participant-Type">>, P) =/= <<"moderator">> ]).
