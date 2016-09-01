@@ -278,16 +278,11 @@ process_realm(Realm, Dir, Module) ->
 -spec build_freeswitch(pid()) -> any().
 build_freeswitch(Pid) ->
     WorkDir = setup_directory(),
-    AllDBs = knm_util:get_all_number_dbs(),
-    _ = [crawl_numbers_db(Db) || Db <- AllDBs, is_number_db(Db)],
+    lists:foreach(fun crawl_numbers_db/1, knm_util:get_all_number_dbs()),
     process_realms(),
     File = zip_directory(WorkDir),
     del_dir(kz_util:to_list(WorkDir)),
     gen_server:cast(Pid, {'completed', File}).
-
--spec is_number_db(ne_binary()) -> boolean().
-is_number_db(DB) ->
-    kz_datamgr:db_classification(DB) == 'numbers'.
 
 -spec crawl_numbers_db(ne_binary()) -> 'ok'.
 crawl_numbers_db(NumberDb) ->
