@@ -24,7 +24,18 @@ function check_MODULE {
     return $errors
 }
 
+function check_TABs {
+    echo 'Check for TAB characters'
+    local errors=0
+    for f in "$@"; do
+        grep -Fn $'\t' --include '*.escript' --include '*.erl' --include '*.hrl' --include '*.app.src' -r "$f"
+        [[ $? -ne 1 ]] && ((errors++))
+    done
+    return $errors
+}
+
 errs=0
 check_andalso_orelse "$@" || ((errs++))
 check_MODULE "$@" || ((errs++))
+check_TABs "$@" || ((errs++))
 exit $errs
