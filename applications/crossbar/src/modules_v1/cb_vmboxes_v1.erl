@@ -196,7 +196,7 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE) ->
             C = cb_context:set_resp_data(Context, Moved),
             update_mwi(C, [OldBoxId, NewBoxId]);
         NewBoxIds ->
-            Copied = kvm_message:copy_to_vmboxes(AccountId, MsgIds, OldBoxId, NewBoxIds),
+            Copied = kvm_messages:copy_to_vmboxes(AccountId, MsgIds, OldBoxId, NewBoxIds),
             C = cb_context:set_resp_data(Context, Copied),
             update_mwi(C, [OldBoxId | NewBoxIds])
     end.
@@ -208,7 +208,7 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE, MediaId) ->
             C = update_message_folder(OldBoxId, MediaId, Context, ?VM_FOLDER_SAVED),
             update_mwi(C, OldBoxId);
         ?NE_BINARY = NewBoxId ->
-            Moved = kvm_messages:move_to_vmbox(AccountId, MediaId, OldBoxId, NewBoxId),
+            Moved = kvm_message:move_to_vmbox(AccountId, MediaId, OldBoxId, NewBoxId),
             C = cb_context:set_resp_data(Context, Moved),
             update_mwi(C, [OldBoxId, NewBoxId]);
         NewBoxIds ->

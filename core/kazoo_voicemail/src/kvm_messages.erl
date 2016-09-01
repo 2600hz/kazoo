@@ -324,10 +324,8 @@ load_vmbox(AccountId, BoxId, IncludeMessages) ->
 %% @doc Move messages to another vmbox
 %% @end
 %%--------------------------------------------------------------------
--spec move_to_vmbox(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), ne_binary()) ->
+-spec move_to_vmbox(ne_binary(), ne_binaries(), ne_binary(), ne_binary()) ->
                            kz_json:object().
-move_to_vmbox(AccountId, ?NE_BINARY = MsgId, OldBoxId, NewBoxId) ->
-    move_to_vmbox(AccountId, [MsgId], OldBoxId, NewBoxId);
 move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId) ->
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),

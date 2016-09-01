@@ -10,10 +10,10 @@
 
 -export([new/2
         ,fetch/2, fetch/3, message/2, message/3
+        ,move_to_modb/4
         ,set_folder/3, change_folder/3, change_folder/4
 
-        ,move_to_modb/4
-        ,copy_to_vmboxes/4
+        ,move_to_vmbox/4, copy_to_vmboxes/4
 
         ,media_url/2
         ]).
@@ -292,6 +292,19 @@ try_move(FromDb, FromId, ToDb, ToId, JObj, Funs, Tries) ->
 update_media_id(MediaId, JObj) ->
     Metadata = kzd_box_message:set_media_id(MediaId, kzd_box_message:metadata(JObj)),
     kzd_box_message:set_metadata(Metadata, JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Move a message to another vmbox
+%% @end
+%%--------------------------------------------------------------------
+-spec move_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+                           kz_json:object().
+move_to_vmbox(AccountId, MsgId, OldBoxId, NewBoxId) ->
+    AccountDb = kvm_util:get_db(AccountId),
+    {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
+    Funs = ?CHANGE_VMBOX_FUNS(AccountId, NewBoxId, NBoxJ, OldBoxId),
+    update(AccountId, OldBoxId, MsgId, Funs).
 
 %%--------------------------------------------------------------------
 %% @public
