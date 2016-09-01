@@ -1,6 +1,7 @@
 #!/bin/bash
 
 [[ $# -eq 0 ]] && echo "Usage: $0  ‹path to check›+" && exit 0
+# find applications core -iname '*.erl' -or -iname '*.hrl' -or -iname '*.escript' -or -iname '*.app.src'
 
 function P () {
     printf "\e[1;3m%s\e[0m\n" "$1"
