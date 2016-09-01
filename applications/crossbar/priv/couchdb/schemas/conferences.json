@@ -131,6 +131,12 @@
             "description": "The XML profile name used to configure the conference",
             "required": false,
             "type": "string"
+        },
+        "ui_flags": {
+            "description": "Is used by UI to store presentation-related data",
+            "name": "UI Flags",
+            "required": false,
+            "type": "object"
         }
     },
     "required": false,
