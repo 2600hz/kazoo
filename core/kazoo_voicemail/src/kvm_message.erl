@@ -9,7 +9,7 @@
 -module(kvm_message).
 
 -export([new/2
-        ,fetch/2, fetch/3, message/2
+        ,fetch/2, fetch/3, message/2, message/3
         ,set_folder/3, change_folder/3, change_folder/4
 
         ,move_to_modb/4
@@ -19,6 +19,8 @@
         ]).
 
 -include("kz_voicemail.hrl").
+
+-define(MSG_LISTING_BY_MEDIA_ID, <<"mailbox_messages/listing_by_media_id">>).
 
 -define(PVT_LEGACY_TYPE, <<"private_media">>).
 
@@ -75,11 +77,13 @@ new(Call, Props) ->
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary(), kazoo_data:docid()) -> db_ret().
 -spec fetch(ne_binary(), kazoo_data:docid(), api_ne_binary()) -> db_ret().
-fetch(AccountId, DocId) ->
-    fetch(AccountId, DocId, 'undefined').
+fetch(AccountId, MessageId) ->
+    fetch(AccountId, MessageId, 'undefined').
 
-fetch(AccountId, {_, ?MATCH_MODB_PREFIX(_, _, _)} = DocId, BoxId) ->
-    case kvm_util:open_modb_doc(AccountId, DocId, kzd_box_message:type()) of
+fetch(AccountId, {_, ?MATCH_MODB_PREFIX(_, _, _) = MessageId}, BoxId) ->
+    fetch(AccountId, MessageId, BoxId);
+fetch(AccountId, ?MATCH_MODB_PREFIX(_, _, _) = MessageId, BoxId) ->
+    case kvm_util:open_modb_doc(AccountId, MessageId, kzd_box_message:type()) of
         {'ok', JObj} = OK ->
             case kvm_util:check_msg_belonging(BoxId, JObj) of
                 'true' -> OK;
@@ -87,27 +91,21 @@ fetch(AccountId, {_, ?MATCH_MODB_PREFIX(_, _, _)} = DocId, BoxId) ->
             end;
         {'error', _} = Error -> Error
     end;
-fetch(AccountId, ?MATCH_MODB_PREFIX(_, _, _) = DocId, BoxId) ->
-    case kvm_util:open_modb_doc(AccountId, DocId, kzd_box_message:type()) of
-        {'ok', JObj} = OK ->
-            case kvm_util:check_msg_belonging(BoxId, JObj) of
-                'true' -> OK;
-                'false' -> {'error', 'not_found'}
-            end;
-        {'error', _} = Error -> Error
-    end;
-fetch(AccountId, MediaId, BoxId) ->
-    case kvm_util:open_accountdb_doc(AccountId, MediaId, ?PVT_LEGACY_TYPE) of
+fetch(AccountId, MessageId, BoxId) ->
+    case kvm_util:open_accountdb_doc(AccountId, MessageId, ?PVT_LEGACY_TYPE) of
         {'ok', MediaJObj} ->
             SourceId = kzd_box_message:source_id(MediaJObj),
-            case kvm_util:check_msg_belonging(BoxId, MediaJObj) of
-                'true' ->
-                    VMBoxMsgs = kvm_messages:get_from_vmbox(AccountId, SourceId),
-                    merge_metadata(MediaId, MediaJObj, VMBoxMsgs);
-                'false' -> {'error', 'not_found'}
+            merge_metadata(MediaJObj, message(AccountId, MessageId, SourceId));
+        {'error', 'not_found'} ->
+            case message(AccountId, MessageId, BoxId) of
+                {'error', _} = Error -> Error;
+                {'ok', Msg} ->
+                    lager:error("private_media for voicemail message ~s is missing vmbox ~s account ~s"
+                               ,[MessageId, BoxId, AccountId]),
+                    {'ok', kzd_box_message:fake_private_media(AccountId, BoxId, Msg)}
             end;
-        {'error', _R}=E ->
-            lager:debug("failed to load voicemail message ~s: ~p", [MediaId, _R]),
+        {'error', _R} = E ->
+            lager:error("failed to get old format voicemail message ~s: ~p", [MessageId, _R]),
             E
     end.
 
@@ -118,11 +116,31 @@ fetch(AccountId, MediaId, BoxId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec message(ne_binary(), ne_binary()) -> db_ret().
+-spec message(ne_binary(), ne_binary(), api_ne_binary()) -> db_ret().
 message(AccountId, MessageId) ->
-    case fetch(AccountId, MessageId) of
-        {'ok', Msg} -> {'ok', kzd_box_message:metadata(Msg)};
-        {'error', _}=E ->
-            E
+    message(AccountId, MessageId, 'undefined').
+
+message(AccountId, {_, ?MATCH_MODB_PREFIX(_, _, _) = MessageId}, BoxId) ->
+    case kvm_util:open_modb_doc(AccountId, MessageId, kzd_box_message:type()) of
+        {'ok', JObj} ->
+            case kvm_util:check_msg_belonging(BoxId, JObj) of
+                'true' -> {'ok', kzd_box_message:metadata(JObj)};
+                'false' -> {'error', 'not_found'}
+            end;
+        {'error', _} = Error -> Error
+    end;
+message(_AccountId, _MessageId, 'undefined') ->
+    lager:error("skipping to get old format voicemail message ~s without vmbox id", [_MessageId]),
+    {'error', 'not_found'};
+message(AccountId, MessageId, BoxId) ->
+    Db = kvm_util:get_db(AccountId),
+    ViewOpt = [{'key', [BoxId, MessageId]}
+              ],
+    case kz_datamgr:get_single_result(Db, ?MSG_LISTING_BY_MEDIA_ID, ViewOpt) of
+        {'ok', JObj} -> {'ok', kz_json:get_value(<<"value">>, JObj)};
+        {'error', _R} = Error ->
+            lager:error("failed to get old format voicemail message ~s: ~p", [MessageId, _R]),
+            Error
     end.
 
 %%--------------------------------------------------------------------
@@ -154,7 +172,10 @@ maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId, _) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
+%% @doc Change message folder
+%%    Note: if folder is {?VM_FOLDER_DELETED, 'true'}, it would move to
+%%      deleted folder and marked as soft-deleted, otherwise it just move to deleted
+%%      folder(for recovering later by user)
 %% @end
 %%--------------------------------------------------------------------
 -spec change_folder(vm_folder(), ne_binary(), ne_binary()) -> db_ret().
@@ -172,7 +193,7 @@ change_folder(Folder, MessageId, AccountId, BoxId) ->
     case update(AccountId, BoxId, MessageId, Fun) of
         {'ok', J} -> {'ok', kzd_box_message:metadata(J)};
         {'error', R}=E ->
-            lager:info("error while updating folder ~s ~p", [Folder, R]),
+            lager:error("error while updating folder ~s ~p", [Folder, R]),
             E
     end.
 
@@ -203,6 +224,7 @@ do_update(AccountId, MsgId, JObj, Funs) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Move old voicemail media doc with message metadata to the MODB
+%%   Note: the boolean argument is for cleanup moved msg from vmbox or not
 %% @end
 %%--------------------------------------------------------------------
 -spec move_to_modb(ne_binary(), kz_json:object(), update_funs(), boolean()) -> db_ret().
@@ -230,32 +252,40 @@ do_move_to_modb(AccountId, JObj, Funs) ->
              ,"-"
              ,(kz_util:rand_hex_binary(16))/binary
            >>,
+    try_move(FromDb, FromId, ToDb, ToId, JObj, Funs, 3).
 
-    TransformFuns = [fun(DestDoc) -> kzd_box_message:set_metadata(kzd_box_message:metadata(JObj), DestDoc) end
-                    ,fun(DestDoc) -> update_media_id(ToId, DestDoc) end
-                    ,fun(DestDoc) -> kz_json:set_value(<<"pvt_moved_to_modb">>, <<"true">>, DestDoc) end
-                    ,fun(DestDoc) -> kz_json:set_value(<<"pvt_previous_id">>, FromId, DestDoc) end
-                    ,fun(DestDoc) -> kz_json:set_value(<<"pvt_type">>, kzd_box_message:type(), DestDoc) end
-                     | Funs
-                    ],
+-spec try_move(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object(), update_funs(), non_neg_integer()) -> db_ret().
+try_move(FromDb, FromId, ToDb, ToId, JObj, Funs, Tries) ->
+    TransformFuns =
+        [fun(DestDoc) -> kzd_box_message:set_metadata(kzd_box_message:metadata(JObj), DestDoc) end
+        ,fun(DestDoc) -> update_media_id(ToId, DestDoc) end
+        ,fun(DestDoc) ->
+                 Props = [{<<"pvt_moved_to_modb">>, <<"true">>}
+                         ,{<<"pvt_previous_id">>, FromId}
+                         ,{<<"pvt_type">>, kzd_box_message:type()}
+
+                          %% update these private fields for when we are saving instead of moving
+                         ,{<<"_id">>, ToId}
+                         ,{<<"pvt_account_id">>, kz_util:format_account_id(ToDb, 'raw')}
+                         ,{<<"pvt_account_db">>, ToDb}
+                         ],
+                 kz_json:set_values(Props, DestDoc)
+         end
+         | Funs
+        ],
     Options = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}],
-    try_move(FromDb, FromId, ToDb, ToId, Options, 3).
 
--spec try_move(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist(), non_neg_integer()) -> db_ret().
-try_move(FromDb, FromId, ToDb, ToId, Options, Tries) ->
     case kz_datamgr:move_doc(FromDb, FromId, ToDb, ToId, Options) of
-        {'ok', _}=OK -> OK;
+        {'ok', _} = OK -> OK;
         {'error', 'not_found'} when Tries > 0 ->
-            maybe_create_modb(ToDb),
-            try_move(FromDb, FromId, ToDb, ToId, Options, Tries - 1);
-        {'error', _}=Error -> Error
-    end.
-
--spec maybe_create_modb(ne_binary()) -> 'ok'.
-maybe_create_modb(MODb) ->
-    case kz_datamgr:db_exists(MODb) of
-        'true' -> 'ok';
-        'false' -> kazoo_modb:create(MODb)
+            case maybe_create_modb(ToDb) of
+                'true' -> try_move(FromDb, FromId, ToDb, ToId, JObj, Funs, Tries - 1);
+                'false' ->
+                    %% private_media is missing, saving to modb viciously
+                    MsgJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, TransformFuns),
+                    kz_datamgr:save_doc(ToDb, MsgJObj)
+            end;
+        {'error', _} = Error -> Error
     end.
 
 -spec update_media_id(ne_binary(), kz_json:object()) -> kz_json:object().
@@ -322,7 +352,7 @@ try_copy(FromDb, FromId, ToDb, ToId, Options, Tries) ->
     case kz_datamgr:copy_doc(FromDb, FromId, ToDb, ToId, Options) of
         {'ok', _} = OK -> OK;
         {'error', 'not_found'} when Tries > 0 ->
-            maybe_create_modb(ToDb),
+            _ = maybe_create_modb(ToDb),
             try_copy(FromDb, FromId, ToDb, ToId, Options, Tries - 1);
         {'error', _}=Error -> Error
     end.
@@ -334,10 +364,7 @@ maybe_move_to_db(AccountId, BoxId, Id) ->
     case fetch(AccountId, Id, BoxId) of
         {'ok', JObj} ->
             Moved = move_to_modb(AccountId, JObj, [], 'true'),
-            case kvm_util:update_result(Id, Moved) of
-                {'ok', _} = OK -> OK;
-                {'error', _} = Error -> Error
-            end;
+            kvm_util:update_result(Id, Moved);
         {'error', _} = E -> E
     end.
 
@@ -350,7 +377,10 @@ maybe_move_to_db(AccountId, BoxId, Id) ->
 media_url(AccountId, ?NE_BINARY = MessageId) ->
     case fetch(AccountId, MessageId) of
         {'ok', Message} ->
-            kz_media_url:playback(Message, Message);
+            case kz_media_url:playback(Message, Message) of
+                {'error', _} -> <<>>;
+                Url -> Url
+            end;
         {'error', _} -> <<>>
     end;
 media_url(AccountId, Message) ->
@@ -365,13 +395,30 @@ media_url(AccountId, Message) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec merge_metadata(ne_binary(), kz_json:object(), kz_json:objects()) -> db_ret().
-merge_metadata(MediaId, MediaJObj, VMBoxMsgs) ->
-    case kz_json:find_value(<<"media_id">>, MediaId, VMBoxMsgs) of
-        'undefined' -> {'error', 'not_found'};
-        Metadata -> {'ok', kzd_box_message:set_metadata(Metadata, MediaJObj)}
-    end.
+-spec merge_metadata(kz_json:object(), db_ret()) -> db_ret().
+merge_metadata(MediaJObj, {'error', _}) ->
+    %% where did you find the messageid at the first place?
+    MessageId = kz_doc:id(MediaJObj),
+    lager:error("metadata for old format voicemail message ~s is missing vmbox ~s account ~s"
+               ,[MessageId, kzd_box_message:source_id(MediaJObj), kz_doc:account_id(MediaJObj)]),
+    Metadata = kzd_box_message:set_media_id(MessageId, kz_json:new()),
+    {'ok', Metadata};
+merge_metadata(MediaJObj, {'ok', Msg}) ->
+    {'ok', kzd_box_message:set_metadata(Msg, MediaJObj)}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_create_modb(ne_binary()) -> boolean().
+maybe_create_modb(MODb) ->
+    case kz_datamgr:db_exists(MODb) of
+        'true' -> 'false';
+        'false' ->
+            kazoo_modb:create(MODb),
+            'true'
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -46,12 +46,12 @@
 -spec get(ne_binary()) -> kz_json:objects().
 -spec get(ne_binary(), ne_binary() | kz_json:object()) -> kz_json:objects().
 get(AccountId) ->
-    Dbs = get_range_db(AccountId),
+    Dbs = kvm_util:get_range_db(AccountId),
     NormFun = fun normalize_account_view_results/2,
     get_view_results(Dbs, ?MSG_LISTING_BY_MAILBOX, [], NormFun, []).
 
 get(AccountId, ?NE_BINARY = BoxId) ->
-    Dbs = get_range_db(AccountId),
+    Dbs = kvm_util:get_range_db(AccountId),
     ViewOpts = [{'startkey', [BoxId]}
                ,{'endkey', [BoxId, kz_json:new()]}
                ],
@@ -92,12 +92,12 @@ get_from_vmbox(_AccountId, BoxJObj) ->
 -spec get_from_modb(ne_binary(), ne_binary() | kz_json:object()) ->
                            kz_json:objects().
 get_from_modb(AccountId) ->
-    Dbs = get_range_db(AccountId, 'modb'),
+    Dbs = kvm_util:get_range_db(AccountId, 'modb'),
     NormFun = fun normalize_account_view_results/2,
     get_view_results(Dbs, ?MSG_LISTING_BY_MAILBOX, [], NormFun, []).
 
 get_from_modb(AccountId, ?NE_BINARY = BoxId) ->
-    Dbs = get_range_db(AccountId, 'modb'),
+    Dbs = kvm_util:get_range_db(AccountId, 'modb'),
     ViewOpts = [{'startkey', [BoxId]}
                ,{'endkey', [BoxId, kz_json:new()]}
                ],
@@ -204,7 +204,7 @@ count_from_vmbox(AccountId, BoxId) ->
 -spec count_from_modb(ne_binary(), ne_binary()) -> count_result().
 -spec count_from_modb(ne_binary(), ne_binary(), count_result()) -> count_result().
 count_from_modb(AccountId) ->
-    Dbs = get_range_db(AccountId, 'modb'),
+    Dbs = kvm_util:get_range_db(AccountId, 'modb'),
     ViewOpts = ['reduce'
                ,'group'
                ,{'group_level', 2}
@@ -218,7 +218,7 @@ count_from_modb(AccountId, BoxId) ->
     count_from_modb(AccountId, BoxId, {0, 0}).
 
 count_from_modb(AccountId, BoxId, {ANew, ASaved} = VMCount) ->
-    Dbs = get_range_db(AccountId, 'modb'),
+    Dbs = kvm_util:get_range_db(AccountId, 'modb'),
     ViewOpts = ['reduce'
                ,'group'
                ,{'group_level', 2}
@@ -260,7 +260,8 @@ update(AccountId, BoxId, Things, Funs) ->
 update_fold(_AccountId, _BoxId, [], _Funs, Result) ->
     Result;
 update_fold(AccountId, BoxId, [Msg | Msgs], Funs, #bulk_res{failed = Failed} = Blk) ->
-    {MsgId, NewFuns} = maybe_add_update_fun(Msg, Funs),
+    %% Check if Msg is JObj add kzd_box_message:set_metadata to the update Funs
+    {MsgId, NewFuns} = maybe_set_metdata(Msg, Funs),
     case kvm_message:fetch(AccountId, MsgId, BoxId) of
         {'ok', JObj} ->
             Result = do_update(AccountId, MsgId, JObj, NewFuns, Blk),
@@ -380,21 +381,6 @@ get_view_results([Db | Dbs], View, ViewOpts, NormFun, Acc) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec get_range_db(ne_binary()) -> ne_binaries().
--spec get_range_db(ne_binary(), atom()) -> ne_binaries().
-get_range_db(AccountId) ->
-    get_range_db(AccountId, 'modb') ++ [kvm_util:get_db(AccountId)].
-
-get_range_db(AccountId, 'modb') ->
-    To = kz_util:current_tstamp(),
-    From = To - ?RETENTION_DAYS(?RETENTION_DURATION),
-    lists:reverse([Db || Db <- kazoo_modb:get_range(AccountId, From, To)]).
-
-%%--------------------------------------------------------------------
-%% @private
 %% @doc Normalize listing view results
 %% @end
 %%--------------------------------------------------------------------
@@ -451,13 +437,13 @@ normalize_count_non_deleted(BoxId, ViewRes) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
+%% @doc Check if Msg is JObj, add kzd_box_message:set_metadata to the update Funs
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_add_update_fun(ne_binary() | kz_json:object(), update_funs()) ->
-                                  {ne_binary(), update_funs()}.
-maybe_add_update_fun(?NE_BINARY = Id, Funs) -> {Id, Funs};
-maybe_add_update_fun(Msg, Funs) ->
+-spec maybe_set_metdata(ne_binary() | kz_json:object(), update_funs()) ->
+                               {ne_binary(), update_funs()}.
+maybe_set_metdata(?NE_BINARY = Id, Funs) -> {Id, Funs};
+maybe_set_metdata(Msg, Funs) ->
     MsgId = kzd_box_message:media_id(Msg),
     NewFuns = [fun(JObj) ->
                        kzd_box_message:set_metadata(Msg, JObj)

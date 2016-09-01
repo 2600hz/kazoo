@@ -281,25 +281,18 @@ patch(Context, Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_message(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
-validate_message(Context, DocId, MediaId, ?HTTP_GET) ->
-    case load_message(MediaId, DocId, 'undefined', Context) of
-        {'true', C1} ->
-            C2 = update_message_folder(DocId, MediaId, C1, ?VM_FOLDER_NEW),
-            update_mwi(C2, DocId);
-        {_, C} -> C
-    end;
-validate_message(Context, DocId, MediaId, ?HTTP_POST) ->
-    case load_message_doc(MediaId, DocId, Context) of
-        {'ok', _Doc} ->
+validate_message(Context, BoxId, MessageId, ?HTTP_GET) ->
+    load_message(MessageId, BoxId, Context);
+validate_message(Context, BoxId, MessageId, ?HTTP_POST) ->
+    case kvm_message:fetch(cb_context:account_id(Context), MessageId, BoxId) of
+        {'ok', _} ->
             NewBoxId = cb_context:req_value(Context, <<"source_id">>),
             maybe_load_vmboxes(NewBoxId, Context);
         {'error', Error} ->
-            crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)
+            crossbar_doc:handle_datamgr_errors(Error, MessageId, Context)
     end;
-validate_message(Context, DocId, MediaId, ?HTTP_DELETE) ->
-    Update = kz_json:from_list([{?VM_KEY_FOLDER, ?VM_FOLDER_DELETED}]),
-    {_, C} = load_message(MediaId, DocId, Update, Context),
-    C.
+validate_message(Context, BoxId, MessageId, ?HTTP_DELETE) ->
+    load_message(MessageId, BoxId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -626,49 +619,14 @@ check_created_from(Context) ->
 %% Get message by its media ID and its context
 %% @end
 %%--------------------------------------------------------------------
--spec load_message(ne_binary(), ne_binary(), api_object(), cb_context:context()) ->
-                          {boolean(), cb_context:context()}.
-load_message(MediaId, BoxId, 'undefined', Context) ->
-    load_message(MediaId, BoxId, kz_json:new(), Context);
-load_message(MediaId, BoxId, UpdateJObj, Context) ->
-    case load_message_doc(MediaId, BoxId, Context) of
-        {'ok', MDoc} ->
-            Message = kzd_box_message:metadata(MDoc),
-            C = crossbar_doc:handle_json_success(Message, Context),
-            ensure_message_in_folder(Message, UpdateJObj, C);
+-spec load_message(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+load_message(MessageId, BoxId, Context) ->
+    case kvm_message:message(cb_context:account_id(Context), MessageId, BoxId) of
+        {'ok', Msg} ->
+            crossbar_doc:handle_json_success(Msg, Context);
         {'error', Error} ->
-            {'false', crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)}
+            crossbar_doc:handle_datamgr_errors(Error, MessageId, Context)
     end.
-
--spec load_message_doc(ne_binary(), ne_binary(), cb_context:context()) -> {atom(), any()}.
-load_message_doc(MediaId, BoxId, Context) ->
-    case kvm_message:fetch(cb_context:account_id(Context), MediaId, BoxId) of
-        {'ok', _} = OK -> OK;
-        {'error', _} = E -> E
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec ensure_message_in_folder(kz_json:object(), kz_json:object(), cb_context:context()) ->
-                                      {boolean(), cb_context:context()}.
-ensure_message_in_folder(Message, UpdateJObj, Context) ->
-    CurrentFolder = kzd_box_message:folder(Message, ?VM_FOLDER_NEW),
-
-    RequestedFolder = cb_context:req_value(Context
-                                          ,?VM_KEY_FOLDER
-                                          ,kzd_box_message:folder(UpdateJObj, CurrentFolder)
-                                          ),
-    lager:debug("ensuring message is in folder ~s", [RequestedFolder]),
-    NewMessage = kz_json:merge_jobjs(kzd_box_message:set_folder(RequestedFolder, UpdateJObj)
-                                    ,Message
-                                    ),
-    {CurrentFolder =/= RequestedFolder
-    ,cb_context:set_resp_data(cb_context:set_doc(Context, NewMessage), NewMessage)
-    }.
 
 %%--------------------------------------------------------------------
 %% @private
