@@ -444,7 +444,7 @@ participant_from_props(Props, Node, CCV, Participant) ->
                            ,join_time=props:get_integer_value(<<"Join-Time">>, Props, kz_util:current_tstamp())
                            ,caller_id_number=props:get_value(<<"Caller-Caller-ID-Number">>, Props)
                            ,caller_id_name=props:get_value(<<"Caller-Caller-ID-Name">>, Props)
-                           ,call_info=CCV
+                           ,ccv=CCV
                            }.
 
 -spec participants_to_json(participants(), kz_json:objects()) -> kz_json:objects().
@@ -476,6 +476,7 @@ participant_to_props(#participant{uuid=UUID
                                  ,join_time=JoinTime
                                  ,caller_id_name=CallerIDName
                                  ,caller_id_number=CallerIDNumber
+                                 ,ccv=CCV
                                  }) ->
     props:filter_undefined(
       [{<<"Call-ID">>, UUID}
@@ -496,6 +497,7 @@ participant_to_props(#participant{uuid=UUID
       ,{<<"Join-Time">>, JoinTime}
       ,{<<"Caller-ID-Name">>, CallerIDName}
       ,{<<"Caller-ID-Number">>, CallerIDNumber}
+      ,{<<"Custom-Channel-Vars">>, CCV}
       ]).
 
 -spec conference_to_props(conference()) -> kz_proplist().

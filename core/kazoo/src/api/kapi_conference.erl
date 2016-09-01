@@ -323,8 +323,9 @@
                                    ,<<"Caller-ID-Number">>
                                    ,<<"Channel-Presence-ID">>
                                    ,<<"Custom-Channel-Vars">>
+                                   ,<<"Is-Moderator">>
                                    ]).
--define(OPTIONAL_PARTICIPANT_EVENT_HEADERS, [<<"Is-Moderator">>]).
+-define(OPTIONAL_PARTICIPANT_EVENT_HEADERS, []).
 -define(PARTICIPANT_EVENT_VALUES, [{<<"Event-Category">>, <<"conference">>}, {<<"Event-Name">>, <<"participant_event">>}]).
 -define(PARTICIPANT_EVENT_TYPES, []).
 

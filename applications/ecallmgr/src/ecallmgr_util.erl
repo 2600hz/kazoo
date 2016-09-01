@@ -296,13 +296,11 @@ channel_var_map({Key, Other}) -> {Key, Other}.
 
 -spec channel_conference_vars(kz_proplist()) -> kz_proplist().
 channel_conference_vars(Props) ->
-    lists:foldl(
-      fun
-          ({<<"variable_conference_", Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
-          (_, Acc) -> Acc
-               end,
-      [], Props
-     ).
+    lists:foldl(fun channel_conference_vars_fold/2, [], Props).
+
+-spec channel_conference_vars_fold({ne_binary(), ne_binary()}, kz_proplist()) -> kz_proplist().
+channel_conference_vars_fold({<<"variable_conference_", Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
+channel_conference_vars_fold(_, Acc) -> Acc.
 
 %% Extract custom channel variables to include in the event
 -spec custom_channel_vars(kz_proplist()) -> kz_proplist().

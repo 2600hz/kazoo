@@ -451,7 +451,7 @@ make_participant_event(Action, CallId, Props, Node) ->
     ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
     ,{<<"Participant-ID">>, props:get_integer_value(<<"Member-ID">>, Props, 0)}
     ,{<<"Participant-Type">>, props:get_value(<<"Member-Type">>, Props)}
-    ,{<<"Is-Moderator">>, props:get_value(<<"moderator">>, ConfVars)}
+    ,{<<"Is-Moderator">>, props:get_is_true(<<"moderator">>, ConfVars, 'false')}
     ,{<<"Floor">>, props:get_is_true(<<"Floor">>, Props, 'false')}
     ,{<<"Hear">>, props:get_is_true(<<"Hear">>, Props, 'true')}
     ,{<<"Speak">>, props:get_is_true(<<"Speak">>, Props, 'true')}

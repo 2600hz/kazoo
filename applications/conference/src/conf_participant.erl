@@ -9,7 +9,6 @@
 %%%-------------------------------------------------------------------
 -module(conf_participant).
 -behaviour(gen_listener).
--compile({no_auto_import,[get/1]}).
 
 %% API
 -export([start_link/1]).
@@ -20,7 +19,6 @@
 -export([conference/1, set_conference/2]).
 -export([discovery_event/1, set_discovery_event/2]).
 -export([call/1]).
--export([moderator_status/2]).
 
 -export([join_local/1, join_remote/2]).
 
@@ -116,18 +114,6 @@ set_name_pronounced(Name, Srv) -> gen_listener:cast(Srv, {'set_name_pronounced',
 
 -spec call(pid()) -> {'ok', kapps_call:call()}.
 call(Srv) -> gen_listener:call(Srv, {'get_call'}).
-
--spec get(pid()) -> #participant{}.
-get(Srv) -> gen_listener:call(Srv, {'get'}).
-
--spec moderator_status(ne_binary(), ne_binary()) -> boolean().
-moderator_status(ConferenceId, ParticipantId) ->
-    All = [ get(Pid) || Pid <- conf_participant_sup:all() ],
-    [IsModerator] = [ kapps_conference:moderator(P#participant.conference) || P <- All,
-                                                                              kapps_conference:id(P#participant.conference) == ConferenceId,
-                                                                              kapps_call:call_id(P#participant.call) == ParticipantId
-                    ],
-    IsModerator.
 
 -spec join_local(pid()) -> 'ok'.
 join_local(Srv) -> gen_listener:cast(Srv, 'join_local').
