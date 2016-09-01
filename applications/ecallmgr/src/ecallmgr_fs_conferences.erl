@@ -444,7 +444,7 @@ participant_from_props(Props, Node, Participant) ->
                            ,join_time=props:get_integer_value(<<"Join-Time">>, Props, kz_util:current_tstamp())
                            ,caller_id_number=props:get_value(<<"Caller-Caller-ID-Number">>, Props)
                            ,caller_id_name=props:get_value(<<"Caller-Caller-ID-Name">>, Props)
-                           ,ccv=ecallmgr_util:custom_channel_vars(Props)
+                           ,ccv=kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))
                            }.
 
 -spec participants_to_json(participants(), kz_json:objects()) -> kz_json:objects().
