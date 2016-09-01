@@ -324,7 +324,7 @@
                                    ,<<"Channel-Presence-ID">>
                                    ,<<"Custom-Channel-Vars">>
                                    ]).
--define(OPTIONAL_PARTICIPANT_EVENT_HEADERS, [<<"Moderator">>]).
+-define(OPTIONAL_PARTICIPANT_EVENT_HEADERS, [<<"Is-Moderator">>]).
 -define(PARTICIPANT_EVENT_VALUES, [{<<"Event-Category">>, <<"conference">>}, {<<"Event-Name">>, <<"participant_event">>}]).
 -define(PARTICIPANT_EVENT_TYPES, []).
 

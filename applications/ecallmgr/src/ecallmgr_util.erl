@@ -20,6 +20,7 @@
 -export([get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, get_orig_port/1]).
 -export([custom_channel_vars/1]).
+-export([channel_conference_vars/1]).
 -export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
 -export([is_node_up/1, is_node_up/2]).
 -export([build_bridge_string/1, build_bridge_string/2]).
@@ -292,6 +293,16 @@ map_fs_path_to_sip_profile(FsPath, NetworkMap) ->
 channel_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
     {Key, binary:split(Serialized, <<"|:">>, ['global'])};
 channel_var_map({Key, Other}) -> {Key, Other}.
+
+-spec channel_conference_vars(kz_proplist()) -> kz_proplist().
+channel_conference_vars(Props) ->
+    lists:foldl(
+                fun
+                    ({<<"variable_conference_", Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
+                    (_, Acc) -> Acc
+                end,
+                [], Props
+        ).
 
 %% Extract custom channel variables to include in the event
 -spec custom_channel_vars(kz_proplist()) -> kz_proplist().

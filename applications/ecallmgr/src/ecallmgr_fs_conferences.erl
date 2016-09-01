@@ -425,9 +425,10 @@ participant_from_props(Props, Node, CCV) ->
 
 -spec participant_from_props(kz_proplist(), atom(), ne_binary(), participant()) -> participant().
 participant_from_props(Props, Node, CCV, Participant) ->
+    ConfVars = ecallmgr_util:channel_conference_vars(Props),
     Participant#participant{node=Node
                            ,uuid=props:get_value(<<"Unique-ID">>, Props)
-                           ,is_moderator=kz_json:get_value(<<"Moderator">>, CCV)
+                           ,is_moderator=props:get_value(<<"moderator">>, ConfVars)
                            ,conference_uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
                            ,conference_name=props:get_value(<<"Conference-Name">>, Props)
                            ,floor=props:get_is_true(<<"Floor">>, Props, 'false')
@@ -491,7 +492,7 @@ participant_to_props(#participant{uuid=UUID
       ,{<<"Energy-Level">>, EnergyLevel}
       ,{<<"Current-Energy">>, CurrentEnergy}
       ,{<<"Video">>, Video}
-      ,{<<"Moderator">>, IsMod}
+      ,{<<"Is-Moderator">>, IsMod}
       ,{<<"Join-Time">>, JoinTime}
       ,{<<"Caller-ID-Name">>, CallerIDName}
       ,{<<"Caller-ID-Number">>, CallerIDNumber}

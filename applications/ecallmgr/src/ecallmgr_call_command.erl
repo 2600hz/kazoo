@@ -536,7 +536,6 @@ get_fs_app(Node, UUID, JObj, <<"conference">>) ->
     case kapi_dialplan:conference_v(JObj) of
         'false' -> {'error', <<"conference failed to execute as JObj did not validate">>};
         'true' ->
-            ecallmgr_fs_command:export(Node, UUID, [{<<"Moderator">>, kz_json:get_value(<<"Moderator">>, JObj, <<"false">>)}]),
             get_conference_app(Node, UUID, JObj, kz_json:is_true(<<"Reinvite">>, JObj, 'false'))
     end;
 

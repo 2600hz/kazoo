@@ -267,8 +267,8 @@ finalize_processing(_, _) -> 'ok'.
                                        'stop'.
 process_participant_event(<<"add-member">>, Props, Node, _CallId) ->
     CCV = ecallmgr_util:custom_channel_vars(Props),
-    _ = #participant{is_moderator=IsModerator} = ecallmgr_fs_conferences:participant_create(Props, Node, kz_json:from_list(CCV)),
-    {'continue', [{<<"Moderator">>, IsModerator}]};
+    _ = ecallmgr_fs_conferences:participant_create(Props, Node, kz_json:from_list(CCV)),
+    'continue';
 process_participant_event(<<"del-member">>, _Props, _Node, _CallId) -> 'continue';
 process_participant_event(<<"stop-talking">>, _, _, _) -> 'continue';
 process_participant_event(<<"start-talking">>, _, _, _) -> 'continue';
@@ -442,6 +442,7 @@ send_conference_event(Action, Props, CustomProps) ->
     relay_event(Event ++ CustomProps ++ props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)).
 
 make_participant_event(Action, CallId, Props, Node) ->
+    ConfVars = ecallmgr_util:channel_conference_vars(Props),
     ConferenceName = props:get_value(<<"Conference-Name">>, Props),
     [{<<"Event">>, Action}
     ,{<<"Call-ID">>, CallId}
@@ -449,6 +450,8 @@ make_participant_event(Action, CallId, Props, Node) ->
     ,{<<"Conference-ID">>, ConferenceName}
     ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
     ,{<<"Participant-ID">>, props:get_integer_value(<<"Member-ID">>, Props, 0)}
+    ,{<<"Participant-Type">>, props:get_value(<<"Member-Type">>, Props)}
+    ,{<<"Is-Moderator">>, props:get_value(<<"moderator">>, ConfVars)}
     ,{<<"Floor">>, props:get_is_true(<<"Floor">>, Props, 'false')}
     ,{<<"Hear">>, props:get_is_true(<<"Hear">>, Props, 'true')}
     ,{<<"Speak">>, props:get_is_true(<<"Speak">>, Props, 'true')}
