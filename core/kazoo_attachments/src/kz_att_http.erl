@@ -10,6 +10,8 @@
 
 -include("kz_att.hrl").
 
+-define(MAX_REDIRECTS, 10).
+
 %% ====================================================================
 %% API functions
 %% ====================================================================
@@ -31,30 +33,88 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     Url = list_to_binary([BaseUrl, "/", format_url(Fields, JObj, Args, FieldSeparator)]),
     Headers = [{'content_type', props:get_value('content_type', Options, kz_mime:from_filename(AName))}],
 
-    case kz_http:req(kz_util:to_atom(Verb, 'true'), Url, Headers, Contents) of
-        {'ok', Code, _Headers, _Body} when
+    case send_request(Url, kz_util:to_atom(Verb, 'true'), Headers, Contents) of
+        {'ok', NewUrl, _Body, _Debug} -> {'ok', url_fields(DocUrlField, NewUrl)};
+        {'error', _} = Error -> Error
+    end.
+
+send_request(Url, Verb, Headers, Contents) ->
+    send_request(Url, Verb, Headers, Contents, 0, kz_json:new()).
+
+send_request(_Url, _Verb, _Headers, _Contents, Redirects, _)
+  when Redirects > ?MAX_REDIRECTS ->
+    {'error', 'too_many_redirects'};
+send_request(Url, Verb, Headers, Contents, Redirects, Debug) ->
+    case kz_http:req(Verb, Url, Headers, Contents) of
+        {'ok', Code, ReplyHeaders, Body} when
               is_integer(Code)
               andalso Code >= 200
               andalso Code =< 299 ->
-            {'ok', [{'attachment', [{<<"url">>, Url}]}
-                    | add_document_url_field(DocUrlField, Url)
-                   ]};
-        _E -> _E
+            {'ok', Url, Body, add_debug(Debug, Url, Code, ReplyHeaders)};
+        {'ok', Code, ReplyHeaders, _Body} when
+              Code =:= 301;
+              Code =:= 302 ->
+            lager:debug("got redirect request when sending ~s to ~s, checking redirection"),
+            NewDebug = add_debug(Debug, Url, Code, ReplyHeaders),
+            Fun = fun(URL, Tries, Data) -> send_request(URL, Verb, Headers, Contents, Tries, Data) end,
+            maybe_redirect(ReplyHeaders, Redirects, NewDebug, Fun);
+        _E -> {'error', _E}
     end.
 
-add_document_url_field('undefined', _) -> [];
-add_document_url_field(DocUrlField, Url) -> [{'document', [{DocUrlField, Url}]}].
+maybe_redirect(Headers, Redirects, Debug, Fun) ->
+    case props:get_value("location", Headers) of
+        'undefined' -> {'error', 'redirection_with_no_location'};
+        Url -> maybe_redirect_loop(Url, Redirects, Debug, Fun)
+    end.
+
+maybe_redirect_loop(Url, Redirects, Debug, Fun) ->
+    case kz_json:get_value(Url, Debug) of
+        'undefined' -> Fun(Url, Redirects + 1, Debug);
+        _ -> {'error', 'redirect_loop_detected'}
+    end.
+
+add_debug(Debug, Url, Code, Headers) ->
+    kz_json:set_values([{[Url, <<"code">>], Code}
+                       ,{[Url, <<"headers">>], kz_json:from_list(Headers)}
+                       ], Debug).
+
+
+url_fields('undefined', Url) ->
+    [{'attachment', [{<<"url">>, Url}]}];
+url_fields(DocUrlField, Url) ->
+    [{'attachment', [{<<"url">>, Url}]}
+    ,{'document', [{DocUrlField, Url}]}
+    ].
 
 -spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) -> any().
 fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
     case kz_json:get_value(<<"url">>, HandlerProps) of
         'undefined' -> {'error', 'invalid_data'};
-        Url ->
-            case kz_http:get(Url) of
-                {'ok', 200, _Headers, Body} -> {'ok', Body};
-                {'ok', _, _Headers, Body} -> {'error', Body};
-                _R -> {'error', <<"error getting from url">>}
-            end
+        Url -> fetch_attachment(Url)
+    end.
+
+fetch_attachment(URL) ->
+    case fetch_attachment(URL, 0, kz_json:new()) of
+        {'ok', _Url, Body, _Debug} -> {'ok', Body};
+        {'error', _} = Error -> Error
+    end.
+
+-spec fetch_attachment(ne_binary(), integer(), kz_json:object()) -> any().
+fetch_attachment(_Url, Redirects, _)
+  when Redirects > ?MAX_REDIRECTS ->
+    {'error', 'too_many_redirects'};
+fetch_attachment(Url, Redirects, Debug) ->
+    case kz_http:get(Url) of
+        {'ok', 200, _Headers, Body} -> {'ok', Body};
+        {'ok', Code, Headers, _Body} when
+              Code =:= 301;
+              Code =:= 302 ->
+            lager:debug("got redirect request when requesting ~s, checking redirection"),
+            NewDebug = add_debug(Debug, Url, Code, Headers),
+            Fun = fun(URL, N, Data) -> fetch_attachment(URL, N, Data) end,
+            maybe_redirect(Headers, Redirects, NewDebug, Fun);
+        {'ok', _, _Headers, Body} -> {'error', Body};
+        _R -> {'error', <<"error getting from url">>}
     end.
 
 format_url(Fields, JObj, Args, Separator) ->
