@@ -280,8 +280,8 @@ handle_call({'conference_destroy', UUID}, _, State) ->
     {'reply', 'ok', State};
 handle_call({'participant_create', Props, Node, CallInfo}, _, State) ->
     Participant = participant_from_props(Props, Node, CallInfo),
-    UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
     _ = ets:insert_new(?PARTICIPANTS_TBL, Participant),
+    UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
     _ = case ets:lookup(?CONFERENCES_TBL, UUID) of
             [#conference{}] -> 'ok';
             _Else ->
