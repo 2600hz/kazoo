@@ -31,6 +31,9 @@
 -define(MSG_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
 -define(MSG_COUNT_VIEW, <<"mailbox_messages/count_per_folder">>).
 
+-define(BOX_ID_IDX_KEY, 1).
+-define(FOLDER_IDX_KEY, 2).
+
 -type bulk_results() :: #bulk_res{}.
 
 -type norm_fun() :: 'undefined' |
@@ -387,7 +390,7 @@ get_view_results([Db | Dbs], View, ViewOpts, NormFun, Acc) ->
 -spec normalize_account_view_results(kz_json:object(), kz_json:objects()) ->
                                             kz_json:objects().
 normalize_account_view_results(JObj, Acc) ->
-    [kz_json:from_list([{kz_json:get_value([<<"key">>, 1], JObj)
+    [kz_json:from_list([{kz_json:get_value([<<"key">>, ?BOX_ID_IDX_KEY], JObj)
                         ,kz_json:get_value(<<"value">>, JObj)
                         }
                        ])
@@ -410,9 +413,9 @@ normalize_count(ViewRes) ->
     lists:foldl(fun normalize_count_fold/2, kz_json:new(), ViewRes).
 
 normalize_count_fold(M, Acc) ->
-    VMBox = kz_json:get_value([<<"key">>, 1], M),
+    VMBox = kz_json:get_value([<<"key">>, ?BOX_ID_IDX_KEY], M),
 
-    Folder = kz_json:get_value([<<"key">>, 2], M),
+    Folder = kz_json:get_value([<<"key">>, ?FOLDER_IDX_KEY], M),
     Value = kz_json:get_integer_value(<<"value">>, M),
 
     Total = kz_json:get_integer_value([VMBox, <<"total">>], Acc, 0),

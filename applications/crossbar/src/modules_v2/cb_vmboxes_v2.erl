@@ -32,6 +32,8 @@
 
 -define(CB_LIST, <<"vmboxes/crossbar_listing">>).
 
+-define(BOX_ID_IDX_KEY, 1).
+
 -define(MESSAGES_RESOURCE, ?VM_KEY_MESSAGES).
 -define(BIN_DATA, <<"raw">>).
 -define(MEDIA_MIME_TYPES, [{<<"application">>, <<"octet-stream">>}
@@ -593,7 +595,7 @@ load_message_summary(BoxId, Context) ->
 -spec normalize_account_view_results(kz_json:object(), kz_json:objects()) ->
                                             kz_json:objects().
 normalize_account_view_results(JObj, Acc) ->
-    [kz_json:from_list([{kz_json:get_value([<<"key">>, 1], JObj)
+    [kz_json:from_list([{kz_json:get_value([<<"key">>, ?BOX_ID_IDX_KEY], JObj)
                         ,kz_json:get_value(<<"value">>, JObj)
                         }
                        ])
