@@ -219,8 +219,6 @@ handle_call({'get_discovery_event'}, _, #participant{discovery_event=DE}=P) ->
     {'reply', {'ok', DE}, P};
 handle_call({'get_call'}, _, #participant{call=Call}=P) ->
     {'reply', {'ok', Call}, P};
-handle_call({'get'}, _, #participant{}=P) ->
-    {'reply', P, P};
 handle_call({'state'}, _, Participant) ->
     {reply, Participant, Participant};
 handle_call(_Request, _, P) ->
