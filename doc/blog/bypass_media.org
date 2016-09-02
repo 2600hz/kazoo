@@ -49,9 +49,9 @@ So a device's JSON would include:
 *** Bypass for resource(s):
 For upstream resources, the schema allows you two places:
 - Each gateway:
-#+INCLUDE: "../../applications/crossbar/priv/couchdb/schemas/resources.json" src json :lines "43-48"
+  #+INCLUDE: "../../applications/crossbar/priv/couchdb/schemas/resources.json" src json :lines "43-48"
 - On the resource's *media* object:
-#+INCLUDE: "../../applications/crossbar/priv/couchdb/schemas/resources.json" src json :lines "291-296"
+  #+INCLUDE: "../../applications/crossbar/priv/couchdb/schemas/resources.json" src json :lines "291-296"
 
 *** Example resource doc
 #+BEGIN_SRC json

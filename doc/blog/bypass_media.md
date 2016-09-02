@@ -99,19 +99,18 @@ For upstream resources, the schema allows you two places:
 
 -   Each gateway:
 
-    "bypass_media": {
-        "description": "The resource gateway bypass media mode",
-        "required": false,
-        "type": "boolean"
-    },
-
+        "bypass_media": {
+            "description": "The resource gateway bypass media mode",
+            "required": false,
+            "type": "boolean"
+        },
 -   On the resource's **media** object:
 
-    "bypass_media": {
-        "description": "Default bypass media mode",
-        "required": false,
-        "type": "boolean"
-    },
+        "bypass_media": {
+            "description": "Default bypass media mode",
+            "required": false,
+            "type": "boolean"
+        },
 
 ### Example resource doc<a id="orgheadline6"></a>
 
