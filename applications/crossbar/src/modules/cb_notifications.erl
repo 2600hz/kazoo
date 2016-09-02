@@ -285,7 +285,7 @@ post(Context, Id) ->
             do_post(Context);
         [{_FileName, FileJObj}] ->
             lager:debug("POST is for an attachment on ~s(~s)", [Id, kz_notification:db_id(Id)]),
-            update_template(Context, kz_notification:db_id(Id), FileJObj)
+            update_template(Context, Id, FileJObj)
     end.
 
 -spec do_post(cb_context:context()) -> cb_context:context().
@@ -825,20 +825,38 @@ update_notification(Context, Id) ->
 -spec update_template(cb_context:context(), path_token(), wh_json:object()) ->
                              cb_context:context().
 update_template(Context, Id, FileJObj) ->
+    DbId = kz_notification:db_id(Id),
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     lager:debug("file content type for ~s: ~s", [Id, CT]),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
 
-    AttachmentName = attachment_name_by_content_type(CT),
+    Opts = [{'content_type', kz_util:to_list(CT)}],
 
-    crossbar_doc:save_attachment(
-      Id
-      ,AttachmentName
-      ,Contents
-      ,Context
-      ,Opts
-     ).
+    try
+        Template = maybe_encode_template(Contents, CT),
+        Doc = wh_json:set_values([Template], cb_context:doc(Context)),
+        post(cb_context:set_doc(Context, Doc), Id, ?PREVIEW)
+    of
+        C ->
+            case cb_context:resp_status(C) of
+                'success' ->
+                    AttachmentName = attachment_name_by_content_type(CT),
+                    crossbar_doc:save_attachment(DbId
+                                                ,AttachmentName
+                                                ,Contents
+                                                ,Context
+                                                ,Opts
+                                                );
+                _ ->
+                    lager:debug("failed to compile uploaded template"),
+                    C
+            end
+    catch
+        _E:_R ->
+            lager:debug("failed to compile uploaded template"),
+            Message = wh_json:from_list([{<<"data">>, Contents}]),
+            crossbar_util:response_invalid_data(Message, Context)
+    end.
 
 -spec attachment_name_by_content_type(ne_binary()) -> ne_binary().
 attachment_name_by_content_type(CT) ->
@@ -847,6 +865,12 @@ attachment_name_by_content_type(CT) ->
 -spec attachment_name_by_media_type(ne_binary()) -> ne_binary().
 attachment_name_by_media_type(CT) ->
     <<"template.", CT/binary>>.
+
+-spec maybe_encode_template(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
+maybe_encode_template(HTML, <<"text/html">>) ->
+    {<<"html">>, base64:encode(HTML)};
+maybe_encode_template(Content, _) ->
+    {<<"text">>, Content}.
 
 %%--------------------------------------------------------------------
 %% @private
