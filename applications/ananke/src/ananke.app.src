@@ -17,6 +17,6 @@
 
                   lager
                  ]},
-  {mod, { ananke_app, []}},
+  {mod, {ananke_app, []}},
   {env, []}
  ]}.

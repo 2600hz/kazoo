@@ -7,10 +7,8 @@
 %%%     Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(ananke_tasks_sup).
-
 -behaviour(supervisor).
 
-%% API
 -export([start_link/0
         ,start_task/3
         ,delete_child/1
@@ -24,7 +22,8 @@
 
 -define(SERVER, ?MODULE).
 -define(CHILDREN, []).
--define(TASK_WORKER_SPEC(N, I, Args), {N, {I, 'start_link', Args}, 'transient', 'brutal_kill', 'worker', [I]}).
+-define(TASK_WORKER_SPEC(N, I, Args)
+       ,{N, {I, 'start_link', Args}, 'transient', 'brutal_kill', 'worker', [I]}).
 
 %% ===================================================================
 %% API functions
@@ -38,7 +37,7 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec start_task(any(), atom(), list()) -> sup_startchild_ret().
+-spec start_task(any(), atom(), list()) -> ok | sup_startchild_ret().
 start_task(Id, Module, Args) ->
     case supervisor:start_child(?SERVER, ?TASK_WORKER_SPEC(Id, Module, Args)) of
         {'error', 'already_present'} ->
@@ -53,11 +52,12 @@ start_task(Id, Module, Args) ->
 
 -spec delete_child(any()) -> 'ok' | {'error', any()}.
 delete_child(Pid) when is_pid(Pid) ->
-    case [Id || {Id, Child, _Type, _Modules} <- supervisor:which_children(?SERVER), Child =:= Pid] of
-        [Id] ->
-            delete_child(Id);
-        [] ->
-            'ok'
+    case [Id || {Id, Child, _Type, _Modules} <- supervisor:which_children(?SERVER),
+                Child =:= Pid
+         ]
+    of
+        [] -> 'ok';
+        [Id] -> delete_child(Id)
     end;
 delete_child(Id) ->
     supervisor:delete_child(?SERVER, Id).
@@ -94,11 +94,10 @@ init([]) ->
 %% Internal functions
 %% ===================================================================
 
--spec delete_child_after_timeout(any(), non_neg_integer()) -> fun(() -> 'ok' | {'error', any()}).
+-spec delete_child_after_timeout(any(), non_neg_integer()) ->
+                                        fun(() -> 'ok' | {'error', any()}).
 delete_child_after_timeout(Id, Timeout) ->
     fun() ->
-            receive
-            after Timeout ->
-                    delete_child(Id)
-            end
+            timer:sleep(Timeout),
+            delete_child(Id)
     end.
