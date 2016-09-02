@@ -1634,7 +1634,7 @@ get_ignore_early_media(JObj) ->
 
 -spec get_bypass_media(kz_json:object()) -> api_binary().
 get_bypass_media(JObj) ->
-    case kz_json:is_true([<<"media">>, <<"peer_to_peer">>], JObj) of
+    case kz_json:is_true([<<"media">>, <<"bypass_media">>], JObj) of
         'true' -> <<"true">>;
         'false' -> 'undefined'
     end.
