@@ -22,6 +22,7 @@ clean: $(KAZOODIRS)
 	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
 	$(if $(wildcard rel/dev-vm.args), rm rel/dev-vm.args)
 	$(if $(wildcard $(FMT)), rm -r $(dir $(FMT)))
+	$(if $(wildcard $(QUOTE)), rm -r $(dir $(QUOTE)))
 
 clean-test: ACTION = clean-test
 clean-test: $(KAZOODIRS)
@@ -180,7 +181,7 @@ $(QUOTE):
 
 quote: TMPFILE:=$(shell mktemp quote.XXXXXX)
 quote: $(QUOTE)
-	$(QUOTE) tick $(TO_QUOTE) > $(TMPFILE) && mv $(TMPFILE) $(TO_QUOTE)
+	$(QUOTE) -i tick $(TO_QUOTE)
 
 code_checks:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
