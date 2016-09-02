@@ -10,6 +10,7 @@
 -define(APP_NAME, <<"tasks">>).
 -define(APP_VERSION, <<"4.0.0">> ).
 
+%%TODO: do not hardcode ?TASKS list.
 -define(TASKS, ['kt_numbers'
                ,'kt_services'
                 %% ,'kt_skel'
