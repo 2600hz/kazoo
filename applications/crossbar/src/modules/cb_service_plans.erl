@@ -424,7 +424,7 @@ check_plan_id(Context, PlanId, ResellerId) ->
 
 -spec maybe_forbid_delete(cb_context:context()) -> cb_context:context().
 maybe_forbid_delete(Context) ->
-    Services = kz_services:fetch_service_doc(cb_context:account_id(Context)),
+    Services = kz_services:fetch_services_doc(cb_context:account_id(Context), 'false'),
     ExistingPlansIds = kzd_services:plan_ids(Services),
     DeletePlansIds = kz_json:get_value(<<"delete">>, cb_context:req_data(Context), []),
     case DeletePlansIds -- ExistingPlansIds of
