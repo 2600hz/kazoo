@@ -163,22 +163,26 @@ crawl_number_docs(_Db, {'error', _E}) ->
     lager:debug(" failed to crawl number db ~s: ~p", [_Db, _E]);
 crawl_number_docs(_Db, {'ok', Docs}) ->
     lager:debug(" starting to crawl '~s'", [_Db]),
-    _ = [crawl_number_doc(
-           knm_phone_number:from_json_with_options(kz_json:get_value(<<"doc">>, Doc), [])
-          )
-         || Doc <- Docs,
-            kz_doc:type(Doc) =:= <<"number">>
-        ],
+    lists:foreach(fun crawl_number_doc/1, Docs),
     lager:debug(" finished crawling '~s'", [_Db]).
 
--spec crawl_number_doc(knm_phone_number:knm_phone_number()) -> 'ok'.
-crawl_number_doc(PhoneNumber) ->
+-spec crawl_number_doc(kz_json:object()) -> any().
+crawl_number_doc(Doc) ->
+    case kz_doc:type(Doc) =:= <<"number">> of
+        false -> ok;
+        true ->
+            JObj = kz_json:get_value(<<"doc">>, Doc),
+            PN = knm_phone_number:from_json_with_options(JObj, []),
+            try_crawl_number_doc(PN)
+    end.
+
+-spec try_crawl_number_doc(knm_phone_number:knm_phone_number()) -> any().
+try_crawl_number_doc(PhoneNumber) ->
     Fs = [fun maybe_remove_deleted/1
          ,fun maybe_remove_discovery/1
          ,fun maybe_transition_aging/1
          ],
-    try lists:foldl(fun(F, PN) -> F(PN) end, PhoneNumber, Fs) of
-        _ -> 'ok'
+    try lists:foldl(fun(F, PN) -> F(PN) end, PhoneNumber, Fs)
     catch
         _E:_R ->
             ST = erlang:get_stacktrace(),
