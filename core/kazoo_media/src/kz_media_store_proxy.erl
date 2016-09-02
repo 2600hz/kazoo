@@ -309,4 +309,7 @@ reply_error(Code, Req0) ->
     {'shutdown', Req1, 'ok'}.
 
 -spec terminate(any(), cowboy_req:req(), any()) -> cowboy_req:req().
-terminate(_Reason, Req, _State) -> Req.
+terminate(_Reason, Req, #state{file=Device, filename=Filename}) ->
+    catch(file:close(Device)),
+    catch(file:delete(Filename)),
+    Req.
