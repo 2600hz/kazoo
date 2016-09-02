@@ -5,13 +5,13 @@
 %%% @end
 %%% @contributors
 %%%     Hesaam Farhang
+%%%     Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(ananke_account_crawler).
+-module(kz_account_crawler).
 -behaviour(gen_server).
 
 -export([start_link/0]).
--export([start_task/0, check/1
-        ]).
+-export([stop/0, check/1]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -20,40 +20,47 @@
         ,code_change/3
         ]).
 
--include("ananke.hrl").
+-include("tasks.hrl").
 
 -define(SERVER, ?MODULE).
 
 -define(NOTIFY_CONFIG_CAT, <<"notify">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".account_crawler">>).
 
--record(state, {}).
+-record(state, {cleanup_ref = cleanup_timer() :: reference() %% For "whole" crawls
+               ,in_between_ref = undefined :: api_reference()
+               ,account_ids = [] :: ne_binaries()
+               }).
 -type state() :: #state{}.
 
-%%%===================================================================
-%%% amqp_cron callbacks
-%%%===================================================================
+-define(TIME_BETWEEN_WHOLE_CRAWLS
+       ,kapps_config:get_integer(?MOD_CONFIG_CAT, <<"cycle_delay_time">>, 5 * ?MILLISECONDS_IN_MINUTE)).
 
--spec start_task() -> sup_startchild_ret().
-start_task() ->
-    TsTime = kz_util:to_binary(kz_util:current_tstamp()),
-    WorkerId = <<"acc_crawler_", TsTime/binary>>,
-    ananke_tasks_sup:start_task(WorkerId, ?MODULE, []).
+-define(TIME_BETWEEN_CRAWLS
+       ,kapps_config:get_integer(?MOD_CONFIG_CAT, <<"interaccount_delay">>, 10 * ?MILLISECONDS_IN_SECOND)).
+
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc Starts the server
+%% @doc
+%% Starts the server
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_server:start_link(?SERVER, [], []).
 
+-spec stop() -> ok.
+stop() ->
+    gen_server:cast(?SERVER, stop).
+
 -spec check(ne_binary()) -> 'ok'.
-check(Account) when is_binary(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+check(Account)
+  when is_binary(Account) ->
+    AccountId = kz_util:format_account_id(Account),
     case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId) of
         {'ok', AccountJObj} ->
             process_account(AccountId, kz_doc:account_db(AccountJObj), AccountJObj);
@@ -71,29 +78,17 @@ check(Account) ->
 %% @private
 %% @doc
 %% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {ok, state()}.
 init([]) ->
-    self() ! 'crawl_accounts',
+    kz_util:put_callid(?SERVER),
+    lager:debug("started ~s", [?SERVER]),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
@@ -104,54 +99,104 @@ handle_call(_Request, _From, State) ->
 %% @private
 %% @doc
 %% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+handle_cast(stop, State) ->
+    lager:debug("crawler has been stopped"),
+    {stop, normal, State};
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
-handle_info('next_account', State=[]) ->
-    {'stop', 'normal', State};
-handle_info('next_account', [Account|Accounts]) ->
-    _ = case kz_doc:id(Account) of
-            <<"_design", _/binary>> -> 'ok';
-            AccountId ->
-                %% do not open the account def in the account db or we will
-                %% be wasting bigcouch's file descriptors
-                OpenResult = kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId),
-                check_then_process_account(AccountId, OpenResult)
-        end,
-    Cycle = kapps_config:get_integer(?MOD_CONFIG_CAT, <<"interaccount_delay">>, 10 * ?MILLISECONDS_IN_SECOND),
-    erlang:send_after(Cycle, self(), 'next_account'),
-    {'noreply', Accounts, 'hibernate'};
-handle_info('crawl_accounts', _) ->
-    _ = case kz_datamgr:all_docs(?KZ_ACCOUNTS_DB) of
+handle_info({timeout, Ref, _Msg}, #state{cleanup_ref = Ref
+                                        ,account_ids = AccountIds
+                                        }=State) ->
+    NewState =
+        case AccountIds =:= []
+            andalso kz_datamgr:all_docs(?KZ_ACCOUNTS_DB) of
             {'ok', JObjs} ->
-                self() ! 'next_account',
-                {'noreply', kz_util:shuffle_list(JObjs)};
-            {'error', _R} ->
-                lager:warning("unable to list all docs in ~s: ~p", [?KZ_ACCOUNTS_DB, _R]),
-                self() ! 'next_account',
-                {'noreply', []}
-        end;
+                IDs = [ID || JObj <- JObjs,
+                             ?MATCH_ACCOUNT_RAW(ID) <- [kz_doc:id(JObj)]
+                      ],
+                lager:debug("beginning crawling accounts"),
+                State#state{cleanup_ref = cleanup_timer()
+                           ,in_between_ref = cleanup_small_timer()
+                           ,account_ids = kz_util:shuffle_list(IDs)
+                           };
+            _Else ->
+                case _Else of
+                    false -> lager:debug("crawler has not finished batch yet");
+                    {'error', _R} ->
+                        lager:warning("unable to list all docs in ~s: ~p", [?KZ_ACCOUNTS_DB, _R])
+                end,
+                State#state{cleanup_ref = cleanup_timer()}
+        end,
+    {noreply, NewState};
+
+handle_info({timeout, Ref, _Msg}, #state{in_between_ref = Ref
+                                        ,account_ids = []
+                                        }=State) ->
+    lager:debug("crawler finished batch"),
+    {noreply, State#state{in_between_ref = undefined}};
+
+handle_info({timeout, Ref, _Msg}, #state{in_between_ref = Ref
+                                        ,account_ids = [AccountId | AccountIds]
+                                        }=State) ->
+    lager:debug("crawling account ~s", [AccountId]),
+    %% do not open the account def in the account db or we will
+    %% be wasting bigcouch's file descriptors
+    OpenResult = kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId),
+    _ = check_then_process_account(AccountId, OpenResult),
+    NewState = State#state{in_between_ref = cleanup_small_timer()
+                          ,account_ids = AccountIds
+                          },
+    {noreply, NewState};
+
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function is called by a gen_server when it is about to
+%% terminate. It should be the opposite of Module:init/1 and do any
+%% necessary cleaning up. When it returns, the gen_server terminates
+%% with Reason. The return value is ignored.
+%% @end
+%%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
+terminate(_Reason, _State) ->
+    lager:debug("~s terminating: ~p", [?SERVER, _Reason]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert process state when code is changed
+%% @end
+%%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
+code_change(_OldVsn, State, _Extra) ->
+    {'ok', State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+-spec cleanup_timer() -> reference().
+-spec cleanup_small_timer() -> reference().
+cleanup_timer() ->
+    erlang:start_timer(?TIME_BETWEEN_WHOLE_CRAWLS, self(), 'ok').
+cleanup_small_timer() ->
+    erlang:start_timer(?TIME_BETWEEN_CRAWLS, self(), ok).
 
 -spec check_then_process_account(ne_binary(), {'ok', kz_account:doc()} | {'error',any()}) -> 'ok'.
 check_then_process_account(AccountId, {'ok', AccountJObj}) ->
@@ -165,38 +210,7 @@ check_then_process_account(AccountId, {'ok', AccountJObj}) ->
 check_then_process_account(AccountId, {'error', _R}) ->
     lager:warning("unable to open account definition for ~s: ~p", [AccountId, _R]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
--spec terminate(any(), state()) -> 'ok'.
-terminate(_Reason, _State) ->
-    lager:debug("listener terminating: ~p", [_Reason]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
--spec code_change(any(), state(), any()) -> {'ok', state()}.
-code_change(_OldVsn, State, _Extra) ->
-    {'ok', State}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-
--spec process_account (ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
+-spec process_account(ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
 process_account(AccountId, AccountDb, AccountJObj) ->
     lager:debug("account crawler processing account ~s", [AccountId]),
     _ = maybe_test_for_initial_occurrences(AccountId, AccountDb, AccountJObj),

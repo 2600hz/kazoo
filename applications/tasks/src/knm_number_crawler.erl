@@ -25,6 +25,8 @@
 -include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(KNM_CONFIG_CAT, <<"number_manager">>).
 
 -define(DELETED_EXPIRY,
@@ -46,6 +48,7 @@
                }).
 -type state() :: #state{}.
 
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -57,15 +60,15 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link(?MODULE, [], []).
+    gen_server:start_link(?SERVER, [], []).
 
 -spec stop() -> 'ok'.
 stop() ->
-    gen_server:cast(?MODULE, 'stop').
+    gen_server:cast(?SERVER, 'stop').
 
 -spec crawl_numbers() -> 'ok'.
 crawl_numbers() ->
-    kz_util:put_callid(?MODULE),
+    kz_util:put_callid(?SERVER),
     lager:debug("beginning a number crawl"),
     lists:foreach(fun crawl_number_db/1, knm_util:get_all_number_dbs()),
     lager:debug("finished the number crawl").
@@ -82,9 +85,9 @@ crawl_numbers() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
-    lager:debug("started ~s", [?MODULE]),
-    {'ok', #state{cleanup_ref=cleanup_timer()}}.
+    kz_util:put_callid(?SERVER),
+    lager:debug("started ~s", [?SERVER]),
+    {'ok', #state{cleanup_ref = cleanup_timer()}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -117,7 +120,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref=Ref}=State) ->
-    _P = kz_util:spawn(fun crawl_numbers/0),
+    _ = kz_util:spawn(fun crawl_numbers/0),
     {'noreply', State#state{cleanup_ref=cleanup_timer()}};
 handle_info(_Msg, State) ->
     lager:debug("unhandled msg: ~p", [_Msg]),
@@ -134,7 +137,7 @@ handle_info(_Msg, State) ->
 %%--------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
-    lager:debug("~s terminating: ~p", [?MODULE, _Reason]).
+    lager:debug("~s terminating: ~p", [?SERVER, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
