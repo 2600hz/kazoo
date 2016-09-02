@@ -179,7 +179,7 @@ fmt: $(FMT)
 $(QUOTE):
 	git clone https://github.com/jamhed/erl-tools $(ROOT)/make/quote-tool
 
-quote: TMPFILE:=$(shell mktemp quote.XXXXXX)
+quote: TO_QUOTE ?= $(shell git diff --name-only | grep .*rl$)
 quote: $(QUOTE)
 	$(QUOTE) -i tick $(TO_QUOTE)
 
