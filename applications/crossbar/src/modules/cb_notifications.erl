@@ -830,7 +830,7 @@ update_template(Context, Id, FileJObj) ->
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     lager:debug("file content type for ~s: ~s", [Id, CT]),
 
-    Opts = [{'content_type', kz_util:to_list(CT)}],
+    Opts = [{'content_type', wh_util:to_list(CT)}],
 
     try
         Template = maybe_encode_template(Contents, CT),
