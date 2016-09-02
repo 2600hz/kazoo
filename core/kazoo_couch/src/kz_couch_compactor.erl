@@ -1235,8 +1235,10 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%%===================================================================
 -spec get_nodes(server()) -> ne_binaries().
 get_nodes(Server) ->
-    {'ok', Nodes} = kz_couch_view:all_docs(Server, <<"nodes">>, []),
-    shuffle([kz_doc:id(Node) || Node <- Nodes]).
+    case kz_couch_view:all_docs(Server, <<"nodes">>, []) of
+        {'ok', Nodes} ->  shuffle([kz_doc:id(Node) || Node <- Nodes]);
+        _ -> []
+    end.
 
 -spec get_nodes(server(), ne_binary()) -> ne_binaries().
 get_nodes(Server, Database) ->
