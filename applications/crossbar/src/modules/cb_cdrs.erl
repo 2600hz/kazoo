@@ -777,4 +777,9 @@ load_legs(InteractionId, Context) ->
 -spec normalize_leg_view_results(kz_json:object(), kz_json:objects()) ->
                                         kz_json:objects().
 normalize_leg_view_results(JObj, Acc) ->
-    Acc ++ [kz_json:get_value(<<"doc">>, JObj)].
+    Acc ++ [fix_leg_values(kz_json:get_value(<<"doc">>, JObj))].
+
+-spec fix_leg_values(kz_json:object()) -> kz_json:object().
+fix_leg_values(Leg) ->
+    To = kz_json:get_value(<<"to">>, Leg),
+    kz_json:set_value(<<"to">>, kz_util:uri_decode(To), Leg).
