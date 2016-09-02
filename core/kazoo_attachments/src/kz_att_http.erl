@@ -54,23 +54,29 @@ send_request(Url, Verb, Headers, Contents, Redirects, Debug) ->
         {'ok', Code, ReplyHeaders, _Body} when
               Code =:= 301;
               Code =:= 302 ->
-            lager:debug("got redirect request when sending ~s to ~s, checking redirection"),
             NewDebug = add_debug(Debug, Url, Code, ReplyHeaders),
             Fun = fun(URL, Tries, Data) -> send_request(URL, Verb, Headers, Contents, Tries, Data) end,
-            maybe_redirect(ReplyHeaders, Redirects, NewDebug, Fun);
+            maybe_redirect(Url, ReplyHeaders, Redirects, NewDebug, Fun);
         _E -> {'error', _E}
     end.
 
-maybe_redirect(Headers, Redirects, Debug, Fun) ->
+maybe_redirect(ToUrl, Headers, Redirects, Debug, Fun) ->
     case props:get_value("location", Headers) of
-        'undefined' -> {'error', 'redirection_with_no_location'};
-        Url -> maybe_redirect_loop(Url, Redirects, Debug, Fun)
+        'undefined' ->
+            lager:debug("request to ~s got redirection but no 'location' header was found", [ToUrl]),
+            {'error', 'redirection_with_no_location'};
+        Url ->
+            maybe_redirect_loop(ToUrl, Url, Redirects, Debug, Fun)
     end.
 
-maybe_redirect_loop(Url, Redirects, Debug, Fun) ->
+maybe_redirect_loop(ToUrl, Url, Redirects, Debug, Fun) ->
     case kz_json:get_value(Url, Debug) of
-        'undefined' -> Fun(Url, Redirects + 1, Debug);
-        _ -> {'error', 'redirect_loop_detected'}
+        'undefined' ->
+            lager:debug("request to ~s redirected to ~s.",[ToUrl, Url]),
+            Fun(Url, Redirects + 1, Debug);
+        _ ->
+            lager:debug("the request ~s got redirect to ~s but this is already in the list of visited urls",[ToUrl, Url]),
+            {'error', 'redirect_loop_detected'}
     end.
 
 add_debug(Debug, Url, Code, Headers) ->
@@ -109,10 +115,9 @@ fetch_attachment(Url, Redirects, Debug) ->
         {'ok', Code, Headers, _Body} when
               Code =:= 301;
               Code =:= 302 ->
-            lager:debug("got redirect request when requesting ~s, checking redirection"),
             NewDebug = add_debug(Debug, Url, Code, Headers),
             Fun = fun(URL, N, Data) -> fetch_attachment(URL, N, Data) end,
-            maybe_redirect(Headers, Redirects, NewDebug, Fun);
+            maybe_redirect(Url, Headers, Redirects, NewDebug, Fun);
         {'ok', _, _Headers, Body} -> {'error', Body};
         _R -> {'error', <<"error getting from url">>}
     end.
