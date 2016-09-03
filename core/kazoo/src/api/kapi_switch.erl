@@ -85,6 +85,7 @@
 -define(OPTIONAL_FSREPLY_COMMAND_HEADERS, [<<"FreeSWITCH-Node">>
                                           ,<<"Error">>
                                           ,<<"Response">>
+                                          ,<<"Event-Data">>
                                           ]).
 -define(FSREPLY_COMMAND_VALUES, [{<<"Event-Name">>, <<"reply">>}
                                 ,{<<"Event-Category">>, <<"switch_event">>}
