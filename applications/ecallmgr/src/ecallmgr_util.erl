@@ -29,7 +29,7 @@
 -export([media_path/3, media_path/4
         ,lookup_media/4
         ]).
--export([unserialize_fs_array/1]).
+-export([unserialize_fs_array/1, unserialize_fs_props/1]).
 -export([convert_fs_evt_name/1, convert_kazoo_app_name/1]).
 -export([fax_filename/1
         ,recording_filename/1
@@ -301,14 +301,15 @@ custom_channel_vars(Props) ->
     lists:map(fun channel_var_map/1, custom_channel_vars(Props, [])).
 
 custom_channel_vars(Props, Initial) ->
-    maybe_update_referred_ccv(
-      Props
-                             ,lists:usort(fun({A, _}, {B, _}) -> A =< B end
-                                         ,lists:foldl(fun custom_channel_vars_fold/2
-                                                     ,Initial
-                                                     ,Props
-                                                     ))
-     ).
+    CCVs = lists:foldl(fun custom_channel_vars_fold/2, Initial, Props),
+    maybe_update_referred_ccv(Props, channel_vars_sort(CCVs)).
+
+-spec channel_vars_sort(kz_proplist()) -> kz_proplist().
+channel_vars_sort(ChannelVars) ->
+    lists:usort(fun channel_var_sort/2, ChannelVars). 
+
+-spec channel_var_sort(tuple(), tuple()) -> boolean().
+channel_var_sort({A, _}, {B, _}) -> A =< B.
 
 custom_channel_vars_fold({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
     [{Key, V} | Acc];
@@ -369,8 +370,20 @@ fix_value(_K, V) -> V.
 unserialize_fs_array('undefined') -> [];
 unserialize_fs_array(<<"ARRAY::", Serialized/binary>>) ->
     binary:split(Serialized, <<"|:">>, ['global']);
+unserialize_fs_array(List)
+  when is_list(List) ->
+    List;
 unserialize_fs_array(Single) ->
     [Single].
+
+-spec unserialize_fs_props(kz_proplist()) -> kz_proplist().
+unserialize_fs_props(Props) ->
+    lists:map(fun unserialize_fs_prop/1, Props).
+
+-spec unserialize_fs_prop(tuple()) -> tuple().
+unserialize_fs_prop({K, <<"ARRAY::", _/binary>> = V}) ->
+    {K, unserialize_fs_array(V)};
+unserialize_fs_prop(KV) -> KV.
 
 %% convert a raw FS list of vars to a proplist
 %% "Event-Name=NAME,Event-Timestamp=1234" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
