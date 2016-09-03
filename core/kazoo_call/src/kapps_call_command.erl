@@ -2996,11 +2996,11 @@ do_store_file(Tries, Timeout, API, Msg, Call) ->
             case kz_json:get_ne_binary_value(<<"Result">>, JObj) of
                 <<"success">> -> 'ok';
                 <<"error">> ->
-                    Error = kz_json:get_ne_binary_value(<<"Error">>, JObj),
-                    retry_store_file(Tries - 1, Timeout, API, Msg, Error, Call);
+                    Error = kz_json:get_first_defined([[<<"Event-Data">>, <<"API-Error">>], <<"Error">>], JObj, <<"error not available">>),
+                    retry_store_file(Tries - 1, Timeout, API, Msg, Error, maybe_add_debug_data(JObj, Call));
                 _Other ->
-                    Error = io_lib:format("unhandled return ('~s') from store file", [_Other]),
-                    retry_store_file(Tries - 1, Timeout, API, Msg, kz_util:to_binary(Error), Call)
+                    Error = kz_util:to_binary(io_lib:format("unhandled return ('~s') from store file", [_Other])),
+                    retry_store_file(Tries - 1, Timeout, API, Msg, Error, maybe_add_debug_data(JObj, Call))
             end;
         {'returned', _JObj, _Basic} ->
             Error = io_lib:format("message returned from amqp. is ~s down ?"
@@ -3034,6 +3034,12 @@ retry_store_file(Tries, Timeout, API, Msg, Error, Call) ->
     lager:critical("~s : ~s", [Msg, Error]),
     timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
     do_store_file(Tries, Timeout, API, Msg, Call).
+
+maybe_add_debug_data(JObj, Call) ->
+    case kz_json:get_value(<<"Event-Data">>, JObj) of
+        'undefined' -> Call;
+        Data -> kapps_call:kvs_store('error_details', Data, Call)
+    end.
 
 -spec attended_transfer(ne_binary(), kapps_call:call()) -> 'ok'.
 -spec attended_transfer(ne_binary(), api_binary(), kapps_call:call()) -> 'ok'.
