@@ -111,6 +111,16 @@ filter('undefined_function_calls', Results) ->
                  (_) -> 'true'
              end,
     lists:filter(ToKeep, Results);
+filter(undefined_functions, Results) ->
+    ToKeep = fun
+                 ({eunit_test, nonexisting_function, 0}) -> false;
+
+                 ({qdate, to_unixtime, 1}) -> false;
+                 ({qdate, unixtime, 0}) -> false;
+
+                 (_) -> true
+             end,
+    lists:filter(ToKeep, Results);
 filter(_Xref, Results) ->
     Results.
 
@@ -120,6 +130,10 @@ print('undefined_function_calls'=Xref, Results) ->
                 io:format("~30.. s:~-30..,s/~p ~30.. s ~30.. s:~s/~p\n"
                          ,[M1,F1,A1, "calls undefined", M2,F2,A2])
         end,
+    lists:foreach(F, Results);
+print('undefined_functions'=Xref, Results) ->
+    io:format("Xref: listing ~p\n", [Xref]),
+    F = fun ({M, F, A}) -> io:format("~30.. s:~s/~p\n", [M, F, A]) end,
     lists:foreach(F, Results);
 print(Xref, Results) ->
     io:format("Xref: listing ~p\n\t~p\n", [Xref, Results]).
