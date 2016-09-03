@@ -14,13 +14,20 @@ main([]) ->
     usage(),
     halt(-1);
 main(Paths) ->
-    Errors = xref(Paths),
-    io:format("Done\n"),
-    halt(Errors).
+    GlobalErrors = xref("global", Paths),
+    %% F = fun (Path) -> is_in_path("applications", Path) end,
+    %% {Applications, Core} = lists:partition(F, Paths),
+    %% LocalErrors = lists:sum([xref(Application, [Application|Core])
+    %%                          || Application <- Applications
+    %%                         ]),
+    halt(GlobalErrors
+         %% + LocalErrors
+        ).
 
 %% Internals
 
-xref(Paths) ->
+xref(Pass, Paths) ->
+    io:format("Pass: ~s\n", [Pass]),
     AllPaths = all_paths(Paths),
     {'ok', _Pid} = xref:start(?SERVER),
     'ok' = xref:set_library_path(?SERVER, AllPaths),
@@ -41,17 +48,20 @@ xref(Paths) ->
            || Xref <- xrefs()
           ]),
     'stopped' = xref:stop(?SERVER),
+    io:format("Done\n"),
     ErrorsCount.
 
 all_paths(Paths) ->
-    OfARelease = fun (Path) -> lists:member("_rel", filename:split(Path)) end,
-    case lists:any(OfARelease, Paths) of
+    case lists:any(fun (Path) -> is_in_path("_rel", Path) end, Paths) of
+        true -> Paths;
         false ->
             %% ie: we are not Xref-ing an Erlang release.
             'ok' = code:add_pathsa(Paths),
-            code:get_path();
-        true -> Paths
+            code:get_path()
     end.
+
+is_in_path(Name, Path) ->
+    lists:member(Name, filename:split(Path)).
 
 add_dir(Dir) ->
     case Dir =/= "."
