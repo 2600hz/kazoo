@@ -364,7 +364,7 @@ search_gateway(IP, Port, _, #gateway{server=IP
                                     ,port=Port
                                     ,force_port='true'
                                     }=Gateway
-              ) when IP =/= 'undefined' andalso Port =/= 'undefined' ->
+              ) when IP =/= 'undefined', Port =/= 'undefined' ->
     Gateway;
 search_gateway(IP, _, _, #gateway{server=IP
                                  ,force_port='false'
@@ -593,7 +593,7 @@ gateways_to_endpoints(Number, [Gateway|Gateways], OffnetJObj, Endpoints) ->
 
 -spec gateway_to_endpoint(ne_binary(), gateway(), kapi_offnet_resource:req()) ->
                                  kz_json:object().
-gateway_to_endpoint(Number
+gateway_to_endpoint(DestinationNumber
                    ,#gateway{invite_format=InviteFormat
                             ,caller_id_type=CallerIdType
                             ,bypass_media=BypassMedia
@@ -608,17 +608,21 @@ gateway_to_endpoint(Number
                             }=Gateway
                    ,OffnetJObj
                    ) ->
+
+    IsEmergency = gateway_emergency_resource(Gateway),
+    {CIDName, CIDNumber} = gateway_cid(OffnetJObj, IsEmergency),
+
     CCVs = props:filter_empty(
-             [{<<"Emergency-Resource">>, gateway_emergency_resource(Gateway)}
-             ,{<<"Matched-Number">>, Number}
+             [{<<"Emergency-Resource">>, IsEmergency}
+             ,{<<"Matched-Number">>, DestinationNumber}
               | gateway_from_uri_settings(Gateway)
              ]),
     kz_json:from_list(
       props:filter_empty(
-        [{<<"Route">>, gateway_dialstring(Gateway, Number)}
-        ,{<<"Callee-ID-Name">>, kz_util:to_binary(Number)}
-        ,{<<"Callee-ID-Number">>, kz_util:to_binary(Number)}
-        ,{<<"To-DID">>, kz_util:to_binary(Number)}
+        [{<<"Route">>, gateway_dialstring(Gateway, DestinationNumber)}
+        ,{<<"Callee-ID-Name">>, kz_util:to_binary(DestinationNumber)}
+        ,{<<"Callee-ID-Number">>, kz_util:to_binary(DestinationNumber)}
+        ,{<<"To-DID">>, kz_util:to_binary(DestinationNumber)}
         ,{<<"Invite-Format">>, InviteFormat}
         ,{<<"Caller-ID-Type">>, CallerIdType}
         ,{<<"Bypass-Media">>, BypassMedia}
@@ -631,10 +635,20 @@ gateway_to_endpoint(Number
         ,{<<"Endpoint-Options">>, EndpointOptions}
         ,{<<"Endpoint-Progress-Timeout">>, kz_util:to_binary(ProgressTimeout)}
         ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
-        ,{<<"Outbound-Caller-ID-Number">>, kapi_offnet_resource:outbound_caller_id_number(OffnetJObj)}
-        ,{<<"Outbound-Caller-ID-Name">>, kapi_offnet_resource:outbound_caller_id_name(OffnetJObj)}
+        ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
+        ,{<<"Outbound-Caller-ID-Name">>, CIDName}
          | maybe_get_t38(Gateway, OffnetJObj)
         ])).
+
+-spec gateway_cid(kapi_offnet_resource:req(), api_binary()) -> {ne_binary(), ne_binary()}.
+gateway_cid(OffnetJObj, 'undefined') ->
+    {kapi_offnet_resource:outbound_caller_id_name(OffnetJObj)
+    ,kapi_offnet_resource:outbound_caller_id_number(OffnetJObj)
+    };
+gateway_cid(OffnetJObj, <<"true">>) ->
+    {stepswitch_bridge:bridge_emergency_cid_name(OffnetJObj)
+    ,stepswitch_bridge:bridge_emergency_cid_number(OffnetJObj)
+    }.
 
 -spec gateway_from_uri_settings(gateway()) -> kz_proplist().
 gateway_from_uri_settings(#gateway{format_from_uri='false'}) ->
