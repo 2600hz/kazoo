@@ -32,6 +32,10 @@
         ]).
 -export([sendmsg/3]).
 
+-export([config/1
+        ,bgapi4/5
+        ]).
+
 -include("ecallmgr.hrl").
 
 -define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
@@ -295,3 +299,44 @@ sendevent_custom(Node, SubClassName, Headers) ->
 
 sendmsg(Node, UUID, Headers) ->
     gen_server:call({'mod_kazoo', Node}, {'sendmsg', UUID, Headers}).
+
+config(Node) ->
+    gen_server:cast({'mod_kazoo', Node}, {'config', []}).
+
+-spec bgapi4(atom(), atom(), string() | binary(), fun(), list()) ->
+                   {'ok', binary()} |
+                   {'error', 'timeout' | 'exception' | binary()}.
+bgapi4(Node, Cmd, Args, Fun, CallBackParams) ->
+    Self = self(),
+    _ = kz_util:spawn(
+          fun() ->
+                  try gen_server:call({'mod_kazoo', Node}, {'bgapi4', Cmd, Args}, ?TIMEOUT) of
+                      {'ok', JobId}=JobOk ->
+                          Self ! {'api', JobOk},
+                          receive
+                              {'bgok', JobId, Reply} 
+                                when is_function(Fun, 3) -> Fun('ok', Reply, [JobId | CallBackParams]);
+                              {'bgerror', JobId, Reply}
+                                when is_function(Fun, 3) -> Fun('error', Reply, [JobId | CallBackParams]);
+                              {'bgok', JobId, Reply, Data}
+                                when is_function(Fun, 4) -> Fun('ok', Reply, Data, [JobId | CallBackParams]);
+                              {'bgerror', JobId, Reply, Data}
+                                when is_function(Fun, 4) -> Fun('error', Reply, Data, [JobId | CallBackParams]);
+                              _Other -> lager:debug("unexpected message from freeswitch : ~p", [_Other])
+                          end;
+                      {'error', Reason} ->
+                          Self ! {'api', {'error', Reason}};
+                      'timeout' ->
+                          Self ! {'api', {'error', 'timeout'}}
+                  catch
+                      _E:_R ->
+                          lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
+                                    ,[Cmd, Node, _E, _R]),
+                          Self ! {'api', {'error', 'exception'}}
+                  end
+          end),
+    %% get the initial result of the command, NOT the asynchronous response, and
+    %% return it
+    receive
+        {'api', Result} -> Result
+    end.
