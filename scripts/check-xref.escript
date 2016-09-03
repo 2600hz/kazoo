@@ -68,11 +68,11 @@ add_dir(Dir) ->
 
 xrefs() ->
     ['undefined_function_calls'
-     %% ,'undefined_functions'        %%
-     %% ,'locals_not_used'            %% Compilation discovers this
-     %% ,'exports_not_used'           %% Compilation discovers this
-     %% ,'deprecated_function_calls'  %% Concerns not kazoo
-     %% ,'deprecated_functions'       %% Concerns not kazoo
+    ,'undefined_functions'        %%
+    %% ,'locals_not_used'            %% Compilation discovers this
+    %% ,'exports_not_used'           %% Compilation discovers this
+    %% ,'deprecated_function_calls'  %% Concerns not kazoo
+    %% ,'deprecated_functions'       %% Concerns not kazoo
      %% Want moar? http://www.erlang.org/doc/man/xref.html
     ].
 
