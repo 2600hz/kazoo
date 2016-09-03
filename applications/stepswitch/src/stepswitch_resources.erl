@@ -364,7 +364,7 @@ search_gateway(IP, Port, _, #gateway{server=IP
                                     ,port=Port
                                     ,force_port='true'
                                     }=Gateway
-              ) when IP =/= 'undefined' andalso Port =/= 'undefined' ->
+              ) when IP =/= 'undefined', Port =/= 'undefined' ->
     Gateway;
 search_gateway(IP, _, _, #gateway{server=IP
                                  ,force_port='false'
