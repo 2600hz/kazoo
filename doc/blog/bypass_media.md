@@ -2,7 +2,7 @@
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#orgheadline9">1. Bypass Media Mode</a>
+<li><a href="#orgheadline11">1. Bypass Media Mode</a>
 <ul>
 <li><a href="#orgheadline3">1.1. How is media handled?</a>
 <ul>
@@ -10,21 +10,23 @@
 <li><a href="#orgheadline2">1.1.2. Drawbacks</a></li>
 </ul>
 </li>
-<li><a href="#orgheadline7">1.2. Bypassing Kazoo for media handling</a>
+<li><a href="#orgheadline9">1.2. Bypassing Kazoo for media handling</a>
 <ul>
 <li><a href="#orgheadline4">1.2.1. Bypass for device(s):</a></li>
 <li><a href="#orgheadline5">1.2.2. Bypass for resource(s):</a></li>
 <li><a href="#orgheadline6">1.2.3. Example resource doc</a></li>
+<li><a href="#orgheadline7">1.2.4. Benefits</a></li>
+<li><a href="#orgheadline8">1.2.5. Drawbacks</a></li>
 </ul>
 </li>
-<li><a href="#orgheadline8">1.3. Wrap-up</a></li>
+<li><a href="#orgheadline10">1.3. Wrap-up</a></li>
 </ul>
 </li>
 </ul>
 </div>
 </div>
 
-# Bypass Media Mode<a id="orgheadline9"></a>
+# Bypass Media Mode<a id="orgheadline11"></a>
 
 ## How is media handled?<a id="orgheadline3"></a>
 
@@ -60,7 +62,7 @@ FreeSWITCH is actually in the middle of the call, listening for your audio packe
     a. There are ways around this using ZRTP. 'zrtp-passthru', and 'proxy-media' mode
 3.  Taking media on taxes the CPUs of the FreeSWITCH server more, reducing the number of calls processable.
 
-## Bypassing Kazoo for media handling<a id="orgheadline7"></a>
+## Bypassing Kazoo for media handling<a id="orgheadline9"></a>
 
 In our default example above, there are two streams of data flowing, independent of each other: SIP signaling and RTP (the audio/video packets). In the default example, these streams both flow through FreeSWITCH. However, it is possible to instruct the endpoints to send their RTP streams directly to each other while keeping the SIP signaling going through FreeSWITCH (so you get paid!).
 
@@ -125,6 +127,18 @@ For upstream resources, the schema allows you two places:
       }
     }
 
-## Wrap-up<a id="orgheadline8"></a>
+### Benefits<a id="orgheadline7"></a>
 
-So there you have it. Pretty easy to modify your devices and carriers to support sending RTP traffic directly to them. Use with caution though. NAT in particular can really foul this up, leading to dead air.
+1.  Faster (though its always important to measure!) - Reducing the network hops the audio must traverse should improve the quality of the stream.
+2.  Cheaper - less ingress and egress on your WAN<->LAN router(s) which typically means a smaller bandwidth bill.
+3.  Scalability - Fewer packets to process means your infrastructure can take on more calls per-server.
+
+### Drawbacks<a id="orgheadline8"></a>
+
+1.  Probably won't work for most phones behind NAT. If you're providing minutes to PBX systems, though, NAT rules are probably part of the equation already.
+2.  Interop can be harder if the phones don't support the same codecs as the other side (FreeSWITCH can smooth over most of those incompatibilities).
+3.  Privacy - the media will stay on the public Internet. Can be worked around but support can vary widely among phone manufacturers (and even between models and firmware of the same manufacturer).
+
+## Wrap-up<a id="orgheadline10"></a>
+
+So there you have it. Pretty easy to modify your devices and carriers to support sending RTP traffic directly to the endpoint desired. Use with caution though. NAT in particular can really foul this up, leading to dead air and complaints.

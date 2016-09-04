@@ -28,8 +28,6 @@ FreeSWITCH is actually in the middle of the call, listening for your audio packe
 2. Privacy concerns - media is transmitted "in the clear" to the FreeSWITCH server.
    a. There are ways around this using ZRTP. 'zrtp-passthru', and 'proxy-media' mode
 3. Taking media on taxes the CPUs of the FreeSWITCH server more, reducing the number of calls processable.
-
-
 ** Bypassing Kazoo for media handling
 In our default example above, there are two streams of data flowing, independent of each other: SIP signaling and RTP (the audio/video packets). In the default example, these streams both flow through FreeSWITCH. However, it is possible to instruct the endpoints to send their RTP streams directly to each other while keeping the SIP signaling going through FreeSWITCH (so you get paid!).
 
@@ -67,5 +65,13 @@ For upstream resources, the schema allows you two places:
 }
 #+END_SRC
 
+*** Benefits
+1. Faster (though its always important to measure!) - Reducing the network hops the audio must traverse should improve the quality of the stream.
+2. Cheaper - less ingress and egress on your WAN<->LAN router(s) which typically means a smaller bandwidth bill.
+3. Scalability - Fewer packets to process means your infrastructure can take on more calls per-server.
+*** Drawbacks
+1. Probably won't work for most phones behind NAT. If you're providing minutes to PBX systems, though, NAT rules are probably part of the equation already.
+2. Interop can be harder if the phones don't support the same codecs as the other side (FreeSWITCH can smooth over most of those incompatibilities).
+3. Privacy - the media will stay on the public Internet. Can be worked around but support can vary widely among phone manufacturers (and even between models and firmware of the same manufacturer).
 ** Wrap-up
-So there you have it. Pretty easy to modify your devices and carriers to support sending RTP traffic directly to them. Use with caution though. NAT in particular can really foul this up, leading to dead air.
+So there you have it. Pretty easy to modify your devices and carriers to support sending RTP traffic directly to the endpoint desired. Use with caution though. NAT in particular can really foul this up, leading to dead air and complaints.
