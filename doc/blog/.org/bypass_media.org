@@ -1,3 +1,16 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:t e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:t title:t toc:t todo:t |:t
+#+TITLE: bypass_media
+#+DATE: <2016-09-04 Sun>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.2 (Org mode 8.3.5)
+
 * Bypass Media Mode
 
 ** How is media handled?
@@ -35,7 +48,7 @@ In Kazoo, this is controlled by the *callee's* configuration.
 
 *** Bypass for device(s):
 For calls to a device, the schema shows:
-#+INCLUDE: "../../applications/crossbar/priv/couchdb/schemas/devices.json" src json :lines "191-205"
+#+INCLUDE: "../../../applications/crossbar/priv/couchdb/schemas/devices.json" src json :lines "191-205"
 So a device's JSON would include:
 #+BEGIN_SRC json
 {
@@ -47,9 +60,9 @@ So a device's JSON would include:
 *** Bypass for resource(s):
 For upstream resources, the schema allows you two places:
 - Each gateway:
-  #+INCLUDE: "../../applications/crossbar/priv/couchdb/schemas/resources.json" src json :lines "43-48"
+  #+INCLUDE: "../../../applications/crossbar/priv/couchdb/schemas/resources.json" src json :lines "43-48"
 - On the resource's *media* object:
-  #+INCLUDE: "../../applications/crossbar/priv/couchdb/schemas/resources.json" src json :lines "291-296"
+  #+INCLUDE: "../../../applications/crossbar/priv/couchdb/schemas/resources.json" src json :lines "291-296"
 
 *** Example resource doc
 #+BEGIN_SRC json
