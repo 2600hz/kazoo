@@ -407,8 +407,13 @@ handle_info(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> handle_event_ret().
-handle_event(_JObj, #state{node=Node}) ->
-    {'reply', [{'node', Node}]}.
+handle_event(_JObj, #state{node=Node
+                          ,options=Options
+                          }) ->
+    {'reply', [{'node', Node}
+              ,{'node_options', Options}
+              ]
+    }.
 
 %%--------------------------------------------------------------------
 %% @private
