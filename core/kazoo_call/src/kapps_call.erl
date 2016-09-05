@@ -16,6 +16,7 @@
 -export([from_route_req/1, from_route_req/2]).
 -export([from_route_win/1, from_route_win/2]).
 -export([from_originate_uuid/1, from_originate_uuid/2]).
+-export([from_originate_ready/1, from_originate_ready/2]).
 -export([from_channel_create/1, from_channel_create/2]).
 -export([to_json/1, from_json/1, from_json/2]).
 -export([to_proplist/1]).
@@ -340,6 +341,18 @@ from_originate_uuid(JObj, #kapps_call{}=Call) ->
     'true' = kapi_resource:originate_uuid_v(JObj),
     Call#kapps_call{control_q=kz_json:get_value(<<"Outbound-Call-Control-Queue">>, JObj, control_queue(Call))
                      ,call_id=kz_json:get_value(<<"Outbound-Call-ID">>, JObj, call_id(Call))
+                    }.
+
+-spec from_originate_ready(kz_json:object()) -> call().
+-spec from_originate_ready(kz_json:object(), call()) -> call().
+
+from_originate_ready(JObj) ->
+    from_originate_ready(JObj, new()).
+
+from_originate_ready(JObj, #kapps_call{}=Call) ->
+    'true' = kapi_resource:originate_ready_v(JObj),
+    Call#kapps_call{control_q=kz_json:get_value(<<"Control-Queue">>, JObj, control_queue(Call))
+                     ,call_id=kz_json:get_value(<<"Call-ID">>, JObj, call_id(Call))
                     }.
 
 -spec from_channel_create(kz_json:object()) -> call().

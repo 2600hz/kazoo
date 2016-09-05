@@ -30,6 +30,7 @@
 -type created_uuid() :: {'fs' | 'api', ne_binary()}.
 -record(state, {node :: atom()
                ,server_id :: api_binary()
+               ,controller_q :: api_binary()
                ,originate_req = kz_json:new() :: kz_json:object()
                ,uuid :: created_uuid()
                ,action :: api_binary()
@@ -112,10 +113,9 @@ handle_originate_execute(JObj, Props) ->
     Srv = props:get_value('server', Props),
     UUID = props:get_value('uuid', Props),
     lager:debug("recv originate_execute for ~s", [UUID]),
-    _ = case kz_json:get_ne_binary_value(<<"Server-ID">>, JObj) of
+    _ = case kz_api:queue_id(JObj) of
             'undefined' -> 'ok';
-            ServerId ->
-                gen_listener:cast(Srv, {'update_server_id', ServerId})
+            ServerId -> gen_listener:cast(Srv, {'update_server_id', ServerId})
         end,
     kz_cache:store_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}, 'true'),
     gen_listener:cast(Srv, {'originate_execute'}).
@@ -137,7 +137,8 @@ handle_originate_execute(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([Node, JObj]) ->
     _ = kz_util:put_callid(JObj),
-    ServerId = kz_json:get_ne_binary_value(<<"Server-ID">>, JObj),
+    ServerId = kz_api:server_id(JObj),
+    ControllerQ = kz_api:queue_id(JObj),
     _ = bind_to_events(freeswitch:version(Node), Node),
     case kapi_resource:originate_req_v(JObj) of
         'false' ->
@@ -148,6 +149,7 @@ init([Node, JObj]) ->
             {'ok', #state{node=Node
                          ,originate_req=JObj
                          ,server_id=ServerId
+                         ,controller_q = ControllerQ
                          }}
     end.
 
@@ -811,11 +813,12 @@ find_max_endpoint_timeout([EP|EPs], T) ->
 start_control_process(#state{originate_req=JObj
                             ,node=Node
                             ,uuid={_, Id}=UUID
+                            ,controller_q=ControllerQ
                             ,server_id=ServerId
                             ,fetch_id=FetchId
                             ,control_pid='undefined'
                             }=State) ->
-    case ecallmgr_call_sup:start_control_process(Node, Id, FetchId, ServerId, kz_json:new()) of
+    case ecallmgr_call_sup:start_control_process(Node, Id, FetchId, ControllerQ, kz_json:new()) of
         {'ok', CtrlPid} when is_pid(CtrlPid) ->
             _ = maybe_send_originate_uuid(UUID, CtrlPid, State),
             kz_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
