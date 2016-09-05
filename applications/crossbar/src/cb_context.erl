@@ -25,6 +25,8 @@
 
         ,is_authenticated/1
 
+        ,is_superduper_admin/1
+
          %% Getters / Setters
         ,setters/2
         ,new/0
@@ -187,6 +189,33 @@ account_doc(Context) ->
 
 is_authenticated(#cb_context{auth_doc='undefined'}) -> 'false';
 is_authenticated(#cb_context{}) -> 'true'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Returns true if the request contains a system admin module.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_superduper_admin(api_ne_binary() | context()) -> boolean().
+is_superduper_admin('undefined') -> 'false';
+is_superduper_admin(AccountId=?NE_BINARY) ->
+    lager:debug("checking for superduper admin: ~s", [AccountId]),
+    case kz_account:fetch(AccountId) of
+        {'ok', JObj} ->
+            case kz_account:is_superduper_admin(JObj) of
+                'true' ->
+                    lager:debug("the requestor is a superduper admin"),
+                    'true';
+                'false' ->
+                    lager:debug("the requestor is not a superduper admin"),
+                    'false'
+            end;
+        {'error', _E} ->
+            lager:debug("not authorizing, error during lookup: ~p", [_E]),
+            'false'
+    end;
+is_superduper_admin(Context) ->
+    is_superduper_admin(auth_account_id(Context)).
 
 auth_token_type(#cb_context{auth_token_type=AuthTokenType}) -> AuthTokenType.
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.

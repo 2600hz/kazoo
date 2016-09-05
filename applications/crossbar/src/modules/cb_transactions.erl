@@ -356,7 +356,7 @@ validate_credit(Context) ->
     Amount = kz_json:get_float_value(<<"amount">>, cb_context:req_data(Context)),
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
 
-    case cb_modules_util:is_superduper_admin(Context) of
+    case cb_context:is_superduper_admin(Context) of
         'true' -> validate_credit(Context, Amount);
         'false' ->
             case kz_services:is_reseller(cb_context:auth_account_id(Context))
@@ -392,7 +392,7 @@ validate_credit(Context, _) ->
 validate_debit(Context) ->
     Amount = kz_json:get_float_value(<<"amount">>, cb_context:req_data(Context)),
 
-    case cb_modules_util:is_superduper_admin(Context) of
+    case cb_context:is_superduper_admin(Context) of
         'true' -> validate_debit(Context, Amount);
         'false' ->
             case kz_services:is_reseller(cb_context:auth_account_id(Context)) of

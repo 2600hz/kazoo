@@ -12,7 +12,6 @@
         ,update_mwi/2
         ,get_devices_owned_by/2
         ,maybe_originate_quickcall/1
-        ,is_superduper_admin/1
 
         ,attachment_name/2
         ,parse_media_type/1
@@ -426,33 +425,6 @@ get_cid_number(Context, Default) ->
         'undefined' -> 'undefined';
         CIDNumber -> kz_util:uri_decode(CIDNumber)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Returns true if the request contains a system admin module.
-%% @end
-%%--------------------------------------------------------------------
--spec is_superduper_admin(api_binary() | cb_context:context()) -> boolean().
-is_superduper_admin('undefined') -> 'false';
-is_superduper_admin(<<_/binary>> = AccountId) ->
-    lager:debug("checking for superduper admin: ~s", [AccountId]),
-    case kz_account:fetch(AccountId) of
-        {'ok', JObj} ->
-            case kz_account:is_superduper_admin(JObj) of
-                'true' ->
-                    lager:debug("the requestor is a superduper admin"),
-                    'true';
-                'false' ->
-                    lager:debug("the requestor is not a superduper admin"),
-                    'false'
-            end;
-        {'error', _E} ->
-            lager:debug("not authorizing, error during lookup: ~p", [_E]),
-            'false'
-    end;
-is_superduper_admin(Context) ->
-    is_superduper_admin(cb_context:auth_account_id(Context)).
 
 %%--------------------------------------------------------------------
 %% @private

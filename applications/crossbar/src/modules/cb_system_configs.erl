@@ -56,9 +56,9 @@ init() ->
 -spec authorize(cb_context:context()) -> boolean().
 -spec authorize(cb_context:context(), path_token()) -> boolean().
 -spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
-authorize(Context) -> cb_modules_util:is_superduper_admin(Context).
-authorize(Context, _Id) -> cb_modules_util:is_superduper_admin(Context).
-authorize(Context, _Id, _Node) -> cb_modules_util:is_superduper_admin(Context).
+authorize(Context) -> cb_context:is_superduper_admin(Context).
+authorize(Context, _Id) -> cb_context:is_superduper_admin(Context).
+authorize(Context, _Id, _Node) -> cb_context:is_superduper_admin(Context).
 
 %%--------------------------------------------------------------------
 %% @public

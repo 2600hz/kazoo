@@ -97,7 +97,7 @@ authorize(_, _) -> 'false'.
 
 -spec authorize_admin(cb_context:context(), req_nouns()) -> boolean().
 authorize_admin(Context, [{<<"registrations">>, [?COUNT_PATH_TOKEN]}]) ->
-    cb_modules_util:is_superduper_admin(Context).
+    cb_context:is_superduper_admin(Context).
 
 %%--------------------------------------------------------------------
 %% @public

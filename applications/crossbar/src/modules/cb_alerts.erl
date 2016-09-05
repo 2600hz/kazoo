@@ -120,7 +120,7 @@ delete(Context, _) ->
 validate_alerts(Context, ?HTTP_GET) ->
     summary(Context);
 validate_alerts(Context, ?HTTP_PUT) ->
-    case cb_modules_util:is_superduper_admin(Context) of
+    case cb_context:is_superduper_admin(Context) of
         'true' -> create(Context);
         'false' ->
             cb_context:add_system_error('forbidden', Context)

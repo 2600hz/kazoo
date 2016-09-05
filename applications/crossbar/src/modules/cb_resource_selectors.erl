@@ -85,7 +85,7 @@ authorize(_Context, _Nouns) ->
                                    'true' |
                                    {'halt', cb_context:context()}.
 maybe_authorize_admin(Context) ->
-    case cb_modules_util:is_superduper_admin(Context) of
+    case cb_context:is_superduper_admin(Context) of
         'true' ->
             lager:debug("authz the request for global resources"),
             'true';

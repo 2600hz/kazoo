@@ -134,7 +134,7 @@ authorize_media(_Context, [{<<"media">>, [?LANGUAGES, _Language]}], 'undefined')
 
 authorize_media(Context, [{<<"media">>, _}|_], 'undefined') ->
     IsAuthenticated = cb_context:is_authenticated(Context),
-    IsSuperDuperAdmin = cb_modules_util:is_superduper_admin(Context),
+    IsSuperDuperAdmin = cb_context:is_superduper_admin(Context),
     IsReqVerbGet = cb_context:req_verb(Context) =:= ?HTTP_GET,
     case IsAuthenticated
         andalso (IsSuperDuperAdmin
