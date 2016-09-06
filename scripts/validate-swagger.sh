@@ -13,5 +13,5 @@ errors=$(cat $tmp | python2 -c 'import sys, json; print len(json.load(sys.stdin)
 [[ $errors -ne 0 ]] && echo Swagger file validation errors: $errors && cat $tmp
 rm $tmp
 
-echo FIX THESE ISSUES ###
+echo FIX THESE ISSUES ###then remove this line
 #exit $errors
