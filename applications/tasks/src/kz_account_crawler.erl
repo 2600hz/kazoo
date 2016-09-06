@@ -28,13 +28,9 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".account_crawler">>).
 
 -record(state, {cleanup_ref = cleanup_timer() :: reference() %% For "whole" crawls
-               ,in_between_ref = undefined :: api_reference()
                ,account_ids = [] :: ne_binaries()
                }).
 -type state() :: #state{}.
-
--define(TIME_BETWEEN_WHOLE_CRAWLS
-       ,kapps_config:get_integer(?MOD_CONFIG_CAT, <<"cycle_delay_time">>, 5 * ?MILLISECONDS_IN_MINUTE)).
 
 -define(TIME_BETWEEN_CRAWLS
        ,kapps_config:get_integer(?MOD_CONFIG_CAT, <<"interaccount_delay">>, 10 * ?MILLISECONDS_IN_SECOND)).
@@ -117,37 +113,25 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({timeout, Ref, _Msg}, #state{cleanup_ref = Ref
-                                        ,account_ids = AccountIds
+                                        ,account_ids = []
                                         }=State) ->
     NewState =
-        case AccountIds =:= []
-            andalso kz_datamgr:all_docs(?KZ_ACCOUNTS_DB) of
+        case kz_datamgr:all_docs(?KZ_ACCOUNTS_DB) of
             {'ok', JObjs} ->
                 IDs = [ID || JObj <- JObjs,
                              ?MATCH_ACCOUNT_RAW(ID) <- [kz_doc:id(JObj)]
                       ],
                 lager:debug("beginning crawling accounts"),
                 State#state{cleanup_ref = cleanup_timer()
-                           ,in_between_ref = cleanup_small_timer()
                            ,account_ids = kz_util:shuffle_list(IDs)
                            };
-            _Else ->
-                case _Else of
-                    false -> lager:debug("crawler has not finished batch yet");
-                    {'error', _R} ->
-                        lager:warning("unable to list all docs in ~s: ~p", [?KZ_ACCOUNTS_DB, _R])
-                end,
+            {error, _R} ->
+                lager:warning("unable to list all docs in ~s: ~p", [?KZ_ACCOUNTS_DB, _R]),
                 State#state{cleanup_ref = cleanup_timer()}
         end,
     {noreply, NewState};
 
-handle_info({timeout, Ref, _Msg}, #state{in_between_ref = Ref
-                                        ,account_ids = []
-                                        }=State) ->
-    lager:debug("crawler finished batch"),
-    {noreply, State#state{in_between_ref = undefined}};
-
-handle_info({timeout, Ref, _Msg}, #state{in_between_ref = Ref
+handle_info({timeout, Ref, _Msg}, #state{cleanup_ref = Ref
                                         ,account_ids = [AccountId | AccountIds]
                                         }=State) ->
     lager:debug("crawling account ~s", [AccountId]),
@@ -155,7 +139,7 @@ handle_info({timeout, Ref, _Msg}, #state{in_between_ref = Ref
     %% be wasting bigcouch's file descriptors
     OpenResult = kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId),
     _ = check_then_process_account(AccountId, OpenResult),
-    NewState = State#state{in_between_ref = cleanup_small_timer()
+    NewState = State#state{cleanup_ref = cleanup_timer()
                           ,account_ids = AccountIds
                           },
     {noreply, NewState};
@@ -192,11 +176,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 -spec cleanup_timer() -> reference().
--spec cleanup_small_timer() -> reference().
 cleanup_timer() ->
-    erlang:start_timer(?TIME_BETWEEN_WHOLE_CRAWLS, self(), 'ok').
-cleanup_small_timer() ->
-    erlang:start_timer(?TIME_BETWEEN_CRAWLS, self(), ok).
+    erlang:start_timer(?TIME_BETWEEN_CRAWLS, self(), 'ok').
 
 -spec check_then_process_account(ne_binary(), {'ok', kz_account:doc()} | {'error',any()}) -> 'ok'.
 check_then_process_account(AccountId, {'ok', AccountJObj}) ->
