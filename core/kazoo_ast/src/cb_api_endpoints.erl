@@ -279,6 +279,7 @@ to_swagger_json() ->
 
     Swagger = kz_json:set_values([{<<"paths">>, to_swagger_paths(Paths, BasePaths)}
                                  ,{<<"definitions">>, to_swagger_definitions()}
+                                 ,{<<"parameters">>, to_swagger_parameters()}
                                  ,{<<"host">>, <<"localhost:8000">>}
                                  ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
                                  ,{<<"swagger">>, <<"2.0">>}
@@ -290,6 +291,16 @@ to_swagger_json() ->
                                 ,BaseSwagger
                                 ),
     write_swagger_json(Swagger).
+
+-spec to_swagger_parameters() -> kz_json:object().
+to_swagger_parameters() ->
+    kz_json:from_list(
+      [{<<"auth_token">>, kz_json:from_list(
+                            [{<<"name">>, <<"X-Auth-Token">>}
+                            ,{<<"in">>, <<"header">>}
+                            ,{<<"type">>, <<"string">>}
+                            ])}
+      ]).
 
 -spec to_swagger_definitions() -> kz_json:object().
 to_swagger_definitions() ->
@@ -356,7 +367,8 @@ make_parameters(Path, Method, SchemaParameter) ->
                ).
 
 compare_parameters(Param1, Param2) ->
-    kz_json:get_value(<<"name">>, Param1) >= kz_json:get_value(<<"name">>, Param2).
+    Keys = [<<"name">>, <<"$ref">>],
+    kz_json:get_first_defined(Keys, Param1) >= kz_json:get_first_defined(Keys, Param2).
 
 maybe_add_schema(_Path, Method, Schema)
   when Method =:= <<"put">>;
@@ -381,9 +393,7 @@ auth_token_param(Path, _Method) ->
         'undefined' -> 'undefined';
         Required ->
             kz_json:from_list(
-              [{<<"name">>, <<"X-Auth-Token">>}
-              ,{<<"in">>, <<"header">>}
-              ,{<<"type">>, <<"string">>}
+              [{<<"$ref">>, <<"#/parameters/auth_token">>}
               ,{<<"required">>, Required}
               ])
     end.
