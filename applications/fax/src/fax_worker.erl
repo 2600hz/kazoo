@@ -973,18 +973,18 @@ get_hunt_account_id(AccountId) ->
     AccountDb = wh_util:format_account_db(AccountId),
     Options = [{'key', <<"no_match">>}, 'include_docs'],
     case couch_mgr:get_results(AccountDb, ?CALLFLOW_LIST, Options) of
-        {'ok', [JObj]} -> maybe_hunt_account_id(wh_json:get_value(<<"doc">>, JObj));
+        {'ok', [JObj]} -> maybe_hunt_account_id(wh_json:get_value([<<"doc">>, <<"flow">>], JObj), AccountId);
         _ -> 'undefined'
     end.
 
--spec maybe_hunt_account_id(api_object()) -> api_binary().
-maybe_hunt_account_id('undefined') -> 'undefined';
-maybe_hunt_account_id(JObj) ->
-    case wh_json:get_value([<<"flow">>, <<"module">>], JObj) of
+-spec maybe_hunt_account_id(api_object(), ne_binary()) -> api_binary().
+maybe_hunt_account_id('undefined', _) -> 'undefined';
+maybe_hunt_account_id(JObj, AccountId) ->
+    case wh_json:get_value(<<"module">>, JObj) of
         <<"resources">> ->
-            Key = [<<"flow">>, <<"data">>, <<"hunt_account_id">>],
-            wh_json:get_value(Key, JObj, wh_doc:account_id(JObj));
-        _ -> 'undefined'
+            wh_json:get_value([<<"data">>, <<"hunt_account_id">>], JObj, AccountId);
+        _ ->
+            maybe_hunt_account_id(wh_json:get_value([<<"children">>, <<"_">>], JObj), AccountId)
     end.
 
 -spec resource_ccvs(ne_binary()) -> wh_json:object().
