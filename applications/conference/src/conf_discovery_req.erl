@@ -216,7 +216,8 @@ wait_for_creation(Conference, After) ->
 handle_search_resp(JObj, Conference, Call, Srv) ->
     MaxParticipants =  kapps_conference:max_participants(Conference),
     Participants = length(kz_json:get_value(<<"Participants">>, JObj, [])),
-    case MaxParticipants =/= 0 andalso Participants >= MaxParticipants of
+    case MaxParticipants =/= 0
+        andalso Participants >= MaxParticipants of
         'false' -> add_participant_to_conference(JObj, Conference, Call, Srv);
         'true' ->
             _ = kapps_call_command:b_prompt(?DEFAULT_MAX_MEMBERS_MEDIA, Call),
@@ -357,10 +358,12 @@ validate_if_pin_is_for_moderator(Conference, Call, Loop, Digits) ->
     MemberPins = kapps_conference:member_pins(Conference),
     ModeratorPins = kapps_conference:moderator_pins(Conference),
     case {(lists:member(Digits, MemberPins)
-           orelse (MemberPins =:= [] andalso Digits =:= <<>>)
+           orelse (MemberPins =:= []
+                   andalso Digits =:= <<>>)
           )
          ,(lists:member(Digits, ModeratorPins)
-           orelse (MemberPins =:= [] andalso Digits =:= <<>>)
+           orelse (MemberPins =:= []
+                   andalso Digits =:= <<>>)
           )
          }
     of
@@ -382,7 +385,8 @@ validate_if_pin_is_for_moderator(Conference, Call, Loop, Digits) ->
 validate_collected_member_pins(Conference, Call, Loop, Digits) ->
     Pins = kapps_conference:member_pins(Conference),
     case lists:member(Digits, Pins)
-        orelse (Pins =:= [] andalso Digits =:= <<>>)
+        orelse (Pins =:= [] 
+                andalso Digits =:= <<>>)
     of
         'true' ->
             lager:debug("caller entered a valid member pin"),
@@ -399,7 +403,8 @@ validate_collected_member_pins(Conference, Call, Loop, Digits) ->
 validate_collected_conference_pin(Conference, Call, Loop, Digits) ->
     Pins = kapps_conference:moderator_pins(Conference),
     case lists:member(Digits, Pins)
-        orelse (Pins =:= [] andalso Digits =:= <<>>)
+        orelse (Pins =:= [] 
+                andalso Digits =:= <<>>)
     of
         'true' ->
             lager:debug("caller entered a valid moderator pin"),
