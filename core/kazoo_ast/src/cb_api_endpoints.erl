@@ -299,6 +299,9 @@ to_swagger_parameters() ->
                             [{<<"name">>, <<"X-Auth-Token">>}
                             ,{<<"in">>, <<"header">>}
                             ,{<<"type">>, <<"string">>}
+                            ,{<<"minLength">>, 32}
+                            ,{<<"maxLength">>, 32}
+                            ,{<<"pattern">>, <<"^[0-9a-f]+$">>}
                             ])}
       ]).
 
