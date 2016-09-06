@@ -33,3 +33,4 @@ core/kazoo/mime.types
 
 applications/*/priv/archive_data/*
 
+.idea/
