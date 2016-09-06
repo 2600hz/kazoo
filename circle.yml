@@ -43,7 +43,7 @@ test:
     - . ~/.kerl/$OTP_VERSION/activate && make code_checks
     - ./scripts/validate-js.sh $($CHANGED)
     - . ~/.kerl/$OTP_VERSION/activate && make apis
-    - make validate-swagger qf-swag
+    - make validate-swagger
     - |
       if [[ 0 -ne `git status --porcelain | wc -l` ]]; then
         echo Unstaged changes!
