@@ -1043,18 +1043,18 @@ get_hunt_account_id(AccountId) ->
     AccountDb = kz_util:format_account_db(AccountId),
     Options = [{'key', <<"no_match">>}, 'include_docs'],
     case kz_datamgr:get_results(AccountDb, ?CALLFLOW_LIST, Options) of
-        {'ok', [JObj]} -> maybe_hunt_account_id(kz_json:get_value(<<"doc">>, JObj));
+        {'ok', [JObj]} -> maybe_hunt_account_id(kz_json:get_value([<<"doc">>, <<"flow">>], JObj), AccountId);
         _ -> 'undefined'
     end.
 
--spec maybe_hunt_account_id(api_object()) -> api_binary().
-maybe_hunt_account_id('undefined') -> 'undefined';
-maybe_hunt_account_id(JObj) ->
-    case kz_json:get_value([<<"flow">>, <<"module">>], JObj) of
+-spec maybe_hunt_account_id(api_object(), ne_binary()) -> api_binary().
+maybe_hunt_account_id('undefined', _) -> 'undefined';
+maybe_hunt_account_id(JObj, AccountId) ->
+    case kz_json:get_value(<<"module">>, JObj) of
         <<"resources">> ->
-            Key = [<<"flow">>, <<"data">>, <<"hunt_account_id">>],
-            kz_json:get_value(Key, JObj, kz_doc:account_id(JObj));
-        _ -> 'undefined'
+            kz_json:get_value([<<"data">>, <<"hunt_account_id">>], JObj, AccountId);
+        _ ->
+            maybe_hunt_account_id(kz_json:get_value([<<"children">>, <<"_">>], JObj), AccountId)
     end.
 
 -spec resource_ccvs(ne_binary()) -> kz_json:object().
