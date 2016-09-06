@@ -303,6 +303,9 @@ validate_conference_id(ConferenceId, Call, Loop) ->
 -spec validate_collected_conference_id(kapps_call:call(), non_neg_integer(), binary()) ->
                                               {'ok', kapps_conference:conference()} |
                                               {'error', any()}.
+validate_collected_conference_id(Call, Loop, <<>>) ->
+    _ = kapps_call_command:prompt(<<"conf-bad_conf">>, Call),
+    validate_conference_id('undefined', Call, Loop + 1);
 validate_collected_conference_id(Call, Loop, Digits) ->
     AccountDb = kapps_call:account_db(Call),
     ViewOptions = [{'key', Digits}
