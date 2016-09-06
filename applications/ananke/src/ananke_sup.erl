@@ -7,7 +7,6 @@
 %%%     SIPLABS, LLC (Ilya Ashchepkov)
 %%%-------------------------------------------------------------------
 -module(ananke_sup).
-
 -behaviour(supervisor).
 
 -export([start_link/0]).

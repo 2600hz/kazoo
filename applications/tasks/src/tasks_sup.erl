@@ -22,6 +22,8 @@
                    %% Numbers
                   ,?WORKER('knm_port_request_crawler')
                   ,?WORKER('knm_number_crawler')
+                   %% DB
+                  ,?WORKER('kz_account_crawler')
                   ]).
 
 %% ===================================================================

@@ -7,7 +7,6 @@
 %%%     SIPLABS, LLC (Ilya Ashchepkov)
 %%%-------------------------------------------------------------------
 -module(ananke_callback_worker).
-
 -behaviour(gen_server).
 
 -export([start_link/2
@@ -26,16 +25,16 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {request       :: kz_proplist()
-               ,timer        :: 'undefined' | reference()
+-record(state, {request      :: kz_proplist()
+               ,timer        :: api_reference()
                ,schedule     :: pos_integers()
                ,check = 'true' :: check_fun()
                }).
 
 -type state() :: #state{}.
 
--spec start_link(kz_proplist(), pos_integers()) -> {'ok', pid()} | {'error', term()}.
--spec start_link(kz_proplist(), pos_integers(), check_fun()) -> {'ok', pid()} | {'error', term()}.
+-spec start_link(kz_proplist(), pos_integers()) -> {'ok', pid()} | {'error', any()}.
+-spec start_link(kz_proplist(), pos_integers(), check_fun()) -> {'ok', pid()} | {'error', any()}.
 start_link(Req, [_ | _] = Schedule) ->
     start_link(#state{request = Req, schedule = Schedule}).
 
@@ -45,7 +44,7 @@ start_link(Req, [_ | _] = Schedule, CheckFun) ->
                      ,check = CheckFun
                      }).
 
--spec start_link(state()) -> {'ok', pid()} | {'error', term()}.
+-spec start_link(state()) -> {'ok', pid()} | {'error', any()}.
 start_link(#state{} = State) ->
     gen_server:start_link(?SERVER, State, []).
 
@@ -98,10 +97,9 @@ return(#state{} = State, [{Fun, Args} | Routines]) ->
     case Fun(State, Args) of
         #state{} = NewState ->
             return(NewState, Routines);
+        'stop' -> {'stop', 'normal', State};
         {'stop', _, #state{}} = Return ->
             Return;
-        'stop' ->
-            {'stop', 'normal', State};
         'continue' ->
             return(State, Routines)
     end;
@@ -113,16 +111,14 @@ check_condition(#state{check = 'true'}, _) ->
     'continue';
 check_condition(#state{check = {Module, Fun, Args}}, _) ->
     case erlang:apply(Module, Fun, Args) of
-        'true' ->
-            'continue';
+        'true' -> 'continue';
         'false' ->
             lager:info("condition failed, stopping"),
             'stop'
     end;
 check_condition(#state{check = Fun}, _) when is_function(Fun, 0) ->
     case Fun() of
-        'true' ->
-            'continue';
+        'true' -> 'continue';
         'false' ->
             lager:info("condition failed, stopping"),
             'stop'
@@ -161,14 +157,13 @@ start_originate_timer(Timeout) ->
     lager:debug("starting timer ~pms", [Timeout]),
     erlang:send_after(Timeout, self(), 'originate').
 
--spec stop_originate_timer(reference()) -> 'ok' | {'error', term()}.
-stop_originate_timer('undefined') ->
-    'ok';
+-spec stop_originate_timer(reference()) -> 'ok' | {'error', any()}.
+stop_originate_timer('undefined') -> 'ok';
 stop_originate_timer(Timer) ->
     erlang:cancel_timer(Timer).
 
--spec handle_originate_response(kz_json:object(), state()) -> {'stop', 'normal', state()}
-                                                                  | state().
+-spec handle_originate_response(kz_json:object(), state()) -> {'stop', 'normal', state()} |
+                                                              state().
 handle_originate_response(Resp, State) ->
     case kz_json:get_first_defined([<<"Application-Response">>, <<"Error-Message">>], Resp) of
         <<"SUCCESS">> ->

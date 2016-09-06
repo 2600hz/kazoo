@@ -7,7 +7,6 @@
 %%%     SIPLABS, LLC (Ilya Ashchepkov)
 %%%-------------------------------------------------------------------
 -module(ananke_app).
-
 -behaviour(application).
 
 -include_lib("kazoo/include/kz_types.hrl").
@@ -20,11 +19,10 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(term(), term()) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
+-spec start(application:start_type(), any()) -> startapp_ret().
 start(_Type, _Args) ->
-    _ = declare_exchanges(),
+    _ = kapi_self:declare_exchanges(),
+    _ = kapi_notifications:declare_exchanges(),
     ananke_sup:start_link().
 
 %%--------------------------------------------------------------------
@@ -33,16 +31,5 @@ start(_Type, _Args) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(term()) -> 'ok'.
+-spec stop(any()) -> 'ok'.
 stop(_State) -> 'ok'.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Ensures that all exchanges used are declared
-%% @end
-%%--------------------------------------------------------------------
--spec declare_exchanges() -> 'ok'.
-declare_exchanges() ->
-    kapi_self:declare_exchanges(),
-    kapi_notifications:declare_exchanges().
