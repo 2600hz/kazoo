@@ -124,12 +124,12 @@ allowed_methods(?STATS_PATH_TOKEN) ->
     [?HTTP_GET];
 allowed_methods(?EAVESDROP_PATH_TOKEN) ->
     [?HTTP_PUT];
-allowed_methods(_QID) ->
+allowed_methods(_QueueId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
-allowed_methods(_QID, ?ROSTER_PATH_TOKEN) ->
+allowed_methods(_QueueId, ?ROSTER_PATH_TOKEN) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE];
-allowed_methods(_QID, ?EAVESDROP_PATH_TOKEN) ->
+allowed_methods(_QueueId, ?EAVESDROP_PATH_TOKEN) ->
     [?HTTP_PUT].
 
 %%--------------------------------------------------------------------

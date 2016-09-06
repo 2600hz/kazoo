@@ -48,7 +48,7 @@ init() ->
 allowed_methods() -> [?HTTP_GET].
 
 -spec allowed_methods(path_token()) -> http_methods().
-allowed_methods(_) -> [?HTTP_PUT, ?HTTP_DELETE].
+allowed_methods(_TemplateName) -> [?HTTP_PUT, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -97,6 +97,7 @@ validate_request(Context, ?HTTP_DELETE, [{<<"templates">>, _}], TemplateName) ->
 validate_request(Context, _, _, TemplateName) ->
     load_template_db(TemplateName, Context).
 
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, TemplateName) ->
     create_template_db(TemplateName, Context).
 

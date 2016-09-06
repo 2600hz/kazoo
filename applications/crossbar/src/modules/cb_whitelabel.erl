@@ -85,14 +85,14 @@ allowed_methods(?WELCOME_REQ) ->
     [?HTTP_GET, ?HTTP_POST];
 allowed_methods(?DOMAINS_REQ) ->
     [?HTTP_GET, ?HTTP_POST];
-allowed_methods(_) ->
+allowed_methods(_WhitelabelDomain) ->
     [?HTTP_GET].
 
-allowed_methods(_, ?LOGO_REQ) ->
+allowed_methods(_WhitelabelDomain, ?LOGO_REQ) ->
     [?HTTP_GET];
-allowed_methods(_, ?ICON_REQ) ->
+allowed_methods(_WhitelabelDomain, ?ICON_REQ) ->
     [?HTTP_GET];
-allowed_methods(_, ?WELCOME_REQ) ->
+allowed_methods(_WhitelabelDomain, ?WELCOME_REQ) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------

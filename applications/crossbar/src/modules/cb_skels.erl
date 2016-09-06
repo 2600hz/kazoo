@@ -99,7 +99,7 @@ authorize(_) -> 'false'.
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(_) ->
+allowed_methods(_Thing) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------

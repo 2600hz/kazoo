@@ -21,13 +21,10 @@
 
 -define(CB_LIST, <<"websockets/crossbar_listing">>).
 
--define(
-   TO_JSON(Binding, Event)
-       ,kz_json:from_list([
-                           {<<"binding">>, Binding}
+-define(TO_JSON(Binding, Event),
+        kz_json:from_list([{<<"binding">>, Binding}
                           ,{<<"event">>, Event}
-                          ])
-  ).
+                          ])).
 
 -define(CALL, [?TO_JSON(<<"call.CHANNEL_CREATE.*">>, <<"CHANNEL_CREATE">>)
               ,?TO_JSON(<<"call.CHANNEL_ANSWER.*">>, <<"CHANNEL_ANSWER">>)
@@ -35,21 +32,16 @@
               ,?TO_JSON(<<"call.CHANNEL_BRIDGE.*">>, <<"CHANNEL_BRIDGE">>)
               ]).
 
--define(
-   OBJECTS
-       ,[?TO_JSON(<<A/binary, ".*.", T/binary, ".*">>, <<A/binary, "_", T/binary>>)
+-define(OBJECTS,
+        [?TO_JSON(<<A/binary, ".*.", T/binary, ".*">>, <<A/binary, "_", T/binary>>)
          || A <- ?DOC_ACTIONS, T <- ?DOC_TYPES
-        ]
-  ).
+        ]).
 
--define(
-   AVAILABLE
-       ,kz_json:from_list([
-                           {<<"call">>, ?CALL}
+-define(AVAILABLE,
+        kz_json:from_list([{<<"call">>, ?CALL}
                           ,{<<"fax">>, [?TO_JSON(<<"fax.status.*">>, <<"fax">>)]}
                           ,{<<"object">>, ?OBJECTS}
-                          ])
-  ).
+                          ])).
 
 %%%===================================================================
 %%% API
@@ -102,7 +94,7 @@ authorize(Context) ->
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
-allowed_methods(_) ->
+allowed_methods(_SocketId) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------

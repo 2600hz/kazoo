@@ -484,16 +484,26 @@ format_path_tokens(<<_/binary>> = Token) ->
 format_path_tokens(Tokens) ->
     [format_path_token(Token) || Token <- Tokens, Token =/= <<"/">>].
 
-format_path_token(<<"_">>) -> <<"{ID}">>;
-format_path_token(<<"AccountId">>) -> <<"{ACCOUNT_ID}">>;
-format_path_token(<<"_UUID">>) -> <<"{UUID}">>;
-format_path_token(<<"_", Rest/binary>>) ->
-    VarName = kz_util:to_upper_binary(Rest),
-    case binary:split(VarName, <<"ID">>) of
-        [Thing, <<>>] -> <<"{", Thing/binary, "_ID}">>;
-        _ -> <<"{", VarName/binary, "}">>
-    end;
-format_path_token(Token) -> Token.
+format_path_token(<<"_", Rest/binary>>) -> format_path_token(Rest);
+format_path_token(Token = <<Prefix:1/binary, _/binary>>) ->
+    case is_all_upper(Token) of
+        true -> brace_token(Token);
+        false ->
+            case is_all_upper(Prefix) of
+                true -> brace_token(camel_to_snake(Token));
+                false -> Token
+            end
+    end.
+
+camel_to_snake(Bin) ->
+    Options = ['global', {'return', 'binary'}],
+    re:replace(Bin, <<"(?!^)([A-Z][a-z])">>, <<"_\\1">>, Options).
+
+is_all_upper(Bin) ->
+    Bin =:= kz_util:to_upper_binary(Bin).
+
+brace_token(Token=?NE_BINARY) ->
+    <<"{", (kz_util:to_upper_binary(Token))/binary, "}">>.
 
 base_module_name(Module) ->
     {'match', [Name|_]} = grep_cb_module(Module),

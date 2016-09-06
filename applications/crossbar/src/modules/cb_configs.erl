@@ -53,7 +53,7 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods(path_token()) -> http_methods().
-allowed_methods(_) ->
+allowed_methods(_ConfigId) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------

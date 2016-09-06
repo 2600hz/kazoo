@@ -39,16 +39,14 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    cb_modules_util:bind(
-      ?MODULE
+    cb_modules_util:bind(?MODULE
                         ,[{<<"*.allowed_methods.service_plans">>, 'allowed_methods'}
                          ,{<<"*.resource_exists.service_plans">>, 'resource_exists'}
                          ,{<<"*.content_types_provided.service_plans">>, 'content_types_provided'}
                          ,{<<"*.validate.service_plans">>, 'validate'}
                          ,{<<"*.execute.post.service_plans">>, 'post'}
                          ,{<<"*.execute.delete.service_plans">>, 'delete'}
-                         ]
-     ).
+                         ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -69,9 +67,9 @@ allowed_methods(?CURRENT) ->
     [?HTTP_GET];
 allowed_methods(?OVERRIDE) ->
     [?HTTP_POST];
-allowed_methods(_) ->
+allowed_methods(_PlanId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
-allowed_methods(?AVAILABLE, _) ->
+allowed_methods(?AVAILABLE, _PlanId) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -157,12 +155,11 @@ validate(Context, ?AVAILABLE, PlanId) ->
 -spec validate_service_plan(cb_context:context(), http_method()) -> cb_context:context().
 -spec validate_service_plan(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_service_plan(Context, ?HTTP_GET) ->
-    crossbar_doc:load_view(
-      ?CB_LIST
+    crossbar_doc:load_view(?CB_LIST
                           ,[]
                           ,Context
                           ,fun normalize_view_results/2
-     );
+                          );
 validate_service_plan(Context, ?HTTP_POST) ->
     maybe_allow_change(Context).
 
@@ -190,11 +187,10 @@ post(Context) ->
                ,fun kz_services:save/1
                ],
     Services = lists:foldl(fun apply_fun/2, kz_services:fetch(cb_context:account_id(Context)), Routines),
-    cb_context:setters(
-      Context
+    cb_context:setters(Context
                       ,[{fun cb_context:set_resp_data/2, kz_services:service_plan_json(Services)}
-                       ,{fun cb_context:set_resp_status/2, 'success'}]
-     ).
+                       ,{fun cb_context:set_resp_status/2, 'success'}
+                       ]).
 
 post(Context, ?SYNCHRONIZATION) ->
     kz_service_sync:sync(cb_context:account_id(Context)),
@@ -222,10 +218,9 @@ post(Context, ?OVERRIDE) ->
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, NewDoc)),
     case cb_context:resp_status(Context1) of
         'success' ->
-            cb_context:set_resp_data(
-              Context1
+            cb_context:set_resp_data(Context1
                                     ,kz_json:get_value(<<"plans">>, NewDoc)
-             );
+                                    );
         _Status -> Context1
     end;
 post(Context, PlanId) ->

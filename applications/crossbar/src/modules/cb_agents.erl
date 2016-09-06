@@ -77,11 +77,11 @@ allowed_methods() -> [?HTTP_GET].
 
 allowed_methods(?STATUS_PATH_TOKEN) -> [?HTTP_GET];
 allowed_methods(?STATS_PATH_TOKEN) -> [?HTTP_GET];
-allowed_methods(_) -> [?HTTP_GET].
+allowed_methods(_UserId) -> [?HTTP_GET].
 
-allowed_methods(?STATUS_PATH_TOKEN, _) -> [?HTTP_GET, ?HTTP_POST];
-allowed_methods(_, ?STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST];
-allowed_methods(_, ?QUEUE_STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST].
+allowed_methods(?STATUS_PATH_TOKEN, _UserId) -> [?HTTP_GET, ?HTTP_POST];
+allowed_methods(_UserId, ?STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST];
+allowed_methods(_UserId, ?QUEUE_STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -165,21 +165,19 @@ validate_agent_action(Context, AgentId, ?STATUS_PATH_TOKEN, ?HTTP_POST) ->
     validate_status_change(read(AgentId, Context));
 validate_agent_action(Context, AgentId, ?STATUS_PATH_TOKEN, ?HTTP_GET) ->
     fetch_agent_status(AgentId, Context);
+validate_agent_action(Context, ?STATUS_PATH_TOKEN, AgentId, ?HTTP_GET) ->
+    fetch_agent_status(AgentId, Context);
 validate_agent_action(Context, AgentId, ?QUEUE_STATUS_PATH_TOKEN, ?HTTP_POST) ->
     OnSuccess = fun (C) -> maybe_queues_change(read(AgentId, C)) end,
     cb_context:validate_request_data(<<"queue_update">>, Context, OnSuccess);
 validate_agent_action(Context, AgentId, ?QUEUE_STATUS_PATH_TOKEN, ?HTTP_GET) ->
-    fetch_agent_queues(read(AgentId, Context));
-validate_agent_action(Context, ?STATUS_PATH_TOKEN, AgentId, ?HTTP_GET) ->
-    fetch_agent_status(AgentId, Context).
+    fetch_agent_queues(read(AgentId, Context)).
 
 -spec maybe_queues_change(cb_context:context()) -> cb_context:context().
 maybe_queues_change(Context) ->
     case cb_context:resp_status(Context) of
-        'success' ->
-            handle_queue_update(Context);
-        _ ->
-            Context
+        'success' -> handle_queue_update(Context);
+        _ -> Context
     end.
 
 -spec handle_queue_update(cb_context:context()) -> cb_context:context().
@@ -213,9 +211,7 @@ post(Context, AgentId, ?STATUS_PATH_TOKEN) ->
     crossbar_util:response(<<"status update sent">>, Context);
 post(Context, AgentId, ?QUEUE_STATUS_PATH_TOKEN) ->
     publish_action(Context, AgentId),
-
     Context1 = crossbar_doc:save(Context),
-
     case cb_context:resp_status(Context1) of
         'success' ->
             Queues = kz_json:get_value(<<"queues">>, cb_context:doc(Context), []),
@@ -259,7 +255,8 @@ publish_update(Context, AgentId, PubFun) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec read(path_token(), cb_context:context()) -> cb_context:context().
-read(Id, Context) -> crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_user:type())).
+read(Id, Context) ->
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_user:type())).
 
 -define(CB_AGENTS_LIST, <<"users/crossbar_listing">>).
 -spec fetch_all_agent_statuses(cb_context:context()) -> cb_context:context().
