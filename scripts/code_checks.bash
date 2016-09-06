@@ -1,20 +1,26 @@
 #!/bin/bash
 
 [[ $# -eq 0 ]] && echo "Usage: $0  ‹path to check›+" && exit 0
+# find applications core -iname '*.erl' -or -iname '*.hrl' -or -iname '*.escript' -or -iname '*.app.src'
+
+function P () {
+    printf "\e[1;3m%s\e[0m\n" "$1"
+}
+
 
 function check_andalso_orelse {
-    echo 'Check for andalso/orelse dropped lines'
-    ! grep -Ern '[^ ] +(andalso|orelse)' -- $@
+    P 'Check for andalso/orelse dropped lines'
+    ! grep -Ern '[^ %] +(andalso|orelse)' --include '*.escript' --include '*.erl' --include '*.hrl' --include '*.app.src' -- $@
 }
 
 function check_MODULE {
-    echo 'Check for uses of module in lieu of ?MODULE'
+    P 'Check for uses of module in lieu of ?MODULE'
     local errors=0
     for f in "$@"; do
-        m0=$(grep -E module'\(' "$f"  2>/dev/null)
-        [[ $? -ne 0 ]] && continue
+        base=$(basename "$f")
+        [[ 'erl' != ${base##*.} ]] && continue
         local err=0
-        m=$(echo $m0 | cut -d'(' -f2 | cut -d')' -f1)
+        m=$(grep -Fe '-module(' "$f"  2>/dev/null | cut -d'(' -f2 | cut -d')' -f1)
         grep -nE '^[^%]*[^a-zA-Z0-9_]'$m: "$f"
         [[ $? -ne 1 ]] && ((err++))
         grep -nE "^[^%]*'$m'" "$f"
@@ -24,7 +30,24 @@ function check_MODULE {
     return $errors
 }
 
+function check_TABs {
+    P 'Check for TAB characters'
+    local errors=0
+    for f in "$@"; do
+        grep -Frn $'\t' --include '*.escript' --include '*.erl' --include '*.hrl' --include '*.app.src' -- "$f"
+        [[ $? -ne 1 ]] && ((errors++))
+    done
+    return $errors
+}
+
+function check_trailing_whitespace {
+    P 'Check for trailing whitespaces'
+    ! grep -Ern '\s$' --include '*.escript' --include '*.erl' --include '*.hrl' --include '*.app.src' -- $@
+}
+
 errs=0
 check_andalso_orelse "$@" || ((errs++))
 check_MODULE "$@" || ((errs++))
+check_TABs "$@" || ((errs++))
+check_trailing_whitespace "$@" || ((errs++))
 exit $errs
