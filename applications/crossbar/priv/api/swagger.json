@@ -11568,6 +11568,15 @@
         "version": "v2"
     },
     "parameters": {
+        "account_id": {
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
+            "name": "{ACCOUNT_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
+            "type": "string"
+        },
         "auth_token": {
             "in": "header",
             "maxLength": 32,
@@ -11596,9 +11605,27 @@
             }
         },
         "/accounts/{ACCOUNT_ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "patch": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
             "post": {
                 "parameters": [
                     {
@@ -11608,6 +11635,9 @@
                         "schema": {
                             "$ref": "#/definitions/accounts"
                         }
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -11620,6 +11650,9 @@
                         "schema": {
                             "$ref": "#/definitions/accounts"
                         }
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11630,6 +11663,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -11638,6 +11674,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -11654,6 +11693,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11664,6 +11706,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11674,6 +11719,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11684,6 +11732,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11694,6 +11745,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11704,6 +11758,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -11712,6 +11769,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11722,6 +11782,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11732,6 +11795,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -11740,6 +11806,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11750,6 +11819,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -11758,6 +11830,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11768,6 +11843,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -11776,6 +11854,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11786,6 +11867,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -11794,6 +11878,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11804,6 +11891,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -11820,6 +11910,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11830,6 +11923,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11840,6 +11936,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11850,6 +11949,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11860,6 +11962,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11870,6 +11975,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -11878,6 +11986,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11888,6 +11999,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -11896,6 +12010,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -11904,6 +12021,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -11912,6 +12032,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11922,6 +12045,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11932,6 +12058,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11942,6 +12071,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -11958,6 +12090,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -11968,6 +12103,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -11976,6 +12114,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -11984,6 +12125,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12000,6 +12144,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12010,6 +12157,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12018,6 +12168,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12028,6 +12181,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12036,6 +12192,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12044,6 +12203,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12054,6 +12216,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12062,6 +12227,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12072,6 +12240,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12080,6 +12251,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12088,6 +12262,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12098,6 +12275,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12106,6 +12286,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12116,6 +12299,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12124,6 +12310,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12134,6 +12323,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12142,6 +12334,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12152,6 +12347,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12162,6 +12360,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12170,6 +12371,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12178,6 +12382,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12188,6 +12395,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12198,6 +12408,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12208,6 +12421,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12224,6 +12440,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12234,6 +12453,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12242,6 +12464,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12250,6 +12475,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12266,6 +12494,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12276,6 +12507,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12292,6 +12526,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12302,6 +12539,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12310,6 +12550,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12326,6 +12569,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12342,6 +12588,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12352,6 +12601,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12362,6 +12614,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12372,6 +12627,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12382,6 +12640,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12392,6 +12653,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12402,6 +12666,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12410,6 +12677,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12420,6 +12690,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12430,6 +12703,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12446,6 +12722,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12456,6 +12735,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12464,6 +12746,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12472,6 +12757,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12488,6 +12776,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12498,6 +12789,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": false
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12514,6 +12808,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": false
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12524,6 +12821,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12534,6 +12834,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12542,6 +12845,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12550,6 +12856,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12560,6 +12869,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12568,6 +12880,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12576,6 +12891,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12586,6 +12904,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12602,6 +12923,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12612,6 +12936,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12620,6 +12947,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12628,6 +12958,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12644,6 +12977,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12660,6 +12996,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12670,6 +13009,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12686,6 +13028,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12696,6 +13041,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12712,6 +13060,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12722,6 +13073,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12730,6 +13084,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12738,6 +13095,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12746,6 +13106,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12754,6 +13117,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12764,6 +13130,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12780,6 +13149,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12790,6 +13162,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12798,6 +13173,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12806,6 +13184,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12822,6 +13203,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12832,6 +13216,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12842,6 +13229,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12853,6 +13243,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -12875,6 +13268,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -12890,6 +13286,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -12901,6 +13300,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -12915,6 +13317,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -12928,6 +13333,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -12945,6 +13353,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -12961,6 +13372,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -12985,6 +13399,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -13000,6 +13417,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13010,6 +13430,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13026,6 +13449,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13036,6 +13462,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13044,6 +13473,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13052,6 +13484,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13068,6 +13503,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13078,6 +13516,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13086,6 +13527,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13096,6 +13540,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13104,6 +13551,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13112,6 +13562,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13120,6 +13573,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13138,6 +13594,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13148,6 +13607,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13158,6 +13620,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13166,6 +13631,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13182,6 +13650,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13192,6 +13663,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13200,6 +13674,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13210,6 +13687,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13220,6 +13700,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13230,6 +13713,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13240,6 +13726,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13248,6 +13737,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13264,6 +13756,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13274,6 +13769,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13282,6 +13780,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13292,6 +13793,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13308,6 +13812,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13318,6 +13825,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13328,6 +13838,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13338,6 +13851,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13348,6 +13864,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13358,6 +13877,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13366,6 +13888,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13376,6 +13901,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13384,6 +13912,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13392,6 +13923,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13402,6 +13936,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13410,6 +13947,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13418,6 +13958,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13428,6 +13971,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13444,6 +13990,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13454,6 +14003,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13462,6 +14014,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13470,6 +14025,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13486,6 +14044,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13496,6 +14057,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13506,6 +14070,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13522,6 +14089,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13532,6 +14102,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13542,6 +14115,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13552,6 +14128,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13562,6 +14141,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13570,6 +14152,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13586,6 +14171,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13596,6 +14184,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13604,6 +14195,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13614,6 +14208,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13632,6 +14229,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13650,6 +14250,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13660,6 +14263,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13670,6 +14276,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13680,6 +14289,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13696,6 +14308,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13706,6 +14321,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13722,6 +14340,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13732,6 +14353,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13740,6 +14364,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13748,6 +14375,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13764,6 +14394,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13774,6 +14407,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13782,6 +14418,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13798,6 +14437,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13808,6 +14450,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13816,6 +14461,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13824,6 +14472,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13840,6 +14491,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13858,6 +14512,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13868,6 +14525,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13878,6 +14538,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13886,6 +14549,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13896,6 +14562,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13904,6 +14573,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13912,6 +14584,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13922,6 +14597,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13930,6 +14608,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13938,6 +14619,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13948,6 +14632,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -13964,6 +14651,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13974,6 +14664,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13984,6 +14677,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -13994,6 +14690,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14004,6 +14703,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14014,6 +14716,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14022,6 +14727,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14038,6 +14746,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14048,6 +14759,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14064,6 +14778,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14074,6 +14791,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14090,6 +14810,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14100,6 +14823,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14108,6 +14834,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14116,6 +14845,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14132,6 +14864,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14142,6 +14877,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14150,6 +14888,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14166,6 +14907,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14184,6 +14928,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14194,6 +14941,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14210,6 +14960,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14228,6 +14981,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14238,6 +14994,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14248,6 +15007,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14258,6 +15020,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14266,6 +15031,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14282,6 +15050,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14300,6 +15071,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14310,6 +15084,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14320,6 +15097,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14330,6 +15110,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14340,6 +15123,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14358,6 +15144,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14368,6 +15157,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14378,6 +15170,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14388,6 +15183,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14404,6 +15202,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14420,6 +15221,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14438,6 +15242,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14456,6 +15263,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14474,6 +15284,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14484,6 +15297,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14494,6 +15310,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14502,6 +15321,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14518,6 +15340,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14534,6 +15359,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14552,6 +15380,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14562,6 +15393,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14580,6 +15414,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14590,6 +15427,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14600,6 +15440,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14610,6 +15453,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14626,6 +15472,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14636,6 +15485,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14646,6 +15498,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14656,6 +15511,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14666,6 +15524,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14676,6 +15537,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14686,6 +15550,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14696,6 +15563,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14704,6 +15574,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14720,6 +15593,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14730,6 +15606,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14746,6 +15625,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14756,6 +15638,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14764,6 +15649,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14780,6 +15668,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14790,6 +15681,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14800,6 +15694,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14810,6 +15707,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14820,6 +15720,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14830,6 +15733,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14840,6 +15746,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14850,6 +15759,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14860,6 +15772,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14868,6 +15783,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14878,6 +15796,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14888,6 +15809,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14898,6 +15822,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14914,6 +15841,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14932,6 +15862,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14942,6 +15875,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -14952,6 +15888,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14960,6 +15899,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14968,6 +15910,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -14984,6 +15929,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15002,6 +15950,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15012,6 +15963,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15020,6 +15974,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15036,6 +15993,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15046,6 +16006,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15054,6 +16017,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15062,6 +16028,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15072,6 +16041,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15082,6 +16054,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15092,6 +16067,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15102,6 +16080,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15110,6 +16091,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15120,6 +16104,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15130,6 +16117,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15140,6 +16130,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15156,6 +16149,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15166,6 +16162,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15182,6 +16181,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15192,6 +16194,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15202,6 +16207,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15212,6 +16220,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15220,6 +16231,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15236,6 +16250,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15252,6 +16269,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15262,6 +16282,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15272,6 +16295,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15282,6 +16308,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15290,6 +16319,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15306,6 +16338,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15322,6 +16357,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15332,6 +16370,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15340,6 +16381,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15350,6 +16394,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15358,6 +16405,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15366,6 +16416,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15374,6 +16427,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15384,6 +16440,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15400,6 +16459,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15418,6 +16480,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15434,6 +16499,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15444,6 +16512,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15460,6 +16531,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15470,6 +16544,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15480,6 +16557,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15488,6 +16568,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15504,6 +16587,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15514,6 +16600,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15524,6 +16613,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15534,6 +16626,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15550,6 +16645,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15560,6 +16658,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15570,6 +16671,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15588,6 +16692,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15606,6 +16713,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15624,6 +16734,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15634,6 +16747,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15642,6 +16758,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15658,6 +16777,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15668,6 +16790,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15676,6 +16801,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15686,6 +16814,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15696,6 +16827,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15706,6 +16840,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15716,6 +16853,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15726,6 +16866,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15736,6 +16879,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15744,6 +16890,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15754,6 +16903,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15762,6 +16914,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15770,6 +16925,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15778,6 +16936,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15788,6 +16949,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15804,6 +16968,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15814,6 +16981,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15822,6 +16992,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15832,6 +17005,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15848,6 +17024,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15858,6 +17037,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15866,6 +17048,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15874,6 +17059,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15884,6 +17072,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15894,6 +17085,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15904,6 +17098,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15914,6 +17111,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15922,6 +17122,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15932,6 +17135,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15948,6 +17154,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -15958,6 +17167,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15966,6 +17178,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15974,6 +17189,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -15990,6 +17208,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16000,6 +17221,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16016,6 +17240,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16026,6 +17253,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16034,6 +17264,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16042,6 +17275,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16058,6 +17294,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16068,6 +17307,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16076,6 +17318,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16092,6 +17337,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16102,6 +17350,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16112,6 +17363,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16122,6 +17376,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16132,6 +17389,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16142,6 +17402,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16152,6 +17415,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16162,6 +17428,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16172,6 +17441,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16188,6 +17460,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16198,6 +17473,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16206,6 +17484,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16214,6 +17495,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16230,6 +17514,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16240,6 +17527,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16248,6 +17538,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16264,6 +17557,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16274,6 +17570,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16284,6 +17583,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16295,6 +17597,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16317,6 +17622,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16333,6 +17641,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16349,6 +17660,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16358,6 +17672,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16372,6 +17689,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16394,6 +17714,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16410,6 +17733,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16424,6 +17750,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16446,6 +17775,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16470,6 +17802,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16486,6 +17821,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16500,6 +17838,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16522,6 +17863,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16537,6 +17881,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16548,6 +17895,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16562,6 +17912,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16584,6 +17937,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16600,6 +17956,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16616,6 +17975,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16630,6 +17992,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16644,6 +18009,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16666,6 +18034,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16682,6 +18053,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ],
                 "responses": {
@@ -16697,6 +18071,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16707,6 +18084,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16717,6 +18097,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16725,6 +18108,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16733,6 +18119,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16741,6 +18130,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16751,6 +18143,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16759,6 +18154,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16769,6 +18167,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16777,6 +18178,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16787,6 +18191,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16795,6 +18202,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16805,6 +18215,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             },
@@ -16813,6 +18226,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16823,6 +18239,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16833,6 +18252,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16843,6 +18265,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }
@@ -16853,6 +18278,9 @@
                     {
                         "$ref": "#/parameters/auth_token",
                         "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
                     }
                 ]
             }

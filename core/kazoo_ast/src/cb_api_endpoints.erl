@@ -303,6 +303,15 @@ to_swagger_parameters() ->
                             ,{<<"maxLength">>, 32}
                             ,{<<"pattern">>, <<"^[0-9a-f]+$">>}
                             ])}
+      ,{<<"account_id">>, kz_json:from_list(
+                            [{<<"name">>, <<"{ACCOUNT_ID}">>}
+                            ,{<<"in">>, <<"path">>}
+                            ,{<<"required">>, true}
+                            ,{<<"type">>, <<"string">>}
+                            ,{<<"minLength">>, 32}
+                            ,{<<"maxLength">>, 32}
+                            ,{<<"pattern">>, <<"^[0-9a-f]+$">>}
+                            ])}
       ]).
 
 -spec to_swagger_definitions() -> kz_json:object().
@@ -363,6 +372,7 @@ make_parameters(Path, Method, SchemaParameter) ->
                ,[Parameter
                  || F <- [fun (P, M) -> maybe_add_schema(P, M, SchemaParameter) end
                          ,fun auth_token_param/2
+                         ,fun account_id_param/2
                          ],
                     Parameter <- [F(Path, Method)],
                     not kz_util:is_empty(Parameter)
@@ -409,6 +419,16 @@ is_authtoken_required(_Path) -> 'undefined'.
 is_api_c2c_connect(<<"/"?ACCOUNTS_PREFIX"/clicktocall/", _/binary>>=Path) ->
     kz_util:suffix_binary(<<"/connect">>, Path);
 is_api_c2c_connect(_) -> 'false'.
+
+account_id_param(Path, _Method) ->
+    case lists:member(<<"{ACCOUNT_ID}">>, split_url(Path)) of
+        false -> 'undefined';
+        true ->
+            kz_json:from_list([{<<"$ref">>, <<"#/parameters/account_id">>}])
+    end.
+
+split_url(Path) ->
+    binary:split(Path, <<$/>>, [global]).
 
 
 format_as_path_centric(Data) ->
