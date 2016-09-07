@@ -1,133 +1,135 @@
+### Comments
+
+#### About Comments
+
+Allows you to add comments to "any" documents in Kazoo.
+
+#### Schema
 
 
-Allow you to add comments to "any" documents in Kazoo.
 
-#### Comments
+#### Delete all comments
 
-* GET - Gets the current comment(s).
-* PUT - Add a comment.
-* POST - Update a comment.
-* DELETE - Remove a comment(s).
+> DELETE /v2/accounts/{ACCOUNT_ID}/comments
 
-##### Fetch Comments:
-
-###### Request
-
-- Verb: `GET`
-- Url: `/v2/accounts/{{ACCOUNT_ID}/{{DOC_TYPE}}/{{ID}}/comments`
-- Payload: None
-
-###### Response
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments
+```
 
 ```json
 {
-  "data": {
-    "comments": [{{COMMENT_1}}, {{COMMENT_2}}]
-  },
+    "data": [
+    ],
+    "status": "success"
+}
+```
+
+
+#### Fetch a Comment
+
+> GET /v2/accounts/{ACCOUNT_ID}/comments
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments
+```
+
+```json
+{
+  "data": {COMMENT},
   "status": "success"
 }
 ```
 
-##### Fetch a Comment:
 
-###### Request
+#### Add a Comment
 
-- Verb: `GET`
-- Url: `/v2/accounts/{{ACCOUNT_ID}/{{DOC_TYPE}}/{{ID}}/comments/{{COMMENT_NUMBER}}`
-- Payload: None
+> PUT /v2/accounts/{ACCOUNT_ID}/comments
 
-###### Response
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"comments": [{COMMENT_3}]}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments
+```
 
 ```json
 {
-  "data": {{COMMENT}},
-  "status": "success"
+    "data": {
+        "comments": [
+            {COMMENT_1},
+            {COMMENT_2},
+            {COMMENT_3}
+        ]
+    },
+    "status": "success"
 }
 ```
 
-##### Add a Comment:
 
-###### Request
+#### Delete a Comment
 
-- Verb: `PUT`
-- Url: `/v2/accounts/{{ACCOUNT_ID}/{{DOC_TYPE}}/{{ID}}/comments`
-- Payload:
+> DELETE /v2/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}
+```
 
 ```json
 {
-  "data": {
-    "comments": [{{COMMENT_3}}]
-  }
+    "data": {
+        "comments": [
+            {COMMENT_1},
+            {COMMENT_2}
+        ]
+    },
+    "status": "success"
 }
 ```
 
-###### Response
+
+#### Fetch a Comment
+
+> GET /v2/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}
+```
 
 ```json
 {
-  "data": {
-    "comments": [{{COMMENT_1}}, {{COMMENT_2}}, {{COMMENT_3}}]
-  },
-  "status": "success"
+    "data": {
+        "comments": [
+            {{COMMENT_1}},
+            {{COMMENT_2}}
+        ]
+    },
+    "status": "success"
 }
 ```
 
-##### Update a Comment:
 
-###### Request
+#### Update a Comment
 
-- Verb: `POST`
-- Url: `/v2/accounts/{{ACCOUNT_ID}/{{DOC_TYPE}}/{{ID}}/comments/{{COMMENT_NUMBER}}`
-- Payload:
+> POST /v2/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}
 
-```json
-{
-  "data": {{COMMENT}}
-}
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {COMMENT}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}
 ```
 
-###### Response
-
 ```json
 {
-  "data": {{COMMENT}},
-  "status": "success"
-}
-```
-
-##### Delete all Comments:
-
-###### Request
-
-- Verb: `DELETE`
-- Url: `/v2/accounts/{{ACCOUNT_ID}/{{DOC_TYPE}}/{{ID}}/comments`
-- Payload: None
-
-###### Response
-
-
-```json
-{
-  "data": [],
-  "status": "success"
-}
-```
-
-##### Delete a Comment:
-
-###### Request
-
-- Verb: `DELETE`
-- Url: `/v2/accounts/{{ACCOUNT_ID}/{{DOC_TYPE}}/{{ID}}/comments/{{COMMENT_NUMBER}}`
-- Payload: None
-
-###### Response
-
-```json
-{
-  "data": {
-    "comments": [{{COMMENT_1}}, {{COMMENT_2}}]
-  },
-  "status": "success"
+    "data": {COMMENT},
+    "status": "success"
 }
 ```

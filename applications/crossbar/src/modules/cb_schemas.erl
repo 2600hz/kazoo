@@ -63,9 +63,9 @@ authenticate_nouns(_) -> 'false'.
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
-allowed_methods(_SchemaDoc) ->
+allowed_methods(_SchemaName) ->
     [?HTTP_GET].
-allowed_methods(_SchemaDoc, ?VALIDATION_PATH_TOKEN) ->
+allowed_methods(_SchemaName, ?VALIDATION_PATH_TOKEN) ->
     [?HTTP_PUT].
 
 %%--------------------------------------------------------------------

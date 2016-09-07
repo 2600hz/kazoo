@@ -63,12 +63,15 @@ curl -v -X PUT \
 
 #### Fetch Token auth information
 
-> GET /v2/accounts/{ACCOUNT_ID}/user_auth/{AUTH_TOKEN}
+> GET /v2/user_auth/{AUTH_TOKEN}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/user_auth/{AUTH_TOKEN}
+    http://{SERVER}:8000/v2/user_auth/{AUTH_TOKEN}
+```
+
+```json
 {
     "data": {
         "account_id": "{ACCOUNT_ID}",
@@ -99,7 +102,6 @@ curl -v -X GET \
     "auth_token": "{AUTH_TOKEN}",
     "status": "success"
 }
-
 ```
 
 #### Password Recovery

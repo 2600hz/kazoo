@@ -1,20 +1,20 @@
+### Websockets
+
+#### About Websockets
+
+#### Schema
 
 
-#### Comments
 
-* GET - Get bindings.
-* GET - Get sockets ID.
-* GET - Get socket bindings.
+#### Fetch bindings
 
-##### Fetch bindings:
+> GET /v2/websockets
 
-###### Request
-
-- Verb: `GET`
-- Url: `/v2/websockets`
-- Payload: None
-
-###### Response
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/websockets
+```
 
 ```json
 {
@@ -33,45 +33,53 @@
 }
 ```
 
-##### Fetch Sockets ID:
 
-###### Request
+#### Fetch Socket IDs
 
-- Verb: `GET`
-- Url: `/v2/accounts/{{ACCOUNT_ID}/websockets`
-- Payload: None
+> GET /v2/accounts/{ACCOUNT_ID}/websockets
 
-###### Response
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/websockets
+```
 
 ```json
 {
-  "data": ["{{ID1}}", "{{ID2}}", "{{ID3}}"],
-  "status": "success"
+    "data": [
+        "{SOCKET_ID1}",
+        "{SOCKET_ID2}",
+        "{SOCKET_ID3}"
+    ],
+    "status": "success"
 }
 ```
 
-##### Fetch Socket Bindings:
 
-###### Request
+#### Fetch Socket Bindings
 
-- Verb: `PUT`
-- Url: `/v2/accounts/{{ACCOUNT_ID}/websockets/{{ID}}`
-- Payload: None
+> GET /v2/accounts/{ACCOUNT_ID}/websockets/{SOCKET_ID}
 
-###### Response
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/websockets/{SOCKET_ID}
+```
 
 ```json
 {
-    "data": [{
-        "account_id": "{{ACCOUNT_ID}",
-        "auth_token": "{{AUTH_TOKEN}",
-        "bindings": [
-            "call.CHANNEL_DESTROY.*",
-            "call.CHANNEL_ANSWER.*",
-            "call.CHANNEL_CREATE.*"
-        ],
-        "websocket_session_id": "{{ID}}"
-    }],
+    "data": [
+        {
+            "account_id": "{ACCOUNT_ID}",
+            "auth_token": "{AUTH_TOKEN}",
+            "bindings": [
+                "call.CHANNEL_DESTROY.*",
+                "call.CHANNEL_ANSWER.*",
+                "call.CHANNEL_CREATE.*"
+            ],
+            "websocket_session_id": "{SOCKET_ID}"
+        }
+    ],
     "status": "success"
 }
 ```

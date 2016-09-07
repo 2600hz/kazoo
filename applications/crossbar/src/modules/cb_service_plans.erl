@@ -67,6 +67,8 @@ allowed_methods(?CURRENT) ->
     [?HTTP_GET];
 allowed_methods(?OVERRIDE) ->
     [?HTTP_POST];
+allowed_methods(?AVAILABLE) ->
+    [?HTTP_GET];
 allowed_methods(_PlanId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(?AVAILABLE, _PlanId) ->
@@ -104,24 +106,22 @@ validate(Context) ->
     validate_service_plan(Context, cb_context:req_verb(Context)).
 
 validate(Context, ?CURRENT) ->
-    cb_context:setters(
-      Context
+    cb_context:setters(Context
                       ,[{fun cb_context:set_resp_status/2, 'success'}
                        ,{fun cb_context:set_resp_data/2
                         ,kz_services:public_json(cb_context:account_id(Context))
                         }
                        ]
-     );
+                      );
 validate(Context, ?AVAILABLE) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = kz_services:find_reseller_id(AccountId),
     ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
-    crossbar_doc:load_view(
-      ?CB_LIST
+    crossbar_doc:load_view(?CB_LIST
                           ,[]
                           ,cb_context:set_account_db(Context, ResellerDb)
                           ,fun normalize_view_results/2
-     );
+                          );
 validate(Context, ?SYNCHRONIZATION) ->
     case is_allowed(Context) of
         {'ok', _} -> cb_context:set_resp_status(Context, 'success');
@@ -136,11 +136,10 @@ validate(Context, ?OVERRIDE) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     case kz_util:is_system_admin(AuthAccountId) of
         'true' ->
-            crossbar_doc:load(
-              cb_context:account_id(Context)
+            crossbar_doc:load(cb_context:account_id(Context)
                              ,cb_context:set_account_db(Context, ?KZ_SERVICES_DB)
                              ,?TYPE_CHECK_OPTION(kzd_services:type())
-             );
+                             );
         'false' -> cb_context:add_system_error('forbidden', Context)
     end;
 validate(Context, PlanId) ->

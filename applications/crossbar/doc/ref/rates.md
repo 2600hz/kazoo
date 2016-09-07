@@ -98,11 +98,11 @@ curl -v -X POST \
 
 #### Fetch
 
-> GET /v2/rates/number/{PHONENUMBER}
+> GET /v2/rates/number/{PHONE_NUMBER}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/rates/number/{PHONENUMBER}
+    http://{SERVER}:8000/v2/rates/number/{PHONE_NUMBER}
 ```
 

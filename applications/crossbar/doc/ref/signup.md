@@ -18,11 +18,11 @@ curl -v -X PUT \
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/signup/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/signup/{THING}
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/signup/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/signup/{THING}
 ```
 

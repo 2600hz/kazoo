@@ -56,42 +56,42 @@ curl -v -X GET \
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
+> DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
+> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
+> POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
+> PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 ```
 
 #### Change
@@ -176,42 +176,42 @@ curl -v -X POST \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/identify
+> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/identify
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/identify
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/identify
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/reserve
+> PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/reserve
 
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/reserve
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/reserve
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate
+> PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/activate
 
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/activate
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONENUMBER}
+> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONE_NUMBER}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONENUMBER}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONE_NUMBER}
 ```
 
 #### Create

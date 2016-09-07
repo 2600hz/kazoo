@@ -35,6 +35,9 @@ Key | Description | Type | Default | Required
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": [
@@ -77,6 +80,9 @@ curl -v -X POST \
     -H "Content-Type: text/csv" \
     --data-binary @/path/to/rates.csv \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data":""attempting to insert rates from the uploaded document",
@@ -96,8 +102,16 @@ The `routes` key will be populated for you, using the `prefix`, unless you speci
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d '{"data":{"prefix":"1", "iso_country_code":"US", "description":"Default US Rate", "rate_cost":0.1}}' \
+    -d '{"data":{
+        "prefix":"1",
+        "iso_country_code": "US",
+        "description": "Default US Rate",
+        "rate_cost": 0.1
+        }}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -128,6 +142,9 @@ curl -v -X PUT \
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+```
+
+```json
 {
     "auth_token":"{AUTH_TOKEN}",
     "data": {
@@ -155,6 +172,9 @@ curl -v -X DELETE \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -185,8 +205,11 @@ curl -v -X GET \
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d '{"data":{"description":"Default North America Rate"}}' \
+    -d '{"data": {"description": "Default North America Rate"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -217,8 +240,21 @@ curl -v -X PATCH \
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d '{"data":{"description": "Default North America Rate","iso_country_code": "US","prefix": "1","rate_cost": 0.1,"rate_increment": 60,"rate_minimum": 60,"rate_nocharge_time": 0,"rate_surcharge": 0,"routes": ["^\\+?1.+$"]}}'
+    -d '{"data":{
+        "description": "Default North America Rate",
+        "iso_country_code": "US",
+        "prefix": "1",
+        "rate_cost": 0.1,
+        "rate_increment": 60,
+        "rate_minimum": 60,
+        "rate_nocharge_time": 0,
+        "rate_surcharge": 0,
+        "routes": ["^\\+?1.+$"]
+        }}'
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -239,26 +275,30 @@ curl -v -X POST \
     "revision": "{REVISION}",
     "status": "success"
 }
-
 ```
 
 #### Rate a phone number
 
 This API requires that the backend app `hotornot` is running.
 
-The `{PHONENUMBER}` must be reconcilable (see your `reconcile_regex` for that criteria).
+The `{PHONE_NUMBER}` must be reconcilable (see your `reconcile_regex` for that criteria).
 
-> GET /v2/accounts/{ACCOUNT_ID}/rates/number/{PHONENUMBER}
+> GET /v2/accounts/{ACCOUNT_ID}/rates/number/{PHONE_NUMBER}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/number/{PHONENUMBER}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/number/{PHONE_NUMBER}
+```
+
+##### Success
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "Base-Cost": 0.1,
-        "E164-Number": "+{PHONENUMBER}",
+        "E164-Number": "+{PHONE_NUMBER}",
         "Prefix": "1",
         "Rate": 0.1,
         "Rate-Description": "Default US Rate",
@@ -272,13 +312,9 @@ curl -v -X GET \
 }
 ```
 
-> GET /v2/accounts/{ACCOUNT_ID}/rates/number/{UNRATEABLE_PHONENUMBER}
+##### Error: unrateable phone number
 
-```shell
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/number/{UNRATEABLE_PHONENUMBER}
-
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {

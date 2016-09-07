@@ -33,41 +33,41 @@ curl -v -X PUT \
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 ```
 

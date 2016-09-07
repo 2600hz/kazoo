@@ -108,71 +108,71 @@ curl -v -X POST \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/braintree/transactions/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/braintree/transactions/{TRANSACTION_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions/{TRANSACTION_ID}
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ADDRESS_ID}
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ADDRESS_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ADDRESS_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ADDRESS_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ADDRESS_ID}
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ADDRESS_ID}
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/braintree/cards/{CARD_ID}
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{CARD_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/braintree/cards/{CARD_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{CARD_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/braintree/cards/{CARD_ID}
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{CARD_ID}
 ```
 
