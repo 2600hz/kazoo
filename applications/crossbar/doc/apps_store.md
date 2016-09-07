@@ -96,93 +96,69 @@ Using Crossbar to modify Apps is very simple:
 
 ##### Fetch App(s):
 
-###### Request
+> GET /v2/accounts/{ACCOUNT_ID}/apps_store
 
-`GET` request on:
+> GET /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 
-`http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store`
-
-or
-
-`http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}`
-
-```
-curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store
-
-curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store
 ```
 
-###### Response
-
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 ```
+
+```json
 {
-    "data": [{{APPS}}],
+    "data": [
+        {APP}
+    ],
     "status": "success"
 }
 ```
 
-##### PUT - Install App:
+##### Install App:
+
+> PUT /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 
 Install app on your account.
 
-###### Request
-
-`PUT` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}`
-
-
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"allowed_users": "specific", "users": []}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 ```
+
+```json
 {
     "data": {
-        "name": "accounts",
+        "name": "{APP_ID}",
         "allowed_users": "specific",
         "users": []
     }
 }
 ```
 
-```
-curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}} -d '{"data": {"allowed_users": "specific","users": []}}'
-```
 
-###### Response
+##### Update an App permission:
 
-```
-{
-    "data": {
-        "name": "accounts",
-        "allowed_users": "specific",
-        "users": []
-    },
-    "status": "success"
-}
-```
-
-
-
-##### POST - Update an App permission:
+> POST /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 
 Update app permission on your account.
 
-###### Request
-
-`POST` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}`
-
-
-```
-{
-    "data": {
-        "allowed_users": "all"
-    }
-}
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"allowed_users": "all"}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 ```
 
-```
-curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}} -d '{"data": {"allowed_users": "all"}}'
-```
-
-###### Response
-
-```
+```json
 {
     "data": {
         "allowed_users": "all"
@@ -191,22 +167,19 @@ curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/js
 }
 ```
 
-##### DELETE - Uninstall an App:
+##### Uninstall an App:
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 
 Uninstall app on your account (remove permission for all users).
 
-###### Request
-
-`DELETE` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}`
-
-
-```
-curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 ```
 
-###### Response
-
-```
+```json
 {
     "data": {},
     "status": "success"
@@ -215,49 +188,48 @@ curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/
 
 ##### Fetch App icon
 
-###### Request
+> GET /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/icon
 
-`GET` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}/icon`
-
-
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/icon
 ```
-curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://{{SERVER}}:8000/v2/apps_store/accounts/{{ACCOUNT_ID}}/{{APP_ID}}/icon
-```
 
-###### Response
-
-Application Icon
+Streams application icon back.
 
 
 ##### Fetch App screen shots
 
-###### Request
+> GET /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/screenshot/{APP_SCREENSHOT_INDEX}
 
-`GET` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}/screenshot/{{NUMBER}}`
-
-
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/screenshot/{APP_SCREENSHOT_INDEX}
 ```
-curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://{{SERVER}}:8000/v2/apps_store/accounts/{{ACCOUNT_ID}}/{{APP_ID}}/screenshot/{{NUMBER}}
-```
 
-###### Response
-
-Application Screen shot
+Streams application screenshot number `{APP_SCREENSHOT_INDEX}` back.
 
 ##### Get Blacklist
 
-Need to be reseller
+> GET /v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
 
-###### Request
+Need to be reseller.
 
-`GET` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/blacklist`
-
-###### Response
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
+```
 
 ```json
 {
     "data": {
-        "blacklist": ["{{APP_1}}", "{{APP_2}}"]
+        "blacklist": [
+            "{APP_1}",
+            "{APP_2}"
+        ]
     },
     "status": "success"
 }
@@ -265,27 +237,25 @@ Need to be reseller
 
 ##### Update Blacklist
 
-Need to be reseller
+> POST /v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
 
-###### Request
+Need to be reseller.
 
-`POST` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/blacklist`
-
-```json
-{
-    "data": {
-        "blacklist": ["{{APP_1}}", "{{APP_2}}", "{{APP_3}}"]
-    },
-    "status": "success"
-}
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"blacklist": [{APP_3}]}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
 ```
 
-###### Response
-
 ```json
 {
     "data": {
-        "blacklist": ["{{APP_1}}", "{{APP_2}}", "{{APP_3}}"]
+        "blacklist": [
+            "{APP_1}",
+            "{APP_2}",
+            "{APP_3}"
+        ]
     },
     "status": "success"
 }

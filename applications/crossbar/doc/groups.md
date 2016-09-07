@@ -86,7 +86,7 @@ curl -v -X PUT \
 ```
 
 
-#### Remove
+#### Remove a group
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 
@@ -156,6 +156,8 @@ curl -v -X GET \
 #### Update a group for a given account
 
 > POST /v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 
 ```shell
 curl -v -X POST \

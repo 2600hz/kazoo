@@ -1,19 +1,24 @@
-
 ### Allotments
 
-Module `cb_allotments`.
+#### About Allotments
+
+#### Schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+
 
 #### Get allotments configuration for a given account
 
-##### Request
+> GET /v2/accounts/{ACCOUNT_ID}/allotments
 
-- Verb: `GET`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments`
-- Payload: None
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments
+```
 
-##### Response
-
-```JSON
+```json
 {
     "data": {
         "outbound_national": {
@@ -44,7 +49,9 @@ Module `cb_allotments`.
 ###### Explanаtion
 
 Each object have name (`outbound_national`) which build from direction (inbound or outbound) and classificator from number_manager configuration.
+
 Properties:
+
 - `amount`: time in seconds. which can be consumed
 - `cycle`: when we reset consumed allotments counter, must be one of `minutely`, `hourly`, `daily`, `weekly`, `monthly`.
 - `increment`: step (in seconds) of incrementing counter, minimum 1 second
@@ -63,6 +70,7 @@ Properties:
            "no_consume_time": 5
        }
 ```
+
 Call consumed time rounded before store it to DB.
 Call with duration 40 seconds will be count as 60 seconds.
 69 seconds -> 70
@@ -86,10 +94,12 @@ Call with duration 40 seconds will be count as 60 seconds.
            ]
        }
 ```
+
 Here we have 2 classifiers which share same counter.
 If Class1 already counsmed 400 seconds and Class2 consumed 150 seconds, next call with classifier Class2 (or Class1) will have 50 free seconds.
 
 Little more complex example:
+
 ```json
       "Class1": {
            "amount": 600,
@@ -111,6 +121,7 @@ Little more complex example:
            ]
        }
 ```
+
 So if we already have counsumed calls:
 Class1 - 300
 Class2 - 60
@@ -123,13 +134,15 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 
 #### Update allotments configuration for a given account
 
-##### Request
+> POST /v2/accounts/{ACCOUNT_ID}/allotments
 
-- Verb: `POST`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments`
-- Payload:
-
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments
 ```
+
+```json
 {
     "data": {
         "outbound_national": {
@@ -158,14 +171,15 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 
 #### Get consumed allotments for a given account
 
-##### Request
-- Verb: `GET`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed`
-- Payload: None
+> GET /v2/accounts/{ACCOUNT_ID}/allotments/consumed
 
-##### Response
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments/consumed
+```
 
-```JSON
+```json
 {
     "data": {
         "outbound_local": {
@@ -187,16 +201,15 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 
 #### Get consumed allotments for a certain period of time
 
-##### Request
-- Verb: `GET`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed?created_from={{TIMESTAMP}}&created_to={{TIMESTAMP}}`
-- Payload: None
+`{TIMESTAMP}` - Gregorian epoch seconds.
 
-`{{TIMESTAMP}}` - Gregorian epoch seconds.
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments/consumed?created_from={TIMESTAMP}&created_to={TIMESTAMP}`
+```
 
-##### Response
-
-```JSON
+```json
 {
     "data": {
         "outbound_local": {
@@ -218,28 +231,25 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 
 #### Get consumed allotments at certain time
 
-##### Request
-- Verb: `GET`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed?created_from={{TIMESTAMP}}`
-OR
-`/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed?created_to={{TIMESTAMP}}`
-- Payload: None
-
 `{{TIMESTAMP}}` - Gregorian epoch seconds.
 
-```ASCII
-
-                                {{TIMESTAMP}}
-                                     ||
-----+--------------------+-----------||-------+--------------------+--------
-    | week3              | week4     ||       | week5              | week6
-----+------------+-------+-----------||-------+--------------------+--------
- month1          | month2            ||
------------------+-------------------||-------------------------------------
-
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments/consumed?created_from={TIMESTAMP}`
 ```
 
-##### Response
+or
+
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments/consumed?created_to={TIMESTAMP}`
+```
+
+Response:
+
 
 ```JSON
 {
@@ -259,4 +269,15 @@ OR
     },
     "status": "success",
 }
+```
+
+
+```
+                                 {TIMESTAMP}
+                                     ||
+----+--------------------+-----------||-------+--------------------+--------
+    | week3              | week4     ||       | week5              | week6
+----+------------+-------+-----------||-------+--------------------+--------
+ month1          | month2            ||
+-----------------+-------------------||-------------------------------------
 ```

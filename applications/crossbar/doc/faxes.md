@@ -321,7 +321,7 @@ curl -v -X GET \
 
 #### Fetch a fax from the inbox folder
 
-This API retrieves all metadata about a particular fax for which you have the fax ID.
+Retrieve all metadata about a particular fax for which you have the fax ID.
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
 
@@ -333,7 +333,7 @@ curl -v -X GET \
 
 #### Fetch the fax payload
 
-This API retrieves the fax document / attachments for a particular inbound fax for which you have the fax ID.
+Retrieve the fax document / attachments for a particular inbound fax for which you have the fax ID.
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment
 
@@ -345,7 +345,7 @@ curl -v -X GET \
 
 #### Remove a fax from the inbox folder
 
-This API allows you to delete an old fax message. For privacy reasons, this may be useful if you wish to remove all evidence of a previously received inbound fax.
+Delete an old fax message. For privacy reasons, this may be useful if you wish to remove all evidence of a previously received inbound fax.
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
 

@@ -1,11 +1,11 @@
+### Call_inspector
 
-### The Call Inspector Crossbar resource
+#### About Call_inspector
 
 The Call Inspector Crossbar resource allows the client to query and inspect data related to the Call Inspector application.
 
 [More info on Call Inspector](https://github.com/2600hz/kazoo/blob/master/applications/call_inspector/doc/index.md).
 
-#### Enabling in Crossbar
 
 The Call Inspector endpoint is not loaded on start in a default Kazoo installation.
 
@@ -22,14 +22,39 @@ only on restarting Crossbar will cb_call_inspector be loaded.
 Use the *sup* command above to start the endpoint at runtime.
 
 
+#### Schema
+
+
+
+#### List SIP dialogues recorded
+
+> GET /v2/accounts/{ACCOUNT_ID}/call_inspector
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/call_inspector
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {CALL_ID1},
+        {CALL_ID2}
+    ]
+    "status": "success"
+}
+```
+
 #### Read a call's SIP dialogue
+
+> GET /v2/accounts/{ACCOUNT_ID}/call_inspector/{CALL_ID}
 
 * `{CALL_ID}` is the unique string identifying a call. Call has to be under the authority of `{ACCOUNT_ID}`.
 * `{ACCOUNT_ID}` has to be a reseller's account id.
 
 Note: `{CHUNKS}` is an array of JSON-formated chunks.
-
-> GET /v2/accounts/{ACCOUNT_ID}/call_inspector/{CALL_ID}
 
 ```shell
 curl -v -X GET \
