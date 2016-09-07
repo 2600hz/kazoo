@@ -1,38 +1,9 @@
+### Media
 
+#### About Media
 
 Uploading media for custom music on hold, IVR prompts, or TTS (if a proper TTS engine is enabled).
 
-#### Sample cURL Requests for account media
-
-##### Get a listing of media files
-
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media
-
-##### Create a new media meta object (required before uploading the actual media data)
-
-    curl -v -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media -d '{"data":{"streamable":true,"name":"File","description":"My Test Media File"}}'
-
-##### Create a new prompt meta object (required before uploading the actual prompt data)
-
-    curl -v -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media -d '{"data":{"streamable":true,"name":"FR-vm-enter_pass","description":"FR - Enter Password prompt","prompt_id":"vm-enter_pass", "language":"fr"}}'
-
-##### Add the media binary file to the media meta data
-
-    curl -v -X POST -H "Content-Type: audio/mp3" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw --data-binary @/path/to/file.mp3
-
-##### Create a new TTS media document (requires iSpeech to be enabled)
-
-    curl -v -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media -d '{"data":{"name":"TestTTS","media_source":"tts","tts":{"text":"Testing TTS","voice":"female/en-US"}}'
-
-##### Get a metadata about media file
-
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
-
-##### Get the raw media file
-
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Accept: audio/mp3" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw -o {MEDIA_ID}.mp3
-
-#### System Media
 
 Kazoo provides some default system media files for common things like voicemail prompts. These are accessible via the media Crossbar endpoint as well, if your user has superduper admin privileges. To manipulate those resources, simply omit the `/accounts/{ACCOUNT_ID}` from the URI.
 
@@ -42,22 +13,204 @@ For example, to get a listing of all system media files:
 
 You can then get the "id" of the media file and manipulate it in a similar fashion as regular account media (including TTS if you have a TTS engine like iSpeech configured).
 
-##### Create a new prompt meta object (required before uploading the actual prompt data)
 
-    curl -v -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media -d '{"data":{"streamable":true,"name":"File","description":"Enter Pin prompt","prompt_id":"vm-enter_pass", "language":"fr-fr"}}'
-    {"data":{"streamable":true,"name":"vm-enter_pass","description":"FR - Enter Pin prompt","prompt_id":"vm-enter_pass","language":"fr-fr","tts":{"voice":"female/en-US"},"media_source":"upload","id":"fr-fr%2Fvm-enter_pass"},"revision":"{REVISION}","request_id":"{REQUEST_ID}","status":"success","auth_token":"{AUTH_TOKEN}"}
+Part of the schema of media files is a language attribute. It defaults to a `system_config/media` value for the `default_language` key (and is "en-us" by default). Properly defined media files can be searched for based on language using the basic filters provided by Crossbar:
 
-##### Add the media binary file to the media meta data
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media?filter_language=en
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media?filter_language=en-US
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media?filter_language=fr-FR
 
-    curl -v -X POST -H "Content-Type: audio/mp3" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media/{MEDIA_ID}/raw --data-binary @/path/to/file.mp3
-    curl -v -X POST -H "Content-Type: audio/x-wav" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media/{MEDIA_ID}/raw --data-binary @/path/to/file.wav
+The comparison is case-insensitive, but `en` and `en-US` are treated separately. If a media metadata object is missing a language attribute (on an older installation when system media was imported with no language field, say), use `key_missing=language` in the request.
 
-Only one of the above; any subsequent POSTs will overwrite the existing binary data.
 
-##### List all prompts and the number of translations existing
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" 'http://server.com:8000/v2/media/prompts'
+Once you've assigned languages, you can use the [`language` callflow action](../../callflow/doc/language.md) to set the language for that call.
+
+
+Kazoo can be configured to normalize uploaded media files. This can fix things like:
+
+* Normalizing volume
+* Fix clipping
+* Standardize formats
+
+By default, if enabled, normalization will convert all media to MP3 (retaining the original upload as well) using the [*sox* utility](http://sox.sourceforge.net/) to accomplish the conversion.
+
+
+Enable Normalization Via SUP:
+
+Enable normalization for this particular server: `sup kapps_config set crossbar.media normalize_media true`
+
+Enable normalization for all servers: `sup kapps_config set_default crossbar.media normalize_media true`
+
+Enable Normalization Via DB:
+
+1. Open `system_config/crossbar.media` document, create or update the key `normalize_media` to `true`.
+2. Flush the kapps_config cache, `sup kapps_config flush crossbar.media`, on all servers running Crossbar.
+
+Set Target Format Via SUP:
+
+For the server: `sup kapps_config set crossbar.media normalization_format ogg`
+
+For all servers: `sup kapps_config set_default crossbar.media normalization_format ogg`
+
+Set Target Format Via DB:
+
+In the `system_config/crossbar.media` document, create or update the key `normalization_format` to your desired format (`mp3`, `wav`, etc). Flush the kapps_config cache on all servers running Crossbar. All new uploads will be normalized (if possible) to the new format.
+
+
+Normalization parameters:
+
+The default *sox* command is `sox -t <input_format> - -r 8000 -t <output_format> -` but this is configurable via the `system_config/media` document (or similar SUP command).
+
+You can fine-tune the source and destination arguments using the `normalize_source_args` and `normalize_destination_args` keys respectively. By default, the source args are "" and the destination args are "-r 8000" (as can be seen from the default sox command above.
+
+The normalizer code uses stdin to send the binary data to sox and reads from stdout to get the normalized binary data back (the " - " (there are 2) in command above).
+
+You can also set the specific path for `sox` in the `normalize_executable` key, in case you've installed it to a non-standard path.
+
+Be sure to install sox with mp3 support! Conversion will not happen (assuming you're targeting mp3) if sox can't write the mp3. You can check the media meta document for the key `normalization_error` if sox failed for some reason.
+
+
+#### Schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`content_length` | Length, in bytes, of the file | `integer` |   | `false`
+`content_type` | Used to override the automatic upload type | `string('audio/mp3', 'audio/mpeg', 'audio/mpeg3', 'audio/x-wav', 'audio/wav', 'audio/ogg', 'video/x-flv', 'video/h264', 'video/mpeg', 'video/quicktime', 'video/mp4', 'video/webm')` |   | `false`
+`description` | A breif description of the media update, usally the original file name | `string(1..128)` |   | `false`
+`language` | The language of the media file or text | `string` | `en-us` | `false`
+`media_source` | Defines the source of the media | `string('recording', 'upload', 'tts')` | `upload` | `false`
+`name` | A friendly name for the media | `string(1..128)` |   | `true`
+`prompt_id` | The prompt this media file represents | `string` |   | `false`
+`source_id` | If the media was generated from a callflow module, this is ID of the properties | `string(32)` |   | `false`
+`source_type` | If the media was generated from a callflow module, this is the module name | `string` |   | `false`
+`streamable` | Determines if the media can be streamed | `boolean` | `true` | `false`
+`tts` | Text-to-speech options used to create audio files from text | `object` | `{}` | `false`
+`tts.text` | The text to be converted into audio | `string(1..)` |   | `false`
+`tts.voice` | The voice to be used during the conversion | `string('female/en-US', 'male/en-US', 'female/en-CA', 'female/en-AU', 'female/en-GB', 'male/en-GB', 'female/es-US', 'male/es-US', 'female/us-US', 'female/zh-CN', 'male/zh-CN', 'female/zh-HK', 'female/zh-TW', 'female/ja-JP', 'male/ja-JP', 'female/ko-KR', 'male/ko-KR', 'female/da-DK', 'female/de-DE', 'male/de-DE', 'female/ca-ES', 'female/es-ES', 'male/es-ES', 'female/fi-FI', 'female/fr-CA', 'male/fr-CA', 'female/fr-FR', 'male/fr-FR', 'female/it-IT', 'male/it-IT', 'female/nb-NO', 'female/nl-NL', 'female/pl-PL', 'female/pt-BR', 'female/pt-PT', 'male/pt-PT', 'female/ru-RU', 'male/ru-RU', 'female/sv-SE', 'female/hu-HU', 'female/cs-CZ', 'female/tr-TR', 'male/tr-TR', 'male/ru-RU/Vladimir', 'female/ru-RU/Julia', 'female/ru-RU/Anna', 'female/ru-RU/Viktoria', 'male/ru-RU/Alexander', 'female/ru-RU/Maria', 'female/ru-RU/Lidia')` | `female/en-US` | `false`
+
+
+#### Get a listing of media files
+
+> GET /v2/accounts/{ACCOUNT_ID}/media
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media
+```
+
+#### Create a nee media object (required before uploading the actual media data)
+
+> PUT /v2/accounts/{ACCOUNT_ID}/media
+
+* For a file:
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{
+        "streamable":true,
+        "name": "File",
+        "description": "My Test Media File",
+        }}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media
+```
+
+* For a prompt:
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{
+        "streamable": true,
+        "name": "FR-vm-enter_pass",
+        "description": "FR - Enter Password prompt",
+        "prompt_id": "vm-enter_pass",
+        "language":"fr"
+        }}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media
+```
+
+* For a TTS document: (requires iSpeech to be enabled)
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{
+        "name": "TestTTS",
+        "media_source": "tts",
+        "tts": {"text": "Testing TTS", "voice": "female/en-US"}
+        }}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media
+```
+
+A response:
+
+```json
+{
+    "data":
     {
+        "streamable": true,
+        "name": "vm-enter_pass",
+        "description": "FR - Enter Password prompt",
+        "prompt_id": "vm-enter_pass",
+        "language": "fr-fr",
+        "tts": {
+            "voice": "female/en-US"
+        },
+        "media_source": "upload",
+        "id": "fr-fr%2Fvm-enter_pass"
+    },
+    "revision": "{REVISION}",
+    "request_id": "{REQUEST_ID}",
+    "status": "success",
+    "auth_token": "{AUTH_TOKEN}"
+}
+```
+
+#### Remove metadata
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+```
+
+#### Get metadata about a media file
+
+> GET /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+```
+
+#### Update metadata
+
+> POST /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+```
+
+#### List all prompts and the number of translations existing
+
+> GET /v2/accounts/{ACCOUNT_ID}/media/prompts
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/prompts
+```
+
+```json
+{
     "auth_token": "{AUTH_TOKEN}",
     "data": [
         {
@@ -93,12 +246,82 @@ Only one of the above; any subsequent POSTs will overwrite the existing binary d
     "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",
     "status": "success"
-    }
+}
+```
 
-##### List all translations of a given prompt
+#### List languages available
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" 'http://server.com:8000/v2/media/prompts/vm-enter_pass'
-    {
+> GET /v2/accounts/{ACCOUNT_ID}/media/languages
+
+This request will return a list of languages found, as well as the counts of how many media files have that language defined:
+
+Note, the "missing" key indicates how many media files have no associated language.
+
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/languages
+```
+
+```json
+{
+    "data": [{ "en": 3
+               ,"missing": 1
+             }
+            ],
+}
+```
+
+#### Get the raw media file
+
+> GET /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H 'Accept: audio/mp3' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
+```
+
+Streams back an MP3-encoded media.
+
+#### Add the media binary file to the media meta data
+
+> POST /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H 'Content-Type: audio/mp3' \
+    --data-binary @/path/to/file.mp3 \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
+```
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H 'Content-Type: audio/x-wav \
+    --data-binary @/path/to/file.wav \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
+```
+
+Only one of the above; any subsequent POSTs will overwrite the existing binary data.
+
+#### List all translations of a given prompt
+
+> GET /v2/accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}
+
+You can use that list to fetch the specific media files associated with that prompt.
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}
+```
+
+```json
+{
     "auth_token": "{AUTH_TOKEN}",
     "data": [
         "fr-fr%2Fvm-enter_pass",
@@ -109,95 +332,31 @@ Only one of the above; any subsequent POSTs will overwrite the existing binary d
     "revision": "undefined",
     "start_key": "vm-enter_pass",
     "status": "success"
-    }
+}
+```
 
-You can use that list to fetch the specific media files associated with that prompt.
+#### List media files with specific language
 
-#### Languages
+> GET /v2/accounts/{ACCOUNT_ID}/media/languages/{LANGUAGE}
 
-Part of the schema of media files is a language attribute. It defaults to a `system_config/media` value for the `default_language` key (and is "en-us" by default). Properly defined media files can be searched for based on language using the basic filters provided by Crossbar:
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/languages/{LANGUAGE}
+```
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media?filter_language=en
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media?filter_language=en-US
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media?filter_language=fr-FR
-
-The comparison is case-insensitive, but `en` and `en-US` are treated separately. If a media metadata object is missing a language attribute (on an older installation when system media was imported with no language field, say), use `key_missing=language` in the request.
-
-##### List languages available
-
-This request will return a list of languages found, as well as the counts of how many media files have that language defined:
-
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media/languages
-    ...
-    "data": [{ "en": 3
-               ,"missing": 1
-             }
-            ],
-    ...
-
-Here, the "missing" key indicates how many media files have no associated language
-
-##### List media files with specific language
-
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media/languages/en
-    ...
+```json
+{
     "data":["media_id_1", "media_id_2",...]
-    ...
+}
+```
 
-To get the IDs of the media docs missing a language:
+
+
+
+### To get the IDs of the media docs missing a language:
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media/languages/missing
     ...
     "data":["media_id_1", "media_id_2",...]
     ...
-
-#### Callflows
-
-Once you've assigned languages, you can use the [`language` callflow action](../../callflow/doc/language.md) to set the language for that call.
-
-#### Normalization
-
-Kazoo can be configured to normalize uploaded media files. This can fix things like:
-
-* Normalizing volume
-* Fix clipping
-* Standardize formats
-
-By default, if enabled, normalization will convert all media to MP3 (retaining the original upload as well) using the [*sox* utility](http://sox.sourceforge.net/) to accomplish the conversion.
-
-##### Enable Normalization
-
-###### Via SUP
-
-Enable normalization for this particular server: `sup kapps_config set crossbar.media normalize_media true`
-
-Enable normalization for all servers: `sup kapps_config set_default crossbar.media normalize_media true`
-
-###### Via DB
-
-1. Open `system_config/crossbar.media` document, create or update the key `normalize_media` to `true`.
-2. Flush the kapps_config cache, `sup kapps_config flush crossbar.media`, on all servers running Crossbar.
-
-##### Set Target Format
-
-###### Via SUP
-
-For the server: `sup kapps_config set crossbar.media normalization_format ogg`
-
-For all servers: `sup kapps_config set_default crossbar.media normalization_format ogg`
-
-###### Via DB
-
-In the `system_config/crossbar.media` document, create or update the key `normalization_format` to your desired format (`mp3`, `wav`, etc). Flush the kapps_config cache on all servers running Crossbar. All new uploads will be normalized (if possible) to the new format.
-
-##### Normalization parameters
-
-The default *sox* command is `sox -t <input_format> - -r 8000 -t <output_format> -` but this is configurable via the `system_config/media` document (or similar SUP command).
-
-You can fine-tune the source and destination arguments using the `normalize_source_args` and `normalize_destination_args` keys respectively. By default, the source args are "" and the destination args are "-r 8000" (as can be seen from the default sox command above.
-
-The normalizer code uses stdin to send the binary data to sox and reads from stdout to get the normalized binary data back (the " - " (there are 2) in command above).
-
-You can also set the specific path for `sox` in the `normalize_executable` key, in case you've installed it to a non-standard path.
-
-Be sure to install sox with mp3 support! Conversion will not happen (assuming you're targeting mp3) if sox can't write the mp3. You can check the media meta document for the key `normalization_error` if sox failed for some reason.
