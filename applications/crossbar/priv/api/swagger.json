@@ -11752,7 +11752,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/agents/status/{ID}": {
+        "/accounts/{ACCOUNT_ID}/agents/status/{USER_ID}": {
             "get": {
                 "parameters": [
                     {
@@ -11776,7 +11776,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/agents/{ID}": {
+        "/accounts/{ACCOUNT_ID}/agents/{USER_ID}": {
             "get": {
                 "parameters": [
                     {
@@ -11789,7 +11789,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status": {
+        "/accounts/{ACCOUNT_ID}/agents/{USER_ID}/queue_status": {
             "get": {
                 "parameters": [
                     {
@@ -11813,7 +11813,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/agents/{ID}/status": {
+        "/accounts/{ACCOUNT_ID}/agents/{USER_ID}/status": {
             "get": {
                 "parameters": [
                     {
@@ -11861,7 +11861,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/alerts/{ID}": {
+        "/accounts/{ACCOUNT_ID}/alerts/{ALERT_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -11993,7 +11993,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/apps_store/{ID}": {
+        "/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -12039,7 +12039,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}": {
+        "/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/icon": {
             "get": {
                 "parameters": [
                     {
@@ -12052,7 +12052,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}/{ID}": {
+        "/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/screenshot/{APP_SCREENSHOT_INDEX}": {
             "get": {
                 "parameters": [
                     {
@@ -12097,7 +12097,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/blacklists/{ID}": {
+        "/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -12175,7 +12175,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}": {
+        "/accounts/{ACCOUNT_ID}/braintree/addresses/{ADDRESS_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -12234,7 +12234,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/braintree/cards/{ID}": {
+        "/accounts/{ACCOUNT_ID}/braintree/cards/{CARD_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -12341,7 +12341,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/braintree/transactions/{ID}": {
+        "/accounts/{ACCOUNT_ID}/braintree/transactions/{TRANSACTION_ID}": {
             "get": {
                 "parameters": [
                     {
@@ -12402,7 +12402,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/call_inspector/{ID}": {
+        "/accounts/{ACCOUNT_ID}/call_inspector/{CALL_ID}": {
             "get": {
                 "parameters": [
                     {
@@ -12533,7 +12533,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/cccps/{ID}": {
+        "/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -12863,7 +12863,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/comments/{ID}": {
+        "/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -13067,7 +13067,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/configs/{ID}": {
+        "/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -13156,7 +13156,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/connectivity/{ID}": {
+        "/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -13819,7 +13819,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}": {
+        "/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAX_JOB_ID}": {
             "get": {
                 "parameters": [
                     {
@@ -13895,7 +13895,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}": {
+        "/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -13930,7 +13930,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}/image": {
+        "/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}/image": {
             "delete": {
                 "parameters": [
                     {
@@ -13997,7 +13997,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/groups/{ID}": {
+        "/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -14135,7 +14135,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/ips/{IP}": {
+        "/accounts/{ACCOUNT_ID}/ips/{IP_ADDRESS}": {
             "delete": {
                 "parameters": [
                     {
@@ -14270,7 +14270,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{_ID}": {
+        "/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{LEDGER_ENTRY_ID}": {
             "get": {
                 "parameters": [
                     {
@@ -14556,7 +14556,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}": {
+        "/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -14591,7 +14591,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}/image": {
+        "/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}/image": {
             "delete": {
                 "parameters": [
                     {
@@ -14817,7 +14817,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/menus/{ID}": {
+        "/accounts/{ACCOUNT_ID}/menus/{MENU_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -15001,7 +15001,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID}": {
+        "/accounts/{ACCOUNT_ID}/notifications/smtplog/{SMTP_LOG_ID}": {
             "get": {
                 "parameters": [
                     {
@@ -15014,7 +15014,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/notifications/{ID}": {
+        "/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -15057,7 +15057,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/notifications/{ID}/preview": {
+        "/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/preview": {
             "post": {
                 "parameters": [
                     {
@@ -15164,7 +15164,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONENUMBER}": {
+        "/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONE_NUMBER}": {
             "get": {
                 "parameters": [
                     {
@@ -15304,7 +15304,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}": {
+        "/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}": {
             "delete": {
                 "parameters": [
                     {
@@ -15366,7 +15366,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate": {
+        "/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/activate": {
             "put": {
                 "parameters": [
                     {
@@ -15387,7 +15387,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/identify": {
+        "/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/identify": {
             "get": {
                 "parameters": [
                     {
@@ -15400,7 +15400,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/reserve": {
+        "/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/reserve": {
             "put": {
                 "parameters": [
                     {
@@ -15557,7 +15557,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}": {
+        "/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -15600,7 +15600,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments": {
+        "/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments": {
             "get": {
                 "parameters": [
                     {
@@ -15632,7 +15632,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}": {
+        "/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments/{ATTACHMENT_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -15675,7 +15675,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/canceled": {
+        "/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/canceled": {
             "patch": {
                 "parameters": [
                     {
@@ -15688,7 +15688,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/completed": {
+        "/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/completed": {
             "patch": {
                 "parameters": [
                     {
@@ -15701,7 +15701,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/loa": {
+        "/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/loa": {
             "get": {
                 "parameters": [
                     {
@@ -15714,7 +15714,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/pending": {
+        "/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/pending": {
             "patch": {
                 "parameters": [
                     {
@@ -15727,7 +15727,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/rejected": {
+        "/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/rejected": {
             "patch": {
                 "parameters": [
                     {
@@ -15740,7 +15740,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/scheduled": {
+        "/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/scheduled": {
             "patch": {
                 "parameters": [
                     {
@@ -15753,7 +15753,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/submitted": {
+        "/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/submitted": {
             "patch": {
                 "parameters": [
                     {
@@ -15882,7 +15882,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/queues/{Q_ID}": {
+        "/accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -15936,7 +15936,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/queues/{Q_ID}/eavesdrop": {
+        "/accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}/eavesdrop": {
             "put": {
                 "parameters": [
                     {
@@ -15957,7 +15957,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster": {
+        "/accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}/roster": {
             "delete": {
                 "parameters": [
                     {
@@ -16201,7 +16201,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTORNAME}": {
+        "/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}": {
             "get": {
                 "parameters": [
                     {
@@ -16214,7 +16214,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTORNAME}/resource/{RESOURCE_ID}": {
+        "/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}/resource/{RESOURCE_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -16302,7 +16302,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTORNAME}": {
+        "/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}": {
             "delete": {
                 "parameters": [
                     {
@@ -16388,7 +16388,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/resource_templates/{ID}": {
+        "/accounts/{ACCOUNT_ID}/resource_templates/{RESOURCE_TEMPLATE_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -16652,7 +16652,20 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/service_plans/available/{ID}": {
+        "/accounts/{ACCOUNT_ID}/service_plans/available": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/service_plans/available/{PLAN_ID}": {
             "get": {
                 "parameters": [
                     {
@@ -16741,7 +16754,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/service_plans/{ID}": {
+        "/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -16860,7 +16873,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/signup/{ID}": {
+        "/accounts/{ACCOUNT_ID}/signup/{THING}": {
             "post": {
                 "parameters": [
                     {
@@ -16897,7 +16910,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/skels/{ID}": {
+        "/accounts/{ACCOUNT_ID}/skels/{THING}": {
             "delete": {
                 "parameters": [
                     {
@@ -16975,7 +16988,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/sms/{_ID}": {
+        "/accounts/{ACCOUNT_ID}/sms/{SMS_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -17105,7 +17118,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/templates/{ID}": {
+        "/accounts/{ACCOUNT_ID}/templates/{TEMPLATE_NAME}": {
             "delete": {
                 "parameters": [
                     {
@@ -17161,7 +17174,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/temporal_rules/{ID}": {
+        "/accounts/{ACCOUNT_ID}/temporal_rules/{TEMPORAL_RULE_ID}": {
             "delete": {
                 "parameters": [
                     {
@@ -17247,7 +17260,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}": {
+        "/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}": {
             "delete": {
                 "parameters": [
                     {
@@ -17653,7 +17666,7 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}": {
+        "/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}": {
             "delete": {
                 "description": "Deletes the voicemail box from the account",
                 "parameters": [
@@ -17726,7 +17739,7 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages": {
+        "/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages": {
             "delete": {
                 "description": "Remove all or a list of messages from a voicemail box",
                 "parameters": [
@@ -17787,7 +17800,7 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/raw": {
+        "/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw": {
             "post": {
                 "description": "Fetch raw aduio of a list message id",
                 "parameters": [
@@ -17814,7 +17827,7 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}": {
+        "/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}": {
             "delete": {
                 "description": "Remove the message from the voicemail box",
                 "parameters": [
@@ -17875,7 +17888,7 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}/raw": {
+        "/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}/raw": {
             "get": {
                 "parameters": [
                     {
@@ -18078,7 +18091,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/websockets/{ID}": {
+        "/accounts/{ACCOUNT_ID}/websockets/{SOCKET_ID}": {
             "get": {
                 "parameters": [
                     {
@@ -18233,7 +18246,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/whitelabel/{ID}": {
+        "/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}": {
             "get": {
                 "parameters": [
                     {
@@ -18246,7 +18259,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/whitelabel/{ID}/icon": {
+        "/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/icon": {
             "get": {
                 "parameters": [
                     {
@@ -18259,7 +18272,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/whitelabel/{ID}/logo": {
+        "/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/logo": {
             "get": {
                 "parameters": [
                     {
@@ -18272,7 +18285,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome": {
+        "/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/welcome": {
             "get": {
                 "parameters": [
                     {
@@ -18357,7 +18370,7 @@
                 ]
             }
         },
-        "/rates/number/{PHONENUMBER}": {
+        "/rates/number/{PHONE_NUMBER}": {
             "get": {}
         },
         "/rates/{RATE_ID}": {
@@ -18401,7 +18414,7 @@
                 }
             }
         },
-        "/schemas/{SCHEMADOC}": {
+        "/schemas/{SCHEMA_NAME}": {
             "get": {
                 "description": "Get the JSON schema definition",
                 "responses": {
@@ -18411,7 +18424,7 @@
                 }
             }
         },
-        "/schemas/{SCHEMADOC}/validation": {
+        "/schemas/{SCHEMA_NAME}/validation": {
             "put": {
                 "description": "Perform a test validation",
                 "responses": {
@@ -18458,12 +18471,12 @@
                 }
             }
         },
-        "/system_configs/{_ID}": {
+        "/system_configs/{SYSTEM_CONFIG_ID}": {
             "delete": {},
             "get": {},
             "post": {}
         },
-        "/system_configs/{_ID}/{NODE}": {
+        "/system_configs/{SYSTEM_CONFIG_ID}/{NODE}": {
             "delete": {},
             "get": {},
             "post": {}
@@ -18526,7 +18539,7 @@
                 ]
             }
         },
-        "/user_auth/{AUTHTOKEN}": {
+        "/user_auth/{AUTH_TOKEN}": {
             "get": {}
         }
     },
