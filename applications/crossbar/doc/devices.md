@@ -412,9 +412,9 @@ curl -v -X POST \
 
 #### Execute a quick call
 
-Ring the device; once answered, connect to `{NUMBER}`
+Ring the device; once answered, connect to `{PHONE_NUMBER}`
 
-In this scenario, the device is considered the `callee` while the `{NUMBER}` side is considered the caller (helpful to know when debugging a call!).
+In this scenario, the device is considered the `callee` while the `{PHONE_NUMBER}` side is considered the caller (helpful to know when debugging a call!).
 
 Query string options:
 
@@ -422,18 +422,18 @@ Key | Type | Description
 --- | ---- | -----------
 `auto_answer` | `boolean()` | Tells the SIP phone to auto-answer the call, if supported
 `cid-name` | `string()` | Set the caller ID name (defaults to "Device QuickCall")
-`cid-number` | `string()` | Set the caller ID number (defaults to the `{NUMBER}`)
+`cid-number` | `string()` | Set the caller ID number (defaults to the `{PHONE_NUMBER}`)
 `ignore-early-media` | `boolean()` | Toggle whether to ignore [early media](https://freeswitch.org/confluence/display/FREESWITCH/Early+Media)
 `media` | `string('bypass', 'process')` | Toggle whether to go peer-to-peer([bypass](https://freeswitch.org/confluence/display/FREESWITCH/Bypass+Media+Overview) with the RTP
 `number_filter` | `boolean()`, `regex()` | If true, remove non-alphanumeric characters. If a regex, use the first capture group as the "number" to dial.
 `timeout` | `integer(3..)` | In seconds, how long to ring the device(s) (defaults to 30)
 
-> GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}
+> GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{PHONE_NUMBER}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{PHONE_NUMBER}
 {
   "auth_token": "{AUTH_TOKEN}",
   "data": {
@@ -487,7 +487,7 @@ curl -v -X GET \
       }
     ],
     "application_data": {
-      "route": "{NUMBER}"
+      "route": "{PHONE_NUMBER}"
     },
     "application_name": "transfer"
   },

@@ -92,7 +92,7 @@ allowed_methods(_UserId, ?PHOTO) ->
 allowed_methods(_UserId, ?VCARD) ->
     [?HTTP_GET].
 
-allowed_methods(_UserId, ?QUICKCALL_PATH_TOKEN, _Number) ->
+allowed_methods(_UserId, ?QUICKCALL_PATH_TOKEN, _PhoneNumber) ->
     [?HTTP_GET].
 
 -spec content_types_provided(cb_context:context()) ->

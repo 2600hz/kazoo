@@ -86,14 +86,10 @@ allowed_methods(_C2CId, ?HISTORY) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists() ->
-    'true'.
-resource_exists(_) ->
-    'true'.
-resource_exists(_, ?CONNECT_CALL) ->
-    'true';
-resource_exists(_, ?HISTORY) ->
-    'true'.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
+resource_exists(_, ?CONNECT_CALL) -> 'true';
+resource_exists(_, ?HISTORY) -> 'true'.
 
 -spec authenticate(cb_context:context()) -> 'true'.
 authenticate(Context) ->
