@@ -13365,7 +13365,7 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}": {
+        "/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{PHONE_NUMBER}": {
             "get": {
                 "description": "Execute quickcall to {NUMBER}",
                 "parameters": [
@@ -17577,7 +17577,7 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{NUMBER}": {
+        "/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{PHONE_NUMBER}": {
             "get": {
                 "parameters": [
                     {
