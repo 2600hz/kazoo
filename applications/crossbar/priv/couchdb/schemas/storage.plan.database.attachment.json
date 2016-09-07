@@ -1,0 +1,16 @@
+{
+    "id":"storage.plan.database.attachment",
+    "$schema":"http://json-schema.org/draft-04/schema#",
+    "description":"schema for attachment ref type storage plan",
+    "properties":{
+        "handler":{
+            "type":"string"
+        },
+        "params":{
+            "type":"object"
+        },
+        "stub":{
+            "type":"boolean"
+        }
+    }
+}

@@ -1,0 +1,21 @@
+{
+    "$schema":"http://json-schema.org/draft-04/schema#",
+    "id":"storage",
+    "type":"object",
+    "properties":{
+        "attachments":{
+            "$ref":"storage.attachments"
+        },
+        "connections":{
+            "$ref":"storage.connections"
+        },
+        "plan":{
+            "$ref":"storage.plan"
+        }
+    },
+    "additionalProperties":false,
+    "patternProperties":{
+        "^pvt_":{"type": ["string", "integer","boolean"]},
+        "^_":{ "type": ["string", "integer","boolean", "object"]}
+    }
+}

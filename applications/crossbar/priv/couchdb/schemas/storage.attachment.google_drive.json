@@ -1,0 +1,31 @@
+{
+    "id":"storage.attachment.google_drive",
+    "$schema":"http://json-schema.org/draft-04/schema#",
+    "description":"schema for google drive attachment entry",
+    "type":"object",
+    "properties":{
+        "handler":{
+            "enum":["google_drive"]
+        },
+        "settings":{
+            "type":"object",
+            "properties":{
+                "oauth_doc_id":{
+                    "type":"string"
+                },
+                "path":{
+                    "type":"string"
+                }
+            },
+            "required":[
+                "oauth_doc_id"
+            ]
+        },
+        "name" : {"type" : "string"}
+        
+    },
+    "required":[
+        "handler",
+        "settings"
+    ]
+}
