@@ -279,7 +279,7 @@ to_swagger_json() ->
 
     Swagger = kz_json:set_values([{<<"paths">>, to_swagger_paths(Paths, BasePaths)}
                                  ,{<<"definitions">>, to_swagger_definitions()}
-                                 ,{<<"parameters">>, to_swagger_parameters()}
+                                 ,{<<"parameters">>, to_swagger_parameters(kz_json:get_keys(Paths))}
                                  ,{<<"host">>, <<"localhost:8000">>}
                                  ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
                                  ,{<<"swagger">>, <<"2.0">>}
@@ -291,28 +291,6 @@ to_swagger_json() ->
                                 ,BaseSwagger
                                 ),
     write_swagger_json(Swagger).
-
--spec to_swagger_parameters() -> kz_json:object().
-to_swagger_parameters() ->
-    kz_json:from_list(
-      [{<<"auth_token">>, kz_json:from_list(
-                            [{<<"name">>, <<"X-Auth-Token">>}
-                            ,{<<"in">>, <<"header">>}
-                            ,{<<"type">>, <<"string">>}
-                            ,{<<"minLength">>, 32}
-                            ,{<<"maxLength">>, 32}
-                            ,{<<"pattern">>, <<"^[0-9a-f]+$">>}
-                            ])}
-      ,{<<"account_id">>, kz_json:from_list(
-                            [{<<"name">>, <<"{ACCOUNT_ID}">>}
-                            ,{<<"in">>, <<"path">>}
-                            ,{<<"required">>, true}
-                            ,{<<"type">>, <<"string">>}
-                            ,{<<"minLength">>, 32}
-                            ,{<<"maxLength">>, 32}
-                            ,{<<"pattern">>, <<"^[0-9a-f]+$">>}
-                            ])}
-      ]).
 
 -spec to_swagger_definitions() -> kz_json:object().
 to_swagger_definitions() ->
@@ -369,14 +347,16 @@ add_swagger_path(Method, Acc, Path, SchemaParameter) ->
 
 make_parameters(Path, Method, SchemaParameter) ->
     lists:usort(fun compare_parameters/2
-               ,[Parameter
-                 || F <- [fun (P, M) -> maybe_add_schema(P, M, SchemaParameter) end
-                         ,fun auth_token_param/2
-                         ,fun account_id_param/2
-                         ],
-                    Parameter <- [F(Path, Method)],
-                    not kz_util:is_empty(Parameter)
-                ]
+               ,lists:flatten(
+                  [Parameter
+                   || F <- [fun (P, M) -> maybe_add_schema(P, M, SchemaParameter) end
+                           ,fun auth_token_param/2
+                           ,fun path_params/2
+                           ],
+                      Parameter <- [F(Path, Method)],
+                      not kz_util:is_empty(Parameter)
+                  ]
+                 )
                ).
 
 compare_parameters(Param1, Param2) ->
@@ -420,12 +400,12 @@ is_api_c2c_connect(<<"/"?ACCOUNTS_PREFIX"/clicktocall/", _/binary>>=Path) ->
     kz_util:suffix_binary(<<"/connect">>, Path);
 is_api_c2c_connect(_) -> 'false'.
 
-account_id_param(Path, _Method) ->
-    case lists:member(<<"{ACCOUNT_ID}">>, split_url(Path)) of
-        false -> 'undefined';
-        true ->
-            kz_json:from_list([{<<"$ref">>, <<"#/parameters/account_id">>}])
-    end.
+path_params(Path, _Method) ->
+    [path_param(Param) || <<"{",_/binary>> = Param <- split_url(Path)].
+
+path_param(PathToken) ->
+    Param = unbrace_param(PathToken),
+    kz_json:from_list([{<<"$ref">>, <<"#/parameters/", Param/binary>>}]).
 
 split_url(Path) ->
     binary:split(Path, <<$/>>, [global]).
@@ -510,6 +490,11 @@ is_all_upper(Bin) ->
 
 brace_token(Token=?NE_BINARY) ->
     <<"{", (kz_util:to_upper_binary(Token))/binary, "}">>.
+
+unbrace_param(Param) ->
+    Size = byte_size(Param) - 2,
+    <<"{", Param0:Size/binary, "}">> = Param,
+    kz_util:to_lower_binary(Param0).
 
 base_module_name(Module) ->
     {'match', [Name|_]} = grep_cb_module(Module),
@@ -786,3 +771,91 @@ grep_cb_module(?NE_BINARY=Module) ->
           ,<<"^cb_([a-z_]+?)(?:_(v[0-9]))?\$">>
           ,[{'capture', 'all_but_first', 'binary'}]
           ).
+
+
+generic_id_path_param(Name) ->
+    {unbrace_param(Name), kz_json:from_list([{<<"$ref">>, <<"#/parameters/id">>}
+                                            ,{<<"name">>, Name}
+                                            ])}.
+
+to_swagger_parameters(Paths) ->
+    Params = [Param || Path <- Paths,
+                       Param = <<"{",_/binary>> <- split_url(Path)
+             ],
+    kz_json:from_list(
+      [{<<"auth_token">>, kz_json:from_list(
+                            [{<<"name">>, <<"X-Auth-Token">>}
+                            ,{<<"in">>, <<"header">>}
+                            ,{<<"type">>, <<"string">>}
+                            ,{<<"minLength">>, 32}
+                            ,{<<"maxLength">>, 32}
+                            ,{<<"pattern">>, <<"^[0-9a-f]+$">>}
+                            ])}
+      ,{<<"id">>, kz_json:from_list([{<<"in">>, <<"path">>}
+                                    ,{<<"required">>, true}
+                                    ,{<<"type">>, <<"string">>}
+                                    ,{<<"minLength">>, 32}
+                                    ,{<<"maxLength">>, 32}
+                                    ,{<<"pattern">>, <<"^[0-9a-f]+$">>}
+                                    ])}
+      ]
+      ++ [{unbrace_param(Param), def_path_param(Param)}
+          || Param <- lists:usort(lists:flatten(Params))
+         ]).
+
+def_path_param(<<"{ACCOUNT_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{FAX_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{PORT_REQUEST_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{RESOURCE_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{TEMPLATE_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{USER_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{VM_BOX_ID}">>=P) -> generic_id_path_param(P);
+
+def_path_param(<<"{PHONE_NUMBER}">>=P) ->
+    [{<<"name">>, P}
+    ,{<<"in">>, <<"path">>}
+    ,{<<"required">>, true}
+    ,{<<"type">>, <<"string">>}
+    ,{<<"minLength">>, 13}
+    ,{<<"pattern">>, <<"^%2[Bb][0-9]+$">>}
+    ];
+
+def_path_param(<<"{IP_ADDRESS}">>=P) ->
+    [{<<"name">>, P}
+    ,{<<"in">>, <<"path">>}
+    ,{<<"required">>, true}
+    ,{<<"type">>, <<"string">>}
+    ,{<<"minLength">>, 7}
+    ,{<<"maxLength">>, 15}
+    ,{<<"pattern">>, <<"^[0-9.]+$">>}
+    ];
+
+def_path_param(<<"{MODULE}">>=P) ->
+    [{<<"name">>, P}
+    ,{<<"in">>, <<"path">>}
+    ,{<<"required">>, true}
+    ,{<<"type">>, <<"string">>}
+    ,{<<"pattern">>, <<"^[a-zA-Z0-9]+$">>}
+    ];
+
+def_path_param(<<"{FUNCTION}">>=P) ->
+    [{<<"name">>, P}
+    ,{<<"in">>, <<"path">>}
+    ,{<<"required">>, true}
+    ,{<<"type">>, <<"string">>}
+    ,{<<"pattern">>, <<"^[a-zA-Z0-9]+$">>}
+    ];
+
+def_path_param(<<"{NODE}">>=P) ->
+    [{<<"name">>, P}
+    ,{<<"in">>, <<"path">>}
+    ,{<<"required">>, true}
+    ,{<<"type">>, <<"string">>}
+    ,{<<"pattern">>, <<"^[a-zA-Z0-9]+@[a-zA-Z0-9]+$">>}
+    ];
+
+def_path_param(_Param) ->
+    io:format(standard_error
+             ,"No Swagger definition of path parameter '~s'.\n"
+             ,[_Param]),
+    halt(1).
