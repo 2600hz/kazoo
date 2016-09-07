@@ -923,30 +923,18 @@ update_template(Context, Id, FileJObj) ->
 
     Opts = [{'content_type', kz_util:to_list(CT)}],
 
-    try
-        Template = maybe_encode_template(Contents, CT),
-        Doc = kz_json:set_values([Template], cb_context:doc(Context)),
-        post(cb_context:set_doc(Context, Doc), Id, ?PREVIEW)
-    of
-        C ->
-            case cb_context:resp_status(C) of
-                'success' ->
-                    AttachmentName = attachment_name_by_content_type(CT),
-                    crossbar_doc:save_attachment(DbId
-                                                ,AttachmentName
-                                                ,Contents
-                                                ,Context
-                                                ,Opts
-                                                );
-                _ ->
-                    lager:debug("failed to compile uploaded template"),
-                    C
-            end
-    catch
-        _E:_R ->
-            lager:debug("failed to compile uploaded template"),
-            Message = kz_json:from_list([{<<"data">>, Contents}]),
-            crossbar_util:response_invalid_data(Message, Context)
+    case kz_template:render(Contents, template_module_name(Id, Context, CT), []) of
+        {'ok', _} ->
+            AttachmentName = attachment_name_by_content_type(CT),
+            crossbar_doc:save_attachment(DbId
+                                        ,AttachmentName
+                                        ,Contents
+                                        ,Context
+                                        ,Opts
+                                        );
+        {'error', Error} ->
+            lager:warning("failed to compile uploaded ~s template: ~p", [CT, Error]),
+            cb_context:add_system_error('faulty_request', Context)
     end.
 
 -spec attachment_name_by_content_type(ne_binary()) -> ne_binary().
@@ -957,11 +945,17 @@ attachment_name_by_content_type(CT) ->
 attachment_name_by_media_type(CT) ->
     <<"template.", CT/binary>>.
 
--spec maybe_encode_template(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
-maybe_encode_template(HTML, <<"text/html">>) ->
-    {<<"html">>, base64:encode(HTML)};
-maybe_encode_template(Content, _) ->
-    {<<"text">>, Content}.
+-spec template_module_name(ne_binary(), cb_context:context(), ne_binary()) -> atom().
+template_module_name(Id, Context, CT) ->
+    AccountId = cb_context:account_id(Context),
+    [_C, Type] = binary:split(CT, <<"/">>),
+    kz_util:to_atom(
+      <<AccountId/binary
+        ,"_"
+        ,Id/binary
+        ,"_"
+        ,Type/binary
+      >>, 'true').
 
 %%--------------------------------------------------------------------
 %% @private

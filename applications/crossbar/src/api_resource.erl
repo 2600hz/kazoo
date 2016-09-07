@@ -855,7 +855,7 @@ to_pdf(Req, Context) ->
     to_pdf(Req1, Context1, cb_context:resp_data(Context1)).
 
 to_pdf(Req, Context, <<>>) ->
-    to_pdf(Req, Context, kz_pdf:error_empty());
+    to_pdf(Req, Context, kztpl_pdf:error_empty());
 to_pdf(Req, Context, RespData) ->
     RespHeaders = [{<<"Content-Type">>, <<"application/pdf">>}
                   ,{<<"Content-Length">>, erlang:size(RespData)}

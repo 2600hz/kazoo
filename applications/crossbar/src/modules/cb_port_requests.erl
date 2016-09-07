@@ -1170,14 +1170,14 @@ generate_loa(Context, _RespStatus) ->
 %%--------------------------------------------------------------------
 -spec find_template(ne_binary(), api_binary()) -> ne_binary().
 find_template(ResellerId, 'undefined') ->
-    {'ok', Template} = kz_pdf:find_template(ResellerId, <<"loa">>),
+    {'ok', Template} = kztpl_pdf:find_template(ResellerId, <<"loa">>),
     Template;
 find_template(ResellerId, CarrierName) ->
     EncodedCarrierName = kz_util:to_lower_binary(kz_util:uri_encode(CarrierName)),
     TemplateName = <<EncodedCarrierName/binary, ".tmpl">>,
     lager:debug("looking for carrier template ~s or plain template for reseller ~s"
                ,[TemplateName, ResellerId]),
-    case kz_pdf:find_template(ResellerId, <<"loa">>, TemplateName) of
+    case kztpl_pdf:find_template(ResellerId, <<"loa">>, TemplateName) of
         {'error', _} -> find_template(ResellerId, 'undefined');
         {'ok', Template} -> Template
     end.
@@ -1417,7 +1417,7 @@ generate_loa_from_port(Context, PortRequest) ->
     Carrier = kz_json:get_value(<<"carrier">>, PortRequest),
 
     Template = find_template(ResellerId, Carrier),
-    case kz_pdf:generate(ResellerId, TemplateData, Template) of
+    case kztpl_pdf:generate(ResellerId, TemplateData, Template) of
         {'error', _R} -> cb_context:set_resp_status(Context, 'error');
         {'ok', PDF} ->
             cb_context:set_resp_status(cb_context:set_resp_data(Context, PDF), 'success')

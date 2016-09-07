@@ -60,26 +60,9 @@ compile_master_renderers(TemplateId) ->
 -spec build_renderer(ne_binary(), ne_binary(), binary()) -> 'ok'.
 build_renderer(TemplateId, ContentType, Template) ->
     ModuleName = renderer_name(TemplateId, ContentType),
-    case erlydtl:compile_template(Template
-                                 ,ModuleName
-                                 ,[{'out_dir', 'false'}
-                                  ,'return'
-                                  ,'report'
-                                  ,{'auto_escape', 'false'}
-                                  ]
-                                 )
-    of
-        {'ok', Name} ->
-            lager:debug("built ~s renderer for ~s", [TemplateId, Name]);
-        {'ok', Name, []} ->
-            lager:debug("built ~s renderer for ~s", [TemplateId, Name]);
-        {'ok', Name, Warnings} ->
-            lager:debug("compiling template ~s for renderer ~s produced warnings: ~p", [TemplateId, Name, Warnings]);
-        {'error', Errors, Warnings} ->
-            lager:debug("failed to compile template ~s", [TemplateId]),
-            teletype_renderer:log_errors(Errors, Template),
-            teletype_renderer:log_warnings(Warnings, Template),
-            throw({'error', 'failed_template', ModuleName})
+    case kz_template:compile(Template, ModuleName,[{'auto_escape', 'false'}]) of
+        {'ok', _} -> 'ok';
+        {'error', _} -> throw({'error', 'failed_template', ModuleName})
     end.
 
 -type template_attachment() :: {ne_binary(), binary()}.
@@ -244,23 +227,10 @@ master_content_type(_AttachmentName, AttachmentProps, Acc) ->
 -spec render_master(ne_binary(), ne_binary(), macros()) -> ne_binary().
 render_master(<<_/binary>> = TemplateId, <<_/binary>> = ContentType, Macros) ->
     ModuleName = renderer_name(TemplateId, ContentType),
-    try ModuleName:render(Macros) of
+    case kz_template:render(ModuleName, Macros) of
         {'ok', IOList} ->
-            lager:debug("rendered ~s template successfully: ~s", [ContentType, IOList]),
             iolist_to_binary(IOList);
-        {'error', _E} ->
-            lager:debug("failed to render ~s template: ~p", [ContentType, _E]),
-            throw({'error', 'template_error'})
-    catch
-        'error':'undef' ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("something in the template ~s is undefined", [ModuleName]),
-            kz_util:log_stacktrace(ST),
-            throw({'error', 'template_error'});
-        _E:R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("crashed rendering template ~s: ~s: ~p", [ModuleName, _E, R]),
-            kz_util:log_stacktrace(ST),
+        {'error', _} ->
             throw({'error', 'template_error'})
     end.
 
