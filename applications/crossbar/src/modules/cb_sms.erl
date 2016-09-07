@@ -304,7 +304,10 @@ filter_number(Number) ->
     << <<X>> || <<X>> <= Number, is_digit(X)>>.
 
 -spec is_digit(integer()) -> boolean().
-is_digit(N) -> N >= $0 andalso N =< $9.
+is_digit(N) when is_integer(N),
+                 N >= $0,
+                 N =< $9 -> true;
+is_digit(_) -> false.
 
 -spec build_number(ne_binary()) -> {api_binary(), kz_proplist()}.
 build_number(Number) ->
