@@ -34,7 +34,7 @@ init({_Transport, _Proto}, Req, _Opts) ->
             validate_request(cowboy_req:path_info(Req));
         'false' ->
             lager:debug("request did not provide valid credentials"),
-            {'shutdown', unauthorized(Req), 'ok'}
+            {'shutdown', unauthorized(Req), #state{}}
     end.
 
 -spec authenticate(cowboy_req:req()) -> boolean().
@@ -157,10 +157,10 @@ handle_close(Req, State, 'ok') ->
 handle_close(Req, _State, {'error', Reason}) ->
     failure(Reason, Req).
 
-handle_error(Reason, Req, #state{file=Device}) ->
+handle_error(Reason, Req, #state{file=Device}=State) ->
     _ = file:close(Device),
     lager:debug("received error ~p requesting for body", [Reason]),
-    reply_error(500, Req).
+    reply_error(500, State, Req).
 
 -spec validate_request({list(), cowboy_req:req()}) -> handler_return().
 validate_request({[EncodedUrl, _Filename], Req}) ->
@@ -262,31 +262,31 @@ ensure_extension_present(#media_store_path{att=Attachment}=Path, CT) ->
             {'error', 400}
     end.
 
--spec store(state(), cowboy_req:req()) -> {'ok', cowboy_req:req(), 'ok'}.
-store(#state{filename=Filename, media=Path}, Req) ->
+-spec store(state(), cowboy_req:req()) -> {'ok', cowboy_req:req(), state()}.
+store(#state{filename=Filename, media=Path}=State, Req) ->
     case file:read_file(Filename) of
-        {'ok', Data} -> store(Path, Data, Req);
+        {'ok', Data} -> store(Path, Data, State, Req);
         {'error', Reason} ->
             lager:debug("error ~p opening file ~s", [Reason, Filename]),
-            reply_error(500, Req)
+            reply_error(500, State, Req)
     end.
 
 
 
--spec store(media_store_path(), ne_binary(), cowboy_req:req()) -> {'ok', cowboy_req:req(), 'ok'}.
+-spec store(media_store_path(), ne_binary(), state(), cowboy_req:req()) -> {'ok', cowboy_req:req(), state()}.
 store(#media_store_path{db=Db
                        ,id=Id
                        ,att=Attachment
                        ,opt=Options
-                       }, Contents, Req0) ->
+                       }, Contents, State, Req0) ->
     lager:debug("putting ~s onto ~s(~s)", [Attachment, Id, Db]),
     case kz_datamgr:put_attachment(Db, Id, Attachment, Contents, Options) of
         {'ok', JObj} ->
-            lager:debug("successfully stored(~p) ~p ~p ~p", [Db, Id, Attachment]),
-            {'ok', success(JObj, Req0), 'ok'};
+            lager:debug("successfully stored(~p) ~p ~p", [Db, Id, Attachment]),
+            {'ok', success(JObj, Req0), State};
         {'error', Reason} ->
             lager:debug("unable to store file: ~p", [Reason]),
-            {'ok', failure(Reason, Req0), 'ok'}
+            {'ok', failure(Reason, Req0), State}
     end.
 
 -spec success(kz_json:object(), cowboy_req:req()) -> cowboy_req:req().
@@ -306,7 +306,12 @@ failure(Reason, Req0) ->
 -spec reply_error(integer(), cowboy_req:req()) -> cowboy_req:req().
 reply_error(Code, Req0) ->
     {'ok', Req1} = cowboy_req:reply(Code, Req0),
-    {'shutdown', Req1, 'ok'}.
+    {'shutdown', Req1, #state{}}.
+
+-spec reply_error(integer(), state(), cowboy_req:req()) -> cowboy_req:req().
+reply_error(Code, State, Req0) ->
+    {'ok', Req1} = cowboy_req:reply(Code, Req0),
+    {'shutdown', Req1, State}.
 
 -spec terminate(any(), cowboy_req:req(), any()) -> cowboy_req:req().
 terminate(_Reason, Req, #state{file=Device, filename=Filename}) ->
