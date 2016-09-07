@@ -11,7 +11,7 @@
     - [Response codes: 4xx and 5xx](#orgheadline9)
     - [Response body](#orgheadline10)
 - [Account standing](#orgheadline14)
-  - [/v2/accounts/{ACCOUNT\_ID}/services/standing](#orgheadline13)
+  - [/v2/accounts/{ACCOUNT\_ID}/services/status](#orgheadline13)
 
 
 # Bookkeepers<a id="orgheadline4"></a>
@@ -58,38 +58,38 @@ The request payload will be composed of objects with the following fields:
 applications.
 
 ```js2
-  {
-      "devices":{
-          "sip_device":{
-              "category":"devices"
-              ,"item":"sip_device"
-              ,"quantity": 4
-              ,"rate": 29.99
-          }
-          ,"softphone":{
-              "category":"devices"
-              ,"item":"softphone"
-              ,"quantity":2
-              ,"rate":0
-          }
-      }
-      ,"ui_apps": {
-          "numbers": {
-              "category": "ui_apps",
-              "item": "numbers",
-              "quantity": 1,
-              "rate": 2.0,
-              "activation_charge": 1.0
-          }
-          ,"accounts": {
-              "category": "ui_apps",
-              "item": "accounts",
-              "quantity": 1,
-              "rate": 5.0,
-              "activation_charge": 4.0
-          }
-      }
-  }
+{
+    "devices":{
+        "sip_device":{
+            "category":"devices"
+            ,"item":"sip_device"
+            ,"quantity": 4
+            ,"rate": 29.99
+        }
+        ,"softphone":{
+            "category":"devices"
+            ,"item":"softphone"
+            ,"quantity":2
+            ,"rate":0
+        }
+    }
+    ,"ui_apps": {
+        "numbers": {
+            "category": "ui_apps",
+            "item": "numbers",
+            "quantity": 1,
+            "rate": 2.0,
+            "activation_charge": 1.0
+        }
+        ,"accounts": {
+            "category": "ui_apps",
+            "item": "accounts",
+            "quantity": 1,
+            "rate": 5.0,
+            "activation_charge": 4.0
+        }
+    }
+}
 ```
 
 ## The Response<a id="orgheadline11"></a>
@@ -122,8 +122,54 @@ At this time, no processing of the response body will be done. Implementing serv
 
 To move an account into or out of good standing, the admin can use the following Crossbar API to move an account's standing:
 
-## /v2/accounts/{ACCOUNT\_ID}/services/standing<a id="orgheadline13"></a>
+## /v2/accounts/{ACCOUNT\_ID}/services/status<a id="orgheadline13"></a>
 
--   **GET**: Fetch the current standing of the account
--   **POST**: Move the account into good standing (if not already)
--   **DELETE**: Move the account out of good standing
+-   **GET**: Fetch the current status of the account
+
+    -   Account in good standing:
+
+    ```shell
+    $> curl -X GET http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/status
+    {
+        "data":{
+            "in_good_standing":true
+        }
+    }
+    ```
+
+    -   Not in good standing
+
+    ```shell
+    $> curl -X GET http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/status
+    {
+        "data":{
+            "in_good_standing":false
+            ,"reason":"credit card expired"
+            ,"reason_code":12345
+        }
+    }
+    ```
+-   **POST**: Move an account to/from good standing
+
+    -   Move to good standing
+
+    ```shell
+    $> curl -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/status -d '{"data":{"in_good_standing":true}}'
+    {
+        "data":{
+            "in_good_standing":true
+        }
+    }
+    ```
+
+    -   Move from good standing
+
+    ```shell
+    $> curl -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/status -d '{"data":{"in_good_standing":false, "reason":"custom error reason"}}'
+    {
+        "data":{
+            "in_good_standing":false
+            ,"reason":"custom error reason"
+        }
+    }
+    ```

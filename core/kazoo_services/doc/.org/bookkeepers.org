@@ -96,7 +96,45 @@ At this time, no processing of the response body will be done. Implementing serv
 * Account standing
 To move an account into or out of good standing, the admin can use the following Crossbar API to move an account's standing:
 
-** /v2/accounts/{ACCOUNT_ID}/services/standing
-- *GET*: Fetch the current standing of the account
-- *POST*: Move the account into good standing (if not already)
-- *DELETE*: Move the account out of good standing
+** /v2/accounts/{ACCOUNT_ID}/services/status
+- *GET*: Fetch the current status of the account
+  - Account in good standing:
+  #+BEGIN_SRC shell
+  $> curl -X GET http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/status
+  {
+      "data":{
+          "in_good_standing":true
+      }
+  }
+  #+END_SRC
+  - Not in good standing
+  #+BEGIN_SRC shell
+  $> curl -X GET http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/status
+  {
+      "data":{
+          "in_good_standing":false
+          ,"reason":"credit card expired"
+          ,"reason_code":12345
+      }
+  }
+  #+END_SRC
+- *POST*: Move an account to/from good standing
+  - Move to good standing
+  #+BEGIN_SRC shell
+  $> curl -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/status -d '{"data":{"in_good_standing":true}}'
+  {
+      "data":{
+          "in_good_standing":true
+      }
+  }
+  #+END_SRC
+  - Move from good standing
+  #+BEGIN_SRC shell
+  $> curl -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/status -d '{"data":{"in_good_standing":false, "reason":"custom error reason"}}'
+  {
+      "data":{
+          "in_good_standing":false
+          ,"reason":"custom error reason"
+      }
+  }
+  #+END_SRC
