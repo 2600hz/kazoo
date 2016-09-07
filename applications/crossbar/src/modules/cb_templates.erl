@@ -239,6 +239,7 @@ is_design_doc_id(_) -> 'true'.
 import_template_docs([], _, _, _) -> 'ok';
 import_template_docs([Id|Ids], TemplateDb, AccountId, AccountDb) ->
     case kz_datamgr:open_doc(TemplateDb, Id) of
+        {'error', _} -> import_template_docs(Ids, TemplateDb, AccountId, AccountDb);
         {'ok', JObj} ->
             Routines = [fun(J) -> kz_doc:set_account_id(J, AccountId) end
                        ,fun(J) -> kz_doc:set_account_db(J, AccountDb) end
@@ -248,8 +249,7 @@ import_template_docs([Id|Ids], TemplateDb, AccountId, AccountDb) ->
             _ = kz_datamgr:ensure_saved(AccountDb, lists:foldr(fun(F, J) -> F(J) end, JObj, Routines)),
             Attachments = kz_doc:attachment_names(JObj),
             _ = import_template_attachments(Attachments, JObj, TemplateDb, AccountDb, Id),
-            import_template_docs(Ids, TemplateDb, AccountId, AccountDb);
-        {'error', _} -> import_template_docs(Ids, TemplateDb, AccountId, AccountDb)
+            import_template_docs(Ids, TemplateDb, AccountId, AccountDb)
     end.
 
 -spec import_template_attachments(ne_binaries(), kz_json:object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.

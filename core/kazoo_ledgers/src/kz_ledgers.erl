@@ -20,8 +20,7 @@
 %%--------------------------------------------------------------------
 -spec get(ne_binary()) -> {'error', any()} | {'ok', kz_json:object()}.
 get(Account) ->
-    Options = [
-               'reduce'
+    Options = ['reduce'
               ,'group'
               ,{'group_level', 1}
               ],

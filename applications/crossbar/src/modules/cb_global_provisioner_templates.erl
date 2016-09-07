@@ -124,9 +124,9 @@ content_types_accepted(Context, _, ?IMAGE_REQ, _) ->
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(_ProvisionerTemplateId) ->
+allowed_methods(_TemplateId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
-allowed_methods(_ProvisionerTemplateId, ?IMAGE_REQ) ->
+allowed_methods(_TemplateId, ?IMAGE_REQ) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -287,11 +287,7 @@ upload_template_image(Context, [{_, _}]) ->
     crossbar_util:response(kz_json:new(), Context);
 upload_template_image(Context, [_|_]) ->
     Msg = kz_json:from_list([{<<"message">>, <<"Please provide a single image file">>}]),
-    cb_context:add_validation_error(<<"file">>
-                                   ,<<"maxItems">>
-                                   ,Msg
-                                   ,Context
-                                   ).
+    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Msg, Context).
 
 %%--------------------------------------------------------------------
 %% @private

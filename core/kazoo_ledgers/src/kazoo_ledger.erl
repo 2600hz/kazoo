@@ -10,13 +10,11 @@
 
 -include("kzl.hrl").
 
--export([
-         new/0
+-export([new/0
         ,save/1, save/2
         ]).
 
--export([
-         type/1, set_type/2
+-export([type/1, set_type/2
         ,amount/1, set_amount/2
         ,description/1, set_description/2
         ,source/1

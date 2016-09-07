@@ -59,7 +59,7 @@ allowed_methods(?ZONES) ->
     [?HTTP_GET];
 allowed_methods(?HOSTS) ->
     [?HTTP_GET];
-allowed_methods(_IP) ->
+allowed_methods(_IPAddress) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -160,16 +160,14 @@ load_available(Context) ->
     Zone = kz_json:get_value(<<"zone">>, QS),
     case kz_ips:available(Zone) of
         {'ok', JObjs} ->
-            cb_context:set_resp_data(
-              cb_context:set_resp_status(Context, 'success')
+            cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                                     ,JObjs
-             );
+                                    );
         {'error', Reason} ->
-            cb_context:add_system_error(
-              'datastore_fault'
+            cb_context:add_system_error('datastore_fault'
                                        ,kz_json:from_list([{<<"cause">>, Reason}])
                                        ,Context
-             )
+                                       )
     end.
 
 %%--------------------------------------------------------------------
@@ -182,16 +180,14 @@ load_assigned(Context) ->
     AccountId = cb_context:account_id(Context),
     case kz_ips:assigned(AccountId) of
         {'ok', JObjs} ->
-            cb_context:set_resp_data(
-              cb_context:set_resp_status(Context, 'success')
+            cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                                     ,JObjs
-             );
+                                    );
         {'error', Reason} ->
-            cb_context:add_system_error(
-              'datastore_fault'
+            cb_context:add_system_error('datastore_fault'
                                        ,kz_json:from_list([{<<"cause">>, Reason}])
                                        ,Context
-             )
+                                       )
     end.
 
 %%--------------------------------------------------------------------
@@ -203,16 +199,14 @@ load_assigned(Context) ->
 load_zones(Context) ->
     case kz_ips:zones() of
         {'ok', Zones} ->
-            cb_context:set_resp_data(
-              cb_context:set_resp_status(Context, 'success')
+            cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                                     ,Zones
-             );
+                                    );
         {'error', Reason} ->
-            cb_context:add_system_error(
-              'datastore_fault'
+            cb_context:add_system_error('datastore_fault'
                                        ,kz_json:from_list([{<<"cause">>, Reason}])
                                        ,Context
-             )
+                                       )
     end.
 
 %%--------------------------------------------------------------------
@@ -224,16 +218,14 @@ load_zones(Context) ->
 load_hosts(Context) ->
     case kz_ips:hosts() of
         {'ok', Hosts} ->
-            cb_context:set_resp_data(
-              cb_context:set_resp_status(Context, 'success')
+            cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                                     ,Hosts
-             );
+                                    );
         {'error', Reason} ->
-            cb_context:add_system_error(
-              'datastore_fault'
+            cb_context:add_system_error('datastore_fault'
                                        ,kz_json:from_list([{<<"cause">>, Reason}])
                                        ,Context
-             )
+                                       )
     end.
 
 %%--------------------------------------------------------------------
@@ -246,16 +238,14 @@ load_ip(Context, Id) ->
     case kz_ip:fetch(Id) of
         {'ok', IP} ->
             IPJSON = kz_ip:to_json(IP),
-            cb_context:set_resp_data(
-              cb_context:set_resp_status(Context, 'success')
+            cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                                     ,clean_ip(IPJSON)
-             );
+                                    );
         {'error', Reason} ->
-            cb_context:add_system_error(
-              'datastore_fault'
+            cb_context:add_system_error('datastore_fault'
                                        ,kz_json:from_list([{<<"cause">>, Reason}])
                                        ,Context
-             )
+                                       )
     end.
 
 %%--------------------------------------------------------------------
@@ -271,15 +261,10 @@ maybe_assign_ips(Context) ->
 -spec validate_ips_not_in_use(cb_context:context()) -> cb_context:context().
 -spec validate_ips_not_in_use(cb_context:context(), ne_binaries()) -> cb_context:context().
 validate_ips_not_in_use(Context) ->
-    validate_ips_not_in_use(Context
-                           ,cb_context:req_value(Context, <<"ips">>)
-                           ).
+    validate_ips_not_in_use(Context, cb_context:req_value(Context, <<"ips">>)).
 
 validate_ips_not_in_use(Context, IPs) ->
-    lists:foldl(fun validate_ip_not_in_use/2
-               ,Context
-               ,IPs
-               ).
+    lists:foldl(fun validate_ip_not_in_use/2, Context, IPs).
 
 -spec validate_ip_not_in_use(ne_binary() | cb_context:context(), ne_binary() | cb_context:context()) ->
                                     cb_context:context().
@@ -313,14 +298,10 @@ validate_ip_not_in_use(Context, IP, _Status) ->
 
 -spec error_ip_assigned(cb_context:context(), ne_binary()) -> cb_context:context().
 error_ip_assigned(Context, IP) ->
-    cb_context:add_validation_error(<<"ip">>
-                                   ,<<"forbidden">>
-                                   ,kz_json:from_list(
-                                      [{<<"cause">>, IP}
-                                      ,{<<"message">>, <<"ip already assigned">>}
-                                      ])
-                                   ,Context
-                                   ).
+    Msg = kz_json:from_list([{<<"cause">>, IP}
+                            ,{<<"message">>, <<"ip already assigned">>}
+                            ]),
+    cb_context:add_validation_error(<<"ip">>, <<"forbidden">>, Msg, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -334,10 +315,9 @@ assign_ips(Context) ->
     assign_ips(Context, kz_json:get_value(<<"ips">>, ReqData, []), []).
 
 assign_ips(Context, [], RespData) ->
-    cb_context:set_resp_data(
-      cb_context:set_resp_status(Context, 'success')
+    cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                             ,RespData
-     );
+                            );
 assign_ips(Context, [Ip|Ips], RespData) ->
     AccountId = cb_context:account_id(Context),
     case kz_ip:assign(AccountId, Ip) of
@@ -345,11 +325,10 @@ assign_ips(Context, [Ip|Ips], RespData) ->
             IPJSON = kz_ip:to_json(IP),
             assign_ips(Context, Ips, [clean_ip(IPJSON)|RespData]);
         {'error', Reason} ->
-            cb_context:add_system_error(
-              'datastore_fault'
+            cb_context:add_system_error('datastore_fault'
                                        ,kz_json:from_list([{<<"cause">>, Reason}])
                                        ,Context
-             )
+                                       )
     end.
 
 %%--------------------------------------------------------------------
@@ -363,16 +342,14 @@ assign_ip(Context, Ip) ->
     case kz_ip:assign(AccountId, Ip) of
         {'ok', IP} ->
             IPJSON = kz_ip:to_json(IP),
-            cb_context:set_resp_data(
-              cb_context:set_resp_status(Context, 'success')
+            cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                                     ,clean_ip(IPJSON)
-             );
+                                    );
         {'error', Reason} ->
-            cb_context:add_system_error(
-              'datastore_fault'
+            cb_context:add_system_error('datastore_fault'
                                        ,kz_json:from_list([{<<"cause">>, Reason}])
                                        ,Context
-             )
+                                       )
     end.
 
 %%--------------------------------------------------------------------
@@ -385,16 +362,14 @@ release_ip(Context, Id) ->
     case kz_ip:release(Id) of
         {'ok', IP} ->
             IPJSON = kz_ip:to_json(IP),
-            cb_context:set_resp_data(
-              cb_context:set_resp_status(Context, 'success')
+            cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                                     ,clean_ip(IPJSON)
-             );
+                                    );
         {'error', Reason} ->
-            cb_context:add_system_error(
-              'datastore_fault'
+            cb_context:add_system_error('datastore_fault'
                                        ,kz_json:from_list([{<<"cause">>, Reason}])
                                        ,Context
-             )
+                                       )
     end.
 
 %%--------------------------------------------------------------------

@@ -485,7 +485,8 @@ format_path_tokens(Tokens) ->
     [format_path_token(Token) || Token <- Tokens, Token =/= <<"/">>].
 
 format_path_token(<<"_", Rest/binary>>) -> format_path_token(Rest);
-format_path_token(Token = <<Prefix:1/binary, _/binary>>) ->
+format_path_token(Token = <<Prefix:1/binary, _/binary>>)
+  when byte_size(Token) >= 3 ->
     case is_all_upper(Token) of
         true -> brace_token(Token);
         false ->
@@ -493,7 +494,12 @@ format_path_token(Token = <<Prefix:1/binary, _/binary>>) ->
                 true -> brace_token(camel_to_snake(Token));
                 false -> Token
             end
-    end.
+    end;
+format_path_token(BadToken) ->
+    io:format(standard_error
+             ,"Please pick a good allowed_methods/N variable name: '~s' is too short.\n"
+             ,[BadToken]),
+    halt(1).
 
 camel_to_snake(Bin) ->
     Options = ['global', {'return', 'binary'}],

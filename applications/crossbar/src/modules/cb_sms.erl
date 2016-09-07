@@ -53,14 +53,10 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
-
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
-
-allowed_methods(_Id) ->
+allowed_methods(_SMSId) ->
     [?HTTP_GET, ?HTTP_DELETE].
-
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -73,10 +69,8 @@ allowed_methods(_Id) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
-
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -90,10 +84,8 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-
 validate(Context) ->
     validate_request(Context, cb_context:req_verb(Context)).
-
 validate(Context, Id) ->
     validate_sms(Context, Id, cb_context:req_verb(Context)).
 
@@ -118,7 +110,6 @@ validate_sms(Context, Id, ?HTTP_DELETE) ->
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     crossbar_doc:save(Context).
-
 
 %%--------------------------------------------------------------------
 %% @public
