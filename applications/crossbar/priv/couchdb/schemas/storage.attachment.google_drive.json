@@ -1,31 +1,34 @@
 {
-    "id":"storage.attachment.google_drive",
-    "$schema":"http://json-schema.org/draft-04/schema#",
-    "description":"schema for google drive attachment entry",
-    "type":"object",
-    "properties":{
-        "handler":{
-            "enum":["google_drive"]
-        },
-        "settings":{
-            "type":"object",
-            "properties":{
-                "oauth_doc_id":{
-                    "type":"string"
-                },
-                "path":{
-                    "type":"string"
-                }
-            },
-            "required":[
-                "oauth_doc_id"
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "schema for google drive attachment entry",
+    "id": "storage.attachment.google_drive",
+    "properties": {
+        "handler": {
+            "enum": [
+                "google_drive"
             ]
         },
-        "name" : {"type" : "string"}
-        
+        "name": {
+            "type": "string"
+        },
+        "settings": {
+            "properties": {
+                "oauth_doc_id": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "oauth_doc_id"
+            ],
+            "type": "object"
+        }
     },
-    "required":[
+    "required": [
         "handler",
         "settings"
-    ]
+    ],
+    "type": "object"
 }

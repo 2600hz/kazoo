@@ -1,15 +1,17 @@
 {
-    "$schema":"http://json-schema.org/draft-04/schema#",
-    "id":"storage.connections",
-    "type":"object",
-    "patternProperties":{
-        "^([a-z,0-9]){32}$":{
-            "oneOf":[
-                {"$ref":"storage.connection.couchdb"}
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "id": "storage.connections",
+    "patternProperties": {
+        "^([a-z,0-9]){32}$": {
+            "oneOf": [
+                {
+                    "$ref": "storage.connection.couchdb"
+                }
             ]
         },
-        "local" : {
-            "type" : "object"
+        "local": {
+            "type": "object"
         }
-    }
+    },
+    "type": "object"
 }

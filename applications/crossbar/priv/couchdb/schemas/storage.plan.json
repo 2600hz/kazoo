@@ -1,18 +1,18 @@
 {
-    "id":"storage.plan",
-    "$schema":"http://json-schema.org/draft-04/schema#",
-    "description":"schema for storage plan",
-    "type":"object",
-    "properties":{
-        "account":{
-            "$ref":"storage.plan.database"
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "additionalProperties": false,
+    "description": "schema for storage plan",
+    "id": "storage.plan",
+    "properties": {
+        "account": {
+            "$ref": "storage.plan.database"
         },
-        "modb":{
-            "$ref":"storage.plan.database"
+        "modb": {
+            "$ref": "storage.plan.database"
         },
-        "system":{
-            "$ref":"storage.plan.database"
+        "system": {
+            "$ref": "storage.plan.database"
         }
     },
-    "additionalProperties" : false
+    "type": "object"
 }

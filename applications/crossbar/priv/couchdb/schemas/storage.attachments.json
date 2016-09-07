@@ -1,14 +1,17 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "id" : "storage.attachments",
-    "type": "object",
+    "id": "storage.attachments",
     "patternProperties": {
         "^[a-z,0-9]{32}$": {
-               "oneOf": [
-                { "$ref": "storage.attachment.aws" },
-                { "$ref": "storage.attachment.google_drive" }
+            "oneOf": [
+                {
+                    "$ref": "storage.attachment.aws"
+                },
+                {
+                    "$ref": "storage.attachment.google_drive"
+                }
             ]
-
-             }
-    }
+        }
+    },
+    "type": "object"
 }
