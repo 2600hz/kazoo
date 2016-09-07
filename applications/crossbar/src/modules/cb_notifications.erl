@@ -733,10 +733,7 @@ migrate_template_to_account(Context, Id) ->
     Context1 =
         crossbar_doc:ensure_saved(
           cb_context:set_doc(Context
-                            ,kz_notification:set_base_properties(
-                               kz_doc:public_fields(Template)
-                                                                ,Id
-                              )
+                            ,kz_notification:set_base_properties(kz_doc:public_fields(Template), Id)
                             )
          ),
     case cb_context:resp_status(Context1) of

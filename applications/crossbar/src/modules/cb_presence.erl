@@ -463,10 +463,8 @@ send_reset(Context, Thing) ->
 
 -spec publish_reset(ne_binary(), kz_json:objects()) -> 'ok'.
 publish_reset(Realm, Things) ->
-    _ = [publish_presence_reset(Realm, find_presence_id(Thing))
-         || Thing <- Things
-        ],
-    'ok'.
+    F = fun (Thing) -> publish_presence_reset(Realm, find_presence_id(Thing)) end,
+    lists:foreach(F, Things).
 
 -spec publish_presence_reset(ne_binary(), api_binary()) -> 'ok'.
 publish_presence_reset(_Realm, 'undefined') -> 'ok';

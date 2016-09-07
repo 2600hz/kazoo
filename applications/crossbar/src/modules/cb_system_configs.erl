@@ -202,12 +202,10 @@ create(Context) ->
     case kz_doc:id(Doc) of
         'undefined' ->
             lager:debug("no id on doc ~p", [Doc]),
-            cb_context:add_validation_error(<<"id">>
-                                           ,<<"required">>
-                                           ,kz_json:from_list([{<<"message">>, <<"id is required to create a system_config resource">>}
-                                                              ])
-                                           ,Context
-                                           );
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"id is required to create a system_config resource">>}
+                    ]),
+            cb_context:add_validation_error(<<"id">>, <<"required">>, Msg, Context);
         Id ->
             SysDoc = kz_json:from_list([{<<"_id">>, Id}
                                        ,{<<"default">>, kz_json:delete_key(<<"id">>, Doc)}
