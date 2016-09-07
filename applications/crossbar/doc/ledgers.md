@@ -141,6 +141,7 @@ the `account_id` for `AUTH_TOKEN` must be reseller of target account.
 Parameter "impact_reseller" (boolean not required) when true will also create the document in the reseller
 
 > PUT /v2/accounts/{ACCOUNT_ID}/ledgers/debit
+
 > PUT /v2/accounts/{ACCOUNT_ID}/ledgers/credit
 
 ```shell
