@@ -394,8 +394,7 @@ maybe_allow_change(Context, PlanId) ->
 check_plan_ids(Context, ResellerId) ->
     ReqData = cb_context:req_data(Context),
     AddPlanIds = kz_json:get_value(<<"add">>, ReqData, []),
-    DeletePlanIds = kz_json:get_value(<<"delete">>, ReqData, []),
-    check_plan_ids(Context, ResellerId, AddPlanIds ++ DeletePlanIds).
+    check_plan_ids(maybe_forbid_delete(Context), ResellerId, AddPlanIds).
 
 check_plan_ids(Context, ResellerId, PlanIds) ->
     lists:foldl(
@@ -422,3 +421,13 @@ check_plan_ids(Context, ResellerId, PlanIds) ->
 check_plan_id(Context, PlanId, ResellerId) ->
     ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
     crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb), ?TYPE_CHECK_OPTION(<<"service_plan">>)).
+
+-spec maybe_forbid_delete(cb_context:context()) -> cb_context:context().
+maybe_forbid_delete(Context) ->
+    Services = kz_services:fetch_services_doc(cb_context:account_id(Context), 'false'),
+    ExistingPlansIds = kzd_services:plan_ids(Services),
+    DeletePlansIds = kz_json:get_value(<<"delete">>, cb_context:req_data(Context), []),
+    case DeletePlansIds -- ExistingPlansIds of
+        [] -> Context;
+        _ -> cb_context:add_system_error('plan_is_not_assigned', Context)
+    end.
