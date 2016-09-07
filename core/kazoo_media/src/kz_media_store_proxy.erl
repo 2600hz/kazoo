@@ -34,7 +34,7 @@ init({_Transport, _Proto}, Req, _Opts) ->
             validate_request(cowboy_req:path_info(Req));
         'false' ->
             lager:debug("request did not provide valid credentials"),
-            {'shutdown', unauthorized(Req), #state{}}
+            {'shutdown', unauthorized(Req), 'ok'}
     end.
 
 -spec authenticate(cowboy_req:req()) -> boolean().
@@ -303,17 +303,19 @@ failure(Reason, Req0) ->
     {'ok', Req2} = cowboy_req:reply(500, Req1),
     Req2.
 
--spec reply_error(integer(), cowboy_req:req()) -> cowboy_req:req().
+-spec reply_error(integer(), cowboy_req:req()) -> {'shutdown', cowboy_req:req(), 'ok'}.
 reply_error(Code, Req0) ->
     {'ok', Req1} = cowboy_req:reply(Code, Req0),
-    {'shutdown', Req1, #state{}}.
+    {'shutdown', Req1, 'ok'}.
 
--spec reply_error(integer(), state(), cowboy_req:req()) -> cowboy_req:req().
+-spec reply_error(integer(), state(), cowboy_req:req()) -> {'shutdown', cowboy_req:req(), state()}.
 reply_error(Code, State, Req0) ->
     {'ok', Req1} = cowboy_req:reply(Code, Req0),
     {'shutdown', Req1, State}.
 
 -spec terminate(any(), cowboy_req:req(), any()) -> cowboy_req:req().
+terminate(_Reason, Req, 'ok') ->
+    Req;
 terminate(_Reason, Req, #state{file=Device, filename=Filename}) ->
     catch(file:close(Device)),
     catch(file:delete(Filename)),
