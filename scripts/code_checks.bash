@@ -45,9 +45,16 @@ function check_trailing_whitespace {
     ! grep -Ern '\s$' --include '*.escript' --include '*.erl' --include '*.hrl' --include '*.app.src' -- $@
 }
 
+declare -a args
+args_i=0
+for arg in "$@"; do
+    [[ -e "$arg" ]] && args[$args_i]="$arg" && ((++args_i))
+done
+[[ $args_i -eq 0 ]] && exit 0
+
 errs=0
-check_andalso_orelse "$@" || ((errs++))
-check_MODULE "$@" || ((errs++))
-check_TABs "$@" || ((errs++))
-check_trailing_whitespace "$@" || ((errs++))
+check_andalso_orelse "${args[@]}" || ((errs++))
+check_MODULE "${args[@]}" || ((errs++))
+check_TABs "${args[@]}" || ((errs++))
+check_trailing_whitespace "${args[@]}" || ((errs++))
 exit $errs
