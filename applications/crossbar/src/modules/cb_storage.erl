@@ -14,7 +14,7 @@
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,validate/1, validate/2, validate/3
-        ,put/2
+        ,put/1, put/2
         ,post/1, post/3
         ,delete/1, delete/3
         ]).
@@ -109,7 +109,7 @@ do_authorize(Context, {'user', UserId, AccountId}) ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?PLANS_TOKEN) ->
@@ -163,6 +163,8 @@ validate(Context, ?PLANS_TOKEN, PlanId) ->
 -spec validate_storage(cb_context:context(), http_method()) -> cb_context:context().
 validate_storage(Context, ?HTTP_GET) ->
     read(Context);
+validate_storage(Context, ?HTTP_PUT) ->
+    create(Context);
 validate_storage(Context, ?HTTP_POST) ->
     update(Context);
 validate_storage(Context, ?HTTP_DELETE) ->
@@ -188,6 +190,10 @@ validate_storage_plan(Context, PlanId, ?HTTP_DELETE) ->
 %% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
+-spec put(cb_context:context()) -> cb_context:context().
+put(Context) ->
+    crossbar_doc:save(Context).
+
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ?PLANS_TOKEN) ->
     crossbar_doc:save(Context).
@@ -289,9 +295,19 @@ summary(Context, {'reseller_plans', AccountId}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
-on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"storage">>));
 on_successful_validation(Id, Context) ->
+    on_successful_validation(Id, cb_context:req_verb(Context), Context).
+
+-spec on_successful_validation(api_binary(), http_method(), cb_context:context()) -> cb_context:context().
+on_successful_validation('undefined', ?HTTP_PUT, Context) ->
+    cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"storage">>));
+on_successful_validation(Id, ?HTTP_PUT, Context) ->
+    JObj = cb_context:doc(Context),
+    Routines = [fun(Doc) -> kz_doc:set_type(Doc, <<"storage">>) end
+               ,fun(Doc) -> kz_doc:set_id(Doc, Id) end
+               ],
+    cb_context:set_doc(Context, kz_json:exec(Routines, JObj));
+on_successful_validation(Id, ?HTTP_POST, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"storage">>)).
 
 %%--------------------------------------------------------------------
@@ -310,7 +326,10 @@ scope(Context) ->
 
 -spec set_scope(cb_context:context()) -> cb_context:context().
 set_scope(Context) ->
-    set_scope(cb_context:set_account_db(Context, ?KZ_DATA_DB), cb_context:req_nouns(Context)).
+    Setters = [{fun cb_context:store/3, 'ensure_valid_schema', 'true'}
+              ,{fun cb_context:set_account_db/2, ?KZ_DATA_DB}
+              ],
+    set_scope(cb_context:setters(Context, Setters), cb_context:req_nouns(Context)).
 
 -spec set_scope(cb_context:context(), req_nouns()) -> scope().
 set_scope(Context, [{<<"storage">>, []}]) ->
