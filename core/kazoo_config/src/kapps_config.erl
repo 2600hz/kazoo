@@ -48,7 +48,7 @@
 -type update_options() :: [update_option()].
 
 -type fetch_ret() :: {'ok', kz_json:object()} |
-                     {'error', 'not_found'}.
+                     {'error', any()}.
 
 -define(KEY_DEFAULT, <<"default">>).
 
@@ -726,9 +726,6 @@ get_category(Category, 'false') ->
         ,{{<<"callflow.mobile">>, <<"sms_interface">>}
          ,{<<"kazoo_endpoint.mobile">>, <<"sms_interface">>}
          }
-%%         ,{{<<"callflow.mobile">>, [<<"sms">>, <<"connections">>]}
-%%          ,{<<"kazoo_endpoint.mobile">>, [<<"sms">>, <<"connections">>]}
-%%          }
         ,{{<<"callflow">>, <<"recorder_module">>}
          ,{<<"kazoo_endpoint">>, <<"recorder_module">>}
          }
