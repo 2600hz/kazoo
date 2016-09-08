@@ -1,214 +1,61 @@
+### Service_plans
 
-### Service Plans
+#### About Service_plans
 
-#### List your reseller service plans
+Handle the service plans you can subscribe to.
 
-This api allow you to list the service plans that you can subscribe to.
+#### Schema
 
-##### Retrieving your service plans.
-
-Useful for resellers.
-
-###### Request
-
-- Verb: `GET`
-- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans`
-- Payload: None
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`bookkeepers` |   | `object` |   | `false`
+`description` | Describes the service plan offering | `string` |   | `false`
+`name` | A friendly name for the service plan | `string(1..128)` |   | `true`
+`plan` | Outlines the service plan for various services | `object` |   | `true`
 
 
-    `curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans`
+#### Retrieving your service plans.
 
-###### Response
-
-    {"page_size": 1,
-     "data": [
-         {"id": "some_plan_id",
-          "name": "Reseller Test plan",
-          "description": "Some description"
-         }
-     ],
-     "status": "success",
-     "auth_token": "{AUTH_TOKEN}"
-    }
-
-##### Retrieving one of your service plans.
+> GET /v2/accounts/{ACCOUNT_ID}/service_plans
 
 Useful for resellers.
 
-###### Request
-
-- Verb: `GET`
-- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID}`
-- Payload: None
-
-    `curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID}`
-
-###### Response
-
-    {"data":{
-        "name": "Macpie's plan",
-        "description": "",
-        "plan": {
-            "phone_numbers": {
-                "did_us": {
-                    "name": "US DID",
-                    "rate": 2,
-                    "activation_charge": 3,
-                    "cascade": true
-                },
-                "tollfree_us": {
-                    "name": "US Tollfree",
-                    "rate": 4.9900000000000002132,
-                    "cascade": true
-                }
-            },
-            "number_services": {
-                "outbound_cnam": {
-                    "name": "Outbound CNAM Update",
-                    "activation_charge": 5,
-                    "rate": 1
-                },
-                "inbound_cnam": {
-                    "rate": 2,
-                    "name": "Inbound CNAM Update",
-                    "activation_charge": 1
-                },
-                "port": {
-                    "name": "Port Request",
-                    "activation_charge": 10
-                },
-                "e911": {
-                    "name": "E911 Service",
-                    "rate": 2,
-                    "cascade": true,
-                    "discounts": {
-                        "single": {
-                            "rate": 5
-                        }
-                    }
-                }
-            },
-            "limits": {
-                "twoway_trunks": {
-                    "name": "Two-Way Trunk",
-                    "rate": 29.989999999999998437
-                },
-                "inbound_trunks": {
-                    "name": "Inbound Trunk",
-                    "rate": 6.9900000000000002132
-                }
-            },
-            "devices": {
-                "_all": {
-                    "name": "SIP Device",
-                    "as": "sip_devices",
-                    "exceptions": ["cellphone", "landline"],
-                    "activation_charge": 3,
-                    "rate": 5,
-                    "discounts": {
-                        "cumulative": {
-                            "maximum": 20,
-                            "rate": 5
-                        }
-                    }
-                }
-            },
-            "users": {
-                "_all": {
-                    "name": "User",
-                    "as": "user",
-                    "exceptions": [],
-                    "activation_charge": 3,
-                    "cascade": true,
-                    "rate": 5
-                }
-            }
-        },
-        "bookkeepers": {
-            "braintree": {
-                "phone_numbers": {
-                    "did_us": {
-                        "plan": "SIP_Services",
-                        "addon": "did_us"
-                    },
-                    "tollfree_us": {
-                        "plan": "SIP_Services",
-                        "addon": "tollfree_us"
-                    }
-                },
-                "number_services": {
-                    "e911": {
-                        "plan": "SIP_Services",
-                        "addon": "e911"
-                    }
-                },
-                "limits": {
-                    "twoway_trunks": {
-                        "plan": "SIP_Services",
-                        "addon": "twoway_trunk"
-                    },
-                    "inbound_trunks": {
-                        "plan": "SIP_Services",
-                        "addon": "inbound_trunk"
-                    }
-                },
-                "devices": {
-                    "sip_devices": {
-                        "plan": "SIP_Services",
-                        "addon": "sip_device",
-                        "discounts": {
-                            "cumulative": "discount_did_us"
-                        }
-                    }
-                }
-            }
-        },
-        "id": "plan_macpie"
-     },
-     "status": "success"
-    }
-
-##### Adding service plan to an account.
-
-Useful for resellers.
-
-###### Request
-
-- Verb: `POST`
-- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID}`
-- Payload: `{"data":{"id":"service_plan_id"}`
-
-    `curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID} -d '{"data":{"id":"service_plan_id"}'`
-
-###### Response
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans
+```
 
 ```json
 {
-    "data": {} // Service plan
-    "status": "success"
+    "page_size": 1,
+    "data": [
+        {
+            "id": "some_plan_id",
+            "name": "Reseller Test plan",
+            "description": "Some description"
+        }
+    ],
+    "status": "success",
+    "auth_token": "{AUTH_TOKEN}"
 }
 ```
 
-##### Adding/Removing multiple service plans on an account.
+#### Adding/Removing multiple service plans on an account
+
+> POST /v2/accounts/{ACCOUNT_ID}/service_plans
 
 Useful for resellers.
 
-###### Request
-
-- Verb: `POST`
-- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans`
-- Payload:
-
-```json
-{
-    "data": {
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {
         "add": ["plan1", "plan2"],
         "delete": ["plan3"]
-    }
-}
+    }}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans
 ```
-
-###### Response
 
 ```json
 {
@@ -217,34 +64,235 @@ Useful for resellers.
 }
 ```
 
-##### Removing service plan from an account.
+#### Removing service plan from an account
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 
 Useful for resellers.
 
-###### Request
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
+```
 
-- Verb: `DELETE`
-- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID}`
-- Payload: None
+#### Retrieving one of your service plans.
 
-    `curl -X DELETE -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/{SERVICE_PLAN_ID}`
+> GET /v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 
+Useful for resellers.
 
-##### Retrieving your current plan
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
+```
+
+```json
+{
+    "data": {
+        "bookkeepers": {
+            "braintree": {
+                "devices": {
+                    "sip_devices": {
+                        "addon": "sip_device",
+                        "discounts": {
+                            "cumulative": "discount_did_us"
+                        },
+                        "plan": "SIP_Services"
+                    }
+                },
+                "limits": {
+                    "inbound_trunks": {
+                        "addon": "inbound_trunk",
+                        "plan": "SIP_Services"
+                    },
+                    "twoway_trunks": {
+                        "addon": "twoway_trunk",
+                        "plan": "SIP_Services"
+                    }
+                },
+                "number_services": {
+                    "e911": {
+                        "addon": "e911",
+                        "plan": "SIP_Services"
+                    }
+                },
+                "phone_numbers": {
+                    "did_us": {
+                        "addon": "did_us",
+                        "plan": "SIP_Services"
+                    },
+                    "tollfree_us": {
+                        "addon": "tollfree_us",
+                        "plan": "SIP_Services"
+                    }
+                }
+            }
+        },
+        "description": "",
+        "id": "plan_macpie",
+        "name": "Macpies plan",
+        "plan": {
+            "devices": {
+                "_all": {
+                    "activation_charge": 3,
+                    "as": "sip_devices",
+                    "discounts": {
+                        "cumulative": {
+                            "maximum": 20,
+                            "rate": 5
+                        }
+                    },
+                    "exceptions": [
+                        "cellphone",
+                        "landline"
+                    ],
+                    "name": "SIP Device",
+                    "rate": 5
+                }
+            },
+            "limits": {
+                "inbound_trunks": {
+                    "name": "Inbound Trunk",
+                    "rate": 6.99
+                },
+                "twoway_trunks": {
+                    "name": "Two-Way Trunk",
+                    "rate": 29.99
+                }
+            },
+            "number_services": {
+                "e911": {
+                    "cascade": true,
+                    "discounts": {
+                        "single": {
+                            "rate": 5
+                        }
+                    },
+                    "name": "E911 Service",
+                    "rate": 2
+                },
+                "inbound_cnam": {
+                    "activation_charge": 1,
+                    "name": "Inbound CNAM Update",
+                    "rate": 2
+                },
+                "outbound_cnam": {
+                    "activation_charge": 5,
+                    "name": "Outbound CNAM Update",
+                    "rate": 1
+                },
+                "port": {
+                    "activation_charge": 10,
+                    "name": "Port Request"
+                }
+            },
+            "phone_numbers": {
+                "did_us": {
+                    "activation_charge": 3,
+                    "cascade": true,
+                    "name": "US DID",
+                    "rate": 2
+                },
+                "tollfree_us": {
+                    "cascade": true,
+                    "name": "US Tollfree",
+                    "rate": 4.99
+                }
+            },
+            "users": {
+                "_all": {
+                    "activation_charge": 3,
+                    "as": "user",
+                    "cascade": true,
+                    "exceptions": [],
+                    "name": "User",
+                    "rate": 5
+                }
+            }
+        }
+    },
+    "status": "success"
+}
+```
+
+#### Adding service plan to an account.
+
+> POST /v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"id":"service_plan_id"}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
+```
+
+```json
+{
+    "data": {...}
+    "status": "success"
+}
+```
+
+#### Override a plan
+
+> POST /v2/accounts/{ACCOUNT_ID}/service_plans/override
+
+**Must be super duper admin**
+
+Note: `_all` override payload.
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {
+        "overrides": {
+            "{PLAN_ID}": {
+                "whitelabel": {
+                    "_all": {
+                        "activation_charge": 700
+                    }
+                }
+            }
+        }
+    }}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/override
+```
+
+```json
+{
+    "data": {
+        "whitelabel": {
+            "_all": {
+                "name": "Whitelabel",
+                "as": "whitelabel",
+                "exceptions": [],
+                "activation_charge": 700,
+                "cascade": true,
+                "rate": 300
+            }
+        }
+    },
+    "status": "success"
+}
+```
+
+#### Retrieving your current plan
+
+> GET /v2/accounts/{ACCOUNT_ID}/service_plans/current
 
 This will retreive the service plan currenlty applied on your account.
 
-###### Request
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/current
+```
 
-- Verb: `GET`
-- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/current`
-- Payload: None
-
-    `curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/current`
-
-###### Response
-
-    {"data": {
+```json
+{
+    "data": {
         "account_quantities": {
             "number_services": {},
             "phone_numbers": {
@@ -392,48 +440,49 @@ This will retreive the service plan currenlty applied on your account.
     "status": "success",
     "auth_token": "{AUTH_TOKEN}"
 }
+```
 
 #### Listing Service Plans available to you
 
+> GET /v2/accounts/{ACCOUNT_ID}/service_plans/available
+
 This api will list the services plan that can be applied to your account
 
-##### Retrieving all plans
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/available
+```
 
-###### Request
+```json
+{
+    "page_size": 1,
+    "data": [
+        {
+            "id": "some_plan_id",
+            "name": "Test plan",
+            "description": "Some description"
+        }
+    ],
+    "status": "success",
+    "auth_token": "{AUTH_TOKEN}"
+}
+```
 
 
-- Verb: `GET`
-- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/available`
-- Payload: None
+#### Retrieving a plan
 
-    `curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/available`
+> GET /v2/accounts/{ACCOUNT_ID}/service_plans/available/{PLAN_ID}
 
-###### Response
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/available/{PLAN_ID}
+```
 
-    {"page_size": 1,
-     "data": [
-         {"id": "some_plan_id",
-          "name": "Test plan",
-          "description": "Some description"
-         }
-     ],
-     "status": "success",
-     "auth_token": "{AUTH_TOKEN}"
-    }
-
-##### Retrieving a plan
-
-###### Request
-
-- Verb: `GET`
-- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/available/{PLAN_ID}`
-- Payload: None
-
-    `curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/available/{PLAN_ID}`
-
-###### Response
-
-    {"data": {
+```json
+{
+    "data": {
         "name": "Test plan",
         "description": "Some description",
         "plan": {
@@ -555,53 +604,5 @@ This api will list the services plan that can be applied to your account
      },
      "status": "success",
      "auth_token": "{AUTH_TOKEN}"
-    }
-
-##### Override a plan
-
-**Must be super duper admin**
-
-###### Request
-
-- Verb: `POST`
-- Url: `/v2/accounts/{ACCOUNT_ID}/service_plans/override`
-- Payload:
-
-```json
-{
-    "data": {
-        "overrides": {
-            "{{PLAN_ID}}": {
-                "whitelabel": {
-                    "_all": {
-                        "activation_charge": 700
-                    }
-                }
-            }
-        }
-
-    }
-}
-```
-
-###### Response
-
-All override payload
-
-```json
-{
-    "data": {
-        "whitelabel": {
-            "_all": {
-                "name": "Whitelabel",
-                "as": "whitelabel",
-                "exceptions": [],
-                "activation_charge": 700,
-                "cascade": true,
-                "rate": 300
-            }
-        }
-    },
-    "status": "success"
 }
 ```

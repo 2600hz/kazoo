@@ -34,32 +34,42 @@ curl -v -X POST \
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
+```
+
+#### Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/service_plans/available
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/available
 ```
 
 #### Change
@@ -104,11 +114,11 @@ curl -v -X POST \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/service_plans/available/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/service_plans/available/{PLAN_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/available/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/available/{PLAN_ID}
 ```
 

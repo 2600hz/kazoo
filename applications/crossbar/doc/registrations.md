@@ -1,13 +1,46 @@
+### Registrations
 
+#### About Registrations
 
 The Registrations API provides an easy way to see and manage current registrations.
 
-#### Crossbar Requests
+#### Schema
 
-##### _GET_ - Fetch account registrations
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/registrations'
-    {"auth_token": "{AUTH_TOKEN}",
+
+#### Flush all registrations
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/registrations
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/registrations
+```
+
+```json
+{
+     "auth_token": "{AUTH_TOKEN}",
+     "data": "ok",
+     "request_id": "{REQUEST_ID}",
+     "revision": "undefined",
+     "status": "success"
+}
+```
+
+#### Fetch account registrations
+
+> GET /v2/accounts/{ACCOUNT_ID}/registrations
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/registrations
+```
+
+```json
+{
+     "auth_token": "{AUTH_TOKEN}",
      "data": [
          {"account_name": "{ACCOUNT_NAME}",
           "account_realm": "{ACCOUNT_REALM}",
@@ -39,36 +72,47 @@ The Registrations API provides an easy way to see and manage current registratio
       "request_id": "{REQUEST_ID}",
       "revision": "undefined",
       "status": "success"
-     }
+}
+```
 
-##### _GET_ - Fetch account registration count
+#### Flush a specific device's registration
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/registrations/count'
-    {"auth_token": "{AUTH_TOKEN}",
+> DELETE /v2/accounts/{ACCOUNT_ID}/registrations/{USERNAME}
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/registrations/{USERNAME}
+```
+
+```json
+{
+     "auth_token": "{AUTH_TOKEN}",
+     "data": "ok",
+     "request_id": "{REQUEST_ID}",
+     "revision": "undefined",
+     "status": "success"
+}
+```
+
+#### Fetch account registration count
+
+> GET /v2/accounts/{ACCOUNT_ID}/registrations/count
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/registrations/count
+```
+
+```json
+{
+     "auth_token": "{AUTH_TOKEN}",
      "data": {
          "count": 4
      },
      "request_id": "{REQUEST_ID}",
      "revision": "undefined",
      "status": "success"
-    }
-
-##### _DELETE_ - Flush all registrations
-
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/registrations/'
-    {"auth_token": "{AUTH_TOKEN}",
-     "data": "ok",
-     "request_id": "{REQUEST_ID}",
-     "revision": "undefined",
-     "status": "success"
-    }
-
-##### _DELETE_ - Flush a specific device's registration
-
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/registrations/{SIP_USERNAME}'
-    {"auth_token": "{AUTH_TOKEN}",
-     "data": "ok",
-     "request_id": "{REQUEST_ID}",
-     "revision": "undefined",
-     "status": "success"
-    }
+}
+```

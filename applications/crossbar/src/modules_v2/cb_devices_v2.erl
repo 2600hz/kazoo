@@ -92,7 +92,7 @@ allowed_methods(_DeviceId) ->
 allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     [?HTTP_POST].
 
-allowed_methods(_DeviceId, ?QUICKCALL_PATH_TOKEN, _Number) ->
+allowed_methods(_DeviceId, ?QUICKCALL_PATH_TOKEN, _PhoneNumber) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------

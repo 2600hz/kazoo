@@ -73,15 +73,15 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(?MESSAGES_RESOURCE) ->
     [?HTTP_GET];
-allowed_methods(_VMBoxID) ->
+allowed_methods(_VMBoxId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
-allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE) ->
+allowed_methods(_VMBoxId, ?MESSAGES_RESOURCE) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
-allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
+allowed_methods(_VMBoxId, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
     [?HTTP_POST];
-allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID) ->
+allowed_methods(_VMBoxId, ?MESSAGES_RESOURCE, _VMMsgId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
-allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
+allowed_methods(_VMBoxId, ?MESSAGES_RESOURCE, _VMMsgId, ?BIN_DATA) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------

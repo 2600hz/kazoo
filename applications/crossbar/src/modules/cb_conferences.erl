@@ -94,9 +94,9 @@ resource_exists(_, _) -> 'true'.
 resource_exists(_, _, _) -> 'true'.
 
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), ConferenceId::path_token()) -> cb_context:context().
--spec validate(cb_context:context(), ConferenceId::path_token(), Section::path_token()) -> cb_context:context().
--spec validate(cb_context:context(), ConferenceId::path_token(), Section::path_token(), SectionId::path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_conferences(cb_context:req_verb(Context), Context).
 validate(Context, ConferenceId) ->
@@ -336,8 +336,8 @@ enrich_participant(ParticipantId, ConferenceId, Context) ->
                      request_conference_details(ConferenceId)
                     ),
     [Normalized|_] = [kz_json:normalize_jobj(JObj)
-                      || JObj <- request_call_details(Participants)
-                             ,kz_json:get_binary_value(<<"Participant-ID">>, JObj) == ParticipantId
+                      || JObj <- request_call_details(Participants),
+                         kz_json:get_binary_value(<<"Participant-ID">>, JObj) == ParticipantId
                      ] ++ [kz_json:new()],
     crossbar_util:response(Normalized, Context).
 

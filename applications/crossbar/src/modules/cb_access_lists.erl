@@ -96,11 +96,10 @@ thing_doc(Context) ->
             lager:debug("loading access lists from device: '~s'", [DeviceId]),
             thing_doc(Context, DeviceId, kz_device:type());
         _Nouns ->
-            cb_context:add_system_error(
-              'faulty_request'
+            cb_context:add_system_error('faulty_request'
                                        ,<<"access lists not supported on this URI path">>
                                        ,Context
-             )
+                                       )
     end.
 
 thing_doc(Context, ThingId, Type) ->
@@ -114,13 +113,12 @@ thing_doc(Context, ThingId, Type) ->
 
 -spec thing_id_not_found(cb_context:context(), ne_binary()) -> cb_context:context().
 thing_id_not_found(Context, ThingId) ->
-    cb_context:add_system_error(
-      'bad_identifier'
+    cb_context:add_system_error('bad_identifier'
                                ,kz_json:from_list([{<<"cause">>, <<"Identifier was not found">>}
                                                   ,{<<"details">>, ThingId}
                                                   ])
                                ,Context
-     ).
+                               ).
 
 -spec validate_get_acls(cb_context:context()) -> cb_context:context().
 -spec validate_get_acls(cb_context:context(), kz_json:object()) -> cb_context:context().

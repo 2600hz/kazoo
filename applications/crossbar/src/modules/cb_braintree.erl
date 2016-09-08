@@ -66,11 +66,11 @@ allowed_methods(?TRANSACTIONS_PATH_TOKEN) ->
 allowed_methods(?CREDITS_PATH_TOKEN) ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(?CARDS_PATH_TOKEN, _) ->
+allowed_methods(?CARDS_PATH_TOKEN, _CardId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE];
-allowed_methods(?ADDRESSES_PATH_TOKEN, _) ->
+allowed_methods(?ADDRESSES_PATH_TOKEN, _AddressId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE];
-allowed_methods(?TRANSACTIONS_PATH_TOKEN, _) ->
+allowed_methods(?TRANSACTIONS_PATH_TOKEN, _TransactionId) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------

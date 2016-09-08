@@ -146,10 +146,8 @@ unconfirmed_port_reminder(AccountDb) ->
 -spec unconfirmed_port_reminder(ne_binary(), kz_json:objects()) -> 'ok'.
 unconfirmed_port_reminder(AccountId, UnfinishedPorts) ->
     lager:debug("found ~p unfinished port requests, sending notifications", [length(UnfinishedPorts)]),
-    _ = [send_port_unconfirmed_notification(AccountId, kz_doc:id(Port))
-         || Port <- UnfinishedPorts
-        ],
-    'ok'.
+    F = fun (Port) -> send_port_unconfirmed_notification(AccountId, kz_doc:id(Port)) end,
+    lists:foreach(F, UnfinishedPorts).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -176,6 +174,8 @@ allowed_methods(?PORT_COMPLETED) ->
 allowed_methods(?PORT_REJECTED) ->
     [?HTTP_GET];
 allowed_methods(?PORT_CANCELED) ->
+    [?HTTP_GET];
+allowed_methods(?PORT_UNCONFIRMED) ->
     [?HTTP_GET];
 allowed_methods(_PortRequestId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
@@ -891,10 +891,9 @@ should_summarize_descendant_requests(Context) ->
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
                                     kz_json:objects().
 normalize_view_results(Res, Acc) ->
-    [leak_pvt_fields(
-       Res
+    [leak_pvt_fields(Res
                     ,knm_port_request:public_fields(kz_json:get_value(<<"doc">>, Res))
-      )
+                    )
      | Acc
     ].
 
@@ -958,20 +957,13 @@ on_successful_validation(Context, Id, 'true') ->
     end;
 on_successful_validation(Context, _Id, 'false') ->
     PortState = kz_json:get_value(?PORT_PVT_STATE, cb_context:doc(Context)),
-    lager:debug(
-      "port state ~s is not valid for updating a port request"
-               ,[PortState]
-     ),
-
-    cb_context:add_validation_error(
-      PortState
-                                   ,<<"type">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"Updating port requests not allowed in current port state">>}
-                                      ,{<<"cause">>, PortState}
-                                      ])
-                                   ,Context
-     ).
+    lager:debug("port state ~s is not valid for updating a port request"
+               ,[PortState]),
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"Updating port requests not allowed in current port state">>}
+            ,{<<"cause">>, PortState}
+            ]),
+    cb_context:add_validation_error(PortState, <<"type">>, Msg, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1059,10 +1051,10 @@ check_number_portability(PortId, Number, Context, E164, PortReq) ->
 -spec number_validation_error(cb_context:context(), ne_binary(), ne_binary()) ->
                                      cb_context:context().
 number_validation_error(Context, Number, Message) ->
-    JObj = kz_json:from_list([{<<"message">>, Message}
-                             ,{<<"cause">>, Number}
-                             ]),
-    cb_context:add_validation_error(Number, <<"type">>, JObj, Context).
+    Msg = kz_json:from_list([{<<"message">>, Message}
+                            ,{<<"cause">>, Number}
+                            ]),
+    cb_context:add_validation_error(Number, <<"type">>, Msg, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1112,16 +1104,19 @@ load_attachment(Id, AttachmentId, Context) ->
 -spec load_attachment(ne_binary(), cb_context:context()) ->
                              cb_context:context().
 load_attachment(AttachmentId, Context) ->
+    Headers =
+        [{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
+        ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
+        ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
+        ],
     cb_context:add_resp_headers(
       crossbar_doc:load_attachment(cb_context:doc(Context)
                                   ,AttachmentId
                                   ,?TYPE_CHECK_OPTION(<<"port_request">>)
                                   ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
                                   )
-                               ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
-                                ,{<<"Content-Type">>, kz_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
-                                ,{<<"Content-Length">>, kz_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
-                                ]).
+                               ,Headers
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1140,14 +1135,11 @@ maybe_move_state(Context, Id, PortState) ->
             lager:debug("loaded new port request state ~s", [PortState]),
             cb_context:set_doc(Context1, PortRequest);
         {'error', 'invalid_state_transition'} ->
-            cb_context:add_validation_error(<<"port_state">>
-                                           ,<<"enum">>
-                                           ,kz_json:from_list(
-                                              [{<<"message">>, <<"Cannot move to new state from current state">>}
-                                              ,{<<"cause">>, PortState}
-                                              ])
-                                           ,Context
-                                           );
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"Cannot move to new state from current state">>}
+                    ,{<<"cause">>, PortState}
+                    ]),
+            cb_context:add_validation_error(<<"port_state">>, <<"enum">>, Msg, Context);
         {'error', 'failed_to_charge'} ->
             cb_context:add_system_error('no_credit', Context);
         {'errors', Errors} ->
@@ -1184,8 +1176,7 @@ find_template(ResellerId, CarrierName) ->
     EncodedCarrierName = kz_util:to_lower_binary(kz_util:uri_encode(CarrierName)),
     TemplateName = <<EncodedCarrierName/binary, ".tmpl">>,
     lager:debug("looking for carrier template ~s or plain template for reseller ~s"
-               ,[TemplateName, ResellerId]
-               ),
+               ,[TemplateName, ResellerId]),
     case kz_pdf:find_template(ResellerId, <<"loa">>, TemplateName) of
         {'error', _} -> find_template(ResellerId, 'undefined');
         {'ok', Template} -> Template
@@ -1413,25 +1404,23 @@ generate_loa_from_port(Context, PortRequest) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = kz_services:find_reseller_id(AccountId),
     ResellerDoc = cb_context:account_doc(cb_context:set_account_id(Context, ResellerId)),
-    TemplateData = props:filter_undefined(
-                     [{<<"reseller">>, kz_json:to_proplist(ResellerDoc)}
-                     ,{<<"account">>, kz_json:to_proplist(cb_context:account_doc(Context))}
-                     ,{<<"numbers">>, [knm_util:pretty_print(N) || N <- kz_json:get_keys(<<"numbers">>, PortRequest)]}
-                     ,{<<"bill">>, kz_json:to_proplist(kz_json:get_value(<<"bill">>, PortRequest, kz_json:new()))}
-                     ,{<<"request">>, kz_json:to_proplist(PortRequest)}
-                     ,{<<"qr_code">>, create_QR_code(AccountId, kz_doc:id(PortRequest))}
-                     ,{<<"type">>, <<"loa">>}
-                     ]),
+    TemplateData =
+        props:filter_undefined(
+          [{<<"reseller">>, kz_json:to_proplist(ResellerDoc)}
+          ,{<<"account">>, kz_json:to_proplist(cb_context:account_doc(Context))}
+          ,{<<"numbers">>, [knm_util:pretty_print(N) || N <- kz_json:get_keys(<<"numbers">>, PortRequest)]}
+          ,{<<"bill">>, kz_json:to_proplist(kz_json:get_value(<<"bill">>, PortRequest, kz_json:new()))}
+          ,{<<"request">>, kz_json:to_proplist(PortRequest)}
+          ,{<<"qr_code">>, create_QR_code(AccountId, kz_doc:id(PortRequest))}
+          ,{<<"type">>, <<"loa">>}
+          ]),
     Carrier = kz_json:get_value(<<"carrier">>, PortRequest),
 
     Template = find_template(ResellerId, Carrier),
     case kz_pdf:generate(ResellerId, TemplateData, Template) of
         {'error', _R} -> cb_context:set_resp_status(Context, 'error');
         {'ok', PDF} ->
-            cb_context:set_resp_status(
-              cb_context:set_resp_data(Context, PDF)
-                                      ,'success'
-             )
+            cb_context:set_resp_status(cb_context:set_resp_data(Context, PDF), 'success')
     end.
 
 -spec create_QR_code(api_binary(), api_binary()) -> kz_proplist() | 'undefined'.

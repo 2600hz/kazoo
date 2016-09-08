@@ -25,12 +25,12 @@ curl -v -X PUT \
 
 #### Fetch
 
-> GET /v2/user_auth/{AUTHTOKEN}
+> GET /v2/user_auth/{AUTH_TOKEN}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/user_auth/{AUTHTOKEN}
+    http://{SERVER}:8000/v2/user_auth/{AUTH_TOKEN}
 ```
 
 #### Change

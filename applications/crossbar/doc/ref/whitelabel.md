@@ -48,12 +48,12 @@ curl -v -X PUT \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}
 ```
 
 #### Fetch
@@ -138,31 +138,31 @@ curl -v -X POST \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/welcome
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/welcome
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/icon
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/icon
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/icon
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/icon
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/logo
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/logo
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/logo
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/logo
 ```
 

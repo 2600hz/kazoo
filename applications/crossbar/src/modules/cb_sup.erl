@@ -193,11 +193,7 @@ resource_exists(ModuleBin, FunctionBin, Args) ->
 
 does_resource_exist(ModuleBin, FunctionBin, Args) ->
     Arity = erlang:length(Args),
-
-    try {module_name(ModuleBin)
-        ,kz_util:to_atom(FunctionBin)
-        }
-    of
+    try {module_name(ModuleBin), kz_util:to_atom(FunctionBin)} of
         {Module, Function} ->
             lager:debug("checking existence of ~s:~s/~p", [Module, Function, Arity]),
             erlang:function_exported(Module, Function, Arity)
@@ -244,8 +240,7 @@ validate(Context, ModuleBin, FunctionBin, Args) ->
 validate_sup(Context, Module, Function, Args) ->
     OldGroupLeader = group_leader(),
     group_leader(whereis(?MODULE), self()),
-    lager:debug("attempting ~s:~s/~p"
-               ,[Module, Function, length(Args)]),
+    lager:debug("attempting ~s:~s/~p", [Module, Function, length(Args)]),
     try apply(Module, Function, Args) of
         'no_return' ->
             group_leader(OldGroupLeader, self()),

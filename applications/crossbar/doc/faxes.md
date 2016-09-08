@@ -71,6 +71,9 @@ curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data":{"document":{"url":"http://myserver.com/fax.pdf","method":"get"},"retries":3,"from_name":"Test Fax","from_number":"18884732963","to_name":"To Name","to_number":"18884732963"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes
+```
+
+```json
 {
     "data":{
         "document":{
@@ -136,13 +139,16 @@ This API retrieves a listing of all outgoing faxes. Use the "id" to fetch detail
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": [
         {
             "created": 63626410973,
             "from": "18884732963",
-            "id": "{FAXJOB_ID}",
+            "id": "{FAX_JOB_ID}",
             "status": "pending",
             "to": "18884732963"
         }
@@ -161,12 +167,15 @@ curl -v -X GET \
 
 Get all the details about a fax that is in the outgoing queue.
 
-> GET /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAX_JOB_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAXJOB_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{FAX_JOB_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -180,7 +189,7 @@ curl -v -X GET \
         "fax_timezone": "undefined",
         "from_name": "Test Fax",
         "from_number": "18884732963",
-        "id": "{FAXJOB_ID}",
+        "id": "{FAX_JOB_ID}",
         "retries": 3,
         "status": "pending",
         "to_name": "To Name",
@@ -233,8 +242,8 @@ curl -v -X GET \
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"action" : "resubmit", "data":{}}'
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}            
+    -d '{"action": "resubmit", "data": {}}'
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{FAX_ID}
 ```
 
 #### Fetch the fax payload
@@ -312,7 +321,7 @@ curl -v -X GET \
 
 #### Fetch a fax from the inbox folder
 
-This API retrieves all metadata about a particular fax for which you have the fax ID.
+Retrieve all metadata about a particular fax for which you have the fax ID.
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
 
@@ -324,7 +333,7 @@ curl -v -X GET \
 
 #### Fetch the fax payload
 
-This API retrieves the fax document / attachments for a particular inbound fax for which you have the fax ID.
+Retrieve the fax document / attachments for a particular inbound fax for which you have the fax ID.
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}/attachment
 
@@ -336,7 +345,7 @@ curl -v -X GET \
 
 #### Remove a fax from the inbox folder
 
-This API allows you to delete an old fax message. For privacy reasons, this may be useful if you wish to remove all evidence of a previously received inbound fax.
+Delete an old fax message. For privacy reasons, this may be useful if you wish to remove all evidence of a previously received inbound fax.
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
 

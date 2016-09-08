@@ -80,7 +80,7 @@ authorize(_) -> 'false'.
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_DELETE].
-allowed_methods(_) ->
+allowed_methods(_CommentId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -280,11 +280,10 @@ update(Context, Id) ->
     Head1 = lists:delete(lists:last(Head), Head),
 
     Doc1 =
-        kz_json:set_value(
-          ?COMMENTS
+        kz_json:set_value(?COMMENTS
                          ,lists:append([Head1, [Comment], Tail])
                          ,Doc
-         ),
+                         ),
     crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
 
 %%--------------------------------------------------------------------
@@ -295,12 +294,7 @@ update(Context, Id) ->
 -spec remove(cb_context:context()) -> cb_context:context().
 -spec remove(cb_context:context(), ne_binary()) -> cb_context:context().
 remove(Context) ->
-    Doc =
-        kz_json:set_value(
-          ?COMMENTS
-                         ,[]
-                         ,cb_context:doc(Context)
-         ),
+    Doc = kz_json:set_value(?COMMENTS, [], cb_context:doc(Context)),
     crossbar_doc:save(cb_context:set_doc(Context, Doc)).
 
 remove(Context, Id) ->
@@ -309,11 +303,10 @@ remove(Context, Id) ->
     Number = id_to_number(Id),
     Comment = lists:nth(Number, Comments),
     Doc1 =
-        kz_json:set_value(
-          ?COMMENTS
+        kz_json:set_value(?COMMENTS
                          ,lists:delete(Comment, Comments)
                          ,Doc
-         ),
+                         ),
     crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
 
 %%--------------------------------------------------------------------
@@ -381,10 +374,9 @@ load_doc(Context, _Type, _) ->
 only_return_comments(Context) ->
     Doc = cb_context:doc(Context),
     Comments = kz_json:get_value(?COMMENTS, Doc, []),
-    cb_context:set_resp_data(
-      Context
+    cb_context:set_resp_data(Context
                             ,kz_json:from_list([{?COMMENTS, Comments}])
-     ).
+                            ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -397,10 +389,9 @@ only_return_comment(Context, Id) ->
     Doc = cb_context:doc(Context),
     Comments = kz_json:get_value(?COMMENTS, Doc, []),
     Number = id_to_number(Id),
-    cb_context:set_resp_data(
-      Context
+    cb_context:set_resp_data(Context
                             ,lists:nth(Number, Comments)
-     ).
+                            ).
 
 %%--------------------------------------------------------------------
 %% @private

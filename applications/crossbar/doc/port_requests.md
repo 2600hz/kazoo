@@ -475,7 +475,7 @@ curl -v -X GET \
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d '{"data":{"numbers":{"{PHONE_NUMBER}":{}}, "name":"{PORTREQUEST_NAME}"}}' \
+    -d '{"data":{"numbers":{"{PHONE_NUMBER}":{}}, "name":"{PORT_REQUEST_NAME}"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
 ```
 
@@ -486,7 +486,7 @@ curl -v -X PUT \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "id": "462da37f8be11e46161fb40bc71173a9",
-        "name": "{PORTREQUEST_NAME}",
+        "name": "{PORT_REQUEST_NAME}",
         "numbers": {
             "{PHONE_NUMBER}": {}
         },
@@ -541,12 +541,12 @@ curl -v -X PUT \
 
 #### List port request details
 
-> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}
 ```
 
 ```json
@@ -554,7 +554,7 @@ curl -v -X GET \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "created": 63630097779,
-        "id": "{PORTREQUEST_ID}",
+        "id": "{PORT_REQUEST_ID}",
         "name": "Porting 202.555.9000",
         "numbers": {
             "+12025559000": {}
@@ -573,14 +573,14 @@ curl -v -X GET \
 
 #### Edit a port request
 
-> POST /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
+> POST /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d '{"data":{"numbers":{"{PHONE_NUMBER}":{"state":"NY"}}, "name": "{PORTREQUEST_NAME}"}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
+    -d '{"data":{"numbers":{"{PHONE_NUMBER}":{"state":"NY"}}, "name": "{PORT_REQUEST_NAME}"}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}
 ```
 
 ```json
@@ -588,8 +588,8 @@ curl -v -X POST \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "created": 63630097779,
-        "id": "{PORTREQUEST_ID}",
-        "name": "{PORTREQUEST_NAME}",
+        "id": "{PORT_REQUEST_ID}",
+        "name": "{PORT_REQUEST_NAME}",
         "numbers": {
             "{PHONE_NUMBER}": {
                 "state": "NY"
@@ -609,19 +609,19 @@ curl -v -X POST \
 
 #### DELETE a port request
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}
 ```
 
 ```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "id": "{PORTREQUEST_ID}",
+        "id": "{PORT_REQUEST_ID}",
         "name": "Porting 202.555.9000",
         "numbers": {
             "+12025559000": {
@@ -639,12 +639,12 @@ curl -v -X DELETE \
 
 #### List attachments on a port request
 
-> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments
 ```
 
 ```json
@@ -671,14 +671,14 @@ curl -v -X GET \
 
 Note: if `ATTACHMENT_ID` does not end with `.pdf` the extension will be appended.
 
-> PUT /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments
+> PUT /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments
 
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/pdf" \
     --data-binary @/path/to/file.pdf \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments?filename={ATTACHMENT_ID}'
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments?filename={ATTACHMENT_ID}'
 ```
 
 ```json
@@ -694,13 +694,13 @@ curl -v -X PUT \
 
 #### Get an attachment from a port request
 
-> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments/{ATTACHMENT_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Accept: application/pdf" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments/{ATTACHMENT_ID}
 ```
 
 Streams back the contents of the PDF file `{ATTACHMENT_ID}`.
@@ -708,14 +708,14 @@ Streams back the contents of the PDF file `{ATTACHMENT_ID}`.
 
 #### Replace an attachment on a port request
 
-> POST /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
+> POST /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments/{ATTACHMENT_ID}
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/pdf" \
     --data-binary @/path/to/file.pdf \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments/{ATTACHMENT_ID}
 ```
 
 ```json
@@ -731,12 +731,12 @@ curl -v -X POST \
 
 #### Delete an attachment on a port request
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments/{ATTACHMENT_ID}
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/attachments/{ATTACHMENT_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments/{ATTACHMENT_ID}
 ```
 
 ```json
@@ -752,12 +752,12 @@ curl -v -X DELETE \
 
 #### Indicate a port is ready to be processed
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/submitted
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/submitted
 
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/submitted
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/submitted
 ```
 
 ##### Success
@@ -767,7 +767,7 @@ curl -v -X PATCH \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "created": 63630107130,
-        "id": "{PORTREQUEST_ID}",
+        "id": "{PORT_REQUEST_ID}",
         "name": "Porting 202.555.9000",
         "numbers": {
             "+12025559000": {}
@@ -811,12 +811,12 @@ curl -v -X PATCH \
 
 #### Put port in pending
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/pending
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/pending
 
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/pending
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/pending
 ```
 
 ##### Success
@@ -826,7 +826,7 @@ curl -v -X PATCH \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "created": 63630107130,
-        "id": "{PORTREQUEST_ID}",
+        "id": "{PORT_REQUEST_ID}",
         "name": "Porting 202.555.9000",
         "numbers": {
             "+12025559000": {}
@@ -870,12 +870,12 @@ curl -v -X PATCH \
 
 #### Put port in progress (sent to losing carrier)
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/scheduled
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/scheduled
 
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/scheduled
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/scheduled
 ```
 
 ```json
@@ -883,7 +883,7 @@ curl -v -X PATCH \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "created": 63630107130,
-        "id": "{PORTREQUEST_ID}",
+        "id": "{PORT_REQUEST_ID}",
         "name": "Porting 202.555.9000",
         "numbers": {
             "+12025559000": {}
@@ -907,12 +907,12 @@ curl -v -X PATCH \
 
 #### Complete port, numbers will activate in the system, account will be billed
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/completed
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/completed
 
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/completed
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/completed
 ```
 
 ```json
@@ -920,7 +920,7 @@ curl -v -X PATCH \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "created": 63630107130,
-        "id": "{PORTREQUEST_ID}",
+        "id": "{PORT_REQUEST_ID}",
         "name": "Porting 202.555.9000",
         "numbers": {
             "+12025559000": {}
@@ -944,12 +944,12 @@ curl -v -X PATCH \
 
 #### Reject a port
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/rejected
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/rejected
 
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/rejected
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/rejected
 ```
 
 ```json
@@ -957,7 +957,7 @@ curl -v -X PATCH \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "created": 63630107130,
-        "id": "{PORTREQUEST_ID}",
+        "id": "{PORT_REQUEST_ID}",
         "name": "Porting 202.555.9000",
         "numbers": {
             "+12025559000": {}
@@ -981,12 +981,12 @@ curl -v -X PATCH \
 
 #### Cancel a port
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/canceled
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/canceled
 
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/canceled
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/canceled
 ```
 
 ```json
@@ -994,7 +994,7 @@ curl -v -X PATCH \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "created": 63630107130,
-        "id": "{PORTREQUEST_ID}",
+        "id": "{PORT_REQUEST_ID}",
         "name": "Porting 202.555.9000",
         "numbers": {
             "+12025559000": {}
@@ -1018,13 +1018,13 @@ curl -v -X PATCH \
 
 #### Build an LOA PDF from a port request
 
-> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/loa
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/loa
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Accept: application/x-pdf" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORTREQUEST_ID}/loa
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/loa
 ```
 
 Streams back the contents of the generated Letter Of Authorization PDF.

@@ -87,12 +87,12 @@ allowed_methods() ->
 
 allowed_methods(?SMTP_LOG) ->
     [?HTTP_GET];
-allowed_methods(_) ->
+allowed_methods(_NotificationId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
-allowed_methods(_, ?PREVIEW) ->
+allowed_methods(_NotificationId, ?PREVIEW) ->
     [?HTTP_POST];
-allowed_methods(?SMTP_LOG, _Id) ->
+allowed_methods(?SMTP_LOG, _SMTPLogId) ->
     [?HTTP_GET];
 allowed_methods(?CUSTOMER_UPDATE, ?MESSAGE) ->
     [?HTTP_POST].
@@ -339,8 +339,9 @@ post(Context, Id) ->
             lager:debug("handling POST of template meta for ~s", [Id]),
             do_post(Context);
         [{_FileName, FileJObj}] ->
-            lager:debug("POST is for an attachment on ~s(~s)", [Id, kz_notification:db_id(Id)]),
-            update_template(Context, kz_notification:db_id(Id), FileJObj)
+            DbId = kz_notification:db_id(Id),
+            lager:debug("POST is for an attachment on ~s(~s)", [Id, DbId]),
+            update_template(Context, DbId, FileJObj)
     end.
 
 -spec do_post(cb_context:context()) -> cb_context:context().
@@ -732,10 +733,7 @@ migrate_template_to_account(Context, Id) ->
     Context1 =
         crossbar_doc:ensure_saved(
           cb_context:set_doc(Context
-                            ,kz_notification:set_base_properties(
-                               kz_doc:public_fields(Template)
-                                                                ,Id
-                              )
+                            ,kz_notification:set_base_properties(kz_doc:public_fields(Template), Id)
                             )
          ),
     case cb_context:resp_status(Context1) of

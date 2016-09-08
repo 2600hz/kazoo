@@ -35,15 +35,16 @@ curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers
 ```
+
 ```json
 {
-  "data": {
-    "per-minute-voip": -825,
-    "support": -148
-  },
-  "request_id": "{REQUEST_ID}",
-  "status": "success",
-  "auth_token": "{AUTH_TOKEN}"
+    "data": {
+        "per-minute-voip": -825,
+        "support": -148
+    },
+    "request_id": "{REQUEST_ID}",
+    "status": "success",
+    "auth_token": "{AUTH_TOKEN}"
 }
 ```
 
@@ -58,89 +59,89 @@ curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}
 ```
+
 ```json
 {
-  "page_size": 30,
-  "data": [
-    {
-      "source": {
-        "service": "per-minute-voip",
-        "id": "{CALL_ID}"
-      },
-      "account": {
-        "id": "{ACCOUNT_ID}",
-        "name": "{ACCOUNT_NAME}"
-      },
-      "usage": {
-        "type": "voice",
-        "quantity": 3,
-        "unit": "sec"
-      },
-      "amount": 6,
-      "description": "US Hollywood",
-      "period": {
-        "start": 63630348840
-      },
-      "id": "{DOC_ID}"
-    },
-    ...
-  ],
-  "revision": "{REVISION}",
-  "request_id": "{REQUEST_ID}",
-  "status": "success",
-  "auth_token": "AUTH_TOKEN"
+    "page_size": 30,
+    "data": [
+        {
+            "source": {
+                "service": "per-minute-voip",
+                "id": "{CALL_ID}"
+            },
+            "account": {
+                "id": "{ACCOUNT_ID}",
+                "name": "{ACCOUNT_NAME}"
+            },
+            "usage": {
+                "type": "voice",
+                "quantity": 3,
+                "unit": "sec"
+            },
+            "amount": 6,
+            "description": "US Hollywood",
+            "period": {
+                "start": 63630348840
+            },
+            "id": "{DOC_ID}"
+        }
+    ],
+    "revision": "{REVISION}",
+    "request_id": "{REQUEST_ID}",
+    "status": "success",
+    "auth_token": "AUTH_TOKEN"
 }
 ```
 
 #### Get Ledger document
 
-retrieves ledger document
-
-> GET /v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{LEDGER_ENTRY_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{LEDGER_ENTRY_ID}
 ```
+
 ```json
 {
-  "data": {
-      "source": {
-        "service": "per-minute-voip",
-        "id": "{CALL_ID}"
-      },
-      "account": {
-        "id": "{ACCOUNT_ID}",
-        "name": "{ACCOUNT_NAME}"
-      },
-      "usage": {
-        "type": "voice",
-        "quantity": 3,
-        "unit": "sec"
-      },
-      "amount": 6,
-      "description": "US Hollywood",
-      "period": {
-        "start": 63630348840
-      },
-      "id": "{DOC_ID}"
-  },
-  "revision": "{REVISION}",
-  "request_id": "{REQUEST_ID}",
-  "status": "success",
-  "auth_token": "AUTH_TOKEN"
+    "data": {
+        "source": {
+            "service": "per-minute-voip",
+            "id": "{CALL_ID}"
+        },
+        "account": {
+            "id": "{ACCOUNT_ID}",
+            "name": "{ACCOUNT_NAME}"
+        },
+        "usage": {
+            "type": "voice",
+            "quantity": 3,
+            "unit": "sec"
+        },
+        "amount": 6,
+        "description": "US Hollywood",
+        "period": {
+            "start": 63630348840
+        },
+        "id": "{DOC_ID}"
+    },
+    "revision": "{REVISION}",
+    "request_id": "{REQUEST_ID}",
+    "status": "success",
+    "auth_token": "AUTH_TOKEN"
 }
 ```
 
 #### Credit / Debit
 
-Credit or Debit a specific ledger
-the account_id for AUTH_TOKEN must be reseller of target account
+Credit or Debit a specific ledger.
+the `account_id` for `AUTH_TOKEN` must be reseller of target account.
 
-parameter "impact_reseller" (boolean not required) when true will also create the document in the reseller
+Parameter "impact_reseller" (boolean not required) when true will also create the document in the reseller
 
 > PUT /v2/accounts/{ACCOUNT_ID}/ledgers/debit
+
 > PUT /v2/accounts/{ACCOUNT_ID}/ledgers/credit
 
 ```shell
@@ -148,8 +149,10 @@ curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/debit
 ```
+
 ```json
-{ "data" : {
+{
+    "data": {
         "amount": 100,
         "description": "blablabla",
         "source": {
@@ -166,6 +169,6 @@ curl -v -X PUT \
             "end": 214109238023899
         }
     },
- "impact_reseller" : true
+    "impact_reseller": true
 }
 ```

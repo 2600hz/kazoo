@@ -66,11 +66,11 @@ curl -v -X PUT \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{LEDGER_ENTRY_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{LEDGER_ID}/{LEDGER_ENTRY_ID}
 ```
 

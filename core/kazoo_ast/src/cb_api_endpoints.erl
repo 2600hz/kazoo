@@ -20,6 +20,8 @@
 
 -define(ACCOUNTS_PREFIX, "accounts/{ACCOUNT_ID}").
 
+-define(X_AUTH_TOKEN, "auth_token_header").
+
 
 -spec to_ref_doc() -> 'ok'.
 to_ref_doc() ->
@@ -279,6 +281,7 @@ to_swagger_json() ->
 
     Swagger = kz_json:set_values([{<<"paths">>, to_swagger_paths(Paths, BasePaths)}
                                  ,{<<"definitions">>, to_swagger_definitions()}
+                                 ,{<<"parameters">>, to_swagger_parameters(kz_json:get_keys(Paths))}
                                  ,{<<"host">>, <<"localhost:8000">>}
                                  ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
                                  ,{<<"swagger">>, <<"2.0">>}
@@ -346,17 +349,21 @@ add_swagger_path(Method, Acc, Path, SchemaParameter) ->
 
 make_parameters(Path, Method, SchemaParameter) ->
     lists:usort(fun compare_parameters/2
-               ,[Parameter
-                 || F <- [fun (P, M) -> maybe_add_schema(P, M, SchemaParameter) end
-                         ,fun auth_token_param/2
-                         ],
-                    Parameter <- [F(Path, Method)],
-                    not kz_util:is_empty(Parameter)
-                ]
+               ,lists:flatten(
+                  [Parameter
+                   || F <- [fun (P, M) -> maybe_add_schema(P, M, SchemaParameter) end
+                           ,fun auth_token_param/2
+                           ,fun path_params/2
+                           ],
+                      Parameter <- [F(Path, Method)],
+                      not kz_util:is_empty(Parameter)
+                  ]
+                 )
                ).
 
 compare_parameters(Param1, Param2) ->
-    kz_json:get_value(<<"name">>, Param1) >= kz_json:get_value(<<"name">>, Param2).
+    Keys = [<<"name">>, <<"$ref">>],
+    kz_json:get_first_defined(Keys, Param1) >= kz_json:get_first_defined(Keys, Param2).
 
 maybe_add_schema(_Path, Method, Schema)
   when Method =:= <<"put">>;
@@ -381,9 +388,7 @@ auth_token_param(Path, _Method) ->
         'undefined' -> 'undefined';
         Required ->
             kz_json:from_list(
-              [{<<"name">>, <<"X-Auth-Token">>}
-              ,{<<"in">>, <<"header">>}
-              ,{<<"type">>, <<"string">>}
+              [{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN>>}
               ,{<<"required">>, Required}
               ])
     end.
@@ -396,6 +401,16 @@ is_authtoken_required(_Path) -> 'undefined'.
 is_api_c2c_connect(<<"/"?ACCOUNTS_PREFIX"/clicktocall/", _/binary>>=Path) ->
     kz_util:suffix_binary(<<"/connect">>, Path);
 is_api_c2c_connect(_) -> 'false'.
+
+path_params(Path, _Method) ->
+    [path_param(Param) || <<"{",_/binary>> = Param <- split_url(Path)].
+
+path_param(PathToken) ->
+    Param = unbrace_param(PathToken),
+    kz_json:from_list([{<<"$ref">>, <<"#/parameters/", Param/binary>>}]).
+
+split_url(Path) ->
+    binary:split(Path, <<$/>>, [global]).
 
 
 format_as_path_centric(Data) ->
@@ -451,16 +466,37 @@ format_path_tokens(<<_/binary>> = Token) ->
 format_path_tokens(Tokens) ->
     [format_path_token(Token) || Token <- Tokens, Token =/= <<"/">>].
 
-format_path_token(<<"_">>) -> <<"{ID}">>;
-format_path_token(<<"AccountId">>) -> <<"{ACCOUNT_ID}">>;
-format_path_token(<<"_UUID">>) -> <<"{UUID}">>;
-format_path_token(<<"_", Rest/binary>>) ->
-    VarName = kz_util:to_upper_binary(Rest),
-    case binary:split(VarName, <<"ID">>) of
-        [Thing, <<>>] -> <<"{", Thing/binary, "_ID}">>;
-        _ -> <<"{", VarName/binary, "}">>
+format_path_token(<<"_", Rest/binary>>) -> format_path_token(Rest);
+format_path_token(Token = <<Prefix:1/binary, _/binary>>)
+  when byte_size(Token) >= 3 ->
+    case is_all_upper(Token) of
+        true -> brace_token(Token);
+        false ->
+            case is_all_upper(Prefix) of
+                true -> brace_token(camel_to_snake(Token));
+                false -> Token
+            end
     end;
-format_path_token(Token) -> Token.
+format_path_token(BadToken) ->
+    io:format(standard_error
+             ,"Please pick a good allowed_methods/N variable name: '~s' is too short.\n"
+             ,[BadToken]),
+    halt(1).
+
+camel_to_snake(Bin) ->
+    Options = ['global', {'return', 'binary'}],
+    re:replace(Bin, <<"(?!^)([A-Z][a-z])">>, <<"_\\1">>, Options).
+
+is_all_upper(Bin) ->
+    Bin =:= kz_util:to_upper_binary(Bin).
+
+brace_token(Token=?NE_BINARY) ->
+    <<"{", (kz_util:to_upper_binary(Token))/binary, "}">>.
+
+unbrace_param(Param) ->
+    Size = byte_size(Param) - 2,
+    <<"{", Param0:Size/binary, "}">> = Param,
+    kz_util:to_lower_binary(Param0).
 
 base_module_name(Module) ->
     {'match', [Name|_]} = grep_cb_module(Module),
@@ -737,3 +773,175 @@ grep_cb_module(?NE_BINARY=Module) ->
           ,<<"^cb_([a-z_]+?)(?:_(v[0-9]))?\$">>
           ,[{'capture', 'all_but_first', 'binary'}]
           ).
+
+
+to_swagger_parameters(Paths) ->
+    Params = [Param || Path <- Paths,
+                       Param = <<"{",_/binary>> <- split_url(Path)
+             ],
+    kz_json:from_list(
+      [{<<?X_AUTH_TOKEN>>, kz_json:from_list(
+                             [{<<"name">>, <<"X-Auth-Token">>}
+                             ,{<<"in">>, <<"header">>}
+                             ,{<<"type">>, <<"string">>}
+                             ,{<<"minLength">>, 32}
+                             ])}
+      ,{<<"id">>, kz_json:from_list([{<<"minLength">>, 32}
+                                    ,{<<"maxLength">>, 32}
+                                    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
+                                     | base_path_param(<<"id">>)
+                                    ])}
+      ]
+      ++ [{unbrace_param(Param), kz_json:from_list(def_path_param(Param))}
+          || Param <- lists:usort(lists:flatten(Params))
+         ]).
+
+generic_id_path_param(Name) ->
+    [{<<"$ref">>, <<"#/parameters/id">>}
+    ,{<<"name">>, Name}
+    ].
+
+base_path_param(Param) ->
+    [{<<"name">>, Param}
+    ,{<<"in">>, <<"path">>}
+    ,{<<"required">>, true}
+    ,{<<"type">>, <<"string">>}
+    ].
+
+modb_id_path_param(Param) ->
+    %% Matches an MoDB id:
+    [{<<"pattern">>, <<"^[0-9a-f-]+\$">>}
+    ,{<<"minLength">>, 39}
+    ,{<<"maxLength">>, 39}
+     | base_path_param(Param)
+    ].
+
+%% When param represents an account id (i.e. 32 bytes of hexa):
+def_path_param(<<"{ACCOUNT_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{ADDRESS_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{ALERT_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{APP_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{AUTH_TOKEN}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{BLACKLIST_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{C2C_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{CALLFLOW_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{CARD_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{CCCP_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{CONFERENCE_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{CONFIG_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{CONNECTIVITY_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{DEVICE_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{DIRECTORY_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{FAXBOX_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{FAX_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{GROUP_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{LEDGER_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{LIST_ENTRY_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{LIST_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{MEDIA_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{MENU_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{NOTIFICATION_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{PORT_REQUEST_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{QUEUE_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{RATE_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{RESOURCE_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{RESOURCE_TEMPLATE_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{SMS_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{TEMPLATE_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{TEMPORAL_RULE_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{TEMPORAL_RULE_SET}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{USER_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{VM_BOX_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{WEBHOOK_ID}">>=P) -> generic_id_path_param(P);
+
+%% When param represents an MoDB id (i.e. 32+4+2 bytes of hexa & 1 dash):
+def_path_param(<<"{CDR_ID}">>=P) -> modb_id_path_param(P);
+def_path_param(<<"{RECORDING_ID}">>=P) -> modb_id_path_param(P);
+
+%% When you don't know (ideally you do know):
+def_path_param(<<"{ARGS}">>=P) -> base_path_param(P);
+def_path_param(<<"{ATTACHMENT_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{ATTEMPT_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{CALL_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{COMMENT_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{EXTENSION}">>=P) -> base_path_param(P);
+def_path_param(<<"{FAX_JOB_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{INTERACTION_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{JOB_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{LANGUAGE}">>=P) -> base_path_param(P);
+def_path_param(<<"{LEDGER_ENTRY_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{PLAN_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{PROMPT_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{SELECTOR_NAME}">>=P) -> base_path_param(P);
+def_path_param(<<"{SMTP_LOG_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{SOCKET_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{SYSTEM_CONFIG_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{TEMPLATE_NAME}">>=P) -> base_path_param(P);
+def_path_param(<<"{THING}">>=P) -> base_path_param(P);
+def_path_param(<<"{TRANSACTION_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{USERNAME}">>=P) -> base_path_param(P);
+def_path_param(<<"{VM_MSG_ID}">>=P) -> base_path_param(P);
+def_path_param(<<"{WHITELABEL_DOMAIN}">>=P) -> base_path_param(P);
+
+%% For all the edge cases out there:
+
+def_path_param(<<"{APP_SCREENSHOT_INDEX}">>=P) ->
+    [{<<"pattern">>, <<"^[0-9]+\$">>}
+     | base_path_param(P)
+    ];
+
+def_path_param(<<"{FUNCTION}">>=P) ->
+    [{<<"pattern">>, <<"^[a-zA-Z0-9]+\$">>}
+     | base_path_param(P)
+    ];
+
+def_path_param(<<"{IP_ADDRESS}">>=P) ->
+    [{<<"minLength">>, 7}
+    ,{<<"maxLength">>, 15}
+    ,{<<"pattern">>, <<"^[0-9.]+\$">>}
+     | base_path_param(P)
+    ];
+
+def_path_param(<<"{MODULE}">>=P) ->
+    [{<<"pattern">>, <<"^[a-zA-Z0-9]+\$">>}
+     | base_path_param(P)
+    ];
+
+def_path_param(<<"{NODE}">>=P) ->
+    [{<<"pattern">>, <<"^[a-zA-Z0-9]+@[a-zA-Z0-9]+\$">>}
+     | base_path_param(P)
+    ];
+
+def_path_param(<<"{PARTICIPANT_ID}">>=P) ->
+    [{<<"pattern">>, <<"^[0-9]+\$">>}
+     | base_path_param(P)
+    ];
+
+def_path_param(<<"{PHONE_NUMBER}">>=P) ->
+    [{<<"minLength">>, 13}
+    ,{<<"pattern">>, <<"^%2[Bb][0-9]+\$">>}
+     | base_path_param(P)
+    ];
+
+def_path_param(<<"{SCHEMA_NAME}">>=P) ->
+    [{<<"pattern">>, <<"^[a-z0-9._-]+\$">>}
+     | base_path_param(P)
+    ];
+
+def_path_param(<<"{TASK_ID}">>=P) ->
+    [{<<"minLength">>, 15}
+    ,{<<"maxLength">>, 15}
+    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
+     | base_path_param(P)
+    ];
+
+def_path_param(<<"{UUID}">>=P) ->
+    [{<<"pattern">>, <<"^[a-f0-9-]+\$">>}
+     | base_path_param(P)
+    ];
+
+def_path_param(_Param) ->
+    io:format(standard_error
+             ,"No Swagger definition of path parameter '~s'.\n"
+             ,[_Param]),
+    halt(1).

@@ -118,7 +118,7 @@ curl -v -X PUT \
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages?paginate=true
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages?paginate=true
 ```
 
 ##### Response
@@ -164,12 +164,12 @@ curl -v -X GET \
 
 #### Remove a voicemail box
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 ```
 
 ##### Response
@@ -203,12 +203,12 @@ curl -v -X DELETE \
 
 #### Fetch a voicemail box
 
-> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 ```
 
 ##### Response
@@ -242,13 +242,13 @@ curl -v -X GET \
 
 #### Patch a voicemail box
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data":{"some_key":"some_value"}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 ```
 
 ##### Response
@@ -283,7 +283,7 @@ curl -v -X PATCH \
 
 #### Change a voicemail box's settings
 
-> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
+> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}
 
 ```shell
 curl -v -X POST \
@@ -324,7 +324,7 @@ curl -v -X POST \
 
 #### Remove all or a list of messages from a voicemail box
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
+> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 
 Deleting all message is easy, just use `DELETE` method on message API endpoint to delete all account's messages.
 
@@ -338,7 +338,7 @@ Optional payload for deleting a group of messages:
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 ```
 
 ##### Response
@@ -358,12 +358,12 @@ curl -v -X DELETE \
 
 #### Fetch all messages for a voicemail box
 
-> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 ```
 
 ##### Response
@@ -403,15 +403,15 @@ curl -v -X GET \
 
 #### Change a list of messages
 
-> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
+> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 
 Provide an array of message ids, e.g `{"data": {"messages": ["MSG_ID1", "MSG_ID2", "MSG_ID3"]}}` you can do following change operations on them. It will return two objects: the first is all the message ids that were successfully changed and the second one is those that failed with the reasons.
 
 * **Change the folder of messages:** set the folder that messages should move to (e.g. new or saved) by adding a query string `?folder=saved` to the URL or set it in the payload as `{"data": {"folder": "saved"}}`.
 
-* **Move messages to another voicemail box:** set the destination voicemail box ID in payload like: `{"data": {"source_id": "{NEW_VMBOX_ID}"}}`
+* **Move messages to another voicemail box:** set the destination voicemail box ID in payload like: `{"data": {"source_id": "{NEW_VM_BOX_ID}"}}`
 
-* **Copy messages to a single or a list of voicemail boxes** set the destination voicemail box ID in payload like: `{"data": {"source_id": ["{NEW_VMBOX_ID}"]}}`
+* **Copy messages to a single or a list of voicemail boxes** set the destination voicemail box ID in payload like: `{"data": {"source_id": ["{NEW_VM_BOX_ID}"]}}`
 
 **Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
 
@@ -420,7 +420,7 @@ curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
     -d '{"data": {"folder": "saved", "messages": ["MSG_ID1", "MSG_ID2", "MSG_ID3"]}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 ```
 
 ##### Response
@@ -441,7 +441,7 @@ curl -v -X POST \
 
 #### Fetch the raw audio of a list of messages as a ZIP file
 
-> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/raw
+> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw
 
 You can provide a list of voicemail message ID in the playload and get raw audio of them in a single ZIP file.
 
@@ -451,19 +451,19 @@ curl -v -X POST \
     -H "Content-Type: application/json" \
     -H "Accept: application/zip" \
     -d '{"data": {"messages": ["MSG_ID1", "MSG_ID2", "MSG_ID3"]}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/raw
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw
 ```
 
 #### Remove a message from the voicemail box
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 
 **Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba
 ```
 
 ##### Response
@@ -490,12 +490,12 @@ curl -v -X DELETE \
 
 #### Fetch a message from the voicemail box
 
-> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba
 ```
 
 **Note:** If message doesn't have a folder assign to it by any chance, it will be set to `new` by this method. Please also refer to the note for change the folder of a message regards of possible change of message id.
@@ -526,11 +526,11 @@ curl -v -X GET \
 
 * **Change the folder of a message:** set the folder that message should move to (e.g. new or saved) by adding a query string `?folder=saved` to the URL or set it in the payload as `{"data": {"folder": "saved"}}`.
 
-* **Move a message to another voicemail box:** set the destination voicemail box ID in payload like: `{"data": {"source_id": "{NEW_VMBOX_ID}"}}`
+* **Move a message to another voicemail box:** set the destination voicemail box ID in payload like: `{"data": {"source_id": "{NEW_VM_BOX_ID}"}}`
 
-* **Copy messages to a single or a list of voicemail boxes** set the destination voicemail box ID in payload like: `{"data": {"source_id": ["{NEW_VMBOX_ID}"]}}`
+* **Copy messages to a single or a list of voicemail boxes** set the destination voicemail box ID in payload like: `{"data": {"source_id": ["{NEW_VM_BOX_ID}"]}}`
 
-> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
+> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 
 **Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
 
@@ -538,7 +538,7 @@ curl -v -X GET \
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data": {"folder": "saved"}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba
 ```
 
 ##### Response
@@ -565,12 +565,12 @@ curl -v -X POST \
 
 #### Fetch the raw audio of the message
 
-> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}/raw
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}/raw
 
 **Note:** If message doesn't have a folder assign to it by any chance, it will be set to `new` by this method. Please also refer to the note for change the folder of a message regards of possible change of message id.
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba/raw
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba/raw
 ```

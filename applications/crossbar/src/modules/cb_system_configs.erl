@@ -72,9 +72,9 @@ authorize(Context, _Id, _Node) -> cb_context:is_superduper_admin(Context).
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(_Id) ->
+allowed_methods(_SystemConfigId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
-allowed_methods(_Id, _Node) ->
+allowed_methods(_SystemConfigId, _Node) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -171,18 +171,15 @@ post(Context, _Id, Node) ->
 delete(Context, _Id) ->
     Context1 = crossbar_doc:delete(Context),
     case cb_context:resp_status(Context1) of
-        'success' ->
-            cb_context:set_resp_data(Context1, kz_json:new());
+        'success' -> cb_context:set_resp_data(Context1, kz_json:new());
         _Status -> Context1
     end.
 
 delete(Context, Id, <<"default">>) ->
     delete(Context, Id);
 delete(Context, _Id, Node) ->
-    save(
-      cb_context:set_doc(Context, kz_json:delete_key(Node, cb_context:doc(Context)))
-        ,<<"default">>
-     ).
+    Context1 = cb_context:set_doc(Context, kz_json:delete_key(Node, cb_context:doc(Context))),
+    save(Context1, <<"default">>).
 
 -spec save(cb_context:context(), ne_binary()) -> cb_context:context().
 save(Context, Node) ->
@@ -190,8 +187,7 @@ save(Context, Node) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             cb_context:set_resp_data(Context1, kz_json:get_value(Node, cb_context:doc(Context1)));
-        _Status ->
-            Context1
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -206,14 +202,10 @@ create(Context) ->
     case kz_doc:id(Doc) of
         'undefined' ->
             lager:debug("no id on doc ~p", [Doc]),
-            cb_context:add_validation_error(
-              <<"id">>
-                                           ,<<"required">>
-                                           ,kz_json:from_list([
-                                                               {<<"message">>, <<"id is required to create a system_config resource">>}
-                                                              ])
-                                           ,Context
-             );
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<"id is required to create a system_config resource">>}
+                    ]),
+            cb_context:add_validation_error(<<"id">>, <<"required">>, Msg, Context);
         Id ->
             SysDoc = kz_json:from_list([{<<"_id">>, Id}
                                        ,{<<"default">>, kz_json:delete_key(<<"id">>, Doc)}
@@ -240,7 +232,6 @@ filter_read(Context, Node) ->
 read(Id, Context, Node) ->
     Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)),
     Data     = filter_read(Context1, Node),
-
     cb_context:set_resp_data(Context1, Data).
 
 -spec read_for_delete(ne_binary(), cb_context:context()) ->

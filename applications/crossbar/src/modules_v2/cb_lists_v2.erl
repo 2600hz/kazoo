@@ -84,11 +84,11 @@ allowed_methods(_ListId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 allowed_methods(_ListId, ?ENTRIES) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_DELETE].
-allowed_methods(_List, ?ENTRIES, _EntryId) ->
+allowed_methods(_ListId, ?ENTRIES, _ListEntryId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
-allowed_methods(_List, ?ENTRIES, _EntryId, ?VCARD) ->
+allowed_methods(_ListId, ?ENTRIES, _ListEntryId, ?VCARD) ->
     [?HTTP_GET];
-allowed_methods(_List, ?ENTRIES, _EntryId, ?PHOTO) ->
+allowed_methods(_ListId, ?ENTRIES, _ListEntryId, ?PHOTO) ->
     [?HTTP_POST].
 
 -spec resource_exists() -> 'true'.

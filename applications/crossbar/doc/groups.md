@@ -1,59 +1,70 @@
-
 ### Groups
+
+#### About Groups
+
+#### Schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`endpoints` | Endpoints included into group | `object` | `{}` | `true`
+`music_on_hold` | The music on hold parameters | `object` | `{}` | `false`
+`music_on_hold.media_id` | The ID of a media object that should be used as music on hold | `string(0..128)` |   | `false`
+`name` | A friendly name for the group | `string(1..128)` |   | `true`
+
 
 #### Get groups for a given account
 
-##### Request
+> GET /v2/accounts/{ACCOUNT_ID}/groups
 
-- Verb: `GET`
-- Url: `/accounts/{{ACCOUNT_ID}}/groups`
-- Payload: None
-
-##### Response
-
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups
 ```
+
+```json
 {
-    "data": [{
-        "id": "18ccfd6cea456cbdd38133e5aa726ec4",
-        "name": "Group Name",
-        "features": [],
-        "endpoints": 2
-    }],
+    "data": [
+        {
+            "id": "18ccfd6cea456cbdd38133e5aa726ec4",
+            "name": "Group Name",
+            "features": [],
+            "endpoints": 2
+        }
+    ],
     "status": "success"
 }
 ```
+
 
 #### Create a group for a given account
 
-##### Request
+> PUT /v2/accounts/{ACCOUNT_ID}/groups
 
-- Verb: `PUT`
-- Url: `/accounts/{{ACCOUNT_ID}}/groups`
-- Payload:
-
-```
-{
-    "data": {
-        "music_on_hold": {},
-        "name": "Test group",
-        "endpoints": {
-            "df9274b450ea6795cdb381055c3f9b45": {
-                "type": "user",
-                "weight": 1
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{
+            "data": {
+                "music_on_hold": {},
+                "name": "Test group",
+                "endpoints": {
+                    "df9274b450ea6795cdb381055c3f9b45": {
+                        "type": "user",
+                        "weight": 1
+                    },
+                    "dd03d7442a4bec5c092ea6a0e6d579ef": {
+                        "type": "device",
+                        "weight": 2
+                    }
+                }
             },
-            "dd03d7442a4bec5c092ea6a0e6d579ef": {
-                "type": "device",
-                "weight": 2
-            }
-        }
-    },
-    "verb": "PUT"
-}
+            "verb": "PUT"
+        }' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups
 ```
 
-##### Response
-
-```
+```json
 {
     "data": {
         "music_on_hold": {},
@@ -73,18 +84,51 @@
     "status": "success"
 }
 ```
+
+
+#### Remove a group
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
+```
+
+```json
+{
+    "data": {
+        "music_on_hold": {},
+        "name": "Test group 2",
+        "id": "1743724cd775bf6994380dbc79c1af09",
+        "endpoints": {
+            "df9274b450ea6795cdb381055c3f9b45": {
+                "type": "user",
+                "weight": 1
+            },
+            "dd03d7442a4bec5c092ea6a0e6d579ef": {
+                "type": "device",
+                "weight": 2
+            }
+        }
+    },
+    "status": "success"
+}
+```
+
 
 #### Get a group for a given account
 
-##### Request
+> GET /v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 
-- Verb: `GET`
-- Url: `/accounts/{{ACCOUNT_ID}}/groups/{{GROUP_ID}}`
-- Payload: None
-
-##### Response
-
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 ```
+
+```json
 {
     "data": {
         "music_on_hold": {},
@@ -108,38 +152,38 @@
 }
 ```
 
+
 #### Update a group for a given account
 
-##### Request
+> POST /v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 
-- Verb: `POST`
-- Url: `/accounts/{{ACCOUNT_ID}}/groups/{{GROUP_ID}}`
-- Payload:
+> PATCH /v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 
-```
-{
-    "data": {
-        "music_on_hold": {},
-        "name": "Test group 2",
-        "id": "1743724cd775bf6994380dbc79c1af09",
-        "endpoints": {
-            "df9274b450ea6795cdb381055c3f9b45": {
-                "type": "user",
-                "weight": 1
-            },
-            "dd03d7442a4bec5c092ea6a0e6d579ef": {
-                "type": "device",
-                "weight": 2
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{
+        "data": {
+            "music_on_hold": {},
+            "name": "Test group 2",
+            "id": "1743724cd775bf6994380dbc79c1af09",
+            "endpoints": {
+                "df9274b450ea6795cdb381055c3f9b45": {
+                    "type": "user",
+                    "weight": 1
+                },
+                "dd03d7442a4bec5c092ea6a0e6d579ef": {
+                    "type": "device",
+                    "weight": 2
+                }
             }
-        }
-    },
-    "verb": "POST"
-}
+        },
+        "verb": "POST"
+    }' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}
 ```
 
-##### Response
-
-```
+```json
 {
     "data": {
         "music_on_hold": {},
@@ -158,37 +202,6 @@
             "ui": "kazoo-ui"
         },
         "id": "1743724cd775bf6994380dbc79c1af09"
-    },
-    "status": "success"
-}
-```
-
-#### Update a group for a given account
-
-##### Request
-
-- Verb: `DELETE`
-- Url: `/accounts/{{ACCOUNT_ID}}/groups/{{GROUP_ID}}`
-- Payload: None
-
-##### Response
-
-```
-{
-    "data": {
-        "music_on_hold": {},
-        "name": "Test group 2",
-        "id": "1743724cd775bf6994380dbc79c1af09",
-        "endpoints": {
-            "df9274b450ea6795cdb381055c3f9b45": {
-                "type": "user",
-                "weight": 1
-            },
-            "dd03d7442a4bec5c092ea6a0e6d579ef": {
-                "type": "device",
-                "weight": 2
-            }
-        }
     },
     "status": "success"
 }

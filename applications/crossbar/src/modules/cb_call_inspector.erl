@@ -88,12 +88,10 @@ to_csv({Req, Context}, []) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
-allowed_methods() ->
-    [?HTTP_GET].
+allowed_methods() -> [?HTTP_GET].
 
 -spec allowed_methods(path_token()) -> http_methods().
-allowed_methods(_) ->
-    [?HTTP_GET].
+allowed_methods(_CallId) -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public

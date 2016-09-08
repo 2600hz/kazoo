@@ -6,9 +6,11 @@ Resource selectors is a new way to route Offnet-calls. Old way used regex rules 
 
 ## Rules
 
-Rules is array of JSON objects. Each object contain one item where key is name of the module, and value is another object, with parameters for that module.  
+Rules is array of JSON objects. Each object contain one item where key is name of the module, and value is another object, with parameters for that module.
+
 Example:
-```JSON
+
+```json
 {
   "filter_list": {
     "value_a": "request:Flags",
@@ -33,6 +35,9 @@ curl -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
     http://{SERVER}:8000/v2/resource_selectors
+```
+
+```json
 {
   "data": {
     "rules": [
@@ -86,8 +91,14 @@ curl -X GET \
 curl -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d '{"data":{"rules":[{"get_resources":{}},{"filter_list":{"value_a":"request:Flags","value_b":"resource:flags","action":"keep"}}]}}'
+    -d '{"data": {"rules": [
+        {"get_resources":{}},
+        {"filter_list": {"value_a": "request:Flags", "value_b": "resource:flags", "action": "keep"}}
+    ]}}'
     http://{SERVER}:8000/v2/resource_selectors
+```
+
+```json
 {
   "data": {
     "rules": [
@@ -115,7 +126,8 @@ curl -X POST \
 Database selectors - selectors stored in special database. Name of this database `account/XX/XX/XXXXXXXXXXXXXXXXXXXXXXXXXXXX-selectors`, where `XXX...XXX` - Account ID. System-wide selectors database use Master Account ID.
 
 Each selector is sepparate doument:
-```JSON
+
+```json
 {
    "_id": "00066509d2648ede97e30635aa5ba097",
    "_rev": "1-5c13654b7a5521778791e6657789bb56",
@@ -126,6 +138,7 @@ Each selector is sepparate doument:
    "value": "0.37"
 }
 ```
+
 - name - all selectors with same name used for filtering/sorting resources
 - selector - this value used for filtering/sorting
 - resource - Resource ID
@@ -136,11 +149,15 @@ Each selector is sepparate doument:
 
 #### List selectors names
 
+> GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/name
+
 ```shell
-curl -X GET \
+curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/resource_selectors/name
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/name
+```
+
+```json
 {
   "data": [
     {
@@ -159,11 +176,15 @@ curl -X GET \
 
 Here we see 2 selectors, `lcr` with 12 documents and `lcr2` with `36039` documents.
 
+> GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}
+
 ```shell
-curl -X GET \
+curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/resource_selectors/name/lcr2
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/name/lcr2
+```
+
+```json
 {
   "data": [
     {
@@ -185,11 +206,15 @@ curl -X GET \
 
 #### List resources
 
+> GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource
+
 ```shell
-curl -X GET \
+curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/resource_selectors/resource
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource
+```
+
+```json
 {
   "data": [
     {
@@ -209,13 +234,17 @@ curl -X GET \
 }
 ```
 
-In this exampe we see resources `RES-2` with 3 docuemnts, `RES-3` with 8 documents and `RES-4` with 1 document.
+In this example we see resources `RES-2` with 3 docuemnts, `RES-3` with 8 documents and `RES-4` with 1 document.
+
+> GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}
 
 ```shell
-curl -X GET \
+curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/resource_selectors/resource/RES-4
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/RES-4
+```
+
+```json
 {
   "data": [
     {
@@ -234,11 +263,15 @@ curl -X GET \
 
 #### Show selectors
 
+> GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}
+
 ```shell
-curl -X GET \
+curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/resource_selectors/resource/RES-4/name/lcr
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/RES-4/name/lcr
+```
+
+```json
 {
   "data": [
     {
@@ -269,12 +302,18 @@ Here we ses selectors for resource `RES-4` with selector name `lcr`. Resulted li
 
 ### Add selectors
 
+> PUT /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}
+
 ```shell
-curl -X PUT \
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d '{"data":{"selectors":["123","456","789"]}}' \
-    http://{SERVER}:8000/v2/resource_selectors/resource/RES-4/name/lcr
+    -d '{"data": {
+        "selectors":["123","456","789"]
+    }}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/RES-4/name/lcr
+```
+
+```json
 {
   "data": {
     "total": 3,
@@ -290,12 +329,18 @@ curl -X PUT \
 
 ### Delete selectors
 
+> DELETE /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}
+
 ```shell
-curl -X DELETE \
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d '{"data":{"selectors":["123","456","789"]}}' \
-    http://{SERVER}:8000/v2/resource_selectors/resource/RES-4/name/lcr
+    -d '{"data": {
+        "selectors":["123","456","789"]
+    }}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/RES-4/name/lcr
+```
+
+```json
 {
   "data": {
     "total": 3,
@@ -312,11 +357,15 @@ curl -X DELETE \
 If you want delete all selectors, you can use special word `_all`, instead explictly list each selector.
 
 ```shell
-curl -X DELETE \
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d '{"data":{"selectors":["_all"]}}' \
-    http://{SERVER}:8000/v2/resource_selectors/resource/RES-4/name/lcr
+    -d '{"data": {
+        "selectors":["_all"]
+    }}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/RES-4/name/lcr
+```
+
+```json
 {
   "data": {
     "total": 36039,

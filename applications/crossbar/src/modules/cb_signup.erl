@@ -107,7 +107,7 @@ cleanup_loop(#state{cleanup_interval=CleanupInterval}=State) ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() -> [?HTTP_PUT].
-allowed_methods(_) -> [?HTTP_POST].
+allowed_methods(_Thing) -> [?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public

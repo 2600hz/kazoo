@@ -49,32 +49,32 @@ curl -v -X PUT \
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/notifications/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/notifications/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/notifications/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
 #### Fetch
@@ -99,21 +99,21 @@ curl -v -X POST \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{SMTP_LOG_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{SMTP_LOG_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/notifications/{ID}/preview
+> POST /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/preview
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}/preview
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/preview
 ```
 

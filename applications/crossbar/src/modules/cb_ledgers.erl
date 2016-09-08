@@ -68,7 +68,7 @@ allowed_methods(?DEBIT) ->
 allowed_methods(_LedgerId) ->
     [?HTTP_GET].
 
-allowed_methods(_LedgerId, _Id) ->
+allowed_methods(_LedgerId, _LedgerEntryId) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -402,7 +402,8 @@ read_ledger_doc(Context, Ledger, ?MATCH_MODB_PREFIX(YYYY, MM, SimpleId) = Id) ->
     case cb_context:resp_status(Ctx) =:= 'success'
         andalso validate_returned_ledger_doc(Ledger, Ctx)
     of
-        'false' -> read_ledger_doc(cb_context:set_account_modb(Context, Year, Month), Ledger, SimpleId);
+        'false' ->
+            read_ledger_doc(cb_context:set_account_modb(Context, Year, Month), Ledger, SimpleId);
         Ctx1 -> Ctx1
     end;
 read_ledger_doc(Context, Ledger, Id) ->
@@ -429,9 +430,7 @@ validate_returned_ledger_doc(Ledger, Context) ->
     of
         'true' -> cb_context:set_resp_data(Context, normalize_view_result(Context, JObj));
         'false' ->
-            cb_context:add_validation_error(<<"Id">>
-                                           ,<<"invalid">>
-                                           ,kz_json:from_list([{<<"message">>, <<"document does not belong to ledger">>}])
-                                           ,Context
-                                           )
+            Msg = kz_json:from_list([{<<"message">>, <<"document does not belong to ledger">>}
+                                    ]),
+            cb_context:add_validation_error(<<"Id">>, <<"invalid">>, Msg, Context)
     end.

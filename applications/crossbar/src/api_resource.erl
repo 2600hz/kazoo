@@ -376,10 +376,8 @@ malformed_request(Req, Context, _ReqVerb) ->
         [AccountId] ->
             Context1 = cb_accounts:validate_resource(Context, AccountId),
             case cb_context:resp_status(Context1) of
-                'success' ->
-                    {'false', Req, Context1};
-                _RespStatus ->
-                    api_util:halt(Req, Context1)
+                'success' -> {'false', Req, Context1};
+                _RespStatus -> api_util:halt(Req, Context1)
             end;
         _Other ->
             {'false', Req, Context}

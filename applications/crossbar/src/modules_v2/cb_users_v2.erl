@@ -92,7 +92,7 @@ allowed_methods(_UserId, ?PHOTO) ->
 allowed_methods(_UserId, ?VCARD) ->
     [?HTTP_GET].
 
-allowed_methods(_UserId, ?QUICKCALL_PATH_TOKEN, _Number) ->
+allowed_methods(_UserId, ?QUICKCALL_PATH_TOKEN, _PhoneNumber) ->
     [?HTTP_GET].
 
 -spec content_types_provided(cb_context:context()) ->
@@ -394,10 +394,9 @@ update_devices_presence(Context) ->
     end.
 
 update_devices_presence(Context, DeviceDocs) ->
-    lists:foreach(
-      fun(DeviceDoc) -> update_device_presence(Context, DeviceDoc) end
+    lists:foreach(fun(DeviceDoc) -> update_device_presence(Context, DeviceDoc) end
                  ,DeviceDocs
-     ).
+                 ).
 
 -spec user_devices(cb_context:context()) ->
                           {'ok', kz_device:docs()} |

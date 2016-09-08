@@ -65,11 +65,11 @@ allowed_methods() ->
     [?HTTP_GET].
 allowed_methods(?BLACKLIST) ->
     [?HTTP_GET, ?HTTP_POST];
-allowed_methods(_) ->
+allowed_methods(_AppId) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
-allowed_methods(_, _) ->
+allowed_methods(_AppId, ?ICON) ->
     [?HTTP_GET].
-allowed_methods(_, _, _) ->
+allowed_methods(_AppId, ?SCREENSHOT, _AppScreenshotIndex) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -180,15 +180,15 @@ validate(Context, ?BLACKLIST) ->
 validate(Context, Id) ->
     validate_app(Context, Id, cb_context:req_verb(Context)).
 
-validate(Context, Id, ?ICON) ->
-    Context1 = load_app_from_master_account(Context, Id),
+validate(Context, AppId, ?ICON) ->
+    Context1 = load_app_from_master_account(Context, AppId),
     case cb_context:resp_status(Context1) of
         'success' -> get_icon(Context1);
         _ -> Context1
     end.
 
-validate(Context, Id, ?SCREENSHOT, Number) ->
-    Context1 = load_app_from_master_account(Context, Id),
+validate(Context, AppId, ?SCREENSHOT, Number) ->
+    Context1 = load_app_from_master_account(Context, AppId),
     case cb_context:resp_status(Context1) of
         'success' -> get_screenshot(Context1, Number);
         _ -> Context1
@@ -209,12 +209,12 @@ post(Context, ?BLACKLIST) ->
         cb_context:set_doc(Context, Doc)
        )
      );
-post(Context, Id) ->
+post(Context, AppId) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
-            RespData = kz_json:get_value(Id, kzd_apps_store:apps(JObj)),
+            RespData = kz_json:get_value(AppId, kzd_apps_store:apps(JObj)),
             cb_context:set_resp_data(Context, RespData);
         _Status -> Context1
     end.
@@ -364,11 +364,10 @@ can_modify(Context, Id) ->
             Props = [{'details', Id}],
             cb_context:add_system_error('forbidden', kz_json:from_list(Props), Context);
         App ->
-            cb_context:store(
-              cb_context:set_resp_status(Context, 'success')
+            cb_context:store(cb_context:set_resp_status(Context, 'success')
                             ,Id
                             ,App
-             )
+                            )
     end.
 
 %%--------------------------------------------------------------------
@@ -380,12 +379,11 @@ can_modify(Context, Id) ->
 load_apps(Context) ->
     AccountId = cb_context:account_id(Context),
     Apps = cb_apps_util:allowed_apps(AccountId),
-    cb_context:setters(
-      Context
+    cb_context:setters(Context
                       ,[{fun cb_context:set_resp_status/2, 'success'}
                        ,{fun cb_context:set_resp_data/2, normalize_apps_result(Apps)}
                        ]
-     ).
+                      ).
 
 %%--------------------------------------------------------------------
 %% @private

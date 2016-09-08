@@ -222,13 +222,13 @@ maybe_execute_command(Context, _CallId, _Command) ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     case cb_context:req_nouns(Context) of
-        [{<<"channels">>, []}, {<<"users">>, [UserId]} | _] ->
+        [{<<"channels">>, []}, {<<"users">>, [UserId]} |_] ->
             user_summary(Context, UserId);
-        [{<<"channels">>, []}, {<<"devices">>, [DeviceId]} | _] ->
+        [{<<"channels">>, []}, {<<"devices">>, [DeviceId]} |_] ->
             device_summary(Context, DeviceId);
-        [{<<"channels">>, []}, {<<"groups">>, [GroupId]} | _] ->
+        [{<<"channels">>, []}, {<<"groups">>, [GroupId]} |_] ->
             group_summary(Context, GroupId);
-        [{<<"channels">>, []}, {<<"accounts">>, [_AccountId]} | _] ->
+        [{<<"channels">>, []}, {<<"accounts">>, [_AccountId]} |_] ->
             lager:debug("getting account summary"),
             account_summary(Context);
         [{<<"channels">>,[]}] ->

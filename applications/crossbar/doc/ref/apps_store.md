@@ -18,42 +18,42 @@ curl -v -X GET \
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
+> PUT /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 ```
 
 #### Fetch
@@ -78,21 +78,21 @@ curl -v -X POST \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/icon
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/icon
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/screenshot/{APP_SCREENSHOT_INDEX}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/screenshot/{APP_SCREENSHOT_INDEX}
 ```
 

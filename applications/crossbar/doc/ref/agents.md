@@ -18,12 +18,12 @@ curl -v -X GET \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/agents/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}
 ```
 
 #### Fetch
@@ -48,61 +48,61 @@ curl -v -X GET \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
+> GET /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/queue_status
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/queue_status
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
+> POST /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/queue_status
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/queue_status
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
+> GET /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/status
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/status
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
+> POST /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/status
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/status
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/agents/status/{USER_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status/{USER_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/agents/status/{USER_ID}
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status/{USER_ID}
 ```
 
