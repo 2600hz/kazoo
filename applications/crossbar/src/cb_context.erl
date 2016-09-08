@@ -26,6 +26,7 @@
         ,is_authenticated/1
 
         ,is_superduper_admin/1
+        ,is_account_admin/1
 
          %% Getters / Setters
         ,setters/2
@@ -216,6 +217,10 @@ is_superduper_admin(AccountId=?NE_BINARY) ->
     end;
 is_superduper_admin(Context) ->
     is_superduper_admin(auth_account_id(Context)).
+
+-spec is_account_admin(context()) -> boolean().
+is_account_admin(#cb_context{auth_doc=Doc}) ->
+    kzd_user:priv_level(Doc) =:= <<"admin">>.
 
 auth_token_type(#cb_context{auth_token_type=AuthTokenType}) -> AuthTokenType.
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
