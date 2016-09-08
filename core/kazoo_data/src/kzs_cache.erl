@@ -90,7 +90,8 @@ maybe_cache_failure(DbName, DocId, Options, Error) ->
     case props:get_value('cache_failures', Options) of
         ErrorCodes when is_list(ErrorCodes) ->
             maybe_cache_failure(DbName, DocId, Options, Error, ErrorCodes);
-        'true' -> add_to_doc_cache(DbName, DocId, Error);
+        'true' ->
+            maybe_cache_failure(DbName, DocId, Options, Error, ['not_found']);
         _ -> 'ok'
     end.
 
