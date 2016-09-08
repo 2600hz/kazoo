@@ -637,7 +637,10 @@ response(#cb_context{resp_error_code=Code
 validate_request_data('undefined', Context) ->
     passed(Context);
 validate_request_data(<<_/binary>> = Schema, Context) ->
+    Strict = fetch(Context, 'ensure_valid_schema', kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_schema">>, 'false')),
     case find_schema(Schema) of
+        'undefined' when Strict ->
+            add_system_error(<<"schema ", Schema/binary, " not found">>, Context);
         'undefined' ->
             passed(set_doc(Context, req_data(Context)));
         SchemaJObj ->
