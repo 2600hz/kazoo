@@ -6153,6 +6153,326 @@
             "required": true,
             "type": "object"
         },
+        "storage": {
+            "additionalProperties": false,
+            "id": "storage",
+            "patternProperties": {
+                "^_": {
+                    "type": [
+                        "string",
+                        "integer",
+                        "boolean",
+                        "object"
+                    ]
+                },
+                "^pvt_": {
+                    "type": [
+                        "string",
+                        "integer",
+                        "boolean"
+                    ]
+                }
+            },
+            "properties": {
+                "attachments": {
+                    "$ref": "storage.attachments"
+                },
+                "connections": {
+                    "$ref": "storage.connections"
+                },
+                "plan": {
+                    "$ref": "storage.plan"
+                }
+            },
+            "type": "object"
+        },
+        "storage.attachment.aws": {
+            "description": "schema for aws attachment entry",
+            "id": "storage.attachment.aws",
+            "properties": {
+                "handler": {
+                    "enum": [
+                        "s3"
+                    ]
+                },
+                "name": {
+                    "type": "string"
+                },
+                "settings": {
+                    "properties": {
+                        "bucket": {
+                            "type": "string"
+                        },
+                        "key": {
+                            "type": "string"
+                        },
+                        "path": {
+                            "type": "string"
+                        },
+                        "secret": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "bucket",
+                        "key",
+                        "secret"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "handler",
+                "settings"
+            ],
+            "type": "object"
+        },
+        "storage.attachment.google_drive": {
+            "description": "schema for google drive attachment entry",
+            "id": "storage.attachment.google_drive",
+            "properties": {
+                "handler": {
+                    "enum": [
+                        "google_drive"
+                    ]
+                },
+                "name": {
+                    "type": "string"
+                },
+                "settings": {
+                    "properties": {
+                        "oauth_doc_id": {
+                            "type": "string"
+                        },
+                        "path": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "oauth_doc_id"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "handler",
+                "settings"
+            ],
+            "type": "object"
+        },
+        "storage.attachments": {
+            "id": "storage.attachments",
+            "patternProperties": {
+                "^[a-z,0-9]{32}$": {
+                    "oneOf": [
+                        {
+                            "$ref": "storage.attachment.aws"
+                        },
+                        {
+                            "$ref": "storage.attachment.google_drive"
+                        }
+                    ]
+                }
+            },
+            "type": "object"
+        },
+        "storage.connection.couchdb": {
+            "definitions": {
+                "credentials": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "password": {
+                            "type": "integer"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "username",
+                        "password"
+                    ],
+                    "type": "object"
+                },
+                "pool": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "size": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "size"
+                    ],
+                    "type": "object"
+                }
+            },
+            "description": "schema for couchdb connection entry",
+            "id": "storage.connection.couchdb",
+            "properties": {
+                "driver": {
+                    "enum": [
+                        "kazoo_couch"
+                    ]
+                },
+                "name": {
+                    "type": "string"
+                },
+                "settings": {
+                    "properties": {
+                        "connect_options": {
+                            "properties": {
+                                "keepalive": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "connect_timeout": {
+                            "type": "integer"
+                        },
+                        "credentials": {
+                            "$ref": "#/definitions/credentials"
+                        },
+                        "ip": {
+                            "type": "string"
+                        },
+                        "max_pipeline_size": {
+                            "type": "integer"
+                        },
+                        "max_sessions": {
+                            "type": "integer"
+                        },
+                        "pool": {
+                            "$ref": "#/definitions/pool"
+                        },
+                        "port": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "ip",
+                        "port"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "driver",
+                "settings"
+            ],
+            "type": "object"
+        },
+        "storage.connections": {
+            "id": "storage.connections",
+            "patternProperties": {
+                "^([a-z,0-9]){32}$": {
+                    "oneOf": [
+                        {
+                            "$ref": "storage.connection.couchdb"
+                        }
+                    ]
+                },
+                "local": {
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "storage.plan": {
+            "additionalProperties": false,
+            "description": "schema for storage plan",
+            "id": "storage.plan",
+            "properties": {
+                "account": {
+                    "$ref": "storage.plan.database"
+                },
+                "modb": {
+                    "$ref": "storage.plan.database"
+                },
+                "system": {
+                    "$ref": "storage.plan.database"
+                }
+            },
+            "type": "object"
+        },
+        "storage.plan.database": {
+            "additionalProperties": false,
+            "definitions": {
+                "database": {
+                    "properties": {
+                        "create_options": {
+                            "type": "object"
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "description": "schema for database storage plan",
+            "id": "storage.plan.database",
+            "properties": {
+                "attachments": {
+                    "$ref": "storage.plan.database.attachment"
+                },
+                "connection": {
+                    "type": "string"
+                },
+                "database": {
+                    "$ref": "#/definitions/database"
+                },
+                "types": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "call_recording": {
+                            "$ref": "storage.plan.database.document"
+                        },
+                        "fax": {
+                            "$ref": "storage.plan.database.document"
+                        },
+                        "mailbox_message": {
+                            "$ref": "storage.plan.database.document"
+                        },
+                        "media": {
+                            "$ref": "storage.plan.database.document"
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "storage.plan.database.attachment": {
+            "description": "schema for attachment ref type storage plan",
+            "id": "storage.plan.database.attachment",
+            "properties": {
+                "handler": {
+                    "type": "string"
+                },
+                "params": {
+                    "type": "object"
+                },
+                "stub": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "storage.plan.database.document": {
+            "description": "schema for document type storage plan",
+            "id": "storage.plan.database.document",
+            "properties": {
+                "attachments": {
+                    "$ref": "storage.plan.database.attachment"
+                },
+                "connection": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "system_config.accounts": {
             "description": "Schema for accounts system_config",
             "properties": {
