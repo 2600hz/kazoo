@@ -16422,6 +16422,19 @@
                 ]
             }
         },
+        "/accounts/{ACCOUNT_ID}/port_requests/unconfirmed": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
         "/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}": {
             "delete": {
                 "parameters": [

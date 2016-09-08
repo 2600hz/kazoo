@@ -22,13 +22,16 @@ Webhooks are installed by the system administrator. You can query Crossbar to se
 
 Some webhooks will also include a `modifiers` object; these are parameters specific to that webhook that can be used to modify the behaviour of the webhook.
 
-> GET http://{SERVER}:8000/v2/webhooks
+> GET /v2/webhooks
 
 ```shell
 curl -v -X GET \
     -H "Content-Type:application/json" \
     -H "X-Auth-Token: {AUTH_TOKEN} \
     http://{SERVER}:8000/v2/webhooks
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": [
@@ -111,9 +114,14 @@ curl -v -X GET \
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks \
-    -d '{"data":{"name":"New Calls", "uri":"http://my.{SERVER}/calls/new.php", \
-    "http_verb":"post", "hook":"channel_create", "retries":3}}'
+    -d '{"data": {
+        "name": "New Calls",
+        "uri": "http://my.{SERVER}/calls/new.php",
+        "http_verb": "post",
+        "hook": "channel_create",
+        "retries":3
+    }}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 ```
 
 #### Get details of the webhook
@@ -134,9 +142,14 @@ curl -v -X GET \
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID} \
-    -d '{"data":{"name":"New Calls", "uri":"http://my.{SERVER}/calls/new_calls.php", \
-    "http_verb":"post", "hook":"channel_create", "retries":3}}'
+    -d '{"data": {
+        "name": "New Calls",
+        "uri": "http://my.{SERVER}/calls/new_calls.php",
+        "http_verb": "post",
+        "hook": "channel_create",
+        "retries": 3
+    }}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```
 
 #### Patch webhook
@@ -149,8 +162,8 @@ You can also patch an existing webhook:
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID} \
-    -d '{"data":{"enabled":true}}'
+    -d '{"data":{"enabled":true}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```
 
 #### Delete a webhook
@@ -173,6 +186,9 @@ Webhooks tracks attempts to send the hook payloads to your URIs. You can get a l
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/attempts
+```
+
+```json
 {
     "auth_token": "c89bc20fd8954f6e67614b99e31b4f58",
     "data": [
@@ -217,8 +233,8 @@ Enable an account's hooks
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks \
-    -d '{"data":{"re-enable":true}}'
+    -d '{"data":{"re-enable":true}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 ```
 
 Enable an account's and descendant accounts' hooks
@@ -228,8 +244,8 @@ Enable an account's and descendant accounts' hooks
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants/webhooks \
-    -d '{"data":{"re-enable":true}}'
+    -d '{"data":{"re-enable":true}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants/webhooks
 ```
 
 #### Hook Payload

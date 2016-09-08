@@ -77,6 +77,16 @@ curl -v -X POST \
 
 #### Fetch
 
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/unconfirmed
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/unconfirmed
+```
+
+#### Fetch
+
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/canceled
 
 ```shell
