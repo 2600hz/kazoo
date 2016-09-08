@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "description": "schema for google drive attachment entry",
-    "id": "storage.attachment.google_drive",
+    "_id": "storage.attachment.google_drive",
     "properties": {
         "handler": {
             "enum": [

@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "description": "schema for aws attachment entry",
-    "id": "storage.attachment.aws",
+    "_id": "storage.attachment.aws",
     "properties": {
         "handler": {
             "enum": [

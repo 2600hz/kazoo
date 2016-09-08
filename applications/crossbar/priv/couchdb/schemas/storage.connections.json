@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "id": "storage.connections",
+    "_id": "storage.connections",
     "patternProperties": {
         "^([a-z,0-9]){32}$": {
             "oneOf": [

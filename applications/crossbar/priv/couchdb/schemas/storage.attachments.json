@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "id": "storage.attachments",
+    "_id": "storage.attachments",
     "patternProperties": {
         "^[a-z,0-9]{32}$": {
             "oneOf": [

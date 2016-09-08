@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "description": "schema for document type storage plan",
-    "id": "storage.plan.database.document",
+    "_id": "storage.plan.database.document",
     "properties": {
         "attachments": {
             "$ref": "storage.plan.database.attachment"
