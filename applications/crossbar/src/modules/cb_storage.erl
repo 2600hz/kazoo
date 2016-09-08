@@ -26,9 +26,9 @@
 -define(SYSTEM_DATAPLAN, <<"system">>).
 
 -type scope() :: 'system'
-                 | {'user', ne_binary(), ne_binary()}
-                 | {'account', ne_binary()}
-                 | {'reseller', ne_binary()}.
+               | {'user', ne_binary(), ne_binary()}
+               | {'account', ne_binary()}
+               | {'reseller', ne_binary()}.
 
 %%%===================================================================
 %%% API
@@ -77,12 +77,12 @@ authorize(Context, [{<<"storage">>, []}
     cb_context:is_superduper_admin(Context) 
         orelse kz_services:get_reseller_id(AccountId) =:= cb_context:auth_account_id(Context)
         orelse ( (AccountId =:= cb_context:auth_account_id(Context)
-                 andalso cb_context:is_account_admin(Context)
+                  andalso cb_context:is_account_admin(Context)
                  )
                  orelse
-                 (AccountId =:= cb_context:auth_account_id(Context)
-                 andalso UserId =:= cb_context:auth_user_id(Context)
-                 )
+                   (AccountId =:= cb_context:auth_account_id(Context)
+                    andalso UserId =:= cb_context:auth_user_id(Context)
+                   )
                ).
 
 %%--------------------------------------------------------------------
@@ -262,11 +262,11 @@ set_scope(Context) ->
 set_scope(Context, [{<<"storage">>, []}]) ->
     cb_context:store(Context, 'scope', 'system');
 set_scope(Context, [{<<"storage">>, []}
-               ,{<<"accounts">>, [AccountId]}
-               ]) ->
+                   ,{<<"accounts">>, [AccountId]}
+                   ]) ->
     cb_context:store(Context, 'scope', {'account', AccountId});
 set_scope(Context, [{<<"storage">>, []}
-               ,{<<"users">>, [UserId]}
-               ,{<<"accounts">>, [AccountId]}
-               ]) ->
+                   ,{<<"users">>, [UserId]}
+                   ,{<<"accounts">>, [AccountId]}
+                   ]) ->
     cb_context:store(Context, 'scope', {'user', UserId, AccountId}).
