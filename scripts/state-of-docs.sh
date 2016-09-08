@@ -8,32 +8,38 @@ import sys
 
 print 'Undocumented API endpoints:'
 
-APIs = []
-for fn in glob('applications/crossbar/doc/ref/*.md'):
-    with open(fn, 'r') as fd:
-        ref = fd.read()
-        endpoints = re.findall('> [^\n]+', ref)
-        APIs.extend(endpoints)
+def endpoints(wildcard_path):
+    APIs = set([])
+    for fn in glob(wildcard_path):
+        with open(fn, 'r') as fd:
+            ref = fd.read()
+            APIs = set.union(APIs, re.findall(r'> [A-Z]+ [^?\s\n]+', ref))
+    return APIs
 
-MDs = []
-for fn in glob('applications/crossbar/doc/*.md'):
-    with open(fn, 'r') as fd:
-        MDs.append(fd.read())
+APIs = endpoints('applications/crossbar/doc/ref/*.md')
+MDs = endpoints('applications/crossbar/doc/*.md')
 
-documented, undocumented = 0, 0
-for endpoint in APIs:
-    found = False
-    for MD in MDs:
-        if '\n'+endpoint+'\n' in MD:
-            found = True
-            break
-    if found:
-        documented += 1
-    else:
-        print endpoint
-        undocumented += 1
+Wrong0 = set.difference(MDs, APIs)
+Wrong = Wrong0 #FIXME: filter out root paths
+Undocumented = set.difference(APIs, MDs)
+Documented = set.intersection(APIs, MDs)
+for API in Undocumented:
+    print API
+
+wrong = len(Wrong)
+undocumented = len(Undocumented)
+documented = len(Documented)
 
 total = documented + undocumented
 percent_documented = documented * 100 / total
+print
 print documented, '/', total, '(', str(percent_documented) + '% documented', ')'
+
+if 0 != wrong:
+    print
+    print 'Documented but not matching any actual API endpoint:'
+    for API in Wrong:
+        print API
+    sys.exit(wrong)
+
 sys.exit(100 - percent_documented)
