@@ -13,7 +13,6 @@ dep_amqp_client_commit = rabbitmq_v3_6_0
 dep_eflame = git https://github.com/slfritchie/eflame 7b0bb1a7e8c8482a59421a3a50ae69d49af59d52
 dep_detergent = git https://github.com/pap/detergent e86dfeded3e4f9f3f9278c6a1aea802079d38b54
 dep_jiffy = hex 0.14.7
-dep_jesse = git https://github.com/for-GET/jesse 1.4.0
 dep_nklib = git https://github.com/NetComposer/nklib
 
 dep_couchbeam = git https://github.com/lazedo/couchbeam bde6256afc1e9048c53db9b5fef4f8b1d83ebc7c
@@ -21,6 +20,11 @@ dep_couchbeam = git https://github.com/lazedo/couchbeam bde6256afc1e9048c53db9b5
 ### waiting for pull request
 ### https://github.com/benoitc/couchbeam/pull/149
 ### after that one is merged, another will follow
+
+##dep_jesse = git https://github.com/for-GET/jesse 1.4.0
+## pull request pending
+## https://github.com/for-GET/jesse/pull/26
+dep_jesse = git https://github.com/lazedo/jesse fe68965f239ed511ca7604d7f08353a8feb2b973
 
 dep_lager = git https://github.com/basho/lager 3.2.1
 dep_fs_sync = git https://github.com/jamhed/fs_sync
