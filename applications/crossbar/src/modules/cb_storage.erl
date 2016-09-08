@@ -10,13 +10,13 @@
 -module(cb_storage).
 
 -export([init/0
-        ,authorize/1
-        ,allowed_methods/0
-        ,resource_exists/0
-        ,validate/1
-        ,put/1
-        ,post/2
-        ,delete/2
+        ,authorize/1, authorize/2, authorize/3
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,validate/1, validate/2, validate/3
+        ,put/2
+        ,post/1, post/3
+        ,delete/1, delete/3
         ]).
 
 -include("crossbar.hrl").
@@ -25,10 +25,15 @@
 
 -define(SYSTEM_DATAPLAN, <<"system">>).
 
+-define(PLANS_TOKEN, <<"plans">>).
+
 -type scope() :: 'system'
+               | {'system', ne_binary()}
                | {'user', ne_binary(), ne_binary()}
                | {'account', ne_binary()}
-               | {'reseller', ne_binary()}.
+               | {'reseller', ne_binary()}
+               | {'plan', ne_binary()}
+               | 'invalid'.
 
 %%%===================================================================
 %%% API
@@ -61,19 +66,29 @@ init() ->
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
-    authorize(Context, cb_context:req_nouns(Context)).
+    do_authorize(set_scope(Context)).
 
--spec authorize(cb_context:context(), req_nouns()) -> boolean().
-authorize(Context, [{<<"storage">>, []}]) -> cb_context:is_superduper_admin(Context);
-authorize(Context, [{<<"storage">>, []}
-                   ,{<<"accounts">>, [AccountId]}
-                   ]) ->
+-spec authorize(cb_context:context(), path_token()) -> boolean().
+authorize(Context, ?PLANS_TOKEN) ->
+    do_authorize(set_scope(Context)).
+
+-spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
+authorize(Context, ?PLANS_TOKEN, _PlanId) ->
+    do_authorize(set_scope(Context)).
+
+-spec do_authorize(cb_context:context()) -> boolean().
+do_authorize(Context) ->
+    do_authorize(Context, scope(Context)).
+
+-spec do_authorize(cb_context:context(), req_nouns()) -> boolean().
+do_authorize(_Context, 'invalid') -> 'false';
+do_authorize(Context, 'system') -> cb_context:is_superduper_admin(Context);
+do_authorize(Context, {'system', _PlanId}) -> cb_context:is_superduper_admin(Context);
+do_authorize(Context, {'account', AccountId}) ->
     cb_context:is_superduper_admin(Context)
-        orelse kz_services:get_reseller_id(AccountId) =:= cb_context:auth_account_id(Context);
-authorize(Context, [{<<"storage">>, []}
-                   ,{<<"users">>, [UserId]}
-                   ,{<<"accounts">>, [AccountId]}
-                   ]) ->
+        orelse kz_services:get_reseller_id(AccountId) =:= cb_context:auth_account_id(Context)
+        orelse AccountId =:= cb_context:auth_account_id(Context);
+do_authorize(Context, {'user', UserId, AccountId}) ->
     cb_context:is_superduper_admin(Context)
         orelse kz_services:get_reseller_id(AccountId) =:= cb_context:auth_account_id(Context)
         orelse ( (AccountId =:= cb_context:auth_account_id(Context)
@@ -94,7 +109,15 @@ authorize(Context, [{<<"storage">>, []}
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token()) -> http_methods().
+allowed_methods(?PLANS_TOKEN) ->
+    [?HTTP_GET, ?HTTP_PUT].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
+allowed_methods(?PLANS_TOKEN, _PlanId) ->
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -108,6 +131,12 @@ allowed_methods() ->
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
+-spec resource_exists(path_token()) -> 'true'.
+resource_exists(?PLANS_TOKEN) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
+resource_exists(?PLANS_TOKEN, _PlanId) -> 'true'.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -120,17 +149,38 @@ resource_exists() -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    validate_storage(Context, cb_context:req_verb(Context)).
+    validate_storage(set_scope(Context), cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+validate(Context, ?PLANS_TOKEN) ->
+    validate_storage_plans(set_scope(Context), cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+validate(Context, ?PLANS_TOKEN, PlanId) ->
+    validate_storage_plan(set_scope(Context), PlanId, cb_context:req_verb(Context)).
+
 
 -spec validate_storage(cb_context:context(), http_method()) -> cb_context:context().
 validate_storage(Context, ?HTTP_GET) ->
-    summary(set_scope(Context));
-validate_storage(Context, ?HTTP_PUT) ->
-    create(Context);
+    read(Context);
 validate_storage(Context, ?HTTP_POST) ->
-    update(read(Context));
+    update(Context);
 validate_storage(Context, ?HTTP_DELETE) ->
     read(Context).
+
+-spec validate_storage_plans(cb_context:context(), http_method()) -> cb_context:context().
+validate_storage_plans(Context, ?HTTP_GET) ->
+    summary(Context);
+validate_storage_plans(Context, ?HTTP_PUT) ->
+    create(Context).
+
+-spec validate_storage_plan(cb_context:context(), ne_binary(), http_method()) -> cb_context:context().
+validate_storage_plan(Context, PlanId, ?HTTP_GET) ->
+    read(Context, PlanId);
+validate_storage_plan(Context, PlanId, ?HTTP_POST) ->
+    update(Context, PlanId);
+validate_storage_plan(Context, PlanId, ?HTTP_DELETE) ->
+    read(Context, PlanId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -138,8 +188,8 @@ validate_storage(Context, ?HTTP_DELETE) ->
 %% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
--spec put(cb_context:context()) -> cb_context:context().
-put(Context) ->
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
+put(Context, ?PLANS_TOKEN) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
@@ -149,8 +199,12 @@ put(Context) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, _) ->
+-spec post(cb_context:context()) -> cb_context:context().
+post(Context) ->
+    crossbar_doc:save(Context).
+
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+post(Context, ?PLANS_TOKEN, _PlanId) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
@@ -159,8 +213,12 @@ post(Context, _) ->
 %% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context, _) ->
+-spec delete(cb_context:context()) -> cb_context:context().
+delete(Context) ->
+    crossbar_doc:delete(Context).
+
+-spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+delete(Context, ?PLANS_TOKEN, _PlanId) ->
     crossbar_doc:delete(Context).
 
 %%--------------------------------------------------------------------
@@ -171,7 +229,7 @@ delete(Context, _) ->
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
-    OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
+    OnSuccess = fun(C) -> on_successful_validation(doc_id(Context), C) end,
     cb_context:validate_request_data(<<"storage">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
@@ -182,8 +240,11 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(cb_context:context()) -> cb_context:context().
 read(Context) ->
-    Context.
-%%    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"storage">>)).
+    crossbar_doc:load(doc_id(Context), Context, ?TYPE_CHECK_OPTION(<<"storage">>)).
+
+-spec read(cb_context:context(), path_token()) -> cb_context:context().
+read(Context, PlanId) ->
+    crossbar_doc:load(PlanId, Context, ?TYPE_CHECK_OPTION(<<"storage">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -194,9 +255,13 @@ read(Context) ->
 %%--------------------------------------------------------------------
 -spec update(cb_context:context()) -> cb_context:context().
 update(Context) ->
-    Context.
-%%     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
-%%     cb_context:validate_request_data(<<"storage">>, Context, OnSuccess).
+    OnSuccess = fun(C) -> on_successful_validation(doc_id(Context), C) end,
+    cb_context:validate_request_data(<<"storage">>, Context, OnSuccess).
+
+-spec update(cb_context:context(), path_token()) -> cb_context:context().
+update(Context, PlanId) ->
+    OnSuccess = fun(C) -> on_successful_validation(PlanId, C) end,
+    cb_context:validate_request_data(<<"storage">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -210,23 +275,12 @@ summary(Context) ->
     summary(Context, scope(Context)).
 
 -spec summary(cb_context:context(), scope()) -> cb_context:context().
-summary(Context, 'system') ->
-    Routines = [{fun cb_context:set_resp_data/2, kzs_plan:fetch_dataplan(?SYSTEM_DATAPLAN)}
-               ,{fun cb_context:set_resp_status/2, 'success'}
-               ],
-    cb_context:setters(Context, Routines);
+summary(Context, 'system_plans') ->
+    set_response(Context, kzs_plan:fetch_dataplan(?SYSTEM_DATAPLAN));
 
-summary(Context, {'account', AccountId}) ->
-    Routines = [{fun cb_context:set_resp_data/2, kzs_plan:fetch_dataplan(AccountId)}
-               ,{fun cb_context:set_resp_status/2, 'success'}
-               ],
-    cb_context:setters(Context, Routines);
+summary(Context, {'reseller_plans', AccountId}) ->
+    set_response(Context, kzs_plan:fetch_dataplan(AccountId)).
 
-summary(Context, {'user', UserId, _AccountId}) ->
-    Routines = [{fun cb_context:set_resp_data/2, kzs_plan:fetch_dataplan(UserId)}
-               ,{fun cb_context:set_resp_status/2, 'success'}
-               ],
-    cb_context:setters(Context, Routines).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -256,17 +310,49 @@ scope(Context) ->
 
 -spec set_scope(cb_context:context()) -> cb_context:context().
 set_scope(Context) ->
-    set_scope(Context, cb_context:req_nouns(Context)).
+    set_scope(cb_context:set_account_db(Context, ?KZ_DATA_DB), cb_context:req_nouns(Context)).
 
 -spec set_scope(cb_context:context(), req_nouns()) -> scope().
 set_scope(Context, [{<<"storage">>, []}]) ->
     cb_context:store(Context, 'scope', 'system');
+set_scope(Context, [{<<"storage">>, [?PLANS_TOKEN]}]) ->
+    cb_context:store(Context, 'scope', 'system_plans');
+set_scope(Context, [{<<"storage">>, [?PLANS_TOKEN, PlanId]}]) ->
+    cb_context:store(Context, 'scope', {'system_plan', PlanId});
 set_scope(Context, [{<<"storage">>, []}
                    ,{<<"accounts">>, [AccountId]}
                    ]) ->
     cb_context:store(Context, 'scope', {'account', AccountId});
+set_scope(Context, [{<<"storage">>, [?PLANS_TOKEN]}
+                   ,{<<"accounts">>, [AccountId]}
+                   ]) ->
+    cb_context:store(Context, 'scope', {'reseller_plans', AccountId});
+set_scope(Context, [{<<"storage">>, [?PLANS_TOKEN, PlanId]}
+                   ,{<<"accounts">>, [AccountId]}
+                   ]) ->
+    cb_context:store(Context, 'scope', {'reseller_plan', PlanId, AccountId});
 set_scope(Context, [{<<"storage">>, []}
                    ,{<<"users">>, [UserId]}
                    ,{<<"accounts">>, [AccountId]}
                    ]) ->
-    cb_context:store(Context, 'scope', {'user', UserId, AccountId}).
+    cb_context:store(Context, 'scope', {'user', UserId, AccountId});
+set_scope(Context, _) ->
+    cb_context:store(Context, 'scope', 'invalid').
+
+-spec set_response(cb_context:context(), kz_json:object()) -> cb_context:context().
+set_response(Context, JObj) ->
+    Routines = [{fun cb_context:set_resp_data/2, JObj}
+               ,{fun cb_context:set_resp_status/2, 'success'}
+               ],
+    cb_context:setters(Context, Routines).
+
+-spec doc_id(cb_context:context() | scope()) -> api_binary().
+doc_id(#cb_context{}=Context) ->
+    doc_id(scope(Context));
+doc_id('system') -> <<"system">>;
+doc_id('system_plans') -> 'undefined';
+doc_id({'system_plan', PlanId}) -> PlanId;
+doc_id({'account', AccountId}) -> AccountId;
+doc_id({'user', UserId, _AccountId}) -> UserId;
+doc_id({'reseller_plans', _AccountId}) -> 'undefined';
+doc_id({'reseller_plan', PlanId, _AccountId}) -> PlanId.

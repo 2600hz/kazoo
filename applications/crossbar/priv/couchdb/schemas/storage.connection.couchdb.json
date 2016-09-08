@@ -1,6 +1,5 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "schema for couchdb connection entry",
     "_id": "storage.connection.couchdb",
     "definitions": {
         "credentials": {
@@ -36,6 +35,7 @@
             "type": "object"
         }
     },
+    "description": "schema for couchdb connection entry",
     "properties": {
         "driver": {
             "enum": [

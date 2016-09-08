@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "schema for attachment ref type storage plan",
     "_id": "storage.plan.database.attachment",
+    "description": "schema for attachment ref type storage plan",
     "properties": {
         "handler": {
             "type": "string"

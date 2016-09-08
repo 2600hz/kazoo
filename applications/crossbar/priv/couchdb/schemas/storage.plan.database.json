@@ -1,6 +1,5 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "schema for database storage plan",
     "_id": "storage.plan.database",
     "additionalProperties": false,
     "definitions": {
@@ -13,6 +12,7 @@
             "type": "object"
         }
     },
+    "description": "schema for database storage plan",
     "properties": {
         "attachments": {
             "$ref": "storage.plan.database.attachment"

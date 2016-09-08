@@ -1,8 +1,8 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "storage.plan",
     "additionalProperties": false,
     "description": "schema for storage plan",
-    "_id": "storage.plan",
     "properties": {
         "account": {
             "$ref": "storage.plan.database"
