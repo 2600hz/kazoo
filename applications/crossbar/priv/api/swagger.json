@@ -11615,10 +11615,8 @@
         },
         "auth_token_header": {
             "in": "header",
-            "maxLength": 32,
             "minLength": 32,
             "name": "X-Auth-Token",
-            "pattern": "^[0-9a-f]+$",
             "type": "string"
         },
         "blacklist_id": {

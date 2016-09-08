@@ -785,12 +785,10 @@ to_swagger_parameters(Paths) ->
                              ,{<<"in">>, <<"header">>}
                              ,{<<"type">>, <<"string">>}
                              ,{<<"minLength">>, 32}
-                             ,{<<"maxLength">>, 32}
-                             ,{<<"pattern">>, <<"^[0-9a-f]+$">>}
                              ])}
       ,{<<"id">>, kz_json:from_list([{<<"minLength">>, 32}
                                     ,{<<"maxLength">>, 32}
-                                    ,{<<"pattern">>, <<"^[0-9a-f]+$">>}
+                                    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
                                      | base_path_param(<<"id">>)
                                     ])}
       ]
