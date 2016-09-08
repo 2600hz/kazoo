@@ -499,11 +499,11 @@ get_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec number_db_listing(ne_binary(), ne_binary()) -> ne_binaries().
-number_db_listing(NumberDb, ?MATCH_ACCOUNT_RAW(AssignedTo)) ->
-    ViewOptions = [{'startkey', [AssignedTo]}
-                  ,{'endkey', [AssignedTo, kz_json:new()]}
+number_db_listing(NumberDb, ?MATCH_ACCOUNT_RAW(AccountId)) ->
+    ViewOptions = [{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
                   ],
-    case kz_datamgr:get_results(NumberDb, <<"numbers/assigned_to">>, ViewOptions) of
+    case kz_datamgr:get_results(NumberDb, <<"numbers/owner">>, ViewOptions) of
         {'ok', []} -> [];
         {'ok', JObjs} -> [kz_doc:id(JObj) || JObj <- JObjs];
         {'error', _R} ->
