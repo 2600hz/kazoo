@@ -78,12 +78,20 @@ To modify an account notification, the requester must be a reseller of that acco
 * `/v2/accounts/{ACCOUNT_ID}/notifications`: modify an account's template(s)
 * `/v2/notifications`: Modify the system default templates
 
-###### GET - Fetch available notification templates from the system
+###### Fetch available notification templates from the system
+
+> GET /v2/notifications
 
 This is the first request to make to see what templates exist on the system to override
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/notifications
-    {
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
+```
+
+```json
+{
         "auth_token": "{AUTH_TOKEN},
         "data": [
             {"id": "voicemail_to_email"
@@ -106,7 +114,8 @@ This is the first request to make to see what templates exist on the system to o
         "request_id": "{REQUEST_ID}",
         "revision": "undefined",
         "status": "success"
-    }
+}
+```
 
 To see what notification templates an account overrides, include the account ID in the URI:
 
@@ -148,7 +157,7 @@ curl -v -X GET \
 
 The key `account_overridden` will exist on any templates that are account-specific.
 
-###### GET - Fetch a notification's configuration
+###### Fetch a notification's configuration
 
 Using the ID from the system listing above, get the template JSON. This document allows you to set some "static" properties (things not derived from the event causing the notification, e.g. call data, system alert, etc).
 
@@ -174,7 +183,7 @@ Using the ID from the system listing above, get the template JSON. This document
 
 Performing a GET with an account ID will return the notification object, again with the `account_overridden` flag added if it is account-specific; lack of the key indicates it is the system default notification.
 
-###### PUT - Create a notification template
+###### Create a notification template
 
 Now that you've fetched the system default template, modify and PUT it back to the account.
 
@@ -234,7 +243,7 @@ curl -v -X PUT \
 
 This request will fail if `id` does not already exist in the system defaults. To create a new system notification template, a superduper admin can use the above PUT, but to `/v2/notifications` instead of a specific account.
 
-###### GET - Fetch a specific notification
+###### Fetch a specific notification
 
 Now that you've created an account-specific notification, you can fetch it to feed into a WYSIWYG editor or for other purposes:
 
@@ -259,11 +268,13 @@ curl -v -X GET \
 }
 ```
 
-###### POST - Update a notification's config
+###### Update a notification's config
 
 Similar to the PUT, POST will update an existing config:
 
 > POST /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
+
+Omit `/accounts/{ACCOUNT_ID}` to update the system's version.
 
 ```shell
 curl -v -X POST \
@@ -295,11 +306,11 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-Omit `/accounts/{ACCOUNT_ID}` to update the system's version.
-
-###### DELETE - remove a notification template
+###### Remove a notification template
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
+
+Omit the `/accounts/{ACCOUNT_ID}` to remove the system default.
 
 ```shell
 curl -v -X DELETE \
@@ -307,17 +318,15 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-Omit the `/accounts/{ACCOUNT_ID}` to remove the system default.
-
 ##### Template Formats
 
 Creating the configuration documents is all well and good, but it is necessary to be able to attach the templates in their various forms as well. Currently supported formats are `text/html` and `text/plain`.
 
-###### GET - Get notification template:
-
-When you GET a notification config (`Accept` of `application/json`), get a `templates` list of `Content-Type` atttributes. Use those to fetch a specific template by setting the `Accept` header:
+###### Get notification template:
 
 > GET /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
+
+When you GET a notification config (`Accept` of `application/json`), get a `templates` list of `Content-Type` atttributes. Use those to fetch a specific template by setting the `Accept` header:
 
 ```shell
 curl -v -X GET \
@@ -337,7 +346,7 @@ Note that the only difference is the `Accept` attribute. This will determine whi
 
 For clients that do not support setting the `Accept` header, a querystring parameter can be included (eg `http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}?accept=text/html` to get the HTML template.
 
-###### POST - Update notification template:
+###### Update notification template:
 
 > POST /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
@@ -360,7 +369,7 @@ curl -v -X POST \
 ```
 
 
-###### _POST_ - Preview a new template
+###### Preview a new template
 
 It can be helpful to preview the resulting email when modifying templates, but before actually saving the template.
 
@@ -390,9 +399,7 @@ In versions Kazoo prior to 3.19, notification templates were managed and process
 
 All accounts will continue to be processed by the `notify` app until the Crossbar notification APIs are accessed for the first time (for instance, when using the Branding App in Monster). Once a client has accessed the APIs, a flag is set on the account telling the `notify` app to ignore processing and instructs the `teletype` app to process it instead. This allows admins to run both `notify` and `teletyple` concurrently without sending multiple copies of each notification.
 
-#### Logs
-
-* GET - Gets the notification(s) SMTP log.
+#### Get the notification(s) SMTP log
 
 > GET /v2/accounts/{ACCOUNT_ID}/notifications/smtplog
 
@@ -451,18 +458,25 @@ You can send a message to all users, admins only or a particular user within an 
 All users:
 
 ```json
-... -d '{"data":{"user_type": "all_users"}}'
+{
+    "data": {"user_type": "all_users"}
+}
 ````
 
 Particular user:
-```
-... -d '{"data":{"user_type": "{ACCOUNT_ID}"}}'
+
+```json
+{
+    "data": {"user_type": "{ACCOUNT_ID}"}
+}
 ````
 
 Admin privileged users only. Default. Could be omitted:
 
 ```json
-... -d '{"data":{"user_type": "admins_only"}}'
+{
+    "data": {"user_type": "admins_only"}
+}
 ````
 
 You can send a message with changed subject, html and plain text templates by providing full notification document payload:

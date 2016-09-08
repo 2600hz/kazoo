@@ -394,10 +394,9 @@ update_devices_presence(Context) ->
     end.
 
 update_devices_presence(Context, DeviceDocs) ->
-    lists:foreach(
-      fun(DeviceDoc) -> update_device_presence(Context, DeviceDoc) end
+    lists:foreach(fun(DeviceDoc) -> update_device_presence(Context, DeviceDoc) end
                  ,DeviceDocs
-     ).
+                 ).
 
 -spec user_devices(cb_context:context()) ->
                           {'ok', kz_device:docs()} |

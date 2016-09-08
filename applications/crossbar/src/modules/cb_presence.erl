@@ -497,12 +497,11 @@ load_report(Context, Report) ->
 -spec set_report(cb_context:context(), ne_binary()) -> cb_context:context().
 set_report(Context, File) ->
     Name = kz_util:to_binary(filename:basename(File)),
+    Headers = [{<<"Content-Disposition">>, <<"attachment; filename=", Name/binary>>}],
     cb_context:setters(Context,
                        [{fun cb_context:set_resp_file/2, File}
                        ,{fun cb_context:set_resp_etag/2, 'undefined'}
-                       ,{fun cb_context:add_resp_headers/2
-                        ,[{<<"Content-Disposition">>, <<"attachment; filename=", Name/binary>>}]
-                        }
+                       ,{fun cb_context:add_resp_headers/2, Headers}
                        ,{fun cb_context:set_resp_status/2, 'success'}
                        ]
                       ).
