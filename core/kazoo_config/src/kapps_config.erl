@@ -323,6 +323,9 @@ get(Category, Keys, Default, Node) ->
         {'error', 'not_found'} ->
             lager:debug("missing category ~s(default) ~p: ~p", [Category, Keys, Default]),
             _ = set(Category, Keys, Default),
+            Default;
+        {'error', Error} ->
+            lager:debug("error ~p getting  category ~s(default) ~p: ~p", [Error, Category, Keys, Default]),
             Default
     end.
 
@@ -350,6 +353,9 @@ get_current(Category, Keys, Default, Node) ->
         {'error', 'not_found'} ->
             lager:debug("missing category ~s(default) ~p: ~p", [Category, Keys, Default]),
             _ = set(Category, Keys, Default),
+            Default;
+        {'error', Error} ->
+            lager:debug("error ~p getting  category ~s(default) ~p: ~p", [Error, Category, Keys, Default]),
             Default
     end.
 
@@ -720,9 +726,9 @@ get_category(Category, 'false') ->
         ,{{<<"callflow.mobile">>, <<"sms_interface">>}
          ,{<<"kazoo_endpoint.mobile">>, <<"sms_interface">>}
          }
-        ,{{<<"callflow.mobile">>, [<<"sms">>, <<"connections">>]}
-         ,{<<"kazoo_endpoint.mobile">>, [<<"sms">>, <<"connections">>]}
-         }
+%%         ,{{<<"callflow.mobile">>, [<<"sms">>, <<"connections">>]}
+%%          ,{<<"kazoo_endpoint.mobile">>, [<<"sms">>, <<"connections">>]}
+%%          }
         ,{{<<"callflow">>, <<"recorder_module">>}
          ,{<<"kazoo_endpoint">>, <<"recorder_module">>}
          }
