@@ -456,7 +456,7 @@ curl -v -X POST \
 
 #### Remove a message from the voicemail box
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{MSG_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 
 **Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
 
@@ -490,7 +490,7 @@ curl -v -X DELETE \
 
 #### Fetch a message from the voicemail box
 
-> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{MSG_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 
 ```shell
 curl -v -X GET \
@@ -530,7 +530,7 @@ curl -v -X GET \
 
 * **Copy messages to a single or a list of voicemail boxes** set the destination voicemail box ID in payload like: `{"data": {"source_id": ["{NEW_VM_BOX_ID}"]}}`
 
-> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{MSG_ID}
+> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 
 **Note:** If you didn't move voicemail messages to the new format already, messages that are in old format will be moved to the new MODB format, which will cause their message id to change to the new format.
 
@@ -565,7 +565,7 @@ curl -v -X POST \
 
 #### Fetch the raw audio of the message
 
-> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{MSG_ID}/raw
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}/raw
 
 **Note:** If message doesn't have a folder assign to it by any chance, it will be set to `new` by this method. Please also refer to the note for change the folder of a message regards of possible change of message id.
 
