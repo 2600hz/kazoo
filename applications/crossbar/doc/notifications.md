@@ -410,6 +410,44 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog
 ```
 
+#### Get a notification's SMTP log
+
+> GET /v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{SMTP_LOG_ID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{SMTP_LOG_ID}
+```
+
+```json
+{
+  "data": {
+    "rendered_templates": {
+      "text/plain": "Expired registration in account \"teste\".\nNotifications are enabled for loss of registration on the device 995582142@teste.sip.90e9.com\n\nLast Registration:\nDevice ID: 4e411cf70ad352a222e24fbacf467c18\nAccount ID: 85ea6075c6c1e266f8512e2233541bdb\nUser Agent: Grandstream GXP2130 1.0.7.25\nContact: sip:995582142@192.168.26.13:5060;reg-id=1;+sip.instance=&quot;urn:uuid:00000000-0000-1000-8000-000B826C4283&quot;\n\nThis may be due to a network connectivity issue, power outage, or misconfiguration. Please check the device.",
+      "text/html": "<h2>Expired registration in account \"teste\"</h2><p>Notifications are enabled for loss of registration on the device 995582142@teste.sip.90e9.com</p><h3>Last Registration</h3><table><tbody><tr><td>Device ID</td><td>4e411cf70ad352a222e24fbacf467c18</td></tr><tr><td>Account ID</td><td>85ea6075c6c1e266f8512e2233541bdb</td></tr><tr><td>User Agent</td><td>Grandstream GXP2130 1.0.7.25</td></tr><tr><td>Contact</td><td>sip:995582142@192.168.26.13:5060;reg-id=1;+sip.instance=&quot;urn:uuid:00000000-0000-1000-8000-000B826C4283&quot;</td></tr></tbody></table><p>This may be due to a network connectivity issue, power outage, or misconfiguration. Please check the device.</p>"
+    },
+    "subject": "Loss of Registration for 995582142@teste.sip.90e9.com",
+    "emails": {
+      "from": "no_reply@dev-01.90e9.com",
+      "to": [
+        "teste@factorlusitano.com"
+      ]
+    },
+    "receipt": "2.0.0 Ok: queued as B60E22044B",
+    "account_id": "{ACCOUNT_ID}",
+    "account_db": "{ACCOUNT_DB}",
+    "template_id": "deregister",
+    "template_account_id": "5ba01ad7ad1611d436b1860d8c552897",
+    "id": "{SMTP_LOG_ID}"
+  },
+  "revision": "1-ebaf6815b64d699c25d93dabe2b7e71f",
+  "request_id": "{REQUEST_ID}",
+  "status": "success",
+  "auth_token": "{AUTH_TOKEN}"
+}
+```
+
 ## Customer update
 
 Send a message to all reseller's children or to a particular account.
