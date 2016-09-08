@@ -91,7 +91,10 @@ curl -X GET \
 curl -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d '{"data":{"rules":[{"get_resources":{}},{"filter_list":{"value_a":"request:Flags","value_b":"resource:flags","action":"keep"}}]}}'
+    -d '{"data": {"rules": [
+        {"get_resources":{}},
+        {"filter_list": {"value_a": "request:Flags", "value_b": "resource:flags", "action": "keep"}}
+    ]}}'
     http://{SERVER}:8000/v2/resource_selectors
 ```
 
@@ -304,7 +307,9 @@ Here we ses selectors for resource `RES-4` with selector name `lcr`. Resulted li
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data":{"selectors":["123","456","789"]}}' \
+    -d '{"data": {
+        "selectors":["123","456","789"]
+    }}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/RES-4/name/lcr
 ```
 
@@ -329,7 +334,9 @@ curl -v -X PUT \
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data":{"selectors":["123","456","789"]}}' \
+    -d '{"data": {
+        "selectors":["123","456","789"]
+    }}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/RES-4/name/lcr
 ```
 
@@ -352,7 +359,9 @@ If you want delete all selectors, you can use special word `_all`, instead expli
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data":{"selectors":["_all"]}}' \
+    -d '{"data": {
+        "selectors":["_all"]
+    }}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/RES-4/name/lcr
 ```
 
