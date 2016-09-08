@@ -68,13 +68,13 @@ authorize(Context, [{<<"storage">>, []}]) -> cb_context:is_superduper_admin(Cont
 authorize(Context, [{<<"storage">>, []}
                    ,{<<"accounts">>, [AccountId]}
                    ]) ->
-    cb_context:is_superduper_admin(Context) 
-        orelse kz_services:get_reseller_id(AccountId) =:= cb_context:auth_account_id(Context); 
+    cb_context:is_superduper_admin(Context)
+        orelse kz_services:get_reseller_id(AccountId) =:= cb_context:auth_account_id(Context);
 authorize(Context, [{<<"storage">>, []}
                    ,{<<"users">>, [UserId]}
                    ,{<<"accounts">>, [AccountId]}
                    ]) ->
-    cb_context:is_superduper_admin(Context) 
+    cb_context:is_superduper_admin(Context)
         orelse kz_services:get_reseller_id(AccountId) =:= cb_context:auth_account_id(Context)
         orelse ( (AccountId =:= cb_context:auth_account_id(Context)
                   andalso cb_context:is_account_admin(Context)
