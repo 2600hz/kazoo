@@ -1,6 +1,6 @@
 <!--
 Section: Crossbar
-Title: Skel
+Title: Skels
 Language: en-US
 -->
 
@@ -169,6 +169,8 @@ curl -v -X GET \
 #### Update a resource
 
 > POST /v2/accounts/{ACCOUNT_ID}/skels/{THING}
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/skels/{THING}
 
 More description if needed!
 

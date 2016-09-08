@@ -2,24 +2,27 @@
 
 #### About
 
-The transactions endpoint allows you to list debits and credits made to a specified account
+The transactions endpoint allows you to list debits and credits made to a specified account.
 
 #### Schema
-    TODO add schema maybe. not sure I completely understand what should go here.
 
 #### Get a summary of transactions
 
-    Options:  TODO ask how options should be documented.  how are options submitted?
-    - `created_from` {TIMESTAMP}
-    - `created_to` {TIMESTAMP}
-    - `reason` `only_calls`
+Options:
+
+- `created_from` {TIMESTAMP}
+- `created_to` {TIMESTAMP}
+- `reason` `only_calls`
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions
 
 ```shell
-curl -x GET \
-     -H "X-Auth-Token: {AUTH_TOKEN}" \
-     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": [
@@ -53,9 +56,12 @@ curl -x GET \
 > GET /v2/accounts/{ACCOUNT_ID}/transactions/current_balance
 
 ```shell
-curl -x GET \
-     -H "X-Auth-Token: {AUTH_TOKEN}" \
-     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/current_balance
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/current_balance
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -69,16 +75,20 @@ curl -x GET \
 #### Get monthly recurring transactions
 
 Querystring options:
-    - `created_from` {TIMESTAMP}
-    - `created_to` {TIMESTAMP}
-    - `reason` `only_calls`
+
+- `created_from` {TIMESTAMP}
+- `created_to` {TIMESTAMP}
+- `reason` `only_calls`
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
 
 ```shell
-curl -x GET \
-     -H "X-Auth-Token: {AUTH_TOKEN}" \
-     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -93,29 +103,29 @@ curl -x GET \
 > GET /v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
 
 ```shell
-curl -x GET \
-     -H "X-Auth-Token: {AUTH_TOKEN}" \
-     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
-{
-    "auth_token": "{AUTH_TOKEN}",
-    "data": {
-
-     },
-    "request_id": "{REQUEST_ID}",
-    "status": "success"
-}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
 ```
 
-## Credit an account
+#### Credit an account
+
+> PUT /v2/accounts/{ACCOUNT_ID}/transactions/credit
 
 Only for super duper admins and resellers.
 
-### Request
+Super admin can add `"credit_type": "free"` field to avoid bookkeeper and add credit "for free".
 
-- Verb: `PUT`
-- Url: `/accounts/{{ACCOUNT_ID}}/transactions/credit`
-- Payload: `{"data": {"amount": 1, "reason": "manual_addition", "description": "Wire transfer, Invoice #1, dated by 01/01/2016"} }`
-- Super admin can add "credit_type": "free" field to avoid bookkeeper and add credit "for free"
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {
+        "amount": 1,
+        "reason": "manual_addition",
+        "description": "Wire transfer, Invoice #1, dated by 01/01/2016"
+    }}' \
+http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/credit
+```
 
 
 #### Debit an account
@@ -125,10 +135,13 @@ Only for super duper admins and resellers.
 > DELETE /v2/accounts/{ACCOUNT_ID}/transactions/debit
 
 ```shell
-curl -x DELETE \
-     -H "X-Auth-Token: {AUTH_TOKEN}" \
-     -d '{"data": {"amount": 1} }'
-     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/debit
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"amount": 1}}'  \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/debit
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -147,5 +160,3 @@ curl -x DELETE \
     "status": "success"
 }
 ```
-
-#### Get transaction details

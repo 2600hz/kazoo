@@ -1,14 +1,40 @@
-
 ### Services
 
-Fetch the current services:
+#### About Services
 
-    curl -v -X GET -H "x-auth-token: {AUTH_TOKEN}" http://{SERVER}/v2/accounts/{ACCOUNT_ID}/services
+#### Schema
 
-Update the billing ID:
 
-    curl -v -X POST -H "x-auth-token: {AUTH_TOKEN}" -H "content-type:application/json" http://{SERVER}/v2/accounts/{ACCOUNT_ID}/services -d '{"data":{"billing_id":"{BILLING_ID}"}}'
 
-Fetch the audit logs for the account:
+#### Fetch the current services
 
-    curl -v -X GET -H "x-auth-token: {AUTH_TOKEN}" http://{SERVER}/v2/accounts/{ACCOUNT_ID}/services/audit
+> GET /v2/accounts/{ACCOUNT_ID}/services
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services
+```
+
+#### Update the billing ID
+
+> POST /v2/accounts/{ACCOUNT_ID}/services
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {
+        "billing_id":"{BILLING_ID}"
+    }}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services
+```
+
+#### Fetch the audit logs for the account
+
+> GET /v2/accounts/{ACCOUNT_ID}/services/audit
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/audit
+```
