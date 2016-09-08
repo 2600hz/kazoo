@@ -1,0 +1,140 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:t e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:t title:t toc:t todo:t |:t
+#+OPTIONS: ^:{}
+#+TITLE: bookkeepers
+#+DATE: <2016-09-06 Tue>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james.aimonetti@gmail.com
+#+LANGUAGE: en
+#+CREATOR: Emacs 25.1.50.2 (Org mode 8.3.5)
+* Bookkeepers
+Bookkeepers provide a way for external bookkeeping services to reconcile services items for an account. If you sell a device for $39.99 to your customers and they try to add one to their account, you'd like to know that you just got paid $39.99.
+** A bit of history
+The first [[https://github.com/2600hz/kazoo/blob/master/core/kazoo_services/src/bookkeepers/kz_bookkeeper_braintree.erl][bookkeeper module]] was written to interface with Braintree but this was a tailored interface based on the needs of 2600Hz; most community members weren't working with Braintree for credit card processing.
+
+** Define your own bookkeeper
+Now, it is possible to define your own bookkeeper service to interact with Kazoo. Kazoo will send your server a request via HTTP and, based on the response, update the requesting account accordingly. Let's take a look.
+
+** Syncing
+Kazoo is configured to periodically (20s by default) look for accounts which are marked *dirty*. These are accounts that have changes to billable things that have not successfully synced to the configured bookkeeper. Kazoo will take these unsynced updates, apply the service plan(s) of the account, and create a full list of service items in the account. These are then sent to the bookkeeper for reconciliation.
+
+* The HTTP Bookkeeper
+ As an account grows in what's configued, a JSON object of these service items will be sent to the configured bookkeeper server, to be processed remotely. Depending on the response, Kazoo will mark the items as complete and the account as being in good standing or will either flag the account as no longer in good standing or rety the update (keep the account marked dirty) again later.
+
+** The Request
+The request payload will be composed of objects with the following fields:
+
+| Name                     | Description                                            | Type            | Required |
+|--------------------------+--------------------------------------------------------+-----------------+----------|
+| category                 | The service category                                   | string()        | true     |
+| item                     | The service item                                       | string()        | true     |
+| quantity                 | The quantity of items to purchase                      | integer()       | true     |
+| rate                     | The service plan cost, per-item, for the service items | float()         | true     |
+| name                     | The service plan's name for the item                   | string()        | false    |
+| single_discount          | Whether a single item discount applies                 | boolean()       | false    |
+| single_discount_rate     | The discount to apply to the item                      | float()         | false    |
+| cumulative_discount      | Whether a cumulative discount applies                  | boolean()       | false    |
+| cumulative_discount_rate | The discount to apply to the item                      | float()         | false    |
+| activation_charge        | A one-time charge to apply                             | float()         | false    |
+| minimum                  | The minimum quantity to charge                         | integer()       | false    |
+| exceptions               | Service items that are excepted from the service plan  | array(string()) | false    |
+*** Example:
+applications.
+#+BEGIN_SRC js2
+  {
+      "devices":{
+          "sip_device":{
+              "category":"devices"
+              ,"item":"sip_device"
+              ,"quantity": 4
+              ,"rate": 29.99
+          }
+          ,"softphone":{
+              "category":"devices"
+              ,"item":"softphone"
+              ,"quantity":2
+              ,"rate":0
+          }
+      }
+      ,"ui_apps": {
+          "numbers": {
+              "category": "ui_apps",
+              "item": "numbers",
+              "quantity": 1,
+              "rate": 2.0,
+              "activation_charge": 1.0
+          }
+          ,"accounts": {
+              "category": "ui_apps",
+              "item": "accounts",
+              "quantity": 1,
+              "rate": 5.0,
+              "activation_charge": 4.0
+          }
+      }
+  }
+#+END_SRC
+** The Response
+The HTTP response code will be used to determine how Kazoo proceeds with the update.
+
+| Response Code | Account Standing | Update Complete |
+|---------------+------------------+-----------------|
+|           200 | Good             | Yes             |
+|           402 | Error            | Yes             |
+|    4xx or 5xx | Good             | No              |
+
+*** Response code: 200
+A response of 200 from the bookkeeper server means Kazoo will accept the update and consider the account in good standing (synced with the bookkeeping service).
+*** Response code: 402
+A response of 402 will accept the update (not dirty) but will mark the account as needing attention (not in good standing).
+*** Response codes: 4xx and 5xx
+Any error response codes in the 400s or 500s (besides 402), as well as connection errors (failure of the server to accept the TCP connection), will leave the account in good standing but will not mark the account as synced (dirty). The update will be retried at a future date.
+*** Response body
+At this time, no processing of the response body will be done. Implementing servers are free to leave it empty.
+* Account standing
+To move an account into or out of good standing, the admin can use the following Crossbar API to move an account's standing:
+
+** /v2/accounts/{ACCOUNT_ID}/services/status
+- *GET*: Fetch the current status of the account
+  - Account in good standing:
+  #+BEGIN_SRC shell
+  $> curl -X GET http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/status
+  {
+      "data":{
+          "in_good_standing":true
+      }
+  }
+  #+END_SRC
+  - Not in good standing
+  #+BEGIN_SRC shell
+  $> curl -X GET http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/status
+  {
+      "data":{
+          "in_good_standing":false
+          ,"reason":"credit card expired"
+          ,"reason_code":12345
+      }
+  }
+  #+END_SRC
+- *POST*: Move an account to/from good standing
+  - Move to good standing
+  #+BEGIN_SRC shell
+  $> curl -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/status -d '{"data":{"in_good_standing":true}}'
+  {
+      "data":{
+          "in_good_standing":true
+      }
+  }
+  #+END_SRC
+  - Move from good standing
+  #+BEGIN_SRC shell
+  $> curl -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/status -d '{"data":{"in_good_standing":false, "reason":"custom error reason"}}'
+  {
+      "data":{
+          "in_good_standing":false
+          ,"reason":"custom error reason"
+      }
+  }
+  #+END_SRC

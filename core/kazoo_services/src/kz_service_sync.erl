@@ -22,6 +22,7 @@
 -include("kazoo_services.hrl").
 
 -define(SERVER, ?MODULE).
+-define(SCAN_MSG, {'try_sync_service'}).
 
 -record(state, {}).
 -type state() :: #state{}.
@@ -90,7 +91,7 @@ init([]) ->
 -spec start_sync_service_timer() -> reference().
 start_sync_service_timer() ->
     ScanRate = kapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20 * ?MILLISECONDS_IN_SECOND),
-    erlang:send_after(ScanRate, self(), {'try_sync_service'}).
+    erlang:send_after(ScanRate, self(), ?SCAN_MSG).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -135,7 +136,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
-handle_info({'try_sync_service'}, State) ->
+handle_info(?SCAN_MSG, State) ->
     _ = maybe_sync_service(),
     _ = maybe_clear_process_dictionary(),
     _Ref = start_sync_service_timer(),

@@ -138,11 +138,10 @@ validate(Context, ?OVERRIDE) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     case kz_util:is_system_admin(AuthAccountId) of
         'true' ->
-            crossbar_doc:load(
-              cb_context:account_id(Context)
+            crossbar_doc:load(cb_context:account_id(Context)
                              ,cb_context:set_account_db(Context, ?KZ_SERVICES_DB)
                              ,?TYPE_CHECK_OPTION(kzd_services:type())
-             );
+                             );
         'false' -> cb_context:add_system_error('forbidden', Context)
     end;
 validate(Context, PlanId) ->
@@ -210,22 +209,20 @@ post(Context, ?RECONCILIATION) ->
 post(Context, ?OVERRIDE) ->
     Overrides = kz_json:get_value(<<"overrides">>, cb_context:req_data(Context), kz_json:new()),
     NewDoc =
-        kz_json:foldl(
-          fun(PlanId, _JObj, Doc) ->
-                  Override = kz_json:get_value(PlanId, Overrides, kz_json:new()),
-                  kz_json:set_value([<<"plans">>, PlanId, <<"overrides">>], Override, Doc)
-          end
+        kz_json:foldl(fun(PlanId, _JObj, Doc) ->
+                              Override = kz_json:get_value(PlanId, Overrides, kz_json:new()),
+                              kz_json:set_value([<<"plans">>, PlanId, <<"overrides">>], Override, Doc)
+                      end
                      ,cb_context:doc(Context)
-                     ,kz_json:get_value(<<"plans">>, cb_context:doc(Context))
-         ),
+                     ,kz_json:get_json_value(<<"plans">>, cb_context:doc(Context))
+                     ),
 
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, NewDoc)),
     case cb_context:resp_status(Context1) of
         'success' ->
-            cb_context:set_resp_data(
-              Context1
+            cb_context:set_resp_data(Context1
                                     ,kz_json:get_value(<<"plans">>, NewDoc)
-             );
+                                    );
         _Status -> Context1
     end;
 post(Context, PlanId) ->
