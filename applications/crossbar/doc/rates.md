@@ -2,8 +2,6 @@
 
 #### About Rates
 
-Rates determine what is charged when a call is billed per-minute. This is only available to superduper admins.
-
 #### Schema
 
 Key | Description | Type | Default | Required
@@ -21,20 +19,21 @@ Key | Description | Type | Default | Required
 `rate_increment` | The time slice, in seconds, to bill in. | `integer` | `60` | `false`
 `rate_minimum` | The minimum time slice, in seconds to bill a call | `integer` | `60` | `false`
 `rate_name` | Friendly name of the rate | `string` |   | `false`
-`rate_nocharge_time` | If the call duration is shorter than this threshold, the call is not billed | `integer` | `0` | `false`
+`rate_nocharge_time` | If the call duration is shorter than this threshold (seconds), the call is not billed | `integer` | `0` | `false`
 `rate_surcharge` | The upfront cost of connecting the call | `number` | `0` | `false`
 `routes` | List of regexs that match valid DIDs for this rate | `array(string)` | `[]` | `false`
 `routes.[]` |   | `string` |   | `false`
 `weight` | Ordering against other rates, 1 being most preferred, 100 being least preferred | `integer` |   | `false`
 
+
 #### Fetch available rates
 
-> GET /v2/accounts/{ACCOUNT_ID}/rates
+> GET /v2/rates
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
+    http://{SERVER}:8000/v2/rates
 ```
 
 ```json
@@ -58,6 +57,8 @@ curl -v -X GET \
 
 #### Upload a ratedeck CSV
 
+> POST /v2/rates
+
 For bulk uploading. CSV rows can be formatted in the following ways:
 
 * `Prefix, ISO, Desc, Rate`
@@ -72,14 +73,12 @@ A US-1 row might look like:
 
 This API will return an HTTP 202 and process the CSV in a background process.
 
-> POST /v2/accounts/{ACCOUNT_ID}/rates
-
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: text/csv" \
     --data-binary @/path/to/rates.csv \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
+    http://{SERVER}:8000/v2/rates
 ```
 
 ```json
@@ -94,21 +93,20 @@ curl -v -X POST \
 
 #### Create a new rate
 
-The `routes` key will be populated for you, using the `prefix`, unless you specify the `routes` list here.
+> PUT /v2/rates
 
-> PUT /v2/accounts/{ACCOUNT_ID}/rates
+The `routes` key will be populated for you, using the `prefix`, unless you specify the `routes` list here.
 
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
     -d '{"data":{
         "prefix":"1",
         "iso_country_code": "US",
         "description": "Default US Rate",
         "rate_cost": 0.1
         }}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
+    http://{SERVER}:8000/v2/rates
 ```
 
 ```json
@@ -136,12 +134,12 @@ curl -v -X PUT \
 
 #### Remove a rate
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+> DELETE /v2/rates/{RATE_ID}
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+    http://{SERVER}:8000/v2/rates/{RATE_ID}
 ```
 
 ```json
@@ -166,12 +164,12 @@ curl -v -X DELETE \
 
 #### Fetch a rate
 
-> GET /v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+> GET /v2/rates/{RATE_ID}
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+    http://{SERVER}:8000/v2/rates/{RATE_ID}
 ```
 
 ```json
@@ -199,14 +197,13 @@ curl -v -X GET \
 
 #### Patch a rate's properties
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+> PATCH /v2/rates/{RATE_ID}
 
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
     -d '{"data": {"description": "Default North America Rate"}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+    http://{SERVER}:8000/v2/rates/{RATE_ID}
 ```
 
 ```json
@@ -234,12 +231,11 @@ curl -v -X PATCH \
 
 #### Change a rate doc
 
-> POST /v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+> POST /v2/rates/{RATE_ID}
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: application/json" \
     -d '{"data":{
         "description": "Default North America Rate",
         "iso_country_code": "US",
@@ -251,7 +247,7 @@ curl -v -X POST \
         "rate_surcharge": 0,
         "routes": ["^\\+?1.+$"]
         }}'
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+    http://{SERVER}:8000/v2/rates/{RATE_ID}
 ```
 
 ```json
@@ -281,14 +277,14 @@ curl -v -X POST \
 
 This API requires that the backend app `hotornot` is running.
 
-The `{PHONE_NUMBER}` must be reconcilable (see your `reconcile_regex` for that criteria).
+> GET /v2/rates/number/{PHONE_NUMBER}
 
-> GET /v2/accounts/{ACCOUNT_ID}/rates/number/{PHONE_NUMBER}
+The `{PHONE_NUMBER}` must be reconcilable (see your `reconcile_regex` for that criteria).
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/number/{PHONE_NUMBER}
+    http://{SERVER}:8000/v2/rates/number/{PHONE_NUMBER}
 ```
 
 ##### Success
