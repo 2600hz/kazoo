@@ -810,7 +810,7 @@ base_path_param(Param) ->
 
 modb_id_path_param(Param) ->
     %% Matches an MoDB id:
-    [{<<"pattern">>, <<"^[0-9a-f-]+$">>}
+    [{<<"pattern">>, <<"^[0-9a-f-]+\$">>}
     ,{<<"minLength">>, 39}
     ,{<<"maxLength">>, 39}
      | base_path_param(Param)
@@ -886,57 +886,57 @@ def_path_param(<<"{WHITELABEL_DOMAIN}">>=P) -> base_path_param(P);
 %% For all the edge cases out there:
 
 def_path_param(<<"{APP_SCREENSHOT_INDEX}">>=P) ->
-    [{<<"pattern">>, <<"^[0-9]+$">>}
+    [{<<"pattern">>, <<"^[0-9]+\$">>}
      | base_path_param(P)
     ];
 
 def_path_param(<<"{FUNCTION}">>=P) ->
-    [{<<"pattern">>, <<"^[a-zA-Z0-9]+$">>}
+    [{<<"pattern">>, <<"^[a-zA-Z0-9]+\$">>}
      | base_path_param(P)
     ];
 
 def_path_param(<<"{IP_ADDRESS}">>=P) ->
     [{<<"minLength">>, 7}
     ,{<<"maxLength">>, 15}
-    ,{<<"pattern">>, <<"^[0-9.]+$">>}
+    ,{<<"pattern">>, <<"^[0-9.]+\$">>}
      | base_path_param(P)
     ];
 
 def_path_param(<<"{MODULE}">>=P) ->
-    [{<<"pattern">>, <<"^[a-zA-Z0-9]+$">>}
+    [{<<"pattern">>, <<"^[a-zA-Z0-9]+\$">>}
      | base_path_param(P)
     ];
 
 def_path_param(<<"{NODE}">>=P) ->
-    [{<<"pattern">>, <<"^[a-zA-Z0-9]+@[a-zA-Z0-9]+$">>}
+    [{<<"pattern">>, <<"^[a-zA-Z0-9]+@[a-zA-Z0-9]+\$">>}
      | base_path_param(P)
     ];
 
 def_path_param(<<"{PARTICIPANT_ID}">>=P) ->
-    [{<<"pattern">>, <<"^[0-9]+$">>}
+    [{<<"pattern">>, <<"^[0-9]+\$">>}
      | base_path_param(P)
     ];
 
 def_path_param(<<"{PHONE_NUMBER}">>=P) ->
     [{<<"minLength">>, 13}
-    ,{<<"pattern">>, <<"^%2[Bb][0-9]+$">>}
+    ,{<<"pattern">>, <<"^%2[Bb][0-9]+\$">>}
      | base_path_param(P)
     ];
 
 def_path_param(<<"{SCHEMA_NAME}">>=P) ->
-    [{<<"pattern">>, <<"^[a-z0-9._-]+$">>}
+    [{<<"pattern">>, <<"^[a-z0-9._-]+\$">>}
      | base_path_param(P)
     ];
 
 def_path_param(<<"{TASK_ID}">>=P) ->
     [{<<"minLength">>, 15}
     ,{<<"maxLength">>, 15}
-    ,{<<"pattern">>, <<"^[0-9a-f]+$">>}
+    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
      | base_path_param(P)
     ];
 
 def_path_param(<<"{UUID}">>=P) ->
-    [{<<"pattern">>, <<"^[a-f0-9-]+$">>}
+    [{<<"pattern">>, <<"^[a-f0-9-]+\$">>}
      | base_path_param(P)
     ];
 
