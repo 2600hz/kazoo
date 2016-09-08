@@ -32,9 +32,13 @@ def fmap(F, data):
 
 
 def couchjs((field, js)):
+    JS = ''.join(js) + '\n'
+    if 'Object.keys' in JS:
+        print field, 'contains "Object.keys" which is not available until ECMA2015'
+        exit(1)
     TMP = '_'
     with open(TMP, 'w') as wd:
-        wd.write(''.join(js) + '\n')
+        wd.write(JS)
     try:
         code = call(['couchjs', TMP])
         if code != 0:
