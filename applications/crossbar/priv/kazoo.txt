@@ -1,7 +1,3 @@
-Kazoo
-======
-
-````
     ... ........
     ......+OO=..
     ....IOOOO8?......
@@ -56,65 +52,3 @@ Kazoo
                                          . . ....8..I$........
                                         . ..   ............  .
                                                  ....
-````
-
-### Cloud-Based Telecommunications For Everyone
-
-Welcome to Kazoo, an ambitious project to bring cloud-based VoIP and
-telecommunications to everyone.
-Our goal is to provide the world with a free, open telecommunications software
-platform. Released under the OSI-approved MPL 1.1 open source software
-license, we're building upon strong FOSS components like Linux, Erlang,
-FreeSWITCH, CouchDB (specifically BIgCouch), and RabbitMQ. Our project is a
-great example of the wonderful things that can happen when software is open.
-
-### What is Kazoo?
-
-Kazoo is an API-based platform that lets you use your existing phones,
-programming languages and IT skills to build voice, video and SMS services. We
-focus on building a simple, powerful communications platform and let you focus
-on marketing, servicing and integrating communications with your clients
-systems.
-
-Dubbed a "scalable, distributed, cloud-based" telephony platform, Kazoo
-provides simple to use, consistent API so that people who know little about
-building telecom systems can still dive in and utilize the power of the phone
-network. In practical terms that means you can create your own phone service
-in the cloud. Or on a server in your mother's basement. Or in a distributed
-cluster of servers around the globe. It's up to you.
-
-### Who is 2600hz?
-
-We're a bunch of crazy engineers who dreamt of a world where business
-communications wasn't so complicated. So we abandoned the old infrastructure
-altogether and teamed up to build a new platform from the ground up that would
-take out all the complexity while giving the power of customization to you,
-the user.
-
-Led by the founders of successful commercial and open-source telephony and
-networking projects, our carrier-grade software helps people create solid
-voice, video and SMS solutions that work. We provide you with the open-source
-infrastructure to run your own hosted PBX service, conferencing platform or
-any API-powered VoIP service that scales as your company grows!
-
-We are an exciting team of experienced and knowledgeable thought leaders in
-the enterprise communications space. Our experience ranges from hosting and
-managing services to carrier-grade termination, software design and
-professional services. Let us know how we can help you and, in return, we will
-ensure 2600hz is always leading the way in cloud telecom.
-
-### Build Dependencies
-
-* erlang R15+
-* python-simplejson
-* libxslt
-* zip
-* unzip
-* make
-
-### Learn More
-
-* Visit http://2600hz.org
-* Read more at http://wiki.2600hz.org
-* Bugs and feature requests http://tickets.2600hz.org
-* Join us on IRC @ freenode.net in #2600hz
