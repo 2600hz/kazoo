@@ -23,13 +23,11 @@
         ,code_change/3
         ]).
 
--include_lib("kazoo/include/kz_databases.hrl").
+-include("tasks.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
--define(KNM_CONFIG_CAT, <<"number_manager">>).
 
--define(MOD_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".port_request">>).
 -define(CLEANUP_ROUNDTRIP_TIME,
-        kapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_delay_time_ms">>, ?MILLISECONDS_IN_MINUTE)).
+        kapps_config:get_integer(?CONFIG_CAT, <<"crawler_delay_time_ms">>, ?MILLISECONDS_IN_MINUTE)).
 
 -record(state, {cleanup_ref :: reference()
                }).

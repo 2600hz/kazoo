@@ -3,11 +3,6 @@
     "_id": "system_config.number_manager",
     "description": "Schema for number_manager system_config",
     "properties": {
-        "aging_expiry_d": {
-            "default": 90,
-            "description": "number_manager aging expiry in days",
-            "type": "integer"
-        },
         "allowed_features": {
             "default": [
                 "cnam",
@@ -78,25 +73,10 @@
             "description": "number_manager converters",
             "type": "array"
         },
-        "crawler_timer_ms": {
-            "default": 86400000,
-            "description": "number_manager crawler timer in milliseconds",
-            "type": "integer"
-        },
         "default_force_outbound": {
             "default": false,
             "description": "number_manager default force outbound",
             "type": "boolean"
-        },
-        "deleted_expiry_d": {
-            "default": 90,
-            "description": "number_manager deleted expiry in days",
-            "type": "integer"
-        },
-        "discovery_expiry_d": {
-            "default": 90,
-            "description": "number_manager discovery expiry in days",
-            "type": "integer"
         },
         "e164_converters": {
             "description": "number_manager e164 converters"

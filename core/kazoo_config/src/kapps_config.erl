@@ -672,9 +672,6 @@ get_category(Category, 'false') ->
         ,{{<<"callflow">>, <<"ensure_valid_emergency_number">>}
          ,{<<"stepswitch">>, <<"ensure_valid_emergency_cid">>}
          }
-        ,{{<<"trunkstore">>, <<"ensure_valid_emergency_number">>}
-         ,{<<"stepswitch">>, <<"ensure_valid_emergency_cid">>}
-         }
         ,{{<<"callflow">>, <<"default_caller_id_number">>}
          ,{<<"kazoo_endpoint">>, <<"default_caller_id_number">>}
          }
@@ -729,6 +726,46 @@ get_category(Category, 'false') ->
         ,{{<<"callflow">>, <<"recorder_module">>}
          ,{<<"kazoo_endpoint">>, <<"recorder_module">>}
          }
+
+        ,{{<<"trunkstore">>, <<"ensure_valid_emergency_number">>}
+         ,{<<"stepswitch">>, <<"ensure_valid_emergency_cid">>}
+         }
+
+        ,{{<<"number_manager">>, <<"aging_expiry_d">>}
+         ,{<<"tasks">>, <<"aging_expiry_d">>}
+         }
+        ,{{<<"number_manager">>, <<"deleted_expiry_d">>}
+         ,{<<"tasks">>, <<"deleted_expiry_d">>}
+         }
+        ,{{<<"number_manager">>, <<"discovery_expiry_d">>}
+         ,{<<"tasks">>, <<"discovery_expiry_d">>}
+         }
+        ,{{<<"number_manager">>, <<"aging_expiry_d">>}
+         ,{<<"tasks">>, <<"aging_expiry_d">>}
+         }
+        ,{{<<"number_manager">>, <<"crawler_timer_ms">>}
+         ,{<<"tasks">>, <<"crawler_timer_ms">>}
+         }
+        ,{{<<"number_manager.port_request">>, <<"crawler_delay_time_ms">>}
+         ,{<<"tasks">>, <<"crawler_delay_time_ms">>}
+         }
+
+        ,{{<<"notify.account_crawler">>, <<"interaccount_delay">>}
+         ,{<<"tasks">>, <<"interaccount_delay_ms">>}
+         }
+        ,{{<<"notify.account_crawler">>, <<"cycle_delay_time">>}
+         ,{<<"tasks">>, <<"cycle_delay_time_ms">>}
+         }
+        ,{{<<"notify.account_crawler">>, <<"crawl_for_first_occurrence">>}
+         ,{<<"tasks">>, <<"should_crawl_for_first_occurrence">>}
+         }
+        ,{{<<"notify.account_crawler">>, <<"crawl_for_low_balance">>}
+         ,{<<"tasks">>, <<"should_crawl_for_low_balance">>}
+         }
+        ,{{<<"notify.account_crawler">>, <<"low_balance_repeat_s">>}
+         ,{<<"tasks">>, <<"low_balance_repeat_s">>}
+         }
+
         ]).
 
 -spec migrate() -> 'ok'.
