@@ -8218,9 +8218,108 @@
             "required": true,
             "type": "object"
         },
-        "system_config.fax": {
+ "system_config.fax": {
             "description": "Schema for fax system_config",
             "properties": {
+                "allow_all_addresses_when_empty": {
+                    "default": false,
+                    "description": "fax allow all addresses when empty",
+                    "type": "boolean"
+                },
+                "allowed_content_types": {
+                    "default": [
+                        "application/pdf",
+                        "image/tiff",
+                        {
+                            "prefix": "image"
+                        },
+                        {
+                            "prefix": "application/vnd.openxmlformats-officedocument."
+                        },
+                        {
+                            "prefix": "application/vnd.oasis.opendocument."
+                        },
+                        "application/msword",
+                        "application/vnd.ms-excel",
+                        "application/vnd.ms-powerpoint"
+                    ],
+                    "description": "fax allowed content types",
+                    "type": "array"
+                },
+                "cloud_registration_pool_interval": {
+                    "default": 5000,
+                    "description": "fax cloud registration pool interval",
+                    "type": "integer"
+                },
+                "conversion_image_command": {
+                    "default": "convert -density 204x98 -units PixelsPerInch -size 1728x1078 ~s ~s > /dev/null && echo -n success",
+                    "description": "fax conversion image command",
+                    "type": "string"
+                },
+                "conversion_openoffice_document_command": {
+                    "default": "unoconv -c ~s -f pdf --stdout ~s | /usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s - > /dev/null&& echo -n success",
+                    "description": "fax conversion openoffice document command",
+                    "type": "string"
+                },
+                "conversion_pdf_command": {
+                    "default": "/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s -- ~s > /dev/null && echo -n \"success\"",
+                    "description": "fax conversion pdf command",
+                    "type": "string"
+                },
+                "count_pages_command": {
+                    "default": "echo -n `tiffinfo ~s | grep 'Page Number' | grep -c 'P'`",
+                    "description": "fax count pages command",
+                    "type": "string"
+                },
+                "default_compare_field": {
+                    "default": "result_cause",
+                    "description": "fax default compare field",
+                    "type": "string"
+                },
+                "default_fax_extension": {
+                    "default": ".tiff",
+                    "description": "fax default fax extension",
+                    "type": "string"
+                },
+                "default_retry_count": {
+                    "default": 3,
+                    "description": "fax default retry count",
+                    "type": "integer"
+                },
+                "default_retry_period": {
+                    "default": 300,
+                    "description": "fax default retry period",
+                    "type": "integer"
+                },
+                "delete_empty_faxes": {
+                    "default": false,
+                    "description": "fax delete empty faxes",
+                    "type": "boolean"
+                },
+                "denied_content_types": {
+                    "default": [
+                        {
+                            "prefix": "image/"
+                        }
+                    ],
+                    "description": "fax denied content types",
+                    "type": "array"
+                },
+                "endpoint_timeout": {
+                    "default": 40,
+                    "description": "fax endpoint timeout",
+                    "type": "integer"
+                },
+                "ensure_valid_caller_id": {
+                    "default": true,
+                    "description": "fax ensure valid caller id",
+                    "type": "boolean"
+                },
+                "fax_file_path": {
+                    "default": "/tmp/",
+                    "description": "fax fax file path",
+                    "type": "string"
+                },
                 "fax_settings": {
                     "default": {
                         "override_callee_number": false,
@@ -8229,14 +8328,74 @@
                     "description": "fax fax settings",
                     "type": "object"
                 },
+                "file_cache_path": {
+                    "default": "/tmp/",
+                    "description": "fax file cache path",
+                    "type": "string"
+                },
+                "ignore_early_media": {
+                    "default": false,
+                    "description": "fax ignore early media",
+                    "type": "boolean"
+                },
+                "image_min_size": {
+                    "default": "700x10",
+                    "description": "fax image minimum size",
+                    "type": "string"
+                },
+                "image_size_cmd_format": {
+                    "default": "echo -n `identify -format \"%[fx:w]x%[fx:h]\" ~s`",
+                    "description": "fax image size cmd format",
+                    "type": "string"
+                },
                 "inbound_t38_default": {
                     "default": true,
                     "description": "fax inbound t38 default",
                     "type": "string"
                 },
+                "max_storage_retry": {
+                    "default": 5,
+                    "description": "fax maximum storage retry",
+                    "type": "integer"
+                },
+                "openoffice_server": {
+                    "default": "'socket,host=localhost,port=2002;urp;StarOffice.ComponentContext'",
+                    "description": "fax openoffice server",
+                    "type": "string"
+                },
+                "port": {
+                    "default": 30950,
+                    "description": "fax port",
+                    "type": "integer"
+                },
+                "report_anonymous_system_errors": {
+                    "default": false,
+                    "description": "fax report anonymous system errors",
+                    "type": "boolean"
+                },
+                "report_faxbox_system_errors": {
+                    "default": true,
+                    "description": "fax report faxbox system errors",
+                    "type": "boolean"
+                },
+                "reschedule": {
+                    "default": {},
+                    "description": "fax reschedule",
+                    "type": "object"
+                },
+                "smtp_sessions": {
+                    "default": 50,
+                    "description": "fax smtp sessions",
+                    "type": "integer"
+                },
                 "wait_for_fax_timeout_ms": {
                     "default": 3600000,
                     "description": "fax wait for fax timeout in milliseconds",
+                    "type": "integer"
+                },
+                "workers": {
+                    "default": 50,
+                    "description": "fax workers",
                     "type": "integer"
                 }
             },
@@ -8616,18 +8775,6 @@
                     "default": false,
                     "description": "konami webseq enabled",
                     "type": "boolean"
-                }
-            },
-            "required": true,
-            "type": "object"
-        },
-        "system_config.konami-pro": {
-            "description": "Schema for konami-pro system_config",
-            "properties": {
-                "route_win_timeout": {
-                    "default": 3000,
-                    "description": "konami-pro route win timeout",
-                    "type": "integer"
                 }
             },
             "required": true,
@@ -18207,52 +18354,6 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/slack_hooks": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
         "/accounts/{ACCOUNT_ID}/sms": {
             "get": {
                 "parameters": [
@@ -19663,35 +19764,6 @@
                         "description": "List of objects representing webhook attempts made for this webhook"
                     }
                 }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/webphone": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/webphone/{USER_ID}": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/user_id"
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
             }
         },
         "/accounts/{ACCOUNT_ID}/websockets": {
