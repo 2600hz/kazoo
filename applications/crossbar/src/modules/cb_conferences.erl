@@ -48,6 +48,7 @@
                                  ,<<"Current-Energy">>
                                  ,<<"Energy-Level">>
                                  ,<<"Participant-ID">>
+                                 ,<<"Participant-Type">>
                                  ,<<"Mute-Detect">>
                                  ,<<"Talking">>
                                  ,<<"Speak">>

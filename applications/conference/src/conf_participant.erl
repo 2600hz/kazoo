@@ -487,6 +487,7 @@ sync_participant(JObj, Call, #participant{in_conference='false'
                                               ]),
     Participant#participant{in_conference='true'
                            ,participant_id=ParticipantId
+                           ,moderator=kapps_conference:moderator(Conference)
                            ,muted=(not kz_json:is_true(<<"Speak">>, JObj))
                            ,deaf=(not kz_json:is_true(<<"Hear">>, JObj))
                            };

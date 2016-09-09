@@ -22,7 +22,7 @@
 -export([node/1]).
 -export([participants/1]).
 -export([participants_to_json/1]).
--export([participant_create/3]).
+-export([participant_create/2]).
 -export([participant_update/2]).
 -export([participant_destroy/1]).
 -export([participant_callid/2]).
@@ -147,9 +147,9 @@ participants(Name) ->
 participants_to_json(Participants) ->
     participants_to_json(Participants, []).
 
--spec participant_create(kz_proplist(), atom(), ne_binary()) -> participant().
-participant_create(Props, Node, CallInfo) ->
-    gen_server:call(?SERVER, {'participant_create', Props, Node, CallInfo}).
+-spec participant_create(kz_proplist(), atom()) -> participant().
+participant_create(Props, Node) ->
+    gen_server:call(?SERVER, {'participant_create', Props, Node}).
 
 -spec participant_update(ne_binary(), kz_proplist()) -> 'ok'.
 participant_update(CallId, Update) ->
@@ -278,8 +278,8 @@ handle_call({'conference_destroy', UUID}, _, State) ->
     MatchSpecP = [{#participant{conference_uuid=UUID, _ = '_'}, [], ['true']}],
     _ = ets:select_delete(?PARTICIPANTS_TBL, MatchSpecP),
     {'reply', 'ok', State};
-handle_call({'participant_create', Props, Node, CallInfo}, _, State) ->
-    Participant = participant_from_props(Props, Node, CallInfo),
+handle_call({'participant_create', Props, Node}, _, State) ->
+    Participant = participant_from_props(Props, Node),
     _ = ets:insert_new(?PARTICIPANTS_TBL, Participant),
     UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
     _ = case ets:lookup(?CONFERENCES_TBL, UUID) of
@@ -419,14 +419,16 @@ conference_from_props(Props, Node, Conference) ->
                          ,switch_external_ip=ecallmgr_fs_nodes:sip_external_ip(Node)
                          }.
 
--spec participant_from_props(kz_proplist(), atom(), ne_binary()) -> participant().
-participant_from_props(Props, Node, CallInfo) ->
-    participant_from_props(Props, Node, CallInfo, #participant{}).
+-spec participant_from_props(kz_proplist(), atom()) -> participant().
+participant_from_props(Props, Node) ->
+    participant_from_props(Props, Node, #participant{}).
 
--spec participant_from_props(kz_proplist(), atom(), ne_binary(), participant()) -> participant().
-participant_from_props(Props, Node, CallInfo, Participant) ->
+-spec participant_from_props(kz_proplist(), atom(), participant()) -> participant().
+participant_from_props(Props, Node, Participant) ->
+    ConfVars = ecallmgr_util:channel_conference_vars(Props),
     Participant#participant{node=Node
-                           ,uuid=kz_json:get_value(<<"Call-ID">>, CallInfo)
+                           ,uuid=props:get_value(<<"Unique-ID">>, Props)
+                           ,is_moderator=props:get_value(<<"moderator">>, ConfVars)
                            ,conference_uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
                            ,conference_name=props:get_value(<<"Conference-Name">>, Props)
                            ,floor=props:get_is_true(<<"Floor">>, Props, 'false')
@@ -442,7 +444,7 @@ participant_from_props(Props, Node, CallInfo, Participant) ->
                            ,join_time=props:get_integer_value(<<"Join-Time">>, Props, kz_util:current_tstamp())
                            ,caller_id_number=props:get_value(<<"Caller-Caller-ID-Number">>, Props)
                            ,caller_id_name=props:get_value(<<"Caller-Caller-ID-Name">>, Props)
-                           ,call_info=kz_json:get_value(<<"Custom-Channel-Vars">>, CallInfo)
+                           ,ccv=kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))
                            }.
 
 -spec participants_to_json(participants(), kz_json:objects()) -> kz_json:objects().
@@ -474,6 +476,7 @@ participant_to_props(#participant{uuid=UUID
                                  ,join_time=JoinTime
                                  ,caller_id_name=CallerIDName
                                  ,caller_id_number=CallerIDNumber
+                                 ,ccv=CCV
                                  }) ->
     props:filter_undefined(
       [{<<"Call-ID">>, UUID}
@@ -494,6 +497,7 @@ participant_to_props(#participant{uuid=UUID
       ,{<<"Join-Time">>, JoinTime}
       ,{<<"Caller-ID-Name">>, CallerIDName}
       ,{<<"Caller-ID-Number">>, CallerIDNumber}
+      ,{<<"Custom-Channel-Vars">>, CCV}
       ]).
 
 -spec conference_to_props(conference()) -> kz_proplist().

@@ -17,6 +17,7 @@
 %% API
 -export([start_link/0]).
 -export([start_participant/1]).
+-export([all/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -37,6 +38,9 @@ start_link() ->
 -spec start_participant(kapps_call:call()) -> sup_startchild_ret().
 start_participant(Call) ->
     supervisor:start_child(?SERVER, [Call]).
+
+all() ->
+    [Pid || {_, Pid, 'worker', ['conf_participant']} <- supervisor:which_children(?SERVER)].
 
 %%%===================================================================
 %%% Supervisor callbacks

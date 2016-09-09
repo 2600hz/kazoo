@@ -203,7 +203,8 @@ handle_info({'event', [CallId | Props]}, #state{node=Node, publish_participant_e
                 send_participant_event(Event, Props),
                 publish_participant_event(lists:member(Action, EventsToPublish), Event, CallId, Props);
             {'continue', CustomProps} ->
-                send_participant_event(Event, Props, CustomProps)
+                send_participant_event(Event ++ CustomProps, Props),
+                publish_participant_event(lists:member(Action, EventsToPublish), Event ++ CustomProps, CallId, Props)
         end,
     finalize_processing(Action, CallId),
     {'noreply', State};
@@ -264,9 +265,8 @@ finalize_processing(_, _) -> 'ok'.
                                        {'continue', kz_proplist()} |
                                        'continue' |
                                        'stop'.
-process_participant_event(<<"add-member">>, Props, Node, CallId) ->
-    CallInfo = request_call_details(CallId),
-    _ = ecallmgr_fs_conferences:participant_create(Props, Node, CallInfo),
+process_participant_event(<<"add-member">>, Props, Node, _CallId) ->
+    _ = ecallmgr_fs_conferences:participant_create(Props, Node),
     'continue';
 process_participant_event(<<"del-member">>, _Props, _Node, _CallId) -> 'continue';
 process_participant_event(<<"stop-talking">>, _, _, _) -> 'continue';
@@ -441,6 +441,7 @@ send_conference_event(Action, Props, CustomProps) ->
     relay_event(Event ++ CustomProps ++ props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)).
 
 make_participant_event(Action, CallId, Props, Node) ->
+    ConfVars = ecallmgr_util:channel_conference_vars(Props),
     ConferenceName = props:get_value(<<"Conference-Name">>, Props),
     [{<<"Event">>, Action}
     ,{<<"Call-ID">>, CallId}
@@ -448,6 +449,8 @@ make_participant_event(Action, CallId, Props, Node) ->
     ,{<<"Conference-ID">>, ConferenceName}
     ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
     ,{<<"Participant-ID">>, props:get_integer_value(<<"Member-ID">>, Props, 0)}
+    ,{<<"Participant-Type">>, props:get_value(<<"Member-Type">>, Props)}
+    ,{<<"Is-Moderator">>, props:get_is_true(<<"moderator">>, ConfVars, 'false')}
     ,{<<"Floor">>, props:get_is_true(<<"Floor">>, Props, 'false')}
     ,{<<"Hear">>, props:get_is_true(<<"Hear">>, Props, 'true')}
     ,{<<"Speak">>, props:get_is_true(<<"Speak">>, Props, 'true')}
@@ -465,11 +468,7 @@ make_participant_event(Action, CallId, Props, Node) ->
 
 -spec send_participant_event(kz_proplist(), kz_proplist()) -> 'ok'.
 send_participant_event(Event, Props) ->
-    send_participant_event(Event, Props, []).
-
--spec send_participant_event(kz_proplist(), kz_proplist(), kz_proplist()) -> 'ok'.
-send_participant_event(Event, Props, CustomProps) ->
-    relay_event(Event ++ CustomProps ++ props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)).
+    relay_event(Event ++ props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)).
 
 -spec exec(atom(), ne_binary(), kz_json:object()) -> 'ok'.
 exec(Focus, ConferenceId, JObj) ->
@@ -486,7 +485,8 @@ exec(Focus, ConferenceId, JObj) ->
                 case kz_json:get_value(<<"Call-ID">>, JObj) of
                     'undefined' ->
                         Command = list_to_binary([ConferenceId, " play ", AppData]),
-                        Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
+                        Focus =/= 'undefined'
+                            andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
                         lager:debug("api to ~s: conference ~s", [Focus, Command]),
                         freeswitch:api(Focus, 'conference', Command);
                     CallId ->
@@ -494,7 +494,8 @@ exec(Focus, ConferenceId, JObj) ->
                                                                  ," conference ", ConferenceId
                                                                  ," play ", AppData
                                                                  ])),
-                        Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
+                        Focus =/= 'undefined'
+                            andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
                         lager:debug("api to ~s: expand ~s", [Focus, Command]),
                         freeswitch:api(Focus, 'expand', Command)
                 end,
@@ -504,14 +505,16 @@ exec(Focus, ConferenceId, JObj) ->
             Result = lists:foldl(fun(Command, _Acc) ->
                                          {<<"play">>, AppData2} = get_conf_command(<<"play">>, Focus, ConferenceId, Command),
                                          Command2 = list_to_binary([ConferenceId, " play ", AppData2]),
-                                         Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command2]),
+                                         Focus =/= 'undefined'
+                                             andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command2]),
                                          lager:debug("api to ~s: conference ~s", [Focus, Command2]),
                                          freeswitch:api(Focus, 'conference', Command2)
                                  end, 'undefined', Commands),
             send_response(App, Result, kz_json:get_value(<<"Server-ID">>, JObj), JObj);
         {AppName, AppData} ->
             Command = kz_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
-            Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
+            Focus =/= 'undefined'
+                andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
             lager:debug("api to ~s: conference ~s", [Focus, Command]),
             Result = freeswitch:api(Focus, 'conference', Command),
             send_response(App, Result, kz_json:get_value(<<"Server-ID">>, JObj), JObj)
@@ -617,7 +620,9 @@ get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
                    end,
             {<<"stop">>, Args}
     end;
-get_conf_command(Say, _Focus, _ConferenceId, JObj) when Say =:= <<"say">> orelse Say =:= <<"tts">> ->
+get_conf_command(Say, _Focus, _ConferenceId, JObj)
+  when Say =:= <<"say">>
+       orelse Say =:= <<"tts">> ->
     case kapi_conference:say_v(JObj) of
         'false' -> {'error', <<"conference say failed to validate">>};
         'true'->
@@ -805,18 +810,12 @@ relay_event(UUID, Node, Props) ->
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, Payload),
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)}, Payload).
 
--spec maybe_get_ccv(ne_binary()) -> kz_json:object().
-maybe_get_ccv(CallId) ->
-    case ecallmgr_fs_conferences:participant_get(CallId) of
-        #participant{call_info=CCV} -> CCV;
-        _ -> kz_json:new()
-    end.
-
 -spec publish_participant_event(boolean(), kz_proplist(), ne_binary(), kz_proplist()) -> ok | skip.
 publish_participant_event(true=_Publish, Event, CallId, Props) ->
+    CCV = ecallmgr_util:custom_channel_vars(Props),
     Ev = [{<<"Event-Category">>, <<"conference">>}
          ,{<<"Event-Name">>, <<"participant_event">>}
-         ,{<<"Custom-Channel-Vars">>, maybe_get_ccv(CallId)}
+         ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCV)}
           | Event],
     ConferenceId = props:get_value(<<"Conference-Name">>, Props),
     Publisher = fun(P) -> kapi_conference:publish_participant_event(ConferenceId, CallId, P) end,
@@ -824,15 +823,3 @@ publish_participant_event(true=_Publish, Event, CallId, Props) ->
     ok;
 publish_participant_event(_, _, _, _) -> 'skip'.
 
--spec request_call_details(CallId :: ne_binary()) ->  kz_json:object().
-request_call_details(CallId) ->
-    Req = [{<<"Call-ID">>, CallId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    case kapps_util:amqp_pool_request(Req
-                                     ,fun kapi_call:publish_channel_status_req/1
-                                     ,fun kapi_call:channel_status_resp_v/1
-                                     ) of
-        {'error', _E} -> kz_json:new();
-        {'ok', Resp} -> Resp
-    end.
