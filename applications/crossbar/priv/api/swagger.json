@@ -7173,7 +7173,7 @@
                     "type": "string"
                 },
                 "ensure_valid_schema": {
-                    "default": false,
+                    "default": true,
                     "description": "crossbar ensure valid schema",
                     "type": "boolean"
                 },
