@@ -118,7 +118,7 @@ curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: text/csv" \
     --data-binary @path/to/your/file.csv \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks?category={CATEGORY}&action={ACTION}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks?category={CATEGORY}&action={ACTION}&file_name={FILE_NAME}
 ```
 
 With JSON input data:
@@ -126,7 +126,7 @@ With JSON input data:
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {"records": [{RECORDS}]}}' \
+    -d '{"data": {"records":[{RECORDS}], "file_name":"{FILE_NAME}"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks?category={CATEGORY}&action={ACTION}
 ```
 
