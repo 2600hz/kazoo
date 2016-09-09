@@ -184,17 +184,13 @@ help(Category, Action) ->
                             )
     of
         {'ok', JObj} ->
-            Help = kz_json:get_value([<<"Help">>, Action], JObj),
-            case kz_json:is_empty(Help) of
+            Help = kz_json:get_value([<<"Help">>, Category, Action], JObj),
+            case kz_util:is_empty(Help) of
                 false -> Help;
                 true -> {error, unknown_category_action}
             end;
-        {'timeout', _Resp} ->
-            lager:debug("timeout: ~p", [_Resp]),
-            {error, unknown_category_action};
-        {'error', _E} ->
-            lager:debug("error: ~p", [_E]),
-            {error, unknown_category_action}
+        {'timeout', _Resp} -> {error, unknown_category_action};
+        {'error', _E} -> {error, unknown_category_action}
     end.
 
 

@@ -58,7 +58,7 @@ help(Category=?NE_BINARY, Action=?NE_BINARY) ->
     JObj = parse_apis(HelpJObj),
     case kz_json:is_empty(JObj) of
         'true' -> {'error', 'unknown_category_action'};
-        'false' -> {'ok', kz_json:get_value(Category, JObj)}
+        'false' -> {'ok', kz_json:get_value([Category, Action], JObj)}
     end.
 
 %%--------------------------------------------------------------------
@@ -74,7 +74,6 @@ handle_lookup_req(JObj, _Props) ->
             {'error', _R} ->
                 lager:debug("lookup_req error: ~s", [_R]),
                 kz_json:new();
-            {'ok', JOk} -> JOk;
             JOk -> JOk
         end,
     Resp = kz_json:from_list(
@@ -89,13 +88,22 @@ handle_lookup_req(JObj, _Props) ->
 %%% Internal functions
 %%%===================================================================
 
--spec get_help(kz_json:object()) -> kz_tasks:help_error().
+-spec get_help(kz_json:object()) -> kz_json:object() |
+                                    kz_tasks:help_error().
 get_help(JObj) ->
     case {kapi_tasks:category(JObj), kapi_tasks:action(JObj)} of
         {'undefined', 'undefined'} -> help();
-        {Category, 'undefined'} -> help(Category);
-        {Category, Action} -> help(Category, Action)
+        {Category, 'undefined'} -> lookup_result(Category, help(Category));
+        {Category, Action} -> lookup_result(Category, Action, help(Category, Action))
     end.
+
+lookup_result(_, {error, _}=E) -> E;
+lookup_result(Category, {ok, JObj}) ->
+    kz_json:from_list([{Category, JObj}]).
+
+lookup_result(_, _, {error, _}=E) -> E;
+lookup_result(Category, Action, {ok, JObj}) ->
+    kz_json:set_value([Category, Action], JObj, kz_json:new()).
 
 -spec parse_apis(kz_json:object()) -> kz_json:object().
 parse_apis(HelpJObj) ->
