@@ -55,12 +55,12 @@ output_header(<<"descendant_quantities">>) ->
 help(JObj) -> help(JObj, <<?CATEGORY>>).
 
 -spec help(kz_json:object(), ne_binary()) -> kz_json:object().
-help(JObj, <<?CATEGORY>>) ->
-    lists:foldl(fun(Action, J) -> help(J, <<?CATEGORY>>, Action) end, JObj, ?ACTIONS).
+help(JObj, <<?CATEGORY>>=Category) ->
+    lists:foldl(fun(Action, J) -> help(J, Category, Action) end, JObj, ?ACTIONS).
 
 -spec help(kz_json:object(), ne_binary(), ne_binary()) -> kz_json:object().
-help(JObj, <<?CATEGORY>>, Action) ->
-    kz_json:set_value([<<?CATEGORY>>, Action], kz_json:from_list(action(Action)), JObj).
+help(JObj, <<?CATEGORY>>=Category, Action) ->
+    kz_json:set_value([Category, Action], kz_json:from_list(action(Action)), JObj).
 
 -spec action(ne_binary()) -> kz_json:object().
 action(<<"descendant_quantities">>) ->

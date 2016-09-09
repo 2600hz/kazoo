@@ -475,20 +475,16 @@ load_csv_attachment(Context, TaskId, AName) ->
           (kz_json:get_value(?QS_ACTION, RD))/binary, "_",
           TaskId/binary, ".csv"
         >>,
-    Ctx = crossbar_doc:load_attachment(TaskId
-                                      ,AName
-                                      ,?TYPE_CHECK_OPTION(kzd_task:type())
-                                      ,set_db(Context)
-                                      ),
+    Type = ?TYPE_CHECK_OPTION(kzd_task:type()),
+    Ctx = crossbar_doc:load_attachment(TaskId, AName, Type, set_db(Context)),
     case cb_context:resp_status(Ctx) of
         'success' ->
             lager:debug("loaded csv ~s from task doc ~s", [AName, TaskId]),
-            cb_context:add_resp_headers(
-              Ctx
-                                       ,[{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
-                                        ,{<<"Content-Type">>, <<"text/csv">>}
-                                        ,{<<"Content-Length">>, byte_size(cb_context:resp_data(Ctx))}
-                                        ]);
+            Headers = [{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
+                      ,{<<"Content-Type">>, <<"text/csv">>}
+                      ,{<<"Content-Length">>, byte_size(cb_context:resp_data(Ctx))}
+                      ],
+            cb_context:add_resp_headers(Ctx, Headers);
         _ ->
             lager:debug("no such csv ~s in task doc ~s", [AName, TaskId]),
             Ctx
@@ -497,16 +493,19 @@ load_csv_attachment(Context, TaskId, AName) ->
 %% @private
 -spec help(cb_context:context()) -> kz_json:object().
 help(Context) ->
-    Req = props:filter_undefined([{<<"Category">>, cb_context:req_param(Context, <<"category">>)}
-                                 ,{<<"Action">>, cb_context:req_param(Context, <<"action">>)}
-                                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                 ]),
+    Req = props:filter_undefined(
+            [{<<"Category">>, cb_context:req_param(Context, ?QS_CATEGORY)}
+            ,{<<"Action">>, cb_context:req_param(Context, ?QS_ACTION)}
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ]),
     case kz_amqp_worker:call(Req
                             ,fun kapi_tasks:publish_lookup_req/1
                             ,fun kapi_tasks:lookup_resp_v/1
                             )
     of
-        {'ok', JObj} -> kz_json:get_value(<<"Help">>, JObj);
+        {'ok', JObj} ->
+            lager:debug(">>> ~p", [JObj]),
+            kz_json:get_value(<<"Help">>, JObj);
         {'timeout', _Resp} ->
             lager:debug("timeout: ~p", [_Resp]),
             kz_json:new();

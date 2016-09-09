@@ -79,8 +79,8 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec help() -> kz_json:object().
 help() ->
-    JObjs = tasks_bindings:fold(<<"tasks.help">>, [kz_json:new()]),
-    parse_apis([JObjs]).
+    HelpJObj = tasks_bindings:fold(<<"tasks.help">>, [kz_json:new()]),
+    parse_apis(HelpJObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -90,9 +90,9 @@ help() ->
 -spec help(ne_binary()) -> {'ok', kz_json:object()} |
                            kz_tasks:help_error().
 help(Category=?NE_BINARY) ->
-    JObjs = tasks_bindings:fold(<<"tasks.help">>, [kz_json:new(), Category]),
-    lager:debug("HELP ~p", [JObjs]),
-    JObj = parse_apis([JObjs]),
+    HelpJObj = tasks_bindings:fold(<<"tasks.help">>, [kz_json:new(), Category]),
+    lager:debug(">>> HELP ~s", [kz_json:encode(HelpJObj)]),
+    JObj = parse_apis(HelpJObj),
     case kz_json:is_empty(JObj) of
         'true' -> {'error', 'unknown_category'};
         'false' -> {'ok', kz_json:get_value(Category, JObj)}
@@ -106,8 +106,8 @@ help(Category=?NE_BINARY) ->
 -spec help(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
                                         kz_tasks:help_error().
 help(Category=?NE_BINARY, Action=?NE_BINARY) ->
-    JObjs = tasks_bindings:fold(<<"tasks.help">>, [kz_json:new(), Category, Action]),
-    JObj = parse_apis([JObjs]),
+    HelpJObj = tasks_bindings:fold(<<"tasks.help">>, [kz_json:new(), Category, Action]),
+    JObj = parse_apis(HelpJObj),
     case kz_json:is_empty(JObj) of
         'true' -> {'error', 'unknown_category_action'};
         'false' -> {'ok', kz_json:get_value(Category, JObj)}
@@ -527,18 +527,16 @@ worker_module(API) ->
         _TextCSV -> 'kz_task_worker'
     end.
 
--spec parse_apis(kz_proplist()) -> kz_json:object().
-parse_apis(JObjs) ->
-    parse_apis(JObjs, kz_json:new()).
+-spec parse_apis(kz_json:object()) -> kz_json:object().
+parse_apis(HelpJObj) ->
+    parse_apis(kz_json:to_proplist(HelpJObj), kz_json:new()).
 
--spec parse_apis(kz_json:objects(), kz_json:object()) -> kz_json:object().
+-spec parse_apis(kz_proplist(), kz_json:object()) -> kz_json:object().
 parse_apis([], Acc) -> Acc;
-parse_apis([JObj|JObjs], Acc) ->
-    [Category] = kz_json:get_keys(JObj),
-    Actions = kz_json:get_value(Category, JObj),
+parse_apis([{Category, Actions}|HelpProps], Acc) ->
     lists:foreach(fun verify_unicity_map/1, kz_json:to_proplist(Actions)),
     NewAcc = kz_json:set_value(Category, Actions, Acc),
-    parse_apis(JObjs, NewAcc).
+    parse_apis(HelpProps, NewAcc).
 
 -spec verify_unicity_map({ne_binary(), kz_json:object()}) -> 'ok'.
 verify_unicity_map({_Action, API}) ->

@@ -53,7 +53,6 @@
 
 -spec init() -> 'ok'.
 init() ->
-    %%    _ = tasks_bindings:bind(<<"tasks.help."?CATEGORY>>, ?MODULE, 'help'),
     _ = tasks_bindings:bind(<<"tasks.help">>, ?MODULE, 'help'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".output_header">>, ?MODULE, 'output_header'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".cleanup">>, ?MODULE, 'cleanup'),
@@ -141,12 +140,12 @@ list_doc() ->
 help(JObj) -> help(JObj, <<?CATEGORY>>).
 
 -spec help(kz_json:object(), ne_binary()) -> kz_json:object().
-help(JObj, <<?CATEGORY>>) ->
-    lists:foldl(fun(Action, J) -> help(J, <<?CATEGORY>>, Action) end, JObj, ?ACTIONS).
+help(JObj, <<?CATEGORY>>=Category) ->
+    lists:foldl(fun(Action, J) -> help(J, Category, Action) end, JObj, ?ACTIONS).
 
 -spec help(kz_json:object(), ne_binary(), ne_binary()) -> kz_json:object().
-help(JObj, <<?CATEGORY>>, Action) ->
-    kz_json:set_value([<<?CATEGORY>>, Action], kz_json:from_list(action(Action)), JObj).
+help(JObj, <<?CATEGORY>>=Category, Action) ->
+    kz_json:set_value([Category, Action], kz_json:from_list(action(Action)), JObj).
 
 -spec action(ne_binary()) -> kz_json:object().
 action(<<"list">>) ->
