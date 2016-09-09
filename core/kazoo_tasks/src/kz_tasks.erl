@@ -240,12 +240,6 @@ find_API_errors(API, Fields, HasInputData) ->
                  end
          end
         ,fun (Errors) ->
-                 case Fields -- (Mandatory ++ optional(API)) of
-                     [] -> Errors;
-                     Unknown -> Errors#{?KZ_TASKS_INPUT_ERROR_UF => Unknown}
-                 end
-         end
-        ,fun (Errors) ->
                  MIME = input_mime(API),
                  APIRequiresInputData = 'undefined' /= MIME,
                  RequestedMIME = case MIME of 'undefined' -> <<"none">>; _ -> MIME end,
