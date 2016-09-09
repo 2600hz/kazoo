@@ -30,7 +30,7 @@
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
 -define(CB_LIST, <<"vmboxes/crossbar_listing">>).
--define(MSG_LISITNG_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
+-define(MSG_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
 
 -define(BOX_ID_IDX_KEY, 1).
 
@@ -548,7 +548,7 @@ load_message_summary(BoxId, Context) ->
                                   fun normalize_view_results/2
                           end,
             maybe_fix_envelope(
-              crossbar_doc:load_view(?MSG_LISITNG_BY_MAILBOX
+              crossbar_doc:load_view(?MSG_LISTING_BY_MAILBOX
                                     ,ViewOptions
                                     ,cb_context:set_resp_status(Context, 'success')
                                     ,NormlizeFun
