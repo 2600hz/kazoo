@@ -21,11 +21,16 @@
 
 -include("crossbar.hrl").
 
--define(CB_LIST, <<"storage/crossbar_listing">>).
+-define(CB_ACCOUNT_LIST, <<"storage/plans_by_account">>).
+-define(CB_SYSTEM_LIST, <<"storage/system_plans">>).
 
 -define(SYSTEM_DATAPLAN, <<"system">>).
 
 -define(PLANS_TOKEN, <<"plans">>).
+
+-define(STORAGE_TYPES, [<<"storage">>, <<"storage_plan">>]).
+-define(STORAGE_CHECK_OPTION, {?OPTION_EXPECTED_TYPE, ?STORAGE_TYPES}).
+-define(STORAGE_CHECK_OPTIONS, [?STORAGE_CHECK_OPTION]).
 
 -type scope() :: 'system'
                | 'system_plans'
@@ -288,11 +293,14 @@ summary(Context) ->
 
 -spec summary(cb_context:context(), scope()) -> cb_context:context().
 summary(Context, 'system_plans') ->
-    set_response(Context, kzs_plan:fetch_dataplan(?SYSTEM_DATAPLAN));
+    crossbar_doc:load_view(?CB_SYSTEM_LIST, ['include_docs'], Context, fun normalize_view_results/2);
 
 summary(Context, {'reseller_plans', AccountId}) ->
-    set_response(Context, kzs_plan:fetch_dataplan(AccountId)).
-
+    Options = ['include_docs'
+              ,{'startkey', [AccountId]}
+              ,{'endkey', [AccountId, kz_json:new()]}
+              ],
+    crossbar_doc:load_view(?CB_ACCOUNT_LIST, Options, Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -306,7 +314,12 @@ on_successful_validation(Id, Context) ->
 
 -spec on_successful_validation(api_binary(), http_method(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', ?HTTP_PUT, Context) ->
-    cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"storage">>));
+    IsSystemPlan = scope(Context) =:= 'system_plans',
+    JObj = cb_context:doc(Context),
+    Routines = [fun(Doc) -> kz_doc:set_type(Doc, <<"storage_plan">>) end
+               ,fun(Doc) -> kz_json:set_value(<<"pvt_system_plan">>, IsSystemPlan, Doc) end
+               ],
+    cb_context:set_doc(Context, kz_json:exec(Routines, JObj));
 on_successful_validation(Id, ?HTTP_PUT, Context) ->
     JObj = cb_context:doc(Context),
     Routines = [fun(Doc) -> kz_doc:set_type(Doc, <<"storage">>) end
@@ -314,7 +327,7 @@ on_successful_validation(Id, ?HTTP_PUT, Context) ->
                ],
     cb_context:set_doc(Context, kz_json:exec(Routines, JObj));
 on_successful_validation(Id, ?HTTP_POST, Context) ->
-    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"storage">>)).
+    crossbar_doc:load_merge(Id, Context, ?STORAGE_CHECK_OPTIONS).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -322,9 +335,9 @@ on_successful_validation(Id, ?HTTP_POST, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
-%% -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-%% normalize_view_results(JObj, Acc) ->
-%%     [kz_json:get_value(<<"value">>, JObj)|Acc].
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_view_results(JObj, Acc) ->
+    [kz_json:get_value(<<"doc">>, JObj)|Acc].
 
 -spec scope(cb_context:context()) -> scope().
 scope(Context) ->
@@ -363,13 +376,6 @@ set_scope(Context, [{<<"storage">>, []}
     cb_context:store(Context, 'scope', {'user', UserId, AccountId});
 set_scope(Context, _) ->
     cb_context:store(Context, 'scope', 'invalid').
-
--spec set_response(cb_context:context(), kz_json:object()) -> cb_context:context().
-set_response(Context, JObj) ->
-    Routines = [{fun cb_context:set_resp_data/2, JObj}
-               ,{fun cb_context:set_resp_status/2, 'success'}
-               ],
-    cb_context:setters(Context, Routines).
 
 -spec doc_id(cb_context:context() | scope()) -> api_binary().
 doc_id('system') -> <<"system">>;

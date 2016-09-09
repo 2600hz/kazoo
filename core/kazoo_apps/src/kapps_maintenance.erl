@@ -182,6 +182,8 @@ refresh(?KZ_CONFIG_DB) ->
     kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'teletype', <<"views/notifications.json">>),
     cleanup_invalid_notify_docs(),
     delete_system_media_references();
+refresh(?KZ_DATA_DB) ->
+    kz_datamgr:revise_docs_from_folder(?KZ_DATA_DB, 'kazoo_data', <<"views">>);
 refresh(?KZ_OAUTH_DB) ->
     kz_datamgr:db_create(?KZ_OAUTH_DB),
     kazoo_oauth_maintenance:register_common_providers();
