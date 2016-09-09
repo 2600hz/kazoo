@@ -27,13 +27,16 @@
 -define(NOTIFY_CONFIG_CAT, <<"notify">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".account_crawler">>).
 
--record(state, {cleanup_ref = cleanup_timer() :: reference() %% For "whole" crawls
+-record(state, {cleanup_ref = cleanup_cycle_timer() :: reference()
                ,account_ids = [] :: ne_binaries()
                }).
 -type state() :: #state{}.
 
--define(TIME_BETWEEN_CRAWLS
-       ,kapps_config:get_integer(?MOD_CONFIG_CAT, <<"interaccount_delay">>, 10 * ?MILLISECONDS_IN_SECOND)).
+-define(TIME_BETWEEN_CRAWLS,
+        kapps_config:get_integer(?MOD_CONFIG_CAT, <<"interaccount_delay">>, 10 * ?MILLISECONDS_IN_SECOND)).
+
+-define(TIME_BETWEEN_WHOLE_CRAWLS,
+        kapps_config:get_integer(?MOD_CONFIG_CAT, <<"cycle_delay_time">>, 5 * ?MILLISECONDS_IN_MINUTE)).
 
 
 %%%===================================================================
@@ -127,22 +130,25 @@ handle_info({timeout, Ref, _Msg}, #state{cleanup_ref = Ref
                            };
             {error, _R} ->
                 lager:warning("unable to list all docs in ~s: ~p", [?KZ_ACCOUNTS_DB, _R]),
-                State#state{cleanup_ref = cleanup_timer()}
+                State#state{cleanup_ref = cleanup_cycle_timer()}
         end,
     {noreply, NewState};
 
 handle_info({timeout, Ref, _Msg}, #state{cleanup_ref = Ref
+                                        ,account_ids = [AccountId]
+                                        }=State) ->
+    _ = crawl_account(AccountId),
+    {noreply, State#state{cleanup_ref = cleanup_cycle_timer()
+                         ,account_ids = []
+                         }};
+
+handle_info({timeout, Ref, _Msg}, #state{cleanup_ref = Ref
                                         ,account_ids = [AccountId | AccountIds]
                                         }=State) ->
-    lager:debug("crawling account ~s", [AccountId]),
-    %% do not open the account def in the account db or we will
-    %% be wasting bigcouch's file descriptors
-    OpenResult = kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId),
-    _ = check_then_process_account(AccountId, OpenResult),
-    NewState = State#state{cleanup_ref = cleanup_timer()
-                          ,account_ids = AccountIds
-                          },
-    {noreply, NewState};
+    _ = crawl_account(AccountId),
+    {noreply, State#state{cleanup_ref = cleanup_timer()
+                         ,account_ids = AccountIds
+                         }};
 
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
@@ -178,6 +184,18 @@ code_change(_OldVsn, State, _Extra) ->
 -spec cleanup_timer() -> reference().
 cleanup_timer() ->
     erlang:start_timer(?TIME_BETWEEN_CRAWLS, self(), 'ok').
+
+-spec cleanup_cycle_timer() -> reference().
+cleanup_cycle_timer() ->
+    erlang:start_timer(?TIME_BETWEEN_WHOLE_CRAWLS, self(), 'ok').
+
+-spec crawl_account(ne_binary()) -> ok.
+crawl_account(AccountId) ->
+    lager:debug("crawling account ~s", [AccountId]),
+    %% do not open the account def in the account db or we will
+    %% be wasting bigcouch's file descriptors
+    OpenResult = kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId),
+    check_then_process_account(AccountId, OpenResult).
 
 -spec check_then_process_account(ne_binary(), {'ok', kz_account:doc()} | {'error',any()}) -> 'ok'.
 check_then_process_account(AccountId, {'ok', AccountJObj}) ->
