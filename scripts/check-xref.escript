@@ -102,6 +102,7 @@ filter('undefined_function_calls', Results) ->
                  ({{hipe_icode_split_arith,_,_}, {_,_,_}}) -> 'false';
                  ({{hipe_icode_type,_,_}, {_,_,_}}) -> 'false';
                  ({{hipe_main,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_x86_main,_,_}, {_,_,_}}) -> 'false';                 
                  ({{hipe_unified_loader,_,_}, {_,_,_}}) -> 'false';
                  ({{init,_,_}, {_,_,_}}) -> 'false';
 
