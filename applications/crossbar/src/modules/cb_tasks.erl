@@ -499,7 +499,7 @@ load_csv_attachment(Context, TaskId, AName) ->
 help(Context) ->
     Req = props:filter_undefined([{<<"Category">>, cb_context:req_param(Context, <<"category">>)}
                                  ,{<<"Action">>, cb_context:req_param(Context, <<"action">>)}
-                                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                                  ]),
     case kz_amqp_worker:call(Req
                             ,fun kapi_tasks:publish_lookup_req/1
