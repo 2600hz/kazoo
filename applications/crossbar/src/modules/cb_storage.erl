@@ -28,11 +28,12 @@
 -define(PLANS_TOKEN, <<"plans">>).
 
 -type scope() :: 'system'
-               | {'system', ne_binary()}
+               | 'system_plans'
+               | {'system_plan', ne_binary()}
                | {'user', ne_binary(), ne_binary()}
                | {'account', ne_binary()}
-               | {'reseller', ne_binary()}
-               | {'plan', ne_binary()}
+               | {'reseller_plans', ne_binary()}
+               | {'reseller_plan', ne_binary(), ne_binary()}
                | 'invalid'.
 
 %%%===================================================================
@@ -80,10 +81,15 @@ authorize(Context, ?PLANS_TOKEN, _PlanId) ->
 do_authorize(Context) ->
     do_authorize(Context, scope(Context)).
 
--spec do_authorize(cb_context:context(), req_nouns()) -> boolean().
+-spec do_authorize(cb_context:context(), scope()) -> boolean().
 do_authorize(_Context, 'invalid') -> 'false';
 do_authorize(Context, 'system') -> cb_context:is_superduper_admin(Context);
-do_authorize(Context, {'system', _PlanId}) -> cb_context:is_superduper_admin(Context);
+do_authorize(Context, 'system_plans') -> cb_context:is_superduper_admin(Context);
+do_authorize(Context, {'system_plan', _PlanId}) -> cb_context:is_superduper_admin(Context);
+do_authorize(Context, {'reseller_plans', _AccountId}) ->
+    kz_account:is_reseller(cb_context:account_doc(Context));
+do_authorize(Context, {'reseller_plan', _PlanId, _AccountId}) ->
+    kz_account:is_reseller(cb_context:account_doc(Context));
 do_authorize(Context, {'account', AccountId}) ->
     cb_context:is_superduper_admin(Context)
         orelse kz_services:get_reseller_id(AccountId) =:= cb_context:auth_account_id(Context)
@@ -366,12 +372,11 @@ set_response(Context, JObj) ->
     cb_context:setters(Context, Routines).
 
 -spec doc_id(cb_context:context() | scope()) -> api_binary().
-doc_id(#cb_context{}=Context) ->
-    doc_id(scope(Context));
 doc_id('system') -> <<"system">>;
 doc_id('system_plans') -> 'undefined';
 doc_id({'system_plan', PlanId}) -> PlanId;
 doc_id({'account', AccountId}) -> AccountId;
 doc_id({'user', UserId, _AccountId}) -> UserId;
 doc_id({'reseller_plans', _AccountId}) -> 'undefined';
-doc_id({'reseller_plan', PlanId, _AccountId}) -> PlanId.
+doc_id({'reseller_plan', PlanId, _AccountId}) -> PlanId;
+doc_id(Context) -> doc_id(scope(Context)).
