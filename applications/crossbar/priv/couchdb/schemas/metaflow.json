@@ -2,6 +2,7 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "metaflow",
     "additionalProperties": false,
+    "description": "A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to",
     "properties": {
         "children": {
             "default": {},

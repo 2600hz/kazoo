@@ -9,9 +9,9 @@ Key | Description | Type | Default | Required
 `binding_digit` | What DTMF will trigger the collection and analysis of the subsequent DTMF sequence | `string('1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*', '#')` | `*` | `false`
 `digit_timeout` | How long to wait between DTMF presses before processing the collected sequence (milliseconds) | `integer` |   | `false`
 `listen_on` | Which leg(s) of the call to listen for DTMF | `string('both', 'self', 'peer')` |   | `false`
-`numbers` | A list of static numbers that the metaflow should match for | `object` |   | `false`
+`numbers` | A list of static numbers with their flows | `object` |   | `false`
 `numbers.^[0-9]+$` |   | `#/definitions/metaflow` |   | `false`
-`patterns` | The metaflow patterns | `object` |   | `false`
+`patterns` | A list of patterns with their flows | `object` |   | `false`
 `patterns..+` |   | `#/definitions/metaflow` |   | `false`
 
 

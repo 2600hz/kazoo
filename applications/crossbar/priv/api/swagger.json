@@ -4603,6 +4603,7 @@
         },
         "metaflow": {
             "additionalProperties": false,
+            "description": "A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to",
             "properties": {
                 "children": {
                     "default": {},
@@ -4671,7 +4672,7 @@
                 },
                 "numbers": {
                     "additionalProperties": false,
-                    "description": "A list of static numbers that the metaflow should match for",
+                    "description": "A list of static numbers with their flows",
                     "patternProperties": {
                         "^[0-9]+$": {
                             "$ref": "metaflow"
@@ -4682,7 +4683,7 @@
                 },
                 "patterns": {
                     "additionalProperties": false,
-                    "description": "The metaflow patterns",
+                    "description": "A list of patterns with their flows",
                     "patternProperties": {
                         ".+": {
                             "$ref": "metaflow"
