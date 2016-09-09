@@ -943,14 +943,14 @@ maybe_fix_index(Key) ->
 
 -spec system_error_props(context()) -> kz_proplist().
 system_error_props(Context) ->
-    Extract = [{fun cb_context:account_id/1, <<"account_id">>}
-              ,{fun cb_context:account_name/1, <<"account_name">>}
-              ,{fun cb_context:auth_account_id/1, <<"auth_account_id">>}
+    Extract = [{fun account_id/1, <<"account_id">>}
+              ,{fun account_name/1, <<"account_name">>}
+              ,{fun auth_account_id/1, <<"auth_account_id">>}
               ,{fun(C) -> kz_json:from_list(req_headers(C)) end, <<"req_headers">>}
-              ,{fun cb_context:req_json/1, <<"req_json">>}
-              ,{fun cb_context:req_data/1, <<"req_data">>}
-              ,{fun cb_context:query_string/1, <<"query_json">>}
-              ,{fun cb_context:req_id/1, <<"req_id">>}
+              ,{fun req_json/1, <<"req_json">>}
+              ,{fun req_data/1, <<"req_data">>}
+              ,{fun query_string/1, <<"query_json">>}
+              ,{fun req_id/1, <<"req_id">>}
               ],
     Fun = fun({Fun, K}, KVs) -> [{K, Fun(Context)} | KVs] end,
     Props = lists:foldl(Fun, [], Extract),
