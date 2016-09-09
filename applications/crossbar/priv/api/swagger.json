@@ -4601,34 +4601,7 @@
             "required": true,
             "type": "object"
         },
-        "metaflow": {
-            "additionalProperties": false,
-            "properties": {
-                "children": {
-                    "default": {},
-                    "patternProperties": {
-                        ".+": {
-                            "$ref": "metaflow"
-                        }
-                    },
-                    "required": false,
-                    "type": "object"
-                },
-                "data": {
-                    "default": {},
-                    "description": "Module Data",
-                    "required": true,
-                    "type": "object"
-                },
-                "module": {
-                    "maxLength": 15,
-                    "required": true,
-                    "type": "string"
-                }
-            }
-        },
         "metaflows": {
-            "additionalProperties": false,
             "description": "Actions applied to a call outside of the normal callflow, initiated by the caller(s)",
             "properties": {
                 "binding_digit": {
@@ -4670,28 +4643,45 @@
                     "type": "string"
                 },
                 "numbers": {
-                    "additionalProperties": false,
                     "description": "A list of static numbers that the metaflow should match for",
                     "patternProperties": {
-                        "^[0-9]+$": {
-                            "$ref": "metaflow"
+                        "[0-9\\*\\#]+": {
+                            "properties": {
+                                "children": {
+                                    "default": {},
+                                    "required": false,
+                                    "type": "#/flow"
+                                },
+                                "data": {
+                                    "default": {},
+                                    "description": "Module Data",
+                                    "required": true,
+                                    "type": "object"
+                                },
+                                "module": {
+                                    "maxLength": 15,
+                                    "required": true,
+                                    "type": "string"
+                                }
+                            },
+                            "required": false,
+                            "type": "object"
                         }
                     },
                     "required": false,
                     "type": "object"
                 },
                 "patterns": {
-                    "additionalProperties": false,
                     "description": "The metaflow patterns",
-                    "patternProperties": {
-                        ".+": {
-                            "$ref": "metaflow"
-                        }
+                    "itmes": {
+                        "required": false,
+                        "type": "string"
                     },
                     "required": false,
                     "type": "object"
                 }
             },
+            "required": true,
             "type": "object"
         },
         "notifications": {
@@ -6163,316 +6153,6 @@
             "required": true,
             "type": "object"
         },
-        "storage": {
-            "additionalProperties": false,
-            "patternProperties": {
-                "^_": {
-                    "type": [
-                        "string",
-                        "integer",
-                        "boolean",
-                        "object"
-                    ]
-                },
-                "^pvt_": {
-                    "type": [
-                        "string",
-                        "integer",
-                        "boolean"
-                    ]
-                }
-            },
-            "properties": {
-                "attachments": {
-                    "$ref": "storage.attachments"
-                },
-                "connections": {
-                    "$ref": "storage.connections"
-                },
-                "plan": {
-                    "$ref": "storage.plan"
-                }
-            },
-            "type": "object"
-        },
-        "storage.attachment.aws": {
-            "description": "schema for aws attachment entry",
-            "properties": {
-                "handler": {
-                    "enum": [
-                        "s3"
-                    ]
-                },
-                "name": {
-                    "type": "string"
-                },
-                "settings": {
-                    "properties": {
-                        "bucket": {
-                            "type": "string"
-                        },
-                        "key": {
-                            "type": "string"
-                        },
-                        "path": {
-                            "type": "string"
-                        },
-                        "secret": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "bucket",
-                        "key",
-                        "secret"
-                    ],
-                    "type": "object"
-                }
-            },
-            "required": [
-                "handler",
-                "settings"
-            ],
-            "type": "object"
-        },
-        "storage.attachment.google_drive": {
-            "description": "schema for google drive attachment entry",
-            "properties": {
-                "handler": {
-                    "enum": [
-                        "google_drive"
-                    ]
-                },
-                "name": {
-                    "type": "string"
-                },
-                "settings": {
-                    "properties": {
-                        "oauth_doc_id": {
-                            "type": "string"
-                        },
-                        "path": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "oauth_doc_id"
-                    ],
-                    "type": "object"
-                }
-            },
-            "required": [
-                "handler",
-                "settings"
-            ],
-            "type": "object"
-        },
-        "storage.attachments": {
-            "patternProperties": {
-                "^[a-z,0-9]{32}$": {
-                    "oneOf": [
-                        {
-                            "$ref": "storage.attachment.aws"
-                        },
-                        {
-                            "$ref": "storage.attachment.google_drive"
-                        }
-                    ]
-                }
-            },
-            "type": "object"
-        },
-        "storage.connection.couchdb": {
-            "definitions": {
-                "credentials": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "password": {
-                            "type": "integer"
-                        },
-                        "username": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "username",
-                        "password"
-                    ],
-                    "type": "object"
-                },
-                "pool": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "size": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "size"
-                    ],
-                    "type": "object"
-                }
-            },
-            "description": "schema for couchdb connection entry",
-            "properties": {
-                "driver": {
-                    "enum": [
-                        "kazoo_couch"
-                    ]
-                },
-                "name": {
-                    "type": "string"
-                },
-                "settings": {
-                    "properties": {
-                        "connect_options": {
-                            "properties": {
-                                "keepalive": {
-                                    "type": "boolean"
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "connect_timeout": {
-                            "type": "integer"
-                        },
-                        "credentials": {
-                            "$ref": "#/definitions/credentials"
-                        },
-                        "ip": {
-                            "type": "string"
-                        },
-                        "max_pipeline_size": {
-                            "type": "integer"
-                        },
-                        "max_sessions": {
-                            "type": "integer"
-                        },
-                        "pool": {
-                            "$ref": "#/definitions/pool"
-                        },
-                        "port": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "ip",
-                        "port"
-                    ],
-                    "type": "object"
-                }
-            },
-            "required": [
-                "driver",
-                "settings"
-            ],
-            "type": "object"
-        },
-        "storage.connections": {
-            "patternProperties": {
-                "^([a-z,0-9]){32}$": {
-                    "oneOf": [
-                        {
-                            "$ref": "storage.connection.couchdb"
-                        }
-                    ]
-                },
-                "local": {
-                    "type": "object"
-                }
-            },
-            "type": "object"
-        },
-        "storage.plan": {
-            "additionalProperties": false,
-            "description": "schema for storage plan",
-            "properties": {
-                "account": {
-                    "$ref": "storage.plan.database"
-                },
-                "modb": {
-                    "$ref": "storage.plan.database"
-                },
-                "system": {
-                    "$ref": "storage.plan.database"
-                }
-            },
-            "type": "object"
-        },
-        "storage.plan.database": {
-            "additionalProperties": false,
-            "definitions": {
-                "database": {
-                    "properties": {
-                        "create_options": {
-                            "type": "object"
-                        }
-                    },
-                    "type": "object"
-                }
-            },
-            "description": "schema for database storage plan",
-            "properties": {
-                "attachments": {
-                    "$ref": "storage.plan.database.attachment"
-                },
-                "connection": {
-                    "type": "string"
-                },
-                "database": {
-                    "$ref": "#/definitions/database"
-                },
-                "types": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "call_recording": {
-                            "$ref": "storage.plan.database.document"
-                        },
-                        "fax": {
-                            "$ref": "storage.plan.database.document"
-                        },
-                        "mailbox_message": {
-                            "$ref": "storage.plan.database.document"
-                        },
-                        "media": {
-                            "$ref": "storage.plan.database.document"
-                        }
-                    },
-                    "type": "object"
-                }
-            },
-            "type": "object"
-        },
-        "storage.plan.database.attachment": {
-            "description": "schema for attachment ref type storage plan",
-            "properties": {
-                "handler": {
-                    "type": "string"
-                },
-                "params": {
-                    "type": "object"
-                },
-                "stub": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "storage.plan.database.document": {
-            "description": "schema for document type storage plan",
-            "properties": {
-                "attachments": {
-                    "$ref": "storage.plan.database.attachment"
-                },
-                "connection": {
-                    "type": "string"
-                }
-            },
-            "type": "object"
-        },
         "system_config.accounts": {
             "description": "Schema for accounts system_config",
             "properties": {
@@ -7170,11 +6850,6 @@
                     "default": "en-US",
                     "description": "crossbar default language",
                     "type": "string"
-                },
-                "ensure_valid_schema": {
-                    "default": false,
-                    "description": "crossbar ensure valid schema",
-                    "type": "boolean"
                 },
                 "expiry_percentage": {
                     "default": 75,
@@ -7986,6 +7661,10 @@
                     "default": 2600,
                     "description": "ecallmgr fetch timeout",
                     "type": "integer"
+                },
+                "force_conference_verbose_events": {
+                    "description": "ecallmgr force conference verbose events",
+                    "type": "boolean"
                 },
                 "freeswitch_context": {
                     "default": "context_2",
@@ -18350,52 +18029,6 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/slack_hooks": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
         "/accounts/{ACCOUNT_ID}/sms": {
             "get": {
                 "parameters": [
@@ -18447,152 +18080,6 @@
                 "parameters": [
                     {
                         "$ref": "#/parameters/sms_id"
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/storage": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "storage",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/storage"
-                        }
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "storage",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/storage"
-                        }
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/storage/plans": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "storage",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/storage"
-                        }
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/storage/plans/{PLAN_ID}": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/plan_id"
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/plan_id"
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "storage",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/storage"
-                        }
-                    },
-                    {
-                        "$ref": "#/parameters/plan_id"
                     },
                     {
                         "$ref": "#/parameters/auth_token_header",
@@ -19806,35 +19293,6 @@
                         "description": "List of objects representing webhook attempts made for this webhook"
                     }
                 }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/webphone": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/webphone/{USER_ID}": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/user_id"
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
             }
         },
         "/accounts/{ACCOUNT_ID}/websockets": {
