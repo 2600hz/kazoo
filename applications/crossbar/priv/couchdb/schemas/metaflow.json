@@ -1,0 +1,31 @@
+{
+    "$schema":"http://json-schema.org/draft-03/schema#",
+    "_id":"metaflow",
+    "properties":{
+        "children":{
+            "type" : "object",
+            "patternProperties" {
+                ".+": {
+                    "$ref": "metaflow"
+                }
+            }
+            "default":{
+            },
+            "required":false
+        },
+        "data":{
+            "default":{
+                
+            },
+            "description":"Module Data",
+            "required":true,
+            "type":"object"
+        },
+        "module":{
+            "maxLength":15,
+            "required":true,
+            "type":"string"
+        }
+    },
+    "additionalProperties":false
+}

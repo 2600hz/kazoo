@@ -72,7 +72,7 @@
             "description": "A list of static numbers that the metaflow should match for",
             "patternProperties": {
                 "^[0-9]+$": {
-                    "$ref": "#/definitions/flow"
+                    "$ref": "metaflow"
                 }
             },
             "required": false,
@@ -83,7 +83,7 @@
             "description": "The metaflow patterns",
             "patternProperties": {
                 ".+": {
-                    "$ref": "#/definitions/flow"
+                    "$ref": "metaflow"
                 }
             },
             "required": false,
