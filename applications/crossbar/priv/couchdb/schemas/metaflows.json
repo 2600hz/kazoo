@@ -1,85 +1,95 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
-    "_id": "metaflows",
-    "description": "Actions applied to a call outside of the normal callflow, initiated by the caller(s)",
-    "properties": {
-        "binding_digit": {
-            "default": "*",
-            "description": "What DTMF will trigger the collection and analysis of the subsequent DTMF sequence",
-            "enum": [
-                "1",
-                "2",
-                "3",
-                "4",
-                "5",
-                "6",
-                "7",
-                "8",
-                "9",
-                "0",
-                "*",
-                "#"
-            ],
-            "maxLength": 1,
-            "minLength": 1,
-            "required": false,
-            "type": "string"
+  "$schema": "http://json-schema.org/draft-03/schema#",
+  "_id": "metaflows",
+  "description": "Actions applied to a call outside of the normal callflow, initiated by the caller(s)",
+  "definitions": {
+    "flow": {
+      "type": "object",
+      "properties": {
+        "children": {
+          "default": {},
+          "required": false,
+          "$ref": "#/definitions/flow"
         },
-        "digit_timeout": {
-            "description": "How long to wait between DTMF presses before processing the collected sequence (milliseconds)",
-            "minimum": 0,
-            "required": false,
-            "type": "integer"
+        "data": {
+          "default": {},
+          "description": "Module Data",
+          "required": true,
+          "type": "object"
         },
-        "listen_on": {
-            "description": "Which leg(s) of the call to listen for DTMF",
-            "enum": [
-                "both",
-                "self",
-                "peer"
-            ],
-            "required": false,
-            "type": "string"
-        },
-        "numbers": {
-            "description": "A list of static numbers that the metaflow should match for",
-            "patternProperties": {
-                "[0-9\\*\\#]+": {
-                    "properties": {
-                        "children": {
-                            "default": {},
-                            "required": false,
-                            "type": "#/flow"
-                        },
-                        "data": {
-                            "default": {},
-                            "description": "Module Data",
-                            "required": true,
-                            "type": "object"
-                        },
-                        "module": {
-                            "maxLength": 15,
-                            "required": true,
-                            "type": "string"
-                        }
-                    },
-                    "required": false,
-                    "type": "object"
-                }
-            },
-            "required": false,
-            "type": "object"
-        },
-        "patterns": {
-            "description": "The metaflow patterns",
-            "itmes": {
-                "required": false,
-                "type": "string"
-            },
-            "required": false,
-            "type": "object"
+        "module": {
+          "maxLength": 15,
+          "required": true,
+          "type": "string"
         }
+      },
+      "required": true,
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "uniqueItems": true,
+  "properties": {
+    "binding_digit": {
+      "default": "*",
+      "description": "What DTMF will trigger the collection and analysis of the subsequent DTMF sequence",
+      "enum": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "0",
+        "*",
+        "#"
+      ],
+      "maxLength": 1,
+      "minLength": 1,
+      "required": false,
+      "type": "string"
     },
-    "required": true,
-    "type": "object"
+    "digit_timeout": {
+      "description": "How long to wait between DTMF presses before processing the collected sequence (milliseconds)",
+      "minimum": 0,
+      "required": false,
+      "type": "integer"
+    },
+    "listen_on": {
+      "description": "Which leg(s) of the call to listen for DTMF",
+      "enum": [
+        "both",
+        "self",
+        "peer"
+      ],
+      "required": false,
+      "type": "string"
+    },
+    "numbers": {
+      "description": "A list of static numbers that the metaflow should match for",
+      "patternProperties": {
+        "^[0-9]+$": {
+          "$ref": "#/definitions/flow"
+        }
+      },
+      "required": false,
+      "type": "object",
+      "additionalProperties": false
+    },
+    "patterns": {
+      "description": "The metaflow patterns",
+      "patternProperties": {
+        ".+": {
+          "$ref": "#/definitions/flow"
+        }
+      },
+      "required": false,
+      "type": "object",
+      "additionalProperties": false
+    }
+  }
 }
