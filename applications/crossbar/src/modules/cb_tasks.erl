@@ -188,14 +188,8 @@ validate(Context, PathToken1, PathToken2) ->
 -spec validate_tasks(cb_context:context(), http_method()) -> cb_context:context().
 validate_tasks(Context, ?HTTP_GET) ->
     case cb_context:account_id(Context) of
-        'undefined' ->
-            lager:debug("starting discovery of task APIs"),
-            JObj = kz_json:from_list([{<<"tasks">>, help(Context)}]),
-            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-                                        ,{fun cb_context:set_resp_data/2, JObj}
-                                        ]);
-        _AccountId ->
-            summary(Context)
+        'undefined' -> help(Context);
+        _AccountId -> summary(Context)
     end;
 validate_tasks(Context, ?HTTP_PUT) ->
     QS = cb_context:query_string(Context),
@@ -491,11 +485,14 @@ load_csv_attachment(Context, TaskId, AName) ->
     end.
 
 %% @private
--spec help(cb_context:context()) -> kz_json:object().
+-spec help(cb_context:context()) -> cb_context:context().
 help(Context) ->
+    Category = cb_context:req_param(Context, ?QS_CATEGORY),
+    Action   = cb_context:req_param(Context, ?QS_ACTION),
+    lager:debug("looking for tasks matching category:~s action:~s", [Category, Action]),
     Req = props:filter_undefined(
-            [{<<"Category">>, cb_context:req_param(Context, ?QS_CATEGORY)}
-            ,{<<"Action">>, cb_context:req_param(Context, ?QS_ACTION)}
+            [{<<"Category">>, Category}
+            ,{<<"Action">>, Action}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     case kz_amqp_worker:call(Req
@@ -503,11 +500,22 @@ help(Context) ->
                             ,fun kapi_tasks:lookup_resp_v/1
                             )
     of
-        {'ok', JObj} -> kz_json:get_value(<<"Help">>, JObj);
+        {'ok', JObj} -> help_rep(Context, kz_json:get_value(<<"Help">>, JObj));
         {'timeout', _Resp} ->
             lager:debug("timeout: ~p", [_Resp]),
-            kz_json:new();
+            cb_context:add_system_error('invalid request', Context);
         {'error', _E} ->
             lager:debug("error: ~p", [_E]),
-            kz_json:new()
+            cb_context:add_system_error('invalid request', Context)
+    end.
+
+-spec help_rep(cb_context:context(), kz_json:object()) -> cb_context:context().
+help_rep(Context, JObj) ->
+    case kz_json:is_empty(JObj) of
+        true -> cb_context:add_system_error('invalid request', Context);
+        false ->
+            Help = kz_json:from_list([{<<"tasks">>, JObj}]),
+            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
+                                        ,{fun cb_context:set_resp_data/2, Help}
+                                        ])
     end.
