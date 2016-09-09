@@ -10,11 +10,9 @@ Key | Description | Type | Default | Required
 `digit_timeout` | How long to wait between DTMF presses before processing the collected sequence (milliseconds) | `integer` |   | `false`
 `listen_on` | Which leg(s) of the call to listen for DTMF | `string('both', 'self', 'peer')` |   | `false`
 `numbers` | A list of static numbers that the metaflow should match for | `object` |   | `false`
-`numbers.[0-9\*\#]+` |   | `object` |   | `false`
-`numbers.[0-9\*\#]+.children` |   | `#/flow` | `{}` | `false`
-`numbers.[0-9\*\#]+.data` | Module Data | `object` | `{}` | `true`
-`numbers.[0-9\*\#]+.module` |   | `string(0..15)` |   | `true`
+`numbers.^[0-9]+$` |   | `#/definitions/metaflow` |   | `false`
 `patterns` | The metaflow patterns | `object` |   | `false`
+`patterns..+` |   | `#/definitions/metaflow` |   | `false`
 
 
 #### Remove

@@ -65,6 +65,5 @@
             "type": "object"
         }
     },
-    "type": "object",
-    "uniqueItems": true
+    "type": "object"
 }
