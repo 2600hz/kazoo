@@ -8218,7 +8218,7 @@
             "required": true,
             "type": "object"
         },
- "system_config.fax": {
+        "system_config.fax": {
             "description": "Schema for fax system_config",
             "properties": {
                 "allow_all_addresses_when_empty": {
