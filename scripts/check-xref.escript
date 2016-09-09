@@ -129,6 +129,7 @@ filter(undefined_functions, Results) ->
                  ({hipe, _, _}) -> false;
                  ({hipe_amd64_main, _, _}) -> false;
                  ({hipe_arm_main, _, _}) -> false;
+                 ({hipe_x86_main, _, _}) -> false;
                  ({hipe_bifs, _, _}) -> false;
                  ({hipe_data_pp, _, _}) -> false;
                  ({hipe_icode2rtl, _, _}) -> false;
