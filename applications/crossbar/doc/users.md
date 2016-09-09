@@ -231,7 +231,7 @@ curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN} \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 {
-    "auth_token": "e4c49cfb8b91784c672222d3291b9449",
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
         "call_restriction": {},
         "caller_id": {},
@@ -473,6 +473,9 @@ Key | Type | Description
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{PHONE_NUMBER}
+```
+
+```json
 {
   "auth_token": "{AUTH_TOKEN}",
   "data": {

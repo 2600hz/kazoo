@@ -95,7 +95,7 @@ When issuing a PUT or POST, a request body is needed. When submitting a JSON (th
 ###### Sample Request Envelope
 
     {"data":{"foo":"bar"}
-     ,"auth_token":"xyzpdq123bfg"
+     ,"auth_token":"{AUTH_TOKEN}"
      ,"verb":"delete"
     }
 
@@ -113,7 +113,7 @@ When receiving JSON responses, clients will receive the response in an envelope.
 ###### Sample Response Envelope
 
     {"data":{"the":"response", "data":"is here"}
-     ,"auth_token":"xyzpdq123bfg"
+     ,"auth_token":"{AUTH_TOKEN}"
      ,"status":"success"
      ,"request_id":"123abc456qwerty"
     }

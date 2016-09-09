@@ -89,7 +89,7 @@ curl -v -X GET \
     "revision": "{REVISION}",
     "request_id": "{REQUEST_ID}",
     "status": "success",
-    "auth_token": "AUTH_TOKEN"
+    "auth_token": "{AUTH_TOKEN}"
 }
 ```
 
@@ -129,7 +129,7 @@ curl -v -X GET \
     "revision": "{REVISION}",
     "request_id": "{REQUEST_ID}",
     "status": "success",
-    "auth_token": "AUTH_TOKEN"
+    "auth_token": "{AUTH_TOKEN}"
 }
 ```
 
