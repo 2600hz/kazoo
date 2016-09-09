@@ -56,7 +56,7 @@ curl -v -X PUT \
         "reseller_id": "{RESELLER_ID}"
     }
     ,"request_id": "{REQUEST_ID}
-    ,"revision": "automatic"
+    ,"revision": "{REVISION}"
     ,"status": "success"
 }
 ```
@@ -133,7 +133,7 @@ curl -v -X PUT \
     "auth_token": "{AUTH_TOKEN}",
     "data": {},
     "request_id": "{REQUEST_ID}",
-    "revision": undefined,
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -161,7 +161,7 @@ curl -v -X POST \
     "auth_token": "{AUTH_TOKEN}",
     "data": {},
     "request_id": "{REQUEST_ID}",
-    "revision": undefined,
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```

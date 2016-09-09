@@ -201,7 +201,7 @@ Similar to the GET, you can include a `domain=` parameter in the request to test
          "TXT": {}
      },
      "request_id": "{REQUEST_ID}",
-     "revision": "undefined",
+     "revision": "{REVISION}",
      "status": "success"
 }
 ```

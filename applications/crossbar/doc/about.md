@@ -27,7 +27,7 @@ curl -v -X GET \
         "version": "4.0.0"
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```

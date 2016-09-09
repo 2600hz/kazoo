@@ -81,7 +81,7 @@ curl -v -X GET \
       ],
      ,"page_size": 3,
      ,"request_id": "{REQUEST_ID}"
-     ,"revision": {REVISION}
+     ,"revision": "{REVISION}"
      ,"status": "success"
 }
 ```
@@ -119,7 +119,7 @@ curl -v -X GET \
                  }
                ]
       ,"request_id": "{REQUEST_ID}"
-      ,"revision": "f231fd438e5ba812cac542bff00e636d"
+      ,"revision": "{REVISION}"
       ,"status": "success"
      }
 ```

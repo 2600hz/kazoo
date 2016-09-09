@@ -329,7 +329,7 @@ curl -v -X GET \
     ],
     "page_size": 2,
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "start_key": "vm-enter_pass",
     "status": "success"
 }

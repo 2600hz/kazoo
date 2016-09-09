@@ -52,7 +52,7 @@ curl -v -X GET \
         }
     ],
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -83,7 +83,7 @@ curl -v -X POST \
         }
     ],
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -110,7 +110,7 @@ curl -v -X DELETE \
         "zone": "us-east"
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -138,7 +138,7 @@ curl -v -X GET \
         "zone": "us-east"
     },
     "request_id":"{REQUEST_ID}",
-    "revision":"undefined",
+    "revision":"{REVISION}",
     "status":"success"
 }
 ```
@@ -167,7 +167,7 @@ curl -v -X POST \
         "zone": "us-east"
     },
     "request_id":"{REQUEST_ID}",
-    "revision":"undefined",
+    "revision":"{REVISION}",
     "status":"success"
 }
 ```
@@ -189,7 +189,7 @@ curl -v -X GET \
         "proxy1.us-east.myswitch.com"
     ],
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -211,7 +211,7 @@ curl -v -X GET \
         "us-east"
     ],
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -236,7 +236,7 @@ curl -v -X GET \
         }
     ],
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```

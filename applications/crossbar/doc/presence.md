@@ -67,7 +67,7 @@ curl -v -X GET \
          }
      },
      "request_id": "{REQUEST_ID}",
-     "revision": "undefined",
+     "revision": "{REVISION}",
      "status": "success"
 }
 ```

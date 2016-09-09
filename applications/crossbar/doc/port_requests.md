@@ -46,7 +46,7 @@ curl -v -X GET \
         }
     ],
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -87,7 +87,7 @@ curl -v -X GET \
     ],
     "page_size": 1,
     "request_id": "{REQUEST_ID}",
-    "revision": "bb7443aecba069b09d7197410dc02fbe",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -136,7 +136,7 @@ curl -v -X GET \
     ],
     "page_size": 1,
     "request_id": "{REQUEST_ID}",
-    "revision": "db7651aaeed4a373915b516963cd6dd4",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -177,7 +177,7 @@ curl -v -X GET \
     ],
     "page_size": 1,
     "request_id": "{REQUEST_ID}",
-    "revision": "e4058257bbc9e33ceab14632c5662eaf",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -219,7 +219,7 @@ curl -v -X GET \
     ],
     "page_size": 1,
     "request_id": "{REQUEST_ID}",
-    "revision": "cc55f42be1e2294a9291a2dca8087d10",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -261,7 +261,7 @@ curl -v -X GET \
     ],
     "page_size": 1,
     "request_id": "{REQUEST_ID}",
-    "revision": "ae048f434e5b16749c721eb0ab8fa781",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -283,7 +283,7 @@ curl -v -X GET \
     "data": [],
     "page_size": 0,
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "start_key": [
         "009afc511c97b2ae693c6cc4920988e8",
         "completed",
@@ -330,7 +330,7 @@ curl -v -X GET \
     ],
     "page_size": 1,
     "request_id": "{REQUEST_ID}",
-    "revision": "26e7f1549eed11fb1d5418c58424baf6",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -377,7 +377,7 @@ curl -v -X GET \
     ],
     "page_size": 1,
     "request_id": "{REQUEST_ID}",
-    "revision": "bddb6f5c0566d7a84ca2877abff750a8",
+    "revision": "{REVISION}",
     "start_key": [
         "009afc511c97b2ae693c6cc4920988e8",
         "canceled",
@@ -403,7 +403,7 @@ curl -v -X GET \
     "auth_token": "{AUTH_TOKEN}",
     "data": [],
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -461,7 +461,7 @@ curl -v -X GET \
     ],
     "page_size": 1,
     "request_id": "{REQUEST_ID}",
-    "revision": "4dd6dc369615b519373a4deeaa1567bd",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -493,7 +493,7 @@ curl -v -X PUT \
         "port_state": "unconfirmed"
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "1-184548f264275cf9351872e21a195152",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -565,7 +565,7 @@ curl -v -X GET \
         "uploads": {}
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "1-184548f264275cf9351872e21a195152",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -601,7 +601,7 @@ curl -v -X POST \
         "uploads": {}
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "2-b43873df23aedaaa96682ec2da32e688",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -631,7 +631,7 @@ curl -v -X DELETE \
         "port_state": "unconfirmed"
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "2-b43873df23aedaaa96682ec2da32e688",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -661,7 +661,7 @@ curl -v -X GET \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "6-ade05f2d7e539be79f425bfb39e41cef",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -686,7 +686,7 @@ curl -v -X PUT \
     "auth_token": "{AUTH_TOKEN}",
     "data": {},
     "request_id": "{REQUEST_ID}",
-    "revision": "2-7ab1daee08211c782a6cdc5425886be4",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -723,7 +723,7 @@ curl -v -X POST \
     "auth_token": "{AUTH_TOKEN}",
     "data": {},
     "request_id": "{REQUEST_ID}",
-    "revision": "4-288d2d9e121c8e5d5e0d137626d70536",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -744,7 +744,7 @@ curl -v -X DELETE \
     "auth_token": "{AUTH_TOKEN}",
     "data": {},
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -783,7 +783,7 @@ curl -v -X PATCH \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "14-f5fcbb593efe8719d9b3e29cb745ead9",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -842,7 +842,7 @@ curl -v -X PATCH \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "15-eefd336bebf12ec109880527a01387c2",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -899,7 +899,7 @@ curl -v -X PATCH \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "16-1377609b9166abf7a5dbb6b25a5a3890",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -936,7 +936,7 @@ curl -v -X PATCH \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "1-8edacf2b310d0fd1e919fda51ed10306",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -973,7 +973,7 @@ curl -v -X PATCH \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "17-84f0e12cfa1b4227e3a324286f5e067b",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -1010,7 +1010,7 @@ curl -v -X PATCH \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "18-82cca84c2b3d9019309a68f1d95c2d0c",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```

@@ -29,7 +29,7 @@ Use your account's API token to instruct Crossbar to create an authentication to
            ,"reseller_id": "{RESELLER_ID}"
          }
          ,"request_id": "{REQUEST_ID}
-         ,"revision": "automatic"
+         ,"revision": "{REVISION}"
          ,"status": "success"
         }
 

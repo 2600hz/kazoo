@@ -52,7 +52,7 @@ curl -v -X GET \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -100,7 +100,7 @@ curl -v -X GET \
     ],
     "page_size": 2,
     "request_id": "{REQUEST_ID}",
-    "revision": "601ffbf34fcbbc56597acf79847efde7",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -154,7 +154,7 @@ curl -v -X PUT \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -307,7 +307,7 @@ curl -v -X DELETE \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -375,7 +375,7 @@ curl -v -X GET \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -426,7 +426,7 @@ curl -v -X PATCH \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```

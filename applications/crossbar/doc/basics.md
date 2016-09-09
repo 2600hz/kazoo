@@ -137,7 +137,7 @@ We start with the typical CDR request for a listing of CDRs:
      ,"next_start_key": 63566193143
      ,"page_size": 25
      ,"request_id": "{REQUEST_ID}"
-     ,"revision": "bfcd0b7d8cbd647eaea262cb05be1b8b"
+     ,"revision": "{REVISION}"
      ,"start_key": 63565345339
      ,"status": "success"
     }
@@ -163,7 +163,7 @@ Using the `next_start_key` value, let's request the next page of CDRs:
      ,"next_start_key": 63566542092
      ,"page_size": 25
      ,"request_id": "{REQUEST_ID}"
-     ,"revision": "627d3a28af809ad745c2fbfc8b7397a1"
+     ,"revision": "{REVISION}"
      ,"start_key": 63566193143
      ,"status": "success"
     }

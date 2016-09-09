@@ -70,7 +70,7 @@ curl -v -X GET \
         "messages": {CHUNKS}
     }
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```

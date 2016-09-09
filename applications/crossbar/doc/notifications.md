@@ -112,7 +112,7 @@ curl -v -X GET \
             ,{...}
         ]
         "request_id": "{REQUEST_ID}",
-        "revision": "undefined",
+        "revision": "{REVISION}",
         "status": "success"
 }
 ```
@@ -150,7 +150,7 @@ curl -v -X GET \
         }
     ],
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -177,7 +177,7 @@ Using the ID from the system listing above, get the template JSON. This document
             }
         },
         "request_id": "{REQUEST_ID}",
-        "revision": "1-ad99c4dc5353792aed7be6e77b2d9d9a",
+        "revision": "{REVISION}",
         "status": "success"
     }
 
@@ -236,7 +236,7 @@ curl -v -X PUT \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "1-2ad8b8ca45e49df830a0ffbbc6d964d0",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -263,7 +263,7 @@ curl -v -X GET \
         ...
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "1-ad99c4dc5353792aed7be6e77b2d9d9a",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -441,7 +441,7 @@ curl -v -X GET \
     "template_account_id": "5ba01ad7ad1611d436b1860d8c552897",
     "id": "{SMTP_LOG_ID}"
   },
-  "revision": "1-ebaf6815b64d699c25d93dabe2b7e71f",
+  "revision": "{REVISION}",
   "request_id": "{REQUEST_ID}",
   "status": "success",
   "auth_token": "{AUTH_TOKEN}"

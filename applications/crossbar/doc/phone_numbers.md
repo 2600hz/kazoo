@@ -52,7 +52,7 @@ curl -v -X GET \
         }
     ],
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -88,7 +88,7 @@ curl -v -X GET \
         }
     ],
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -134,7 +134,7 @@ curl -v -X GET \
     },
     "page_size": 2,
     "request_id": "{REQUEST_ID}",
-    "revision": "19-d21bca301d4721b03f368b73de35f813",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -178,7 +178,7 @@ curl -v -X DELETE \
         "state": "available"
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -225,7 +225,7 @@ curl -v -X DELETE \
         "state": "deleted"
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -267,7 +267,7 @@ curl -v -X GET \
         "my_own_field": {}
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -334,7 +334,7 @@ curl -v -X POST \
         "used_by": "callflow"
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -373,7 +373,7 @@ curl -v -X PUT \
         "my_own_field": {}
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -463,7 +463,7 @@ curl -v -X POST \
         "{PHONE_NUMBER2}": "error"
     }
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -482,7 +482,7 @@ It may be due to:
     "auth_token": "{AUTH_TOKEN}",
     "data": {},
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -567,7 +567,7 @@ curl -v -X POST \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -682,7 +682,7 @@ curl -v -X DELETE \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -734,7 +734,7 @@ curl -v -X DELETE \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -779,7 +779,7 @@ curl -v -X POST \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -835,7 +835,7 @@ curl -v -X PUT \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -915,7 +915,7 @@ curl -v -X GET \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -960,7 +960,7 @@ curl -v -X POST \
     },
     "page_size": 2,
     "request_id": "{REQUEST_ID}",
-    "revision": "19-d21bca301d4721b03f368b73de35f813",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -988,7 +988,7 @@ curl -v -X GET \
         "number": "{PHONE_NUMBER}"
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -1037,7 +1037,7 @@ curl -v -X PUT \
         "state": "reserved"
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -1105,7 +1105,7 @@ curl -v -X PUT \
         "state": "in_service"
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -1167,7 +1167,7 @@ curl -v -X GET \
         "regex": "^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$"
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -1216,7 +1216,7 @@ curl -v -X PUT \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```

@@ -73,7 +73,7 @@ curl -v -X PUT \
         "wnm_allow_additions": false
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -109,7 +109,7 @@ curl -v -X DELETE \
         "wnm_allow_additions": false
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 
@@ -146,7 +146,7 @@ curl -v -X GET \
         "wnm_allow_additions": false
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 
@@ -185,7 +185,7 @@ curl -v -X PATCH \
         "wnm_allow_additions": false
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -224,7 +224,7 @@ curl -v -X POST \
         "wnm_allow_additions": false
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 
@@ -265,7 +265,7 @@ curl -v -X PUT \
         "wnm_allow_additions": false
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -488,7 +488,7 @@ curl -v -X POST \
         "wnm_allow_additions": false
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 

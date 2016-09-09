@@ -99,7 +99,7 @@ curl -v -X PUT \
         "fax_timezone":"undefined",
         "id":"{FAX_JOB_ID}"
     },
-    "revision":"1-53e7a67f473fe55d586a3b10dcca3ced",
+    "revision":"{REVISION}",
     "request_id":"{REQUEST_ID}",
     "status":"success",
     "auth_token":"{AUTH_TOKEN}"
@@ -155,7 +155,7 @@ curl -v -X GET \
     ],
     "page_size": 1,
     "request_id": "{REQUEST_ID}",
-    "revision": "e7dc82251f713694d4ddd5a95bf3701c",
+    "revision": "{REVISION}",
     "start_key": [
         "{START_KEY}"
     ],
@@ -206,7 +206,7 @@ curl -v -X GET \
         }
     },
     "request_id": "{REQUEST_ID}",
-    "revision": "1-53e7a67f473fe55d586a3b10dcca3ced",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```

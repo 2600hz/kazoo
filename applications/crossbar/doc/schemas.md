@@ -98,7 +98,7 @@ curl -v -X GET \
         "whitelabels"
     ],
     "request_id": "{REQUEST_ID}",
-    "revision": "undefined",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -180,7 +180,7 @@ curl -v -X PUT \
     "auth_token":"",
     "data":{...},
     "request_id":"{REQUEST_ID}",
-    "revision":"undefined",
+    "revision":"{REVISION}",
     "status":"success"
 }
 ```
