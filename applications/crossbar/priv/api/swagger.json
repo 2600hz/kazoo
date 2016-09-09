@@ -18176,6 +18176,226 @@
                 ]
             }
         },
+        "/accounts/{ACCOUNT_ID}/services": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/services/audit": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/services/plan": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/siblings": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/signup": {
+            "put": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/signup/{THING}": {
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/thing"
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/skels": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/skels/{THING}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/thing"
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/thing"
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "patch": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/thing"
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/thing"
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/slack_hooks": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
         "/accounts/{ACCOUNT_ID}/sms": {
             "get": {
                 "parameters": [
@@ -19672,14 +19892,6 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "body",
-                        "name": "whitelabel",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/whitelabel"
-                        }
-                    },
-                    {
                         "$ref": "#/parameters/auth_token_header",
                         "required": true
                     },
@@ -19690,14 +19902,6 @@
             },
             "put": {
                 "parameters": [
-                    {
-                        "in": "body",
-                        "name": "whitelabel",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/whitelabel"
-                        }
-                    },
                     {
                         "$ref": "#/parameters/auth_token_header",
                         "required": true
@@ -19723,14 +19927,6 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "body",
-                        "name": "whitelabel",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/whitelabel"
-                        }
-                    },
-                    {
                         "$ref": "#/parameters/auth_token_header",
                         "required": true
                     },
@@ -19754,14 +19950,6 @@
             },
             "post": {
                 "parameters": [
-                    {
-                        "in": "body",
-                        "name": "whitelabel",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/whitelabel"
-                        }
-                    },
                     {
                         "$ref": "#/parameters/auth_token_header",
                         "required": true
@@ -19787,14 +19975,6 @@
             "post": {
                 "parameters": [
                     {
-                        "in": "body",
-                        "name": "whitelabel",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/whitelabel"
-                        }
-                    },
-                    {
                         "$ref": "#/parameters/auth_token_header",
                         "required": true
                     },
@@ -19818,14 +19998,6 @@
             },
             "post": {
                 "parameters": [
-                    {
-                        "in": "body",
-                        "name": "whitelabel",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/whitelabel"
-                        }
-                    },
                     {
                         "$ref": "#/parameters/auth_token_header",
                         "required": true
