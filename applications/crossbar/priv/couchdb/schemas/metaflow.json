@@ -1,31 +1,28 @@
 {
-    "$schema":"http://json-schema.org/draft-03/schema#",
-    "_id":"metaflow",
-    "properties":{
-        "children":{
-            "type" : "object",
-            "patternProperties" {
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "metaflow",
+    "additionalProperties": false,
+    "properties": {
+        "children": {
+            "default": {},
+            "patternProperties": {
                 ".+": {
                     "$ref": "metaflow"
                 }
-            }
-            "default":{
             },
-            "required":false
+            "required": false,
+            "type": "object"
         },
-        "data":{
-            "default":{
-                
-            },
-            "description":"Module Data",
-            "required":true,
-            "type":"object"
+        "data": {
+            "default": {},
+            "description": "Module Data",
+            "required": true,
+            "type": "object"
         },
-        "module":{
-            "maxLength":15,
-            "required":true,
-            "type":"string"
+        "module": {
+            "maxLength": 15,
+            "required": true,
+            "type": "string"
         }
-    },
-    "additionalProperties":false
+    }
 }
