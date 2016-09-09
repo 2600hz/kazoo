@@ -481,7 +481,7 @@ task_api(Category, Action) ->
 -spec worker_module(kz_json:object()) -> module().
 worker_module(API) ->
     case kz_tasks:input_mime(API) of
-        'undefined' -> 'kz_task_noinput_worker';
+        <<"none">> -> 'kz_task_noinput_worker';
         _TextCSV -> 'kz_task_worker'
     end.
 

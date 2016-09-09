@@ -17,5 +17,7 @@
 -define(STATUS_SUCCESS, <<"success">>).
 -define(STATUS_BAD, <<"internal_error">>).
 
+-define(NIL_MIME, <<"none">>).
+
 -define(KAZOO_TASKS_HRL, 'true').
 -endif.

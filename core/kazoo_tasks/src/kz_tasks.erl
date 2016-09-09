@@ -76,9 +76,9 @@ mandatory(APIJObj) ->
 optional(APIJObj) ->
     kz_json:get_list_value(?API_OPTIONAL, APIJObj, []).
 
--spec input_mime(kz_json:object()) -> api_binary().
+-spec input_mime(kz_json:object()) -> ne_binary().
 input_mime(APIJObj) ->
-    kz_json:get_ne_binary_value(?API_INPUT_MIME, APIJObj).
+    kz_json:get_ne_binary_value(?API_INPUT_MIME, APIJObj, ?NIL_MIME).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -240,9 +240,8 @@ find_API_errors(API, Fields, HasInputData) ->
                  end
          end
         ,fun (Errors) ->
-                 MIME = input_mime(API),
-                 APIRequiresInputData = 'undefined' /= MIME,
-                 RequestedMIME = case MIME of 'undefined' -> <<"none">>; _ -> MIME end,
+                 RequestedMIME = input_mime(API),
+                 APIRequiresInputData = ?NIL_MIME /= RequestedMIME,
                  case APIRequiresInputData xor HasInputData of
                      'false' -> Errors;
                      'true' ->  Errors#{?KZ_TASKS_INPUT_ERROR_MIME => RequestedMIME}
