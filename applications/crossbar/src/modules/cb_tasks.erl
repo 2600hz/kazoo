@@ -503,9 +503,7 @@ help(Context) ->
                             ,fun kapi_tasks:lookup_resp_v/1
                             )
     of
-        {'ok', JObj} ->
-            lager:debug(">>> ~p", [JObj]),
-            kz_json:get_value(<<"Help">>, JObj);
+        {'ok', JObj} -> kz_json:get_value(<<"Help">>, JObj);
         {'timeout', _Resp} ->
             lager:debug("timeout: ~p", [_Resp]),
             kz_json:new();
