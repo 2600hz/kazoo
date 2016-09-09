@@ -118,7 +118,7 @@ curl -v -X GET \
                  ,"resp_body": "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n<html><head>\n<title>404 Not Found</title>\n</head><body>\n<h1>Not Found</h1>\n<p>The requested URL /path/to/callflow.php was not found on this server.</p>\n<hr>\n<address>Apache/2.4.7 (Ubuntu) Server at {PIVOT_SERVER} Port 80</address>\n</body></html>\n"
                  }
                ]
-      ,"request_id": "fb455599cf9f1390c5efa1d948d41d2b"
+      ,"request_id": "{REQUEST_ID}"
       ,"revision": "f231fd438e5ba812cac542bff00e636d"
       ,"status": "success"
      }

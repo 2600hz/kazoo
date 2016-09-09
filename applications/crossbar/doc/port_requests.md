@@ -45,7 +45,7 @@ curl -v -X GET \
             ]
         }
     ],
-    "request_id": "6b667214680d1cc3143b8a187d820af6",
+    "request_id": "{REQUEST_ID}",
     "revision": "undefined",
     "status": "success"
 }
@@ -86,7 +86,7 @@ curl -v -X GET \
         }
     ],
     "page_size": 1,
-    "request_id": "24060fb2eb79e6dd0d29b290e2cb7085",
+    "request_id": "{REQUEST_ID}",
     "revision": "bb7443aecba069b09d7197410dc02fbe",
     "status": "success"
 }
@@ -135,7 +135,7 @@ curl -v -X GET \
         }
     ],
     "page_size": 1,
-    "request_id": "ecd09332796338bd1cfada0a74e6bd28",
+    "request_id": "{REQUEST_ID}",
     "revision": "db7651aaeed4a373915b516963cd6dd4",
     "status": "success"
 }
@@ -176,7 +176,7 @@ curl -v -X GET \
         }
     ],
     "page_size": 1,
-    "request_id": "1bf407e087f04e6096f7f010c4eef045",
+    "request_id": "{REQUEST_ID}",
     "revision": "e4058257bbc9e33ceab14632c5662eaf",
     "status": "success"
 }
@@ -218,7 +218,7 @@ curl -v -X GET \
         }
     ],
     "page_size": 1,
-    "request_id": "156c9979f04229a0088653bfbff0b08c",
+    "request_id": "{REQUEST_ID}",
     "revision": "cc55f42be1e2294a9291a2dca8087d10",
     "status": "success"
 }
@@ -260,7 +260,7 @@ curl -v -X GET \
         }
     ],
     "page_size": 1,
-    "request_id": "ab348636e435cd01888356607b183697",
+    "request_id": "{REQUEST_ID}",
     "revision": "ae048f434e5b16749c721eb0ab8fa781",
     "status": "success"
 }
@@ -282,7 +282,7 @@ curl -v -X GET \
     "auth_token": "{AUTH_TOKEN}",
     "data": [],
     "page_size": 0,
-    "request_id": "388313efcf12e4eda5672b5336828350",
+    "request_id": "{REQUEST_ID}",
     "revision": "undefined",
     "start_key": [
         "009afc511c97b2ae693c6cc4920988e8",
@@ -329,7 +329,7 @@ curl -v -X GET \
         }
     ],
     "page_size": 1,
-    "request_id": "92200b874efd5cbb641599f47cd2431a",
+    "request_id": "{REQUEST_ID}",
     "revision": "26e7f1549eed11fb1d5418c58424baf6",
     "status": "success"
 }
@@ -376,7 +376,7 @@ curl -v -X GET \
         }
     ],
     "page_size": 1,
-    "request_id": "745be8bfd341636eabb9a0b9572846eb",
+    "request_id": "{REQUEST_ID}",
     "revision": "bddb6f5c0566d7a84ca2877abff750a8",
     "start_key": [
         "009afc511c97b2ae693c6cc4920988e8",
@@ -402,7 +402,7 @@ curl -v -X GET \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": [],
-    "request_id": "48f4e5e053801a13b4e4e3e3ba9c10c4",
+    "request_id": "{REQUEST_ID}",
     "revision": "undefined",
     "status": "success"
 }
@@ -460,7 +460,7 @@ curl -v -X GET \
         }
     ],
     "page_size": 1,
-    "request_id": "82db6e47a0adafc1db83369723390dce",
+    "request_id": "{REQUEST_ID}",
     "revision": "4dd6dc369615b519373a4deeaa1567bd",
     "status": "success"
 }
@@ -492,7 +492,7 @@ curl -v -X PUT \
         },
         "port_state": "unconfirmed"
     },
-    "request_id": "54672607e9884437069abb7e5a891a5c",
+    "request_id": "{REQUEST_ID}",
     "revision": "1-184548f264275cf9351872e21a195152",
     "status": "success"
 }
@@ -513,7 +513,7 @@ curl -v -X PUT \
     },
     "error": "500",
     "message": "invalid request",
-    "request_id": "7cdd44775dc7b583a2628e05588c439b",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -533,7 +533,7 @@ curl -v -X PUT \
     },
     "error": "500",
     "message": "invalid request",
-    "request_id": "05ec9cf8811661fed103864e2ed07bcd",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -564,7 +564,7 @@ curl -v -X GET \
         "updated": 63630097779,
         "uploads": {}
     },
-    "request_id": "32afa58869e88fd709f88739f2d0bb12",
+    "request_id": "{REQUEST_ID}",
     "revision": "1-184548f264275cf9351872e21a195152",
     "status": "success"
 }
@@ -600,7 +600,7 @@ curl -v -X POST \
         "updated": 63630104652,
         "uploads": {}
     },
-    "request_id": "aed9b0228ef02bcd92322442b02204e9",
+    "request_id": "{REQUEST_ID}",
     "revision": "2-b43873df23aedaaa96682ec2da32e688",
     "status": "success"
 }
@@ -630,7 +630,7 @@ curl -v -X DELETE \
         },
         "port_state": "unconfirmed"
     },
-    "request_id": "80b315b87c9db92a2ae755c581d838a3",
+    "request_id": "{REQUEST_ID}",
     "revision": "2-b43873df23aedaaa96682ec2da32e688",
     "status": "success"
 }
@@ -660,7 +660,7 @@ curl -v -X GET \
             "length": 767684
         }
     },
-    "request_id": "ed71507eeccbd3eeab8ccd7bd6cf023c",
+    "request_id": "{REQUEST_ID}",
     "revision": "6-ade05f2d7e539be79f425bfb39e41cef",
     "status": "success"
 }
@@ -685,7 +685,7 @@ curl -v -X PUT \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {},
-    "request_id": "e9db1aa74945884eed5a4545a405b490",
+    "request_id": "{REQUEST_ID}",
     "revision": "2-7ab1daee08211c782a6cdc5425886be4",
     "status": "success"
 }
@@ -722,7 +722,7 @@ curl -v -X POST \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {},
-    "request_id": "5ccaf7eb473c350c2e460ae5b4a76697",
+    "request_id": "{REQUEST_ID}",
     "revision": "4-288d2d9e121c8e5d5e0d137626d70536",
     "status": "success"
 }
@@ -743,7 +743,7 @@ curl -v -X DELETE \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {},
-    "request_id": "1178da494ef5a953240b33eeaa7df859",
+    "request_id": "{REQUEST_ID}",
     "revision": "undefined",
     "status": "success"
 }
@@ -782,7 +782,7 @@ curl -v -X PATCH \
             }
         }
     },
-    "request_id": "6a05c7559aabd2ff55f13e364ccfa63c",
+    "request_id": "{REQUEST_ID}",
     "revision": "14-f5fcbb593efe8719d9b3e29cb745ead9",
     "status": "success"
 }
@@ -803,7 +803,7 @@ curl -v -X PATCH \
     },
     "error": "402",
     "message": "accept charges",
-    "request_id": "9abd3b133b4bf2e2f006fa164a842441",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -841,7 +841,7 @@ curl -v -X PATCH \
             }
         }
     },
-    "request_id": "f9012ea6d97a1fa3a54e3f5615e5ad24",
+    "request_id": "{REQUEST_ID}",
     "revision": "15-eefd336bebf12ec109880527a01387c2",
     "status": "success"
 }
@@ -862,7 +862,7 @@ curl -v -X PATCH \
     },
     "error": "500",
     "message": "invalid request",
-    "request_id": "a6c9b35b2fde177b833ff79e78dcc21c",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -898,7 +898,7 @@ curl -v -X PATCH \
             }
         }
     },
-    "request_id": "9942dcff784138431b268b6bd140862f",
+    "request_id": "{REQUEST_ID}",
     "revision": "16-1377609b9166abf7a5dbb6b25a5a3890",
     "status": "success"
 }
@@ -935,7 +935,7 @@ curl -v -X PATCH \
             }
         }
     },
-    "request_id": "b760e5f682423a3e7224b1afc21e0f48",
+    "request_id": "{REQUEST_ID}",
     "revision": "1-8edacf2b310d0fd1e919fda51ed10306",
     "status": "success"
 }
@@ -972,7 +972,7 @@ curl -v -X PATCH \
             }
         }
     },
-    "request_id": "8edacf2b310d0fd1e919fda51ed10306",
+    "request_id": "{REQUEST_ID}",
     "revision": "17-84f0e12cfa1b4227e3a324286f5e067b",
     "status": "success"
 }
@@ -1009,7 +1009,7 @@ curl -v -X PATCH \
             }
         }
     },
-    "request_id": "cb1cff969c1513d8a21df2e4c5bbe341",
+    "request_id": "{REQUEST_ID}",
     "revision": "18-82cca84c2b3d9019309a68f1d95c2d0c",
     "status": "success"
 }

@@ -69,7 +69,7 @@ curl -v -X GET \
         "analysis": [],
         "messages": {CHUNKS}
     }
-    "request_id": "6a10fe5e916c1982d8b910e59bed7915",
+    "request_id": "{REQUEST_ID}",
     "revision": "undefined",
     "status": "success"
 }

@@ -132,7 +132,7 @@ curl -v -X PUT \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {},
-    "request_id": "7ab1daee08211c782a6cdc5425886be4",
+    "request_id": "{REQUEST_ID}",
     "revision": undefined,
     "status": "success"
 }
@@ -160,7 +160,7 @@ curl -v -X POST \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {},
-    "request_id": "7ab1daee08211c782a6cdc5425886be4",
+    "request_id": "{REQUEST_ID}",
     "revision": undefined,
     "status": "success"
 }
@@ -181,7 +181,7 @@ curl -v -X POST \
     },
     "error": "500",
     "message": "invalid request",
-    "request_id": "dbafc07860f521430d176943742d5f7e",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
