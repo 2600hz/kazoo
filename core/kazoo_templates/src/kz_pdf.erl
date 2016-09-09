@@ -7,7 +7,7 @@
 %%%   Peter Defebvre
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(kztpl_pdf).
+-module(kz_pdf).
 
 -export([find_template/2
          ,find_template/3
@@ -78,7 +78,7 @@ generate(Account, Props, Template) ->
 
     Rand = kz_util:rand_hex_binary(5),
     %% TODO: fix that atom creation!
-    Renderer = kz_util:to_atom(<<"kztpl_pdf_", DocType/binary, "_", Rand/binary>>, 'true'),
+    Renderer = kz_util:to_atom(<<"kz_pdf_", DocType/binary, "_", Rand/binary>>, 'true'),
     {'ok', Renderer} = kz_template:compile(Template, Renderer),
     {'ok', Rendered} = kz_template:render(Renderer, Props),
 
