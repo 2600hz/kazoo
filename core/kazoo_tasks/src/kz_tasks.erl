@@ -127,7 +127,7 @@ read(TaskId=?NE_BINARY) ->
 new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
    ,Category=?NE_BINARY, Action=?NE_BINARY, TotalRows, Input, CSVName)
   when is_integer(TotalRows), TotalRows > 0;
-       TotalRows == 'undefined', Input == 'undefined' ->
+       TotalRows =:= 'undefined', Input =:= 'undefined' ->
     case help(Category, Action) of
         {'error', _R}=E ->
             lager:debug("checking task ~s ~s failed: ~p", [Category, Action, _R]),

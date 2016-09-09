@@ -428,22 +428,10 @@ save_attached_data(Context, _TaskId, 'undefined', 'false') ->
     lager:debug("no attachment to save for task ~s", [_TaskId]),
     Context;
 save_attached_data(Context, TaskId, Records, 'false') ->
-    lager:debug("converting JSON to CSV before saving"),
-    Fields = kz_json:get_keys(hd(Records)),
-    %% We assume fields for first record are defined in all other records.
-    lager:debug("CSV fields found: ~p", [Fields]),
-    Tmp = iolist_to_binary(["/tmp/taskatt_", integer_to_binary(kz_util:current_tstamp()), ".csv"]),
-    'ok' = file:write_file(Tmp, [kz_util:iolist_join($,, Fields), $\n]),
-    lists:foreach(fun (Record) ->
-                          Cells = [kz_json:get_value(Field, Record) || Field <- Fields],
-                          Row = [kz_util:iolist_join($,, Cells), $\n],
-                          _ = file:write_file(Tmp, Row, ['append'])
-                  end
-                 ,Records
-                 ),
+    lager:debug("converting json to csv before saving"),
+    lager:debug("csv fields found: ~p", [kz_json:get_keys(hd(Records))]),
+    CSV = kz_csv:json_to_iolist(Records),
     lager:debug("saving ~s attachment in task ~s", [?KZ_TASKS_ATTACHMENT_NAME_IN, TaskId]),
-    {'ok', CSV} = file:read_file(Tmp),
-    kz_util:delete_file(Tmp),
     Options = [{'content_type', <<"text/csv">>}],
     crossbar_doc:save_attachment(TaskId, ?KZ_TASKS_ATTACHMENT_NAME_IN, CSV, Context, Options).
 

@@ -16,6 +16,7 @@
         ,pad_row_to/2
         ,associator/3
         ,row_to_iolist/1
+        ,json_to_iolist/1
         ]).
 
 -include_lib("kazoo/include/kz_types.hrl").
@@ -174,6 +175,29 @@ row_to_iolist([Cell]) -> cell_to_binary(Cell);
 row_to_iolist(Row=[_|_]) ->
     kz_util:iolist_join($,, [cell_to_binary(Cell) || Cell <- Row]).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Converts JSON-represented CSV data to binary.
+%% We assume fields for first record are defined in all other records.
+%% @end
+%%--------------------------------------------------------------------
+-spec json_to_iolist(kz_json:objects()) -> iodata().
+json_to_iolist(Records)
+  when is_list(Records) ->
+    Tmp = <<"/tmp/json_", (kz_util:rand_hex_binary(11))/binary, ".csv">>,
+    Fields = kz_json:get_keys(hd(Records)),
+    'ok' = file:write_file(Tmp, [kz_util:iolist_join($,, Fields), $\n]),
+    lists:foreach(fun (Record) ->
+                          Row = [kz_json:get_value(Field, Record, ?ZILCH) || Field <- Fields],
+                          _ = file:write_file(Tmp, [row_to_iolist(Row),$\n], ['append'])
+                  end
+                 ,Records
+                 ),
+    {'ok', IOData} = file:read_file(Tmp),
+    kz_util:delete_file(Tmp),
+    IOData.
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -253,5 +277,17 @@ row_to_iolist_test_() ->
                                  ,{<<"a,b,,,c">>, [<<"a">>, <<"b">>, ?ZILCH, ?ZILCH, <<"c">>]}
                                  ]
         ].
+
+json_to_iolist_test_() ->
+    Records1 = [kz_json:from_list([{<<"A">>, <<"a1">>}])
+               ,kz_json:from_list([{<<"A">>, <<"42">>}])
+               ],
+    Records2 = [kz_json:from_list([{<<"field1">>,?ZILCH}, {<<"field deux">>,<<"QUUX">>}])
+               ,kz_json:from_list([{<<"field deux">>, ?ZILCH}])
+               ,kz_json:from_list([{<<"field1">>, <<"r'bla.+\\n'">>}])
+               ],
+    [?_assertEqual(<<"A\na1\n42\n">>, json_to_iolist(Records1))
+    ,?_assertEqual(<<"field1,field deux\n,QUUX\n,\nr'bla.+\\n',\n">>, json_to_iolist(Records2))
+    ].
 
 -endif.
