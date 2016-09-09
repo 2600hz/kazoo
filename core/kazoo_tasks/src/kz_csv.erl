@@ -189,7 +189,7 @@ json_to_iolist(Records)
     Fields = kz_json:get_keys(hd(Records)),
     'ok' = file:write_file(Tmp, [kz_util:iolist_join($,, Fields), $\n]),
     lists:foreach(fun (Record) ->
-                          Row = [kz_json:get_value(Field, Record, ?ZILCH) || Field <- Fields],
+                          Row = [kz_json:get_ne_binary_value(Field, Record, ?ZILCH) || Field <- Fields],
                           _ = file:write_file(Tmp, [row_to_iolist(Row),$\n], ['append'])
                   end
                  ,Records
@@ -286,8 +286,12 @@ json_to_iolist_test_() ->
                ,kz_json:from_list([{<<"field deux">>, ?ZILCH}])
                ,kz_json:from_list([{<<"field1">>, <<"r'bla.+\\n'">>}])
                ],
+    Records3 = [kz_json:from_list([{<<"account_id">>,<<"009afc511c97b2ae693c6cc4920988e8">>}, {<<"e164">>,<<"+14157215234">>}, {<<"cnam.outbound">>,<<"me">>}])
+               ,kz_json:from_list([{<<"account_id">>,<<>>}, {<<"e164">>,<<"+14157215235">>}, {<<"cnam.outbound">>,<<>>}])
+               ],
     [?_assertEqual(<<"A\na1\n42\n">>, json_to_iolist(Records1))
     ,?_assertEqual(<<"field1,field deux\n,QUUX\n,\nr'bla.+\\n',\n">>, json_to_iolist(Records2))
+    ,?_assertEqual(<<"account_id,e164,cnam.outbound\n009afc511c97b2ae693c6cc4920988e8,+14157215234,me\n,+14157215235,\n">>, json_to_iolist(Records3))
     ].
 
 -endif.
