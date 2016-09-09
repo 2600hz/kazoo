@@ -123,8 +123,31 @@ filter('undefined_function_calls', Results) ->
     lists:filter(ToKeep, Results);
 filter(undefined_functions, Results) ->
     ToKeep = fun
+                 %% OTP Xref errors
                  ({eunit_test, nonexisting_function, 0}) -> false;
+                 ({hipe, _, _}) -> false;
+                 ({hipe_amd64_main, _, _}) -> false;
+                 ({hipe_arm_main, _, _}) -> false;
+                 ({hipe_bifs, _, _}) -> false;
+                 ({hipe_data_pp, _, _}) -> false;
+                 ({hipe_icode2rtl, _, _}) -> false;
+                 ({hipe_icode_heap_test, _, _}) -> false;
+                 ({hipe_llvm_liveness, _, _}) -> false;
+                 ({hipe_llvm_main, _, _}) -> false;
+                 ({hipe_ppc_main, _, _}) -> false;
+                 ({hipe_rtl_arch, _, _}) -> false;
+                 ({hipe_rtl_cfg, _, _}) -> false;
+                 ({hipe_rtl_cleanup_const, _, _}) -> false;
+                 ({hipe_rtl_lcm, _, _}) -> false;
+                 ({hipe_rtl_ssa, _, _}) -> false;
+                 ({hipe_rtl_ssa_avail_expr, _, _}) -> false;
+                 ({hipe_rtl_ssa_const_prop, _, _}) -> false;
+                 ({hipe_rtl_ssapre, _, _}) -> false;
+                 ({hipe_rtl_symbolic, _, _}) -> false;
+                 ({hipe_sparc_main, _, _}) -> false;
+                 ({hipe_tagscheme, _, _}) -> false;
 
+                 %% Missing deps of an old-deprecated app: pusher
                  ({qdate, to_unixtime, 1}) -> false;
                  ({qdate, unixtime, 0}) -> false;
 
