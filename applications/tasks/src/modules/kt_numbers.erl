@@ -85,7 +85,8 @@ cleanup(<<"import">>, AccountIds) ->
                 kz_services:reconcile(AccountId, <<"phone_numbers">>)
         end,
     lists:foreach(F, sets:to_list(AccountIds)),
-    knm_phone_number:push_stored();
+    knm_phone_number:push_stored(),
+    kz_datamgr:enable_change_notice();
 cleanup(<<"assign_to">>, _) ->
     knm_phone_number:push_stored();
 cleanup(<<"release">>, _) ->
