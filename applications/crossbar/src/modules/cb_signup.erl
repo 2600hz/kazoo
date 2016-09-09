@@ -385,7 +385,7 @@ activate_user(Account, User) ->
 exec_register_command(_, #state{register_cmd='undefined'}) -> 'ok';
 exec_register_command(Context, #state{register_cmd=CmdTmpl}) ->
     Props = template_props(Context),
-    {'ok', Cmd} = CmdTmpl:render(Props),
+    {'ok', Cmd} = kz_template:render(CmdTmpl, Props),
     lager:debug("executing register command ~s", [Cmd]),
     os:cmd(binary_to_list(iolist_to_binary(Cmd))).
 
@@ -405,11 +405,11 @@ send_activation_email(Context
     ReqId = cb_context:req_id(Context),
     Props = template_props(Context),
     To = kz_json:get_value([<<"pvt_user">>, <<"email">>], JObj),
-    Subject = case SubjectTmpl:render(Props) of
+    Subject = case kz_template:render(SubjectTmpl, Props) of
                   {'ok', S} -> S;
                   _ -> <<"Confirm your account activation">>
               end,
-    From = case FromTmpl:render(Props) of
+    From = case kz_template:render(FromTmpl, Props) of
                {'ok', F} -> F;
                _ ->
                    <<"no_reply@", (kz_util:to_binary(net_adm:localhost()))/binary>>
@@ -440,7 +440,7 @@ send_activation_email(Context
 %%--------------------------------------------------------------------
 -spec create_body(#state{}, kz_proplist(), [mail_message_body()]) -> [mail_message_body()].
 create_body(#state{activation_email_html=Tmpl}=State, Props, Body) when Tmpl =/= 'undefined' ->
-    case Tmpl:render(Props) of
+    case kz_template:render(Tmpl, Props) of
         {'ok', Content} ->
             Part = {<<"text">>, <<"html">>
                    ,[{<<"Content-Type">>, <<"text/html">>}]
@@ -452,7 +452,7 @@ create_body(#state{activation_email_html=Tmpl}=State, Props, Body) when Tmpl =/=
             create_body(State#state{activation_email_html='undefined'}, Props, Body)
     end;
 create_body(#state{activation_email_plain=Tmpl}=State, Props, Body) when Tmpl =/= 'undefined' ->
-    case Tmpl:render(Props) of
+    case kz_template:render(Tmpl, Props) of
         {'ok', Content} ->
             Part = {<<"text">>, <<"plain">>
                    ,[{<<"Content-Type">>, <<"text/plain">>}]
@@ -610,17 +610,10 @@ compile_template(Template, Name) ->
 %% Compiles template string or path, normalizing the return
 %% @end
 %%--------------------------------------------------------------------
--spec do_compile_template(nonempty_string() | ne_binary(), template_name()) ->
+-spec do_compile_template(kz_template:template(), template_name()) ->
                                  'undefined' | template_name().
 do_compile_template(Template, Name) ->
-    case erlydtl:compile_template(Template, Name, [{'out_dir', 'false'}]) of
-        {'ok', Name} ->
-            lager:debug("compiled ~s template", [Name]),
-            Name;
-        'ok' ->
-            lager:debug("compiled ~s template file", [Name]),
-            Name;
-        _E ->
-            lager:debug("could not compile ~s template, ignoring", [Name]),
-            'undefined'
+    case kz_template:compile(Template, Name) of
+        {'ok', Name} -> Name;
+        _ -> 'undefined'
     end.

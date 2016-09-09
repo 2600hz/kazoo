@@ -150,8 +150,8 @@ init([]) ->
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'render', Props, Template}, _, TemplateName) ->
-    {'ok', TemplateName} = erlydtl:compile_template(Template, TemplateName),
-    {'ok', Result} = TemplateName:render(Props),
+    {'ok', TemplateName} = kz_template:compile(Template, TemplateName),
+    {'ok', Result} = kz_template:render(TemplateName, Props),
     {'reply', {'ok', Result}, TemplateName};
 handle_call(_Request, _From, TemplateName) ->
     {'reply', {'error', 'not_implemented'}, TemplateName}.

@@ -145,7 +145,7 @@ compile_default_template(TemplateModule, Category, Key) ->
                    Else -> Else
                end,
     lager:debug("compiling ~s: '~s'", [TemplateModule, Template]),
-    {'ok', TemplateModule} = erlydtl:compile_template(Template, TemplateModule, [{'out_dir', 'false'}]).
+    {'ok', TemplateModule} = kz_template:compile(Template, TemplateModule).
 
 get_default_template(Category, Key) ->
     File = category_to_file(Category),
@@ -183,7 +183,7 @@ render_template(Template, DefaultTemplate, Props) ->
                                 {'error', any()}.
 do_render_template('undefined', DefaultTemplate, Props) ->
     lager:debug("rendering default ~s template", [DefaultTemplate]),
-    DefaultTemplate:render(Props);
+    kz_template:render(DefaultTemplate, Props);
 do_render_template(Template, DefaultTemplate, Props) ->
     try
         'false' = kz_util:is_empty(Template),
@@ -192,10 +192,10 @@ do_render_template(Template, DefaultTemplate, Props) ->
                                                         ])
                                         ,'true'),
         lager:debug("compiling custom ~s template", [DefaultTemplate]),
-        {'ok', CustomTemplate} = erlydtl:compile_template(Template, CustomTemplate, [{'out_dir', 'false'}]),
+        {'ok', CustomTemplate} = kz_template:compile(Template, CustomTemplate),
 
         lager:debug("rendering custom template ~s", [CustomTemplate]),
-        Result = CustomTemplate:render(Props),
+        Result = kz_template:render(CustomTemplate, Props),
 
         code:purge(CustomTemplate),
         code:delete(CustomTemplate),

@@ -339,9 +339,8 @@ post(Context, Id) ->
             lager:debug("handling POST of template meta for ~s", [Id]),
             do_post(Context);
         [{_FileName, FileJObj}] ->
-            DbId = kz_notification:db_id(Id),
-            lager:debug("POST is for an attachment on ~s(~s)", [Id, DbId]),
-            update_template(Context, DbId, FileJObj)
+            lager:debug("POST is for an attachment on ~s(~s)", [Id, kz_notification:db_id(Id)]),
+            update_template(Context, Id, FileJObj)
     end.
 
 -spec do_post(cb_context:context()) -> cb_context:context().
@@ -917,18 +916,26 @@ update_notification(Context, Id) ->
 -spec update_template(cb_context:context(), path_token(), kz_json:object()) ->
                              cb_context:context().
 update_template(Context, Id, FileJObj) ->
+    DbId = kz_notification:db_id(Id),
     Contents = kz_json:get_value(<<"contents">>, FileJObj),
     CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
-    lager:debug("file content type for ~s: ~s", [Id, CT]),
+    lager:debug("file content type for ~s: ~s", [DbId, CT]),
 
     Opts = [{'content_type', kz_util:to_list(CT)}],
 
-    crossbar_doc:save_attachment(Id
-                                ,attachment_name_by_content_type(CT)
-                                ,Contents
-                                ,Context
-                                ,Opts
-                                ).
+    case kz_template:render(Contents, template_module_name(Id, Context, CT), []) of
+        {'ok', _} ->
+            AttachmentName = attachment_name_by_content_type(CT),
+            crossbar_doc:save_attachment(DbId
+                                        ,AttachmentName
+                                        ,Contents
+                                        ,Context
+                                        ,Opts
+                                        );
+        {'error', Error} ->
+            lager:warning("failed to compile uploaded ~s template: ~p", [CT, Error]),
+            cb_context:add_system_error('faulty_request', Context)
+    end.
 
 -spec attachment_name_by_content_type(ne_binary()) -> ne_binary().
 attachment_name_by_content_type(CT) ->
@@ -937,6 +944,18 @@ attachment_name_by_content_type(CT) ->
 -spec attachment_name_by_media_type(ne_binary()) -> ne_binary().
 attachment_name_by_media_type(CT) ->
     <<"template.", CT/binary>>.
+
+-spec template_module_name(ne_binary(), cb_context:context(), ne_binary()) -> atom().
+template_module_name(Id, Context, CT) ->
+    AccountId = cb_context:account_id(Context),
+    [_C, Type] = binary:split(CT, <<"/">>),
+    kz_util:to_atom(
+      <<AccountId/binary
+        ,"_"
+        ,Id/binary
+        ,"_"
+        ,Type/binary
+      >>, 'true').
 
 %%--------------------------------------------------------------------
 %% @private
