@@ -12202,6 +12202,10 @@
             "required": true,
             "type": "string"
         },
+        "storage_plan_id": {
+            "$ref": "#/parameters/id",
+            "name": "{STORAGE_PLAN_ID}"
+        },
         "system_config_id": {
             "in": "path",
             "name": "{SYSTEM_CONFIG_ID}",
@@ -18511,11 +18515,11 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/storage/plans/{PLAN_ID}": {
+        "/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}": {
             "delete": {
                 "parameters": [
                     {
-                        "$ref": "#/parameters/plan_id"
+                        "$ref": "#/parameters/storage_plan_id"
                     },
                     {
                         "$ref": "#/parameters/auth_token_header",
@@ -18529,7 +18533,7 @@
             "get": {
                 "parameters": [
                     {
-                        "$ref": "#/parameters/plan_id"
+                        "$ref": "#/parameters/storage_plan_id"
                     },
                     {
                         "$ref": "#/parameters/auth_token_header",
@@ -18551,7 +18555,7 @@
                         }
                     },
                     {
-                        "$ref": "#/parameters/plan_id"
+                        "$ref": "#/parameters/storage_plan_id"
                     },
                     {
                         "$ref": "#/parameters/auth_token_header",

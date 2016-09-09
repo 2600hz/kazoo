@@ -127,7 +127,7 @@ allowed_methods(?PLANS_TOKEN) ->
     [?HTTP_GET, ?HTTP_PUT].
 
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
-allowed_methods(?PLANS_TOKEN, _PlanId) ->
+allowed_methods(?PLANS_TOKEN, _StoragePlanId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
