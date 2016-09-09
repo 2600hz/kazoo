@@ -72,11 +72,11 @@
 %%%===================================================================
 -spec server_id(kz_json:object()) -> api_binary().
 server_id(JObj) ->
-    kz_json:get_value(?KEY_SERVER_ID, JObj).
+    kz_json:get_ne_binary_value(?KEY_SERVER_ID, JObj).
 
 -spec queue_id(kz_json:object()) -> api_binary().
 queue_id(JObj) ->
-    kz_json:get_value(?KEY_QUEUE_ID, JObj, server_id(JObj)).
+    kz_json:get_ne_binary_value(?KEY_QUEUE_ID, JObj, server_id(JObj)).
 
 -spec event_category(kz_json:object()) -> api_binary().
 event_category(JObj) ->
