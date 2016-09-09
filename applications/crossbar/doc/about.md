@@ -26,8 +26,8 @@ curl -v -X GET \
         "used_memory": 89615664,
         "version": "4.0.0"
     },
-    "request_id": "47849b283ed276ab0c511593787996f1",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```

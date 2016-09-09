@@ -54,7 +54,7 @@ curl -v -X GET \
     ],
     "page_size": 1,
     "request_id": "{REQUEST_ID}",
-    "revision": "04e880720e84b0536389bcc4de7e69e8",
+    "revision": "{REVISION}",
     "start_key": [
         "5ba01ad7ad1611d436b1860d8c552897",
         "account",

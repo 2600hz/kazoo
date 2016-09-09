@@ -82,8 +82,8 @@ curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/toke
 
 ```json
 {
-    "request_id": "1465c97856e5a77636b7476cd59916f7",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```

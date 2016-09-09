@@ -51,8 +51,8 @@ curl -v -X GET \
             }
         }
     },
-    "request_id": "71f237d7ccce7a2418c8e026f18289aa",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -99,8 +99,8 @@ curl -v -X GET \
         }
     ],
     "page_size": 2,
-    "request_id": "9fcff776cd4eb3d7d92389d9209db2d5",
-    "revision": "601ffbf34fcbbc56597acf79847efde7",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -153,8 +153,8 @@ curl -v -X PUT \
             "total_count": {RECORDS_COUNT}
         }
     },
-    "request_id": "6bc9187feafe54a5c16d07e1a493c04f",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -169,7 +169,7 @@ curl -v -X PUT \
     ],
     "error": "404",
     "message": "bad identifier",
-    "request_id": "86218c6dcd58505f1dc6e036b08cd151",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -184,7 +184,7 @@ curl -v -X PUT \
     ],
     "error": "404",
     "message": "bad identifier",
-    "request_id": "151dc80b630e6cd1f50585dcd6c81268",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -203,7 +203,7 @@ curl -v -X PUT \
     },
     "error": "500",
     "message": "invalid request",
-    "request_id": "f319f2a4fd112c91ba536dfa39fd50ff",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -224,7 +224,7 @@ curl -v -X PUT \
     },
     "error": "500",
     "message": "invalid request",
-    "request_id": "296a70611e460b82628cb873c11e5c98",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -246,7 +246,7 @@ curl -v -X PUT \
     },
     "error": "500",
     "message": "invalid request",
-    "request_id": "216e9b80decc66a706320a9bd11da544",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -268,7 +268,7 @@ curl -v -X PUT \
     },
     "error": "500",
     "message": "invalid request",
-    "request_id": "5d2a8cd40b3e9242eeeb456cc76b5ad9",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -306,8 +306,8 @@ curl -v -X DELETE \
             "total_count": 2
         }
     },
-    "request_id": "de3900aff99402497280f11928c81ea6",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -322,7 +322,7 @@ curl -v -X DELETE \
     ],
     "error": "404",
     "message": "bad identifier",
-    "request_id": "8a495e9ed03f75e414e19c8923ece5f5",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -338,7 +338,7 @@ curl -v -X DELETE \
     },
     "error": "404",
     "message": "bad_identifier",
-    "request_id": "c5488723679244682ddcfd06fa7d4fcd",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -374,8 +374,8 @@ curl -v -X GET \
             "success_count": 50
         }
     },
-    "request_id": "fac9bad28d115f3ce8a5a7f02902e7f7",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -390,7 +390,7 @@ curl -v -X GET \
     ],
     "error": "404",
     "message": "bad identifier",
-    "request_id": "d3f7ba1b65348a4257fc1a59e99b6203",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -425,8 +425,8 @@ curl -v -X PATCH \
             "total_count": 2
         }
     },
-    "request_id": "c05d845800c67d1cd5c01e5276155436",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -443,7 +443,7 @@ curl -v -X PATCH \
     },
     "error": "404",
     "message": "bad_identifier",
-    "request_id": "d85d7a75fba07d672c58ef2a984619f9",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -459,7 +459,7 @@ curl -v -X PATCH \
     },
     "error": "404",
     "message": "bad_identifier",
-    "request_id": "f1a27978cada1d8cc41bd2473edd3ade",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -490,7 +490,7 @@ Streams back the task's input in CSV format.
     },
     "error": "404",
     "message": "bad_identifier",
-    "request_id": "f0198cd34b4a58cb65ad903ae1259256",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -521,7 +521,7 @@ Streams back the task's output in CSV format.
     },
     "error": "404",
     "message": "bad_identifier",
-    "request_id": "6c1e1918ce36baf380972ea4b1e2566b",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```

@@ -51,8 +51,8 @@ curl -v -X GET \
             "ten_digit": "4152338421"
         }
     ],
-    "request_id": "1c9a13a0f729c2d6d35a9c4515e5da03",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -87,8 +87,8 @@ curl -v -X GET \
             "state": "available"
         }
     ],
-    "request_id": "d4261f0c19bba7aa19e53dd6a51efa22",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -133,8 +133,8 @@ curl -v -X GET \
         }
     },
     "page_size": 2,
-    "request_id": "923fce7eec4d13d5e7df09ca6fbbcadd",
-    "revision": "19-d21bca301d4721b03f368b73de35f813",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -177,8 +177,8 @@ curl -v -X DELETE \
         "id": "{PHONE_NUMBER}",
         "state": "available"
     },
-    "request_id": "df394a4f3175bfe9367919482dc7f217",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -194,7 +194,7 @@ curl -v -X DELETE \
     },
     "error": "404",
     "message": "bad_identifier",
-    "request_id": "326492fe35f072b8f65e985e92af32ef",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -224,8 +224,8 @@ curl -v -X DELETE \
         "id": "{PHONE_NUMBER}",
         "state": "deleted"
     },
-    "request_id": "712f7cd2849197639efb5713f4a493fd",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -266,8 +266,8 @@ curl -v -X GET \
         "state": "reserved",
         "my_own_field": {}
     },
-    "request_id": "609d2ddbc57fbbce22b42be229b67840",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -288,7 +288,7 @@ Possible reasons for failure:
     },
     "error": "404",
     "message": "bad_identifier",
-    "request_id": "94cf464971722272dd0b04cbc491303f",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -333,8 +333,8 @@ curl -v -X POST \
         "state": "in_service",
         "used_by": "callflow"
     },
-    "request_id": "7530a90fe4061b095a92eabd7ab872e7",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -372,8 +372,8 @@ curl -v -X PUT \
         "state": "reserved",
         "my_own_field": {}
     },
-    "request_id": "609d2ddbc57fbbce22b42be229b67840",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -393,7 +393,7 @@ curl -v -X PUT \
     },
     "error": "409",
     "message": "number_exists",
-    "request_id": "230c62bcb9ed7f97538e22d72f2c724f",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -413,7 +413,7 @@ A non-conforming `{PHONE_NUMBER}`: `"+141510010+15"`.
     },
     "error": "404",
     "message": "not_reconcilable",
-    "request_id": "fe5547b999afe27a85a92d97f786ffa4",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -429,7 +429,7 @@ A non-conforming `{PHONE_NUMBER}`: `"+141510010+15"`.
     },
     "error": "500",
     "message": "unauthorized",
-    "request_id": "e74ecf82e529dd2fa2a1dc57af3783d9",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -462,8 +462,8 @@ curl -v -X POST \
         "{PHONE_NUMBER1}": "success",
         "{PHONE_NUMBER2}": "error"
     }
-    "request_id": "3934255dbf74ac0ff38443450ce8753d",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -481,8 +481,8 @@ It may be due to:
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {},
-    "request_id": "feaf1bc6fb1c4e3531840d188ea67344",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -566,8 +566,8 @@ curl -v -X POST \
             "status": "success"
         }
     },
-    "request_id": "22001e34f692908cf0fed818060db6ba",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -580,7 +580,7 @@ curl -v -X POST \
     "data": "Unable to acquire numbers missing carrier url",
     "error": "500",
     "message": "init failed",
-    "request_id": "58d565bb44e9da3c5500255940d88e1d",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -617,7 +617,7 @@ curl -v -X GET \
     },
     "error": "500",
     "message": "init failed",
-    "request_id": "8346e500b7e1e71423a922f1348f351e",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -630,7 +630,7 @@ curl -v -X GET \
     "data": "Unable to acquire numbers missing carrier url",
     "error": "500",
     "message": "init failed",
-    "request_id": "d2beaea7fe3d6b8e195ff9567516c351",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -681,8 +681,8 @@ curl -v -X DELETE \
             }
         }
     },
-    "request_id": "144493e2280213db59b81f7377fbff48",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -733,8 +733,8 @@ curl -v -X DELETE \
             }
         }
     },
-    "request_id": "34cfbf7737f18b95bd3120822e3947b1",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -778,8 +778,8 @@ curl -v -X POST \
             }
         }
     },
-    "request_id": "58191a05bcbbf528009fc5f4f0fe7ce5",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -834,8 +834,8 @@ curl -v -X PUT \
             }
         }
     },
-    "request_id": "f0e0f0abdabaa2f0bb39d83ad3e3f3c6",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -861,7 +861,7 @@ curl -v -X PUT \
     },
     "error": "400",
     "message": "client error",
-    "request_id": "34fded1acd0c8a440515fc6d42e409b6",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -914,8 +914,8 @@ curl -v -X GET \
             "regex": "^(.*)$"
         }
     },
-    "request_id": "3a7cf0257c33fa959263dec20b184fe5",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -959,8 +959,8 @@ curl -v -X POST \
         }
     },
     "page_size": 2,
-    "request_id": "923fce7eec4d13d5e7df09ca6fbbcadd",
-    "revision": "19-d21bca301d4721b03f368b73de35f813",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -987,8 +987,8 @@ curl -v -X GET \
         "account_id": "009afc511c97b2ae693c6cc4920988e8",
         "number": "{PHONE_NUMBER}"
     },
-    "request_id": "f8cee053b9992435924eaa1554d7555d",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -1004,7 +1004,7 @@ curl -v -X GET \
     },
     "error": "404",
     "message": "bad_identifier",
-    "request_id": "8c3fa68c1ebf758ca4e1628e2048fb16",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -1036,8 +1036,8 @@ curl -v -X PUT \
         "id": "{PHONE_NUMBER}",
         "state": "reserved"
     },
-    "request_id": "86d675b8d76e35f69328922d5607f200",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -1054,7 +1054,7 @@ curl -v -X PUT \
     },
     "error": "400",
     "message": "no_change_required",
-    "request_id": "e26c4a9d57890f73a37762990b469592",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -1070,7 +1070,7 @@ curl -v -X PUT \
     },
     "error": "404",
     "message": "bad_identifier",
-    "request_id": "b36a44a38086ec1b630790e5645b8045",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -1104,8 +1104,8 @@ curl -v -X PUT \
         "id": "{PHONE_NUMBER}",
         "state": "in_service"
     },
-    "request_id": "4a1a73bfa12d11ac63c74d377cd961f6",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -1122,7 +1122,7 @@ curl -v -X PUT \
     },
     "error": "500",
     "message": "unspecified_fault",
-    "request_id": "9a1deab4464a3dbd1d5b5b9d93d8d790",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -1140,7 +1140,7 @@ curl -v -X PUT \
     },
     "error": "500",
     "message": "unspecified_fault",
-    "request_id": "0800ba14b0dfce2417185eb15c3a8f96",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```
@@ -1166,8 +1166,8 @@ curl -v -X GET \
         "pretty_print": "SS(###) ### - ####",
         "regex": "^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$"
     },
-    "request_id": "89bd26ad10ea97ad789fbde584be9568",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -1215,8 +1215,8 @@ curl -v -X PUT \
             }
         }
     },
-    "request_id": "1fd30d420f3c4f601e05f8f9eb041e46",
-    "revision": "undefined",
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
     "status": "success"
 }
 ```
@@ -1235,7 +1235,7 @@ curl -v -X PUT \
     },
     "error": "400",
     "message": "client error",
-    "request_id": "892b3cc884bd913cd3912c5b4c757421",
+    "request_id": "{REQUEST_ID}",
     "status": "error"
 }
 ```

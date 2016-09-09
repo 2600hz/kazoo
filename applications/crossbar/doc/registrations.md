@@ -23,7 +23,7 @@ curl -v -X DELETE \
      "auth_token": "{AUTH_TOKEN}",
      "data": "ok",
      "request_id": "{REQUEST_ID}",
-     "revision": "undefined",
+     "revision": "{REVISION}",
      "status": "success"
 }
 ```
@@ -70,7 +70,7 @@ curl -v -X GET \
           ,...
       ],
       "request_id": "{REQUEST_ID}",
-      "revision": "undefined",
+      "revision": "{REVISION}",
       "status": "success"
 }
 ```
@@ -90,7 +90,7 @@ curl -v -X DELETE \
      "auth_token": "{AUTH_TOKEN}",
      "data": "ok",
      "request_id": "{REQUEST_ID}",
-     "revision": "undefined",
+     "revision": "{REVISION}",
      "status": "success"
 }
 ```
@@ -112,7 +112,7 @@ curl -v -X GET \
          "count": 4
      },
      "request_id": "{REQUEST_ID}",
-     "revision": "undefined",
+     "revision": "{REVISION}",
      "status": "success"
 }
 ```

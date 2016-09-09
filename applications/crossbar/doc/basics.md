@@ -95,7 +95,7 @@ When issuing a PUT or POST, a request body is needed. When submitting a JSON (th
 ###### Sample Request Envelope
 
     {"data":{"foo":"bar"}
-     ,"auth_token":"xyzpdq123bfg"
+     ,"auth_token":"{AUTH_TOKEN}"
      ,"verb":"delete"
     }
 
@@ -113,9 +113,9 @@ When receiving JSON responses, clients will receive the response in an envelope.
 ###### Sample Response Envelope
 
     {"data":{"the":"response", "data":"is here"}
-     ,"auth_token":"xyzpdq123bfg"
+     ,"auth_token":"{AUTH_TOKEN}"
      ,"status":"success"
-     ,"request_id":"123abc456qwerty"
+     ,"request_id":"{REQUEST_ID}"
     }
 
 ##### Pagination
@@ -136,8 +136,8 @@ We start with the typical CDR request for a listing of CDRs:
               ]
      ,"next_start_key": 63566193143
      ,"page_size": 25
-     ,"request_id": "e8e7a793986ba86f15bd0c7b2ce91233"
-     ,"revision": "bfcd0b7d8cbd647eaea262cb05be1b8b"
+     ,"request_id": "{REQUEST_ID}"
+     ,"revision": "{REVISION}"
      ,"start_key": 63565345339
      ,"status": "success"
     }
@@ -162,8 +162,8 @@ Using the `next_start_key` value, let's request the next page of CDRs:
               ]
      ,"next_start_key": 63566542092
      ,"page_size": 25
-     ,"request_id": "7256dc9201b6168305e883729b688d40"
-     ,"revision": "627d3a28af809ad745c2fbfc8b7397a1"
+     ,"request_id": "{REQUEST_ID}"
+     ,"revision": "{REVISION}"
      ,"start_key": 63566193143
      ,"status": "success"
     }

@@ -190,7 +190,7 @@ curl -v -X GET \
 
 ```json
 {
-    "auth_token": "c89bc20fd8954f6e67614b99e31b4f58",
+    "auth_token": "{AUTH_TOKEN}",
     "data": [
         {
             "client_error": "nxdomain",
