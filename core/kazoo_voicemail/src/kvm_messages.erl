@@ -28,7 +28,6 @@
 
 -include("kz_voicemail.hrl").
 
--define(MSG_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
 -define(MSG_COUNT_VIEW, <<"mailbox_messages/count_per_folder">>).
 
 -define(BOX_ID_IDX_KEY, 1).
@@ -84,7 +83,7 @@ get_from_vmbox(AccountId, ?NE_BINARY = BoxId) ->
     NormFun = fun normalize_view_results/2,
     get_view_results([Db], ?MSG_LISTING_BY_MAILBOX, ViewOpts, NormFun, []);
 get_from_vmbox(_AccountId, BoxJObj) ->
-    {'ok', kz_json:get_value(?VM_KEY_MESSAGES, BoxJObj, [])}.
+    kz_json:get_value(?VM_KEY_MESSAGES, BoxJObj, []).
 
 %%--------------------------------------------------------------------
 %% @public

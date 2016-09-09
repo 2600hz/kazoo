@@ -30,6 +30,7 @@
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
 -define(CB_LIST, <<"vmboxes/crossbar_listing">>).
+-define(MSG_LISITNG_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
 
 -define(BOX_ID_IDX_KEY, 1).
 
@@ -538,7 +539,7 @@ load_vmbox(DocId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_message_summary(api_binary(), cb_context:context()) -> cb_context:context().
 load_message_summary(BoxId, Context) ->
-    case normalize_view_options(Context, BoxId) of
+    case message_summary_view_options(Context, BoxId) of
         {'ok', ViewOptions} ->
             NormlizeFun = case BoxId of
                               'undefined' ->
@@ -546,11 +547,13 @@ load_message_summary(BoxId, Context) ->
                               _ ->
                                   fun normalize_view_results/2
                           end,
-            crossbar_doc:load_view(<<"mailbox_messages/listing_by_mailbox">>
-                                  ,ViewOptions
-                                  ,cb_context:set_resp_status(Context, 'success')
-                                  ,NormlizeFun
-                                  );
+            maybe_fix_envelope(
+              crossbar_doc:load_view(?MSG_LISITNG_BY_MAILBOX
+                                    ,ViewOptions
+                                    ,cb_context:set_resp_status(Context, 'success')
+                                    ,NormlizeFun
+                                    )
+             );
         Ctx -> Ctx
     end.
 
@@ -564,55 +567,113 @@ normalize_account_view_results(JObj, Acc) ->
      | Acc
     ].
 
--spec normalize_view_options(cb_context:context(), api_binary()) ->
-                                    {'ok', crossbar_doc:view_options()} |
-                                    cb_context:context().
-normalize_view_options(Context, 'undefined') ->
-    C1 = check_created_from(Context),
+-spec message_summary_view_options(cb_context:context(), api_binary()) ->
+                                          {'ok', crossbar_doc:view_options()} |
+                                          cb_context:context().
+message_summary_view_options(Context, 'undefined') ->
+    MaxRange = kvm_util:retention_seconds(),
+    C1 = check_start_key_created_from(Context, MaxRange),
     case cb_context:resp_status(C1) == 'success'
-        andalso cb_modules_util:range_view_options(C1) of
+        andalso cb_modules_util:range_view_options(C1, MaxRange) of
         {CreatedFrom, CreatedTo} ->
             MODBs = kazoo_modb:get_range(cb_context:account_id(Context), CreatedFrom, CreatedTo),
             Databases = lists:reverse([cb_context:account_db(Context)
                                        | MODBs
                                       ]),
-            {'ok', [{'databases', Databases}]};
+            {'ok', [{'databases', Databases}
+                   ,'descending'
+                   ]};
         'false' -> C1;
         Ctx -> Ctx
     end;
-normalize_view_options(Context, BoxId) ->
-    C1 = check_created_from(Context),
+message_summary_view_options(Context, BoxId) ->
+    MaxRange = kvm_util:retention_seconds(),
+    C1 = check_start_key_created_from(Context, MaxRange),
     case cb_context:resp_status(C1) == 'success'
-        andalso cb_modules_util:range_modb_view_options(C1, [BoxId], 'undefined') of
-        {'ok', MODBViewOptions} ->
+        andalso cb_modules_util:range_view_options(C1, MaxRange) of
+        {CreatedFrom, CreatedTo} ->
+            MODBs = kazoo_modb:get_range(cb_context:account_id(Context), CreatedFrom, CreatedTo),
             Databases = lists:reverse([cb_context:account_db(Context)
-                                       | props:get_value('databases', MODBViewOptions)
+                                       | MODBs
                                       ]),
-            {'ok', props:set_value('databases', Databases, MODBViewOptions)};
+            {'ok', [{'databases', Databases}
+                   ,{'startkey', [BoxId, CreatedTo]}
+                   ,{'endkey', [BoxId, CreatedFrom]}
+                   ,'descending'
+                   ]};
         'false' -> C1;
         Ctx -> Ctx
     end.
 
--spec check_created_from(cb_context:context()) -> cb_context:context().
-check_created_from(Context) ->
-    RetentionDays = kvm_util:retention_days(),
-    MaxFrom = kz_util:current_tstamp() - RetentionDays,
-    case kz_util:to_integer(cb_context:req_value(Context, <<"created_from">>, MaxFrom)) of
-        N when N < MaxFrom ->
+-spec check_start_key_created_from(cb_context:context(), gregorian_seconds()) -> cb_context:context().
+check_start_key_created_from(Context, RetentionSeconds) ->
+    MaxRange = kz_util:current_tstamp() - RetentionSeconds,
+    CreatedFrom = kz_util:to_integer(cb_context:req_value(Context, <<"created_from">>)),
+    StartKey = kz_util:to_integer(cb_context:req_value(Context, <<"created_from">>)),
+    case {CreatedFrom, StartKey} of
+        {CreatedFrom, _} when CreatedFrom < MaxRange ->
             Message = <<"created_from is more than "
-                        ,(kz_util:to_binary(RetentionDays))/binary
+                        ,(kz_util:to_binary(RetentionSeconds))/binary
                         ," seconds of voicemail messages retention duration"
                       >>,
             cb_context:add_validation_error(<<"created_from">>
                                            ,<<"date_range">>
                                            ,kz_json:from_list(
                                               [{<<"message">>, Message}
-                                              ,{<<"cause">>, N}
+                                              ,{<<"cause">>, MaxRange}
+                                              ])
+                                           ,Context
+                                           );
+        {_, StartKey} when StartKey < MaxRange ->
+            Message = <<"start_key is more than "
+                        ,(kz_util:to_binary(RetentionSeconds))/binary
+                        ," seconds of voicemail messages retention duration"
+                      >>,
+            cb_context:add_validation_error(<<"start_key">>
+                                           ,<<"date_range">>
+                                           ,kz_json:from_list(
+                                              [{<<"message">>, Message}
+                                              ,{<<"cause">>, MaxRange}
                                               ])
                                            ,Context
                                            );
         _N ->
             cb_context:set_resp_status(Context, 'success')
+    end.
+
+-spec maybe_fix_envelope(cb_context:context()) -> cb_context:context().
+maybe_fix_envelope(Context) ->
+    case cb_context:resp_status(Context) of
+        'success' -> fix_envelope(Context);
+        _Status -> Context
+    end.
+
+-spec fix_envelope(cb_context:context()) -> cb_context:context().
+fix_envelope(Context) ->
+    UpdatedEnvelope =
+        case {cb_context:doc(Context)
+             ,cb_context:resp_envelope(Context)
+             }
+        of
+            {[], Envelope} ->
+                kz_json:delete_keys([<<"start_key">>, <<"next_start_key">>], Envelope);
+            {_, Envelope} ->
+                fix_keys(Envelope)
+        end,
+    cb_context:set_resp_envelope(Context, UpdatedEnvelope).
+
+-spec fix_keys(kz_json:object()) -> kz_json:object().
+fix_keys(Envelope) ->
+    lists:foldl(fun fix_key_fold/2
+               ,Envelope
+               ,[<<"start_key">>, <<"next_start_key">>]
+               ).
+
+-spec fix_key_fold(kz_json:key(), kz_json:object()) -> kz_json:object().
+fix_key_fold(Key, Envelope) ->
+    case kz_json:get_value(Key, Envelope) of
+        [_BoxId, Timestamp] -> kz_json:set_value(Key, Timestamp, Envelope);
+        'undefined' -> Envelope
     end.
 
 %%--------------------------------------------------------------------
