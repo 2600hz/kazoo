@@ -9,7 +9,7 @@
 -module(kz_json_schema).
 
 -export([add_defaults/2
-        ,load/1, fload/1
+        ,load/1
         ,flush/0, flush/1
         ,validate/2, validate/3
         ,errors_to_jobj/1, errors_to_jobj/2
@@ -31,18 +31,6 @@ load(<<_/binary>> = Schema) ->
         {'ok', JObj} -> {'ok', kz_json:insert_value(<<"id">>, Schema, JObj)}
     end;
 load(Schema) -> load(kz_util:to_binary(Schema)).
-
--spec fload(ne_binary() | string()) -> {'ok', kz_json:object()} |
-                                       {'error', any()}.
-fload(<<"./", Schema/binary>>) -> fload(Schema);
-fload(<<_/binary>> = Schema) ->
-    io:format("loading schema ~s~n", [Schema]),
-    Path = <<"/opt/kazoo/applications/crossbar/priv/couchdb/schemas/", Schema/binary, ".json">>, 
-    case file:read_file(Path) of
-        {'error', _E}=E -> E;
-        {'ok', Bin} -> {'ok', kz_json:insert_value(<<"id">>, Schema, kz_json:decode(Bin))}
-    end;
-fload(Schema) -> fload(kz_util:to_binary(Schema)).
 
 -spec flush() -> 'ok'.
 -spec flush(ne_binary()) -> 'ok'.
