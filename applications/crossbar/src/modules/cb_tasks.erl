@@ -277,8 +277,8 @@ put(Context) ->
             crossbar_util:response(TaskJObj, Context);
         {'error', 'unknown_category'} ->
             crossbar_util:response_bad_identifier(Category, Context);
-        {'error', 'unknown_action'} ->
-            crossbar_util:response_bad_identifier(Action, Context);
+        {'error', 'unknown_category_action'=Reason} ->
+            crossbar_util:response_bad_identifier(Reason, Context);
         {'error', Reason} ->
             lager:debug("new ~s task ~s cannot be created: ~p", [Category, Action, Reason]),
             crossbar_util:response_400(<<"bad request">>, Reason, Context)

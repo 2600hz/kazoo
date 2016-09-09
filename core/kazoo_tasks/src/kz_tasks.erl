@@ -35,13 +35,13 @@
 -type task_id() :: <<_:(8*2*?TASK_ID_SIZE)>>.
 
 -type task() :: #{worker_pid => api_pid()
-                 ,worker_node => ne_binary() | 'undefined'
+                 ,worker_node => api_ne_binary()
                  ,account_id => ne_binary()
                  ,auth_account_id => ne_binary()
                  ,id => task_id()
                  ,category => ne_binary()
                  ,action => ne_binary()
-                 ,file_name => ne_binary() | 'undefined'
+                 ,file_name => api_ne_binary()
                  ,created => gregorian_seconds() %% Time of task creation (PUT)
                  ,started => api_seconds() %% Time of task start (PATCH)
                  ,finished => api_seconds() %% Time of task finish (> started)
@@ -50,9 +50,9 @@
                  ,total_rows_succeeded => api_non_neg_integer() %% Rows that returned 'ok'
                  }.
 
--type input() :: ne_binary() | kz_json:objects() | 'undefined'.
+-type input() :: api_ne_binary() | kz_json:objects().
 
--type help_error() :: {'error', 'unknown_category' | 'unknown_action'}.
+-type help_error() :: {'error', 'unknown_category' | 'unknown_category_action'}.
 
 -export_type([task_id/0
              ,input/0
@@ -183,13 +183,18 @@ help(Category, Action) ->
                             ,fun kapi_tasks:lookup_resp_v/1
                             )
     of
-        {'ok', JObj} -> kz_json:get_value(<<"Help">>, JObj);
+        {'ok', JObj} ->
+            Help = kz_json:get_value([<<"Help">>, Action], JObj),
+            case kz_json:is_empty(Help) of
+                false -> Help;
+                true -> {error, unknown_category_action}
+            end;
         {'timeout', _Resp} ->
             lager:debug("timeout: ~p", [_Resp]),
-            kz_json:new();
+            {error, unknown_category_action};
         {'error', _E} ->
             lager:debug("error: ~p", [_E]),
-            kz_json:new()
+            {error, unknown_category_action}
     end.
 
 

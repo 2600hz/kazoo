@@ -182,7 +182,7 @@ row_to_iolist(Row=[_|_]) ->
 %% We assume fields for first record are defined in all other records.
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_iolist(kz_json:objects()) -> iodata().
+-spec json_to_iolist(nonempty_list(kz_json:object())) -> iodata().
 json_to_iolist(Records)
   when is_list(Records) ->
     Tmp = <<"/tmp/json_", (kz_util:rand_hex_binary(11))/binary, ".csv">>,
