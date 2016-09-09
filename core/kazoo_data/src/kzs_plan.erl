@@ -293,8 +293,6 @@ fetch_cached_dataplan(Key, Fun) ->
     end.
 
 -spec fetch_dataplan(ne_binary()) -> kz_json:object().
-fetch_dataplan(<<"85ea6075c6c1e266f8512e2233541bdb">>=Id) ->
-    fetch_dataplan_from_file(Id);
 fetch_dataplan(Id) ->
     case kz_datamgr:open_cache_doc(?KZ_DATA_DB, Id, ['cache_failures']) of
         {'ok', JObj} -> JObj;
