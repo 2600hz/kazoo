@@ -6,6 +6,7 @@
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
+`file_name` | Human-readable name of a task's input file | `string` |   | `false`
 `records` | List the rows of input data | `array(object)` |   | `false`
 
 
