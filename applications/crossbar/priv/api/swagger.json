@@ -9116,11 +9116,6 @@
         "system_config.number_manager": {
             "description": "Schema for number_manager system_config",
             "properties": {
-                "aging_expiry_d": {
-                    "default": 90,
-                    "description": "number_manager aging expiry in days",
-                    "type": "integer"
-                },
                 "allowed_features": {
                     "default": [
                         "cnam",
@@ -9191,25 +9186,10 @@
                     "description": "number_manager converters",
                     "type": "array"
                 },
-                "crawler_timer_ms": {
-                    "default": 86400000,
-                    "description": "number_manager crawler timer in milliseconds",
-                    "type": "integer"
-                },
                 "default_force_outbound": {
                     "default": false,
                     "description": "number_manager default force outbound",
                     "type": "boolean"
-                },
-                "deleted_expiry_d": {
-                    "default": 90,
-                    "description": "number_manager deleted expiry in days",
-                    "type": "integer"
-                },
-                "discovery_expiry_d": {
-                    "default": 90,
-                    "description": "number_manager discovery expiry in days",
-                    "type": "integer"
                 },
                 "e164_converters": {
                     "description": "number_manager e164 converters"
@@ -10022,10 +10002,60 @@
         "system_config.tasks": {
             "description": "Schema for tasks system_config",
             "properties": {
+                "aging_expiry_d": {
+                    "default": 90,
+                    "description": "tasks aging expiry in days",
+                    "type": "integer"
+                },
+                "crawler_delay_time_ms": {
+                    "default": 60000,
+                    "description": "tasks crawler delay time in milliseconds",
+                    "type": "integer"
+                },
+                "crawler_timer_ms": {
+                    "default": 86400000,
+                    "description": "tasks crawler timer in milliseconds",
+                    "type": "integer"
+                },
+                "cycle_delay_time_ms": {
+                    "default": 300000,
+                    "description": "tasks cycle delay time in milliseconds",
+                    "type": "integer"
+                },
+                "deleted_expiry_d": {
+                    "default": 90,
+                    "description": "tasks deleted expiry in days",
+                    "type": "integer"
+                },
+                "discovery_expiry_d": {
+                    "default": 90,
+                    "description": "tasks discovery expiry in days",
+                    "type": "integer"
+                },
+                "interaccount_delay_ms": {
+                    "default": 10000,
+                    "description": "tasks interaccount delay in milliseconds",
+                    "type": "integer"
+                },
+                "low_balance_repeat_s": {
+                    "default": 86400,
+                    "description": "tasks low balance repeat in seconds",
+                    "type": "integer"
+                },
                 "send_progress_after_processed": {
                     "default": 1000,
                     "description": "tasks send progress after processed",
                     "type": "integer"
+                },
+                "should_crawl_for_first_occurrence": {
+                    "default": true,
+                    "description": "tasks should crawl for first occurrence",
+                    "type": "boolean"
+                },
+                "should_crawl_for_low_balance": {
+                    "default": true,
+                    "description": "tasks should crawl for low balance",
+                    "type": "boolean"
                 },
                 "wait_after_row_ms": {
                     "default": 500,

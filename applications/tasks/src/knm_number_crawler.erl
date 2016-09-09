@@ -22,27 +22,25 @@
         ,code_change/3
         ]).
 
--include_lib("kazoo/include/kz_databases.hrl").
+-include("tasks.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(KNM_CONFIG_CAT, <<"number_manager">>).
-
--define(DELETED_EXPIRY,
-        kapps_config:get_integer(?KNM_CONFIG_CAT, <<"deleted_expiry_d">>, 90)).
-
--define(DISCOVERY_EXPIRY,
-        kapps_config:get_integer(?KNM_CONFIG_CAT, <<"discovery_expiry_d">>, 90)).
-
--define(AGING_EXPIRY,
-        kapps_config:get_integer(?KNM_CONFIG_CAT, <<"aging_expiry_d">>, 90)).
-
 -define(NUMBERS_TO_CRAWL,
         kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)).
 
+-define(DELETED_EXPIRY,
+        kapps_config:get_integer(?CONFIG_CAT, <<"deleted_expiry_d">>, 90)).
+
+-define(DISCOVERY_EXPIRY,
+        kapps_config:get_integer(?CONFIG_CAT, <<"discovery_expiry_d">>, 90)).
+
+-define(AGING_EXPIRY,
+        kapps_config:get_integer(?CONFIG_CAT, <<"aging_expiry_d">>, 90)).
+
 -define(TIME_BETWEEN_CRAWLS,
-        kapps_config:get_integer(?KNM_CONFIG_CAT, <<"crawler_timer_ms">>, ?MILLISECONDS_IN_DAY)).
+        kapps_config:get_integer(?CONFIG_CAT, <<"crawler_timer_ms">>, ?MILLISECONDS_IN_DAY)).
 
 -record(state, {cleanup_ref :: reference()
                }).

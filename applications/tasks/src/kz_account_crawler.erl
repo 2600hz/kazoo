@@ -24,20 +24,25 @@
 
 -define(SERVER, ?MODULE).
 
--define(NOTIFY_CONFIG_CAT, <<"notify">>).
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".account_crawler">>).
-
 -record(state, {cleanup_ref = cleanup_cycle_timer() :: reference()
                ,account_ids = [] :: ne_binaries()
                }).
 -type state() :: #state{}.
 
 -define(TIME_BETWEEN_CRAWLS,
-        kapps_config:get_integer(?MOD_CONFIG_CAT, <<"interaccount_delay">>, 10 * ?MILLISECONDS_IN_SECOND)).
+        kapps_config:get_integer(?CONFIG_CAT, <<"interaccount_delay_ms">>, 10 * ?MILLISECONDS_IN_SECOND)).
 
 -define(TIME_BETWEEN_WHOLE_CRAWLS,
-        kapps_config:get_integer(?MOD_CONFIG_CAT, <<"cycle_delay_time">>, 5 * ?MILLISECONDS_IN_MINUTE)).
+        kapps_config:get_integer(?CONFIG_CAT, <<"cycle_delay_time_ms">>, 5 * ?MILLISECONDS_IN_MINUTE)).
 
+-define(SHOULD_CRAWL_FOR_FIRST_OCCURRENCE,
+        kapps_config:get_is_true(?CONFIG_CAT, <<"should_crawl_for_first_occurrence">>, 'true')).
+
+-define(SHOULD_CRAWL_FOR_LOW_BALANCE,
+        kapps_config:get_is_true(?CONFIG_CAT, <<"should_crawl_for_low_balance">>, 'true')).
+
+-define(LOW_BALANCE_REPEAT,
+        kapps_config:get_integer(?CONFIG_CAT, <<"low_balance_repeat_s">>, 1 * ?SECONDS_IN_DAY)).
 
 %%%===================================================================
 %%% API
@@ -221,7 +226,7 @@ process_account(AccountId, AccountDb, AccountJObj) ->
 
 -spec maybe_test_for_initial_occurrences(ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
 maybe_test_for_initial_occurrences(AccountId, AccountDb, AccountJObj) ->
-    case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"crawl_for_first_occurrence">>, 'true') of
+    case ?SHOULD_CRAWL_FOR_FIRST_OCCURRENCE of
         'false' -> 'ok';
         'true' ->
             maybe_test_for_registrations(AccountId, AccountJObj),
@@ -313,7 +318,7 @@ notify_initial_call(AccountJObj) ->
 
 -spec maybe_test_for_low_balance(ne_binary(), kz_account:doc()) -> 'ok'.
 maybe_test_for_low_balance(AccountId, AccountJObj) ->
-    case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"crawl_for_low_balance">>, 'true') of
+    case ?SHOULD_CRAWL_FOR_LOW_BALANCE of
         'false' -> 'ok';
         'true' -> test_for_low_balance(AccountId, AccountJObj)
     end.
@@ -380,11 +385,12 @@ maybe_low_balance_notify(AccountJObj, CurrentBalance, 'true') ->
     lager:debug("low balance notification enabled"),
     case kz_account:low_balance_tstamp(AccountJObj) of
         LowBalanceSent when is_number(LowBalanceSent) ->
-            Cycle = kapps_config:get_integer(?MOD_CONFIG_CAT, <<"low_balance_repeat_s">>, 1 * ?SECONDS_IN_DAY),
+            Cycle = ?LOW_BALANCE_REPEAT,
             Diff = kz_util:current_tstamp() - LowBalanceSent,
             case Diff >= Cycle of
-                'false' -> lager:debug("low balance alert sent ~w seconds ago, repeats every ~w", [Diff, Cycle]);
-                'true' -> notify_of_low_balance(AccountJObj, CurrentBalance)
+                'true' -> notify_of_low_balance(AccountJObj, CurrentBalance);
+                'false' ->
+                    lager:debug("low balance alert sent ~w seconds ago, repeats every ~w", [Diff, Cycle])
             end;
         _Else -> notify_of_low_balance(AccountJObj, CurrentBalance)
     end.
