@@ -2,31 +2,6 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "metaflows",
     "additionalProperties": false,
-    "definitions": {
-        "flow": {
-            "additionalProperties": false,
-            "properties": {
-                "children": {
-                    "$ref": "#/definitions/flow",
-                    "default": {},
-                    "required": false
-                },
-                "data": {
-                    "default": {},
-                    "description": "Module Data",
-                    "required": true,
-                    "type": "object"
-                },
-                "module": {
-                    "maxLength": 15,
-                    "required": true,
-                    "type": "string"
-                }
-            },
-            "required": true,
-            "type": "object"
-        }
-    },
     "description": "Actions applied to a call outside of the normal callflow, initiated by the caller(s)",
     "properties": {
         "binding_digit": {
