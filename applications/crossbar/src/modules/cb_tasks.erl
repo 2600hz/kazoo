@@ -29,7 +29,7 @@
 -define(QS_CATEGORY, <<"category">>).
 -define(QS_ACTION, <<"action">>).
 -define(RD_RECORDS, <<"records">>).
--define(RP_FILENAME, <<"file_name">>).
+-define(RV_FILENAME, <<"file_name">>).
 
 -define(CSV_OUT, <<"output">>).
 -define(CSV_IN, <<"input">>).
@@ -261,7 +261,7 @@ put(Context) ->
     IsCSV = is_content_type_csv(Context),
     CSVorJSON = attached_data(Context, IsCSV),
     TotalRows = cb_context:fetch(Context, 'total_rows'),
-    CSVName = cb_context:req_param(Context, ?RP_FILENAME),
+    CSVName = cb_context:req_value(Context, ?RV_FILENAME),
     case kz_tasks:new(cb_context:auth_account_id(Context)
                      ,cb_context:account_id(Context)
                      ,Category
