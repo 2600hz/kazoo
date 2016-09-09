@@ -123,7 +123,8 @@ validate(SchemaJObj, DataJObj) ->
                                    ]).
 
 validate(<<_/binary>> = Schema, DataJObj, Options) ->
-    {'ok', SchemaJObj} = load(Schema),
+    Fun = props:get_value('schema_loader_fun', Options, fun load/1),
+    {'ok', SchemaJObj} = Fun(Schema),
     validate(SchemaJObj, DataJObj, Options);
 validate(SchemaJObj, DataJObj, Options) ->
     jesse:validate_with_schema(SchemaJObj, DataJObj, Options).

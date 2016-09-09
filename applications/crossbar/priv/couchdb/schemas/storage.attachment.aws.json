@@ -1,0 +1,42 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "storage.attachment.aws",
+    "description": "schema for aws attachment entry",
+    "properties": {
+        "handler": {
+            "enum": [
+                "s3"
+            ]
+        },
+        "name": {
+            "type": "string"
+        },
+        "settings": {
+            "properties": {
+                "bucket": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "secret": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "bucket",
+                "key",
+                "secret"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "handler",
+        "settings"
+    ],
+    "type": "object"
+}

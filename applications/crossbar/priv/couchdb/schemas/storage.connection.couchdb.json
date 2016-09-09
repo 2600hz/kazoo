@@ -1,0 +1,92 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "storage.connection.couchdb",
+    "definitions": {
+        "credentials": {
+            "additionalProperties": false,
+            "properties": {
+                "password": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "username",
+                "password"
+            ],
+            "type": "object"
+        },
+        "pool": {
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "name",
+                "size"
+            ],
+            "type": "object"
+        }
+    },
+    "description": "schema for couchdb connection entry",
+    "properties": {
+        "driver": {
+            "enum": [
+                "kazoo_couch"
+            ]
+        },
+        "name": {
+            "type": "string"
+        },
+        "settings": {
+            "properties": {
+                "connect_options": {
+                    "properties": {
+                        "keepalive": {
+                            "type": "boolean"
+                        }
+                    },
+                    "type": "object"
+                },
+                "connect_timeout": {
+                    "type": "integer"
+                },
+                "credentials": {
+                    "$ref": "#/definitions/credentials"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "max_pipeline_size": {
+                    "type": "integer"
+                },
+                "max_sessions": {
+                    "type": "integer"
+                },
+                "pool": {
+                    "$ref": "#/definitions/pool"
+                },
+                "port": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "ip",
+                "port"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "driver",
+        "settings"
+    ],
+    "type": "object"
+}

@@ -123,6 +123,17 @@ convert_option({K, V} = KV) ->
     end.
 
 -spec connection_parse(any(), any(), couch_connection()) -> couch_connection().
+connection_parse(settings, Map, Conn)
+  when is_map(Map) ->
+    maps:fold(fun connection_parse/3, Conn, Map);
+connection_parse(credentials, #{username := Username, password := Password}, Conn) ->
+    Conn#kz_couch_connection{username=Username, password=Password};
+connection_parse(pool, #{name := PoolName, size := PoolSize}, #kz_couch_connection{options=Options}=Conn) ->
+    KVs = [{pool, PoolName}
+          ,{pool_name, PoolName}
+          ,{pool_size, PoolSize}
+          ],
+    Conn#kz_couch_connection{options = Options ++ KVs};
 connection_parse(ip, V, Conn) ->
     Conn#kz_couch_connection{host=V};
 connection_parse(host, V, Conn) ->

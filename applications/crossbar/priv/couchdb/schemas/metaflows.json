@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "metaflows",
+    "additionalProperties": false,
     "description": "Actions applied to a call outside of the normal callflow, initiated by the caller(s)",
     "properties": {
         "binding_digit": {
@@ -42,44 +43,27 @@
             "type": "string"
         },
         "numbers": {
-            "description": "A list of static numbers that the metaflow should match for",
+            "additionalProperties": false,
+            "description": "A list of static numbers with their flows",
             "patternProperties": {
-                "[0-9\\*\\#]+": {
-                    "properties": {
-                        "children": {
-                            "default": {},
-                            "required": false,
-                            "type": "#/flow"
-                        },
-                        "data": {
-                            "default": {},
-                            "description": "Module Data",
-                            "required": true,
-                            "type": "object"
-                        },
-                        "module": {
-                            "maxLength": 15,
-                            "required": true,
-                            "type": "string"
-                        }
-                    },
-                    "required": false,
-                    "type": "object"
+                "^[0-9]+$": {
+                    "$ref": "metaflow"
                 }
             },
             "required": false,
             "type": "object"
         },
         "patterns": {
-            "description": "The metaflow patterns",
-            "itmes": {
-                "required": false,
-                "type": "string"
+            "additionalProperties": false,
+            "description": "A list of patterns with their flows",
+            "patternProperties": {
+                ".+": {
+                    "$ref": "metaflow"
+                }
             },
             "required": false,
             "type": "object"
         }
     },
-    "required": true,
     "type": "object"
 }

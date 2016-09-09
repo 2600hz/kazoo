@@ -26,6 +26,9 @@
         ,is_authenticated/1
 
         ,is_superduper_admin/1
+        ,is_account_admin/1
+
+        ,system_error/2
 
          %% Getters / Setters
         ,setters/2
@@ -216,6 +219,10 @@ is_superduper_admin(AccountId=?NE_BINARY) ->
     end;
 is_superduper_admin(Context) ->
     is_superduper_admin(auth_account_id(Context)).
+
+-spec is_account_admin(context()) -> boolean().
+is_account_admin(#cb_context{auth_doc=Doc}) ->
+    kzd_user:priv_level(Doc) =:= <<"admin">>.
 
 auth_token_type(#cb_context{auth_token_type=AuthTokenType}) -> AuthTokenType.
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
@@ -632,7 +639,12 @@ response(#cb_context{resp_error_code=Code
 validate_request_data('undefined', Context) ->
     passed(Context);
 validate_request_data(<<_/binary>> = Schema, Context) ->
+    DefaultStrict = kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_schema">>, 'true'),
+    Strict = fetch(Context, 'ensure_valid_schema', DefaultStrict),
     case find_schema(Schema) of
+        'undefined' when Strict ->
+            Msg = <<"schema ", Schema/binary, " not found.">>,
+            system_error(Context, Msg);
         'undefined' ->
             passed(set_doc(Context, req_data(Context)));
         SchemaJObj ->
@@ -928,3 +940,30 @@ maybe_fix_index(Keys)
               end, Keys);
 maybe_fix_index(Key) ->
     Key.
+
+-spec system_error_props(context()) -> kz_proplist().
+system_error_props(Context) ->
+    Extract = [{fun account_id/1, <<"account_id">>}
+              ,{fun account_name/1, <<"account_name">>}
+              ,{fun auth_account_id/1, <<"auth_account_id">>}
+              ,{fun(C) -> kz_json:from_list(req_headers(C)) end, <<"req_headers">>}
+              ,{fun req_json/1, <<"req_json">>}
+              ,{fun req_data/1, <<"req_data">>}
+              ,{fun query_string/1, <<"query_json">>}
+              ,{fun req_id/1, <<"req_id">>}
+              ],
+    Fun = fun({Fun, K}, KVs) -> [{K, Fun(Context)} | KVs] end,
+    Props = lists:foldl(Fun, [], Extract),
+    props:filter_undefined(Props).
+
+-spec system_error(context(), ne_binary()) -> context().
+system_error(Context, Error) ->
+    Notify = props:filter_undefined(
+               [{<<"Subject">>, <<"api error - ", Error/binary>>}
+               ,{<<"Message">>, Error}
+               ,{<<"Details">>, kz_json:from_list(system_error_props(Context))}
+               ,{<<"Account-ID">>, auth_account_id(Context)}
+                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1),
+    add_system_error(Error, Context).

@@ -493,6 +493,20 @@ store_url(#state{doc_db=Db
                    ,field_list => [<<"call_recording_">>
                                   ,{field, <<"call_id">>}
                                   ,<<".", Ext/binary>>
+                                  ,<<"?from=">>
+                                  ,{field, <<"from">>}
+                                  ,<<"&to=">>
+                                  ,{field, <<"to">>}
+                                  ,<<"&caller_id_name=">>
+                                  ,{field, <<"caller_id_name">>}
+                                  ,<<"&caller_id_number=">>
+                                  ,{field, <<"caller_id_number">>}
+                                  ,<<"&call_id=">>
+                                  ,{field, <<"call_id">>}
+                                  ,<<"&cdr_id=">>
+                                  ,{field, <<"cdr_id">>}
+                                  ,<<"&interaction_id=">>
+                                  ,{field, <<"interaction_id">>}
                                   ]
                    },
     Handler = #{att_proxy => 'true'

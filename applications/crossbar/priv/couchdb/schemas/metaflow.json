@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "metaflow",
+    "additionalProperties": false,
+    "description": "A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to",
+    "properties": {
+        "children": {
+            "default": {},
+            "patternProperties": {
+                ".+": {
+                    "$ref": "metaflow"
+                }
+            },
+            "required": false,
+            "type": "object"
+        },
+        "data": {
+            "default": {},
+            "description": "Module Data",
+            "required": true,
+            "type": "object"
+        },
+        "module": {
+            "maxLength": 15,
+            "required": true,
+            "type": "string"
+        }
+    }
+}

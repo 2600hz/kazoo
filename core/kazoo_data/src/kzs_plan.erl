@@ -182,7 +182,7 @@ dataplan_match(Classification, Plan, AccountId) ->
                                 ,<<"settings">> := AttSettings
                                 }
              } = GAtt,
-            AttHandler = kz_util:to_atom(AttHandlerBin,'true'),
+            AttHandler = kz_util:to_atom(<<"kz_att_", AttHandlerBin/binary>>,'true'),
             Params = maps:merge(AttSettings, maps:get(<<"params">>, CAtt, #{})),
 
             #{tag => Tag
@@ -230,7 +230,7 @@ dataplan_type_match(Classification, DocType, Plan, AccountId) ->
                                 ,<<"settings">> := AttSettings
                                 }
              } = GAtt,
-            AttHandler = kz_util:to_atom(AttHandlerBin,'true'),
+            AttHandler = kz_util:to_atom(<<"kz_att_", AttHandlerBin/binary>>,'true'),
             Params = maps:merge(AttSettings, maps:get(<<"params">>, TypeAttMap, #{})),
             #{tag => Tag
              ,server => Server

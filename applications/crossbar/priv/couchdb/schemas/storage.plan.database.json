@@ -1,0 +1,46 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "storage.plan.database",
+    "additionalProperties": false,
+    "definitions": {
+        "database": {
+            "properties": {
+                "create_options": {
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "description": "schema for database storage plan",
+    "properties": {
+        "attachments": {
+            "$ref": "storage.plan.database.attachment"
+        },
+        "connection": {
+            "type": "string"
+        },
+        "database": {
+            "$ref": "#/definitions/database"
+        },
+        "types": {
+            "additionalProperties": false,
+            "properties": {
+                "call_recording": {
+                    "$ref": "storage.plan.database.document"
+                },
+                "fax": {
+                    "$ref": "storage.plan.database.document"
+                },
+                "mailbox_message": {
+                    "$ref": "storage.plan.database.document"
+                },
+                "media": {
+                    "$ref": "storage.plan.database.document"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "type": "object"
+}

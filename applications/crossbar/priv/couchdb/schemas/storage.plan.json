@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "storage.plan",
+    "additionalProperties": false,
+    "description": "schema for storage plan",
+    "properties": {
+        "account": {
+            "$ref": "storage.plan.database"
+        },
+        "modb": {
+            "$ref": "storage.plan.database"
+        },
+        "system": {
+            "$ref": "storage.plan.database"
+        }
+    },
+    "type": "object"
+}
