@@ -31,6 +31,11 @@
             "description": "crossbar default language",
             "type": "string"
         },
+        "ensure_valid_schema": {
+            "default": false,
+            "description": "crossbar ensure valid schema",
+            "type": "boolean"
+        },
         "expiry_percentage": {
             "default": 75,
             "description": "crossbar expiry percentage",
