@@ -24,7 +24,11 @@ dep_couchbeam = git https://github.com/lazedo/couchbeam bde6256afc1e9048c53db9b5
 ##dep_jesse = git https://github.com/for-GET/jesse 1.4.0
 ## pull request pending
 ## https://github.com/for-GET/jesse/pull/26
-dep_jesse = git https://github.com/lazedo/jesse fe68965f239ed511ca7604d7f08353a8feb2b973
+## other to come
+## there are some commits after 1.4.0 that will go into 1.5.0
+## that break a loot of stuff. please be careful if updating to 1.5.0
+## from for-GET/jesse 
+dep_jesse = git https://github.com/lazedo/jesse 1.4.1
 
 dep_lager = git https://github.com/basho/lager 3.2.1
 dep_fs_sync = git https://github.com/jamhed/fs_sync
