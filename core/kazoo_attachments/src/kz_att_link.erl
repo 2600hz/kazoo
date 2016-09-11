@@ -24,9 +24,9 @@
 -spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
 put_attachment(_Params, _DbName, _DocId, _AName, _Contents, Options) ->
     Props = props:filter_undefined(
-              [{<<"att_dbname">>, pros:get_value('att_dbname', Options)}
-              ,{<<"att_docid">>, pros:get_value('att_name', Options)}
-              ,{<<"att_name">>, pros:get_value('att_name', Options)}
+              [{<<"att_dbname">>, props:get_value('att_dbname', Options)}
+              ,{<<"att_docid">>, props:get_value('att_name', Options)}
+              ,{<<"att_name">>, props:get_value('att_name', Options)}
               ]),
     case ?REQUIRED_PROPS -- props:get_keys(Props) of
         [] -> {'ok', [{'attachment', Props}]};
