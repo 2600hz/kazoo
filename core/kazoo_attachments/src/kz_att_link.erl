@@ -25,7 +25,7 @@
 put_attachment(_Params, _DbName, _DocId, _AName, _Contents, Options) ->
     Props = props:filter_undefined(
               [{<<"att_dbname">>, props:get_value('att_dbname', Options)}
-              ,{<<"att_docid">>, props:get_value('att_name', Options)}
+              ,{<<"att_docid">>, props:get_value('att_docid', Options)}
               ,{<<"att_name">>, props:get_value('att_name', Options)}
               ]),
     case ?REQUIRED_PROPS -- props:get_keys(Props) of
