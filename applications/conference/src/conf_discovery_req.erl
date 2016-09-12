@@ -285,7 +285,8 @@ validate_conference_id('undefined', Call, Loop) when Loop > 3 ->
     {'error', 'too_many_attempts'};
 validate_conference_id('undefined', Call, Loop) ->
     lager:debug("requesting conference id from caller"),
-    case kapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_number">>, 1, Call) of
+    Timeout = get_number_timeout(Call),
+    case kapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_number">>, 1, Timeout, Call) of
         {'error', _}=E -> E;
         {'ok', Digits} ->
             validate_collected_conference_id(Call, Loop, Digits)
@@ -331,21 +332,24 @@ validate_conference_pin(_, _, Call, Loop) when Loop > 3->
     {'error', 'too_many_attempts'};
 validate_conference_pin('true', Conference, Call, Loop) ->
     lager:debug("requesting moderator pin from caller"),
-    case kapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Call) of
+    Timeout = get_pin_timeout(Conference),
+    case kapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Timeout, Call) of
         {'error', _}=E -> E;
         {'ok', Digits} ->
             validate_collected_conference_pin(Conference, Call, Loop, Digits)
     end;
 validate_conference_pin('false', Conference, Call, Loop) ->
     lager:debug("requesting member pin from caller"),
-    case kapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Call) of
+    Timeout = get_pin_timeout(Conference),
+    case kapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Timeout, Call) of
         {'error', _}=E -> E;
         {'ok', Digits} ->
             validate_collected_member_pins(Conference, Call, Loop, Digits)
     end;
 validate_conference_pin(_, Conference, Call, Loop) ->
     lager:debug("requesting conference pin from caller, which will be used to disambiguate member/moderator"),
-    case kapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Call) of
+    Timeout = get_pin_timeout(Conference),
+    case kapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Timeout, Call) of
         {'error', _}=E -> E;
         {'ok', Digits} ->
             validate_if_pin_is_for_moderator(Conference, Call, Loop, Digits)
@@ -385,7 +389,7 @@ validate_if_pin_is_for_moderator(Conference, Call, Loop, Digits) ->
 validate_collected_member_pins(Conference, Call, Loop, Digits) ->
     Pins = kapps_conference:member_pins(Conference),
     case lists:member(Digits, Pins)
-        orelse (Pins =:= [] 
+        orelse (Pins =:= []
                 andalso Digits =:= <<>>)
     of
         'true' ->
@@ -403,7 +407,7 @@ validate_collected_member_pins(Conference, Call, Loop, Digits) ->
 validate_collected_conference_pin(Conference, Call, Loop, Digits) ->
     Pins = kapps_conference:moderator_pins(Conference),
     case lists:member(Digits, Pins)
-        orelse (Pins =:= [] 
+        orelse (Pins =:= []
                 andalso Digits =:= <<>>)
     of
         'true' ->
@@ -436,3 +440,27 @@ create_conference(JObj, Digits, Call) ->
         %%   or they joined by the discovery event having the conference id
         _Else -> Conference
     end.
+
+-spec get_pin_timeout(kapps_conference:conference()) -> pos_integer().
+get_pin_timeout(Conference) ->
+    AccountId = kapps_conference:account_id(Conference),
+    JObj = kapps_conference:conference_doc(Conference),
+    lager:debug("pin timeout request account:~p conference:~p", [AccountId, kapps_conference:id(JObj)]),
+    kz_json:get_value(<<"pin_timeout">>, JObj, get_account_pin_timeout(AccountId)).
+
+-spec get_account_pin_timeout(ne_binary()) -> pos_integer().
+get_account_pin_timeout(AccountId) ->
+    kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"pin_timeout">>, get_default_pin_timeout()).
+
+-spec get_default_pin_timeout() -> pos_integer().
+get_default_pin_timeout() ->
+    kapps_config:get(?CONFIG_CAT, <<"pin_timeout">>, 5 * ?MILLISECONDS_IN_SECOND).
+
+-spec get_number_timeout(kapps_call:call()) -> pos_integer().
+get_number_timeout(Call) ->
+    AccountId = kapps_call:account_id(Call),
+    kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"number_timeout">>, get_default_number_timeout()).
+
+-spec get_default_number_timeout() -> pos_integer().
+get_default_number_timeout() ->
+    kapps_config:get(?CONFIG_CAT, <<"number_timeout">>, 5 * ?MILLISECONDS_IN_SECOND).

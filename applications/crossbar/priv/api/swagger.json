@@ -7088,6 +7088,16 @@
                     "description": "conferences moderator entry tone",
                     "type": "string"
                 },
+                "number_timeout": {
+                    "default": 5000,
+                    "description": "conferences number timeout",
+                    "type": "integer"
+                },
+                "pin_timeout": {
+                    "default": 5000,
+                    "description": "conferences pin timeout",
+                    "type": "integer"
+                },
                 "profiles": {
                     "properties": {
                         "default": {
