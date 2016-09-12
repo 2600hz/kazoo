@@ -465,9 +465,9 @@ error_used_mac_address(Context) ->
 -spec get_mac_addresses(ne_binary()) -> ne_binaries().
 get_mac_addresses(DbName) ->
     MACs = case kz_datamgr:get_all_results(DbName, ?CB_LIST_MAC) of
-        {'ok', AdJObj} -> kz_datamgr:get_result_keys(AdJObj);
-        _ -> []
-    end,
+               {'ok', AdJObj} -> kz_datamgr:get_result_keys(AdJObj);
+               _ -> []
+           end,
     lists:map(fun kz_util:to_lower_binary/1, MACs).
 
 -spec prepare_outbound_flags(api_binary(), cb_context:context()) -> cb_context:context().
