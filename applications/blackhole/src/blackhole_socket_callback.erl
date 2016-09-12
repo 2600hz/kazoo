@@ -24,17 +24,9 @@ open(Pid, Id, Ipaddr) ->
 
     Context = bh_context:set_source(bh_context:new(Pid, Id), IPBin),
 
-    %%     case kz_buckets:consume_token(?APP_NAME, bucket_name(Context)) of
-    %%         'true' -> check_auth_token(Context, bh_context:auth_token(Context));
-    %%         'false' ->
-    %%             lager:warning("rate limiting threshold hit for ~s!", [bh_context:websocket_session_id(Context)]),
-    %%             {'halt', 'badness'}
-    %%     end.
-
     Routing = <<"blackhole.session.open">>,
-    X = blackhole_bindings:map(Routing, Context),
-    lager:debug("OPEN MAP = ~p", [X]),
-    {'ok', Context}.
+    Ctx = blackhole_bindings:fold(Routing, Context),
+    {'ok', Ctx}.
 
 -spec recv({binary(), kz_json:object()}, bc_context:context()) -> cb_return().
 recv({Action, Payload}, Context) ->

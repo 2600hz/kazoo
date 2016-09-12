@@ -33,6 +33,7 @@
 -define(CHILDREN, [?WORKER('blackhole_listener')
                   ,?WORKER('blackhole_tracking')
                   ,?RANCH_SPEC('blackhole_http_listener')
+                  ,?WORKER('blackhole_bindings')
                   ]).
 
 %% ===================================================================

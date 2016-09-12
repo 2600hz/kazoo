@@ -13,8 +13,6 @@
 -export([init/0
         ,validate/2
         ,bindings/2
-        ,subscribe/2
-        ,unsubscribe/2
         ]).
 
 -include("blackhole.hrl").
@@ -29,8 +27,6 @@
 init() ->
     _ = blackhole_bindings:bind(<<"blackhole.events.validate.call">>, ?MODULE, 'validate'),
     blackhole_bindings:bind(<<"blackhole.events.bindings.call">>, ?MODULE, 'bindings').
-%%     _ = blackhole_bindings:bind(<<"blackhole.events.bindings.call">>, ?MODULE, 'subscribe'),
-%%     blackhole_bindings:bind(<<"blackhole.events.unsubscribe.call">>, ?MODULE, 'unsubscribe').
 
 
 -spec validate(bh_context:context(), map()) -> bh_context:context().
@@ -62,52 +58,6 @@ bindings(_Context, #{account_id := AccountId
 bindings(_Context, #{account_id := AccountId
                     ,keys := [Event, CallId]
                     }=Map) ->
-    Requested = <<"call.", Event/binary, ".", CallId/binary>>,
-    Subscribed = [<<"call.", AccountId/binary, ".", Event/binary, ".", CallId/binary>>],
-    Listeners = [{'hook', AccountId, Event}],
-    Map#{requested => Requested
-        ,subscribed => Subscribed
-        ,listeners => Listeners
-        }.
-
--spec subscribe(bh_context:context(), map()) -> map().
-subscribe(_Context, #{account_id := AccountId
-                     ,keys := [<<"*">>, CallId]
-                     }=Map) ->
-    Requested = <<"call.*.", CallId/binary>>,
-    Subscribed = [<<"call.", AccountId/binary, ".", Event/binary, ".", CallId/binary>>
-                      || Event <- ?LISTEN_TO],
-    Listeners = [{'hook', AccountId, Event} || Event <- ?LISTEN_TO],
-    Map#{requested => Requested
-        ,subscribed => Subscribed
-        ,listeners => Listeners
-        };
-subscribe(_Context, #{account_id := AccountId
-                     ,keys := [Event, CallId]
-                     }=Map) ->
-    Requested = <<"call.", Event/binary, ".", CallId/binary>>,
-    Subscribed = [<<"call.", AccountId/binary, ".", Event/binary, ".", CallId/binary>>],
-    Listeners = [{'hook', AccountId, Event}],
-    Map#{requested => Requested
-        ,subscribed => Subscribed
-        ,listeners => Listeners
-        }.
-
--spec unsubscribe(bh_context:context(), map()) -> map().
-unsubscribe(_Context, #{account_id := AccountId
-                       ,keys := [<<"*">>, CallId]
-                       }=Map) ->
-    Requested = <<"call.*.", CallId/binary>>,
-    Subscribed = [<<"call.", AccountId/binary, ".", Event/binary, ".", CallId/binary>>
-                      || Event <- ?LISTEN_TO],
-    Listeners = [{'hook', AccountId, Event} || Event <- ?LISTEN_TO],
-    Map#{requested => Requested
-        ,subscribed => Subscribed
-        ,listeners => Listeners
-        };
-unsubscribe(_Context, #{account_id := AccountId
-                       ,keys := [Event, CallId]
-                       }=Map) ->
     Requested = <<"call.", Event/binary, ".", CallId/binary>>,
     Subscribed = [<<"call.", AccountId/binary, ".", Event/binary, ".", CallId/binary>>],
     Listeners = [{'hook', AccountId, Event}],

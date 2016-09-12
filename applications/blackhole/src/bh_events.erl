@@ -93,10 +93,8 @@ unsubscribe(Context, Payload) ->
 
 -spec event(map(), ne_binary(), kz_json:object()) -> 'ok'.
 event(Binding, RK, EventJObj) ->
-    lager:debug("EVENT: ~p :~p: ~p", [Binding, RK, EventJObj]),
     kz_util:put_callid(EventJObj),
     Name = event_name(EventJObj),
-    lager:debug("event: ~s :~p", [Name, EventJObj]),
     NormJObj = kz_json:normalize_jobj(EventJObj),
     blackhole_data_emitter:event(Binding, RK, Name, NormJObj).
 
@@ -157,13 +155,9 @@ unbind(Context, Key) ->
     KSession = base64:encode(bh_context:websocket_session_id(Context)),
     BHKey = <<"blackhole.event.", Key/binary, ".", KSession/binary>>,
     blackhole_bindings:flush(BHKey).
-%%    blackhole_bindings:unbind(BHKey, ?MODULE, 'event').
 
 close(Context) ->
-    lager:debug("CLOSING SESSION, CLEANUP"),
     Listeners = bh_context:listeners(Context),
-    lager:debug("CLOSING SESSION, CLEANUP1 : ~p", [Listeners]),
     blackhole_listener:remove_bindings(Listeners),
     Bindings = bh_context:bindings(Context),
-    lager:debug("CLOSING SESSION, CLEANUP2 :; ~p", [Bindings]),
     lists:foldl(fun(Binding, Ctx) -> unbind(Ctx, Binding) end, Context, Bindings).

@@ -33,6 +33,8 @@
         ,bindings/0, bindings/1
         ]).
 
+-export([start_link/0]).
+
 %% Helper Functions for Results of a map/2
 -export([any/1
         ,all/1
@@ -60,16 +62,6 @@
 %%--------------------------------------------------------------------
 -type map_results() :: list().
 -type kz_bindings() :: list().
-
-%% -spec map(ne_binary(), payload()) -> map_results().
-%% map(Routing, Payload) ->
-%%     lager:debug("running map for ~s routing", [Routing]),
-%%     kazoo_bindings:map(Routing, Payload).
-%%
-%% -spec map(ne_binary(), payload(), kz_bindings()) -> map_results().
-%% map(Routing, Payload, Bindings) ->
-%%     lager:debug("running map for ~s routing", [Routing]),
-%%     kazoo_bindings:map(Routing, Payload, Bindings).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -177,8 +169,12 @@ unbind([_|_]=Bindings, Module, Fun, Payload) ->
 unbind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
     kazoo_bindings:unbind(Binding, Module, Fun, Payload).
 
+filter(Predicate) ->
+    kazoo_bindings:filter(Predicate).
+
 -spec flush() -> 'ok'.
-flush() -> kazoo_bindings:flush().
+flush() ->
+    lists:foreach(fun kazoo_bindings:flush_mod/1, modules_loaded()).
 
 -spec flush(ne_binary()) -> 'ok'.
 flush(Binding) -> kazoo_bindings:flush(Binding).
@@ -186,11 +182,18 @@ flush(Binding) -> kazoo_bindings:flush(Binding).
 -spec flush_mod(atom()) -> 'ok'.
 flush_mod(BHMod) -> kazoo_bindings:flush(BHMod).
 
-filter(Predicate) ->
-    kazoo_bindings:filter(Predicate).
-
 -spec modules_loaded() -> atoms().
-modules_loaded() -> kazoo_bindings:modules_loaded().
+modules_loaded() ->
+    lists:usort(
+      [Mod || Mod <- kazoo_bindings:modules_loaded(),
+              is_bh_module(Mod)
+      ]).
+
+-spec is_bh_module(ne_binary() | atom()) -> boolean().
+is_bh_module(<<"bh_", _/binary>>) -> 'true';
+is_bh_module(<<"blackhole_", _binary>>) -> 'true';
+is_bh_module(<<_/binary>>) -> 'false';
+is_bh_module(Mod) -> is_bh_module(kz_util:to_binary(Mod)).
 
 -spec init() -> 'ok'.
 init() ->
@@ -297,3 +300,8 @@ map(Routing, Payload, Bindings) ->
 bh_match(AParts, BParts) ->
     bh_matches(AParts, BParts)
         orelse bh_matches(BParts, AParts).
+
+-spec start_link() -> 'ignore'.
+start_link() ->
+    _ = init(),
+    'ignore'.

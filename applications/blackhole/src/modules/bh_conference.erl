@@ -14,8 +14,6 @@
 -export([init/0
         ,bindings/2
         ,subscribe/2
-        ,unsubscribe/2
-        ,validate/2
         ]).
 
 -include("blackhole.hrl").
@@ -24,8 +22,6 @@
 init() ->
     _ = blackhole_bindings:bind(<<"blackhole.events.validate.conference">>, ?MODULE, 'validate'),
     blackhole_bindings:bind(<<"blackhole.events.bindings.conference">>, ?MODULE, 'bindings').
-%%     _ = blackhole_bindings:bind(<<"blackhole.events.subscribe.conference">>, ?MODULE, 'subscribe'),
-%%     blackhole_bindings:bind(<<"blackhole.events.unsubscribe.conference">>, ?MODULE, 'unsubscribe').
 
 
 -spec validate(bh_context:context(), map()) -> bh_context:context().
@@ -58,50 +54,6 @@ bindings(_Context, #{account_id := _AccountId
 bindings(_Context, #{account_id := _AccountId
                     ,keys := [<<"event">>, ConferenceId, CallId]
                     }=Map) ->
-    Requested = <<"conference.event.", ConferenceId/binary, ".", CallId/binary>>,
-    Subscribed = [<<"conference.event.", ConferenceId/binary, ".", CallId/binary>>],
-    Listeners = [{'amqp', 'conference', event_binding_options(ConferenceId, CallId)}],
-    Map#{requested => Requested
-        ,subscribed => Subscribed
-        ,listeners => Listeners
-        }.
-
--spec subscribe(bh_context:context(), map()) -> map().
-subscribe(_Context, #{account_id := _AccountId
-                     ,keys := [<<"command">>, ConferenceId]
-                     }=Map) ->
-    Requested = <<"conference.command.", ConferenceId/binary>>,
-    Subscribed = [<<"conference.command.", ConferenceId/binary>>],
-    Listeners = [{'amqp', 'conference', command_binding_options(ConferenceId)}],
-    Map#{requested => Requested
-        ,subscribed => Subscribed
-        ,listeners => Listeners
-        };
-subscribe(_Context, #{account_id := _AccountId
-                     ,keys := [<<"event">>, ConferenceId, CallId]
-                     }=Map) ->
-    Requested = <<"conference.event.", ConferenceId/binary, ".", CallId/binary>>,
-    Subscribed = [<<"conference.event.", ConferenceId/binary, ".", CallId/binary>>],
-    Listeners = [{'amqp', 'conference', event_binding_options(ConferenceId, CallId)}],
-    Map#{requested => Requested
-        ,subscribed => Subscribed
-        ,listeners => Listeners
-        }.
-
--spec unsubscribe(bh_context:context(), map()) -> map().
-unsubscribe(_Context, #{account_id := _AccountId
-                       ,keys := [<<"command">>, ConferenceId]
-                       }=Map) ->
-    Requested = <<"conference.command.", ConferenceId/binary>>,
-    Subscribed = [<<"conference.command.", ConferenceId/binary>>],
-    Listeners = [{'amqp', 'conference', command_binding_options(ConferenceId)}],
-    Map#{requested => Requested
-        ,subscribed => Subscribed
-        ,listeners => Listeners
-        };
-unsubscribe(_Context, #{account_id := _AccountId
-                       ,keys := [<<"event">>, ConferenceId, CallId]
-                       }=Map) ->
     Requested = <<"conference.event.", ConferenceId/binary, ".", CallId/binary>>,
     Subscribed = [<<"conference.event.", ConferenceId/binary, ".", CallId/binary>>],
     Listeners = [{'amqp', 'conference', event_binding_options(ConferenceId, CallId)}],

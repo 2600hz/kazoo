@@ -12,8 +12,6 @@
 -export([init/0
         ,validate/2
         ,bindings/2
-        ,subscribe/2
-        ,unsubscribe/2
         ]).
 
 -include("blackhole.hrl").
@@ -24,8 +22,6 @@
 init() ->
     _ = blackhole_bindings:bind(<<"blackhole.events.validate.object">>, ?MODULE, 'validate'),
     blackhole_bindings:bind(<<"blackhole.events.bindings.object">>, ?MODULE, 'bindings').
-%%     _ = blackhole_bindings:bind(<<"blackhole.events.subscribe.object">>, ?MODULE, 'subscribe'),
-%%     blackhole_bindings:bind(<<"blackhole.events.unsubscribe.object">>, ?MODULE, 'unsubscribe').
 
 %% example binding: object.fax.doc_update
 
@@ -70,7 +66,6 @@ bindings(_Context, #{account_id := AccountId
         ,listeners => Listeners
         }.
 
-
 -spec bind_options(ne_binary(), list()) -> kz_json:object().
 bind_options(AccountId, Keys) ->
     [{'restrict_to', ['doc_updates']}
@@ -78,31 +73,3 @@ bind_options(AccountId, Keys) ->
     ,{'keys', Keys}
     ,'federate'
     ].
-
--spec subscribe(bh_context:context(), map()) -> map().
-subscribe(_Context, #{account_id := AccountId
-                     ,keys := [Type, Action]
-                     }=Map) ->
-    AccountDb = kz_util:format_account_db(AccountId),
-    Keys = [[{'action', Action}, {'db', AccountDb}, {'doc_type', Type}]],
-    Requested = <<"object.", Type/binary, ".", Action/binary>>,
-    Subscribed = [<<Action/binary, ".", AccountDb/binary, ".", Type/binary, ".*">>],
-    Listeners = [{'amqp', 'conf', bind_options(AccountId, Keys)}],
-    Map#{requested => Requested
-        ,subscribed => Subscribed
-        ,listeners => Listeners
-        }.
-
--spec unsubscribe(bh_context:context(), map()) -> map().
-unsubscribe(_Context, #{account_id := AccountId
-                       ,keys := [Type, Action]
-                       }=Map) ->
-    AccountDb = kz_util:format_account_db(AccountId),
-    Keys = [[{'action', Action}, {'db', AccountDb}, {'doc_type', Type}]],
-    Requested = <<"object.", Type/binary, ".", Action/binary>>,
-    Subscribed = [<<Action/binary, ".", AccountDb/binary, ".", Type/binary, ".*">>],
-    Listeners = [{'amqp', 'conf', bind_options(AccountId, Keys)}],
-    Map#{requested => Requested
-        ,subscribed => Subscribed
-        ,listeners => Listeners
-        }.
