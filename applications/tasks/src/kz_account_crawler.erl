@@ -143,6 +143,7 @@ handle_info({timeout, Ref, _Msg}, #state{cleanup_ref = Ref
                                         ,account_ids = [AccountId]
                                         }=State) ->
     _ = crawl_account(AccountId),
+    lager:info("account crawler completed a full crawl"),
     {noreply, State#state{cleanup_ref = cleanup_cycle_timer()
                          ,account_ids = []
                          }};

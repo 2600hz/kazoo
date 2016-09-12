@@ -155,3 +155,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec crawl_port_requests() -> ok.
+crawl_port_requests() ->
+    knm_port_request:send_submitted_requests(),
+    lager:info("port_request crawler completed a full crawl").
