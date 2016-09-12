@@ -39,17 +39,16 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {cleanup_timer_ref=start_cleanup_timer()
-               ,minute_timer_ref=start_minute_timer()
-               ,hour_timer_ref=start_hour_timer()
-               ,day_timer_ref=start_day_timer()
+-record(state, {cleanup_timer_ref = start_cleanup_timer() :: reference()
+               ,minute_timer_ref = start_minute_timer() :: reference()
+               ,hour_timer_ref = start_hour_timer() :: reference()
+               ,day_timer_ref = start_day_timer() :: reference()
                }).
 -type state() :: #state{}.
 
 %% How long to pause before attempting to delete the next chunk of soft-deleted docs
--define(SOFT_DELETE_PAUSE
-       ,kapps_config:get(?CONFIG_CAT, <<"soft_delete_pause_ms">>, 10 * ?MILLISECONDS_IN_SECOND)
-       ).
+-define(SOFT_DELETE_PAUSE,
+       kapps_config:get(?CONFIG_CAT, <<"soft_delete_pause_ms">>, 10 * ?MILLISECONDS_IN_SECOND)).
 
 %%%===================================================================
 %%% API
@@ -81,15 +80,12 @@ status() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {ok, state()}.
 init([]) ->
     kz_util:put_callid(?MODULE),
-
     _ = crossbar_bindings:bind(binding_all_dbs(), ?MODULE, 'cleanup_soft_deletes'),
-
-    State = start_timers(),
     lager:debug("started ~s", [?MODULE]),
-
-    {'ok', State}.
+    {'ok', #state{}}.
 
 -define(BINDING_PREFIX, "v2_resource.cleanup.").
 
@@ -154,7 +150,9 @@ handle_call('status', _From, #state{cleanup_timer_ref=Cleanup
               ,{'hour', erlang:read_timer(Hour)}
               ,{'day', erlang:read_timer(Day)}
               ]
-    , State};
+    ,State
+    };
+
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -172,6 +170,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({'cleanup_finished', Ref}, #state{cleanup_timer_ref=Ref}=State) ->
     lager:debug("cleanup finished for ~p, starting timer", [Ref]),
     {'noreply', State#state{cleanup_timer_ref=start_cleanup_timer()}, 'hibernate'};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -237,21 +236,19 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 -spec start_cleanup_pass(reference()) -> 'ok'.
 start_cleanup_pass(Ref) ->
     kz_util:put_callid(<<"cleanup_pass_", (kz_util:rand_hex_binary(4))/binary>>),
-
     {'ok', Dbs} = kz_datamgr:db_info(),
     lager:debug("starting cleanup pass of databases"),
-
-    _ = [begin
-             crossbar_bindings:map(db_routing_key(Db), Db),
-             erlang:garbage_collect(self())
-         end
-         || Db <- Dbs
-        ],
+    lists:foreach(fun cleanup_pass/1, Dbs),
     lager:debug("pass completed for ~p", [Ref]),
     gen_server:cast(?SERVER, {'cleanup_finished', Ref}).
+
+cleanup_pass(Db) ->
+    crossbar_bindings:map(db_routing_key(Db), Db),
+    erlang:garbage_collect(self()).
 
 -spec db_routing_key(ne_binary()) -> ne_binary().
 db_routing_key(Db) ->
@@ -267,14 +264,6 @@ db_routing_key(Db, [{Classifier, BindingFun} | Classifiers]) ->
         'true' -> BindingFun();
         'false' -> db_routing_key(Db, Classifiers)
     end.
-
--spec start_timers() -> state().
-start_timers() ->
-    #state{cleanup_timer_ref=start_cleanup_timer()
-          ,minute_timer_ref=start_minute_timer()
-          ,hour_timer_ref=start_hour_timer()
-          ,day_timer_ref=start_day_timer()
-          }.
 
 -spec stop_timer(any()) -> any().
 stop_timer(Ref) when is_reference(Ref) ->
@@ -321,7 +310,8 @@ do_cleanup(Db) ->
     case kz_datamgr:get_results(Db
                                ,<<"maintenance/soft_deletes">>
                                ,[{'limit', kz_datamgr:max_bulk_insert()}]
-                               ) of
+                               )
+    of
         {'ok', []} -> 'ok';
         {'ok', L} ->
             lager:debug("removing ~b soft-deleted docs from ~s", [length(L), Db]),
