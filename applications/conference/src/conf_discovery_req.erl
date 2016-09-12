@@ -450,7 +450,7 @@ get_pin_timeout(Conference) ->
 
 -spec get_account_pin_timeout(ne_binary()) -> pos_integer().
 get_account_pin_timeout(AccountId) ->
-    kapps_account_config:get(AccountId, ?CONFIG_CAT, <<"pin_timeout">>, get_default_pin_timeout()).
+    kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"pin_timeout">>, get_default_pin_timeout()).
 
 -spec get_default_pin_timeout() -> pos_integer().
 get_default_pin_timeout() ->
@@ -459,7 +459,7 @@ get_default_pin_timeout() ->
 -spec get_number_timeout(kapps_call:call()) -> pos_integer().
 get_number_timeout(Call) ->
     AccountId = kapps_call:account_id(Call),
-    kapps_account_config:get(AccountId, ?CONFIG_CAT, <<"number_timeout">>, get_default_number_timeout()).
+    kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"number_timeout">>, get_default_number_timeout()).
 
 -spec get_default_number_timeout() -> pos_integer().
 get_default_number_timeout() ->
