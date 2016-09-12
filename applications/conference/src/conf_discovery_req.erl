@@ -389,7 +389,7 @@ validate_if_pin_is_for_moderator(Conference, Call, Loop, Digits) ->
 validate_collected_member_pins(Conference, Call, Loop, Digits) ->
     Pins = kapps_conference:member_pins(Conference),
     case lists:member(Digits, Pins)
-        orelse (Pins =:= [] 
+        orelse (Pins =:= []
                 andalso Digits =:= <<>>)
     of
         'true' ->
@@ -407,7 +407,7 @@ validate_collected_member_pins(Conference, Call, Loop, Digits) ->
 validate_collected_conference_pin(Conference, Call, Loop, Digits) ->
     Pins = kapps_conference:moderator_pins(Conference),
     case lists:member(Digits, Pins)
-        orelse (Pins =:= [] 
+        orelse (Pins =:= []
                 andalso Digits =:= <<>>)
     of
         'true' ->
