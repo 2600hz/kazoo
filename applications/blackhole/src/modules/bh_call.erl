@@ -10,70 +10,108 @@
 %%%-------------------------------------------------------------------
 -module(bh_call).
 
--export([handle_event/2
-        ,subscribe/2, unsubscribe/2
+-export([init/0
+        ,validate/2
+        ,bindings/2
+        ,subscribe/2
+        ,unsubscribe/2
         ]).
 
 -include("blackhole.hrl").
 
--define(LISTEN_TO, [
-                    <<"CHANNEL_CREATE">>, <<"CHANNEL_ANSWER">>, <<"CHANNEL_DESTROY">>, <<"CHANNEL_BRIDGE">>
+-define(LISTEN_TO, [<<"CHANNEL_CREATE">>, <<"CHANNEL_ANSWER">>, <<"CHANNEL_DESTROY">>
+                   ,<<"CHANNEL_BRIDGE">>
                    ,<<"PARK_PARKED">>, <<"PARK_RETRIEVED">>, <<"PARK_ABANDONED">>
                    ]).
 
--spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
-handle_event(Context, EventJObj) ->
-    'true' = kapi_call:event_v(EventJObj),
-    blackhole_util:handle_event(Context, EventJObj, event_name(EventJObj)).
 
--spec event_name(kz_json:object()) -> ne_binary().
-event_name(JObj) ->
-    kz_json:get_value(<<"Event-Name">>, JObj).
+-spec init() -> any().
+init() ->
+    _ = blackhole_bindings:bind(<<"blackhole.events.validate.call">>, ?MODULE, 'validate'),
+    blackhole_bindings:bind(<<"blackhole.events.bindings.call">>, ?MODULE, 'bindings').
+%%     _ = blackhole_bindings:bind(<<"blackhole.events.bindings.call">>, ?MODULE, 'subscribe'),
+%%     blackhole_bindings:bind(<<"blackhole.events.unsubscribe.call">>, ?MODULE, 'unsubscribe').
 
--spec subscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-subscribe(Context, <<"call.*.*">>) ->
-    AccountId = bh_context:account_id(Context),
-    add_call_binding(AccountId, Context, ?LISTEN_TO),
-    {'ok', Context};
-subscribe(Context, <<"call.", Binding/binary>>) ->
-    case binary:split(Binding, <<".">>, ['global']) of
-        [Event, <<"*">>] ->
-            AccountId = bh_context:account_id(Context),
-            add_call_binding(AccountId, Context, [Event]),
-            {'ok', Context};
-        _ ->
-            {'error', <<"Unmatched binding">>}
+
+-spec validate(bh_context:context(), map()) -> bh_context:context().
+validate(Context, #{keys := [<<"*">>, _]
+                   }) ->
+    Context;
+validate(Context, #{keys := [Event, _]
+                   }) ->
+    case lists:member(Event, ?LISTEN_TO) of
+        'true' -> Context;
+        'false' -> bh_context:add_error(Context, <<"event ", Event/binary, " not supported">>)
     end;
-subscribe(_Context, _Binding) ->
-    {'error', <<"Unmatched binding">>}.
+validate(Context, #{keys := Keys}) ->
+    bh_context:add_error(Context, <<"invalid format for call subscription : ", (kz_util:join_binary(Keys))/binary>>).
 
--spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-unsubscribe(Context, <<"call.*.*">>) ->
-    AccountId = bh_context:account_id(Context),
-    rm_call_binding(AccountId, Context, ?LISTEN_TO),
-    {'ok', Context};
-unsubscribe(Context, <<"call.", Binding/binary>>) ->
-    case binary:split(Binding, <<".">>, ['global']) of
-        [Event, <<"*">>] ->
-            AccountId = bh_context:account_id(Context),
-            rm_call_binding(AccountId, Context, [Event]),
-            {'ok', Context};
-        _ ->
-            {'error', <<"Unmatched binding">>}
-    end;
-unsubscribe(_Context, _Binding) ->
-    {'error', <<"Unmatched binding">>}.
 
--spec add_call_binding(ne_binary(), bh_context:context(), [ne_binary()]) -> ok.
-add_call_binding(_AccountId, _Context, []) -> ok;
-add_call_binding(AccountId, Context, [Event | Events]) ->
-    blackhole_bindings:bind(<<"call.", AccountId/binary, ".", Event/binary, ".*">>, ?MODULE, 'handle_event', Context),
-    blackhole_listener:add_call_binding(AccountId, Event),
-    add_call_binding(AccountId, Context, Events).
+-spec bindings(bh_context:context(), map()) -> map().
+bindings(_Context, #{account_id := AccountId
+                    ,keys := [<<"*">>, CallId]
+                    }=Map) ->
+    Requested = <<"call.*.", CallId/binary>>,
+    Subscribed = [<<"call.", AccountId/binary, ".", Event/binary, ".", CallId/binary>>
+                      || Event <- ?LISTEN_TO],
+    Listeners = [{'hook', AccountId, Event} || Event <- ?LISTEN_TO],
+    Map#{requested => Requested
+        ,subscribed => Subscribed
+        ,listeners => Listeners
+        };
+bindings(_Context, #{account_id := AccountId
+                    ,keys := [Event, CallId]
+                    }=Map) ->
+    Requested = <<"call.", Event/binary, ".", CallId/binary>>,
+    Subscribed = [<<"call.", AccountId/binary, ".", Event/binary, ".", CallId/binary>>],
+    Listeners = [{'hook', AccountId, Event}],
+    Map#{requested => Requested
+        ,subscribed => Subscribed
+        ,listeners => Listeners
+        }.
 
--spec rm_call_binding(ne_binary(), bh_context:context(), [ne_binary()]) -> ok.
-rm_call_binding(_AccountId, _Context, []) -> ok;
-rm_call_binding(AccountId, Context, [Event | Events]) ->
-    blackhole_bindings:unbind(<<"call.", AccountId/binary, ".", Event/binary, ".*">>, ?MODULE, 'handle_event', Context),
-    blackhole_listener:remove_call_binding(AccountId, Event),
-    rm_call_binding(AccountId, Context, Events).
+-spec subscribe(bh_context:context(), map()) -> map().
+subscribe(_Context, #{account_id := AccountId
+                     ,keys := [<<"*">>, CallId]
+                     }=Map) ->
+    Requested = <<"call.*.", CallId/binary>>,
+    Subscribed = [<<"call.", AccountId/binary, ".", Event/binary, ".", CallId/binary>>
+                      || Event <- ?LISTEN_TO],
+    Listeners = [{'hook', AccountId, Event} || Event <- ?LISTEN_TO],
+    Map#{requested => Requested
+        ,subscribed => Subscribed
+        ,listeners => Listeners
+        };
+subscribe(_Context, #{account_id := AccountId
+                     ,keys := [Event, CallId]
+                     }=Map) ->
+    Requested = <<"call.", Event/binary, ".", CallId/binary>>,
+    Subscribed = [<<"call.", AccountId/binary, ".", Event/binary, ".", CallId/binary>>],
+    Listeners = [{'hook', AccountId, Event}],
+    Map#{requested => Requested
+        ,subscribed => Subscribed
+        ,listeners => Listeners
+        }.
+
+-spec unsubscribe(bh_context:context(), map()) -> map().
+unsubscribe(_Context, #{account_id := AccountId
+                       ,keys := [<<"*">>, CallId]
+                       }=Map) ->
+    Requested = <<"call.*.", CallId/binary>>,
+    Subscribed = [<<"call.", AccountId/binary, ".", Event/binary, ".", CallId/binary>>
+                      || Event <- ?LISTEN_TO],
+    Listeners = [{'hook', AccountId, Event} || Event <- ?LISTEN_TO],
+    Map#{requested => Requested
+        ,subscribed => Subscribed
+        ,listeners => Listeners
+        };
+unsubscribe(_Context, #{account_id := AccountId
+                       ,keys := [Event, CallId]
+                       }=Map) ->
+    Requested = <<"call.", Event/binary, ".", CallId/binary>>,
+    Subscribed = [<<"call.", AccountId/binary, ".", Event/binary, ".", CallId/binary>>],
+    Listeners = [{'hook', AccountId, Event}],
+    Map#{requested => Requested
+        ,subscribed => Subscribed
+        ,listeners => Listeners
+        }.

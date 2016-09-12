@@ -94,27 +94,30 @@ handle_req(ApiJObj, _Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec add_socket(bh_context:context()) -> 'ok'.
+-spec add_socket(bh_context:context()) -> bh_context:context().
 add_socket(Context) ->
-    gen_server:cast(?SERVER, {'add_socket', Context}).
+    gen_server:cast(?SERVER, {'add_socket', Context}),
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec remove_socket(bh_context:context()) -> 'ok'.
+-spec remove_socket(bh_context:context()) -> bh_context:context().
 remove_socket(Context) ->
-    gen_server:cast(?SERVER, {'remove_socket', Context}).
+    gen_server:cast(?SERVER, {'remove_socket', Context}),
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_socket(bh_context:context()) -> 'ok'.
+-spec update_socket(bh_context:context()) -> bh_context:context().
 update_socket(Context) ->
-    gen_server:cast(?SERVER, {'update_socket', Context}).
+    gen_server:cast(?SERVER, {'update_socket', Context}),
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -157,6 +160,9 @@ init([]) ->
                            ,'named_table'
                            ,{'keypos', #bh_context.websocket_session_id}
                            ]),
+    blackhole_bindings:bind(<<"blackhole.session.open">>, ?MODULE, 'add_socket'),
+    blackhole_bindings:bind(<<"blackhole.session.close">>, ?MODULE, 'remove_socket'),
+    blackhole_bindings:bind(<<"blackhole.finish.*">>, ?MODULE, 'update_socket'),
     {'ok', Tab}.
 
 %%--------------------------------------------------------------------
@@ -175,7 +181,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'get_sockets', AccountId}, _From, State) ->
-    Pattern = #bh_context{account_id=AccountId, _='_'},
+    Pattern = #bh_context{auth_account_id=AccountId, _='_'},
     Result =
         case ets:match_object(State, Pattern) of
             [] -> {'error', 'not_found'};
@@ -256,6 +262,9 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
+    blackhole_bindings:unbind(<<"blackhole.session.open">>, ?MODULE, 'add_socket'),
+    blackhole_bindings:unbind(<<"blackhole.session.close">>, ?MODULE, 'remove_socket'),
+    blackhole_bindings:unbind(<<"blackhole.finish.*">>, ?MODULE, 'update_socket'),
     lager:debug("listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------

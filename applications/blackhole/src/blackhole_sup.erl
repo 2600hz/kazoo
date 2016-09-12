@@ -21,8 +21,18 @@
 -define(SERVER, ?MODULE).
 
 %% Helper macro for declaring children of supervisor
+-define(SOCKET_PORT, kapps_config:get_integer(?APP_NAME, <<"port">>, 5555)).
+-define(SOCKET_ACCEPTORS, kapps_config:get_integer(?APP_NAME, <<"acceptors">>, 100)).
+-define(SOCKET_OPTIONS, [{'port', ?SOCKET_PORT}]).
+-define(COWBOY_ROUTER, cowboy_router:compile([{'_', [{"/", 'blackhole_socket_handler', []}]}])).
+-define(COWBOY_OPTIONS, [{'env', [{'dispatch', ?COWBOY_ROUTER}]}]).
+
+-define(RANCH_SPEC(Ref),
+        ranch:child_spec(Ref, ?SOCKET_ACCEPTORS, ranch_tcp, ?SOCKET_OPTIONS, cowboy_protocol, ?COWBOY_OPTIONS)
+       ).
 -define(CHILDREN, [?WORKER('blackhole_listener')
                   ,?WORKER('blackhole_tracking')
+                  ,?RANCH_SPEC('blackhole_http_listener')
                   ]).
 
 %% ===================================================================
@@ -35,11 +45,6 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    Dispatch = cowboy_router:compile([{'_', [{"/", 'blackhole_default_handler', []}]}]),
-
-    Port = kapps_config:get_integer(?APP_NAME, <<"port">>, 5555),
-    {'ok', _} = cowboy:start_http('blackhole_http_listener', 100, [{'port', Port}],
-                                  [{'env', [{'dispatch', Dispatch}]}]),
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
@@ -63,5 +68,6 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+
 
     {'ok', {SupFlags, ?CHILDREN}}.

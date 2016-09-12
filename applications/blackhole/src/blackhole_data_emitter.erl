@@ -10,13 +10,30 @@
 
 -include("blackhole.hrl").
 
--export([emit/3]).
+-export([event/4]).
+-export([reply/4]).
 
--spec emit([pid()] | pid(), api_binary(), kz_json:object()) -> 'ok'.
-emit(SessionPid, Event, Data) when is_pid(SessionPid) ->
-    lager:debug("sending event data: ~s", [Event]),
-    SessionPid ! {'send_event', Event, Data};
+-spec event(map(), ne_binary(), ne_binary(), kz_json:object()) -> any().
+event(Binding, RK, Name, Data) ->
+    #{subscribed_key := SubscribedKey
+     ,subscription_key := SubscriptionKey
+     ,session_pid := SessionPid
+     } = Binding,
+    Msg = [{<<"action">>, <<"event">>}
+          ,{<<"subscribed_key">>, SubscribedKey}
+          ,{<<"subscription_key">>, SubscriptionKey}
+          ,{<<"name">>, Name}
+          ,{<<"routing_key">>, RK}
+          ,{<<"data">>, Data}
+          ],
+    SessionPid ! {'send_data', kz_json:from_list(Msg)}.
 
-emit(SessionPids, Event, Data) when is_list(SessionPids) ->
-    _ = [emit(SessionPid, Event, Data) || SessionPid <- SessionPids],
-    'ok'.
+-spec reply(pid(), ne_binary(), ne_binary(), kz_json:object()) -> any().
+reply(SessionPid, RequestId, Status, Data) ->
+    lager:debug("sending reply data: ~s : ~s : ~p", [RequestId, Status, Data]),
+    Msg = [{<<"action">>, <<"reply">>}
+          ,{<<"request_id">>, RequestId}
+          ,{<<"status">>, Status}
+          ,{<<"data">>, Data}
+          ],
+    SessionPid ! {'send_data', kz_json:from_list(Msg)}.

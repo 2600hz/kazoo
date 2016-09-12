@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
--module(blackhole_default_handler).
+-module(blackhole_socket_handler).
 
 -export([
          init/3,
@@ -33,22 +33,24 @@ websocket_handle({'text', Data}, Req, State) ->
     Action = kz_json:get_value(<<"action">>, Obj),
     Msg    = kz_json:delete_key(<<"action">>, Obj),
 
-    {'ok', NewState} = blackhole_socket_callback:recv(self(), session_id(Req), {Action, Msg}, State),
-    {'ok', Req, NewState}.
+    case blackhole_socket_callback:recv({Action, Msg}, State) of
+        {'ok', NewState} -> {'ok', Req, NewState};
+        'error' -> {'ok', Req, State};
+        'shutdown' -> {'shutdown', Req, State}
+    end.
 
 websocket_info({'$gen_cast', _}, Req, State) ->
     {'ok', Req, State};
 
-websocket_info({'send_event', Event, Data}, Req, State) ->
-    Msg = kz_json:set_value(<<"routing_key">>, Event, Data),
-    {'reply', {'text', kz_json:encode(Msg)}, Req, State};
+websocket_info({'send_data', Data}, Req, State) ->
+    {'reply', {'text', kz_json:encode(Data)}, Req, State};
 
 websocket_info(Info, Req, State) ->
     lager:info("unhandled websocket info: ~p", [Info]),
     {'ok', Req, State}.
 
-websocket_terminate(_Reason, Req, State) ->
-    blackhole_socket_callback:close(self(), session_id(Req), State).
+websocket_terminate(_Reason, _Req, State) ->
+    blackhole_socket_callback:close(State).
 
 -spec session_id(cowboy_req:req()) -> binary().
 session_id(Req) ->
