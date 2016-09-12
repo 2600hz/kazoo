@@ -48,7 +48,7 @@
 
 %% How long to pause before attempting to delete the next chunk of soft-deleted docs
 -define(SOFT_DELETE_PAUSE,
-       kapps_config:get(?CONFIG_CAT, <<"soft_delete_pause_ms">>, 10 * ?MILLISECONDS_IN_SECOND)).
+        kapps_config:get(?CONFIG_CAT, <<"soft_delete_pause_ms">>, 10 * ?MILLISECONDS_IN_SECOND)).
 
 %%%===================================================================
 %%% API
@@ -267,8 +267,7 @@ db_routing_key(Db, [{Classifier, BindingFun} | Classifiers]) ->
 
 -spec stop_timer(any()) -> any().
 stop_timer(Ref) when is_reference(Ref) ->
-    erlang:cancel_timer(Ref);
-stop_timer(_) -> 'ok'.
+    erlang:cancel_timer(Ref).
 
 -spec start_timer(pos_integer(), any()) -> reference().
 start_timer(Expiry, Msg) ->
