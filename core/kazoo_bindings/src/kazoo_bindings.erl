@@ -38,8 +38,17 @@
         ,all/2
         ,succeeded/2
         ,failed/2
-        ,matches/1, matches/2
-        ,candidates/1
+        ,matches/2
+        ]).
+
+%% Helper Function for calling map/3
+-export([candidates/1
+        ]).
+
+-export([rt_options/0, rt_options/1]).
+
+%% Helper Functions for debugging
+-export([bindings/0, bindings/1
         ]).
 
 %% ETS Persistence
@@ -65,6 +74,11 @@
 %% {<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>], queue:queue(), <<"foo.bar">>}
 
 -type payload() :: any().
+-type fold_results() :: payload().
+-type map_results() :: list().
+
+-type matches_fun() :: fun((ne_binaries(), ne_binaries()) -> boolean()).
+-type candidates_fun() :: fun((ne_binary()) -> kz_bindings()).
 
 -record(kz_responder, {module :: atom()
                       ,function :: atom()
@@ -82,8 +96,24 @@
 -type kz_binding() :: #kz_binding{}.
 -type kz_bindings() :: [kz_binding()].
 
+-type kz_rt_options() :: kz_proplist().
+-type kz_rt_option() :: 'candidates' | 'matches'.
+
 -record(state, {bindings = [] :: kz_bindings()}).
 -type state() :: #state{}.
+
+-export_type([kz_responder/0
+             ,kz_responders/0
+             ,kz_binding/0
+             ,kz_bindings/0
+             ,candidates_fun/0
+             ,matches_fun/0
+             ,payload/0
+             ,map_results/0
+             ,fold_results/0
+             ,kz_rt_option/0
+             ,kz_rt_options/0
+             ]).
 
 %%%===================================================================
 %%% API
@@ -96,14 +126,13 @@
 %% is the payload, possibly modified
 %% @end
 %%--------------------------------------------------------------------
--type map_results() :: list().
 -spec map(ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
-    map_processor(Routing, Payload, get_binding_candidates(Routing)).
+    map_processor(Routing, Payload, rt_options()).
 
--spec map(ne_binary(), payload(), kz_bindings()) -> map_results().
-map(Routing, Payload, Bindings) ->
-    map_processor(Routing, Payload, Bindings).
+-spec map(ne_binary(), payload(), kz_rt_options()) -> map_results().
+map(Routing, Payload, Options) ->
+    map_processor(Routing, Payload, rt_options(Options)).
 
 -spec get_binding_candidates(ne_binary()) -> kz_bindings().
 get_binding_candidates(Routing) ->
@@ -141,7 +170,6 @@ get_binding_candidates(Vsn, Action) ->
 %% all matching bindings
 %% @end
 %%--------------------------------------------------------------------
--type fold_results() :: payload().
 -spec fold(ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
     Bindings = get_binding_candidates(Routing),
@@ -461,8 +489,8 @@ add_binding(Binding, Responder, Pieces, Prefix) ->
 handle_cast('flush', #state{}=State) ->
     ets:delete_all_objects(table_id()),
     {'noreply', State, 'hibernate'};
-handle_cast({'flush', Binding}, #state{}=State) ->
-    _ = [ets:delete(table_id(), Key) || #kz_binding{binding=Key} <- matches(Binding)],
+handle_cast({'flush', Key}, #state{}=State) ->
+    _ = ets:delete(table_id(), Key),
     {'noreply', State};
 handle_cast({'flush_mod', Mod}, State) ->
     lager:debug("trying to flush ~s", [Mod]),
@@ -687,17 +715,17 @@ log_function_clause(M, F, Lenth, ST) ->
     lager:error("no matching function clause for ~s:~s/~p", [M, F, Lenth]),
     kz_util:log_stacktrace(ST).
 
--spec map_processor(ne_binary(), payload(), kz_bindings()) -> list().
-map_processor(Routing, Payload, Bindings) when not is_list(Payload) ->
-    map_processor(Routing, [Payload], Bindings);
-map_processor(Routing, Payload, Bindings) ->
+-spec map_processor(ne_binary(), payload(), kz_rt_options()) -> list().
+map_processor(Routing, Payload, Options) when not is_list(Payload) ->
+    map_processor(Routing, [Payload], Options);
+map_processor(Routing, Payload, Options) ->
     RoutingParts = routing_parts(Routing),
     Map = map_responder_fun(Payload),
     lists:foldl(fun(Binding, Acc) ->
-                        map_processor_fold(Binding, Acc, Map, Routing, RoutingParts)
+                        map_processor_fold(Binding, Acc, Map, Routing, RoutingParts, Options)
                 end
                ,[]
-               ,Bindings
+               ,kazoo_bindings_rt:candidates(Options, Routing)
                ).
 
 -type map_responder_fun() :: fun((kz_responder()) -> any()).
@@ -707,7 +735,7 @@ map_responder_fun(Payload) ->
             apply_responder(Responder, Payload)
     end.
 
--spec map_processor_fold(kz_binding(), list(), map_responder_fun(), ne_binary(), ne_binaries()) -> list().
+-spec map_processor_fold(kz_binding(), list(), map_responder_fun(), ne_binary(), ne_binaries(), kz_rt_options()) -> list().
 map_processor_fold(#kz_binding{binding=Binding
                               ,binding_responders=Responders
                               }
@@ -715,6 +743,7 @@ map_processor_fold(#kz_binding{binding=Binding
                   ,Map
                   ,Binding
                   ,_RoutingParts
+                  ,_Options
                   ) ->
     lager:debug("exact match for ~s", [Binding]),
     map_responders(Acc, Map, Responders);
@@ -725,9 +754,9 @@ map_processor_fold(#kz_binding{binding_parts=BParts
                   ,Map
                   ,_Routing
                   ,RoutingParts
+                  ,Options
                   ) ->
-    case matches(BParts, RoutingParts)
-        orelse matches(RoutingParts, BParts)
+    case kazoo_bindings_rt:matches(Options, BParts, RoutingParts)
     of
         'false' -> Acc;
         'true' ->
@@ -774,8 +803,12 @@ fold_processor(Routing, Payload, Bindings) ->
 candidates(Routing) ->
     get_binding_candidates(Routing).
 
--spec matches(ne_binary()) -> kz_bindings().
-matches(Routing) ->
+-spec bindings() -> kz_bindings().
+bindings() ->
+    bindings(<<"#">>).
+
+-spec bindings(ne_binary()) -> kz_bindings().
+bindings(Routing) ->
     RoutingParts = routing_parts(Routing),
     ets:foldr(fun(#kz_binding{binding=Binding
                              ,binding_parts=BParts
@@ -793,3 +826,11 @@ matches(Routing) ->
 -spec routing_parts(ne_binary()) -> ne_binaries().
 routing_parts(Routing) ->
     lists:reverse(binary:split(Routing, <<".">>, ['global'])).
+
+rt_options() ->
+    [{'candidates', fun get_binding_candidates/1}
+    ,{'matches', fun matches/2}
+    ].
+
+rt_options(Options) ->
+    props:insert_values(rt_options(), Options).
