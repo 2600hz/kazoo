@@ -426,16 +426,20 @@ check_mdn_registered(DeviceId, Context) ->
         'false' -> prepare_outbound_flags(DeviceId, Context1)
     end.
 
+-spec get_mac_address(cb_context:context()) -> api_binary().
+get_mac_address(Context) ->
+    kz_util:to_lower_binary(cb_context:req_value(Context, ?KEY_MAC_ADDRESS)).
+
 -spec changed_mac_address(cb_context:context()) -> boolean().
 changed_mac_address(Context) ->
-    NewAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
+    NewAddress = get_mac_address(Context),
     OldAddress = kz_json:get_ne_value(?KEY_MAC_ADDRESS, cb_context:fetch(Context, 'db_doc')),
-    NewAddress =:= OldAddress
+    NewAddress =:= kz_util:to_lower_binary(OldAddress)
         orelse unique_mac_address(NewAddress, Context).
 
 -spec check_mac_address(api_binary(), cb_context:context()) -> cb_context:context().
 check_mac_address(DeviceId, Context) ->
-    MacAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
+    MacAddress = get_mac_address(Context),
     case unique_mac_address(MacAddress, Context) of
         'false' -> error_used_mac_address(Context);
         'true' ->
@@ -451,7 +455,7 @@ unique_mac_address(MacAddress, Context) ->
 
 -spec error_used_mac_address(cb_context:context()) -> cb_context:context().
 error_used_mac_address(Context) ->
-    MacAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
+    MacAddress = get_mac_address(Context),
     Msg = kz_json:from_list(
             [{<<"message">>, <<"Mac address already in use">>}
             ,{<<"cause">>, MacAddress}
@@ -460,10 +464,11 @@ error_used_mac_address(Context) ->
 
 -spec get_mac_addresses(ne_binary()) -> ne_binaries().
 get_mac_addresses(DbName) ->
-    case kz_datamgr:get_all_results(DbName, ?CB_LIST_MAC) of
+    MACs = case kz_datamgr:get_all_results(DbName, ?CB_LIST_MAC) of
         {'ok', AdJObj} -> kz_datamgr:get_result_keys(AdJObj);
         _ -> []
-    end.
+    end,
+    lists:map(fun kz_util:to_lower_binary/1, MACs).
 
 -spec prepare_outbound_flags(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_outbound_flags(DeviceId, Context) ->
