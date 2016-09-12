@@ -12,8 +12,8 @@
 -module(bh_conference).
 
 -export([init/0
+        ,validate/2
         ,bindings/2
-        ,subscribe/2
         ]).
 
 -include("blackhole.hrl").
