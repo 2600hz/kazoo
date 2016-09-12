@@ -296,9 +296,12 @@ send_submitted_requests() ->
             lager:error("failed to open view ~s ~p", [?VIEW_LISTING_SUBMITTED, _R]);
         {'ok', []} -> 'ok';
         {'ok', JObjs} ->
-            _ = [maybe_send_request(kz_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs],
+            lists:foreach(fun send_submitted_request/1, JObjs),
             lager:debug("sent requests")
     end.
+
+send_submitted_request(JObj) ->
+    maybe_send_request(kz_json:get_value(<<"doc">>, JObj)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -324,11 +327,10 @@ migrate() ->
 -spec completed_port(kz_json:object()) -> transition_response().
 completed_port(PortReq) ->
     case charge_for_port(PortReq) of
+        'error' -> throw({'error', 'failed_to_charge'});
         'ok' ->
             lager:debug("successfully charged for port, transitioning numbers to active"),
-            transition_numbers(PortReq);
-        'error' ->
-            throw({'error', 'failed_to_charge'})
+            transition_numbers(PortReq)
     end.
 
 %%--------------------------------------------------------------------
@@ -407,8 +409,7 @@ maybe_send_request(JObj) ->
     end.
 
 maybe_send_request(JObj, 'undefined')->
-    lager:debug("'submitted_port_requests_url' is not set for account ~s"
-               ,[kz_doc:account_id(JObj)]);
+    lager:debug("'submitted_port_requests_url' is not set for account ~s", [kz_doc:account_id(JObj)]);
 maybe_send_request(JObj, Url)->
     case send_request(JObj, Url) of
         'error' -> 'ok';
@@ -516,8 +517,7 @@ send_attachment(Url, Id, Name, Options, Attachment) ->
 set_flag(JObj) ->
     Doc = kz_json:set_value(?PVT_SENT, 'true', JObj),
     case save_doc(Doc) of
-        {'ok', _} ->
-            lager:debug("flag for submitted_port_request successfully set");
+        {'ok', _} -> lager:debug("flag for submitted_port_request successfully set");
         {'error', _R} ->
             lager:debug("failed to set flag for submitted_port_request: ~p", [_R])
     end.
