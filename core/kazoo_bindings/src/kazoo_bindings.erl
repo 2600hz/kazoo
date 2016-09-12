@@ -761,8 +761,7 @@ map_processor_fold(#kz_binding{binding_parts=BParts
                   ,RoutingParts
                   ,Options
                   ) ->
-    case kazoo_bindings_rt:matches(Options, BParts, RoutingParts)
-    of
+    case kazoo_bindings_rt:matches(Options, BParts, RoutingParts) of
         'false' -> Acc;
         'true' ->
             lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
@@ -819,13 +818,14 @@ bindings(Routing) ->
                              }=Bind, Acc) ->
                       case Binding =:= Routing
                           orelse matches(BParts, RoutingParts)
-                          orelse matches(RoutingParts, BParts)
                       of
                           'true' -> [Bind | Acc];
                           'false' -> Acc
                       end
               end
-             , [], table_id()).
+             ,[]
+             ,table_id()
+             ).
 
 -spec routing_parts(ne_binary()) -> ne_binaries().
 routing_parts(Routing) ->
