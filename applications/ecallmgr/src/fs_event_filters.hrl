@@ -120,7 +120,9 @@
         ,<<"variable_duration">>
         ,<<"variable_ecallmgr_Application-Logical-Direction">>
         ,<<"variable_ecallmgr_Bridge-ID">>
+        ,<<"variable_ecallmgr_Call-Interaction-ID">>
         ,<<"variable_ecallmgr_Ecallmgr-Node">>
+        ,<<"variable_ecallmgr_Fetch-ID">>
         ,<<"variable_ecallmgr_Realm">>
         ,<<"variable_ecallmgr_Username">>
         ,<<"variable_ecallmgr_{Key}">>

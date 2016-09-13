@@ -185,6 +185,14 @@ function_args('ecallmgr_fs_router_text') ->
     {'process_route_req'
     ,[?VAR(0,'Section'), ?VAR(0, 'Node'), ?VAR(0, 'FetchId'), ?VAR(0, 'MsgId'), ?VAR(0, 'Props')]
     };
+function_args('ecallmgr_call_control') ->
+    [{'handle_event_info'
+     ,[?VAR(0, 'CallId'), ?VAR(0, 'Props'), ?VAR(0, 'State')]
+     }
+    ,{'handle_other_event_info'
+     ,[?VAR(0, 'CallId'), ?VAR(0, 'Props'), ?VAR(0, 'State')]
+     }
+    ];
 function_args(_M) ->
     {'undefined', []}.
 
