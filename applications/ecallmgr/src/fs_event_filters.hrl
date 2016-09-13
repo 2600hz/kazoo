@@ -50,6 +50,7 @@
         ,<<"Other-Leg-Destination-Number">>
         ,<<"Other-Leg-Direction">>
         ,<<"Other-Leg-Unique-ID">>
+        ,<<"Publish-Channel-State">>
         ,<<"Record-File-Path">>
         ,<<"Resigning-UUID">>
         ,<<"Switch-Nodename">>

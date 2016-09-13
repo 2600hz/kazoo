@@ -130,6 +130,10 @@ function_args('ecallmgr_fs_authz') ->
     {'authorize'
     ,[?VAR(0, 'Props'), ?VAR(0, 'CallId'), ?VAR(0, 'Node')]
     };
+function_args('ecallmgr_fs_channel') ->
+    {'handle_fs_event'
+    ,[?VAR(0, 'UUID'), ?VAR(0, 'Props'), ?VAR(0, 'Node'), ?VAR(0, 'Options')]
+    };
 function_args(_M) ->
     {'undefined', []}.
 

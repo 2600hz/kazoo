@@ -399,15 +399,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'event', [UUID | Props]}, #state{node=Node, options=Options}=State) ->
-    NewProps = case props:get_is_true(<<"Publish-Channel-State">>, Props) of
-                   'undefined' ->
-                       case props:is_false(<<"Publish-Channel-State">>, Options, 'false') of
-                           'true' -> props:set_value(<<"Publish-Channel-State">>, 'false', Props);
-                           _ -> Props
-                       end;
-                   _Value -> Props
-               end,
-    _ = kz_util:spawn(fun process_event/4, [UUID, NewProps, Node, self()]),
+    kz_util:spawn(fun handle_fs_event/4, [UUID, Props, Node, Options]),
     {'noreply', State};
 handle_info({'fetch', 'channels', <<"channel">>, <<"uuid">>, UUID, FetchId, _}, #state{node=Node}=State) ->
     _ = kz_util:spawn(fun handle_channel_req_legacy/4, [UUID, FetchId, Node, self()]),
@@ -426,6 +418,19 @@ handle_info({'option', K, V}, #state{options=Options}=State) ->
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
+
+-spec handle_fs_event(api_binary(), kzd_freeswitch:data(), atom(), kz_proplist()) -> 'ok'.
+handle_fs_event(UUID, Props, Node, Options) ->
+    NewProps = case props:get_is_true(<<"Publish-Channel-State">>, Props) of
+                   'undefined' ->
+                       case props:is_false(<<"Publish-Channel-State">>, Options, 'false') of
+                           'true' -> props:set_value(<<"Publish-Channel-State">>, 'false', Props);
+                           _ -> Props
+                       end;
+                   _Value -> Props
+               end,
+    _ = process_event(UUID, NewProps, Node, self()),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
