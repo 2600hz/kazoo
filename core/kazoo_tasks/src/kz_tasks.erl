@@ -52,7 +52,7 @@
 
 -type input() :: api_ne_binary() | kz_json:objects().
 
--type help_error() :: {'error', 'unknown_category' | 'unknown_category_action'}.
+-type help_error() :: {'error', 'unknown_category_action'}.
 
 -export_type([task_id/0
              ,input/0
@@ -174,10 +174,11 @@ new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
 %% @private
 -spec help(ne_binary(), ne_binary()) -> kz_json:object().
 help(Category, Action) ->
-    Req = [{<<"Category">>, Category}
-          ,{<<"Action">>, Action}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
+    Req = props:filter_undefined(
+            [{<<"Category">>, Category}
+            ,{<<"Action">>, Action}
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ]),
     case kz_amqp_worker:call(Req
                             ,fun kapi_tasks:publish_lookup_req/1
                             ,fun kapi_tasks:lookup_resp_v/1

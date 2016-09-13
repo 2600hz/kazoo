@@ -148,7 +148,7 @@ help(JObj, <<?CATEGORY>>=Category) ->
 help(JObj, <<?CATEGORY>>=Category, Action) ->
     kz_json:set_value([Category, Action], kz_json:from_list(action(Action)), JObj).
 
--spec action(ne_binary()) -> kz_json:object().
+-spec action(ne_binary()) -> kz_proplist().
 action(<<"list">>) ->
     [{<<"description">>, <<"List all numbers assigned to the account starting the task">>}
     ,{<<"doc">>, list_doc()}

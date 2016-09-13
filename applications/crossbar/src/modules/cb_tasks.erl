@@ -275,8 +275,6 @@ put(Context) ->
             TaskId = kz_json:get_value([<<"_read_only">>, <<"id">>], TaskJObj),
             save_attached_data(set_db(Context), TaskId, CSVorJSON, IsCSV),
             crossbar_util:response(TaskJObj, Context);
-        {'error', 'unknown_category'} ->
-            crossbar_util:response_bad_identifier(Category, Context);
         {'error', 'unknown_category_action'=Reason} ->
             crossbar_util:response_bad_identifier(Reason, Context);
         {'error', Reason} ->
@@ -492,15 +490,16 @@ help(Context) ->
         {'timeout', _Resp} ->
             lager:debug("timeout: ~p", [_Resp]),
             cb_context:add_system_error('invalid request', Context);
-        {'error', _E} ->
-            lager:debug("error: ~p", [_E]),
+        {'error', _R} ->
+            lager:debug("error: ~p", [_R]),
             cb_context:add_system_error('invalid request', Context)
     end.
 
 -spec help_rep(cb_context:context(), kz_json:object()) -> cb_context:context().
 help_rep(Context, JObj) ->
     case kz_json:is_empty(JObj) of
-        true -> cb_context:add_system_error('invalid request', Context);
+        true ->
+            crossbar_util:response_bad_identifier(<<"unknown category or action">>, Context);
         false ->
             Help = kz_json:from_list([{<<"tasks">>, JObj}]),
             cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}

@@ -43,7 +43,7 @@
 
 -include("tasks.hrl").
 
--type payload() :: list().
+-type payload() :: list() | kz_json:object().
 
 %%%===================================================================
 %%% API

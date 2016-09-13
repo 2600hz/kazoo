@@ -161,10 +161,8 @@ new_task(AuthAccountId, AccountId, Category, Action, TotalRows, CSVBin, CSVName)
     end.
 
 -spec handle_new_task_error(atom() | kz_json:object(), ne_binary(), ne_binary()) -> 'no_return'.
-handle_new_task_error('unknown_category', Category, _) ->
-    print_error(<<"No such category: ", Category/binary>>);
-handle_new_task_error('unknown_action', _, Action) ->
-    print_error(<<"No such action: ", Action/binary>>);
+handle_new_task_error('unknown_category_action', Category, Action) ->
+    print_error(<<"No such category / action: ", Category/binary, " ", Action/binary>>);
 handle_new_task_error(JObj, _, _) ->
     print_json(kz_json:from_list([{<<"errors">>, JObj}])).
 

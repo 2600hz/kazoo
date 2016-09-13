@@ -62,7 +62,7 @@ help(JObj, <<?CATEGORY>>=Category) ->
 help(JObj, <<?CATEGORY>>=Category, Action) ->
     kz_json:set_value([Category, Action], kz_json:from_list(action(Action)), JObj).
 
--spec action(ne_binary()) -> kz_json:object().
+-spec action(ne_binary()) -> kz_proplist().
 action(<<"descendant_quantities">>) ->
     [{<<"description">>, <<"List per-month descendant accounts quantities">>}
     ,{<<"doc">>, <<"Attempts to create a month-on-month listing of quantities used by descendant accounts.\n"
