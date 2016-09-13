@@ -216,11 +216,12 @@ maybe_init_mod(ModuleName) ->
 
 -spec bindings() -> kazoo_bindings:kz_bindings().
 bindings() ->
-    kazoo_bindings:bindings(<<"blackhole.#">>).
+    bindings(<<"blackhole.#">>).
 
 -spec bindings(ne_binary()) -> kazoo_bindings:kz_bindings().
 bindings(Routing) ->
-    kazoo_bindings:bindings(Routing).
+    RTOptions = [{'matches', fun bh_match/2}],
+    kazoo_bindings:bindings(Routing, RTOptions).
 
 
 %%--------------------------------------------------------------------
