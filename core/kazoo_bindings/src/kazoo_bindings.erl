@@ -648,7 +648,7 @@ fold_bind_results([#kz_responder{module=M
             kz_util:log_stacktrace(ST),
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
         'ok' ->
-            fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders)
+            fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
         Pay1 ->
             fold_bind_results(Responders, [Pay1|Tokens], Route, RespondersLen, ReRunResponders)
     catch
