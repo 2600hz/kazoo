@@ -69,7 +69,8 @@ get_slot(SlotNumber, ParkedCalls) ->
 -spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
     ParkedCalls = get_parked_calls(Call),
-    SlotNumber = get_slot_number(ParkedCalls, kapps_call:kvs_fetch('cf_capture_group', Call)),
+    AutoSlotNumber = get_slot_number(ParkedCalls, kapps_call:kvs_fetch('cf_capture_group', Call)),
+    SlotNumber = kz_json:get_value(<<"slot">>, Data, AutoSlotNumber),
     ReferredTo = kapps_call:custom_channel_var(<<"Referred-To">>, <<>>, Call),
     PresenceType = presence_type(SlotNumber, Data, Call),
 
