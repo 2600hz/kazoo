@@ -121,6 +121,14 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}, #state{node=Node}=State) ->
+    handle_fetch(Section, FSId, CallId, FSData, Node),
+    {'noreply', State, 'hibernate'};
+handle_info(_Other, State) ->
+    lager:debug("unhandled msg: ~p", [_Other]),
+    {'noreply', State}.
+
+-spec handle_fetch(ne_binary(), ne_binary(), ne_binary(), kzd_freeswitch:data(), atom()) -> 'ok'.
+handle_fetch(Section ,FSId, CallId, FSData, Node) ->
     EventName = props:get_value(<<"Event-Name">>, FSData),
     SubClass = props:get_value(<<"Event-Subclass">>, FSData),
     DefContext = props:get_value(<<"context">>, FSData, ?DEFAULT_FREESWITCH_CONTEXT),
@@ -128,10 +136,7 @@ handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}, #st
     Msg = {'route', Section, EventName, SubClass, Context, FSId, CallId, FSData},
     _ = gproc:send({'p', 'l', ?FS_ROUTE_MSG(Node, Section, Context)}, Msg),
     _ = gproc:send({'p', 'l', ?FS_ROUTE_MSG(Node, Section, <<"*">>)}, Msg),
-    {'noreply', State, 'hibernate'};
-handle_info(_Other, State) ->
-    lager:debug("unhandled msg: ~p", [_Other]),
-    {'noreply', State}.
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private

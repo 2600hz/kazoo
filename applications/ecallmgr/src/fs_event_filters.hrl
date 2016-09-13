@@ -38,6 +38,7 @@
         ,<<"FreeSWITCH-Hostname">>
         ,<<"Hangup-Cause">>
         ,<<"Hunt-Callee-ID-Number">>
+        ,<<"Hunt-Context">>
         ,<<"Hunt-Destination-Number">>
         ,<<"Other-Leg-Call-ID">>
         ,<<"Other-Leg-Callee-ID-Number">>
@@ -54,6 +55,7 @@
         ,<<"Switch-URL">>
         ,<<"Unique-ID">>
         ,<<"att_xfer_replaced_by">>
+        ,<<"context">>
         ,<<"intercepted_by">>
         ,<<"kazoo_application_name">>
         ,<<"kazoo_application_response">>

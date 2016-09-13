@@ -115,6 +115,10 @@ function_args('ecallmgr_fs_config') ->
     {'handle_config_req'
     ,[?VAR(0, 'Node'), ?VAR(0, 'Id'), ?VAR(0, 'Conf'), ?VAR(0, 'Props')]
     };
+function_args('ecallmgr_fs_route') ->
+    {'handle_fetch'
+    ,[?VAR(0,'Section'), ?VAR(0, 'FSId'), ?VAR(0, 'CallId'), ?VAR(0, 'Props'), ?VAR(0, 'Node')]
+    };
 function_args(_M) ->
     {'undefined', []}.
 
