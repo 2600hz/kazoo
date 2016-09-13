@@ -168,6 +168,10 @@ function_args('ecallmgr_fs_loopback') ->
     {'filter'
     ,[?VAR(0, 'Node'), ?VAR(0, 'UUID'), ?VAR(0, 'Props')]
     };
+function_args('ecallmgr_fs_msg') ->
+    {'process_fs_event'
+    ,[?VAR(0, 'Node'), ?VAR(0, 'Props')]
+    };
 function_args(_M) ->
     {'undefined', []}.
 
