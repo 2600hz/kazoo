@@ -211,6 +211,9 @@ process_expression(Acc, ?MOD_FUN_ARGS(Module, Function, Args)) ->
 process_expression(Acc, ?DYN_MOD_FUN_ARGS(_Module, _Function, _Args)) ->
     ?DEBUG("  skipping dyn module call~n", []),
     Acc;
+process_expression(Acc, ?GEN_MOD_FUN_ARGS(_M, _F, _As)) ->
+    ?DEBUG("  skipping (~p):~p(~p)", [_M, _F, _As]),
+    Acc;
 process_expression(Acc, ?ANON(Clauses)) ->
     process_expressions(Acc, Clauses);
 process_expression(Acc, ?MFA(_M, _F, _Arity)) ->
