@@ -6,6 +6,7 @@
         ,<<"Application-Data">>
         ,<<"Application-Logical-Direction">>
         ,<<"Application-Response">>
+        ,<<"Auth-Realm">>
         ,<<"Bridge-A-Unique-ID">>
         ,<<"Bridge-B-Unique-ID">>
         ,<<"Call-Direction">>
@@ -54,20 +55,35 @@
         ,<<"Switch-URI">>
         ,<<"Switch-URL">>
         ,<<"Unique-ID">>
+        ,<<"X-AUTH-IP">>
+        ,<<"X-AUTH-PORT">>
+        ,<<"action">>
         ,<<"att_xfer_replaced_by">>
         ,<<"context">>
+        ,<<"domain">>
+        ,<<"expires">>
         ,<<"intercepted_by">>
+        ,<<"ip">>
         ,<<"kazoo_application_name">>
         ,<<"kazoo_application_response">>
         ,<<"kazoo_event_name">>
         ,<<"old_node_channel_uuid">>
+        ,<<"port">>
         ,<<"profile_name">>
+        ,<<"sip_auth_method">>
+        ,<<"sip_auth_nonce">>
         ,<<"sip_auth_realm">>
+        ,<<"sip_auth_response">>
+        ,<<"sip_auth_uri">>
+        ,<<"sip_call_id">>
         ,<<"sip_loopback_req_uri">>
         ,<<"sip_req_host">>
         ,<<"sip_req_uri">>
+        ,<<"sip_request_host">>
         ,<<"sip_to_host">>
         ,<<"sip_to_user">>
+        ,<<"sip_user_agent">>
+        ,<<"user">>
         ,<<"variable_billmsec">>
         ,<<"variable_billsec">>
         ,<<"variable_bridge_hangup_cause">>
