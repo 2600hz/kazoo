@@ -26,7 +26,7 @@
         ,bind/3, bind/4
         ,unbind/3, unbind/4
         ,map/2, map/3
-        ,fold/2
+        ,fold/2,fold/3
         ,flush/0, flush/1, flush_mod/1
         ,filter/1
         ,stop/0
@@ -172,8 +172,11 @@ get_binding_candidates(Vsn, Action) ->
 %%--------------------------------------------------------------------
 -spec fold(ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
-    Bindings = get_binding_candidates(Routing),
-    fold_processor(Routing, Payload, Bindings).
+    fold_processor(Routing, Payload, rt_options()).
+
+-spec fold(ne_binary(), payload(), kz_rt_options()) -> fold_results().
+fold(Routing, Payload, Options) ->
+    fold_processor(Routing, Payload, rt_options(Options)).
 
 %%-------------------------------------------------------------------
 %% @doc
@@ -773,10 +776,10 @@ map_responders(Acc, Map, Responders) ->
     ]
         ++ Acc.
 
--spec fold_processor(ne_binary(), payload(), kz_bindings()) -> fold_results().
-fold_processor(Routing, Payload, Bindings) when not is_list(Payload) ->
-    fold_processor(Routing, [Payload], Bindings);
-fold_processor(Routing, Payload, Bindings) ->
+-spec fold_processor(ne_binary(), payload(), kz_rt_options()) -> fold_results().
+fold_processor(Routing, Payload, Options) when not is_list(Payload) ->
+    fold_processor(Routing, [Payload], Options);
+fold_processor(Routing, Payload, Options) ->
     RoutingParts = routing_parts(Routing),
     [Reply|_] =
         lists:foldl(
@@ -787,8 +790,7 @@ fold_processor(Routing, Payload, Bindings) ->
              ,Acc
              ) ->
                   case Binding =:= Routing
-                      orelse matches(BParts, RoutingParts)
-                      orelse matches(RoutingParts, BParts)
+                      orelse kazoo_bindings_rt:matches(Options, BParts, RoutingParts)
                   of
                       'true' ->
                           lager:debug("routing ~s matches ~s", [Routing, Binding]),
@@ -797,7 +799,7 @@ fold_processor(Routing, Payload, Bindings) ->
                   end
           end
                    ,Payload
-                   ,Bindings
+                   ,kazoo_bindings_rt:candidates(Options, Routing)
          ),
     Reply.
 
