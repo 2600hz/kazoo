@@ -20,6 +20,9 @@
             "description": "",
             "type": "integer"
         },
+        "slot": {
+            "description": ""
+        },
         "slots": {
             "default": {},
             "description": "",
