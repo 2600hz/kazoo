@@ -186,13 +186,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'event', ['undefined' | Props]}, #state{node=Node}=State) ->
-    Action = props:get_value(<<"Action">>, Props),
-    _ = case process_conference_event(Action, Props, Node) of
-            'stop' -> 'ok';
-            'continue' -> send_conference_event(Action, Props);
-            {'continue', CustomProps} ->
-                send_conference_event(Action, Props, CustomProps)
-        end,
+    handle_conf_event(Props, Node),
     {'noreply', State};
 handle_info({'event', [CallId | Props]}, #state{node=Node, publish_participant_event=EventsToPublish}=State) ->
     Action = props:get_value(<<"Action">>, Props),
@@ -210,6 +204,18 @@ handle_info({'event', [CallId | Props]}, #state{node=Node, publish_participant_e
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
+
+-spec handle_conf_event(kzd_freeswitch:data(), atom()) -> 'ok'.
+handle_conf_event(Props, Node) ->
+    Action = props:get_value(<<"Action">>, Props),
+    _ = case process_conference_event(Action, Props, Node) of
+            'stop' -> 'ok';
+            'continue' -> send_conference_event(Action, Props);
+            {'continue', CustomProps} ->
+                send_conference_event(Action, Props, CustomProps)
+        end,
+    'ok'.
+
 
 %%--------------------------------------------------------------------
 %% @private

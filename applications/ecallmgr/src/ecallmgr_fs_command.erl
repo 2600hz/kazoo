@@ -31,8 +31,9 @@ set(_, _, []) -> 'ok';
 set(Node, UUID, Props) ->
     case maybe_export_vars(Node, UUID, Props) of
         [] -> 'ok';
-        NewProps -> AppArgs = ecallmgr_util:process_fs_kv(Node, UUID, NewProps, 'set'),
-                    api(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs)
+        NewProps ->
+            AppArgs = ecallmgr_util:process_fs_kv(Node, UUID, NewProps, 'set'),
+            api(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs)
     end.
 
 %%--------------------------------------------------------------------
@@ -46,8 +47,9 @@ bg_set(_, _, []) -> 'ok';
 bg_set(Node, UUID, Props) ->
     case maybe_export_vars(Node, UUID, Props) of
         [] -> 'ok';
-        NewProps -> AppArgs = ecallmgr_util:process_fs_kv(Node, UUID, NewProps, 'set'),
-                    bgapi(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs)
+        NewProps ->
+            AppArgs = ecallmgr_util:process_fs_kv(Node, UUID, NewProps, 'set'),
+            bgapi(Node, UUID, ?FS_CMD_SET_MULTIVAR, AppArgs)
     end.
 
 %%--------------------------------------------------------------------

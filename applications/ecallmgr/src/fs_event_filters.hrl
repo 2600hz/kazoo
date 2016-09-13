@@ -1,11 +1,13 @@
 -define(FS_EVENT_FITLERS
-       ,[<<"Acquired-UUID">>
+       ,['Key'
+        ,<<"Acquired-UUID">>
         ,<<"Action">>
         ,<<"Answer-State">>
         ,<<"Application">>
         ,<<"Application-Data">>
         ,<<"Application-Logical-Direction">>
         ,<<"Application-Response">>
+        ,<<"Async">>
         ,<<"Auth-Realm">>
         ,<<"Bridge-A-Unique-ID">>
         ,<<"Bridge-B-Unique-ID">>
@@ -28,6 +30,8 @@
         ,<<"Channel-Presence-ID">>
         ,<<"Channel-State">>
         ,<<"Conf-Name">>
+        ,<<"Conference-Name">>
+        ,<<"Conference-Unique-ID">>
         ,<<"Controls">>
         ,<<"Core-UUID">>
         ,<<"DTMF-Digit">>
@@ -37,6 +41,7 @@
         ,<<"Event-Date-Timestamp">>
         ,<<"Event-Name">>
         ,<<"Event-Subclass">>
+        ,<<"File">>
         ,<<"FreeSWITCH-Hostname">>
         ,<<"Hangup-Cause">>
         ,<<"Hunt-Callee-ID-Number">>
@@ -50,6 +55,8 @@
         ,<<"Other-Leg-Destination-Number">>
         ,<<"Other-Leg-Direction">>
         ,<<"Other-Leg-Unique-ID">>
+        ,<<"Other-Recordings">>
+        ,<<"Path">>
         ,<<"Publish-Channel-State">>
         ,<<"Record-File-Path">>
         ,<<"Resigning-UUID">>

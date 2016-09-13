@@ -60,9 +60,10 @@ usage_keys({'props', 'is_true', Key, _VarName, _Default}, Acc) ->
     [Key |Acc];
 usage_keys({'props', 'get_first_defined', Keys, _VarName, _Default}, Acc) ->
     Keys ++ Acc;
+usage_keys({'props', 'delete_keys', Keys, _VarName, _Default}, Acc) ->
+    Keys ++ Acc;
 usage_keys({'props', 'filter', 'undefined', _VarName, _Default}, Acc) -> Acc;
 usage_keys({'props', 'set_values', _Values, _VarName, 'undefined'}, Acc) -> Acc.
-
 
 event_filter_filename() ->
     filename:join([code:lib_dir('ecallmgr', 'src')
@@ -133,6 +134,10 @@ function_args('ecallmgr_fs_authz') ->
 function_args('ecallmgr_fs_channel') ->
     {'handle_fs_event'
     ,[?VAR(0, 'UUID'), ?VAR(0, 'Props'), ?VAR(0, 'Node'), ?VAR(0, 'Options')]
+    };
+function_args('ecallmgr_fs_conference') ->
+    {'handle_conf_event'
+    ,[?VAR(0, 'Props'), ?VAR(0, 'Node')]
     };
 function_args(_M) ->
     {'undefined', []}.
