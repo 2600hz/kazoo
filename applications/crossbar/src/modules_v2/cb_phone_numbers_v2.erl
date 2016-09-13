@@ -788,10 +788,16 @@ identify(Context, Number) ->
     case knm_number:lookup_account(Number) of
         {'ok', AccountId, NumberOptions} ->
             JObj = kz_json:from_list(
-                     [ {<<"account_id">>, AccountId}
-                     , {<<"number">>, knm_number_options:number(NumberOptions)}
+                     [{<<"account_id">>, AccountId}
+                     ,{<<"number">>, knm_number_options:number(NumberOptions)}
                      ]),
             crossbar_util:response(JObj, Context);
+        {error, {R=not_in_service, _AccountId}} ->
+            lager:debug("~s's account ~p ~s", [Number, _AccountId, R]),
+            set_response({error, R}, Context);
+        {error, {R=account_disabled, _AccountId}} ->
+            lager:debug("~s's account ~p ~s", [Number, _AccountId, R]),
+            set_response({error, R}, Context);
         {'error', _R}=Error ->
             set_response(Error, Context)
     end.
@@ -863,6 +869,11 @@ set_response({'dry_run', Services, _ActivationCharges}, Context, CB) ->
 set_response({'error', 'not_found'}, Context, _) ->
     reply_number_not_found(Context);
 
+set_response({'error', Data}, Context, _)
+  when is_atom(Data) ->
+    lager:debug("error: ~p", [Data]),
+    crossbar_util:response_400(<<"client error">>, Data, Context);
+
 set_response({'error', Data}, Context, _) ->
     case kz_json:is_json_object(Data) of
         'true' ->
@@ -872,7 +883,7 @@ set_response({'error', Data}, Context, _) ->
             cb_context:add_system_error(Code, Msg, Data, Context);
         'false' ->
             lager:debug("error: ~p", [Data]),
-            crossbar_util:response_400(<<"client error">>, Data, Context)
+            crossbar_util:response_400(<<"client error">>, kz_json:new(), Context)
     end;
 
 set_response({'invalid', Reason}, Context, _) ->
@@ -889,8 +900,8 @@ set_response(_Else, Context, _) ->
 
 -spec reply_number_not_found(cb_context:context()) -> cb_context:context().
 reply_number_not_found(Context) ->
-    Msg = kz_json:from_list([ {<<"message">>, <<"bad identifier">>}
-                            , {<<"not_found">>, <<"The number could not be found">>}
+    Msg = kz_json:from_list([{<<"message">>, <<"bad identifier">>}
+                            ,{<<"not_found">>, <<"The number could not be found">>}
                             ]),
     cb_context:add_system_error('bad_identifier', Msg, Context).
 
