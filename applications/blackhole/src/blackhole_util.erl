@@ -13,7 +13,6 @@
 -include("blackhole.hrl").
 
 -export([is_authenticated/1, is_authorized/1]).
--export([get_callback_module/1]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -55,33 +54,3 @@ is_authorized(Context) ->
             lager:debug("is_authorized: halt"),
             'false'
     end.
-
-
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec get_callback_module(ne_binary()) -> atom().
-get_callback_module(Binding) ->
-    case binary:split(Binding, <<".">>) of
-        [M|_] ->
-            Mod = special_bindings(M),
-            try kz_util:to_atom(<<"bh_", Mod/binary>>, 'true')
-            catch
-                'error':'badarg' -> 'undefined'
-            end;
-        _ -> 'undefined'
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec special_bindings(ne_binary()) -> ne_binary().
-special_bindings(<<"doc_edited">>) -> <<"object">>;
-special_bindings(<<"doc_created">>) -> <<"object">>;
-special_bindings(<<"doc_deleted">>) -> <<"object">>;
-special_bindings(M) -> M.
