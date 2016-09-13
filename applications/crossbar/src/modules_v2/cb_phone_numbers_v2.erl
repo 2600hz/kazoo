@@ -792,6 +792,12 @@ identify(Context, Number) ->
                      ,{<<"number">>, knm_number_options:number(NumberOptions)}
                      ]),
             crossbar_util:response(JObj, Context);
+        {error, {R=not_in_service, _AccountId}} ->
+            lager:debug("~s's account ~p ~s", [Number, _AccountId, R]),
+            set_response({error, R}, Context);
+        {error, {R=account_disabled, _AccountId}} ->
+            lager:debug("~s's account ~p ~s", [Number, _AccountId, R]),
+            set_response({error, R}, Context);
         {'error', _R}=Error ->
             set_response(Error, Context)
     end.
@@ -877,7 +883,7 @@ set_response({'error', Data}, Context, _) ->
             cb_context:add_system_error(Code, Msg, Data, Context);
         'false' ->
             lager:debug("error: ~p", [Data]),
-            cb_context:add_system_error('unspecified_fault', Context)
+            crossbar_util:response_400(<<"client error">>, kz_json:new(), Context)
     end;
 
 set_response({'invalid', Reason}, Context, _) ->

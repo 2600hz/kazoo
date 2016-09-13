@@ -51,7 +51,7 @@
                     ,services :: kz_services:services()
                     ,billing_id :: api_binary()
                     ,transactions = [] :: kz_transaction:transactions()
-                    ,errors = [] :: list()
+                    ,errors = [] :: []
                     ,charges = [] :: [{ne_binary(), integer()}]
                     }).
 -opaque knm_number() :: #knm_number{}.
