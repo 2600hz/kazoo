@@ -55,23 +55,23 @@
 
 -include("kz_couch.hrl").
 
--define(SLEEP_BETWEEN_COMPACTION
-       ,kapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_compaction">>, 60 * ?MILLISECONDS_IN_SECOND)
-       ).
--define(SLEEP_BETWEEN_POLL
-       ,kapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_poll">>, 3 * ?MILLISECONDS_IN_SECOND)
-       ).
--define(SLEEP_BETWEEN_VIEWS
-       ,kapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_views">>, 2 * ?MILLISECONDS_IN_SECOND)
-       ).
--define(MAX_COMPACTING_SHARDS
-       ,kapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_shards">>, 2)
-       ).
--define(MAX_COMPACTING_VIEWS
-       ,kapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 2)
-       ).
--define(MAX_WAIT_FOR_COMPACTION_PIDS
-       ,case kapps_config:get(?CONFIG_CAT, <<"max_wait_for_compaction_pids">>, 360 * ?MILLISECONDS_IN_SECOND) of
+-define(SLEEP_BETWEEN_COMPACTION,
+        kapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_compaction">>, 60 * ?MILLISECONDS_IN_SECOND)).
+
+-define(SLEEP_BETWEEN_POLL,
+        kapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_poll">>, 3 * ?MILLISECONDS_IN_SECOND)).
+
+-define(SLEEP_BETWEEN_VIEWS,
+        kapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_views">>, 2 * ?MILLISECONDS_IN_SECOND)).
+
+-define(MAX_COMPACTING_SHARDS,
+        kapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_shards">>, 2)).
+
+-define(MAX_COMPACTING_VIEWS,
+        kapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 2)).
+
+-define(MAX_WAIT_FOR_COMPACTION_PIDS,
+        case kapps_config:get(?CONFIG_CAT, <<"max_wait_for_compaction_pids">>, 360 * ?MILLISECONDS_IN_SECOND) of
             <<"infinity">> -> 'infinity';
             N -> kz_util:to_integer(N)
         end
@@ -1526,8 +1526,7 @@ get_node_connections(N, #server{options=Options}) ->
     catch
         'error':{'case_clause',{'error',{'conn_failed',{'error','econnrefused'}}}} ->
             lager:warning("connection refused when connecting to ~s (on either ~p or ~p)"
-                         ,[Host, NodeUserPort, NodeAdminPort]
-                         ),
+                         ,[Host, NodeUserPort, NodeAdminPort]),
             {'error', 'no_connection'};
         _E:_R ->
             lager:warning("failed to connect to ~s: ~s: ~p", [Host, _E, _R]),
@@ -1539,11 +1538,16 @@ get_node_connections(N, #server{options=Options}) ->
                          'job_cancelled'.
 -spec maybe_send_update(pid(), reference(), client_update()) -> 'ok'.
 maybe_send_update(P, Ref, Update) when is_pid(P) ->
+    Update =:= job_finished
+        andalso lager:info("couch_compactor completed a crawl job"),
     case erlang:is_process_alive(P) of
         'true' -> P ! {Update, Ref}, 'ok';
         'false' -> 'ok'
     end;
-maybe_send_update(_,_,_) -> 'ok'.
+maybe_send_update(_, _, job_finished) ->
+    lager:info("couch_compactor completed a crawl job");
+maybe_send_update(_, _, _) ->
+    ok.
 
 -spec maybe_start_auto_compaction_job() -> 'ok'.
 -spec maybe_start_auto_compaction_job(boolean()) -> 'ok'.

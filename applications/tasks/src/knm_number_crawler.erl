@@ -69,7 +69,8 @@ crawl_numbers() ->
     kz_util:put_callid(?SERVER),
     lager:debug("beginning a number crawl"),
     lists:foreach(fun crawl_number_db/1, knm_util:get_all_number_dbs()),
-    lager:debug("finished the number crawl").
+    lager:debug("finished the number crawl"),
+    lager:info("number crawler completed a full crawl").
 
 %%%===================================================================
 %%% gen_server callbacks
