@@ -30,7 +30,7 @@ websocket_init(_Type, Req, _Opts) ->
 
 websocket_handle({'text', Data}, Req, State) ->
     Obj    = kz_json:decode(Data),
-    Action = kz_json:get_value(<<"action">>, Obj),
+    Action = kz_json:get_value(<<"action">>, Obj, <<"noop">>),
     Msg    = kz_json:delete_key(<<"action">>, Obj),
 
     case blackhole_socket_callback:recv({Action, Msg}, State) of
