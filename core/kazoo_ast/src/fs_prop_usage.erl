@@ -111,9 +111,12 @@ function_args('ecallmgr_call_events') ->
     {'process_channel_event'
     ,[?VAR(0, 'Props')]
     };
+function_args('ecallmgr_fs_config') ->
+    {'handle_config_req'
+    ,[?VAR(0, 'Node'), ?VAR(0, 'Id'), ?VAR(0, 'Conf'), ?VAR(0, 'Props')]
+    };
 function_args(_M) ->
     {'undefined', []}.
-
 
 process_expression(Acc, ?TUPLE(Elements)) ->
     process_tuple(Acc, Elements);

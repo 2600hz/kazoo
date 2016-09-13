@@ -1,5 +1,6 @@
 -define(FS_EVENT_FITLERS
        ,[<<"Acquired-UUID">>
+        ,<<"Action">>
         ,<<"Answer-State">>
         ,<<"Application">>
         ,<<"Application-Data">>
@@ -24,6 +25,8 @@
         ,<<"Channel-Name">>
         ,<<"Channel-Presence-ID">>
         ,<<"Channel-State">>
+        ,<<"Conf-Name">>
+        ,<<"Controls">>
         ,<<"Core-UUID">>
         ,<<"DTMF-Digit">>
         ,<<"DTMF-Duration">>
@@ -56,6 +59,7 @@
         ,<<"kazoo_application_response">>
         ,<<"kazoo_event_name">>
         ,<<"old_node_channel_uuid">>
+        ,<<"profile_name">>
         ,<<"sip_auth_realm">>
         ,<<"sip_loopback_req_uri">>
         ,<<"sip_req_host">>
