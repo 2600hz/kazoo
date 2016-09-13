@@ -138,7 +138,7 @@ remove_event_bindings(Context, BindingResults) ->
     case lists:foldl(fun remove_event_bindings_fold/2, {Context, []}, BindingResults) of
         {Ctx, []} -> Ctx;
         {Ctx, Subscribed} ->
-            Data = kz_json:set_value(<<"unsubscribed">>, Subscribed, kz_json:new()),
+            Data = kz_json:from_list([{<<"unsubscribed">>, Subscribed}]),
             bh_context:set_resp_data(Ctx, Data)
     end.
 

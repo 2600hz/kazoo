@@ -214,9 +214,11 @@ maybe_init_mod(ModuleName) ->
             lager:warning("failed to initialize ~s: ~p, ~p.", [ModuleName, _E, _R])
     end.
 
+-spec bindings() -> kazoo_bindings:kz_bindings().
 bindings() ->
     kazoo_bindings:bindings(<<"blackhole.#">>).
 
+-spec bindings(ne_binary()) -> kazoo_bindings:kz_bindings().
 bindings(Routing) ->
     kazoo_bindings:bindings(Routing).
 

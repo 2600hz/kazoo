@@ -32,7 +32,6 @@ open(Pid, Id, Ipaddr) ->
 recv({Action, Payload}, Context) ->
     Routines = [fun rate/3
                ,fun authenticate/3
-                                                %               ,fun authorize/3
                ,fun validate/3
                ,fun limits/3
                ,fun command/3
@@ -63,12 +62,10 @@ send_error(#bh_context{websocket_pid=SessionPid
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec close(bh_context:context()) -> 'ok'.
+-spec close(bh_context:context()) -> bh_context:context().
 close(Context) ->
     Routing = <<"blackhole.session.close">>,
-    X = blackhole_bindings:map(Routing, Context),
-    lager:debug("OPEN MAP = ~p", [X]),
-    'ok'.
+    blackhole_bindings:fold(Routing, Context).
 
 %%%===================================================================
 %%% Internal functions

@@ -66,10 +66,6 @@ bindings(_Context, #{account_id := _AccountId
 %%% Internal functions
 %%%==================================================================
 
-%% -spec get_response_key(kz_json:object()) -> ne_binary().
-%% get_response_key(JObj) ->
-%%     kz_json:get_first_defined([<<"Application-Name">>, <<"Event-Name">>], JObj).
-
 -spec command_binding_options(ne_binary()) -> kz_proplist().
 command_binding_options(ConfId) ->
     [{'restrict_to', [{'command', ConfId}]}

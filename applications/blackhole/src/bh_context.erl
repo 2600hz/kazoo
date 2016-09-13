@@ -86,7 +86,6 @@ from_json(JObj) ->
 
 from_json(Context, JObj) ->
     Setters = [
-               %%               {fun set_account_id/2, kz_json:get_value(<<"account_id">>, JObj)}
                {fun set_auth_token/2,kz_json:get_value(<<"auth_token">>, JObj)}
               ,{fun set_req_id/2,kz_json:get_ne_binary_value(<<"request_id">>, JObj, kz_util:rand_hex_binary(16))}
               ,{fun set_name/2, kz_json:get_value(<<"name">>, JObj)}

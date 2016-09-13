@@ -41,7 +41,7 @@ authenticate(Context, _Payload) ->
             AccountId = kz_json:get_ne_value(<<"account_id">>, JObj),
             case kz_account:fetch(AccountId) of
                 {'ok', Doc} ->
-                    lager:debug("account auth is valid, authenticating : ~p", [Doc]),
+                    lager:debug("account auth is valid, authenticating : ~s", [AccountId]),
                     bh_context:set_auth_doc(Context, Doc);
                 _ -> bh_context:add_error(Context, <<"failed to get account ", AccountId/binary>>)
             end;

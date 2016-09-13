@@ -103,6 +103,7 @@ remove_bindings(Bindings) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', state()}.
 init([]) ->
     {'ok', #state{bindings=ets:new(bindings, [])}}.
 
