@@ -11,6 +11,7 @@
         ,<<"Bridge-B-Unique-ID">>
         ,<<"Call-Direction">>
         ,<<"Call-ID">>
+        ,<<"Call-Setup">>
         ,<<"Caller-Callee-ID-Name">>
         ,<<"Caller-Callee-ID-Number">>
         ,<<"Caller-Caller-ID-Name">>
@@ -99,6 +100,7 @@
         ,<<"variable_ecallmgr_Ecallmgr-Node">>
         ,<<"variable_ecallmgr_Realm">>
         ,<<"variable_ecallmgr_Username">>
+        ,<<"variable_ecallmgr_{Key}">>
         ,<<"variable_effective_callee_id_name">>
         ,<<"variable_effective_callee_id_number">>
         ,<<"variable_effective_caller_id_name">>
@@ -147,6 +149,7 @@
         ,<<"variable_proto_specific_hangup_cause">>
         ,<<"variable_record_ms">>
         ,<<"variable_record_silence_hits">>
+        ,<<"variable_recovered">>
         ,<<"variable_refer_uuid">>
         ,<<"variable_rtp_local_sdp_str">>
         ,<<"variable_silence_hits_exhausted">>
@@ -157,11 +160,15 @@
         ,<<"variable_sip_from_uri">>
         ,<<"variable_sip_from_user">>
         ,<<"variable_sip_h_Referred-By">>
+        ,<<"variable_sip_h_X-AUTH-IP">>
+        ,<<"variable_sip_h_X-AUTH-PORT">>
         ,<<"variable_sip_h_X-Core-UUID">>
         ,<<"variable_sip_h_X-ecallmgr_Call-Interaction-ID">>
         ,<<"variable_sip_h_X-ecallmgr_replaces-call-id">>
         ,<<"variable_sip_invite_domain">>
         ,<<"variable_sip_loopback_req_uri">>
+        ,<<"variable_sip_received_ip">>
+        ,<<"variable_sip_received_port">>
         ,<<"variable_sip_refer_to">>
         ,<<"variable_sip_req_host">>
         ,<<"variable_sip_req_uri">>

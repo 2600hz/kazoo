@@ -56,9 +56,12 @@ usage_keys({'props', 'get_binary_value', Key, _VarName, _Default}, Acc) ->
     [Key |Acc];
 usage_keys({'props', 'get_is_true', Key, _VarName, _Default}, Acc) ->
     [Key |Acc];
+usage_keys({'props', 'is_true', Key, _VarName, _Default}, Acc) ->
+    [Key |Acc];
 usage_keys({'props', 'get_first_defined', Keys, _VarName, _Default}, Acc) ->
     Keys ++ Acc;
-usage_keys({'props', 'filter', 'undefined', _VarName, _Default}, Acc) -> Acc.
+usage_keys({'props', 'filter', 'undefined', _VarName, _Default}, Acc) -> Acc;
+usage_keys({'props', 'set_values', _Values, _VarName, 'undefined'}, Acc) -> Acc.
 
 
 event_filter_filename() ->
@@ -122,6 +125,10 @@ function_args('ecallmgr_fs_route') ->
 function_args('ecallmgr_fs_authn') ->
     {'handle_directory_lookup'
     ,[?VAR(0, 'Id'), ?VAR(0, 'Props'), ?VAR(0, 'Node')]
+    };
+function_args('ecallmgr_fs_authz') ->
+    {'authorize'
+    ,[?VAR(0, 'Props'), ?VAR(0, 'CallId'), ?VAR(0, 'Node')]
     };
 function_args(_M) ->
     {'undefined', []}.
@@ -370,6 +377,8 @@ arg_list_has_data_var(DataName, Aliases, [_H|T]) ->
 arg_to_key(?STRING(Value)) -> Value;
 arg_to_key(?BINARY_MATCH(Arg)) ->
     kz_ast_util:binary_match_to_binary(Arg);
+arg_to_key(?TUPLE([Key, _Value])) ->
+    arg_to_key(Key);
 arg_to_key(?ATOM(Arg)) ->
     Arg;
 arg_to_key(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
