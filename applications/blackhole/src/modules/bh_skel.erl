@@ -10,30 +10,43 @@
 %%%-------------------------------------------------------------------
 -module(bh_skel).
 
--export([handle_event/2
-        ,subscribe/2
-        , unsubscribe/2
+-export([init/0
+        ,validate/2
+        ,bindings/2
         ]).
 
 -include("blackhole.hrl").
 
--spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
-handle_event(Context, EventJObj) ->
-    blackhole_util:handle_event(Context, EventJObj, event_name(EventJObj)).
+-spec init() -> any().
+init() ->
+    _ = blackhole_bindings:bind(<<"blackhole.events.validate.skel">>, ?MODULE, 'validate'),
+    blackhole_bindings:bind(<<"blackhole.events.bindings.skel">>, ?MODULE, 'bindings').
 
--spec event_name(kz_json:object()) -> ne_binary().
-event_name(JObj) ->
-    kz_json:get_value(<<"Event-Name">>, JObj).
 
-%% Binding must match module name
--spec subscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-subscribe(Context, <<"skel.", _Args/binary>> = _Binding) ->
-    {'ok', Context};
-subscribe(_Context, _Binding) ->
-    {'error', <<"Unmatched binding">>}.
+-spec validate(bh_context:context(), map()) -> bh_context:context().
+validate(Context, #{keys := [<<"whatever_comes_after_skel.">>, _]
+                   }) ->
+    Context;
+validate(Context, #{keys := Keys}) ->
+    bh_context:add_error(Context, <<"invalid format for skel subscription : ", (kz_util:join_binary(Keys))/binary>>).
 
--spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-unsubscribe(Context, <<"skel.", _Args/binary>> = _Binding) ->
-    {'ok', Context};
-unsubscribe(_Context, _Binding) ->
-    {'error', <<"Unmatched binding">>}.
+
+-spec bindings(bh_context:context(), map()) -> map().
+bindings(_Context, #{account_id := AccountId
+                    ,keys := [<<"myskel">>, MyId]
+                    }=Map) ->
+    Requested = <<"skel.myskel.", MyId/binary>>,
+    Subscribed = [<<"skel.status.", AccountId/binary, ".", MyId/binary>>],
+    Listeners = [{'amqp', 'kapi_skel', skel_bind_options(AccountId, MyId)}],
+    Map#{requested => Requested
+        ,subscribed => Subscribed
+        ,listeners => Listeners
+        }.
+
+-spec skel_bind_options(ne_binary(), ne_binary()) -> kz_json:object().
+skel_bind_options(AccountId, MyId) ->
+    [{'restrict_to', ['skel.updates']}
+    ,{'account_id', AccountId}
+    ,{'skel_id', MyId}
+    ,'federate'
+    ].

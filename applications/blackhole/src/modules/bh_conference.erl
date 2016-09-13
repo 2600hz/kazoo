@@ -11,71 +11,60 @@
 %%%-------------------------------------------------------------------
 -module(bh_conference).
 
--export([handle_event/2
-        ,subscribe/2, unsubscribe/2
+-export([init/0
+        ,validate/2
+        ,bindings/2
         ]).
 
 -include("blackhole.hrl").
 
--spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
-handle_event(Context, EventJObj) ->
-    blackhole_util:handle_event(Context, EventJObj, get_response_key(EventJObj)).
-
--spec subscribe(ne_binary(), bh_context:context()) -> bh_subscribe_result().
-subscribe(_Context, <<"conference.command.*">> = _Binding) ->
-    {'error', <<"Unmatched binding">>};
-subscribe(Context, <<"conference.command.", ConfId/binary>>) ->
-    BindKey = <<"conference.command.", ConfId/binary>>,
-    blackhole_listener:add_binding('conference', command_binding_options(ConfId)),
-    blackhole_bindings:bind(BindKey, ?MODULE, 'handle_event', Context),
-    {'ok', Context};
-subscribe(_Context, <<"conference.event.*.*">> = _Binding) ->
-    {'error', <<"Unmatched binding">>};
-subscribe(_Context, <<"conference.event.*.", _CallId/binary>> = _Binding) ->
-    {'error', <<"Unmatched binding">>};
-subscribe(Context, <<"conference.event.", Args/binary>> = Binding) ->
-    case binary:split(Args, <<".">>, ['global']) of
-        [ConfId, CallId] ->
-            blackhole_listener:add_binding('conference', event_binding_options(ConfId, CallId)),
-            blackhole_bindings:bind(Binding, ?MODULE, 'handle_event', Context),
-            {'ok', Context};
-        _Else ->
-            {'error', <<"Unmatched binding">>}
-    end;
-subscribe(_Binding, _Context) ->
-    {'error', <<"Unmatched binding">>}.
+-spec init() -> any().
+init() ->
+    _ = blackhole_bindings:bind(<<"blackhole.events.validate.conference">>, ?MODULE, 'validate'),
+    blackhole_bindings:bind(<<"blackhole.events.bindings.conference">>, ?MODULE, 'bindings').
 
 
--spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-unsubscribe(_Context, <<"conference.command.*">> = _Binding) ->
-    {'error', <<"Unmatched binding">>};
-unsubscribe(Context, <<"conference.command.", ConfId/binary>> = Binding) ->
-    blackhole_listener:remove_binding('conference', command_binding_options(ConfId)),
-    blackhole_bindings:unbind(Binding, ?MODULE, 'handle_event', Context),
-    {'ok', Context};
-unsubscribe(_Context, <<"conference.event.*.*">> = _Binding) ->
-    {'error', <<"Unmatched binding">>};
-unsubscribe(_Context, <<"conference.event.*.", _CallId/binary>> = _Binding) ->
-    {'error', <<"Unmatched binding">>};
-unsubscribe(Context, <<"conference.event.", Args/binary>> = Binding) ->
-    case binary:split(Args, <<".">>, ['global']) of
-        [ConfId, CallId] ->
-            blackhole_listener:remove_binding('conference', event_binding_options(ConfId, CallId)),
-            blackhole_bindings:unbind(Binding, ?MODULE, 'handle_event', Context),
-            {'ok', Context};
-        _Else ->
-            {'error', <<"Unmatched binding">>}
-    end;
-unsubscribe(_Context, _Binding) ->
-    {'error', <<"Unmatched binding">>}.
+-spec validate(bh_context:context(), map()) -> bh_context:context().
+validate(Context, #{keys := [<<"command">>, <<"*">>]
+                   }) ->
+    bh_context:add_error(Context, <<"ConferenceId required">>);
+validate(Context, #{keys := [<<"command">>, _]
+                   }) ->
+    Context;
+validate(Context, #{keys := [<<"event">>, <<"*">>, _]
+                   }) ->
+    bh_context:add_error(Context, <<"ConferenceId required">>);
+validate(Context, #{keys := [<<"event">>, _, _]
+                   }) ->
+    Context;
+validate(Context, #{keys := Keys}) ->
+    bh_context:add_error(Context, <<"invalid format for conference subscription : ", (kz_util:join_binary(Keys))/binary>>).
+
+-spec bindings(bh_context:context(), map()) -> map().
+bindings(_Context, #{account_id := _AccountId
+                    ,keys := [<<"command">>, ConferenceId]
+                    }=Map) ->
+    Requested = <<"conference.command.", ConferenceId/binary>>,
+    Subscribed = [<<"conference.command.", ConferenceId/binary>>],
+    Listeners = [{'amqp', 'conference', command_binding_options(ConferenceId)}],
+    Map#{requested => Requested
+        ,subscribed => Subscribed
+        ,listeners => Listeners
+        };
+bindings(_Context, #{account_id := _AccountId
+                    ,keys := [<<"event">>, ConferenceId, CallId]
+                    }=Map) ->
+    Requested = <<"conference.event.", ConferenceId/binary, ".", CallId/binary>>,
+    Subscribed = [<<"conference.event.", ConferenceId/binary, ".", CallId/binary>>],
+    Listeners = [{'amqp', 'conference', event_binding_options(ConferenceId, CallId)}],
+    Map#{requested => Requested
+        ,subscribed => Subscribed
+        ,listeners => Listeners
+        }.
 
 %%%===================================================================
 %%% Internal functions
 %%%==================================================================
-
--spec get_response_key(kz_json:object()) -> ne_binary().
-get_response_key(JObj) ->
-    kz_json:get_first_defined([<<"Application-Name">>, <<"Event-Name">>], JObj).
 
 -spec command_binding_options(ne_binary()) -> kz_proplist().
 command_binding_options(ConfId) ->

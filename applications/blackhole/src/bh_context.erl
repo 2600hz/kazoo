@@ -12,14 +12,21 @@
         ,from_json/1, from_json/2
         ,to_json/1
         ,is_context/1
+        ,is_authenticated/1
+        ,is_superduper_admin/1
+        ,add_error/2, add_error/3
+        ,success/1
         ]).
 
 -export([setters/2
         ,auth_token/1, set_auth_token/2
         ,auth_account_id/1, set_auth_account_id/2
-        ,account_id/1, set_account_id/2
+        ,set_auth_doc/2
         ,bindings/1, set_bindings/2
-        ,bindings_from_json/1, add_binding/2, remove_binding/2, is_bound/2
+        ,bindings_from_json/1
+        ,add_binding/2, add_bindings/2
+        ,remove_binding/2, remove_bindings/2
+        ,is_bound/2
         ,websocket_session_id/1, set_websocket_session_id/2
         ,websocket_pid/1, set_websocket_pid/2
         ,timestamp/1, set_timestamp/2
@@ -27,7 +34,10 @@
         ,metadata/1, set_metadata/2
         ,destination/1, set_destination/2
         ,source/1, set_source/2
-        ,req_id/1
+        ,req_id/1, set_req_id/2
+        ,listeners/1, add_listeners/2, remove_listeners/2
+        ,set_resp_data/2, set_resp_status/2
+        ,resp_data/1, resp_status/1
         ]).
 
 -include("blackhole.hrl").
@@ -53,8 +63,7 @@
 -spec new(pid(), ne_binary()) -> context().
 new()->
     Setters = [
-               fun put_reqid/1
-              ,{fun set_timestamp/2, kz_util:current_tstamp()}
+               {fun set_timestamp/2, kz_util:current_tstamp()}
               ],
     setters(#bh_context{}, Setters).
 
@@ -77,8 +86,8 @@ from_json(JObj) ->
 
 from_json(Context, JObj) ->
     Setters = [
-               {fun set_account_id/2, kz_json:get_value(<<"account_id">>, JObj)}
-              ,{fun set_auth_token/2,kz_json:get_value(<<"auth_token">>, JObj)}
+               {fun set_auth_token/2,kz_json:get_value(<<"auth_token">>, JObj)}
+              ,{fun set_req_id/2,kz_json:get_ne_binary_value(<<"request_id">>, JObj, kz_util:rand_hex_binary(16))}
               ,{fun set_name/2, kz_json:get_value(<<"name">>, JObj)}
               ,{fun set_metadata/2, kz_json:get_value(<<"metadata">>, JObj)}
               ],
@@ -92,9 +101,7 @@ from_json(Context, JObj) ->
 -spec to_json(context()) -> kz_json:object().
 to_json(Context) ->
     kz_json:from_list(
-      props:filter_undefined([
-                              {<<"account_id">>, account_id(Context)}
-                             ,{<<"auth_token">>, auth_token(Context)}
+      props:filter_undefined([{<<"auth_token">>, auth_token(Context)}
                              ,{<<"auth_account_id">>, auth_account_id(Context)}
                              ,{<<"bindings">>, bindings(Context)}
                              ,{<<"websocket_session_id">>, websocket_session_id(Context)}
@@ -151,18 +158,15 @@ auth_account_id(#bh_context{auth_account_id=AuthBy}) ->
 set_auth_account_id(#bh_context{}=Context, AuthBy) ->
     Context#bh_context{auth_account_id=AuthBy}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec account_id(context()) -> api_binary().
-account_id(#bh_context{account_id=AcctId}) ->
-    AcctId.
+-spec set_auth_doc(context(), kz_json:object()) -> context().
+set_auth_doc(#bh_context{}=Context, AuthDoc) ->
+    Context#bh_context{auth_account_id=kz_account:id(AuthDoc)
+                      ,auth_doc=AuthDoc
+                      }.
 
--spec set_account_id(context(), ne_binary()) -> context().
-set_account_id(#bh_context{}=Context, AcctId) ->
-    Context#bh_context{account_id=AcctId}.
+-spec is_superduper_admin(context()) -> api_binary().
+is_superduper_admin(#bh_context{auth_doc=AuthDoc}) ->
+    kz_account:is_superduper_admin(AuthDoc).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -194,9 +198,17 @@ set_bindings(Context, Bindings) ->
 add_binding(#bh_context{bindings=Bds}=Context, Binding) ->
     Context#bh_context{bindings=[Binding|Bds]}.
 
+-spec add_bindings(context(), ne_binaries()) -> context().
+add_bindings(#bh_context{bindings=Bds}=Context, Bindings) ->
+    Context#bh_context{bindings= Bds ++ Bindings}.
+
 -spec remove_binding(context(), ne_binary()) -> context().
 remove_binding(#bh_context{bindings=Bds}=Context, Binding) ->
     Context#bh_context{bindings=lists:delete(Binding, Bds)}.
+
+-spec remove_bindings(context(), ne_binaries()) -> context().
+remove_bindings(#bh_context{bindings=Bds}=Context, Bindings) ->
+    Context#bh_context{bindings= Bds -- Bindings}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -306,6 +318,11 @@ set_destination(#bh_context{}=Context, Destination) ->
 req_id(#bh_context{req_id=Id}) ->
     Id.
 
+-spec set_req_id(context(), ne_binary()) -> context().
+set_req_id(#bh_context{}=Context, ReqId) ->
+    kz_util:put_callid(ReqId),
+    Context#bh_context{req_id=ReqId}.
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -315,10 +332,6 @@ req_id(#bh_context{req_id=Id}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec put_reqid(context()) -> context().
-put_reqid(#bh_context{req_id = ReqId} = Context) ->
-    kz_util:put_callid(ReqId),
-    Context.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -329,3 +342,37 @@ put_reqid(#bh_context{req_id = ReqId} = Context) ->
 setters_fold({F, V}, C) -> F(C, V);
 setters_fold({F, K, V}, C) -> F(C, K, V);
 setters_fold(F, C) when is_function(F, 1) -> F(C).
+
+-spec is_authenticated(context()) -> boolean().
+is_authenticated(#bh_context{auth_account_id='undefined'}) -> 'false';
+is_authenticated(_) -> 'true'.
+
+add_error(Context, Error) ->
+    add_error(Context, 'error', Error).
+
+add_error(#bh_context{errors=Errors}=Context, Result, Error) ->
+    Context#bh_context{result=Result, errors=[Error | Errors]}.
+
+add_listeners(#bh_context{listeners=BListeners}=Context, Listeners) ->
+    Context#bh_context{listeners = BListeners ++ Listeners}.
+
+remove_listeners(#bh_context{listeners=BListeners}=Context, Listeners) ->
+    Context#bh_context{listeners = BListeners -- Listeners}.
+
+listeners(#bh_context{listeners=BListeners}) ->
+    BListeners.
+
+success(#bh_context{errors=[]}) -> 'true';
+success(#bh_context{}) -> 'false'.
+
+set_resp_data(#bh_context{}=Context, Data) ->
+    Context#bh_context{resp_data=Data}.
+
+set_resp_status(#bh_context{}=Context, Status) ->
+    Context#bh_context{resp_status=Status}.
+
+resp_data(#bh_context{resp_data=Data}) ->
+    Data.
+
+resp_status(#bh_context{resp_status=Status}) ->
+    Status.

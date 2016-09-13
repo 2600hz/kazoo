@@ -9,47 +9,51 @@
 %%%-------------------------------------------------------------------
 -module(bh_fax).
 
--export([handle_event/2
-        ,handle_object_event/2
-        ,subscribe/2
-        ,unsubscribe/2
+-export([init/0
+        ,validate/2
+        ,bindings/2
         ]).
 
 -include("blackhole.hrl").
 
--spec handle_event(bh_context:context(), kz_json:object()) -> 'ok'.
-handle_event(Context, EventJObj) ->
-    'true' = kapi_fax:status_v(EventJObj),
-    blackhole_util:handle_event(Context, EventJObj, <<"fax.status">>).
+-spec init() -> any().
+init() ->
+    _ = blackhole_bindings:bind(<<"blackhole.events.validate.fax">>, ?MODULE, 'validate'),
+    blackhole_bindings:bind(<<"blackhole.events.bindings.fax">>, ?MODULE, 'bindings').
 
--spec handle_object_event(bh_context:context(), kz_json:object()) -> 'ok'.
-handle_object_event(Context, EventJObj) ->
-    blackhole_util:handle_event(Context, EventJObj, <<"fax.object">>).
+-spec validate(bh_context:context(), map()) -> bh_context:context().
+validate(Context, #{keys := [<<"status">>, _]
+                   }) ->
+    Context;
+validate(Context, #{keys := [<<"object">>, _]
+                   }) ->
+    Context;
+validate(Context, #{keys := Keys}) ->
+    bh_context:add_error(Context, <<"invalid format for object subscription : ", (kz_util:join_binary(Keys))/binary>>).
 
--spec subscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-subscribe(#bh_context{account_id=AccountId}=Context, <<"fax.status.", FaxId/binary>> = Binding) ->
-    blackhole_listener:add_binding('fax', fax_status_bind_options(AccountId, FaxId)),
-    blackhole_bindings:bind(Binding, ?MODULE, 'handle_event', Context),
-    {'ok', Context};
-%% listen_to: doc_edited.$modb.fax.$fax_id
-subscribe(#bh_context{account_id=AccountId}=Context, <<"fax.object.", Action/binary>>) ->
-    blackhole_listener:add_binding('conf', fax_object_bind_options(AccountId, Action)),
-    blackhole_bindings:bind(fax_object_bind_key(AccountId, Action), ?MODULE, 'handle_object_event', Context),
-    {'ok', Context};
-subscribe(_Context, _Binding) ->
-    {'error', <<"Unmatched binding">>}.
 
--spec unsubscribe(bh_context:context(), ne_binary()) -> bh_subscribe_result().
-unsubscribe(#bh_context{account_id=AccountId}=Context, <<"fax.status.", FaxId/binary>> = Binding) ->
-    blackhole_listener:remove_binding('fax', fax_status_bind_options(AccountId, FaxId)),
-    blackhole_bindings:unbind(Binding, ?MODULE, 'handle_event', Context),
-    {'ok', Context};
-unsubscribe(#bh_context{account_id=AccountId}=Context, <<"fax.object.", Action/binary>>) ->
-    blackhole_listener:remove_binding('conf', fax_object_bind_options(AccountId, Action)),
-    blackhole_bindings:unbind(fax_object_bind_key(AccountId, Action), ?MODULE, 'handle_object_event', Context),
-    {'ok', Context};
-unsubscribe(_Context, _Binding) ->
-    {'error', <<"Unmatched binding">>}.
+-spec bindings(bh_context:context(), map()) -> map().
+bindings(_Context, #{account_id := AccountId
+                    ,keys := [<<"status">>, FaxId]
+                    }=Map) ->
+    Requested = <<"fax.status.", FaxId/binary>>,
+    Subscribed = [<<"fax.status.", AccountId/binary, ".", FaxId/binary>>],
+    Listeners = [{'amqp', 'fax', fax_status_bind_options(AccountId, FaxId)}],
+    Map#{requested => Requested
+        ,subscribed => Subscribed
+        ,listeners => Listeners
+        };
+bindings(_Context, #{account_id := AccountId
+                    ,keys := [<<"object">>, Action]
+                    }=Map) ->
+    MODB = kazoo_modb:get_modb(AccountId),
+    Requested = <<"fax.object.", Action/binary>>,
+    Subscribed = [<<Action/binary, ".", MODB/binary, ".fax.*">>],
+    Listeners = [{'amqp', 'conf', fax_object_bind_options(MODB, Action)}],
+    Map#{requested => Requested
+        ,subscribed => Subscribed
+        ,listeners => Listeners
+        }.
 
 -spec fax_status_bind_options(ne_binary(), ne_binary()) -> kz_proplist().
 fax_status_bind_options(AccountId, FaxId) ->
@@ -60,13 +64,7 @@ fax_status_bind_options(AccountId, FaxId) ->
     ].
 
 -spec fax_object_bind_options(ne_binary(), ne_binary()) -> kz_json:object().
-fax_object_bind_options(AccountId, Action) ->
-    MODB = kazoo_modb:get_modb(AccountId),
+fax_object_bind_options(MODB, Action) ->
     [{'keys', [[{'action', Action}, {'db', MODB}, {'doc_type', <<"fax">>}]]}
     ,'federate'
     ].
-
--spec fax_object_bind_key(ne_binary(), ne_binary()) -> ne_binary().
-fax_object_bind_key(AccountId, Action) ->
-    MODB = kazoo_modb:get_modb(AccountId),
-    <<Action/binary, ".", MODB/binary, ".fax.*">>.
