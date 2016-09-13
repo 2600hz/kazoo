@@ -48,7 +48,7 @@
 -export([rt_options/0, rt_options/1]).
 
 %% Helper Functions for debugging
--export([bindings/0, bindings/1
+-export([bindings/0, bindings/1, bindings/2
         ]).
 
 %% ETS Persistence
@@ -808,16 +808,21 @@ candidates(Routing) ->
 
 -spec bindings() -> kz_bindings().
 bindings() ->
-    bindings(<<"#">>).
+    bindings(<<"#">>, rt_options()).
 
 -spec bindings(ne_binary()) -> kz_bindings().
 bindings(Routing) ->
+    bindings(Routing, rt_options()).
+
+-spec bindings(ne_binary(), kz_rt_options()) -> kz_bindings().
+bindings(Routing, Opts) ->
+    Options = rt_options(Opts),
     RoutingParts = routing_parts(Routing),
     ets:foldr(fun(#kz_binding{binding=Binding
                              ,binding_parts=BParts
                              }=Bind, Acc) ->
                       case Binding =:= Routing
-                          orelse matches(BParts, RoutingParts)
+                          orelse kazoo_bindings_rt:matches(Options, BParts, RoutingParts)
                       of
                           'true' -> [Bind | Acc];
                           'false' -> Acc
@@ -831,10 +836,12 @@ bindings(Routing) ->
 routing_parts(Routing) ->
     lists:reverse(binary:split(Routing, <<".">>, ['global'])).
 
+-spec rt_options() -> kz_rt_options().
 rt_options() ->
     [{'candidates', fun get_binding_candidates/1}
     ,{'matches', fun matches/2}
     ].
 
+-spec rt_options(kz_rt_options()) -> kz_rt_options().
 rt_options(Options) ->
     props:insert_values(rt_options(), Options).
