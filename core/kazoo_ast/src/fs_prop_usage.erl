@@ -164,6 +164,10 @@ function_args('ecallmgr_fs_conferences') ->
      ,[?VAR(0, 'Props'), ?VAR(0, 'Node'), ?VAR(0, 'CallInfo')]
      }
     ];
+function_args('ecallmgr_fs_loopback') ->
+    {'filter'
+    ,[?VAR(0, 'Node'), ?VAR(0, 'UUID'), ?VAR(0, 'Props')]
+    };
 function_args(_M) ->
     {'undefined', []}.
 
