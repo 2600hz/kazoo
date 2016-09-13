@@ -176,6 +176,10 @@ function_args('ecallmgr_fs_recordings') ->
     {'process_event'
     ,[?VAR(0, 'UUID'), ?VAR(0, 'Props'), ?VAR(0, 'Node')]
     };
+function_args('ecallmgr_fs_router_call') ->
+    {'process_route_req'
+    ,[?VAR(0,'Section'), ?VAR(0, 'Node'), ?VAR(0, 'FetchId'), ?VAR(0, 'CallId'), ?VAR(0, 'Props')]
+    };
 function_args(_M) ->
     {'undefined', []}.
 

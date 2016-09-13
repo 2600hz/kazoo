@@ -68,6 +68,8 @@
         ,<<"Publish-Channel-State">>
         ,<<"Record-File-Path">>
         ,<<"Resigning-UUID">>
+        ,<<"Route-Resp-Fun">>
+        ,<<"Route-Resp-Xml-Fun">>
         ,<<"Speak">>
         ,<<"Switch-Nodename">>
         ,<<"Switch-URI">>
