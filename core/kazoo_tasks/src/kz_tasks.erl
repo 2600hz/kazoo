@@ -35,13 +35,13 @@
 -type task_id() :: <<_:(8*2*?TASK_ID_SIZE)>>.
 
 -type task() :: #{worker_pid => api_pid()
-                 ,worker_node => ne_binary() | 'undefined'
+                 ,worker_node => api_ne_binary()
                  ,account_id => ne_binary()
                  ,auth_account_id => ne_binary()
                  ,id => task_id()
                  ,category => ne_binary()
                  ,action => ne_binary()
-                 ,file_name => ne_binary() | 'undefined'
+                 ,file_name => api_ne_binary()
                  ,created => gregorian_seconds() %% Time of task creation (PUT)
                  ,started => api_seconds() %% Time of task start (PATCH)
                  ,finished => api_seconds() %% Time of task finish (> started)
@@ -50,9 +50,9 @@
                  ,total_rows_succeeded => api_non_neg_integer() %% Rows that returned 'ok'
                  }.
 
--type input() :: ne_binary() | kz_json:objects() | 'undefined'.
+-type input() :: api_ne_binary() | kz_json:objects().
 
--type help_error() :: {'error', 'unknown_category' | 'unknown_action'}.
+-type help_error() :: {'error', 'unknown_category_action'}.
 
 -export_type([task_id/0
              ,input/0
@@ -76,9 +76,9 @@ mandatory(APIJObj) ->
 optional(APIJObj) ->
     kz_json:get_list_value(?API_OPTIONAL, APIJObj, []).
 
--spec input_mime(kz_json:object()) -> api_binary().
+-spec input_mime(kz_json:object()) -> ne_binary().
 input_mime(APIJObj) ->
-    kz_json:get_ne_binary_value(?API_INPUT_MIME, APIJObj).
+    kz_json:get_ne_binary_value(?API_INPUT_MIME, APIJObj, ?NIL_MIME).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -127,7 +127,7 @@ read(TaskId=?NE_BINARY) ->
 new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
    ,Category=?NE_BINARY, Action=?NE_BINARY, TotalRows, Input, CSVName)
   when is_integer(TotalRows), TotalRows > 0;
-       TotalRows == 'undefined', Input == 'undefined' ->
+       TotalRows =:= 'undefined', Input =:= 'undefined' ->
     case help(Category, Action) of
         {'error', _R}=E ->
             lager:debug("checking task ~s ~s failed: ~p", [Category, Action, _R]),
@@ -174,22 +174,24 @@ new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
 %% @private
 -spec help(ne_binary(), ne_binary()) -> kz_json:object().
 help(Category, Action) ->
-    Req = [{<<"Category">>, Category}
-          ,{<<"Action">>, Action}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
+    Req = props:filter_undefined(
+            [{<<"Category">>, Category}
+            ,{<<"Action">>, Action}
+             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ]),
     case kz_amqp_worker:call(Req
                             ,fun kapi_tasks:publish_lookup_req/1
                             ,fun kapi_tasks:lookup_resp_v/1
                             )
     of
-        {'ok', JObj} -> kz_json:get_value(<<"Help">>, JObj);
-        {'timeout', _Resp} ->
-            lager:debug("timeout: ~p", [_Resp]),
-            kz_json:new();
-        {'error', _E} ->
-            lager:debug("error: ~p", [_E]),
-            kz_json:new()
+        {'ok', JObj} ->
+            Help = kz_json:get_value([<<"Help">>, Category, Action], JObj),
+            case kz_util:is_empty(Help) of
+                false -> Help;
+                true -> {error, unknown_category_action}
+            end;
+        {'timeout', _Resp} -> {error, unknown_category_action};
+        {'error', _E} -> {error, unknown_category_action}
     end.
 
 
@@ -235,15 +237,8 @@ find_API_errors(API, Fields, HasInputData) ->
                  end
          end
         ,fun (Errors) ->
-                 case Fields -- (Mandatory ++ optional(API)) of
-                     [] -> Errors;
-                     Unknown -> Errors#{?KZ_TASKS_INPUT_ERROR_UF => Unknown}
-                 end
-         end
-        ,fun (Errors) ->
-                 MIME = input_mime(API),
-                 APIRequiresInputData = 'undefined' /= MIME,
-                 RequestedMIME = case MIME of 'undefined' -> <<"none">>; _ -> MIME end,
+                 RequestedMIME = input_mime(API),
+                 APIRequiresInputData = ?NIL_MIME /= RequestedMIME,
                  case APIRequiresInputData xor HasInputData of
                      'false' -> Errors;
                      'true' ->  Errors#{?KZ_TASKS_INPUT_ERROR_MIME => RequestedMIME}

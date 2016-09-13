@@ -11,7 +11,6 @@
 
 %%% Public API
 -export([start_link/0]).
--export([help/0, help/1, help/2]).
 -export([start/1
         ,remove/1
         ]).
@@ -70,48 +69,6 @@ start_link() ->
             'true' = link(Pid),
             {'ok', Pid};
         Other -> Other
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec help() -> kz_json:object().
-help() ->
-    JObjs = tasks_bindings:map(<<"tasks.help.*">>, []),
-    parse_apis(JObjs).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec help(ne_binary()) -> {'ok', kz_json:object()} |
-                           kz_tasks:help_error().
-help(Category=?NE_BINARY) ->
-    JObjs = tasks_bindings:map(<<"tasks.help.", Category/binary>>, []),
-    JObj = parse_apis(JObjs),
-    case kz_json:is_empty(JObj) of
-        'true' -> {'error', 'unknown_category'};
-        'false' -> {'ok', kz_json:get_value(Category, JObj)}
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec help(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
-                                        kz_tasks:help_error().
-help(Category=?NE_BINARY, Action=?NE_BINARY) ->
-    case help(Category) of
-        {'error', _}=Error -> Error;
-        {'ok', JObj} ->
-            case kz_json:get_value(Action, JObj) of
-                'undefined' -> {'error', 'unknown_action'};
-                J -> {'ok', J}
-            end
     end.
 
 %%--------------------------------------------------------------------
@@ -514,7 +471,7 @@ update_task(Task = #{id := TaskId}) ->
 
 -spec task_api(ne_binary(), ne_binary()) -> kz_json:object().
 task_api(Category, Action) ->
-    {'ok', JObj} = help(Category, Action),
+    {'ok', JObj} = kz_tasks_help:help(Category, Action),
     kz_json:set_values([{<<"category">>, Category}
                        ,{<<"action">>, Action}
                        ]
@@ -524,34 +481,8 @@ task_api(Category, Action) ->
 -spec worker_module(kz_json:object()) -> module().
 worker_module(API) ->
     case kz_tasks:input_mime(API) of
-        'undefined' -> 'kz_task_noinput_worker';
+        <<"none">> -> 'kz_task_noinput_worker';
         _TextCSV -> 'kz_task_worker'
-    end.
-
--spec parse_apis(kz_proplist()) -> kz_json:object().
-parse_apis(JObjs) ->
-    parse_apis(JObjs, kz_json:new()).
-
--spec parse_apis(kz_json:objects(), kz_json:object()) -> kz_json:object().
-parse_apis([], Acc) -> Acc;
-parse_apis([JObj|JObjs], Acc) ->
-    [Category] = kz_json:get_keys(JObj),
-    Actions = kz_json:get_value(Category, JObj),
-    lists:foreach(fun verify_unicity_map/1, kz_json:to_proplist(Actions)),
-    NewAcc = kz_json:set_value(Category, Actions, Acc),
-    parse_apis(JObjs, NewAcc).
-
--spec verify_unicity_map({ne_binary(), kz_json:object()}) -> 'ok'.
-verify_unicity_map({_Action, API}) ->
-    Fields0 = kz_tasks:mandatory(API) ++ kz_tasks:optional(API),
-    Fields = [kz_util:to_lower_binary(Field) || Field <- Fields0],
-    case
-        length(lists:usort(Fields)) == length(Fields)
-        andalso Fields == Fields0
-    of
-        'true' -> 'ok';
-        'false' ->
-            lager:error("action '~s' has duplicate or uppercase fields", [_Action])
     end.
 
 %%% End of Module.

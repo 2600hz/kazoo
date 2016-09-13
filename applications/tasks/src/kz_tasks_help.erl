@@ -28,8 +28,8 @@
 %%--------------------------------------------------------------------
 -spec help() -> kz_json:object().
 help() ->
-    JObjs = tasks_bindings:map(<<"tasks.help.*">>, []),
-    parse_apis(JObjs).
+    HelpJObj = tasks_bindings:fold(<<"tasks.help">>, [kz_json:new()]),
+    parse_apis(HelpJObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -39,8 +39,8 @@ help() ->
 -spec help(ne_binary()) -> {'ok', kz_json:object()} |
                            kz_tasks:help_error().
 help(Category=?NE_BINARY) ->
-    JObjs = tasks_bindings:map(<<"tasks.help.", Category/binary>>, []),
-    JObj = parse_apis(JObjs),
+    HelpJObj = tasks_bindings:fold(<<"tasks.help">>, [kz_json:new(), Category]),
+    JObj = parse_apis(HelpJObj),
     case kz_json:is_empty(JObj) of
         'true' -> {'error', 'unknown_category'};
         'false' -> {'ok', kz_json:get_value(Category, JObj)}
@@ -54,13 +54,11 @@ help(Category=?NE_BINARY) ->
 -spec help(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
                                         kz_tasks:help_error().
 help(Category=?NE_BINARY, Action=?NE_BINARY) ->
-    case help(Category) of
-        {'error', _}=Error -> Error;
-        {'ok', JObj} ->
-            case kz_json:get_value(Action, JObj) of
-                'undefined' -> {'error', 'unknown_action'};
-                J -> {'ok', J}
-            end
+    HelpJObj = tasks_bindings:fold(<<"tasks.help">>, [kz_json:new(), Category, Action]),
+    JObj = parse_apis(HelpJObj),
+    case kz_json:is_empty(JObj) of
+        'true' -> {'error', 'unknown_category_action'};
+        'false' -> {'ok', kz_json:get_value([Category, Action], JObj)}
     end.
 
 %%--------------------------------------------------------------------
@@ -76,7 +74,6 @@ handle_lookup_req(JObj, _Props) ->
             {'error', _R} ->
                 lager:debug("lookup_req error: ~s", [_R]),
                 kz_json:new();
-            {'ok', JOk} -> JOk;
             JOk -> JOk
         end,
     Resp = kz_json:from_list(
@@ -91,26 +88,33 @@ handle_lookup_req(JObj, _Props) ->
 %%% Internal functions
 %%%===================================================================
 
--spec get_help(kz_json:object()) -> kz_tasks:help_error().
+-spec get_help(kz_json:object()) -> kz_json:object() |
+                                    kz_tasks:help_error().
 get_help(JObj) ->
     case {kapi_tasks:category(JObj), kapi_tasks:action(JObj)} of
         {'undefined', 'undefined'} -> help();
-        {Category, 'undefined'} -> help(Category);
-        {Category, Action} -> help(Category, Action)
+        {Category, 'undefined'} -> lookup_result(Category, help(Category));
+        {Category, Action} -> lookup_result(Category, Action, help(Category, Action))
     end.
 
--spec parse_apis(kz_proplist()) -> kz_json:object().
-parse_apis(JObjs) ->
-    parse_apis(JObjs, kz_json:new()).
+lookup_result(_, {error, _}=E) -> E;
+lookup_result(Category, {ok, JObj}) ->
+    kz_json:from_list([{Category, JObj}]).
 
--spec parse_apis(kz_json:objects(), kz_json:object()) -> kz_json:object().
+lookup_result(_, _, {error, _}=E) -> E;
+lookup_result(Category, Action, {ok, JObj}) ->
+    kz_json:set_value([Category, Action], JObj, kz_json:new()).
+
+-spec parse_apis(kz_json:object()) -> kz_json:object().
+parse_apis(HelpJObj) ->
+    parse_apis(kz_json:to_proplist(HelpJObj), kz_json:new()).
+
+-spec parse_apis(kz_proplist(), kz_json:object()) -> kz_json:object().
 parse_apis([], Acc) -> Acc;
-parse_apis([JObj|JObjs], Acc) ->
-    [Category] = kz_json:get_keys(JObj),
-    Actions = kz_json:get_value(Category, JObj),
+parse_apis([{Category, Actions}|HelpProps], Acc) ->
     lists:foreach(fun verify_unicity_map/1, kz_json:to_proplist(Actions)),
     NewAcc = kz_json:set_value(Category, Actions, Acc),
-    parse_apis(JObjs, NewAcc).
+    parse_apis(HelpProps, NewAcc).
 
 -spec verify_unicity_map({ne_binary(), kz_json:object()}) -> 'ok'.
 verify_unicity_map({_Action, API}) ->
