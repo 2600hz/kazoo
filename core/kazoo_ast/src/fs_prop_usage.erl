@@ -65,6 +65,7 @@ usage_keys({'props', 'get_first_defined', Keys, _VarName, _Default}, Acc) ->
 usage_keys({'props', 'delete_keys', Keys, _VarName, _Default}, Acc) ->
     Keys ++ Acc;
 usage_keys({'props', 'filter', 'undefined', _VarName, _Default}, Acc) -> Acc;
+usage_keys({'props', 'insert_values', _Keys, _VarName, _Default}, Acc) -> Acc;
 usage_keys({'props', 'set_values', _Values, _VarName, 'undefined'}, Acc) -> Acc.
 
 event_filter_filename() ->
@@ -179,6 +180,10 @@ function_args('ecallmgr_fs_recordings') ->
 function_args('ecallmgr_fs_router_call') ->
     {'process_route_req'
     ,[?VAR(0,'Section'), ?VAR(0, 'Node'), ?VAR(0, 'FetchId'), ?VAR(0, 'CallId'), ?VAR(0, 'Props')]
+    };
+function_args('ecallmgr_fs_router_text') ->
+    {'process_route_req'
+    ,[?VAR(0,'Section'), ?VAR(0, 'Node'), ?VAR(0, 'FetchId'), ?VAR(0, 'MsgId'), ?VAR(0, 'Props')]
     };
 function_args(_M) ->
     {'undefined', []}.
@@ -309,6 +314,8 @@ process_match_mfa(#usage{data_var_name=DataName
 process_match_mfa(Acc, _VarName, M, F, As) ->
     process_mfa(Acc, M, F, As).
 
+process_mfa(Acc, 'props', 'insert_values', As) ->
+    process_args(Acc, As);
 process_mfa(#usage{data_var_name=DataName
                   ,usages=Usages
                   }=Acc
@@ -566,7 +573,7 @@ process_mfa_clause(#usage{data_var_name=DataName}=Acc
         ?VAR('_') -> Acc;
         ?EMPTY_LIST -> Acc;
         ?VAR(DataName) -> process_clause_body(Acc, Body);
-        ?MOD_FUN_ARGS('kz_json', 'set_value', _Args) -> process_clause_body(Acc, Body);
+        ?MOD_FUN_ARGS('props', 'set_value', _Args) -> process_clause_body(Acc, Body);
         ?VAR(NewName) ->
             ?DEBUG("  data name changed from ~p to ~p~n", [DataName, NewName]),
             #usage{usages=ClauseUsages
@@ -615,7 +622,7 @@ data_index(DataName, [?EMPTY_LIST|As], Index) ->
     data_index(DataName, As, Index+1);
 data_index(DataName, [?VAR(DataName)|_As], Index) -> Index;
 data_index(DataName
-          ,[?MOD_FUN_ARGS('kz_json', 'set_value'
+          ,[?MOD_FUN_ARGS('props', 'set_value'
                          ,Args
                          )
             | As

@@ -84,6 +84,7 @@
         ,<<"context">>
         ,<<"domain">>
         ,<<"expires">>
+        ,<<"from_user">>
         ,<<"intercepted_by">>
         ,<<"ip">>
         ,<<"kazoo_application_name">>
@@ -105,6 +106,7 @@
         ,<<"sip_to_host">>
         ,<<"sip_to_user">>
         ,<<"sip_user_agent">>
+        ,<<"to_user">>
         ,<<"user">>
         ,<<"variable_billmsec">>
         ,<<"variable_billsec">>
