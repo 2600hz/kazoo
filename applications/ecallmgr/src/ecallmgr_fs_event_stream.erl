@@ -178,14 +178,7 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
     try binary_to_term(Data) of
         {'event', [UUID | Props]} when is_binary(UUID)
                                        orelse UUID =:= 'undefined' ->
-            EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
-            EventProps = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
-                                                ,{<<"Switch-URI">>, SwitchURI}
-                                                ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
-                                                ]
-                                               )
-                ++ Props ,
-            _ = kz_util:spawn(fun process_stream/4, [EventName, UUID, EventProps, Node]),
+            _ = handle_fs_props(UUID, Props, Node, SwitchURI, SwitchURL),
             {'noreply', State, Timeout};
         _Else ->
             io:format("~p~n", [_Else]),
@@ -217,6 +210,17 @@ handle_info(_Msg, #state{socket='undefined'}=State) ->
 handle_info(_Msg, #state{idle_alert=Timeout}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State, Timeout}.
+
+-spec handle_fs_props(api_binary(), kzd_freeswitch:data(), atom(), ne_binary(), ne_binary()) -> pid().
+handle_fs_props(UUID, Props, Node, SwitchURI, SwitchURL) ->
+    EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
+    EventProps = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
+                                        ,{<<"Switch-URI">>, SwitchURI}
+                                        ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
+                                        ]
+                                       )
+        ++ Props ,
+    kz_util:spawn(fun process_stream/4, [EventName, UUID, EventProps, Node]).
 
 -spec handle_no_switch({'tcp', any(), binary()}, state()) ->
                               {'noreply', state(), kz_timeout()} |
