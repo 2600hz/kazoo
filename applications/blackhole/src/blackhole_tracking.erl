@@ -94,30 +94,27 @@ handle_req(ApiJObj, _Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec add_socket(bh_context:context()) -> bh_context:context().
+-spec add_socket(bh_context:context()) -> 'ok'.
 add_socket(Context) ->
-    gen_server:cast(?SERVER, {'add_socket', Context}),
-    Context.
+    gen_server:cast(?SERVER, {'add_socket', Context}).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec remove_socket(bh_context:context()) -> bh_context:context().
+-spec remove_socket(bh_context:context()) -> 'ok'.
 remove_socket(Context) ->
-    gen_server:cast(?SERVER, {'remove_socket', Context}),
-    Context.
+    gen_server:cast(?SERVER, {'remove_socket', Context}).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_socket(bh_context:context()) -> bh_context:context().
+-spec update_socket(bh_context:context()) -> 'ok'.
 update_socket(Context) ->
-    gen_server:cast(?SERVER, {'update_socket', Context}),
-    Context.
+    gen_server:cast(?SERVER, {'update_socket', Context}).
 
 %%--------------------------------------------------------------------
 %% @public
