@@ -172,6 +172,10 @@ function_args('ecallmgr_fs_msg') ->
     {'process_fs_event'
     ,[?VAR(0, 'Node'), ?VAR(0, 'Props')]
     };
+function_args('ecallmgr_fs_recordings') ->
+    {'process_event'
+    ,[?VAR(0, 'UUID'), ?VAR(0, 'Props'), ?VAR(0, 'Node')]
+    };
 function_args(_M) ->
     {'undefined', []}.
 
@@ -206,14 +210,11 @@ process_expression(Acc, ?CASE(Expression, Clauses)) ->
     process_expressions(process_expression(Acc, Expression)
                        ,Clauses
                        );
-process_expression(Acc, ?ATOM(_)) ->
-    Acc;
-process_expression(Acc, ?INTEGER(_)) ->
-    Acc;
-process_expression(Acc, ?BINARY_MATCH(_)) ->
-    Acc;
-process_expression(Acc, ?EMPTY_LIST) ->
-    Acc;
+process_expression(Acc, ?ATOM(_)) -> Acc;
+process_expression(Acc, ?INTEGER(_)) -> Acc;
+process_expression(Acc, ?CHAR(_)) -> Acc;
+process_expression(Acc, ?BINARY_MATCH(_)) -> Acc;
+process_expression(Acc, ?EMPTY_LIST) -> Acc;
 process_expression(Acc, ?LIST(Head, Tail)) ->
     process_list(Acc, Head, Tail);
 process_expression(Acc, ?RECORD(_Name, Fields)) ->
