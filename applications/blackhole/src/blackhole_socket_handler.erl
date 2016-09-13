@@ -37,7 +37,11 @@ websocket_handle({'text', Data}, Req, State) ->
         {'ok', NewState} -> {'ok', Req, NewState};
         'error' -> {'ok', Req, State};
         'shutdown' -> {'shutdown', Req, State}
-    end.
+    end;
+
+websocket_handle(_Other, Req, State) ->
+    lager:debug("not handling message : ~p", [_Other]),
+    {'ok', Req, State}.
 
 websocket_info({'$gen_cast', _}, Req, State) ->
     {'ok', Req, State};
