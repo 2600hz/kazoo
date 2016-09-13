@@ -516,7 +516,10 @@ exec(Focus, ConferenceId, JObj) ->
                                              andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command2]),
                                          lager:debug("api to ~s: conference ~s", [Focus, Command2]),
                                          freeswitch:api(Focus, 'conference', Command2)
-                                 end, 'undefined', Commands),
+                                 end
+                                ,'undefined'
+                                ,Commands
+                                ),
             send_response(App, Result, kz_json:get_value(<<"Server-ID">>, JObj), JObj);
         {AppName, AppData} ->
             Command = kz_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
