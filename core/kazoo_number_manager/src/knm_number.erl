@@ -249,13 +249,11 @@ ensure_account_can_create(Options) ->
     end.
 
 -ifdef(TEST).
--define(LOAD_ACCOUNT(Props, _AccountId)
-       ,{'ok', props:get_value(<<"auth_by_account">>, Props)}
-       ).
+-define(LOAD_ACCOUNT(Props, _AccountId),
+        {'ok', props:get_value(<<"auth_by_account">>, Props)}).
 -else.
--define(LOAD_ACCOUNT(_Options, AccountId)
-       ,kz_account:fetch(AccountId)
-       ).
+-define(LOAD_ACCOUNT(_Options, AccountId),
+        kz_account:fetch(AccountId)).
 -endif.
 
 ensure_account_is_allowed_to_create(_, ?KNM_DEFAULT_AUTH_BY) ->
