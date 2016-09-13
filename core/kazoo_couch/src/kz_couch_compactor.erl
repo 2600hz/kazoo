@@ -56,19 +56,19 @@
 -include("kz_couch.hrl").
 
 -define(SLEEP_BETWEEN_COMPACTION,
-       kapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_compaction">>, 60 * ?MILLISECONDS_IN_SECOND)).
+        kapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_compaction">>, 60 * ?MILLISECONDS_IN_SECOND)).
 
 -define(SLEEP_BETWEEN_POLL,
-       kapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_poll">>, 3 * ?MILLISECONDS_IN_SECOND)).
+        kapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_poll">>, 3 * ?MILLISECONDS_IN_SECOND)).
 
 -define(SLEEP_BETWEEN_VIEWS,
-       kapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_views">>, 2 * ?MILLISECONDS_IN_SECOND)).
+        kapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_views">>, 2 * ?MILLISECONDS_IN_SECOND)).
 
 -define(MAX_COMPACTING_SHARDS,
-       kapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_shards">>, 2)).
+        kapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_shards">>, 2)).
 
 -define(MAX_COMPACTING_VIEWS,
-       kapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 2)).
+        kapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 2)).
 
 -define(MAX_WAIT_FOR_COMPACTION_PIDS,
         case kapps_config:get(?CONFIG_CAT, <<"max_wait_for_compaction_pids">>, 360 * ?MILLISECONDS_IN_SECOND) of
