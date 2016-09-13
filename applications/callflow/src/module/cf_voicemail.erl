@@ -345,6 +345,9 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
                            ,fun kapi_notifications:publish_voicemail_full/1
                            ,fun kapi_notifications:voicemail_full_v/1
                            ),
+    lager:debug("playing mailbox greeting to caller"),
+    _ = play_greeting_intro(Box, Call),
+    _ = play_greeting(Box, Call),
     _ = kapps_call_command:prompt(<<"vm-mailbox_full">>, Call),
     _NoopId = kapps_call_command:noop(Call),
 
