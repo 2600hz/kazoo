@@ -44,7 +44,9 @@ write_mod_usage({_Mod, Usages}, AccSet) ->
 usage_keys(Usages) ->
     sets:from_list(
       lists:usort(
-        lists:foldl(fun usage_keys/2, [], Usages)
+        lists:filter(fun is_binary/1
+                    ,lists:foldl(fun usage_keys/2, [], Usages)
+                    )
        )
      ).
 

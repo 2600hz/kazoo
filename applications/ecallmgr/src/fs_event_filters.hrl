@@ -1,6 +1,5 @@
 -define(FS_EVENT_FITLERS
-       ,['Key'
-        ,<<"Acquired-UUID">>
+       ,[<<"Acquired-UUID">>
         ,<<"Action">>
         ,<<"Answer-State">>
         ,<<"Application">>
