@@ -98,15 +98,30 @@ process(Module) when is_atom(Module) ->
     U.
 
 process_action(Module) ->
-    {F, As} = function_args(Module),
-    process_action(Module, F, As).
+    FArgs = function_args(Module),
+    process_action(Module, FArgs).
 
-process_action(_M, 'undefined', _As) -> 'undefined';
-process_action(Module, Function, Args) ->
+process_action(Module, {_F, _As}=FArg) ->
+    process_action(Module, [FArg]);
+process_action(Module, FArgs) ->
+    case lists:foldl(fun({F, Args}, Acc) ->
+                             process_action(Module, F, Args, Acc)
+                     end
+                    ,[]
+                    ,FArgs
+                    )
+    of
+        [] -> 'undefined';
+        Usages -> Usages
+    end.
+
+
+process_action(_M, 'undefined', _As, Acc) -> Acc;
+process_action(Module, Function, Args, Acc) ->
     #usage{usages=Us} = process_mfa_call(#usage{current_module=Module}
                                         ,Module, Function, Args
                                         ),
-    Us.
+    Us ++ Acc.
 
 %% define entry points for modules
 function_args('ecallmgr_fs_event_stream') ->
@@ -141,6 +156,14 @@ function_args('ecallmgr_fs_conference') ->
     {'handle_conf_event'
     ,[?VAR(0, 'Props'), ?VAR(0, 'Node')]
     };
+function_args('ecallmgr_fs_conferences') ->
+    [{'conference_from_props'
+     ,[?VAR(0, 'Props'), ?VAR(0, 'Node')]
+     }
+    ,{'participant_from_props'
+     ,[?VAR(0, 'Props'), ?VAR(0, 'Node'), ?VAR(0, 'CallInfo')]
+     }
+    ];
 function_args(_M) ->
     {'undefined', []}.
 
@@ -189,6 +212,11 @@ process_expression(Acc, ?RECORD(_Name, Fields)) ->
     process_record_fields(Acc, Fields);
 process_expression(Acc, ?RECORD_FIELD_ACCESS(_RecordName, _Name, _Value)) ->
     Acc;
+process_expression(Acc, ?RECORD_VAR(_VarName, _RecName, Fields)) ->
+    process_expressions(Acc, Fields);
+process_expression(Acc, ?RECORD_FIELD_BIND(_Key, Value)) ->
+    process_expression(Acc, Value);
+process_expression(Acc, ?RECORD_INDEX(_Name, _Field)) -> Acc;
 process_expression(Acc, ?BINARY_OP(_, First, Second)) ->
     process_expressions(Acc, [First, Second]);
 process_expression(Acc, ?UNARY_OP(_, Operand)) ->

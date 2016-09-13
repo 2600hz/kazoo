@@ -30,22 +30,31 @@
         ,<<"Channel-State">>
         ,<<"Conf-Name">>
         ,<<"Conference-Name">>
+        ,<<"Conference-Profile-Name">>
         ,<<"Conference-Unique-ID">>
         ,<<"Controls">>
         ,<<"Core-UUID">>
+        ,<<"Current-Energy">>
         ,<<"DTMF-Digit">>
         ,<<"DTMF-Duration">>
         ,<<"Detected-Fax-Tone">>
         ,<<"Detected-Tone">>
+        ,<<"Energy-Level">>
         ,<<"Event-Date-Timestamp">>
         ,<<"Event-Name">>
         ,<<"Event-Subclass">>
         ,<<"File">>
+        ,<<"Floor">>
         ,<<"FreeSWITCH-Hostname">>
         ,<<"Hangup-Cause">>
+        ,<<"Hear">>
         ,<<"Hunt-Callee-ID-Number">>
         ,<<"Hunt-Context">>
         ,<<"Hunt-Destination-Number">>
+        ,<<"Join-Time">>
+        ,<<"Member-ID">>
+        ,<<"Member-Type">>
+        ,<<"Mute-Detect">>
         ,<<"Other-Leg-Call-ID">>
         ,<<"Other-Leg-Callee-ID-Number">>
         ,<<"Other-Leg-Caller-ID-Name">>
@@ -59,10 +68,13 @@
         ,<<"Publish-Channel-State">>
         ,<<"Record-File-Path">>
         ,<<"Resigning-UUID">>
+        ,<<"Speak">>
         ,<<"Switch-Nodename">>
         ,<<"Switch-URI">>
         ,<<"Switch-URL">>
+        ,<<"Talking">>
         ,<<"Unique-ID">>
+        ,<<"Video">>
         ,<<"X-AUTH-IP">>
         ,<<"X-AUTH-PORT">>
         ,<<"action">>
