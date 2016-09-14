@@ -12,6 +12,7 @@
         ,handle_amqp_event/3
         ,add_binding/1, remove_binding/1
         ,add_bindings/1, remove_bindings/1
+        ,flush/0
         ]).
 -export([init/1
         ,handle_call/3
@@ -152,6 +153,9 @@ handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
     {'noreply', State};
+handle_cast('flush_bh_bindings', #state{bindings=ETS}=State) ->
+    ets:delete_all_objects(ETS),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -234,7 +238,7 @@ add_bh_binding(ETS, Binding) ->
     Key = binding_key(Binding),
     case ets:update_counter(ETS, Key, 1, {Key, 0}) of
         1 -> add_bh_binding(Binding);
-        _ -> 'ok'
+        _Else -> 'ok'
     end.
 
 remove_bh_binding(ETS, Binding) ->
@@ -264,3 +268,6 @@ add_bh_bindings(ETS, Bindings) ->
 
 remove_bh_bindings(ETS, Bindings) ->
     [remove_bh_binding(ETS, Binding) || Binding <- Bindings].
+
+flush() ->
+    gen_listener:cast(?SERVER, 'flush_bh_bindings').

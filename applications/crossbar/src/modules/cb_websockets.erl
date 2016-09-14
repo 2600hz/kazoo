@@ -18,6 +18,7 @@
 
 -include("crossbar.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
+-include_lib("kazoo_documents/include/doc_types.hrl").
 
 -define(CB_LIST, <<"websockets/crossbar_listing">>).
 
@@ -33,7 +34,7 @@
               ]).
 
 -define(OBJECTS,
-        [?TO_JSON(<<A/binary, ".*.", T/binary, ".*">>, <<A/binary, "_", T/binary>>)
+        [?TO_JSON(<<"object.", A/binary, ".", T/binary>>, <<A/binary, ".", T/binary>>)
          || A <- ?DOC_ACTIONS, T <- ?DOC_TYPES
         ]).
 

@@ -14,6 +14,7 @@
 
 -include("webhooks.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
+-include_lib("kazoo_documents/include/doc_types.hrl").
 
 -define(ID, kz_util:to_binary(?MODULE)).
 -define(NAME, <<"object">>).
