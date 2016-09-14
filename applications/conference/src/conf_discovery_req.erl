@@ -444,8 +444,8 @@ create_conference(JObj, Digits, Call) ->
 -spec get_pin_timeout(kapps_conference:conference()) -> pos_integer().
 get_pin_timeout(Conference) ->
     AccountId = kapps_conference:account_id(Conference),
+    lager:debug("pin timeout request account:~p conference:~p", [AccountId, kapps_conference:id(Conference)]),
     JObj = kapps_conference:conference_doc(Conference),
-    lager:debug("pin timeout request account:~p conference:~p", [AccountId, kapps_conference:id(JObj)]),
     kz_json:get_value(<<"pin_timeout">>, JObj, get_account_pin_timeout(AccountId)).
 
 -spec get_account_pin_timeout(ne_binary()) -> pos_integer().
