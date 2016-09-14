@@ -505,10 +505,8 @@ start_key(Options, Context) ->
 start_key_fun(Options, Context) ->
     case props:get_value('startkey', Options) of
         'undefined' ->
-            StartKey = cb_context:req_value(Context, <<"start_key">>),
-            lager:debug("getting start_key from request: ~p"
-                       ,[StartKey]
-                       ),
+            StartKey = start_key(Context),
+            lager:debug("got start_key from request: ~p", [StartKey]),
             StartKey;
         StartKey ->
             lager:debug("getting start_key from options: ~p", [StartKey]),
@@ -873,26 +871,24 @@ update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
 update_pagination_envelope_params(Context, _StartKey, _PageSize, _NextStartKey, 'false') ->
     lager:debug("pagination disabled, removing resp envelope keys"),
     cb_context:set_resp_envelope(Context
-                                ,kz_json:delete_keys(
-                                   [<<"start_key">>
-                                   ,<<"page_size">>
-                                   ,<<"next_start_key">>
-                                   ]
+                                ,kz_json:delete_keys([<<"start_key">>
+                                                     ,<<"page_size">>
+                                                     ,<<"next_start_key">>
+                                                     ]
                                                     ,cb_context:resp_envelope(Context)
-                                  )
+                                                    )
                                 );
 update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey, 'true') ->
     RespEnvelope = cb_context:resp_envelope(Context),
     CurrentPageSize = kz_json:get_integer_value(<<"page_size">>, RespEnvelope, 0),
     cb_context:set_resp_envelope(Context
-                                ,kz_json:set_values(
-                                   props:filter_undefined(
-                                     [{<<"start_key">>, StartKey}
-                                     ,{<<"page_size">>, PageSize + CurrentPageSize}
-                                     ,{<<"next_start_key">>, NextStartKey}
-                                     ])
+                                ,kz_json:set_values(props:filter_undefined(
+                                                      [{<<"start_key">>, StartKey}
+                                                      ,{<<"page_size">>, PageSize + CurrentPageSize}
+                                                      ,{<<"next_start_key">>, NextStartKey}
+                                                      ])
                                                    ,RespEnvelope
-                                  )
+                                                   )
                                 ).
 
 -spec handle_datamgr_pagination_success(kz_json:objects(), api_pos_integer(), ne_binary(), load_view_params()) ->

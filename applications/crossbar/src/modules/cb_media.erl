@@ -486,10 +486,9 @@ maybe_update_tts(Context, Text, Voice, 'success') ->
                          ,(kz_util:to_binary(kz_util:current_tstamp()))/binary
                          ,".wav"
                        >>,
-            _ = update_media_binary(cb_context:set_resp_status(
-                                      cb_context:set_req_files(Context, [{FileName, FileJObj}])
+            _ = update_media_binary(cb_context:set_resp_status(cb_context:set_req_files(Context, [{FileName, FileJObj}])
                                                               ,'error'
-                                     )
+                                                              )
                                    ,MediaId
                                    ),
             crossbar_doc:load(MediaId, Context, ?TYPE_CHECK_OPTION(kzd_media:type()))
@@ -523,12 +522,9 @@ maybe_merge_tts(Context, MediaId, Text, Voice, 'success') ->
                          ,".wav"
                        >>,
 
-            _ = update_media_binary(cb_context:set_resp_status(
-                                      cb_context:set_req_files(Context
-                                                              ,[{FileName, FileJObj}]
-                                                              )
+            _ = update_media_binary(cb_context:set_resp_status(cb_context:set_req_files(Context, [{FileName, FileJObj}])
                                                               ,'error'
-                                     )
+                                                              )
                                    ,MediaId
                                    ),
             crossbar_doc:load_merge(MediaId, kz_json:public_fields(JObj), Context, ?TYPE_CHECK_OPTION(kzd_media:type()))
@@ -585,13 +581,12 @@ start_key(Context) ->
 
 -spec fix_start_keys(cb_context:context()) -> cb_context:context().
 fix_start_keys(Context) ->
-    cb_context:set_resp_envelope(
-      Context
+    cb_context:set_resp_envelope(Context
                                 ,lists:foldl(fun fix_start_keys_fold/2
                                             ,cb_context:resp_envelope(Context)
                                             ,[<<"start_key">>, <<"next_start_key">>]
                                             )
-     ).
+                                ).
 
 -spec fix_start_keys_fold(kz_json:key(), kz_json:object()) -> kz_json:object().
 fix_start_keys_fold(Key, JObj) ->
