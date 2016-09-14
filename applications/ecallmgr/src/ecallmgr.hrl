@@ -57,6 +57,7 @@
                   ,account_billing :: api_binary() | '$7' | '_'
                   ,authorizing_id :: api_binary() | '$1' | '$3' | '_'
                   ,authorizing_type :: api_binary() | '_'
+                  ,is_authorized :: api_boolean() | '_'
                   ,owner_id :: api_binary() | '$1' | '_'
                   ,resource_id :: api_binary() | '$4' | '_'
                   ,presence_id :: api_binary() | '$2' | '_'

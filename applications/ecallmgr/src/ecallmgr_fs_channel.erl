@@ -17,6 +17,7 @@
 -export([node/1, set_node/2
          ,former_node/1
          ,is_bridged/1
+         ,set_authorized/2
          ,exists/1
          ,import_moh/1
          ,set_account_id/2
@@ -163,6 +164,10 @@ set_account_id(UUID, Value) when is_binary(Value) ->
 set_account_id(UUID, Value) ->
     set_account_id(UUID, wh_util:to_binary(Value)).
 
+-spec set_authorized(ne_binary(), ne_binary() | boolean()) -> 'ok'.
+set_authorized(UUID, Value) ->
+    ecallmgr_fs_channels:update(UUID, #channel.is_authorized, wh_util:is_true(Value)).
+
 -spec renew(atom(), ne_binary()) ->
                    {'ok', channel()} |
                    {'error', 'timeout' | 'badarg'}.
@@ -196,6 +201,7 @@ to_props(Channel) ->
        ,{<<"account_billing">>, Channel#channel.account_billing}
        ,{<<"authorizing_id">>, Channel#channel.authorizing_id}
        ,{<<"authorizing_type">>, Channel#channel.authorizing_type}
+       ,{<<"channel_authorized">>, Channel#channel.is_authorized}
        ,{<<"owner_id">>, Channel#channel.owner_id}
        ,{<<"resource_id">>, Channel#channel.resource_id}
        ,{<<"presence_id">>, Channel#channel.presence_id}
@@ -235,6 +241,7 @@ to_api_props(Channel) ->
        ,{<<"Account-Billing">>, Channel#channel.account_billing}
        ,{<<"Authorizing-ID">>, Channel#channel.authorizing_id}
        ,{<<"Authorizing-Type">>, Channel#channel.authorizing_type}
+       ,{<<"Channel-Authorized">>, Channel#channel.is_authorized}
        ,{<<"Owner-ID">>, Channel#channel.owner_id}
        ,{<<"Resource-ID">>, Channel#channel.resource_id}
        ,{<<"Presence-ID">>, Channel#channel.presence_id}
@@ -275,6 +282,7 @@ channel_ccvs(#channel{}=Channel) ->
        ,{<<"Reseller-Billing">>, Channel#channel.reseller_billing}
        ,{<<"Realm">>, Channel#channel.realm}
        ,{<<"Username">>, Channel#channel.username}
+       ,{<<"Channel-Authorized">>, Channel#channel.is_authorized}
       ]);
 channel_ccvs([_|_]=Props) ->
     props:filter_undefined(
@@ -292,6 +300,7 @@ channel_ccvs([_|_]=Props) ->
        ,{<<"Reseller-Billing">>, props:get_value(<<"reseller_billing">>, Props)}
        ,{<<"Realm">>, props:get_value(<<"realm">>, Props)}
        ,{<<"Username">>, props:get_value(<<"username">>, Props)}
+       ,{<<"Channel-Authorized">>, props:get_value(<<"channel_authorized">>, Props)}
       ]);
 channel_ccvs(JObj) ->
     channel_ccvs(wh_json:to_proplist(JObj)).
@@ -609,6 +618,7 @@ props_to_record(Props, Node) ->
              ,account_billing=props:get_value(?GET_CCV(<<"Account-Billing">>), Props)
              ,authorizing_id=props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props)
              ,authorizing_type=props:get_value(?GET_CCV(<<"Authorizing-Type">>), Props)
+             ,is_authorized=props:is_true(?GET_CCV(<<"Channel-Authorized">>), Props, 'undefined')
              ,owner_id=props:get_value(?GET_CCV(<<"Owner-ID">>), Props)
              ,resource_id=props:get_value(?GET_CCV(<<"Resource-ID">>), Props)
              ,presence_id=props:get_value(?GET_CCV(<<"Channel-Presence-ID">>), Props
@@ -651,6 +661,7 @@ get_realm(Props) ->
         Realm -> wh_util:to_lower_binary(Realm)
     end.
 
+-spec props_to_update(wh_proplist()) -> [{integer(), api_binary()}].
 props_to_update(Props) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
     props:filter_undefined([{#channel.destination, props:get_value(<<"Caller-Destination-Number">>, Props)}
@@ -658,7 +669,8 @@ props_to_update(Props) ->
                             ,{#channel.account_id, props:get_value(?GET_CCV(<<"Account-ID">>), Props)}
                             ,{#channel.account_billing, props:get_value(?GET_CCV(<<"Account-Billing">>), Props)}
                             ,{#channel.authorizing_id, props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props)}
-                            ,{#channel.authorizing_type, props:get_value(?GET_CCV(<<"Authorizing-Type">>), Props)}
+
+                            ,{#channel.is_authorized, props:get_value(?GET_CCV(<<"Channel-Authorized">>), Props)}
                             ,{#channel.owner_id, props:get_value(?GET_CCV(<<"Owner-ID">>), Props)}
                             ,{#channel.resource_id, props:get_value(?GET_CCV(<<"Resource-ID">>), Props)}
                             ,{#channel.presence_id, props:get_value(?GET_CCV(<<"Channel-Presence-ID">>), Props
