@@ -208,14 +208,12 @@ handle_info(_Info, State) ->
 -spec handle_conf_event(kzd_freeswitch:data(), atom()) -> 'ok'.
 handle_conf_event(Props, Node) ->
     Action = props:get_value(<<"Action">>, Props),
-    _ = case process_conference_event(Action, Props, Node) of
-            'stop' -> 'ok';
-            'continue' -> send_conference_event(Action, Props);
-            {'continue', CustomProps} ->
-                send_conference_event(Action, Props, CustomProps)
-        end,
-    'ok'.
-
+    case process_conference_event(Action, Props, Node) of
+        'stop' -> 'ok';
+        'continue' -> send_conference_event(Action, Props);
+        {'continue', CustomProps} ->
+            send_conference_event(Action, Props, CustomProps)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
