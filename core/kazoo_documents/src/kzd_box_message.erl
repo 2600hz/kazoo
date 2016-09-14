@@ -74,21 +74,23 @@
 %%--------------------------------------------------------------------
 -spec new(ne_binary(), kz_proplist()) -> doc().
 new(AccountId, Props) ->
-    {Year, Month, _} = erlang:date(),
+    UtcSeconds = props:get_value(<<"Message-Timestamp">>, Props, kz_util:current_tstamp()),
+    Timestamp  = props:get_value(<<"Document-Timestamp">>, Props, UtcSeconds),
+    {Year, Month, _} = kz_util:to_date(Timestamp),
+    MediaId = props:get_value(<<"Media-ID">>, Props, kz_util:rand_hex_binary(16)),
     Db = kazoo_modb:get_modb(AccountId, Year, Month),
-    MediaId = <<(kz_util:to_binary(Year))/binary
-                ,(kz_util:pad_month(Month))/binary
-                ,"-"
-                ,(kz_util:rand_hex_binary(16))/binary
-              >>,
+    MsgId = <<(kz_util:to_binary(Year))/binary
+              ,(kz_util:pad_month(Month))/binary
+              ,"-"
+              ,MediaId/binary
+            >>,
 
-    UtcSeconds = kz_util:current_tstamp(),
     Name = create_message_name(props:get_value(<<"Box-Num">>, Props)
                               ,props:get_value(<<"Timezone">>, Props)
                               ,UtcSeconds),
 
     DocProps = props:filter_undefined(
-                 [{<<"_id">>, MediaId}
+                 [{<<"_id">>, MsgId}
                  ,{?KEY_NAME, Name}
                  ,{?KEY_DESC, <<"mailbox message media">>}
                  ,{?KEY_SOURCE_TYPE, ?KEY_VOICEMAIL}
@@ -99,7 +101,9 @@ new(AccountId, Props) ->
                  ,{?KEY_UTC_SEC, UtcSeconds}
                  ]),
     kz_doc:update_pvt_parameters(
-      kz_json:from_list(DocProps), Db, [{'type', type()}]
+      kz_json:from_list(DocProps), Db, [{'type', type()}
+                                       ,{'now', Timestamp}
+                                       ]
      ).
 
 -spec fake_private_media(ne_binary(), ne_binary(), doc()) -> doc().
@@ -137,8 +141,10 @@ create_message_name(BoxNum, Timezone, UtcSeconds) ->
         {'error', 'unknown_tz'} ->
             lager:info("unknown timezone: ~s", [Timezone]),
             message_name(BoxNum, UtcDateTime, " UTC");
-        DT ->
-            message_name(BoxNum, DT, "")
+        [LocalDateTime, _DstLocatDateTime] ->
+            message_name(BoxNum, LocalDateTime, "");
+        LocalDateTime ->
+            message_name(BoxNum, LocalDateTime, "")
     end.
 
 -spec message_name(ne_binary(), kz_datetime(), string()) -> ne_binary().
