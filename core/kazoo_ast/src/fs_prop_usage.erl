@@ -123,6 +123,10 @@ process_action(Module, Function, Args, Acc) ->
     Us ++ Acc.
 
 %% define entry points for modules
+function_args('ecallmgr_originate') ->
+    {'handle_fs_event'
+    ,[?VAR(0, 'Props'), ?VAR(0, 'UUID')]
+    };
 function_args('ecallmgr_fs_event_stream') ->
     {'handle_fs_props'
     ,[?VAR(0, 'UUID'), ?VAR(0, 'Props'), ?VAR(0, 'Node'), ?VAR(0, 'SwitchURI'), ?VAR(0, 'SwitchURL')]
