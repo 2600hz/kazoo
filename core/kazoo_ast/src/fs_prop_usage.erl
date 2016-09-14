@@ -43,11 +43,9 @@ write_mod_usage({_Mod, Usages}, AccSet) ->
 
 usage_keys(Usages) ->
     sets:from_list(
-      lists:usort(
-        lists:filter(fun is_binary/1
-                    ,lists:foldl(fun usage_keys/2, [], Usages)
-                    )
-       )
+      lists:filter(fun is_binary/1
+                  ,lists:foldl(fun usage_keys/2, [], Usages)
+                  )
      ).
 
 usage_keys({'props', 'get_value', Key, _VarName, _Default}, Acc) ->
@@ -86,7 +84,8 @@ process() ->
     io:format("processing ecallmgr FreeSWITCH Props usage: "),
     Usages = [{Module, Usages} ||
                  Module <- kz_ast_util:app_modules('ecallmgr'),
-                 (Usages = process(Module)) =/= 'undefined'
+                 Usages <- [process(Module)],
+                 Usages =/= 'undefined'
              ],
     io:format(" done~n"),
     Usages.
