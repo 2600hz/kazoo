@@ -123,6 +123,10 @@ process_action(Module, Function, Args, Acc) ->
     Us ++ Acc.
 
 %% define entry points for modules
+function_args('ecallmgr_channel_move') ->
+    {'rebuild_channel'
+    ,[?VAR(0, 'UUID'), ?VAR(0, 'NewNode'), ?VAR(0, 'Props')]
+    };
 function_args('ecallmgr_originate') ->
     {'handle_fs_event'
     ,[?VAR(0, 'Props'), ?VAR(0, 'UUID')]

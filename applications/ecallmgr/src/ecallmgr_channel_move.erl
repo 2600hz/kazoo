@@ -36,7 +36,7 @@ move(UUID, ONode, NNode) ->
 
 %% listens for the event from FS with the XML
 -spec wait_for_teardown(ne_binary(), atom()) ->
-                               {'ok', kz_proplist()} |
+                               {'ok', kzd_freeswitch:data()} |
                                {'error', 'timeout'}.
 wait_for_teardown(UUID, OriginalNode) ->
     receive

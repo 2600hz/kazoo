@@ -90,6 +90,7 @@
         ,<<"kazoo_application_name">>
         ,<<"kazoo_application_response">>
         ,<<"kazoo_event_name">>
+        ,<<"metadata">>
         ,<<"old_node_channel_uuid">>
         ,<<"port">>
         ,<<"profile_name">>
@@ -106,6 +107,7 @@
         ,<<"sip_to_host">>
         ,<<"sip_to_user">>
         ,<<"sip_user_agent">>
+        ,<<"technology">>
         ,<<"to_user">>
         ,<<"user">>
         ,<<"variable_billmsec">>
