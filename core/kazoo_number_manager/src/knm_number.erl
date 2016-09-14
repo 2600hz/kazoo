@@ -312,6 +312,8 @@ move_to(Number) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Attempts to update some phone_number fields.
+%% Note: will always result in a phone_number save.
 %% @end
 %%--------------------------------------------------------------------
 -spec update(ne_binary(), knm_phone_number:set_functions()) ->
