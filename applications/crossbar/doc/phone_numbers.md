@@ -71,7 +71,7 @@ available numbers you already bought & imported.
 
 ```shell
 curl -v -X GET \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers?prefix={PREFIX}&quantity={QUANTITY}&offset={OFFSET}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers?prefix=555&quantity=3&offset=6
 ```
 
 ```json
@@ -79,11 +79,15 @@ curl -v -X GET \
     "auth_token": "{AUTH_TOKEN}",
     "data": [
         {
-            "number": "+14990000027",
-            "state": "reserved"
+            "number": "+15552225562",
+            "state": "available"
         },
         {
-            "number": "+14990000028",
+            "number": "+15554445558",
+            "state": "discovery"
+        },
+        {
+            "number": "+15552225562",
             "state": "available"
         }
     ],
