@@ -25,12 +25,12 @@
 authorize(Props, CallId, Node) ->
     wh_util:put_callid(CallId),
     IsAuthorized = maybe_authorize_channel(Props, Node),
-    lager:debug("channel is ~s authorized", [was_authorized(IsAuthorized)]),
+    lager:debug("channel is~s authorized", [was_authorized(IsAuthorized)]),
     ecallmgr_fs_channel:set_authorized(CallId, IsAuthorized).
 
 -spec was_authorized(boolean()) -> string().
 was_authorized('true') -> "";
-was_authorized('false') -> "not".
+was_authorized('false') -> " not".
 
 -spec kill_channel(wh_proplist(), atom()) -> 'ok'.
 -spec kill_channel(ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
