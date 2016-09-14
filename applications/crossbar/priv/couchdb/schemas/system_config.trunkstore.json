@@ -18,6 +18,11 @@
             "description": "trunkstore ensure valid caller id",
             "type": "boolean"
         },
+        "honor_diversions_by_cid_validation": {
+            "default": false,
+            "description": "trunkstore honor diversions by cid validation",
+            "type": "boolean"
+        },
         "ring_ready_offnet": {
             "default": true,
             "description": "trunkstore ring ready offnet",
