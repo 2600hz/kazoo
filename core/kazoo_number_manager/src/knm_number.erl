@@ -221,7 +221,7 @@ save_number(Number) ->
 save_phone_number(Number) ->
     set_phone_number(Number, knm_phone_number:save(phone_number(Number))).
 
--spec save_wrap_phone_number(knm_phone_number:knm_phone_number(), knm_number()) -> knm_number().
+-spec save_wrap_phone_number(knm_phone_number:knm_phone_number(), knm_number()) -> knm_number_return().
 save_wrap_phone_number(PhoneNumber, Number) ->
     wrap_phone_number_return(knm_phone_number:save(PhoneNumber), Number).
 
