@@ -182,6 +182,7 @@ apis:
 	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/couchdb/schemas/*.json
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-api-endpoints.escript
 	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/api/swagger.json
+	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
 
 validate-swagger:
 	$(ROOT)/scripts/validate-swagger.sh
