@@ -73,12 +73,12 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
                   end
                  ,ToRm0
                  ),
-    _ToRm = [DID
+    ToRm = [DID
             || DID <- ToRm0,
                false =:= is_assigned_to(AccountDb, DID, AccountId),
                ok =:= ?LOG("########## will remove [~s] doc: ~s ##########", [AccountDb, DID])
            ],
-    %_ = kz_datamgr:del_docs(AccountDb, ToRm),
+    _ = kz_datamgr:del_docs(AccountDb, ToRm),
     ?LOG("########## done fixing [~s] ##########", [AccountDb]);
 fix_account_numbers(Account = ?NE_BINARY) ->
     fix_account_numbers(kz_util:format_account_db(Account)).
