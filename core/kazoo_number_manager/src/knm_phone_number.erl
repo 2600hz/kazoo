@@ -743,8 +743,8 @@ set_doc(N, JObj) ->
 -spec update_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 update_doc(N=#knm_phone_number{doc = Doc}, JObj) ->
     'true' = kz_json:is_json_object(JObj),
-    Updated = kz_json:merge_jobjs(JObj, Doc),
-    N#knm_phone_number{doc = Updated}.
+    Updated = kz_json:merge_jobjs(kz_json:public_fields(JObj), Doc),
+    N#knm_phone_number{doc = kz_json:delete_key(<<"id">>, Updated)}.
 
 %%--------------------------------------------------------------------
 %% @public
