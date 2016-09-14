@@ -21,7 +21,7 @@
                     ,<<"Discount-Percentage">>, <<"Rate-NoCharge-Time">>
                    ]).
 
--spec authorize(wh_proplist(), ne_binary(), atom()) -> boolean().
+-spec authorize(wh_proplist(), ne_binary(), atom()) -> 'ok'.
 authorize(Props, CallId, Node) ->
     wh_util:put_callid(CallId),
     IsAuthorized = maybe_authorize_channel(Props, Node),
