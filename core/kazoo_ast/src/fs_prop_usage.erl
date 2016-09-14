@@ -272,7 +272,7 @@ process_expression(Acc, ?LC_BIN_GENERATOR(Pattern, Expr)) ->
     process_expressions(Acc, [Pattern, Expr]);
 
 process_expression(#usage{current_module=_M}=Acc, _Expression) ->
-    io:format("~nskipping expression in ~p: ~p~n", [_M, _Expression]),
+    ?DEBUG("~nskipping expression in ~p: ~p~n", [_M, _Expression]),
     Acc.
 
 process_list(Acc, Head, Tail) ->
