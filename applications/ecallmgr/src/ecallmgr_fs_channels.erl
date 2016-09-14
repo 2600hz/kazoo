@@ -535,7 +535,7 @@ handle_info(_Msg, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), state()) -> handle_event_ret().
+-spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(_JObj, #state{}) ->
     {'reply', []}.
 
@@ -721,10 +721,10 @@ query_channels({[#channel{uuid=CallId}=Channel], Continuation}
                   );
 query_channels({[#channel{uuid=CallId}=Channel], Continuation}
               ,Fields, Channels) ->
-    Props = ecallmgr_fs_channel:to_api_props(Channel),
+    ChannelProps = ecallmgr_fs_channel:to_api_props(Channel),
     JObj = kz_json:from_list(
              props:filter_undefined(
-               [{Field, props:get_value(Field, Props)}
+               [{Field, props:get_value(Field, ChannelProps)}
                 || Field <- Fields
                ]
               )),
