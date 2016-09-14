@@ -1149,6 +1149,7 @@ send_error_resp(CallId, Cmd) ->
                    ).
 
 -spec send_error_resp(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+-spec send_error_resp(ne_binary(), wh_json:object(), ne_binary(), api_object()) -> 'ok'.
 send_error_resp(CallId, Cmd, Msg) ->
     case ecallmgr_fs_channel:fetch(CallId) of
         {'ok', Channel} -> send_error_resp(CallId, Cmd, Msg, Channel);
