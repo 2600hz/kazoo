@@ -27,15 +27,14 @@ write_usage_to_header(Usage, IO) ->
     EventFilters = lists:foldl(fun write_mod_usage/2, sets:new(), Usage),
     [First|Sorted] = lists:usort(sets:to_list(EventFilters)),
 
-    file:write(IO, io_lib:format("-define(FS_EVENT_FITLERS~n       ,[~p~n", [First])),
+    'ok' = file:write(IO, io_lib:format("-define(FS_EVENT_FITLERS~n       ,[~p~n", [First])),
     lists:foreach(fun(Filter) ->
                           file:write(IO, io_lib:format("        ,~p~n", [Filter]))
                   end
                  ,Sorted
                  ),
-    file:write(IO, "        ])."),
-    'ok' = file:close(IO),
-    io:format("wrote ~s~n", [event_filter_filename()]).
+    'ok' = file:write(IO, "        ])."),
+    'ok' = file:close(IO).
 
 write_mod_usage({_Mod, Usages}, AccSet) ->
     Keys = usage_keys(Usages),
