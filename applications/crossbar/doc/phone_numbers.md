@@ -109,36 +109,47 @@ Note: one can apply filters such as `?filter_state=in_service` or `?created_from
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers?filter_state=in_service
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers?page_size=3&start_key=%2B14152338421
 ```
 
 ```json
-{
+
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "casquade_quantity": 0,
         "numbers": {
-            "+14155555555": {
+            "+14152338421": {
                 "assigned_to": "{ACCOUNT_ID}",
-                "created": 63602230185,
+                "created": 63628550806,
+                "features": [],
+                "state": "in_service",
+                "updated": 63628550806
+            },
+            "+14155234712": {
+                "assigned_to": "{ACCOUNT_ID}",
+                "created": 63636963275,
                 "features": [
                     "local"
                 ],
                 "state": "in_service",
-                "updated": 63602230212,
-                "used_by": "callflow"
+                "updated": 63636963275
             },
-            "+14158865100": {
+            "+14155558920": {
                 "assigned_to": "{ACCOUNT_ID}",
-                "created": 63624719324,
-                "state": "in_service",
-                "updated": 63624719325
+                "created": 63633211146,
+                "features": [
+                    "local"
+                ],
+                "state": "reserved",
+                "updated": 63633211146
             }
         }
     },
-    "page_size": 2,
+    "next_start_key": "+14155558921",
+    "page_size": 3,
     "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",
+    "start_key": "+14152338421",
     "status": "success"
 }
 ```
