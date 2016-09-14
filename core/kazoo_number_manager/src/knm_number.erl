@@ -102,15 +102,11 @@ get(Num) ->
 get(Num, Options) ->
     case knm_converters:is_reconcilable(Num) of
         'false' -> {'error', 'not_reconcilable'};
-        'true' -> get_number(Num, Options)
+        'true' ->
+            wrap_phone_number_return(
+              attempt(fun knm_phone_number:fetch/2, [Num, Options])
+             )
     end.
-
--spec get_number(ne_binary(), knm_number_options:options()) ->
-                        knm_number_return().
-get_number(Num, Options) ->
-    wrap_phone_number_return(
-      attempt(fun knm_phone_number:fetch/2, [Num, Options])
-     ).
 
 %%--------------------------------------------------------------------
 %% @public
