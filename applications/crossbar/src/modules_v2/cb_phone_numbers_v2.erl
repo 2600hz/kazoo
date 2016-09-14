@@ -29,7 +29,7 @@
 
 -define(CB_LIST, <<"phone_numbers/crossbar_listing">>).
 -define(PORT_NUM_LISTING, <<"port_requests/phone_numbers_listing">>).
--define(PORT_NUMBER_IDX_KEY, 2).
+-define(PORT_NUMBER_KEY_INDEX, 2).
 
 -define(ACTIVATE, <<"activate">>).
 -define(RESERVE, <<"reserve">>).
@@ -237,10 +237,9 @@ validate_phone_numbers(Context, ?HTTP_GET, _AccountId) ->
     end.
 
 validate(Context, ?FIX) ->
-    cb_context:set_resp_data(
-      cb_context:set_resp_status(Context, 'success')
+    cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                             ,kz_json:new()
-     );
+                            );
 validate(Context, ?PREFIX) ->
     find_prefix(Context);
 validate(Context, ?COLLECTION) ->
@@ -467,7 +466,7 @@ normalize_port_number(JObj, Number, Context) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Lists numbers on GET /v2/accounts/{{ACCOUNT_ID}}/phone_numbers
+%% @doc Lists numbers on GET /v2/accounts/{ACCOUNT_ID}/phone_numbers
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
@@ -480,7 +479,11 @@ summary(Context) ->
 %% @private
 -spec view_account_phone_numbers(cb_context:context()) -> cb_context:context().
 view_account_phone_numbers(Context) ->
-    Context1 = crossbar_doc:load_view(?CB_LIST, [], rename_qs_filters(Context), fun normalize_view_results/2),
+    Context1 = crossbar_doc:load_view(?CB_LIST
+                                     ,[]
+                                     ,rename_qs_filters(Context)
+                                     ,fun normalize_view_results/2
+                                     ),
     ListOfNumProps = cb_context:resp_data(Context1),
     PortNumberJObj = maybe_add_port_request_numbers(Context),
     NumbersJObj = lists:foldl(fun kz_json:merge_jobjs/2, PortNumberJObj, ListOfNumProps),
@@ -538,16 +541,16 @@ rename_qs_filters(Context) ->
 normalize_view_results(JObj, Acc) ->
     Number = kz_json:get_value(<<"key">>, JObj),
     Properties = kz_json:get_value(<<"value">>, JObj),
-    [kz_json:set_value(Number, Properties, kz_json:new())
+    [kz_json:from_list([{Number, Properties}])
      | Acc
     ].
 
 %% @private
 -spec normalize_port_view_result(kz_json:object()) -> kz_json:object().
 normalize_port_view_result(JObj) ->
-    Number = kz_json:get_value([<<"key">>, ?PORT_NUMBER_IDX_KEY], JObj),
+    Number = kz_json:get_value([<<"key">>, ?PORT_NUMBER_KEY_INDEX], JObj),
     Properties = kz_json:get_value(<<"value">>, JObj),
-    kz_json:set_value(Number, Properties, kz_json:new()).
+    kz_json:from_list([{Number, Properties}]).
 
 %%--------------------------------------------------------------------
 %% @private
