@@ -39,12 +39,7 @@ authenticate(Context, _Payload) ->
         {'ok', JObj} ->
             lager:debug("token auth is valid, authenticating : ~p", [JObj]),
             AccountId = kz_json:get_ne_value(<<"account_id">>, JObj),
-            case kz_account:fetch(AccountId) of
-                {'ok', Doc} ->
-                    lager:debug("account auth is valid, authenticating : ~s", [AccountId]),
-                    bh_context:set_auth_doc(Context, Doc);
-                _ -> bh_context:add_error(Context, <<"failed to get account ", AccountId/binary>>)
-            end;
+            bh_context:set_auth_account_id(Context, AccountId);
         {'error', R} ->
             lager:debug("failed to authenticate token auth, ~p", [R]),
             bh_context:add_error(Context, <<"failed to authenticate token ", Token/binary>>)

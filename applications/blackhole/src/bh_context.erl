@@ -21,7 +21,6 @@
 -export([setters/2
         ,auth_token/1, set_auth_token/2
         ,auth_account_id/1, set_auth_account_id/2
-        ,set_auth_doc/2
         ,bindings/1, set_bindings/2
         ,bindings_from_json/1
         ,add_binding/2, add_bindings/2
@@ -158,15 +157,9 @@ auth_account_id(#bh_context{auth_account_id=AuthBy}) ->
 set_auth_account_id(#bh_context{}=Context, AuthBy) ->
     Context#bh_context{auth_account_id=AuthBy}.
 
--spec set_auth_doc(context(), kz_json:object()) -> context().
-set_auth_doc(#bh_context{}=Context, AuthDoc) ->
-    Context#bh_context{auth_account_id=kz_account:id(AuthDoc)
-                      ,auth_doc=AuthDoc
-                      }.
-
 -spec is_superduper_admin(context()) -> api_binary().
-is_superduper_admin(#bh_context{auth_doc=AuthDoc}) ->
-    kz_account:is_superduper_admin(AuthDoc).
+is_superduper_admin(#bh_context{auth_account_id=AccountId}) ->
+    kz_util:is_system_admin(AccountId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -351,7 +344,7 @@ add_error(Context, Error) ->
     add_error(Context, 'error', Error).
 
 add_error(#bh_context{errors=Errors}=Context, Result, Error) ->
-    Context#bh_context{result=Result, errors=[Error | Errors]}.
+    Context#bh_context{result=Result, errors=[kz_util:to_binary(Error) | Errors]}.
 
 add_listeners(#bh_context{listeners=BListeners}=Context, Listeners) ->
     Context#bh_context{listeners = BListeners ++ Listeners}.
