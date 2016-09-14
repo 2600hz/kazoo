@@ -33,6 +33,7 @@ recv({Action, Payload}, Context) ->
     Routines = [fun rate/3
                ,fun authenticate/3
                ,fun validate/3
+               ,fun authorize/3
                ,fun limits/3
                ,fun command/3
                ,fun finish/3
@@ -53,7 +54,7 @@ send_error(#bh_context{websocket_pid=SessionPid
                       ,req_id=RequestId
                       ,errors=Errors
                       }) ->
-    Data = kz_json:from_list(Errors),
+    Data = kz_json:from_list([{<<"errors">>, Errors}]),
     blackhole_data_emitter:reply(SessionPid, RequestId, <<"error">>, Data),
     'error'.
 
@@ -89,13 +90,14 @@ authenticate(Context, Action, Payload) ->
             handle_result(Context, blackhole_bindings:map(Routing, [Context, Payload]))
     end.
 
-%% authorize(Context, Action, Payload) ->
-%%     Routing = <<"blackhole.authorize.", Action/binary>>,
-%%     handle_result(Context, blackhole_bindings:map(Routing, [Context, Payload])).
-
 validate(Context, Action, Payload) ->
     Routing = <<"blackhole.validate.", Action/binary>>,
     handle_result(Context, blackhole_bindings:map(Routing, [Context, Payload])).
+
+authorize(Context, Action, Payload) ->
+    Routing = <<"blackhole.authorize.", Action/binary>>,
+    handle_result(Context, blackhole_bindings:map(Routing, [Context, Payload])).
+
 
 limits(Context, Action, Payload) ->
     Routing = <<"blackhole.limits.", Action/binary>>,

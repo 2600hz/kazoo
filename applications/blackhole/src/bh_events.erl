@@ -13,6 +13,7 @@
         ,subscribe/2
         ,unsubscribe/2
         ,close/1
+        ,authorize/2
         ]).
 
 -include("blackhole.hrl").
@@ -28,13 +29,27 @@ init() ->
     blackhole_bindings:bind(<<"blackhole.session.close">>, ?MODULE, 'close').
 
 
--spec validate(bh_context:context(), kz_json:object()) -> bh_subscribe_result().
+-spec authorize(bh_context:context(), kz_json:object()) -> bh_context:context().
+authorize(Context, Payload) ->
+    AccountId = kz_json:get_value([<<"data">>, <<"account_id">>], Payload),
+    Binding = kz_json:get_value([<<"data">>, <<"binding">>], Payload),
+    [Key | Keys] = binary:split(Binding, <<".">>, ['global']),
+    Event = <<"blackhole.events.authorize.", Key/binary>>,
+    Map = #{account_id => AccountId
+           ,key => Key
+           ,keys => Keys
+           },
+    Res = blackhole_bindings:fold(Event, [Context, Map]),
+    validate_result(Context, Res).
+
+-spec validate(bh_context:context(), kz_json:object()) -> bh_context:context().
 validate(Context, Payload) ->
     case kz_json:get_keys(<<"data">>, Payload) of
-        [] -> bh_context:add_error(Context, "missing required keys in data object");
+        [] -> bh_context:add_error(Context, <<"missing required keys in data object">>);
         Keys -> validate_data(Context, Payload, Keys)
     end.
 
+-spec validate_data(bh_context:context(), kz_json:object(), ne_binaries()) -> bh_context:context().
 validate_data(Context, Payload, Keys) ->
     case ?SUBSCRIBE_KEYS -- Keys of
         [] -> validate_subscription(Context, Payload);
@@ -43,6 +58,7 @@ validate_data(Context, Payload, Keys) ->
             bh_context:add_error(Context, Error)
     end.
 
+-spec validate_subscription(bh_context:context(), kz_json:object()) -> bh_context:context().
 validate_subscription(Context, Payload) ->
     AccountId = kz_json:get_value([<<"data">>, <<"account_id">>], Payload),
     Binding = kz_json:get_value([<<"data">>, <<"binding">>], Payload),
@@ -55,6 +71,7 @@ validate_subscription(Context, Payload) ->
     Res = blackhole_bindings:map(Event, [Context, Map]),
     validate_result(Context, Res).
 
+-spec validate_result(bh_context:context(), ne_binaries()) -> bh_context:context().
 validate_result(Context, []) -> Context;
 validate_result(Context, Res) ->
     case blackhole_bindings:failed(Res) of
@@ -65,7 +82,7 @@ validate_result(Context, Res) ->
               end
     end.
 
--spec subscribe(bh_context:context(), kz_json:object()) -> bh_subscribe_result().
+-spec subscribe(bh_context:context(), kz_json:object()) -> bh_context:context().
 subscribe(Context, Payload) ->
     AccountId = kz_json:get_value([<<"data">>, <<"account_id">>], Payload),
     Binding = kz_json:get_value([<<"data">>, <<"binding">>], Payload),

@@ -90,16 +90,13 @@ all(Res) when is_list(Res) ->
 
 -spec failed(map_results()) -> map_results().
 failed(Res) when is_list(Res) ->
-    kazoo_bindings:failed(Res, fun filter_out_succeeded/1).
+    kazoo_bindings:failed(Res, fun filter_out_succeeded/1);
+failed(Res)-> failed([Res]).
 
 -spec succeeded(map_results()) -> map_results().
 succeeded(Res) when is_list(Res) ->
     kazoo_bindings:succeeded(Res, fun filter_out_failed/1);
-succeeded(#bh_context{}=Ctx) ->
-    case bh_context:success(Ctx) of
-        'true' -> [Ctx];
-        'false' -> []
-    end.
+succeeded(Res)-> succeeded([Res]).
 
 %%-------------------------------------------------------------------------
 %% @doc
@@ -125,6 +122,8 @@ filter_out_failed('false') -> 'false';
 filter_out_failed({'EXIT', _}) -> 'false';
 filter_out_failed(#bh_context{}=Ctx) ->
     not bh_context:success(Ctx);
+filter_out_failed([#bh_context{}=Ctx]) ->
+    not bh_context:success(Ctx);
 filter_out_failed(Term) -> not kz_util:is_empty(Term).
 
 %%--------------------------------------------------------------------
@@ -140,6 +139,8 @@ filter_out_succeeded({'false', _}) -> 'true';
 filter_out_succeeded('false') -> 'true';
 filter_out_succeeded({'EXIT', _}) -> 'true';
 filter_out_succeeded(#bh_context{}=Ctx) ->
+    bh_context:success(Ctx);
+filter_out_succeeded([#bh_context{}=Ctx]) ->
     bh_context:success(Ctx);
 filter_out_succeeded(Term) -> kz_util:is_empty(Term).
 

@@ -19,6 +19,7 @@
                          ]).
 
 -define(COMMAND_MODULES, ['bh_events'
+                         ,'bh_authz_subscribe'
                          ]).
 
 -define(VERSION_SUPPORTED, [<<"v1">>]).
@@ -27,7 +28,6 @@
 
 -record(bh_context, {auth_token = <<>> :: api_binary() | '_'
                     ,auth_account_id :: api_binary() | '_'
-                    ,auth_doc :: api_object() | '_'
                     ,bindings = [] :: ne_binaries() | '_'
                     ,websocket_session_id :: api_binary() | '_'
                     ,websocket_pid :: api_pid() | '_'
