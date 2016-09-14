@@ -92,8 +92,11 @@ subscribe(Context, Payload) ->
            ,key => Key
            ,keys => Keys
            },
-    Res = blackhole_bindings:map(Event, [Context, Map]),
-    add_event_bindings(Context, Res).
+    MapResults = blackhole_bindings:map(Event, [Context, Map]),
+    case blackhole_bindings:succeeded(MapResults) of
+        [] -> bh_context:add_error(Context, <<"no available subscriptions to requested binding">>);
+        Bindings -> add_event_bindings(Context, Bindings)
+    end.
 
 -spec unsubscribe(bh_context:context(), kz_json:object()) -> bh_subscribe_result().
 unsubscribe(Context, Payload) ->
@@ -105,8 +108,11 @@ unsubscribe(Context, Payload) ->
            ,key => Key
            ,keys => Keys
            },
-    Res = blackhole_bindings:map(Event, [Context, Map]),
-    remove_event_bindings(Context, Res).
+    MapResults = blackhole_bindings:map(Event, [Context, Map]),
+    case blackhole_bindings:succeeded(MapResults) of
+        [] -> bh_context:add_error(Context, <<"no available subscriptions to requested binding">>);
+        Bindings -> remove_event_bindings(Context, Bindings)
+    end.
 
 -spec event(map(), ne_binary(), kz_json:object()) -> 'ok'.
 event(Binding, RK, EventJObj) ->

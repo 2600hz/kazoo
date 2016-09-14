@@ -16,6 +16,7 @@
 
 -include("blackhole.hrl").
 -include_lib("kazoo/include/kapi_conf.hrl").
+-include_lib("kazoo_documents/include/doc_types.hrl").
 
 
 -spec init() -> any().
@@ -29,47 +30,65 @@ init() ->
 validate(Context, #{keys := [<<"*">>, <<"*">>]
                    }) ->
     Context;
-validate(Context, #{keys := [Event, <<"*">>]
-                   }) ->
-    case lists:member(Event, ?DOC_TYPES) of
-        'true' -> Context;
-        'false' -> bh_context:add_error(Context, <<"event ", Event/binary, " not supported">>)
-    end;
-validate(Context, #{keys := [<<"*">>, Action]
+validate(Context, #{keys := [Action, <<"*">>]
                    }) ->
     case lists:member(Action, ?DOC_ACTIONS) of
         'true' -> Context;
-        'false' -> bh_context:add_error(Context, <<"event ", Action/binary, " not supported">>)
+        'false' -> bh_context:add_error(Context, <<"event ", Action/binary, ".* not supported">>)
     end;
-validate(Context, #{keys := [Event, Action]
+validate(Context, #{keys := [<<"*">>, Type]
+                   }) ->
+    case lists:member(Type, ?DOC_TYPES) of
+        'true' -> Context;
+        'false' -> bh_context:add_error(Context, <<"event *.", Type/binary, " not supported">>)
+    end;
+validate(Context, #{keys := [Action, Type]
                    }) ->
     case lists:member(Action, ?DOC_ACTIONS)
-        andalso lists:member(Event, ?DOC_TYPES)
+        andalso lists:member(Type, ?DOC_TYPES)
     of
         'true' -> Context;
-        'false' -> bh_context:add_error(Context, <<"event ", Event/binary, ".", Action/binary, " not supported">>)
+        'false' -> bh_context:add_error(Context, <<"event ", Action/binary, ".", Type/binary, " not supported">>)
     end;
 validate(Context, #{keys := Keys}) ->
     bh_context:add_error(Context, <<"invalid format for object subscription : ", (kz_util:join_binary(Keys))/binary>>).
 
 -spec bindings(bh_context:context(), map()) -> map().
 bindings(_Context, #{account_id := AccountId
-                    ,keys := [Type, Action]
+                    ,keys := [Action, Type]
                     }=Map) ->
     AccountDb = kz_util:format_account_db(AccountId),
-    Keys = [[{'action', Action}, {'db', AccountDb}, {'doc_type', Type}]],
-    Requested = <<"object.", Type/binary, ".", Action/binary>>,
-    Subscribed = [<<Action/binary, ".", AccountDb/binary, ".", Type/binary, ".*">>],
-    Listeners = [{'amqp', 'conf', bind_options(AccountId, Keys)}],
+    AccountMODB = kazoo_modb:get_modb(AccountId),
+    Requested = <<"object.", Action/binary, ".", Type/binary>>,
     Map#{requested => Requested
-        ,subscribed => Subscribed
-        ,listeners => Listeners
+        ,subscribed => subscribed(Type, Action, AccountDb, AccountMODB)
+        ,listeners => listeners(Type, Action, AccountDb, AccountMODB)
         }.
 
--spec bind_options(ne_binary(), list()) -> kz_json:object().
-bind_options(AccountId, Keys) ->
-    [{'restrict_to', ['doc_updates']}
-    ,{'account_id', AccountId}
-    ,{'keys', Keys}
+subscribed(<<"*">>, Action, AccountDb, AccountMODB) ->
+    [<<Action/binary, ".", AccountDb/binary, ".*.*">>
+    ,<<Action/binary, ".", AccountMODB/binary, ".*.*">>
+    ];
+subscribed(Type, Action, AccountDb, AccountMODB) ->
+    case lists:member(Type, ?DOC_MODB_TYPES) of
+        'true'  -> [<<Action/binary, ".", AccountMODB/binary, ".", Type/binary, ".*">>];
+        'false' -> [<<Action/binary, ".", AccountDb/binary, ".", Type/binary, ".*">>]
+    end.
+
+listeners(<<"*">>, Action, AccountDb, AccountMODB) ->
+    [{'amqp', 'conf', bind_options(Action, <<"*">>, AccountDb)}
+    ,{'amqp', 'conf', bind_options(Action, <<"*">>, AccountMODB)}
+    ];
+listeners(Type, Action, AccountDb, AccountMODB) ->
+    case lists:member(Type, ?DOC_MODB_TYPES) of
+        'true'  -> [{'amqp', 'conf', bind_options(Action, Type, AccountMODB)}];
+        'false' -> [{'amqp', 'conf', bind_options(Action, Type, AccountDb)}]
+    end.
+
+-spec bind_options(ne_binary(), ne_binary(), ne_binary()) -> kz_proplist().
+bind_options(Action, Db, Type) ->
+    [{'action', Action}
+    ,{'db', Db}
+    ,{'doc_type', Type}
     ,'federate'
     ].
