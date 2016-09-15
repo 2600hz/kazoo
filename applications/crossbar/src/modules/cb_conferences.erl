@@ -124,16 +124,16 @@ validate_conference(?HTTP_GET, Context0, ConferenceId) ->
     end;
 validate_conference(?HTTP_POST, Context, ConferenceId) ->
     check_numbers(Context, fun() ->
-        update_conference(ConferenceId, Context)
-    end);
+                                   update_conference(ConferenceId, Context)
+                           end);
 validate_conference(?HTTP_PUT, Context, ConferenceId) ->
     check_numbers(Context, fun() ->
-        load_conference(ConferenceId, Context)
-    end);
+                                   load_conference(ConferenceId, Context)
+                           end);
 validate_conference(?HTTP_PATCH, Context, ConferenceId) ->
     check_numbers(Context, fun() ->
-        patch_conference(ConferenceId, Context)
-    end);
+                                   patch_conference(ConferenceId, Context)
+                           end);
 validate_conference(?HTTP_DELETE, Context, ConferenceId) ->
     load_conference(ConferenceId, Context).
 
@@ -208,7 +208,6 @@ update_conference(ConferenceId, Context) ->
 
 -spec patch_conference(ne_binary(), cb_context:context()) -> cb_context:context().
 patch_conference(ConferenceId, Context) ->
-
     crossbar_doc:patch_and_validate(ConferenceId, Context, fun update_conference/2).
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
