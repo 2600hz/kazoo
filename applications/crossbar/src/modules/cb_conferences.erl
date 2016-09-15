@@ -123,11 +123,17 @@ validate_conference(?HTTP_GET, Context0, ConferenceId) ->
         _Else -> Context1
     end;
 validate_conference(?HTTP_POST, Context, ConferenceId) ->
-    update_conference(ConferenceId, Context);
+    check_numbers(Context, fun() ->
+        update_conference(ConferenceId, Context)
+    end);
 validate_conference(?HTTP_PUT, Context, ConferenceId) ->
-    load_conference(ConferenceId, Context);
+    check_numbers(Context, fun() ->
+        load_conference(ConferenceId, Context)
+    end);
 validate_conference(?HTTP_PATCH, Context, ConferenceId) ->
-    patch_conference(ConferenceId, Context);
+    check_numbers(Context, fun() ->
+        patch_conference(ConferenceId, Context)
+    end);
 validate_conference(?HTTP_DELETE, Context, ConferenceId) ->
     load_conference(ConferenceId, Context).
 
@@ -202,6 +208,7 @@ update_conference(ConferenceId, Context) ->
 
 -spec patch_conference(ne_binary(), cb_context:context()) -> cb_context:context().
 patch_conference(ConferenceId, Context) ->
+
     crossbar_doc:patch_and_validate(ConferenceId, Context, fun update_conference/2).
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
@@ -222,20 +229,21 @@ normalize_view_results(JObj, Acc) ->
 %% Create a new conference document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_create_conference(cb_context:context()) -> cb_context:context().
-maybe_create_conference(Context) ->
+
+-spec check_numbers(cb_context:context(), fun()) -> cb_context:context().
+check_numbers(Context, Fun) ->
     AccountDb = cb_context:account_db(Context),
     case kz_datamgr:get_all_results(AccountDb, ?CB_LIST_BY_NUMBER) of
         {'error', _R} ->
             cb_context:add_system_error('datastore_fault', Context);
         {'ok', JObjs} ->
+            JConf = cb_context:req_data(Context),
             Numbers = kz_datamgr:get_result_keys(JObjs),
-            ReqData = cb_context:req_data(Context),
-            MemberNumbers = kz_json:get_value([<<"member">>, <<"numbers">>], ReqData, []),
-            ModNumbers = kz_json:get_value([<<"moderator">>, <<"numbers">>], ReqData, []),
-            case is_number_already_used(Numbers, MemberNumbers ++ ModNumbers) of
-                'false' ->
-                    create_conference(Context);
+            Conf = kz_json:get_value(<<"conference_number">>, JConf, []),
+            Member = kz_json:get_value([<<"member">>, <<"numbers">>], JConf, []),
+            Moderator = kz_json:get_value([<<"moderator">>, <<"numbers">>], JConf, []),
+            case is_number_already_used(Numbers, Conf ++ Member ++ Moderator) of
+                'false' -> Fun();
                 {'true', Number} ->
                     lager:error("number ~s is already used", [Number]),
                     Error = kz_json:from_list([{<<"message">>, <<"Number already in use">>}
@@ -243,6 +251,10 @@ maybe_create_conference(Context) ->
                     cb_context:add_validation_error([<<"numbers">>], <<"unique">>, Error, Context)
             end
     end.
+
+-spec maybe_create_conference(cb_context:context()) -> cb_context:context().
+maybe_create_conference(Context) ->
+    check_numbers(Context, fun() -> create_conference(Context) end).
 
 -spec is_number_already_used(ne_binaries(), ne_binaries()) -> 'false' | {'true', ne_binary()}.
 is_number_already_used(Numbers, NewNumbers) ->
