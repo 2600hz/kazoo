@@ -42,7 +42,7 @@
 
 -export([filter/2, filter/3
          ,map/2
-         ,foldl/3
+         ,foldl/3,foldr/3
          ,find/2, find/3
          ,find_first_defined/2, find_first_defined/3
          ,find_value/3, find_value/4
@@ -423,6 +423,11 @@ any(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
 foldl(F, Acc0, ?JSON_WRAPPER([])) when is_function(F, 3) -> Acc0;
 foldl(F, Acc0, ?JSON_WRAPPER(Prop)) when is_function(F, 3) ->
     lists:foldl(fun({Key, Value}, Acc1) -> F(Key, Value, Acc1) end, Acc0, Prop).
+
+-spec foldr(fun((key(), json_term(), any()) -> any()), any(), object()) -> any().
+foldr(F, Acc0, ?JSON_WRAPPER([])) when is_function(F, 3) -> Acc0;
+foldr(F, Acc0, ?JSON_WRAPPER(Prop)) when is_function(F, 3) ->
+    lists:foldr(fun({Key, Value}, Acc1) -> F(Key, Value, Acc1) end, Acc0, Prop).
 
 -spec get_string_value(keys(), object() | objects()) -> 'undefined' | list().
 -spec get_string_value(keys(), object(), Default) -> list() | Default.
