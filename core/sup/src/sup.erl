@@ -78,7 +78,7 @@ main(CommandLineArgs, Loops) ->
 -spec get_target(proplist(), boolean()) -> atom().
 get_target(Options, Verbose) ->
     Node = proplists:get_value('node', Options),
-    Host = get_host(Options),
+    Host = get_host(),
     Cookie = get_cookie(Options, list_to_atom(Node)),
     Target = list_to_atom(Node ++ "@" ++ Host),
     case net_adm:ping(Target) of
@@ -106,9 +106,9 @@ get_cookie(Options, Node) ->
     'true' = erlang:set_cookie(node(), Cookie),
     Cookie.
 
--spec get_host(proplist()) -> nonempty_string().
-get_host(Options) ->
-    Host = proplists:get_value('host', Options),
+-spec get_host() -> nonempty_string().
+get_host() ->
+    Host = localhost(),
     case inet:gethostbyname(Host) of
         {'ok', _} -> Host;
         {'error', 'nxdomain'} ->
@@ -171,7 +171,6 @@ print_ping_failed(Target, Cookie) ->
 print_unresolvable_host(Host) ->
     stdout("If you cannot run `ping ~s` then this program will not be able to connect.", [Host]),
     stdout("  Possible fixes:", []),
-    stdout("    * Use `sup -h <hostname>` argument of this script to specify a different host", []),
     stdout("    * Add \"{IP_OF_KAZOO_NODE}  ~s\" to your /etc/hosts file", [Host]),
     stdout("    * Create a DNS record for \"~s\"", [Host]),
     halt(1).
@@ -192,7 +191,6 @@ stderr(Format, Things) ->
 -spec option_spec_list() -> list().
 option_spec_list() ->
     [{'help', $?, "help", 'undefined', "Show the program options"}
-    ,{'host', $h, "host", {'string', localhost()}, "System hostname"}
     ,{'node', $n, "node", {'string', "kazoo_apps"}, "Node name"}
     ,{'cookie', $c, "cookie", {'string', "change_me"}, "Erlang cookie"}
     ,{'timeout', $t, "timeout", {'integer', 0}, "Command timeout"}
