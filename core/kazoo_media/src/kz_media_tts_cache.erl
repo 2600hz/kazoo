@@ -199,7 +199,6 @@ handle_info({'http', {ReqID, 'stream', Bin}}, #state{kz_http_req_id=ReqID
     _ = stop_timer(TRef),
     case kz_json:get_value(<<"content_type">>, Meta) of
         <<"audio/", _/binary>> ->
-            lager:debug("recv ~b bytes", [byte_size(Bin)]),
             {'noreply', State#state{contents = <<Contents/binary, Bin/binary>>
                                    ,timer_ref=start_timer()
                                    }};
