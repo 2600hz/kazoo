@@ -89,11 +89,12 @@ proxy_uri(JObj, #media_store_path{db = Db
                       'true' -> 'proxy_store';
                       'false' -> 'proxy_playback'
                   end,
-    Path = base64:encode(term_to_binary({Db, Id, Attachment, Options})),
+    Path = kz_util:uri_encode(base64:encode(term_to_binary({Db, Id, Attachment, Options}))),
+    File = kz_util:uri_encode(Attachment),
     <<(kz_media_util:base_url(Host, Port, Permissions))/binary
       ,StreamType/binary
       ,"/", Path/binary
-      ,"/", Attachment/binary
+      ,"/", File/binary
     >>.
 
 
