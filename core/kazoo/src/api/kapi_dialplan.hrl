@@ -615,6 +615,7 @@
                                   ,<<"Voice">>, <<"Language">>, <<"Engine">>
                                   ,<<"Group-ID">> % group media together (one DTMF cancels all in group)
                                   ,<<"Conference-ID">>
+                                  ,<<"Leg">>
                                   ]).
 -define(TTS_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                         ,{<<"Event-Name">>, <<"command">>}
