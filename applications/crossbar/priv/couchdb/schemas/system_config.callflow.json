@@ -154,12 +154,6 @@
                         "type": "integer"
                     }
                 },
-                "migrate_max_bulk_insert": {
-                    "properties": {
-                        "description": "callflow migrate maximum bulk insert",
-                        "type": "integer"
-                    }
-                },
                 "migrate_max_mailbox_process": {
                     "properties": {
                         "default": 10,
