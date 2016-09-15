@@ -30,5 +30,6 @@ ignored_hangup_causes() ->
                      ,<<"NO_USER_RESPONSE">>
                      ,<<"ORIGINATOR_CANCEL">>
                      ,<<"USER_BUSY">>
+                     ,<<"PICKED_OFF">>
                      ]
                     ).
