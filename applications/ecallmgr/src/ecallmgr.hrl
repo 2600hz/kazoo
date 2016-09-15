@@ -53,7 +53,7 @@
                           }).
 
 -record(channel, {uuid :: api_binary() | '$1' | '$2' | '_'
-                 ,destination :: api_binary() | '_'
+                 ,destination :: ne_binary() | '_'
                  ,direction :: api_binary() | '$1' | '_'
                  ,account_id :: api_binary() | '$1' | '$2' | '_'
                  ,account_billing :: api_binary() | '$7' | '_'
@@ -67,7 +67,7 @@
                  ,bridge_id :: api_binary() | '$5' | '_'
                  ,reseller_id :: api_binary() | '$1' | '$2' | '_'
                  ,reseller_billing :: api_binary() | '_'
-                 ,realm :: api_binary() | '_' | '$2'
+                 ,realm :: ne_binary() | '_' | '$2'
                  ,username :: api_binary() | '_' | '$1'
                  ,import_moh = 'false' :: boolean() | '_'
                  ,answered = 'true' :: boolean() | '_'

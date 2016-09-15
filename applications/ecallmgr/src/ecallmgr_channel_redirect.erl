@@ -34,7 +34,8 @@ redirect_remote(UUID, ChannelStatusJObj) ->
 redirect_via_proxy(DestNodeURL, UUID) ->
     {'ok', #channel{destination=ToUser
                    ,realm=Realm
-                   }=Channel} = ecallmgr_fs_channel:fetch(UUID, 'record'),
+                   }=Channel
+    } = ecallmgr_fs_channel:fetch(UUID, 'record'),
     Contact = <<"sip:", ToUser/binary, "@", Realm/binary>>,
 
     RedirectURL = binary:replace(DestNodeURL, <<"mod_sofia@">>, <<>>),
