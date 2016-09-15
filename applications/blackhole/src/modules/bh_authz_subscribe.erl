@@ -20,7 +20,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = blackhole_bindings:bind(<<"blackhole.events.authorize.*">>, ?MODULE, 'authorize').
+    _ = blackhole_bindings:bind(<<"blackhole.events.authorize.*">>, ?MODULE, 'authorize_account').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -34,7 +34,7 @@ authorize_account(Context, #{account_id := <<"*">>}) ->
         'false' -> bh_context:add_error(Context, <<"unauthorized wildcard account id">>)
     end;
 authorize_account(Context, #{account_id := AccountId}) ->
-    case kz_util:is_in_account_hierarchy(AccountId, bh_context:auth_account_id(Context)) of
+    case kz_util:is_in_account_hierarchy(bh_context:auth_account_id(Context), AccountId, 'true') of
         'true' -> Context;
         'false' -> bh_context:add_error(Context, <<"unauthorized account id">>)
     end.
