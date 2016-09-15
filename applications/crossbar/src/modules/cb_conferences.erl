@@ -113,7 +113,7 @@ validate(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
 validate_conferences(?HTTP_GET, Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
 validate_conferences(?HTTP_PUT, Context) ->
-    maybe_create_conference(Context).
+    check_numbers(Context, fun() -> create_conference(Context) end).
 
 -spec validate_conference(http_method(), cb_context:context(), ne_binary()) -> cb_context:context().
 validate_conference(?HTTP_GET, Context0, ConferenceId) ->
@@ -228,7 +228,6 @@ normalize_view_results(JObj, Acc) ->
 %% Create a new conference document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
-
 -spec check_numbers(cb_context:context(), fun()) -> cb_context:context().
 check_numbers(Context, Fun) ->
     AccountDb = cb_context:account_db(Context),
@@ -250,10 +249,6 @@ check_numbers(Context, Fun) ->
                     cb_context:add_validation_error([<<"numbers">>], <<"unique">>, Error, Context)
             end
     end.
-
--spec maybe_create_conference(cb_context:context()) -> cb_context:context().
-maybe_create_conference(Context) ->
-    check_numbers(Context, fun() -> create_conference(Context) end).
 
 -spec is_number_already_used(ne_binaries(), ne_binaries()) -> 'false' | {'true', ne_binary()}.
 is_number_already_used(Numbers, NewNumbers) ->
