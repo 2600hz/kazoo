@@ -1,5 +1,6 @@
 ROOT = ../..
 PROJECT = omnipresence
+ERLC_OPTS += -I../../core
 
 all: compile
 

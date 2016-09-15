@@ -1,5 +1,6 @@
 ROOT = ../..
 PROJECT = crossbar
+ERLC_OPTS += -I../../core
 
 all: compile
 
