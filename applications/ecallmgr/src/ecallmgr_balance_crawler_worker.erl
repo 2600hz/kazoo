@@ -81,12 +81,13 @@ disconnect_account(AccountId) ->
             disconnect_channels(Channels)
     end.
 
+-spec disconnect_channels(kz_proplist()) -> 'ok'.
 disconnect_channels([]) -> 'ok';
 disconnect_channels([Channel|Channels]) ->
     try_disconnect_channel(Channel),
     disconnect_channels(Channels).
 
--spec try_disconnect_channel({api_binary(), api_binary()}) -> 'ok'.
+-spec try_disconnect_channel({atom(), ne_binary()}) -> 'ok'.
 try_disconnect_channel({Node, UUID}) ->
     lager:debug("disconnect channel ~p",[UUID]),
     _ = ecallmgr_util:send_cmd(Node, UUID, "hangup", ""),

@@ -27,7 +27,7 @@
                    ,<<"Surcharge">>
                    ]).
 
--spec authorize(kz_proplist(), ne_binary(), atom()) -> boolean().
+-spec authorize(kz_proplist(), ne_binary(), atom()) -> 'ok'.
 authorize(Props, CallId, Node) ->
     kz_util:put_callid(CallId),
     IsAuthorized = maybe_authorize_channel(Props, Node),
