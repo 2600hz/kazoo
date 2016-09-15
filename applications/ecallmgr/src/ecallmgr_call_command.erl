@@ -999,7 +999,7 @@ wait_for_conference(ConfName) ->
 %% Store command helpers
 %% @end
 %%--------------------------------------------------------------------
--spec stream_over_http(atom(), ne_binary(), ne_binary(), 'put' | 'post', 'store'| 'store_vm' | 'fax', kz_json:object()) -> any().
+-spec stream_over_http(atom(), ne_binary(), file:filename_all(), 'put' | 'post', 'store'| 'store_vm' | 'fax', kz_json:object()) -> any().
 stream_over_http(Node, UUID, File, 'put'=Method, 'store'=Type, JObj) ->
     Url = kz_util:to_list(kz_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
