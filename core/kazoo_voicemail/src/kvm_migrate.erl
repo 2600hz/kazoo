@@ -228,7 +228,9 @@ crawl_account(AccountId, Offset) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
+%% @doc Create message docs and insert them into database in bulk
+%%
+%% MAX_BULK_INSERT defines how many docs should be written to db in each pass
 %% @end
 %%--------------------------------------------------------------------
 do_migrate(AccountId, BoxViewResults) ->
@@ -259,6 +261,11 @@ migrate_messages(AccountId, Messages) ->
             save_messages(Db, Messages)
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 update_mailboxes(AccountId, BoxViewResults) ->
     BoxJObjs = [kz_json:set_value(<<"messages">>
                                  ,[]
@@ -298,7 +305,14 @@ get_account_vmboxes(AccountId, ViewOpts) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
+%% @doc get messages array from each mailbox and generate a new message doc
+%% for them.
+%%
+%% Note: We are moving metadata only, attachment still remains in AccountDb,
+%% This is so much faster than moving with attachments which probably takes
+%% a couple of days for huge systems. Because if that we are just creating
+%% message docs from scratch based on message metadata from each mailbox,
+%% and we use kazoo_data bulk operation for faster db writes.
 %% @end
 %%--------------------------------------------------------------------
 -spec process_mailboxes(ne_binary(), kz_json:objects()) -> kz_json:objects().
@@ -326,6 +340,9 @@ process_message(AccountId, BoxJObj, Message, DefaultExt) ->
     BoxNum = kzd_voicemail_box:mailbox_number(BoxJObj),
     TimeZone = kzd_voicemail_box:timezone(BoxJObj),
     Timestamp = kz_json:get_value(<<"timestamp">>, Message),
+
+    %% instead of moving audio attachment we just create a dblink to it
+    %% and kz_datamgr will use this link to feych attachment from the right document
     AttName = <<(kz_util:rand_hex_binary(16))/binary, ".", DefaultExt/binary>>,
     AttHandlerProps = [{<<"att_dbname">>, kz_util:format_account_db(AccountId)}
                       ,{<<"att_docid">>, kzd_box_message:media_id(Message)}
@@ -337,6 +354,7 @@ process_message(AccountId, BoxJObj, Message, DefaultExt) ->
                ,{<<"handler">>, AttHandler}
                ],
     Att = kz_json:from_list([{AttName, kz_json:from_list(AttProps)}]),
+
     Props = props:filter_undefined(
               [{<<"Box-Id">>, kz_doc:id(BoxJObj)}
               ,{<<"Media-ID">>, kzd_box_message:media_id(Message)}

@@ -61,15 +61,37 @@
 -define(PVT_TYPE, <<"mailbox_message">>).
 -define(PVT_LEGACY_TYPE, <<"private_media">>).
 
+-define(MSG_ID(Year, Month, Id),
+        <<(kz_util:to_binary(Year))/binary
+          ,(kz_util:pad_month(Month))/binary
+          ,"-"
+          ,Id/binary
+        >>).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Generate a mailbox message doc with the given properties
 %% expected options in Props:
-%%    [{<<"Attachment-Name">>, AttachmentName}
-%%    ,{<<"Box-Id">>, BoxId}
-%%    ,{<<"Box-Num">>, BoxNum}
-%%    ,{<<"Timezone">>, Timezone}
+%%    [<<"Attachment-Name">>
+%%    ,<<"Box-Id">>
+%%    ,<<"Box-Num">>
+%%    ,<<"Timezone">>
 %%    ]
+%%
+%% Optional options(useful for migrating from AccountDB to MODB)
+%%    [<<"Media-Id">>
+%%    ,<<"Message-Timestamp">>
+%%    ,<<"Document-Timestamp">>
+%%    ]
+%%
+%% Note: If <<"Media-Id">> option is passed, it'll use for preserving
+%% current message_id during migration, so if for any reason migration failed
+%% and we run it again, it would try to write to same doc with same id
+%% which result in {'error', 'conflict'} which in this case is safe to ignore.
+%%
+%% <<"Message-Timestamp">>: is used to preserved previous message's utc_seconds.
+%% <<"Document-Timestamp">>: is then used to set pvt_created, pvt_modified if
+%% we are moving the message to older modb(by default we are moving messages to current modb).
 %% @end
 %%--------------------------------------------------------------------
 -spec new(ne_binary(), kz_proplist()) -> doc().
@@ -77,13 +99,11 @@ new(AccountId, Props) ->
     UtcSeconds = props:get_value(<<"Message-Timestamp">>, Props, kz_util:current_tstamp()),
     Timestamp  = props:get_value(<<"Document-Timestamp">>, Props, UtcSeconds),
     {Year, Month, _} = kz_util:to_date(Timestamp),
+
     MediaId = props:get_value(<<"Media-ID">>, Props, kz_util:rand_hex_binary(16)),
+
     Db = kazoo_modb:get_modb(AccountId, Year, Month),
-    MsgId = <<(kz_util:to_binary(Year))/binary
-              ,(kz_util:pad_month(Month))/binary
-              ,"-"
-              ,MediaId/binary
-            >>,
+    MsgId = ?MSG_ID(Year, Month, MediaId),
 
     Name = create_message_name(props:get_value(<<"Box-Num">>, Props)
                               ,props:get_value(<<"Timezone">>, Props)
