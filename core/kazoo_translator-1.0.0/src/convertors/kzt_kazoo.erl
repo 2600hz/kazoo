@@ -15,8 +15,16 @@
 
 -include("../kzt.hrl").
 
--spec exec(whapps_call:call(), wh_json:object()) -> usurp_return().
+-spec exec(whapps_call:call(), wh_json:object()) -> usurp_return() | {'error', whapps_call:call()}.
 exec(Call, FlowJObj) ->
+    %% rudimentary sanity check, to avoid crashing in amqp handler
+    case wh_json:get_value(<<"module">>, FlowJObj) of
+        'undefined' -> {'error', Call};
+        _ -> unsafe_exec(Call, FlowJObj)
+    end.
+
+-spec unsafe_exec(whapps_call:call(), wh_json:object()) -> usurp_return().
+unsafe_exec(Call, FlowJObj) ->
     Prop = [{<<"Call">>, whapps_call:to_json(Call)}
             ,{<<"Flow">>, FlowJObj}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
