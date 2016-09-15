@@ -1149,15 +1149,30 @@ send_error_resp(CallId, Cmd) ->
                    ).
 
 -spec send_error_resp(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+-spec send_error_resp(ne_binary(), wh_json:object(), ne_binary(), api_object()) -> 'ok'.
 send_error_resp(CallId, Cmd, Msg) ->
+    case ecallmgr_fs_channel:fetch(CallId) of
+        {'ok', Channel} -> send_error_resp(CallId, Cmd, Msg, Channel);
+        {'error', 'not_found'} -> send_error_resp(CallId, Cmd, Msg, 'undefined')
+    end.
+
+send_error_resp(CallId, Cmd, Msg, Channel) ->
+    CCVs = error_ccvs(Channel),
+
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd)}
             ,{<<"Error-Message">>, Msg}
             ,{<<"Request">>, Cmd}
             ,{<<"Call-ID">>, CallId}
+            ,{<<"Custom-Channel-Vars">>, CCVs}
             | wh_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
            ],
     lager:debug("sending execution error: ~p", [Resp]),
     wapi_dialplan:publish_error(CallId, Resp).
+
+-spec error_ccvs(api_object()) -> api_object().
+error_ccvs('undefined') -> 'undefined';
+error_ccvs(Channel) ->
+    wh_json:from_list(ecallmgr_fs_channel:channel_ccvs(Channel)).
 
 %%--------------------------------------------------------------------
 %% @private
