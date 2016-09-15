@@ -18,6 +18,7 @@
         ]).
 
 -include("crossbar.hrl").
+-define(ACCOUNT_CONFIG, <<"config">>).
 
 %%%===================================================================
 %%% API
@@ -63,10 +64,15 @@ resource_exists() -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    Doc = maybe_add_name(kapps_config:get_all_kvs(<<"dialplans">>)),
+    Doc = get_dialplans(cb_context:account_id(Context)),
     cb_context:setters(Context, [{fun cb_context:set_resp_data/2, Doc}
                                 ,{fun cb_context:set_resp_status/2, 'success'}
                                 ]).
+
+get_dialplans('undefined') ->
+    maybe_add_name(kapps_config:get_all_kvs(<<"dialplans">>));
+get_dialplans(AccountId) ->
+    kapps_account_config:get_global(AccountId, ?ACCOUNT_CONFIG, <<"dialplans">>).
 
 -spec maybe_add_name(kz_proplist()) -> kz_json:object().
 maybe_add_name(KVs) ->
