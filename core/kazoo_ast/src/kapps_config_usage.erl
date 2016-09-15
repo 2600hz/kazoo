@@ -1,7 +1,7 @@
 -module(kapps_config_usage).
 
 -export([process_project/0, process_app/1, process_module/1
-        ,to_schema_docs/0
+        ,to_schema_docs/0, to_schema_docs/1
         ]).
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
@@ -153,8 +153,8 @@ expression_to_schema(?FLOAT(_), Schemas) ->
     Schemas;
 expression_to_schema(?CHAR(_), Schemas) ->
     Schemas;
-expression_to_schema(?TUPLE(_Elements), Schemas) ->
-    Schemas;
+expression_to_schema(?TUPLE(Elements), Schemas) ->
+    expressions_to_schema(Elements, Schemas);
 expression_to_schema(?EMPTY_LIST, Schemas) ->
     Schemas;
 expression_to_schema(?LIST(Head, Tail), Schemas) ->
