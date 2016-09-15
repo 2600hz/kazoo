@@ -141,8 +141,13 @@ validate_set_metaflows(Context, Metaflows, 'undefined') ->
     validate_set_metaflows(Context, Metaflows, AccountDoc);
 validate_set_metaflows(Context, Metaflows, Doc) ->
     OwnerId = kz_json:get_first_defined([<<"_id">>, <<"pvt_account_id">>], Doc),
-    Doc1 = kz_json:set_value(<<"metaflows">>, Doc),
-    crossbar_util:response(Metaflows, cb_context:set_doc(Context, Doc1)).
+    Doc1 = kz_json:set_value(<<"metaflows">>
+                            ,kz_json:set_value(<<"owner_id">>, OwnerId, Metaflows)
+                            ,Doc
+                            ),
+    crossbar_util:response(Metaflows
+                          ,cb_context:set_doc(Context, Doc1)
+                          ).
 
 %%--------------------------------------------------------------------
 %% @public
