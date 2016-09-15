@@ -4,7 +4,14 @@
     "description": "Schema for milliwatt system_config",
     "properties": {
         "echo": {
-            "description": "milliwatt echo"
+            "default": {
+                "caller_id": [],
+                "number": [
+                    "5555555552"
+                ]
+            },
+            "description": "milliwatt echo",
+            "type": "object"
         },
         "route_win_timeout": {
             "default": 3000,
@@ -12,7 +19,14 @@
             "type": "integer"
         },
         "tone": {
-            "description": "milliwatt tone"
+            "default": {
+                "caller_id": [],
+                "number": [
+                    "5555555551"
+                ]
+            },
+            "description": "milliwatt tone",
+            "type": "object"
         }
     },
     "required": true,

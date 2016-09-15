@@ -8,6 +8,16 @@
             "description": "number_manager.bandwidth2 account id",
             "type": "string"
         },
+        "api_password": {
+            "default": "",
+            "description": "number_manager.bandwidth2 api password",
+            "type": "string"
+        },
+        "api_username": {
+            "default": "",
+            "description": "number_manager.bandwidth2 api username",
+            "type": "string"
+        },
         "debug": {
             "default": false,
             "description": "number_manager.bandwidth2 debug",
@@ -27,6 +37,16 @@
             "default": true,
             "description": "number_manager.bandwidth2 sandbox provisioning",
             "type": "boolean"
+        },
+        "sip_peer": {
+            "default": "",
+            "description": "number_manager.bandwidth2 sip peer",
+            "type": "string"
+        },
+        "site_id": {
+            "default": "",
+            "description": "number_manager.bandwidth2 site id",
+            "type": "string"
         }
     },
     "required": true,

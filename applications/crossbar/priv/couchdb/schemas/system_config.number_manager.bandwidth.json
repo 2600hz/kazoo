@@ -8,6 +8,11 @@
             "description": "number_manager.bandwidth debug",
             "type": "boolean"
         },
+        "developer_key": {
+            "default": "",
+            "description": "number_manager.bandwidth developer key",
+            "type": "string"
+        },
         "enable_provisioning": {
             "default": true,
             "description": "number_manager.bandwidth enable provisioning",

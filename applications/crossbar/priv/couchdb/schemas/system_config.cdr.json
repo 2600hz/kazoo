@@ -3,6 +3,18 @@
     "_id": "system_config.cdr",
     "description": "Schema for cdr system_config",
     "properties": {
+        "ignore_apps": {
+            "default": [
+                "milliwatt"
+            ],
+            "description": "cdr ignore apps",
+            "type": "array"
+        },
+        "ignore_loopback_bowout": {
+            "default": true,
+            "description": "cdr ignore loopback bowout",
+            "type": "boolean"
+        },
         "store_anonymous": {
             "default": false,
             "description": "cdr store anonymous",

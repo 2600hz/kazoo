@@ -16,6 +16,13 @@
                         "description": "konami default takeback dtmf",
                         "type": "string"
                     }
+                },
+                "default_target_timeout_ms": {
+                    "properties": {
+                        "default": 20000,
+                        "description": "konami default target timeout in milliseconds",
+                        "type": "integer"
+                    }
                 }
             }
         },

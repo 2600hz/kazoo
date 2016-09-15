@@ -15,6 +15,11 @@
         "google": {
             "description": "pusher google",
             "type": "string"
+        },
+        "modules": {
+            "default": [],
+            "description": "pusher modules",
+            "type": "array"
         }
     },
     "required": true,

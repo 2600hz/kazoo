@@ -3,6 +3,11 @@
     "_id": "system_config.omnipresence",
     "description": "Schema for omnipresence system_config",
     "properties": {
+        "cache_terminated_callid_s": {
+            "default": 60,
+            "description": "omnipresence cache terminated callid in seconds",
+            "type": "integer"
+        },
         "expire_check_ms": {
             "default": 1000,
             "description": "omnipresence expire check in milliseconds",
@@ -12,6 +17,15 @@
             "default": 20,
             "description": "omnipresence expires fudge in seconds",
             "type": "integer"
+        },
+        "modules": {
+            "default": [
+                "omnip_dialog_amqp",
+                "omnip_message_summary_amqp",
+                "omnip_presence_amqp"
+            ],
+            "description": "omnipresence modules",
+            "type": "array"
         },
         "subscriptions_sync_enabled": {
             "default": false,

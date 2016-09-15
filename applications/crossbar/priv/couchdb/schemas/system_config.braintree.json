@@ -18,6 +18,16 @@
             "description": "braintree default merchant id",
             "type": "string"
         },
+        "default_private_key": {
+            "default": "",
+            "description": "braintree default private key",
+            "type": "string"
+        },
+        "default_public_key": {
+            "default": "",
+            "description": "braintree default public key",
+            "type": "string"
+        },
         "max_amount": {
             "default": 200.0,
             "description": "braintree maximum amount",

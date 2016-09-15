@@ -3,10 +3,20 @@
     "_id": "system_config.stepswitch.cnam",
     "description": "Schema for stepswitch.cnam system_config",
     "properties": {
+        "cnam_expires": {
+            "default": 900,
+            "description": "stepswitch.cnam cnam expires",
+            "type": "integer"
+        },
         "disable_normalize": {
             "default": false,
             "description": "stepswitch.cnam disable normalize",
             "type": "boolean"
+        },
+        "http_accept_header": {
+            "default": "text/pbx,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "description": "stepswitch.cnam http accept header",
+            "type": "string"
         },
         "http_basic_auth_password": {
             "default": "",
@@ -23,6 +33,16 @@
             "description": "stepswitch.cnam http body",
             "type": "string"
         },
+        "http_connect_timeout_ms": {
+            "default": 500,
+            "description": "stepswitch.cnam http connect timeout in milliseconds",
+            "type": "integer"
+        },
+        "http_content_type_header": {
+            "default": "application/json",
+            "description": "stepswitch.cnam http content type header",
+            "type": "string"
+        },
         "http_method": {
             "default": "get",
             "description": "stepswitch.cnam http method",
@@ -31,6 +51,11 @@
         "http_url": {
             "default": "https://api.opencnam.com/v2/phone/{{phone_number}}",
             "description": "stepswitch.cnam http url",
+            "type": "string"
+        },
+        "http_user_agent_header": {
+            "default": "Kazoo Stepswitch CNAM",
+            "description": "stepswitch.cnam http user agent header",
             "type": "string"
         }
     },

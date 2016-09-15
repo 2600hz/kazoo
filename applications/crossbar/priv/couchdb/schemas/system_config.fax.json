@@ -165,6 +165,16 @@
             "description": "fax reschedule",
             "type": "object"
         },
+        "smtp_max_msg_size": {
+            "default": 10485670,
+            "description": "fax smtp maximum msg size",
+            "type": "integer"
+        },
+        "smtp_port": {
+            "default": 19025,
+            "description": "fax smtp port",
+            "type": "integer"
+        },
         "smtp_sessions": {
             "default": 50,
             "description": "fax smtp sessions",
@@ -178,6 +188,11 @@
         "workers": {
             "default": 50,
             "description": "fax workers",
+            "type": "integer"
+        },
+        "xmpp_interval": {
+            "default": 600000,
+            "description": "fax xmpp interval",
             "type": "integer"
         }
     },
