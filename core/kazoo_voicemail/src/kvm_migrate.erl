@@ -33,9 +33,6 @@
 -define(TIME_BETWEEN_ACCOUNT_CRAWLS,
         kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_interaccount_delay_ms">>], 10 * ?MILLISECONDS_IN_SECOND)).
 
--define(MAX_BULK_INSERT,
-        kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_max_bulk_insert">>], kz_datamgr:max_bulk_insert())).
-
 -define(DEFAULT_VM_EXTENSION,
         kapps_config:get(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"extension">>], <<"mp3">>)).
 
@@ -229,8 +226,6 @@ crawl_account(AccountId, Offset) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Create message docs and insert them into database in bulk
-%%
-%% MAX_BULK_INSERT defines how many docs should be written to db in each pass
 %% @end
 %%--------------------------------------------------------------------
 do_migrate(AccountId, BoxViewResults) ->
@@ -243,22 +238,14 @@ do_migrate(AccountId, BoxViewResults) ->
 -spec maybe_migrate_messages(ne_binary(), kz_json:objects()) -> 'ok'.
 maybe_migrate_messages(_AccountId, []) -> 'ok';
 maybe_migrate_messages(AccountId, Messages) ->
-    lager:info("migrating ~b voicemail messages from account ~s", [length(Messages), AccountId]),
-    migrate_messages(AccountId, Messages).
-
--spec migrate_messages(ne_binary(), kz_json:objects()) -> 'ok'.
-migrate_messages(_AccountId, []) -> 'ok';
-migrate_messages(AccountId, Messages) ->
     Db = kazoo_modb:get_modb(AccountId),
-    try lists:split(?MAX_BULK_INSERT, Messages) of
-        {Batch, NextBatch} ->
-            lager:info("inserting ~b voicemail messages to ~s", [length(Batch), Db]),
-            save_messages(Db, Batch),
-            migrate_messages(AccountId, NextBatch)
-    catch
-        'error':'badarg' ->
-            lager:info("inserting ~b voicemail messages to ~s", [length(Messages), Db]),
-            save_messages(Db, Messages)
+    lager:info("migrating ~b voicemail messages from account ~s to ~s db"
+              ,[length(Messages), AccountId, Db]),
+    case kz_datamgr:save_docs(Db, Messages) of
+        {'ok', _S} ->
+            lager:info("successfully saved ~b voicemail messages", [length(_S)]);
+        {'error', _E} ->
+            lager:info("failed to save voicemail messages: ~p", [_E])
     end.
 
 %%--------------------------------------------------------------------
@@ -274,20 +261,6 @@ update_mailboxes(AccountId, BoxViewResults) ->
                ],
     _ = kz_datamgr:save_docs(kvm_util:get_db(AccountId), BoxJObjs),
     'ok'.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec save_messages(ne_binary(), kz_json:objects()) -> 'ok'.
-save_messages(Db, Messages) ->
-    case kz_datamgr:save_docs(Db, Messages) of
-        {'ok', _S} ->
-            lager:info("successfully saved ~b vm messages", [length(_S)]);
-        {'error', _E} ->
-            lager:info("failed to save vm messages: ~p", [_E])
-    end.
 
 -spec get_account_vmboxes(ne_binary(), kz_proplist()) -> db_ret().
 get_account_vmboxes(AccountId, ViewOpts) ->
