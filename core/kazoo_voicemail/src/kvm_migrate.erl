@@ -36,6 +36,9 @@
 -define(MAX_BULK_INSERT,
         kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_max_bulk_insert">>], kz_datamgr:max_bulk_insert())).
 
+-define(DEFAULT_VM_EXTENSION,
+        kapps_config:get(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"extension">>], <<"mp3">>)).
+
 %% -define(SHOULD_MIGRATE_TO_CURRENT_MODB,
 %%         kapps_config:get_is_true(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"should_migrate_to_current_modb">>], 'true')).
 
@@ -44,7 +47,7 @@
 
 -record(state, {timer_ref = cleanup_account_timer() :: reference()
                ,account_ids = [] :: ne_binaries()
-               ,read_offset = 0 :: api_integer()
+               ,read_offset = 0 :: integer()
                }).
 -type state() :: #state{}.
 
@@ -210,7 +213,7 @@ crawl_account(_AccountId, Offset) when Offset < 0 -> 'done';
 crawl_account(AccountId, Offset) ->
     lager:info("crawling account ~s with offset ~p", [AccountId, Offset]),
 
-    ViewOpts = props:filter_undefined(
+    ViewOpts = props:filter_empty(
                  [{'limit', ?MAX_BOX_PROCESS}
                  ,{'skip', Offset}
                  ,'include_docs'
@@ -299,16 +302,17 @@ get_account_vmboxes(AccountId, ViewOpts) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec process_mailboxes(ne_binary(), kz_json:objects()) -> kz_json:objects().
--spec process_mailboxes(ne_binary(), kz_json:objects(), kz_json:objects()) -> kz_json:objects().
+-spec process_mailbox(ne_binary(), kz_json:objects(), ne_binary(), kz_json:objects()) -> kz_json:objects().
 process_mailboxes(AccountId, JObjs) ->
-    Fun = fun(J, Acc) -> process_mailboxes(AccountId, J, Acc) end,
+    DefaultExt = ?DEFAULT_VM_EXTENSION,
+    Fun = fun(J, Acc) -> process_mailbox(AccountId, J, DefaultExt, Acc) end,
     lists:foldl(Fun, [], JObjs).
 
-process_mailboxes(AccountId, JObj, Acc) ->
+process_mailbox(AccountId, JObj, DefaultExt, Acc) ->
     BoxJObj = kz_json:get_value(<<"doc">>, JObj),
     Metadatas = kz_json:get_value(<<"messages">>, BoxJObj, []),
 
-    Msgs = [process_message(AccountId, BoxJObj, M)
+    Msgs = [process_message(AccountId, BoxJObj, M, DefaultExt)
             || M <- Metadatas,
                not kz_util:is_empty(M)
            ],
@@ -317,17 +321,17 @@ process_mailboxes(AccountId, JObj, Acc) ->
         _ -> lists:flatten([Msgs | Acc])
     end.
 
--spec process_message(ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
-process_message(AccountId, BoxJObj, Message) ->
+-spec process_message(ne_binary(), kz_json:object(), kz_json:object(), ne_binary()) -> kz_json:object().
+process_message(AccountId, BoxJObj, Message, DefaultExt) ->
     BoxNum = kzd_voicemail_box:mailbox_number(BoxJObj),
     TimeZone = kzd_voicemail_box:timezone(BoxJObj),
     Timestamp = kz_json:get_value(<<"timestamp">>, Message),
-    AttName = <<(kz_util:rand_hex_binary(16))/binary, ".lnk">>,
+    AttName = <<(kz_util:rand_hex_binary(16))/binary, ".", DefaultExt/binary>>,
     AttHandlerProps = [{<<"att_dbname">>, kz_util:format_account_db(AccountId)}
                       ,{<<"att_docid">>, kzd_box_message:media_id(Message)}
                       ],
     AttHandler = kz_json:from_list([{<<"kz_att_link">>, kz_json:from_list(AttHandlerProps)}]),
-    AttProps = [{<<"content_type">>, <<"kazoo/dblink">>}
+    AttProps = [{<<"content_type">>, kz_mime:from_extension(DefaultExt)}
                ,{<<"length">>, 0}
                ,{<<"stub">>, 'false'}
                ,{<<"handler">>, AttHandler}

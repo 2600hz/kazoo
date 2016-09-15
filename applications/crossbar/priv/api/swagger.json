@@ -6852,6 +6852,26 @@
                                 "type": "integer"
                             }
                         },
+                        "migrate_interaccount_delay_ms": {
+                            "properties": {
+                                "default": 10000,
+                                "description": "callflow migrate interaccount delay in milliseconds",
+                                "type": "integer"
+                            }
+                        },
+                        "migrate_interbox_delay_ms": {
+                            "properties": {
+                                "default": 2000,
+                                "description": "callflow migrate interbox delay in milliseconds",
+                                "type": "integer"
+                            }
+                        },
+                        "migrate_max_bulk_insert": {
+                            "properties": {
+                                "description": "callflow migrate maximum bulk insert",
+                                "type": "integer"
+                            }
+                        },
                         "min_message_size": {
                             "properties": {
                                 "default": 500,
