@@ -114,8 +114,7 @@ validate_get_metaflows(Context, 'undefined') ->
     validate_get_metaflows(Context, AccountDoc);
 validate_get_metaflows(Context, Doc) ->
     Metaflows = kz_json:get_value(<<"metaflows">>, Doc, kz_json:new()),
-    OwnerId = kz_json:get_first_defined([<<"_id">>, <<"pvt_account_id">>], Doc),
-    crossbar_util:response(kz_json:set_value(<<"owner_id">>, OwnerId, Metaflows), Context).
+    crossbar_util:response(Metaflows, Context).
 
 -spec validate_delete_metaflows(cb_context:context(), api_object()) -> cb_context:context().
 validate_delete_metaflows(Context, 'undefined') ->
@@ -140,7 +139,6 @@ validate_set_metaflows(Context, Metaflows, 'undefined') ->
     {'ok', AccountDoc} = kz_account:fetch(cb_context:account_id(Context)),
     validate_set_metaflows(Context, Metaflows, AccountDoc);
 validate_set_metaflows(Context, Metaflows, Doc) ->
-    OwnerId = kz_json:get_first_defined([<<"_id">>, <<"pvt_account_id">>], Doc),
     Doc1 = kz_json:set_value(<<"metaflows">>, Doc),
     crossbar_util:response(Metaflows, cb_context:set_doc(Context, Doc1)).
 
