@@ -306,7 +306,7 @@ custom_channel_vars(Props, Initial) ->
 
 -spec channel_vars_sort(kz_proplist()) -> kz_proplist().
 channel_vars_sort(ChannelVars) ->
-    lists:usort(fun channel_var_sort/2, ChannelVars). 
+    lists:usort(fun channel_var_sort/2, ChannelVars).
 
 -spec channel_var_sort(tuple(), tuple()) -> boolean().
 channel_var_sort({A, _}, {B, _}) -> A =< B.
@@ -969,25 +969,25 @@ media_path(<<?LOCAL_MEDIA_PATH, _/binary>> = FSPath, _Type, _UUID, _) -> FSPath;
 media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(URI);
 media_path(<<"https://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(URI);
 media_path(<<?HTTP_GET_PREFIX, _/binary>> = Media, _Type, _UUID, _) -> Media;
-media_path(<<"$", _/binary>> = Media, _Type, _UUID, _) -> Media;
+media_path(<<"\$", _/binary>> = Media, _Type, _UUID, _) -> Media;
 media_path(MediaName, Type, UUID, JObj) ->
-                   case lookup_media(MediaName, UUID, JObj, Type) of
-                       {'error', _E} ->
-                           lager:warning("failed to get media path for ~s: ~p", [MediaName, _E]),
-                           kz_util:to_binary(MediaName);
-                       {'ok', Path} ->
-                           lager:debug("found path ~s for ~s", [Path, MediaName]),
-                           kz_util:to_binary(get_fs_playback(Path))
-                   end.
+    case lookup_media(MediaName, UUID, JObj, Type) of
+        {'error', _E} ->
+            lager:warning("failed to get media path for ~s: ~p", [MediaName, _E]),
+            kz_util:to_binary(MediaName);
+        {'ok', Path} ->
+            lager:debug("found path ~s for ~s", [Path, MediaName]),
+            kz_util:to_binary(get_fs_playback(Path))
+    end.
 
--spec fax_filename(ne_binary()) -> file:filename().
+-spec fax_filename(ne_binary()) -> file:filename_all().
 fax_filename(UUID) ->
     Ext = ecallmgr_config:get(<<"default_fax_extension">>, <<".tiff">>),
     filename:join([ecallmgr_config:get(<<"fax_file_path">>, <<"/tmp/">>)
                   ,<<(amqp_util:encode(UUID))/binary, Ext/binary>>
                   ]).
 
--spec recording_filename(ne_binary()) -> file:filename().
+-spec recording_filename(ne_binary()) -> file:filename_all().
 recording_filename(<<"local_stream://", MediaName/binary>>) -> recording_filename(MediaName);
 recording_filename(MediaName) ->
     Ext = recording_extension(MediaName),

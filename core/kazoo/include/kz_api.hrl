@@ -88,7 +88,10 @@
 
 %% Error Responses
 -define(ERROR_RESP_HEADERS, [<<"Error-Message">>]).
--define(OPTIONAL_ERROR_RESP_HEADERS, [<<"Request">>, <<"Call-ID">>]).
+-define(OPTIONAL_ERROR_RESP_HEADERS, [<<"Call-ID">>
+                                     ,<<"Custom-Channel-Vars">>
+                                     ,<<"Request">>
+                                     ]).
 -define(ERROR_RESP_VALUES, [{?KEY_EVENT_CATEGORY, <<"error">>}]).
 -define(ERROR_RESP_TYPES, []).
 

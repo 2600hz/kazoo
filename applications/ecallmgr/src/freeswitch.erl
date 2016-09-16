@@ -304,8 +304,8 @@ config(Node) ->
     gen_server:cast({'mod_kazoo', Node}, {'config', []}).
 
 -spec bgapi4(atom(), atom(), string() | binary(), fun(), list()) ->
-                   {'ok', binary()} |
-                   {'error', 'timeout' | 'exception' | binary()}.
+                    {'ok', binary()} |
+                    {'error', 'timeout' | 'exception' | binary()}.
 bgapi4(Node, Cmd, Args, Fun, CallBackParams) ->
     Self = self(),
     _ = kz_util:spawn(
@@ -314,7 +314,7 @@ bgapi4(Node, Cmd, Args, Fun, CallBackParams) ->
                       {'ok', JobId}=JobOk ->
                           Self ! {'api', JobOk},
                           receive
-                              {'bgok', JobId, Reply} 
+                              {'bgok', JobId, Reply}
                                 when is_function(Fun, 3) -> Fun('ok', Reply, [JobId | CallBackParams]);
                               {'bgerror', JobId, Reply}
                                 when is_function(Fun, 3) -> Fun('error', Reply, [JobId | CallBackParams]);

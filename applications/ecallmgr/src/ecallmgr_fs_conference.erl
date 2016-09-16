@@ -486,7 +486,8 @@ exec(Focus, ConferenceId, JObj) ->
                 case kz_json:get_value(<<"Call-ID">>, JObj) of
                     'undefined' ->
                         Command = list_to_binary([ConferenceId, " play ", AppData]),
-                        Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
+                        Focus =/= 'undefined'
+                            andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
                         lager:debug("api to ~s: conference ~s", [Focus, Command]),
                         freeswitch:api(Focus, 'conference', Command);
                     CallId ->
@@ -494,7 +495,8 @@ exec(Focus, ConferenceId, JObj) ->
                                                                  ," conference ", ConferenceId
                                                                  ," play ", AppData
                                                                  ])),
-                        Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
+                        Focus =/= 'undefined'
+                            andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
                         lager:debug("api to ~s: expand ~s", [Focus, Command]),
                         freeswitch:api(Focus, 'expand', Command)
                 end,
@@ -504,14 +506,16 @@ exec(Focus, ConferenceId, JObj) ->
             Result = lists:foldl(fun(Command, _Acc) ->
                                          {<<"play">>, AppData2} = get_conf_command(<<"play">>, Focus, ConferenceId, Command),
                                          Command2 = list_to_binary([ConferenceId, " play ", AppData2]),
-                                         Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command2]),
+                                         Focus =/= 'undefined'
+                                             andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command2]),
                                          lager:debug("api to ~s: conference ~s", [Focus, Command2]),
                                          freeswitch:api(Focus, 'conference', Command2)
                                  end, 'undefined', Commands),
             send_response(App, Result, kz_json:get_value(<<"Server-ID">>, JObj), JObj);
         {AppName, AppData} ->
             Command = kz_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
-            Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
+            Focus =/= 'undefined'
+                andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
             lager:debug("api to ~s: conference ~s", [Focus, Command]),
             Result = freeswitch:api(Focus, 'conference', Command),
             send_response(App, Result, kz_json:get_value(<<"Server-ID">>, JObj), JObj)
@@ -617,7 +621,8 @@ get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
                    end,
             {<<"stop">>, Args}
     end;
-get_conf_command(Say, _Focus, _ConferenceId, JObj) when Say =:= <<"say">> orelse Say =:= <<"tts">> ->
+get_conf_command(Say, _Focus, _ConferenceId, JObj) when Say =:= <<"say">>;
+                                                        Say =:= <<"tts">> ->
     case kapi_conference:say_v(JObj) of
         'false' -> {'error', <<"conference say failed to validate">>};
         'true'->

@@ -165,13 +165,23 @@ per_minute_accounts() ->
                 ],
     lists:usort(lists:flatten(ets:select(?CHANNELS_TBL, MatchSpec))).
 
--spec per_minute_channels(ne_binary()) -> [{ne_binary(), ne_binary()}].
+-spec per_minute_channels(ne_binary()) -> [{atom(), ne_binary()}].
 per_minute_channels(AccountId) ->
-    MatchSpec = [{#channel{node = '$1', uuid = '$2', reseller_id = AccountId, reseller_billing = <<"per_minute">>, _ = '_'}
+    MatchSpec = [{#channel{node = '$1'
+                          ,uuid = '$2'
+                          ,reseller_id = AccountId
+                          ,reseller_billing = <<"per_minute">>
+                          ,_ = '_'
+                          }
                  ,[]
                  ,[{{'$1', '$2'}}]
                  }
-                ,{#channel{node = '$1', uuid = '$2', account_id = AccountId, account_billing = <<"per_minute">>, _ = '_'}
+                ,{#channel{node = '$1'
+                          ,uuid = '$2'
+                          ,account_id = AccountId
+                          ,account_billing = <<"per_minute">>
+                          ,_ = '_'
+                          }
                  ,[]
                  ,[{{'$1', '$2'}}]
                  }
