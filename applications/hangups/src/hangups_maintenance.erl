@@ -155,7 +155,7 @@ set_threshold(AccountId, HangupCause, Metric, LoadAvg) ->
             save_threshold(HangupCause, Metric, LoadAvg, SaveFun)
     end.
 
--type save_fun() :: fun((ne_binary(), kz_json:keys(), kz_json:json_term()) -> any()).
+-type save_fun() :: fun((ne_binary(), kz_json:key(), kz_json:json_term()) -> any()).
 -spec account_save_fun(ne_binary()) -> save_fun().
 account_save_fun(AccountId) ->
     fun(Cfg, K, V) ->

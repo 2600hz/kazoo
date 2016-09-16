@@ -102,7 +102,7 @@
 -type docid() :: ne_binary() | {ne_binary(), ne_binary()}.
 -type docids() :: ne_binary() | {ne_binary(), ne_binaries()}.
 
--type get_results_return() :: {'ok', kz_json:objects() | kz_json:keys()} |
+-type get_results_return() :: {'ok', kz_json:objects() | kz_json:key()} |
                               data_error().
 
 -define(DEFAULT_DATA_SECTION, [{'local', 'bigcouch'}]).

@@ -92,7 +92,7 @@ is_formatter_applicable(Formatter, Direction) ->
         _Direction -> 'false'
     end.
 
--spec maybe_apply_formatters_fold(kz_json:object(), kz_json:keys(), ne_binary(), kz_json:objects()) ->
+-spec maybe_apply_formatters_fold(kz_json:object(), kz_json:key(), ne_binary(), kz_json:objects()) ->
                                          kz_json:object().
 maybe_apply_formatters_fold(JObj, _JObjKeys, _MetaKey, []) -> JObj;
 maybe_apply_formatters_fold(JObj, JObjKeys, MetaKey, [_|_]=Formatters) ->

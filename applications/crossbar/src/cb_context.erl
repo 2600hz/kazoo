@@ -132,8 +132,8 @@ new() -> #cb_context{}.
 is_context(#cb_context{}) -> 'true';
 is_context(_) -> 'false'.
 
--spec req_value(context(), kz_json:keys()) -> kz_json:json_term().
--spec req_value(context(), kz_json:keys(), Default) -> kz_json:json_term() | Default.
+-spec req_value(context(), kz_json:key()) -> kz_json:json_term().
+-spec req_value(context(), kz_json:key(), Default) -> kz_json:json_term() | Default.
 req_value(#cb_context{}=Context, Key) ->
     req_value(Context, Key, 'undefined').
 req_value(#cb_context{req_data=ReqData
@@ -867,7 +867,7 @@ build_system_error(Code, Error, JObj, Context) ->
 %% Add a validation error to the list of request errors
 %% @end
 %%--------------------------------------------------------------------
--spec add_validation_error(kz_json:keys(), ne_binary(), ne_binary() | kz_json:object(), context()) ->
+-spec add_validation_error(kz_json:key(), ne_binary(), ne_binary() | kz_json:object(), context()) ->
                                   context().
 add_validation_error(<<_/binary>> = Property, Code, Message, Context) ->
     add_validation_error([Property], Code, Message, Context);
@@ -931,7 +931,7 @@ maybe_fix_js_integer(Key, Value, JObj) ->
             JObj
     end.
 
--spec maybe_fix_index(kz_json:key() | kz_json:keys()) -> kz_json:key() | kz_json:keys().
+-spec maybe_fix_index(kz_json:key() | kz_json:key()) -> kz_json:key() | kz_json:key().
 maybe_fix_index(Keys)
   when is_list(Keys) ->
     lists:map(fun(K) when is_integer(K) ->

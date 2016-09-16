@@ -767,7 +767,7 @@ resp_to_query(JObj, RegistrarAge) ->
             kapi_registration:publish_query_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
--spec filter(kz_json:keys(), kz_json:object()) -> kz_json:object().
+-spec filter(kz_json:key(), kz_json:object()) -> kz_json:object().
 filter([], JObj) -> JObj;
 filter(Fields, JObj) ->
     kz_json:from_list(

@@ -501,14 +501,14 @@ inc_counters(JObj, Counters) ->
 inc_counter(Key, JObj) ->
     kz_json:set_value(Key, kz_json:get_integer_value(Key, JObj, 0) + 1, JObj).
 
--spec apply_reschedule_logic({kz_json:json_terms(), kz_json:keys()}, kz_json:object()) ->
+-spec apply_reschedule_logic({kz_json:json_terms(), kz_json:key()}, kz_json:object()) ->
                                     'no_rule' | 'end_rules' | kz_json:object().
 apply_reschedule_logic({[], []}, _JObj) -> 'no_rule';
 apply_reschedule_logic(Rules, JObj) ->
     Step = kz_json:get_integer_value(<<"rule">>, JObj, 1),
     apply_reschedule_logic(Rules, inc_counters(JObj, ?RESCHEDULE_COUNTERS), Step).
 
--spec apply_reschedule_logic({kz_json:json_terms(), kz_json:keys()}, kz_json:object(), integer()) ->
+-spec apply_reschedule_logic({kz_json:json_terms(), kz_json:key()}, kz_json:object(), integer()) ->
                                     'no_rule' | 'end_rules' | kz_json:object().
 apply_reschedule_logic({_Vs, Ks}, _JObj, Step)
   when Step > length(Ks) -> 'end_rules';
@@ -516,7 +516,7 @@ apply_reschedule_logic({Vs, Ks}, JObj, Step) ->
     Rules = {lists:sublist(Vs, Step, length(Vs)), lists:sublist(Ks, Step, length(Ks))},
     apply_reschedule_rules(Rules, JObj, Step).
 
--spec apply_reschedule_rules({kz_json:json_terms(), kz_json:keys()}, kz_json:object(), integer()) ->
+-spec apply_reschedule_rules({kz_json:json_terms(), kz_json:key()}, kz_json:object(), integer()) ->
                                     kz_json:object() | 'end_rules'.
 apply_reschedule_rules({[], _}, _JObj, _Step) -> 'end_rules';
 apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj, Step) ->
@@ -533,7 +533,7 @@ apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj, Step) ->
                       ], Schedule)
     end.
 
--spec apply_reschedule_step({kz_json:json_terms(), kz_json:keys()}, kz_json:object()) ->
+-spec apply_reschedule_step({kz_json:json_terms(), kz_json:key()}, kz_json:object()) ->
                                    'no_match' | kz_json:object().
 apply_reschedule_step({[], []}, JObj) -> JObj;
 apply_reschedule_step({[Value | Values], [Key | Keys]}, JObj) ->

@@ -250,7 +250,7 @@ maybe_fix_js_integer(Key, Value, Data) ->
             {'false', Data}
     end.
 
--spec maybe_fix_index(kz_json:key() | kz_json:keys()) -> kz_json:key() | kz_json:keys().
+-spec maybe_fix_index(kz_json:key() | kz_json:key()) -> kz_json:key() | kz_json:key().
 maybe_fix_index(Keys)
   when is_list(Keys) ->
     lists:map(fun(K) when is_integer(K) ->

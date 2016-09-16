@@ -117,7 +117,7 @@ fix_numbers(JObj) ->
          ),
     kz_json:set_value(<<"numbers">>, Numbers, JObj).
 
--spec fix_number_fold(kz_json:object(), any(), kz_json:keys()) -> kz_json:keys().
+-spec fix_number_fold(kz_json:object(), any(), kz_json:key()) -> kz_json:key().
 fix_number_fold(Number, _Value, Acc) ->
     [Number|Acc].
 

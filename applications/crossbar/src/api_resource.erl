@@ -942,7 +942,7 @@ json_objs_to_csv([J|JObjs]) ->
 csv_header(JObj) ->
     csv_ize(kz_json:get_keys(JObj)).
 
--spec csv_ize(kz_json:keys()) -> iolist().
+-spec csv_ize(kz_json:key()) -> iolist().
 csv_ize([F|Rest]) ->
     [<<"\"">>, kz_util:to_binary(F), <<"\"">>
     ,[[<<",\"">>, try_to_binary(V), <<"\"">>] || V <- Rest]

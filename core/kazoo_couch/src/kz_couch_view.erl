@@ -66,7 +66,7 @@ all_docs(#server{}=Conn, DbName, Options) ->
     do_fetch_results(Db, 'all_docs', Options).
 
 -spec get_results(server(), ne_binary(), ne_binary(), view_options()) ->
-                         {'ok', kz_json:objects() | kz_json:keys()} |
+                         {'ok', kz_json:objects() | kz_json:key()} |
                          couchbeam_error().
 get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
     Db = kz_couch_util:get_db(Conn, DbName),

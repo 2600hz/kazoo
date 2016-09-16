@@ -181,8 +181,8 @@ account_db_from_jobj(_Obj, 'false') ->
     throw({'error', 'unknown_object'}).
 
 %% Migrates config settings
--type migrate_setting() :: {ne_binary(), kz_json:keys()}.
--type migrate_value() :: {ne_binary(), ne_binary(), kz_json:keys(), _}.
+-type migrate_setting() :: {ne_binary(), kz_json:key()}.
+-type migrate_value() :: {ne_binary(), ne_binary(), kz_json:key(), _}.
 -type migrate_values() :: [migrate_value()].
 
 -define(ACCOUNT_CONFIG_MIGRATIONS
@@ -232,7 +232,7 @@ migrate_config_setting(AccountDb, UpdatedFrom, Removed, To) ->
 add_config_setting(AccountDb, {Id, Setting}, Values) ->
     add_config_setting(AccountDb, Id, Setting, Values).
 
--spec add_config_setting(ne_binary(), ne_binary(), kz_json:keys(), migrate_values()) ->
+-spec add_config_setting(ne_binary(), ne_binary(), kz_json:key(), migrate_values()) ->
                                 'ok' |
                                 {'error', any()}.
 add_config_setting(AccountDb, Id, Setting, Values) when is_binary(Id) ->
@@ -282,7 +282,7 @@ add_config_setting(AccountDb, JObj, ToSetting, [{FromId, Node, FromSetting, Valu
 remove_config_setting(AccountDb, {Id, Setting}) ->
     remove_config_setting(AccountDb, Id, Setting).
 
--spec remove_config_setting(ne_binary(), ne_binary() | kz_json:object(), kz_json:keys()) ->
+-spec remove_config_setting(ne_binary(), ne_binary() | kz_json:object(), kz_json:key()) ->
                                    {'ok', kz_json:object(), migrate_values()} |
                                    {'error', any()}.
 remove_config_setting(AccountDb, Id, Setting) when is_binary(Id) ->
@@ -298,7 +298,7 @@ remove_config_setting(AccountDb, JObj, Setting) ->
         ],
     remove_config_setting(AccountDb, Keys, JObj, []).
 
--spec remove_config_setting(ne_binary(), [{ne_binary(), ne_binary(), kz_json:keys()}], kz_json:object(), migrate_values()) ->
+-spec remove_config_setting(ne_binary(), [{ne_binary(), ne_binary(), kz_json:key()}], kz_json:object(), migrate_values()) ->
                                    {'ok', kz_json:object(), migrate_values()}.
 remove_config_setting(_AccountDb, [], JObj, Removed) ->
     {'ok', JObj, Removed};
@@ -314,7 +314,7 @@ remove_config_setting(AccountDb, [{Id, Node, Setting} | Keys], JObj, Removed) ->
                                  )
     end.
 
--spec config_setting_key(ne_binary(), kz_json:keys()) -> ne_binaries().
+-spec config_setting_key(ne_binary(), kz_json:key()) -> ne_binaries().
 %% NOTE: to support nested keys, update this merge function
 config_setting_key(Node, Setting) ->
     [Node, Setting].

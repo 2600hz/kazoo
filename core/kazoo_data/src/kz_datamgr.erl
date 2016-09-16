@@ -1119,7 +1119,7 @@ get_result_keys(DbName, DesignDoc, Options) ->
         {'error', _} = Error -> Error
     end.
 
--spec get_result_keys(kz_json:objects()) -> kz_json:keys().
+-spec get_result_keys(kz_json:objects()) -> kz_json:key().
 get_result_keys(JObjs) ->
     [kz_json:get_value(<<"key">>, JObj)
      || JObj <- JObjs

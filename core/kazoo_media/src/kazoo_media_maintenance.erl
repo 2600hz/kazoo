@@ -286,14 +286,14 @@ migrate_node_config(Node, Settings, MediaJObj, [{K, V} | KVs]) ->
             migrate_node_config(Node, Settings, set_node_value(Node, K, NodeV, MediaJObj), KVs)
     end.
 
--spec set_node_value(ne_binary(), kz_json:keys(), ne_binary(), kz_json:object()) ->
+-spec set_node_value(ne_binary(), kz_json:key(), ne_binary(), kz_json:object()) ->
                             kz_json:object().
 set_node_value(Node, <<_/binary>> = K, V, MediaJObj) ->
     set_node_value(Node, [K], V, MediaJObj);
 set_node_value(Node, K, V, MediaJObj) ->
     kz_json:set_value([Node | K], V, MediaJObj).
 
--spec maybe_update_media_config(ne_binary(), kz_json:keys(), api_binary(), kz_json:object()) ->
+-spec maybe_update_media_config(ne_binary(), kz_json:key(), api_binary(), kz_json:object()) ->
                                        kz_json:object().
 maybe_update_media_config(_Node, _K, 'undefined', MediaJObj) ->
     io:format("    no value to set for ~p~n", [_K]),

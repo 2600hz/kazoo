@@ -40,7 +40,7 @@ all_docs(#{server := {App, Conn}}, DbName, Options) ->
     App:all_docs(Conn, DbName, Options).
 
 -spec get_results(map(), ne_binary(), ne_binary(), view_options()) ->
-                         {'ok', kz_json:objects() | kz_json:keys()} |
+                         {'ok', kz_json:objects() | kz_json:key()} |
                          data_error().
 get_results(#{server := {App, Conn}}, DbName, DesignDoc, ViewOptions) ->
     App:get_results(Conn, DbName, DesignDoc, ViewOptions).

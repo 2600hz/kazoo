@@ -239,7 +239,7 @@ control_queue(Srv) when is_pid(Srv) -> gen_listener:call(Srv, 'control_queue_nam
 control_queue(Call) -> control_queue(kapps_call:kvs_fetch('consumer_pid', Call)).
 control_queue(_, Call) -> control_queue(Call).
 
--spec get_branch_keys(kapps_call:call() | pid()) -> {'branch_keys', kz_json:keys()}.
+-spec get_branch_keys(kapps_call:call() | pid()) -> {'branch_keys', kz_json:key()}.
 get_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, 'get_branch_keys');
 get_branch_keys(Call) ->
@@ -247,7 +247,7 @@ get_branch_keys(Call) ->
     get_branch_keys(Srv).
 
 -spec get_all_branch_keys(kapps_call:call() | pid()) ->
-                                 {'branch_keys', kz_json:keys()}.
+                                 {'branch_keys', kz_json:key()}.
 get_all_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'get_branch_keys', 'all'});
 get_all_branch_keys(Call) ->
