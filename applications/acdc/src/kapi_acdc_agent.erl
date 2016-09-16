@@ -43,7 +43,8 @@
         ,publish_login_resp/2, publish_login_resp/3
         ]).
 
--include_lib("kazoo/include/kz_api.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_amqp/include/kz_api.hrl").
 
 %%------------------------------------------------------------------------------
 %% Agent Sync Req

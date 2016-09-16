@@ -15,9 +15,8 @@
         ]).
 
 -include("blackhole.hrl").
--include_lib("kazoo/include/kapi_conf.hrl").
+-include_lib("kazoo_amqp/include/kapi_conf.hrl").
 -include_lib("kazoo_documents/include/doc_types.hrl").
-
 
 -spec init() -> any().
 init() ->

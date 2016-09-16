@@ -13,7 +13,7 @@
 -behaviour(gen_cf_action).
 
 -include("callflow.hrl").
--include_lib("kazoo/src/api/kapi_dialplan.hrl").
+-include_lib("kazoo_amqp/src/api/kapi_dialplan.hrl").
 
 -export([handle/2]).
 

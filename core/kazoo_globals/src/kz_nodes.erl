@@ -98,7 +98,11 @@ start_link() ->
 
 -spec is_up(node()) -> boolean().
 is_up(Node) ->
-    case ets:match(?MODULE, #kz_node{node = Node, expires = '$2', _ = '_'}) of
+    case ets:match(?MODULE, #kz_node{node = Node
+                                    ,expires = '$2'
+                                    ,_ = '_'
+                                    })
+    of
         [] -> 'false';
         [_] -> 'true'
     end.
@@ -253,15 +257,15 @@ maybe_print_zone(NodeZone, _Zone) ->
 
 -spec maybe_print_kapps(kz_proplist()) -> 'ok'.
 maybe_print_kapps(Whapps) ->
-    case lists:sort(fun({K1,_}, {K2,_}) -> K1 < K2 end
-                   ,Whapps
-                   )
-    of
+    case lists:sort(fun compare_apps/2, Whapps) of
         []-> 'ok';
         SortedWhapps ->
             io:format("WhApps        : ", []),
             status_list(SortedWhapps, 0)
     end.
+
+-spec compare_apps({binary(), any()}, {binary(), any()}) -> boolean().
+compare_apps({K1,_}, {K2,_}) -> K1 < K2.
 
 -spec maybe_print_media_servers(kz_node()) -> 'ok'.
 maybe_print_media_servers(#kz_node{media_servers=MediaServers
@@ -550,13 +554,18 @@ create_node(Heartbeat, #state{zone=Zone
                              ,version=Version
                              }) ->
     add_apps_data(#kz_node{expires=Heartbeat
-                          ,broker=kz_util:normalize_amqp_uri(kz_amqp_connections:primary_broker())
+                          ,broker=normalize_amqp_uri(kz_amqp_connections:primary_broker())
                           ,used_memory=erlang:memory('total')
                           ,processes=erlang:system_info('process_count')
                           ,ports=length(erlang:ports())
                           ,version=Version
                           ,zone=Zone
                           }).
+
+
+-spec normalize_amqp_uri(ne_binary()) -> ne_binary().
+normalize_amqp_uri(URI) ->
+    kz_util:to_binary(amqp_uri:remove_credentials(kz_util:to_list(URI))).
 
 -spec add_apps_data(kz_node()) -> kz_node().
 add_apps_data(Node) ->
@@ -795,8 +804,8 @@ local_zone() -> kz_config:zone().
 
 -spec get_amqp_broker(api_binary() | kz_json:object()) -> api_binary().
 get_amqp_broker('undefined') ->
-    kz_util:normalize_amqp_uri(kz_amqp_connections:primary_broker());
-get_amqp_broker(Broker) when is_binary(Broker) -> kz_util:normalize_amqp_uri(Broker);
+    normalize_amqp_uri(kz_amqp_connections:primary_broker());
+get_amqp_broker(Broker) when is_binary(Broker) -> normalize_amqp_uri(Broker);
 get_amqp_broker(JObj) ->
     get_amqp_broker(kz_json:get_ne_value(<<"AMQP-Broker">>, JObj)).
 
@@ -893,9 +902,10 @@ determine_whapp_oldest_node_fold({Whapps, Node}, {_, Startup}=Acc, Whapp) ->
         _ -> Acc
     end.
 
+-spec maybe_add_zone(kz_node(), nodes_state()) -> nodes_state().
 maybe_add_zone(#kz_node{zone='undefined'}, #state{}=State) -> State;
 maybe_add_zone(#kz_node{zone=Zone, broker=B}, #state{zones=Zones}=State) ->
-    Broker = kz_util:normalize_amqp_uri(B),
+    Broker = normalize_amqp_uri(B),
     case props:get_value(Broker, Zones) of
         'undefined' -> State#state{zones=[{Broker, Zone} | Zones]};
         _ -> State

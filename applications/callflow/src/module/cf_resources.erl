@@ -23,13 +23,12 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_resources).
-
 -behaviour(gen_cf_action).
 
--include("callflow.hrl").
--include_lib("kazoo/include/kapi_offnet_resource.hrl").
-
 -export([handle/2]).
+
+-include("callflow.hrl").
+-include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
 
 -define(DEFAULT_EVENT_WAIT, 10000).
 -define(RES_CONFIG_CAT, <<?CF_CONFIG_CAT/binary, ".resources">>).

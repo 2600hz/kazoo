@@ -6,13 +6,5 @@
  ,{registered, []}
  ,{applications, [ kernel
                  , stdlib
-                 , crypto
-
-                 , lager
-
-                 , kazoo_config
-
-                 , crossbar
-                 , callflow
                  ]}
  ]}.

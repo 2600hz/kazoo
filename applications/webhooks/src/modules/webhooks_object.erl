@@ -13,57 +13,51 @@
         ]).
 
 -include("webhooks.hrl").
--include_lib("kazoo/include/kapi_conf.hrl").
+-include_lib("kazoo_amqp/include/kapi_conf.hrl").
 -include_lib("kazoo_documents/include/doc_types.hrl").
 
 -define(ID, kz_util:to_binary(?MODULE)).
 -define(NAME, <<"object">>).
 -define(DESC, <<"Receive notifications when objects in Kazoo are changed">>).
 
--define(
-   OBJECT_TYPES
-       ,kapps_config:get(
-          ?APP_NAME
+-define(OBJECT_TYPES
+       ,kapps_config:get(?APP_NAME
                         ,<<"object_types">>
                         ,?DOC_TYPES
-         )
-  ).
+                        )
+       ).
 
--define(
-   TYPE_MODIFIER
+-define(TYPE_MODIFIER
        ,kz_json:from_list(
           [{<<"type">>, <<"array">>}
           ,{<<"description">>, <<"A list of object types to handle">>}
           ,{<<"items">>, ?OBJECT_TYPES}
           ])
-  ).
+       ).
 
--define(
-   ACTIONS_MODIFIER
+-define(ACTIONS_MODIFIER
        ,kz_json:from_list(
           [{<<"type">>, <<"array">>}
           ,{<<"description">>, <<"A list of object actions to handle">>}
           ,{<<"items">>, ?DOC_ACTIONS}
           ])
-  ).
+       ).
 
--define(
-   MODIFIERS
+-define(MODIFIERS
        ,kz_json:from_list(
           [{<<"type">>, ?TYPE_MODIFIER}
           ,{<<"action">>, ?ACTIONS_MODIFIER}
           ])
-  ).
+       ).
 
--define(
-   METADATA
+-define(METADATA
        ,kz_json:from_list(
           [{<<"_id">>, ?ID}
           ,{<<"name">>, ?NAME}
           ,{<<"description">>, ?DESC}
           ,{<<"modifiers">>, ?MODIFIERS}
           ])
-  ).
+       ).
 
 %%--------------------------------------------------------------------
 %% @public

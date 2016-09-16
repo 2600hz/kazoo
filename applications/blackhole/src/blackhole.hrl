@@ -1,7 +1,6 @@
 -ifndef(BLACKHOLE_HRL).
 
 %% Typical includes needed
--include_lib("kazoo/include/kz_amqp.hrl").
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").

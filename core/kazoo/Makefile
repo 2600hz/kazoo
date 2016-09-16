@@ -7,7 +7,7 @@ GEN_FILE = mime.types
 GEN_SRC = src/kz_mime.erl.src
 GEN_OUT = src/kz_mime.erl
 
-SOURCES = src/kazoo_transform.erl src/*.erl src/api/*.erl $(GEN_OUT)
+SOURCES = src/*.erl $(GEN_OUT)
 
 COMPILE_MOAR = $(GEN_OUT)
 CLEAN_MOAR = clean-generated
@@ -57,4 +57,3 @@ $(GEN_OUT): $(GEN_FILE) $(GEN_SRC)
 	tail -n +`grep -n '%% GENERATED' $(GEN_SRC) | cut -d: -f1` $(GEN_SRC) >> $(GEN_OUT)
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(GEN_OUT)
-

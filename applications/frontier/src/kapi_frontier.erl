@@ -20,7 +20,6 @@
         ]).
 
 -include("frontier.hrl").
--include_lib("kazoo/include/kz_amqp.hrl").
 
 -define(FRONTIER_EXCHANGE, <<"frontier">>).
 -define(EXCHANGE_TYPE, <<"direct">>).
