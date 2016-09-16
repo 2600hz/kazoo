@@ -69,53 +69,53 @@
 -export([direction/1]).
 
 -export([set_dtmf_collection/2, set_dtmf_collection/3
-         ,get_dtmf_collection/1, get_dtmf_collection/2
-         ,add_to_dtmf_collection/2, add_to_dtmf_collection/3
+        ,get_dtmf_collection/1, get_dtmf_collection/2
+        ,add_to_dtmf_collection/2, add_to_dtmf_collection/3
         ]).
 
 -export([set_custom_channel_var/3
-         ,insert_custom_channel_var/3
-         ,set_custom_channel_vars/2
-         ,remove_custom_channel_vars/2
-         ,update_custom_channel_vars/2
-         ,custom_channel_var/3
-         ,custom_channel_var/2
-         ,custom_channel_vars/1
+        ,insert_custom_channel_var/3
+        ,set_custom_channel_vars/2
+        ,remove_custom_channel_vars/2
+        ,update_custom_channel_vars/2
+        ,custom_channel_var/3
+        ,custom_channel_var/2
+        ,custom_channel_vars/1
         ]).
 
 -export([set_custom_sip_header/3
-         ,set_custom_sip_headers/2
-         ,custom_sip_header/2, custom_sip_header/3
-         ,custom_sip_headers/1
+        ,set_custom_sip_headers/2
+        ,custom_sip_header/2, custom_sip_header/3
+        ,custom_sip_headers/1
         ]).
 
 -export([set_custom_publish_function/2, clear_custom_publish_function/1
-         ,custom_publish_function/1
+        ,custom_publish_function/1
         ]).
 
 -export([kvs_append/3
-         ,kvs_append_list/3
-         ,kvs_erase/2
-         ,kvs_fetch/2, kvs_fetch/3
-         ,kvs_fetch_keys/1
-         ,kvs_filter/2
-         ,kvs_find/2
-         ,kvs_flush/1
-         ,kvs_fold/3
-         ,kvs_from_proplist/2
-         ,kvs_is_key/2
-         ,kvs_map/2
-         ,kvs_store/3
-         ,kvs_store_proplist/2
-         ,kvs_to_proplist/1
-         ,kvs_update/3
-         ,kvs_update/4
-         ,kvs_update_counter/3
+        ,kvs_append_list/3
+        ,kvs_erase/2
+        ,kvs_fetch/2, kvs_fetch/3
+        ,kvs_fetch_keys/1
+        ,kvs_filter/2
+        ,kvs_find/2
+        ,kvs_flush/1
+        ,kvs_fold/3
+        ,kvs_from_proplist/2
+        ,kvs_is_key/2
+        ,kvs_map/2
+        ,kvs_store/3
+        ,kvs_store_proplist/2
+        ,kvs_to_proplist/1
+        ,kvs_update/3
+        ,kvs_update/4
+        ,kvs_update_counter/3
         ]).
 
 -export([flush/0
-         ,cache/1, cache/2, cache/3
-         ,retrieve/1, retrieve/2
+        ,cache/1, cache/2, cache/3
+        ,retrieve/1, retrieve/2
         ]).
 
 -export([default_helper_function/2]).
@@ -125,48 +125,48 @@
         ]).
 
 -record(kapps_call, {call_id :: api_binary()                       %% The UUID of the call
-                      ,call_id_helper = fun default_helper_function/2 :: kapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
-                      ,control_q :: api_binary()                   %% The control queue provided on route win
-                      ,control_q_helper = fun default_helper_function/2 :: kapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
-                      ,controller_q :: api_binary()                %%
-                      ,caller_id_name = kz_util:anonymous_caller_id_name() :: ne_binary()      %% The caller name
-                      ,caller_id_number = kz_util:anonymous_caller_id_number() :: ne_binary() %% The caller number
-                      ,callee_id_name :: api_binary()                     %% The callee name
-                      ,callee_id_number :: api_binary()                   %% The callee number
-                      ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
-                      ,switch_hostname :: api_binary()                    %% The switch hostname (as reported by the switch)
-                      ,switch_url :: api_binary()                         %% The switch url
-                      ,switch_uri :: api_binary()                         %% The switch uri
-                      ,request = <<"nouser@norealm">> :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
-                      ,request_user = <<"nouser">> :: ne_binary()         %% SIP request user
-                      ,request_realm = <<"norealm">> :: ne_binary()       %% SIP request host
-                      ,from = <<"nouser@norealm">> :: ne_binary()         %% Result of sip_from_user + @ + sip_from_host
-                      ,from_user = <<"nouser">> :: ne_binary()            %% SIP from user
-                      ,from_realm = <<"norealm">> :: ne_binary()          %% SIP from host
-                      ,to = <<"nouser@norealm">> :: ne_binary()           %% Result of sip_to_user + @ + sip_to_host
-                      ,to_user = <<"nouser">> :: ne_binary()              %% SIP to user
-                      ,to_realm = <<"norealm">> :: ne_binary()            %% SIP to host
-                      ,inception :: api_binary()                   %% Origin of the call <<"on-net">> | <<"off-net">>
-                      ,account_db :: api_binary()                  %% The database name of the account that authorized this call
-                      ,account_id :: api_binary()                  %% The account id that authorized this call
-                      ,authorizing_id :: api_binary()              %% The ID of the record that authorized this call
-                      ,authorizing_type :: api_binary()            %% The pvt_type of the record that authorized this call
-                      ,owner_id :: api_binary()                    %% The ID of the owner of this calling device, if any
-                      ,fetch_id :: api_binary()                    %% The Fetch ID of the Call
-                      ,bridge_id :: api_binary()                    %% The Bridge ID of the Call
-                      ,language :: api_binary()                     %% Language of the call to use
-                      ,app_name = <<"kapps_call">> :: ne_binary()        %% The application name used during kapps_call_command
-                      ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during kapps_call_command
-                      ,custom_publish_fun :: kapps_custom_publish() | 'undefined'     %% A custom command used to publish kapps_call_command
-                      ,ccvs = kz_json:new() :: kz_json:object()      %% Any custom channel vars that where provided with the route request
-                      ,sip_headers = kz_json:new() :: kz_json:object()                   %% Custom SIP Headers
-                      ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
-                      ,other_leg_call_id :: api_binary()
-                      ,resource_type :: api_binary()                      %% from route_req
-                      ,to_tag :: api_binary()
-                      ,from_tag :: api_binary()
-                      ,direction = <<"inbound">> :: ne_binary()
-                     }).
+                    ,call_id_helper = fun default_helper_function/2 :: kapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
+                    ,control_q :: api_binary()                   %% The control queue provided on route win
+                    ,control_q_helper = fun default_helper_function/2 :: kapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
+                    ,controller_q :: api_binary()                %%
+                    ,caller_id_name = kz_util:anonymous_caller_id_name() :: ne_binary()      %% The caller name
+                    ,caller_id_number = kz_util:anonymous_caller_id_number() :: ne_binary() %% The caller number
+                    ,callee_id_name :: api_binary()                     %% The callee name
+                    ,callee_id_number :: api_binary()                   %% The callee number
+                    ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
+                    ,switch_hostname :: api_binary()                    %% The switch hostname (as reported by the switch)
+                    ,switch_url :: api_binary()                         %% The switch url
+                    ,switch_uri :: api_binary()                         %% The switch uri
+                    ,request = <<"nouser@norealm">> :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
+                    ,request_user = <<"nouser">> :: ne_binary()         %% SIP request user
+                    ,request_realm = <<"norealm">> :: ne_binary()       %% SIP request host
+                    ,from = <<"nouser@norealm">> :: ne_binary()         %% Result of sip_from_user + @ + sip_from_host
+                    ,from_user = <<"nouser">> :: ne_binary()            %% SIP from user
+                    ,from_realm = <<"norealm">> :: ne_binary()          %% SIP from host
+                    ,to = <<"nouser@norealm">> :: ne_binary()           %% Result of sip_to_user + @ + sip_to_host
+                    ,to_user = <<"nouser">> :: ne_binary()              %% SIP to user
+                    ,to_realm = <<"norealm">> :: ne_binary()            %% SIP to host
+                    ,inception :: api_binary()                   %% Origin of the call <<"on-net">> | <<"off-net">>
+                    ,account_db :: api_binary()                  %% The database name of the account that authorized this call
+                    ,account_id :: api_binary()                  %% The account id that authorized this call
+                    ,authorizing_id :: api_binary()              %% The ID of the record that authorized this call
+                    ,authorizing_type :: api_binary()            %% The pvt_type of the record that authorized this call
+                    ,owner_id :: api_binary()                    %% The ID of the owner of this calling device, if any
+                    ,fetch_id :: api_binary()                    %% The Fetch ID of the Call
+                    ,bridge_id :: api_binary()                    %% The Bridge ID of the Call
+                    ,language :: api_binary()                     %% Language of the call to use
+                    ,app_name = <<"kapps_call">> :: ne_binary()        %% The application name used during kapps_call_command
+                    ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during kapps_call_command
+                    ,custom_publish_fun :: kapps_custom_publish() | 'undefined'     %% A custom command used to publish kapps_call_command
+                    ,ccvs = kz_json:new() :: kz_json:object()      %% Any custom channel vars that where provided with the route request
+                    ,sip_headers = kz_json:new() :: kz_json:object()                   %% Custom SIP Headers
+                    ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
+                    ,other_leg_call_id :: api_binary()
+                    ,resource_type :: api_binary()                      %% from route_req
+                    ,to_tag :: api_binary()
+                    ,from_tag :: api_binary()
+                    ,direction = <<"inbound">> :: ne_binary()
+                    }).
 
 -type call() :: #kapps_call{}.
 -export_type([call/0]).
@@ -174,13 +174,13 @@
 -type kapps_helper_function() :: fun((api_binary(), call()) -> api_binary()).
 
 -define(SPECIAL_VARS, [{<<"Caller-ID-Name">>, #kapps_call.caller_id_name}
-                       ,{<<"Caller-ID-Number">>, #kapps_call.caller_id_number}
-                       ,{<<"Account-ID">>, #kapps_call.account_id}
-                       ,{<<"Owner-ID">>, #kapps_call.owner_id}
-                       ,{<<"Fetch-ID">>, #kapps_call.fetch_id}
-                       ,{<<"Bridge-ID">>, #kapps_call.bridge_id}
-                       ,{<<"Authorizing-ID">>, #kapps_call.authorizing_id}
-                       ,{<<"Authorizing-Type">>, #kapps_call.authorizing_type}
+                      ,{<<"Caller-ID-Number">>, #kapps_call.caller_id_number}
+                      ,{<<"Account-ID">>, #kapps_call.account_id}
+                      ,{<<"Owner-ID">>, #kapps_call.owner_id}
+                      ,{<<"Fetch-ID">>, #kapps_call.fetch_id}
+                      ,{<<"Bridge-ID">>, #kapps_call.bridge_id}
+                      ,{<<"Authorizing-ID">>, #kapps_call.authorizing_id}
+                      ,{<<"Authorizing-Type">>, #kapps_call.authorizing_type}
                       ]).
 
 -spec default_helper_function(Field, call()) -> Field.
@@ -189,8 +189,8 @@ default_helper_function(Field, #kapps_call{}) -> Field.
 -spec clear_helpers(call()) -> call().
 clear_helpers(#kapps_call{}=Call) ->
     Fs = [fun clear_custom_publish_function/1
-          ,fun clear_call_id_helper/1
-          ,fun clear_control_queue_helper/1
+         ,fun clear_call_id_helper/1
+         ,fun clear_control_queue_helper/1
          ],
     exec(Fs, Call).
 
@@ -208,14 +208,14 @@ from_route_req(RouteReq) ->
 
 -spec from_route_req(kz_json:object(), call()) -> call().
 from_route_req(RouteReq, #kapps_call{call_id=OldCallId
-                                      ,account_id=OldAccountId
-                                      ,account_db=OldAccountDb
-                                      ,ccvs=OldCCVs
-                                      ,sip_headers=OldSHs
-                                      ,request=OldRequest
-                                      ,from=OldFrom
-                                      ,to=OldTo
-                                     }=Call) ->
+                                    ,account_id=OldAccountId
+                                    ,account_db=OldAccountDb
+                                    ,ccvs=OldCCVs
+                                    ,sip_headers=OldSHs
+                                    ,request=OldRequest
+                                    ,from=OldFrom
+                                    ,to=OldTo
+                                    }=Call) ->
     CallId = kz_json:get_value(<<"Call-ID">>, RouteReq, OldCallId),
     kz_util:put_callid(CallId),
 
@@ -240,39 +240,39 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
         end,
 
     Call1#kapps_call{
-        call_id=CallId
-        ,request=Request
-        ,request_user=to_e164(RequestUser)
-        ,request_realm=RequestRealm
-        ,from=From
-        ,from_user=FromUser
-        ,from_realm=FromRealm
-        ,to=To
-        ,to_user=ToUser
-        ,to_realm=ToRealm
-        ,account_id=AccountId
-        ,account_db=AccountDb
-        ,inception = kz_json:get_value(<<"Inception">>, CCVs, inception(Call))
-        ,switch_hostname = kz_json:get_value(<<"Switch-Hostname">>, RouteReq, switch_hostname(Call))
-        ,switch_nodename = kz_json:get_ne_value(<<"Switch-Nodename">>, RouteReq, switch_nodename(Call))
-        ,switch_url = kz_json:get_ne_value(<<"Switch-URL">>, RouteReq, switch_url(Call))
-        ,switch_uri = kz_json:get_ne_value(<<"Switch-URI">>, RouteReq, switch_uri(Call))
-        ,authorizing_id = kz_json:get_ne_value(<<"Authorizing-ID">>, CCVs, authorizing_id(Call))
-        ,authorizing_type = kz_json:get_ne_value(<<"Authorizing-Type">>, CCVs, authorizing_type(Call))
-        ,owner_id = kz_json:get_ne_value(<<"Owner-ID">>, CCVs, owner_id(Call))
-        ,fetch_id = kz_json:get_ne_value(<<"Fetch-ID">>, CCVs, fetch_id(Call))
-        ,bridge_id = kz_json:get_ne_value(<<"Bridge-ID">>, CCVs, bridge_id(Call))
-        ,caller_id_name = kz_json:get_value(<<"Caller-ID-Name">>, RouteReq, caller_id_name(Call))
-        ,callee_id_name = kz_json:get_value(<<"Callee-ID-Name">>, RouteReq, callee_id_name(Call))
-        ,caller_id_number = kz_json:get_value(<<"Caller-ID-Number">>, RouteReq, caller_id_number(Call))
-        ,callee_id_number = kz_json:get_value(<<"Callee-ID-Number">>, RouteReq, ToUser)
-        ,ccvs = CCVs
-        ,sip_headers = SHs
-        ,resource_type = kz_json:get_value(<<"Resource-Type">>, RouteReq, resource_type(Call))
-        ,to_tag = kz_json:get_value(<<"To-Tag">>, RouteReq, to_tag(Call))
-        ,from_tag = kz_json:get_value(<<"From-Tag">>, RouteReq, from_tag(Call))
-        ,direction = kz_json:get_ne_value(<<"Call-Direction">>, RouteReq, direction(Call))
-    }.
+      call_id=CallId
+                    ,request=Request
+                    ,request_user=to_e164(RequestUser)
+                    ,request_realm=RequestRealm
+                    ,from=From
+                    ,from_user=FromUser
+                    ,from_realm=FromRealm
+                    ,to=To
+                    ,to_user=ToUser
+                    ,to_realm=ToRealm
+                    ,account_id=AccountId
+                    ,account_db=AccountDb
+                    ,inception = kz_json:get_value(<<"Inception">>, CCVs, inception(Call))
+                    ,switch_hostname = kz_json:get_value(<<"Switch-Hostname">>, RouteReq, switch_hostname(Call))
+                    ,switch_nodename = kz_json:get_ne_value(<<"Switch-Nodename">>, RouteReq, switch_nodename(Call))
+                    ,switch_url = kz_json:get_ne_value(<<"Switch-URL">>, RouteReq, switch_url(Call))
+                    ,switch_uri = kz_json:get_ne_value(<<"Switch-URI">>, RouteReq, switch_uri(Call))
+                    ,authorizing_id = kz_json:get_ne_value(<<"Authorizing-ID">>, CCVs, authorizing_id(Call))
+                    ,authorizing_type = kz_json:get_ne_value(<<"Authorizing-Type">>, CCVs, authorizing_type(Call))
+                    ,owner_id = kz_json:get_ne_value(<<"Owner-ID">>, CCVs, owner_id(Call))
+                    ,fetch_id = kz_json:get_ne_value(<<"Fetch-ID">>, CCVs, fetch_id(Call))
+                    ,bridge_id = kz_json:get_ne_value(<<"Bridge-ID">>, CCVs, bridge_id(Call))
+                    ,caller_id_name = kz_json:get_value(<<"Caller-ID-Name">>, RouteReq, caller_id_name(Call))
+                    ,callee_id_name = kz_json:get_value(<<"Callee-ID-Name">>, RouteReq, callee_id_name(Call))
+                    ,caller_id_number = kz_json:get_value(<<"Caller-ID-Number">>, RouteReq, caller_id_number(Call))
+                    ,callee_id_number = kz_json:get_value(<<"Callee-ID-Number">>, RouteReq, ToUser)
+                    ,ccvs = CCVs
+                    ,sip_headers = SHs
+                    ,resource_type = kz_json:get_value(<<"Resource-Type">>, RouteReq, resource_type(Call))
+                    ,to_tag = kz_json:get_value(<<"To-Tag">>, RouteReq, to_tag(Call))
+                    ,from_tag = kz_json:get_value(<<"From-Tag">>, RouteReq, from_tag(Call))
+                    ,direction = kz_json:get_ne_value(<<"Call-Direction">>, RouteReq, direction(Call))
+     }.
 
 -spec from_route_win(kz_json:object()) -> call().
 from_route_win(RouteWin) ->
@@ -280,18 +280,18 @@ from_route_win(RouteWin) ->
 
 -spec from_route_win(kz_json:object(), call()) -> call().
 from_route_win(RouteWin, #kapps_call{call_id=OldCallId
-                                      ,ccvs=OldCCVs
-                                      ,sip_headers=OldSHs
-                                      ,inception=OldInception
-                                      ,account_id=OldAccountId
-                                      ,account_db=OldAccountDb
-                                      ,authorizing_id=OldAuthzId
-                                      ,authorizing_type=OldAuthzType
-                                      ,owner_id=OldOwnerId
-                                      ,fetch_id=OldFetchId
-                                      ,bridge_id=OldBridgeId
-                                      ,language=OldLanguage
-                                     }=Call) ->
+                                    ,ccvs=OldCCVs
+                                    ,sip_headers=OldSHs
+                                    ,inception=OldInception
+                                    ,account_id=OldAccountId
+                                    ,account_db=OldAccountDb
+                                    ,authorizing_id=OldAuthzId
+                                    ,authorizing_type=OldAuthzType
+                                    ,owner_id=OldOwnerId
+                                    ,fetch_id=OldFetchId
+                                    ,bridge_id=OldBridgeId
+                                    ,language=OldLanguage
+                                    }=Call) ->
     CallId = kz_json:get_value(<<"Call-ID">>, RouteWin, OldCallId),
     kz_util:put_callid(CallId),
 
@@ -302,19 +302,19 @@ from_route_win(RouteWin, #kapps_call{call_id=OldCallId
         find_account_info(OldAccountId, OldAccountDb, kz_json:get_value(<<"Account-ID">>, CCVs)),
 
     Call#kapps_call{call_id=CallId
-                     ,account_id=AccountId
-                     ,account_db=AccountDb
-                     ,ccvs=CCVs
-                     ,sip_headers=SHs
-                     ,control_q = kz_json:get_value(<<"Control-Queue">>, RouteWin)
-                     ,inception = kz_json:get_value(<<"Inception">>, CCVs, OldInception)
-                     ,authorizing_id = kz_json:get_ne_value(<<"Authorizing-ID">>, CCVs, OldAuthzId)
-                     ,authorizing_type = kz_json:get_ne_value(<<"Authorizing-Type">>, CCVs, OldAuthzType)
-                     ,owner_id = kz_json:get_ne_value(<<"Owner-ID">>, CCVs, OldOwnerId)
-                     ,fetch_id = kz_json:get_ne_value(<<"Fetch-ID">>, CCVs, OldFetchId)
-                     ,bridge_id = kz_json:get_ne_value(<<"Bridge-ID">>, CCVs, OldBridgeId)
-                     ,language = kz_media_util:prompt_language(AccountId, OldLanguage)
-                    }.
+                   ,account_id=AccountId
+                   ,account_db=AccountDb
+                   ,ccvs=CCVs
+                   ,sip_headers=SHs
+                   ,control_q = kz_json:get_value(<<"Control-Queue">>, RouteWin)
+                   ,inception = kz_json:get_value(<<"Inception">>, CCVs, OldInception)
+                   ,authorizing_id = kz_json:get_ne_value(<<"Authorizing-ID">>, CCVs, OldAuthzId)
+                   ,authorizing_type = kz_json:get_ne_value(<<"Authorizing-Type">>, CCVs, OldAuthzType)
+                   ,owner_id = kz_json:get_ne_value(<<"Owner-ID">>, CCVs, OldOwnerId)
+                   ,fetch_id = kz_json:get_ne_value(<<"Fetch-ID">>, CCVs, OldFetchId)
+                   ,bridge_id = kz_json:get_ne_value(<<"Bridge-ID">>, CCVs, OldBridgeId)
+                   ,language = kz_media_util:prompt_language(AccountId, OldLanguage)
+                   }.
 
 -spec find_account_info(api_binary(), api_binary(), api_binary()) ->
                                {api_binary(), api_binary()}.
@@ -322,7 +322,7 @@ find_account_info(OldId, OldDb, 'undefined') ->
     {OldId, OldDb};
 find_account_info('undefined', _OldDb, AccountId) ->
     {AccountId
-     ,kz_util:format_account_id(AccountId, 'encoded')
+    ,kz_util:format_account_id(AccountId, 'encoded')
     };
 find_account_info(OldId, OldDb, _AccountId) ->
     {OldId, OldDb}.
@@ -340,8 +340,8 @@ from_originate_uuid(JObj) ->
 from_originate_uuid(JObj, #kapps_call{}=Call) ->
     'true' = kapi_resource:originate_uuid_v(JObj),
     Call#kapps_call{control_q=kz_json:get_value(<<"Outbound-Call-Control-Queue">>, JObj, control_queue(Call))
-                     ,call_id=kz_json:get_value(<<"Outbound-Call-ID">>, JObj, call_id(Call))
-                    }.
+                   ,call_id=kz_json:get_value(<<"Outbound-Call-ID">>, JObj, call_id(Call))
+                   }.
 
 -spec from_originate_ready(kz_json:object()) -> call().
 -spec from_originate_ready(kz_json:object(), call()) -> call().
@@ -352,8 +352,8 @@ from_originate_ready(JObj) ->
 from_originate_ready(JObj, #kapps_call{}=Call) ->
     'true' = kapi_resource:originate_ready_v(JObj),
     Call#kapps_call{control_q=kz_json:get_value(<<"Control-Queue">>, JObj, control_queue(Call))
-                     ,call_id=kz_json:get_value(<<"Call-ID">>, JObj, call_id(Call))
-                    }.
+                   ,call_id=kz_json:get_value(<<"Call-ID">>, JObj, call_id(Call))
+                   }.
 
 -spec from_channel_create(kz_json:object()) -> call().
 -spec from_channel_create(kz_json:object(), call()) -> call().
@@ -377,52 +377,52 @@ from_json(JObj) ->
     from_json(JObj, new()).
 
 from_json(JObj, #kapps_call{ccvs=OldCCVs
-                             ,kvs=Kvs
-                             ,sip_headers=OldSHs
-                            }=Call) ->
+                           ,kvs=Kvs
+                           ,sip_headers=OldSHs
+                           }=Call) ->
     CCVs = kz_json:merge_recursive(OldCCVs, kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
     SHs = kz_json:merge_recursive(OldSHs, kz_json:get_value(<<"Custom-SIP-Headers">>, JObj, kz_json:new())),
     KVS = orddict:from_list(kz_json:to_proplist(kz_json:get_value(<<"Key-Value-Store">>, JObj, kz_json:new()))),
     Call#kapps_call{
       call_id = kz_json:get_ne_value(<<"Call-ID">>, JObj, call_id_direct(Call))
-      ,control_q = kz_json:get_ne_value(<<"Control-Queue">>, JObj, control_queue_direct(Call))
-      ,controller_q = kz_json:get_ne_value(<<"Controller-Queue">>, JObj, controller_queue(Call))
-      ,caller_id_name = kz_json:get_ne_value(<<"Caller-ID-Name">>, JObj, caller_id_name(Call))
-      ,caller_id_number = kz_json:get_ne_value(<<"Caller-ID-Number">>, JObj, caller_id_number(Call))
-      ,callee_id_name = kz_json:get_ne_value(<<"Callee-ID-Name">>, JObj, callee_id_name(Call))
-      ,callee_id_number = kz_json:get_ne_value(<<"Callee-ID-Number">>, JObj, callee_id_number(Call))
-      ,request = kz_json:get_ne_value(<<"Request">>, JObj, request(Call))
-      ,request_user = kz_json:get_ne_value(<<"Request-User">>, JObj, request_user(Call))
-      ,request_realm = kz_json:get_ne_value(<<"Request-Realm">>, JObj, request_realm(Call))
-      ,from = kz_json:get_ne_value(<<"From">>, JObj, from(Call))
-      ,from_user = kz_json:get_ne_value(<<"From-User">>, JObj, from_user(Call))
-      ,from_realm = kz_json:get_ne_value(<<"From-Realm">>, JObj, from_realm(Call))
-      ,to = kz_json:get_ne_value(<<"To">>, JObj, to(Call))
-      ,to_user = kz_json:get_ne_value(<<"To-User">>, JObj, to_user(Call))
-      ,to_realm = kz_json:get_ne_value(<<"To-Realm">>, JObj, to_realm(Call))
-      ,switch_hostname = kz_json:get_value(<<"Switch-Hostname">>, JObj, switch_hostname(Call))
-      ,switch_nodename = kz_json:get_value(<<"Switch-Nodename">>, JObj, switch_nodename(Call))
-      ,switch_url = kz_json:get_value(<<"Switch-URL">>, JObj, switch_url(Call))
-      ,switch_uri = kz_json:get_value(<<"Switch-URI">>, JObj, switch_uri(Call))
-      ,inception = kz_json:get_ne_value(<<"Inception">>, JObj, inception(Call))
-      ,account_db = kz_json:get_ne_value(<<"Account-DB">>, JObj, account_db(Call))
-      ,account_id = kz_json:get_ne_value(<<"Account-ID">>, JObj, account_id(Call))
-      ,authorizing_id = kz_json:get_ne_value(<<"Authorizing-ID">>, JObj, authorizing_id(Call))
-      ,authorizing_type = kz_json:get_ne_value(<<"Authorizing-Type">>, JObj, authorizing_type(Call))
-      ,owner_id = kz_json:get_ne_value(<<"Owner-ID">>, JObj, owner_id(Call))
-      ,fetch_id = kz_json:get_ne_value(<<"Fetch-ID">>, JObj, fetch_id(Call))
-      ,bridge_id = kz_json:get_ne_value(<<"Bridge-ID">>, JObj, bridge_id(Call))
-      ,language = kz_json:get_ne_value(<<"Language">>, JObj, language(Call))
-      ,app_name = kz_json:get_ne_value(<<"App-Name">>, JObj, application_name(Call))
-      ,app_version = kz_json:get_ne_value(<<"App-Version">>, JObj, application_version(Call))
-      ,ccvs = CCVs
-      ,sip_headers = SHs
-      ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Kvs, KVS)
-      ,other_leg_call_id = kz_json:get_ne_value(<<"Other-Leg-Call-ID">>, JObj, other_leg_call_id(Call))
-      ,resource_type = kz_json:get_ne_value(<<"Resource-Type">>, JObj, resource_type(Call))
-      ,to_tag = kz_json:get_ne_value(<<"To-Tag">>, JObj, to_tag(Call))
-      ,from_tag = kz_json:get_ne_value(<<"From-Tag">>, JObj, from_tag(Call))
-      ,direction = kz_json:get_ne_value(<<"Call-Direction">>, JObj, direction(Call))
+                   ,control_q = kz_json:get_ne_value(<<"Control-Queue">>, JObj, control_queue_direct(Call))
+                   ,controller_q = kz_json:get_ne_value(<<"Controller-Queue">>, JObj, controller_queue(Call))
+                   ,caller_id_name = kz_json:get_ne_value(<<"Caller-ID-Name">>, JObj, caller_id_name(Call))
+                   ,caller_id_number = kz_json:get_ne_value(<<"Caller-ID-Number">>, JObj, caller_id_number(Call))
+                   ,callee_id_name = kz_json:get_ne_value(<<"Callee-ID-Name">>, JObj, callee_id_name(Call))
+                   ,callee_id_number = kz_json:get_ne_value(<<"Callee-ID-Number">>, JObj, callee_id_number(Call))
+                   ,request = kz_json:get_ne_value(<<"Request">>, JObj, request(Call))
+                   ,request_user = kz_json:get_ne_value(<<"Request-User">>, JObj, request_user(Call))
+                   ,request_realm = kz_json:get_ne_value(<<"Request-Realm">>, JObj, request_realm(Call))
+                   ,from = kz_json:get_ne_value(<<"From">>, JObj, from(Call))
+                   ,from_user = kz_json:get_ne_value(<<"From-User">>, JObj, from_user(Call))
+                   ,from_realm = kz_json:get_ne_value(<<"From-Realm">>, JObj, from_realm(Call))
+                   ,to = kz_json:get_ne_value(<<"To">>, JObj, to(Call))
+                   ,to_user = kz_json:get_ne_value(<<"To-User">>, JObj, to_user(Call))
+                   ,to_realm = kz_json:get_ne_value(<<"To-Realm">>, JObj, to_realm(Call))
+                   ,switch_hostname = kz_json:get_value(<<"Switch-Hostname">>, JObj, switch_hostname(Call))
+                   ,switch_nodename = kz_json:get_value(<<"Switch-Nodename">>, JObj, switch_nodename(Call))
+                   ,switch_url = kz_json:get_value(<<"Switch-URL">>, JObj, switch_url(Call))
+                   ,switch_uri = kz_json:get_value(<<"Switch-URI">>, JObj, switch_uri(Call))
+                   ,inception = kz_json:get_ne_value(<<"Inception">>, JObj, inception(Call))
+                   ,account_db = kz_json:get_ne_value(<<"Account-DB">>, JObj, account_db(Call))
+                   ,account_id = kz_json:get_ne_value(<<"Account-ID">>, JObj, account_id(Call))
+                   ,authorizing_id = kz_json:get_ne_value(<<"Authorizing-ID">>, JObj, authorizing_id(Call))
+                   ,authorizing_type = kz_json:get_ne_value(<<"Authorizing-Type">>, JObj, authorizing_type(Call))
+                   ,owner_id = kz_json:get_ne_value(<<"Owner-ID">>, JObj, owner_id(Call))
+                   ,fetch_id = kz_json:get_ne_value(<<"Fetch-ID">>, JObj, fetch_id(Call))
+                   ,bridge_id = kz_json:get_ne_value(<<"Bridge-ID">>, JObj, bridge_id(Call))
+                   ,language = kz_json:get_ne_value(<<"Language">>, JObj, language(Call))
+                   ,app_name = kz_json:get_ne_value(<<"App-Name">>, JObj, application_name(Call))
+                   ,app_version = kz_json:get_ne_value(<<"App-Version">>, JObj, application_version(Call))
+                   ,ccvs = CCVs
+                   ,sip_headers = SHs
+                   ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Kvs, KVS)
+                   ,other_leg_call_id = kz_json:get_ne_value(<<"Other-Leg-Call-ID">>, JObj, other_leg_call_id(Call))
+                   ,resource_type = kz_json:get_ne_value(<<"Resource-Type">>, JObj, resource_type(Call))
+                   ,to_tag = kz_json:get_ne_value(<<"To-Tag">>, JObj, to_tag(Call))
+                   ,from_tag = kz_json:get_ne_value(<<"From-Tag">>, JObj, from_tag(Call))
+                   ,direction = kz_json:get_ne_value(<<"Call-Direction">>, JObj, direction(Call))
      }.
 
 %%--------------------------------------------------------------------
@@ -452,42 +452,42 @@ to_json(#kapps_call{}=Call) ->
 -spec to_proplist(call()) -> kz_proplist().
 to_proplist(#kapps_call{}=Call) ->
     [{<<"Call-ID">>, call_id_direct(Call)}
-     ,{<<"Control-Queue">>, control_queue_direct(Call)}
-     ,{<<"Controller-Queue">>, controller_queue(Call)}
-     ,{<<"Caller-ID-Name">>, caller_id_name(Call)}
-     ,{<<"Caller-ID-Number">>, caller_id_number(Call)}
-     ,{<<"Callee-ID-Name">>, callee_id_name(Call)}
-     ,{<<"Callee-ID-Number">>, callee_id_number(Call)}
-     ,{<<"Request">>, request(Call)}
-     ,{<<"Request-User">>, request_user(Call)}
-     ,{<<"Request-Realm">>, request_realm(Call)}
-     ,{<<"From">>, from(Call)}
-     ,{<<"From-User">>, from_user(Call)}
-     ,{<<"From-Realm">>, from_realm(Call)}
-     ,{<<"To">>, to(Call)}
-     ,{<<"To-User">>, to_user(Call)}
-     ,{<<"To-Realm">>, to_realm(Call)}
-     ,{<<"Switch-Hostname">>, switch_hostname(Call)}
-     ,{<<"Switch-Nodename">>, switch_nodename(Call)}
-     ,{<<"Switch-URL">>, switch_url(Call)}
-     ,{<<"Switch-URI">>, switch_uri(Call)}
-     ,{<<"Inception">>, inception(Call)}
-     ,{<<"Account-DB">>, account_db(Call)}
-     ,{<<"Account-ID">>, account_id(Call)}
-     ,{<<"Authorizing-ID">>, authorizing_id(Call)}
-     ,{<<"Authorizing-Type">>, authorizing_type(Call)}
-     ,{<<"Owner-ID">>, owner_id(Call)}
-     ,{<<"Fetch-ID">>, fetch_id(Call)}
-     ,{<<"Bridge-ID">>, bridge_id(Call)}
-     ,{<<"Custom-Channel-Vars">>, custom_channel_vars(Call)}
-     ,{<<"Custom-SIP-Headers">>, custom_sip_headers(Call)}
-     ,{<<"Key-Value-Store">>, kvs_to_proplist(Call)}
-     ,{<<"Other-Leg-Call-ID">>, other_leg_call_id(Call)}
-     ,{<<"Resource-Type">>, resource_type(Call)}
-     ,{<<"Language">>, language(Call)}
-     ,{<<"To-Tag">>, to_tag(Call)}
-     ,{<<"From-Tag">>, from_tag(Call)}
-     ,{<<"Call-Direction">>, direction(Call)}
+    ,{<<"Control-Queue">>, control_queue_direct(Call)}
+    ,{<<"Controller-Queue">>, controller_queue(Call)}
+    ,{<<"Caller-ID-Name">>, caller_id_name(Call)}
+    ,{<<"Caller-ID-Number">>, caller_id_number(Call)}
+    ,{<<"Callee-ID-Name">>, callee_id_name(Call)}
+    ,{<<"Callee-ID-Number">>, callee_id_number(Call)}
+    ,{<<"Request">>, request(Call)}
+    ,{<<"Request-User">>, request_user(Call)}
+    ,{<<"Request-Realm">>, request_realm(Call)}
+    ,{<<"From">>, from(Call)}
+    ,{<<"From-User">>, from_user(Call)}
+    ,{<<"From-Realm">>, from_realm(Call)}
+    ,{<<"To">>, to(Call)}
+    ,{<<"To-User">>, to_user(Call)}
+    ,{<<"To-Realm">>, to_realm(Call)}
+    ,{<<"Switch-Hostname">>, switch_hostname(Call)}
+    ,{<<"Switch-Nodename">>, switch_nodename(Call)}
+    ,{<<"Switch-URL">>, switch_url(Call)}
+    ,{<<"Switch-URI">>, switch_uri(Call)}
+    ,{<<"Inception">>, inception(Call)}
+    ,{<<"Account-DB">>, account_db(Call)}
+    ,{<<"Account-ID">>, account_id(Call)}
+    ,{<<"Authorizing-ID">>, authorizing_id(Call)}
+    ,{<<"Authorizing-Type">>, authorizing_type(Call)}
+    ,{<<"Owner-ID">>, owner_id(Call)}
+    ,{<<"Fetch-ID">>, fetch_id(Call)}
+    ,{<<"Bridge-ID">>, bridge_id(Call)}
+    ,{<<"Custom-Channel-Vars">>, custom_channel_vars(Call)}
+    ,{<<"Custom-SIP-Headers">>, custom_sip_headers(Call)}
+    ,{<<"Key-Value-Store">>, kvs_to_proplist(Call)}
+    ,{<<"Other-Leg-Call-ID">>, other_leg_call_id(Call)}
+    ,{<<"Resource-Type">>, resource_type(Call)}
+    ,{<<"Language">>, language(Call)}
+    ,{<<"To-Tag">>, to_tag(Call)}
+    ,{<<"From-Tag">>, from_tag(Call)}
+    ,{<<"Call-Direction">>, direction(Call)}
     ].
 
 -spec is_call(any()) -> boolean().

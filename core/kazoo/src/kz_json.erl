@@ -27,46 +27,46 @@
 -export([get_lower_binary/2, get_lower_binary/3]).
 -export([get_atom_value/2, get_atom_value/3]).
 -export([get_string_value/2, get_string_value/3
-         ,get_list_value/2, get_list_value/3
+        ,get_list_value/2, get_list_value/3
         ]).
 -export([get_json_value/2, get_json_value/3
-         ,get_ne_json_value/2, get_ne_json_value/3
+        ,get_ne_json_value/2, get_ne_json_value/3
         ]).
 
 -export([is_true/2, is_true/3, is_false/2, is_false/3]).
 -export([is_empty/1]).
 -export([is_json_object/1, is_json_object/2
-         ,is_valid_json_object/1
-         ,is_json_term/1
+        ,is_valid_json_object/1
+        ,is_json_term/1
         ]).
 
 -export([filter/2, filter/3
-         ,map/2
-         ,foldl/3,foldr/3
-         ,find/2, find/3
-         ,find_first_defined/2, find_first_defined/3
-         ,find_value/3, find_value/4
-         ,foreach/2
-         ,all/2, any/2
-         ,exec/2
+        ,map/2
+        ,foldl/3,foldr/3
+        ,find/2, find/3
+        ,find_first_defined/2, find_first_defined/3
+        ,find_value/3, find_value/4
+        ,foreach/2
+        ,all/2, any/2
+        ,exec/2
         ]).
 
 -export([get_ne_value/2, get_ne_value/3]).
 -export([get_value/2, get_value/3
-         ,get_values/1, get_values/2
+        ,get_values/1, get_values/2
         ]).
 -export([get_keys/1, get_keys/2]).
 -export([get_public_keys/1
-         ,get_private_keys/1
+        ,get_private_keys/1
         ]).
 -export([set_value/3, set_values/2
-         ,insert_value/3, insert_values/2
-         ,new/0
+        ,insert_value/3, insert_values/2
+        ,new/0
         ]).
 -export([delete_key/2, delete_key/3, delete_keys/2]).
 -export([merge_recursive/1
-         ,merge_recursive/2
-         ,merge_recursive/3
+        ,merge_recursive/2
+        ,merge_recursive/3
         ]).
 
 -export([from_list/1, merge_jobjs/2]).
@@ -74,14 +74,14 @@
 -export([load_fixture_from_file/2, load_fixture_from_file/3]).
 
 -export([normalize_jobj/1
-         ,normalize_jobj/3
-         ,normalize/1
-         ,normalize_key/1
-         ,are_identical/2
+        ,normalize_jobj/3
+        ,normalize/1
+        ,normalize_key/1
+        ,are_identical/2
         ]).
 -export([public_fields/1
-         ,private_fields/1
-         ,is_private_key/1
+        ,private_fields/1
+        ,is_private_key/1
         ]).
 
 -export([encode/1]).
@@ -98,9 +98,9 @@
 -include("kz_json.hrl").
 
 -export_type([json_term/0, json_terms/0
-              ,json_proplist/0, json_proplist_k/1, json_proplist_kv/2
-              ,object/0, objects/0
-              ,literal_key/0, key/0
+             ,json_proplist/0, json_proplist_k/1, json_proplist_kv/2
+             ,object/0, objects/0
+             ,literal_key/0, key/0
              ]).
 
 -spec new() -> object().
@@ -222,7 +222,7 @@ are_identical(_, 'undefined') -> 'false';
 are_identical(JObj1, JObj2) ->
     [KV || {_, V}=KV <- to_proplist(JObj1), (not kz_util:is_empty(V))]
         =:=
-    [KV || {_, V}=KV <- to_proplist(JObj2), (not kz_util:is_empty(V))].
+        [KV || {_, V}=KV <- to_proplist(JObj2), (not kz_util:is_empty(V))].
 
 %% converts top-level proplist to json object, but only if sub-proplists have been converted
 %% first.
@@ -351,7 +351,7 @@ encode_kv(Prefix, K, 'true') ->
 encode_kv(Prefix, K, 'false') ->
     encode_kv(Prefix, K, <<"=">>, <<"false">>);
 
-% key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
+                                                % key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
 %% if no prefix is present, use just key to prefix the key/value pairs in the jobj
 encode_kv(<<>>, K, ?JSON_WRAPPER(_)=JObj) -> to_querystring(JObj, [K]);
 %% if a prefix is defined, nest the key in square brackets
@@ -391,9 +391,9 @@ get_ne_json_value(Key, JObj, Default) ->
     end.
 
 -spec filter(fun(({literal_key(), json_term()}) -> boolean()), object()) ->
-                          object().
+                    object().
 -spec filter(fun(({literal_key(), json_term()}) -> boolean()), object(), key()) ->
-                          object() | objects().
+                    object() | objects().
 filter(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     from_list([E || {_,_}=E <- Prop, Pred(E)]).
 
