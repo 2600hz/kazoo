@@ -390,9 +390,9 @@ get_ne_json_value(Key, JObj, Default) ->
         _ -> Default
     end.
 
--spec filter(fun(({key(), json_term()}) -> boolean()), object()) ->
+-spec filter(fun(({literal_key(), json_term()}) -> boolean()), object()) ->
                           object().
--spec filter(fun(({key(), json_term()}) -> boolean()), object(), keys()) ->
+-spec filter(fun(({literal_key(), json_term()}) -> boolean()), object(), keys()) ->
                           object() | objects().
 filter(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     from_list([E || {_,_}=E <- Prop, Pred(E)]).
@@ -402,29 +402,29 @@ filter(Pred, ?JSON_WRAPPER(_)=JObj, Keys) when is_list(Keys),
     set_value(Keys, filter(Pred, get_json_value(Keys, JObj)), JObj);
 filter(Pred, JObj, Key) -> filter(Pred, JObj, [Key]).
 
--spec map(fun((key(), json_term()) -> {keys(), json_term()}), object()) ->
+-spec map(fun((literal_key(), json_term()) -> {keys(), json_term()}), object()) ->
                  object().
 map(F, ?JSON_WRAPPER(Prop)) -> from_list([ F(K, V) || {K,V} <- Prop]).
 
--spec foreach(fun(({key(), json_term()}) -> any()), object()) -> 'ok'.
+-spec foreach(fun(({literal_key(), json_term()}) -> any()), object()) -> 'ok'.
 foreach(F, ?JSON_WRAPPER(Prop)) when is_function(F, 1) -> lists:foreach(F, Prop).
 
--spec all(fun(({key(), json_term()}) -> boolean()), object()) ->
+-spec all(fun(({literal_key(), json_term()}) -> boolean()), object()) ->
                  boolean().
 all(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     lists:all(Pred, Prop).
 
--spec any(fun(({key(), json_term()}) -> boolean()), object()) ->
+-spec any(fun(({literal_key(), json_term()}) -> boolean()), object()) ->
                  boolean().
 any(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     lists:any(Pred, Prop).
 
--spec foldl(fun((key(), json_term(), any()) -> any()), any(), object()) -> any().
+-spec foldl(fun((literal_key(), json_term(), any()) -> any()), any(), object()) -> any().
 foldl(F, Acc0, ?JSON_WRAPPER([])) when is_function(F, 3) -> Acc0;
 foldl(F, Acc0, ?JSON_WRAPPER(Prop)) when is_function(F, 3) ->
     lists:foldl(fun({Key, Value}, Acc1) -> F(Key, Value, Acc1) end, Acc0, Prop).
 
--spec foldr(fun((key(), json_term(), any()) -> any()), any(), object()) -> any().
+-spec foldr(fun((literal_key(), json_term(), any()) -> any()), any(), object()) -> any().
 foldr(F, Acc0, ?JSON_WRAPPER([])) when is_function(F, 3) -> Acc0;
 foldr(F, Acc0, ?JSON_WRAPPER(Prop)) when is_function(F, 3) ->
     lists:foldr(fun({Key, Value}, Acc1) -> F(Key, Value, Acc1) end, Acc0, Prop).
@@ -580,14 +580,14 @@ get_keys1(JObj) -> props:get_keys(to_proplist(JObj)).
 get_public_keys(JObj) ->
     [Key
      || Key <- get_keys(JObj)
-            ,not is_private_key(Key)
+            ,not is_private_literal_key(Key)
     ].
 
 -spec get_private_keys(object()) -> keys().
 get_private_keys(JObj) ->
     [Key
      || Key <- get_keys(JObj)
-            ,is_private_key(Key)
+            ,is_private_literal_key(Key)
     ].
 
 -spec get_ne_value(keys(), object() | objects()) ->
@@ -740,11 +740,11 @@ insert_values(KVs, JObj) ->
                 ,KVs
                ).
 
--spec insert_value_fold({key(), json_term()}, object()) -> object().
+-spec insert_value_fold({literal_key(), json_term()}, object()) -> object().
 insert_value_fold({Key, Value}, JObj) ->
     insert_value(Key, Value, JObj).
 
--spec set_value(key() | keys(), json_term(), object() | objects()) -> object() | objects().
+-spec set_value(literal_key() | keys(), json_term(), object() | objects()) -> object() | objects().
 set_value(Keys, Value, JObj) when is_list(Keys) -> set_value1(Keys, Value, JObj);
 set_value(Key, Value, JObj) -> set_value1([Key], Value, JObj).
 
@@ -802,29 +802,29 @@ set_value1([Key1|T], Value, ?JSON_WRAPPER(Props)) ->
 %% There are no more keys to iterate through! Override the value here...
 set_value1([], Value, _JObj) -> Value.
 
-%% delete_key(foo, {struct, [{foo, bar}, {baz, biz}]}) -> {struct, [{baz, biz}]}
-%% delete_key([foo, far], {struct, [{foo, {struct, [{far, away}]}}, {baz, biz}]}) -> {struct, [{foo, {struct, []}}, {baz, biz}]}
+%% delete_literal_key(foo, {struct, [{foo, bar}, {baz, biz}]}) -> {struct, [{baz, biz}]}
+%% delete_literal_key([foo, far], {struct, [{foo, {struct, [{far, away}]}}, {baz, biz}]}) -> {struct, [{foo, {struct, []}}, {baz, biz}]}
 
--spec delete_key(key() | keys(), object() | objects()) -> object() | objects().
--spec delete_key(keys(), object() | objects(), 'prune' | 'no_prune') -> object() | objects().
-delete_key(Key, JObj) when not is_list(Key) ->
-    delete_key([Key], JObj, 'no_prune');
-delete_key(Keys, JObj) ->
-    delete_key(Keys, JObj, 'no_prune').
+-spec delete_literal_key(literal_key() | keys(), object() | objects()) -> object() | objects().
+-spec delete_literal_key(keys(), object() | objects(), 'prune' | 'no_prune') -> object() | objects().
+delete_literal_key(Key, JObj) when not is_list(Key) ->
+    delete_literal_key([Key], JObj, 'no_prune');
+delete_literal_key(Keys, JObj) ->
+    delete_literal_key(Keys, JObj, 'no_prune').
 
 %% 'prune' removes the parent key if the result of the delete is an empty list; no 'prune' leaves the parent intact
-%% so, delete_key([<<"k1">>, <<"k1.1">>], {struct, [{<<"k1">>, {struct, [{<<"k1.1">>, <<"v1.1">>}]}}]}) would result in
+%% so, delete_literal_key([<<"k1">>, <<"k1.1">>], {struct, [{<<"k1">>, {struct, [{<<"k1.1">>, <<"v1.1">>}]}}]}) would result in
 %%   'no_prune' -> {struct, [{<<"k1">>, []}]}
 %%   'prune' -> {struct, []}
-delete_key(Key, JObj, PruneOpt) when not is_list(Key) ->
+delete_literal_key(Key, JObj, PruneOpt) when not is_list(Key) ->
     ?MODULE:PruneOpt([Key], JObj);
-delete_key(Keys, JObj, PruneOpt) ->
+delete_literal_key(Keys, JObj, PruneOpt) ->
     ?MODULE:PruneOpt(Keys, JObj).
 
 %% Figure out how to set the current key among a list of objects
 -spec delete_keys([list() | binary(),...], object()) -> object().
 delete_keys(Keys, JObj) when is_list(Keys) ->
-    lists:foldr(fun(K, JObj0) -> delete_key(K, JObj0) end, JObj, Keys).
+    lists:foldr(fun(K, JObj0) -> delete_literal_key(K, JObj0) end, JObj, Keys).
 
 -spec prune(keys(), object() | objects()) -> object() | objects().
 prune([], JObj) -> JObj;
@@ -942,9 +942,9 @@ normalize_jobj(JObj) -> normalize(JObj).
 -spec normalize(object()) -> object().
 normalize(JObj) -> foldl(fun normalize_foldl/3, new(), JObj).
 
--spec normalize_foldl(key(), json_term(), object()) -> object().
+-spec normalize_foldl(literal_key(), json_term(), object()) -> object().
 normalize_foldl(_K, 'undefined', JObj) -> JObj;
-normalize_foldl(K, V, JObj) -> set_value(normalize_key(K), normalize_value(V), JObj).
+normalize_foldl(K, V, JObj) -> set_value(normalize_literal_key(K), normalize_value(V), JObj).
 
 -spec normalize_value(json_term()) -> json_term().
 normalize_value([_|_]=As) -> [normalize_value(A) || A <- As];
@@ -954,8 +954,8 @@ normalize_value(Obj) ->
         'false' -> Obj
     end.
 
--spec normalize_key(ne_binary()) -> ne_binary().
-normalize_key(Key) when is_binary(Key) ->
+-spec normalize_literal_key(ne_binary()) -> ne_binary().
+normalize_literal_key(Key) when is_binary(Key) ->
     << <<(normalize_key_char(B))>> || <<B>> <= Key>>.
 
 -spec normalize_key_char(char()) -> char().
@@ -980,10 +980,10 @@ normalize_jobj(?JSON_WRAPPER(_)=JObj, RemoveKeys, SearchReplaceFormatters) ->
 -spec search_replace_format(search_replace_format(), object()) -> object().
 search_replace_format({Old, New}, JObj) ->
     V = get_value(Old, JObj),
-    set_value(New, V, delete_key(Old, JObj));
+    set_value(New, V, delete_literal_key(Old, JObj));
 search_replace_format({Old, New, Formatter}, JObj) when is_function(Formatter, 1) ->
     V = get_value(Old, JObj),
-    set_value(New, Formatter(V), delete_key(Old, JObj)).
+    set_value(New, Formatter(V), delete_literal_key(Old, JObj)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -996,7 +996,7 @@ search_replace_format({Old, New, Formatter}, JObj) when is_function(Formatter, 1
 public_fields(JObjs) when is_list(JObjs) ->
     [public_fields(JObj) || JObj <- JObjs];
 public_fields(JObj) ->
-    PubJObj = filter(fun({K, _}) -> (not is_private_key(K)) end, JObj),
+    PubJObj = filter(fun({K, _}) -> (not is_private_literal_key(K)) end, JObj),
     case kz_doc:id(JObj) of
         'undefined' -> PubJObj;
         Id -> set_value(<<"id">>, Id, PubJObj)
@@ -1013,7 +1013,7 @@ public_fields(JObj) ->
 private_fields(JObjs) when is_list(JObjs) ->
     [private_fields(JObj) || JObj <- JObjs];
 private_fields(JObj) ->
-    filter(fun({K, _}) -> is_private_key(K) end, JObj).
+    filter(fun({K, _}) -> is_private_literal_key(K) end, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1022,10 +1022,10 @@ private_fields(JObj) ->
 %% considered private; otherwise 'false'
 %% @end
 %%--------------------------------------------------------------------
--spec is_private_key(key()) -> boolean().
-is_private_key(<<"_", _/binary>>) -> 'true';
-is_private_key(<<"pvt_", _/binary>>) -> 'true';
-is_private_key(_) -> 'false'.
+-spec is_private_literal_key(literal_key()) -> boolean().
+is_private_literal_key(<<"_", _/binary>>) -> 'true';
+is_private_literal_key(<<"pvt_", _/binary>>) -> 'true';
+is_private_literal_key(_) -> 'false'.
 
 -spec flatten(object() | objects(), integer(), list()) -> objects().
 -spec flatten(any(), list(), list(), integer()) -> objects().
