@@ -39,16 +39,21 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {cleanup_timer_ref = start_cleanup_timer() :: reference()
-               ,minute_timer_ref = start_minute_timer() :: reference()
-               ,hour_timer_ref = start_hour_timer() :: reference()
-               ,day_timer_ref = start_day_timer() :: reference()
+-record(state, {cleanup_ref = cleanup_timer() :: reference()
+               ,minute_ref = minute_timer() :: reference()
+               ,hour_ref = hour_timer() :: reference()
+               ,day_ref = day_timer() :: reference()
                }).
 -type state() :: #state{}.
+
+-define(BINDING_PREFIX, "v2_resource.cleanup").
 
 %% How long to pause before attempting to delete the next chunk of soft-deleted docs
 -define(SOFT_DELETE_PAUSE,
         kapps_config:get(?CONFIG_CAT, <<"soft_delete_pause_ms">>, 10 * ?MILLISECONDS_IN_SECOND)).
+
+-define(CLEANUP_TIMER,
+        kapps_config:get_integer(?CONFIG_CAT, <<"cleanup_timer">>, ?SECONDS_IN_DAY)).
 
 %%%===================================================================
 %%% API
@@ -87,35 +92,33 @@ init([]) ->
     lager:debug("started ~s", [?MODULE]),
     {'ok', #state{}}.
 
--define(BINDING_PREFIX, "v2_resource.cleanup.").
-
 -spec binding_account() -> ne_binary().
 binding_account() ->
-    <<?BINDING_PREFIX, "account">>.
+    <<?BINDING_PREFIX, ".account">>.
 
 -spec binding_account_mod() -> ne_binary().
 binding_account_mod() ->
-    <<?BINDING_PREFIX, "account_mod">>.
+    <<?BINDING_PREFIX, ".account_mod">>.
 
 -spec binding_system() -> ne_binary().
 binding_system() ->
-    <<?BINDING_PREFIX, "system">>.
+    <<?BINDING_PREFIX, ".system">>.
 
 -spec binding_other() -> ne_binary().
 binding_other() ->
-    <<?BINDING_PREFIX, "other">>.
+    <<?BINDING_PREFIX, ".other">>.
 
 -spec binding_minute() -> ne_binary().
 binding_minute() ->
-    <<?BINDING_PREFIX, "minute">>.
+    <<?BINDING_PREFIX, ".minute">>.
 
 -spec binding_hour() -> ne_binary().
 binding_hour() ->
-    <<?BINDING_PREFIX, "hour">>.
+    <<?BINDING_PREFIX, ".hour">>.
 
 -spec binding_day() -> ne_binary().
 binding_day() ->
-    <<?BINDING_PREFIX, "day">>.
+    <<?BINDING_PREFIX, ".day">>.
 
 -spec binding_all_dbs() -> ne_binaries().
 binding_all_dbs() ->
@@ -140,10 +143,10 @@ binding_all_dbs() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
-handle_call('status', _From, #state{cleanup_timer_ref=Cleanup
-                                   ,minute_timer_ref=Minute
-                                   ,hour_timer_ref=Hour
-                                   ,day_timer_ref=Day
+handle_call('status', _From, #state{cleanup_ref=Cleanup
+                                   ,minute_ref=Minute
+                                   ,hour_ref=Hour
+                                   ,day_ref=Day
                                    }=State) ->
     {'reply', [{'cleanup', erlang:read_timer(Cleanup)}
               ,{'minute', erlang:read_timer(Minute)}
@@ -167,9 +170,9 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
-handle_cast({'cleanup_finished', Ref}, #state{cleanup_timer_ref=Ref}=State) ->
+handle_cast({'cleanup_finished', Ref}, #state{cleanup_ref=Ref}=State) ->
     lager:debug("cleanup finished for ~p, starting timer", [Ref]),
-    {'noreply', State#state{cleanup_timer_ref=start_cleanup_timer()}, 'hibernate'};
+    {'noreply', State#state{cleanup_ref=cleanup_timer()}, 'hibernate'};
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -186,22 +189,23 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
-handle_info('cleanup', #state{cleanup_timer_ref=Ref}=State) ->
+handle_info({timeout, Ref, _Msg}, #state{cleanup_ref=Ref}=State) ->
     _Pid = kz_util:spawn(fun start_cleanup_pass/1, [Ref]),
     lager:debug("cleaning up in ~p(~p)", [_Pid, Ref]),
     {'noreply', State};
-handle_info('minute_cleanup', #state{minute_timer_ref=Ref}=State) ->
+
+handle_info({timeout, Ref, _Msg}, #state{minute_ref=Ref}=State) ->
     _Pid = kz_util:spawn(fun crossbar_bindings:map/2, [binding_minute(), []]),
-    _ = stop_timer(Ref),
-    {'noreply', State#state{minute_timer_ref=start_minute_timer()}};
-handle_info('hour_cleanup', #state{hour_timer_ref=Ref}=State) ->
+    {'noreply', State#state{minute_ref=minute_timer()}};
+
+handle_info({timeout, Ref, _Msg}, #state{hour_ref=Ref}=State) ->
     _Pid = kz_util:spawn(fun crossbar_bindings:map/2, [binding_hour(), []]),
-    _ = stop_timer(Ref),
-    {'noreply', State#state{hour_timer_ref=start_hour_timer()}};
-handle_info('day_cleanup', #state{day_timer_ref=Ref}=State) ->
+    {'noreply', State#state{hour_ref=hour_timer()}};
+
+handle_info({timeout, Ref, _Msg}, #state{day_ref=Ref}=State) ->
     _Pid = kz_util:spawn(fun crossbar_bindings:map/2, [binding_day(), []]),
-    _ = stop_timer(Ref),
-    {'noreply', State#state{day_timer_ref=start_day_timer()}};
+    {'noreply', State#state{day_ref=day_timer()}};
+
 handle_info(_Msg, State) ->
     lager:debug("unhandled msg: ~p", [_Msg]),
     {'noreply', State}.
@@ -252,44 +256,36 @@ cleanup_pass(Db) ->
 
 -spec db_routing_key(ne_binary()) -> ne_binary().
 db_routing_key(Db) ->
-    Classifiers = [{fun kapps_util:is_account_db/1, fun binding_account/0}
-                  ,{fun kapps_util:is_account_mod/1, fun binding_account_mod/0}
-                  ,{fun kz_util:is_system_db/1, fun binding_system/0}
+    Classifiers = [{fun kapps_util:is_account_db/1, binding_account()}
+                  ,{fun kapps_util:is_account_mod/1, binding_account_mod()}
+                  ,{fun kz_util:is_system_db/1, binding_system()}
                   ],
     db_routing_key(Db, Classifiers).
 db_routing_key(_Db, []) ->
     binding_other();
-db_routing_key(Db, [{Classifier, BindingFun} | Classifiers]) ->
+db_routing_key(Db, [{Classifier, Binding} | Classifiers]) ->
     case Classifier(Db) of
-        'true' -> BindingFun();
+        'true' -> Binding;
         'false' -> db_routing_key(Db, Classifiers)
     end.
 
--spec stop_timer(any()) -> any().
-stop_timer(Ref) when is_reference(Ref) ->
-    erlang:cancel_timer(Ref).
-
--spec start_timer(pos_integer(), any()) -> reference().
-start_timer(Expiry, Msg) ->
-    erlang:send_after(Expiry, self(), Msg).
-
--spec start_cleanup_timer() -> reference().
-start_cleanup_timer() ->
-    Expiry = kapps_config:get_integer(?CONFIG_CAT, <<"cleanup_timer">>, ?SECONDS_IN_DAY),
+-spec cleanup_timer() -> reference().
+cleanup_timer() ->
+    Expiry = ?CLEANUP_TIMER,
     lager:debug("starting cleanup timer for ~b s", [Expiry]),
-    start_timer(Expiry * ?MILLISECONDS_IN_SECOND, 'cleanup').
+    erlang:start_timer(?CLEANUP_TIMER, self(), ok).
 
--spec start_minute_timer() -> reference().
-start_minute_timer() ->
-    start_timer(?MILLISECONDS_IN_MINUTE, 'minute_cleanup').
+-spec minute_timer() -> reference().
+minute_timer() ->
+    erlang:start_timer(?MILLISECONDS_IN_MINUTE, self(), ok).
 
--spec start_hour_timer() -> reference().
-start_hour_timer() ->
-    start_timer(?MILLISECONDS_IN_HOUR, 'hour_cleanup').
+-spec hour_timer() -> reference().
+hour_timer() ->
+    erlang:start_timer(?MILLISECONDS_IN_HOUR, self(), ok).
 
--spec start_day_timer() -> reference().
-start_day_timer() ->
-    start_timer(?MILLISECONDS_IN_DAY, 'day_cleanup').
+-spec day_timer() -> reference().
+day_timer() ->
+    erlang:start_timer(?MILLISECONDS_IN_DAY, self(), ok).
 
 -spec cleanup_soft_deletes(ne_binary()) -> any().
 cleanup_soft_deletes(Account) ->
@@ -306,11 +302,9 @@ cleanup_account_soft_deletes(Account) ->
 
 -spec do_cleanup(ne_binary()) -> 'ok'.
 do_cleanup(Db) ->
-    case kz_datamgr:get_results(Db
-                               ,<<"maintenance/soft_deletes">>
-                               ,[{'limit', kz_datamgr:max_bulk_insert()}]
-                               )
-    of
+    View = <<"maintenance/soft_deletes">>,
+    ViewOptions = [{'limit', kz_datamgr:max_bulk_insert()}],
+    case kz_datamgr:get_results(Db, View, ViewOptions) of
         {'ok', []} -> 'ok';
         {'ok', L} ->
             lager:debug("removing ~b soft-deleted docs from ~s", [length(L), Db]),
@@ -318,7 +312,7 @@ do_cleanup(Db) ->
             'ok' = timer:sleep(?SOFT_DELETE_PAUSE),
             do_cleanup(Db);
         {'error', 'not_found'} ->
-            lager:warning("db ~s or view 'maintenance/soft_deletes' not found", [Db]);
+            lager:warning("db ~s or view '~s' not found", [Db, View]);
         {'error', _E} ->
             lager:debug("failed to lookup soft-deleted tokens: ~p", [_E])
     end.
