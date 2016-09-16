@@ -11,6 +11,7 @@
 
 -export([start_link/0]).
 -export([status/0]).
+-export([browse_dbs_for_triggers/1]).
 
 %%% gen_server callbacks
 -export([init/1
@@ -28,8 +29,13 @@
 -record(state, {minute_ref = minute_timer() :: reference()
                ,hour_ref = hour_timer() :: reference()
                ,day_ref = day_timer() :: reference()
+               ,browse_dbs_ref = browse_dbs_timer() :: reference() %%FIXME: gen_listen for DB news!
                }).
 -type state() :: #state{}.
+
+
+-define(CLEANUP_TIMER,
+        kapps_config:get_integer(?CONFIG_CAT, <<"browse_dbs_interval_s">>, ?SECONDS_IN_DAY)).
 
 
 %%%===================================================================
@@ -82,10 +88,12 @@ init([]) ->
 handle_call('status', _From, #state{minute_ref = Minute
                                    ,hour_ref = Hour
                                    ,day_ref = Day
+                                   ,browse_dbs_ref = Browse
                                    }=State) ->
     Timers = [{'minute', erlang:read_timer(Minute)}
              ,{'hour', erlang:read_timer(Hour)}
              ,{'day', erlang:read_timer(Day)}
+             ,{cleanup, erlang:read_timer(Browse)}
              ],
     {'reply', Timers, State};
 
@@ -100,6 +108,10 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+handle_cast({'cleanup_finished', Ref}, #state{browse_dbs_ref = Ref}=State) ->
+    lager:debug("cleanup finished for ~p, starting timer", [Ref]),
+    {'noreply', State#state{browse_dbs_ref = browse_dbs_timer()}, 'hibernate'};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast ~p", [_Msg]),
     {'noreply', State}.
@@ -129,6 +141,11 @@ handle_info({timeout, Ref, _Msg}, #state{hour_ref = Ref}=State) ->
 handle_info({timeout, Ref, _Msg}, #state{day_ref = Ref}=State) ->
     spawn_jobs(Ref, ?TRIGGER_DAY),
     {'noreply', State#state{day_ref = day_timer()}};
+
+handle_info({timeout, Ref, _Msg}, #state{browse_dbs_ref = Ref}=State) ->
+    _Pid = kz_util:spawn(fun browse_dbs_for_triggers/1, [Ref]),
+    lager:debug("cleaning up in ~p(~p)", [_Pid, Ref]),
+    {'noreply', State};
 
 handle_info(_Info, State) ->
     lager:debug("unhandled message ~p", [_Info]),
@@ -173,6 +190,13 @@ hour_timer() ->
 day_timer() ->
     erlang:start_timer(?MILLISECONDS_IN_DAY, self(), ok).
 
+-spec browse_dbs_timer() -> reference().
+browse_dbs_timer() ->
+    Expiry = ?CLEANUP_TIMER,
+    lager:debug("starting cleanup timer for ~b s", [Expiry]),
+    erlang:start_timer(?CLEANUP_TIMER, self(), ok).
+
+
 -spec spawn_jobs(reference(), ne_binary()) -> ok.
 spawn_jobs(Ref, Binding) ->
     CallId = make_callid(Ref, Binding),
@@ -195,5 +219,38 @@ ref_to_id(Ref) ->
     Size = byte_size(Bin) - StartSize - 1,
     <<Start:StartSize/binary, Id:Size/binary, ">">> = Bin,
     Id.
+
+
+-spec browse_dbs_for_triggers(reference()) -> 'ok'.
+browse_dbs_for_triggers(Ref) ->
+    kz_util:put_callid(<<"cleanup_pass_", (kz_util:rand_hex_binary(4))/binary>>),
+    {'ok', Dbs} = kz_datamgr:db_info(),
+    lager:debug("starting cleanup pass of databases"),
+    lists:foreach(fun cleanup_pass/1, Dbs),
+    lager:debug("pass completed for ~p", [Ref]),
+    gen_server:cast(?SERVER, {'cleanup_finished', Ref}).
+
+cleanup_pass(Db) ->
+    tasks_bindings:map(db_to_trigger(Db), Db),
+    erlang:garbage_collect(self()).
+
+-spec db_to_trigger(ne_binary()) -> ne_binary().
+db_to_trigger(Db) ->
+    Classifiers = [{fun kapps_util:is_account_db/1, ?TRIGGER_ACCOUNT}
+                  ,{fun kapps_util:is_account_mod/1, ?TRIGGER_ACCOUNT_MOD}
+                  ,{fun is_system_db/1, ?TRIGGER_SYSTEM}
+                  ],
+    db_to_trigger(Db, Classifiers).
+
+db_to_trigger(_Db, []) -> ?TRIGGER_OTHER;
+db_to_trigger(Db, [{Classifier, Trigger} | Classifiers]) ->
+    case Classifier(Db) of
+        'true' -> Trigger;
+        'false' -> db_to_trigger(Db, Classifiers)
+    end.
+
+-spec is_system_db(ne_binary()) -> boolean().
+is_system_db(Db) ->
+    lists:member(Db, ?KZ_SYSTEM_DBS).
 
 %%% End of Module.

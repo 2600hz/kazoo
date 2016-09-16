@@ -43,7 +43,6 @@
 -include("crossbar.hrl").
 
 -type payload() :: path_tokens() | % mapping over path tokens in URI
-                   ne_binary() | % crossbar_cleanup
                    [cb_context:context() | path_token() | 'undefined',...] |
                    cb_context:context() |
                    {cb_context:context(), kz_proplist()} | % v1_resource:rest_init/2
@@ -158,11 +157,9 @@ filter_out_succeeded(Term) -> kz_util:is_empty(Term).
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
 -type bind_results() :: [bind_result()].
--spec bind(ne_binary() | ne_binaries(), atom(), atom()) ->
+-spec bind(ne_binary(), atom(), atom()) ->
                   bind_result() | bind_results().
-bind([_|_]=Bindings, Module, Fun) ->
-    [bind(Binding, Module, Fun) || Binding <- Bindings];
-bind(Binding, Module, Fun) when is_binary(Binding) ->
+bind(Binding=?NE_BINARY, Module, Fun) ->
     kazoo_bindings:bind(Binding, Module, Fun).
 
 -spec flush() -> 'ok'.

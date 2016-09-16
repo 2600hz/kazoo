@@ -766,6 +766,13 @@ get_category(Category, 'false') ->
          ,{<<"tasks">>, <<"low_balance_repeat_s">>}
          }
 
+        ,{{<<"crossbar">>, <<"cleanup_timer">>}
+         ,{<<"tasks">>, <<"browse_dbs_interval_s">>}
+         }
+        ,{{<<"crossbar">>, <<"soft_delete_pause_ms">>}
+         ,{<<"tasks">>, <<"soft_delete_pause_ms">>}
+         }
+
         ]).
 
 -spec migrate() -> 'ok'.
