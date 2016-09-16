@@ -86,7 +86,8 @@ get(Key, Default, Node) when not is_binary(Node) ->
 get(Key, Default, Node) ->
     case kz_cache:fetch_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node)) of
         {'ok', V} -> V;
-        {'error', E} when E =:= 'not_found' orelse E =:= 'undefined' ->
+        {'error', E} when E =:= 'not_found';
+                          E =:= 'undefined' ->
             fetch(Key, Default, Node)
     end.
 

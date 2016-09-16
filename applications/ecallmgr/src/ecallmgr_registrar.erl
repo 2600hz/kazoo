@@ -583,8 +583,8 @@ find_newest_fetched_registration(Username, Realm, JObjs) ->
         lists:flatten(
           [Replies
            || JObj <- JObjs,
-              kz_api:event_name(JObj) =:= <<"reg_query_resp">> andalso
-                  kapi_registration:query_resp_v(JObj),
+              kz_api:event_name(JObj) =:= <<"reg_query_resp">>
+                  andalso kapi_registration:query_resp_v(JObj),
               (Replies = kz_json:get_value(<<"Fields">>, JObj, [])) =/= []
           ]
          ),
