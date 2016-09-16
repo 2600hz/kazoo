@@ -969,7 +969,7 @@ media_path(<<?LOCAL_MEDIA_PATH, _/binary>> = FSPath, _Type, _UUID, _) -> FSPath;
 media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(URI);
 media_path(<<"https://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(URI);
 media_path(<<?HTTP_GET_PREFIX, _/binary>> = Media, _Type, _UUID, _) -> Media;
-media_path(<<"$", _/binary>> = Media, _Type, _UUID, _) -> Media;
+media_path(<<"\$", _/binary>> = Media, _Type, _UUID, _) -> Media;
 media_path(MediaName, Type, UUID, JObj) ->
     case lookup_media(MediaName, UUID, JObj, Type) of
         {'error', _E} ->
