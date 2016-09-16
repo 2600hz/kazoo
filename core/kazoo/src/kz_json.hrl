@@ -24,7 +24,7 @@
 -type literal_key() :: json_string().
 -type key() :: [literal_key()] | literal_key().
 
--type json_proplist_key() :: keys().
+-type json_proplist_key() :: key().
 -type json_proplist_kv(K, V) :: [{K, V}].
 -type json_proplist_k(K) :: json_proplist_kv(K, json_term()).
 -type json_proplist() :: json_proplist_kv(json_proplist_key(), json_term()).
