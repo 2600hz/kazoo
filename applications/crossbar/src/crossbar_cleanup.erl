@@ -22,8 +22,6 @@
         ,binding_minute/0
         ,binding_hour/0
         ,binding_day/0
-
-        ,status/0
         ]).
 
 %% gen_server callbacks
@@ -40,9 +38,6 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {cleanup_ref = cleanup_timer() :: reference()
-               ,minute_ref = minute_timer() :: reference()
-               ,hour_ref = hour_timer() :: reference()
-               ,day_ref = day_timer() :: reference()
                }).
 -type state() :: #state{}.
 
@@ -65,10 +60,6 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
-
--spec status() -> kz_proplist().
-status() ->
-    gen_server:call(?SERVER, 'status').
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -132,30 +123,9 @@ binding_all_dbs() ->
 %% @private
 %% @doc
 %% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
-handle_call('status', _From, #state{cleanup_ref=Cleanup
-                                   ,minute_ref=Minute
-                                   ,hour_ref=Hour
-                                   ,day_ref=Day
-                                   }=State) ->
-    {'reply', [{'cleanup', erlang:read_timer(Cleanup)}
-              ,{'minute', erlang:read_timer(Minute)}
-              ,{'hour', erlang:read_timer(Hour)}
-              ,{'day', erlang:read_timer(Day)}
-              ]
-    ,State
-    };
-
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -163,10 +133,6 @@ handle_call(_Request, _From, State) ->
 %% @private
 %% @doc
 %% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
@@ -182,10 +148,6 @@ handle_cast(_Msg, State) ->
 %% @private
 %% @doc
 %% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
@@ -193,18 +155,6 @@ handle_info({timeout, Ref, _Msg}, #state{cleanup_ref=Ref}=State) ->
     _Pid = kz_util:spawn(fun start_cleanup_pass/1, [Ref]),
     lager:debug("cleaning up in ~p(~p)", [_Pid, Ref]),
     {'noreply', State};
-
-handle_info({timeout, Ref, _Msg}, #state{minute_ref=Ref}=State) ->
-    _Pid = kz_util:spawn(fun crossbar_bindings:map/2, [binding_minute(), []]),
-    {'noreply', State#state{minute_ref=minute_timer()}};
-
-handle_info({timeout, Ref, _Msg}, #state{hour_ref=Ref}=State) ->
-    _Pid = kz_util:spawn(fun crossbar_bindings:map/2, [binding_hour(), []]),
-    {'noreply', State#state{hour_ref=hour_timer()}};
-
-handle_info({timeout, Ref, _Msg}, #state{day_ref=Ref}=State) ->
-    _Pid = kz_util:spawn(fun crossbar_bindings:map/2, [binding_day(), []]),
-    {'noreply', State#state{day_ref=day_timer()}};
 
 handle_info(_Msg, State) ->
     lager:debug("unhandled msg: ~p", [_Msg]),
@@ -217,8 +167,6 @@ handle_info(_Msg, State) ->
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
 %% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
@@ -229,8 +177,6 @@ terminate(_Reason, _State) ->
 %% @private
 %% @doc
 %% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
@@ -274,18 +220,6 @@ cleanup_timer() ->
     Expiry = ?CLEANUP_TIMER,
     lager:debug("starting cleanup timer for ~b s", [Expiry]),
     erlang:start_timer(?CLEANUP_TIMER, self(), ok).
-
--spec minute_timer() -> reference().
-minute_timer() ->
-    erlang:start_timer(?MILLISECONDS_IN_MINUTE, self(), ok).
-
--spec hour_timer() -> reference().
-hour_timer() ->
-    erlang:start_timer(?MILLISECONDS_IN_HOUR, self(), ok).
-
--spec day_timer() -> reference().
-day_timer() ->
-    erlang:start_timer(?MILLISECONDS_IN_DAY, self(), ok).
 
 -spec cleanup_soft_deletes(ne_binary()) -> any().
 cleanup_soft_deletes(Account) ->

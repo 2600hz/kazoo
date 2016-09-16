@@ -22,5 +22,9 @@
 
 -define(OUTPUT_CSV_HEADER_ROW, [<<"error">>]).
 
+-define(TRIGGER_MINUTE, <<"tasks.triggers.minute">>).
+-define(TRIGGER_HOUR, <<"tasks.triggers.hour">>).
+-define(TRIGGER_DAY, <<"tasks.triggers.day">>).
+
 -define(KZ_TASKS_HRL, 'true').
 -endif.
