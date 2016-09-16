@@ -1,48 +1,32 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2016, 2600Hz
+%%% @copyright (C) 2016, 2600Hz INC
 %%% @doc
-%%%
+%%% Trigger jobs for execution
 %%% @end
 %%% @contributors
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(tasks_listener).
--behaviour(gen_listener).
+-module(kz_tasks_trigger).
+-behaviour(gen_server).
 
 -export([start_link/0]).
 
--export([handle_start_req/2
-        ,handle_remove_req/2
-        ]).
-
+%%% gen_server callbacks
 -export([init/1
-        ,handle_call/3
         ,handle_cast/2
+        ,handle_call/3
         ,handle_info/2
-        ,handle_event/2
-        ,terminate/2
         ,code_change/3
+        ,terminate/2
         ]).
 
 -include("tasks.hrl").
 
--define(SERVER, ?MODULE).
+-define(SERVER, {'via', 'kz_globals', ?MODULE}).
 
--record(state, {}).
+-record(state, {
+         }).
 -type state() :: #state{}.
-
--define(BINDINGS, [{'self', []}
-                  ,{'tasks', []}
-                  ]).
--define(RESPONDERS, [{{'kz_tasks_help', 'handle_lookup_req'}
-                     ,[{<<"tasks">>, <<"lookup_req">>}]
-                     }
-                    ,{{?MODULE, 'handle_start_req'}
-                     ,[{<<"tasks">>, <<"start_req">>}]
-                     }
-                    ,{{?MODULE, 'handle_remove_req'}
-                     ,[{<<"tasks">>, <<"remove_req">>}]
-                     }
-                    ]).
 
 
 %%%===================================================================
@@ -50,63 +34,22 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc Starts the server
+%% @public
+%% @doc
+%% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?SERVER
-                           ,[{'bindings', ?BINDINGS}
-                            ,{'responders', ?RESPONDERS}
-                            ]
-                           ,[]
-                           ).
-
+    case gen_server:start_link(?SERVER, ?MODULE, [], []) of
+        {'error', {'already_started', Pid}} ->
+            'true' = link(Pid),
+            {'ok', Pid};
+        Other -> Other
+    end.
 
 %%%===================================================================
-%%% AMQP API
+%%% Worker API
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec handle_start_req(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_start_req(JObj, _Props) ->
-    'true' = kapi_tasks:start_req_v(JObj),
-    Help =
-        case kz_tasks_scheduler:start(kapi_tasks:task_id(JObj)) of
-            {'ok', TaskJObj} -> TaskJObj;
-            {'error', 'already_started'} -> <<"already_started">>
-        end,
-    Resp = kz_json:from_list(
-             [{<<"Reply">>, Help}
-             ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]
-            ),
-    kapi_tasks:publish_start_resp(kz_api:server_id(JObj), Resp).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec handle_remove_req(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_remove_req(JObj, _Props) ->
-    'true' = kapi_tasks:remove_req_v(JObj),
-    Help =
-        case kz_tasks_scheduler:remove(kapi_tasks:task_id(JObj)) of
-            {'ok', TaskJObj} -> TaskJObj;
-            {'error', 'task_running'} -> <<"task_running">>
-        end,
-    Resp = kz_json:from_list(
-             [{<<"Reply">>, Help}
-             ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]
-            ),
-    kapi_tasks:publish_remove_resp(kz_api:server_id(JObj), Resp).
 
 
 %%%===================================================================
@@ -121,6 +64,8 @@ handle_remove_req(JObj, _Props) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
+    _ = process_flag('trap_exit', 'true'),
+    kz_util:put_callid(?MODULE),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -131,6 +76,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
+    lager:debug("unhandled call ~p from ~p", [_Request, _From]),
     {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
@@ -141,6 +87,7 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -150,18 +97,13 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
-handle_info(_Info, State) ->
-    {'noreply', State}.
+handle_info({'EXIT', _Pid, _Reason}, State) ->
+    lager:error("job ~s crashed: ~p", [_Pid, _Reason]),
+    {noreply, State};
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Allows listener to pass options to handlers
-%% @end
-%%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
-handle_event(_JObj, _State) ->
-    {'reply', []}.
+handle_info(_Info, State) ->
+    lager:debug("unhandled message ~p", [_Info]),
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -174,7 +116,7 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
-    lager:debug("listener terminating: ~p", [_Reason]).
+    lager:debug("~s terminating: ~p", [?MODULE, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -190,4 +132,4 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-%% End of Module.
+%%% End of Module.
