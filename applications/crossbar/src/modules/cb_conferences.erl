@@ -237,7 +237,7 @@ check_numbers(Context, Fun) ->
         {'ok', JObjs} ->
             JConf = cb_context:req_data(Context),
             Numbers = kz_datamgr:get_result_keys(JObjs),
-            Conf = kz_json:get_value(<<"conference_number">>, JConf, []),
+            Conf = kz_json:get_value(<<"conference_numbers">>, JConf, []),
             Member = kz_json:get_value([<<"member">>, <<"numbers">>], JConf, []),
             Moderator = kz_json:get_value([<<"moderator">>, <<"numbers">>], JConf, []),
             case is_number_already_used(Numbers, Conf ++ Member ++ Moderator) of
