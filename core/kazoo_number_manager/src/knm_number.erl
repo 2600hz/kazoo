@@ -102,15 +102,11 @@ get(Num) ->
 get(Num, Options) ->
     case knm_converters:is_reconcilable(Num) of
         'false' -> {'error', 'not_reconcilable'};
-        'true' -> get_number(Num, Options)
+        'true' ->
+            wrap_phone_number_return(
+              attempt(fun knm_phone_number:fetch/2, [Num, Options])
+             )
     end.
-
--spec get_number(ne_binary(), knm_number_options:options()) ->
-                        knm_number_return().
-get_number(Num, Options) ->
-    wrap_phone_number_return(
-      attempt(fun knm_phone_number:fetch/2, [Num, Options])
-     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -223,8 +219,11 @@ save_number(Number) ->
 
 -spec save_phone_number(knm_number()) -> knm_number().
 save_phone_number(Number) ->
-    PhoneNumber = knm_phone_number:save(phone_number(Number)),
-    set_phone_number(Number, PhoneNumber).
+    set_phone_number(Number, knm_phone_number:save(phone_number(Number))).
+
+-spec save_wrap_phone_number(knm_phone_number:knm_phone_number(), knm_number()) -> knm_number_return().
+save_wrap_phone_number(PhoneNumber, Number) ->
+    wrap_phone_number_return(knm_phone_number:save(PhoneNumber), Number).
 
 -spec dry_run_or_number(knm_number()) -> dry_run_or_number_return().
 dry_run_or_number(Number) ->
@@ -249,13 +248,11 @@ ensure_account_can_create(Options) ->
     end.
 
 -ifdef(TEST).
--define(LOAD_ACCOUNT(Props, _AccountId)
-       ,{'ok', props:get_value(<<"auth_by_account">>, Props)}
-       ).
+-define(LOAD_ACCOUNT(Props, _AccountId),
+        {'ok', props:get_value(<<"auth_by_account">>, Props)}).
 -else.
--define(LOAD_ACCOUNT(_Options, AccountId)
-       ,kz_account:fetch(AccountId)
-       ).
+-define(LOAD_ACCOUNT(_Options, AccountId),
+        kz_account:fetch(AccountId)).
 -endif.
 
 ensure_account_is_allowed_to_create(_, ?KNM_DEFAULT_AUTH_BY) ->
@@ -315,6 +312,8 @@ move_to(Number) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Attempts to update some phone_number fields.
+%% Note: will always result in a phone_number save.
 %% @end
 %%--------------------------------------------------------------------
 -spec update(ne_binary(), knm_phone_number:set_functions()) ->
@@ -418,9 +417,7 @@ reconcile_number(Number, Options) ->
     case updates_require_save(PhoneNumber, Updaters) of
         {'false', _PhoneNumber} -> {'ok', Number};
         {'true', UpdatedPhoneNumber} ->
-            wrap_phone_number_return(knm_phone_number:save(UpdatedPhoneNumber)
-                                    ,Number
-                                    )
+            save_wrap_phone_number(UpdatedPhoneNumber, Number)
     end.
 
 -spec updates_require_save(knm_phone_number:knm_phone_number(), up_req_els()) ->
@@ -469,7 +466,7 @@ release_number(Number, Options) ->
     {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),
     N1 = knm_providers:delete(set_phone_number(Number, PhoneNumber)),
     N = unwind_or_disconnect(N1, Options),
-    wrap_phone_number_return(knm_phone_number:save(phone_number(N)), N).
+    save_wrap_phone_number(phone_number(N), N).
 
 -spec unwind_or_disconnect(knm_number(), knm_number_options:options()) -> knm_number().
 unwind_or_disconnect(Number, Options) ->
@@ -573,11 +570,9 @@ maybe_update_assignment(Number, NewApp) ->
         NewApp -> {'ok', Number};
         _OldApp ->
             lager:debug("assigning ~s to ~s", [knm_phone_number:number(PhoneNumber), NewApp]),
-            NewPN =
-                knm_phone_number:save(
-                  knm_phone_number:set_used_by(PhoneNumber, NewApp)
-                 ),
-            wrap_phone_number_return(NewPN, Number)
+            save_wrap_phone_number(knm_phone_number:set_used_by(PhoneNumber, NewApp)
+                                  ,Number
+                                  )
     end.
 
 %%--------------------------------------------------------------------
