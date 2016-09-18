@@ -241,7 +241,7 @@ move_to_modb(AccountId, JObj, Funs, 'false') ->
 
 -spec do_move_to_modb(ne_binary(), kz_json:object(), update_funs()) -> db_ret().
 do_move_to_modb(AccountId, JObj, Funs) ->
-    Created = kz_doc:created(JObj),
+    Created = kzd_box_message:utc_seconds(JObj),
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Created),
 
     FromDb = kvm_util:get_db(AccountId),
@@ -258,7 +258,6 @@ do_move_to_modb(AccountId, JObj, Funs) ->
 try_move(FromDb, FromId, ToDb, ToId, JObj, Funs, Tries) ->
     TransformFuns =
         [fun(DestDoc) -> kzd_box_message:set_metadata(kzd_box_message:metadata(JObj), DestDoc) end
-        ,fun(DestDoc) -> update_media_id(ToId, DestDoc) end
         ,fun(DestDoc) ->
                  Props = [{<<"pvt_moved_to_modb">>, <<"true">>}
                          ,{<<"pvt_previous_id">>, FromId}
@@ -271,7 +270,7 @@ try_move(FromDb, FromId, ToDb, ToId, JObj, Funs, Tries) ->
                          ],
                  kz_json:set_values(Props, DestDoc)
          end
-         | Funs
+         | Funs ++ [fun(DestDoc) -> update_media_id(ToId, DestDoc) end]
         ],
     Options = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}],
 
@@ -324,7 +323,7 @@ copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds) ->
             copy_to_vmboxes_fold(AccountId, JObj, OldBoxId, NewBoxIds, #bulk_res{})
     end.
 
--spec copy_to_vmboxes_fold(ne_binary(), kz_json:object(), ne_binary(), ne_binaries(), kvm_messags:bulk_results()) ->
+-spec copy_to_vmboxes_fold(ne_binary(), kz_json:object(), ne_binary(), ne_binaries(), kvm_messages:bulk_results()) ->
                                   kz_json:object().
 copy_to_vmboxes_fold(_, _, _, [], #bulk_res{succeeded = Succeeded
                                            ,failed = Failed

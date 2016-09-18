@@ -17,7 +17,7 @@
         ,find_differences/3
         ,cleanup_moved_msgs/3
 
-        ,retention_days/0
+        ,retention_seconds/0
 
         ,publish_saved_notify/5, publish_voicemail_saved/5
         ,get_notify_completed_message/1
@@ -63,7 +63,7 @@ get_range_db(AccountId) ->
 
 get_range_db(AccountId, 'modb') ->
     To = kz_util:current_tstamp(),
-    From = To - ?RETENTION_DAYS(?RETENTION_DURATION),
+    From = To - ?RETENTION_SECONDS(?RETENTION_DAYS),
     lists:reverse([Db || Db <- kazoo_modb:get_range(AccountId, From, To)]).
 
 %%--------------------------------------------------------------------
@@ -239,9 +239,9 @@ cleanup_moved_msgs(AccountId, BoxId, OldIds) ->
             lager:error("unable to open mailbox for update messages array after moving voicemail messages to MODb ~s: ~s", [BoxId, _R])
     end.
 
--spec retention_days() -> integer().
-retention_days() ->
-    ?RETENTION_DAYS(?RETENTION_DURATION).
+-spec retention_seconds() -> integer().
+retention_seconds() ->
+    ?RETENTION_SECONDS(?RETENTION_DAYS).
 
 %%--------------------------------------------------------------------
 %% @public

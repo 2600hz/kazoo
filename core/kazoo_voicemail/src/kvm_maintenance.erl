@@ -42,16 +42,12 @@ migrate(AccountId) ->
 
 -spec migrate(ne_binary(), ne_binary() | kz_json:object()) -> 'ok'.
 migrate(AccountId, <<_/binary>> = BoxId) ->
-    Msgs = kvm_messages:get(AccountId, BoxId),
-    Ids = [M || M <- Msgs, maybe_migrate_to_modb(kzd_box_message:media_id(M))],
+    Msgs = kvm_messages:get_from_vmbox(AccountId, BoxId),
+    Ids = [kzd_box_message:media_id(M) || M <- Msgs],
     _ = kvm_messages:update(AccountId, BoxId, Ids),
     'ok';
 migrate(AccountId, Box) ->
     migrate(AccountId, kz_doc:id(Box)).
-
--spec maybe_migrate_to_modb(ne_binary()) -> boolean().
-maybe_migrate_to_modb(?MATCH_MODB_PREFIX(_, _, _)) -> 'false';
-maybe_migrate_to_modb(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -61,8 +57,8 @@ maybe_migrate_to_modb(_) -> 'true'.
 -spec cleanup_heard_voicemail(ne_binary()) -> 'ok'.
 cleanup_heard_voicemail(AccountId) ->
     Today = kz_util:current_tstamp(),
-    Duration = ?RETENTION_DURATION,
-    DurationS = ?RETENTION_DAYS(Duration),
+    Duration = ?RETENTION_DAYS,
+    DurationS = ?RETENTION_SECONDS(Duration),
     ?LOG("retaining messages for ~p days, delete those older for ~s", [Duration, AccountId]),
 
     AccountDb = kvm_util:get_db(AccountId),

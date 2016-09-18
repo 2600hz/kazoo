@@ -15,13 +15,15 @@
 -define(RETRY_CONFLICT(F), kvm_util:retry_conflict(fun() -> F end)).
 
 -define(RETENTION_PATH, [?KEY_VOICEMAIL, ?KEY_RETENTION_DURATION]).
--define(RETENTION_DURATION
+-define(RETENTION_DAYS
        ,kapps_config:get_integer(?CF_CONFIG_CAT, ?RETENTION_PATH, 93)  %% 93 days(3 months)
        ).
 
--define(RETENTION_DAYS(Duration)
-       ,?SECONDS_IN_DAY * Duration + ?SECONDS_IN_HOUR
+-define(RETENTION_SECONDS(Days)
+       ,?SECONDS_IN_DAY * Days + ?SECONDS_IN_HOUR
        ).
+
+-define(MSG_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
 
 -record(bulk_res, {succeeded = []  :: ne_binaries()
                   ,failed = [] :: kz_json:objects()
