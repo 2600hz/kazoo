@@ -37,7 +37,7 @@
         ,offnet_flags/1
         ]).
 
--export([maybe_ensure_cid_valid/4
+-export([maybe_ensure_cid_valid/5
         ,maybe_restrict_call/2
         ]).
 
@@ -45,6 +45,7 @@
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
 
 -define(VALIDATE_CALLER_ID, kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_caller_id">>, 'false')).
+-define(HONOR_DIVERSION, kapps_config:get_is_true(?CONFIG_CAT, <<"honor_diversions_by_cid_validation">>, 'false')).
 
 -spec find_ip(ne_binary() | nonempty_string()) -> nonempty_string().
 find_ip(Domain) when is_binary(Domain) ->
@@ -329,15 +330,36 @@ simple_extract([JObj | T]) ->
 
 -type cid_type() :: 'external' | 'emergency'.
 
--spec maybe_ensure_cid_valid(cid_type(), api_binary(), ne_binary(), ne_binary()) ->
+-spec maybe_ensure_cid_valid(cid_type(), api_binary(), ne_binary(), ne_binary(), kz_json:object()) ->
                                     ne_binary().
-maybe_ensure_cid_valid('external', CIDNum, FromUser, AccountId) ->
+maybe_ensure_cid_valid('external', CIDNum, FromUser, AccountId, CustomSIPHeaders) ->
     case ?VALIDATE_CALLER_ID of
-        'true' -> validate_external_cid(CIDNum, FromUser, AccountId);
+        'true' -> maybe_honor_diversion(CIDNum, FromUser, AccountId, CustomSIPHeaders);
         'false' -> CIDNum
     end;
-maybe_ensure_cid_valid('emergency', ECIDNum, _FromUser, _AccountId) ->
+maybe_ensure_cid_valid('emergency', ECIDNum, _FromUser, _AccountId, _CustomSIPHeaders) ->
     ECIDNum.
+
+maybe_honor_diversion(CIDNum, FromUser, AccountId, CustomSIPHeaders) ->
+    case ?HONOR_DIVERSION of
+        'false' -> validate_external_cid(CIDNum, FromUser, AccountId);
+        'true' -> honor_diversion(CIDNum, FromUser, AccountId, CustomSIPHeaders)
+    end.
+
+honor_diversion(CIDNum, FromUser, AccountId, CustomSIPHeaders) ->
+    case kz_json:get_value(<<"Diversions">>, CustomSIPHeaders) of
+        [Diversion|_] ->
+            [_,CallerIdNumber,_] = binary:split(Diversion, [<<":">>,<<"@">>], ['global']),
+            case knm_number:lookup_account(CallerIdNumber) of
+                {'ok', AccountId, _} -> CIDNum;
+                _ ->
+                    DefaultCID = kapps_config:get(<<"trunkstore">>, <<"default_caller_id_number">>, kz_util:anonymous_caller_id_number()),
+                    lager:info("wrong diversions cid detected! Will use default trunkstore caller id: ~s", [DefaultCID]),
+                    DefaultCID
+            end;
+        _ ->
+            validate_external_cid(CIDNum, FromUser, AccountId)
+    end.
 
 -spec validate_external_cid(api_binary(), ne_binary(), ne_binary()) -> ne_binary().
 validate_external_cid(CIDNum, FromUser, AccountId) ->

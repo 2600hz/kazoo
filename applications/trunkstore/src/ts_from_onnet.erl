@@ -72,6 +72,8 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
     DIDOptions = kz_json:get_value(<<"DID_Opts">>, Options, kz_json:new()),
     AccountOptions = kz_json:get_value(<<"account">>, Options, kz_json:new()),
     SrvOptions = kz_json:get_value([<<"server">>, <<"options">>], Options, kz_json:new()),
+    RouteReq = ts_callflow:get_request_data(State),
+    CustomSIPHeaders = kz_json:get_value(<<"Custom-SIP-Headers">>, RouteReq),
     MediaHandling = ts_util:get_media_handling([kz_json:get_value(<<"media_handling">>, DIDOptions)
                                                ,kz_json:get_value(<<"media_handling">>, SrvOptions)
                                                ,kz_json:get_value(<<"media_handling">>, AccountOptions)
@@ -79,6 +81,7 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
     SIPHeaders = ts_util:sip_headers([kz_json:get_value(<<"sip_headers">>, DIDOptions)
                                      ,kz_json:get_value(<<"sip_headers">>, SrvOptions)
                                      ,kz_json:get_value(<<"sip_headers">>, AccountOptions)
+                                     ,CustomSIPHeaders
                                      ]),
 
     EmergencyCallerID =
@@ -91,10 +94,10 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
             {ECIDName, ECIDNum} ->
                 [{<<"Emergency-Caller-ID-Name">>, ECIDName}
                 ,{<<"Emergency-Caller-ID-Number">>
-                 ,ts_util:maybe_ensure_cid_valid('emergency', ECIDNum, FromUser, AccountId)}
+                 ,ts_util:maybe_ensure_cid_valid('emergency', ECIDNum, FromUser, AccountId, CustomSIPHeaders)}
+
                 ]
         end,
-    RouteReq = ts_callflow:get_request_data(State),
     OriginalCIdNumber = kz_json:get_value(<<"Caller-ID-Number">>, RouteReq),
     OriginalCIdName = kz_json:get_value(<<"Caller-ID-Name">>, RouteReq),
     CallerID =
@@ -106,7 +109,7 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
             {'undefined', 'undefined'} ->
                 case kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_caller_id">>, 'false') of
                     'true' ->
-                        ValidCID = ts_util:maybe_ensure_cid_valid('external', OriginalCIdNumber, FromUser, AccountId),
+                        ValidCID = ts_util:maybe_ensure_cid_valid('external', OriginalCIdNumber, FromUser, AccountId, CustomSIPHeaders),
                         [{<<"Outbound-Caller-ID-Number">>, ValidCID}
                         ,{<<"Outbound-Caller-ID-Name">>, OriginalCIdName}
                          | EmergencyCallerID
@@ -120,7 +123,7 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
             {CIDName, CIDNum} ->
                 [{<<"Outbound-Caller-ID-Name">>, CIDName}
                 ,{<<"Outbound-Caller-ID-Number">>
-                 ,ts_util:maybe_ensure_cid_valid('external', CIDNum, FromUser, AccountId)}
+                 ,ts_util:maybe_ensure_cid_valid('external', CIDNum, FromUser, AccountId, CustomSIPHeaders)}
                  | EmergencyCallerID
                 ]
         end,
