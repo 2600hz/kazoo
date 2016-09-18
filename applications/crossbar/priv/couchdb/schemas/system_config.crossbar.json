@@ -21,6 +21,11 @@
             "description": "crossbar cleanup timer",
             "type": "integer"
         },
+        "compress_response_body": {
+            "default": true,
+            "description": "crossbar compress response body",
+            "type": "boolean"
+        },
         "default_allow_anonymous_quickcalls": {
             "default": true,
             "description": "crossbar default allow anonymous quickcalls",
@@ -103,6 +108,24 @@
         "ssl_ca_cert": {
             "description": "crossbar ssl ca cert",
             "type": "string"
+        },
+        "ssl_cert": {
+            "description": "crossbar ssl cert",
+            "type": "string"
+        },
+        "ssl_key": {
+            "description": "crossbar ssl key",
+            "type": "string"
+        },
+        "ssl_password": {
+            "default": "",
+            "description": "crossbar ssl password",
+            "type": "string"
+        },
+        "ssl_port": {
+            "default": 8443,
+            "description": "crossbar ssl port",
+            "type": "integer"
         },
         "ssl_workers": {
             "default": 100,

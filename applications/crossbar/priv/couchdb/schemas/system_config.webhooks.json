@@ -11,6 +11,11 @@
             "description": "webhooks attempt failure expiry in milliseconds",
             "type": "integer"
         },
+        "connect_timeout_ms": {
+            "default": 10000,
+            "description": "webhooks connect timeout in milliseconds",
+            "type": "integer"
+        },
         "log_successful_attempts": {
             "default": false,
             "description": "webhooks log successful attempts",

@@ -6624,6 +6624,11 @@
         "system_config.blackhole": {
             "description": "Schema for blackhole system_config",
             "properties": {
+                "acceptors": {
+                    "default": 100,
+                    "description": "blackhole acceptors",
+                    "type": "integer"
+                },
                 "autoload_modules": {
                     "default": [
                         "bh_token_auth",
@@ -6636,6 +6641,11 @@
                     ],
                     "description": "blackhole autoload modules",
                     "type": "array"
+                },
+                "port": {
+                    "default": 5555,
+                    "description": "blackhole port",
+                    "type": "integer"
                 }
             },
             "required": true,
@@ -6657,6 +6667,16 @@
                 "default_merchant_id": {
                     "default": [],
                     "description": "braintree default merchant id",
+                    "type": "string"
+                },
+                "default_private_key": {
+                    "default": "",
+                    "description": "braintree default private key",
+                    "type": "string"
+                },
+                "default_public_key": {
+                    "default": "",
+                    "description": "braintree default public key",
                     "type": "string"
                 },
                 "max_amount": {
@@ -6771,6 +6791,11 @@
                     "description": "callflow fax detect duration in seconds",
                     "type": "integer"
                 },
+                "max_branch_count": {
+                    "default": 50,
+                    "description": "callflow maximum branch count",
+                    "type": "integer"
+                },
                 "min_bucket_cost": {
                     "default": 5,
                     "description": "callflow minimum bucket cost",
@@ -6781,10 +6806,25 @@
                     "description": "callflow mwi send unsoliciated updates",
                     "type": "boolean"
                 },
+                "operator_key": {
+                    "default": "0",
+                    "description": "callflow operator key",
+                    "type": "string"
+                },
                 "post_answer_delay": {
                     "default": 100,
                     "description": "callflow post answer delay",
                     "type": "integer"
+                },
+                "privacy_name": {
+                    "default": "default",
+                    "description": "callflow privacy name",
+                    "type": "string"
+                },
+                "privacy_number": {
+                    "default": "default",
+                    "description": "callflow privacy number",
+                    "type": "string"
                 },
                 "ring_ready_offnet": {
                     "default": true,
@@ -6849,6 +6889,27 @@
                             "properties": {
                                 "default": 93,
                                 "description": "callflow message retention duration",
+                                "type": "integer"
+                            }
+                        },
+                        "migrate_interaccount_delay_ms": {
+                            "properties": {
+                                "default": 10000,
+                                "description": "callflow migrate interaccount delay in milliseconds",
+                                "type": "integer"
+                            }
+                        },
+                        "migrate_interbox_delay_ms": {
+                            "properties": {
+                                "default": 2000,
+                                "description": "callflow migrate interbox delay in milliseconds",
+                                "type": "integer"
+                            }
+                        },
+                        "migrate_max_mailbox_process": {
+                            "properties": {
+                                "default": 10,
+                                "description": "callflow migrate maximum mailbox process",
                                 "type": "integer"
                             }
                         },
@@ -7042,6 +7103,18 @@
         "system_config.cdr": {
             "description": "Schema for cdr system_config",
             "properties": {
+                "ignore_apps": {
+                    "default": [
+                        "milliwatt"
+                    ],
+                    "description": "cdr ignore apps",
+                    "type": "array"
+                },
+                "ignore_loopback_bowout": {
+                    "default": true,
+                    "description": "cdr ignore loopback bowout",
+                    "type": "boolean"
+                },
                 "store_anonymous": {
                     "default": false,
                     "description": "cdr store anonymous",
@@ -7176,6 +7249,11 @@
                     "description": "crossbar cleanup timer",
                     "type": "integer"
                 },
+                "compress_response_body": {
+                    "default": true,
+                    "description": "crossbar compress response body",
+                    "type": "boolean"
+                },
                 "default_allow_anonymous_quickcalls": {
                     "default": true,
                     "description": "crossbar default allow anonymous quickcalls",
@@ -7258,6 +7336,24 @@
                 "ssl_ca_cert": {
                     "description": "crossbar ssl ca cert",
                     "type": "string"
+                },
+                "ssl_cert": {
+                    "description": "crossbar ssl cert",
+                    "type": "string"
+                },
+                "ssl_key": {
+                    "description": "crossbar ssl key",
+                    "type": "string"
+                },
+                "ssl_password": {
+                    "default": "",
+                    "description": "crossbar ssl password",
+                    "type": "string"
+                },
+                "ssl_port": {
+                    "default": 8443,
+                    "description": "crossbar ssl port",
+                    "type": "integer"
                 },
                 "ssl_workers": {
                     "default": 100,
@@ -7440,6 +7536,22 @@
                     "description": "crossbar.devices allow aggregates",
                     "type": "boolean"
                 },
+                "provisioner_host": {
+                    "description": "crossbar.devices provisioner host",
+                    "type": "string"
+                },
+                "provisioner_referer": {
+                    "description": "crossbar.devices provisioner referer",
+                    "type": "string"
+                },
+                "provisioning_host": {
+                    "description": "crossbar.devices provisioning host",
+                    "type": "string"
+                },
+                "provisioning_referer": {
+                    "description": "crossbar.devices provisioning referer",
+                    "type": "string"
+                },
                 "provisioning_type": {
                     "description": "crossbar.devices provisioning type"
                 },
@@ -7488,6 +7600,18 @@
                 "{Module}": {
                     "description": "crossbar.freeswitch {Module}",
                     "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "system_config.crossbar.local_resources": {
+            "description": "Schema for crossbar.local_resources system_config",
+            "properties": {
+                "allow_peers": {
+                    "default": false,
+                    "description": "crossbar.local_resources allow peers",
+                    "type": "boolean"
                 }
             },
             "required": true,
@@ -8150,6 +8274,20 @@
                     "description": "ecallmgr publish channel state",
                     "type": "boolean"
                 },
+                "publish_participant_event": {
+                    "default": [
+                        "add-member",
+                        "del-member",
+                        "stop-talking",
+                        "start-talking",
+                        "mute-member",
+                        "unmute-member",
+                        "deaf-member",
+                        "undeaf-member"
+                    ],
+                    "description": "ecallmgr publish participant event",
+                    "type": "array"
+                },
                 "record_sample_rate": {
                     "default": 8000,
                     "description": "ecallmgr record sample rate",
@@ -8168,6 +8306,11 @@
                 "recording_file_path": {
                     "default": "/tmp/",
                     "description": "ecallmgr recording file path",
+                    "type": "string"
+                },
+                "recording_software_name": {
+                    "default": "2600Hz, Inc.'s Kazoo",
+                    "description": "ecallmgr recording software name",
                     "type": "string"
                 },
                 "redirect_via_proxy": {
@@ -8218,6 +8361,11 @@
                     "default": false,
                     "description": "ecallmgr use vlc",
                     "type": "boolean"
+                },
+                "user_cache_time_in_ms": {
+                    "default": 3600000,
+                    "description": "ecallmgr user cache time in in milliseconds",
+                    "type": "integer"
                 },
                 "{Direction}_rate_required": {
                     "default": false,
@@ -8398,6 +8546,16 @@
                     "description": "fax reschedule",
                     "type": "object"
                 },
+                "smtp_max_msg_size": {
+                    "default": 10485670,
+                    "description": "fax smtp maximum msg size",
+                    "type": "integer"
+                },
+                "smtp_port": {
+                    "default": 19025,
+                    "description": "fax smtp port",
+                    "type": "integer"
+                },
                 "smtp_sessions": {
                     "default": 50,
                     "description": "fax smtp sessions",
@@ -8411,6 +8569,11 @@
                 "workers": {
                     "default": 50,
                     "description": "fax workers",
+                    "type": "integer"
+                },
+                "xmpp_interval": {
+                    "default": 600000,
+                    "description": "fax xmpp interval",
                     "type": "integer"
                 }
             },
@@ -8779,6 +8942,13 @@
                                 "description": "konami default takeback dtmf",
                                 "type": "string"
                             }
+                        },
+                        "default_target_timeout_ms": {
+                            "properties": {
+                                "default": 20000,
+                                "description": "konami default target timeout in milliseconds",
+                                "type": "integer"
+                            }
                         }
                     }
                 },
@@ -9004,7 +9174,14 @@
             "description": "Schema for milliwatt system_config",
             "properties": {
                 "echo": {
-                    "description": "milliwatt echo"
+                    "default": {
+                        "caller_id": [],
+                        "number": [
+                            "5555555552"
+                        ]
+                    },
+                    "description": "milliwatt echo",
+                    "type": "object"
                 },
                 "route_win_timeout": {
                     "default": 3000,
@@ -9012,7 +9189,14 @@
                     "type": "integer"
                 },
                 "tone": {
-                    "description": "milliwatt tone"
+                    "default": {
+                        "caller_id": [],
+                        "number": [
+                            "5555555551"
+                        ]
+                    },
+                    "description": "milliwatt tone",
+                    "type": "object"
                 }
             },
             "required": true,
@@ -9076,6 +9260,11 @@
                 "search_rep_email": {
                     "default": true,
                     "description": "notify search rep email",
+                    "type": "boolean"
+                },
+                "use_federated_listener": {
+                    "default": false,
+                    "description": "notify use federated listener",
                     "type": "boolean"
                 }
             },
@@ -9595,6 +9784,11 @@
                     "description": "number_manager.bandwidth debug",
                     "type": "boolean"
                 },
+                "developer_key": {
+                    "default": "",
+                    "description": "number_manager.bandwidth developer key",
+                    "type": "string"
+                },
                 "enable_provisioning": {
                     "default": true,
                     "description": "number_manager.bandwidth enable provisioning",
@@ -9630,6 +9824,16 @@
                     "description": "number_manager.bandwidth2 account id",
                     "type": "string"
                 },
+                "api_password": {
+                    "default": "",
+                    "description": "number_manager.bandwidth2 api password",
+                    "type": "string"
+                },
+                "api_username": {
+                    "default": "",
+                    "description": "number_manager.bandwidth2 api username",
+                    "type": "string"
+                },
                 "debug": {
                     "default": false,
                     "description": "number_manager.bandwidth2 debug",
@@ -9649,6 +9853,16 @@
                     "default": true,
                     "description": "number_manager.bandwidth2 sandbox provisioning",
                     "type": "boolean"
+                },
+                "sip_peer": {
+                    "default": "",
+                    "description": "number_manager.bandwidth2 sip peer",
+                    "type": "string"
+                },
+                "site_id": {
+                    "default": "",
+                    "description": "number_manager.bandwidth2 site id",
+                    "type": "string"
                 }
             },
             "required": true,
@@ -9657,6 +9871,16 @@
         "system_config.number_manager.dash_e911": {
             "description": "Schema for number_manager.dash_e911 system_config",
             "properties": {
+                "auth_password": {
+                    "default": "",
+                    "description": "number_manager.dash_e911 auth password",
+                    "type": "string"
+                },
+                "auth_username": {
+                    "default": "",
+                    "description": "number_manager.dash_e911 auth username",
+                    "type": "string"
+                },
                 "debug": {
                     "default": false,
                     "description": "number_manager.dash_e911 debug",
@@ -9714,6 +9938,16 @@
         "system_config.number_manager.simwood": {
             "description": "Schema for number_manager.simwood system_config",
             "properties": {
+                "auth_password": {
+                    "default": "",
+                    "description": "number_manager.simwood auth password",
+                    "type": "string"
+                },
+                "auth_username": {
+                    "default": "",
+                    "description": "number_manager.simwood auth username",
+                    "type": "string"
+                },
                 "numbers_api_url": {
                     "default": "https://api.simwood.com/v3/numbers",
                     "description": "number_manager.simwood numbers api url",
@@ -9783,6 +10017,11 @@
         "system_config.omnipresence": {
             "description": "Schema for omnipresence system_config",
             "properties": {
+                "cache_terminated_callid_s": {
+                    "default": 60,
+                    "description": "omnipresence cache terminated callid in seconds",
+                    "type": "integer"
+                },
                 "expire_check_ms": {
                     "default": 1000,
                     "description": "omnipresence expire check in milliseconds",
@@ -9792,6 +10031,15 @@
                     "default": 20,
                     "description": "omnipresence expires fudge in seconds",
                     "type": "integer"
+                },
+                "modules": {
+                    "default": [
+                        "omnip_dialog_amqp",
+                        "omnip_message_summary_amqp",
+                        "omnip_presence_amqp"
+                    ],
+                    "description": "omnipresence modules",
+                    "type": "array"
                 },
                 "subscriptions_sync_enabled": {
                     "default": false,
@@ -9887,6 +10135,11 @@
                 "google": {
                     "description": "pusher google",
                     "type": "string"
+                },
+                "modules": {
+                    "default": [],
+                    "description": "pusher modules",
+                    "type": "array"
                 }
             },
             "required": true,
@@ -10103,6 +10356,11 @@
         "system_config.speech": {
             "description": "Schema for speech system_config",
             "properties": {
+                "asr_api_key": {
+                    "default": "",
+                    "description": "speech asr api key",
+                    "type": "string"
+                },
                 "asr_content_types": {
                     "default": [
                         "application/mpeg",
@@ -10132,6 +10390,7 @@
                     "type": "string"
                 },
                 "tts_api_key": {
+                    "default": "",
                     "description": "speech tts api key",
                     "type": "string"
                 },
@@ -10145,6 +10404,11 @@
                     "description": "speech tts default voice",
                     "type": "string"
                 },
+                "tts_end_padding": {
+                    "default": 0,
+                    "description": "speech tts end padding",
+                    "type": "integer"
+                },
                 "tts_language": {
                     "default": "en-US",
                     "description": "speech tts language",
@@ -10154,6 +10418,16 @@
                     "default": "ispeech",
                     "description": "speech tts provider",
                     "type": "string"
+                },
+                "tts_speed": {
+                    "default": 0,
+                    "description": "speech tts speed",
+                    "type": "integer"
+                },
+                "tts_start_padding": {
+                    "default": 1,
+                    "description": "speech tts start padding",
+                    "type": "integer"
                 },
                 "tts_url": {
                     "default": "http://api.ispeech.org/api/json",
@@ -10289,10 +10563,20 @@
         "system_config.stepswitch.cnam": {
             "description": "Schema for stepswitch.cnam system_config",
             "properties": {
+                "cnam_expires": {
+                    "default": 900,
+                    "description": "stepswitch.cnam cnam expires",
+                    "type": "integer"
+                },
                 "disable_normalize": {
                     "default": false,
                     "description": "stepswitch.cnam disable normalize",
                     "type": "boolean"
+                },
+                "http_accept_header": {
+                    "default": "text/pbx,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "description": "stepswitch.cnam http accept header",
+                    "type": "string"
                 },
                 "http_basic_auth_password": {
                     "default": "",
@@ -10309,6 +10593,16 @@
                     "description": "stepswitch.cnam http body",
                     "type": "string"
                 },
+                "http_connect_timeout_ms": {
+                    "default": 500,
+                    "description": "stepswitch.cnam http connect timeout in milliseconds",
+                    "type": "integer"
+                },
+                "http_content_type_header": {
+                    "default": "application/json",
+                    "description": "stepswitch.cnam http content type header",
+                    "type": "string"
+                },
                 "http_method": {
                     "default": "get",
                     "description": "stepswitch.cnam http method",
@@ -10317,6 +10611,11 @@
                 "http_url": {
                     "default": "https://api.opencnam.com/v2/phone/{{phone_number}}",
                     "description": "stepswitch.cnam http url",
+                    "type": "string"
+                },
+                "http_user_agent_header": {
+                    "default": "Kazoo Stepswitch CNAM",
+                    "description": "stepswitch.cnam http user agent header",
                     "type": "string"
                 }
             },
@@ -10414,6 +10713,11 @@
                     "default": true,
                     "description": "teletype iterate over bcc",
                     "type": "boolean"
+                },
+                "render_farm_workers": {
+                    "default": 50,
+                    "description": "teletype render farm workers",
+                    "type": "integer"
                 }
             },
             "required": true,
@@ -10504,6 +10808,11 @@
                 "attempt_failure_expiry_ms": {
                     "default": 60000,
                     "description": "webhooks attempt failure expiry in milliseconds",
+                    "type": "integer"
+                },
+                "connect_timeout_ms": {
+                    "default": 10000,
+                    "description": "webhooks connect timeout in milliseconds",
                     "type": "integer"
                 },
                 "log_successful_attempts": {

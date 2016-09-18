@@ -24,34 +24,21 @@
 %% @doc Migrate all messages in vmbox into the new modb format
 %% @end
 %%--------------------------------------------------------------------
--spec migrate() -> 'ok'.
+-spec migrate() -> startlink_ret().
 migrate() ->
-    lists:foreach(fun migrate/1, kapps_util:get_all_accounts('raw')).
+    kvm_migrate:start().
 
 -spec migrate(ne_binary()) -> 'ok'.
+-spec migrate(ne_binary(), ne_binary() | ne_binaries() | kz_json:object()) -> 'ok'.
 migrate(AccountId) ->
-    AccountDb = kvm_util:get_db(AccountId),
-    case kz_datamgr:get_results(AccountDb, ?VMBOX_CB_LIST, []) of
-        {'ok', []} -> ?LOG("no voicemail boxes in ~s", [AccountDb]);
-        {'ok', View} ->
-            _ = [migrate(AccountId, kz_json:get_value(<<"value">>, V)) || V <- View],
-            ?LOG("migrated all messages of ~b mail boxes in ~s to modbs", [length(View), AccountDb]);
-        {'error', _E} ->
-            ?LOG("failed to get voicemail boxes in ~s: ~p", [AccountDb, _E])
-    end.
+    kvm_migrate:migrate(AccountId).
 
--spec migrate(ne_binary(), ne_binary() | kz_json:object()) -> 'ok'.
 migrate(AccountId, <<_/binary>> = BoxId) ->
-    Msgs = kvm_messages:get(AccountId, BoxId),
-    Ids = [M || M <- Msgs, maybe_migrate_to_modb(kzd_box_message:media_id(M))],
-    _ = kvm_messages:update(AccountId, BoxId, Ids),
-    'ok';
+    migrate(AccountId, [BoxId]);
+migrate(AccountId, BoxIds) when is_list(BoxIds) ->
+    kvm_migrate:migrate(AccountId, BoxIds);
 migrate(AccountId, Box) ->
     migrate(AccountId, kz_doc:id(Box)).
-
--spec maybe_migrate_to_modb(ne_binary()) -> boolean().
-maybe_migrate_to_modb(?MATCH_MODB_PREFIX(_, _, _)) -> 'false';
-maybe_migrate_to_modb(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public

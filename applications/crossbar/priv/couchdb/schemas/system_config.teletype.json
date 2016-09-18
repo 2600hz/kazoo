@@ -7,6 +7,11 @@
             "default": true,
             "description": "teletype iterate over bcc",
             "type": "boolean"
+        },
+        "render_farm_workers": {
+            "default": 50,
+            "description": "teletype render farm workers",
+            "type": "integer"
         }
     },
     "required": true,

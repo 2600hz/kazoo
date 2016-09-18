@@ -3,6 +3,16 @@
     "_id": "system_config.number_manager.dash_e911",
     "description": "Schema for number_manager.dash_e911 system_config",
     "properties": {
+        "auth_password": {
+            "default": "",
+            "description": "number_manager.dash_e911 auth password",
+            "type": "string"
+        },
+        "auth_username": {
+            "default": "",
+            "description": "number_manager.dash_e911 auth username",
+            "type": "string"
+        },
         "debug": {
             "default": false,
             "description": "number_manager.dash_e911 debug",

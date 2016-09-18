@@ -31,6 +31,11 @@
             "default": true,
             "description": "notify search rep email",
             "type": "boolean"
+        },
+        "use_federated_listener": {
+            "default": false,
+            "description": "notify use federated listener",
+            "type": "boolean"
         }
     },
     "required": true,

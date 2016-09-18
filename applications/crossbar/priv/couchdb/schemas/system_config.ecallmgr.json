@@ -315,6 +315,20 @@
             "description": "ecallmgr publish channel state",
             "type": "boolean"
         },
+        "publish_participant_event": {
+            "default": [
+                "add-member",
+                "del-member",
+                "stop-talking",
+                "start-talking",
+                "mute-member",
+                "unmute-member",
+                "deaf-member",
+                "undeaf-member"
+            ],
+            "description": "ecallmgr publish participant event",
+            "type": "array"
+        },
         "record_sample_rate": {
             "default": 8000,
             "description": "ecallmgr record sample rate",
@@ -333,6 +347,11 @@
         "recording_file_path": {
             "default": "/tmp/",
             "description": "ecallmgr recording file path",
+            "type": "string"
+        },
+        "recording_software_name": {
+            "default": "2600Hz, Inc.'s Kazoo",
+            "description": "ecallmgr recording software name",
             "type": "string"
         },
         "redirect_via_proxy": {
@@ -383,6 +402,11 @@
             "default": false,
             "description": "ecallmgr use vlc",
             "type": "boolean"
+        },
+        "user_cache_time_in_ms": {
+            "default": 3600000,
+            "description": "ecallmgr user cache time in in milliseconds",
+            "type": "integer"
         },
         "{Direction}_rate_required": {
             "default": false,

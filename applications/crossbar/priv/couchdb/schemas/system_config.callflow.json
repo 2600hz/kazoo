@@ -39,6 +39,11 @@
             "description": "callflow fax detect duration in seconds",
             "type": "integer"
         },
+        "max_branch_count": {
+            "default": 50,
+            "description": "callflow maximum branch count",
+            "type": "integer"
+        },
         "min_bucket_cost": {
             "default": 5,
             "description": "callflow minimum bucket cost",
@@ -49,10 +54,25 @@
             "description": "callflow mwi send unsoliciated updates",
             "type": "boolean"
         },
+        "operator_key": {
+            "default": "0",
+            "description": "callflow operator key",
+            "type": "string"
+        },
         "post_answer_delay": {
             "default": 100,
             "description": "callflow post answer delay",
             "type": "integer"
+        },
+        "privacy_name": {
+            "default": "default",
+            "description": "callflow privacy name",
+            "type": "string"
+        },
+        "privacy_number": {
+            "default": "default",
+            "description": "callflow privacy number",
+            "type": "string"
         },
         "ring_ready_offnet": {
             "default": true,
@@ -117,6 +137,27 @@
                     "properties": {
                         "default": 93,
                         "description": "callflow message retention duration",
+                        "type": "integer"
+                    }
+                },
+                "migrate_interaccount_delay_ms": {
+                    "properties": {
+                        "default": 10000,
+                        "description": "callflow migrate interaccount delay in milliseconds",
+                        "type": "integer"
+                    }
+                },
+                "migrate_interbox_delay_ms": {
+                    "properties": {
+                        "default": 2000,
+                        "description": "callflow migrate interbox delay in milliseconds",
+                        "type": "integer"
+                    }
+                },
+                "migrate_max_mailbox_process": {
+                    "properties": {
+                        "default": 10,
+                        "description": "callflow migrate maximum mailbox process",
                         "type": "integer"
                     }
                 },

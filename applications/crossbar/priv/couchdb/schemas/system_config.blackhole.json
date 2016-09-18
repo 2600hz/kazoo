@@ -3,6 +3,11 @@
     "_id": "system_config.blackhole",
     "description": "Schema for blackhole system_config",
     "properties": {
+        "acceptors": {
+            "default": 100,
+            "description": "blackhole acceptors",
+            "type": "integer"
+        },
         "autoload_modules": {
             "default": [
                 "bh_token_auth",
@@ -15,6 +20,11 @@
             ],
             "description": "blackhole autoload modules",
             "type": "array"
+        },
+        "port": {
+            "default": 5555,
+            "description": "blackhole port",
+            "type": "integer"
         }
     },
     "required": true,

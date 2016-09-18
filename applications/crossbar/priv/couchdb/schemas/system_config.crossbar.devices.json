@@ -8,6 +8,22 @@
             "description": "crossbar.devices allow aggregates",
             "type": "boolean"
         },
+        "provisioner_host": {
+            "description": "crossbar.devices provisioner host",
+            "type": "string"
+        },
+        "provisioner_referer": {
+            "description": "crossbar.devices provisioner referer",
+            "type": "string"
+        },
+        "provisioning_host": {
+            "description": "crossbar.devices provisioning host",
+            "type": "string"
+        },
+        "provisioning_referer": {
+            "description": "crossbar.devices provisioning referer",
+            "type": "string"
+        },
         "provisioning_type": {
             "description": "crossbar.devices provisioning type"
         },
