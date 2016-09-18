@@ -353,24 +353,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
-handle_info({'event', [_|Props]}, #state{uuid='undefined'}=State) ->
-    case should_update_uuid('undefined', Props) of
-        'true' ->
-            NewUUID = props:get_value(<<"Acquired-UUID">>, Props),
-            _ = update_uuid('undefined', NewUUID),
-            {'noreply', State#state{uuid={'api', NewUUID}}};
-        'false' ->
-            {'noreply', State}
-    end;
-handle_info({'event', [_ | Props]}, #state{uuid={_, OldUUID}}=State) ->
-    case should_update_uuid(OldUUID, Props) of
-        'true' ->
-            NewUUID = props:get_value(<<"Acquired-UUID">>, Props),
-            _ = update_uuid(OldUUID, NewUUID),
-            {'noreply', State#state{uuid={'api', NewUUID}}};
-        'false' ->
-            {'noreply', State}
-    end;
+handle_info({'event', [_|Props]}, #state{uuid=UUID}=State) ->
+    {'noreply', State#state{uuid=handle_fs_event(Props, UUID)}};
 handle_info({'tcp', _, Data}, State) ->
     Event = binary_to_term(Data),
     handle_info(Event, State);
@@ -889,4 +873,22 @@ should_update_uuid(OldUUID, Props) ->
                        ),
             props:get_value(?RESIGNING_UUID, Props) =:= OldUUID;
         _ -> 'false'
+    end.
+
+-spec handle_fs_event(kzd_freeswitch:data(), created_uuid()) -> created_uuid().
+handle_fs_event(Props, 'undefined') ->
+    case should_update_uuid('undefined', Props) of
+        'false' -> 'undefined';
+        'true' ->
+            NewUUID = props:get_value(<<"Acquired-UUID">>, Props),
+            _ = update_uuid('undefined', NewUUID),
+            {'api', NewUUID}
+    end;
+handle_fs_event(Props, {_, OldUUID}=UUID) ->
+    case should_update_uuid(OldUUID, Props) of
+        'false' -> UUID;
+        'true' ->
+            NewUUID = props:get_value(<<"Acquired-UUID">>, Props),
+            _ = update_uuid(OldUUID, NewUUID),
+            {'api', NewUUID}
     end.

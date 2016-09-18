@@ -178,15 +178,14 @@ init_message_props(Props) ->
 
 -spec add_message_missing_props(kz_proplist()) -> kz_proplist().
 add_message_missing_props(Props) ->
-    props:insert_values(
-      [{<<"Call-Direction">>, <<"outbound">>}
-      ,{<<"Resource-Type">>,<<"sms">>}
-      ,{<<"Message-ID">>, kz_util:rand_hex_binary(16)}
-      ,{<<"Caller-Caller-ID-Number">>, props:get_value(<<"from_user">>, Props)}
-      ,{<<"Caller-Destination-Number">>, props:get_value(<<"to_user">>, Props)}
-      ]
+    props:insert_values([{<<"Call-Direction">>, <<"outbound">>}
+                        ,{<<"Resource-Type">>,<<"sms">>}
+                        ,{<<"Message-ID">>, kz_util:rand_hex_binary(16)}
+                        ,{<<"Caller-Caller-ID-Number">>, props:get_value(<<"from_user">>, Props)}
+                        ,{<<"Caller-Destination-Number">>, props:get_value(<<"to_user">>, Props)}
+                        ]
                        ,Props
-     ).
+                       ).
 
 -spec expand_message_vars(kz_proplist()) -> kz_proplist().
 expand_message_vars(Props) ->
