@@ -318,7 +318,7 @@ publish_reply(Queue, Req) ->
 check_fs_node(Props) ->
     get_value(Props, <<"FreeSWITCH-Node">>, <<"*">>).
 
--spec get_value(api_terms(), kz_json:keys(), ne_binary()) -> api_binary().
+-spec get_value(api_terms(), kz_json:key(), ne_binary()) -> api_binary().
 get_value(Props, Key, Default) when is_list(Props) ->
     get_value(Props, Key, fun props:get_value/3, Default);
 get_value(JObj, Key, Default) ->

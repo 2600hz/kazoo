@@ -236,7 +236,7 @@ copy_doc(Src, Dst, CopySpec, CopyFun, Opts) ->
 copy_transform('undefined', _SourceDoc, DestinationDoc) -> DestinationDoc;
 copy_transform(Fun, SourceDoc, DestinationDoc) -> Fun(SourceDoc, DestinationDoc).
 
--spec copy_attachments(map(), map(), copy_doc(), {kz_json:json_terms(), kz_json:keys()}, ne_binary()) ->
+-spec copy_attachments(map(), map(), copy_doc(), {kz_json:json_terms(), kz_json:key()}, ne_binary()) ->
                               {'ok', ne_binary()} |
                               {'error', any()}.
 copy_attachments(_Src, Dst, CopySpec, {[], []}, _) ->

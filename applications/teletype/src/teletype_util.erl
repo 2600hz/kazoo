@@ -700,7 +700,7 @@ get_parent_account_id(AccountId) ->
 
 -spec find_addresses(kz_json:object(), kz_json:object(), ne_binary()) ->
                             email_map().
--spec find_addresses(kz_json:object(), kz_json:object(), ne_binary(), kz_json:keys(), email_map()) ->
+-spec find_addresses(kz_json:object(), kz_json:object(), ne_binary(), kz_json:key(), email_map()) ->
                             email_map().
 find_addresses(DataJObj, TemplateMetaJObj, ConfigCat) ->
     AddressKeys = [<<"to">>, <<"cc">>, <<"bcc">>, <<"from">>, <<"reply_to">>],
@@ -744,7 +744,7 @@ find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
     lager:debug("looking for admin emails for '~s'", [Key]),
     {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
 
--spec find_address(kz_json:keys(), kz_json:object(), kz_json:object()) ->
+-spec find_address(kz_json:key(), kz_json:object(), kz_json:object()) ->
                           api_binaries().
 find_address(Key, DataJObj, TemplateMetaJObj) ->
     case kz_json:get_ne_value(Key, DataJObj) of

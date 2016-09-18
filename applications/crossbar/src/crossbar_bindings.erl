@@ -48,7 +48,7 @@
                    cb_context:context() |
                    {cb_context:context(), kz_proplist()} | % v1_resource:rest_init/2
                    {'error', _} | % v1_util:execute_request/2
-                   {kz_json:keys(), cb_context:context(), path_tokens()} |
+                   {kz_json:key(), cb_context:context(), path_tokens()} |
                    {kz_datetime(), cowboy_req:req(), cb_context:context()} | % v1_resource:expires/2
                    {cowboy_req:req(), cb_context:context()}. % mapping over the request/context records
 

@@ -1264,7 +1264,7 @@ do_cascade_quantities(<<_/binary>> = Account, <<_/binary>> = View) ->
 
 -spec do_cascade_quantities_fold(kz_json:object(), kz_json:object()) ->
                                         kz_json:object().
--spec do_cascade_quantities_fold(kz_json:object(), kz_json:object(), kz_json:keys()) ->
+-spec do_cascade_quantities_fold(kz_json:object(), kz_json:object(), kz_json:key()) ->
                                         kz_json:object().
 do_cascade_quantities_fold(JObj, J) ->
     do_cascade_quantities_fold(JObj, J, kz_json:get_value(<<"key">>, JObj)).

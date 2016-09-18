@@ -222,7 +222,7 @@ copy_doc(#server{}=Conn, CopySpec, CopyFun, Options) ->
         Error -> Error
     end.
 
--spec copy_attachments(server(), copy_doc(), {kz_json:json_terms(), kz_json:keys()}) ->
+-spec copy_attachments(server(), copy_doc(), {kz_json:json_terms(), kz_json:key()}) ->
                               {'ok', ne_binary()} |
                               {'error', any()}.
 copy_attachments(#server{}=Conn, CopySpec, {[], []}) ->
