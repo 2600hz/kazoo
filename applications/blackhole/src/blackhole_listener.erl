@@ -240,8 +240,10 @@ handle_hook_event(AccountId, EventType, JObj) ->
                             ),
     handle_amqp_event(JObj, [], RK).
 
+-spec binding_key(bh_event_binding()) -> binary().
 binding_key(Binding) -> base64:encode(term_to_binary(Binding)).
 
+-spec add_bh_binding(ets:tid(), bh_event_binding()) -> 'ok'.
 add_bh_binding(ETS, Binding) ->
     Key = binding_key(Binding),
     case ets:update_counter(ETS, Key, 1, {Key, 0}) of
@@ -249,25 +251,35 @@ add_bh_binding(ETS, Binding) ->
             lager:debug("blackhole is creating new binding to ~p", [Binding]),
             add_bh_binding(Binding);
         0 ->
-            lager:debug("listener has 0 refs after updating ? not creating new binding for ~p", [Binding]);
+            lager:debug("listener has 0 refs after updating ? not creating new binding for ~p"
+                       ,[Binding]
+                       );
         _Else ->
-            lager:debug("listener has ~b refs, not creating new binding for ~p", [_Else, Binding])
+            lager:debug("listener has ~b refs, not creating new binding for ~p"
+                       ,[_Else, Binding]
+                       )
     end.
 
+-spec remove_bh_binding(ets:tid(), bh_event_binding()) -> 'ok' | 'true'.
+-spec remove_bh_binding(ets:tid(), bh_event_binding(), binary(), integer()) -> 'ok' | 'true'.
 remove_bh_binding(ETS, Binding) ->
     Key = binding_key(Binding),
-    case ets:update_counter(ETS, Key, -1, {Key, 0}) of
-        0 ->
-            lager:debug("blackhole is deleting binding for ~p", [Binding]),
-            remove_bh_binding(Binding),
-            ets:delete(ETS, Key);
-        Neg when Neg < 0 ->
-            lager:debug("listener have ~b negative references, removing binding for ~p", [Neg, Binding]),
-            remove_bh_binding(Binding),
-            ets:delete(ETS, Key);
-        _Else ->
-            lager:debug("listener still have ~b references, not removing binding for ~p", [_Else, Binding])
-    end.
+    remove_bh_binding(ETS, Binding, Key, ets:update_counter(ETS, Key, -1, {Key, 0})).
+
+remove_bh_binding(ETS, Binding, Key, 0) ->
+    lager:debug("blackhole is deleting binding for ~p", [Binding]),
+    remove_bh_binding(Binding),
+    ets:delete(ETS, Key);
+remove_bh_binding(ETS, Binding, Key, Neg) when Neg < 0 ->
+    lager:debug("listener have ~b negative references, removing binding for ~p"
+               ,[Neg, Binding]
+               ),
+    remove_bh_binding(Binding),
+    ets:delete(ETS, Key);
+remove_bh_binding(_ETS, _Binding, _Key, _Else) ->
+    lager:debug("listener still have ~b references, not removing binding for ~p"
+               ,[_Else, _Binding]
+               ).
 
 add_bh_binding({'hook', AccountId}) ->
     kz_hooks:register(AccountId);
