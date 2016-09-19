@@ -44,7 +44,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = supervisor:start_child('crossbar_sup', ?WORKER('crossbar_freeswitch')),
+    _ = supervisor:start_child('crossbar_sup', ?WORKER(?FS_OFFLINE_SERVER)),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.freeswitch">>, ?MODULE, 'content_types_provided'),

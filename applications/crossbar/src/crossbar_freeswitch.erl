@@ -82,16 +82,12 @@ start_link() ->
 %% @private
 %% @doc
 %% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {ok, state()}.
 init([]) ->
     process_flag(trap_exit, 'true'),
-    _ = compile_templates(),
+    compile_templates(),
     _  = gen_server:cast(self(), 'periodic_build'),
     {'ok', #state{}}.
 
@@ -99,14 +95,6 @@ init([]) ->
 %% @private
 %% @doc
 %% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
@@ -121,10 +109,6 @@ handle_call(_Request, _From, State) ->
 %% @private
 %% @doc
 %% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
@@ -132,19 +116,16 @@ handle_cast('periodic_build', #state{is_running='true'}=State) ->
     {'noreply', State};
 handle_cast('periodic_build', #state{is_running='false'}=State) ->
     {Pid, Monitor} = kz_util:spawn_monitor(fun build_freeswitch/1, [self()]),
-    lager:debug("started new freeswitch offline configuration builder ~p"
-               ,[Pid]),
+    lager:debug("started new freeswitch offline configuration builder ~p", [Pid]),
     {'noreply', State#state{is_running='true', monitor=Monitor}};
 handle_cast({'completed', File}, #state{config=Config}=State) ->
-    lager:debug("created new freeswitch offline configuration ~s"
-               ,[File]),
+    lager:debug("created new freeswitch offline configuration ~s", [File]),
     gen_server:cast(self(), {'delete', Config}),
     {'noreply', State#state{is_running='false', config=File}};
 handle_cast({'delete', 'undefined'}, State) ->
     {'noreply', State};
 handle_cast({'delete', File}, State) ->
-    lager:debug("removing prior freeswitch offline configuration ~s"
-               ,[File]),
+    lager:debug("removing prior freeswitch offline configuration ~s", [File]),
     kz_util:delete_file(File),
     {'noreply', State};
 handle_cast('reset', #state{config=Config}=State) ->
@@ -159,10 +140,6 @@ handle_cast(_Msg, State) ->
 %% @private
 %% @doc
 %% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
@@ -182,8 +159,6 @@ handle_info(_Info, State) ->
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
 %% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
@@ -194,8 +169,6 @@ terminate(_Reason, _State) ->
 %% @private
 %% @doc
 %% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
@@ -206,6 +179,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 -spec zip_directory(file:filename_all()) -> string().
 zip_directory(WorkDir0) ->
     WorkDir = kz_util:to_list(WorkDir0),
@@ -264,7 +238,6 @@ process_realm(Realm, Dir, Module) ->
     OutDir = filename:join([WorkDir, Dir]),
     kz_util:make_dir(OutDir),
     XMLFile = filename:join([OutDir, <<Realm/binary,".xml">>]),
-
     case kz_template:render(Module, Props) of
         {'ok', Result} ->
             kz_util:write_file(XMLFile, Result),
@@ -295,12 +268,10 @@ crawl_numbers_db(NumberDb) ->
             Numbers = get_numbers(JObjs),
             maybe_export_numbers(Db, Numbers);
         {'error', _R} ->
-            lager:debug("error getting number docs from ~s: ~p"
-                       ,[NumberDb, _R])
+            lager:debug("error getting number docs from ~s: ~p", [NumberDb, _R])
     catch
         _E:_R ->
-            lager:debug("~s getting number docs from ~s: ~p"
-                       ,[_E, Db, _R])
+            lager:debug("~s getting number docs from ~s: ~p", [_E, Db, _R])
     end.
 
 -spec get_numbers(kz_json:objects()) -> ne_binaries().
@@ -323,8 +294,7 @@ maybe_export_numbers(Db, [Number|Numbers]) ->
                                    ,kz_json:get_value(?PVT_ASSIGNED_TO, JObj)
                                    );
             {'error', _R} ->
-                lager:debug("error fetching number ~s from ~d: ~p"
-                           ,[Number, Db, _R])
+                lager:debug("error fetching number ~s from ~d: ~p", [Number, Db, _R])
         end,
     maybe_export_numbers(Db, Numbers).
 
@@ -341,15 +311,13 @@ maybe_export_number(Number, ?NUMBER_STATE_IN_SERVICE, AccountId) ->
     case kz_datamgr:get_results(AccountDb, ?CALLFLOW_VIEW, ViewOptions) of
         {'ok', []} ->
             lager:debug("number ~s in service for account ~s but no callflows using it"
-                       ,[Number, AccountId]
-                       );
+                       ,[Number, AccountId]);
         {'ok', JObjs} ->
             Flows = [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
             process_callflows(Number, AccountId, Flows);
         {'error', _R} ->
             lager:debug("unable to get callflows for number ~s in account ~s"
-                       ,[Number, AccountId]
-                       )
+                       ,[Number, AccountId])
     end;
 maybe_export_number(_, _, _) -> 'ok'.
 
@@ -379,21 +347,16 @@ process_callflow(Number, AccountId, Flow) ->
 -spec process_callflow(ne_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
 process_callflow(_, _, _, 'undefined') -> 'ok';
 process_callflow(Number, AccountId, <<"device">>, DeviceId) ->
-    lager:debug("found device ~s associated with ~s"
-               ,[DeviceId, Number]
-               ),
+    lager:debug("found device ~s associated with ~s", [DeviceId, Number]),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, DeviceId) of
         {'ok', JObj } -> process_device(Number, AccountId, JObj);
         {'error', _R} ->
             lager:debug("unable to get device ~s from account ~s: ~p"
-                       ,[DeviceId, AccountId, _R]
-                       )
+                       ,[DeviceId, AccountId, _R])
     end;
 process_callflow(Number, AccountId, <<"user">>, UserId) ->
-    lager:debug("found user ~s associated with ~s"
-               ,[UserId, Number]
-               ),
+    lager:debug("found user ~s associated with ~s", [UserId, Number]),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', UserId}],
     case kz_datamgr:get_results(AccountDb, ?DEVICES_VIEW, ViewOptions) of
@@ -407,8 +370,7 @@ process_callflow(Number, AccountId, <<"user">>, UserId) ->
             ];
         {'error', _R} ->
             lager:debug("unable to get user ~s from account ~s: ~p"
-                       ,[UserId, AccountId, _R]
-                       )
+                       ,[UserId, AccountId, _R])
     end;
 process_callflow(_, _, _, _) -> 'ok'.
 
@@ -424,8 +386,7 @@ process_device(Number, AccountId, JObj) ->
             lager:debug("rendered templates");
         {'error', _R} ->
             lager:debug("unable to query registrar for credentails of ~s@~s in account ~s: ~p"
-                       ,[Username, Realm, AccountId, _R]
-                       )
+                       ,[Username, Realm, AccountId, _R])
     end.
 
 -spec props_for_rendering(ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> kz_proplist().
@@ -433,12 +394,13 @@ props_for_rendering(Number, Username, Realm, Auth) ->
     props:filter_empty(
       kz_json:recursive_to_proplist(
         normalize(
-          kz_json:set_values(
-            [{<<"effective_caller_id_number">>, Number}
-            ,{<<"username">>, Username}
-            ,{<<"realm">>, Realm}
-            ,{<<"number">>, Number}
-            ], Auth)))).
+          kz_json:set_values([{<<"effective_caller_id_number">>, Number}
+                             ,{<<"username">>, Username}
+                             ,{<<"realm">>, Realm}
+                             ,{<<"number">>, Number}
+                             ]
+                            ,Auth
+                            )))).
 
 -spec normalize(kz_json:object()) -> kz_json:object().
 normalize(JObj) ->
@@ -452,12 +414,13 @@ normalize(JObj) ->
                 ],
     kz_json:set_values([{<<"variables">>, Variables}
                        ,{<<"headers">>, Headers}
-                       ],
-                       kz_json:normalize(
-                         kz_json:delete_keys(
-                           [<<"Custom-SIP-Headers">>
-                           ,<<"Custom-Channel-Vars">>
-                           ], JObj)
+                       ]
+                      ,kz_json:normalize(
+                         kz_json:delete_keys([<<"Custom-SIP-Headers">>
+                                             ,<<"Custom-Channel-Vars">>
+                                             ]
+                                            ,JObj
+                                            )
                         )).
 
 -spec render_templates(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
@@ -505,7 +468,8 @@ query_registrar(Realm, Username) ->
     kapps_util:amqp_pool_request(props:filter_undefined(Req)
                                 ,fun kapi_authn:publish_req/1
                                 ,fun kapi_authn:resp_v/1
-                                ,?AUTHN_TIMEOUT).
+                                ,?AUTHN_TIMEOUT
+                                ).
 
 -spec template_file(atom()) -> string().
 template_file(Module) ->
@@ -522,7 +486,8 @@ template_file_name(?FS_DIRECTORY_REALM) -> "directory_realm_template.xml".
 
 -spec compile_templates() -> ['ok'].
 compile_templates() ->
-    [compile_template(kz_util:to_atom(T,'true')) || T <- ?FS_ALL_TEMPLATES].
+    F = fun (T) -> compile_template(kz_util:to_atom(T, 'true')) end,
+    lists:foreach(F, ?FS_ALL_TEMPLATES).
 
 -spec compile_template(atom()) -> 'ok'.
 compile_template(Module) ->
@@ -568,9 +533,9 @@ xml_file_from_config(_, Contents, _) -> Contents.
 %% TODO: This should be moved to a kz_file helper
 %%    when kz_util is cleaned-up
 del_dir(Dir) ->
-    lists:foreach(fun(D) ->
-                          'ok' = file:del_dir(D)
-                  end, del_all_files([Dir], [])).
+    lists:foreach(fun(D) -> 'ok' = file:del_dir(D) end
+                 ,del_all_files([Dir], [])
+                 ).
 
 -spec del_all_files(strings(), strings()) -> strings().
 del_all_files([], EmptyDirs) -> EmptyDirs;
@@ -585,7 +550,5 @@ del_all_files([Dir | T], EmptyDirs) ->
                                                 {[Path | Fs], Ds}
                                         end
                                 end, {[],[]}, FilesInDir),
-    _ = lists:foreach(fun(F) ->
-                              'ok' = file:delete(F)
-                      end, Files),
+    lists:foreach(fun kz_util:delete_file/1, Files),
     del_all_files(T ++ Dirs, [Dir | EmptyDirs]).
