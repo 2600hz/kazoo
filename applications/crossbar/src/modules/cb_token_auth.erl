@@ -21,27 +21,23 @@
         ,authenticate/1
         ,authorize/1
         ,finish_request/1
-        ,clean_expired/0, clean_expired/1
         ]).
 
 -include("crossbar.hrl").
 
--define(LOOP_TIMEOUT
-       ,kapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)
-       ).
--define(PERCENT_OF_TIMEOUT
-       ,kapps_config:get_integer(?APP_NAME, <<"expiry_percentage">>, 75)
-       ).
+-define(LOOP_TIMEOUT,
+        kapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)).
+
+-define(PERCENT_OF_TIMEOUT,
+        kapps_config:get_integer(?APP_NAME, <<"expiry_percentage">>, 75)).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
+
 init() ->
     kz_datamgr:db_create(?KZ_TOKEN_DB),
-
     _ = kz_datamgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
-
-    crossbar_bindings:bind(crossbar_cleanup:binding_hour(), ?MODULE, 'clean_expired'),
 
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
@@ -126,30 +122,6 @@ maybe_save_auth_doc(OldAuthDoc) ->
                                    );
         'false' ->
             lager:debug("auth doc is too new (~ps to go), not saving", [TimeLeft*-1])
-    end.
-
--spec clean_expired() -> 'ok'.
--spec clean_expired(gregorian_seconds()) -> 'ok'.
-clean_expired() ->
-    clean_expired(kz_util:current_tstamp() - ?LOOP_TIMEOUT).
-
-clean_expired(CreatedBefore) ->
-    ViewOpts = [{'startkey', 0}
-               ,{'endkey', CreatedBefore}
-               ,{'limit', kz_datamgr:max_bulk_insert()}
-               ],
-
-    case kz_datamgr:get_results(?KZ_TOKEN_DB, <<"token_auth/listing_by_mtime">>, ViewOpts) of
-        {'error', _E} -> lager:debug("failed to lookup expired tokens: ~p", [_E]);
-        {'ok', []} -> lager:debug("no expired tokens found");
-        {'ok', L} ->
-            lager:debug("removing ~b expired tokens", [length(L)]),
-
-            kz_datamgr:suppress_change_notice(),
-            _ = kz_datamgr:del_docs(?KZ_TOKEN_DB, L),
-            kz_datamgr:enable_change_notice(),
-
-            lager:debug("removed tokens")
     end.
 
 %%--------------------------------------------------------------------
