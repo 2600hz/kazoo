@@ -38,9 +38,9 @@ api(Node, ConferenceId, {AppName, AppData}) ->
                   {ne_binary(), ne_binary(), atom()}.
 -type fs_apps() :: [fs_app()].
 -spec get_conf_command(ne_binary(), atom(), ne_binary(), kz_json:object()) ->
-                        fs_app() | fs_apps() |
-                        {'return', 'error' | ne_binary()} |
-                        {'error', ne_binary()}.
+                              fs_app() | fs_apps() |
+                              {'return', 'error' | ne_binary()} |
+                              {'error', ne_binary()}.
 
 %% The following conference commands can operate on the entire conference
 

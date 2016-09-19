@@ -437,7 +437,7 @@ is_node_up(Node, UUID) ->
 %%--------------------------------------------------------------------
 -spec multi_set_args(atom(), ne_binary(), kz_proplist()) -> binary().
 multi_set_args(Node, UUID, KVs) ->
-    multi_set_args(Node, UUID, KVs, ?FS_MULTI_VAR_SEP).
+    multi_set_args(Node, UUID, KVs, <<?FS_MULTI_VAR_SEP>>).
 
 -spec multi_set_args(atom(), ne_binary(), kz_proplist(), ne_binary()) -> binary().
 multi_set_args(Node, UUID, KVs, Separator) ->
@@ -445,7 +445,7 @@ multi_set_args(Node, UUID, KVs, Separator) ->
 
 -spec multi_unset_args(atom(), ne_binary(), kz_proplist()) -> binary().
 multi_unset_args(Node, UUID, KVs) ->
-    multi_unset_args(Node, UUID, KVs, ?FS_MULTI_VAR_SEP).
+    multi_unset_args(Node, UUID, KVs, <<?FS_MULTI_VAR_SEP>>).
 
 -spec multi_unset_args(atom(), ne_binary(), kz_proplist(), ne_binary()) -> binary().
 multi_unset_args(Node, UUID, KVs, Separator) ->
@@ -455,7 +455,7 @@ multi_unset_args(Node, UUID, KVs, Separator) ->
 fs_args_to_binary([_]=Args) ->
     list_to_binary(Args);
 fs_args_to_binary(Args) ->
-    fs_args_to_binary(Args, ?FS_MULTI_VAR_SEP).
+    fs_args_to_binary(Args, <<?FS_MULTI_VAR_SEP>>).
 
 -spec fs_args_to_binary(list(), ne_binary()) -> binary().
 fs_args_to_binary([_]=Args, _Sep) ->
