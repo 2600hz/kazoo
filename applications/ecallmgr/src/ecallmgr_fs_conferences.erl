@@ -116,7 +116,7 @@ details(UUID) ->
 create(Props, Node) ->
     gen_server:call(?SERVER, {'conference_create', Props, Node}).
 
--spec update(ne_binary(), kz_proplist()) -> 'ok'.
+-spec update(ne_binary(), kz_proplist() | {integer(), any()}) -> 'ok'.
 update(UUID, Update) ->
     gen_server:call(?SERVER, {'conference_update', UUID, Update}).
 

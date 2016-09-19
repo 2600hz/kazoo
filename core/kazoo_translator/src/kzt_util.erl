@@ -332,10 +332,10 @@ get_request_vars(Call) ->
        )
      ).
 
--spec iteration(whapps_call:call()) -> whapps_call:call().
+-spec iteration(kapps_call:call()) -> kapps_call:call().
 iteration(Call) ->
     kapps_call:kvs_fetch('pivot_counter', 1, Call).
 
--spec increment_iteration(whapps_call:call()) -> whapps_call:call().
+-spec increment_iteration(kapps_call:call()) -> kapps_call:call().
 increment_iteration(Call) ->
     kapps_call:kvs_update_counter('pivot_counter', 1, Call).

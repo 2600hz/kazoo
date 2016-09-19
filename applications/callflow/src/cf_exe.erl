@@ -63,7 +63,7 @@
                ,cf_module_pid :: {pid(), reference()} | 'undefined'
                ,cf_module_old_pid :: {pid(), reference()} | 'undefined'
                ,status = <<"sane">> :: ne_binary()
-               ,queue :: api_binary()
+               ,queue :: ne_binary()
                ,self = self()
                ,stop_on_destroy = 'true' :: boolean()
                ,destroyed = 'false' :: boolean()
@@ -726,7 +726,8 @@ cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
 amqp_send_message(API, PubFun, Q) ->
     PubFun(add_server_id(Q, API)).
 
--spec amqp_call_message(api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), ne_binary()) -> 'ok'.
+-spec amqp_call_message(api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), ne_binary()) ->
+                               kz_amqp_worker:request_return().
 amqp_call_message(API, PubFun, VerifyFun, Q) ->
     Routines = [{fun add_server_id/2, Q}
                ,fun add_message_id/1
