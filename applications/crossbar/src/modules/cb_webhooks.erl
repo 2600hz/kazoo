@@ -47,16 +47,16 @@ init() ->
     init_master_account_db(),
     maybe_revise_schema(),
 
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.webhooks">>, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, 'authorize'),
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.webhooks">>, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.webhooks">>, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.webhooks">>, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.webhooks">>, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.patch.webhooks">>, 'patch'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.webhooks">>, 'delete'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.accounts">>, 'delete_account').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.webhooks">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.webhooks">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.webhooks">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.webhooks">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.webhooks">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.webhooks">>, ?MODULE, 'patch'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.webhooks">>, ?MODULE, 'delete'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.accounts">>, ?MODULE, 'delete_account').
 
 -spec init_master_account_db() -> 'ok'.
 init_master_account_db() ->
@@ -76,8 +76,7 @@ init_master_account_db() ->
 -spec maybe_revise_schema(kz_json:object(), ne_binary()) -> 'ok'.
 maybe_revise_schema() ->
     case kz_json_schema:load(<<"webhooks">>) of
-        {'ok', SchemaJObj} ->
-            maybe_revise_schema(SchemaJObj);
+        {'ok', SchemaJObj} -> maybe_revise_schema(SchemaJObj);
         {'error', _E} ->
             lager:warning("failed to find webhooks schema: ~p", [_E])
     end.

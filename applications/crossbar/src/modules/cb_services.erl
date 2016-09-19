@@ -43,14 +43,14 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.services">>, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.services">>, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.content_types_provided.services">>, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"*.validate.services">>, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.get.services">>, 'get'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.services">>, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.services">>, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.services">>, 'delete').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.services">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.services">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.services">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.validate.services">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.get.services">>, ?MODULE, 'get'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.services">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.services">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.services">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -61,10 +61,8 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
-
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST].
-
 allowed_methods(?PATH_PLAN) ->
     [?HTTP_GET];
 allowed_methods(?PATH_AUDIT) ->
@@ -82,7 +80,6 @@ allowed_methods(?PATH_AUDIT) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> boolean().
 resource_exists() -> 'true'.
-
 resource_exists(?PATH_PLAN) -> 'true';
 resource_exists(?PATH_AUDIT) -> 'true';
 resource_exists(_) -> 'false'.

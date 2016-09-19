@@ -63,16 +63,16 @@
 -spec init() -> 'ok'.
 init() ->
     knm_port_request:init(),
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.port_requests">>, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.port_requests">>, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.content_types_provided.port_requests">>, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"*.content_types_accepted.port_requests">>, 'content_types_accepted'),
-    _ = crossbar_bindings:bind(<<"*.validate.port_requests">>, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.get.port_requests">>, 'get'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.port_requests">>, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.patch.port_requests">>, 'patch'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.port_requests">>, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.port_requests">>, 'delete').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.port_requests">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.port_requests">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.port_requests">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.content_types_accepted.port_requests">>, ?MODULE, 'content_types_accepted'),
+    _ = crossbar_bindings:bind(<<"*.validate.port_requests">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.get.port_requests">>, ?MODULE, 'get'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.port_requests">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.port_requests">>, ?MODULE, 'patch'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.port_requests">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.port_requests">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public

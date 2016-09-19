@@ -7244,11 +7244,6 @@
                 "autoload_modules": {
                     "description": "crossbar autoload modules"
                 },
-                "cleanup_timer": {
-                    "default": 86400,
-                    "description": "crossbar cleanup timer",
-                    "type": "integer"
-                },
                 "compress_response_body": {
                     "default": true,
                     "description": "crossbar compress response body",
@@ -7327,11 +7322,6 @@
                     "default": false,
                     "description": "crossbar schema strict validation",
                     "type": "boolean"
-                },
-                "soft_delete_pause_ms": {
-                    "default": 10000,
-                    "description": "crossbar soft delete pause in milliseconds",
-                    "type": "integer"
                 },
                 "ssl_ca_cert": {
                     "description": "crossbar ssl ca cert",
