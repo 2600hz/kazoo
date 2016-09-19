@@ -228,7 +228,7 @@ handle_search_resp(JObj, Conference, Call, Srv) ->
 maybe_play_name(Conference, Call, Srv) ->
     case kapps_conference:play_name_on_join(Conference)
         andalso ?SUPPORT_NAME_ANNOUNCEMENT(kapps_call:account_id(Call))
-         orelse 'true'
+        orelse 'true'
     of
         'true' ->
             PronouncedName = case conf_pronounced_name:lookup_name(Call) of
@@ -245,7 +245,7 @@ maybe_play_name(Conference, Call, Srv) ->
 
 -spec add_participant_to_conference(kz_json:object(), kapps_conference:conference(), kapps_call:call(), pid()) -> 'ok'.
 add_participant_to_conference(JObj, Conference, Call, Srv) ->
-     conf_participant:set_conference(Conference, Srv),
+    conf_participant:set_conference(Conference, Srv),
     _ = maybe_play_name(Conference, Call, Srv),
 
     SwitchHostname = kapps_call:switch_hostname(Call),

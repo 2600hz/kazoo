@@ -40,7 +40,7 @@
                            ,<<"unlock">>
                            ,<<"add-member">>
                            ,<<"del-member">>
-                           | ?MEMBER_UPDATE_EVENTS
+                                | ?MEMBER_UPDATE_EVENTS
                            ]).
 
 -record(state, {node = 'undefined' :: atom()
@@ -247,15 +247,15 @@ conference_event(Action, Conference, Props) ->
     ConfVars = ecallmgr_util:conference_channel_vars(Props),
     props:filter_undefined(
       [{<<"Event">>, Action}
-    ,{<<"Account-ID">>, Conference#conference.account_id}
-    ,{<<"Conference-ID">>, props:get_value(<<"Conference-Name">>, Props)}
-    ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
-    ,{<<"Call-ID">>, kzd_freeswitch:call_id(Props)}
-    ,{<<"Participant-ID">>, props:get_value(<<"Member-ID">>, ConfVars)}
-    ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, Props)}
-    ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, Props)}
-    ,{<<"Channel-Presence-ID">>, props:get_value(<<"Channel-Presence-ID">>, Props)}
-    ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
-    ,{<<"Conference-Channel-Vars">>, kz_json:from_list(ConfVars)}
-     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-    ]).
+      ,{<<"Account-ID">>, Conference#conference.account_id}
+      ,{<<"Conference-ID">>, props:get_value(<<"Conference-Name">>, Props)}
+      ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
+      ,{<<"Call-ID">>, kzd_freeswitch:call_id(Props)}
+      ,{<<"Participant-ID">>, props:get_value(<<"Member-ID">>, ConfVars)}
+      ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, Props)}
+      ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, Props)}
+      ,{<<"Channel-Presence-ID">>, props:get_value(<<"Channel-Presence-ID">>, Props)}
+      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+      ,{<<"Conference-Channel-Vars">>, kz_json:from_list(ConfVars)}
+       | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+      ]).

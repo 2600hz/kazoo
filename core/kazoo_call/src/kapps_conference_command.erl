@@ -234,9 +234,6 @@ play_macro(Macro, Conference) ->
              ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ],
-%%     JsonCommands = lists:reverse(lists:foldl(fun(Command, Acc) ->
-%%                                                      [kz_json:from_list(props:filter_undefined(Command ++ Values)) | Acc]
-%%                                              end, [], Commands)),
     Prop = [{<<"Application-Name">>, <<"play_macro">>}
            ,{<<"Media-Macro">>, Macro}
             | Values

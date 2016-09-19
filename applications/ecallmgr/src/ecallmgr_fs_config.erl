@@ -447,13 +447,13 @@ fetch_conference_params(Node, Id, <<"request-controls">>, ConfName, Data) ->
     Controls = props:get_value(<<"Controls">>, Data),
     lager:debug("request controls:~p for conference:~p", [Controls, ConfName]),
     Cmd = [{<<"Request">>, <<"Controls">>}
-           ,{<<"Profile">>, ConfName}
-           ,{<<"Controls">>, Controls} | kz_api:default_headers(?APP_NAME, ?APP_VERSION)],
+          ,{<<"Profile">>, ConfName}
+          ,{<<"Controls">>, Controls} | kz_api:default_headers(?APP_NAME, ?APP_VERSION)],
     Resp = kz_amqp_worker:call(Cmd
-                               ,fun kapi_conference:publish_config_req/1
-                               ,fun kapi_conference:config_resp_v/1
-                               ,ecallmgr_fs_node:fetch_timeout(Node)
-                               ),
+                              ,fun kapi_conference:publish_config_req/1
+                              ,fun kapi_conference:config_resp_v/1
+                              ,ecallmgr_fs_node:fetch_timeout(Node)
+                              ),
     {'ok', Xml} = handle_conference_params_response(Resp),
     send_conference_profile_xml(Node, Id, Xml);
 fetch_conference_params(Node, Id, Action, ConfName, _Data) ->
@@ -479,7 +479,7 @@ maybe_fetch_conference_profile(Node, Id, 'undefined') ->
 
 maybe_fetch_conference_profile(Node, Id, Profile) ->
     Cmd = [{<<"Request">>, <<"Conference">>}
-           ,{<<"Profile">>, Profile}
+          ,{<<"Profile">>, Profile}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("fetching profile '~s'", [Profile]),

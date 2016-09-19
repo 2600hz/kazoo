@@ -7150,31 +7150,6 @@
                         }
                     }
                 },
-                "entry_tone": {
-                    "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
-                    "description": "conferences entry tone",
-                    "type": "string"
-                },
-                "exit_tone": {
-                    "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)",
-                    "description": "conferences exit tone",
-                    "type": "string"
-                },
-                "moderator_entry_tone": {
-                    "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
-                    "description": "conferences moderator entry tone",
-                    "type": "string"
-                },
-                "number_timeout": {
-                    "default": 5000,
-                    "description": "conferences number timeout",
-                    "type": "integer"
-                },
-                "pin_timeout": {
-                    "default": 5000,
-                    "description": "conferences pin timeout",
-                    "type": "integer"
-                },
                 "profiles": {
                     "properties": {
                         "default": {
@@ -7218,11 +7193,6 @@
                     "default": 3000,
                     "description": "conferences route win timeout",
                     "type": "integer"
-                },
-                "support_name_announcement": {
-                    "default": true,
-                    "description": "conferences support name announcement",
-                    "type": "boolean"
                 }
             },
             "required": true,
@@ -8126,10 +8096,6 @@
                     "description": "ecallmgr fetch timeout",
                     "type": "integer"
                 },
-                "force_conference_verbose_events": {
-                    "description": "ecallmgr force conference verbose events",
-                    "type": "boolean"
-                },
                 "freeswitch_context": {
                     "default": "context_2",
                     "description": "ecallmgr freeswitch context",
@@ -8274,8 +8240,12 @@
                     "description": "ecallmgr publish channel state",
                     "type": "boolean"
                 },
-                "publish_participant_event": {
+                "publish_conference_event": {
                     "default": [
+                        "conference-create",
+                        "conference-destroy",
+                        "lock",
+                        "unlock",
                         "add-member",
                         "del-member",
                         "stop-talking",
@@ -8285,7 +8255,7 @@
                         "deaf-member",
                         "undeaf-member"
                     ],
-                    "description": "ecallmgr publish participant event",
+                    "description": "ecallmgr publish conference event",
                     "type": "array"
                 },
                 "record_sample_rate": {

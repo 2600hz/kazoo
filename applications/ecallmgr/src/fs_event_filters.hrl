@@ -6,7 +6,6 @@
         ,<<"Application-Data">>
         ,<<"Application-Logical-Direction">>
         ,<<"Application-Response">>
-        ,<<"Async">>
         ,<<"Auth-Realm">>
         ,<<"Bridge-A-Unique-ID">>
         ,<<"Bridge-B-Unique-ID">>
@@ -34,27 +33,19 @@
         ,<<"Conference-Unique-ID">>
         ,<<"Controls">>
         ,<<"Core-UUID">>
-        ,<<"Current-Energy">>
         ,<<"DTMF-Digit">>
         ,<<"DTMF-Duration">>
         ,<<"Detected-Fax-Tone">>
         ,<<"Detected-Tone">>
-        ,<<"Energy-Level">>
         ,<<"Event-Date-Timestamp">>
         ,<<"Event-Name">>
         ,<<"Event-Subclass">>
-        ,<<"File">>
-        ,<<"Floor">>
         ,<<"FreeSWITCH-Hostname">>
         ,<<"Hangup-Cause">>
-        ,<<"Hear">>
         ,<<"Hunt-Callee-ID-Number">>
         ,<<"Hunt-Context">>
         ,<<"Hunt-Destination-Number">>
         ,<<"Join-Time">>
-        ,<<"Member-ID">>
-        ,<<"Member-Type">>
-        ,<<"Mute-Detect">>
         ,<<"Other-Leg-Call-ID">>
         ,<<"Other-Leg-Callee-ID-Number">>
         ,<<"Other-Leg-Caller-ID-Name">>
@@ -63,20 +54,15 @@
         ,<<"Other-Leg-Destination-Number">>
         ,<<"Other-Leg-Direction">>
         ,<<"Other-Leg-Unique-ID">>
-        ,<<"Other-Recordings">>
-        ,<<"Path">>
         ,<<"Publish-Channel-State">>
         ,<<"Record-File-Path">>
         ,<<"Resigning-UUID">>
         ,<<"Route-Resp-Fun">>
         ,<<"Route-Resp-Xml-Fun">>
-        ,<<"Speak">>
         ,<<"Switch-Nodename">>
         ,<<"Switch-URI">>
         ,<<"Switch-URL">>
-        ,<<"Talking">>
         ,<<"Unique-ID">>
-        ,<<"Video">>
         ,<<"X-AUTH-IP">>
         ,<<"X-AUTH-PORT">>
         ,<<"action">>
@@ -120,14 +106,6 @@
         ,<<"variable_current_application_data">>
         ,<<"variable_domain_name">>
         ,<<"variable_duration">>
-        ,<<"variable_ecallmgr_Application-Logical-Direction">>
-        ,<<"variable_ecallmgr_Bridge-ID">>
-        ,<<"variable_ecallmgr_Call-Interaction-ID">>
-        ,<<"variable_ecallmgr_Ecallmgr-Node">>
-        ,<<"variable_ecallmgr_Fetch-ID">>
-        ,<<"variable_ecallmgr_Realm">>
-        ,<<"variable_ecallmgr_Username">>
-        ,<<"variable_ecallmgr_{Key}">>
         ,<<"variable_effective_callee_id_name">>
         ,<<"variable_effective_callee_id_number">>
         ,<<"variable_effective_caller_id_name">>
@@ -186,12 +164,6 @@
         ,<<"variable_sip_from_tag">>
         ,<<"variable_sip_from_uri">>
         ,<<"variable_sip_from_user">>
-        ,<<"variable_sip_h_Referred-By">>
-        ,<<"variable_sip_h_X-AUTH-IP">>
-        ,<<"variable_sip_h_X-AUTH-PORT">>
-        ,<<"variable_sip_h_X-Core-UUID">>
-        ,<<"variable_sip_h_X-ecallmgr_Call-Interaction-ID">>
-        ,<<"variable_sip_h_X-ecallmgr_replaces-call-id">>
         ,<<"variable_sip_invite_domain">>
         ,<<"variable_sip_loopback_req_uri">>
         ,<<"variable_sip_received_ip">>

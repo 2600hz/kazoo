@@ -387,7 +387,7 @@ log_conference_join('false'=_Moderator, ParticipantId, Conference) ->
 
 -spec sync_participant(ne_binary(), kz_json:objects(), kapps_call:call(), participant()) -> participant().
 sync_participant(<<"add-member">>, JObj, Call, Participant) ->
-        sync_participant(JObj, Call, Participant);
+    sync_participant(JObj, Call, Participant);
 sync_participant(<<"conference-destroyed">>, _JObj, _Call, Participant) -> Participant;
 sync_participant(_Event, _JObj, _Call, Participant) -> Participant.
 
@@ -519,10 +519,10 @@ set_enter_exit_sounds({_, AccountId, MediaId}, #participant{conference=Conferenc
              (_) -> 'true'
           end,
 
-     Sounds = [{<<"Conference-Entry-Sound">>, lists:filter(Fun, EntrySounds)}
-              ,{<<"Conference-Exit-Sound">>, lists:filter(Fun, ExitSounds)}
-              ],
-     kapps_call_command:media_macro(Sounds, Call).
+    Sounds = [{<<"Conference-Entry-Sound">>, lists:filter(Fun, EntrySounds)}
+             ,{<<"Conference-Exit-Sound">>, lists:filter(Fun, ExitSounds)}
+             ],
+    kapps_call_command:media_macro(Sounds, Call).
 
 %% @private
 -spec play_exit_tone(boolean(), kapps_conference:conference()) -> api_binary().
