@@ -9,7 +9,7 @@
 
 -export([remove_empty_media_docs/1
         ,migrate/0, migrate_prompts/0
-        ,import_prompts/1, import_prompts/2, import_prompts/3
+        ,import_prompts/1, import_prompts/2
         ,import_prompt/1, import_prompt/2
         ,set_account_language/2
         ,refresh/0
@@ -71,31 +71,16 @@ import_prompts(DirPath, Lang) ->
             end
     end.
 
-import_prompts(DirPath, Lang, Wildcard) ->
-    case filelib:is_dir(DirPath) of
-        'false' ->
-            io:format("not a directory, or is inaccessible: '~s'\n", [DirPath]);
-        'true' ->
-            kz_datamgr:db_create(?KZ_MEDIA_DB),
-            MediaPath = filename:join([DirPath, kz_util:to_list(Wildcard) ++ "*.{wav,mp3}"]),
-            case filelib:wildcard(kz_util:to_list(MediaPath)) of
-                [] -> io:format("failed to find media files in '~s'~n", [DirPath]);
-                Files -> import_files(DirPath, Lang, Files)
-            end
-    end.
-
 -spec import_files(file:name(), ne_binary(), [file:filename()]) -> 'ok'.
 import_files(Path, Lang, Files) ->
     io:format("importing prompts from '~s' with language '~s'~n", [Path, Lang]),
-    kz_datamgr:suppress_change_notice(),
     case import_prompts_from_files(Files, Lang) of
         [] -> io:format("importing went successfully~n");
         Errors ->
             io:format("errors encountered during import:~n"),
             _ = [io:format("  '~s': ~p~n", [F, Err]) || {F, Err} <- Errors],
             'ok'
-    end,
-    kz_datamgr:enable_change_notice().
+    end.
 
 -spec import_prompts_from_files([file:filename()], ne_binary()) ->
                                        [{file:filename(), {'error', _}}].
@@ -167,7 +152,6 @@ import_prompt(Path0, Lang0, Contents) ->
                          ,[{'content_type', kz_util:to_list(ContentType)}
                           ,{'content_length', ContentLength}
                           ,{'rev', kz_doc:revision(MetaJObj1)}
-                          ,{'doc_type', <<"media">>}
                           ]
                          );
         {'error', E}=Error ->
@@ -182,12 +166,11 @@ import_prompt(Path0, Lang0, Contents) ->
                            'ok' |
                            {'error', any()}.
 upload_prompt(ID, AttachmentName, Contents, Options) ->
-    upload_prompt(ID, AttachmentName, Contents, Options, 5).
+    upload_prompt(ID, AttachmentName, Contents, Options, 3).
 
-upload_prompt(ID, _AttachmentName, _Contents, _Options, 0) ->
-    io:format("  retries exceeded for uploading ~s to ~s~n", [_AttachmentName, ID]),
-    E = {'error', 'retries_exceeded'},
-    maybe_cleanup_metadoc(ID, E);
+upload_prompt(_ID, _AttachmentName, _Contents, _Options, 0) ->
+    io:format("  retries exceeded for uploading ~s to ~s~n", [_AttachmentName, _ID]),
+    {'error', 'retries_exceeded'};
 upload_prompt(ID, AttachmentName, Contents, Options, Retries) ->
     case kz_datamgr:put_attachment(?KZ_MEDIA_DB, ID, AttachmentName, Contents, Options) of
         {'ok', _MetaJObj} ->
@@ -197,7 +180,7 @@ upload_prompt(ID, AttachmentName, Contents, Options, Retries) ->
             maybe_retry_upload(ID, AttachmentName, Contents, Options, Retries);
         {'error', E} ->
             io:format("  error uploading prompt binary: ~p~n", [E]),
-            maybe_retry_upload(ID, AttachmentName, Contents, Options, Retries)
+            maybe_cleanup_metadoc(ID, E)
     end.
 
 -spec maybe_cleanup_metadoc(ne_binary(), any()) -> {'error', any()}.
