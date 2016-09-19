@@ -12,9 +12,6 @@
 -export([start_link/3
         ]).
 
-%% -export([handle_conference_command/2]).
-%% -export([handle_conference_event/2]).
-
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -35,13 +32,6 @@
                      ,[{<<"conference">>, <<"event">>}]
                      }
                     ]).
-%% -define(RESPONDERS, [{{?MODULE, 'handle_conference_command'}
-%%                      ,[{<<"conference">>, <<"command">>}]
-%%                      }
-%%                     ,{{?MODULE, 'handle_conference_event'}
-%%                      ,[{<<"conference">>, <<"event">>}]
-%%                      }
-%%                     ]).
 
 -define(BINDINGS(Id), [{'conference', [{'restrict_to', [{'command', Id}
                                                        ,{'event', [{'conference_id', Id}
@@ -181,7 +171,7 @@ handle_info(_Info, State) ->
 %%                                    ignore
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
+-spec handle_event(kz_json:object(), state()) -> handle_event_ret().
 handle_event(_JObj, #state{node=Node
                           ,conference_id=ConferenceId
                           ,instance_id=InstanceId

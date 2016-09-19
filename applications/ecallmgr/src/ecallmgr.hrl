@@ -125,8 +125,8 @@
                      ,join_time = kz_util:current_tstamp() :: non_neg_integer() | '_'
                      ,caller_id_name :: api_binary() | '_'
                      ,caller_id_number :: api_binary() | '_'
-                     ,conference_channel_vars :: kz_proplist | '_'
-                     ,custom_channel_vars :: kz_proplist | '_'
+                     ,conference_channel_vars :: kz_proplist() | '_'
+                     ,custom_channel_vars :: kz_proplist() | '_'
                      }).
 -type participant() :: #participant{}.
 -type participants() :: [participant()].

@@ -3097,10 +3097,9 @@ play_macro_command(Media, Call) ->
         ,{<<"Call-ID">>, kapps_call:call_id(Call)}
         ])).
 
--spec b_play_macro(ne_binaries(), kapps_call:call()) -> 'ok'.
+-spec b_play_macro(ne_binaries(), kapps_call:call()) -> kapps_api_std_return().
 b_play_macro(Media, Call) ->
-    wait_for_noop(Call, play_macro(Media, Call)),
-    lager:debug("done playing media macro").
+    wait_for_noop(Call, play_macro(Media, Call)).
 
 -spec play_macro(ne_binaries(), kapps_call:call()) -> ne_binary().
 play_macro(Media, Call) ->

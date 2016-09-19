@@ -23,28 +23,25 @@ exec_cmd(Node, ConferenceId, JObj, ConferenceId) ->
     App = kz_json:get_value(<<"Application-Name">>, JObj),
     case get_conf_command(App, Node, ConferenceId, JObj) of
         {'error', Msg} -> throw({'msg', Msg});
-        {'return', Result} -> Result;
-        {'noop', Reply} -> {'reply', Reply};
-        {_, _, _}=Cmd -> api(Node, ConferenceId, Cmd);
-        {_, _}=Cmd -> api(Node, ConferenceId, Cmd);
-        [_|_]=Cmds -> [api(Node, ConferenceId, Cmd) || Cmd <- Cmds]
+        {_, _}=Cmd -> api(Node, ConferenceId, Cmd)
     end;
 exec_cmd(_Node, _ConferenceId, JObj, _DestId) ->
     lager:debug("command ~s not meant for us (~s) but for ~s", [kz_json:get_value(<<"Application-Name">>, JObj)
                                                                ,_ConferenceId
                                                                ,_DestId]).
 
-api(Node, ConferenceId, {API, AppName, AppData}) ->
-    Command = kz_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
-    freeswitch:api(Node, API, Command);
 api(Node, ConferenceId, {AppName, AppData}) ->
     Command = kz_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
     freeswitch:api(Node, 'conference', Command).
 
+-type fs_app() :: {ne_binary(), ne_binary() | 'noop'} |
+                  {ne_binary(), ne_binary(), atom()}.
+-type fs_apps() :: [fs_app()].
 -spec get_conf_command(ne_binary(), atom(), ne_binary(), kz_json:object()) ->
-                              {ne_binary(), binary()} |
-                              {'error', ne_binary()} |
-                              {'noop', kz_json:object()}.
+                        fs_app() | fs_apps() |
+                        {'return', 'error' | ne_binary()} |
+                        {'error', ne_binary()}.
+
 %% The following conference commands can operate on the entire conference
 
 get_conf_command(<<"lock">>, _Focus, _ConferenceId, JObj) ->

@@ -228,7 +228,6 @@ handle_search_resp(JObj, Conference, Call, Srv) ->
 maybe_play_name(Conference, Call, Srv) ->
     case kapps_conference:play_name_on_join(Conference)
         andalso ?SUPPORT_NAME_ANNOUNCEMENT(kapps_call:account_id(Call))
-        orelse 'true'
     of
         'true' ->
             PronouncedName = case conf_pronounced_name:lookup_name(Call) of

@@ -181,17 +181,6 @@ participant_get(CallId) ->
 participant_destroy(CallId) ->
     gen_server:call(?SERVER, {'participant_destroy', CallId}).
 
-%% -spec participant_callid(ne_binary(), non_neg_integer()) -> api_binary().
-%% participant_callid(UUID, MemberId) ->
-%%     case ets:match(?PARTICIPANTS_TBL, #participant{conference_uuid=UUID
-%%                                                   ,member_id=MemberId
-%%                                                   ,uuid='$1'
-%%                                                   ,_ = '_'})
-%%     of
-%%         [[CallId]] -> CallId;
-%%         _Else -> 'undefined'
-%%     end.
-
 -spec sync_node(atom()) -> 'ok'.
 sync_node(Node) -> gen_server:cast(?SERVER, {'sync_node', Node}).
 
@@ -440,7 +429,6 @@ participant_from_props(Props, Node) ->
 participant_from_props(Props, Node, Participant) ->
     Participant#participant{node=Node
                            ,uuid=kzd_freeswitch:call_id(Props)
-                                                %kz_json:get_value(<<"Unique-ID">>, Props)
                            ,conference_uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
                            ,conference_name=props:get_value(<<"Conference-Name">>, Props)
                            ,join_time=props:get_integer_value(<<"Join-Time">>, Props, kz_util:current_tstamp())
@@ -642,112 +630,8 @@ xml_member_to_participant([#xmlElement{name='uuid'
                              ,Participant#participant{uuid=kz_util:to_binary(CallId)}
                              );
 
-%% xml_member_to_participant([#xmlElement{name='caller_id_name'
-%%                                       ,content=XmlCIDName
-%%                                       }
-%%                            |XmlElements
-%%                           ], Participant) ->
-%%     CIDName = kz_util:to_binary(kz_util:uri_decode(xml_text_to_binary(XmlCIDName)))
-%%     xml_member_to_participant(XmlElements
-%%                              ,Participant#participant{caller_id_name=CIDName}
-%%                              );
-%% xml_member_to_participant([#xmlElement{name='caller_id_number'
-%%                                       ,content=XmlCIDNumber
-%%                                       }
-%%                            |XmlElements
-%%                           ], Participant) ->
-%%     CIDNumber = kz_util:to_binary(kz_util:uri_decode(xml_text_to_binary(XmlCIDNumber)))
-%%     xml_member_to_participant(XmlElements
-%%                              ,Participant#participant{caller_id_number=CIDNumber}
-%%                              );
-%% xml_member_to_participant([#xmlElement{name='caller_id_number'
-%%                                       ,content=XmlCIDNumber
-%%                                       }
-%%                            |XmlElements
-%%                           ], Participant) ->
-%%     CIDNumber = kz_util:to_binary(kz_util:uri_decode(xml_text_to_binary(XmlCIDNumber)))
-%%     xml_member_to_participant(XmlElements
-%%                              ,Participant#participant{caller_id_number=CIDNumber}
-%%                              );
-%% xml_member_to_participant([#xmlElement{name='join_time'
-%%                                       ,content=XmlJoinTime
-%%                                       }
-%%                            |XmlElements
-%%                           ], Participant) ->
-%%     JoinTime = kz_util:to_integer(kz_util:uri_decode(xml_text_to_binary(XmlCIDNumber)))
-%%     xml_member_to_participant(XmlElements
-%%                              ,Participant#participant{join_time=JoinTime}
-%%                              );
-%% xml_member_to_participant([#xmlElement{name='flags'
-%%                                       ,content=Xml
-%%                                       }
-%%                            | XmlElements
-%%                           ], Participant) ->
-%%     xml_member_to_participant(XmlElements
-%%                              ,xml_member_flags_to_participant(Xml, Participant));
-%% xml_member_to_participant([#xmlElement{name='id'
-%%                                       ,content=Id
-%%                                       }
-%%                            |XmlElements
-%%                           ], Participant) ->
-%%     Value = kz_util:to_integer(xml_text_to_binary(Id)),
-%%     xml_member_to_participant(XmlElements
-%%                              ,Participant#participant{member_id=Value});
-%% xml_member_to_participant([#xmlElement{name='energy'
-%%                                       ,content=Energy
-%%                                       }
-%%                            |XmlElements
-%%                           ], Participant) ->
-%%     Value = kz_util:to_integer(xml_text_to_binary(Energy)),
-%%     xml_member_to_participant(XmlElements
-%%                              ,Participant#participant{energy_level=Value});
 xml_member_to_participant([_|XmlElements], Participant) ->
     xml_member_to_participant(XmlElements, Participant).
-
-%% -spec xml_member_flags_to_participant(xml_els(), participant()) -> participant().
-%% xml_member_flags_to_participant([], Participant) -> Participant;
-%% xml_member_flags_to_participant([#xmlElement{name='talking'
-%%                                             ,content=Speak
-%%                                             }
-%%                                  | XmlElements
-%%                                 ], Participant) ->
-%%     Value = kz_util:is_true(xml_text_to_binary(Speak)),
-%%     xml_member_flags_to_participant(XmlElements
-%%                                    ,Participant#participant{speak=Value});
-%% xml_member_flags_to_participant([#xmlElement{name='has_floor'
-%%                                             ,content=HasFloor
-%%                                             }
-%%                                  | XmlElements
-%%                                 ], Participant) ->
-%%     Value = kz_util:is_true(xml_text_to_binary(HasFloor)),
-%%     xml_member_flags_to_participant(XmlElements
-%%                                    ,Participant#participant{floor=Value});
-%% xml_member_flags_to_participant([#xmlElement{name='is_moderator'
-%%                                             ,content=IsMod
-%%                                             }
-%%                                  | XmlElements
-%%                                 ], Participant) ->
-%%     Value = kz_util:is_true(xml_text_to_binary(IsMod)),
-%%     xml_member_flags_to_participant(XmlElements
-%%                                    ,Participant#participant{is_moderator=Value});
-%% xml_member_flags_to_participant([#xmlElement{name='can_hear'
-%%                                             ,content=Hear
-%%                                             }
-%%                                  | XmlElements
-%%                                 ], Participant) ->
-%%     Value = kz_util:is_true(xml_text_to_binary(Hear)),
-%%     xml_member_flags_to_participant(XmlElements
-%%                                    ,Participant#participant{hear=Value});
-%% xml_member_flags_to_participant([#xmlElement{name='can_speak'
-%%                                             ,content=Speak
-%%                                             }
-%%                                  | XmlElements
-%%                                 ], Participant) ->
-%%     Value = kz_util:is_true(xml_text_to_binary(Speak)),
-%%     xml_member_flags_to_participant(XmlElements
-%%                                    ,Participant#participant{speak=Value});
-%% xml_member_flags_to_participant([_|XmlElements], Participant) ->
-%%     xml_member_flags_to_participant(XmlElements, Participant).
 
 -spec xml_text_to_binary(xml_els()) -> ne_binary().
 xml_text_to_binary(XmlElements) ->
@@ -884,6 +768,7 @@ print_participant_details([#participant{uuid=UUID}=Participant
     print_participant_flags(Props),
     print_participant_details(Participants).
 
+-spec print_participant_flags(kz_proplist()) -> 'ok'.
 print_participant_flags([]) -> 'ok';
 print_participant_flags([{Flag, 'true'}|Props]) ->
     %% Cheating, all this typing today...
