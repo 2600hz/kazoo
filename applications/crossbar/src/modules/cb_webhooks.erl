@@ -356,10 +356,8 @@ read(Id, Context) ->
 -spec maybe_leak_pvt_fields(cb_context:context()) -> cb_context:context().
 maybe_leak_pvt_fields(Context) ->
     Doc = cb_context:doc(Context),
-    kz_json:set_values([{<<"disable_reason">>, kzd_webhook:disabled_message(Doc)}]
-                      ,Doc
-                      ),
-    cb_context:set_doc(Context, Doc).
+    NewDoc = kz_json:set_value(<<"disable_reason">>, kzd_webhook:disabled_message(Doc), Doc),
+    cb_context:set_doc(Context, NewDoc).
 
 %%--------------------------------------------------------------------
 %% @private
