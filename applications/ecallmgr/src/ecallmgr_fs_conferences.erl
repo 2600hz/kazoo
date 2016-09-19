@@ -410,6 +410,7 @@ conference_from_props(Props, Node) ->
 
 -spec conference_from_props(kz_proplist(), atom(), conference()) -> conference().
 conference_from_props(Props, Node, Conference) ->
+    CtrlNode = kz_util:to_atom(props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props), 'true'),
     Conference#conference{node=Node
                          ,uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
                          ,name=props:get_value(<<"Conference-Name">>, Props)
@@ -419,6 +420,9 @@ conference_from_props(Props, Node, Conference) ->
                          ,switch_url=ecallmgr_fs_nodes:sip_url(Node)
                          ,switch_external_ip=ecallmgr_fs_nodes:sip_external_ip(Node)
                          ,account_id = props:get_value(?GET_CCV(<<"Account-ID">>), Props)
+                         ,handling_locally = CtrlNode =:= node()
+                         ,origin_node = CtrlNode
+                         ,control_node = CtrlNode
                          }.
 
 -spec participant_from_props(kz_proplist(), atom()) -> participant().
@@ -491,6 +495,7 @@ conference_to_props(#conference{name=Name
                                ,switch_url=SwitchURL
                                ,account_id=AccountId
                                ,locked=Locked
+                               ,handling_locally = IsLocal
                                }) ->
     props:filter_undefined(
       [{<<"Name">>, Name}
@@ -511,6 +516,7 @@ conference_to_props(#conference{name=Name
       ,{<<"Switch-External-IP">>, ExternalIP}
       ,{<<"Account-ID">>, AccountId}
       ,{<<"Locked">>, Locked}
+      ,{<<"Is-Local">>, IsLocal}
       ]).
 
 -spec list_conferences(atom()) -> conferences() | participants().
@@ -716,24 +722,25 @@ sync_participants(Participants, Node) ->
 print_summary('$end_of_table') ->
     io:format("No conferences found!~n");
 print_summary(Match) ->
-    io:format("+----------------------------------+----------------------------------------------------+--------------+-------------+----------------------------------+~n"),
-    io:format("| Name                             | Node                                               | Participants | Uptime(sec) | Account-ID                       |~n"),
-    io:format("+==================================+====================================================+==============+=============+==================================+~n"),
+    io:format("+----------------------------------+----------------------------------------------------+--------------+-------------+----------------------------------+-----+~n"),
+    io:format("| Name                             | Node                                               | Participants | Uptime(sec) | Account-ID                       |Local|~n"),
+    io:format("+==================================+====================================================+==============+=============+==================================+=====+~n"),
     print_summary(Match, 0).
 
 print_summary('$end_of_table', Count) ->
-    io:format("+----------------------------------+----------------------------------------------------+--------------+-------------+----------------------------------+~n"),
+    io:format("+----------------------------------+----------------------------------------------------+--------------+-------------+----------------------------------+-----+~n"),
     io:format("Found ~p conferences~n", [Count]);
 print_summary({[#conference{name=Name
                            ,node=Node
                            ,start_time=StartTime
                            ,account_id=AccountId
+                           ,handling_locally = IsLocal
                            }]
               ,Continuation}
              ,Count) ->
     Participants = participants(Name),
-    io:format("| ~-32s | ~-50s | ~-12B | ~-11B | ~-32s |~n"
-             ,[Name, Node, length(Participants), kz_util:current_tstamp() - StartTime, AccountId]
+    io:format("| ~-32s | ~-50s | ~-12B | ~-11B | ~-32s |~-5s|~n"
+             ,[Name, Node, length(Participants), kz_util:current_tstamp() - StartTime, AccountId, IsLocal]
              ),
     print_summary(ets:select(Continuation), Count + 1).
 

@@ -234,9 +234,11 @@ publish_event(Action, Props, Node) ->
         {'error', 'not_found'} -> lager:debug("not publishing conference event ~s for not existant ~s ", [Action, UUID])
     end.
 
-publish_event(Action, Conference, Props, _Node) ->
+publish_event(Action, #conference{handling_locally='true'} = Conference, Props, _Node) ->
     Event = conference_event(Action, Conference, Props),
-    publish_event(Event).
+    publish_event(Event);
+publish_event(Action, _Conference, _Props, _Node) ->
+    lager:debug("conference control on another node, not publishing event ~s", [Action]).
 
 -spec publish_event(kz_proplist()) -> 'ok'.
 publish_event(Event) ->

@@ -113,6 +113,9 @@
                     ,switch_url :: api_binary() | '_'
                     ,switch_external_ip :: api_binary() | '_'
                     ,account_id :: api_binary() | '_'
+                    ,handling_locally = 'false' :: boolean() | '_' %% was this ecallmgr handling the call control?
+                    ,origin_node :: atom() | '_'
+                    ,control_node :: atom() | '_'
                     }).
 
 -type conference() :: #conference{}.
