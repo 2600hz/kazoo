@@ -17,7 +17,6 @@
         ,validate/1, validate/2
         ,put/1, put/2
         ,post/2
-        ,cleanup_reset_ids/1
         ]).
 
 -include("crossbar.hrl").
@@ -45,7 +44,6 @@
 %%%===================================================================
 init() ->
     kz_datamgr:db_create(?KZ_TOKEN_DB),
-    _ = crossbar_bindings:bind(crossbar_cleanup:binding_account(), ?MODULE, 'cleanup_reset_ids'),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.user_auth">>, ?MODULE, 'allowed_methods'),
@@ -336,32 +334,6 @@ load_md5_results(Context, []) ->
 load_md5_results(Context, JObj) ->
     lager:debug("found MD5 credentials belong to user ~s", [kz_doc:id(JObj)]),
     cb_context:set_doc(Context, kz_json:get_value(<<"value">>, JObj)).
-
-
-%% @public
--spec cleanup_reset_ids(ne_binary()) -> 'ok'.
-cleanup_reset_ids(AccountDb) ->
-    ViewOptions = [{'key', ?RESET_PVT_TYPE}
-                  ,'include_docs'
-                  ],
-    case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
-        {'ok', [_|_]=ResetIdDocs} ->
-            lager:debug("checking ~p reset_id documents"),
-            DelDocs = fun (ResetIdDoc) -> maybe_delete_doc(AccountDb, ResetIdDoc) end,
-            lists:foreach(DelDocs, ResetIdDocs);
-        _Else -> 'ok'
-    end.
-
--spec maybe_delete_doc(ne_binary(), kz_json:object()) -> 'ok'.
-maybe_delete_doc(AccountDb, ResetIdDoc) ->
-    TwoDaysAgo = kz_util:current_tstamp() - 2 * ?SECONDS_IN_DAY,
-    Created = kz_doc:created(ResetIdDoc),
-    case TwoDaysAgo < Created of
-        'true' -> 'ok';
-        'false' ->
-            _ = kz_datamgr:del_doc(AccountDb, kz_doc:id(ResetIdDoc)),
-            'ok'
-    end.
 
 
 %% @private
