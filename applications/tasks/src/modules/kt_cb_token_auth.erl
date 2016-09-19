@@ -28,7 +28,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    _ = tasks_bindings:bind(?TRIGGER_HOUR, ?MODULE, clean_expired).
+    _ = tasks_bindings:bind(?TRIGGER_HOURLY, ?MODULE, clean_expired).
 
 %%% Triggerables
 

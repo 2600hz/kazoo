@@ -131,15 +131,15 @@ handle_info({'EXIT', _Pid, _Reason}, State) ->
     {noreply, State};
 
 handle_info({timeout, Ref, _Msg}, #state{minute_ref = Ref}=State) ->
-    spawn_jobs(Ref, ?TRIGGER_MINUTE),
+    spawn_jobs(Ref, ?TRIGGER_MINUTELY),
     {'noreply', State#state{minute_ref = minute_timer()}};
 
 handle_info({timeout, Ref, _Msg}, #state{hour_ref = Ref}=State) ->
-    spawn_jobs(Ref, ?TRIGGER_HOUR),
+    spawn_jobs(Ref, ?TRIGGER_HOURLY),
     {'noreply', State#state{hour_ref = hour_timer()}};
 
 handle_info({timeout, Ref, _Msg}, #state{day_ref = Ref}=State) ->
-    spawn_jobs(Ref, ?TRIGGER_DAY),
+    spawn_jobs(Ref, ?TRIGGER_DAILY),
     {'noreply', State#state{day_ref = day_timer()}};
 
 handle_info({timeout, Ref, _Msg}, #state{browse_dbs_ref = Ref}=State) ->
