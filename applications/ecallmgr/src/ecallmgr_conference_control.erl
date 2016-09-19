@@ -88,10 +88,10 @@ handle_conference_event(JObj, Props) ->
     handle_conference_event(Node, Server, ConferenceId, Event, JObj).
 
 handle_conference_event(_Node, Server, ConferenceId, <<"conference-destroy">>, _JObj) ->
-    lager:debug("RECEIVED CONFERENCE-DESTROY FOR ~s", [ConferenceId]),
+    lager:debug("received conference-destroy for ~s, terminating", [ConferenceId]),
     gen_server:stop(Server);
-handle_conference_event(_Node, _Server, ConferenceId, Event, JObj) ->
-    lager:debug("EVENNT ~s FOR ~s NOT HANDLED : ~p", [Event, ConferenceId, JObj]).
+handle_conference_event(_Node, _Server, ConferenceId, Event, _JObj) ->
+    lager:debug("received not handled event ~s for ~s", [Event, ConferenceId]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -212,44 +212,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%% send_response(_, _, 'undefined', _) -> lager:debug("no server-id to respond");
-%% send_response(_, {'ok', <<"Non-Existant ID", _/binary>> = Msg}, RespQ, Command) ->
-%%     Error = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Command, <<>>)}
-%%             ,{<<"Error-Message">>, binary:replace(Msg, <<"\n">>, <<>>)}
-%%             ,{<<"Request">>, Command}
-%%              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-%%             ],
-%%     lager:debug("error in conference command: ~s", [Msg]),
-%%     kapi_conference:publish_error(RespQ, Error);
-%% send_response(<<"participants">>, {'noop', Conference}, RespQ, Command) ->
-%%     Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Command, <<>>)}
-%%            ,{<<"Participants">>, kz_json:get_value(<<"Participants">>, Conference, kz_json:new())}
-%%             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-%%            ],
-%%     kapi_conference:publish_participants_resp(RespQ, Resp);
-%% send_response(_, {'ok', Response}, RespQ, Command) ->
-%%     case binary:match(Response, <<"not found">>) of
-%%         'nomatch' -> 'ok';
-%%         _Else ->
-%%             Error = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Command, <<>>)}
-%%                     ,{<<"Error-Message">>, binary:replace(Response, <<"\n">>, <<>>)}
-%%                     ,{<<"Request">>, Command}
-%%                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-%%                     ],
-%%             kapi_conference:publish_error(RespQ, Error)
-%%     end;
-%% send_response(_, {'error', Msg}, RespQ, Command) ->
-%%     Error = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Command, <<>>)}
-%%             ,{<<"Error-Message">>, binary:replace(kz_util:to_binary(Msg), <<"\n">>, <<>>)}
-%%             ,{<<"Request">>, Command}
-%%              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-%%             ],
-%%     kapi_conference:publish_error(RespQ, Error);
-%% send_response(_, 'timeout', RespQ, Command) ->
-%%     Error = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Command, <<>>)}
-%%             ,{<<"Error-Message">>, <<"Node Timeout">>}
-%%             ,{<<"Request">>, Command}
-%%              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-%%             ],
-%%     kapi_conference:publish_error(RespQ, Error).
