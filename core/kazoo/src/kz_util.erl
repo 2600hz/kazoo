@@ -82,6 +82,7 @@
 -export([binary_md5/1]).
 -export([pad_binary/3, pad_binary_left/3
         ,join_binary/1, join_binary/2
+        ,binary_reverse/1
         ]).
 -export([a1hash/3, floor/1, ceiling/1]).
 
@@ -1057,7 +1058,7 @@ to_number(X) when is_list(X) ->
     end.
 
 -spec to_list(atom() | list() | binary() | integer() | float()) -> list().
-to_list(X) when is_float(X) -> mochinum:digits(X);
+to_list(X) when is_float(X) -> float_to_list(X,[{decimals, 10},compact]);
 to_list(X) when is_integer(X) -> integer_to_list(X);
 to_list(X) when is_binary(X) -> binary_to_list(X);
 to_list(X) when is_atom(X) -> atom_to_list(X);
@@ -1066,7 +1067,7 @@ to_list(X) when is_list(X) -> X.
 %% Known limitations:
 %%   Converting [256 | _], lists with integers > 255
 -spec to_binary(atom() | string() | binary() | integer() | float() | pid() | iolist()) -> binary().
-to_binary(X) when is_float(X) -> to_binary(mochinum:digits(X));
+to_binary(X) when is_float(X) -> to_binary(to_list(X));
 to_binary(X) when is_integer(X) -> list_to_binary(integer_to_list(X));
 to_binary(X) when is_atom(X) -> list_to_binary(atom_to_list(X));
 to_binary(X) when is_list(X) -> iolist_to_binary(X);
@@ -1719,6 +1720,10 @@ iolist_join_prepend(_, []) -> [];
 iolist_join_prepend(Sep, [H|T]) ->
     [Sep, H | iolist_join_prepend(Sep, T)].
 
+
+-spec binary_reverse(binary()) -> binary().
+binary_reverse(Bin) ->
+    to_binary(lists:reverse(to_list(Bin))).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
