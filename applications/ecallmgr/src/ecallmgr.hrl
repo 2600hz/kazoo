@@ -490,7 +490,7 @@
 
 
 
--define(CONFERENCE_VARS, [<<"variable_conference_moderator">>                             
+-define(CONFERENCE_VARS, [<<"variable_conference_moderator">>
                          ,<<"Floor">>
                          ,<<"Video">>
                          ,<<"See">>

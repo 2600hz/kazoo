@@ -424,7 +424,7 @@ fix_flite_tts(Profile) ->
 -spec conference_sounds(kz_json:object()) -> kz_json:object().
 conference_sounds(Profile) ->
     kz_json:foldl(fun conference_sound/3, Profile, Profile).
-    
+
 conference_sound(Key, Value, Profile) ->
     maybe_convert_sound(kz_util:binary_reverse(Key), Key, Value, Profile).
 
@@ -433,7 +433,7 @@ maybe_convert_sound(<<"dnuos-", _/binary>>, Key, Value, Profile) ->
     kz_json:set_value(Key, MediaName, Profile);
 maybe_convert_sound(_, _, _, Profile) -> Profile.
 
-  
+
 -spec fetch_conference_config(atom(), ne_binary(), ne_binary(), kz_proplist()) -> fs_sendmsg_ret().
 fetch_conference_config(Node, Id, <<"COMMAND">>, Data) ->
     maybe_fetch_conference_profile(Node, Id, props:get_value(<<"profile_name">>, Data));

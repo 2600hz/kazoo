@@ -331,7 +331,7 @@
 -define(PARTICIPANT_EVENT_TYPES, []).
 
 %% Conference Event
--define(CONFERENCE_EVENT_KEY(Event, AccountId, ConferenceId, CallId), 
+-define(CONFERENCE_EVENT_KEY(Event, AccountId, ConferenceId, CallId),
         <<Event/binary, "."
           ,AccountId/binary, "."
           ,ConferenceId/binary, "."
@@ -1375,7 +1375,7 @@ event_binding_key(ConferenceId)
   when is_binary(ConferenceId) ->
     ?CONFERENCE_EVENT_KEY(<<"*">>, <<"*">>, ConferenceId, <<"*">>);
 event_binding_key({ConferenceId, CallId}) ->
-    ?CONFERENCE_EVENT_KEY(<<"*">>, <<"*">>, ConferenceId, CallId);    
+    ?CONFERENCE_EVENT_KEY(<<"*">>, <<"*">>, ConferenceId, CallId);
 event_binding_key(Props) ->
     Event = props:get_value('event', Props, <<"*">>),
     AccountId = props:get_value('account_id', Props, <<"*">>),
@@ -1394,7 +1394,7 @@ event_key(API) ->
     ConferenceId = kz_json:get_value(<<"Conference-ID">>, API),
     CallId = kz_json:get_value(<<"Call-ID">>, API, ConferenceId),
     ?CONFERENCE_EVENT_KEY(Event, AccountId, ConferenceId, CallId).
-    
+
 %%--------------------------------------------------------------------
 %% @doc
 %% Publish to the conference exchange

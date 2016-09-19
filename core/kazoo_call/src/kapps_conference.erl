@@ -74,7 +74,7 @@
 
 
 %%%% conference record %%%%%%%%
-%% 
+%%
 %%  id                       the conference id
 %%  focus                    the conference focus
 %%  profile                  conference profile (config settings)
@@ -303,35 +303,35 @@ id(#kapps_conference{id=Id}) -> Id.
 set_id(Id, Conference) when is_binary(Id); Id =:= 'undefined' ->
     Conference#kapps_conference{id=Id}.
 
--spec set_name(ne_binary(), kapps_conference:conference()) -> kapps_conference:conference().
+-spec set_name(ne_binary(), conference()) -> conference().
 set_name(Name, Conference) when is_binary(Name) ->
     Conference#kapps_conference{name=Name}.
 
--spec name(kapps_conference:conference()) -> ne_binary().
+-spec name(conference()) -> ne_binary().
 name(#kapps_conference{name=Name}) ->
     Name.
 
--spec set_account_id(ne_binary(), kapps_conference:conference()) -> kapps_conference:conference().
+-spec set_account_id(ne_binary(), conference()) -> conference().
 set_account_id(AccountId, Conference) when is_binary(AccountId) ->
     Conference#kapps_conference{account_id=AccountId}.
 
--spec account_id(kapps_conference:conference()) -> ne_binary().
+-spec account_id(conference()) -> ne_binary().
 account_id(#kapps_conference{account_id=AccountId}) ->
     AccountId.
 
--spec set_moderator_controls(ne_binary(), kapps_conference:conference()) -> kapps_conference:conference().
+-spec set_moderator_controls(ne_binary(), conference()) -> conference().
 set_moderator_controls(ModeratorCtrls, Conference) when is_binary(ModeratorCtrls) ->
     Conference#kapps_conference{moderator_controls=ModeratorCtrls}.
 
--spec moderator_controls(kapps_conference:conference()) -> ne_binary().
+-spec moderator_controls(conference()) -> ne_binary().
 moderator_controls(#kapps_conference{moderator_controls=ModeratorCtrls}) ->
     ModeratorCtrls.
 
--spec set_caller_controls(ne_binary(), kapps_conference:conference()) -> kapps_conference:conference().
+-spec set_caller_controls(ne_binary(), conference()) -> conference().
 set_caller_controls(CallerCtrls, Conference) when is_binary(CallerCtrls) ->
     Conference#kapps_conference{caller_controls=CallerCtrls}.
 
--spec caller_controls(kapps_conference:conference()) -> ne_binary().
+-spec caller_controls(conference()) -> ne_binary().
 caller_controls(#kapps_conference{caller_controls=CallerCtrls}) ->
     CallerCtrls.
 

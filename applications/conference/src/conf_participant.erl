@@ -514,11 +514,11 @@ set_enter_exit_sounds({_, AccountId, MediaId}, #participant{conference=Conferenc
                  ,kz_media_util:media_path(MediaId, AccountId)
                  ,kz_media_util:get_prompt(<<"conf-has_left">>, kapps_conference:call(Conference))
                  ],
-    
+
     Fun = fun('undefined') -> 'false';
              (_) -> 'true'
           end,
-    
+
      Sounds = [{<<"Conference-Entry-Sound">>, lists:filter(Fun, EntrySounds)}
               ,{<<"Conference-Exit-Sound">>, lists:filter(Fun, ExitSounds)}
               ],

@@ -68,5 +68,8 @@
 
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
 
+-define(COLLECT_PIN_DEFAULT_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
+-define(COLLECT_NUMBER_DEFAULT_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
+
 -define(CONFERENCE_HRL, 'true').
 -endif.

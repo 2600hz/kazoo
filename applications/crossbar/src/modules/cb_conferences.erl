@@ -304,7 +304,7 @@ handle_participants_action(Context, ConferenceId, Action, Selector) ->
 
 filter_participant(JObj, Fun) ->
     ConfVars = kz_json:get_value(<<"Conference-Channel-Vars">>, JObj, kz_json:new()),
-    Fun(ConfVars).    
+    Fun(ConfVars).
 
 -spec perform_participant_action(kapps_conference:conference(), ne_binary(), api_integer()) -> 'ok'.
 perform_participant_action(Conference, ?MUTE, ParticipantId) ->

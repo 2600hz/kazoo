@@ -237,7 +237,7 @@ publish_event(Action, Props, Node) ->
 publish_event(Action, Conference, Props, _Node) ->
     Event = conference_event(Action, Conference, Props),
     publish_event(Event).
-  
+
 -spec publish_event(kz_proplist()) -> 'ok'.
 publish_event(Event) ->
     kz_amqp_worker:cast(Event, fun kapi_conference:publish_event/1).

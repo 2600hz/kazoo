@@ -41,52 +41,6 @@ api(Node, ConferenceId, {AppName, AppData}) ->
     Command = kz_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
     freeswitch:api(Node, 'conference', Command).
 
-%% -spec exec(atom(), ne_binary(), kz_json:object()) -> 'ok'.
-%% exec(Node, ConferenceId, JObj) ->
-%%     App = kz_json:get_value(<<"Application-Name">>, JObj),
-%%     lager:debug("asked to exec ~s for ~s", [App, ConferenceId]),
-%%     case get_conf_command(App, Focus, ConferenceId, JObj) of
-%%         {'error', _Msg}=E ->
-%%             lager:debug("command ~s failed: ~s", [App, _Msg]),
-%%             send_response(App, E, kz_api:server_id(JObj), JObj);
-%%         {'noop', Conference} ->
-%%             send_response(App, {'noop', Conference}, kz_api:server_id(JObj), JObj);
-%%         {<<"play">>, AppData} ->
-%%             Result =
-%%                 case kz_json:get_value(<<"Call-ID">>, JObj) of
-%%                     'undefined' ->
-%%                         Command = list_to_binary([ConferenceId, " play ", AppData]),
-%%                         Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
-%%                         lager:debug("api to ~s: conference ~s", [Focus, Command]),
-%%                         freeswitch:api(Focus, 'conference', Command);
-%%                     CallId ->
-%%                         Command = kz_util:to_list(list_to_binary(["uuid:", CallId
-%%                                                                  ," conference ", ConferenceId
-%%                                                                  ," play ", AppData
-%%                                                                  ])),
-%%                         Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
-%%                         lager:debug("api to ~s: expand ~s", [Focus, Command]),
-%%                         freeswitch:api(Focus, 'expand', Command)
-%%                 end,
-%%             send_response(App, Result, kz_api:server_id(JObj), JObj);
-%%         {<<"play_macro">>, AppData} ->
-%%             Commands = kz_json:get_value(<<"Commands">>, AppData, []),
-%%             Result = lists:foldl(fun(Command, _Acc) ->
-%%                                          {<<"play">>, AppData2} = get_conf_command(<<"play">>, Focus, ConferenceId, Command),
-%%                                          Command2 = list_to_binary([ConferenceId, " play ", AppData2]),
-%%                                          Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command2]),
-%%                                          lager:debug("api to ~s: conference ~s", [Focus, Command2]),
-%%                                          freeswitch:api(Focus, 'conference', Command2)
-%%                                  end, 'undefined', Commands),
-%%             send_response(App, Result, kz_api:server_id(JObj), JObj);
-%%         {AppName, AppData} ->
-%%             Command = kz_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
-%%             Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
-%%             lager:debug("api to ~s: conference ~s", [Focus, Command]),
-%%             Result = freeswitch:api(Focus, 'conference', Command),
-%%             send_response(App, Result, kz_api:server_id(JObj), JObj)
-%%     end.
-
 -spec get_conf_command(ne_binary(), atom(), ne_binary(), kz_json:object()) ->
                               {ne_binary(), binary()} |
                               {'error', ne_binary()} |
