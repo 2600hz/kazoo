@@ -561,6 +561,33 @@ get_fs_app(Node, UUID, JObj, <<"transfer">>) ->
         'true' -> transfer(Node, UUID, JObj)
     end;
 
+get_fs_app(Node, UUID, JObj, <<"media_macro">>) ->
+    case kapi_dialplan:media_macro_v(JObj) of
+        'false' -> {'error', <<"media macro failed to execute as JObj did not validate">>};
+        'true' ->
+            KVs = kz_json:foldr(
+              fun(K, Macro, Acc) ->
+                      Paths = lists:map(fun ecallmgr_util:media_path/1, Macro),
+                      Result = kz_util:join_binary(Paths, <<"|">>),
+                      [{K, Result} | Acc]
+              end,[], kz_json:get_value(<<"Media-Macros">>, JObj)),
+            Sep = {<<"Media-Files-Separator">>,<<"|">>},
+            {<<"kz_multiset">>, ecallmgr_util:multi_set_args(Node, UUID, [Sep | KVs], <<"!">>)}
+    end;
+
+get_fs_app(Node, UUID, JObj, <<"play_macro">>) ->
+    case kapi_dialplan:play_macro_v(JObj) of
+        'false' -> {'error', <<"play macro failed to execute as JObj did not validate">>};
+        'true' ->
+            Macro = kz_json:get_value(<<"Media-Macro">>, JObj, []),
+            Paths = lists:map(fun ecallmgr_util:media_path/1, Macro),
+            Result = kz_util:join_binary(Paths, <<"|">>),
+            Args = [{<<"Media-Files-Separator">>, <<"|">>}],
+            [{<<"kz_multiset">>, ecallmgr_util:multi_set_args(Node, UUID, Args, <<"!">>)}
+            ,{<<"playback">>, Result}
+            ]
+    end;
+
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     lager:debug("unknown application ~s", [_App]),
     {'error', <<"application unknown">>}.
