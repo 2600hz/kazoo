@@ -396,7 +396,7 @@ load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
 
 -spec view_sort_direction(kz_proplist()) -> direction().
 view_sort_direction(Options) ->
-    case (props:get_value(startkey, Options) < props:get_value(endkey, Options)) of
+    case (props:get_value('startkey', Options) < props:get_value('endkey', Options)) of
         'true' -> 'descending';
         'false' -> 'ascending'
     end.
@@ -475,12 +475,12 @@ load_view(#load_view_params{view=View
 
 -spec map_options(pos_integer(), kz_proplist()) -> kz_proplist().
 map_options(CurrentKey, Options) ->
-    OptStartKey = props:get_value(startkey, Options),
-    OptEndKey = props:get_value(endkey, Options),
-    CleanOpts = props:delete_keys([startkey, endkey, descending], Options),
+    OptStartKey = props:get_value('startkey', Options),
+    OptEndKey = props:get_value('endkey', Options),
+    CleanOpts = props:delete_keys(['startkey', 'endkey', 'descending'], Options),
     Re = case OptStartKey < OptEndKey of
-        true -> [{startkey, OptEndKey}, {endkey, CurrentKey}, descending | CleanOpts];
-        false -> [{startkey, CurrentKey}, {endkey, OptEndKey} | CleanOpts]
+        'true' -> [{'startkey', OptEndKey}, {'endkey', CurrentKey}, 'descending' | CleanOpts];
+        'false' -> [{'startkey', CurrentKey}, {'endkey', OptEndKey} | CleanOpts]
     end,
     props:filter_undefined(Re).
 
