@@ -382,7 +382,7 @@ load_view(View, Options, Context, StartKey, PageSize) ->
 
 load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
     Dbs = [Db || Db <- props:get_value('databases', Options, [cb_context:account_db(Context)]),
-                                           kz_datamgr:db_exists(Db, View)],
+                 kz_datamgr:db_exists(Db, View)],
     Direction = view_sort_direction(Options),
     load_view(#load_view_params{view=View
                                ,view_options=Options
@@ -479,9 +479,9 @@ map_options(CurrentKey, Options) ->
     OptEndKey = props:get_value('endkey', Options),
     CleanOpts = props:delete_keys(['startkey', 'endkey', 'descending'], Options),
     Re = case OptStartKey < OptEndKey of
-        'true' -> [{'startkey', OptEndKey}, {'endkey', CurrentKey}, 'descending' | CleanOpts];
-        'false' -> [{'startkey', CurrentKey}, {'endkey', OptEndKey} | CleanOpts]
-    end,
+             'true' -> [{'startkey', OptEndKey}, {'endkey', CurrentKey}, 'descending' | CleanOpts];
+             'false' -> [{'startkey', CurrentKey}, {'endkey', OptEndKey} | CleanOpts]
+         end,
     props:filter_undefined(Re).
 
 -spec limit_by_page_size(api_binary() | pos_integer()) -> api_pos_integer().
