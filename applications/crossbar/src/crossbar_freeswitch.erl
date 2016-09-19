@@ -53,6 +53,7 @@
 -record(state, {config = 'undefined' :: api_binary()
                ,is_running = 'false' :: boolean()
                ,monitor :: reference()
+               ,hourly_timer = hourly_timer() :: reference()
                }).
 -type state() :: #state{}.
 
@@ -102,6 +103,7 @@ handle_call('current', _From, #state{config='undefined'}=State) ->
     {'reply', {'error', 'no_file'}, State};
 handle_call('current', _From, #state{config=Config}=State) ->
     {'reply', {'ok', Config}, State};
+
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -118,20 +120,24 @@ handle_cast('periodic_build', #state{is_running='false'}=State) ->
     {Pid, Monitor} = kz_util:spawn_monitor(fun build_freeswitch/1, [self()]),
     lager:debug("started new freeswitch offline configuration builder ~p", [Pid]),
     {'noreply', State#state{is_running='true', monitor=Monitor}};
+
 handle_cast({'completed', File}, #state{config=Config}=State) ->
     lager:debug("created new freeswitch offline configuration ~s", [File]),
     gen_server:cast(self(), {'delete', Config}),
     {'noreply', State#state{is_running='false', config=File}};
+
 handle_cast({'delete', 'undefined'}, State) ->
     {'noreply', State};
 handle_cast({'delete', File}, State) ->
     lager:debug("removing prior freeswitch offline configuration ~s", [File]),
     kz_util:delete_file(File),
     {'noreply', State};
+
 handle_cast('reset', #state{config=Config}=State) ->
     lager:debug("resetting freeswitch state"),
     gen_server:cast(self(), {'delete', Config}),
     {'noreply', State#state{is_running='false'}};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -149,6 +155,11 @@ handle_info({'DOWN', MonitorRef, _, _Pid, _Reason}, #state{monitor=MonitorRef}=S
     lager:debug("freeswitch offline configuration builder ~p died unexpectedly: ~p"
                ,[_Pid, _Reason]),
     {'noreply', State#state{is_running='false'}};
+
+handle_info({timeout, Ref, _Msg}, #state{hourly_timer = Ref}=State) ->
+    _  = gen_server:cast(self(), 'periodic_build'),
+    {'noreply', State#state{hourly_timer = hourly_timer()}};
+
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -180,6 +191,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+-spec hourly_timer() -> reference().
+hourly_timer() ->
+    erlang:start_timer(?MILLISECONDS_IN_HOUR, self(), ok).
+
 -spec zip_directory(file:filename_all()) -> string().
 zip_directory(WorkDir0) ->
     WorkDir = kz_util:to_list(WorkDir0),
@@ -206,8 +221,8 @@ setup_directory() ->
          || {D, T} <- Files,
             lists:member(kz_util:to_binary(T), Filter)
         ],
-    put(<<"WorkDir">>, WorkDir),
-    put(<<"Realms">>, []),
+    _ = put(<<"WorkDir">>, WorkDir),
+    _ = put(<<"Realms">>, []),
     WorkDir.
 
 -spec process_realms() -> 'ok'.

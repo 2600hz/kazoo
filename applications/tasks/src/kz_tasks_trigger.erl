@@ -29,7 +29,7 @@
 -record(state, {minute_ref = minute_timer() :: reference()
                ,hour_ref = hour_timer() :: reference()
                ,day_ref = day_timer() :: reference()
-               ,browse_dbs_ref = browse_dbs_timer() :: reference() %%FIXME: gen_listen for DB news!
+               ,browse_dbs_ref = browse_dbs_timer() :: reference() %%TODO: gen_listen for DB news!
                }).
 -type state() :: #state{}.
 

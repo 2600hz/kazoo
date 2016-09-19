@@ -20,8 +20,6 @@
         ,authorize/1
         ]).
 
--export([freeswitch_periodic_build/0]).
-
 -include("crossbar.hrl").
 
 -define(FS_OFFLINE_SERVER, 'crossbar_freeswitch').
@@ -50,8 +48,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.content_types_provided.freeswitch">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.freeswitch">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.freeswitch">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.freeswitch">>, ?MODULE, 'validate_freeswitch'),
-    _ = crossbar_bindings:bind(crossbar_cleanup:binding_hour(), ?MODULE, 'freeswitch_periodic_build').
+    _ = crossbar_bindings:bind(<<"*.validate.freeswitch">>, ?MODULE, 'validate_freeswitch').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -172,7 +169,3 @@ extension_to_content_type(<<".gzip">>) -> ?MIME_TYPE_GZIP;
 extension_to_content_type(<<".zip">>) -> ?MIME_TYPE_ZIP2;
 extension_to_content_type(<<".rar">>) -> ?MIME_TYPE_RAR;
 extension_to_content_type(<<".tar">>) -> ?MIME_TYPE_TAR.
-
--spec freeswitch_periodic_build() -> any().
-freeswitch_periodic_build() ->
-    gen_server:cast(crossbar_sup:find_proc(?FS_OFFLINE_SERVER), 'periodic_build').
