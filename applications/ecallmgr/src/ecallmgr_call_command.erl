@@ -568,11 +568,10 @@ get_fs_app(Node, UUID, JObj, <<"media_macro">>) ->
             KVs = kz_json:foldr(
                     fun(K, Macro, Acc) ->
                             Paths = lists:map(fun ecallmgr_util:media_path/1, Macro),
-                            Result = kz_util:join_binary(Paths, <<"|">>),
+                            Result = list_to_binary(["file_string://", kz_util:join_binary(Paths, <<"!">>)]),
                             [{K, Result} | Acc]
                     end,[], kz_json:get_value(<<"Media-Macros">>, JObj)),
-            Sep = {<<"Media-Files-Separator">>,<<"|">>},
-            {<<"kz_multiset">>, ecallmgr_util:multi_set_args(Node, UUID, [Sep | KVs], <<"!">>)}
+            {<<"kz_multiset">>, ecallmgr_util:multi_set_args(Node, UUID, KVs, <<"|">>)}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"play_macro">>) ->
@@ -581,11 +580,8 @@ get_fs_app(Node, UUID, JObj, <<"play_macro">>) ->
         'true' ->
             Macro = kz_json:get_value(<<"Media-Macro">>, JObj, []),
             Paths = lists:map(fun ecallmgr_util:media_path/1, Macro),
-            Result = kz_util:join_binary(Paths, <<"|">>),
-            Args = [{<<"Media-Files-Separator">>, <<"|">>}],
-            [{<<"kz_multiset">>, ecallmgr_util:multi_set_args(Node, UUID, Args, <<"!">>)}
-            ,{<<"playback">>, Result}
-            ]
+            Result = list_to_binary(["file_string://", kz_util:join_binary(Paths, <<"!">>)]),
+            {<<"playback">>, Result}
     end;
 
 get_fs_app(_Node, _UUID, _JObj, _App) ->

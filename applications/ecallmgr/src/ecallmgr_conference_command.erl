@@ -121,7 +121,7 @@ get_conf_command(<<"play_macro">>, _Focus, _ConferenceId, JObj) ->
     Participant = kz_json:get_binary_value(<<"Participant-ID">>, JObj, <<>>),
     Macro = kz_json:get_value(<<"Media-Macro">>, JObj, []),
     Paths = lists:map(fun ecallmgr_util:media_path/1, Macro),
-    Media = list_to_binary(["'", kz_util:join_binary(Paths, <<"|">>), "'", " ", Participant]),
+    Media = list_to_binary(["'file_string://", kz_util:join_binary(Paths, <<"!">>), "'", " ", Participant]),
     {<<"play">>, Media};
 
 get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
