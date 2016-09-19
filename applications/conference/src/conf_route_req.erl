@@ -115,7 +115,7 @@ find_account_db(Call) ->
 bridged_conference(Conference) ->
     %% We are relying on the original channel to play media
     %% so that name announcements always work
-    case ?SUPPORT_NAME_ANNOUNCEMENT of
+    case ?SUPPORT_NAME_ANNOUNCEMENT(kapps_conference:account_id(Conference)) of
         'true' ->
             Updaters = [fun(Conf) -> kapps_conference:set_play_entry_tone('false', Conf) end
                        ,fun(Conf) -> kapps_conference:set_play_exit_tone('false', Conf) end
