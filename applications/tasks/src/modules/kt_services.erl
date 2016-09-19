@@ -22,8 +22,11 @@
 -export([descendant_quantities/2
         ]).
 
--include_lib("kazoo/include/kz_types.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
+%% Triggerables
+-export([cleanup/1
+        ]).
+
+-include("tasks.hrl").
 -include_lib("kazoo_services/include/kz_service.hrl").
 
 -define(CATEGORY, "services").
@@ -36,9 +39,11 @@
 
 -spec init() -> 'ok'.
 init() ->
+    _ = tasks_bindings:bind(?TRIGGER_SYSTEM, ?MODULE, cleanup),
     _ = tasks_bindings:bind(<<"tasks.help">>, ?MODULE, 'help'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".output_header">>, ?MODULE, 'output_header'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
+
 
 -spec output_header(ne_binary()) -> kz_csv:row().
 output_header(<<"descendant_quantities">>) ->
@@ -110,6 +115,15 @@ descendant_quantities(_, [SubAccountMoDB | DescendantsMoDBs]) ->
     end.
 
 
+%%% Triggerables
+
+-spec cleanup(ne_binary()) -> 'ok'.
+cleanup(?KZ_SERVICES_DB) ->
+    lager:debug("checking ~s for abandoned accounts", [?KZ_SERVICES_DB]),
+    cleanup_orphaned_services_docs();
+cleanup(_SystemDb) -> 'ok'.
+
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -177,6 +191,35 @@ maybe_integer_to_binary(Item, JObj) ->
         'undefined' -> 'undefined';
         Quantity -> integer_to_binary(Quantity)
     end.
+
+
+-spec cleanup_orphaned_services_docs() -> 'ok'.
+-spec cleanup_orphaned_services_docs(kz_json:objects()) -> 'ok'.
+cleanup_orphaned_services_docs() ->
+    case kz_datamgr:all_docs(?KZ_SERVICES_DB) of
+        {'ok', Docs} -> cleanup_orphaned_services_docs(Docs);
+        {'error', _E} ->
+            lager:debug("failed to get all docs from ~s: ~p", [?KZ_SERVICES_DB, _E])
+    end.
+
+cleanup_orphaned_services_docs([]) -> 'ok';
+cleanup_orphaned_services_docs([View|Views]) ->
+    cleanup_orphaned_services_doc(View),
+    cleanup_orphaned_services_docs(Views).
+
+-spec cleanup_orphaned_services_doc(kz_json:object() | ne_binary()) -> 'ok'.
+cleanup_orphaned_services_doc(<<"_design/", _/binary>>) -> 'ok';
+cleanup_orphaned_services_doc(AccountId=?NE_BINARY) ->
+    case kz_datamgr:db_exists(kz_util:format_account_id(AccountId, 'encoded')) of
+        'true' -> 'ok';
+        'false' ->
+            lager:info("account ~s no longer exists but has a services doc", [AccountId]),
+            kz_datamgr:del_doc(?KZ_SERVICES_DB, AccountId),
+            timer:sleep(5 * ?MILLISECONDS_IN_SECOND)
+    end;
+cleanup_orphaned_services_doc(View) ->
+    cleanup_orphaned_services_doc(kz_doc:id(View)).
+
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
