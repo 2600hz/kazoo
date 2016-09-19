@@ -499,7 +499,7 @@ template_file_name(?FS_CHATPLAN) -> "chatplan_template.xml";
 template_file_name(?FS_DIRECTORY) -> "directory_template.xml";
 template_file_name(?FS_DIRECTORY_REALM) -> "directory_realm_template.xml".
 
--spec compile_templates() -> ['ok'].
+-spec compile_templates() -> ok.
 compile_templates() ->
     F = fun (T) -> compile_template(kz_util:to_atom(T, 'true')) end,
     lists:foreach(F, ?FS_ALL_TEMPLATES).
