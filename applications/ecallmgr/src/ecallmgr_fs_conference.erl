@@ -135,9 +135,12 @@ handle_cast(_Msg, State) ->
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'event', Props}, #state{node=Node
                                     ,events=Events
+                                    ,options=Options
                                     }=State) ->
-    kz_util:spawn(fun handle_conference_event/3, [Node, Events, Props]),
+    kz_util:spawn(fun handle_conference_event/4, [Node, Events, Props, Options]),
     {'noreply', State};
+handle_info({'option', K, V}, #state{options=Options}=State) ->
+    {'noreply', State#state{options=props:set_value(K, V, Options)}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -172,9 +175,20 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec init_props(kz_proplist(), kz_proplist()) -> kz_proplist().
+init_props(Props, Options) ->
+    case props:get_is_true(<<"Publish-Channel-State">>, Props) of
+        'undefined' ->
+            case props:is_false(<<"Publish-Channel-State">>, Options, 'false') of
+                'true' -> props:set_value(<<"Publish-Channel-State">>, 'false', Props);
+                _ -> Props
+            end;
+        _Value -> Props
+    end.
 
--spec handle_conference_event(atom(), ne_binaries(), kz_proplist()) -> 'ok'.
-handle_conference_event(Node, Events, [_UUID | Props]) ->
+-spec handle_conference_event(atom(), ne_binaries(), kz_proplist(), kz_proplist()) -> 'ok'.
+handle_conference_event(Node, Events, [_UUID | FSProps], Options) ->
+    Props = init_props(FSProps, Options),
     Action = props:get_value(<<"Action">>, Props),
     process_event(Action, Props, Node),
     maybe_publish_event(Action, Props, Node, Events).
@@ -234,11 +248,14 @@ publish_event(Action, Props, Node) ->
         {'error', 'not_found'} -> lager:debug("not publishing conference event ~s for not existant ~s ", [Action, UUID])
     end.
 
-publish_event(Action, #conference{handling_locally='true'} = Conference, Props, _Node) ->
-    Event = conference_event(Action, Conference, Props),
-    publish_event(Event);
-publish_event(Action, _Conference, _Props, _Node) ->
-    lager:debug("conference control on another node, not publishing event ~s", [Action]).
+publish_event(Action, #conference{handling_locally=IsLocal} = Conference, Props, _Node) ->
+    case props:is_true(<<"Force-Publish-Event-State">>, Props, 'false')
+        orelse props:is_true(<<"Publish-Event-State">>, Props, 'true')
+        andalso IsLocal
+    of
+        'true' -> publish_event(conference_event(Action, Conference, Props));
+        'false' -> lager:debug("conference control on another node, not publishing event ~s", [Action])
+    end.
 
 -spec publish_event(kz_proplist()) -> 'ok'.
 publish_event(Event) ->
