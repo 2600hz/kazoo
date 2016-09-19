@@ -22,19 +22,14 @@
         ,patch/3
         ,post/2, post/4
         ,delete/2, delete/4
-        ,cleanup/1
         ,authority/1
 
         ,acceptable_content_types/0
         ]).
 
--export([unconfirmed_port_reminder/1]).
-
 -include("crossbar.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 -include_lib("kazoo_number_manager/include/knm_port_request.hrl").
-
--define(MY_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".port_requests">>).
 
 -define(TEMPLATE_DOC_ID, <<"notify.loa">>).
 -define(TEMPLATE_ATTACHMENT_ID, <<"template">>).
@@ -53,10 +48,6 @@
 
 -define(DESCENDANTS, <<"descendants">>).
 
--define(UNFINISHED_PORT_REQUEST_LIFETIME
-       ,kapps_config:get_integer(?MY_CONFIG_CAT, <<"unfinished_port_request_lifetime_s">>, ?SECONDS_IN_DAY * 30)
-       ).
-
 -define(PATH_TOKEN_LOA, <<"loa">>).
 
 %%%===================================================================
@@ -72,82 +63,16 @@
 -spec init() -> 'ok'.
 init() ->
     knm_port_request:init(),
-
-    Bindings = [{crossbar_cleanup:binding_system(), 'cleanup'}
-               ,{crossbar_cleanup:binding_account(), 'unconfirmed_port_reminder'}
-               ,{<<"*.allowed_methods.port_requests">>, 'allowed_methods'}
-               ,{<<"*.resource_exists.port_requests">>, 'resource_exists'}
-               ,{<<"*.content_types_provided.port_requests">>, 'content_types_provided'}
-               ,{<<"*.content_types_accepted.port_requests">>, 'content_types_accepted'}
-               ,{<<"*.validate.port_requests">>, 'validate'}
-               ,{<<"*.execute.get.port_requests">>, 'get'}
-               ,{<<"*.execute.put.port_requests">>, 'put'}
-               ,{<<"*.execute.patch.port_requests">>, 'patch'}
-               ,{<<"*.execute.post.port_requests">>, 'post'}
-               ,{<<"*.execute.delete.port_requests">>, 'delete'}
-               ],
-    cb_modules_util:bind(?MODULE, Bindings).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Cleanup expired port requests
-%% @end
-%%--------------------------------------------------------------------
--spec cleanup(ne_binary()) -> 'ok'.
--spec cleanup(ne_binary(), kz_json:objects()) -> 'ok'.
-
-cleanup(?KZ_PORT_REQUESTS_DB = Db) ->
-    ModifiedBefore = kz_util:current_tstamp() - ?UNFINISHED_PORT_REQUEST_LIFETIME,
-    ViewOpts = [{'startkey', [0]}
-               ,{'endkey', [ModifiedBefore]}
-               ,{'limit', kz_datamgr:max_bulk_insert()}
-               ,'include_docs'
-               ],
-    case kz_datamgr:get_results(Db, <<"port_requests/listing_by_modified">>, ViewOpts) of
-        {'ok', []} -> lager:debug("no port requests older than ~p", [ModifiedBefore]);
-        {'ok', OldPortReqeusts} -> cleanup(Db, OldPortReqeusts);
-        {'error', _E} -> lager:debug("failed to query old port requests: ~p", [_E])
-    end;
-cleanup(_) -> 'ok'.
-
-cleanup(Db, OldPortRequests) ->
-    lager:debug("checking ~b old port requests", [length(OldPortRequests)]),
-
-    Deletable = [kz_json:get_value(<<"doc">>, OldPortRequest)
-                 || OldPortRequest <- OldPortRequests,
-                    should_delete_port_request(kz_json:get_value(<<"key">>, OldPortRequest))
-                ],
-    lager:debug("found ~p deletable", [length(Deletable)]),
-    kz_datamgr:del_docs(Db, Deletable),
-    'ok'.
-
--spec should_delete_port_request([pos_integer() | ne_binary(),...]) -> boolean().
-should_delete_port_request([_Modified, ?PORT_SUBMITTED]) ->
-    'false';
-should_delete_port_request([_Modified, ?PORT_SCHEDULED]) ->
-    'false';
-should_delete_port_request(_) ->
-    'true'.
-
--spec unconfirmed_port_reminder(ne_binary()) -> 'ok'.
-unconfirmed_port_reminder(AccountDb) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
-    ViewOpts = [{'startkey', [AccountId, ?PORT_UNCONFIRMED, kz_json:new()]}
-               ,{'endkey', [AccountId, ?PORT_UNCONFIRMED]}
-               ,'descending'
-               ],
-    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?LISTING_BY_STATE, ViewOpts) of
-        {'ok', []} -> lager:debug("no unfinished port requests");
-        {'ok', Unfinished} -> unconfirmed_port_reminder(AccountId, Unfinished);
-        {'error', _E} -> lager:debug("failed to query old port requests: ~p", [_E])
-    end.
-
--spec unconfirmed_port_reminder(ne_binary(), kz_json:objects()) -> 'ok'.
-unconfirmed_port_reminder(AccountId, UnfinishedPorts) ->
-    lager:debug("found ~p unfinished port requests, sending notifications", [length(UnfinishedPorts)]),
-    F = fun (Port) -> send_port_unconfirmed_notification(AccountId, kz_doc:id(Port)) end,
-    lists:foreach(F, UnfinishedPorts).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.port_requests">>, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.port_requests">>, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.port_requests">>, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.content_types_accepted.port_requests">>, 'content_types_accepted'),
+    _ = crossbar_bindings:bind(<<"*.validate.port_requests">>, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.get.port_requests">>, 'get'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.port_requests">>, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.port_requests">>, 'patch'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.port_requests">>, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.port_requests">>, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1291,13 +1216,7 @@ send_port_comment_notification(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_port_unconfirmed_notification(ne_binary() | cb_context:context(), ne_binary()) -> 'ok'.
-send_port_unconfirmed_notification(?NE_BINARY = AccountId, Id) ->
-    Req = [{<<"Account-ID">>, AccountId}
-          ,{<<"Port-Request-ID">>, Id}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    kz_amqp_worker:cast(Req, fun kapi_notifications:publish_port_unconfirmed/1);
+-spec send_port_unconfirmed_notification(cb_context:context(), ne_binary()) -> 'ok'.
 send_port_unconfirmed_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}

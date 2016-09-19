@@ -775,6 +775,9 @@ get_category(Category, 'false') ->
         ,{{<<"cb_modb">>, <<"maybe_archive_modbs">>}
          ,{<<"tasks">>, <<"should_archive_modbs">>}
          }
+        ,{{<<"cb_port_requests">>, <<"unfinished_port_request_lifetime_s">>}
+         ,{<<"tasks">>, <<"unfinished_port_request_lifetime_s">>}
+         }
 
         ]).
 

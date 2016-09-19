@@ -73,6 +73,11 @@
             "description": "tasks soft delete pause in milliseconds",
             "type": "integer"
         },
+        "unfinished_port_request_lifetime_s": {
+            "default": 2592000,
+            "description": "tasks unfinished port request lifetime in seconds",
+            "type": "integer"
+        },
         "wait_after_row_ms": {
             "default": 500,
             "description": "tasks wait after row in milliseconds",
