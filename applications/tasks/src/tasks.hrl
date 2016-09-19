@@ -11,8 +11,14 @@
 -define(CONFIG_CAT, ?APP_NAME).
 
 %%TODO: do not hardcode ?TASKS list.
--define(TASKS, ['kt_numbers'
-               ,'kt_services'
+-define(TASKS, [kt_cb_cleanup
+               ,kt_cb_modb
+               ,kt_cb_port_requests
+               ,kt_cb_token_auth
+               ,kt_cb_vmboxes
+               ,kt_cb_webhooks
+               ,kt_numbers
+               ,kt_services
                 %% ,'kt_skel'
                ]).
 
