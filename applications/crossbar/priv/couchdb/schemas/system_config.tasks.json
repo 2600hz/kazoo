@@ -53,6 +53,11 @@
             "description": "tasks send progress after processed",
             "type": "integer"
         },
+        "should_archive_modbs": {
+            "default": false,
+            "description": "tasks should archive modbs",
+            "type": "boolean"
+        },
         "should_crawl_for_first_occurrence": {
             "default": true,
             "description": "tasks should crawl for first occurrence",
