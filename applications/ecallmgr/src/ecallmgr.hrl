@@ -122,23 +122,11 @@
                      ,node :: atom() | '$2' | '_'
                      ,conference_uuid :: api_binary() | '$1'| '_'
                      ,conference_name :: api_binary() | '$1'| '_'
-                     ,floor = 'false' :: boolean() | '_'
-                     ,hear = 'true' :: boolean() | '_'
-                     ,speak = 'true' :: boolean() | '_'
-                     ,talking = 'false' :: boolean() | '_'
-                     ,mute_detect = 'false' :: boolean() | '_'
-                     ,member_id = 0 :: non_neg_integer() | '_'
-                     ,member_type :: api_binary() | '_'
-                     ,energy_level = 0 :: non_neg_integer() | '_'
-                     ,volume_level = 0 :: non_neg_integer() | '_'
-                     ,gain_level = 0 :: non_neg_integer() | '_'
-                     ,current_energy = 0 :: non_neg_integer() | '_'
-                     ,video = 'false' :: boolean() | '_'
-                     ,is_moderator = 'false' :: boolean() | '_'
                      ,join_time = kz_util:current_tstamp() :: non_neg_integer() | '_'
                      ,caller_id_name :: api_binary() | '_'
                      ,caller_id_number :: api_binary() | '_'
-                     ,call_info :: kz_json:object() | '_'
+                     ,conference_channel_vars :: kz_proplist | '_'
+                     ,custom_channel_vars :: kz_proplist | '_'
                      }).
 -type participant() :: #participant{}.
 -type participants() :: [participant()].
@@ -292,6 +280,9 @@
                               ,{<<"Hold-Media">>, <<"hold_music">>}
                               ,{<<"Diversions">>, <<"sip_h_Diversion">>}
                               ,{<<"Bridge-Execute-On-Answer">>, <<"execute_on_answer">>}
+                              ,{<<"Media-Files-Separator">>, <<"playback_delimiter">>}
+                              ,{<<"Conference-Entry-Sound">>, <<"conference_enter_sound">>}
+                              ,{<<"Conference-Exit-Sound">>, <<"conference_exit_sound">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}]
@@ -335,6 +326,7 @@
                               ,{<<"presence">>, <<"presence">>}
                               ,{<<"privacy">>, <<"privacy">>}
                               ,{<<"conference">>, <<"page">>}
+                              ,{<<"playback">>, <<"play_macro">>}
                               ]).
 
 -define(FS_EVENTS, [['CHANNEL_CREATE', 'CHANNEL_ANSWER', 'CHANNEL_DESTROY']
@@ -467,6 +459,64 @@
 
 
 -define(CHANNEL_VARS_EXT, "Execute-Extension-Original-").
+
+%% -define(CONFERENCE_XML_VARS, ['id'
+%%                              ,'can_hear'
+%%                              ,'can_speak'
+%%                              ,'mute_detect'
+%%                              ,'talking'
+%%                              ,'has_video'
+%%                              ,'has_floor'
+%%                              ,'is_moderator'
+%%                              ,'is_ghost'
+%%                              ,'energy'
+%%                              ,'can_see'
+%%                              ,'type'
+%%                              ]).
+
+%% -define(CONFERENCE_XML_VAR_MAP, [{'is_moderator', {<<"Is-Moderator">>, fun kz_util:to_boolean/1}}
+%%                             ,{'has_floor', <<"Floor">> fun kz_util:to_boolean/1}
+%%                             ,{'has_video', <<"Video">> fun kz_util:to_boolean/1}
+%%                             ,{'can_hear', <<"Hear">>, fun kz_util:to_boolean/1}
+%%                             ,{'can_see', <<"See">>, fun kz_util:to_boolean/1}
+%%                             ,{'can_speak', <<"Speak">>, fun kz_util:to_boolean/1}
+%%                             ,{'talking', <<"Talking">>, fun kz_util:to_boolean/1}
+%%                             ,{'mute_detect', <<"Mute-Detect">>, fun kz_util:to_boolean/1}
+%%                             ,{'energy', <<"Energy-Level">>, fun kz_util:to_integer/1}
+%%                             ,{'id', <<"Member-ID">>, fun kz_util:to_integer/1}
+%%                             ,{'type', <<"Member-Type">>}
+%%                             ,{'is_ghost', <<"Member-Ghost">>, fun kz_util:to_boolean/1}
+
+
+
+
+-define(CONFERENCE_VARS, [<<"variable_conference_moderator">>                             
+                         ,<<"Floor">>
+                         ,<<"Video">>
+                         ,<<"See">>
+                         ,<<"Speak">>
+                         ,<<"Hear">>
+                         ,<<"Talking">>
+                         ,<<"Mute-Detect">>
+                         ,<<"Energy-Level">>
+                         ,<<"Member-ID">>
+                         ,<<"Member-Type">>
+                         ,<<"Member-Ghost">>
+                         ]).
+
+-define(CONFERENCE_VAR_MAP, [{<<"variable_conference_moderator">>, {<<"Is-Moderator">>, fun kz_util:to_boolean/1}}
+                            ,{<<"Floor">>, fun kz_util:to_boolean/1}
+                            ,{<<"Video">>, fun kz_util:to_boolean/1}
+                            ,{<<"See">>, fun kz_util:to_boolean/1}
+                            ,{<<"Speak">>, fun kz_util:to_boolean/1}
+                            ,{<<"Hear">>, fun kz_util:to_boolean/1}
+                            ,{<<"Talking">>, fun kz_util:to_boolean/1}
+                            ,{<<"Mute-Detect">>, fun kz_util:to_boolean/1}
+                            ,{<<"Energy-Level">>, fun kz_util:to_integer/1}
+                            ,{<<"Current-Energy">>, fun kz_util:to_integer/1}
+                            ,{<<"Member-ID">>, fun kz_util:to_integer/1}
+                            ,{<<"Member-Ghost">>, fun kz_util:to_boolean/1}
+                            ]).
 
 -define(ECALLMGR_HRL, 'true').
 -endif.
