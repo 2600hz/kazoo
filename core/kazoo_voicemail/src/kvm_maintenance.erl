@@ -51,7 +51,6 @@ cleanup_heard_voicemail(AccountId) ->
     Duration = ?RETENTION_DURATION,
     DurationS = ?RETENTION_DAYS(Duration),
     ?LOG("retaining messages for ~p days, delete those older for ~s", [Duration, AccountId]),
-
     AccountDb = kvm_util:get_db(AccountId),
     case kz_datamgr:get_results(AccountDb, ?VMBOX_CB_LIST, []) of
         {'ok', []} -> ?LOG("no voicemail boxes in ~s", [AccountDb]);
@@ -67,8 +66,8 @@ cleanup_heard_voicemail(AccountId) ->
 
 -spec cleanup_heard_voicemail(ne_binary(), pos_integer(), kz_proplist()) -> 'ok'.
 cleanup_heard_voicemail(AccountId, Timestamp, Boxes) ->
-    _ = [cleanup_voicemail_box(AccountId, Timestamp, Box) || Box <- Boxes],
-    'ok'.
+    F = fun (Box) -> cleanup_voicemail_box(AccountId, Timestamp, Box) end,
+    lists:foreach(F, Boxes).
 
 %%--------------------------------------------------------------------
 %% @private

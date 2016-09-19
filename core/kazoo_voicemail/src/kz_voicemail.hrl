@@ -19,9 +19,7 @@
        ,kapps_config:get_integer(?CF_CONFIG_CAT, ?RETENTION_PATH, 93)  %% 93 days(3 months)
        ).
 
--define(RETENTION_DAYS(Duration)
-       ,?SECONDS_IN_DAY * Duration + ?SECONDS_IN_HOUR
-       ).
+-define(RETENTION_DAYS(Duration), ?SECONDS_IN_DAY * Duration + ?SECONDS_IN_HOUR).
 
 -record(bulk_res, {succeeded = []  :: ne_binaries()
                   ,failed = [] :: kz_json:objects()
