@@ -14,7 +14,6 @@
 -export([deaf_participant/2]).
 -export([participant_energy/3]).
 -export([kick/1, kick/2]).
--export([participants/1]).
 -export([lock/1]).
 -export([mute_participant/2]).
 -export([prompt/2, prompt/3]).
@@ -30,7 +29,7 @@
 -export([participant_volume_out/3]).
 
 -export([send_command/2]).
--export([macro/2]).
+-export([play_macro/2]).
 
 -spec search(kapps_conference:conference()) ->
                     {'ok', kz_json:object()} |
@@ -93,11 +92,6 @@ kick(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"kick">>}
               ,{<<"Participant-ID">>, ParticipantId}
               ],
-    send_command(Command, Conference).
-
--spec participants(kapps_conference:conference()) -> 'ok'.
-participants(Conference) ->
-    Command = [{<<"Application-Name">>, <<"participants">>}],
     send_command(Command, Conference).
 
 -spec lock(kapps_conference:conference()) -> 'ok'.
@@ -226,26 +220,25 @@ send_command([_|_]=Command, Conference) ->
     Prop = Command ++ [{<<"Conference-ID">>, ConferenceId}
                        | kz_api:default_headers(Q, <<"conference">>, <<"command">>, AppName, AppVersion)
                       ],
-    lager:debug("prop ~p", [Prop]),
     case kz_util:is_empty(Focus) of
-        'true' -> kapi_conference:publish_command(ConferenceId, Prop);
-        'false' -> kapi_conference:publish_targeted_command(Focus, Prop)
+        'true' -> kz_amqp_worker:cast(Prop, fun(P) -> kapi_conference:publish_command(ConferenceId, P) end);
+        'false' -> kz_amqp_worker:cast(Prop, fun(P) -> kapi_conference:publish_targeted_command(Focus, P) end)
     end;
 send_command(JObj, Conference) -> send_command(kz_json:to_proplist(JObj), Conference).
 
--spec macro([kz_proplist()], kapps_conference:conference()) -> 'ok'.
-macro(Commands, Conference) ->
+-spec play_macro(ne_binaries(), kapps_conference:conference()) -> 'ok'.
+play_macro(Macro, Conference) ->
     Values = [{<<"Event-Category">>, <<"conference">>}
              ,{<<"Event-Name">>, <<"command">>}
              ,{<<"Conference-ID">>, kapps_conference:id(Conference)}
              ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ],
-    JsonCommands = lists:reverse(lists:foldl(fun(Command, Acc) ->
-                                                     [kz_json:from_list(props:filter_undefined(Command ++ Values)) | Acc]
-                                             end, [], Commands)),
+%%     JsonCommands = lists:reverse(lists:foldl(fun(Command, Acc) ->
+%%                                                      [kz_json:from_list(props:filter_undefined(Command ++ Values)) | Acc]
+%%                                              end, [], Commands)),
     Prop = [{<<"Application-Name">>, <<"play_macro">>}
-           ,{<<"Commands">>, JsonCommands}
+           ,{<<"Media-Macro">>, Macro}
             | Values
            ],
     send_command(Prop, Conference).

@@ -62,6 +62,8 @@
         ,b_leg_events_v/1
         ,audio_level/1, audio_level_v/1
         ,transfer/1, transfer_v/1
+        ,media_macro/1, media_macro_v/1
+        ,play_macro/1, play_macro_v/1
         ]).
 
 -export([queue/1, queue_v/1
@@ -1214,3 +1216,29 @@ transfer(JObj) -> transfer(kz_json:to_proplist(JObj)).
 transfer_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?TRANSFER_HEADERS, ?TRANSFER_VALUES, ?TRANSFER_TYPES);
 transfer_v(JObj) -> transfer_v(kz_json:to_proplist(JObj)).
+
+-spec media_macro(api_terms()) -> api_formatter_return().
+media_macro(Prop) when is_list(Prop) ->
+    case media_macro_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?MEDIA_MACRO_HEADERS, ?OPTIONAL_MEDIA_MACRO_HEADERS);
+        'false' -> {'error', "Proplist failed validation for media macro"}
+    end;
+media_macro(JObj) -> media_macro(kz_json:to_proplist(JObj)).
+
+-spec media_macro_v(api_terms()) -> boolean().
+media_macro_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?MEDIA_MACRO_HEADERS, ?MEDIA_MACRO_VALUES, ?MEDIA_MACRO_TYPES);
+media_macro_v(JObj) -> media_macro_v(kz_json:to_proplist(JObj)).
+
+-spec play_macro(api_terms()) -> api_formatter_return().
+play_macro(Prop) when is_list(Prop) ->
+    case play_macro_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?PLAY_MACRO_HEADERS, ?OPTIONAL_PLAY_MACRO_HEADERS);
+        'false' -> {'error', "Proplist failed validation for conference_req"}
+    end;
+play_macro(JObj) -> play_macro(kz_json:to_proplist(JObj)).
+
+-spec play_macro_v(api_terms()) -> boolean().
+play_macro_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?PLAY_MACRO_HEADERS, ?PLAY_MACRO_VALUES, ?PLAY_MACRO_TYPES);
+play_macro_v(JObj) -> play_macro_v(kz_json:to_proplist(JObj)).

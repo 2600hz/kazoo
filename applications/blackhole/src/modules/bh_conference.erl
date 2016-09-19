@@ -51,12 +51,12 @@ bindings(_Context, #{account_id := _AccountId
         ,subscribed => Subscribed
         ,listeners => Listeners
         };
-bindings(_Context, #{account_id := _AccountId
+bindings(_Context, #{account_id := AccountId
                     ,keys := [<<"event">>, ConferenceId, CallId]
                     }=Map) ->
     Requested = <<"conference.event.", ConferenceId/binary, ".", CallId/binary>>,
-    Subscribed = [<<"conference.event.", ConferenceId/binary, ".", CallId/binary>>],
-    Listeners = [{'amqp', 'conference', event_binding_options(ConferenceId, CallId)}],
+    Subscribed = [<<"conference.event.*.", AccountId/binary, ".", ConferenceId/binary, ".", CallId/binary>>],
+    Listeners = [{'amqp', 'conference', event_binding_options(AccountId, ConferenceId, CallId)}],
     Map#{requested => Requested
         ,subscribed => Subscribed
         ,listeners => Listeners
@@ -72,8 +72,13 @@ command_binding_options(ConfId) ->
     ,'federate'
     ].
 
--spec event_binding_options(ne_binary(), ne_binary()) -> kz_proplist().
-event_binding_options(ConfId, CallId) ->
-    [{'restrict_to', [{'event', {ConfId, CallId}}]}
+-spec event_binding_options(ne_binary(), ne_binary(), ne_binary()) -> kz_proplist().
+event_binding_options(AccountId, ConferenceId, CallId) ->
+    [{'restrict_to', [{'event', [{'account_id', AccountId}
+                                ,{'conference_id', ConferenceId}
+                                ,{'call_id', CallId}
+                                ]
+                      }]
+     }
     ,'federate'
     ].

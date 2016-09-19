@@ -785,5 +785,31 @@
                         ,{<<"Transfer-Leg">>, fun(T) -> lists:member(T, [<<"bleg">>, <<"both">>]) end}
                         ]).
 
+%% media_macro
+-define(MEDIA_MACRO_HEADERS, [<<"Application-Name">>, <<"Call-ID">>
+                             ,<<"Media-Macros">>
+                             ]).
+-define(OPTIONAL_MEDIA_MACRO_HEADERS, [<<"Insert-At">>]).
+-define(MEDIA_MACRO_VALUES, [{<<"Event-Category">>, <<"call">>}
+                            ,{<<"Event-Name">>, <<"command">>}
+                            ,{<<"Application-Name">>, <<"media_macro">>}
+                            ,{<<"Insert-At">>, <<"now">>}
+                            ]).
+-define(MEDIA_MACRO_TYPES, [{<<"Call-ID">>, fun is_binary/1}
+                           ]).
+
+%% play_macro
+-define(PLAY_MACRO_HEADERS, [<<"Application-Name">>, <<"Call-ID">>
+                            ,<<"Media-Macro">>
+                            ]).
+-define(OPTIONAL_PLAY_MACRO_HEADERS, [<<"Insert-At">>]).
+-define(PLAY_MACRO_VALUES, [{<<"Event-Category">>, <<"call">>}
+                           ,{<<"Event-Name">>, <<"command">>}
+                           ,{<<"Application-Name">>, <<"play_macro">>}
+                           ,{<<"Insert-At">>, <<"now">>}
+                           ]).
+-define(PLAY_MACRO_TYPES, [{<<"Call-ID">>, fun is_binary/1}
+                          ]).
+
 -define(KAPI_DIALPLAN_HRL, 'true').
 -endif.
