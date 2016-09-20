@@ -14,6 +14,7 @@
         ,add_bindings/1, remove_bindings/1
         ,flush/0
         ]).
+
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -27,7 +28,8 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {bindings :: ets:tid()}).
+-record(state, {bindings :: ets:tid()
+               }).
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
@@ -56,12 +58,14 @@ start_link() ->
                             ,{'queue_name', ?QUEUE_NAME}       % optional to include
                             ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
                             ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                            ], []).
+                            ]
+                           ,[]
+                           ).
 
--spec handle_amqp_event(kz_json:object(), kz_proplist(), gen_listener:basic_deliver() | ne_binary()) -> any().
+-spec handle_amqp_event(kz_json:object(), kz_proplist(), gen_listener:basic_deliver() | ne_binary()) -> ok.
 handle_amqp_event(EventJObj, Props, #'basic.deliver'{routing_key=RoutingKey}) ->
     handle_amqp_event(EventJObj, Props, RoutingKey);
-handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->
+handle_amqp_event(EventJObj, _Props, RoutingKey=?NE_BINARY) ->
     Evt = kz_util:get_event_type(EventJObj),
     lager:debug("recv event ~p (~s)", [Evt, RoutingKey]),
     RK = <<"blackhole.event.", RoutingKey/binary, ".*">>,
@@ -229,7 +233,9 @@ handle_hook_event(AccountId, EventType, JObj) ->
                              ,AccountId
                              ,EventType
                              ,encode_call_id(JObj)
-                             ], <<".">>),
+                             ]
+                            ,<<".">>
+                            ),
     handle_amqp_event(JObj, [], RK).
 
 binding_key(Binding) -> base64:encode(term_to_binary(Binding)).
@@ -237,22 +243,28 @@ binding_key(Binding) -> base64:encode(term_to_binary(Binding)).
 add_bh_binding(ETS, Binding) ->
     Key = binding_key(Binding),
     case ets:update_counter(ETS, Key, 1, {Key, 0}) of
-        1 -> lager:debug("blackhole is creating new binding to ~p", [Binding]),
-             add_bh_binding(Binding);
-        0 -> lager:debug("listener has 0 refs after updating ? not creating new binding for ~p", [Binding]);
-        _Else -> lager:debug("listener has ~b refs, not creating new binding for ~p", [_Else, Binding])
+        1 ->
+            lager:debug("blackhole is creating new binding to ~p", [Binding]),
+            add_bh_binding(Binding);
+        0 ->
+            lager:debug("listener has 0 refs after updating ? not creating new binding for ~p", [Binding]);
+        _Else ->
+            lager:debug("listener has ~b refs, not creating new binding for ~p", [_Else, Binding])
     end.
 
 remove_bh_binding(ETS, Binding) ->
     Key = binding_key(Binding),
     case ets:update_counter(ETS, Key, -1, {Key, 0}) of
-        0 -> lager:debug("blackhole is deleting binding for ~p", [Binding]),
-             remove_bh_binding(Binding),
-             ets:delete(ETS, Key);
-        Neg when Neg < 0 -> lager:debug("listener have ~b negative references, removing binding for ~p", [Neg, Binding]),
-             remove_bh_binding(Binding),
-             ets:delete(ETS, Key);
-        _Else -> lager:debug("listener still have ~b references, not removing binding for ~p", [_Else, Binding])
+        0 ->
+            lager:debug("blackhole is deleting binding for ~p", [Binding]),
+            remove_bh_binding(Binding),
+            ets:delete(ETS, Key);
+        Neg when Neg < 0 ->
+            lager:debug("listener have ~b negative references, removing binding for ~p", [Neg, Binding]),
+            remove_bh_binding(Binding),
+            ets:delete(ETS, Key);
+        _Else ->
+            lager:debug("listener still have ~b references, not removing binding for ~p", [_Else, Binding])
     end.
 
 add_bh_binding({'hook', AccountId}) ->
