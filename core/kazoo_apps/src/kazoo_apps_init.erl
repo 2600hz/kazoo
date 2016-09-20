@@ -74,7 +74,7 @@ does_hostname_resolve_speedily() ->
             lager:warning("hostname results (in us): ~p < ~p < ~p"
                          ,[Min, (Total div (Tests+1)), Max]
                          ),
-            lager:critical("hostname resolution is painfully slow!!! This will cause "),
+            lager:critical("hostname resolution is painfully slow!!! all config lookups rely on this being fast"),
             'false'
     end.
 
