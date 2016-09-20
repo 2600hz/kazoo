@@ -366,7 +366,8 @@ handle_cast({'flush_call', Id}, State) ->
 handle_cast({'remove_call', [{M, P, _}]}, State) ->
     Match = [{M, P, ['true']}],
     N = ets:select_delete(call_table_id(), Match),
-    N > 1 andalso lager:debug("removed calls: ~p", [N]),
+    N > 1
+        andalso lager:debug("removed calls: ~p", [N]),
     {'noreply', State};
 
 handle_cast({'update_status', Id, Updates}, State) ->
@@ -376,7 +377,8 @@ handle_cast({'update_status', Id, Updates}, State) ->
 handle_cast({'remove_status', [{M, P, _}]}, State) ->
     Match = [{M, P, ['true']}],
     N = ets:select_delete(acdc_agent_stats:status_table_id(), Match),
-    N > 1 andalso lager:debug("removed statuses: ~p", [N]),
+    N > 1
+        andalso lager:debug("removed statuses: ~p", [N]),
     {'noreply', State};
 
 handle_cast({'gen_listener',{'created_queue',_Q}}, State) ->

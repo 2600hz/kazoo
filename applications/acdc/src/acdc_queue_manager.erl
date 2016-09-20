@@ -157,7 +157,8 @@ are_agents_available(Srv) ->
     are_agents_available(Srv, gen_listener:call(Srv, 'enter_when_empty')).
 
 are_agents_available(Srv, EnterWhenEmpty) ->
-    agents_available(Srv) > 0 orelse EnterWhenEmpty.
+    agents_available(Srv) > 0
+        orelse EnterWhenEmpty.
 
 start_queue_call(JObj, Props, Call) ->
     _ = kapps_call:put_callid(Call),
