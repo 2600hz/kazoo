@@ -55,7 +55,7 @@ set_loglevel() ->
 sanity_checks() ->
     lists:all(fun(F) -> F() end
              ,[fun does_hostname_resolve_speedily/0
-              ,fun is_system_clock_is_utc/0
+              ,fun is_system_clock_on_utc/0
               ]
              ).
 
@@ -92,11 +92,11 @@ time_hostname_resolution(_, {Min, Max, Total}) ->
 
 -spec time_hostname_resolution() -> pos_integer().
 time_hostname_resolution() ->
-    {Time, _} = timer:tc('kz_network_utils', 'get_hostname', []),
+    {Time, _} = timer:tc(fun kz_network_utils:get_hostname/0),
     Time.
 
--spec is_system_clock_is_utc() -> boolean().
-is_system_clock_is_utc() ->
+-spec is_system_clock_on_utc() -> boolean().
+is_system_clock_on_utc() ->
     case {calendar:local_time(), calendar:universal_time()} of
         {UTC, UTC} -> 'true';
         {_Local, _UTC} ->
