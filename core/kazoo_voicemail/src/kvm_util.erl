@@ -14,7 +14,7 @@
         ,check_doc_type/3
 
         ,check_msg_belonging/2
-        ,find_differences/3
+        ,get_change_vmbox_funs/4
 
         ,retention_seconds/0, retention_seconds/1
 
@@ -95,7 +95,7 @@ open_accountdb_doc(AccountId, DocId, Type) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc Protect against returning wrong doc when expected type is not matched
 %% (especially for requests from crossbar)
 %% @end
@@ -119,42 +119,31 @@ check_msg_belonging(BoxId, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Try to find changes made in messages list and return a tuple of
-%% messages that changed and messages that are not changed and must go
-%% into vmbox messages list.
+%% @doc
 %% @end
 %%--------------------------------------------------------------------
--type diff_ret() :: {kz_json:objects(), kz_json:objects()}.
-
--spec find_differences(ne_binary(), ne_binary(), kz_json:objects()) -> diff_ret().
-find_differences(AccountId, BoxId, DirtyJObj) ->
-    Messages = kvm_messages:get(AccountId, BoxId),
-    find_differences(DirtyJObj, Messages).
-
-find_differences(DirtyJ, Messages) ->
-    Fun = fun(MsgJ, Acc) -> find_differences_fold(DirtyJ, MsgJ, Acc) end,
-    lists:foldl(Fun , {[], []}, Messages).
-
--spec find_differences_fold(kz_json:objects(),kz_json:object(), diff_ret()) -> diff_ret().
-find_differences_fold(DirtyJ, MsgJ, {DiffAcc, VMMsgAcc}) ->
-    MessageId = kzd_box_message:media_id(MsgJ),
-    case kz_json:find_value(<<"media_id">>, MessageId, DirtyJ) of
-        'undefined' ->
-            {[MsgJ | DiffAcc], VMMsgAcc};
-        J ->
-            case kz_json:are_identical(MsgJ, J) of
-                'true' -> {DiffAcc, maybe_add_to_vmbox(MsgJ, VMMsgAcc)};
-                'false' -> {[J | DiffAcc], VMMsgAcc}
-            end
-    end.
-
 -spec retention_seconds() -> integer().
 -spec retention_seconds(pos_integer()) -> integer().
 retention_seconds() ->
-    ?RETENTION_SECONDS(?RETENTION_DAYS).
+    retention_seconds(?RETENTION_DAYS).
 
 retention_seconds(Days) ->
-    ?RETENTION_SECONDS(Days).
+    ?SECONDS_IN_DAY * Days + ?SECONDS_IN_HOUR.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_change_vmbox_funs(ne_binary(), ne_binary(), kz_json:object(), ne_binary()) ->
+                                   update_funs().
+get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId) ->
+    [fun(DocJ) -> kzd_box_message:set_source_id(NewBoxId, DocJ) end
+    ,fun(DocJ) -> kzd_box_message:apply_folder(?VM_FOLDER_NEW, DocJ) end
+    ,fun(DocJ) -> kzd_box_message:change_message_name(NBoxJ, DocJ) end
+    ,fun(DocJ) -> kzd_box_message:change_to_sip_field(AccountId, NBoxJ, DocJ) end
+    ,fun(DocJ) -> kzd_box_message:add_message_history(OldBoxId, DocJ) end
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -272,21 +261,6 @@ get_notify_completed_message([JObj|JObjs], Acc) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_add_to_vmbox(kz_json:object(), kz_json:objects()) -> kz_json:objects().
--spec maybe_add_to_vmbox(kz_json:object(), ne_binary(), kz_json:objects()) -> kz_json:objects().
-maybe_add_to_vmbox(M, Acc) ->
-    maybe_add_to_vmbox(M, kzd_box_message:media_id(M), Acc).
-
-maybe_add_to_vmbox(_M, ?MATCH_MODB_PREFIX(_Year, _Month, _), Acc) ->
-    Acc;
-maybe_add_to_vmbox(M, _Id, Acc) ->
-    [M | Acc].
 
 %%--------------------------------------------------------------------
 %% @private

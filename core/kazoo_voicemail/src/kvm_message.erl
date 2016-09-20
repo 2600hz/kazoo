@@ -109,6 +109,8 @@ message(AccountId, MessageId, BoxId) ->
 %% @public
 %% @doc Set a message folder, returning the new updated message on success
 %% or the old message on failed update
+%%
+%% Note: for use only by cf_voicemail
 %% @end
 %%--------------------------------------------------------------------
 -spec set_folder(ne_binary(), kz_json:object(), ne_binary()) -> db_ret().
@@ -138,17 +140,15 @@ maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId, _Msg) ->
 %%      folder(for recovering later by user)
 %% @end
 %%--------------------------------------------------------------------
--spec change_folder(vm_folder(), ne_binary(), ne_binary()) -> db_ret().
--spec change_folder(vm_folder(), api_ne_binary(), ne_binary(), api_binary()) -> db_ret().
-change_folder(Folder, MessageId, AccountId) ->
-    change_folder(Folder, MessageId, AccountId, 'undefined').
+-spec change_folder(vm_folder(), message(), ne_binary()) -> db_ret().
+-spec change_folder(vm_folder(), message(), ne_binary(), api_binary()) -> db_ret().
+change_folder(Folder, Message, AccountId) ->
+    change_folder(Folder, Message, AccountId, 'undefined').
 
-change_folder(_, 'undefined', _, _) ->
-    {'error', 'attachment_undefined'};
-change_folder(Folder, MessageId, AccountId, BoxId) ->
+change_folder(Folder, Message, AccountId, BoxId) ->
     Fun = [fun(J) -> kzd_box_message:apply_folder(Folder, J) end
           ],
-    case update(AccountId, BoxId, MessageId, Fun) of
+    case update(AccountId, BoxId, Message, Fun) of
         {'ok', JObj} ->
             {'ok', kzd_box_message:metadata(JObj)};
         {'error', _R} = Error ->
@@ -161,13 +161,27 @@ change_folder(Folder, MessageId, AccountId, BoxId) ->
 %% @doc Update a single message doc
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), api_ne_binary(), ne_binary()) -> db_ret().
--spec update(ne_binary(), api_ne_binary(), ne_binary(), update_funs()) -> db_ret().
-update(AccountId, BoxId, MsgId) ->
-    update(AccountId, BoxId, MsgId, []).
+-spec update(ne_binary(), api_ne_binary(), message()) -> db_ret().
+-spec update(ne_binary(), api_ne_binary(), message(), update_funs()) -> db_ret().
+update(AccountId, BoxId, Message) ->
+    update(AccountId, BoxId, Message, []).
 
-update(AccountId, BoxId, MsgId, Funs) ->
-    apply_funs_and_save(AccountId, Funs, fetch(AccountId, MsgId, BoxId)).
+update(AccountId, BoxId, ?NE_BINARY = MsgId, Funs) ->
+    case fetch(AccountId, MsgId, BoxId) of
+        {'ok', JObj} ->
+            update(AccountId, BoxId, JObj, Funs);
+        Error ->
+            Error
+    end;
+update(AccountId, _BoxId, JObj, Funs) ->
+    NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
+    Db = kvm_util:get_db(AccountId, NewJObj),
+    case kazoo_modb:save_doc(Db, NewJObj) of
+        {'ok', _} = OK -> OK;
+        {'error', _R} = Error ->
+            lager:debug("failed to update voicemail message ~s: ~p", [kz_doc:id(NewJObj), _R]),
+            Error
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -179,7 +193,7 @@ update(AccountId, BoxId, MsgId, Funs) ->
 move_to_vmbox(AccountId, MsgId, OldBoxId, NewBoxId) ->
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
-    Funs = ?CHANGE_VMBOX_FUNS(AccountId, NewBoxId, NBoxJ, OldBoxId),
+    Funs = kvm_util:get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId),
     update(AccountId, OldBoxId, MsgId, Funs).
 
 %%--------------------------------------------------------------------
@@ -208,7 +222,7 @@ copy_to_vmboxes(AccountId, JObj, OldBoxId, [NBId | NBIds], Copied) ->
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NBId),
 
-    Funs = ?CHANGE_VMBOX_FUNS(AccountId, NBId, NBoxJ, OldBoxId),
+    Funs = kvm_util:get_change_vmbox_funs(AccountId, NBId, NBoxJ, OldBoxId),
     Id = kz_doc:id(JObj),
     NewCopied = case do_copy(AccountId, JObj, Funs) of
                     {'ok', JObj} ->
@@ -254,7 +268,7 @@ try_copy(FromDb, FromId, ToDb, ToId, Options, Tries) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec media_url(ne_binary(), ne_binary() | kz_json:object()) -> binary().
+-spec media_url(ne_binary(), message()) -> binary().
 media_url(AccountId, ?NE_BINARY = MessageId) ->
     case fetch(AccountId, MessageId) of
         {'ok', Message} ->
@@ -270,26 +284,6 @@ media_url(AccountId, Message) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec apply_funs_and_save(ne_binary(), update_funs(), db_ret() | kz_json:object()) -> db_ret().
-apply_funs_and_save(_AccountId, _Funs, {'error', _} = Error) ->
-    Error;
-apply_funs_and_save(AccountId, Funs, {'ok', JObj}) ->
-    apply_funs_and_save(AccountId, Funs, JObj);
-apply_funs_and_save(AccountId, Funs, JObj) ->
-    NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
-    Db = kvm_util:get_db(AccountId, JObj),
-    case kazoo_modb:save_doc(Db, NewJObj) of
-        {'ok', _} = OK -> OK;
-        {'error', _R} = Error ->
-            lager:debug("failed to update voicemail message ~s: ~p", [kz_doc:id(NewJObj), _R]),
-            Error
-    end.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kzd_box_message).
 
--export([new/2, build_metadata_object/6, fake_private_media/3
+-export([new/2, build_metadata_object/6
         ,count_folder/2
         ,create_message_name/3
         ,type/0
@@ -124,27 +124,6 @@ new(AccountId, Props) ->
       kz_json:from_list(DocProps), Db, [{'type', type()}
                                        ,{'now', Timestamp}
                                        ]
-     ).
-
--spec fake_private_media(ne_binary(), ne_binary(), doc()) -> doc().
-fake_private_media(AccountId, BoxId, MsgJObj) ->
-    Db = kvm_util:get_db(AccountId),
-    MediaId = media_id(MsgJObj),
-    UtcSeconds = kz_json:get_integer_value(?KEY_META_TIMESTAMP, MsgJObj),
-    Name = create_message_name(<<"unknown">>, 'undefined', UtcSeconds),
-
-    DocProps = props:filter_undefined(
-                 [{<<"_id">>, MediaId}
-                 ,{?KEY_NAME, Name}
-                 ,{?KEY_DESC, <<"mailbox message media">>}
-                 ,{?KEY_SOURCE_TYPE, ?KEY_VOICEMAIL}
-                 ,{?KEY_SOURCE_ID, BoxId}
-                 ,{?KEY_MEDIA_SOURCE, <<"recording">>}
-                 ,{?KEY_UTC_SEC, UtcSeconds}
-                 ,{?KEY_METADATA, MsgJObj}
-                 ]),
-    kz_doc:update_pvt_parameters(
-      kz_json:from_list(DocProps), Db, [{'type', ?PVT_LEGACY_TYPE}]
      ).
 
 %%--------------------------------------------------------------------

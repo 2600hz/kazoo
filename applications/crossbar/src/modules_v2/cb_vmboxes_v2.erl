@@ -212,7 +212,7 @@ check_mailbox_for_messages_array(Context, VMBoxMsgs) ->
     Props = [{?VM_KEY_MESSAGES, VMBoxMsgs}],
     NewDoc = kz_json:set_values(Props, cb_context:doc(Context)),
     Envelope = kz_json:from_list([{<<"message">>
-                                  ,<<"Please migrate you voicemail box messages to MODB">>
+                                  ,<<"Please migrate your voicemail box messages to MODB">>
                                   }
                                  ]),
     Setters = [{fun cb_context:set_doc/2, NewDoc}
