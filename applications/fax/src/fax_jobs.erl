@@ -7,7 +7,6 @@
 %%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(fax_jobs).
-
 -behaviour(gen_listener).
 
 -export([start_link/1]).
@@ -27,8 +26,14 @@
 -include("fax.hrl").
 
 -define(POLLING_INTERVAL, 5000).
--define(DEFAULT_LIMITS, #{account => 5}).
--define(INIT_JOBS, #{distribute => [], serialize => [], pending => #{}, running => #{}, numbers => #{}}).
+-define(DEFAULT_LIMITS, #{account => 5
+                         }).
+-define(INIT_JOBS, #{distribute => []
+                    ,serialize => []
+                    ,pending => #{}
+                    ,running => #{}
+                    ,numbers => #{}
+                    }).
 
 -record(state, {account_id :: ne_binary()
                ,queue = 'undefined' :: api_binary()
@@ -206,6 +211,7 @@ handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State, ?POLLING_INTERVAL}.
 
+-spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(JObj, _State) ->
     case kapi_fax:status_v(JObj) of
         'true' -> gen_server:cast(self(), ?JOB_STATUS(JObj));

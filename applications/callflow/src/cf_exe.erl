@@ -6,7 +6,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_exe).
-
 -behaviour(gen_listener).
 
 %% API

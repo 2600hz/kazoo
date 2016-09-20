@@ -529,6 +529,7 @@ handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
+-spec handle_event(kz_json:object(), mgr_state()) -> gen_listener:handle_event_return().
 handle_event(_JObj, #state{enter_when_empty=EnterWhenEmpty
                           ,moh=MOH
                           }) ->

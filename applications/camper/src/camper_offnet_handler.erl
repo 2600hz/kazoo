@@ -12,7 +12,6 @@
 %%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(camper_offnet_handler).
-
 -behaviour(gen_listener).
 
 -export([start_link/1]).
@@ -230,6 +229,7 @@ handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
 
+-spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
