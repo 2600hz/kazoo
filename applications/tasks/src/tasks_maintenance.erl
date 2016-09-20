@@ -15,6 +15,10 @@
 -export([start/1]).
 -export([remove/1]).
 
+-export([start_cleanup_pass/0
+        ,cleanup_soft_deletes/1
+        ]).
+
 -include("tasks.hrl").
 
 
@@ -110,6 +114,16 @@ remove(TaskId) ->
         {'ok', RemovedTask} -> print_json(RemovedTask);
         {'error', Reason} -> print_error(Reason)
     end.
+
+-spec start_cleanup_pass() -> no_return.
+start_cleanup_pass() ->
+    _ = kz_tasks_trigger:browse_dbs_for_triggers(?MODULE),
+    no_return.
+
+-spec cleanup_soft_deletes(text()) -> no_return.
+cleanup_soft_deletes(Account) ->
+    _ = kt_cleanup:cleanup_soft_deletes(Account),
+    no_return.
 
 %%% Internals
 

@@ -8,6 +8,11 @@
             "description": "tasks aging expiry in days",
             "type": "integer"
         },
+        "browse_dbs_interval_s": {
+            "default": 86400,
+            "description": "tasks browse dbs interval in seconds",
+            "type": "integer"
+        },
         "crawler_delay_time_ms": {
             "default": 60000,
             "description": "tasks crawler delay time in milliseconds",
@@ -48,6 +53,11 @@
             "description": "tasks send progress after processed",
             "type": "integer"
         },
+        "should_archive_modbs": {
+            "default": false,
+            "description": "tasks should archive modbs",
+            "type": "boolean"
+        },
         "should_crawl_for_first_occurrence": {
             "default": true,
             "description": "tasks should crawl for first occurrence",
@@ -57,6 +67,16 @@
             "default": true,
             "description": "tasks should crawl for low balance",
             "type": "boolean"
+        },
+        "soft_delete_pause_ms": {
+            "default": 10000,
+            "description": "tasks soft delete pause in milliseconds",
+            "type": "integer"
+        },
+        "unfinished_port_request_lifetime_s": {
+            "default": 2592000,
+            "description": "tasks unfinished port request lifetime in seconds",
+            "type": "integer"
         },
         "wait_after_row_ms": {
             "default": 500,

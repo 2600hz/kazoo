@@ -20,9 +20,7 @@
         ,account_update/1, account_update/2
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
--export([is_system_admin/1
-        ,is_system_db/1
-        ]).
+-export([is_system_admin/1]).
 -export([get_account_realm/1, get_account_realm/2]).
 -export([is_account_enabled/1, is_account_expired/1]).
 -export([maybe_disable_account/1
@@ -537,10 +535,6 @@ is_system_admin(Account) ->
             lager:debug("unable to open account definition for ~s: ~p", [Account, _R]),
             'false'
     end.
-
--spec is_system_db(ne_binary()) -> boolean().
-is_system_db(Db) ->
-    lists:member(Db, ?KZ_SYSTEM_DBS).
 
 %%--------------------------------------------------------------------
 %% @public

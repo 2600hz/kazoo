@@ -23,7 +23,11 @@
         ,id2/4
         ]).
 
--include_lib("kazoo/include/kz_types.hrl").
+%% Triggerables
+-export([my_minute_job/0
+        ]).
+
+-include("tasks.hrl").
 
 -define(CATEGORY, "skel").
 -define(ACTIONS, [<<"id1">>
@@ -39,6 +43,7 @@ init() ->
     _ = tasks_bindings:bind(<<"tasks.help">>, ?MODULE, 'help'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".output_header">>, ?MODULE, 'output_header'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".col2">>, ?MODULE, 'col2'),
+    _ = tasks_bindings:bind(?TRIGGER_MINUTELY, ?MODULE, 'my_minute_job'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
 -spec output_header(ne_binary()) -> kz_csv:row().
@@ -83,6 +88,13 @@ id1(_Props, _IterValue, Col1) ->
 -spec id2(kz_proplist(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
 id2(_Props, _IterValue, Col1, Col2) ->
     [Col1, Col2].
+
+%%% Triggerables
+
+-spec my_minute_job() -> ok.
+my_minute_job() ->
+    {_, {_, _Data, _}} = calendar:local_time(),
+    lager:debug("executed every minute! (~p)", [_Data]).
 
 %%%===================================================================
 %%% Internal functions

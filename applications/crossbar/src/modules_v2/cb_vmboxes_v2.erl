@@ -52,8 +52,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.vmboxes">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.patch.vmboxes">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.vmboxes">>, ?MODULE, 'delete'),
-    _ = crossbar_bindings:bind(<<"v2_resource.finish_request.post.vmboxes">>, ?MODULE, 'finish_request'),
-    _ = crossbar_bindings:bind(crossbar_cleanup:binding_account(), 'kvm_maintenance', 'cleanup_heard_voicemail').
+    _ = crossbar_bindings:bind(<<"v2_resource.finish_request.post.vmboxes">>, ?MODULE, 'finish_request').
 
 %%--------------------------------------------------------------------
 %% @public

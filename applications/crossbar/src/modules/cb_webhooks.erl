@@ -20,7 +20,6 @@
         ,post/2
         ,patch/1, patch/2
         ,delete/2, delete_account/2
-        ,cleanup/1
         ]).
 
 -include("crossbar.hrl").
@@ -40,6 +39,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
 init() ->
     _ = kz_datamgr:db_create(?KZ_WEBHOOKS_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
@@ -47,19 +47,16 @@ init() ->
     init_master_account_db(),
     maybe_revise_schema(),
 
-    Bindings = [{<<"*.allowed_methods.webhooks">>, 'allowed_methods'}
-               ,{<<"*.authorize">>, 'authorize'}
-               ,{<<"*.authenticate">>, 'authenticate'}
-               ,{<<"*.resource_exists.webhooks">>, 'resource_exists'}
-               ,{<<"*.validate.webhooks">>, 'validate'}
-               ,{<<"*.execute.put.webhooks">>, 'put'}
-               ,{<<"*.execute.post.webhooks">>, 'post'}
-               ,{<<"*.execute.patch.webhooks">>, 'patch'}
-               ,{<<"*.execute.delete.webhooks">>, 'delete'}
-               ,{<<"*.execute.delete.accounts">>, 'delete_account'}
-               ,{crossbar_cleanup:binding_system(), 'cleanup'}
-               ],
-    cb_modules_util:bind(?MODULE, Bindings).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.webhooks">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.webhooks">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.webhooks">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.webhooks">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.webhooks">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.webhooks">>, ?MODULE, 'patch'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.webhooks">>, ?MODULE, 'delete'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.accounts">>, ?MODULE, 'delete_account').
 
 -spec init_master_account_db() -> 'ok'.
 init_master_account_db() ->
@@ -79,8 +76,7 @@ init_master_account_db() ->
 -spec maybe_revise_schema(kz_json:object(), ne_binary()) -> 'ok'.
 maybe_revise_schema() ->
     case kz_json_schema:load(<<"webhooks">>) of
-        {'ok', SchemaJObj} ->
-            maybe_revise_schema(SchemaJObj);
+        {'ok', SchemaJObj} -> maybe_revise_schema(SchemaJObj);
         {'error', _E} ->
             lager:warning("failed to find webhooks schema: ~p", [_E])
     end.
@@ -217,7 +213,7 @@ validate_webhook(Context, Id, ?HTTP_PATCH) ->
 validate_webhook(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
-validate(Context, <<_/binary>> = Id, ?PATH_TOKEN_ATTEMPTS) ->
+validate(Context, Id=?NE_BINARY, ?PATH_TOKEN_ATTEMPTS) ->
     summary_attempts(Context, Id).
 
 -spec validate_patch(cb_context:context(), ne_binary()) ->
@@ -227,8 +223,12 @@ validate_patch(Context, Id) ->
         'success' ->
             PatchJObj = kz_doc:public_fields(cb_context:req_data(Context)),
             JObj = kz_json:merge_jobjs(PatchJObj, cb_context:doc(Context)),
-            OnValidateReqDataSuccess = fun(C) -> crossbar_doc:load_merge(Id, C, ?TYPE_CHECK_OPTION(kzd_webhook:type())) end,
-            cb_context:validate_request_data(<<"webhooks">>, cb_context:set_req_data(Context, JObj), OnValidateReqDataSuccess);
+            OnValidateReqDataSuccess =
+                fun(C) -> crossbar_doc:load_merge(Id, C, ?TYPE_CHECK_OPTION(kzd_webhook:type())) end,
+            cb_context:validate_request_data(<<"webhooks">>
+                                            ,cb_context:set_req_data(Context, JObj)
+                                            ,OnValidateReqDataSuccess
+                                            );
         _Status -> Context
     end.
 
@@ -264,16 +264,13 @@ delete_account_webhooks(AccountId) ->
     case fetch_account_hooks(AccountId) of
         {'ok', []} -> 'ok';
         {'error', _E} ->
-            lager:debug("failed to fetch webhooks for account ~s: ~p"
-                       ,[AccountId, _E]
-                       );
+            lager:debug("failed to fetch webhooks for account ~s: ~p", [AccountId, _E]);
         {'ok', ViewJObjs} ->
             _ = delete_account_hooks(ViewJObjs),
             lager:debug("deleted ~p hooks from account ~s", [length(ViewJObjs), AccountId])
     end.
 
--spec fetch_account_hooks(ne_binary()) ->
-                                 kz_datamgr:get_results_return().
+-spec fetch_account_hooks(ne_binary()) -> kz_datamgr:get_results_return().
 fetch_account_hooks(AccountId) ->
     kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                           ,<<"webhooks/accounts_listing">>
@@ -312,32 +309,23 @@ create(Context) ->
 validate_collection_patch(Context) ->
     validate_collection_patch(Context, cb_context:req_value(Context, ?REENABLE)).
 validate_collection_patch(Context, 'undefined') ->
-    cb_context:add_validation_error(
-      ?REENABLE
-                                   ,<<"required">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"re-enable is required to patch collections">>}]
-                                     )
-                                   ,Context
-     );
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"re-enable is required to patch collections">>}
+            ]),
+    cb_context:add_validation_error(?REENABLE, <<"required">>, Msg, Context);
 validate_collection_patch(Context, ReEnable) ->
     case kz_util:is_true(ReEnable) of
         'true' -> cb_context:set_resp_status(Context, 'success');
         'false' -> reenable_validation_error(Context)
     end.
 
--spec reenable_validation_error(cb_context:context()) ->
-                                       cb_context:context().
+-spec reenable_validation_error(cb_context:context()) -> cb_context:context().
 reenable_validation_error(Context) ->
-    cb_context:add_validation_error(
-      ?REENABLE
-                                   ,<<"enum">>
-                                   ,kz_json:from_list(
-                                      [{<<"message">>, <<"value not found in enumerated list of values">>}
-                                      ,{<<"target">>, ['true']}
-                                      ])
-                                   ,Context
-     ).
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"value not found in enumerated list of values">>}
+            ,{<<"target">>, ['true']}
+            ]),
+    cb_context:add_validation_error(?REENABLE, <<"enum">>, Msg, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -625,39 +613,3 @@ handle_resp(Context, {'error', 'timeout'}) ->
 handle_resp(Context, {'error', _E}) ->
     lager:debug("error with request: ~p", [_E]),
     crossbar_util:response('error', <<"Request failed on the backend">>, 500, Context).
-
--spec cleanup(ne_binary()) -> 'ok'.
-cleanup(?KZ_WEBHOOKS_DB) ->
-    lager:debug("checking ~s for abandoned accounts", [?KZ_WEBHOOKS_DB]),
-    cleanup_orphaned_hooks();
-cleanup(_SystemDb) -> 'ok'.
-
--spec cleanup_orphaned_hooks() -> 'ok'.
-cleanup_orphaned_hooks() ->
-    case kz_datamgr:get_results(?KZ_WEBHOOKS_DB
-                               ,<<"webhooks/accounts_listing">>
-                               ,['group']
-                               )
-    of
-        {'ok', []} -> lager:debug("no hooks configured");
-        {'error', _E} ->
-            lager:debug("failed to lookup accounts in ~s: ~p", [?KZ_WEBHOOKS_DB, _E]);
-        {'ok', Accounts} ->
-            cleanup_orphaned_hooks(Accounts)
-    end.
-
--spec cleanup_orphaned_hooks(kz_json:objects()) -> 'ok'.
-cleanup_orphaned_hooks(Accounts) ->
-    _Rm = [begin
-               delete_account_webhooks(AccountId),
-               timer:sleep(5 * ?MILLISECONDS_IN_SECOND)
-           end
-           || Account <- Accounts,
-              begin
-                  AccountId = kz_json:get_value(<<"key">>, Account),
-                  not kz_datamgr:db_exists(kz_util:format_account_id(AccountId, 'encoded'))
-              end
-          ],
-    _Rm =/= []
-        andalso lager:debug("removed ~p accounts' webhooks", [length(_Rm)]),
-    'ok'.

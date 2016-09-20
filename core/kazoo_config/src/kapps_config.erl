@@ -766,6 +766,19 @@ get_category(Category, 'false') ->
          ,{<<"tasks">>, <<"low_balance_repeat_s">>}
          }
 
+        ,{{<<"crossbar">>, <<"cleanup_timer">>}
+         ,{<<"tasks">>, <<"browse_dbs_interval_s">>}
+         }
+        ,{{<<"crossbar">>, <<"soft_delete_pause_ms">>}
+         ,{<<"tasks">>, <<"soft_delete_pause_ms">>}
+         }
+        ,{{<<"cb_modb">>, <<"maybe_archive_modbs">>}
+         ,{<<"tasks">>, <<"should_archive_modbs">>}
+         }
+        ,{{<<"cb_port_requests">>, <<"unfinished_port_request_lifetime_s">>}
+         ,{<<"tasks">>, <<"unfinished_port_request_lifetime_s">>}
+         }
+
         ]).
 
 -spec migrate() -> 'ok'.

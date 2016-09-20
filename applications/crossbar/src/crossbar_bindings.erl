@@ -43,7 +43,6 @@
 -include("crossbar.hrl").
 
 -type payload() :: path_tokens() | % mapping over path tokens in URI
-                   ne_binary() | % crossbar_cleanup
                    [cb_context:context() | path_token() | 'undefined',...] |
                    cb_context:context() |
                    {cb_context:context(), kz_proplist()} | % v1_resource:rest_init/2
@@ -158,11 +157,9 @@ filter_out_succeeded(Term) -> kz_util:is_empty(Term).
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
 -type bind_results() :: [bind_result()].
--spec bind(ne_binary() | ne_binaries(), atom(), atom()) ->
+-spec bind(ne_binary(), atom(), atom()) ->
                   bind_result() | bind_results().
-bind([_|_]=Bindings, Module, Fun) ->
-    [bind(Binding, Module, Fun) || Binding <- Bindings];
-bind(Binding, Module, Fun) when is_binary(Binding) ->
+bind(Binding=?NE_BINARY, Module, Fun) ->
     kazoo_bindings:bind(Binding, Module, Fun).
 
 -spec flush() -> 'ok'.
@@ -177,7 +174,7 @@ flush_mod(CBMod) -> kazoo_bindings:flush_mod(CBMod).
 
 -spec modules_loaded() -> atoms().
 modules_loaded() ->
-    lists:usort(
+    lists:sort(
       [Mod || Mod <- kazoo_bindings:modules_loaded(),
               is_cb_module(Mod)
       ]).
@@ -186,7 +183,8 @@ modules_loaded() ->
 is_cb_module(<<"cb_", _/binary>>) -> 'true';
 is_cb_module(<<"crossbar_", _binary>>) -> 'true';
 is_cb_module(<<_/binary>>) -> 'false';
-is_cb_module(Mod) -> is_cb_module(kz_util:to_binary(Mod)).
+is_cb_module(Mod) ->
+    is_cb_module(kz_util:to_binary(Mod)).
 
 -spec start_link() -> 'ignore'.
 start_link() ->
@@ -197,8 +195,8 @@ start_link() ->
 init() ->
     lager:debug("initializing bindings"),
     kz_util:put_callid(?LOG_SYSTEM_ID),
-    lists:foreach(fun maybe_init_mod/1
-                 ,crossbar_config:autoload_modules(?DEFAULT_MODULES)).
+    AutoloadModules = crossbar_config:autoload_modules(?DEFAULT_MODULES),
+    lists:foreach(fun maybe_init_mod/1, AutoloadModules).
 
 -spec maybe_init_mod(ne_binary() | atom()) -> 'ok'.
 maybe_init_mod(Mod) ->

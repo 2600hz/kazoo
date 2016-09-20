@@ -19,6 +19,8 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER('kz_tasks_scheduler')
                   ,?WORKER('tasks_listener')
+                   %% Jobs not generating CSV output
+                  ,?WORKER('kz_tasks_trigger')
                    %% Numbers
                   ,?WORKER('knm_port_request_crawler')
                   ,?WORKER('knm_number_crawler')

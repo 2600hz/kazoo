@@ -3,7 +3,7 @@
   {description, "Crossbar - REST Interface to the stars"}
  ,{vsn, "4.0.0"}
  ,{modules, []}
- ,{registered, [crossbar_cache, cb_jobs_listener, crossbar_sup, crossbar_cleanup, crossbar_module_sup]}
+ ,{registered, [crossbar_cache, cb_jobs_listener, crossbar_sup, crossbar_module_sup]}
  ,{applications, [ kernel
                  , stdlib
                  , crypto
