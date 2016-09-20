@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(kt_cb_cleanup).
+-module(kt_cleanup).
 %% behaviour: tasks_provider
 
 -export([init/0

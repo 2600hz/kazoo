@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(kt_cb_user_auth).
+-module(kt_user_auth).
 %% behaviour: tasks_provider
 
 -export([init/0

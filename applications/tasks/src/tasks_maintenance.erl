@@ -122,7 +122,7 @@ start_cleanup_pass() ->
 
 -spec cleanup_soft_deletes(text()) -> no_return.
 cleanup_soft_deletes(Account) ->
-    _ = kt_cb_cleanup:cleanup_soft_deletes(Account),
+    _ = kt_cleanup:cleanup_soft_deletes(Account),
     no_return.
 
 %%% Internals

@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(kt_cb_port_requests).
+-module(kt_port_requests).
 %% behaviour: tasks_provider
 
 -export([init/0

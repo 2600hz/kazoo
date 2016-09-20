@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(kt_cb_vmboxes).
+-module(kt_vmboxes).
 %% behaviour: tasks_provider
 
 -export([init/0

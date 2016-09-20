@@ -8,7 +8,7 @@
 %%%   James Aimonetti
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(kt_cb_modb).
+-module(kt_modb).
 %% behaviour: tasks_provider
 
 -export([init/0
