@@ -326,7 +326,7 @@ maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--type vm_count() :: ne_binary() | non_neg_integer().
+-type vm_count() :: non_neg_integer().
 -spec send_mwi_update(vm_count(), vm_count(), ne_binary(), ne_binary()) -> 'ok'.
 send_mwi_update(New, Saved, Username, Realm) ->
     send_mwi_update(New, Saved, Username, Realm, kz_json:new()).
@@ -860,12 +860,7 @@ get_mailbox(AccountDb, VMNumber) ->
 vm_count(JObj) ->
     AccountId = kz_doc:account_id(JObj),
     BoxId = kz_doc:id(JObj),
-
-    Messages = kz_json:get_value(?VM_KEY_MESSAGES, JObj, []),
-    New = kzd_box_message:count_folder(Messages, ?VM_FOLDER_NEW),
-    Saved = kzd_box_message:count_folder(Messages, ?VM_FOLDER_SAVED),
-
-    kvm_messages:count_from_modb(AccountId, BoxId, {New, Saved}).
+    kvm_messages:count_none_deleted(AccountId, BoxId).
 
 %%--------------------------------------------------------------------
 %% @private

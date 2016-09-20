@@ -48,15 +48,14 @@ migrate(AccountId, Box) ->
 -spec cleanup_heard_voicemail(ne_binary()) -> 'ok'.
 cleanup_heard_voicemail(AccountId) ->
     Today = kz_util:current_tstamp(),
-    Duration = ?RETENTION_DURATION,
-    DurationS = ?RETENTION_DAYS(Duration),
-    ?LOG("retaining messages for ~p days, delete those older for ~s", [Duration, AccountId]),
+    RetentionSeconds = kvm_util:retention_seconds(),
+    ?LOG("retaining messages for ~p days, delete those older for ~s", [?RETENTION_DAYS, AccountId]),
     AccountDb = kvm_util:get_db(AccountId),
     case kz_datamgr:get_results(AccountDb, ?VMBOX_CB_LIST, []) of
         {'ok', []} -> ?LOG("no voicemail boxes in ~s", [AccountDb]);
         {'ok', View} ->
             cleanup_heard_voicemail(AccountId
-                                   ,Today - DurationS
+                                   ,Today - RetentionSeconds
                                    ,[kz_json:get_value(<<"value">>, V) || V <- View]
                                    ),
             ?LOG("cleaned up ~b voicemail boxes in ~s", [length(View), AccountDb]);
@@ -65,9 +64,9 @@ cleanup_heard_voicemail(AccountId) ->
     end.
 
 -spec cleanup_heard_voicemail(ne_binary(), pos_integer(), kz_proplist()) -> 'ok'.
-cleanup_heard_voicemail(AccountId, Timestamp, Boxes) ->
-    F = fun (Box) -> cleanup_voicemail_box(AccountId, Timestamp, Box) end,
-    lists:foreach(F, Boxes).
+cleanup_heard_voicemail(AccountId, RetentionSeconds, Boxes) ->
+    _ = [cleanup_voicemail_box(AccountId, RetentionSeconds, Box) || Box <- Boxes],
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -75,12 +74,12 @@ cleanup_heard_voicemail(AccountId, Timestamp, Boxes) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec cleanup_voicemail_box(ne_binary(), pos_integer(), kz_json:object()) -> 'ok'.
-cleanup_voicemail_box(AccountId, Timestamp, Box) ->
+cleanup_voicemail_box(AccountId, RetentionSeconds, Box) ->
     BoxId = kz_doc:id(Box),
     Msgs = kvm_messages:get(AccountId, BoxId),
     FilterFun = fun(Msg) ->
                         %% must be old enough, and not in the NEW folder
-                        kz_json:get_integer_value(<<"timestamp">>, Msg) < Timestamp
+                        kz_json:get_integer_value(<<"timestamp">>, Msg) < RetentionSeconds
                             andalso kz_json:get_value(<<"folder">>, Msg) =/= <<"new">>
                 end,
 

@@ -12,19 +12,22 @@
 -define(KEY_VOICEMAIL, <<"voicemail">>).
 -define(KEY_RETENTION_DURATION, <<"message_retention_duration">>).
 
--define(RETRY_CONFLICT(F), kvm_util:retry_conflict(fun() -> F end)).
-
 -define(RETENTION_PATH, [?KEY_VOICEMAIL, ?KEY_RETENTION_DURATION]).
--define(RETENTION_DURATION
-       ,kapps_config:get_integer(?CF_CONFIG_CAT, ?RETENTION_PATH, 93)  %% 93 days(3 months)
+-define(RETENTION_DAYS,
+        kapps_config:get_integer(?CF_CONFIG_CAT, ?RETENTION_PATH, 93)  %% 93 days(3 months)
        ).
 
--define(RETENTION_DAYS(Duration), ?SECONDS_IN_DAY * Duration + ?SECONDS_IN_HOUR).
+-define(RETENTION_SECONDS(Days),
+        ?SECONDS_IN_DAY * Days + ?SECONDS_IN_HOUR
+       ).
 
--record(bulk_res, {succeeded = []  :: ne_binaries()
-                  ,failed = [] :: kz_json:objects()
-                  ,moved = [] :: ne_binaries()
-                  }).
+-define(CHANGE_VMBOX_FUNS(AccountId, NewBoxId, NBoxJ, OldBoxId),
+        [fun(DocJ) -> kzd_box_message:set_source_id(NewBoxId, DocJ) end
+        ,fun(DocJ) -> kzd_box_message:apply_folder(?VM_FOLDER_NEW, DocJ) end
+        ,fun(DocJ) -> kzd_box_message:change_message_name(NBoxJ, DocJ) end
+        ,fun(DocJ) -> kzd_box_message:change_to_sip_field(AccountId, NBoxJ, DocJ) end
+        ,fun(DocJ) -> kzd_box_message:add_message_history(OldBoxId, DocJ) end
+        ]).
 
 -type update_funs() :: [fun((kz_json:object()) -> kz_json:object())].
 
@@ -32,14 +35,6 @@
 -type vm_folder() :: ne_binary() | {ne_binary(), boolean()}.
 
 -type count_result() :: {non_neg_integer(), non_neg_integer()}.
-
--define(CHANGE_VMBOX_FUNS(AccountId, NewBoxId, NBoxJ, OldBoxId)
-       ,[fun(DocJ) -> kzd_box_message:set_source_id(NewBoxId, DocJ) end
-        ,fun(DocJ) -> kzd_box_message:apply_folder(?VM_FOLDER_NEW, DocJ) end
-        ,fun(DocJ) -> kzd_box_message:change_message_name(NBoxJ, DocJ) end
-        ,fun(DocJ) -> kzd_box_message:change_to_sip_field(AccountId, NBoxJ, DocJ) end
-        ,fun(DocJ) -> kzd_box_message:add_message_history(OldBoxId, DocJ) end
-        ]).
 
 -define(KZ_VOICEMAIL_HRL, 'true').
 -endif.
