@@ -47,17 +47,28 @@ lookup(Number, AccountId) ->
         {'error', 'not_found'} -> do_lookup(Number, AccountId)
     end.
 
+-spec return_callflow_doc(ne_binary(), ne_binary()) -> lookup_ret().
 return_callflow_doc(FlowId, AccountId) ->
     return_callflow_doc(FlowId, AccountId, []).
 
+-spec return_callflow_doc(ne_binary(), ne_binary(), kz_proplist()) -> lookup_ret().
 return_callflow_doc(FlowId, AccountId, Props) ->
     Db = kz_util:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(Db, FlowId) of
         {'ok', Doc} ->
-            {'ok', kz_json:set_values(Props, Doc), FlowId =:= ?NO_MATCH_CF};
+            {'ok', kz_json:set_values(Props, Doc), contains_no_match(Doc)};
         Error -> Error
     end.
 
+-spec contains_no_match(kzd_callflow:doc()) -> boolean().
+contains_no_match(Doc) ->
+    lists:any(fun(Number) when Number =:= ?NO_MATCH_CF ->
+                      'true';
+                 (_) ->
+                      'false'
+              end, kzd_callflow:numbers(Doc)).
+
+-spec do_lookup(ne_binary(), ne_binary()) -> lookup_ret().
 do_lookup(Number, AccountId) ->
     Db = kz_util:format_account_db(AccountId),
     lager:info("searching for callflow in ~s to satisfy '~s'", [Db, Number]),
@@ -76,14 +87,16 @@ do_lookup(Number, AccountId) ->
             cache_callflow_number(Number, AccountId, Flow)
     end.
 
+-spec cache_callflow_number(ne_binary(), ne_binary(), kzd_callflow:doc()) -> lookup_ret().
 cache_callflow_number(Number, AccountId, Flow) ->
     AccountDb = kz_util:format_account_db(AccountId),
     CacheOptions = [{'origin', [{'db', AccountDb, <<"callflow">>}]}
                    ,{'expires', ?MILLISECONDS_IN_HOUR}
                    ],
     kz_cache:store_local(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Number, AccountId), kz_doc:id(Flow), CacheOptions),
-    {'ok', Flow, Number =:= ?NO_MATCH_CF}.
+    {'ok', Flow, contains_no_match(Flow)}.
 
+-spec maybe_use_nomatch(ne_binary(), ne_binary()) -> lookup_ret().
 %% only route to nomatch when Number is all digits and/or +
 maybe_use_nomatch(<<"+", Number/binary>>, AccountId) ->
     maybe_use_nomatch(Number, AccountId);
@@ -95,6 +108,7 @@ maybe_use_nomatch(Number, AccountId) ->
             {'error', 'not_found'}
     end.
 
+-spec is_digit(char()) -> boolean().
 is_digit(X) when X >= $0, X =< $9 -> 'true';
 is_digit(_) -> 'false'.
 

@@ -10,6 +10,8 @@
 
 -export([new/0
         ,type/0
+        ,numbers/1, set_numbers/2
+        ,patterns/1, set_patterns/2
         ,is_feature_code/1
         ,flow/1, flow/2
         ,set_flow/2, validate_flow/1
@@ -25,6 +27,8 @@
 -define(FEATURE_CODE, <<"featurecode">>).
 -define(PVT_TYPE, <<"callflow">>).
 -define(FLOW, <<"flow">>).
+-define(NUMBERS, <<"numbers">>).
+-define(PATTERNS, <<"patterns">>).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -92,10 +96,44 @@ type() -> ?PVT_TYPE.
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec numbers(doc()) -> ne_binaries().
+numbers(Doc) ->
+    kz_json:get_value(?NUMBERS, Doc, []).
+
+-spec set_numbers(doc(), ne_binaries()) -> doc().
+set_numbers(Doc, Numbers) ->
+    kz_json:set_value(?NUMBERS, Numbers, Doc).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec patterns(doc()) -> ne_binaries().
+patterns(Doc) ->
+    kz_json:get_value(?PATTERNS, Doc, []).
+
+-spec set_patterns(doc(), ne_binaries()) -> doc().
+set_patterns(Doc, Patterns) ->
+    kz_json:set_value(?PATTERNS, Patterns, Doc).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec is_feature_code(doc()) -> boolean().
 is_feature_code(Doc) ->
     kz_json:get_value(?FEATURE_CODE, Doc, 'false') =/= 'false'.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec flow(doc()) -> api_object().
 -spec flow(doc(), Default) -> kz_json:object() | Default.
 flow(Doc) ->
