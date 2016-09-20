@@ -14,19 +14,23 @@
 -export([send_cmd/4]).
 -export([get_fs_kv/2, get_fs_kv/3, get_fs_key_and_value/3]).
 -export([get_fs_key/1]).
--export([process_fs_kv/4, format_fs_kv/4, fs_args_to_binary/1]).
+-export([process_fs_kv/4, format_fs_kv/4]).
+-export([fs_args_to_binary/1, fs_args_to_binary/2]).
 -export([multi_set_args/3, multi_unset_args/3]).
+-export([multi_set_args/4, multi_unset_args/4]).
+
 -export([get_expires/1]).
 -export([get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, get_orig_port/1]).
 -export([custom_channel_vars/1]).
+-export([conference_channel_vars/1]).
 -export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
 -export([is_node_up/1, is_node_up/2]).
 -export([build_bridge_string/1, build_bridge_string/2]).
 -export([build_channel/1]).
 -export([build_simple_channels/1]).
 -export([create_masquerade_event/2, create_masquerade_event/3]).
--export([media_path/3, media_path/4
+-export([media_path/1, media_path/2, media_path/3, media_path/4
         ,lookup_media/4
         ]).
 -export([unserialize_fs_array/1, unserialize_fs_props/1]).
@@ -83,6 +87,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec send_cmd(atom(), ne_binary(), text(), text()) -> send_cmd_ret().
+send_cmd(_Node, _UUID, <<"kz_multiset">>, <<"^^">>) -> 'ok';
 send_cmd(Node, UUID, App, Args) when not is_list(App) ->
     send_cmd(Node, UUID, kz_util:to_list(App), Args);
 send_cmd(Node, UUID, "xferext", Dialplan) ->
@@ -288,6 +293,26 @@ map_fs_path_to_sip_profile(FsPath, NetworkMap) ->
             kz_json:get_ne_value(<<"custom_sip_interface">>, V)
     end.
 
+conference_channel_vars(Props) ->
+    lists:map(fun conference_channel_var_map/1, conference_channel_vars(Props, [])).
+
+conference_channel_vars(Props, Initial) ->
+    lists:foldl(fun conference_channel_vars_fold/2, Initial, Props).
+
+-spec conference_channel_vars_fold({ne_binary(), ne_binary()}, kz_proplist()) -> kz_proplist().
+conference_channel_vars_fold({Key, V}, Acc) ->
+    case lists:member(Key, ?CONFERENCE_VARS) of
+        'true' -> [{Key, V} | Acc];
+        'false' -> Acc
+    end.
+
+conference_channel_var_map({Key, Value}=KV) ->
+    case props:get_value(Key, ?CONFERENCE_VAR_MAP) of
+        'undefined' -> KV;
+        {NewName, Fun} -> {NewName, Fun(Value)};
+        Fun -> {Key, Fun(Value)}
+    end.
+
 -spec channel_var_map({ne_binary(), ne_binary()}) -> {ne_binary(), ne_binary() | ne_binaries()}.
 channel_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
     {Key, binary:split(Serialized, <<"|:">>, ['global'])};
@@ -412,17 +437,31 @@ is_node_up(Node, UUID) ->
 %%--------------------------------------------------------------------
 -spec multi_set_args(atom(), ne_binary(), kz_proplist()) -> binary().
 multi_set_args(Node, UUID, KVs) ->
-    fs_args_to_binary(process_fs_kv(Node, UUID, KVs, 'set')).
+    multi_set_args(Node, UUID, KVs, <<?FS_MULTI_VAR_SEP>>).
+
+-spec multi_set_args(atom(), ne_binary(), kz_proplist(), ne_binary()) -> binary().
+multi_set_args(Node, UUID, KVs, Separator) ->
+    fs_args_to_binary(lists:reverse(process_fs_kv(Node, UUID, KVs, 'set')), Separator).
 
 -spec multi_unset_args(atom(), ne_binary(), kz_proplist()) -> binary().
 multi_unset_args(Node, UUID, KVs) ->
-    fs_args_to_binary(process_fs_kv(Node, UUID, KVs, 'unset')).
+    multi_unset_args(Node, UUID, KVs, <<?FS_MULTI_VAR_SEP>>).
+
+-spec multi_unset_args(atom(), ne_binary(), kz_proplist(), ne_binary()) -> binary().
+multi_unset_args(Node, UUID, KVs, Separator) ->
+    fs_args_to_binary(lists:reverse(process_fs_kv(Node, UUID, KVs, 'unset')), Separator).
 
 -spec fs_args_to_binary(list()) -> binary().
 fs_args_to_binary([_]=Args) ->
     list_to_binary(Args);
 fs_args_to_binary(Args) ->
-    Bins = [list_to_binary([?FS_MULTI_VAR_SEP, Arg]) || Arg <- Args],
+    fs_args_to_binary(Args, <<?FS_MULTI_VAR_SEP>>).
+
+-spec fs_args_to_binary(list(), ne_binary()) -> binary().
+fs_args_to_binary([_]=Args, _Sep) ->
+    list_to_binary(Args);
+fs_args_to_binary(Args, Sep) ->
+    Bins = [list_to_binary([Sep, Arg]) || Arg <- Args],
     list_to_binary([?FS_MULTI_VAR_SEP_PREFIX, Bins]).
 
 -spec process_fs_kv(atom(), ne_binary(), kz_proplist(), atom()) -> [binary()].
@@ -952,6 +991,12 @@ create_masquerade_event(Application, EventName, Boolean) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec media_path(ne_binary()) -> ne_binary().
+media_path(MediaName) -> media_path(MediaName, 'new', kz_util:rand_hex_binary(16), kz_json:new()).
+
+-spec media_path(ne_binary(), kz_json:object()) -> ne_binary().
+media_path(MediaName, JObj) -> media_path(MediaName, 'new', kz_util:rand_hex_binary(16), JObj).
+
 -spec media_path(ne_binary(), ne_binary(), kz_json:object()) -> ne_binary().
 media_path(MediaName, UUID, JObj) -> media_path(MediaName, 'new', UUID, JObj).
 
@@ -960,6 +1005,7 @@ media_path('undefined', _Type, _UUID, _) -> <<"silence_stream://5">>;
 media_path(<<>>, _Type, _UUID, _) -> <<"silence_stream://5">>;
 media_path(MediaName, Type, UUID, JObj) when not is_binary(MediaName) ->
     media_path(kz_util:to_binary(MediaName), Type, UUID, JObj);
+media_path(<<"say:", _/binary>> = Say, _Type, _UUID, _) -> Say;
 media_path(<<"silence">> = Media, _Type, _UUID, _) -> Media;
 media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID, _) -> Media;
 media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID, _) -> Media;

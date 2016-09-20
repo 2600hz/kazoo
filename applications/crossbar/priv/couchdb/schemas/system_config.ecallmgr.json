@@ -167,10 +167,6 @@
             "description": "ecallmgr fetch timeout",
             "type": "integer"
         },
-        "force_conference_verbose_events": {
-            "description": "ecallmgr force conference verbose events",
-            "type": "boolean"
-        },
         "freeswitch_context": {
             "default": "context_2",
             "description": "ecallmgr freeswitch context",
@@ -315,8 +311,12 @@
             "description": "ecallmgr publish channel state",
             "type": "boolean"
         },
-        "publish_participant_event": {
+        "publish_conference_event": {
             "default": [
+                "conference-create",
+                "conference-destroy",
+                "lock",
+                "unlock",
                 "add-member",
                 "del-member",
                 "stop-talking",
@@ -326,7 +326,7 @@
                 "deaf-member",
                 "undeaf-member"
             ],
-            "description": "ecallmgr publish participant event",
+            "description": "ecallmgr publish conference event",
             "type": "array"
         },
         "record_sample_rate": {

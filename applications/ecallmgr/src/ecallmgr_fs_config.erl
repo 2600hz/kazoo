@@ -206,6 +206,10 @@ handle_config_req(Node, Id, <<"sofia.conf">>, _Props) ->
 handle_config_req(Node, Id, <<"conference.conf">>, Data) ->
     kz_util:put_callid(Id),
     fetch_conference_config(Node, Id, kzd_freeswitch:event_name(Data), Data);
+handle_config_req(Node, Id, <<"kazoo.conf">> = Conf, _Data) ->
+    kz_util:put_callid(Id),
+    lager:debug("received configuration request for kazoo configuration ~p , ~p", [Node, Id]),
+    config_req_not_handled(Node, Id, Conf);
 handle_config_req(Node, Id, Conf, Data) ->
     kz_util:put_callid(Id),
     handle_config_req(Node, Id, Conf, Data, ecallmgr_config:get(<<"configuration_handlers">>)).
@@ -393,18 +397,16 @@ fix_conference_profile(Resp) ->
 -spec fix_conference_profile(kz_json:key(), kz_json:object()) -> {kz_json:key(), kz_json:object()}.
 fix_conference_profile(Name, Profile) ->
     Routines = [fun maybe_fix_profile_tts/1
-               ,fun maybe_set_verbose_events/1
+               ,fun conference_sounds/1
+               ,fun set_verbose_events/1
                ,{fun kz_json:set_value/3, <<"caller-controls">>, <<"caller-controls">>}
                ,{fun kz_json:set_value/3, <<"moderator-controls">>, <<"moderator-controls">>}
                ],
     {Name, kz_json:exec(Routines, Profile)}.
 
--spec maybe_set_verbose_events(kz_json:object()) -> kz_json:object().
-maybe_set_verbose_events(Profile) ->
-    case ecallmgr_config:is_true(<<"force_conference_verbose_events">>) of
-        'true' -> kz_json:set_value(<<"verbose-events">>, <<"true">>, Profile);
-        'false' -> Profile
-    end.
+-spec set_verbose_events(kz_json:object()) -> kz_json:object().
+set_verbose_events(Profile) ->
+    kz_json:set_value(<<"verbose-events">>, <<"true">>, Profile).
 
 -spec maybe_fix_profile_tts(kz_json:object()) -> kz_json:object().
 maybe_fix_profile_tts(Profile) ->
@@ -419,6 +421,19 @@ fix_flite_tts(Profile) ->
     Voice = kz_json:get_value(<<"tts-voice">>, Profile),
     kz_json:set_value(<<"tts-voice">>, ecallmgr_fs_flite:voice(Voice), Profile).
 
+-spec conference_sounds(kz_json:object()) -> kz_json:object().
+conference_sounds(Profile) ->
+    kz_json:foldl(fun conference_sound/3, Profile, Profile).
+
+conference_sound(Key, Value, Profile) ->
+    maybe_convert_sound(kz_util:binary_reverse(Key), Key, Value, Profile).
+
+maybe_convert_sound(<<"dnuos-", _/binary>>, Key, Value, Profile) ->
+    MediaName = ecallmgr_util:media_path(Value),
+    kz_json:set_value(Key, MediaName, Profile);
+maybe_convert_sound(_, _, _, Profile) -> Profile.
+
+
 -spec fetch_conference_config(atom(), ne_binary(), ne_binary(), kz_proplist()) -> fs_sendmsg_ret().
 fetch_conference_config(Node, Id, <<"COMMAND">>, Data) ->
     maybe_fetch_conference_profile(Node, Id, props:get_value(<<"profile_name">>, Data));
@@ -432,13 +447,13 @@ fetch_conference_params(Node, Id, <<"request-controls">>, ConfName, Data) ->
     Controls = props:get_value(<<"Controls">>, Data),
     lager:debug("request controls:~p for conference:~p", [Controls, ConfName]),
     Cmd = [{<<"Request">>, <<"Controls">>}
-           ,{<<"Profile">>, ConfName}
-           ,{<<"Controls">>, Controls} | kz_api:default_headers(?APP_NAME, ?APP_VERSION)],
+          ,{<<"Profile">>, ConfName}
+          ,{<<"Controls">>, Controls} | kz_api:default_headers(?APP_NAME, ?APP_VERSION)],
     Resp = kz_amqp_worker:call(Cmd
-                               ,fun kapi_conference:publish_config_req/1
-                               ,fun kapi_conference:config_resp_v/1
-                               ,ecallmgr_fs_node:fetch_timeout(Node)
-                               ),
+                              ,fun kapi_conference:publish_config_req/1
+                              ,fun kapi_conference:config_resp_v/1
+                              ,ecallmgr_fs_node:fetch_timeout(Node)
+                              ),
     {'ok', Xml} = handle_conference_params_response(Resp),
     send_conference_profile_xml(Node, Id, Xml);
 fetch_conference_params(Node, Id, Action, ConfName, _Data) ->
@@ -464,7 +479,7 @@ maybe_fetch_conference_profile(Node, Id, 'undefined') ->
 
 maybe_fetch_conference_profile(Node, Id, Profile) ->
     Cmd = [{<<"Request">>, <<"Conference">>}
-           ,{<<"Profile">>, Profile}
+          ,{<<"Profile">>, Profile}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("fetching profile '~s'", [Profile]),

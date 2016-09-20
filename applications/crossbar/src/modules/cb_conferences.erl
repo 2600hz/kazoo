@@ -43,22 +43,6 @@
 
 -define(PUT_ACTION, <<"action">>).
 
--define(PARTICIPANT_INFO_FIELDS, [<<"Is-Moderator">>
-                                 ,<<"Video">>
-                                 ,<<"Current-Energy">>
-                                 ,<<"Energy-Level">>
-                                 ,<<"Participant-ID">>
-                                 ,<<"Mute-Detect">>
-                                 ,<<"Talking">>
-                                 ,<<"Speak">>
-                                 ,<<"Hear">>
-                                 ,<<"Floor">>
-                                 ,<<"Join-Time">>
-                                 ,<<"Duration">>
-                                 ,<<"Caller-ID-Name">>
-                                 ,<<"Caller-ID-Number">>
-                                 ]).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -310,28 +294,27 @@ handle_participants_action(Context, _ConferenceId, _Action) ->
 %% action applicable to conference participants selected by selector function
 -spec handle_participants_action(cb_context:context(), ne_binary(), ne_binary(), function()) -> cb_context:context().
 handle_participants_action(Context, ConferenceId, Action, Selector) ->
-    Participants = extract_participants(
-                     request_conference_details(ConferenceId)
-                    ),
-    Conference = conference(ConferenceId),
-    _ = [perform_participant_action(Conference, Action, kz_json:get_value(<<"Participant-ID">>, P))
-         || P <- Participants, Selector(P)
+    ConfData = request_conference_details(ConferenceId),
+    Participants = extract_participants(ConfData),
+    Conf = conference(ConferenceId),
+    _ = [perform_participant_action(Conf, Action, kz_json:get_value(<<"Participant-ID">>, P))
+         || P <- Participants, filter_participant(P, Selector)
         ],
-    enrich_participants(ConferenceId, Context).
+    Context.
+
+filter_participant(JObj, Fun) ->
+    ConfVars = kz_json:get_value(<<"Conference-Channel-Vars">>, JObj, kz_json:new()),
+    Fun(ConfVars).
 
 -spec perform_participant_action(kapps_conference:conference(), ne_binary(), api_integer()) -> 'ok'.
 perform_participant_action(Conference, ?MUTE, ParticipantId) ->
-    kapps_conference_command:mute_participant(ParticipantId, Conference),
-    kapps_conference_command:prompt(<<"conf-muted">>, ParticipantId, Conference);
+    kapps_conference_command:mute_participant(ParticipantId, Conference);
 perform_participant_action(Conference, ?UNMUTE, ParticipantId) ->
-    kapps_conference_command:unmute_participant(ParticipantId, Conference),
-    kapps_conference_command:prompt(<<"conf-unmuted">>, ParticipantId, Conference);
+    kapps_conference_command:unmute_participant(ParticipantId, Conference);
 perform_participant_action(Conference, ?DEAF, ParticipantId) ->
-    kapps_conference_command:deaf_participant(ParticipantId, Conference),
-    kapps_conference_command:prompt(<<"conf-deaf">>, ParticipantId, Conference);
+    kapps_conference_command:deaf_participant(ParticipantId, Conference);
 perform_participant_action(Conference, ?UNDEAF, ParticipantId) ->
-    kapps_conference_command:undeaf_participant(ParticipantId, Conference),
-    kapps_conference_command:prompt(<<"conf-undeaf">>, ParticipantId, Conference);
+    kapps_conference_command:undeaf_participant(ParticipantId, Conference);
 perform_participant_action(Conference, ?KICK, ParticipantId) ->
     kapps_conference_command:kick(ParticipantId, Conference).
 
@@ -342,18 +325,18 @@ enrich_participant(ParticipantId, ConferenceId, Context) ->
                      request_conference_details(ConferenceId)
                     ),
     [Normalized|_] = [kz_json:normalize_jobj(JObj)
-                      || JObj <- request_call_details(Participants),
+                      || JObj <- Participants,
                          kz_json:get_binary_value(<<"Participant-ID">>, JObj) == ParticipantId
                      ] ++ [kz_json:new()],
-    crossbar_util:response(Normalized, Context).
+    cb_context:set_resp_data(Context, Normalized).
 
 -spec enrich_participants(ne_binary(), cb_context:context()) -> cb_context:context().
 enrich_participants(ConferenceId, Context) ->
     Participants = extract_participants(
                      request_conference_details(ConferenceId)
                     ),
-    Normalized = [kz_json:normalize_jobj(JObj) || JObj <- request_call_details(Participants)],
-    crossbar_util:response(Normalized, Context).
+    Normalized = [kz_json:normalize_jobj(JObj) || JObj <- Participants],
+    cb_context:set_resp_data(Context, Normalized).
 
 -spec enrich_conference(ne_binary(), cb_context:context()) -> cb_context:context().
 enrich_conference(ConferenceId, Context) ->
@@ -371,12 +354,13 @@ enrich_conference(JObj) ->
 conference_realtime_data(ConferenceId) ->
     ConferenceDetails = request_conference_details(ConferenceId),
     Participants = extract_participants(ConferenceDetails),
+    {Moderators, Members} = partition_participants_count(Participants),
     kz_json:from_list(
-      [{<<"members">>, count_members(Participants)}
-      ,{<<"moderators">>, count_admins(Participants)}
+      [{<<"members">>, Members}
+      ,{<<"moderators">>, Moderators}
       ,{<<"duration">>, run_time(ConferenceDetails)}
       ,{<<"is_locked">>, kz_json:get_value(<<"Locked">>, ConferenceDetails, 'false')}
-      ,{<<"participants">>, [kz_json:normalize_jobj(filter_fields(Participant)) || Participant <- Participants]}
+      ,{<<"participants">>, [kz_json:normalize_jobj(Participant) || Participant <- Participants]}
       ]).
 
 -spec request_conference_details(ne_binary()) -> kz_json:object().
@@ -402,27 +386,6 @@ find_conference_details(JObjs) ->
     of
         [Latest|_] -> Latest;
         _Else -> kz_json:new()
-    end.
-
--spec request_call_details(kz_json:objects()) -> kz_json:objects().
--spec request_call_details(kz_json:objects(), kz_json:obejcts()) -> kz_json:objects().
-request_call_details(Participants) -> request_call_details(Participants, []).
-request_call_details([], JObjs) -> JObjs;
-request_call_details([Participant | Participants], JObjs) ->
-    CallId = kz_json:get_value(<<"Call-ID">>, Participant),
-    Req = [{<<"Call-ID">>, CallId}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    case kapps_util:amqp_pool_request(Req
-                                     ,fun kapi_call:publish_channel_status_req/1
-                                     ,fun kapi_call:channel_status_resp_v/1
-                                     ) of
-        {'error', _E} ->
-            lager:debug("error fetching channel status for ~s (~p)", [CallId, _E]),
-            request_call_details(Participants, [filter_fields(Participant) | JObjs]);
-        {'ok', Resp} ->
-            JObj = kz_json:set_value(<<"channel">>, Resp, filter_fields(Participant)),
-            request_call_details(Participants, [JObj | JObjs])
     end.
 
 %%%===================================================================
@@ -451,16 +414,19 @@ add_duration_to_participants(Participants) ->
      || Participant <- Participants
     ].
 
--spec filter_fields(kz_json:object()) -> kz_json:object().
-filter_fields(Participant) ->
-    kz_json:filter(fun({Key, _}) ->
-                           lists:member(Key, ?PARTICIPANT_INFO_FIELDS)
-                   end, Participant).
+-spec partition_participants_count(kz_json:objects()) -> {integer(), integer()}.
+partition_participants_count(Participants) ->
+    partition_participants_count(Participants, fun(P) -> kz_json:is_true(<<"Is-Moderator">>, P) end).
 
--spec count_admins(kz_json:objects()) -> integer().
-count_admins(Participants) ->
-    erlang:length([ P || P <- Participants, kz_json:is_true(<<"Is-Moderator">>, P) ]).
+-spec partition_participants_count(kz_json:objects(), fun((kz_json:object()) -> boolean())) -> {integer(), integer()}.
+partition_participants_count(Participants, Fun) ->
+    {A, B} = partition_participants(Participants, Fun),
+    {erlang:length(A), erlang:length(B)}.
 
--spec count_members(kz_json:objects()) -> integer().
-count_members(Participants) ->
-    erlang:length([ P || P <- Participants, kz_json:is_false(<<"Is-Moderator">>, P) ]).
+%% -spec partition_participants(kz_json:objects()) -> {kz_json:objects(), kz_json:objects()}.
+%% partition_participants(Participants) ->
+%%     partition_participants(Participants, fun(P) -> kz_json:is_true(<<"Is-Moderator">>, P) end).
+
+-spec partition_participants(kz_json:objects(), fun()) -> {kz_json:objects(), kz_json:objects()}.
+partition_participants(Participants, Fun) ->
+    lists:partition(Fun, Participants).

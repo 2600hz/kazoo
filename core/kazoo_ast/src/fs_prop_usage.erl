@@ -25,7 +25,7 @@ write_usage_to_header(Usage) ->
 
 write_usage_to_header(Usage, IO) ->
     EventFilters = lists:foldl(fun write_mod_usage/2, sets:new(), Usage),
-    [First|Sorted] = lists:usort(sets:to_list(EventFilters)),
+    [First|Sorted] = lists:usort(lists:filter(fun ignored_headers/1, sets:to_list(EventFilters))),
 
     'ok' = file:write(IO, io_lib:format("-define(FS_EVENT_FITLERS~n       ,[~p~n", [First])),
     lists:foreach(fun(Filter) ->
@@ -35,6 +35,10 @@ write_usage_to_header(Usage, IO) ->
                  ),
     'ok' = file:write(IO, "        ])."),
     'ok' = file:close(IO).
+
+ignored_headers(<<"variable_ecallmgr", _/binary>>) -> 'false';
+ignored_headers(<<"variable_sip_h", _/binary>>) -> 'false';
+ignored_headers(_) -> 'true'.
 
 write_mod_usage({_Mod, Usages}, AccSet) ->
     Keys = usage_keys(Usages),
@@ -123,6 +127,10 @@ process_action(Module, Function, Args, Acc) ->
     Us ++ Acc.
 
 %% define entry points for modules
+function_args('ecallmgr_util') ->
+    [{'custom_channel_vars', [?VAR(0, 'Props')]}
+    ,{'conference_channel_vars', [?VAR(0, 'Props')]}
+    ];
 function_args('ecallmgr_channel_move') ->
     {'rebuild_channel'
     ,[?VAR(0, 'UUID'), ?VAR(0, 'NewNode'), ?VAR(0, 'Props')]

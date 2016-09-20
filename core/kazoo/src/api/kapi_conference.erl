@@ -8,6 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kapi_conference).
 
+-export([event/1, event_v/1]).
 -export([focus_queue_name/1]).
 -export([search_req/1, search_req_v/1]).
 -export([search_resp/1, search_resp_v/1]).
@@ -69,6 +70,7 @@
 -export([publish_error/2, publish_error/3]).
 -export([publish_participant_event/3, publish_participant_event/4]).
 -export([publish_command/2, publish_command/3]).
+-export([publish_event/1, publish_event/2]).
 -export([publish_targeted_command/2, publish_targeted_command/3]).
 -export([publish_config_req/1, publish_config_req/2
         ,publish_config_resp/2, publish_config_resp/3
@@ -328,6 +330,30 @@
 -define(PARTICIPANT_EVENT_VALUES, [{<<"Event-Category">>, <<"conference">>}, {<<"Event-Name">>, <<"participant_event">>}]).
 -define(PARTICIPANT_EVENT_TYPES, []).
 
+%% Conference Event
+-define(CONFERENCE_EVENT_KEY(Event, AccountId, ConferenceId, CallId),
+        <<Event/binary, "."
+          ,AccountId/binary, "."
+          ,ConferenceId/binary, "."
+          ,(amqp_util:encode(CallId))/binary
+        >>).
+-define(CONFERENCE_EVENT_HEADERS, [<<"Event">>
+                                  ,<<"Conference-ID">>
+                                  ,<<"Instance-ID">>
+                                  ]).
+-define(OPTIONAL_CONFERENCE_EVENT_HEADERS, [<<"Call-ID">>
+                                           ,<<"Participant-ID">>
+                                           ,<<"Caller-ID-Name">>
+                                           ,<<"Caller-ID-Number">>
+                                           ,<<"Channel-Presence-ID">>
+                                           ,<<"Custom-Channel-Vars">>
+                                           ,<<"Conference-Channel-Vars">>
+                                           ]).
+-define(CONFERENCE_EVENT_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                                 ,{<<"Event-Name">>, <<"event">>}
+                                 ]).
+-define(CONFERENCE_EVENT_TYPES, []).
+
 %% Conference Error
 -define(CONFERENCE_ERROR_HEADERS, [<<"Error-Message">>, <<"Request">>]).
 -define(OPTIONAL_CONFERENCE_ERROR_HEADERS, []).
@@ -372,7 +398,7 @@
                         ,{<<"play_macro">>, ?CONF_PLAY_MACRO_REQ_VALUES, fun play_macro_req/1}
                         ]).
 
--define(CONF_PLAY_MACRO_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Commands">>]).
+-define(CONF_PLAY_MACRO_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Media-Macro">>]).
 -define(OPTIONAL_CONF_PLAY_MACRO_REQ_HEADERS, []).
 -define(CONF_PLAY_MACRO_REQ_VALUES, []).
 -define(CONF_PLAY_MACRO_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
@@ -878,6 +904,24 @@ participant_event_v(JObj) -> participant_event_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec event(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+event(Prop) when is_list(Prop) ->
+    case event_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?CONFERENCE_EVENT_HEADERS, ?OPTIONAL_CONFERENCE_EVENT_HEADERS);
+        'false' -> {'error', "Proplist failed validation for conference event"}
+    end;
+event(JObj) -> event(kz_json:to_proplist(JObj)).
+
+-spec event_v(api_terms()) -> boolean().
+event_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?CONFERENCE_EVENT_HEADERS, ?CONFERENCE_EVENT_VALUES, ?CONFERENCE_EVENT_TYPES);
+event_v(JObj) -> event_v(kz_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
 -spec conference_error(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 conference_error(Prop) when is_list(Prop) ->
     case conference_error_v(Prop) of
@@ -953,13 +997,14 @@ bind_to_q(Q, ['config'|T], Props) ->
     Profile = props:get_value('profile', Props, <<"*">>),
     'ok' = amqp_util:bind_q_to_conference(Q, 'config', Profile),
     bind_to_q(Q, T, Props);
-bind_to_q(Q, [{'event', {ConfId, CallId}}|T], Props) ->
-    EncodedCallId = amqp_util:encode(CallId),
-    'ok' = amqp_util:bind_q_to_conference(Q, 'event', ConfId, EncodedCallId),
+
+bind_to_q(Q, [{'event', {_ConfId, _CallId}=Key}|T], Props) ->
+    'ok' = amqp_util:bind_q_to_conference(Q, 'event', event_binding_key(Key)),
     bind_to_q(Q, T, Props);
-bind_to_q(Q, [{'event', ConfId}|T], Props) ->
-    'ok' = amqp_util:bind_q_to_conference(Q, 'event', ConfId),
+bind_to_q(Q, [{'event', ConfIdOrProps}|T], Props) ->
+    'ok' = amqp_util:bind_q_to_conference(Q, 'event', event_binding_key(ConfIdOrProps)),
     bind_to_q(Q, T, Props);
+
 bind_to_q(Q, [{'command', ConfId}|T], Props) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'command', ConfId),
     bind_to_q(Q, T, Props);
@@ -992,13 +1037,14 @@ unbind_from_q(Q, ['config'|T], Props) ->
     Profile = props:get_value('profile', Props, <<"*">>),
     'ok' = amqp_util:unbind_q_from_conference(Q, 'config', Profile),
     unbind_from_q(Q, T, Props);
-unbind_from_q(Q, [{event, {ConfId, CallId}}|T], Props) ->
-    EncodedCallId = amqp_util:encode(CallId),
-    'ok' = amqp_util:unbind_q_from_conference(Q, 'event', ConfId, EncodedCallId),
+
+unbind_from_q(Q, [{'event', {_ConfId, _CallId}=Key}|T], Props) ->
+    'ok' = amqp_util:unbind_q_from_conference(Q, 'event', event_binding_key(Key)),
     unbind_from_q(Q, T, Props);
-unbind_from_q(Q, [{'event', ConfId}|T], Props) ->
-    'ok' = amqp_util:unbind_q_from_conference(Q, 'event', ConfId),
+unbind_from_q(Q, [{'event', ConfIdOrProps}|T], Props) ->
+    'ok' = amqp_util:unbind_q_from_conference(Q, 'event', event_binding_key(ConfIdOrProps)),
     unbind_from_q(Q, T, Props);
+
 unbind_from_q(Q, [{'command', ConfId}|T], Props) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'command', ConfId),
     bind_to_q(Q, T, Props);
@@ -1311,6 +1357,43 @@ publish_participant_event(ConferenceId, CallId, JObj) ->
 publish_participant_event(ConferenceId, CallId, Event, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Event, ?PARTICIPANT_EVENT_VALUES, fun participant_event/1),
     amqp_util:conference_publish(Payload, 'event', ConferenceId, amqp_util:encode(CallId), [], ContentType).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Publish to the conference exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_event(api_terms()) -> 'ok'.
+-spec publish_event(api_terms(), ne_binary()) -> 'ok'.
+publish_event(API) ->
+    publish_event(API, ?DEFAULT_CONTENT_TYPE).
+publish_event(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?CONFERENCE_EVENT_VALUES, fun event/1),
+    amqp_util:conference_publish(Payload, 'event', event_key(API), [], ContentType).
+
+event_binding_key(ConferenceId)
+  when is_binary(ConferenceId) ->
+    ?CONFERENCE_EVENT_KEY(<<"*">>, <<"*">>, ConferenceId, <<"*">>);
+event_binding_key({ConferenceId, CallId}) ->
+    ?CONFERENCE_EVENT_KEY(<<"*">>, <<"*">>, ConferenceId, CallId);
+event_binding_key(Props) ->
+    Event = props:get_value('event', Props, <<"*">>),
+    AccountId = props:get_value('account_id', Props, <<"*">>),
+    ConferenceId = props:get_value('conference_id', Props, <<"*">>),
+    CallId = props:get_value('call_id', Props, <<"*">>),
+    ?CONFERENCE_EVENT_KEY(Event, AccountId, ConferenceId, CallId).
+
+event_key(API)
+  when is_list(API) ->
+    event_key(kz_json:from_list(API));
+event_key(API) ->
+    Event = kz_json:get_value(<<"Event">>, API),
+    AccountId = kz_json:get_first_defined([<<"Account-ID">>
+                                          ,[<<"Custom-Channel-Vars">>]
+                                          ], API),
+    ConferenceId = kz_json:get_value(<<"Conference-ID">>, API),
+    CallId = kz_json:get_value(<<"Call-ID">>, API, ConferenceId),
+    ?CONFERENCE_EVENT_KEY(Event, AccountId, ConferenceId, CallId).
 
 %%--------------------------------------------------------------------
 %% @doc

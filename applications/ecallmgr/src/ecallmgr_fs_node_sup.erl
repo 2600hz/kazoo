@@ -36,11 +36,11 @@
 -define(NODE_SUPERVISOR, ?NODE_CHILD_TYPE(<<"supervisor">>)).
 
 -define(CHILDREN, kz_json:from_list(
-                    [{<<"node">>, ?NODE_WORKER}
+                    [{<<"config">>, ?NODE_WORKER}
+                    ,{<<"node">>, ?NODE_WORKER}
                     ,{<<"authn">>, ?NODE_WORKER}
                     ,{<<"channel">>, ?NODE_WORKER}
                     ,{<<"conference">>, ?NODE_WORKER}
-                    ,{<<"config">>, ?NODE_WORKER}
                     ,{<<"event_stream_sup">>, ?NODE_SUPERVISOR}
                     ,{<<"msg">>, ?NODE_WORKER}
                     ,{<<"notify">>, ?NODE_WORKER}
@@ -138,7 +138,7 @@ init([Node, Options]) ->
     Args = [Node, Options],
     Modules = ecallmgr_config:get(<<"modules">>, ?CHILDREN),
     JObj = maybe_correct_modules(Modules),
-    Children = kz_json:foldl(fun(Module, V, Acc) ->
+    Children = kz_json:foldr(fun(Module, V, Acc) ->
                                      Type = kz_json:get_ne_binary_value(<<"type">>, V),
                                      [child_name(NodeB, Args, Module, Type) | Acc]
                              end, [], JObj),
@@ -163,21 +163,33 @@ srv([{Name, Pid, _, _} | Children], Suffix) ->
         'false' -> srv(Children, Suffix)
     end.
 
+-spec maybe_correct_modules(list() | kz_json:object()) -> kz_json:object().
 maybe_correct_modules(Modules)
   when is_list(Modules) ->
     FixedModules = [fix_module(Mod) || Mod <- Modules],
     maybe_correct_modules(kz_json:from_list(FixedModules));
-maybe_correct_modules(JObj) -> kz_json:merge_jobjs(JObj, ?CHILDREN).
+maybe_correct_modules(JObj) -> set_order(kz_json:merge_jobjs(JObj, ?CHILDREN)).
 
+-spec fix_module_type(ne_binary()) -> kz_json:object().
 fix_module_type(<<"pus_", _/binary>>) ->
     kz_json:from_list([{<<"type">>, <<"supervisor">>}]);
 fix_module_type(_) ->
     kz_json:from_list([{<<"type">>, <<"worker">>}]).
 
+-spec maybe_module_deprecated(ne_binary()) -> ne_binary().
 maybe_module_deprecated(<<"route">>) -> <<"route_sup">>;
 maybe_module_deprecated(Mod) -> Mod.
 
+-spec fix_module(ne_binary()) -> {ne_binary(), kz_json:object()}.
 fix_module(Mod) ->
     Module = maybe_module_deprecated(Mod),
     ModInv = list_to_binary(lists:reverse(binary_to_list(Module))),
     {Module, fix_module_type(ModInv)}.
+
+-spec set_order(kz_json:object()) -> kz_json:object().
+set_order(JObj) ->
+    kz_json:from_list(lists:sort(fun set_config_first/2, kz_json:to_proplist(JObj))).
+
+-spec set_config_first(tuple(), tuple()) -> boolean().
+set_config_first({<<"config">>, _}, _) -> 'true';
+set_config_first(_, _) -> 'false'.
