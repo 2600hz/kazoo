@@ -50,4 +50,5 @@ declare_exchanges() ->
     _ = kapi_pivot:declare_exchanges(), %% TODO: decouple
     _ = kapi_route:declare_exchanges(),
     _ = kapi_presence:declare_exchanges(),
+    _ = kapi_metaflow:declare_exchanges(),
     kapi_self:declare_exchanges().

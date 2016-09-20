@@ -33,4 +33,5 @@ stop(_State) ->
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
+    _ = kapi_metaflow:declare_exchanges(),
     kapi_self:declare_exchanges().
