@@ -66,7 +66,7 @@ get_range_db(AccountId, Days) ->
 -spec create_range_dbs(ne_binary(), ne_binaries()) -> dict:dict().
 create_range_dbs(AccountId, MsgIds) ->
     lists:foldl(fun(Id, Acc) ->
-                        Db = kvm_util:get_db(AccountId, Id),
+                        Db = get_db(AccountId, Id),
                         dict:append(Db, Id, Acc)
                 end, dict:new(), MsgIds).
 

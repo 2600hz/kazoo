@@ -1,12 +1,40 @@
-### Voicemail Messages
+# Kazoo Voicemail
 
-This modules tries to make a common abstraction over where voicemail message is stored.
+This library is for accessing and managing all voicemail messages in the system.
 
-Starting with Kazoo 4.0 all new voicemail messages will be stored in the account MODbs alongside their message media recording. All previous voicemail message will be moved to MODbs when updating their properties(changing their folder).
+Starting with Kazoo 4.0 all new voicemail messages goes into modb. All Kazoo Administrators need to migrate their voicemail messages from Kazoo version 3.22 to MODB. The `kvm_migrate` module is written to do this transition. For migrating messages in specific account or mailbox use helper functions from `kvm_maintenance`.
 
-Additionally, the v2 vmboxes API will no longer return the messages array and the manipulation the messages array on the v1 vmboxes API is strongly discuraged. For more information on vmboxes API see crossbar voicemail documentation.
+**Note:** Kazoo 4.0 assumes you migrated all voicemail messages to MODB, and it's only using MODBs for accessing and managing messages!
 
-#### New message
+Additionally, the vmboxes API endpoint will no longer return the messages array when fetching voicemail box settings.
+
+## Messages in MODb
+
+Voicemails used to be stored in the same location as configuration settings. Accounts older than 12 months would often get too big,
+thus this became a design issue. Voicemails have now been redesigned so that the messages are stored in a monthly database that can be purged later.
+
+All messages store in MODbs with their document id in the `YYYYMM-{32_random_character}` format.
+
+## Migrate messages to MODB process
+
+Simply moving all messages alongside their media recording to MODBs have huge impact on the system, especially if for bigger systems with thousands of messages in each account.
+
+For making this transition easy and without any side effect, Kazoo voicemail is just making a new document with each message's metadata and store them in the __current__ MODB of each account.
+All media recordings (private_media) remain in account db to be moved to message documents in MODBs at later time. Each moved message documents contain necessary info for how to access their attachemnts in the account db(soft attachment).
+
+Kazoo datamanager handle of fetching the actual media attachment from account db anytime MODB documents attachemnt tries to be reached. This process is seamless from users and are handled entirely by
+Kazoo data layer.
+
+These are configurations (`system_config/callflow/voicemail`) for controlling migration process:
+
+Key | Description | Type | Default
+--- | ----------- | ---- | ------- | --------
+`migrate_max_mailbox_process` | How many mailbox must be process in iterations | `integer` | 10
+`migrate_interbox_delay_ms` | Control wait time between processing each mailbox batch iterations | `integer` | 1000
+`migrate_interaccount_delay_ms` | Control wait time between processing each account | `integer` | 10000
+
+
+## New message
 
 Callflow voicemail module specifically uses `kvm_message:new_message/5` to record and store the new voicemail message. This function expects props from callflow as follow:
 
@@ -23,30 +51,10 @@ Callflow voicemail module specifically uses `kvm_message:new_message/5` to recor
 ]
 ```
 
-#### Messages in MODb
-
-All new messages will be stored in MODBs and old messages wil be moved to MODbs when its user made a change to message(changing message folder or deleting it). For most operations, this should be seamless from the end users.
-
-For all of the operations(counting messages in vmbox, set folders on message, getting the message, etc...) this modules tries to make an abstraction layer so the other modules doesn't need to worry about where and how to find the voicemail message.
-
-All messages stored in MODbs have their document id in the format of `YYYYMM-{32_random_character}`. This is used for identifying which message is in MODbs and which one is still in vmbox messages array.
-
-For operations on whole messages in a voicemail box, vmbox messages array will be fetched first and then its message array will be merged with result of account MODbs messages.
-
-Operations on a specific message will be performed based on it's `id` format.
-
-With Ids in old non-MODb format, media recording document with that `Id` will be fetched from `accountdb` and the message metadata will be fetched from vmbox array and they will be merged into the new message document format for accessing to them.
-
-For Ids with the newer MODbs fomrat, the whole new message document(which has the metadata and media together on the same document) will be fetched from account MODb.
-
-#### Retention duration
+## Retention duration
 
 There is a new configuration parameter `message_retention_duration` under `system_config/callflow/voicemail` for how many days voicemail messages should be considered when accessing a voicemail box. This duration also applies to deleting heard and or old messages as well.
 
-#### Migrate old messages to MODbs
-
-If you want to manually move all messages from accountdb to account MODb you can use `kvm_maintenance:migrate/0`, `kvm_maintenance:migrate/1` and `kvm_maintenance:migrate/2`.
-
-#### Clean old and heard messages
+## Clean old and heard messages
 
 For deleting old messages and heard messages you can use `kvm_maintenance:cleanup_heard_voicemail/1`.
