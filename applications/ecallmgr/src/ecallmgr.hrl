@@ -490,9 +490,6 @@
 %%                             ,{'type', <<"Member-Type">>}
 %%                             ,{'is_ghost', <<"Member-Ghost">>, fun kz_util:to_boolean/1}
 
-
-
-
 -define(CONFERENCE_VARS, [<<"variable_conference_moderator">>
                          ,<<"Floor">>
                          ,<<"Video">>

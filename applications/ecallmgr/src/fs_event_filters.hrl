@@ -1,3 +1,5 @@
+-ifndef(FS_EVENT_FILTERS_HRL).
+-include("fs_manual_event_filters.hrl").
 -define(FS_EVENT_FITLERS
        ,[<<"Acquired-UUID">>
         ,<<"Action">>
@@ -182,4 +184,7 @@
         ,<<"variable_transfer_to">>
         ,<<"variable_user_name">>
         ,<<"variable_uuid">>
+        | ?FS_MANUAL_HEADERS
         ]).
+-define(FS_EVENT_FILTERS_HRL, 'true').
+-endif.
