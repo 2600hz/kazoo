@@ -171,7 +171,7 @@ handle_info(_Info, State) ->
 %%                                    ignore
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), state()) -> handle_event_ret().
+-spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_ret().
 handle_event(_JObj, #state{node=Node
                           ,conference_id=ConferenceId
                           ,instance_id=InstanceId
