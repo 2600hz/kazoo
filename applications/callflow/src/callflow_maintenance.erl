@@ -352,7 +352,7 @@ device_classifier_deny(Classifier, Uri) ->
 -spec set_device_classifier_action(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 set_device_classifier_action(Action, Classifier, Uri) ->
     'true' = is_classifier(Classifier),
-    [User, Realm] = re:split(Uri, <<"@">>),
+    [User, Realm] = binary:split(Uri, <<"@">>),
     {'ok', AccountDb} = kapps_util:get_account_by_realm(Realm),
     Options = [{'key', User}],
     {'ok', [DeviceDoc]} = kz_datamgr:get_results(AccountDb, <<"devices/sip_credentials">>, Options),
@@ -372,9 +372,7 @@ is_classifier(Classifier) ->
     case lists:member(Classifier, Classifiers) of
         'true' -> 'true';
         'false' ->
-            io:format("classifier '~s' not among configured classifiers: ~p"
-                     ,[Classifier, Classifiers]
-                     ),
+            io:format("classifier '~s' not among configured classifiers: ~p", [Classifier, Classifiers]),
             'false'
     end.
 

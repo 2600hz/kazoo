@@ -189,11 +189,11 @@ classifier_deny(Classifier, UserR) ->
     set_classifier_action(<<"deny">>, Classifier, UserR).
 
 set_classifier_action(Action, Classifier, UserR) ->
-    io:format("Classifier: ~p",[Classifier]),
+    io:format("Classifier: ~p", [Classifier]),
     Classifiers = knm_converters:available_classifiers(),
     case lists:member(Classifier, kz_json:get_keys(Classifiers)) of
         'false' ->
-            io:format("\nNo ~p classifier among configured classifiers ~p\n",[Classifier, kz_json:get_keys(Classifiers)]),
+            io:format("\nNo ~p classifier among configured classifiers ~p\n", [Classifier, kz_json:get_keys(Classifiers)]),
             exit(no_such_classifier);
         _ ->
             io:format("  ... found\n")
