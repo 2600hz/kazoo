@@ -250,8 +250,8 @@ publish_event(Action, Props, Node) ->
 
 publish_event(Action, #conference{handling_locally=IsLocal} = Conference, Props, _Node) ->
     case props:is_true(<<"Force-Publish-Event-State">>, Props, 'false')
-        orelse props:is_true(<<"Publish-Event-State">>, Props, 'true')
-        andalso IsLocal
+        orelse (props:is_true(<<"Publish-Event-State">>, Props, 'true')
+                andalso IsLocal)
     of
         'true' -> publish_event(conference_event(Action, Conference, Props));
         'false' -> lager:debug("conference control on another node, not publishing event ~s", [Action])
