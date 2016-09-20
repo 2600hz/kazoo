@@ -396,9 +396,13 @@ load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
 
 -spec view_sort_direction(kz_proplist()) -> direction().
 view_sort_direction(Options) ->
-    case (props:get_value('startkey', Options) < props:get_value('endkey', Options)) of
-        'true' -> 'descending';
-        'false' -> 'ascending'
+    Descending = props:get_value('descending', Options),
+    StartKey = props:get_value('startkey', Options),
+    EndKey = props:get_value('endkey', Options),
+    case {Descending, StartKey, EndKey} of
+        {'true', _, _} -> 'descending';
+        {_, StartKey, EndKey} when is_integer(StartKey), is_integer(EndKey), StartKey < EndKey -> 'descending';
+        {_, _, _} -> 'ascending'
     end.
 
 load_view(#load_view_params{dbs=[]
@@ -473,16 +477,27 @@ load_view(#load_view_params{view=View
                                              )
     end.
 
--spec map_options(pos_integer(), kz_proplist()) -> kz_proplist().
+-spec map_options(term(), kz_proplist()) -> kz_proplist().
 map_options(CurrentKey, Options) ->
     OptStartKey = props:get_value('startkey', Options),
     OptEndKey = props:get_value('endkey', Options),
+    Descending = props:get_value('descending', Options),
+    map_options(CurrentKey, Descending, OptStartKey, OptEndKey, Options).
+
+-spec map_options(term(), term(), term(), term(), kz_proplist()) -> kz_proplist().
+map_options(CurrentKey, 'true', _, _, Options) ->
+    CleanOpts = props:delete_keys(['startkey', 'descending'], Options),
+    props:fiter_undefined([{'startkey', CurrentKey}, 'descending' | CleanOpts]);
+map_options(CurrentKey, _, StartKey, EndKey, Options) when
+      is_integer(CurrentKey),
+      is_integer(StartKey),
+      is_integer(EndKey),
+      StartKey < EndKey ->
     CleanOpts = props:delete_keys(['startkey', 'endkey', 'descending'], Options),
-    Re = case OptStartKey < OptEndKey of
-             'true' -> [{'startkey', OptEndKey}, {'endkey', CurrentKey}, 'descending' | CleanOpts];
-             'false' -> [{'startkey', CurrentKey}, {'endkey', OptEndKey} | CleanOpts]
-         end,
-    props:filter_undefined(Re).
+    props:filter_undefined([{'startkey', EndKey}, {'endkey', CurrentKey}, 'descending' | CleanOpts]);
+map_options(CurrentKey, _, _StartKey, _EndKey, Options) ->
+    CleanOpts = props:delete_keys(['startkey'], Options),
+    props:filter_undefined([{'startkey', CurrentKey} | CleanOpts]).
 
 -spec limit_by_page_size(api_binary() | pos_integer()) -> api_pos_integer().
 -spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer()) -> api_pos_integer().
