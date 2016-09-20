@@ -19,13 +19,14 @@
 -export([create/2]).
 -export([update/2]).
 -export([destroy/1]).
+-export([conference/1]).
 -export([node/1]).
 -export([participants/1]).
 -export([participants_to_json/1]).
--export([participant_create/3]).
+-export([participant_create/2]).
 -export([participant_update/2]).
 -export([participant_destroy/1]).
--export([participant_callid/2]).
+%%-export([participant_callid/2]).
 -export([participant_get/1]).
 -export([sync_node/1]).
 -export([flush_node/1]).
@@ -137,6 +138,18 @@ node(Name) ->
         _ -> {'error', 'not_found'}
     end.
 
+-spec conference(ne_binary()) ->  {'ok', conference()} | {'error', 'not_found'}.
+conference(UUID) ->
+    case ets:match_object(?CONFERENCES_TBL, #conference{uuid=UUID, _ = '_'}) of
+        %% TODO: this ignores conferences on multiple nodes until big-conferences
+        [#conference{}=Conference|_] -> {'ok', Conference};
+        %% [#conference{}|_]=Conferences ->
+        %%     {'error', 'multiple_conferences'
+        %%      ,[Node || #conference{node=Node} <- Conferences]
+        %%     };
+        _ -> {'error', 'not_found'}
+    end.
+
 -spec participants(conference() | ne_binary()) -> participants().
 participants(#conference{name=Name}) -> participants(Name);
 participants(Name) ->
@@ -147,9 +160,9 @@ participants(Name) ->
 participants_to_json(Participants) ->
     participants_to_json(Participants, []).
 
--spec participant_create(kz_proplist(), atom(), ne_binary()) -> participant().
-participant_create(Props, Node, CallInfo) ->
-    gen_server:call(?SERVER, {'participant_create', Props, Node, CallInfo}).
+-spec participant_create(kz_proplist(), atom()) -> participant().
+participant_create(Props, Node) ->
+    gen_server:call(?SERVER, {'participant_create', Props, Node}).
 
 -spec participant_update(ne_binary(), kz_proplist()) -> 'ok'.
 participant_update(CallId, Update) ->
@@ -167,17 +180,6 @@ participant_get(CallId) ->
 -spec participant_destroy(ne_binary()) -> 'ok'.
 participant_destroy(CallId) ->
     gen_server:call(?SERVER, {'participant_destroy', CallId}).
-
--spec participant_callid(ne_binary(), non_neg_integer()) -> api_binary().
-participant_callid(UUID, MemberId) ->
-    case ets:match(?PARTICIPANTS_TBL, #participant{conference_uuid=UUID
-                                                  ,member_id=MemberId
-                                                  ,uuid='$1'
-                                                  ,_ = '_'})
-    of
-        [[CallId]] -> CallId;
-        _Else -> 'undefined'
-    end.
 
 -spec sync_node(atom()) -> 'ok'.
 sync_node(Node) -> gen_server:cast(?SERVER, {'sync_node', Node}).
@@ -214,7 +216,7 @@ handle_search_req(JObj, _Props) ->
                    ,{<<"Participants">>, participants_to_json(Participants)}
                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
-            kapi_conference:publish_search_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp);
+            kapi_conference:publish_search_resp(kz_api:server_id(JObj), Resp);
         [] ->
             lager:debug("sending error search response, conference not found"),
             Error = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
@@ -278,8 +280,8 @@ handle_call({'conference_destroy', UUID}, _, State) ->
     MatchSpecP = [{#participant{conference_uuid=UUID, _ = '_'}, [], ['true']}],
     _ = ets:select_delete(?PARTICIPANTS_TBL, MatchSpecP),
     {'reply', 'ok', State};
-handle_call({'participant_create', Props, Node, CallInfo}, _, State) ->
-    Participant = participant_from_props(Props, Node, CallInfo),
+handle_call({'participant_create', Props, Node}, _, State) ->
+    Participant = participant_from_props(Props, Node),
     _ = ets:insert_new(?PARTICIPANTS_TBL, Participant),
     UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
     _ = case ets:lookup(?CONFERENCES_TBL, UUID) of
@@ -295,9 +297,8 @@ handle_call({'participant_update', CallId, Update}, _, State) ->
     {'reply', 'ok', State};
 handle_call({'participant_destroy', CallId}, _, State) ->
     _ = case ets:lookup(?PARTICIPANTS_TBL, CallId) of
-            [#participant{conference_uuid=UUID}] ->
-                _ = ets:delete(?PARTICIPANTS_TBL, CallId),
-                maybe_destroy_conference(UUID);
+            [#participant{}] ->
+                _ = ets:delete(?PARTICIPANTS_TBL, CallId);
             _Else -> 'ok'
         end,
     {'reply', 'ok', State};
@@ -409,6 +410,7 @@ conference_from_props(Props, Node) ->
 
 -spec conference_from_props(kz_proplist(), atom(), conference()) -> conference().
 conference_from_props(Props, Node, Conference) ->
+    CtrlNode = kz_util:to_atom(props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props), 'true'),
     Conference#conference{node=Node
                          ,uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
                          ,name=props:get_value(<<"Conference-Name">>, Props)
@@ -417,32 +419,27 @@ conference_from_props(Props, Node, Conference) ->
                          ,switch_hostname=props:get_value(<<"FreeSWITCH-Hostname">>, Props, kz_util:to_binary(Node))
                          ,switch_url=ecallmgr_fs_nodes:sip_url(Node)
                          ,switch_external_ip=ecallmgr_fs_nodes:sip_external_ip(Node)
+                         ,account_id = props:get_value(?GET_CCV(<<"Account-ID">>), Props)
+                         ,handling_locally = CtrlNode =:= node()
+                         ,origin_node = CtrlNode
+                         ,control_node = CtrlNode
                          }.
 
--spec participant_from_props(kz_proplist(), atom(), ne_binary()) -> participant().
-participant_from_props(Props, Node, CallInfo) ->
-    participant_from_props(Props, Node, CallInfo, #participant{}).
+-spec participant_from_props(kz_proplist(), atom()) -> participant().
+participant_from_props(Props, Node) ->
+    participant_from_props(Props, Node, #participant{}).
 
--spec participant_from_props(kz_proplist(), atom(), ne_binary(), participant()) -> participant().
-participant_from_props(Props, Node, CallInfo, Participant) ->
+-spec participant_from_props(kz_proplist(), atom(), participant()) -> participant().
+participant_from_props(Props, Node, Participant) ->
     Participant#participant{node=Node
-                           ,uuid=kz_json:get_value(<<"Call-ID">>, CallInfo)
+                           ,uuid=kzd_freeswitch:call_id(Props)
                            ,conference_uuid=props:get_value(<<"Conference-Unique-ID">>, Props)
                            ,conference_name=props:get_value(<<"Conference-Name">>, Props)
-                           ,floor=props:get_is_true(<<"Floor">>, Props, 'false')
-                           ,hear=props:get_is_true(<<"Hear">>, Props, 'true')
-                           ,speak=props:get_is_true(<<"Speak">>, Props, 'true')
-                           ,talking=props:get_is_true(<<"Talking">>, Props, 'false')
-                           ,mute_detect=props:get_is_true(<<"Mute-Detect">>, Props, 'false')
-                           ,member_id=props:get_integer_value(<<"Member-ID">>, Props, 0)
-                           ,member_type=props:get_value(<<"Member-Type">>, Props)
-                           ,energy_level=props:get_integer_value(<<"Energy-Level">>, Props, 0)
-                           ,current_energy=props:get_integer_value(<<"Current-Energy">>, Props, 0)
-                           ,video=props:get_is_true(<<"Video">>, Props, 'false')
                            ,join_time=props:get_integer_value(<<"Join-Time">>, Props, kz_util:current_tstamp())
                            ,caller_id_number=props:get_value(<<"Caller-Caller-ID-Number">>, Props)
                            ,caller_id_name=props:get_value(<<"Caller-Caller-ID-Name">>, Props)
-                           ,call_info=kz_json:get_value(<<"Custom-Channel-Vars">>, CallInfo)
+                           ,custom_channel_vars=ecallmgr_util:custom_channel_vars(Props)
+                           ,conference_channel_vars=ecallmgr_util:conference_channel_vars(Props)
                            }.
 
 -spec participants_to_json(participants(), kz_json:objects()) -> kz_json:objects().
@@ -459,41 +456,24 @@ participant_to_json(#participant{}=Participant) ->
 participant_to_props(#participant{uuid=UUID
                                  ,conference_name=ConfName
                                  ,conference_uuid=ConfUUID
-                                 ,floor=Floor
-                                 ,hear=Hear
-                                 ,speak=Speak
-                                 ,talking=Talking
-                                 ,mute_detect=MuteDetect
-                                 ,member_id=MemberId
-                                 ,member_type=MemberType
-                                 ,energy_level=EnergyLevel
-                                 ,current_energy=CurrentEnergy
-                                 ,video=Video
-                                 ,is_moderator=IsMod
                                  ,node=Node
                                  ,join_time=JoinTime
                                  ,caller_id_name=CallerIDName
                                  ,caller_id_number=CallerIDNumber
+                                 ,custom_channel_vars=CCVs
+                                 ,conference_channel_vars=ConfVars
                                  }) ->
     props:filter_undefined(
       [{<<"Call-ID">>, UUID}
       ,{<<"Conference-Name">>, ConfName}
       ,{<<"Conference-UUID">>, ConfUUID}
       ,{<<"Switch-Hostname">>, Node}
-      ,{<<"Floor">>, Floor}
-      ,{<<"Hear">>, Hear}
-      ,{<<"Speak">>, Speak}
-      ,{<<"Talking">>, Talking}
-      ,{<<"Mute-Detect">>, MuteDetect}
-      ,{<<"Participant-ID">>, MemberId}
-      ,{<<"Participant-Type">>, MemberType}
-      ,{<<"Energy-Level">>, EnergyLevel}
-      ,{<<"Current-Energy">>, CurrentEnergy}
-      ,{<<"Video">>, Video}
-      ,{<<"Is-Moderator">>, IsMod}
+      ,{<<"Participant-ID">>, props:get_value(<<"Member-ID">>, ConfVars)}
       ,{<<"Join-Time">>, JoinTime}
       ,{<<"Caller-ID-Name">>, CallerIDName}
       ,{<<"Caller-ID-Number">>, CallerIDNumber}
+      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+      ,{<<"Conference-Channel-Vars">>, kz_json:from_list(ConfVars)}
       ]).
 
 -spec conference_to_props(conference()) -> kz_proplist().
@@ -514,6 +494,8 @@ conference_to_props(#conference{name=Name
                                ,switch_external_ip=ExternalIP
                                ,switch_url=SwitchURL
                                ,account_id=AccountId
+                               ,locked=Locked
+                               ,handling_locally = IsLocal
                                }) ->
     props:filter_undefined(
       [{<<"Name">>, Name}
@@ -533,6 +515,8 @@ conference_to_props(#conference{name=Name
       ,{<<"Switch-URL">>, SwitchURL}
       ,{<<"Switch-External-IP">>, ExternalIP}
       ,{<<"Account-ID">>, AccountId}
+      ,{<<"Locked">>, Locked}
+      ,{<<"Is-Local">>, IsLocal}
       ]).
 
 -spec list_conferences(atom()) -> conferences() | participants().
@@ -641,21 +625,6 @@ xml_members_to_participants([_|XmlElements], Conference) ->
 
 -spec xml_member_to_participant(xml_els(), participant()) -> participant().
 xml_member_to_participant([], Participant) -> Participant;
-xml_member_to_participant([#xmlElement{name='id'
-                                      ,content=Id
-                                      }
-                           |XmlElements
-                          ], Participant) ->
-    Value = kz_util:to_integer(xml_text_to_binary(Id)),
-    xml_member_to_participant(XmlElements
-                             ,Participant#participant{member_id=Value});
-xml_member_to_participant([#xmlElement{name='flags'
-                                      ,content=Xml
-                                      }
-                           | XmlElements
-                          ], Participant) ->
-    xml_member_to_participant(XmlElements
-                             ,xml_member_flags_to_participant(Xml, Participant));
 xml_member_to_participant([#xmlElement{name='uuid'
                                       ,content=UUID
                                       }
@@ -666,61 +635,9 @@ xml_member_to_participant([#xmlElement{name='uuid'
     xml_member_to_participant(XmlElements
                              ,Participant#participant{uuid=kz_util:to_binary(CallId)}
                              );
-xml_member_to_participant([#xmlElement{name='energy'
-                                      ,content=Energy
-                                      }
-                           |XmlElements
-                          ], Participant) ->
-    Value = kz_util:to_integer(xml_text_to_binary(Energy)),
-    xml_member_to_participant(XmlElements
-                             ,Participant#participant{energy_level=Value});
+
 xml_member_to_participant([_|XmlElements], Participant) ->
     xml_member_to_participant(XmlElements, Participant).
-
--spec xml_member_flags_to_participant(xml_els(), participant()) -> participant().
-xml_member_flags_to_participant([], Participant) -> Participant;
-xml_member_flags_to_participant([#xmlElement{name='talking'
-                                            ,content=Speak
-                                            }
-                                 | XmlElements
-                                ], Participant) ->
-    Value = kz_util:is_true(xml_text_to_binary(Speak)),
-    xml_member_flags_to_participant(XmlElements
-                                   ,Participant#participant{speak=Value});
-xml_member_flags_to_participant([#xmlElement{name='has_floor'
-                                            ,content=HasFloor
-                                            }
-                                 | XmlElements
-                                ], Participant) ->
-    Value = kz_util:is_true(xml_text_to_binary(HasFloor)),
-    xml_member_flags_to_participant(XmlElements
-                                   ,Participant#participant{floor=Value});
-xml_member_flags_to_participant([#xmlElement{name='is_moderator'
-                                            ,content=IsMod
-                                            }
-                                 | XmlElements
-                                ], Participant) ->
-    Value = kz_util:is_true(xml_text_to_binary(IsMod)),
-    xml_member_flags_to_participant(XmlElements
-                                   ,Participant#participant{is_moderator=Value});
-xml_member_flags_to_participant([#xmlElement{name='can_hear'
-                                            ,content=Hear
-                                            }
-                                 | XmlElements
-                                ], Participant) ->
-    Value = kz_util:is_true(xml_text_to_binary(Hear)),
-    xml_member_flags_to_participant(XmlElements
-                                   ,Participant#participant{hear=Value});
-xml_member_flags_to_participant([#xmlElement{name='can_speak'
-                                            ,content=Speak
-                                            }
-                                 | XmlElements
-                                ], Participant) ->
-    Value = kz_util:is_true(xml_text_to_binary(Speak)),
-    xml_member_flags_to_participant(XmlElements
-                                   ,Participant#participant{speak=Value});
-xml_member_flags_to_participant([_|XmlElements], Participant) ->
-    xml_member_flags_to_participant(XmlElements, Participant).
 
 -spec xml_text_to_binary(xml_els()) -> ne_binary().
 xml_text_to_binary(XmlElements) ->
@@ -805,24 +722,25 @@ sync_participants(Participants, Node) ->
 print_summary('$end_of_table') ->
     io:format("No conferences found!~n");
 print_summary(Match) ->
-    io:format("+----------------------------------+----------------------------------------------------+--------------+-------------+----------------------------------+~n"),
-    io:format("| Name                             | Node                                               | Participants | Uptime(sec) | Account-ID                       |~n"),
-    io:format("+==================================+====================================================+==============+=============+==================================+~n"),
+    io:format("+----------------------------------+----------------------------------------------------+--------------+-------------+----------------------------------+-----+~n"),
+    io:format("| Name                             | Node                                               | Participants | Uptime(sec) | Account-ID                       |Local|~n"),
+    io:format("+==================================+====================================================+==============+=============+==================================+=====+~n"),
     print_summary(Match, 0).
 
 print_summary('$end_of_table', Count) ->
-    io:format("+----------------------------------+----------------------------------------------------+--------------+-------------+----------------------------------+~n"),
+    io:format("+----------------------------------+----------------------------------------------------+--------------+-------------+----------------------------------+-----+~n"),
     io:format("Found ~p conferences~n", [Count]);
 print_summary({[#conference{name=Name
                            ,node=Node
                            ,start_time=StartTime
                            ,account_id=AccountId
+                           ,handling_locally = IsLocal
                            }]
               ,Continuation}
              ,Count) ->
     Participants = participants(Name),
-    io:format("| ~-32s | ~-50s | ~-12B | ~-11B | ~-32s |~n"
-             ,[Name, Node, length(Participants), kz_util:current_tstamp() - StartTime, AccountId]
+    io:format("| ~-32s | ~-50s | ~-12B | ~-11B | ~-32s |~-5s|~n"
+             ,[Name, Node, length(Participants), kz_util:current_tstamp() - StartTime, AccountId, IsLocal]
              ),
     print_summary(ets:select(Continuation), Count + 1).
 
@@ -852,11 +770,12 @@ print_participant_details([]) -> io:format("~n");
 print_participant_details([#participant{uuid=UUID}=Participant
                            | Participants
                           ]) ->
-    Props = participant_to_props(Participant),
-    io:format("~n    ~-52s:", [UUID]),
+    Props = Participant#participant.conference_channel_vars,
+    io:format("~n    [~b] ~-52s:", [props:get_integer_value(<<"Member-ID">>, Props, 0), UUID]),
     print_participant_flags(Props),
     print_participant_details(Participants).
 
+-spec print_participant_flags(kz_proplist()) -> 'ok'.
 print_participant_flags([]) -> 'ok';
 print_participant_flags([{Flag, 'true'}|Props]) ->
     %% Cheating, all this typing today...

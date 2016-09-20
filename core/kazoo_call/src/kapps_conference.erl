@@ -18,6 +18,7 @@
 -export([update/2]).
 
 -export([id/1, set_id/2]).
+-export([name/1, set_name/2]).
 -export([account_id/1, set_account_id/2]).
 -export([moderator_controls/1, set_moderator_controls/2]).
 -export([caller_controls/1, set_caller_controls/2]).
@@ -73,7 +74,7 @@
 
 
 %%%% conference record %%%%%%%%
-%% 
+%%
 %%  id                       the conference id
 %%  focus                    the conference focus
 %%  profile                  conference profile (config settings)
@@ -107,6 +108,7 @@
 %%
 
 -record(kapps_conference, {id :: api_binary()
+                          ,name :: api_binary()
                           ,focus :: api_binary()
                           ,profile = <<"default">> :: ne_binary()
                           ,controller_q :: api_binary()
@@ -134,8 +136,8 @@
                           ,kvs = orddict:new() :: orddict:orddict()
                           ,call :: kapps_call:call()
                           ,account_id :: api_binary()
-                          ,moderator_controls = <<"default">> :: ne_binary()
-                          ,caller_controls = <<"default">> :: ne_binary()
+                          ,moderator_controls = <<"moderator-default">> :: ne_binary()
+                          ,caller_controls = <<"caller-default">> :: ne_binary()
                           }).
 
 -type tone() :: boolean() | ne_binary().
@@ -155,6 +157,7 @@ from_json(JObj, Conference) ->
     KVS = orddict:from_list(kz_json:to_proplist(kz_json:get_value(<<"Key-Value-Store">>, JObj, kz_json:new()))),
     Conference#kapps_conference{
       id = kz_json:get_ne_value(<<"Conference-ID">>, JObj, id(Conference))
+                               ,name = kz_json:get_ne_value(<<"Conference-Name">>, JObj, profile(Conference))
                                ,profile = kz_json:get_ne_value(<<"Profile">>, JObj, profile(Conference))
                                ,focus = kz_json:get_ne_value(<<"Conference-Focus">>, JObj, focus(Conference))
                                ,controller_q = kz_json:get_ne_value(<<"Controller-Queue">>, JObj, controller_queue(Conference))
@@ -210,6 +213,7 @@ to_json(#kapps_conference{}=Conference) ->
 -spec to_proplist(conference()) -> kz_proplist().
 to_proplist(#kapps_conference{}=Conference) ->
     [{<<"Conference-ID">>, id(Conference)}
+    ,{<<"Conference-Name">>, name(Conference)}
     ,{<<"Profile">>, profile(Conference)}
     ,{<<"focus">>, focus(Conference)}
     ,{<<"Controller-Queue">>, controller_queue(Conference)}
@@ -253,6 +257,7 @@ from_conference_doc(JObj, Conference) ->
     Member = kz_json:get_value(<<"member">>, JObj),
     Moderator = kz_json:get_value(<<"moderator">>, JObj),
     Conference#kapps_conference{id = kz_doc:id(JObj, id(Conference))
+                               ,name = kz_json:get_ne_value(<<"name">>, JObj, name(Conference))
                                ,account_id = kz_json:get_ne_value(<<"pvt_account_id">>, JObj, account_id(Conference))
                                ,profile = kz_json:get_ne_value(<<"profile">>, JObj, profile(Conference))
                                ,focus = kz_json:get_ne_value(<<"focus">>, JObj, focus(Conference))
@@ -298,27 +303,35 @@ id(#kapps_conference{id=Id}) -> Id.
 set_id(Id, Conference) when is_binary(Id); Id =:= 'undefined' ->
     Conference#kapps_conference{id=Id}.
 
--spec set_account_id(ne_binary(), kapps_conference:conference()) -> kapps_conference:conference().
+-spec set_name(ne_binary(), conference()) -> conference().
+set_name(Name, Conference) when is_binary(Name) ->
+    Conference#kapps_conference{name=Name}.
+
+-spec name(conference()) -> ne_binary().
+name(#kapps_conference{name=Name}) ->
+    Name.
+
+-spec set_account_id(ne_binary(), conference()) -> conference().
 set_account_id(AccountId, Conference) when is_binary(AccountId) ->
     Conference#kapps_conference{account_id=AccountId}.
 
--spec account_id(kapps_conference:conference()) -> ne_binary().
+-spec account_id(conference()) -> ne_binary().
 account_id(#kapps_conference{account_id=AccountId}) ->
     AccountId.
 
--spec set_moderator_controls(ne_binary(), kapps_conference:conference()) -> kapps_conference:conference().
+-spec set_moderator_controls(ne_binary(), conference()) -> conference().
 set_moderator_controls(ModeratorCtrls, Conference) when is_binary(ModeratorCtrls) ->
     Conference#kapps_conference{moderator_controls=ModeratorCtrls}.
 
--spec moderator_controls(kapps_conference:conference()) -> ne_binary().
+-spec moderator_controls(conference()) -> ne_binary().
 moderator_controls(#kapps_conference{moderator_controls=ModeratorCtrls}) ->
     ModeratorCtrls.
 
--spec set_caller_controls(ne_binary(), kapps_conference:conference()) -> kapps_conference:conference().
+-spec set_caller_controls(ne_binary(), conference()) -> conference().
 set_caller_controls(CallerCtrls, Conference) when is_binary(CallerCtrls) ->
     Conference#kapps_conference{caller_controls=CallerCtrls}.
 
--spec caller_controls(kapps_conference:conference()) -> ne_binary().
+-spec caller_controls(conference()) -> ne_binary().
 caller_controls(#kapps_conference{caller_controls=CallerCtrls}) ->
     CallerCtrls.
 

@@ -201,6 +201,10 @@
         ,transfer_command/3, transfer_command/4
         ]).
 
+-export([play_macro/2, b_play_macro/2, play_macro_command/2
+        ,media_macro/2, media_macro_command/2
+        ]).
+
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), binaries()} |
                               {'prompt', binary()} | {'prompt', binary(), ne_binaries()} |
                               {'say', binary()} | {'say', binary(), binary()} |
@@ -3082,3 +3086,47 @@ transfer_command(TransferType, TransferTo, TransferLeg, Call) ->
         ,{<<"Call-ID">>, kapps_call:call_id(Call)}
         ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
         ])).
+
+-spec play_macro_command(ne_binaries(), kapps_call:call()) -> api_terms().
+play_macro_command(Media, Call) ->
+    kz_json:from_list(
+      props:filter_undefined(
+        [{<<"Application-Name">>, <<"play_macro">>}
+        ,{<<"Media-Macro">>, Media}
+        ,{<<"Insert-At">>, <<"now">>}
+        ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+        ])).
+
+-spec b_play_macro(ne_binaries(), kapps_call:call()) -> kapps_api_std_return().
+b_play_macro(Media, Call) ->
+    wait_for_noop(Call, play_macro(Media, Call)).
+
+-spec play_macro(ne_binaries(), kapps_call:call()) -> ne_binary().
+play_macro(Media, Call) ->
+    NoopId = kz_datamgr:get_uuid(),
+    Commands = [kz_json:from_list([{<<"Application-Name">>, <<"noop">>}
+                                  ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+                                  ,{<<"Msg-ID">>, NoopId}
+                                  ])
+               ,play_macro_command(Media, Call)
+               ],
+    Command = [{<<"Application-Name">>, <<"queue">>}
+              ,{<<"Commands">>, Commands}
+              ],
+    send_command(Command, Call),
+    NoopId.
+
+-spec media_macro_command([{ne_binary(), ne_binaries()}], kapps_call:call()) ->api_terms().
+media_macro_command(Media, Call) ->
+    kz_json:from_list(
+      props:filter_undefined(
+        [{<<"Application-Name">>, <<"media_macro">>}
+        ,{<<"Media-Macros">>, kz_json:from_list(Media)}
+        ,{<<"Insert-At">>, <<"now">>}
+        ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+        ])).
+
+-spec media_macro(ne_binaries(), kapps_call:call()) -> 'ok'.
+media_macro(Media, Call) ->
+    Command = media_macro_command(Media, Call),
+    send_command(Command, Call).

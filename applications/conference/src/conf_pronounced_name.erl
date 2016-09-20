@@ -157,8 +157,7 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
             {'ok', JObj} -> maybe_remove_attachments(Call, JObj);
             {'error', _} -> 'ok'
         end,
-    {'ok', URL} = kz_media_url:store(AccountDb, MediaId, AttachmentName),
-    URL.
+    kz_media_url:store(AccountDb, MediaId, AttachmentName).
 
 -spec maybe_remove_attachments(kapps_call:call(), kz_json:object()) -> 'ok'.
 maybe_remove_attachments(Call, JObj) ->

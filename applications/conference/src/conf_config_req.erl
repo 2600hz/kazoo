@@ -137,7 +137,7 @@ get_conference(ConferenceID) ->
 
 -spec caller_controls(ne_binary(), ne_binary()) -> kz_json:object().
 caller_controls(AccountId, ConfigName) ->
-    kapps_account_config:get_global(AccountId, ?CONFIG_CAT, [<<"caller-controls">>, ConfigName], kz_json:new()).
+    kapps_account_config:get_global(AccountId, ?CONFIG_CAT, [<<"caller-controls">>, ConfigName], ?DEFAULT_CONTROLS).
 
 -spec advertise(ne_binary()) -> api_object().
 -spec advertise(ne_binary(), api_object()) -> api_object().
