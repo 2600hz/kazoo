@@ -487,7 +487,7 @@ map_options(CurrentKey, Options) ->
 -spec map_options(term(), term(), term(), term(), kz_proplist()) -> kz_proplist().
 map_options(CurrentKey, 'true', _, _, Options) ->
     CleanOpts = props:delete_keys(['startkey', 'descending'], Options),
-    props:fiter_undefined([{'startkey', CurrentKey}, 'descending' | CleanOpts]);
+    props:filter_undefined([{'startkey', CurrentKey}, 'descending' | CleanOpts]);
 map_options(CurrentKey, _, StartKey, EndKey, Options) when
       is_integer(CurrentKey),
       is_integer(StartKey),
