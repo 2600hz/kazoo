@@ -120,7 +120,7 @@ handle_info(_Info, State) ->
 %% @doc Allows listener to pass options to handlers
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
+-spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 

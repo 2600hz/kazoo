@@ -512,7 +512,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), nodes_state()) -> handle_event_ret().
+-spec handle_event(kz_json:object(), nodes_state()) -> gen_listener:handle_event_return().
 handle_event(_JObj, #state{node=Node}) ->
     {'reply', [{'node', kz_util:to_binary(Node)}]}.
 

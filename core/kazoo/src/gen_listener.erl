@@ -124,10 +124,17 @@
 -type state() :: #state{}.
 
 
+-type callback_datum() :: {'server', pid()} |
+                          {'queue', api_binary()} |
+                          {'other_queues', ne_binaries()}.
+-type callback_data() :: kz_proplist() |
+                         [callback_datum()].
+
 -export_type([handle_event_return/0
              ,binding/0
              ,bindings/0
              ,basic_deliver/0
+             ,callback_data/0
              ]).
 
 %%%===================================================================
@@ -159,8 +166,13 @@
 
 -callback handle_info(timeout() | any(), module_state()) -> handle_info_return().
 
--callback handle_event(kz_json:object(), module_state()) ->
-    handle_event_return().
+
+-type handle_event_return() :: 'ignore' |
+                               {'ignore', module_state()} |
+                               {'reply', kz_proplist()} |
+                               {'reply', kz_proplist(), module_state()}.
+
+-callback handle_event(kz_json:object(), module_state()) -> handle_event_return().
 
 -callback terminate('normal' | 'shutdown' | {'shutdown', any()} | any(), module_state()) ->
     any().
@@ -762,19 +774,19 @@ distribute_event(JObj, BasicDeliver, State) ->
     case callback_handle_event(JObj, BasicDeliver, State) of
         'ignore' -> State;
         {'ignore', ModuleState} -> State#state{module_state=ModuleState};
-        {Props, ModuleState} -> distribute_event(Props, JObj, BasicDeliver, State#state{module_state=ModuleState});
-        Props -> distribute_event(Props, JObj, BasicDeliver, State)
+        {CallbackData, ModuleState} -> distribute_event(CallbackData, JObj, BasicDeliver, State#state{module_state=ModuleState});
+        CallbackData -> distribute_event(CallbackData, JObj, BasicDeliver, State)
     end.
 
--spec distribute_event(kz_proplist(), kz_json:object(), basic_deliver(), state()) -> state().
-distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
-                                                  ,consumer_key=ConsumerKey
-                                                  }=State) ->
+-spec distribute_event(callback_data(), kz_json:object(), basic_deliver(), state()) -> state().
+distribute_event(CallbackData, JObj, BasicDeliver, #state{responders=Responders
+                                                         ,consumer_key=ConsumerKey
+                                                         }=State) ->
     Key = kz_util:get_event_type(JObj),
     _ = [kz_util:spawn(fun client_handle_event/5, [JObj
                                                   ,ConsumerKey
                                                   ,Callback
-                                                  ,Props
+                                                  ,CallbackData
                                                   ,BasicDeliver
                                                   ])
          || {Evt, Callback} <- Responders,
@@ -782,28 +794,28 @@ distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
         ],
     State.
 
--spec client_handle_event(kz_json:object(), kz_amqp_channel:consumer_pid(), responder_callback(), kz_proplist(), basic_deliver()) -> any().
-client_handle_event(JObj, ConsumerKey, Callback, Props, BasicDeliver) ->
+-spec client_handle_event(kz_json:object(), kz_amqp_channel:consumer_pid(), responder_callback(), callback_data(), basic_deliver()) -> any().
+client_handle_event(JObj, ConsumerKey, Callback, CallbackData, BasicDeliver) ->
     _ = kz_util:put_callid(JObj),
     _ = kz_amqp_channel:consumer_pid(ConsumerKey),
-    client_handle_event(JObj, Callback, Props, BasicDeliver).
+    client_handle_event(JObj, Callback, CallbackData, BasicDeliver).
 
--spec client_handle_event(kz_json:object(), responder_callback(), kz_proplist(), basic_deliver()) -> any().
-client_handle_event(JObj, Fun, Props, BasicDeliver)
-  when is_function(Fun, 3) -> Fun(JObj, Props, BasicDeliver);
-client_handle_event(JObj, Fun, Props, _BasicDeliver)
-  when is_function(Fun, 2) -> Fun(JObj, Props);
-client_handle_event(JObj, {Module, Fun}, Props, BasicDeliver) ->
+-spec client_handle_event(kz_json:object(), responder_callback(), callback_data(), basic_deliver()) -> any().
+client_handle_event(JObj, Fun, CallbackData, BasicDeliver)
+  when is_function(Fun, 3) -> Fun(JObj, CallbackData, BasicDeliver);
+client_handle_event(JObj, Fun, CallbackData, _BasicDeliver)
+  when is_function(Fun, 2) -> Fun(JObj, CallbackData);
+client_handle_event(JObj, {Module, Fun}, CallbackData, BasicDeliver) ->
     case erlang:function_exported(Module, Fun, 3) of
-        'true' -> Module:Fun(JObj, Props, BasicDeliver);
-        'false' -> Module:Fun(JObj, Props)
+        'true' -> Module:Fun(JObj, CallbackData, BasicDeliver);
+        'false' -> Module:Fun(JObj, CallbackData)
     end.
 
 -spec callback_handle_event(kz_json:object(), basic_deliver(), state()) ->
                                    'ignore' |
                                    {'ignore', module_state()} |
-                                   kz_proplist() |
-                                   {kz_proplist(), module_state()}.
+                                   callback_data() |
+                                   {callback_data(), module_state()}.
 callback_handle_event(JObj
                      ,BasicDeliver
                      ,#state{module=Module
@@ -839,10 +851,7 @@ callback_handle_event(JObj
     end.
 
 -spec callback_handle_event(kz_json:object(), basic_deliver(), atom(), module_state()) ->
-                                   'ignore' |
-                                   {'ignore', module_state()} |
-                                   {'reply', kz_proplist()} |
-                                   {'reply', kz_proplist(), module_state()} |
+                                   handle_event_return() |
                                    {'EXIT', any()}.
 callback_handle_event(JObj, BasicDeliver, Module, ModuleState) ->
     case erlang:function_exported(Module, 'handle_event', 3) of

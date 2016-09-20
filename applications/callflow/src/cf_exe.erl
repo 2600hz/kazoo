@@ -6,7 +6,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_exe).
-
 -behaviour(gen_listener).
 
 %% API
@@ -63,7 +62,7 @@
                ,cf_module_pid :: {pid(), reference()} | 'undefined'
                ,cf_module_old_pid :: {pid(), reference()} | 'undefined'
                ,status = <<"sane">> :: ne_binary()
-               ,queue :: api_binary()
+               ,queue :: ne_binary()
                ,self = self()
                ,stop_on_destroy = 'true' :: boolean()
                ,destroyed = 'false' :: boolean()
@@ -554,7 +553,7 @@ handle_info(_Msg, State) ->
 %% @private
 %% @doc Handle call messages, sometimes forward them on.
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), state()) -> handle_event_ret().
+-spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(JObj, #state{cf_module_pid=PidRef
                          ,call=Call
                          ,self=Self
@@ -726,7 +725,8 @@ cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
 amqp_send_message(API, PubFun, Q) ->
     PubFun(add_server_id(Q, API)).
 
--spec amqp_call_message(api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), ne_binary()) -> 'ok'.
+-spec amqp_call_message(api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), ne_binary()) ->
+                               kz_amqp_worker:request_return().
 amqp_call_message(API, PubFun, VerifyFun, Q) ->
     Routines = [{fun add_server_id/2, Q}
                ,fun add_message_id/1

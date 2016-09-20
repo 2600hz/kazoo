@@ -116,7 +116,7 @@ details(UUID) ->
 create(Props, Node) ->
     gen_server:call(?SERVER, {'conference_create', Props, Node}).
 
--spec update(ne_binary(), kz_proplist()) -> 'ok'.
+-spec update(ne_binary(), kz_proplist() | {integer(), any()}) -> 'ok'.
 update(UUID, Update) ->
     gen_server:call(?SERVER, {'conference_update', UUID, Update}).
 
@@ -369,7 +369,7 @@ handle_info(_Msg, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
+-spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 

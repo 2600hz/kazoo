@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(pivot_call).
-
 -behaviour(gen_listener).
 
 %% API

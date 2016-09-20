@@ -404,7 +404,9 @@ wait_for_listener(Supervisor, FSM, Props, IsThief) ->
             lager:debug("listener retrieved: ~p", [P]),
 
             {NextState, SyncRef} =
-                case props:get_value('skip_sync', Props) =:= 'true' orelse IsThief of
+                case props:get_value('skip_sync', Props) =:= 'true'
+                    orelse IsThief
+                of
                     'true' -> {'ready', 'undefined'};
                     _ ->
                         gen_fsm:send_event(FSM, 'send_sync_event'),
@@ -1415,7 +1417,8 @@ clear_call(#state{fsm_call_id=FSMemberCallId
                  }=State, NextState)->
     kz_util:put_callid(FSMemberCallId),
 
-    ReadyForAction = not (NextState =:= 'wrapup' orelse NextState =:= 'paused'),
+    ReadyForAction = NextState =/= 'wrapup'
+        andalso NextState =/= 'paused',
     lager:debug("ready for action: ~s: ~s", [NextState, ReadyForAction]),
 
     _ = maybe_stop_timer(WRef, ReadyForAction),

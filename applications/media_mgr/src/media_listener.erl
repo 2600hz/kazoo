@@ -124,6 +124,7 @@ handle_cast(_Msg, State) ->
 handle_info(_Info, State) ->
     {'noreply', State}.
 
+-spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 

@@ -8,7 +8,6 @@
 %%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(acdc_stats).
-
 -behaviour(gen_listener).
 
 %% Public API
@@ -315,14 +314,14 @@ find_call(CallId) ->
         [Stat] -> call_stat_to_json(Stat)
     end.
 
--record(state, {
-          archive_ref :: reference()
+-record(state, {archive_ref :: reference()
                ,cleanup_ref :: reference()
                ,call_table_id :: ets:tid()
                ,status_table_id :: ets:tid()
-         }).
+               }).
+-type state() :: #state{}.
 
--spec init([]) -> {'ok', #state{}}.
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(<<"acdc.stats">>),
     kz_datamgr:suppress_change_notice(),
@@ -367,7 +366,8 @@ handle_cast({'flush_call', Id}, State) ->
 handle_cast({'remove_call', [{M, P, _}]}, State) ->
     Match = [{M, P, ['true']}],
     N = ets:select_delete(call_table_id(), Match),
-    N > 1 andalso lager:debug("removed calls: ~p", [N]),
+    N > 1
+        andalso lager:debug("removed calls: ~p", [N]),
     {'noreply', State};
 
 handle_cast({'update_status', Id, Updates}, State) ->
@@ -377,7 +377,8 @@ handle_cast({'update_status', Id, Updates}, State) ->
 handle_cast({'remove_status', [{M, P, _}]}, State) ->
     Match = [{M, P, ['true']}],
     N = ets:select_delete(acdc_agent_stats:status_table_id(), Match),
-    N > 1 andalso lager:debug("removed statuses: ~p", [N]),
+    N > 1
+        andalso lager:debug("removed statuses: ~p", [N]),
     {'noreply', State};
 
 handle_cast({'gen_listener',{'created_queue',_Q}}, State) ->
@@ -401,6 +402,7 @@ handle_info(_Msg, State) ->
     lager:debug("unhandling message: ~p", [_Msg]),
     {'noreply', State}.
 
+-spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(_JObj, _State) ->
     {'reply', []}.
 

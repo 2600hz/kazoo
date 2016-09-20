@@ -256,7 +256,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_proplist()) -> handle_event_ret().
+-spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
 handle_event(JObj, _State) ->
     case teletype_util:should_handle_notification(JObj) of
         'false' -> 'ignore';

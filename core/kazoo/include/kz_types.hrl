@@ -197,11 +197,6 @@
                                       {'noreply', State, gen_server_timeout()} |
                                       {'stop', any(), State}.
 
--type handle_event_ret() :: 'ignore' |
-                            {'ignore', any()} |
-                            {'reply', kz_proplist()} |
-                            {'reply', kz_proplist(), any()}.
-
 -type handle_fsm_ret(State) :: {'next_state', atom(), State} |
                                {'next_state', atom(), State, timeout() | 'hibernate'} |
                                {'stop', any(), State}.

@@ -104,8 +104,10 @@ agents_running() ->
 -spec find_agent_supervisor(api_binary(), api_binary(), pids()) -> api_pid().
 find_agent_supervisor(AcctId, AgentId) -> find_agent_supervisor(AcctId, AgentId, workers()).
 
-find_agent_supervisor(_AcctId, _AgentId, []) -> lager:debug("ran out of supers"), 'undefined';
-find_agent_supervisor(AcctId, AgentId, _) when AcctId =:= 'undefined' orelse
+find_agent_supervisor(_AcctId, _AgentId, []) ->
+    lager:debug("ran out of supers"),
+    'undefined';
+find_agent_supervisor(AcctId, AgentId, _) when AcctId =:= 'undefined';
                                                AgentId =:= 'undefined' ->
     lager:debug("failed to get good data: ~s ~s", [AcctId, AgentId]),
     'undefined';

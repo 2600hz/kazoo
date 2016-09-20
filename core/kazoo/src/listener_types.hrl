@@ -4,8 +4,6 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 
--type handle_event_return() :: {'reply', kz_proplist()} | 'ignore'.
-
 -type binding_module() :: atom() | ne_binary().
 -type binding() :: {binding_module(), kz_proplist()}. %% {kapi_module, options}
 -type bindings() :: [binding()].
