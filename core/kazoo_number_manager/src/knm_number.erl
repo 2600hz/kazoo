@@ -783,17 +783,10 @@ default_force_outbound() ->
 -spec fetch_account_from_ports(ne_binary(), {'error', any()}) ->
                                       lookup_account_return().
 fetch_account_from_ports(NormalizedNum, Error) ->
-    case
-        kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB
-                              ,<<"port_requests/port_in_numbers">>
-                              ,[{'key', NormalizedNum}]
-                              )
-    of
-        {'ok', []} ->
-            lager:debug("no port for ~s: ~p", [NormalizedNum, Error]),
-            Error;
-        {'ok', [Port]} ->
-            AccountId = kz_json:get_value(<<"value">>, Port),
+    case knm_port_request:get(NormalizedNum) of
+        {error, _E} -> Error;
+        {ok, Port} ->
+            AccountId = kz_doc:account_id(Port),
             Props = [{'force_outbound', 'true'}
                     ,{'pending_port', 'true'}
                     ,{'local', 'true'}
@@ -801,13 +794,7 @@ fetch_account_from_ports(NormalizedNum, Error) ->
                     ,{'number', NormalizedNum}
                     ,{'account_id', AccountId}
                     ],
-            {'ok', AccountId, Props};
-        {'error', 'not_found'}=E ->
-            lager:debug("port number ~s not found", [NormalizedNum]),
-            E;
-        {'error', _E} ->
-            lager:debug("failed to query for port number '~s': ~p", [NormalizedNum, _E]),
-            Error
+            {'ok', AccountId, Props}
     end.
 
 %%--------------------------------------------------------------------
