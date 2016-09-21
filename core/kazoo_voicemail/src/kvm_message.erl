@@ -189,7 +189,7 @@ update(AccountId, _BoxId, JObj, Funs) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec move_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
-                           kz_json:object().
+                           db_ret().
 move_to_vmbox(AccountId, MsgId, OldBoxId, NewBoxId) ->
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),

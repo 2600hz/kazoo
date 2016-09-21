@@ -198,7 +198,7 @@ post(Context, _DocId) ->
     C1 = crossbar_doc:save(check_mailbox_for_messages_array(Context, VMBoxMsgs)),
 
     %% remove messages array to not let it exposed
-    cb_context:set_resp_data(C1, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1))).
+    crossbar_util:response(kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1)), C1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -229,16 +229,16 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE) ->
 
     case cb_context:req_value(Context, <<"source_id">>) of
         'undefined' ->
-            {'ok', Result} = kvm_messages:change_folder(Folder, MsgIds, AccountId, OldBoxId),
-            C = cb_context:set_resp_data(Context, Result),
+            Result = kvm_messages:change_folder(Folder, MsgIds, AccountId, OldBoxId),
+            C = crossbar_util:response(Result, Context),
             update_mwi(C, OldBoxId);
         ?NE_BINARY = NewBoxId ->
             Moved = kvm_messages:move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId),
-            C = cb_context:set_resp_data(Context, Moved),
+            C = crossbar_util:response(Moved, Context),
             update_mwi(C, [OldBoxId, NewBoxId]);
         NewBoxIds ->
             Copied = kvm_messages:copy_to_vmboxes(AccountId, MsgIds, OldBoxId, NewBoxIds),
-            C = cb_context:set_resp_data(Context, Copied),
+            C = crossbar_util:response(Copied, Context),
             update_mwi(C, [OldBoxId | NewBoxIds])
     end.
 
@@ -252,17 +252,21 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE, MediaId) ->
             case kvm_message:change_folder(Folder, MediaId, AccountId, OldBoxId) of
                 {'ok', Message} ->
                     C = crossbar_util:response(Message, Context),
-                    update_mwi(cb_context:set_resp_status(C, 'success'), OldBoxId);
+                    update_mwi(C, OldBoxId);
                 {'error', Error} ->
                     crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)
             end;
         ?NE_BINARY = NewBoxId ->
-            Moved = kvm_message:move_to_vmbox(AccountId, MediaId, OldBoxId, NewBoxId),
-            C = cb_context:set_resp_data(Context, Moved),
-            update_mwi(C, [OldBoxId, NewBoxId]);
+            case kvm_message:move_to_vmbox(AccountId, MediaId, OldBoxId, NewBoxId) of
+                {'ok', Moved} ->
+                    C = crossbar_util:response(Moved, Context),
+                    update_mwi(C, OldBoxId);
+                {'error', Error} ->
+                    crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)
+            end;
         NewBoxIds ->
             Copied = kvm_message:copy_to_vmboxes(AccountId, MediaId, OldBoxId, NewBoxIds),
-            C = cb_context:set_resp_data(Context, Copied),
+            C = crossbar_util:response(Copied, Context),
             update_mwi(C, [OldBoxId | NewBoxIds])
     end.
 
@@ -292,15 +296,15 @@ delete(Context, DocId) ->
 
 delete(Context, DocId, ?MESSAGES_RESOURCE) ->
     MsgIds = cb_context:resp_data(Context),
-    {'ok', Result} = kvm_messages:change_folder({?VM_FOLDER_DELETED, 'true'}, MsgIds, cb_context:account_id(Context), DocId),
-    C = cb_context:set_resp_data(Context, Result),
+    Result = kvm_messages:change_folder({?VM_FOLDER_DELETED, 'true'}, MsgIds, cb_context:account_id(Context), DocId),
+    C = crossbar_util:response(Result, Context),
     update_mwi(C, DocId).
 
 delete(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
     AccountId = cb_context:account_id(Context),
     case kvm_message:change_folder({?VM_FOLDER_DELETED, 'true'}, MediaId, AccountId, DocId) of
         {'ok', Message} ->
-            C = crossbar_util:response(Message, cb_context:set_resp_status(Context, 'success')),
+            C = crossbar_util:response(Message, Context),
             update_mwi(C, DocId);
         {'error', Error} ->
             crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)
@@ -319,7 +323,7 @@ patch(Context, _Id) ->
     C1 = crossbar_doc:save(check_mailbox_for_messages_array(Context, VMBoxMsgs)),
 
     %% remove messages array to not let it exposed
-    cb_context:set_resp_data(C1, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1))).
+    crossbar_util:response(kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1)), C1).
 
 %%%===================================================================
 %%% Internal functions

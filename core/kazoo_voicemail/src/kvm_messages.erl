@@ -61,7 +61,7 @@ get(AccountId, Box) ->
 %%--------------------------------------------------------------------
 -spec count(ne_binary()) -> kz_json:object().
 -spec count(ne_binary(), ne_binary()) -> non_neg_integer().
--spec count_none_deleted(ne_binary(), ne_binary()) -> {non_neg_integer(), non_neg_integer()}.
+-spec count_none_deleted(ne_binary(), ne_binary()) -> count_result().
 %% Note: returns counts per folders in JObj
 count(AccountId) ->
     count_per_folder(AccountId).
@@ -205,7 +205,7 @@ fetch(AccountId, MsgIds, BoxId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec change_folder(ne_binary(), messages(), ne_binary(), ne_binary()) -> db_ret().
+-spec change_folder(ne_binary(), messages(), ne_binary(), ne_binary()) -> kz_json:object().
 change_folder(Folder, Msgs, AccountId, BoxId) ->
     Fun = [fun(JObj) -> kzd_box_message:apply_folder(Folder, JObj) end
           ],
