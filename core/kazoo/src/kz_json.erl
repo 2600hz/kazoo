@@ -612,8 +612,8 @@ get_ne_value(Key, JObj, Default) ->
 %% Returns the value at Key
 %% @end
 %%--------------------------------------------------------------------
--spec find(key() | keys(), objects()) -> json_term() | 'undefined'.
--spec find(key() | keys(), objects(), Default) -> json_term() | Default.
+-spec find(key(), objects()) -> json_term() | 'undefined'.
+-spec find(key(), objects(), Default) -> json_term() | Default.
 
 find(Key, Docs) ->
     find(Key, Docs, 'undefined').
@@ -625,8 +625,8 @@ find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
         V -> V
     end.
 
--spec find_first_defined(key() | keys(), objects()) -> json_term() | 'undefined'.
--spec find_first_defined(key() | keys(), objects(), Default) -> json_term() | Default.
+-spec find_first_defined(keys(), objects()) -> json_term() | 'undefined'.
+-spec find_first_defined(keys(), objects(), Default) -> json_term() | Default.
 find_first_defined(Keys, Docs) ->
     find_first_defined(Keys, Docs, 'undefined').
 
@@ -644,8 +644,8 @@ find_first_defined([Key|Keys], Docs, Default) ->
 %% Returns the json object or 'undefined'
 %% @end
 %%--------------------------------------------------------------------
--spec find_value(key() | keys(), json_term(), objects()) -> api_object().
--spec find_value(key() | keys(), json_term(), objects(), Default) -> object() | Default.
+-spec find_value(key(), json_term(), objects()) -> api_object().
+-spec find_value(key(), json_term(), objects(), Default) -> object() | Default.
 find_value(Key, Value, JObjs) ->
     find_value(Key, Value, JObjs, 'undefined').
 
@@ -656,8 +656,8 @@ find_value(Key, Value, [JObj|JObjs], Default) ->
         _Value -> find_value(Key, Value, JObjs, Default)
     end.
 
--spec get_first_defined(key() | keys(), object()) -> 'undefined' | json_term().
--spec get_first_defined(key() | keys(), object(), Default) -> Default | json_term().
+-spec get_first_defined(keys(), object()) -> 'undefined' | json_term().
+-spec get_first_defined(keys(), object(), Default) -> Default | json_term().
 get_first_defined(Keys, JObj) ->
     get_first_defined(Keys, JObj, 'undefined').
 
