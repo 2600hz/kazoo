@@ -424,7 +424,7 @@ all(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
 any(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     lists:any(Pred, Prop).
 
--spec folder() :: fun((key(), json_term(), any()) -> any()).
+-type folder() :: fun((key(), json_term(), any()) -> any()).
 -spec foldl(folder(), any(), object()) -> any().
 foldl(F, Acc0, ?JSON_WRAPPER([])) when is_function(F, 3) -> Acc0;
 foldl(F, Acc0, ?JSON_WRAPPER(Prop)) when is_function(F, 3) ->
@@ -508,7 +508,8 @@ get_integer_value(Key, JObj, Default) ->
         Value -> safe_cast(Value, Default, fun kz_util:to_integer/1)
     end.
 
--spec safe_cast(json_term(), json_term(), fun((json_term()) -> json_term()) -> json_term().
+-type caster() :: fun((json_term()) -> json_term()).
+-spec safe_cast(json_term(), json_term(), caster()) -> json_term().
 safe_cast(Value, Default, CastFun) ->
     try CastFun(Value)
     catch
@@ -800,7 +801,7 @@ set_value1([], Value, _JObj) -> Value.
 -spec delete_key(path(), object() | objects()) -> object() | objects().
 -spec delete_key(path(), object() | objects(), 'prune' | 'no_prune') -> object() | objects().
 delete_key(Keys, JObj) when is_list(Keys) ->
-    delete_key(Keys, JObj, 'no_prune').
+    delete_key(Keys, JObj, 'no_prune');
 delete_key(Key, JObj) ->
     delete_key([Key], JObj, 'no_prune').
 
