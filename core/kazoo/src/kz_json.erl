@@ -258,7 +258,10 @@ merge_recursive([], Pred) when is_function(Pred, 2) -> new();
 merge_recursive([?JSON_WRAPPER(_)=J|JObjs], Pred) when is_function(Pred, 2) ->
     lists:foldl(fun(?JSON_WRAPPER(_)=JObj2, ?JSON_WRAPPER(_)=JObjAcc) ->
                         merge_recursive(JObjAcc, JObj2, Pred)
-                end, J, JObjs);
+                end
+               ,J
+               ,JObjs
+               );
 merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2) ->
     merge_recursive(JObj1, JObj2, fun merge_true/2).
 
@@ -267,7 +270,7 @@ merge_recursive(JObj1, JObj2, Pred) when is_function(Pred, 2) ->
     merge_recursive(JObj1, JObj2, Pred, []).
 
 %% inserts values from JObj2 into JObj1
--spec merge_recursive(object(), object() | json_term(), merge_pred(), key()) -> object().
+-spec merge_recursive(object(), object() | json_term(), merge_pred(), keys()) -> object().
 merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2, Pred, Keys) when is_function(Pred, 2) ->
     foldl(fun(Key2, Value2, JObj1Acc) ->
                   merge_recursive(JObj1Acc, Value2, Pred, [Key2|Keys])
@@ -578,7 +581,7 @@ get_keys(Keys, JObj) -> get_keys1(get_value(Keys, JObj, new())).
 get_keys1(KVs) when is_list(KVs) -> lists:seq(1, length(KVs));
 get_keys1(JObj) -> props:get_keys(to_proplist(JObj)).
 
--spec get_public_keys(object()) -> key().
+-spec get_public_keys(object()) -> keys().
 get_public_keys(JObj) ->
     [Key
      || Key <- get_keys(JObj),
