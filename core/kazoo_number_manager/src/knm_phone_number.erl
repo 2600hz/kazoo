@@ -306,6 +306,7 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
         [{<<"_id">>, number(N)}
         ,{?PVT_DB_NAME, number_db(N)}
         ,{?PVT_ASSIGNED_TO, assigned_to(N)}
+        ,{?PVT_AUTH_BY, auth_by(N)}
         ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
         ,{?PVT_USED_BY, used_by(N)}
         ,{?PVT_FEATURES, features(N)}
