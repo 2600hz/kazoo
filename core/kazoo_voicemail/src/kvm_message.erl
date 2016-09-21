@@ -260,7 +260,9 @@ try_copy(FromDb, FromId, ToDb, ToId, Options, Tries) ->
         {'error', 'not_found'} when Tries > 0 ->
             _ = maybe_create_modb(ToDb),
             try_copy(FromDb, FromId, ToDb, ToId, Options, Tries - 1);
-        {'error', _}=Error -> Error
+        {'error', _}=Error ->
+            lager:debug("failed to copy vm message ~s to ~s db with id ~s", [FromId, ToDb, ToId]),
+            Error
     end.
 
 %%--------------------------------------------------------------------

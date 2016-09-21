@@ -156,7 +156,8 @@ do_update(AccountId, SucceededJObjs, Funs, FailedJObjs) ->
                       {'ok', Saved} ->
                           normalize_bulk_results('undefined', Saved, ResDict);
                       {'error', R} ->
-                          lager:warning("failed to bulk update voicemail messages: ~p", [R]),
+                          lager:warning("failed to bulk update voicemail messages for db ~s: ~p"
+                                       ,[Db, R]),
                           Failed = kz_json:from_list([{kz_doc:id(D), kz_util:to_binary(R)}
                                                       || D <- Js
                                                      ]),
@@ -185,7 +186,8 @@ fetch(AccountId, MsgIds, BoxId) ->
                       {'ok', JObjs} ->
                           normalize_bulk_results(BoxId, JObjs, ResDict);
                       {'error', R} ->
-                          lager:warning("failed to bulk fetch voicemail messages: ~p", [R]),
+                          lager:warning("failed to bulk fetch voicemail messages from db ~s: ~p"
+                                       ,[Db, R]),
                           Failed = kz_json:from_list([{Id, kz_util:to_binary(R)}
                                                       || Id <- Ids
                                                      ]),
@@ -295,15 +297,22 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec normalize_bulk_results(api_ne_binary(), kz_json:objects(), dict:dict()) ->
                                     dict:dict().
-normalize_bulk_results(_BoxId, [], Dict) -> Dict;
-normalize_bulk_results(BoxId, [JObj | JObjs], Dict) ->
+normalize_bulk_results(BoxId, JObjs, Dict) ->
+    DefaultDict = dict:from_list([{<<"succeeded">>, []}
+                                 ,{<<"failed">>, []}
+                                 ]),
+    MergeFun = fun(_K, _V1, V2) -> V2 end,
+    normalize_bulk_results1(BoxId, JObjs, dict:merge(MergeFun, DefaultDict, Dict)).
+
+normalize_bulk_results1(_BoxId, [], Dict) -> Dict;
+normalize_bulk_results1(BoxId, [JObj | JObjs], Dict) ->
     Id = kz_json:get_first_defined([<<"key">>, <<"id">>], JObj),
     NewDict = case kvm_util:check_msg_belonging(BoxId, JObj)
                   andalso kz_json:get_value(<<"error">>, JObj)
               of
                   'false' ->
                       Failed = kz_json:from_list([{Id, <<"not_found">>}]),
-                      dict:append(<<"failed">>, {Id, Failed}, Dict);
+                      dict:append(<<"failed">>, Failed, Dict);
                   'undefined' ->
                       dict:append(<<"succeeded">>, kz_json:get_value(<<"doc">>, JObj, Id), Dict);
                   Error ->
@@ -314,7 +323,7 @@ normalize_bulk_results(BoxId, [JObj | JObjs], Dict) ->
               ,[length(dict:fetch(<<"succeeded">>, NewDict))
                ,length(dict:fetch(<<"failed">>, NewDict))
                ]),
-    normalize_bulk_results(BoxId, JObjs, NewDict).
+    normalize_bulk_results1(BoxId, JObjs, NewDict).
 
 %%--------------------------------------------------------------------
 %% @private

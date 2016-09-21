@@ -113,9 +113,15 @@ check_doc_type(_Doc, _ExpectedType, _DocType) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec check_msg_belonging(api_ne_binary(), kz_json:object()) -> boolean().
+-spec check_msg_belonging(api_ne_binary(), kz_json:object(), api_ne_binary()) -> boolean().
 check_msg_belonging(BoxId, JObj) ->
-    BoxId =:= 'undefined'
-        orelse BoxId =:= kzd_box_message:source_id(JObj).
+    check_msg_belonging(BoxId, JObj, kzd_box_message:source_id(JObj)).
+
+check_msg_belonging(_BoxId, _JObj, 'undefined') -> 'true';
+check_msg_belonging(_BoxId, _JObj, _SourceId) ->
+    lager:debug("message ~s belongs to mailbox ~s but claims to belong to ~s"
+               ,[kz_doc:id(_JObj), _SourceId, _BoxId]),
+    'false'.
 
 %%--------------------------------------------------------------------
 %% @public
