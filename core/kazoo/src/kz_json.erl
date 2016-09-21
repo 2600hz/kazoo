@@ -566,14 +566,14 @@ get_binary_boolean(Key, JObj, Default) ->
         Value -> kz_util:to_binary(kz_util:is_true(Value))
     end.
 
--spec get_keys(object()) -> [key()].
--spec get_keys(key(), object()) -> [pos_integer(),...] | [key()].
+-spec get_keys(object()) -> keys().
+-spec get_keys(key(), object()) -> [pos_integer(),...] | keys().
 get_keys(JObj) -> get_keys1(JObj).
 
 get_keys([], JObj) -> get_keys1(JObj);
 get_keys(Keys, JObj) -> get_keys1(get_value(Keys, JObj, new())).
 
--spec get_keys1(list() | object()) -> [pos_integer(),...] | [key()].
+-spec get_keys1(list() | object()) -> [pos_integer(),...] | keys().
 get_keys1(KVs) when is_list(KVs) -> lists:seq(1,length(KVs));
 get_keys1(JObj) -> props:get_keys(to_proplist(JObj)).
 
@@ -709,7 +709,7 @@ get_values(JObj) ->
                         {[get_value(Key, JObj)|Vs], [Key|Ks]}
                 end, {[], []}, ?MODULE:get_keys(JObj)).
 
--spec get_values(key() | keys(), object()) -> {json_terms(), keys()}.
+-spec get_values(key(), object()) -> {json_terms(), keys()}.
 get_values(Key, JObj) ->
     get_values(get_value(Key, JObj, new())).
 
