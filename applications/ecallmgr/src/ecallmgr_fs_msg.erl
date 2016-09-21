@@ -251,7 +251,7 @@ build_message_headers(JObj, Endpoint) ->
                ]),
     kz_json:foldl(fun headers_foldl/3, Header, CCVs).
 
--spec headers_foldl(kz_json:key(), kz_json:json_term(), kz_proplist()) -> kz_proplist().
+-spec headers_foldl(kz_json:path(), kz_json:json_term(), kz_proplist()) -> kz_proplist().
 headers_foldl(K, V, Acc) ->
     [{kz_util:to_list(?GET_CCV(K)), kz_util:to_list(V)} | Acc].
 

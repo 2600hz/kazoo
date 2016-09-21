@@ -79,9 +79,9 @@ custom_channel_vars(JObj) ->
 custom_channel_vars(JObj, Default) ->
     kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, Default).
 
--spec custom_channel_var(doc(), kz_json:key()) ->
+-spec custom_channel_var(doc(), kz_json:path()) ->
                                 api_binary().
--spec custom_channel_var(doc(), kz_json:key(), Default) ->
+-spec custom_channel_var(doc(), kz_json:path(), Default) ->
                                 ne_binary() | Default.
 custom_channel_var(JObj, Key) ->
     custom_channel_var(JObj, Key, 'undefined').

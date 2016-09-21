@@ -182,7 +182,7 @@ port_request_data(PortRequestJObj) ->
       kz_json:foldl(fun port_request_data_fold/3, kz_json:new(), PublicJObj)
      ).
 
--spec port_request_data_fold(kz_json:key(), kz_json:json_term(), kz_json:object()) ->
+-spec port_request_data_fold(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
                                     kz_json:object().
 port_request_data_fold(<<"name">> = K, V, Acc) ->
     kz_json:set_value(K, V, Acc);

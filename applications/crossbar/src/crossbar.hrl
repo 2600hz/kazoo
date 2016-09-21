@@ -148,7 +148,7 @@
                     ,resp_expires = {{1999,1,1},{0,0,0}} :: kz_datetime()
                     ,resp_etag :: 'automatic' | string() | api_binary()
                     ,resp_status = 'error' :: crossbar_status()
-                    ,resp_error_msg :: kz_json:key()
+                    ,resp_error_msg :: kz_json:path()
                     ,resp_error_code :: api_integer()
                     ,resp_file = <<>> :: api_binary()
                     ,resp_data :: resp_data()

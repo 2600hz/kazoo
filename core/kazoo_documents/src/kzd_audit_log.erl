@@ -49,7 +49,7 @@
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
--spec audit_account_ids(doc()) -> kz_json:key().
+-spec audit_account_ids(doc()) -> kz_json:path().
 audit_account_ids(JObj) ->
     kz_json:get_keys(?KEY_AUDIT, JObj).
 

@@ -309,7 +309,7 @@ set_cumulative_discount_rate(Rate, #kz_service_item{}=ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec bookkeeper(kz_json:key(), item()) -> api_object() | ne_binary().
+-spec bookkeeper(kz_json:path(), item()) -> api_object() | ne_binary().
 bookkeeper(Bookkeeper, #kz_service_item{bookkeepers=Bookkeepers}) ->
     kz_json:get_ne_value(Bookkeeper, Bookkeepers).
 

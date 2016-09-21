@@ -266,7 +266,7 @@ extract_subscription(Subscription, Acc) ->
         _Sub -> Acc
     end.
 
--spec add_subscription(kz_json:object(), kz_json:object(), kz_json:key()) ->
+-spec add_subscription(kz_json:object(), kz_json:object(), kz_json:path()) ->
                               kz_json:object().
 add_subscription(Subscription, Acc, Key) ->
     kz_json:set_value(Key

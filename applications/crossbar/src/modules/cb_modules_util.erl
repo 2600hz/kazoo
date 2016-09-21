@@ -472,8 +472,8 @@ bucket_name(IP, AccountId) ->
     <<IP/binary, "/", AccountId/binary>>.
 
 -spec token_cost(cb_context:context()) -> non_neg_integer().
--spec token_cost(cb_context:context(), non_neg_integer() | kz_json:key() | kz_json:key()) -> non_neg_integer().
--spec token_cost(cb_context:context(), non_neg_integer(), kz_json:key()) -> non_neg_integer().
+-spec token_cost(cb_context:context(), non_neg_integer() | kz_json:path() | kz_json:path()) -> non_neg_integer().
+-spec token_cost(cb_context:context(), non_neg_integer(), kz_json:path()) -> non_neg_integer().
 
 token_cost(Context) ->
     token_cost(Context, 1).
@@ -498,7 +498,7 @@ token_cost(Context, Default, Suffix) when is_integer(Default)
 
 -spec find_token_cost(kz_json:object() | non_neg_integer()
                      ,Default
-                     ,kz_json:key()
+                     ,kz_json:path()
                      ,req_nouns()
                      ,http_method()
                      ,api_binary()
@@ -521,7 +521,7 @@ find_token_cost(JObj, Default, Suffix, [{Endpoint, _}|_], ReqVerb, AccountId) ->
            ],
     get_token_cost(JObj, Default, Keys).
 
--spec get_token_cost(kz_json:object(), Default, kz_json:key()) ->
+-spec get_token_cost(kz_json:object(), Default, kz_json:path()) ->
                             integer() | Default.
 get_token_cost(JObj, Default, Keys) ->
     case kz_json:get_first_defined(Keys, JObj) of

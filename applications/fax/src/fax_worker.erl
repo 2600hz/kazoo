@@ -733,7 +733,7 @@ apply_reschedule_logic(JObj) ->
             JObj2
     end.
 
--spec apply_reschedule_rules({kz_json:json_terms(), kz_json:key()}, kz_json:object()) ->
+-spec apply_reschedule_rules({kz_json:json_terms(), kz_json:path()}, kz_json:object()) ->
                                     {'ok', kz_json:object()} |
                                     {'no_rules', kz_json:object()}.
 apply_reschedule_rules({[], _}, JObj) -> {'no_rules', JObj};

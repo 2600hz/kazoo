@@ -22,9 +22,9 @@
 -type account() :: ne_binary() | kapps_call:call() | kz_json:object().
 
 %% get_global/{3,4} will search the account db first, then system_config for values
--spec get_global(account(), ne_binary(), kz_json:key()) ->
+-spec get_global(account(), ne_binary(), kz_json:path()) ->
                         kz_json:json_term().
--spec get_global(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
+-spec get_global(account(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
                         kz_json:json_term().
 get_global(Account, Category, Key) ->
     get_global(Account, Category, Key, 'undefined').
@@ -35,14 +35,14 @@ get_global(Account, Category, Key, Default) ->
         {'error', _} -> maybe_get_global_from_reseller(AccountId, Category, Key, Default)
     end.
 
--spec maybe_get_global_from_reseller(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
+-spec maybe_get_global_from_reseller(account(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
                                             kz_json:json_term().
 maybe_get_global_from_reseller(Account, Category, Key, Default) ->
     AccountId = account_id(Account),
     ResellerId = kz_services:find_reseller_id(AccountId),
     maybe_get_global_from_reseller(AccountId, ResellerId, Category, Key, Default).
 
--spec maybe_get_global_from_reseller(account(), account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
+-spec maybe_get_global_from_reseller(account(), account(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
                                             kz_json:json_term().
 maybe_get_global_from_reseller(AccountId, AccountId, Category, Key, Default) ->
     kapps_config:get(Category, Key, Default);
@@ -52,7 +52,7 @@ maybe_get_global_from_reseller(_AccountId, ResellerId, Category, Key, Default) -
         {'error', _} -> kapps_config:get(Category, Key, Default)
     end.
 
--spec get_global_from_account(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
+-spec get_global_from_account(account(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
                                      {'ok', kz_json:object()} |
                                      {'error', any()}.
 get_global_from_account(Account, Category, _Key, _Default) ->
@@ -60,7 +60,7 @@ get_global_from_account(Account, Category, _Key, _Default) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     kz_datamgr:open_cache_doc(AccountDb, config_doc_id(Category), [{'cache_failures', ['not_found']}]).
 
--spec get_global_from_doc(ne_binary(), kz_json:key(), kz_json:json_term(), kz_json:object()) ->
+-spec get_global_from_doc(ne_binary(), kz_json:path(), kz_json:json_term(), kz_json:object()) ->
                                  kz_json:object().
 get_global_from_doc(Category, Key, Default, JObj) ->
     case kz_json:get_value(Key, JObj) of
@@ -88,15 +88,15 @@ flush(Account, Config) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     kz_datamgr:flush_cache_doc(AccountDb, config_doc_id(Config)).
 
--spec get(account(), ne_binary(), kz_json:key()) -> kz_json:api_json_term().
--spec get(account(), ne_binary(), kz_json:key(), Default) ->
+-spec get(account(), ne_binary(), kz_json:path()) -> kz_json:api_json_term().
+-spec get(account(), ne_binary(), kz_json:path(), Default) ->
                  kz_json:json_term() | Default.
 get(Account, Config, Key) ->
     get(Account, Config, Key, 'undefined').
 get(Account, Config, Key, Default) ->
     kz_json:get_value(Key, get(Account, Config), Default).
 
--spec set(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
+-spec set(account(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
                  kz_json:object().
 set(Account, Config, Key, Value) ->
     JObj = kz_json:set_value(Key, Value, get(Account, Config)),
@@ -115,7 +115,7 @@ update_config_for_saving(AccountDb, JObj) ->
                                  ,{'account_id', account_id(AccountDb)}
                                  ]).
 
--spec set_global(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
+-spec set_global(account(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
                         kz_json:object().
 set_global(Account, Category, Key, Value) ->
     AccountId = account_id(Account),
@@ -180,8 +180,8 @@ account_db_from_jobj(_Obj, 'false') ->
     throw({'error', 'unknown_object'}).
 
 %% Migrates config settings
--type migrate_setting() :: {ne_binary(), kz_json:key()}.
--type migrate_value() :: {ne_binary(), ne_binary(), kz_json:key(), _}.
+-type migrate_setting() :: {ne_binary(), kz_json:path()}.
+-type migrate_value() :: {ne_binary(), ne_binary(), kz_json:path(), _}.
 -type migrate_values() :: [migrate_value()].
 
 -define(ACCOUNT_CONFIG_MIGRATIONS
@@ -231,7 +231,7 @@ migrate_config_setting(AccountDb, UpdatedFrom, Removed, To) ->
 add_config_setting(AccountDb, {Id, Setting}, Values) ->
     add_config_setting(AccountDb, Id, Setting, Values).
 
--spec add_config_setting(ne_binary(), ne_binary(), kz_json:key(), migrate_values()) ->
+-spec add_config_setting(ne_binary(), ne_binary(), kz_json:path(), migrate_values()) ->
                                 'ok' |
                                 {'error', any()}.
 add_config_setting(AccountDb, Id, Setting, Values) when is_binary(Id) ->
@@ -281,7 +281,7 @@ add_config_setting(AccountDb, JObj, ToSetting, [{FromId, Node, FromSetting, Valu
 remove_config_setting(AccountDb, {Id, Setting}) ->
     remove_config_setting(AccountDb, Id, Setting).
 
--spec remove_config_setting(ne_binary(), ne_binary() | kz_json:object(), kz_json:key()) ->
+-spec remove_config_setting(ne_binary(), ne_binary() | kz_json:object(), kz_json:path()) ->
                                    {'ok', kz_json:object(), migrate_values()} |
                                    {'error', any()}.
 remove_config_setting(AccountDb, Id, Setting) when is_binary(Id) ->
@@ -297,7 +297,7 @@ remove_config_setting(AccountDb, JObj, Setting) ->
         ],
     remove_config_setting(AccountDb, Keys, JObj, []).
 
--spec remove_config_setting(ne_binary(), [{ne_binary(), ne_binary(), kz_json:key()}], kz_json:object(), migrate_values()) ->
+-spec remove_config_setting(ne_binary(), [{ne_binary(), ne_binary(), kz_json:path()}], kz_json:object(), migrate_values()) ->
                                    {'ok', kz_json:object(), migrate_values()}.
 remove_config_setting(_AccountDb, [], JObj, Removed) ->
     {'ok', JObj, Removed};
@@ -313,7 +313,7 @@ remove_config_setting(AccountDb, [{Id, Node, Setting} | Keys], JObj, Removed) ->
                                  )
     end.
 
--spec config_setting_key(ne_binary(), kz_json:key()) -> ne_binaries().
+-spec config_setting_key(ne_binary(), kz_json:path()) -> ne_binaries().
 %% NOTE: to support nested keys, update this merge function
 config_setting_key(Node, Setting) ->
     [Node, Setting].

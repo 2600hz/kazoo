@@ -1703,7 +1703,7 @@ recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc(kz_json:key() | kz_json:key()
+-spec update_doc(kz_json:path() | kz_json:path()
                 ,kz_json:json_term()
                 ,mailbox() | ne_binary()
                 ,kapps_call:call() | ne_binary()

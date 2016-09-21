@@ -551,7 +551,7 @@ update_attachment(Contents, {IsUpdated, TemplateJObj}=Acc, ContentType, Id, ANam
 update_macros(Macros, Acc) ->
     kz_json:foldl(fun update_macro/3, Acc, Macros).
 
--spec update_macro(kz_json:key(), kz_json:json_term(), update_acc()) ->
+-spec update_macro(kz_json:path(), kz_json:json_term(), update_acc()) ->
                           update_acc().
 update_macro(MacroKey, MacroValue, {_IsUpdated, TemplateJObj}=Acc) ->
     case kz_notification:macro(TemplateJObj, MacroKey) of

@@ -162,7 +162,7 @@ details_groups([{<<"cf_", _/binary>>,_}=KV | KS], {Group, Acc}) ->
 details_groups([KV | KS], {Group, Acc}) ->
     details_groups(KS, {Group, add_to_group(Group, KV, Acc)}).
 
--spec add_to_group(ne_binary(), {kz_json:key(), kz_json:json_term()}, kz_proplist()) ->
+-spec add_to_group(ne_binary(), {kz_json:path(), kz_json:json_term()}, kz_proplist()) ->
                           kz_proplist().
 add_to_group(Group, KV, Acc) ->
     case props:get_value(Group, Acc) of

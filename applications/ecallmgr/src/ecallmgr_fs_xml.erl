@@ -550,7 +550,7 @@ get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     end;
 get_channel_vars(_, Vars) -> Vars.
 
--spec sip_headers_fold(kz_json:key(), kz_json:json_term(), iolist()) -> iolist().
+-spec sip_headers_fold(kz_json:path(), kz_json:json_term(), iolist()) -> iolist().
 sip_headers_fold(<<"Diversions">>, Vs, Vars0) ->
     diversion_headers_fold(Vs, Vars0);
 sip_headers_fold(K, <<_/binary>> = V, Vars0) ->
@@ -565,7 +565,7 @@ diversion_header_fold(<<_/binary>> = V, Vars0) ->
     lager:debug("setting diversion ~s on the channel", [V]),
     [list_to_binary(["sip_h_Diversion=", V]) | Vars0].
 
--spec get_channel_vars_fold(kz_json:key(), kz_json:json_term(), iolist()) -> iolist().
+-spec get_channel_vars_fold(kz_json:path(), kz_json:json_term(), iolist()) -> iolist().
 get_channel_vars_fold(<<"Force-Fax">>, Direction, Acc) ->
     [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
 get_channel_vars_fold(K, V, Acc) ->

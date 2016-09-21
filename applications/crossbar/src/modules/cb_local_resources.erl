@@ -246,7 +246,7 @@ get_all_acl_ips() ->
 extract_all_ips(JObj) ->
     kz_json:foldl(fun extract_ips_fold/3, [], JObj).
 
--spec extract_ips_fold(kz_json:key(), kz_json:object(), acl_ips()) -> acl_ips().
+-spec extract_ips_fold(kz_json:path(), kz_json:object(), acl_ips()) -> acl_ips().
 extract_ips_fold(_K, JObj, IPs) ->
     case kz_json:get_value(<<"cidr">>, JObj) of
         'undefined' -> IPs;

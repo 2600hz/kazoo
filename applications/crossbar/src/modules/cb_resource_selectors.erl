@@ -306,7 +306,7 @@ put_resource_selector(Context, ResourceId, SelectorName) ->
     maybe_send_db_change_notice(cb_context:account_db(Context), FinalStats),
     crossbar_util:response(kz_json:from_list(FinalStats), Context).
 
--spec fold_datum(kz_json:object() | kz_json:key(), {stats(), kz_json:objects()}, cb_context:context(), ne_binary(), ne_binary()) ->
+-spec fold_datum(kz_json:object() | kz_json:path(), {stats(), kz_json:objects()}, cb_context:context(), ne_binary(), ne_binary()) ->
                         {stats(), kz_json:objects()}.
 fold_datum(MaybeJObj, {AccStats, JObjs}, Context, ResourceId, SelectorName) ->
     J =

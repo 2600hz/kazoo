@@ -296,7 +296,7 @@ get_classifier_regex(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec correct_depreciated_classifiers(kz_json:key(), kz_json:json_term(), kz_json:object()) ->
+-spec correct_depreciated_classifiers(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
                                              kz_json:object().
 correct_depreciated_classifiers(Classifier, ?NE_BINARY = Regex, JObj) ->
     J = kz_json:from_list([{<<"regex">>, Regex}

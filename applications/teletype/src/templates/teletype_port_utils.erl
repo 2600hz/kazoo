@@ -38,7 +38,7 @@ get_attachments(DataJObj, 'false') ->
                ,kz_doc:attachment_names(Doc)
      ).
 
--spec get_attachment_fold(kz_json:key(), attachments(), ne_binary(), kz_json:object()) ->
+-spec get_attachment_fold(kz_json:path(), attachments(), ne_binary(), kz_json:object()) ->
                                  attachments().
 get_attachment_fold(Name, Acc, PortReqId, Doc) ->
     {'ok', Attachment} = kz_datamgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortReqId, Name),
@@ -117,7 +117,7 @@ fix_numbers(JObj) ->
          ),
     kz_json:set_value(<<"numbers">>, Numbers, JObj).
 
--spec fix_number_fold(kz_json:object(), any(), kz_json:key()) -> kz_json:key().
+-spec fix_number_fold(kz_json:object(), any(), kz_json:path()) -> kz_json:path().
 fix_number_fold(Number, _Value, Acc) ->
     [Number|Acc].
 
@@ -129,7 +129,7 @@ fix_billing(JObj) ->
                  ,kz_json:get_value(<<"bill">>, JObj)
      ).
 
--spec fix_billing_fold(kz_json:key(), kz_json:json_term(), kz_json:object()) ->
+-spec fix_billing_fold(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
                               kz_json:object().
 fix_billing_fold(Key, Value, Acc) ->
     kz_json:set_value(<<"bill_", Key/binary>>, Value, Acc).
@@ -163,7 +163,7 @@ fix_dates(JObj) ->
                ,[<<"transfer_date">>, <<"scheduled_date">>]
      ).
 
--spec fix_date_fold(kz_json:key(), kz_json:object()) -> kz_json:object().
+-spec fix_date_fold(kz_json:path(), kz_json:object()) -> kz_json:object().
 fix_date_fold(Key, JObj) ->
     case kz_json:get_integer_value(Key, JObj) of
         'undefined' -> JObj;

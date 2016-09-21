@@ -1095,8 +1095,8 @@ delete_system_media_references(DocId, CallResponsesDoc) ->
             'ok'
     end.
 
--spec remove_system_media_refs(kz_json:key(), kz_json:objects()) ->
-                                      {kz_json:key(), kz_json:json_term()}.
+-spec remove_system_media_refs(kz_json:path(), kz_json:objects()) ->
+                                      {kz_json:path(), kz_json:json_term()}.
 remove_system_media_refs(HangupCause, Config) ->
     case kz_json:is_json_object(Config) of
         'false' -> {HangupCause, Config};
@@ -1106,7 +1106,7 @@ remove_system_media_refs(HangupCause, Config) ->
             }
     end.
 
--spec remove_system_media_ref(kz_json:key(), kz_json:json_term(), kz_json:object()) ->
+-spec remove_system_media_ref(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
                                      kz_json:object().
 remove_system_media_ref(Key, <<"/system_media/", Value/binary>>, Acc) -> kz_json:set_value(Key, Value, Acc);
 remove_system_media_ref(Key, Value, Acc) -> kz_json:set_value(Key, Value, Acc).

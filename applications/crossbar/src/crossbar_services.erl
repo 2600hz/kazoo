@@ -97,13 +97,13 @@ commit_transactions(Context, Transactions, Services, Callback) ->
 extract_items(JObj) ->
     kz_json:foldl(fun extract_items_from_category/3, [], JObj).
 
--spec extract_items_from_category(kz_json:key(), kz_json:object(), kz_json:objects()) ->
+-spec extract_items_from_category(kz_json:path(), kz_json:object(), kz_json:objects()) ->
                                          kz_json:objects().
 extract_items_from_category(CategoryKey, CategoryJObj, Acc) ->
     Fun = fun(K, V, Acc1) -> extract_item_from_category(CategoryKey, K, V, Acc1) end,
     kz_json:foldl(Fun, Acc, CategoryJObj).
 
--spec extract_item_from_category(kz_json:key(), kz_json:key(), kz_json:object(), kz_json:objects()) ->
+-spec extract_item_from_category(kz_json:path(), kz_json:path(), kz_json:object(), kz_json:objects()) ->
                                          kz_json:objects().
 extract_item_from_category(CategoryKey, ItemKey, ItemJObj, Acc) ->
     [kz_json:set_values([{<<"category">>, CategoryKey}

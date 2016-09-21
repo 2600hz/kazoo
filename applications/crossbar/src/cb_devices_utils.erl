@@ -95,7 +95,7 @@ get_all_acl_ips() ->
 extract_all_ips(JObj) ->
     kz_json:foldl(fun extract_ip/3, [], JObj).
 
--spec extract_ip(kz_json:key(), kz_json:object(), kz_json:objects()) ->
+-spec extract_ip(kz_json:path(), kz_json:object(), kz_json:objects()) ->
                         kz_json:objects().
 extract_ip(_Key, Value, Acc) ->
     case kz_json:get_value(<<"cidr">>, Value) of

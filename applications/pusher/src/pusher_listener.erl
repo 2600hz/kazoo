@@ -133,7 +133,7 @@ build_push(UA, JObj, Params, InitialAcc) ->
               build_push_fold(K, V, Acc, JObj, Params)
       end, InitialAcc, UA).
 
--spec build_push_fold(kz_json:key(), kz_json:json_term(), kz_json:object(), kz_json:object(), kz_proplist()) -> kz_json:object().
+-spec build_push_fold(kz_json:path(), kz_json:json_term(), kz_json:object(), kz_json:object(), kz_proplist()) -> kz_json:object().
 build_push_fold(K, V, Acc, JObj, Params) ->
     case props:get_value(V, Params) of
         'undefined' ->

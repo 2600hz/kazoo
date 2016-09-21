@@ -587,8 +587,8 @@ filter_fields({K,_}) ->
 normalize_fields(Rate) ->
     kz_json:map(fun normalize_field/2, Rate).
 
--spec normalize_field(kz_json:key(), kz_json:json_term()) ->
-                             {kz_json:key(), kz_json:json_term()}.
+-spec normalize_field(kz_json:path(), kz_json:json_term()) ->
+                             {kz_json:path(), kz_json:json_term()}.
 normalize_field(<<"Base-Cost">> = K, BaseCost) ->
     {K, wht_util:units_to_dollars(BaseCost)};
 normalize_field(<<"Rate">> = K, Rate) ->

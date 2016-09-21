@@ -663,7 +663,7 @@ get_acls(Node) ->
 filter_acls(ACLs) ->
     kz_json:filter(fun filter_acls_fun/1, ACLs).
 
--spec filter_acls_fun({kz_json:key(), kz_json:json_term()}) -> boolean().
+-spec filter_acls_fun({kz_json:path(), kz_json:json_term()}) -> boolean().
 filter_acls_fun({_Name, ACL}) ->
     kz_json:get_value(<<"authorizing_type">>, ACL) =:= 'undefined'.
 

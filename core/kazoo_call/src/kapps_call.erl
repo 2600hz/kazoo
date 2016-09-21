@@ -929,12 +929,12 @@ from_tag(#kapps_call{from_tag=FromTag}) ->
 direction(#kapps_call{direction=Direction}) ->
     Direction.
 
--spec remove_custom_channel_vars(kz_json:key(), call()) -> call().
+-spec remove_custom_channel_vars(kz_json:path(), call()) -> call().
 remove_custom_channel_vars(Keys, #kapps_call{}=Call) ->
     kapps_call_command:set(kz_json:from_list([{Key, <<>>} || Key <- Keys]), 'undefined', Call),
     handle_ccvs_remove(Keys, Call).
 
--spec handle_ccvs_remove(kz_json:key(), call()) -> call().
+-spec handle_ccvs_remove(kz_json:path(), call()) -> call().
 handle_ccvs_remove(Keys, #kapps_call{ccvs=CCVs}=Call) ->
     lists:foldl(fun(Key, C) ->
                         case props:get_value(Key, ?SPECIAL_VARS) of
@@ -946,7 +946,7 @@ handle_ccvs_remove(Keys, #kapps_call{ccvs=CCVs}=Call) ->
                ,Keys
                ).
 
--spec set_custom_channel_var(kz_json:key(), kz_json:json_term(), call()) -> call().
+-spec set_custom_channel_var(kz_json:path(), kz_json:json_term(), call()) -> call().
 -ifdef(TEST).
 set_custom_channel_var(Key, Value, Call) ->
     insert_custom_channel_var(Key, Value, Call).
@@ -956,7 +956,7 @@ set_custom_channel_var(Key, Value, Call) ->
     insert_custom_channel_var(Key, Value, Call).
 -endif.
 
--spec insert_custom_channel_var(kz_json:key(), kz_json:json_term(), call()) -> call().
+-spec insert_custom_channel_var(kz_json:path(), kz_json:json_term(), call()) -> call().
 insert_custom_channel_var(Key, Value, #kapps_call{ccvs=CCVs}=Call) ->
     handle_ccvs_update(kz_json:set_value(Key, Value, CCVs), Call).
 
@@ -996,12 +996,12 @@ custom_channel_var(Key, #kapps_call{ccvs=CCVs}) ->
 custom_channel_vars(#kapps_call{ccvs=CCVs}) ->
     CCVs.
 
--spec set_custom_sip_header(kz_json:key(), kz_json:json_term(), call()) -> call().
+-spec set_custom_sip_header(kz_json:path(), kz_json:json_term(), call()) -> call().
 set_custom_sip_header(Key, Value, #kapps_call{sip_headers=SHs}=Call) ->
     Call#kapps_call{sip_headers=kz_json:set_value(Key, Value, SHs)}.
 
--spec custom_sip_header(kz_json:key(), call()) -> kz_json:json_term().
--spec custom_sip_header(kz_json:key(), kz_json:json_term(), call()) -> kz_json:json_term().
+-spec custom_sip_header(kz_json:path(), call()) -> kz_json:json_term().
+-spec custom_sip_header(kz_json:path(), kz_json:json_term(), call()) -> kz_json:json_term().
 custom_sip_header(Key, #kapps_call{}=Call) ->
     custom_sip_header(Key, 'undefined', Call).
 custom_sip_header(Key, Default, #kapps_call{sip_headers=SHs}) ->
@@ -1051,8 +1051,8 @@ kvs_erase(Key, #kapps_call{kvs=Dict}=Call) ->
 -spec kvs_flush(call()) -> call().
 kvs_flush(#kapps_call{}=Call) -> Call#kapps_call{kvs=orddict:new()}.
 
--spec kvs_fetch(kz_json:key(), call()) -> any().
--spec kvs_fetch(kz_json:key(), Default, call()) -> any() | Default.
+-spec kvs_fetch(kz_json:path(), call()) -> any().
+-spec kvs_fetch(kz_json:path(), Default, call()) -> any() | Default.
 kvs_fetch(Key, Call) -> kvs_fetch(Key, 'undefined', Call).
 kvs_fetch(Key, Default, #kapps_call{kvs=Dict}) ->
     try orddict:fetch(kz_util:to_binary(Key), Dict)

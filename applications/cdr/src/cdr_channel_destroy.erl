@@ -121,7 +121,7 @@ update_ccvs(_, _, JObj) ->
                      ),
     kz_json:set_value(?CHANNEL_VARS, UpdatedCCVs, UpdatedJobj).
 
--spec update_ccvs_foldl(kz_json:key(), kz_json:json_term(), {kz_json:object(), kz_json:object()}) ->
+-spec update_ccvs_foldl(kz_json:path(), kz_json:json_term(), {kz_json:object(), kz_json:object()}) ->
                                {kz_json:object(), kz_json:object()}.
 update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
     case kz_json:is_private_key(Key) of
@@ -157,8 +157,8 @@ maybe_set_e164_destination(_AccountId, _Timestamp, JObj) ->
 is_conference(_AccountId, _Timestamp, JObj) ->
     maybe_leak_ccv(JObj, <<"Is-Conference">>, {fun kz_json:is_true/3, 'false'}).
 
--spec maybe_leak_ccv(kz_json:object(), kz_json:key()) -> kz_json:object().
--spec maybe_leak_ccv(kz_json:object(), kz_json:key(), {fun(), any()}) -> kz_json:object().
+-spec maybe_leak_ccv(kz_json:object(), kz_json:path()) -> kz_json:object().
+-spec maybe_leak_ccv(kz_json:object(), kz_json:path(), {fun(), any()}) -> kz_json:object().
 maybe_leak_ccv(JObj, Key) ->
     maybe_leak_ccv(JObj, Key, {fun kz_json:get_value/3, 'undefined'}).
 
