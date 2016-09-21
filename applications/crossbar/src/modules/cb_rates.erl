@@ -384,7 +384,8 @@ csv_to_rates(CSV, Context) ->
 -spec process_row(cb_context:context(), rate_row(), integer(), kz_json:objects(), integer()) ->
                          rate_row_acc().
 process_row(Context, Row, Count, JObjs, BulkInsert) ->
-    J = case Count > 1 andalso (Count rem BulkInsert) =:= 0 of
+    J = case Count > 1
+            andalso (Count rem BulkInsert) =:= 0 of
             'false' -> JObjs;
             'true' ->
                 _Pid = save_processed_rates(cb_context:set_doc(Context, JObjs), Count),

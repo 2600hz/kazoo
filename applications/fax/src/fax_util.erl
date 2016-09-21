@@ -178,7 +178,10 @@ is_valid_caller_id(Number, AccountId) ->
     end.
 
 -spec is_digit(integer()) -> boolean().
-is_digit(N) -> N >= $0 andalso N =< $9.
+is_digit(N) when is_integer(N),
+                 N >= $0,
+                 N =< $9 -> true;
+is_digit(_) -> false.
 
 -spec normalize_content_type(text()) -> ne_binary().
 normalize_content_type(<<"image/tif">>) -> <<"image/tiff">>;
