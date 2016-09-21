@@ -14,6 +14,8 @@
 -export([fix_account_numbers/1
         ,fix_accounts_numbers/1
 
+        ,migrate/0, migrate/1
+
         ,generate_numbers/4
 
         ,delete/1
@@ -82,6 +84,17 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
     ?LOG("########## done fixing [~s] ##########", [AccountDb]);
 fix_account_numbers(Account = ?NE_BINARY) ->
     fix_account_numbers(kz_util:format_account_db(Account)).
+
+-spec migrate() -> ok.
+migrate() ->
+    AccountDbs = kapps_util:get_all_accounts(),
+    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun migrate/1, AccountDbs).
+
+-spec migrate(ne_binary()) -> ok.
+migrate(AccountDb) ->
+    fix_account_numbers(AccountDb),
+    _ = kz_datamgr:del_doc(AccountDb, <<"phone_numbers">>),
+    ok.
 
 %%%===================================================================
 %%% Internal functions
