@@ -180,11 +180,8 @@ content_types_provided(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
 
 -spec content_types_provided_get(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 content_types_provided_get(Context, Id, AttachmentId) ->
-    cb_context:add_attachment_content_type(
-      cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-                                          ,Id
-                                          ,AttachmentId
-     ).
+    Context1 = cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB),
+    cb_context:add_attachment_content_type(Context1, Id, AttachmentId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -311,12 +308,9 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
     Contents = kz_json:get_value(<<"contents">>, FileJObj),
     CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"port_request">>)],
-    crossbar_doc:save_attachment(Id
-                                ,cb_modules_util:attachment_name(Filename, CT)
-                                ,Contents
-                                ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-                                ,Opts
-                                ).
+    AName = cb_modules_util:attachment_name(Filename, CT),
+    Context1 = cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB),
+    crossbar_doc:save_attachment(Id, AName, Contents, Context1, Opts).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -442,16 +436,10 @@ delete(Context, Id, ?PORT_ATTACHMENT, AttachmentName) ->
 %%% Internal functions
 %%%===================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec load_port_request(cb_context:context(), ne_binary()) -> cb_context:context().
 load_port_request(Context, Id) ->
-    crossbar_doc:load(Id
-                     ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-                     ,?TYPE_CHECK_OPTION(<<"port_request">>)).
+    Context1 = cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB),
+    crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(<<"port_request">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -727,17 +715,17 @@ load_summary(Context, ViewOptions) ->
                'true' -> ?DESCENDANT_LISTING_BY_STATE;
                'false' -> ?LISTING_BY_STATE
            end,
-    maybe_normalize_summary_results(
-      crossbar_doc:load_view(View
-                            ,['include_docs'
-                             ,'descending'
-                              | props:delete('normalize', ViewOptions)
-                             ]
-                            ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-                            ,fun normalize_view_results/2
-                            )
-                                   ,props:get_value('normalize', ViewOptions, 'true')
-     ).
+    Context1 =
+        crossbar_doc:load_view(View
+                              ,['include_docs'
+                               ,'descending'
+                                | props:delete('normalize', ViewOptions)
+                               ]
+                              ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                              ,fun normalize_view_results/2
+                              ),
+    ShouldNormalize = props:get_value('normalize', ViewOptions, 'true'),
+    maybe_normalize_summary_results(Context1, ShouldNormalize).
 
 -spec maybe_normalize_summary_results(cb_context:context(), boolean()) -> cb_context:context().
 maybe_normalize_summary_results(Context, 'false') -> Context;
