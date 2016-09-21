@@ -12,6 +12,7 @@
 -export([default_payment_token/1]).
 -export([default_payment_card/1]).
 -export([payment_token/1]).
+-export([payment_tokens/1]).
 -export([find/1]).
 -export([create/1, create/2]).
 -export([update/1]).
@@ -72,6 +73,16 @@ default_payment_card(Cards) ->
 
 -spec payment_token(bt_card()) -> api_binary().
 payment_token(#bt_card{token = Value}) -> Value.
+
+-spec payment_tokens(bt_cards()) -> api_binaries().
+payment_tokens(Cards) ->
+    payment_tokens(Cards, []).
+
+-spec payment_tokens(bt_cards(), api_binaries()) -> api_binaries().
+payment_tokens([], Acc) ->
+    Acc;
+payment_tokens([Card | Cards], Acc) ->
+    payment_tokens(Cards, [payment_token(Card)|Acc]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -236,6 +247,7 @@ record_to_xml(#bt_card{}=Card, ToString) ->
              ,{'customer-id', Card#bt_card.customer_id}
              ,{'number', Card#bt_card.number}
              ,{'cvv', Card#bt_card.cvv}
+             ,{'payment-method-nonce', Card#bt_card.payment_method_nonce}
             ],
     Conditionals =
         [fun(#bt_card{billing_address=BA, billing_address_id=BAID}, P) ->
@@ -314,6 +326,7 @@ json_to_record(JObj) ->
              ,update_existing = kz_json:get_binary_value(<<"update_existing">>, JObj)
              ,verify = kz_json:is_true(<<"verify">>, JObj, 'true')
              ,make_default = kz_json:is_true(<<"make_default">>, JObj, 'true')
+             ,payment_method_nonce = kz_json:get_binary_value(<<"payment_method_nonce">>, JObj)
             }.
 
 %%--------------------------------------------------------------------

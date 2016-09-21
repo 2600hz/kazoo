@@ -111,6 +111,7 @@
                   ,update_existing = 'false' :: boolean() | ne_binary()
                   ,billing_address_id :: api_binary()
                   ,billing_address :: bt_address() | 'undefined'
+                  ,payment_method_nonce :: api_binary()
                  }).
 -type bt_card() :: #bt_card{}.
 -type bt_cards() :: [bt_card()].
@@ -189,6 +190,7 @@
                       ,credit_cards = [] :: bt_cards()
                       ,addresses = [] :: bt_addresses()
                       ,subscriptions = [] :: bt_subscriptions()
+                      ,payment_method_nonce :: api_binary()
                      }).
 -type bt_customer() :: #bt_customer{}.
 -type bt_customers() :: [bt_customer()].
