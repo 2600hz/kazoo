@@ -8,6 +8,16 @@
 
 #### Fetch
 
+> GET /v2/accounts/{ACCOUNT_ID}/braintree/client_token
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/client_token
+```
+
+#### Fetch
+
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/credits
 
 ```shell
@@ -32,16 +42,6 @@ curl -v -X PUT \
 
 ```shell
 curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions
-```
-
-#### Create
-
-> PUT /v2/accounts/{ACCOUNT_ID}/braintree/transactions
-
-```shell
-curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions
 ```

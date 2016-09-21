@@ -6654,6 +6654,11 @@
         "system_config.braintree": {
             "description": "Schema for braintree system_config",
             "properties": {
+                "client_token_version": {
+                    "default": "2",
+                    "description": "braintree client token version",
+                    "type": "string"
+                },
                 "debug": {
                     "default": false,
                     "description": "braintree debug",
@@ -13392,6 +13397,19 @@
                 ]
             }
         },
+        "/accounts/{ACCOUNT_ID}/braintree/client_token": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
         "/accounts/{ACCOUNT_ID}/braintree/credits": {
             "get": {
                 "parameters": [
@@ -13442,17 +13460,6 @@
         },
         "/accounts/{ACCOUNT_ID}/braintree/transactions": {
             "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "put": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header",

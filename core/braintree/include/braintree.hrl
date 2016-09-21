@@ -108,6 +108,7 @@
                  ,customer_id :: api_binary()
                  ,make_default = 'true' :: boolean()
                  ,verify = 'true' :: boolean()
+                 ,payment_method_nonce :: api_binary()
                  ,update_existing = 'false' :: boolean() | ne_binary()
                  ,billing_address_id :: api_binary()
                  ,billing_address :: bt_address() | 'undefined'
@@ -186,6 +187,7 @@
                      ,website :: api_binary()
                      ,created_at :: api_binary()
                      ,updated_at :: api_binary()
+                     ,payment_method_nonce :: api_binary()
                      ,credit_cards = [] :: bt_cards()
                      ,addresses = [] :: bt_addresses()
                      ,subscriptions = [] :: bt_subscriptions()
