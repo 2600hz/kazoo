@@ -98,7 +98,7 @@
 new(AccountId, Props) ->
     UtcSeconds = props:get_value(<<"Message-Timestamp">>, Props, kz_util:current_tstamp()),
     Timestamp  = props:get_value(<<"Document-Timestamp">>, Props, UtcSeconds),
-    {Year, Month, _} = kz_util:to_date(Timestamp),
+    {Year, Month, _} = erlang:date(),
 
     MediaId = props:get_value(<<"Media-ID">>, Props, kz_util:rand_hex_binary(16)),
 

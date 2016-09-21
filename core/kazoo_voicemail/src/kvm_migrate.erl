@@ -341,7 +341,9 @@ process_message(AccountId, BoxJObj, Message, DefaultExt) ->
                %%   since they would all go into same db
                %%   if that is the option, then change Timestamp below
                %%   with kz_util:current_tstamp()
-              ,{<<"Document-Timestamp">>, kz_util:current_tstamp()}
+               %%
+               %% FIXME: setting this to current_tstamp breaks crossbar qs_filter (created_from, created_to)
+              ,{<<"Document-Timestamp">>, Timestamp}
               ,{<<"Attachment-Name">>, AttName}
               ]),
     Msg = kzd_box_message:new(AccountId, Props),
