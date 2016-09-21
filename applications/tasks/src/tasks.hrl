@@ -17,7 +17,6 @@
                ,kt_port_requests
                ,kt_services
                ,kt_token_auth
-               ,kt_vmboxes
                ,kt_webhooks
                 %% ,'kt_skel'
                ]).
