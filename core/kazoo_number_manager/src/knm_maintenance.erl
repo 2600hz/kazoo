@@ -69,6 +69,7 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
                    ,DisplayPNs
                    ,knm_util:get_all_number_dbs()
                    ),
+    _ = knm_phone_number:push_stored(), %% Bulk doc writes
     ToRm0 = gb_sets:to_list(Leftovers),
     lists:foreach(fun (DID) ->
                           ?LOG("########## found alien [~s] doc: ~s ##########", [AccountDb, DID])
@@ -143,6 +144,8 @@ fix_docs({ok, NumDoc}, Doc, AccountDb, NumberDb, DID) ->
                        ,{fun knm_phone_number:update_doc/2, JObj}
                        ],
             knm_number:update(DID, Routines, [{auth_by, ?KNM_DEFAULT_AUTH_BY}
+                                              %% No caching + bulk doc writes
+                                             ,{batch_run, true}
                                              ]),
             ok
     end.

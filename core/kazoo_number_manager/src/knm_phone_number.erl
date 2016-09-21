@@ -1075,7 +1075,9 @@ push_stored(Db, Key) ->
     erase(Db),
     R = kz_datamgr:save_docs(Db, Docs),
     element(1, R) =:= 'error'
-        andalso lager:debug("save_docs ~p failed: ~p",
-                            [[kz_doc:id(Doc) || Doc <- Docs], element(2,R)]),
+        andalso lager:debug("save_docs ~p failed: ~p"
+                           ,[[kz_doc:id(Doc) || Doc <- Docs]
+                            ,element(2,R)
+                            ]),
     R.
 -endif.
