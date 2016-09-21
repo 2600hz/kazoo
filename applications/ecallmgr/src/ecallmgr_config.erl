@@ -67,9 +67,9 @@ flush_default() ->
 flush_default(Key) ->
     flush(Key, <<"default">>).
 
--spec get(kz_json:key()) -> kz_json:json_term() | 'undefined'.
+-spec get(kz_json:key()) -> kz_json:api_json_term().
 -spec get(kz_json:key(), Default) -> kz_json:json_term() | Default.
--spec get(kz_json:key(), Default, kz_json:key() | atom()) -> kz_json:json_term() | Default.
+-spec get(kz_json:key(), Default, kz_json:key()) -> kz_json:json_term() | Default.
 
 get(Key) ->
     get(Key, 'undefined').
@@ -91,7 +91,7 @@ get(Key, Default, Node) ->
             fetch(Key, Default, Node)
     end.
 
--spec get_default(kz_json:key()) -> kz_json:json_term() | 'undefined'.
+-spec get_default(kz_json:key()) -> kz_json:api_json_term().
 -spec get_default(kz_json:key(), Default) -> kz_json:json_term() | Default.
 get_default(Key) ->
     get(Key, 'undefined', <<"default">>).
@@ -100,7 +100,7 @@ get_default(Key, Default) ->
 
 -spec get_integer(kz_json:key()) -> api_integer().
 -spec get_integer(kz_json:key(), Default) -> integer() | Default.
--spec get_integer(kz_json:key(), Default, kz_json:key() | atom()) -> integer() | Default.
+-spec get_integer(kz_json:key(), Default, kz_json:key()) -> integer() | Default.
 get_integer(Key) ->
     get_integer(Key, 'undefined').
 
@@ -118,7 +118,7 @@ get_integer(Key, Default, Node) ->
 
 -spec get_boolean(kz_json:key()) -> api_boolean().
 -spec get_boolean(kz_json:key(), Default) -> boolean() | Default.
--spec get_boolean(kz_json:key(), Default, kz_json:key() | atom()) -> boolean() | Default.
+-spec get_boolean(kz_json:key(), Default, kz_json:key()) -> boolean() | Default.
 get_boolean(Key) ->
     get_boolean(Key, 'undefined').
 
@@ -136,7 +136,7 @@ get_boolean(Key, Default, Node) ->
 
 -spec is_true(kz_json:key()) -> boolean().
 -spec is_true(kz_json:key(), Default) -> boolean() | Default.
--spec is_true(kz_json:key(), Default, kz_json:key() | atom()) -> boolean() | Default.
+-spec is_true(kz_json:key(), Default, kz_json:key()) -> boolean() | Default.
 is_true(Key) ->
     kz_util:is_true(?MODULE:get(Key)).
 
@@ -152,10 +152,10 @@ is_true(Key, Default, Node) ->
         N -> kz_util:is_true(N)
     end.
 
--spec fetch(kz_json:key()) -> kz_json:json_term() | 'undefined'.
+-spec fetch(kz_json:key()) -> kz_json:api_json_term().
 -spec fetch(kz_json:key(), Default) -> kz_json:json_term() | Default.
--spec fetch(kz_json:key(), Default, kz_json:key() | atom()) -> kz_json:json_term() | Default.
--spec fetch(kz_json:key(), Default, kz_json:key() | atom(), pos_integer()) -> kz_json:json_term() | Default.
+-spec fetch(kz_json:key(), Default, kz_json:key()) -> kz_json:json_term() | Default.
+-spec fetch(kz_json:key(), Default, kz_json:key(), pos_integer()) -> kz_json:json_term() | Default.
 
 fetch(Key) ->
     fetch(Key, 'undefined').

@@ -88,8 +88,7 @@ flush(Account, Config) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     kz_datamgr:flush_cache_doc(AccountDb, config_doc_id(Config)).
 
--spec get(account(), ne_binary(), kz_json:key()) ->
-                 kz_json:json_term() | 'undefined'.
+-spec get(account(), ne_binary(), kz_json:key()) -> kz_json:api_json_term().
 -spec get(account(), ne_binary(), kz_json:key(), Default) ->
                  kz_json:json_term() | Default.
 get(Account, Config, Key) ->

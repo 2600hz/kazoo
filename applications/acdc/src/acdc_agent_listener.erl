@@ -264,7 +264,7 @@ config(Srv) -> gen_listener:call(Srv, 'config').
 refresh_config(_, 'undefined') -> 'ok';
 refresh_config(Srv, Qs) -> gen_listener:cast(Srv, {'refresh_config', Qs}).
 
--spec agent_info(pid(), kz_json:key()) -> kz_json:json_term() | 'undefined'.
+-spec agent_info(pid(), kz_json:key()) -> kz_json:api_json_term().
 agent_info(Srv, Field) -> gen_listener:call(Srv, {'agent_info', Field}).
 
 send_status_resume(Srv) ->
