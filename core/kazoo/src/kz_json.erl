@@ -101,6 +101,7 @@
              ,json_proplist/0, json_proplist_k/1, json_proplist_kv/2
              ,object/0, objects/0
              ,literal_key/0, key/0
+             ,keys/0
              ]).
 
 -spec new() -> object().
@@ -611,8 +612,8 @@ get_ne_value(Key, JObj, Default) ->
 %% Returns the value at Key
 %% @end
 %%--------------------------------------------------------------------
--spec find(key(), objects()) -> json_term() | 'undefined'.
--spec find(key(), objects(), Default) -> json_term() | Default.
+-spec find(key() | keys(), objects()) -> json_term() | 'undefined'.
+-spec find(key() | keys(), objects(), Default) -> json_term() | Default.
 
 find(Key, Docs) ->
     find(Key, Docs, 'undefined').
@@ -624,8 +625,8 @@ find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
         V -> V
     end.
 
--spec find_first_defined(key(), objects()) -> json_term() | 'undefined'.
--spec find_first_defined(key(), objects(), Default) -> json_term() | Default.
+-spec find_first_defined(key() | keys(), objects()) -> json_term() | 'undefined'.
+-spec find_first_defined(key() | keys(), objects(), Default) -> json_term() | Default.
 find_first_defined(Keys, Docs) ->
     find_first_defined(Keys, Docs, 'undefined').
 
@@ -643,8 +644,8 @@ find_first_defined([Key|Keys], Docs, Default) ->
 %% Returns the json object or 'undefined'
 %% @end
 %%--------------------------------------------------------------------
--spec find_value(key(), json_term(), objects()) -> api_object().
--spec find_value(key(), json_term(), objects(), Default) -> object() | Default.
+-spec find_value(key() | keys(), json_term(), objects()) -> api_object().
+-spec find_value(key() | keys(), json_term(), objects(), Default) -> object() | Default.
 find_value(Key, Value, JObjs) ->
     find_value(Key, Value, JObjs, 'undefined').
 
@@ -655,8 +656,8 @@ find_value(Key, Value, [JObj|JObjs], Default) ->
         _Value -> find_value(Key, Value, JObjs, Default)
     end.
 
--spec get_first_defined([key()], object()) -> 'undefined' | json_term().
--spec get_first_defined([key()], object(), Default) -> Default | json_term().
+-spec get_first_defined(key() | keys(), object()) -> 'undefined' | json_term().
+-spec get_first_defined(key() | keys(), object(), Default) -> Default | json_term().
 get_first_defined(Keys, JObj) ->
     get_first_defined(Keys, JObj, 'undefined').
 
@@ -702,13 +703,13 @@ get_value1([K|Ks], ?JSON_WRAPPER(Props)=_JObj, Default) ->
 get_value1(_, _, Default) -> Default.
 
 %% split the json object into values and the corresponding keys
--spec get_values(object()) -> {json_terms(), key()}.
+-spec get_values(object()) -> {json_terms(), keys()}.
 get_values(JObj) ->
     lists:foldr(fun(Key, {Vs, Ks}) ->
                         {[get_value(Key, JObj)|Vs], [Key|Ks]}
                 end, {[], []}, ?MODULE:get_keys(JObj)).
 
--spec get_values(key(), object()) -> {json_terms(), key()}.
+-spec get_values(key() | keys(), object()) -> {json_terms(), keys()}.
 get_values(Key, JObj) ->
     get_values(get_value(Key, JObj, new())).
 

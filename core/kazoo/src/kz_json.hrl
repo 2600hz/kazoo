@@ -23,6 +23,7 @@
 
 -type literal_key() :: json_string().
 -type key() :: [literal_key()] | literal_key().
+-type keys() :: [key()].
 
 -type json_proplist_key() :: key().
 -type json_proplist_kv(K, V) :: [{K, V}].
