@@ -8,9 +8,8 @@ Voicemail boxes store messages, recorded from the caller, for the voicemail box 
 
 As of Kazoo 4.0 all new voicemail messages will be stored in the account MODbs.
 
-Regarding this change the v2 vmboxes API will ___no longer___ returns the messages array. For compatibility issues v1 vmboxes API tries to return the messages array along the vmboxes API response, but because of how things work behind this moving to MODBs, manipulation the messages array on the v1 is ___strongly___ discouraged.
-
-The existing messages API _should be_ used to manage messages in a voicemail box for _both_ versions.
+Regarding this change voicemail API will ___no longer___ returns the messages array when fetching mailbox settings.
+The existing `/messages` API _should be_ used to manage messages in a voicemail box.
 
 For more information about voicemail changes see documentation for kazoo_voicemail.
 
@@ -528,7 +527,7 @@ curl -v -X GET \
 
 * **Move a message to another voicemail box:** set the destination voicemail box ID in payload like: `{"data": {"source_id": "{NEW_VM_BOX_ID}"}}`
 
-* **Copy messages to a single or a list of voicemail boxes** set the destination voicemail box ID in payload like: `{"data": {"source_id": ["{NEW_VM_BOX_ID}"]}}`
+* **Copy a message to a single or a list of voicemail boxes** set the destination voicemail box ID in payload like: `{"data": {"source_id": ["{NEW_VM_BOX_ID}"]}}`
 
 > POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}
 
