@@ -22,6 +22,7 @@
     "blackhole.acceptors": "blackhole acceptors",
     "blackhole.autoload_modules": "blackhole autoload modules",
     "blackhole.port": "blackhole port",
+    "braintree.client_token_version": "braintree client token version",
     "braintree.debug": "braintree debug",
     "braintree.default_environment": "braintree default environment",
     "braintree.default_merchant_id": "braintree default merchant id",
