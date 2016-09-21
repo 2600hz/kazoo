@@ -399,7 +399,7 @@ filter(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     from_list([E || {_,_}=E <- Prop, Pred(E)]).
 
 filter(Pred, ?JSON_WRAPPER(_)=JObj, Path) when is_list(Path),
-                                              is_function(Pred, 1) ->
+                                               is_function(Pred, 1) ->
     Filtered = filter(Pred, get_json_value(Path, JObj)),
     set_value(Path, Filtered, JObj);
 filter(Pred, JObj, Key) ->
