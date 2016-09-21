@@ -130,7 +130,6 @@ fix_docs({ok, NumDoc}, Doc, AccountDb, NumberDb, DID) ->
                        ,{fun knm_phone_number:update_doc/2, JObj}
                        ],
             knm_number:update(DID, Routines, [{auth_by, ?KNM_DEFAULT_AUTH_BY}
-                                             ,{batch_run, true} %% skips cache
                                              ]),
             ok
     end.
