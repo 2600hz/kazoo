@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kzd_box_message).
 
--export([new/2, build_metadata_object/6, fake_private_media/3
+-export([new/2, build_metadata_object/6
         ,count_folder/2
         ,create_message_name/3
         ,type/0
@@ -23,7 +23,7 @@
 
         ,change_message_name/2, change_to_sip_field/3
 
-        ,media_id/1, set_media_id/2
+        ,media_id/1, set_media_id/2, update_media_id/2
         ,metadata/1, metadata/2, set_metadata/2
         ,source_id/1, set_source_id/2
         ,to_sip/1, to_sip/2, set_to_sip/2
@@ -98,7 +98,7 @@
 new(AccountId, Props) ->
     UtcSeconds = props:get_value(<<"Message-Timestamp">>, Props, kz_util:current_tstamp()),
     Timestamp  = props:get_value(<<"Document-Timestamp">>, Props, UtcSeconds),
-    {Year, Month, _} = kz_util:to_date(Timestamp),
+    {Year, Month, _} = erlang:date(),
 
     MediaId = props:get_value(<<"Media-ID">>, Props, kz_util:rand_hex_binary(16)),
 
@@ -124,27 +124,6 @@ new(AccountId, Props) ->
       kz_json:from_list(DocProps), Db, [{'type', type()}
                                        ,{'now', Timestamp}
                                        ]
-     ).
-
--spec fake_private_media(ne_binary(), ne_binary(), doc()) -> doc().
-fake_private_media(AccountId, BoxId, MsgJObj) ->
-    Db = kvm_util:get_db(AccountId),
-    MediaId = media_id(MsgJObj),
-    UtcSeconds = kz_json:get_integer_value(?KEY_META_TIMESTAMP, MsgJObj),
-    Name = create_message_name(<<"unknown">>, 'undefined', UtcSeconds),
-
-    DocProps = props:filter_undefined(
-                 [{<<"_id">>, MediaId}
-                 ,{?KEY_NAME, Name}
-                 ,{?KEY_DESC, <<"mailbox message media">>}
-                 ,{?KEY_SOURCE_TYPE, ?KEY_VOICEMAIL}
-                 ,{?KEY_SOURCE_ID, BoxId}
-                 ,{?KEY_MEDIA_SOURCE, <<"recording">>}
-                 ,{?KEY_UTC_SEC, UtcSeconds}
-                 ,{?KEY_METADATA, MsgJObj}
-                 ]),
-    kz_doc:update_pvt_parameters(
-      kz_json:from_list(DocProps), Db, [{'type', ?PVT_LEGACY_TYPE}]
      ).
 
 %%--------------------------------------------------------------------
@@ -209,32 +188,33 @@ build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
 type() -> ?PVT_TYPE.
 
 -spec folder(doc()) -> api_object().
-folder(JObj) ->
-    folder(JObj, 'undefined').
+folder(Metadata) ->
+    folder(Metadata, 'undefined').
 
 -spec folder(doc(), Default) -> doc() | Default.
-folder(JObj, Default) ->
-    kz_json:get_first_defined([[?KEY_METADATA, ?VM_KEY_FOLDER], ?VM_KEY_FOLDER], JObj, Default).
+folder(Metadata, Default) ->
+    kz_json:get_first_defined([[?KEY_METADATA, ?VM_KEY_FOLDER], ?VM_KEY_FOLDER], Metadata, Default).
 
 -spec set_folder(api_binary(), doc()) -> doc().
-set_folder(Folder, JObj) ->
-    kz_json:set_value(?VM_KEY_FOLDER, Folder, JObj).
+set_folder(Folder, Metadata) ->
+    kz_json:set_value(?VM_KEY_FOLDER, Folder, Metadata).
 
 -spec set_folder_new(doc()) -> doc().
-set_folder_new(JObj) ->
-    kz_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_NEW, JObj).
+set_folder_new(Metadata) ->
+    kz_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_NEW, Metadata).
 
 -spec set_folder_saved(doc()) -> doc().
-set_folder_saved(JObj) ->
-    kz_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_SAVED, JObj).
+set_folder_saved(Metadata) ->
+    kz_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_SAVED, Metadata).
 
 -spec set_folder_deleted(doc()) -> doc().
-set_folder_deleted(JObj) ->
-    kz_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_DELETED, JObj).
+set_folder_deleted(Metadata) ->
+    kz_json:set_value(?VM_KEY_FOLDER, ?VM_FOLDER_DELETED, Metadata).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%%   Note: Doc here is the whole message doc
 %% @end
 %%--------------------------------------------------------------------
 -spec apply_folder(kvm_message:vm_folder(), doc()) -> doc().
@@ -273,12 +253,17 @@ set_message_name(Name, JObj) ->
     kz_json:set_value(?KEY_NAME, Name, JObj).
 
 -spec media_id(doc()) -> api_binary().
-media_id(JObj) ->
-    kz_json:get_value(?KEY_MEDIA_ID, JObj).
+media_id(Metadata) ->
+    kz_json:get_value(?KEY_MEDIA_ID, Metadata).
 
 -spec set_media_id(ne_binary(), doc()) -> doc().
-set_media_id(MediaId, JObj) ->
-    kz_json:set_value(?KEY_MEDIA_ID, MediaId, JObj).
+set_media_id(MediaId, Metadata) ->
+    kz_json:set_value(?KEY_MEDIA_ID, MediaId, Metadata).
+
+-spec update_media_id(ne_binary(), doc()) -> doc().
+update_media_id(MediaId, JObj) ->
+    Metadata = set_media_id(MediaId, metadata(JObj)),
+    set_metadata(Metadata, JObj).
 
 -spec metadata(doc()) -> doc().
 metadata(JObj) ->
@@ -301,8 +286,8 @@ to_sip(JObj, Default) ->
     kz_json:get_first_defined([[?KEY_METADATA, ?KEY_META_TO], ?KEY_META_TO], JObj, Default).
 
 -spec set_to_sip(api_binary(), doc()) -> doc().
-set_to_sip(To, JObj) ->
-    kz_json:set_value(?KEY_META_TO, To, JObj).
+set_to_sip(To, Metadata) ->
+    kz_json:set_value(?KEY_META_TO, To, Metadata).
 
 -spec utc_seconds(doc()) -> pos_integer().
 utc_seconds(JObj) ->

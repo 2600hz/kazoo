@@ -30,8 +30,9 @@
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
 -define(CB_LIST, <<"vmboxes/crossbar_listing">>).
+-define(MSG_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
 
--define(BOX_ID_IDX_KEY, 1).
+-define(BOX_ID_KEY_INDEX, 1).
 
 -define(MESSAGES_RESOURCE, ?VM_KEY_MESSAGES).
 -define(BIN_DATA, <<"raw">>).
@@ -140,7 +141,7 @@ validate_vmboxes(Context, ?HTTP_PUT) ->
     validate_request('undefined', Context).
 
 validate(Context, ?MESSAGES_RESOURCE) ->
-    validate_messages(Context, 'undefined', cb_context:req_verb(Context));
+    load_message_summary('undefined', Context);
 validate(Context, DocId) ->
     validate_vmbox(Context, DocId, cb_context:req_verb(Context)).
 
@@ -170,16 +171,35 @@ validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-post(Context, DocId) ->
-    AccountId = cb_context:account_id(Context),
-    Doc = cb_context:doc(Context),
-    DocM = kz_json:get_value(?VM_KEY_MESSAGES, Doc),
-    {Diff, BoxMsg} = kvm_util:find_differences(AccountId, DocId, DocM),
-    _ = kvm_messages:update(cb_context:account_id(Context), DocId, Diff),
+post(Context, _DocId) ->
+    DbDoc = cb_context:fetch(Context, 'db_doc'),
+    VMBoxMsgs = kz_json:get_value(?VM_KEY_MESSAGES, DbDoc),
+    C1 = crossbar_doc:save(check_mailbox_for_messages_array(Context, VMBoxMsgs)),
 
-    Props = [{?VM_KEY_MESSAGES, BoxMsg}],
-    C = crossbar_doc:save(cb_context:set_doc(Context, kz_json:set_values(Props, Doc))),
-    update_mwi(C, DocId).
+    %% remove messages array to not let it exposed
+    cb_context:set_resp_data(C1, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1))).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc disallow vmbox messages array changing
+%% also check if vmbox has still message array
+%% and inform client to do migrate their vmbox
+%% @end
+%%--------------------------------------------------------------------
+-spec check_mailbox_for_messages_array(cb_context:context(), api_objects()) -> cb_context:context().
+check_mailbox_for_messages_array(Context, 'undefined') -> Context;
+check_mailbox_for_messages_array(Context, []) -> Context;
+check_mailbox_for_messages_array(Context, VMBoxMsgs) ->
+    Props = [{?VM_KEY_MESSAGES, VMBoxMsgs}],
+    NewDoc = kz_json:set_values(Props, cb_context:doc(Context)),
+    Envelope = kz_json:from_list([{<<"message">>
+                                  ,<<"Please migrate your voicemail box messages to MODB">>
+                                  }
+                                 ]),
+    Setters = [{fun cb_context:set_doc/2, NewDoc}
+              ,{fun cb_context:set_resp_envelope/2, Envelope}
+              ],
+    cb_context:setters(Context, Setters).
 
 post(Context, OldBoxId, ?MESSAGES_RESOURCE) ->
     AccountId = cb_context:account_id(Context),
@@ -205,8 +225,14 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE, MediaId) ->
     AccountId = cb_context:account_id(Context),
     case cb_context:req_value(Context, <<"source_id">>) of
         'undefined' ->
-            C = update_message_folder(OldBoxId, MediaId, Context, ?VM_FOLDER_SAVED),
-            update_mwi(C, OldBoxId);
+            Folder = get_folder_filter(Context, ?VM_FOLDER_SAVED),
+            case kvm_message:change_folder(Folder, MediaId, AccountId, OldBoxId) of
+                {'ok', Message} ->
+                    C = crossbar_util:response(Message, Context),
+                    update_mwi(cb_context:set_resp_status(C, 'success'), OldBoxId);
+                {'error', Error} ->
+                    crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)
+            end;
         ?NE_BINARY = NewBoxId ->
             Moved = kvm_message:move_to_vmbox(AccountId, MediaId, OldBoxId, NewBoxId),
             C = cb_context:set_resp_data(Context, Moved),
@@ -263,15 +289,13 @@ delete(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, Id) ->
-    AccountId = cb_context:account_id(Context),
-    Doc = cb_context:doc(Context),
-    DocM = kz_json:get_value(?VM_KEY_MESSAGES, Doc),
-    {Diff, BoxMsg} = kvm_util:find_differences(AccountId, Id, DocM),
-    {'ok', _} = kvm_messages:update(cb_context:account_id(Context), Id, Diff),
+patch(Context, _Id) ->
+    DbDoc = cb_context:fetch(Context, 'db_doc'),
+    VMBoxMsgs = kz_json:get_value(?VM_KEY_MESSAGES, DbDoc),
+    C1 = crossbar_doc:save(check_mailbox_for_messages_array(Context, VMBoxMsgs)),
 
-    Props = [{?VM_KEY_MESSAGES, BoxMsg}],
-    crossbar_doc:save(cb_context:set_doc(Context, kz_json:set_values(Props, Doc))).
+    %% remove messages array to not let it exposed
+    cb_context:set_resp_data(C1, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1))).
 
 %%%===================================================================
 %%% Internal functions
@@ -301,7 +325,7 @@ validate_message(Context, BoxId, MessageId, ?HTTP_DELETE) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_messages(cb_context:context(), api_binary(), http_method()) -> cb_context:context().
+-spec validate_messages(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_messages(Context, DocId, ?HTTP_GET) ->
     load_message_summary(DocId, Context);
 validate_messages(Context, DocId, ?HTTP_POST) ->
@@ -342,7 +366,10 @@ get_folder_filter(Context, Default) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
+%% @doc Filter messages(JObjs) based on Folder or Ids and
+%% apply query strings filters on them as well
+%%
+%% Note: Filter can be <<"all">> which return all messages.
 %% @end
 %%--------------------------------------------------------------------
 -type filter_options() :: kvm_message:vm_folder() | ne_binaries().
@@ -479,25 +506,25 @@ validate_patch(Context, DocId)->
 -spec load_vmbox_summary(cb_context:context()) -> cb_context:context().
 load_vmbox_summary(Context) ->
     Context1 = crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2),
-    MODBSummary = kvm_messages:count_from_modb(cb_context:account_id(Context)),
-    RspData = merge_summary_results(cb_context:doc(Context1), MODBSummary),
+    AccountMsgCounts = kvm_messages:count(cb_context:account_id(Context)),
+    RspData = merge_summary_results(cb_context:doc(Context1), AccountMsgCounts),
     cb_context:set_resp_data(cb_context:set_doc(Context1, RspData), RspData).
 
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
--spec merge_summary_results(kz_json:objects(), kz_json:objects()) -> kz_json:objects().
-merge_summary_results(BoxSummary, MODBSummary) ->
+-spec merge_summary_results(kz_json:objects(), kz_json:object()) -> kz_json:objects().
+merge_summary_results(BoxSummary, AccountMsgCounts) ->
     MergeFun = fun(JObj, Acc) ->
-                       [merge_summary_fold(JObj, MODBSummary) | Acc]
+                       [merge_summary_fold(JObj, AccountMsgCounts) | Acc]
                end,
     lists:foldl(MergeFun, [], BoxSummary).
 
 -spec merge_summary_fold(kz_json:object(), kz_json:object()) -> kz_json:object().
-merge_summary_fold(JObj, MODBSummary) ->
+merge_summary_fold(JObj, AccountMsgCounts) ->
     BoxId = kz_json:get_value(<<"id">>, JObj),
-    case kz_json:get_value(BoxId, MODBSummary) of
+    case kz_json:get_value(BoxId, AccountMsgCounts) of
         'undefined' ->
             JObj;
         J ->
@@ -525,10 +552,8 @@ maybe_load_vmboxes([Id|Ids], Context) ->
 
 -spec load_vmbox(ne_binary(), cb_context:context()) -> cb_context:context().
 load_vmbox(DocId, Context) ->
-    case kvm_messages:load_vmbox(cb_context:account_id(Context), DocId, 'true') of
-        {'ok', JObj} -> crossbar_doc:handle_json_success(JObj, Context);
-        {'error', Error} -> crossbar_doc:handle_datamgr_errors(Error, DocId, Context)
-    end.
+    C1 = crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(kzd_voicemail_box:type())),
+    cb_context:set_resp_data(C1, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1))).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -538,81 +563,131 @@ load_vmbox(DocId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_message_summary(api_binary(), cb_context:context()) -> cb_context:context().
 load_message_summary(BoxId, Context) ->
-    case normalize_view_options(Context, BoxId) of
+    case message_summary_view_options(Context, BoxId) of
         {'ok', ViewOptions} ->
-            NormlizeFun = case BoxId of
-                              'undefined' ->
-                                  fun normalize_account_view_results/2;
-                              _ ->
-                                  fun normalize_view_results/2
-                          end,
-            crossbar_doc:load_view(<<"mailbox_messages/listing_by_mailbox">>
-                                  ,ViewOptions
-                                  ,cb_context:set_resp_status(Context, 'success')
-                                  ,NormlizeFun
-                                  );
+            NormlizeFun = fun(J, Acc) -> message_summary_normalizer(BoxId, J, Acc) end,
+            C1 = cb_context:set_resp_status(Context, 'success'),
+            ViewResults = crossbar_doc:load_view(?MSG_LISTING_BY_MAILBOX
+                                                ,ViewOptions
+                                                ,C1
+                                                ,NormlizeFun
+                                                ),
+            maybe_fix_envelope(ViewResults);
         Ctx -> Ctx
     end.
 
--spec normalize_account_view_results(kz_json:object(), kz_json:objects()) ->
-                                            kz_json:objects().
-normalize_account_view_results(JObj, Acc) ->
-    [kz_json:from_list([{kz_json:get_value([<<"key">>, ?BOX_ID_IDX_KEY], JObj)
+-spec message_summary_normalizer(api_binary(), kz_json:object(), kz_json:objects()) ->
+                                        kz_json:objects().
+message_summary_normalizer('undefined', JObj, Acc) ->
+
+    [kz_json:from_list([{kz_json:get_value([<<"key">>, ?BOX_ID_KEY_INDEX], JObj)
                         ,kz_json:get_value(<<"value">>, JObj)
                         }
                        ])
      | Acc
-    ].
+    ];
+message_summary_normalizer(_BoxId, JObj, Acc) ->
+    normalize_view_results(JObj, Acc).
 
--spec normalize_view_options(cb_context:context(), api_binary()) ->
-                                    {'ok', crossbar_doc:view_options()} |
-                                    cb_context:context().
-normalize_view_options(Context, 'undefined') ->
-    C1 = check_created_from(Context),
+-spec message_summary_view_options(cb_context:context(), api_binary()) ->
+                                          {'ok', crossbar_doc:view_options()} |
+                                          cb_context:context().
+message_summary_view_options(Context, BoxId) ->
+    AccountId = cb_context:account_id(Context),
+    MaxRange = kvm_util:retention_seconds(),
+    C1 = check_start_key_created_from(Context, MaxRange),
     case cb_context:resp_status(C1) == 'success'
-        andalso cb_modules_util:range_view_options(C1) of
+        andalso cb_modules_util:range_view_options(C1, MaxRange) of
+        'false' -> C1;
         {CreatedFrom, CreatedTo} ->
-            MODBs = kazoo_modb:get_range(cb_context:account_id(Context), CreatedFrom, CreatedTo),
-            Databases = lists:reverse([cb_context:account_db(Context)
-                                       | MODBs
-                                      ]),
-            {'ok', [{'databases', Databases}]};
-        'false' -> C1;
-        Ctx -> Ctx
-    end;
-normalize_view_options(Context, BoxId) ->
-    C1 = check_created_from(Context),
-    case cb_context:resp_status(C1) == 'success'
-        andalso cb_modules_util:range_modb_view_options(C1, [BoxId], 'undefined') of
-        {'ok', MODBViewOptions} ->
-            Databases = lists:reverse([cb_context:account_db(Context)
-                                       | props:get_value('databases', MODBViewOptions)
-                                      ]),
-            {'ok', props:set_value('databases', Databases, MODBViewOptions)};
-        'false' -> C1;
+            MODBs = kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo),
+            {'ok', maybe_add_start_end_key(BoxId, CreatedTo, CreatedFrom, MODBs)};
         Ctx -> Ctx
     end.
 
--spec check_created_from(cb_context:context()) -> cb_context:context().
-check_created_from(Context) ->
-    RetentionDays = kvm_util:retention_days(),
-    MaxFrom = kz_util:current_tstamp() - RetentionDays,
-    case kz_util:to_integer(cb_context:req_value(Context, <<"created_from">>, MaxFrom)) of
-        N when N < MaxFrom ->
+-spec maybe_add_start_end_key(api_binary(), gregorian_seconds(), gregorian_seconds(), ne_binaries()) ->
+                                     crossbar_doc:view_options().
+maybe_add_start_end_key('undefined', _CreatedTo, _CreatedFrom, MODBs) ->
+    [{'databases', MODBs}
+    ,'descending'
+    ];
+maybe_add_start_end_key(BoxId, CreatedTo, CreatedFrom, MODBs) ->
+    [{'databases', MODBs}
+    ,{'startkey', [BoxId, CreatedTo]}
+    ,{'endkey', [BoxId, CreatedFrom]}
+    ,'descending'
+    ].
+
+
+-spec check_start_key_created_from(cb_context:context(), gregorian_seconds()) -> cb_context:context().
+check_start_key_created_from(Context, RetentionSeconds) ->
+    MaxRange = kz_util:current_tstamp() - RetentionSeconds,
+    CreatedFrom = kz_util:to_integer(cb_context:req_value(Context, <<"created_from">>, MaxRange)),
+    StartKey = kz_util:to_integer(cb_context:req_value(Context, <<"created_from">>, MaxRange)),
+    case {CreatedFrom, StartKey} of
+        {CreatedFrom, _} when CreatedFrom < MaxRange ->
             Message = <<"created_from is more than "
-                        ,(kz_util:to_binary(RetentionDays))/binary
+                        ,(kz_util:to_binary(RetentionSeconds))/binary
                         ," seconds of voicemail messages retention duration"
                       >>,
             cb_context:add_validation_error(<<"created_from">>
                                            ,<<"date_range">>
                                            ,kz_json:from_list(
                                               [{<<"message">>, Message}
-                                              ,{<<"cause">>, N}
+                                              ,{<<"cause">>, MaxRange}
+                                              ])
+                                           ,Context
+                                           );
+        {_, StartKey} when StartKey < MaxRange ->
+            Message = <<"start_key is more than "
+                        ,(kz_util:to_binary(RetentionSeconds))/binary
+                        ," seconds of voicemail messages retention duration"
+                      >>,
+            cb_context:add_validation_error(<<"start_key">>
+                                           ,<<"date_range">>
+                                           ,kz_json:from_list(
+                                              [{<<"message">>, Message}
+                                              ,{<<"cause">>, MaxRange}
                                               ])
                                            ,Context
                                            );
         _N ->
             cb_context:set_resp_status(Context, 'success')
+    end.
+
+-spec maybe_fix_envelope(cb_context:context()) -> cb_context:context().
+maybe_fix_envelope(Context) ->
+    case cb_context:resp_status(Context) of
+        'success' -> fix_envelope(Context);
+        _Status -> Context
+    end.
+
+-spec fix_envelope(cb_context:context()) -> cb_context:context().
+fix_envelope(Context) ->
+    UpdatedEnvelope =
+        case {cb_context:doc(Context)
+             ,cb_context:resp_envelope(Context)
+             }
+        of
+            {[], Envelope} ->
+                kz_json:delete_keys([<<"start_key">>, <<"next_start_key">>], Envelope);
+            {_, Envelope} ->
+                fix_keys(Envelope)
+        end,
+    cb_context:set_resp_envelope(Context, UpdatedEnvelope).
+
+-spec fix_keys(kz_json:object()) -> kz_json:object().
+fix_keys(Envelope) ->
+    lists:foldl(fun fix_key_fold/2
+               ,Envelope
+               ,[<<"start_key">>, <<"next_start_key">>]
+               ).
+
+-spec fix_key_fold(kz_json:key(), kz_json:object()) -> kz_json:object().
+fix_key_fold(Key, Envelope) ->
+    case kz_json:get_value(Key, Envelope) of
+        [_BoxId, Timestamp] -> kz_json:set_value(Key, Timestamp, Envelope);
+        'undefined' -> Envelope
     end.
 
 %%--------------------------------------------------------------------
@@ -704,22 +779,6 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
                 end,
     Date = kz_util:pretty_print_datetime(LocalTime),
     list_to_binary([CallerId, "_", Date, Ext]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc update message folder
-%% @end
-%%--------------------------------------------------------------------
--spec update_message_folder(ne_binary(), ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
-update_message_folder(BoxId, MediaId, Context, DefaultFolder) ->
-    AccountId = cb_context:account_id(Context),
-    Folder = get_folder_filter(Context, DefaultFolder),
-    case kvm_message:change_folder(Folder, MediaId, AccountId, BoxId) of
-        {'ok', Message} ->
-            crossbar_util:response(Message, cb_context:set_resp_status(Context, 'success'));
-        {'error', Error} ->
-            crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)
-    end.
 
 -spec should_filter_by_qs(kz_json:object(), boolean(), cb_context:context()) -> boolean().
 should_filter_by_qs(_, 'false', _) -> 'true';

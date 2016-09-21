@@ -179,9 +179,7 @@ send_mwi_update(BoxId, AccountId) ->
     BoxNumber = kzd_voicemail_box:mailbox_number(BoxJObj),
 
     _ = kz_util:spawn(fun cf_util:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
-    Messages = kvm_messages:get(AccountId, BoxId),
-    New = kzd_box_message:count_folder(Messages, ?VM_FOLDER_NEW),
-    Saved = kzd_box_message:count_folder(Messages, ?VM_FOLDER_SAVED),
+    {New, Saved} = kvm_messages:count_none_deleted(AccountId, BoxId),
     _ = kz_util:spawn(fun send_mwi_update/4, [New, Saved, BoxNumber, AccountId]),
     lager:debug("sent MWI updates for vmbox ~s in account ~s (~b/~b)", [BoxNumber, AccountId, New, Saved]).
 

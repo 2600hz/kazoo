@@ -9,21 +9,18 @@
 -module(kvm_messages).
 
 
--export([get/1, get_from_vmbox/1, get_from_modb/1
-        ,get/2, get_from_vmbox/2, get_from_modb/2
+-export([get/1, get/2
+        ,fetch/2, fetch/3
+        ]).
 
-        ,count/1, count_per_folder/1
-        ,count/2, count_per_folder/2
-        ,count_by_owner/2
-        ,count_from_vmbox/1, count_from_vmbox/2
-        ,count_from_modb/1, count_from_modb/2, count_from_modb/3
+-export([count/1, count_per_folder/1, count_per_folder/2
+         %% functions below are returning counts in JObj format
+        ,count/2, count_by_owner/2, count_none_deleted/2
+        ]).
 
-        ,update/3
+-export([update/3, update/4, change_folder/4
         ,move_to_vmbox/4
         ,copy_to_vmboxes/4
-        ,change_folder/4
-
-        ,load_vmbox/2, load_vmbox/3
         ]).
 
 -include("kz_voicemail.hrl").
@@ -31,15 +28,11 @@
 -define(MSG_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
 -define(MSG_COUNT_VIEW, <<"mailbox_messages/count_per_folder">>).
 
--define(BOX_ID_IDX_KEY, 1).
--define(FOLDER_IDX_KEY, 2).
-
--type bulk_results() :: #bulk_res{}.
+-define(BOX_ID_KEY_INDEX, 1).
+-define(FOLDER_KEY_INDEX, 2).
 
 -type norm_fun() :: 'undefined' |
                     fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
-
--export_type([bulk_results/0]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -47,81 +40,41 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec get(ne_binary()) -> kz_json:objects().
--spec get(ne_binary(), ne_binary() | kz_json:object()) -> kz_json:objects().
+-spec get(ne_binary(), message() | kz_proplist()) -> kz_json:objects().
 get(AccountId) ->
-    Dbs = kvm_util:get_range_db(AccountId),
-    NormFun = fun normalize_account_view_results/2,
-    get_view_results(Dbs, ?MSG_LISTING_BY_MAILBOX, [], NormFun, []).
+    get(AccountId, []).
 
 get(AccountId, ?NE_BINARY = BoxId) ->
-    Dbs = kvm_util:get_range_db(AccountId),
-    ViewOpts = [{'startkey', [BoxId]}
-               ,{'endkey', [BoxId, kz_json:new()]}
-               ],
+    get(AccountId, [{'startkey', [BoxId]}
+                   ,{'endkey', [BoxId, kz_json:new()]}
+                   ]);
+get(AccountId, ViewOpts) when is_list(ViewOpts) ->
     NormFun = fun normalize_view_results/2,
-    get_view_results(Dbs, ?MSG_LISTING_BY_MAILBOX, ViewOpts, NormFun, []);
+    get_view_results(AccountId, ?MSG_LISTING_BY_MAILBOX, ViewOpts, NormFun);
 get(AccountId, Box) ->
-    get_from_modb(AccountId, Box) ++ get_from_vmbox(AccountId, Box).
+    get(AccountId, kz_doc:id(Box)).
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
+%% @doc Sum of non-deleted messages
 %% @end
 %%--------------------------------------------------------------------
--spec get_from_vmbox(ne_binary()) -> kz_json:objects().
--spec get_from_vmbox(ne_binary(), ne_binary() | kz_json:object()) ->
-                            kz_json:objects().
-get_from_vmbox(AccountId) ->
-    Db = kvm_util:get_db(AccountId),
-    NormFun = fun normalize_account_view_results/2,
-    get_view_results([Db], ?MSG_LISTING_BY_MAILBOX, [], NormFun, []).
-
-get_from_vmbox(AccountId, ?NE_BINARY = BoxId) ->
-    Db = kvm_util:get_db(AccountId),
-    ViewOpts = [{'startkey', [BoxId]}
-               ,{'endkey', [BoxId, kz_json:new()]}
-               ],
-    NormFun = fun normalize_view_results/2,
-    get_view_results([Db], ?MSG_LISTING_BY_MAILBOX, ViewOpts, NormFun, []);
-get_from_vmbox(_AccountId, BoxJObj) ->
-    {'ok', kz_json:get_value(?VM_KEY_MESSAGES, BoxJObj, [])}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec get_from_modb(ne_binary()) -> kz_json:objects().
--spec get_from_modb(ne_binary(), ne_binary() | kz_json:object()) ->
-                           kz_json:objects().
-get_from_modb(AccountId) ->
-    Dbs = kvm_util:get_range_db(AccountId, 'modb'),
-    NormFun = fun normalize_account_view_results/2,
-    get_view_results(Dbs, ?MSG_LISTING_BY_MAILBOX, [], NormFun, []).
-
-get_from_modb(AccountId, ?NE_BINARY = BoxId) ->
-    Dbs = kvm_util:get_range_db(AccountId, 'modb'),
-    ViewOpts = [{'startkey', [BoxId]}
-               ,{'endkey', [BoxId, kz_json:new()]}
-               ],
-    NormFun = fun normalize_view_results/2,
-    get_view_results(Dbs, ?MSG_LISTING_BY_MAILBOX, ViewOpts, NormFun, []);
-get_from_modb(AccountId, Box) ->
-    get_from_modb(AccountId, kz_doc:id(Box)).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Count non-deleted messages
-%% @end
-%%--------------------------------------------------------------------
--spec count(ne_binary()) -> kz_proplist().
+-spec count(ne_binary()) -> kz_json:object().
 -spec count(ne_binary(), ne_binary()) -> non_neg_integer().
+-spec count_none_deleted(ne_binary(), ne_binary()) -> {non_neg_integer(), non_neg_integer()}.
+%% Note: returns counts per folders in JObj
 count(AccountId) ->
     count_per_folder(AccountId).
 
+%% Note: returns total non-deleted count
 count(AccountId, BoxId) ->
-    {New, Saved} = count_per_folder(AccountId, BoxId),
+    {New, Saved} = count_none_deleted(AccountId, BoxId),
     New + Saved.
+
+%% Note: returns counts in {new, saved} format
+count_none_deleted(AccountId, BoxId) ->
+    FoldersCounts = count_per_folder(AccountId, BoxId),
+    normalize_count_none_deleted(BoxId, FoldersCounts).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -141,7 +94,8 @@ count_by_owner(AccountId, OwnerId) ->
             {0, 0};
         {'ok', [Owned|_]} ->
             VMBoxId = kz_json:get_value(<<"value">>, Owned),
-            count_per_folder(AccountId, VMBoxId);
+            FoldersCounts = count_per_folder(AccountId, VMBoxId),
+            normalize_count_none_deleted(VMBoxId, FoldersCounts);
         {'error', _R} ->
             lager:info("unable to lookup vm counts by owner: ~p", [_R]),
             {0, 0}
@@ -152,185 +106,123 @@ count_by_owner(AccountId, OwnerId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec count_per_folder(ne_binary()) -> kz_proplist().
--spec count_per_folder(ne_binary(), ne_binary()) -> count_result().
+-spec count_per_folder(ne_binary()) -> kz_json:object().
+-spec count_per_folder(ne_binary(), ne_binary() | kz_proplist()) -> kz_json:object().
 count_per_folder(AccountId) ->
-    VMCount = count_from_vmbox(AccountId),
-    MODBCount = count_from_modb(AccountId),
-    [{<<"accountdb_counts">>, VMCount}
-    ,{<<"modb_counts">>, MODBCount}
-    ].
+    count_per_folder(AccountId, []).
 
-count_per_folder(AccountId, BoxId) ->
-    VMCount = count_from_vmbox(AccountId, BoxId),
-    count_from_modb(AccountId, BoxId, VMCount).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec count_from_vmbox(ne_binary()) -> kz_json:object().
--spec count_from_vmbox(ne_binary(), ne_binary()) -> count_result().
-count_from_vmbox(AccountId) ->
-    Db = kvm_util:get_db(AccountId),
+count_per_folder(AccountId, ?NE_BINARY = BoxId) ->
+    ViewOpts = [{'startkey', [BoxId]}
+               ,{'endkey', [BoxId, kz_json:new()]}
+               ],
+    count_per_folder(AccountId, ViewOpts);
+count_per_folder(AccountId, ViewOpts0) ->
     ViewOpts = ['reduce'
                ,'group'
                ,{'group_level', 2}
+                | ViewOpts0
                ],
-    case get_view_results([Db], ?MSG_COUNT_VIEW, ViewOpts, 'undefined', []) of
+    case get_view_results(AccountId, ?MSG_COUNT_VIEW, ViewOpts, 'undefined') of
         [] -> kz_json:new();
         Results -> normalize_count(Results)
     end.
 
-count_from_vmbox(AccountId, BoxId) ->
-    Db = kvm_util:get_db(AccountId),
-    ViewOpts = ['reduce'
-               ,'group'
-               ,{'group_level', 2}
-               ,{'startkey', [BoxId]}
-               ,{'endkey', [BoxId, kz_json:new()]}
-               ],
-    case get_view_results([Db], ?MSG_COUNT_VIEW, ViewOpts, 'undefined', []) of
-        [] -> {0, 0};
-        ViewRes ->
-            Results = normalize_count(ViewRes),
-            normalize_count_non_deleted(BoxId, Results)
-    end.
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec count_from_modb(ne_binary()) -> kz_json:object().
--spec count_from_modb(ne_binary(), ne_binary()) -> count_result().
--spec count_from_modb(ne_binary(), ne_binary(), count_result()) -> count_result().
-count_from_modb(AccountId) ->
-    Dbs = kvm_util:get_range_db(AccountId, 'modb'),
-    ViewOpts = ['reduce'
-               ,'group'
-               ,{'group_level', 2}
-               ],
-    case get_view_results(Dbs, ?MSG_COUNT_VIEW, ViewOpts, 'undefined', []) of
-        [] -> kz_json:new();
-        Results -> normalize_count(Results)
-    end.
-
-count_from_modb(AccountId, BoxId) ->
-    count_from_modb(AccountId, BoxId, {0, 0}).
-
-count_from_modb(AccountId, BoxId, {ANew, ASaved} = VMCount) ->
-    Dbs = kvm_util:get_range_db(AccountId, 'modb'),
-    ViewOpts = ['reduce'
-               ,'group'
-               ,{'group_level', 2}
-               ,{'startkey', [BoxId]}
-               ,{'endkey', [BoxId, kz_json:new()]}
-               ],
-    case get_view_results(Dbs, ?MSG_COUNT_VIEW, ViewOpts, 'undefined', []) of
-        [] -> VMCount;
-        ViewRes ->
-            Results = normalize_count(ViewRes),
-            {MNew, MSaved} = normalize_count_non_deleted(BoxId, Results),
-            {ANew + MNew, ASaved + MSaved}
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec update(ne_binary(), ne_binary(), ne_binaries() | kz_json:objects()) ->
-                    kz_json:object().
--spec update(ne_binary(), ne_binary(), ne_binaries() | kz_json:objects(), update_funs()) ->
-                    kz_json:object().
+-spec update(ne_binary(), ne_binary(), messages()) -> kz_json:object().
+-spec update(ne_binary(), ne_binary(), messages(), update_funs()) -> kz_json:object().
 update(AccountId, BoxId, Msgs) ->
     update(AccountId, BoxId, Msgs, []).
 
-update(AccountId, BoxId, Things, Funs) ->
-    #bulk_res{succeeded = Succeeded
-             ,failed = Failed
-             ,moved = Moved
-             } = update_fold(AccountId, BoxId, Things, Funs, #bulk_res{}),
-    kvm_util:cleanup_moved_msgs(AccountId, BoxId, Moved),
-    kz_json:from_list([{<<"succeeded">>, Succeeded}
-                      ,{<<"failed">>, Failed}
-                      ]).
+update(AccountId, BoxId, [?NE_BINARY = _Msg | _] = MsgIds, Funs) ->
+    JObjs = fetch(AccountId, MsgIds, BoxId),
+    SucceededJObjs = kz_json:get_value(<<"succeeded">>, JObjs, []),
+    FailedJObjs = kz_json:get_value(<<"failed">>, JObjs, []),
+    Results = do_update(AccountId, SucceededJObjs, Funs, FailedJObjs),
+    kz_json:from_list(dict:to_list(Results));
+update(AccountId, _BoxId, JObjs, Funs) ->
+    Results = do_update(AccountId, JObjs, Funs, []),
+    kz_json:from_list(dict:to_list(Results)).
 
--spec update_fold(ne_binary(), ne_binary(), ne_binaries() | kz_json:objects(), update_funs(), bulk_results()) ->
-                         bulk_results().
-update_fold(_AccountId, _BoxId, [], _Funs, Result) ->
-    Result;
-update_fold(AccountId, BoxId, [Msg | Msgs], Funs, #bulk_res{failed = Failed} = Blk) ->
-    %% Check if Msg is JObj add kzd_box_message:set_metadata to the update Funs
-    {MsgId, NewFuns} = maybe_set_metdata(Msg, Funs),
-    case kvm_message:fetch(AccountId, MsgId, BoxId) of
-        {'ok', JObj} ->
-            Result = do_update(AccountId, MsgId, JObj, NewFuns, Blk),
-            update_fold(AccountId, BoxId, Msgs, Funs, Result);
-        {'error', R} ->
-            Result = Blk#bulk_res{failed = [kz_json:from_list([{MsgId, kz_util:to_binary(R)}]) | Failed]},
-            update_fold(AccountId, BoxId, Msgs, Funs, Result)
-    end.
+-spec do_update(ne_binary(), kz_json:objects(), update_funs(), kz_json:objects()) -> dict:dict().
+do_update(AccountId, SucceededJObjs, Funs, FailedJObjs) ->
+    ToUpdateDict = apply_fun_and_map_msgs_to_modb(AccountId, SucceededJObjs, Funs, dict:new()),
+    ResultsDict = dict:from_list([{<<"failed">>, FailedJObjs}]),
+    Fun = fun(Db, Js, ResDict) ->
+                  case kz_datamgr:save_docs(Db, Js) of
+                      {'ok', Saved} ->
+                          normalize_bulk_results('undefined', Saved, ResDict);
+                      {'error', R} ->
+                          lager:warning("failed to bulk update voicemail messages for db ~s: ~p"
+                                       ,[Db, R]),
+                          Failed = kz_json:from_list([{kz_doc:id(D), kz_util:to_binary(R)}
+                                                      || D <- Js
+                                                     ]),
+                          dict:append(<<"failed">>, Failed, ResDict)
+                  end
+          end,
+    dict:fold(Fun, ResultsDict, ToUpdateDict).
 
--spec do_update(ne_binary(), ne_binary(), kz_json:object(), update_funs(), bulk_results()) -> bulk_results().
-do_update(AccountId, ?MATCH_MODB_PREFIX(Year, Month, _)=Id, JObj, Funs, Blk) ->
-    NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
-    kvm_util:bulk_update_result(Id, kazoo_modb:save_doc(AccountId, NewJObj, Year, Month), Blk);
-do_update(AccountId, OldId, JObj, Funs, Blk) ->
-    kvm_util:bulk_update_result(OldId, kvm_message:move_to_modb(AccountId, JObj, Funs, 'false'), Blk).
+%%--------------------------------------------------------------------
+%% @public
+%% @doc fetch message docs for a voicemail box
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch(ne_binary(), ne_binaries()) -> kz_json:object().
+-spec fetch(ne_binary(), ne_binaries(), api_ne_binary()) -> kz_json:object().
+fetch(AccountId, MsgIds) ->
+    fetch(AccountId, MsgIds, 'undefined').
+
+fetch(AccountId, MsgIds, BoxId) ->
+    DbsRange = kvm_util:create_range_dbs(AccountId, MsgIds),
+    Fun = fun(Db, Ids, ResDict) ->
+                  ViewOpts = [{'keys', Ids}
+                             ,'include_docs'
+                             ],
+                  case kz_datamgr:all_docs(Db, ViewOpts) of
+                      {'ok', JObjs} ->
+                          normalize_bulk_results(BoxId, JObjs, ResDict);
+                      {'error', R} ->
+                          lager:warning("failed to bulk fetch voicemail messages from db ~s: ~p"
+                                       ,[Db, R]),
+                          Failed = kz_json:from_list([{Id, kz_util:to_binary(R)}
+                                                      || Id <- Ids
+                                                     ]),
+                          dict:append(<<"failed">>, Failed, ResDict)
+                  end
+          end,
+    kz_json:from_list(
+      dict:to_list(
+        dict:fold(Fun, dict:new(), DbsRange)
+       )
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec change_folder(ne_binary(), ne_binaries(), ne_binary(), ne_binary()) -> kz_json:object().
-change_folder(Folder, MsgIds, AccountId, BoxId) ->
-    Fun = [fun(JObj) ->
-                   kzd_box_message:apply_folder(Folder, JObj)
-           end
+-spec change_folder(ne_binary(), messages(), ne_binary(), ne_binary()) -> db_ret().
+change_folder(Folder, Msgs, AccountId, BoxId) ->
+    Fun = [fun(JObj) -> kzd_box_message:apply_folder(Folder, JObj) end
           ],
-    {'ok', update(AccountId, BoxId, MsgIds, Fun)}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc fetch vmbox doc from db. It will include metadata if IncludeMessages
-%% set to true, otherwise would delete it from doc.
-%% @end
-%%--------------------------------------------------------------------
--spec load_vmbox(ne_binary(), ne_binary()) -> db_ret().
--spec load_vmbox(ne_binary(), ne_binary(), boolean()) -> db_ret().
-load_vmbox(AccountId, BoxId) ->
-    load_vmbox(AccountId, BoxId, 'true').
-
-load_vmbox(AccountId, BoxId, IncludeMessages) ->
-    Db = kvm_util:get_db(AccountId),
-    case kz_datamgr:open_cache_doc(Db, BoxId) of
-        {'ok', J} ->
-            case kvm_util:check_doc_type(J, kzd_voicemail_box:type(), kz_doc:type(J)) of
-                {'ok', JObj} ->
-                    maybe_include_messages(AccountId, BoxId, JObj, IncludeMessages);
-                {'error', _}=E -> E
-            end;
-        {'error', _R}=E ->
-            lager:debug("failed to open vmbox ~s: ~p", [BoxId, _R]),
-            E
-    end.
+    update(AccountId, BoxId, Msgs, Fun).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Move messages to another vmbox
 %% @end
 %%--------------------------------------------------------------------
--spec move_to_vmbox(ne_binary(), ne_binaries(), ne_binary(), ne_binary()) ->
+-spec move_to_vmbox(ne_binary(), messages(), ne_binary(), ne_binary()) ->
                            kz_json:object().
-move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId) ->
+move_to_vmbox(AccountId, Msgs, OldBoxId, NewBoxId) ->
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
-    Funs = ?CHANGE_VMBOX_FUNS(AccountId, NewBoxId, NBoxJ, OldBoxId),
-    update(AccountId, OldBoxId, MsgIds, Funs).
+    Funs = kvm_util:get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId),
+    update(AccountId, OldBoxId, Msgs, Funs).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -342,14 +234,14 @@ move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId) ->
 copy_to_vmboxes(AccountId, Ids, OldBoxId, ?NE_BINARY = NewBoxId) ->
     copy_to_vmboxes(AccountId, Ids, OldBoxId, [NewBoxId]);
 copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds) ->
-    copy_to_vmboxes_fold(AccountId, Ids, OldBoxId, NewBoxIds, kz_json:new()).
+    copy_to_vmboxes_fold(AccountId, Ids, OldBoxId, NewBoxIds, dict:new()).
 
+-spec copy_to_vmboxes_fold(ne_binary(), ne_binaries(), ne_binary(), ne_binaries(), dict:dict()) ->
+                                  dict:dict().
 copy_to_vmboxes_fold(_, [], _, _, Copied) -> Copied;
 copy_to_vmboxes_fold(AccountId, [Id | Ids], OldBoxId, NewBoxIds, Copied) ->
-    CopyRes = kvm_message:copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds),
-
-    NewCopied = kvm_util:bulk_update_result(CopyRes, Copied),
-    copy_to_vmboxes_fold(AccountId, Ids, OldBoxId, NewBoxIds, NewCopied).
+    CopyRes = kvm_message:copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, Copied),
+    copy_to_vmboxes_fold(AccountId, Ids, OldBoxId, NewBoxIds, CopyRes).
 
 %%%===================================================================
 %%% Internal functions
@@ -360,8 +252,13 @@ copy_to_vmboxes_fold(AccountId, [Id | Ids], OldBoxId, NewBoxIds, Copied) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec get_view_results(ne_binary(), ne_binary(), kz_proplist(), norm_fun()) -> kz_json:object().
 -spec get_view_results(ne_binaries(), ne_binary(), kz_proplist(), norm_fun(), kz_json:objects()) ->
                               kz_json:objects().
+get_view_results(AccountId, View, ViewOpts, NormFun) ->
+    Dbs = kvm_util:get_range_db(AccountId),
+    get_view_results(Dbs, View, ViewOpts, NormFun, []).
+
 get_view_results([], _View, _ViewOpts, 'undefined', ViewResults) ->
     ViewResults;
 get_view_results([], _View, _ViewOpts, NormFun, ViewResults) ->
@@ -385,20 +282,48 @@ get_view_results([Db | Dbs], View, ViewOpts, NormFun, Acc) ->
 %% @doc Normalize listing view results
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_account_view_results(kz_json:object(), kz_json:objects()) ->
-                                            kz_json:objects().
-normalize_account_view_results(JObj, Acc) ->
-    [kz_json:from_list([{kz_json:get_value([<<"key">>, ?BOX_ID_IDX_KEY], JObj)
-                        ,kz_json:get_value(<<"value">>, JObj)
-                        }
-                       ])
-     | Acc
-    ].
-
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
                                     kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj) | Acc].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Normalize fetch/update bulk result
+%% Note: Optional checks message belonging to the BoxId
+%% Note: It always returns a dict which contains secceeded and failed
+%%       messages operation
+%% @end
+%%--------------------------------------------------------------------
+-spec normalize_bulk_results(api_ne_binary(), kz_json:objects(), dict:dict()) ->
+                                    dict:dict().
+normalize_bulk_results(BoxId, JObjs, Dict) ->
+    DefaultDict = dict:from_list([{<<"succeeded">>, []}
+                                 ,{<<"failed">>, []}
+                                 ]),
+    MergeFun = fun(_K, _V1, V2) -> V2 end,
+    normalize_bulk_results1(BoxId, JObjs, dict:merge(MergeFun, DefaultDict, Dict)).
+
+normalize_bulk_results1(_BoxId, [], Dict) -> Dict;
+normalize_bulk_results1(BoxId, [JObj | JObjs], Dict) ->
+    Id = kz_json:get_first_defined([<<"key">>, <<"id">>], JObj),
+    NewDict = case kvm_util:check_msg_belonging(BoxId, JObj)
+                  andalso kz_json:get_value(<<"error">>, JObj)
+              of
+                  'false' ->
+                      Failed = kz_json:from_list([{Id, <<"not_found">>}]),
+                      dict:append(<<"failed">>, Failed, Dict);
+                  'undefined' ->
+                      dict:append(<<"succeeded">>, kz_json:get_value(<<"doc">>, JObj, Id), Dict);
+                  Error ->
+                      Failed = kz_json:from_list([{Id, kz_util:to_binary(Error)}]),
+                      dict:append(<<"failed">>, Failed, Dict)
+              end,
+    lager:info("voicemail bulk operation resulted in ~b succeeded and ~b failed docs"
+              ,[length(dict:fetch(<<"succeeded">>, NewDict))
+               ,length(dict:fetch(<<"failed">>, NewDict))
+               ]),
+    normalize_bulk_results1(BoxId, JObjs, NewDict).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -411,9 +336,9 @@ normalize_count(ViewRes) ->
     lists:foldl(fun normalize_count_fold/2, kz_json:new(), ViewRes).
 
 normalize_count_fold(M, Acc) ->
-    VMBox = kz_json:get_value([<<"key">>, ?BOX_ID_IDX_KEY], M),
+    VMBox = kz_json:get_value([<<"key">>, ?BOX_ID_KEY_INDEX], M),
 
-    Folder = kz_json:get_value([<<"key">>, ?FOLDER_IDX_KEY], M),
+    Folder = kz_json:get_value([<<"key">>, ?FOLDER_KEY_INDEX], M),
     Value = kz_json:get_integer_value(<<"value">>, M),
 
     Total = kz_json:get_integer_value([VMBox, <<"total">>], Acc, 0),
@@ -430,38 +355,22 @@ normalize_count_fold(M, Acc) ->
                       ,Acc
                       ).
 
--spec normalize_count_non_deleted(ne_binary(), kz_json:object()) -> count_result().
-normalize_count_non_deleted(BoxId, ViewRes) ->
+-spec normalize_count_none_deleted(ne_binary(), kz_json:object()) -> count_result().
+normalize_count_none_deleted(BoxId, ViewRes) ->
     {kz_json:get_integer_value([BoxId, ?VM_FOLDER_NEW], ViewRes, 0)
     ,kz_json:get_integer_value([BoxId, ?VM_FOLDER_SAVED], ViewRes, 0)
     }.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Check if Msg is JObj, add kzd_box_message:set_metadata to the update Funs
+%% @doc Apply update functions and map all messages to their MODBs
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_set_metdata(ne_binary() | kz_json:object(), update_funs()) ->
-                               {ne_binary(), update_funs()}.
-maybe_set_metdata(?NE_BINARY = Id, Funs) -> {Id, Funs};
-maybe_set_metdata(Msg, Funs) ->
-    MsgId = kzd_box_message:media_id(Msg),
-    NewFuns = [fun(JObj) ->
-                       kzd_box_message:set_metadata(Msg, JObj)
-               end
-               | Funs
-              ],
-    {MsgId, NewFuns}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_include_messages(ne_binary(), ne_binary(), kz_json:object(), boolean()) -> {'ok', kz_json:object()}.
-maybe_include_messages(AccountId, BoxId, JObj, 'true') ->
-    BoxMessages = kz_json:get_value(?VM_KEY_MESSAGES, JObj, []),
-    MODBMessages = get_from_modb(AccountId, BoxId),
-    {'ok', kz_json:set_value(?VM_KEY_MESSAGES, BoxMessages ++ MODBMessages, JObj)};
-maybe_include_messages(_AccountId, _BoxId, JObj, _) ->
-    {'ok', kz_json:delete_key(?VM_KEY_MESSAGES, JObj)}.
+-spec apply_fun_and_map_msgs_to_modb(ne_binary(), kz_json:objects(), update_funs(), dict:dict()) ->
+                                            dict:dict().
+apply_fun_and_map_msgs_to_modb(_AccountId, [], _Funs, Dict) -> Dict;
+apply_fun_and_map_msgs_to_modb(AccountId, [JObj | JObjs], Funs, Dict) ->
+    NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
+    Db = kz_doc:account_db(JObj, kvm_util:get_db(AccountId, kz_doc:id(NewJObj))),
+    NewDict = dict:append(Db, NewJObj, Dict),
+    apply_fun_and_map_msgs_to_modb(AccountId, JObjs, Funs, NewDict).

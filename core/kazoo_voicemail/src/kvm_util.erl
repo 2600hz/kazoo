@@ -8,16 +8,15 @@
 %%%-------------------------------------------------------------------
 -module(kvm_util).
 
--export([get_db/1, get_db/2, get_range_db/1, get_range_db/2
+-export([get_db/1, get_db/2
+        ,get_range_db/1, get_range_db/2, create_range_dbs/2
         ,open_modb_doc/3, open_accountdb_doc/3
-        ,update_result/2, bulk_update_result/2, bulk_update_result/3
-        ,retry_conflict/1, check_doc_type/3
+        ,check_doc_type/3
 
         ,check_msg_belonging/2
-        ,find_differences/3
-        ,cleanup_moved_msgs/3
+        ,get_change_vmbox_funs/4
 
-        ,retention_days/0
+        ,retention_seconds/0, retention_seconds/1
 
         ,publish_saved_notify/5, publish_voicemail_saved/5
         ,get_notify_completed_message/1
@@ -52,19 +51,24 @@ get_db(AccountId, Year, Month) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Generate a range of database names
-%% Options:
-%%   'modb': only return modb range
 %% @end
 %%--------------------------------------------------------------------
 -spec get_range_db(ne_binary()) -> ne_binaries().
--spec get_range_db(ne_binary(), atom()) -> ne_binaries().
+-spec get_range_db(ne_binary(), pos_integer()) -> ne_binaries().
 get_range_db(AccountId) ->
-    get_range_db(AccountId, 'modb') ++ [get_db(AccountId)].
+    get_range_db(AccountId, ?RETENTION_DAYS).
 
-get_range_db(AccountId, 'modb') ->
+get_range_db(AccountId, Days) ->
     To = kz_util:current_tstamp(),
-    From = To - ?RETENTION_DAYS(?RETENTION_DURATION),
+    From = To - retention_seconds(Days),
     lists:reverse([Db || Db <- kazoo_modb:get_range(AccountId, From, To)]).
+
+-spec create_range_dbs(ne_binary(), ne_binaries()) -> dict:dict().
+create_range_dbs(AccountId, MsgIds) ->
+    lists:foldl(fun(Id, Acc) ->
+                        Db = get_db(AccountId, Id),
+                        dict:append(Db, Id, Acc)
+                end, dict:new(), MsgIds).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -91,7 +95,7 @@ open_accountdb_doc(AccountId, DocId, Type) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc Protect against returning wrong doc when expected type is not matched
 %% (especially for requests from crossbar)
 %% @end
@@ -108,140 +112,44 @@ check_doc_type(_Doc, _ExpectedType, _DocType) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_result(ne_binary(), db_ret()) -> db_ret().
-update_result(?MATCH_MODB_PREFIX(_, _, _)=_Id, {'error', _R}=Error) ->
-    lager:warning("failed to update voicemail message ~s: ~p", [_Id, _R]),
-    Error;
-update_result(?MATCH_MODB_PREFIX(_, _, _), {'ok', _}=Res) -> Res;
-update_result(FromId, {'error', _R}=Error) ->
-    lager:warning("failed move voicemail message ~s to modb: ~p", [FromId, _R]),
-    Error;
-update_result(_, {'ok', _}=Res) -> Res.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec bulk_update_result(ne_binary(), db_ret(), kvm_messags:bulk_results()) ->
-                                kvm_messags:bulk_results().
-bulk_update_result(Id, {'error', R} = Error, #bulk_res{failed = Failed} = Blk) ->
-    _ = update_result(Id, Error),
-    Blk#bulk_res{failed = [kz_json:from_list([{Id, kz_util:to_binary(R)}]) | Failed]};
-bulk_update_result(Id, {'ok', JObj} = OK, #bulk_res{succeeded = Succeeded
-                                                   ,moved = Moved} = Blk) ->
-    _ = update_result(Id, OK),
-    NewId = kz_doc:id(JObj),
-    case Id of
-        ?MATCH_MODB_PREFIX(_, _, _) ->
-            Blk#bulk_res{succeeded = [NewId | Succeeded]};
-        _ ->
-            Blk#bulk_res{succeeded = [NewId | Succeeded]
-                        ,moved = [Id | Moved]
-                        }
-    end.
-
--spec bulk_update_result(kz_json:object(), kz_json:object()) -> kz_json:object().
-bulk_update_result(Result, CurrentResults) ->
-    Failed = lists:append([kz_json:get_value(<<"failed">>, CurrentResults, [])
-                          ,kz_json:get_value(<<"failed">>, Result, [])
-                          ]),
-    Succeeded = lists:append([kz_json:get_value(<<"succeeded">>, CurrentResults, [])
-                             ,kz_json:get_value(<<"succeeded">>, Result, [])
-                             ]),
-
-    kz_json:set_values(
-      [{<<"succeeded">>, Succeeded}
-      ,{<<"failed">>, Failed}
-      ], CurrentResults
-     ).
-
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec retry_conflict(fun(() -> db_ret())) -> db_ret().
--spec retry_conflict(fun(() -> db_ret()), 0..3) -> db_ret().
-retry_conflict(Fun) ->
-    retry_conflict(Fun, 3).
-
-retry_conflict(_, 0) -> {'error', 'conflict'};
-retry_conflict(Fun, Tries) ->
-    case Fun() of
-        {'error', 'conflict'} -> retry_conflict(Fun, Tries - 1);
-        Other -> Other
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec check_msg_belonging(api_ne_binary(), kz_json:object()) -> boolean().
+-spec check_msg_belonging(api_ne_binary(), kz_json:object(), api_ne_binary()) -> boolean().
 check_msg_belonging(BoxId, JObj) ->
-    BoxId =:= 'undefined'
-        orelse BoxId =:= kzd_box_message:source_id(JObj).
+    check_msg_belonging(BoxId, JObj, kzd_box_message:source_id(JObj)).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Try to find changes made in messages list and return a tuple of
-%% messages that changed and messages that are not changed and must go
-%% into vmbox messages list.
-%% @end
-%%--------------------------------------------------------------------
--type diff_ret() :: {kz_json:objects(), kz_json:objects()}.
-
--spec find_differences(ne_binary(), ne_binary(), kz_json:objects()) -> diff_ret().
-find_differences(AccountId, BoxId, DirtyJObj) ->
-    Messages = kvm_messages:get(AccountId, BoxId),
-    find_differences(DirtyJObj, Messages).
-
-find_differences(DirtyJ, Messages) ->
-    Fun = fun(MsgJ, Acc) -> find_differences_fold(DirtyJ, MsgJ, Acc) end,
-    lists:foldl(Fun , {[], []}, Messages).
-
--spec find_differences_fold(kz_json:objects(),kz_json:object(), diff_ret()) -> diff_ret().
-find_differences_fold(DirtyJ, MsgJ, {DiffAcc, VMMsgAcc}) ->
-    MessageId = kzd_box_message:media_id(MsgJ),
-    case kz_json:find_value(<<"media_id">>, MessageId, DirtyJ) of
-        'undefined' ->
-            {[MsgJ | DiffAcc], VMMsgAcc};
-        J ->
-            case kz_json:are_identical(MsgJ, J) of
-                'true' -> {DiffAcc, maybe_add_to_vmbox(MsgJ, VMMsgAcc)};
-                'false' -> {[J | DiffAcc], VMMsgAcc}
-            end
-    end.
+check_msg_belonging(_BoxId, _JObj, 'undefined') -> 'true';
+check_msg_belonging(_BoxId, _JObj, _SourceId) ->
+    lager:debug("message ~s belongs to mailbox ~s but claims to belong to ~s"
+               ,[kz_doc:id(_JObj), _SourceId, _BoxId]),
+    'false'.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_moved_msgs(ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
-cleanup_moved_msgs(_, _, []) -> 'ok';
-cleanup_moved_msgs(AccountId, BoxId, OldIds) ->
-    AccountDb = get_db(AccountId),
-    case kz_datamgr:open_cache_doc(AccountDb, BoxId) of
-        {'ok', VMBox} ->
-            Messages = kz_json:get_value(?VM_KEY_MESSAGES, VMBox, []),
-            FilterFun = fun(M) -> not lists:member(kzd_box_message:media_id(M), OldIds) end,
-            NewMessages = lists:filter(FilterFun, Messages),
-            NewBoxJObj = kz_json:set_value(?VM_KEY_MESSAGES, NewMessages, VMBox),
-            case ?RETRY_CONFLICT(kz_datamgr:save_doc(AccountDb, NewBoxJObj)) of
-                {'ok', _} -> 'ok';
-                {'error', _R} ->
-                    lager:error("could not update mailbox messages array after moving voicemail messages to MODb ~s: ~s", [BoxId, _R])
-            end;
-        {'error', _R} ->
-            lager:error("unable to open mailbox for update messages array after moving voicemail messages to MODb ~s: ~s", [BoxId, _R])
-    end.
+-spec retention_seconds() -> integer().
+-spec retention_seconds(pos_integer()) -> integer().
+retention_seconds() ->
+    retention_seconds(?RETENTION_DAYS).
 
--spec retention_days() -> integer().
-retention_days() ->
-    ?RETENTION_DAYS(?RETENTION_DURATION).
+retention_seconds(Days) ->
+    ?SECONDS_IN_DAY * Days + ?SECONDS_IN_HOUR.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_change_vmbox_funs(ne_binary(), ne_binary(), kz_json:object(), ne_binary()) ->
+                                   update_funs().
+get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId) ->
+    [fun(DocJ) -> kzd_box_message:set_source_id(NewBoxId, DocJ) end
+    ,fun(DocJ) -> kzd_box_message:apply_folder(?VM_FOLDER_NEW, DocJ) end
+    ,fun(DocJ) -> kzd_box_message:change_message_name(NBoxJ, DocJ) end
+    ,fun(DocJ) -> kzd_box_message:change_to_sip_field(AccountId, NBoxJ, DocJ) end
+    ,fun(DocJ) -> kzd_box_message:add_message_history(OldBoxId, DocJ) end
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -359,21 +267,6 @@ get_notify_completed_message([JObj|JObjs], Acc) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_add_to_vmbox(kz_json:object(), kz_json:objects()) -> kz_json:objects().
--spec maybe_add_to_vmbox(kz_json:object(), ne_binary(), kz_json:objects()) -> kz_json:objects().
-maybe_add_to_vmbox(M, Acc) ->
-    maybe_add_to_vmbox(M, kzd_box_message:media_id(M), Acc).
-
-maybe_add_to_vmbox(_M, ?MATCH_MODB_PREFIX(_Year, _Month, _), Acc) ->
-    Acc;
-maybe_add_to_vmbox(M, _Id, Acc) ->
-    [M | Acc].
 
 %%--------------------------------------------------------------------
 %% @private
