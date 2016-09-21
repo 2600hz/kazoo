@@ -32,6 +32,8 @@
 -define(CB_LIST, <<"vmboxes/crossbar_listing">>).
 -define(MSG_LISTING_BY_MAILBOX, <<"mailbox_messages/listing_by_mailbox">>).
 
+-define(BOX_ID_KEY_INDEX, 1).
+
 -define(MESSAGES_RESOURCE, ?VM_KEY_MESSAGES).
 -define(BIN_DATA, <<"raw">>).
 -define(MEDIA_MIME_TYPES, [{<<"application">>, <<"octet-stream">>}]).
@@ -175,7 +177,7 @@ post(Context, _DocId) ->
     C1 = crossbar_doc:save(check_mailbox_for_messages_array(Context, VMBoxMsgs)),
 
     %% remove messages array to not let it exposed
-    cb_context:set_doc(C1, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:doc(C1))).
+    cb_context:set_resp_data(C1, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1))).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -293,7 +295,7 @@ patch(Context, _Id) ->
     C1 = crossbar_doc:save(check_mailbox_for_messages_array(Context, VMBoxMsgs)),
 
     %% remove messages array to not let it exposed
-    cb_context:set_doc(C1, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:doc(C1))).
+    cb_context:set_resp_data(C1, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1))).
 
 %%%===================================================================
 %%% Internal functions
@@ -551,7 +553,7 @@ maybe_load_vmboxes([Id|Ids], Context) ->
 -spec load_vmbox(ne_binary(), cb_context:context()) -> cb_context:context().
 load_vmbox(DocId, Context) ->
     C1 = crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(kzd_voicemail_box:type())),
-    cb_context:set_doc(C1, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:doc(C1))).
+    cb_context:set_resp_data(C1, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1))).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -577,11 +579,15 @@ load_message_summary(BoxId, Context) ->
 -spec message_summary_normalizer(api_binary(), kz_json:object(), kz_json:objects()) ->
                                         kz_json:objects().
 message_summary_normalizer('undefined', JObj, Acc) ->
-    normalize_view_results(JObj, Acc);
-message_summary_normalizer(BoxId, JObj, Acc) ->
-    [kz_json:from_list([{BoxId, kz_json:get_value(<<"value">>, JObj)}])
+
+    [kz_json:from_list([{kz_json:get_value([<<"key">>, ?BOX_ID_KEY_INDEX], JObj)
+                        ,kz_json:get_value(<<"value">>, JObj)
+                        }
+                       ])
      | Acc
-    ].
+    ];
+message_summary_normalizer(_BoxId, JObj, Acc) ->
+    normalize_view_results(JObj, Acc).
 
 -spec message_summary_view_options(cb_context:context(), api_binary()) ->
                                           {'ok', crossbar_doc:view_options()} |
