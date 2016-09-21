@@ -10,7 +10,6 @@
         ]).
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
--include_lib("kazoo/src/kz_json.hrl").
 -include_lib("crossbar/src/crossbar.hrl").
 
 -define(REF_PATH(Module),
@@ -217,8 +216,11 @@ cell_wrap('undefined') -> <<" ">>;
 cell_wrap([]) -> <<"`[]`">>;
 cell_wrap(L) when is_list(L) -> [<<"`[\"">>, kz_util:join_binary(L, <<"\", \"">>), <<"\"]`">>];
 cell_wrap(<<>>) -> <<"\"\"">>;
-cell_wrap(?EMPTY_JSON_OBJECT) -> <<"`{}`">>;
-cell_wrap(Type) -> [<<"`">>, kz_util:to_binary(Type), <<"`">>].
+cell_wrap(Type) ->
+    case Type =:= kz_json:new() of
+        true -> <<"`{}`">>;
+        false -> [<<"`">>, kz_util:to_binary(Type), <<"`">>]
+    end.
 
 maybe_sub_properties_to_row(TopRequired, <<"object">>, Names, Settings, Acc0) ->
     lists:foldl(fun(Key, Acc1) ->
