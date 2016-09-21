@@ -566,14 +566,14 @@ get_binary_boolean(Key, JObj, Default) ->
         Value -> kz_util:to_binary(kz_util:is_true(Value))
     end.
 
--spec get_keys(object()) -> [literal_key()].
--spec get_keys(key(), object()) -> [pos_integer(),...] | [literal_key()].
+-spec get_keys(object()) -> json_strings().
+-spec get_keys(key(), object()) -> json_strings().
 get_keys(JObj) -> get_keys1(JObj).
 
 get_keys([], JObj) -> get_keys1(JObj);
 get_keys(Keys, JObj) -> get_keys1(get_value(Keys, JObj, new())).
 
--spec get_keys1(list() | object()) -> [pos_integer(),...] | [literal_key()].
+-spec get_keys1(list() | object()) -> json_strings().
 get_keys1(KVs) when is_list(KVs) -> lists:seq(1,length(KVs));
 get_keys1(JObj) -> props:get_keys(to_proplist(JObj)).
 
