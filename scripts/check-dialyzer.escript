@@ -1,5 +1,5 @@
 #!/usr/bin/env escript
-%%! -sname kazoo_dialyzer
+%%! +A0 -sname kazoo_dialyzer
 %% -*- coding: utf-8 -*-
 
 -mode('compile').

@@ -1,5 +1,5 @@
 #!/usr/bin/env escript
-%%! -sname kazoo_src2any
+%%! +A0 -sname kazoo_src2any
 %% -*- coding: utf-8 -*-
 
 -mode('compile').

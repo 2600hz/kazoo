@@ -1,5 +1,5 @@
 #!/usr/bin/env escript
-%%!
+%%! +A0
 %% -*- coding: utf-8 -*-
 
 %% Reads a running release's cookie from config.ini
