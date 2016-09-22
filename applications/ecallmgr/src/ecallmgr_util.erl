@@ -46,9 +46,9 @@
 -export([get_dial_separator/2]).
 -export([fix_contact/3]).
 
--include_lib("kazoo/src/api/kapi_dialplan.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
 -include("ecallmgr.hrl").
+-include_lib("kazoo_amqp/src/api/kapi_dialplan.hrl").
+-include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
 -define(HTTP_GET_PREFIX, "http_cache://").

@@ -21,7 +21,7 @@
         ]).
 
 -include("kazoo_endpoint.hrl").
--include_lib("kazoo/include/kapi_conf.hrl").
+-include_lib("kazoo_amqp/include/kapi_conf.hrl").
 -include_lib("kazoo/src/kz_json.hrl").
 
 -define(NON_DIRECT_MODULES, ['cf_ring_group', 'acdc_util']).

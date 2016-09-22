@@ -42,8 +42,10 @@ ERLC_OPTS += -Iinclude -Isrc -I../ +'{parse_transform, lager_transform}'
 ERLC_OPTS += -Werror +warn_export_all +warn_unused_import +warn_unused_vars
 
 ELIBS = $(ERL_LIBS):$(ROOT)/deps:$(ROOT)/core
+
 EBINS += $(ROOT)/core/kazoo/ebin \
-	     $(ROOT)/deps/lager/ebin
+	$(ROOT)/deps/lager/ebin
+
 TEST_EBINS += $(EBINS) $(ROOT)/deps/proper/ebin
 PA      = -pa ebin/ $(foreach EBIN,$(EBINS),-pa $(EBIN))
 TEST_PA = -pa ebin/ $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))

@@ -23,7 +23,7 @@
         ]).
 
 -include("acdc.hrl").
--include_lib("kazoo/include/kapi_conf.hrl").
+-include_lib("kazoo_amqp/include/kapi_conf.hrl").
 
 -define(DEFAULT_PAUSE ,kapps_config:get(?CONFIG_CAT, <<"default_agent_pause_timeout">>, 600)).
 

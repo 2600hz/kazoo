@@ -18,7 +18,7 @@
 
 -export([declare_exchanges/0]).
 
--include_lib("kazoo/include/kz_api.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 -define(PUSH_EXCHANGE, <<"pushes">>).
 

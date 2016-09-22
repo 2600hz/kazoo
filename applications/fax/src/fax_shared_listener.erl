@@ -23,7 +23,7 @@
         ]).
 
 -include("fax.hrl").
--include_lib("kazoo/include/kapi_conf.hrl").
+-include_lib("kazoo_amqp/include/kapi_conf.hrl").
 
 -record(state, {}).
 -type state() :: #state{}.

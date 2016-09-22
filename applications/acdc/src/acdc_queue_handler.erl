@@ -18,7 +18,7 @@
         ]).
 
 -include("acdc.hrl").
--include_lib("kazoo/include/kapi_conf.hrl").
+-include_lib("kazoo_amqp/include/kapi_conf.hrl").
 
 -spec handle_call_event(kz_json:object(), kz_proplist()) -> 'ok'.
 -spec handle_call_event(ne_binary(), ne_binary(), kz_json:object(), kz_proplist()) -> 'ok'.

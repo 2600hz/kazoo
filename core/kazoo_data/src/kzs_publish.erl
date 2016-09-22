@@ -18,7 +18,7 @@
         ]).
 
 -include("kz_data.hrl").
--include_lib("kazoo/include/kapi_conf.hrl").
+-include_lib("kazoo_amqp/include/kapi_conf.hrl").
 
 -spec maybe_publish_docs(ne_binary(), kz_json:objects(), kz_json:objects()) -> 'ok'.
 maybe_publish_docs(Db, Docs, JObjs) ->
@@ -26,16 +26,20 @@ maybe_publish_docs(Db, Docs, JObjs) ->
         andalso should_publish_db_changes(Db)
     of
         'true' ->
-            _ = kz_util:spawn(
-                  fun() ->
-                          [publish_doc(Db, Doc, JObj)
-                           || {Doc, JObj} <- lists:zip(Docs, JObjs)
-                                  , should_publish_doc(Doc)
-                          ]
-                  end),
-            'ok';
+            publish_docs(Db, Docs, JObjs);
         'false' -> 'ok'
     end.
+
+-spec publish_docs(ne_binary(), kz_json:objects(), kz_json:objects()) -> 'ok'.
+publish_docs(Db, Docs, JObjs) ->
+    _ = kz_util:spawn(
+          fun() ->
+                  [publish_doc(Db, Doc, JObj)
+                   || {Doc, JObj} <- lists:zip(Docs, JObjs),
+                      should_publish_doc(Doc)
+                  ]
+          end),
+    'ok'.
 
 -spec maybe_publish_doc(ne_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
 maybe_publish_doc(Db, Doc, JObj) ->

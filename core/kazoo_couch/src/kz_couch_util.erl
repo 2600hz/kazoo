@@ -25,9 +25,7 @@
 -export([maybe_add_rev/3]).
 
 -include("kz_couch.hrl").
--include_lib("kazoo/include/kapi_conf.hrl").
-
-
+-include_lib("kazoo_amqp/include/kapi_conf.hrl").
 
 %%------------------------------------------------------------------------------
 %% @private
@@ -36,7 +34,7 @@
 %% until 3 failed retries occur.
 %% @end
 %%------------------------------------------------------------------------------
--type retry504_ret() :: _.
+-type retry504_ret() :: any().
 %% 'ok' | ne_binary() |
 %% {'ok', kz_json:object() | kz_json:objects() |
 %%  binary() | ne_binaries() | boolean() | integer()

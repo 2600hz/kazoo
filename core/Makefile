@@ -26,8 +26,8 @@ test: $(MAKEDIRS)
 
 first:
 	$(MAKE) -C kazoo/ $(ACTION)
+	$(MAKE) -C kazoo_amqp/ $(ACTION)
 	$(MAKE) -C kazoo_data/ $(ACTION)
 
 $(MAKEDIRS): first
 	$(MAKE) -C $(@D)    $(ACTION)
-

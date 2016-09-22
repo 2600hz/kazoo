@@ -17,7 +17,7 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("kazoo/include/kapi_conf.hrl").
+-include_lib("kazoo_amqp/include/kapi_conf.hrl").
 -include_lib("kazoo_documents/include/doc_types.hrl").
 
 -define(CB_LIST, <<"websockets/crossbar_listing">>).

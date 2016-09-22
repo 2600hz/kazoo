@@ -9,13 +9,12 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_bridge).
 
--include_lib("kazoo/src/api/kapi_dialplan.hrl").
--include("ecallmgr.hrl").
-
 -export([call_command/3
         ,unbridge/2
         ,maybe_b_leg_events/3
         ]).
+
+-include("ecallmgr.hrl").
 
 -define(BYPASS_MEDIA_AFTER_BRIDGE, ecallmgr_config:get_boolean(<<"use_bypass_media_after_bridge">>, 'false')).
 

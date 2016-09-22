@@ -70,7 +70,6 @@
         ,uri_decode/1
         ,resolve_uri/2
         ,safe_urlencode/1
-        ,normalize_amqp_uri/1
         ]).
 
 -export([uri/2]).
@@ -148,7 +147,7 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
--include_lib("kazoo/include/kz_api.hrl").
+-include_lib("kazoo/include/kz_api_literals.hrl").
 
 -define(KAZOO_VERSION_CACHE_KEY, {?MODULE, 'kazoo_version'}).
 
@@ -762,21 +761,29 @@ randomize_list(T, List) ->
 -spec put_callid(kz_json:object() | kz_proplist() | ne_binary() | atom()) ->
                         api_binary().
 put_callid(?NE_BINARY = CallId) ->
-    lager:md([{'callid', CallId}]), erlang:put('callid', CallId);
+    lager:md([{'callid', CallId}]),
+    erlang:put('callid', CallId);
 put_callid(Atom) when is_atom(Atom) ->
-    lager:md([{'callid', Atom}]), erlang:put('callid', Atom);
-put_callid(Prop) when is_list(Prop) ->
-    lager:md([{'callid', callid(Prop)}]), erlang:put('callid', callid(Prop));
-put_callid(JObj) ->
-    lager:md([{'callid', callid(JObj)}]), erlang:put('callid', callid(JObj)).
+    lager:md([{'callid', Atom}]),
+    erlang:put('callid', Atom);
+put_callid(APITerm) ->
+    put_callid(callid(APITerm)).
 
 -spec get_callid() -> ne_binary().
 get_callid() -> erlang:get('callid').
 
-callid(Prop) when is_list(Prop) ->
-    props:get_first_defined([?KEY_LOG_ID, <<"Call-ID">>, ?KEY_MSG_ID], Prop, ?LOG_SYSTEM_ID);
-callid(JObj) ->
-    kz_json:get_first_defined([?KEY_LOG_ID, <<"Call-ID">>, ?KEY_MSG_ID], JObj, ?LOG_SYSTEM_ID).
+-spec callid(api_terms()) -> api_binary().
+callid(APITerm) when is_list(APITerm) ->
+    find_callid(APITerm, fun props:get_first_defined/3);
+callid(APITerm) ->
+    find_callid(APITerm, fun kz_json:get_first_defined/3).
+
+-spec find_callid(api_terms(), fun()) -> api_binary().
+find_callid(APITerm, GetFun) ->
+    GetFun([?KEY_LOG_ID, ?KEY_API_CALL_ID, ?KEY_MSG_ID]
+          ,APITerm
+          ,?LOG_SYSTEM_ID
+          ).
 
 -spec spawn(fun(() -> any())) -> pid().
 -spec spawn(fun(), list()) -> pid().
@@ -1607,10 +1614,6 @@ make_dir(Filename) ->
         {'error', _}=_E ->
             lager:error("creating directory ~s failed : ~p", [Filename, _E])
     end.
-
--spec normalize_amqp_uri(ne_binary()) -> ne_binary().
-normalize_amqp_uri(URI) ->
-    to_binary(amqp_uri:remove_credentials(to_list(URI))).
 
 -spec anonymous_caller_id_name() -> ne_binary().
 anonymous_caller_id_name() ->

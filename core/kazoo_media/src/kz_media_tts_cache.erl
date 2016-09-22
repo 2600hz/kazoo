@@ -26,7 +26,7 @@
         ]).
 
 -include("kazoo_media.hrl").
--include_lib("kazoo/include/kapi_conf.hrl").
+-include_lib("kazoo_amqp/include/kapi_conf.hrl").
 
 -define(SERVER, ?MODULE).
 
