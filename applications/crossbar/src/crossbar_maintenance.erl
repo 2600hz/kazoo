@@ -92,7 +92,7 @@ migrate_accounts_data([Account|Accounts]) ->
 migrate_account_data(Account) ->
     _ = cb_clicktocall:maybe_migrate_history(Account),
     _ = migrate_ring_group_callflow(Account),
-    _ = cb_vmboxes_v2:migrate(Account),
+    _ = cb_vmboxes:migrate(Account),
     _ = cb_lists_v2:maybe_migrate(Account),
     _ = cb_apps_maintenance:migrate(Account),
     'no_return'.

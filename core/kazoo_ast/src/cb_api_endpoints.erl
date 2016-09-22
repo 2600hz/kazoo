@@ -683,7 +683,7 @@ find_methods_in_clause(?FUN_ARGS('content_types_provided_for_provisioner', _Args
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_vm_download', _Args), Acc) ->
     [kz_util:join_binary([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_vmboxes_v2:acceptable_content_types()
+     || {Type, SubType} <- cb_vmboxes:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_get', _Args), Acc) ->
     [kz_util:join_binary([Type, SubType], <<"/">>)

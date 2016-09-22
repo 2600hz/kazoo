@@ -36,7 +36,7 @@ Key | Description | Type | Default
 
 ## New message
 
-Callflow voicemail module specifically uses `kvm_message:new_message/5` to record and store the new voicemail message. This function expects props from callflow as follow:
+Callflow voicemail module uses `kvm_message:new_message/2` to record and store the new voicemail message. This function expects these props:
 
 ```erlang
 [{<<"Attachment-Name">>, AttachmentName}

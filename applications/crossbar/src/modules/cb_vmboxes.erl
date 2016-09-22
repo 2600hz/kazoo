@@ -9,8 +9,9 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
+%%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
--module(cb_vmboxes_v2).
+-module(cb_vmboxes).
 
 -export([init/0
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3, allowed_methods/4
@@ -38,22 +39,23 @@
 -define(MESSAGES_RESOURCE, ?VM_KEY_MESSAGES).
 -define(BIN_DATA, <<"raw">>).
 -define(MEDIA_MIME_TYPES, [{<<"application">>, <<"octet-stream">>}
-                          ,{<<"application">>, <<"zip">>}]).
+                          ,{<<"application">>, <<"zip">>}
+                          ]).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v2_resource.content_types_accpeted.vmboxes">>, ?MODULE, 'content_types_accepted'),
-    _ = crossbar_bindings:bind(<<"v2_resource.content_types_provided.vmboxes">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.vmboxes">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.vmboxes">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v2_resource.validate.vmboxes">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.put.vmboxes">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.post.vmboxes">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.patch.vmboxes">>, ?MODULE, 'patch'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.vmboxes">>, ?MODULE, 'delete'),
-    _ = crossbar_bindings:bind(<<"v2_resource.finish_request.post.vmboxes">>, ?MODULE, 'finish_request').
+    _ = crossbar_bindings:bind(<<"*.content_types_accpeted.vmboxes">>, ?MODULE, 'content_types_accepted'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.vmboxes">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.vmboxes">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.vmboxes">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.vmboxes">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.vmboxes">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.vmboxes">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.vmboxes">>, ?MODULE, 'patch'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete'),
+    _ = crossbar_bindings:bind(<<"*.finish_request.post.vmboxes">>, ?MODULE, 'finish_request').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -198,7 +200,7 @@ post(Context, _DocId) ->
     C1 = crossbar_doc:save(check_mailbox_for_messages_array(Context, VMBoxMsgs)),
 
     %% remove messages array to not let it exposed
-    cb_context:set_resp_data(C1, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1))).
+    crossbar_util:response(kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1)), C1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -229,16 +231,16 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE) ->
 
     case cb_context:req_value(Context, <<"source_id">>) of
         'undefined' ->
-            {'ok', Result} = kvm_messages:change_folder(Folder, MsgIds, AccountId, OldBoxId),
-            C = cb_context:set_resp_data(Context, Result),
+            Result = kvm_messages:change_folder(Folder, MsgIds, AccountId, OldBoxId),
+            C = crossbar_util:response(Result, Context),
             update_mwi(C, OldBoxId);
         ?NE_BINARY = NewBoxId ->
             Moved = kvm_messages:move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId),
-            C = cb_context:set_resp_data(Context, Moved),
+            C = crossbar_util:response(Moved, Context),
             update_mwi(C, [OldBoxId, NewBoxId]);
         NewBoxIds ->
             Copied = kvm_messages:copy_to_vmboxes(AccountId, MsgIds, OldBoxId, NewBoxIds),
-            C = cb_context:set_resp_data(Context, Copied),
+            C = crossbar_util:response(Copied, Context),
             update_mwi(C, [OldBoxId | NewBoxIds])
     end.
 
@@ -252,17 +254,21 @@ post(Context, OldBoxId, ?MESSAGES_RESOURCE, MediaId) ->
             case kvm_message:change_folder(Folder, MediaId, AccountId, OldBoxId) of
                 {'ok', Message} ->
                     C = crossbar_util:response(Message, Context),
-                    update_mwi(cb_context:set_resp_status(C, 'success'), OldBoxId);
+                    update_mwi(C, OldBoxId);
                 {'error', Error} ->
                     crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)
             end;
         ?NE_BINARY = NewBoxId ->
-            Moved = kvm_message:move_to_vmbox(AccountId, MediaId, OldBoxId, NewBoxId),
-            C = cb_context:set_resp_data(Context, Moved),
-            update_mwi(C, [OldBoxId, NewBoxId]);
+            case kvm_message:move_to_vmbox(AccountId, MediaId, OldBoxId, NewBoxId) of
+                {'ok', Moved} ->
+                    C = crossbar_util:response(Moved, Context),
+                    update_mwi(C, [OldBoxId, NewBoxId]);
+                {'error', Error} ->
+                    crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)
+            end;
         NewBoxIds ->
             Copied = kvm_message:copy_to_vmboxes(AccountId, MediaId, OldBoxId, NewBoxIds),
-            C = cb_context:set_resp_data(Context, Copied),
+            C = crossbar_util:response(Copied, Context),
             update_mwi(C, [OldBoxId | NewBoxIds])
     end.
 
@@ -292,15 +298,15 @@ delete(Context, DocId) ->
 
 delete(Context, DocId, ?MESSAGES_RESOURCE) ->
     MsgIds = cb_context:resp_data(Context),
-    {'ok', Result} = kvm_messages:change_folder({?VM_FOLDER_DELETED, 'true'}, MsgIds, cb_context:account_id(Context), DocId),
-    C = cb_context:set_resp_data(Context, Result),
+    Result = kvm_messages:change_folder({?VM_FOLDER_DELETED, 'true'}, MsgIds, cb_context:account_id(Context), DocId),
+    C = crossbar_util:response(Result, Context),
     update_mwi(C, DocId).
 
 delete(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
     AccountId = cb_context:account_id(Context),
     case kvm_message:change_folder({?VM_FOLDER_DELETED, 'true'}, MediaId, AccountId, DocId) of
         {'ok', Message} ->
-            C = crossbar_util:response(Message, cb_context:set_resp_status(Context, 'success')),
+            C = crossbar_util:response(Message, Context),
             update_mwi(C, DocId);
         {'error', Error} ->
             crossbar_doc:handle_datamgr_errors(Error, MediaId, Context)
@@ -313,13 +319,12 @@ delete(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
 %%--------------------------------------------------------------------
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _Id) ->
-    %% disallow vmbox messages array changing
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     VMBoxMsgs = kz_json:get_value(?VM_KEY_MESSAGES, DbDoc),
     C1 = crossbar_doc:save(check_mailbox_for_messages_array(Context, VMBoxMsgs)),
 
     %% remove messages array to not let it exposed
-    cb_context:set_resp_data(C1, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1))).
+    crossbar_util:response(kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1)), C1).
 
 %%%===================================================================
 %%% Internal functions
@@ -440,13 +445,7 @@ filter_messages([Mess|Messages], Filters, Context, Selected) ->
 %%--------------------------------------------------------------------
 -spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(VMBoxId, Context) ->
-    ValidateFuns = [fun validate_unique_vmbox/2
-                   ,fun check_vmbox_schema/2
-                   ],
-    lists:foldl(fun(F, C) -> F(VMBoxId, C) end
-               ,Context
-               ,ValidateFuns
-               ).
+    validate_unique_vmbox(VMBoxId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -459,21 +458,15 @@ validate_request(VMBoxId, Context) ->
 validate_unique_vmbox(VMBoxId, Context) ->
     validate_unique_vmbox(VMBoxId, Context, cb_context:account_db(Context)).
 
-validate_unique_vmbox(_VMBoxId, Context, 'undefined') ->
-    Context;
+validate_unique_vmbox(VMBoxId, Context, 'undefined') ->
+    check_vmbox_schema(VMBoxId, Context);
 validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
     case check_uniqueness(VMBoxId, Context) of
-        'true' -> Context;
+        'true' -> check_vmbox_schema(VMBoxId, Context);
         'false' ->
-            Msg = kz_json:from_list([{<<"message">>
-                                     ,<<"Invalid mailbox number or already exists">>
-                                     }
-                                    ]),
-            cb_context:add_validation_error(<<"mailbox">>
-                                           ,<<"unique">>
-                                           ,Msg
-                                           ,Context
-                                           )
+            Msg = kz_json:from_list([{<<"message">>, <<"Invalid mailbox number or already exists">>}]),
+            C = cb_context:add_validation_error(<<"mailbox">>, <<"unique">>, Msg, Context),
+            check_vmbox_schema(VMBoxId, C)
     end.
 
 %%--------------------------------------------------------------------
@@ -638,8 +631,7 @@ message_summary_view_options(Context, BoxId) ->
         'false' -> C1;
         {CreatedFrom, CreatedTo} ->
             MODBs = kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo),
-            ViewOptions = maybe_add_start_end_key(BoxId, CreatedTo, CreatedFrom, MODBs),
-            {'ok', ViewOptions};
+            {'ok', maybe_add_start_end_key(BoxId, CreatedTo, CreatedFrom, MODBs)};
         Ctx -> Ctx
     end.
 
@@ -759,8 +751,7 @@ load_message_binary(BoxId, MediaId, Context) ->
                     crossbar_doc:handle_datamgr_errors(Error, BoxId, Context);
                 {'ok', BoxJObj} ->
                     Timezone = kzd_voicemail_box:timezone(BoxJObj),
-                    %% TODO: check source_id of message against BoxId(BoxId)
-                    load_attachment_from_message(JObj, BoxId, Context, Timezone)
+                    load_attachment_from_message(JObj, Context, Timezone)
             end;
         {'error', Err} -> crossbar_doc:handle_datamgr_errors(Err, MediaId, Context)
     end.
@@ -770,9 +761,9 @@ load_message_binary(BoxId, MediaId, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_attachment_from_message(kz_json:object(), ne_binary(), cb_context:context(), ne_binary()) ->
+-spec load_attachment_from_message(kz_json:object(), cb_context:context(), ne_binary()) ->
                                           cb_context:context().
-load_attachment_from_message(Doc, BoxId, Context, Timezone) ->
+load_attachment_from_message(Doc, Context, Timezone) ->
     MediaId = kz_doc:id(Doc),
     VMMetaJObj = kzd_box_message:metadata(Doc),
 
