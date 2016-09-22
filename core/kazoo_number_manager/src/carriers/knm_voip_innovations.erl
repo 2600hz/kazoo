@@ -262,7 +262,10 @@ soap(Action, Props) ->
             "queryDID" ->
                 knm_util:fixture("voip_innovations_query_response.xml");
             "getDIDs" ->
-                knm_util:fixture("voip_innovations_get_response.xml");
+                case props:get_value("npa", Props) of
+                    <<"877">> -> knm_util:fixture("voip_innovations_get_tollfree_response.xml");
+                    _ -> knm_util:fixture("voip_innovations_get_response.xml")
+                end;
             "assignDID" ->
                 knm_util:fixture("voip_innovations_assign_response.xml");
             "releaseDID" ->
