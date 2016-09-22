@@ -386,28 +386,28 @@ save_meta(Length, Action, Call, MediaId, BoxId) ->
                            kzd_box_message:apply_folder(?VM_FOLDER_DELETED, JObj)
                    end
                   ],
-            save_metadata(Metadata, AccountId, MediaId, Fun);
+            save_metadata(Metadata, AccountId, BoxId, MediaId, Fun);
         'save' ->
             lager:debug("attachment was sent out via notification, saving media file"),
             Fun = [fun(JObj) ->
                            kzd_box_message:apply_folder(?VM_FOLDER_SAVED, JObj)
                    end
                   ],
-            save_metadata(Metadata, AccountId, MediaId, Fun);
+            save_metadata(Metadata, AccountId, BoxId, MediaId, Fun);
         'nothing' ->
-            save_metadata(Metadata, AccountId, MediaId, []),
+            save_metadata(Metadata, AccountId, BoxId, MediaId, []),
             lager:debug("stored voicemail metadata for ~s", [MediaId]),
             kvm_util:publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp)
     end.
 
--spec save_metadata(kz_json:object(), ne_binary(), ne_binary(), update_funs()) -> 'ok'.
-save_metadata(NewMessage, AccountId, MessageId, Funs) ->
+-spec save_metadata(kz_json:object(), ne_binary(), ne_binary(), ne_binary(), update_funs()) -> 'ok'.
+save_metadata(NewMessage, AccountId, BoxId, MessageId, Funs) ->
     UpdateFuns = [fun(JObj) ->
                           kzd_box_message:set_metadata(NewMessage, JObj)
                   end
                   | Funs
                  ],
-    case update(AccountId, 'undefined', MessageId, UpdateFuns) of
+    case update(AccountId, BoxId, MessageId, UpdateFuns) of
         {'ok', _} -> 'ok';
         {'error', _R} ->
             lager:info("error while storing voicemail metadata: ~p", [_R])
