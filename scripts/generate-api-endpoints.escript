@@ -1,4 +1,5 @@
 #!/usr/bin/env escript
+%%! +A0
 %% -*- coding: utf-8 -*-
 
 -mode('compile').
