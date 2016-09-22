@@ -285,7 +285,12 @@ handle_call({'participant_create', Props, Node}, _, State) ->
     _ = ets:insert_new(?PARTICIPANTS_TBL, Participant),
     UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
     _ = case ets:lookup(?CONFERENCES_TBL, UUID) of
-            [#conference{}] -> 'ok';
+            [#conference{account_id='undefined'}] ->
+                lager:info("failed to find account_id in conference ~s, adding", [UUID]),
+                Conference = conference_from_props(Props, Node),
+                _ = ets:insert(?CONFERENCES_TBL, Conference);
+            [#conference{}] ->
+                'ok';
             _Else ->
                 lager:info("failed to find participants conference ~s, adding", [UUID]),
                 Conference = conference_from_props(Props, Node),
