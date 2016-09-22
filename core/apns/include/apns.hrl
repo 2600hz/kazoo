@@ -28,5 +28,5 @@
                    badge = none                 :: none | integer(),
                    sound = none                 :: none | apns:apns_str(),
                    apns_extra = []              :: none | [{atom(), integer()|boolean()|string()}],
-                   extra = []                   :: props:proplist(),
+                   extra = []                   :: kz_proplist(),
                    priority = 10                :: integer()}).

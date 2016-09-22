@@ -73,7 +73,7 @@
        ).
 
 
--define(METAFLOW_BIND_HEADERS, [[<<"Call">> , <<"Call-ID">>]]).
+-define(METAFLOW_BIND_HEADERS, [<<"Call">> , <<"Call-ID">>]).
 -define(OPTIONAL_METAFLOW_BIND_HEADERS, [<<"Numbers">>, <<"Patterns">>
                                         ,<<"Binding-Digit">>, <<"Digit-Timeout">>
                                         ,<<"Endpoint-ID">>, <<"Listen-On">>

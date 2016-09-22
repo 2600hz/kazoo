@@ -5,6 +5,10 @@
 -type api_formatter_return() :: {'ok', iolist()} | {'error', string()}.
 -type api_headers() :: ne_binaries().
 
+-type api_types() :: [{ne_binary(), fun()}].
+-type valid_value() :: ne_binary() | integer().
+-type api_valid_values() :: [{ne_binary(), valid_value() | [valid_value()]}].
+
 %%% *_HEADERS defines a list of Keys that must exist in every message of type *
 %%% (substitute AUTHN_REQ, AUTHN_RESP, etc, for *) to be considered valid.
 %%%
