@@ -584,13 +584,14 @@ get_find_numbers_req(Context) ->
                 {Account, cb_context:reseller_id(Context)}
         end,
     QS = cb_context:query_string(Context),
-    [{'quantity', max(1, kz_json:get_integer_value(?QUANTITY, QS, 1))}
-    ,{'prefix', kz_json:get_ne_value(?PREFIX, QS)}
-    ,{'country', kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY)}
-    ,{'offset', kz_json:get_integer_value(?OFFSET, QS, 0)}
-    ,{'account_id', AccountId}
-    ,{'reseller_id', ResellerId}
-    ].
+    props:filter_undefined(
+      [{'quantity', max(1, kz_json:get_integer_value(?QUANTITY, QS, 1))}
+      ,{'prefix', kz_json:get_ne_value(?PREFIX, QS)}
+      ,{'country', kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY)}
+      ,{'offset', kz_json:get_integer_value(?OFFSET, QS, 0)}
+      ,{'account_id', AccountId}
+      ,{'reseller_id', ResellerId}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private
