@@ -185,7 +185,7 @@ verbose_debug(Format, Args) ->
 %%--------------------------------------------------------------------
 -spec braintree_server_url(string()) -> string() | 'undefined'.
 braintree_server_url(Env) ->
-    proplists:get_value(Env, ?BT_SERVER_URL).
+    props:get_value(Env, ?BT_SERVER_URL).
 
 %%--------------------------------------------------------------------
 %% @private

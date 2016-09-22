@@ -338,11 +338,11 @@ get_credentials_from_metadata(Config) ->
                     Creds = kz_json:decode(Json),
                     Record =
                         #metadata_credentials{
-                           access_key_id = binary_to_list(proplists:get_value(<<"AccessKeyId">>, Creds)),
-                           secret_access_key = binary_to_list(proplists:get_value(<<"SecretAccessKey">>, Creds)),
-                           security_token = binary_to_list(proplists:get_value(<<"Token">>, Creds)),
+                           access_key_id = binary_to_list(props:get_value(<<"AccessKeyId">>, Creds)),
+                           secret_access_key = binary_to_list(props:get_value(<<"SecretAccessKey">>, Creds)),
+                           security_token = binary_to_list(props:get_value(<<"Token">>, Creds)),
                            expiration_gregorian_seconds = timestamp_to_gregorian_seconds(
-                                                            proplists:get_value(<<"Expiration">>, Creds))
+                                                            props:get_value(<<"Expiration">>, Creds))
                           },
                     application:set_env('kazoo_attachments', 'metadata_credentials', Record),
                     {'ok', Record}
@@ -515,7 +515,7 @@ get_service_status(ServiceNames) when is_list(ServiceNames) ->
                                     "/data.json", "", [], default_config()),
 
     case get_filtered_statuses(ServiceNames,
-                               proplists:get_value(<<"current">>, kz_json:decode(Json)))
+                               props:get_value(<<"current">>, kz_json:decode(Json)))
     of
         [] -> 'ok';
         ReturnStatuses -> ReturnStatuses
@@ -527,7 +527,7 @@ get_filtered_statuses(ServiceNames, Statuses) ->
             fun(InputService) ->
                     ServiceNameBin = list_to_binary(InputService),
                     ServiceNameLen = byte_size(ServiceNameBin),
-                    case proplists:get_value(<<"service">>, S) of
+                    case props:get_value(<<"service">>, S) of
                         <<ServiceNameBin:ServiceNameLen/binary, _/binary>> -> 'true';
                         _ -> 'false'
                     end

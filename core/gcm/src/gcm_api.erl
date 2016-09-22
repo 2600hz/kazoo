@@ -38,7 +38,7 @@ push(RegIds, Message, Key) ->
 
 -spec retry_after_from(headers()) -> 'no_retry' | non_neg_integer().
 retry_after_from(Headers) ->
-    case proplists:get_value("retry-after", Headers) of
+    case props:get_value("retry-after", Headers) of
         undefined ->
             no_retry;
         RetryTime ->

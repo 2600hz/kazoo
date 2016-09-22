@@ -31,7 +31,7 @@ parse_transform(Forms, Options) ->
     end.
 
 kz_trace_opt(Options, Forms) ->
-    case proplists:get_value(kz_expand_trace, Options) of
+    case props:get_value(kz_expand_trace, Options) of
         undefined ->
             case [Opt || {attribute,_,kz_expand_trace,Opt} <- Forms] of
                 [] ->

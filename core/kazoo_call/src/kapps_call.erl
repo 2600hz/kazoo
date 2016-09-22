@@ -443,7 +443,7 @@ to_json(#kapps_call{}=Call) ->
           ],
     kz_json:from_list([KV
                        || {_, V}=KV <- [{<<"Key-Value-Store">>, kz_json:from_list(KVS)} |
-                                        proplists:delete(<<"Key-Value-Store">>, Props)
+                                        props:delete(<<"Key-Value-Store">>, Props)
                                        ]
                               ,V =/= 'undefined'
                               ,kz_json:is_json_term(V)

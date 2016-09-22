@@ -120,9 +120,9 @@ do_backoff(RetryAfter, RegIds, Message, Key, Retry) ->
 
 %% parse(Result) ->
 %%     case {
-%%       proplists:get_value(<<"error">>, Result),
-%%       proplists:get_value(<<"message_id">>, Result),
-%%       proplists:get_value(<<"registration_id">>, Result)
+%%       props:get_value(<<"error">>, Result),
+%%       props:get_value(<<"message_id">>, Result),
+%%       props:get_value(<<"registration_id">>, Result)
 %%      } of
 %%         {Error, undefined, undefined} ->
 %%             Error;

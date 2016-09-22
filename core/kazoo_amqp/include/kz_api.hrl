@@ -35,7 +35,7 @@
 %%% message, true is returned without running the Type fun.
 %%% @spec Type :: function(Value :: any()) -> boolean()
 %%%
-%%% eg: -define(FOO_TYPES, [{<<"baz">>, fun(V) -> lists:member(V, proplists:get_value(<<"baz">>, ?FOO_VALUES)) end}]).
+%%% eg: -define(FOO_TYPES, [{<<"baz">>, fun(V) -> lists:member(V, props:get_value(<<"baz">>, ?FOO_VALUES)) end}]).
 %%%   would define a function to validate the value of key <<"baz">> in the same way ?FOO_VALUES does.
 %%%
 %%% All four macros must be defined; OPTIONAL, VALUES, and TYPES can be empty lists.
