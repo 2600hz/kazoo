@@ -60,7 +60,7 @@
 -record(temporal, {local_sec = 0 :: non_neg_integer()
                   ,local_date = {2011, 1, 1} :: kz_date()
                   ,local_time = {0, 0, 0} :: kz_time()
-                  ,routes = [] :: kz_json:key()
+                  ,routes = [] :: kz_json:path()
                   ,timezone :: api_binary()
                   ,prompts = #prompts{} :: prompts()
                   ,keys = #keys{} :: keys()

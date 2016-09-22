@@ -533,7 +533,7 @@ create_metadata(Doc) ->
                ,Funs
                ).
 
--spec metadata_builder(kz_json:key(), kz_json:object(), kz_json:object()) ->
+-spec metadata_builder(kz_json:path(), kz_json:object(), kz_json:object()) ->
                               kz_json:object().
 metadata_builder(<<"name">> = K, D, J) ->
     case kz_doc:type(D) of
@@ -545,7 +545,7 @@ metadata_builder(<<"name">> = K, D, J) ->
 metadata_builder(K, D, J) ->
     maybe_copy_value(K, D, J).
 
--spec maybe_copy_value(kz_json:key(), kz_json:object(), kz_json:object()) ->
+-spec maybe_copy_value(kz_json:path(), kz_json:object(), kz_json:object()) ->
                               kz_json:object().
 maybe_copy_value(K, D, J) ->
     case kz_json:get_value(K, D) of

@@ -490,7 +490,7 @@ remove_spaces(_AccountId, Context) ->
                          ),
     cb_context:set_req_data(Context, ReqData).
 
--spec remove_spaces_fold(kz_json:key(), kz_json:object()) -> kz_json:object().
+-spec remove_spaces_fold(kz_json:path(), kz_json:object()) -> kz_json:object().
 remove_spaces_fold(Key, Acc) ->
     case kz_json:get_value(Key, Acc) of
         'undefined' -> Acc;

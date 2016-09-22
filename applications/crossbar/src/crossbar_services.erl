@@ -37,7 +37,7 @@ maybe_dry_run(Context, Callback, Props) ->
     maybe_dry_run(Context, Callback, Type, Props, cb_context:accepting_charges(Context)).
 
 -spec maybe_dry_run(cb_context:context(), callback(), ne_binary(), kz_proplist(), boolean()) ->
-                                   cb_context:context().
+                           cb_context:context().
 maybe_dry_run(Context, Callback, Type, Props, 'true') ->
     UpdatedServices = calc_service_updates(Context, Type, Props),
     RespJObj = dry_run(UpdatedServices),
@@ -97,17 +97,17 @@ commit_transactions(Context, Transactions, Services, Callback) ->
 extract_items(JObj) ->
     kz_json:foldl(fun extract_items_from_category/3, [], JObj).
 
--spec extract_items_from_category(kz_json:key(), kz_json:object(), kz_json:objects()) ->
+-spec extract_items_from_category(kz_json:path(), kz_json:object(), kz_json:objects()) ->
                                          kz_json:objects().
 extract_items_from_category(CategoryKey, CategoryJObj, Acc) ->
     Fun = fun(K, V, Acc1) -> extract_item_from_category(CategoryKey, K, V, Acc1) end,
     kz_json:foldl(Fun, Acc, CategoryJObj).
 
--spec extract_item_from_category(kz_json:key(), kz_json:key(), kz_json:object(), kz_json:objects()) ->
-                                         kz_json:objects().
+-spec extract_item_from_category(kz_json:path(), kz_json:path(), kz_json:object(), kz_json:objects()) ->
+                                        kz_json:objects().
 extract_item_from_category(CategoryKey, ItemKey, ItemJObj, Acc) ->
     [kz_json:set_values([{<<"category">>, CategoryKey}
-                         ,{<<"item">>, ItemKey}
+                        ,{<<"item">>, ItemKey}
                         ], ItemJObj)|Acc].
 
 %%--------------------------------------------------------------------
@@ -116,12 +116,12 @@ extract_item_from_category(CategoryKey, ItemKey, ItemJObj, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_transactions(cb_context:context()
-                          ,kz_json:object()
-                          ,kz_transaction:transactions()) -> kz_transaction:transactions().
+                         ,kz_json:object()
+                         ,kz_transaction:transactions()) -> kz_transaction:transactions().
 -spec create_transactions(cb_context:context()
-                          ,kz_json:object()
-                          ,kz_transaction:transactions()
-                          ,integer()) -> kz_transaction:transactions().
+                         ,kz_json:object()
+                         ,kz_transaction:transactions()
+                         ,integer()) -> kz_transaction:transactions().
 create_transactions(Context, Item, Acc) ->
     Quantity = kz_json:get_integer_value(<<"quantity">>, Item, 0),
     create_transactions(Context, Item, Acc, Quantity).
@@ -132,31 +132,31 @@ create_transactions(Context, Item, Acc, Quantity) ->
     Amount = kz_json:get_integer_value(<<"activation_charges">>, Item, 0),
     Units = wht_util:dollars_to_units(Amount * Quantity),
     Routines = [fun set_meta_data/3
-                ,fun set_event/3
+               ,fun set_event/3
                ],
     Transaction =
         lists:foldl(
           fun(F, T) -> F(Context, Item, T) end
-          ,kz_transaction:debit(AccountId, Units)
-          ,Routines
+                   ,kz_transaction:debit(AccountId, Units)
+                   ,Routines
          ),
     [Transaction|Acc].
 
 -spec set_meta_data(cb_context:context()
-                    ,kz_json:object()
-                    ,kz_transaction:transaction()
+                   ,kz_json:object()
+                   ,kz_transaction:transaction()
                    ) -> kz_transaction:transaction().
 set_meta_data(Context, Item, Transaction) ->
     MetaData =
         kz_json:from_list(
           [{<<"auth_account_id">>, cb_context:auth_account_id(Context)}
-           ,{<<"category">>, kz_json:get_value(<<"category">>, Item)}
-           ,{<<"item">>, kz_json:get_value(<<"item">>, Item)}
+          ,{<<"category">>, kz_json:get_value(<<"category">>, Item)}
+          ,{<<"item">>, kz_json:get_value(<<"item">>, Item)}
           ]),
     kz_transaction:set_metadata(MetaData, Transaction).
 
 -spec set_event(cb_context:context() ,kz_json:object()
-                ,kz_transaction:transaction()) -> kz_transaction:transaction().
+               ,kz_transaction:transaction()) -> kz_transaction:transaction().
 set_event(_Context, Item, Transaction) ->
     ItemValue = kz_json:get_value(<<"item">>, Item, <<>>),
     Event = <<"Activation charges for ", ItemValue/binary>>,
@@ -193,8 +193,8 @@ calc_service_updates(Context, <<"limits">>) ->
     Updates =
         kz_json:from_list(
           [{<<"twoway_trunks">>, kz_json:get_integer_value(<<"twoway_trunks">>, ReqData, 0)}
-           ,{<<"inbound_trunks">>, kz_json:get_integer_value(<<"inbound_trunks">>, ReqData, 0)}
-           ,{<<"outbound_trunks">>, kz_json:get_integer_value(<<"outbound_trunks">>, ReqData, 0)}
+          ,{<<"inbound_trunks">>, kz_json:get_integer_value(<<"inbound_trunks">>, ReqData, 0)}
+          ,{<<"outbound_trunks">>, kz_json:get_integer_value(<<"outbound_trunks">>, ReqData, 0)}
           ]),
     kz_service_limits:reconcile(Services, Updates);
 calc_service_updates(Context, <<"port_request">>) ->
@@ -206,7 +206,7 @@ calc_service_updates(Context, <<"port_request">>) ->
            kz_json:set_value(?PVT_FEATURES, [?PORT_KEY
                                              | kz_json:get_list_value(?PVT_FEATURES, NumberJObj, [])
                                             ], NumberJObj)
-           ,NumberKey
+                      ,NumberKey
           )
          || {NumberKey, NumberJObj} <- kz_json:to_proplist(Numbers)],
     kz_service_phone_numbers:reconcile(Services, PhoneNumbers);
@@ -259,7 +259,7 @@ reconcile(Context) ->
         'false' -> Context;
         'true' ->
             lager:debug("maybe reconciling services for account ~s"
-                        ,[cb_context:account_id(Context)]
+                       ,[cb_context:account_id(Context)]
                        ),
             _ = kz_services:save_as_dirty(cb_context:account_id(Context)),
             Context
@@ -272,14 +272,14 @@ base_audit_log(Context, Services) ->
     Tree = kz_account:tree(AccountJObj) ++ [cb_context:account_id(Context)],
 
     lists:foldl(fun base_audit_log_fold/2
-                ,kzd_audit_log:new()
-                ,[{fun kzd_audit_log:set_tree/2, Tree}
-                  ,{fun kzd_audit_log:set_authenticating_user/2, base_auth_user(Context)}
-                  ,{fun kzd_audit_log:set_audit_account/3
-                    ,cb_context:account_id(Context)
-                    ,base_audit_account(Context, Services)
-                   }
-                 ]
+               ,kzd_audit_log:new()
+               ,[{fun kzd_audit_log:set_tree/2, Tree}
+                ,{fun kzd_audit_log:set_authenticating_user/2, base_auth_user(Context)}
+                ,{fun kzd_audit_log:set_audit_account/3
+                 ,cb_context:account_id(Context)
+                 ,base_audit_account(Context, Services)
+                 }
+                ]
                ).
 
 -type audit_log_fun_2() :: {fun((kzd_audit_log:doc(), Term) -> kzd_audit_log:doc()), Term}.

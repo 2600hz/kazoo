@@ -616,7 +616,7 @@ maybe_add_queue_to_agent(Id, A) ->
     lager:debug("agent ~s adding queues: ~p", [kz_doc:id(A), Qs]),
     kz_json:set_value(<<"queues">>, Qs, A).
 
--spec maybe_rm_agents(ne_binary(), cb_context:context(), kz_json:key()) -> cb_context:context().
+-spec maybe_rm_agents(ne_binary(), cb_context:context(), kz_json:path()) -> cb_context:context().
 maybe_rm_agents(_Id, Context, []) ->
     lager:debug("no agents to remove from the queue ~s", [_Id]),
     cb_context:set_resp_status(Context, 'success');
@@ -628,7 +628,7 @@ maybe_rm_agents(Id, Context, AgentIds) ->
 
 -spec rm_queue_from_agents(ne_binary(), cb_context:context()) ->
                                   cb_context:context().
--spec rm_queue_from_agents(ne_binary(), cb_context:context(), kz_json:key()) ->
+-spec rm_queue_from_agents(ne_binary(), cb_context:context(), kz_json:path()) ->
                                   cb_context:context().
 rm_queue_from_agents(Id, Context) ->
     Context1 = load_agent_roster(Id, Context),

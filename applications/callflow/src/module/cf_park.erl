@@ -51,11 +51,11 @@ update_parked_call_presence(SlotNumber, Slot, ParkedCallId, AccountId) ->
         {'error', _} -> cleanup_slot(SlotNumber, ParkedCallId, kz_util:format_account_db(AccountId))
     end.
 
--spec get_slot_call_id(kz_json:key(), kz_json:object()) -> api_binary().
+-spec get_slot_call_id(kz_json:path(), kz_json:object()) -> api_binary().
 get_slot_call_id(SlotNumber, ParkedCalls) ->
     kz_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls).
 
--spec get_slot(kz_json:key(), kz_json:object()) -> api_object().
+-spec get_slot(kz_json:path(), kz_json:object()) -> api_object().
 get_slot(SlotNumber, ParkedCalls) ->
     kz_json:get_value([<<"slots">>, SlotNumber], ParkedCalls).
 

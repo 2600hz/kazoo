@@ -394,7 +394,7 @@ fix_conference_profile(Resp) ->
     JObj = kz_json:map(fun fix_conference_profile/2, Ps),
     kz_json:set_value(<<"Profiles">>, JObj, Resp).
 
--spec fix_conference_profile(kz_json:key(), kz_json:object()) -> {kz_json:key(), kz_json:object()}.
+-spec fix_conference_profile(kz_json:path(), kz_json:object()) -> {kz_json:path(), kz_json:object()}.
 fix_conference_profile(Name, Profile) ->
     Routines = [fun maybe_fix_profile_tts/1
                ,fun conference_sounds/1

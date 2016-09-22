@@ -271,8 +271,8 @@ latest_attachment_id(Doc) ->
     end.
 
 -spec attachment(kz_json:object()) -> api_object().
--spec attachment(kz_json:object(), kz_json:key()) -> api_object().
--spec attachment(kz_json:object(), kz_json:key(), Default) -> kz_json:object() | Default.
+-spec attachment(kz_json:object(), kz_json:path()) -> api_object().
+-spec attachment(kz_json:object(), kz_json:path(), Default) -> kz_json:object() | Default.
 %% @public
 %% @doc Gets a random attachment from JObj (no order is imposed!)
 attachment(JObj) ->
@@ -308,7 +308,7 @@ attachment_content_type(JObj, AName, DefaultContentType) ->
         ContentType -> ContentType
     end.
 
--spec attachment_property(kz_json:object(), ne_binary(), kz_json:key()) -> kz_json:json_term().
+-spec attachment_property(kz_json:object(), ne_binary(), kz_json:path()) -> kz_json:json_term().
 attachment_property(JObj, AName, Key) ->
     kz_json:get_value(Key, attachment(JObj, AName, kz_json:new())).
 

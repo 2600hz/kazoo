@@ -588,7 +588,7 @@ fix_start_keys(Context) ->
                                             )
                                 ).
 
--spec fix_start_keys_fold(kz_json:key(), kz_json:object()) -> kz_json:object().
+-spec fix_start_keys_fold(kz_json:path(), kz_json:object()) -> kz_json:object().
 fix_start_keys_fold(Key, JObj) ->
     lager:debug("fix ~s: ~p", [Key, kz_json:get_value(Key, JObj)]),
     case kz_json:get_value(Key, JObj) of
@@ -789,7 +789,7 @@ fix_prompt_start_keys(Context) ->
                                             )
      ).
 
--spec fix_prompt_start_keys_fold(kz_json:key(), kz_json:object()) -> kz_json:object().
+-spec fix_prompt_start_keys_fold(kz_json:path(), kz_json:object()) -> kz_json:object().
 fix_prompt_start_keys_fold(Key, JObj) ->
     lager:debug("fix ~s: ~p", [Key, kz_json:get_value(Key, JObj)]),
     case kz_json:get_value(Key, JObj) of

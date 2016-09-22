@@ -406,7 +406,7 @@ fix_keys(Envelope) ->
                ,[<<"start_key">>, <<"next_start_key">>]
                ).
 
--spec fix_key_fold(kz_json:key(), kz_json:object()) -> kz_json:object().
+-spec fix_key_fold(kz_json:path(), kz_json:object()) -> kz_json:object().
 fix_key_fold(Key, Envelope) ->
     case kz_json:get_value(Key, Envelope) of
         [_AccountId, ?EMPTY_JSON_OBJECT] -> kz_json:delete_key(Key, Envelope);

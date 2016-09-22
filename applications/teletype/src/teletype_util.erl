@@ -396,7 +396,7 @@ default_reply_to(JObj, ConfigCat) ->
                         ,'undefined'
                         ).
 
--spec default_system_value(kz_json:object(), ne_binary(), kz_json:key(), kz_json:key(), kz_json:json_term()) ->
+-spec default_system_value(kz_json:object(), ne_binary(), kz_json:path(), kz_json:path(), kz_json:json_term()) ->
                                   kz_json:json_term().
 default_system_value(JObj, ConfigCat, JSONKey, ConfigKey, ConfigDefault) ->
     case kz_json:get_ne_value(JSONKey, JObj) of
@@ -700,7 +700,7 @@ get_parent_account_id(AccountId) ->
 
 -spec find_addresses(kz_json:object(), kz_json:object(), ne_binary()) ->
                             email_map().
--spec find_addresses(kz_json:object(), kz_json:object(), ne_binary(), kz_json:key(), email_map()) ->
+-spec find_addresses(kz_json:object(), kz_json:object(), ne_binary(), kz_json:path(), email_map()) ->
                             email_map().
 find_addresses(DataJObj, TemplateMetaJObj, ConfigCat) ->
     AddressKeys = [<<"to">>, <<"cc">>, <<"bcc">>, <<"from">>, <<"reply_to">>],
@@ -716,10 +716,10 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
                   ,[find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key)|Acc]
      ).
 
--spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:key()) ->
-                          {kz_json:key(), api_binaries()}.
--spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:key(), api_binary()) ->
-                          {kz_json:key(), api_binaries()}.
+-spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:path()) ->
+                          {kz_json:path(), api_binaries()}.
+-spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:path(), api_binary()) ->
+                          {kz_json:path(), api_binaries()}.
 find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
     find_address(
       DataJObj
@@ -744,7 +744,7 @@ find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
     lager:debug("looking for admin emails for '~s'", [Key]),
     {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
 
--spec find_address(kz_json:key(), kz_json:object(), kz_json:object()) ->
+-spec find_address(kz_json:path(), kz_json:object(), kz_json:object()) ->
                           api_binaries().
 find_address(Key, DataJObj, TemplateMetaJObj) ->
     case kz_json:get_ne_value(Key, DataJObj) of
@@ -752,7 +752,7 @@ find_address(Key, DataJObj, TemplateMetaJObj) ->
         Emails -> Emails
     end.
 
--spec find_admin_emails(kz_json:object(), ne_binary(), kz_json:key()) ->
+-spec find_admin_emails(kz_json:object(), ne_binary(), kz_json:path()) ->
                                api_binaries().
 find_admin_emails(DataJObj, ConfigCat, Key) ->
     case find_account_rep_email(find_account_id(DataJObj)) of
@@ -762,7 +762,7 @@ find_admin_emails(DataJObj, ConfigCat, Key) ->
         Emails -> Emails
     end.
 
--spec find_default(ne_binary(), kz_json:key()) -> api_binaries().
+-spec find_default(ne_binary(), kz_json:path()) -> api_binaries().
 find_default(ConfigCat, Key) ->
     case kapps_config:get(ConfigCat, <<"default_", Key/binary>>) of
         'undefined' ->
@@ -819,7 +819,7 @@ is_preview(DataJObj) ->
       kz_json:get_first_defined([<<"Preview">>, <<"preview">>], DataJObj, 'false')
      ).
 
--spec public_proplist(kz_json:key(), kz_json:object()) -> kz_proplist().
+-spec public_proplist(kz_json:path(), kz_json:object()) -> kz_proplist().
 public_proplist(Key, JObj) ->
     kz_json:to_proplist(
       kz_json:public_fields(

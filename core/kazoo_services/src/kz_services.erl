@@ -1264,7 +1264,7 @@ do_cascade_quantities(<<_/binary>> = Account, <<_/binary>> = View) ->
 
 -spec do_cascade_quantities_fold(kz_json:object(), kz_json:object()) ->
                                         kz_json:object().
--spec do_cascade_quantities_fold(kz_json:object(), kz_json:object(), kz_json:key()) ->
+-spec do_cascade_quantities_fold(kz_json:object(), kz_json:object(), kz_json:path()) ->
                                         kz_json:object().
 do_cascade_quantities_fold(JObj, J) ->
     do_cascade_quantities_fold(JObj, J, kz_json:get_value(<<"key">>, JObj)).
@@ -1453,7 +1453,7 @@ have_quantities_changed(Updated, Current) ->
     any_changed(KeyNotSameFun, Updated)
         orelse any_changed(KeyNotSameFun, Current).
 
--type changed_fun() :: fun((kz_json:key()) -> boolean()).
+-type changed_fun() :: fun((kz_json:path()) -> boolean()).
 
 -spec any_changed(changed_fun(), kz_json:object()) -> boolean().
 any_changed(KeyNotSameFun, Quantities) ->

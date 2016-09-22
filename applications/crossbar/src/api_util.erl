@@ -533,7 +533,7 @@ decode_json_body(ReqBody, Req) ->
 normalize_envelope_keys(JObj) ->
     kz_json:foldl(fun normalize_envelope_keys_foldl/3, kz_json:new(), JObj).
 
--spec normalize_envelope_keys_foldl(kz_json:key(), kz_json:json_term(), kz_json:object()) -> kz_json:object().
+-spec normalize_envelope_keys_foldl(kz_json:path(), kz_json:json_term(), kz_json:object()) -> kz_json:object().
 normalize_envelope_keys_foldl(_K, 'undefined', JObj) -> JObj;
 normalize_envelope_keys_foldl(K, V, JObj) -> kz_json:set_value(kz_json:normalize_key(K), V, JObj).
 
@@ -580,7 +580,7 @@ get_http_verb(Method, Context) ->
 parse_path_tokens(Context, Tokens) ->
     parse_path_tokens(Context, Tokens, []).
 
--spec parse_path_tokens(cb_context:context(), kz_json:key(), cb_mods_with_tokens()) ->
+-spec parse_path_tokens(cb_context:context(), kz_json:path(), cb_mods_with_tokens()) ->
                                cb_mods_with_tokens().
 parse_path_tokens(_, [], Events) -> Events;
 parse_path_tokens(_, [<<>>], Events) -> Events;

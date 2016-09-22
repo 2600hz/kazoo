@@ -11,14 +11,14 @@
 -include("knm.hrl").
 
 -export([normalize/1, normalize/2, normalize/3
-         ,is_normalized/1
-         ,is_npan/1, to_npan/1
-         ,is_1npan/1, to_1npan/1
-         ,to_db/1
-         ,is_reconcilable/1, is_reconcilable/2
-         ,classify/1, available_classifiers/0
-         ,available_converters/0
-         ,default_converter/0
+        ,is_normalized/1
+        ,is_npan/1, to_npan/1
+        ,is_1npan/1, to_1npan/1
+        ,to_db/1
+        ,is_reconcilable/1, is_reconcilable/2
+        ,classify/1, available_classifiers/0
+        ,available_converters/0
+        ,default_converter/0
         ]).
 
 -define(DEFAULT_CONVERTER_B, <<"regex">>).
@@ -43,10 +43,10 @@
 -define(KEY_RECONCILE_REGEX, <<"reconcile_regex">>).
 
 -define(CLASSIFIER_TOLLFREE_US
-        ,kz_json:from_list([{<<"regex">>, <<"^\\+1((?:800|888|877|866|855)\\d{7})$">>}
+       ,kz_json:from_list([{<<"regex">>, <<"^\\+1((?:800|888|877|866|855)\\d{7})$">>}
                             ,{<<"friendly_name">>, <<"US TollFree">>}
-                            ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
-                           ])
+                                           ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
+                                           ])
        ).
 
 -define(CLASSIFIER_TOLLFREE
@@ -296,7 +296,7 @@ get_classifier_regex(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec correct_depreciated_classifiers(kz_json:key(), kz_json:json_term(), kz_json:object()) ->
+-spec correct_depreciated_classifiers(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
                                              kz_json:object().
 correct_depreciated_classifiers(Classifier, ?NE_BINARY = Regex, JObj) ->
     J = kz_json:from_list([{<<"regex">>, Regex}

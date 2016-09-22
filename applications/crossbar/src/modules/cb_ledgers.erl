@@ -281,7 +281,7 @@ read_ledgers(Context) ->
             crossbar_util:response(kz_json:map(fun ledger_resume_to_dollars/2, Ledgers), Context)
     end.
 
--spec ledger_resume_to_dollars(kz_json:key(), kz_json:json_term()) -> kz_json:json_term().
+-spec ledger_resume_to_dollars(kz_json:path(), kz_json:json_term()) -> kz_json:json_term().
 ledger_resume_to_dollars(K, V) ->
     {K, wht_util:units_to_dollars(V)}.
 

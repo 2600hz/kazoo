@@ -176,7 +176,7 @@ set_content_types(Context, Attachments) ->
 content_types_from_attachments(Attachments) ->
     kz_json:foldl(fun content_type_from_attachment/3, [], Attachments).
 
--spec content_type_from_attachment(kz_json:key(), kz_json:object(), kz_proplist()) ->
+-spec content_type_from_attachment(kz_json:path(), kz_json:object(), kz_proplist()) ->
                                           kz_proplist().
 content_type_from_attachment(_Name, Attachment, Acc) ->
     case kz_json:get_value(<<"content_type">>, Attachment) of
@@ -1216,7 +1216,7 @@ leak_attachments(Context) ->
     NewRespData = kz_json:set_value(<<"templates">>, Templates, cb_context:resp_data(Context)),
     cb_context:set_resp_data(Context, NewRespData).
 
--spec leak_attachments_fold(kz_json:key(), kz_json:json_term(), kz_json:object()) -> kz_json:object().
+-spec leak_attachments_fold(kz_json:path(), kz_json:json_term(), kz_json:object()) -> kz_json:object().
 leak_attachments_fold(_Attachment, Props, Acc) ->
     kz_json:set_value(kz_json:get_value(<<"content_type">>, Props)
                      ,kz_json:from_list([{<<"length">>, kz_json:get_integer_value(<<"length">>, Props)}])

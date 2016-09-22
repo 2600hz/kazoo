@@ -541,8 +541,7 @@ set_features(N, Features) ->
     'true' = kz_json:is_json_object(Features),
     N#knm_phone_number{features=Features}.
 
--spec feature(knm_phone_number(), ne_binary()) ->
-                     kz_json:json_term() | 'undefined'.
+-spec feature(knm_phone_number(), ne_binary()) -> kz_json:api_json_term().
 feature(Number, Feature) ->
     kz_json:get_value(Feature, features(Number)).
 

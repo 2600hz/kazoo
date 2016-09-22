@@ -124,7 +124,7 @@ build_macro_data(DataJObj) ->
                  ,?TEMPLATE_MACROS
                  ).
 
--spec maybe_add_macro_key(kz_json:key(), kz_proplist(), kz_json:object()) -> kz_proplist().
+-spec maybe_add_macro_key(kz_json:path(), kz_proplist(), kz_json:object()) -> kz_proplist().
 maybe_add_macro_key(<<"user.", UserKey/binary>>, Acc, DataJObj) ->
     maybe_add_user_data(UserKey, Acc, DataJObj);
 maybe_add_macro_key(<<"account.", AccountKey/binary>>, Acc, DataJObj) ->
@@ -163,7 +163,7 @@ maybe_add_account_data(Key, Acc, _DataJObj, Value) ->
                    ,Acc
                    ).
 
--spec maybe_add_user_data(kz_json:key(), kz_proplist(), kz_json:object()) -> kz_proplist().
+-spec maybe_add_user_data(kz_json:path(), kz_proplist(), kz_json:object()) -> kz_proplist().
 maybe_add_user_data(Key, Acc, DataJObj) ->
     User = get_user(DataJObj),
 

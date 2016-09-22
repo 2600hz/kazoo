@@ -49,7 +49,7 @@ add_defaults(JObj, SchemaJObj) ->
                  ,kz_json:get_value(<<"properties">>, SchemaJObj, kz_json:new())
                  ).
 
--spec defaults_foldl(kz_json:key(), kz_json:object(), api_object()) -> api_object().
+-spec defaults_foldl(kz_json:path(), kz_json:object(), api_object()) -> api_object().
 defaults_foldl(SchemaKey, SchemaValue, JObj) ->
     case kz_json:get_value(<<"default">>, SchemaValue) of
         'undefined' ->
@@ -61,7 +61,7 @@ defaults_foldl(SchemaKey, SchemaValue, JObj) ->
                                 )
     end.
 
--spec maybe_sub_properties(kz_json:key(), kz_json:object(), api_object()) -> api_object().
+-spec maybe_sub_properties(kz_json:path(), kz_json:object(), api_object()) -> api_object().
 maybe_sub_properties(SchemaKey, SchemaValue, JObj) ->
     case kz_json:get_value(<<"type">>, SchemaValue) of
         <<"object">> ->
@@ -77,7 +77,7 @@ maybe_sub_properties(SchemaKey, SchemaValue, JObj) ->
         _Type -> JObj
     end.
 
--spec maybe_sub_properties_foldl(kz_json:key(), kz_json:object(), kz_json:json_term(), {pos_integer(), kz_json:object()}) ->
+-spec maybe_sub_properties_foldl(kz_json:path(), kz_json:object(), kz_json:json_term(), {pos_integer(), kz_json:object()}) ->
                                         {pos_integer(), kz_json:object()}.
 maybe_sub_properties_foldl(SchemaKey, SchemaValue, SubJObj, {Idx, JObj}) ->
     case add_defaults(SubJObj, kz_json:get_value(<<"items">>, SchemaValue, kz_json:new())) of
@@ -85,14 +85,14 @@ maybe_sub_properties_foldl(SchemaKey, SchemaValue, SubJObj, {Idx, JObj}) ->
         NewSubJObj -> {Idx+1, kz_json:set_value([SchemaKey, Idx], NewSubJObj, JObj)}
     end.
 
--spec maybe_update_data_with_sub(kz_json:key(), kz_json:object(), kz_json:object()) -> kz_json:object().
+-spec maybe_update_data_with_sub(kz_json:path(), kz_json:object(), kz_json:object()) -> kz_json:object().
 maybe_update_data_with_sub(SchemaKey, SchemaValue, JObj) ->
     case add_defaults(kz_json:get_value(SchemaKey, JObj), SchemaValue) of
         'undefined' -> JObj;
         SubJObj ->  kz_json:set_value(SchemaKey, SubJObj, JObj)
     end.
 
--spec maybe_default(kz_json:key(), kz_json:json_term(), api_object()) -> api_object().
+-spec maybe_default(kz_json:path(), kz_json:json_term(), api_object()) -> api_object().
 maybe_default(Key, Default, JObj) ->
     case kz_json:is_json_object(JObj)
         andalso kz_json:get_value(Key, JObj)
@@ -586,7 +586,7 @@ error_to_jobj({'schema_invalid'
 %% Add a validation error to the list of request errors
 %% @end
 %%--------------------------------------------------------------------
--spec validation_error(kz_json:key(), ne_binary(), kz_json:object(), options()) ->
+-spec validation_error(kz_json:path(), ne_binary(), kz_json:object(), options()) ->
                                   validation_error().
 validation_error(Property, <<"type">>=C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
@@ -645,7 +645,7 @@ validation_error(Property, Code, Message, Options) ->
     lager:warning("UNKNOWN ERROR CODE: ~p", [Code]),
     depreciated_validation_error(Property, Code, Message, Options).
 
--spec depreciated_validation_error(kz_json:key(), ne_binary(), kz_json:object(), options()) ->
+-spec depreciated_validation_error(kz_json:path(), ne_binary(), kz_json:object(), options()) ->
                                           validation_error().
 depreciated_validation_error(<<"account">>, <<"expired">>, Message, Options) ->
     build_validate_error([<<"account">>]
@@ -681,7 +681,7 @@ insert_default_options(Options) ->
                        ,Options
                        ).
 
--spec build_validate_error(kz_json:key(), ne_binary(), kz_json:object(), options()) ->
+-spec build_validate_error(kz_json:path(), ne_binary(), kz_json:object(), options()) ->
                                   validation_error().
 build_validate_error(Property, Code, Message, Options) ->
     %% Maintain the same error format we are currently using until we are ready to

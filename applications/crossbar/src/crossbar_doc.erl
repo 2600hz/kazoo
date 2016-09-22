@@ -65,7 +65,7 @@
 
 -type direction() :: 'ascending' | 'descending'.
 
--type startkey() :: kz_json:json_term() | 'undefined'.
+-type startkey() :: kz_json:api_json_term().
 
 -type startkey_fun() :: 'undefined' |
                         fun((cb_context:context()) -> startkey()) |
@@ -489,8 +489,8 @@ limit_by_page_size(Context, PageSize) ->
             'undefined'
     end.
 
--spec start_key(cb_context:context()) -> kz_json:json_term() | 'undefined'.
--spec start_key(kz_proplist(), cb_context:context()) -> kz_json:json_term() | 'undefined'.
+-spec start_key(cb_context:context()) -> kz_json:api_json_term().
+-spec start_key(kz_proplist(), cb_context:context()) -> kz_json:api_json_term().
 start_key(Context) ->
     cb_context:req_value(Context, <<"start_key">>).
 
@@ -501,7 +501,7 @@ start_key(Options, Context) ->
         Fun when is_function(Fun, 1) -> Fun(Context)
     end.
 
--spec start_key_fun(kz_proplist(), cb_context:context()) -> kz_json:json_term() | 'undefined'.
+-spec start_key_fun(kz_proplist(), cb_context:context()) -> kz_json:api_json_term().
 start_key_fun(Options, Context) ->
     case props:get_value('startkey', Options) of
         'undefined' ->

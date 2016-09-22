@@ -45,7 +45,7 @@
 -define(CUMULATIVE, <<"cumulative">>).
 -define(ENABLED, <<"enabled">>).
 
--spec keys(doc()) -> kz_json:key().
+-spec keys(doc()) -> kz_json:path().
 keys(ItemPlan) ->
     kz_json:get_keys(ItemPlan).
 

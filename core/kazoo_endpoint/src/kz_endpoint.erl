@@ -1729,7 +1729,7 @@ build_mobile_sms_route(<<"amqp">>, _MDN) ->
     Connections = kapps_config:get(?MOBILE_CONFIG_CAT, [<<"sms">>, <<"connections">>], ?DEFAULT_MOBILE_AMQP_CONNECTIONS),
     {<<"amqp">>, kz_json:foldl(fun build_mobile_sms_amqp_route/3 , [], Connections)}.
 
--spec build_mobile_sms_amqp_route(kz_json:key(), kz_json:json_term(), kz_proplist()) -> sms_routes().
+-spec build_mobile_sms_amqp_route(kz_json:path(), kz_json:json_term(), kz_proplist()) -> sms_routes().
 build_mobile_sms_amqp_route(K, JObj, Acc) ->
     Broker = kz_json:get_value(<<"broker">>, JObj),
     Acc ++ [{Broker, [{<<"Broker-Name">>, K} | build_mobile_sms_amqp_route_options(JObj)]}].

@@ -121,9 +121,9 @@ base_hook_event(JObj, AccountId, Acc) ->
 resource_used('true', _JObj) -> 'undefined';
 resource_used('false', JObj) -> ccv(JObj, <<"Resource-ID">>).
 
--spec ccv(kz_json:object(), kz_json:key()) ->
+-spec ccv(kz_json:object(), kz_json:path()) ->
                  api_binary().
--spec ccv(kz_json:object(), kz_json:key(), Default) ->
+-spec ccv(kz_json:object(), kz_json:path(), Default) ->
                  ne_binary() | Default.
 ccv(JObj, Key) ->
     ccv(JObj, Key, 'undefined').

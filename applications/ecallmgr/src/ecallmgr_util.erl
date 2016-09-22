@@ -416,8 +416,8 @@ unserialize_fs_prop(KV) -> KV.
 varstr_to_proplist(VarStr) ->
     [to_kv(X, "=") || X <- string:tokens(kz_util:to_list(VarStr), ",")].
 
--spec get_setting(kz_json:key()) -> {'ok', any()}.
--spec get_setting(kz_json:key(), Default) -> {'ok', Default | any()}.
+-spec get_setting(kz_json:path()) -> {'ok', any()}.
+-spec get_setting(kz_json:path(), Default) -> {'ok', Default | any()}.
 get_setting(Setting) -> {'ok', ecallmgr_config:get(Setting)}.
 get_setting(Setting, Default) -> {'ok', ecallmgr_config:get(Setting, Default)}.
 

@@ -275,7 +275,7 @@ maybe_fix_js_type({'data_invalid', SchemaJObj, 'wrong_type', Value, Key}, {_Upda
     end;
 maybe_fix_js_type(_Error, Acc) -> Acc.
 
--spec maybe_fix_js_integer(kz_json:key(), kz_json:json_term(), kz_json:object()) ->
+-spec maybe_fix_js_integer(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
                                   {boolean(), kz_json:object()}.
 maybe_fix_js_integer(Key, Value, Data) ->
     try kz_util:to_integer(Value) of
@@ -288,7 +288,7 @@ maybe_fix_js_integer(Key, Value, Data) ->
             {'false', Data}
     end.
 
--spec maybe_fix_index(kz_json:key() | kz_json:key()) -> kz_json:key() | kz_json:key().
+-spec maybe_fix_index(kz_json:path() | kz_json:path()) -> kz_json:path() | kz_json:path().
 maybe_fix_index(Keys)
   when is_list(Keys) ->
     lists:map(fun(K) when is_integer(K) ->

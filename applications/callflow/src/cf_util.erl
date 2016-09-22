@@ -568,7 +568,7 @@ apply_dialplan(Number, DialPlan) ->
         _ -> maybe_apply_dialplan(Regexs, DialPlan, Number)
     end.
 
--spec maybe_apply_dialplan(kz_json:key(), kz_json:object(), ne_binary()) -> ne_binary().
+-spec maybe_apply_dialplan(kz_json:path(), kz_json:object(), ne_binary()) -> ne_binary().
 maybe_apply_dialplan([], _, Number) -> Number;
 maybe_apply_dialplan([<<"system">>], DialPlan, Number) ->
     SystemDialPlans = load_system_dialplans(kz_json:get_value(<<"system">>, DialPlan)),
@@ -582,7 +582,7 @@ maybe_apply_dialplan([Key|_]=Keys, DialPlan, Number) ->
         Regex -> apply_dialplan(Regex, Keys, DialPlan, Number)
     end.
 
--spec apply_dialplan(ne_binary(), kz_json:key(), kz_json:object(), ne_binary()) -> ne_binary().
+-spec apply_dialplan(ne_binary(), kz_json:path(), kz_json:object(), ne_binary()) -> ne_binary().
 apply_dialplan(Regex, [Key|Keys], DialPlan, Number) ->
     case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
         'nomatch' ->

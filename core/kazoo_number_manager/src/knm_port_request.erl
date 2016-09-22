@@ -147,8 +147,8 @@ normalize_attachments(Attachments) ->
     kz_json:map(fun normalize_attachments_map/2, Attachments).
 
 %% @private
--spec normalize_attachments_map(kz_json:key(), kz_json:json_term()) ->
-                                       {kz_json:key(), kz_json:json_term()}.
+-spec normalize_attachments_map(kz_json:path(), kz_json:json_term()) ->
+                                       {kz_json:path(), kz_json:json_term()}.
 normalize_attachments_map(K, V) ->
     {K, kz_json:delete_keys([<<"digest">>, <<"revpos">>, <<"stub">>], V)}.
 
@@ -164,8 +164,8 @@ normalize_numbers(PortReq) ->
     kz_json:set_value(?NUMBERS_KEY, Normalized, PortReq).
 
 %% @private
--spec normalize_number_map(kz_json:key(), kz_json:json_term()) ->
-                                  {kz_json:key(), kz_json:json_term()}.
+-spec normalize_number_map(kz_json:path(), kz_json:json_term()) ->
+                                  {kz_json:path(), kz_json:json_term()}.
 normalize_number_map(N, Meta) ->
     {knm_converters:normalize(N), Meta}.
 

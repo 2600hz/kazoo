@@ -258,7 +258,7 @@ order_group_members(GroupWeight, Member, JObj) ->
          ),
     [V || {_, V} <- orddict:to_list(GroupMembers)].
 
--spec order_group_member_fold(kz_json:key(), kz_json:object(), orddict:orddict(), group_weight(), kz_json:object()) ->
+-spec order_group_member_fold(kz_json:path(), kz_json:object(), orddict:orddict(), group_weight(), kz_json:object()) ->
                                      orddict:orddict().
 order_group_member_fold(Key, Endpoint, Acc, GroupWeight, Member) ->
     case group_weight(Endpoint) of

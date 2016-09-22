@@ -9,15 +9,15 @@
 -module(cb_rates).
 
 -export([init/0
-         ,authorize/1
-         ,allowed_methods/0, allowed_methods/1 ,allowed_methods/2
-         ,resource_exists/0, resource_exists/1 ,resource_exists/2
-         ,content_types_accepted/1
-         ,validate/1, validate/2, validate/3
-         ,put/1
-         ,post/1, post/2
-         ,patch/2
-         ,delete/2
+        ,authorize/1
+        ,allowed_methods/0, allowed_methods/1 ,allowed_methods/2
+        ,resource_exists/0, resource_exists/1 ,resource_exists/2
+        ,content_types_accepted/1
+        ,validate/1, validate/2, validate/3
+        ,put/1
+        ,post/1, post/2
+        ,patch/2
+        ,delete/2
         ]).
 
 -include("crossbar.hrl").
@@ -28,14 +28,14 @@
 -define(CB_LIST, <<"rates/crossbar_listing">>).
 
 -define(UPLOAD_MIME_TYPES, [{<<"text">>, <<"csv">>}
-                            ,{<<"text">>, <<"comma-separated-values">>}
+                           ,{<<"text">>, <<"comma-separated-values">>}
                            ]).
 
 -define(NUMBER_RESP_FIELDS, [<<"Prefix">>, <<"Rate-Name">>
-                             ,<<"Rate-Description">>, <<"Base-Cost">>
-                             ,<<"Rate">>, <<"Rate-Minimum">>
-                             ,<<"Rate-Increment">>, <<"Surcharge">>
-                             ,<<"E164-Number">>
+                            ,<<"Rate-Description">>, <<"Base-Cost">>
+                            ,<<"Rate">>, <<"Rate-Minimum">>
+                            ,<<"Rate-Increment">>, <<"Surcharge">>
+                            ,<<"E164-Number">>
                             ]).
 
 %%%===================================================================
@@ -177,9 +177,9 @@ validate_number(Phonenumber, Context) ->
         'false' ->
             cb_context:add_validation_error(
               <<"number format">>
-              ,<<"error">>
-              ,kz_json:from_list([{<<"message">>, <<"Number is un-rateable">>}])
-              ,Context
+                                           ,<<"error">>
+                                           ,kz_json:from_list([{<<"message">>, <<"Number is un-rateable">>}])
+                                           ,Context
              )
     end.
 
@@ -239,10 +239,10 @@ validate_patch(Id, Context) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Doc = lists:foldl(fun doc_updates/2
-                      ,cb_context:doc(Context)
-                      ,[{fun kz_doc:set_type/2, <<"rate">>}
-                        ,fun ensure_routes_set/1
-                       ]
+                     ,cb_context:doc(Context)
+                     ,[{fun kz_doc:set_type/2, <<"rate">>}
+                      ,fun ensure_routes_set/1
+                      ]
                      ),
     cb_context:set_doc(Context, Doc);
 on_successful_validation(Id, Context) ->
@@ -345,8 +345,8 @@ process_upload_file(Context) ->
 process_upload_file(Context, [{_Name, File}|_]) ->
     lager:debug("converting file ~s", [_Name]),
     convert_file(kz_json:get_binary_value([<<"headers">>, <<"content_type">>], File)
-                 ,kz_json:get_value(<<"contents">>, File)
-                 ,Context
+                ,kz_json:get_value(<<"contents">>, File)
+                ,Context
                 );
 process_upload_file(Context, _ReqFiles) ->
     error_no_file(Context).
@@ -366,10 +366,10 @@ convert_file(ContentType, _, _) ->
 csv_to_rates(CSV, Context) ->
     BulkInsert = kz_datamgr:max_bulk_insert(),
     ecsv:process_csv_binary_with(CSV
-                                 ,fun(Row, {Count, JObjs}) ->
-                                          process_row(Context, Row, Count, JObjs, BulkInsert)
-                                  end
-                                 ,{0, []}
+                                ,fun(Row, {Count, JObjs}) ->
+                                         process_row(Context, Row, Count, JObjs, BulkInsert)
+                                 end
+                                ,{0, []}
                                 ).
 
 %% NOTE: Support row formats-
@@ -384,7 +384,8 @@ csv_to_rates(CSV, Context) ->
 -spec process_row(cb_context:context(), rate_row(), integer(), kz_json:objects(), integer()) ->
                          rate_row_acc().
 process_row(Context, Row, Count, JObjs, BulkInsert) ->
-    J = case Count > 1 andalso (Count rem BulkInsert) =:= 0 of
+    J = case Count > 1
+            andalso (Count rem BulkInsert) =:= 0 of
             'false' -> JObjs;
             'true' ->
                 _Pid = save_processed_rates(cb_context:set_doc(Context, JObjs), Count),
@@ -408,24 +409,24 @@ process_row(Row, {Count, JObjs}=Acc) ->
             Id = <<ISO/binary, "-", (kz_util:to_binary(Prefix))/binary>>,
             Props = props:filter_undefined(
                       [{<<"_id">>, Id}
-                       ,{<<"prefix">>, kz_util:to_binary(Prefix)}
-                       ,{<<"weight">>, Weight}
-                       ,{<<"description">>, Description}
-                       ,{<<"rate_name">>, Id}
-                       ,{<<"iso_country_code">>, ISO}
-                       ,{<<"pvt_rate_cost">>, InternalRate}
-                       ,{<<"pvt_carrier">>, <<"default">>}
-                       ,{<<"pvt_type">>, <<"rate">>}
-                       ,{<<"routes">>, get_row_routes(Row)}
-                       ,{<<"rate_increment">>, get_row_increment(Row)}
-                       ,{<<"rate_minimum">>, get_row_minimum(Row)}
-                       ,{<<"rate_surcharge">>, get_row_surcharge(Row)}
-                       ,{<<"rate_cost">>, get_row_rate(Row)}
-                       ,{<<"direction">>, get_row_direction(Row)}
-                       ,{<<"pvt_rate_surcharge">>, get_row_internal_surcharge(Row)}
-                       ,{<<"routes">>, [<<"^\\+", (kz_util:to_binary(Prefix))/binary, "(\\d*)$">>]}
+                      ,{<<"prefix">>, kz_util:to_binary(Prefix)}
+                      ,{<<"weight">>, Weight}
+                      ,{<<"description">>, Description}
+                      ,{<<"rate_name">>, Id}
+                      ,{<<"iso_country_code">>, ISO}
+                      ,{<<"pvt_rate_cost">>, InternalRate}
+                      ,{<<"pvt_carrier">>, <<"default">>}
+                      ,{<<"pvt_type">>, <<"rate">>}
+                      ,{<<"routes">>, get_row_routes(Row)}
+                      ,{<<"rate_increment">>, get_row_increment(Row)}
+                      ,{<<"rate_minimum">>, get_row_minimum(Row)}
+                      ,{<<"rate_surcharge">>, get_row_surcharge(Row)}
+                      ,{<<"rate_cost">>, get_row_rate(Row)}
+                      ,{<<"direction">>, get_row_direction(Row)}
+                      ,{<<"pvt_rate_surcharge">>, get_row_internal_surcharge(Row)}
+                      ,{<<"routes">>, [<<"^\\+", (kz_util:to_binary(Prefix))/binary, "(\\d*)$">>]}
                        ,{<<"options">>, []}
-                      ]),
+                                         ]),
 
             {Count + 1, [kz_json:from_list(Props) | JObjs]}
     end.
@@ -587,8 +588,8 @@ filter_fields({K,_}) ->
 normalize_fields(Rate) ->
     kz_json:map(fun normalize_field/2, Rate).
 
--spec normalize_field(kz_json:key(), kz_json:json_term()) ->
-                             {kz_json:key(), kz_json:json_term()}.
+-spec normalize_field(kz_json:path(), kz_json:json_term()) ->
+                             {kz_json:path(), kz_json:json_term()}.
 normalize_field(<<"Base-Cost">> = K, BaseCost) ->
     {K, wht_util:units_to_dollars(BaseCost)};
 normalize_field(<<"Rate">> = K, Rate) ->

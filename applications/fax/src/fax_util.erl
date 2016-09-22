@@ -42,7 +42,7 @@ collect_channel_props(JObj, List, Acc) ->
                 end, Acc, List).
 
 -spec collect_channel_prop(ne_binary(), kz_json:object()) ->
-                                  {kz_json:key(), kz_json:json_term()}.
+                                  {kz_json:path(), kz_json:json_term()}.
 collect_channel_prop(<<"Hangup-Code">> = Key, JObj) ->
     <<"sip:", Code/binary>> = kz_json:get_value(Key, JObj, <<"sip:500">>),
     {Key, Code};
@@ -178,7 +178,10 @@ is_valid_caller_id(Number, AccountId) ->
     end.
 
 -spec is_digit(integer()) -> boolean().
-is_digit(N) -> N >= $0 andalso N =< $9.
+is_digit(N) when is_integer(N),
+                 N >= $0,
+                 N =< $9 -> true;
+is_digit(_) -> false.
 
 -spec normalize_content_type(text()) -> ne_binary().
 normalize_content_type(<<"image/tif">>) -> <<"image/tiff">>;
