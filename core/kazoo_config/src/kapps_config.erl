@@ -17,10 +17,9 @@
         ,get_all_kvs/1
         ,get_current/2, get_current/3, get_current/4
         ]).
--export([get_node_value/2
-        ,get_node_value/3
-        ,get_node_value/4
-        ]).
+
+-export([get_node_value/2, get_node_value/3, get_node_value/4]).
+
 -export([get_string/2, get_string/3, get_string/4]).
 -export([get_binary/2, get_binary/3, get_binary/4]).
 -export([get_json/2, get_json/3, get_json/4]).
@@ -32,9 +31,11 @@
 -export([get_non_empty/2, get_non_empty/3, get_non_empty/4]).
 -export([get_ne_binary/2, get_ne_binary/3, get_ne_binary/4]).
 
+-export([set_string/3, set_integer/3, set_float/3, set_boolean/3, set_json/3]).
 -export([set/3, set/4, set_default/3, set_node/4
         ,update_default/3, update_default/4
         ]).
+
 -export([lock_db/0, lock_db/1, is_locked/0]).
 -export([flush/0, flush/1, flush/2, flush/3]).
 
@@ -335,7 +336,6 @@ get(Category, Keys, Default, Node) ->
 
 get_current(Category, Key) ->
     get_current(Category, Key, 'undefined').
-
 get_current(Category, Key, Default) ->
     get_current(Category, Key, Default, node()).
 
@@ -418,7 +418,39 @@ get_all_default_kvs(JObj) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec set_string(config_category(), config_key(), text() | binary() | string()) ->
+                        {ok, kz_json:object()}.
+-spec set_integer(config_category(), config_key(), text() | integer()) ->
+                         {ok, kz_json:object()}.
+-spec set_float(config_category(), config_key(), text() | float()) ->
+                       {ok, kz_json:object()}.
+-spec set_boolean(config_category(), config_key(), text() | boolean()) ->
+                         {ok, kz_json:object()}.
+-spec set_json(config_category(), config_key(), text() | kz_json:object()) ->
+                      {ok, kz_json:object()}.
+
+set_string(Category, Key, Value) ->
+    set(Category, Key, kz_util:to_binary(Value)).
+
+set_integer(Category, Key, Value) ->
+    set(Category, Key, kz_util:to_integer(Value)).
+
+set_float(Category, Key, Value) ->
+    set(Category, Key, kz_util:to_float(Value)).
+
+set_boolean(Category, Key, Value) ->
+    set(Category, Key, kz_util:to_boolean(Value)).
+
+set_json(Category, Key, Value) ->
+    set(Category, Key, kz_json:decode(Value)).
+
+%%-----------------------------------------------------------------------------
+%% @public
 %% @doc Set the key to the value in the given category but specific to this node
+%% @end
 %%-----------------------------------------------------------------------------
 -spec set(config_category(), config_key(), any()) ->
                  {'ok', kz_json:object()}.
