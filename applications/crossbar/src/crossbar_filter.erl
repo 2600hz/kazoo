@@ -9,7 +9,7 @@
 
 -module(crossbar_filter).
 -include("crossbar.hrl").
--export([build/1, defined/1]).
+-export([build/1, is_defined/1]).
 
 -spec true(any()) -> 'true'.
 true(_) -> 'true'.
@@ -17,7 +17,7 @@ true(_) -> 'true'.
 -spec build(cb_context:context()) -> fun().
 build(Context) ->
     QS = cb_context:query_string(Context),
-    build(QS, defined_in(QS)).
+    build(QS, is_defined_in(QS)).
 
 -spec build(kz_json:object(), boolean()) -> fun().
 build(_QS, 'false') -> fun true/1;
@@ -29,12 +29,12 @@ build_with(QueryString) ->
             filter_doc_by_querystring(Doc, QueryString)
     end.
 
--spec defined(cb_context:context()) -> boolean().
-defined(Context) ->
-    defined_in(cb_context:query_string(Context)).
+-spec is_defined(cb_context:context()) -> boolean().
+is_defined(Context) ->
+    is_defined_in(cb_context:query_string(Context)).
 
--spec defined_in(kz_json:object()) -> boolean().
-defined_in(QueryString) ->
+-spec is_defined_in(kz_json:object()) -> boolean().
+is_defined_in(QueryString) ->
     kz_json:any(fun is_filter_key/1, QueryString).
 
 -spec is_filter_key({binary(), any()}) -> boolean().
