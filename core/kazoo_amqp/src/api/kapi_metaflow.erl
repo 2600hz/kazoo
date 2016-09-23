@@ -180,6 +180,10 @@ bind_q(Queue, Props, ['action' | T]) ->
     Action = props:get_value('action', Props, <<"*">>),
     amqp_util:bind_q_to_exchange(Queue, ?METAFLOW_ACTION_ROUTING_KEY(CallId, Action), ?METAFLOW_EXCHANGE),
     bind_q(Queue, Props, T);
+bind_q(Queue, Props, ['flow' | T]) ->
+    CallId = props:get_value('callid', Props, <<"*">>),
+    amqp_util:bind_q_to_exchange(Queue, ?METAFLOW_FLOW_ROUTING_KEY(CallId), ?METAFLOW_EXCHANGE),
+    bind_q(Queue, Props, T);
 bind_q(Queue, Props, ['bindings' | T]) ->
     AccountId = props:get_value('account_id', Props, <<"*">>),
     CallId = props:get_value('callid', Props, <<"*">>),
@@ -202,6 +206,10 @@ unbind_q(Queue, Props, ['action' | T]) ->
     CallId = props:get_value('callid', Props, <<"*">>),
     Action = props:get_value('action', Props, <<"*">>),
     amqp_util:unbind_q_from_exchange(Queue, ?METAFLOW_ACTION_ROUTING_KEY(CallId, Action), ?METAFLOW_EXCHANGE),
+    unbind_q(Queue, Props, T);
+unbind_q(Queue, Props, ['flow' | T]) ->
+    CallId = props:get_value('callid', Props, <<"*">>),
+    amqp_util:unbind_q_from_exchange(Queue, ?METAFLOW_FLOW_ROUTING_KEY(CallId), ?METAFLOW_EXCHANGE),
     unbind_q(Queue, Props, T);
 unbind_q(Queue, Props, ['bindings' | T]) ->
     AccountId = props:get_value('account_id', Props, <<"*">>),
