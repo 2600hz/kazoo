@@ -183,4 +183,8 @@ close(Context) ->
     Listeners = bh_context:listeners(Context),
     blackhole_listener:remove_bindings(Listeners),
     Bindings = bh_context:bindings(Context),
-    lists:foldl(fun(Binding, Ctx) -> unbind(Ctx, Binding) end, Context, Bindings).
+    lists:foreach(fun(B) -> unbind(Context, B) end, Bindings),
+    Routines = [{fun bh_context:remove_listeners/2, Listeners}
+               ,{fun bh_context:remove_bindings/2, Bindings}
+               ],
+    bh_context:setters(Context, Routines).
