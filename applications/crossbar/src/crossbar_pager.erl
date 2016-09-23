@@ -125,10 +125,10 @@ build_qs_filter_options(Context) ->
 build_filter_with_qs(Context, UserFilter) ->
     CtxFilter = crossbar_filter:build(Context),
     Mapper = build_qs_filter_mapper(Context),
-    build_filter_with_qs(erlang:fun_info(UserFilter, 'arity'), Mapper, CtxFilter, UserFilter).
+    build_filter_with_qs(Mapper, CtxFilter, UserFilter).
 
--spec build_filter_with_qs({arity, integer()}, fun(), fun(), fun()) -> fun().
-build_filter_with_qs({'arity',1}, Mapper, CtxFilter, UserFilter) ->
+-spec build_filter_with_qs(fun(), fun(), fun()) -> fun().
+build_filter_with_qs(Mapper, CtxFilter, UserFilter) when is_function(UserFilter, 1) ->
     fun(JObjDoc, Acc) ->
             JObj = Mapper(JObjDoc),
             case CtxFilter(JObj) of
@@ -136,7 +136,7 @@ build_filter_with_qs({'arity',1}, Mapper, CtxFilter, UserFilter) ->
                 'true' -> [ UserFilter(JObjDoc) | Acc ]
             end
     end;
-build_filter_with_qs({'arity',2}, Mapper, CtxFilter, UserFilter) ->
+build_filter_with_qs(Mapper, CtxFilter, UserFilter) when is_function(UserFilter, 2) ->
     fun(JObjDoc, Acc) ->
             JObj = Mapper(JObjDoc),
             case CtxFilter(JObj) of
