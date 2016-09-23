@@ -3118,7 +3118,9 @@ play_macro(Media, Call) ->
     send_command(Command, Call),
     NoopId.
 
--spec media_macro_command([{ne_binary(), ne_binaries()}], kapps_call:call()) ->api_terms().
+-type media_macro() :: {ne_binary(), ne_binaries()}.
+-type media_macros() :: [media_macro()].
+-spec media_macro_command(media_macros(), kapps_call:call()) ->api_terms().
 media_macro_command(Media, Call) ->
     kz_json:from_list(
       props:filter_undefined(
@@ -3128,7 +3130,7 @@ media_macro_command(Media, Call) ->
         ,{<<"Call-ID">>, kapps_call:call_id(Call)}
         ])).
 
--spec media_macro(ne_binaries(), kapps_call:call()) -> 'ok'.
+-spec media_macro(media_macros(), kapps_call:call()) -> 'ok'.
 media_macro(Media, Call) ->
     Command = media_macro_command(Media, Call),
     send_command(Command, Call).
