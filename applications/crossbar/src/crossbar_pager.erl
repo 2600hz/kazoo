@@ -5,6 +5,8 @@
 -define(PAGINATION_PAGE_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"pagination_page_size">>, 50)).
 -define(DEFAULT_RANGE, kapps_config:get_integer(?CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR))).
 
+id(X) -> X.
+
 descending(Context, View) -> descending(Context, View, fun id/1).
 ascending(Context, View) -> ascending(Context, View, fun id/1).
 
@@ -13,25 +15,43 @@ descending(Context, View, Filter) ->
     StartKey = start_key(Context),
     EndKey = end_key(Context, StartKey),
     AccountId = cb_context:account_id(Context),
-    JObjs = cb_pager:descending(AccountId, View, StartKey, EndKey, PageSize+1, build_filter(Context, Filter)),
+    Filter = build_filter_with_qs(Context, Filter),
+    Options = build_qs_filter_options(Context),
+    JObjs = cb_pager:descending(AccountId, View, StartKey, EndKey, PageSize+1, Filter, Options),
     format_response(Context, StartKey, PageSize, erlang:length(JObjs), JObjs).
 
 ascending(Context, View, Filter) ->
     PageSize = page_size(Context),
-    StartKey = start_key(Context),
+    StartKey = ascending_start_key(Context),
     EndKey = ascending_end_key(Context, StartKey),
     AccountId = cb_context:account_id(Context),
-    JObjs = cb_pager:ascending(AccountId, View, StartKey, EndKey, PageSize+1, build_filter(Context, Filter)),
+    Filter = build_filter_with_qs(Context, Filter),
+    Options = build_qs_filter_options(Context),
+    JObjs = cb_pager:ascending(AccountId, View, StartKey, EndKey, PageSize+1, Filter, Options),
     format_response(Context, StartKey, PageSize, erlang:length(JObjs), JObjs).
 
+one_of(_, [], Default) -> Default;
+one_of(Context, [Value|Values], Default) ->
+    case cb_context:req_value(Context, Value) of
+        undefined -> one_of(Context, Values, Default);
+        Value -> kz_util:to_integer(Value)
+    end.
+
 start_key(Context) ->
-    cb_context:req_value(Context, <<"start_key">>, kz_util:current_tstamp()).
+    Default = kz_util:current_tstamp(),
+    one_of(Context, [<<"start_key">>, <<"created_to">>], Default).
 
 end_key(Context, StartKey) ->
-    cb_context:req_value(Context, <<"end_key">>, StartKey - ?DEFAULT_RANGE).
+    Default = StartKey - ?DEFAULT_RANGE,
+    one_of(Context, [<<"end_key">>, <<"created_from">>], Default).
 
 ascending_end_key(Context, StartKey) ->
-    cb_context:req_value(Context, <<"end_key">>, StartKey + ?DEFAULT_RANGE).
+    Default = StartKey - ?DEFAULT_RANGE,
+    one_of(Context, [<<"end_key">>, <<"created_to">>], Default).
+
+ascending_start_key(Context) ->
+    Default = kz_util:current_tstamp(),
+    one_of(Context, [<<"start_key">>, <<"created_from">>], Default).
 
 page_size() -> ?PAGINATION_PAGE_SIZE.
 page_size(Context) -> page_size(Context, cb_context:api_version(Context)).
@@ -61,23 +81,36 @@ format_response(Context, StartKey, PageSize, _ResultSize, [LastObj, JObjs]) ->
     Envelope = add_paging(StartKey, PageSize, NextStartKey, cb_context:resp_envelope(Context)),
     cb_context:set_resp_envelope(cb_context:set_doc(Context, JObjs), Envelope).
 
-id(X) -> X.
+build_qs_filter_mapper(Context) ->
+    case crossbar_filter:defined(Context) of
+        true -> fun(JObjDoc) -> kz_json:get_value(<<"doc">>, JObjDoc) end;
+        false -> fun id/1
+    end.
 
-build_filter(Context, UserFilter) ->
+build_qs_filter_options(Context) ->
+    case crossbar_filter:defined(Context) of
+        true -> [include_docs];
+        false -> []
+    end.
+
+build_filter_with_qs(Context, UserFilter) ->
     CtxFilter = crossbar_filter:build(Context),
-    build_filter(erlang:fun_info(UserFilter, arity), CtxFilter, UserFilter).
+    Mapper = build_qs_filter_mapper(Context),
+    build_filter_with_qs(erlang:fun_info(UserFilter, arity), Mapper, CtxFilter, UserFilter).
 
-build_filter({arity,1}, CtxFilter, UserFilter) ->
-    fun(JObj, Acc) ->
+build_filter_with_qs({arity,1}, Mapper, CtxFilter, UserFilter) ->
+    fun(JObjDoc, Acc) ->
+        JObj = Mapper(JObjDoc),
         case CtxFilter(JObj) of
             false -> Acc;
-            true -> UserFilter(JObj)
+            true -> UserFilter(JObjDoc)
         end
     end;
-build_filter({arity,2}, CtxFilter, UserFilter) ->
-    fun(JObj, Acc) ->
+build_filter_with_qs({arity,2}, Mapper, CtxFilter, UserFilter) ->
+    fun(JObjDoc, Acc) ->
+        JObj = Mapper(JObjDoc),
         case CtxFilter(JObj) of
             false -> Acc;
-            true -> UserFilter(JObj, Acc)
+            true -> UserFilter(JObjDoc, Acc)
         end
     end.
