@@ -42,7 +42,7 @@ init() ->
                          ,{<<"*.content_types_provided.channels">>, 'content_types_provided'}
                          ,{<<"*.validate.channels">>, 'validate'}
                          ,{<<"*.execute.post.channels">>, 'post'}
-                         ,{<<"*.execute.post.channels">>, 'put'}
+                         ,{<<"*.execute.put.channels">>, 'put'}
                          ]).
 
 %%--------------------------------------------------------------------
@@ -141,6 +141,7 @@ put(Context, UUID) ->
           ,{<<"Flow">>, cb_context:doc(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
+    lager:debug("SENDING ACTION ~p", [API]),
     kz_amqp_worker:cast(API, fun kapi_metaflow:publish_flow/1),
     crossbar_util:response_202(<<"metaflow sent">>, Context).
 
@@ -246,6 +247,7 @@ validate_action(Context, CallId) ->
     end.
 
 validate_action(Context, _UUID, <<"metaflow">>) ->
+    lager:debug("VALIDATING"),
     cb_context:validate_request_data(<<"metaflow">>, Context);
 validate_action(Context, _UUID, _Action) ->
     lager:debug("unknown action: ~s", [_Action]),
