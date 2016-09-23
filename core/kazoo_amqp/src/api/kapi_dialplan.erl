@@ -1232,7 +1232,7 @@ media_macro_v(JObj) -> media_macro_v(kz_json:to_proplist(JObj)).
 play_macro(Prop) when is_list(Prop) ->
     case play_macro_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?PLAY_MACRO_HEADERS, ?OPTIONAL_PLAY_MACRO_HEADERS);
-        'false' -> {'error', "Proplist failed validation for conference_req"}
+        'false' -> {'error', "Proplist failed validation for play macro"}
     end;
 play_macro(JObj) -> play_macro(kz_json:to_proplist(JObj)).
 
@@ -1240,3 +1240,16 @@ play_macro(JObj) -> play_macro(kz_json:to_proplist(JObj)).
 play_macro_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PLAY_MACRO_HEADERS, ?PLAY_MACRO_VALUES, ?PLAY_MACRO_TYPES);
 play_macro_v(JObj) -> play_macro_v(kz_json:to_proplist(JObj)).
+
+-spec sound_touch(api_terms()) -> api_formatter_return().
+sound_touch(Prop) when is_list(Prop) ->
+    case sound_touch_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?SOUNDTOUCH_HEADERS, ?OPTIONAL_SOUNDTOUCH_HEADERS);
+        'false' -> {'error', "Proplist failed validation for sound touch"}
+    end;
+sound_touch(JObj) -> sound_touch(kz_json:to_proplist(JObj)).
+
+-spec sound_touch_v(api_terms()) -> boolean().
+sound_touch_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?SOUNDTOUCH_HEADERS, ?SOUNDTOUCH_VALUES, ?SOUNDTOUCH_TYPES);
+sound_touch_v(JObj) -> sound_touch_v(kz_json:to_proplist(JObj)).
