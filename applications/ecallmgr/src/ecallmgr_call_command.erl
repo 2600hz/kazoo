@@ -1627,11 +1627,11 @@ transfer_leg(JObj) ->
 transfer_context(JObj) ->
     kz_json:get_value(<<"Transfer-Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT).
 
- -spec sound_touch(ne_binary(), ne_binary(), kz_json:object()) -> binary().
+-spec sound_touch(ne_binary(), ne_binary(), kz_json:object()) -> {ne_binary(), ne_binary()}.
 sound_touch(UUID, <<"start">>, JObj) ->
-     {<<"soundtouch">>, list_to_binary([UUID, " start ", sound_touch_options(JObj)])};
+    {<<"soundtouch">>, list_to_binary([UUID, " start ", sound_touch_options(JObj)])};
 sound_touch(UUID, <<"stop">>, _JObj) ->
-     {<<"soundtouch">>, list_to_binary([UUID, " stop"])}.
+    {<<"soundtouch">>, list_to_binary([UUID, " stop"])}.
 
 sound_touch_options(JObj) ->
     Options = [{<<"Sending-Leg">>, fun(V, L) -> case kz_util:is_true(V) of
@@ -1652,7 +1652,8 @@ sound_touch_options(JObj) ->
               ,{<<"Rate">>, fun(V, L) -> [io_lib:format("~bo", V) | L] end}
               ,{<<"Tempo">>, fun(V, L) -> [io_lib:format("~bo", V) | L] end}
               ],
-    lists:foldl(fun sound_touch_options_fold/2, {[], JObj}, Options).
+    {Args, _} = lists:foldl(fun sound_touch_options_fold/2, {[], JObj}, Options),
+    kz_util:join_binary(lists:reverse(Args), <<" ">>).
 
 sound_touch_options_fold({K, F}, {List, JObj}=Acc) ->
     case kz_json:get_value(K, JObj) of
