@@ -114,11 +114,25 @@ curl -v -X POST \
 
 #### Put a feature on a channel
 
+currently only `metaflow` is supported
+
+#### Metaflow
+
+Metaflow feature is a `metaflow` object which validates with its json schema.
+
+. reasoning
+The `POST` action required that every metaflow action would have to be coded into the module.
+
+. benefits
+The metaflow feature allows adding new types of metaflows without changing the code.
+It also allows full metaflows and not only single actions, ie, the `children` node is also processed.
+
 > PUT /v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 
 ```shell
 curl -v -X PUT \
+    -H "Content-Type: application/json" \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"action": "metaflow", "data": { "module", "hangup" }}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
 ```
-
