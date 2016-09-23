@@ -45,13 +45,14 @@ end_key(Context, StartKey) ->
     Default = StartKey - ?DEFAULT_RANGE,
     one_of(Context, [<<"end_key">>, <<"created_from">>], Default).
 
-ascending_end_key(Context, StartKey) ->
-    Default = StartKey - ?DEFAULT_RANGE,
-    one_of(Context, [<<"end_key">>, <<"created_to">>], Default).
-
 ascending_start_key(Context) ->
     Default = kz_util:current_tstamp(),
     one_of(Context, [<<"start_key">>, <<"created_from">>], Default).
+
+ascending_end_key(Context, StartKey) ->
+    Default = StartKey + ?DEFAULT_RANGE,
+    one_of(Context, [<<"end_key">>, <<"created_to">>], Default).
+
 
 page_size() -> ?PAGINATION_PAGE_SIZE.
 page_size(Context) -> page_size(Context, cb_context:api_version(Context)).
