@@ -109,14 +109,14 @@ format_response(Context, StartKey, NextStartKey, PageSize, JObjs) ->
 
 -spec build_qs_filter_mapper(kz_json:object()) -> fun().
 build_qs_filter_mapper(Context) ->
-    case crossbar_filter:defined(Context) of
+    case crossbar_filter:is_defined(Context) of
         'true' -> fun(JObjDoc) -> kz_json:get_value(<<"doc">>, JObjDoc) end;
         'false' -> fun id/1
     end.
 
 -spec build_qs_filter_options(kz_json:object()) -> list().
 build_qs_filter_options(Context) ->
-    case crossbar_filter:defined(Context) of
+    case crossbar_filter:is_defined(Context) of
         'true' -> ['include_docs'];
         'false' -> []
     end.
