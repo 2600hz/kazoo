@@ -475,6 +475,39 @@
             "required": false,
             "type": "object"
         },
+        "auth.callback": {
+            "additionalProperties": true,
+            "description": "callback for authentication providers",
+            "properties": {
+                "clientId": {
+                    "description": "client id, usually appplication id for oauth providers",
+                    "type": "string"
+                },
+                "code": {
+                    "description": "access code emitted by provider",
+                    "type": "string"
+                },
+                "provider": {
+                    "description": "provider",
+                    "type": "string"
+                },
+                "redirecUri": {
+                    "description": "redirect uri",
+                    "type": "string"
+                },
+                "state": {
+                    "description": "state",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "provider",
+                "redirectUri",
+                "clientId",
+                "code"
+            ],
+            "type": "object"
+        },
         "blacklists": {
             "description": "Schema for a blacklists",
             "properties": {
@@ -7176,6 +7209,24 @@
             },
             "required": [
                 "voicemail"
+            ],
+            "type": "object"
+        },
+        "system_config.auth": {
+            "description": "Schema for auth system_config",
+            "properties": {
+                "secret_for_user_signature": {
+                    "description": "auth secret for user signature",
+                    "type": "string"
+                },
+                "system_key": {
+                    "description": "auth system key",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "secret_for_user_signature",
+                "system_key"
             ],
             "type": "object"
         },
@@ -21078,6 +21129,15 @@
                     }
                 ]
             }
+        },
+        "/auth/authorize": {
+            "put": {}
+        },
+        "/auth/callback": {
+            "put": {}
+        },
+        "/auth/tokeninfo": {
+            "get": {}
         },
         "/google_auth": {
             "put": {

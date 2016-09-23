@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.auth",
+    "description": "Schema for auth system_config",
+    "properties": {
+        "secret_for_user_signature": {
+            "description": "auth secret for user signature",
+            "type": "string"
+        },
+        "system_key": {
+            "description": "auth system key",
+            "type": "string"
+        }
+    },
+    "required": [
+        "secret_for_user_signature",
+        "system_key"
+    ],
+    "type": "object"
+}

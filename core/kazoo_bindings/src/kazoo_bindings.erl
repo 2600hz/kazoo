@@ -791,9 +791,7 @@ fold_processor(Routing, Payload, Options) ->
                   case Binding =:= Routing
                       orelse kazoo_bindings_rt:matches(Options, BParts, RoutingParts)
                   of
-                      'true' ->
-                          lager:debug("routing ~s matches ~s", [Routing, Binding]),
-                          fold_bind_results(queue:to_list(Responders), Acc, Routing);
+                      'true' -> fold_bind_results(queue:to_list(Responders), Acc, Routing);
                       'false' -> Acc
                   end
           end

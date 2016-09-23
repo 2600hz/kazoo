@@ -36,9 +36,6 @@
 %%%===================================================================
 
 init() ->
-    kz_datamgr:db_create(?KZ_TOKEN_DB),
-    _ = kz_datamgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
-
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.token_auth">>, ?MODULE, 'allowed_methods'),
@@ -173,8 +170,9 @@ authenticate(_Context, _TokenType) -> 'false'.
 check_auth_token(_Context, <<>>, MagicPathed) -> MagicPathed;
 check_auth_token(_Context, 'undefined', MagicPathed) -> MagicPathed;
 check_auth_token(Context, AuthToken, _MagicPathed) ->
-    lager:debug("checking auth token: '~s'", [AuthToken]),
-    case kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken) of
+    Options = [{<<"account_id">>, cb_context:req_header(Context, 'x-auth-account-id')}],
+    lager:debug("checking auth token"),
+    case crossbar_auth:validate_auth_token(AuthToken, props:filter_undefined(Options)) of
         {'ok', JObj} -> is_expired(Context, JObj);
         {'error', R} ->
             lager:debug("failed to authenticate token auth, ~p", [R]),

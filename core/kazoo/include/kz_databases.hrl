@@ -27,12 +27,15 @@
 -define(KZ_PORT_REQUESTS_DB, <<"port_requests">>).
 
 -define(KZ_OAUTH_DB, <<"oauth">>).
+-define(KZ_AUTH_DB, <<"system_auth">>).
 -define(KZ_DATA_DB, <<"system_data">>).
 
 -define(KZ_TASKS_DB, <<"tasks">>).
 
--define(KZ_SYSTEM_DBS, [?KZ_CONFIG_DB
+-define(KZ_SYSTEM_DBS, [?KZ_DATA_DB
+                       ,?KZ_CONFIG_DB
                        ,?KZ_SCHEMA_DB
+                       ,?KZ_AUTH_DB
                        ,?KZ_MEDIA_DB
                        ,?KZ_SIP_DB
                        ,?KZ_ACCOUNTS_DB
@@ -49,7 +52,6 @@
                        ,?KZ_WEBHOOKS_DB
                        ,?KZ_TOKEN_DB
                        ,?KZ_ALERTS_DB
-                       ,?KZ_DATA_DB
                        ,?KZ_TASKS_DB
                        ]).
 

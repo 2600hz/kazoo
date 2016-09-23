@@ -1,0 +1,19 @@
+{application, kazoo_auth,
+ [
+  {description, "Kazoo Authorization Library"},
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [kz_auth_rsa, kazoo_auth_public_keys_cache, kazoo_auth_tokens_cache, kazoo_auth_app, kazoo_auth_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , public_key
+
+                 , kazoo
+                 , kazoo_data
+                 , kazoo_web
+
+                 , lager
+                 ]}
+ ,{mod, {kazoo_auth_app, []}}
+ ]}.

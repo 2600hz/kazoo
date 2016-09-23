@@ -458,15 +458,19 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), nodes_state()) -> handle_info_ret_state(nodes_state()).
-handle_info('expire_nodes', #state{tab=Tab}=State) ->
+handle_info('expire_nodes', #state{node=ThisNode, tab=Tab}=State) ->
     Now = kz_util:now_ms(),
-    FindSpec = [{#kz_node{expires='$2'
+    FindSpec = [{#kz_node{node='$1'
+                         ,expires='$2'
                          ,last_heartbeat='$3'
                          ,_ = '_'
                          }
                 ,[{'andalso'
-                  ,{'=/=', '$2', 'undefined'}
-                  ,{'>', {'const', Now}, {'+', '$2', '$3'}}
+                  ,{'=/=','$2','undefined'}
+                  ,{'andalso'
+                   ,{'>',{'const',Now},{'+','$2','$3'}}
+                   ,{'=/=','$1',{'const',ThisNode}}
+                   }
                   }
                  ]
                 ,['$_']
@@ -490,7 +494,8 @@ handle_info({'heartbeat', Ref}
             kz_amqp_worker:cast(advertise_payload(Node), fun kapi_nodes:publish_advertise/1)
     catch
         _E:_N ->
-            lager:error("error creating node ~p : ~p", [_E, _N])
+            lager:error("error creating node ~p : ~p", [_E, _N]),
+            kz_util:log_stacktrace()
     end,
     _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
     {'noreply', State#state{heartbeat_ref=Reference}};

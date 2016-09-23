@@ -1,0 +1,35 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "auth.callback",
+    "additionalProperties": true,
+    "description": "callback for authentication providers",
+    "properties": {
+        "clientId": {
+            "description": "client id, usually appplication id for oauth providers",
+            "type": "string"
+        },
+        "code": {
+            "description": "access code emitted by provider",
+            "type": "string"
+        },
+        "provider": {
+            "description": "provider",
+            "type": "string"
+        },
+        "redirecUri": {
+            "description": "redirect uri",
+            "type": "string"
+        },
+        "state": {
+            "description": "state",
+            "type": "string"
+        }
+    },
+    "required": [
+        "provider",
+        "redirectUri",
+        "clientId",
+        "code"
+    ],
+    "type": "object"
+}

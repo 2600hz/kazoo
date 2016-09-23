@@ -63,10 +63,6 @@ method_restrictions(AuthModule) ->
 %%% API
 %%%===================================================================
 init() ->
-    kz_datamgr:db_create(?KZ_TOKEN_DB),
-
-    _ = kz_datamgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
-
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.token_restrictions">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.token_restrictions">>, ?MODULE, 'resource_exists'),

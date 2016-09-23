@@ -1,0 +1,17 @@
+{
+    "_id": "google",
+    "oauth_url": "https://accounts.google.com/o/oauth2/token",
+    "profile_url": "https://www.googleapis.com/plus/v1/people/me",
+    "pvt_type": "provider",
+    "scopes": {
+        "prediction": "https://www.googleapis.com/auth/prediction",
+        "print": "https://www.googleapis.com/auth/cloudprint",
+        "storage": "https://www.googleapis.com/auth/devstorage.read_only",
+        "urlshortener": "https://www.googleapis.com/auth/urlshortener",
+        "xmpp": "https://www.googleapis.com/auth/googletalk"
+    },
+    "servers": {
+        "xmpp": "talk.google.com"
+    },
+    "tokeninfo_url": "https://www.googleapis.com/oauth2/v1/tokeninfo?access_token="
+}

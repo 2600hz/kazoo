@@ -35,7 +35,6 @@
 %%% API
 %%%===================================================================
 init() ->
-    kz_datamgr:db_create(?KZ_TOKEN_DB),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.api_auth">>, ?MODULE, 'allowed_methods'),
@@ -111,7 +110,7 @@ validate(Context) ->
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    crossbar_util:create_auth_token(Context, ?MODULE).
+    crossbar_auth:create_auth_token(Context, ?MODULE).
 
 %%%===================================================================
 %%% Internal functions

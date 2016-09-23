@@ -714,16 +714,14 @@ response_auth(JObj, AccountId, UserId) ->
 -spec populate_resp(kz_json:object(), api_binary(), api_binary()) -> kz_json:object().
 populate_resp(JObj, 'undefined', _UserId) -> JObj;
 populate_resp(JObj, AccountId, UserId) ->
-    kz_json:set_values(
-      props:filter_undefined(
-        [{<<"apps">>, load_apps(AccountId, UserId)}
-        ,{<<"language">>, get_language(AccountId, UserId)}
-        ,{<<"account_name">>, kapps_util:get_account_name(AccountId)}
-        ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}
-        ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
-        ])
-                      ,JObj
-     ).
+    Props = props:filter_undefined(
+              [{<<"apps">>, load_apps(AccountId, UserId)}
+              ,{<<"language">>, get_language(AccountId, UserId)}
+              ,{<<"account_name">>, kapps_util:get_account_name(AccountId)}
+              ,{<<"is_reseller">>, kz_services:is_reseller(AccountId)}
+              ,{<<"reseller_id">>, kz_services:find_reseller_id(AccountId)}
+              ]),
+    kz_json:set_values(Props, JObj).
 
 %%--------------------------------------------------------------------
 %% @private
