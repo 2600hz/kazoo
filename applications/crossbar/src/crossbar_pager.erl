@@ -64,11 +64,11 @@ page_size(Context, _Version) ->
 
 add_paging(StartKey, PageSize, NextStartKey, JObj) ->
     kz_json:set_values([
-        {<<"start_key">>, StartKey},
-        {<<"page_size">>, PageSize},
-        {<<"next_start_key">>, NextStartKey}
-    ],
-    JObj).
+                        {<<"start_key">>, StartKey},
+                        {<<"page_size">>, PageSize},
+                        {<<"next_start_key">>, NextStartKey}
+                       ],
+                       JObj).
 
 remove_paging(JObj) ->
     kz_json:delete_keys([<<"start_key">>, <<"page_size">>, <<"next_start_key">>], JObj).
@@ -99,17 +99,17 @@ build_filter_with_qs(Context, UserFilter) ->
 
 build_filter_with_qs({arity,1}, Mapper, CtxFilter, UserFilter) ->
     fun(JObjDoc, Acc) ->
-        JObj = Mapper(JObjDoc),
-        case CtxFilter(JObj) of
-            false -> Acc;
-            true -> [ UserFilter(JObjDoc) | Acc ]
-        end
+            JObj = Mapper(JObjDoc),
+            case CtxFilter(JObj) of
+                false -> Acc;
+                true -> [ UserFilter(JObjDoc) | Acc ]
+            end
     end;
 build_filter_with_qs({arity,2}, Mapper, CtxFilter, UserFilter) ->
     fun(JObjDoc, Acc) ->
-        JObj = Mapper(JObjDoc),
-        case CtxFilter(JObj) of
-            false -> Acc;
-            true -> UserFilter(JObjDoc, Acc)
-        end
+            JObj = Mapper(JObjDoc),
+            case CtxFilter(JObj) of
+                false -> Acc;
+                true -> UserFilter(JObjDoc, Acc)
+            end
     end.

@@ -1,16 +1,16 @@
 -module(cb_pager).
 -export([descending/7, ascending/7]).
 
-descending(AccountId, View, Start, End, Limit, Filter, Options) when 
-        is_binary(AccountId), is_binary(View), is_integer(Start), is_integer(End), is_integer(Limit), Start > End ->
+descending(AccountId, View, Start, End, Limit, Filter, Options) when
+      is_binary(AccountId), is_binary(View), is_integer(Start), is_integer(End), is_integer(Limit), Start > End ->
     MODbs = lists:reverse(kazoo_modb:get_range(AccountId, End, Start)),
     CouchOpts = [{'startkey', Start}, {'endkey', End}, 'descending' | Options],
     {_, LastKey, JObjs} =
         lists:foldl(fun fold_query/2, {Limit, undefined, []}, [ {Db, View, CouchOpts, Filter} || Db <- MODbs ]),
     {LastKey, JObjs}.
 
-ascending(AccountId, View, Start, End, Limit, Filter, Options) when 
-        is_binary(AccountId), is_binary(View), is_integer(Start), is_integer(End), is_integer(Limit), Start < End ->
+ascending(AccountId, View, Start, End, Limit, Filter, Options) when
+      is_binary(AccountId), is_binary(View), is_integer(Start), is_integer(End), is_integer(Limit), Start < End ->
     MODbs = kazoo_modb:get_range(AccountId, Start, End),
     CouchOpts = [{'startkey', Start}, {'endkey', End} | Options],
     {_, LastKey, JObjs} =
