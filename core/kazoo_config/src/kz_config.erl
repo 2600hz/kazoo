@@ -193,16 +193,16 @@ find_values(Section, Key) ->
 %%--------------------------------------------------------------------
 -spec get_sections(section(), kz_proplist()) -> kz_proplist().
 get_sections('zone' = Section, Prop) ->
-    Sections = proplists:get_all_values(Section, Prop),
+    Sections = props:get_all_values(Section, Prop),
     format_sections(Sections, 'name', []);
 get_sections(Section, Prop) ->
-    Sections = proplists:get_all_values(Section, Prop),
+    Sections = props:get_all_values(Section, Prop),
     format_sections(Sections).
 
 -spec get_section(section()) -> kz_proplist().
 get_section(Section) ->
     Prop = load(),
-    Sections = proplists:get_all_values(Section, Prop),
+    Sections = props:get_all_values(Section, Prop),
     format_sections(Sections, '__no_zone_filter', []).
 
 %%--------------------------------------------------------------------
@@ -297,7 +297,7 @@ get_values(Key, Sections) -> get_values(Sections, Key, []).
 get_values([], _, []) -> [];
 get_values([], _, Acc) -> Acc;
 get_values([{_, Values} | T], Key, Acc) ->
-    V = proplists:get_all_values(Key, Values),
+    V = props:get_all_values(Key, Values),
     get_values(T, Key, lists:append(V, Acc)).
 
 %%--------------------------------------------------------------------

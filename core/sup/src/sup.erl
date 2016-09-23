@@ -37,19 +37,19 @@ main(CommandLineArgs, Loops) ->
             {'ok', Options, Args} = parse_args(CommandLineArgs),
             lists:member('help', Options)
                 andalso print_help(),
-            Verbose = proplists:get_value('verbose', Options) =/= 'undefined',
+            Verbose = props:get_value('verbose', Options) =/= 'undefined',
             Target = get_target(Options, Verbose),
             Module =
-                case proplists:get_value('module', Options) of
+                case props:get_value('module', Options) of
                     'undefined' -> print_invalid_cli_args();
                     M -> list_to_atom(M)
                 end,
             Function =
-                case proplists:get_value('function', Options) of
+                case props:get_value('function', Options) of
                     'undefined' -> print_invalid_cli_args();
                     F -> list_to_atom(F)
                 end,
-            Timeout = case proplists:get_value('timeout', Options) of 0 -> 'infinity'; T -> T * 1000 end,
+            Timeout = case props:get_value('timeout', Options) of 0 -> 'infinity'; T -> T * 1000 end,
             Verbose
                 andalso stdout("Running ~s:~s(~s)", [Module, Function, string:join(Args, ", ")]),
             case rpc:call(Target, Module, Function, [list_to_binary(Arg) || Arg <- Args], Timeout) of
@@ -77,7 +77,7 @@ main(CommandLineArgs, Loops) ->
 
 -spec get_target(proplist(), boolean()) -> atom().
 get_target(Options, Verbose) ->
-    Node = proplists:get_value('node', Options),
+    Node = props:get_value('node', Options),
     Host = get_host(),
     Cookie = get_cookie(Options, list_to_atom(Node)),
     Target = list_to_atom(Node ++ "@" ++ Host),

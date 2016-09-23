@@ -228,7 +228,7 @@ get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps) ->
     lager:info("building endpoint for account id ~s with force out ~s", [AccountId, ForceOut]),
     RoutingData1 = routing_data(ToDID, AccountId),
 
-    CidOptions  = proplists:get_value(<<"Caller-ID-Options">>, RoutingData1),
+    CidOptions  = props:get_value(<<"Caller-ID-Options">>, RoutingData1),
     CidFormat   = kz_json:get_ne_value(<<"format">>, CidOptions),
     OldCallerId = kz_json:get_value(<<"Caller-ID-Number">>, JObj),
     NewCallerId = maybe_anonymize_caller_id(State, OldCallerId, CidFormat),

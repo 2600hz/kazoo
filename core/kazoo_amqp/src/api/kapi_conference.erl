@@ -369,7 +369,7 @@
                            ]).
 -define(CONFIG_REQ_TYPES, []).
 
--define(CONFIG_RESP_HEADERS, [[<<"Profiles">>, <<"Caller-Controls">>]]).
+-define(CONFIG_RESP_HEADERS, [<<"Profiles">>, <<"Caller-Controls">>]).
 -define(OPTIONAL_CONFIG_RESP_HEADERS, [<<"Advertise">>, <<"Chat-Permissions">>]).
 -define(CONFIG_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
                             ,{<<"Event-Name">>, <<"config_resp">>}

@@ -253,8 +253,8 @@ subscribe_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SUBSCRIBE_HEADERS, ?SUBSCRIBE_VALUES, ?SUBSCRIBE_TYPES);
 subscribe_v(JObj) -> subscribe_v(kz_json:to_proplist(JObj)).
 
--spec publish_subscribe(api_terms()) -> api_formatter_return().
--spec publish_subscribe(api_terms(), ne_binary()) -> api_formatter_return().
+-spec publish_subscribe(api_terms()) -> 'ok'.
+-spec publish_subscribe(api_terms(), ne_binary()) -> 'ok'.
 publish_subscribe(JObj) ->
     publish_subscribe(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_subscribe(Req, ContentType) ->
@@ -291,8 +291,8 @@ update_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?UPDATE_HEADERS, ?UPDATE_VALUES, ?UPDATE_TYPES);
 update_v(JObj) -> update_v(kz_json:to_proplist(JObj)).
 
--spec publish_update(api_terms()) -> api_formatter_return().
--spec publish_update(api_terms(), ne_binary()) -> api_formatter_return().
+-spec publish_update(api_terms()) -> 'ok'.
+-spec publish_update(api_terms(), ne_binary()) -> 'ok'.
 publish_update(JObj) ->
     publish_update(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_update(Req, ContentType) ->
@@ -303,10 +303,12 @@ publish_update(Req, ContentType) ->
 -spec update_routing_key(ne_binary(), ne_binary()) -> ne_binary().
 update_routing_key(Req) when is_list(Req) ->
     update_routing_key(props:get_value(<<"State">>, Req)
-                      ,props:get_value(<<"Presence-ID">>, Req));
+                      ,props:get_value(<<"Presence-ID">>, Req)
+                      );
 update_routing_key(Req) ->
     update_routing_key(kz_json:get_value(<<"State">>, Req)
-                      ,kz_json:get_value(<<"Presence-ID">>, Req)).
+                      ,kz_json:get_value(<<"Presence-ID">>, Req)
+                      ).
 
 update_routing_key(State, PresenceID) when is_binary(State) ->
     R = case binary:split(PresenceID, <<"@">>) of
@@ -551,8 +553,8 @@ flush_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FLUSH_HEADERS, ?FLUSH_VALUES, ?FLUSH_TYPES);
 flush_v(JObj) -> flush_v(kz_json:to_proplist(JObj)).
 
--spec publish_flush(api_terms()) -> api_formatter_return().
--spec publish_flush(api_terms(), ne_binary()) -> api_formatter_return().
+-spec publish_flush(api_terms()) -> 'ok'.
+-spec publish_flush(api_terms(), ne_binary()) -> 'ok'.
 publish_flush(JObj) ->
     publish_flush(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_flush(Req, ContentType) ->
@@ -577,8 +579,8 @@ sync_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SYNC_HEADERS, ?SYNC_VALUES, ?SYNC_TYPES);
 sync_v(JObj) -> sync_v(kz_json:to_proplist(JObj)).
 
--spec publish_sync(api_terms()) -> api_formatter_return().
--spec publish_sync(api_terms(), ne_binary()) -> api_formatter_return().
+-spec publish_sync(api_terms()) -> 'ok'.
+-spec publish_sync(api_terms(), ne_binary()) -> 'ok'.
 publish_sync(JObj) ->
     publish_sync(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_sync(Req, ContentType) ->
