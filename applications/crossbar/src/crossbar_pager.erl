@@ -33,7 +33,7 @@ ascending(Context, View, Filter) ->
 one_of(_, [], Default) -> Default;
 one_of(Context, [Value|Values], Default) ->
     case cb_context:req_value(Context, Value) of
-        undefined -> one_of(Context, Values, Default);
+        'undefined' -> one_of(Context, Values, Default);
         ReqValue -> kz_util:to_integer(ReqValue)
     end.
 
@@ -55,10 +55,10 @@ ascending_end_key(Context, StartKey) ->
 
 page_size() -> ?PAGINATION_PAGE_SIZE.
 page_size(Context) -> page_size(Context, cb_context:api_version(Context)).
-page_size(_Context, ?VERSION_1) -> undefined;
+page_size(_Context, ?VERSION_1) -> 'undefined';
 page_size(Context, _Version) ->
     case cb_context:req_value(Context, <<"page_size">>) of
-        undefined -> page_size();
+        'undefined' -> page_size();
         V -> kz_util:to_integer(V)
     end.
 
@@ -73,7 +73,7 @@ add_paging(StartKey, PageSize, NextStartKey, JObj) ->
 remove_paging(JObj) ->
     kz_json:delete_keys([<<"start_key">>, <<"page_size">>, <<"next_start_key">>], JObj).
 
-format_response(Context, _, undefined, _PageSize, JObjs) ->
+format_response(Context, _, 'undefined', _PageSize, JObjs) ->
     Envelope = remove_paging(cb_context:resp_envelope(Context)),
     crossbar_doc:handle_datamgr_success(JObjs, cb_context:set_resp_envelope(Context, Envelope));
 format_response(Context, StartKey, NextStartKey, PageSize, JObjs) ->
@@ -82,34 +82,34 @@ format_response(Context, StartKey, NextStartKey, PageSize, JObjs) ->
 
 build_qs_filter_mapper(Context) ->
     case crossbar_filter:defined(Context) of
-        true -> fun(JObjDoc) -> kz_json:get_value(<<"doc">>, JObjDoc) end;
-        false -> fun id/1
+        'true' -> fun(JObjDoc) -> kz_json:get_value(<<"doc">>, JObjDoc) end;
+        'false' -> fun id/1
     end.
 
 build_qs_filter_options(Context) ->
     case crossbar_filter:defined(Context) of
-        true -> [include_docs];
-        false -> []
+        'true' -> ['include_docs'];
+        'false' -> []
     end.
 
 build_filter_with_qs(Context, UserFilter) ->
     CtxFilter = crossbar_filter:build(Context),
     Mapper = build_qs_filter_mapper(Context),
-    build_filter_with_qs(erlang:fun_info(UserFilter, arity), Mapper, CtxFilter, UserFilter).
+    build_filter_with_qs(erlang:fun_info(UserFilter, 'arity'), Mapper, CtxFilter, UserFilter).
 
-build_filter_with_qs({arity,1}, Mapper, CtxFilter, UserFilter) ->
+build_filter_with_qs({'arity',1}, Mapper, CtxFilter, UserFilter) ->
     fun(JObjDoc, Acc) ->
             JObj = Mapper(JObjDoc),
             case CtxFilter(JObj) of
-                false -> Acc;
-                true -> [ UserFilter(JObjDoc) | Acc ]
+                'false' -> Acc;
+                'true' -> [ UserFilter(JObjDoc) | Acc ]
             end
     end;
-build_filter_with_qs({arity,2}, Mapper, CtxFilter, UserFilter) ->
+build_filter_with_qs({'arity',2}, Mapper, CtxFilter, UserFilter) ->
     fun(JObjDoc, Acc) ->
             JObj = Mapper(JObjDoc),
             case CtxFilter(JObj) of
-                false -> Acc;
-                true -> UserFilter(JObjDoc, Acc)
+                'false' -> Acc;
+                'true' -> UserFilter(JObjDoc, Acc)
             end
     end.
