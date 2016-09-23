@@ -221,7 +221,7 @@ validate(Context) ->
     validate_notifications(maybe_update_db(Context), ReqVerb).
 
 validate(Context, ?SMTP_LOG) ->
-    crossbar_pager:descending(Context, ?CB_LIST_SMTP_LOG, fun(JObj) -> kz_json:get_value(<<"value">>, JObj) end);
+    crossbar_pager:ascending(Context, ?CB_LIST_SMTP_LOG, fun(JObj) -> kz_json:get_value(<<"value">>, JObj) end);
 validate(Context, Id) ->
     ReqVerb = cb_context:req_verb(Context),
     DbId = kz_notification:db_id(Id),

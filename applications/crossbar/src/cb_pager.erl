@@ -11,7 +11,7 @@ descending(AccountId, View, Start, End, Limit, Filter, Options) when
 
 ascending(AccountId, View, Start, End, Limit, Filter, Options) when 
         is_binary(AccountId), is_binary(View), is_integer(Start), is_integer(End), is_integer(Limit), Start < End ->
-    MODbs = kazoo_modb:get_range(AccountId, End, Start),
+    MODbs = kazoo_modb:get_range(AccountId, Start, End),
     CouchOpts = [{'startkey', Start}, {'endkey', End} | Options],
     {_, LastKey, JObjs} =
         lists:foldl(fun fold_query/2, {Limit, undefined, []}, [ {Db, View, CouchOpts, Filter} || Db <- MODbs ]),
@@ -37,4 +37,4 @@ apply_filter({arity, 2}, Filter, Objects) -> lists:foldl(Filter, [], Objects).
 
 last_key([], _, _) -> {undefined, []};
 last_key(JObjs, Limit, Returned) when Returned < Limit -> {undefined, lists:reverse(JObjs)};
-last_key([Last|JObjs], Limit, Returned) when Returned == Limit -> {kz_json:get_value(<<"key">>, Last), lists:reverse(JObjs)}.
+last_key([Last|JObjs], Limit, Returned) when Returned == Limit -> {kz_json:get_value(<<"key">>, Last), JObjs}.
