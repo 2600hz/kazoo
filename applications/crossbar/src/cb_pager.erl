@@ -33,7 +33,7 @@ fold_query({Db, View, CouchOpts, Filter}, {Limit, _LastKey, Res}) when is_intege
     LimitWithLast = 1 + Limit - Queried,
     DbResults = limited_query(LimitWithLast, Db, View, CouchOpts),
     {LastKey, JObjs} = last_key(lists:reverse(DbResults), LimitWithLast, erlang:length(DbResults)),
-    {Limit, LastKey, Res ++ apply_filter(erlang:fun_info(Filter, 'arity'), Filter, JObjs)}.
+    {Limit, LastKey, Res ++ apply_filter(Filter, JObjs)}.
 
 -spec limited_query(integer(), binary(), binary(), list()) -> list().
 limited_query(Limit, _, _, _) when Limit < 0; Limit == 0 -> [];
@@ -44,9 +44,11 @@ limited_query(Limit, Db, View, CouchOpts) ->
         {'error', Error} -> throw(Error)
     end.
 
--spec apply_filter({arity, integer()}, fun(), list()) -> list().
-apply_filter({'arity', 1}, Map, Objects) -> lists:foldl(fun(Obj, Acc) -> [ Map(Obj) | Acc ] end, [], Objects);
-apply_filter({'arity', 2}, Filter, Objects) -> lists:foldl(Filter, [], Objects).
+-spec apply_filter(fun(), list()) -> list().
+apply_filter(Map, Objects) when is_function(Map, 1) ->
+    lists:foldl(fun(Obj, Acc) -> [ Map(Obj) | Acc ] end, [], Objects);
+apply_filter(Filter, Objects) when is_function(Filter, 2) ->
+    lists:foldl(Filter, [], Objects).
 
 -spec last_key(list(), integer(), integer()) -> {integer()|undefined, list()}.
 last_key([], _, _) -> {'undefined', []};
