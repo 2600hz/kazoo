@@ -381,28 +381,22 @@ load_view(View, Options, Context, StartKey, PageSize) ->
     load_view(View, Options, Context, StartKey, PageSize, 'undefined').
 
 load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
-    Dbs = [Db || Db <- props:get_value('databases', Options, [cb_context:account_db(Context)]),
-                 kz_datamgr:db_exists(Db, View)],
-    Direction = view_sort_direction(Options),
     load_view(#load_view_params{view=View
                                ,view_options=Options
                                ,context=cb_context:set_doc(Context, [])
                                ,start_key=StartKey
                                ,page_size=PageSize
                                ,filter_fun=FilterFun
-                               ,dbs=sort_by_direction(Direction, Dbs)
-                               ,direction=Direction
+                               ,dbs=[Db || Db <- props:get_value('databases', Options, [cb_context:account_db(Context)]),
+                                           kz_datamgr:db_exists(Db, View)]
+                               ,direction=view_sort_direction(Options)
                                }).
 
 -spec view_sort_direction(kz_proplist()) -> direction().
 view_sort_direction(Options) ->
-    Descending = props:get_value('descending', Options),
-    StartKey = props:get_value('startkey', Options),
-    EndKey = props:get_value('endkey', Options),
-    case {Descending, StartKey, EndKey} of
-        {'true', _, _} -> 'descending';
-        {_, StartKey, EndKey} when is_integer(StartKey), is_integer(EndKey), StartKey < EndKey -> 'descending';
-        {_, _, _} -> 'ascending'
+    case props:get_value('descending', Options) of
+        'true' -> 'descending';
+        'undefined' -> 'ascending'
     end.
 
 load_view(#load_view_params{dbs=[]
@@ -432,10 +426,14 @@ load_view(#load_view_params{view=View
                            }=LVPs) ->
     Limit = limit_by_page_size(Context, PageSize),
 
-    lager:debug("limit: ~p page_size: ~p dir: ~p start_key:~p db:~p", [Limit, PageSize, _Direction, StartKey, Db]),
+    lager:debug("limit: ~p page_size: ~p dir: ~p", [Limit, PageSize, _Direction]),
 
     DefaultOptions =
-        map_options(StartKey, [{'limit', Limit} | props:delete_keys(['limit', 'databases'], Options)]),
+        props:filter_undefined(
+          [{'startkey', StartKey}
+          ,{'limit', Limit}
+           | props:delete_keys(['startkey', 'limit', 'databases'], Options)
+          ]),
 
     IncludeOptions =
         case has_qs_filter(Context) of
@@ -476,28 +474,6 @@ load_view(#load_view_params{view=View
                                                                    }
                                              )
     end.
-
--spec map_options(term(), kz_proplist()) -> kz_proplist().
-map_options(CurrentKey, Options) ->
-    OptStartKey = props:get_value('startkey', Options),
-    OptEndKey = props:get_value('endkey', Options),
-    Descending = props:get_value('descending', Options),
-    map_options(CurrentKey, Descending, OptStartKey, OptEndKey, Options).
-
--spec map_options(term(), term(), term(), term(), kz_proplist()) -> kz_proplist().
-map_options(CurrentKey, 'true', _, _, Options) ->
-    CleanOpts = props:delete_keys(['startkey', 'descending'], Options),
-    props:filter_undefined([{'startkey', CurrentKey}, 'descending' | CleanOpts]);
-map_options(CurrentKey, _, StartKey, EndKey, Options) when
-      is_integer(CurrentKey),
-      is_integer(StartKey),
-      is_integer(EndKey),
-      StartKey < EndKey ->
-    CleanOpts = props:delete_keys(['startkey', 'endkey', 'descending'], Options),
-    props:filter_undefined([{'startkey', EndKey}, {'endkey', CurrentKey}, 'descending' | CleanOpts]);
-map_options(CurrentKey, _, _StartKey, _EndKey, Options) ->
-    CleanOpts = props:delete_keys(['startkey'], Options),
-    props:filter_undefined([{'startkey', CurrentKey} | CleanOpts]).
 
 -spec limit_by_page_size(api_binary() | pos_integer()) -> api_pos_integer().
 -spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer()) -> api_pos_integer().
@@ -922,12 +898,12 @@ handle_datamgr_pagination_success(JObjs
                                  ,?VERSION_1
                                  ,#load_view_params{context=Context
                                                    ,filter_fun=FilterFun
-                                                   ,direction=_Direction
+                                                   ,direction=Direction
                                                    }=LVPs
                                  ) ->
     load_view(LVPs#load_view_params{
                 context=cb_context:set_doc(Context
-                                          ,apply_filter(FilterFun, JObjs, Context)
+                                          ,apply_filter(FilterFun, JObjs, Context, Direction)
                                            ++ cb_context:doc(Context)
                                           )
                });
@@ -948,9 +924,10 @@ handle_datamgr_pagination_success([_|_]=JObjs
                                                    ,start_key=StartKey
                                                    ,filter_fun=FilterFun
                                                    ,page_size=PageSize
+                                                   ,direction=Direction
                                                    }=LVPs
                                  ) ->
-    Filtered = apply_filter(FilterFun, JObjs, Context),
+    Filtered = apply_filter(FilterFun, JObjs, Context, Direction),
     FilteredCount = length(Filtered),
 
     load_view(LVPs#load_view_params{context=
@@ -968,11 +945,13 @@ handle_datamgr_pagination_success([_|_]=JObjs
                                  ,#load_view_params{context=Context
                                                    ,start_key=StartKey
                                                    ,filter_fun=FilterFun
+                                                   ,direction=Direction
                                                    }=LVPs
                                  ) ->
     try lists:split(PageSize, JObjs) of
         {Results, []} ->
-            Filtered = apply_filter(FilterFun, Results, Context),
+            Filtered = apply_filter(FilterFun, Results, Context, Direction),
+
             load_view(LVPs#load_view_params{
                         context=
                             cb_context:set_doc(
@@ -983,7 +962,7 @@ handle_datamgr_pagination_success([_|_]=JObjs
                        });
         {Results, [NextJObj]} ->
             NextStartKey = kz_json:get_value(<<"key">>, NextJObj),
-            Filtered = apply_filter(FilterFun, Results, Context),
+            Filtered = apply_filter(FilterFun, Results, Context, Direction),
             lager:debug("next start key: ~p", [NextStartKey]),
 
             load_view(LVPs#load_view_params{
@@ -996,7 +975,7 @@ handle_datamgr_pagination_success([_|_]=JObjs
                        })
     catch
         'error':'badarg' ->
-            Filtered = apply_filter(FilterFun, JObjs, Context),
+            Filtered = apply_filter(FilterFun, JObjs, Context, Direction),
             FilteredCount = length(Filtered),
 
             lager:debug("recv less than ~p results: ~p", [PageSize, FilteredCount]),
@@ -1011,28 +990,32 @@ handle_datamgr_pagination_success([_|_]=JObjs
                        })
     end.
 
--spec sort_by_direction('ascending' | 'descending' | 'undefined', kz_json:objects()) -> kz_json:objects().
-sort_by_direction('ascending', List) -> List;
-sort_by_direction(_, List) -> lists:reverse(List).
-
 -type filter_fun() :: fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()) |
                       fun((cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects()).
 
--spec apply_filter('undefined' | filter_fun(), kz_json:objects(), cb_context:context()) ->
+-spec apply_filter('undefined' | filter_fun(), kz_json:objects(), cb_context:context(), direction()) ->
                           kz_json:objects().
--spec apply_filter('undefined' | filter_fun(), kz_json:objects(), cb_context:context(), boolean()) ->
+-spec apply_filter('undefined' | filter_fun(), kz_json:objects(), cb_context:context(), direction(), boolean()) ->
                           kz_json:objects().
-apply_filter(FilterFun, JObjs, Context) ->
-    apply_filter(FilterFun, JObjs, Context, has_qs_filter(Context)).
+apply_filter(FilterFun, JObjs, Context, Direction) ->
+    apply_filter(FilterFun, JObjs, Context, Direction, has_qs_filter(Context)).
 
-apply_filter(FilterFun, JObjs, Context, HasQSFilter) ->
-    lager:debug("applying filter fun: ~p, qs filter: ~p", [FilterFun, HasQSFilter]),
-    maybe_apply_custom_filter(Context
-                             ,FilterFun
-                             ,[JObj
-                               || JObj <- JObjs,
-                                  filtered_doc_by_qs(JObj, HasQSFilter, Context)
-                              ]).
+apply_filter(FilterFun, JObjs, Context, Direction, HasQSFilter) ->
+    lager:debug("applying filter fun: ~p, qs filter: ~p to dir ~p", [FilterFun, HasQSFilter, Direction]),
+
+    Filtered =
+        maybe_apply_custom_filter(Context
+                                 ,FilterFun
+                                 ,[JObj
+                                   || JObj <- JObjs,
+                                      filtered_doc_by_qs(JObj, HasQSFilter, Context)
+                                  ]),
+    lager:debug("filter resulted in ~p out of ~p objects"
+               ,[length(Filtered), length(JObjs)]),
+    case Direction of
+        'ascending' -> Filtered;
+        'descending' -> lists:reverse(Filtered)
+    end.
 
 -spec maybe_apply_custom_filter(cb_context:context(), 'undefined' | filter_fun(), kz_json:objects()) -> kz_json:objects().
 maybe_apply_custom_filter(_Context, 'undefined', JObjs) -> JObjs;
