@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflow.children",
+    "default": {},
+     "type": "object",
+     "additionalProperties" : false,
+    "patternProperties": {
+                ".+": {
+                    "$ref": "metaflow"
+                }
+            },
+    "description": "A metaflow child nodes"
+}
+
+    

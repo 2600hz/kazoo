@@ -1,0 +1,8 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflow.break",
+    "description": "Skeleton JSON schema",
+    "properties": {},
+    "type": "object",
+    "additionalProperties" : false
+}

@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "metaflow.move",
+    "description": "Skeleton JSON schema",
+    "properties": {
+        "auto_answer": {
+            "default": false,
+            "description": "",
+            "type": "boolean"
+        },
+        "device_id": {
+            "description": ""
+        },
+        "owner_id": {
+            "description": ""
+        }
+    },
+    "required": true,
+    "type": "object"
+}

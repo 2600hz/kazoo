@@ -1,0 +1,14 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "metaflow.play",
+    "description": "Skeleton JSON schema",
+    "properties": {
+        "leg": {
+            "default": "both",
+            "description": "",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

@@ -1,0 +1,25 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "metaflow.intercept",
+    "description": "Skeleton JSON schema",
+    "properties": {
+        "auto_answer": {
+            "default": false,
+            "description": "",
+            "type": "boolean"
+        },
+        "target_id": {
+            "description": ""
+        },
+        "target_type": {
+            "description": ""
+        },
+        "unbridged_only": {
+            "default": true,
+            "description": "",
+            "type": "boolean"
+        }
+    },
+    "required": true,
+    "type": "object"
+}
