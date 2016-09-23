@@ -113,7 +113,7 @@ validate_channels(Context, ?HTTP_GET) ->
 validate_channel(Context, Id, ?HTTP_GET) ->
     read(cb_context:set_resp_data(Context, kz_json:new()), Id);
 validate_channel(Context, Id, ?HTTP_POST) ->
-    update(Context, Id).
+    update(Context, Id);
 validate_channel(Context, Id, ?HTTP_PUT) ->
     validate_action(Context, Id).
 
@@ -239,10 +239,17 @@ maybe_execute_command(Context, _CallId, _Command) ->
 -spec validate_action(cb_context:context(), ne_binary()) -> cb_context:context().
 -spec validate_action(cb_context:context(), ne_binary(), api_binary()) -> cb_context:context().
 validate_action(Context, CallId) ->
-    validate_action(Context, CallId, cb_context:req_value(Context, <<"action">>)).
+    Ctx = read(Context, CallId),
+    case cb_context:has_errors(Ctx) of
+        'true' -> Ctx;
+        'false' -> validate_action(Ctx, CallId, cb_context:req_value(Context, <<"action">>))
+    end.
 
-validate_action(Context, UUID, <<"metaflow">>) ->
+validate_action(Context, _UUID, <<"metaflow">>) ->
     cb_context:validate_request_data(<<"metaflow">>, Context);
+validate_action(Context, _UUID, _Action) ->
+    lager:debug("unknown action: ~s", [_Action]),
+    crossbar_util:response_invalid_data(cb_context:doc(Context), Context).
 
 %%--------------------------------------------------------------------
 %% @private
