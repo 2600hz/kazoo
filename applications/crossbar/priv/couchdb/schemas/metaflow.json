@@ -103,8 +103,7 @@
                 }
             },
             "required": [
-                "module",
-                "data"
+                "module"
             ],
             "type": "object"
         },
@@ -124,8 +123,7 @@
                 }
             },
             "required": [
-                "module",
-                "data"
+                "module"
             ],
             "type": "object"
         },
