@@ -111,7 +111,7 @@ process_req(JObj) ->
 
     Subject =
         teletype_util:render_subject(
-          kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+          kz_json:find(<<"subject">>, [TemplateMetaJObj, DataJObj], ?TEMPLATE_SUBJECT)
                                     ,Macros
          ),
 
