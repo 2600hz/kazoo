@@ -1,3 +1,12 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2011-2016, 2600Hz
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%   Roman Galeev
+%%%-------------------------------------------------------------------
+
 -module(crossbar_filter).
 -include("crossbar.hrl").
 -export([build/1, defined/1]).

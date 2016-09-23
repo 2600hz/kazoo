@@ -1,3 +1,12 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2011-2016, 2600Hz
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%   Roman Galeev
+%%%-------------------------------------------------------------------
+
 -module(crossbar_pager).
 -include("crossbar.hrl").
 -export([descending/2, descending/3, ascending/2, ascending/3]).
