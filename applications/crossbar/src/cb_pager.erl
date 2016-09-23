@@ -50,7 +50,7 @@ apply_filter(Map, Objects) when is_function(Map, 1) ->
 apply_filter(Filter, Objects) when is_function(Filter, 2) ->
     lists:foldl(Filter, [], Objects).
 
--spec last_key(kz_json:objects(), integer(), integer()) -> {integer()|undefined, kz_json:objects()}.
+-spec last_key(kz_json:objects(), integer(), integer()) -> {integer()|'undefined', kz_json:objects()}.
 last_key([], _, _) -> {'undefined', []};
 last_key(JObjs, Limit, Returned) when Returned < Limit -> {'undefined', JObjs};
 last_key([Last|JObjs], Limit, Returned) when Returned == Limit -> {kz_json:get_value(<<"key">>, Last), JObjs}.
