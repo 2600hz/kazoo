@@ -202,7 +202,7 @@ get_callee_extension_info(Call) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec bootstrap_callflow_executer(kz_json:object(), kapps_call:call()) -> {'ok', pid()}.
+-spec bootstrap_callflow_executer(kz_json:object(), kapps_call:call()) -> kapps_call:call().
 bootstrap_callflow_executer(_JObj, Call) ->
     Routines = [fun store_owner_id/1
                ,fun set_language/1
