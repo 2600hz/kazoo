@@ -15,7 +15,7 @@ true(_) -> 'true'.
 
 build(Context) ->
     QS = cb_context:query_string(Context),
-    build(Context, defined_in(QS)).
+    build(QS, defined_in(QS)).
 
 build(_QS, 'false') -> fun true/1;
 build(QS, 'true') -> build_with(QS).
