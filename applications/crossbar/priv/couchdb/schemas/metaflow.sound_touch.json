@@ -5,7 +5,7 @@
     "properties": {
         "action": {
             "description": "",
-            "required" : true
+            "required": true
         },
         "adjust_in_octaves": {
             "description": "",
