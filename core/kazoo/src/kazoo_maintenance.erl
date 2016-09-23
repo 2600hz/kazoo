@@ -8,7 +8,6 @@
 %%%-------------------------------------------------------------------
 -module(kazoo_maintenance).
 
--export([nodes/0]).
 -export([hotload/1
         ,hotload_app/1
         ]).
@@ -36,10 +35,6 @@ error_level(Level) ->
 -spec console_level(text()) -> 'ok'.
 console_level(Level) ->
     kz_util:change_console_log_level(kz_util:to_atom(Level)).
-
--spec nodes() -> 'no_return'.
-nodes() ->
-    kz_nodes:status().
 
 -spec hotload(text() | atom()) -> 'ok' | 'no_return'.
 hotload(Module) when is_atom(Module) ->
