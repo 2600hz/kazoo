@@ -4605,31 +4605,554 @@
             "type": "object"
         },
         "metaflow": {
-            "additionalProperties": false,
             "description": "A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to",
-            "properties": {
-                "children": {
-                    "default": {},
-                    "patternProperties": {
-                        ".+": {
-                            "$ref": "metaflow"
+            "oneOf": [
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "children": {
+                            "$ref": "metaflow_children"
+                        },
+                        "data": {
+                            "$ref": "metaflow.break"
+                        },
+                        "module": {
+                            "enum": [
+                                "break"
+                            ]
                         }
                     },
-                    "required": false,
+                    "required": [
+                        "module",
+                        "data"
+                    ],
                     "type": "object"
                 },
-                "data": {
-                    "default": {},
-                    "description": "Module Data",
-                    "required": true,
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "children": {
+                            "$ref": "metaflow_children"
+                        },
+                        "data": {
+                            "$ref": "metaflow.say"
+                        },
+                        "module": {
+                            "enum": [
+                                "say"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "module",
+                        "data"
+                    ],
                     "type": "object"
                 },
-                "module": {
-                    "maxLength": 15,
-                    "required": true,
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "children": {
+                            "$ref": "metaflow_children"
+                        },
+                        "data": {
+                            "$ref": "metaflow.audio_level"
+                        },
+                        "module": {
+                            "enum": [
+                                "audio_level"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "module",
+                        "data"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "children": {
+                            "$ref": "metaflow_children"
+                        },
+                        "data": {
+                            "$ref": "metaflow.callflow"
+                        },
+                        "module": {
+                            "enum": [
+                                "callflow"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "module",
+                        "data"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "children": {
+                            "$ref": "metaflow_children"
+                        },
+                        "data": {
+                            "$ref": "metaflow.hangup"
+                        },
+                        "module": {
+                            "enum": [
+                                "hangup"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "module"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "children": {
+                            "$ref": "metaflow_children"
+                        },
+                        "data": {
+                            "$ref": "metaflow.hold"
+                        },
+                        "module": {
+                            "enum": [
+                                "hold"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "module"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "children": {
+                            "$ref": "metaflow_children"
+                        },
+                        "data": {
+                            "$ref": "metaflow.intercept"
+                        },
+                        "module": {
+                            "enum": [
+                                "intercept"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "module",
+                        "data"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "children": {
+                            "$ref": "metaflow_children"
+                        },
+                        "data": {
+                            "$ref": "metaflow.move"
+                        },
+                        "module": {
+                            "enum": [
+                                "move"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "module",
+                        "data"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "children": {
+                            "$ref": "metaflow_children"
+                        },
+                        "data": {
+                            "$ref": "metaflow.play"
+                        },
+                        "module": {
+                            "enum": [
+                                "play"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "module",
+                        "data"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "children": {
+                            "$ref": "metaflow_children"
+                        },
+                        "data": {
+                            "$ref": "metaflow.record_call"
+                        },
+                        "module": {
+                            "enum": [
+                                "record_call"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "module",
+                        "data"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "children": {
+                            "$ref": "metaflow_children"
+                        },
+                        "data": {
+                            "$ref": "metaflow.resume"
+                        },
+                        "module": {
+                            "enum": [
+                                "resume"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "module",
+                        "data"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "children": {
+                            "$ref": "metaflow_children"
+                        },
+                        "data": {
+                            "$ref": "metaflow.sound_touch"
+                        },
+                        "module": {
+                            "enum": [
+                                "sound_touch"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "module",
+                        "data"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "children": {
+                            "$ref": "metaflow_children"
+                        },
+                        "data": {
+                            "$ref": "metaflow.transfer"
+                        },
+                        "module": {
+                            "enum": [
+                                "transfer"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "module",
+                        "data"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "children": {
+                            "$ref": "metaflow_children"
+                        },
+                        "data": {
+                            "$ref": "metaflow.tts"
+                        },
+                        "module": {
+                            "enum": [
+                                "tts"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "module",
+                        "data"
+                    ],
+                    "type": "object"
+                }
+            ],
+            "type": "object"
+        },
+        "metaflow.audio_level": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "action": {
+                    "description": ""
+                },
+                "level": {
+                    "description": ""
+                },
+                "mode": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "metaflow.break": {
+            "additionalProperties": false,
+            "description": "Skeleton JSON schema",
+            "properties": {},
+            "type": "object"
+        },
+        "metaflow.callflow": {
+            "description": "Skeleton JSON schema",
+            "properties": {},
+            "required": true,
+            "type": "object"
+        },
+        "metaflow.hangup": {
+            "description": "Skeleton JSON schema",
+            "properties": {},
+            "required": true,
+            "type": "object"
+        },
+        "metaflow.hold": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "moh_aleg": {
+                    "description": ""
+                },
+                "moh_bleg": {
+                    "description": ""
+                },
+                "unhold_key": {
+                    "default": "1",
+                    "description": "",
                     "type": "string"
                 }
-            }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "metaflow.intercept": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "auto_answer": {
+                    "default": false,
+                    "description": "",
+                    "type": "boolean"
+                },
+                "target_id": {
+                    "description": ""
+                },
+                "target_type": {
+                    "description": ""
+                },
+                "unbridged_only": {
+                    "default": true,
+                    "description": "",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "metaflow.move": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "auto_answer": {
+                    "default": false,
+                    "description": "",
+                    "type": "boolean"
+                },
+                "device_id": {
+                    "description": ""
+                },
+                "owner_id": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "metaflow.play": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "leg": {
+                    "default": "both",
+                    "description": "",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "metaflow.record_call": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "action": {
+                    "default": "toggle",
+                    "description": "",
+                    "type": "string"
+                },
+                "format": {
+                    "description": ""
+                },
+                "media_name": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "metaflow.resume": {
+            "description": "Skeleton JSON schema",
+            "properties": {},
+            "required": true,
+            "type": "object"
+        },
+        "metaflow.say": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "language": {
+                    "description": ""
+                },
+                "method": {
+                    "description": ""
+                },
+                "text": {
+                    "description": "",
+                    "type": "string"
+                },
+                "type": {
+                    "description": ""
+                }
+            },
+            "required": [
+                "text"
+            ],
+            "type": "object"
+        },
+        "metaflow.sound_touch": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "action": {
+                    "description": "",
+                    "required": true
+                },
+                "adjust_in_octaves": {
+                    "description": "",
+                    "type": "integer"
+                },
+                "adjust_in_semitones": {
+                    "description": "",
+                    "type": "integer"
+                },
+                "hook_dtmf": {
+                    "default": false,
+                    "description": "",
+                    "type": "boolean"
+                },
+                "pitch": {
+                    "description": "",
+                    "type": "integer"
+                },
+                "rate": {
+                    "description": "",
+                    "type": "integer"
+                },
+                "sending_leg": {
+                    "default": false,
+                    "description": "",
+                    "type": "boolean"
+                },
+                "tempo": {
+                    "description": "",
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "metaflow.transfer": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "Transfer-Type": {
+                    "default": "attended",
+                    "description": "",
+                    "type": "string"
+                },
+                "captures": {
+                    "description": ""
+                },
+                "target": {
+                    "description": ""
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "metaflow.tts": {
+            "description": "Skeleton JSON schema",
+            "properties": {
+                "engine": {
+                    "default": "flite",
+                    "description": "",
+                    "type": "string"
+                },
+                "language": {
+                    "description": ""
+                },
+                "leg": {
+                    "default": "self",
+                    "description": "",
+                    "type": "string"
+                },
+                "terminators": {
+                    "description": ""
+                },
+                "text": {
+                    "description": ""
+                },
+                "voice": {
+                    "default": "female",
+                    "description": "",
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "metaflow_children": {
+            "additionalProperties": false,
+            "default": {},
+            "description": "A metaflow child nodes",
+            "patternProperties": {
+                ".+": {
+                    "$ref": "metaflow"
+                }
+            },
+            "type": "object"
         },
         "metaflows": {
             "additionalProperties": false,
@@ -13835,6 +14358,20 @@
                 ]
             },
             "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/uuid"
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "put": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/uuid"
