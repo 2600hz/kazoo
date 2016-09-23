@@ -15,7 +15,7 @@ dep_detergent = git https://github.com/pap/detergent e86dfeded3e4f9f3f9278c6a1ae
 dep_jiffy = hex 0.14.7
 dep_nklib = git https://github.com/NetComposer/nklib
 
-dep_couchbeam = git https://github.com/lazedo/couchbeam 1.3.1.1
+dep_couchbeam = git https://github.com/lazedo/couchbeam 1.3.1.2
 ###dep_couchbeam = git https://github.com/benoitc/couchbeam 1.3.1
 ### waiting for pull request
 ### https://github.com/benoitc/couchbeam/pull/149

@@ -20,9 +20,8 @@ push(RegIds, Message, Key) ->
             {ok, kz_json:decode(Body)};
         {ok, {{_, 400, _}, _, _}} -> {error, json_error};
         {ok, {{_, 401, _}, _, _}} -> {error, auth_error};
-        {ok, {{_, Code, _}, Headers, _}}
-          when Code >= 500
-               andalso Code =< 599 ->
+        {ok, {{_, Code, _}, Headers, _}} when Code >= 500,
+                                              Code =< 599 ->
             RetryTime = retry_after_from(Headers),
             {error, {retry, RetryTime}};
         {ok, {{_StatusLine, _, _}, _, _Body}} ->
@@ -40,7 +39,7 @@ push(RegIds, Message, Key) ->
 
 -spec retry_after_from(headers()) -> 'no_retry' | non_neg_integer().
 retry_after_from(Headers) ->
-    case proplists:get_value("retry-after", Headers) of
+    case props:get_value("retry-after", Headers) of
         undefined ->
             no_retry;
         RetryTime ->

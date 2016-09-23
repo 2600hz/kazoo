@@ -69,6 +69,18 @@
        ,<<"metaflow.flow.", (amqp_util:encode(CallId))/binary>>
        ).
 
+%% Metaflow flow
+-define(METAFLOW_FLOW_HEADERS, [<<"Flow">>, <<"Call-ID">>]).
+-define(OPTIONAL_METAFLOW_FLOW_HEADERS, []).
+-define(METAFLOW_FLOW_VALUES, [{<<"Event-Category">>, <<"metaflow">>}
+                              ,{<<"Event-Name">>, <<"flow">>}
+                              ]).
+-define(METAFLOW_FLOW_TYPES, [{<<"Flow">>, fun kz_json:is_json_object/1}]).
+
+-define(METAFLOW_FLOW_ROUTING_KEY(CallId)
+       ,<<"metaflow.flow.", (amqp_util:encode(CallId))/binary>>
+       ).
+
 %% Metaflow Bind
 -define(METAFLOW_BIND_REQ_HEADERS, [<<"Account-ID">>, <<"Binding-Leg">>]).
 -define(OPTIONAL_METAFLOW_BIND_REQ_HEADERS, [<<"Call-ID">>
@@ -87,7 +99,7 @@
        ).
 
 
--define(METAFLOW_BIND_HEADERS, [[<<"Call">> , <<"Call-ID">>]]).
+-define(METAFLOW_BIND_HEADERS, [<<"Call">> , <<"Call-ID">>]).
 -define(OPTIONAL_METAFLOW_BIND_HEADERS, [<<"Numbers">>, <<"Patterns">>
                                         ,<<"Binding-Digit">>, <<"Digit-Timeout">>
                                         ,<<"Endpoint-ID">>, <<"Listen-On">>

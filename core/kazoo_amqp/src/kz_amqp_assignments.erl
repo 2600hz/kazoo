@@ -308,8 +308,8 @@ release_assignments({[#kz_amqp_assignment{timestamp=Timestamp
 %% @end
 %%--------------------------------------------------------------------
 
--spec maybe_reassign(pid()) -> 'undefined' | kz_amqp_assignment().
-maybe_reassign(Consumer) ->
+-spec maybe_reassign(pid()) -> 'ok' | 'undefined' | kz_amqp_assignment().
+maybe_reassign(Consumer) when is_pid(Consumer) ->
     Pattern = #kz_amqp_assignment{consumer=Consumer, _='_'},
     case ets:match_object(?TAB, Pattern, 1) of
         '$end_of_table' -> 'ok';

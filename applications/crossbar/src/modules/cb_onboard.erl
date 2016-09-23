@@ -539,7 +539,7 @@ populate_new_account([{Event, Context}|Props], AccountDb, Results) ->
 prepare_props(Props) ->
     lists:sort(fun({<<"braintree">>, _}, {_, _}) -> 'true';
                   (_, _) -> 'false'
-               end, proplists:delete(?KZ_ACCOUNTS_DB, Props)).
+               end, props:delete(?KZ_ACCOUNTS_DB, Props)).
 
 %%--------------------------------------------------------------------
 %% @private

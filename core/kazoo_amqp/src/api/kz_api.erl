@@ -320,7 +320,7 @@ publish_error(TargetQ, Error, ContentType) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec validate(api_terms(), api_headers(), kz_proplist(), kz_proplist()) -> boolean().
+-spec validate(api_terms(), api_headers(), api_valid_values(), api_types()) -> boolean().
 validate(Prop, ReqH, Vals, Types) when is_list(Prop) ->
     case has_all(Prop, ?DEFAULT_HEADERS)
         andalso validate_message(Prop, ReqH, Vals, Types)

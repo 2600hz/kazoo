@@ -79,7 +79,7 @@ next_state(#state{cache=Cache, now_ms=NowMs}=Model, _V
     Obj = #cache_obj{key=Key
                     ,value=Value
                     ,timestamp=NowMs
-                    ,expires=proplists:get_value('expires', Props)
+                    ,expires=props:get_value('expires', Props)
                     },
     NewCache = case lists:keytake(Key, #cache_obj.key, Cache) of
                    'false' -> Cache;

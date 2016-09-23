@@ -113,7 +113,7 @@ maybe_relay_event(JObj, Props) ->
 relay_cdr_event(JObj, Props) ->
     case kz_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
-            Pid = proplists:get_value('server', Props),
+            Pid = props:get_value('server', Props),
             gen_listener:cast(Pid, {'cdr', JObj});
         _ -> 'ok'
     end.

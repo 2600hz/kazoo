@@ -587,6 +587,8 @@ prepare_transaction(#kz_transaction{pvt_account_id='undefined'}) ->
     {'error', 'account_id_missing'};
 prepare_transaction(#kz_transaction{pvt_account_db='undefined'}) ->
     {'error', 'account_db_missing'};
+prepare_transaction(#kz_transaction{id='undefined'}=Transaction) ->
+    prepare_transaction(Transaction#kz_transaction{id=modb_doc_id()});
 prepare_transaction(#kz_transaction{pvt_code=Code}=Transaction)
   when ?CODE_PER_MINUTE_CALL =:= Code
        orelse ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL =:= Code ->
@@ -698,3 +700,12 @@ create(Ledger, Amount, Type) ->
                    ,pvt_created=kz_util:current_tstamp()
                    ,pvt_modified=kz_util:current_tstamp()
                    }.
+
+-spec modb_doc_id() -> ne_binary().
+modb_doc_id() ->
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(kz_util:current_tstamp()),
+    <<(kz_util:to_binary(Year))/binary
+      ,(kz_util:pad_month(Month))/binary
+      ,"-"
+      ,(kz_util:rand_hex_binary(16))/binary
+    >>.

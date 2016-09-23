@@ -307,7 +307,7 @@ setters(#cb_context{}=Context, []) -> Context;
 setters(#cb_context{}=Context, [_|_]=Setters) ->
     lists:foldl(fun setters_fold/2, Context, Setters).
 
--spec setters_fold(setter_kv(), context()) -> context().
+-spec setters_fold(setter_kv(), context() | kz_json:object()) -> context().
 setters_fold({F, V}, C) -> F(C, V);
 setters_fold({F, K, V}, C) -> F(C, K, V);
 setters_fold(F, C) when is_function(F, 1) -> F(C).
@@ -494,9 +494,12 @@ set_profile_id(#cb_context{}=Context, Value) ->
     Context#cb_context{profile_id = Value}.
 
 
--spec update_doc(context(), setter_fun_1()) -> context().
+-spec update_doc(context(), setter_kv() | setters()) -> context().
+update_doc(#cb_context{doc=Doc}=Context, Updaters)
+  when is_list(Updaters) ->
+    Context#cb_context{doc=lists:foldl(fun setters_fold/2, Doc, Updaters)};
 update_doc(#cb_context{doc=Doc}=Context, Updater) ->
-    Context#cb_context{doc=Updater(Doc)}.
+    Context#cb_context{doc=setters_fold(Updater, Doc)}.
 
 %% Helpers
 
