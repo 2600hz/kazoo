@@ -2,13 +2,13 @@
 -include("crossbar.hrl").
 -export([build/1, defined/1]).
 
-id(X) -> X.
+true(_) -> true.
 
 build(Context) ->
     QS = cb_context:query_string(Context),
     build(Context, defined_in(QS)).
 
-build(_QS, false) -> fun id/1;
+build(_QS, false) -> fun true/1;
 build(QS, true) -> build_with(QS).
 
 defined(Context) ->
