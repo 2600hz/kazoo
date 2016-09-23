@@ -1646,11 +1646,11 @@ sound_touch_options(JObj) ->
                                               end
                                  end
                }
-              ,{<<"Adjust-In-Semitones">>, fun(V, L) -> [io_lib:format("~bs", V) | L] end}
-              ,{<<"Adjust-In-Octaves">>, fun(V, L) -> [io_lib:format("~bo", V) | L] end}
-              ,{<<"Pitch">>, fun(V, L) -> [io_lib:format("~bo", V) | L] end}
-              ,{<<"Rate">>, fun(V, L) -> [io_lib:format("~bo", V) | L] end}
-              ,{<<"Tempo">>, fun(V, L) -> [io_lib:format("~bo", V) | L] end}
+              ,{<<"Adjust-In-Semitones">>, fun(V, L) -> [io_lib:format("~ss", [V]) | L] end}
+              ,{<<"Adjust-In-Octaves">>, fun(V, L) -> [io_lib:format("~so", [V]) | L] end}
+              ,{<<"Pitch">>, fun(V, L) -> [io_lib:format("~so", [V]) | L] end}
+              ,{<<"Rate">>, fun(V, L) -> [io_lib:format("~so", [V]) | L] end}
+              ,{<<"Tempo">>, fun(V, L) -> [io_lib:format("~so", [V]) | L] end}
               ],
     {Args, _} = lists:foldl(fun sound_touch_options_fold/2, {[], JObj}, Options),
     kz_util:join_binary(lists:reverse(Args), <<" ">>).
