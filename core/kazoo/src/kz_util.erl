@@ -1351,7 +1351,7 @@ kazoo_version() ->
     {_, _, Version} = get_app('kazoo'),
     to_binary(Version).
 
--spec write_pid(ne_binary() | nonempty_string() | iolist()) -> 'ok' | {'error', atom()}.
+-spec write_pid(file:filename_all()) -> 'ok' | {'error', atom()}.
 write_pid(FileName) ->
     file:write_file(FileName, io_lib:format("~s", [os:getpid()]), ['write', 'binary']).
 
@@ -1584,12 +1584,12 @@ node_hostname() ->
 
 
 %% @public
--spec write_file(file:name(), iodata()) -> 'ok'.
+-spec write_file(file:filename_all(), iodata()) -> 'ok'.
 write_file(Filename, Bytes) ->
     write_file(Filename, Bytes, []).
 
 %% @public
--spec write_file(file:name(), iodata(), [file:mode()]) -> 'ok'.
+-spec write_file(file:filename_all(), iodata(), [file:mode()]) -> 'ok'.
 write_file(Filename, Bytes, Modes) ->
     case file:write_file(Filename, Bytes, Modes) of
         'ok' -> 'ok';
@@ -1598,7 +1598,7 @@ write_file(Filename, Bytes, Modes) ->
     end.
 
 %% @public
--spec delete_file(file:name_all()) -> 'ok'.
+-spec delete_file(file:filename_all()) -> 'ok'.
 delete_file(Filename) ->
     case file:delete(Filename) of
         'ok' -> 'ok';
@@ -1607,7 +1607,7 @@ delete_file(Filename) ->
     end.
 
 %% @public
--spec make_dir(file:name()) -> 'ok'.
+-spec make_dir(file:filename_all()) -> 'ok'.
 make_dir(Filename) ->
     case file:make_dir(Filename) of
         'ok' -> 'ok';
