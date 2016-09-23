@@ -86,16 +86,16 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
 fix_account_numbers(Account = ?NE_BINARY) ->
     fix_account_numbers(kz_util:format_account_db(Account)).
 
--spec migrate() -> ok.
+-spec migrate() -> 'ok'.
 migrate() ->
     AccountDbs = kapps_util:get_all_accounts(),
     foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun migrate/1, AccountDbs).
 
--spec migrate(ne_binary()) -> ok.
+-spec migrate(ne_binary()) -> 'ok'.
 migrate(AccountDb) ->
     fix_account_numbers(AccountDb),
     _ = kz_datamgr:del_doc(AccountDb, <<"phone_numbers">>),
-    ok.
+    'ok'.
 
 %%%===================================================================
 %%% Internal functions
