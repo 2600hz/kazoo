@@ -11,12 +11,14 @@
         },
         "text": {
             "description": "",
-            "type" : "string"
+            "type": "string"
         },
         "type": {
             "description": ""
         }
     },
-    "required": ["text"],
+    "required": [
+        "text"
+    ],
     "type": "object"
 }
