@@ -52,5 +52,5 @@ apply_filter(Filter, Objects) when is_function(Filter, 2) ->
 
 -spec last_key(list(), integer(), integer()) -> {integer()|undefined, list()}.
 last_key([], _, _) -> {'undefined', []};
-last_key(JObjs, Limit, Returned) when Returned < Limit -> {'undefined', lists:reverse(JObjs)};
+last_key(JObjs, Limit, Returned) when Returned < Limit -> {'undefined', JObjs};
 last_key([Last|JObjs], Limit, Returned) when Returned == Limit -> {kz_json:get_value(<<"key">>, Last), JObjs}.
