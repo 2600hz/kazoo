@@ -76,6 +76,9 @@ send_email(Emails, Subject, RenderedTemplates, Attachments) ->
     case relay_email(To, From, Email) of
         {'ok', Receipt} ->
             maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, 'undefined');
+        {'error', {error, Reason} = E} ->
+            maybe_log_smtp(Emails, Subject, RenderedTemplates, 'undefined', kz_util:to_binary(Reason)),
+            E;
         {'error', Reason} = E ->
             maybe_log_smtp(Emails, Subject, RenderedTemplates, 'undefined', kz_util:to_binary(Reason)),
             E
@@ -84,7 +87,7 @@ send_email(Emails, Subject, RenderedTemplates, Attachments) ->
 -spec maybe_log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary()) -> 'ok'.
 -spec maybe_log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary(), boolean()) -> 'ok'.
 maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error) ->
-    Skip = kz_util:is_true(get('skip_smtp_log')),
+    Skip = not kz_util:is_true(get('skip_smtp_log')),
     maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, Skip).
 
 maybe_log_smtp(_Emails, _Subject, _RenderedTemplates, _Receipt, _Error, 'true') ->

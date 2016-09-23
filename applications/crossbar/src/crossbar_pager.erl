@@ -15,26 +15,26 @@ descending(Context, View, Filter) ->
     StartKey = start_key(Context),
     EndKey = end_key(Context, StartKey),
     AccountId = cb_context:account_id(Context),
-    Filter = build_filter_with_qs(Context, Filter),
+    CtxFilter = build_filter_with_qs(Context, Filter),
     Options = build_qs_filter_options(Context),
-    JObjs = cb_pager:descending(AccountId, View, StartKey, EndKey, PageSize+1, Filter, Options),
-    format_response(Context, StartKey, PageSize, erlang:length(JObjs), JObjs).
+    {LastKey, JObjs} = cb_pager:descending(AccountId, View, StartKey, EndKey, PageSize, CtxFilter, Options),
+    format_response(Context, StartKey, LastKey, PageSize, erlang:length(JObjs), JObjs).
 
 ascending(Context, View, Filter) ->
     PageSize = page_size(Context),
     StartKey = ascending_start_key(Context),
     EndKey = ascending_end_key(Context, StartKey),
     AccountId = cb_context:account_id(Context),
-    Filter = build_filter_with_qs(Context, Filter),
+    CtxFilter = build_filter_with_qs(Context, Filter),
     Options = build_qs_filter_options(Context),
-    JObjs = cb_pager:ascending(AccountId, View, StartKey, EndKey, PageSize+1, Filter, Options),
-    format_response(Context, StartKey, PageSize, erlang:length(JObjs), JObjs).
+    {LastKey, JObjs} = cb_pager:ascending(AccountId, View, StartKey, EndKey, PageSize, CtxFilter, Options),
+    format_response(Context, StartKey, LastKey, PageSize, erlang:length(JObjs), JObjs).
 
 one_of(_, [], Default) -> Default;
 one_of(Context, [Value|Values], Default) ->
     case cb_context:req_value(Context, Value) of
         undefined -> one_of(Context, Values, Default);
-        Value -> kz_util:to_integer(Value)
+        ReqValue -> kz_util:to_integer(ReqValue)
     end.
 
 start_key(Context) ->
@@ -73,13 +73,15 @@ add_paging(StartKey, PageSize, NextStartKey, JObj) ->
 remove_paging(JObj) ->
     kz_json:delete_keys([<<"start_key">>, <<"page_size">>, <<"next_start_key">>], JObj).
 
-format_response(Context, _, PageSize, ResultSize, JObjs) when ResultSize < PageSize; ResultSize == PageSize ->
+format_response(Context, _, undefined, _PageSize, _ResultSize, JObjs) ->
     Envelope = remove_paging(cb_context:resp_envelope(Context)),
-    cb_context:set_resp_envelope(cb_context:set_doc(Context, JObjs), Envelope);
-format_response(Context, StartKey, PageSize, _ResultSize, [LastObj, JObjs]) ->
-    NextStartKey = kz_json:get_value(<<"key">>, LastObj),
+    crossbar_doc:handle_datamgr_success(JObjs, cb_context:set_resp_envelope(Context, Envelope));
+format_response(Context, _, _, PageSize, ResultSize, JObjs) when ResultSize < PageSize ->
+    Envelope = remove_paging(cb_context:resp_envelope(Context)),
+    crossbar_doc:handle_datamgr_success(JObjs, cb_context:set_resp_envelope(Context, Envelope));
+format_response(Context, StartKey, NextStartKey, PageSize, _ResultSize, JObjs) ->
     Envelope = add_paging(StartKey, PageSize, NextStartKey, cb_context:resp_envelope(Context)),
-    cb_context:set_resp_envelope(cb_context:set_doc(Context, JObjs), Envelope).
+    crossbar_doc:handle_datamgr_success(JObjs, cb_context:set_resp_envelope(Context, Envelope)).
 
 build_qs_filter_mapper(Context) ->
     case crossbar_filter:defined(Context) of
@@ -103,7 +105,7 @@ build_filter_with_qs({arity,1}, Mapper, CtxFilter, UserFilter) ->
         JObj = Mapper(JObjDoc),
         case CtxFilter(JObj) of
             false -> Acc;
-            true -> UserFilter(JObjDoc)
+            true -> [ UserFilter(JObjDoc) | Acc ]
         end
     end;
 build_filter_with_qs({arity,2}, Mapper, CtxFilter, UserFilter) ->
