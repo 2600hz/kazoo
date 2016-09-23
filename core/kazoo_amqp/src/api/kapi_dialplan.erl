@@ -64,6 +64,7 @@
         ,transfer/1, transfer_v/1
         ,media_macro/1, media_macro_v/1
         ,play_macro/1, play_macro_v/1
+        ,sound_touch/1, sound_touch_v/1
         ]).
 
 -export([queue/1, queue_v/1

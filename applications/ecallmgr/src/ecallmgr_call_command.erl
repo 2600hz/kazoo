@@ -584,6 +584,12 @@ get_fs_app(Node, UUID, JObj, <<"play_macro">>) ->
             {<<"playback">>, Result}
     end;
 
+get_fs_app(_Node, UUID, JObj, <<"sound_touch">>) ->
+    case kapi_dialplan:sound_touch_v(JObj) of
+        'false' -> {'error', <<"soundtouch failed to execute as JObj did not validate">>};
+        'true' -> sound_touch(UUID, kz_json:get_value(<<"Action">>, JObj), JObj)
+    end;
+
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     lager:debug("unknown application ~s", [_App]),
     {'error', <<"application unknown">>}.
@@ -1620,3 +1626,36 @@ transfer_leg(JObj) ->
 -spec transfer_context(kz_json:object()) -> binary().
 transfer_context(JObj) ->
     kz_json:get_value(<<"Transfer-Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT).
+
+ -spec sound_touch(ne_binary(), ne_binary(), kz_json:object()) -> binary().
+sound_touch(UUID, <<"start">>, JObj) ->
+     {<<"soundtouch">>, list_to_binary([UUID, " start ", sound_touch_options(JObj)])};
+sound_touch(UUID, <<"stop">>, _JObj) ->
+     {<<"soundtouch">>, list_to_binary([UUID, " stop"])}.
+
+sound_touch_options(JObj) ->
+    Options = [{<<"Sending-Leg">>, fun(V, L) -> case kz_util:is_true(V) of
+                                                    'true' -> [<<"send_leg">> | L];
+                                                    'false' -> L
+                                                end
+                                   end
+               }
+              ,{<<"Hook-DTMF">>, fun(V, L) -> case kz_util:is_true(V) of
+                                                  'true' -> [<<"hook_dtmf">> | L];
+                                                  'false' -> L
+                                              end
+                                 end
+               }
+              ,{<<"Adjust-In-Semitones">>, fun(V, L) -> [io_lib:format("~bs", V) | L] end}
+              ,{<<"Adjust-In-Octaves">>, fun(V, L) -> [io_lib:format("~bo", V) | L] end}
+              ,{<<"Pitch">>, fun(V, L) -> [io_lib:format("~bo", V) | L] end}
+              ,{<<"Rate">>, fun(V, L) -> [io_lib:format("~bo", V) | L] end}
+              ,{<<"Tempo">>, fun(V, L) -> [io_lib:format("~bo", V) | L] end}
+              ],
+    lists:foldl(fun sound_touch_options_fold/2, {[], JObj}, Options).
+
+sound_touch_options_fold({K, F}, {List, JObj}=Acc) ->
+    case kz_json:get_value(K, JObj) of
+        'undefined' -> Acc;
+        V -> {F(V, List), JObj}
+    end.
