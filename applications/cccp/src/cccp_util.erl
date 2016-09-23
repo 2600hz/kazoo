@@ -189,7 +189,7 @@ cccp_allowed_callee(Number) ->
             'true'
     end.
 
--spec build_request(_,ne_binary(),_,_,_,ne_binary(),_,ne_binary(),ne_binary(),ne_binary()) -> any().
+-spec build_request(api_binary(), api_binary(),api_binary(),api_binary(),api_binary(),api_binary(),api_binary(),ne_binary(),binary(),binary()) -> kz_proplist().
 build_request(CallId, ToDID, AuthorizingId, Q, CtrlQ, AccountId, Action, RetainCID, RetainName, RetainNumber) ->
     Realm = kz_util:get_account_realm(AccountId),
     CCVs = props:filter_undefined([{<<"Account-ID">>, AccountId}

@@ -48,7 +48,7 @@ start_link(JObj) ->
                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], [JObj]).
 
--spec init(kz_json:object()) -> {'ok', state()}.
+-spec init([kz_json:object()]) -> {'ok', state()}.
 init([JObj]) ->
     ALegName = kz_json:get_value(<<"a_leg_name">>, JObj),
     ALegNumber = kz_json:get_value(<<"a_leg_number">>, JObj),
