@@ -16,7 +16,7 @@ defined(Context) ->
 
 build_with(QueryString) ->
     fun(Doc) ->
-        filter_doc_by_querystring(Doc, QueryString)
+            filter_doc_by_querystring(Doc, QueryString)
     end.
 
 defined_in(QueryString) ->
