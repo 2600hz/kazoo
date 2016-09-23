@@ -1633,6 +1633,7 @@ sound_touch(UUID, <<"start">>, JObj) ->
 sound_touch(UUID, <<"stop">>, _JObj) ->
     {<<"soundtouch">>, list_to_binary([UUID, " stop"])}.
 
+-spec sound_touch_options(kz_json:object()) -> binary().
 sound_touch_options(JObj) ->
     Options = [{<<"Sending-Leg">>, fun(V, L) -> case kz_util:is_true(V) of
                                                     'true' -> [<<"send_leg">> | L];
@@ -1655,6 +1656,11 @@ sound_touch_options(JObj) ->
     {Args, _} = lists:foldl(fun sound_touch_options_fold/2, {[], JObj}, Options),
     kz_util:join_binary(lists:reverse(Args), <<" ">>).
 
+-type sound_touch_fun() :: fun((kz_json:json_term(), ne_binaries())-> ne_binaries()).
+-type sound_touch_option() :: {ne_binary(), sound_touch_fun()}.
+-type sound_touch_option_acc() :: {ne_binaries(), kz_json:object()}.
+
+-spec sound_touch_options_fold(sound_touch_option(), sound_touch_option_acc()) -> sound_touch_option_acc().
 sound_touch_options_fold({K, F}, {List, JObj}=Acc) ->
     case kz_json:get_value(K, JObj) of
         'undefined' -> Acc;
