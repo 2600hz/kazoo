@@ -97,7 +97,7 @@ validate(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
 validate_conferences(?HTTP_GET, Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
 validate_conferences(?HTTP_PUT, Context) ->
-    check_numbers(Context, fun() -> create_conference(Context) end).
+    create_conference(Context).
 
 -spec validate_conference(http_method(), cb_context:context(), ne_binary()) -> cb_context:context().
 validate_conference(?HTTP_GET, Context0, ConferenceId) ->
@@ -107,17 +107,11 @@ validate_conference(?HTTP_GET, Context0, ConferenceId) ->
         _Else -> Context1
     end;
 validate_conference(?HTTP_POST, Context, ConferenceId) ->
-    check_numbers(Context, fun() ->
-                                   update_conference(ConferenceId, Context)
-                           end);
+    update_conference(ConferenceId, Context);
 validate_conference(?HTTP_PUT, Context, ConferenceId) ->
-    check_numbers(Context, fun() ->
-                                   load_conference(ConferenceId, Context)
-                           end);
+    load_conference(ConferenceId, Context);
 validate_conference(?HTTP_PATCH, Context, ConferenceId) ->
-    check_numbers(Context, fun() ->
-                                   patch_conference(ConferenceId, Context)
-                           end);
+    patch_conference(ConferenceId, Context);
 validate_conference(?HTTP_DELETE, Context, ConferenceId) ->
     load_conference(ConferenceId, Context).
 
@@ -182,12 +176,12 @@ load_conference(ConferenceId, Context) ->
 
 -spec create_conference(cb_context:context()) -> cb_context:context().
 create_conference(Context) ->
-    OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
+    OnSuccess = fun(C) -> validate_numbers('undefined', C) end,
     cb_context:validate_request_data(<<"conferences">>, Context, OnSuccess).
 
 -spec update_conference(ne_binary(), cb_context:context()) -> cb_context:context().
 update_conference(ConferenceId, Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(ConferenceId, C) end,
+    OnSuccess = fun(C) -> validate_numbers(ConferenceId, C) end,
     cb_context:validate_request_data(<<"conferences">>, Context, OnSuccess).
 
 -spec patch_conference(ne_binary(), cb_context:context()) -> cb_context:context().
@@ -196,9 +190,7 @@ patch_conference(ConferenceId, Context) ->
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context
-                      ,kz_doc:set_type(cb_context:doc(Context), <<"conference">>)
-                      );
+    cb_context:update_doc(Context, {fun kz_doc:set_type/2, <<"conference">>});
 on_successful_validation(ConferenceId, Context) ->
     crossbar_doc:load_merge(ConferenceId, Context, ?TYPE_CHECK_OPTION(<<"conference">>)).
 
@@ -212,40 +204,31 @@ normalize_view_results(JObj, Acc) ->
 %% Create a new conference document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec check_numbers(cb_context:context(), fun()) -> cb_context:context().
-check_numbers(Context, Fun) ->
+-spec validate_numbers(api_binary(), cb_context:context()) -> cb_context:context().
+validate_numbers(Id, Context) ->
+    Doc = cb_context:doc(Context),
+    Conf = kz_json:get_value(<<"conference_numbers">>, Doc, []),
+    Member = kz_json:get_value([<<"member">>, <<"numbers">>], Doc, []),
+    Moderator = kz_json:get_value([<<"moderator">>, <<"numbers">>], Doc, []),
+    Keys = Conf ++ Member ++ Moderator,
     AccountDb = cb_context:account_db(Context),
-    case kz_datamgr:get_all_results(AccountDb, ?CB_LIST_BY_NUMBER) of
-        {'error', _R} ->
-            cb_context:add_system_error('datastore_fault', Context);
+    case kz_datamgr:get_results(AccountDb, ?CB_LIST_BY_NUMBER, [{'keys', Keys}]) of
+        {'error', _R} -> cb_context:add_system_error('datastore_fault', Context);
+        {'ok', []} -> on_successful_validation(Id, Context);
+        {'ok', JObjs} when Id =:= 'undefined' -> invalid_numbers(Context, JObjs);
         {'ok', JObjs} ->
-            JConf = cb_context:req_data(Context),
-            Numbers = kz_datamgr:get_result_keys(JObjs),
-            Conf = kz_json:get_value(<<"conference_numbers">>, JConf, []),
-            Member = kz_json:get_value([<<"member">>, <<"numbers">>], JConf, []),
-            Moderator = kz_json:get_value([<<"moderator">>, <<"numbers">>], JConf, []),
-            case is_number_already_used(Numbers, Conf ++ Member ++ Moderator) of
-                'false' -> Fun();
-                {'true', Number} ->
-                    lager:error("number ~s is already used", [Number]),
-                    Error = kz_json:from_list([{<<"message">>, <<"Number already in use">>}
-                                              ,{<<"cause">>, Number}]),
-                    cb_context:add_validation_error([<<"numbers">>], <<"unique">>, Error, Context)
+            case [JObj || JObj <- JObjs, kz_doc:id(JObj) =/= Id] of
+                [] -> on_successful_validation(Id, Context);
+                OtherJObjs -> invalid_numbers(Context, OtherJObjs)
             end
     end.
 
--spec is_number_already_used(ne_binaries(), ne_binaries()) -> 'false' | {'true', ne_binary()}.
-is_number_already_used(Numbers, NewNumbers) ->
-    is_number_already_used(Numbers, NewNumbers, 'false').
-
--spec is_number_already_used(ne_binaries(), ne_binaries(), 'false') -> 'false' | {'true', ne_binary()}.
-is_number_already_used(_, [], Acc) -> Acc;
-is_number_already_used(Numbers, [Number|NewNumbers], Acc) ->
-    case lists:member(Number, Numbers) of
-        'true' -> {'true', Number};
-        'false' ->
-            is_number_already_used(Numbers, NewNumbers, Acc)
-    end.
+invalid_numbers(Context, JObjs) ->
+    Numbers = kz_util:join_binary(kz_datamgr:get_result_keys(JObjs)),
+    Error = kz_json:from_list([{<<"message">>, <<"Numbers already in use">>}
+                              ,{<<"cause">>, Numbers}
+                              ]),
+    cb_context:add_validation_error([<<"numbers">>], <<"unique">>, Error, Context).
 
 %%%===================================================================
 %%% Conterence Actions
