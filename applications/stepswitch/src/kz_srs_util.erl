@@ -13,6 +13,9 @@
 
 -include("stepswitch_resource_selectors.hrl").
 
+-define(MIN_START, 0).
+-define(MAX_STOP, 99999999999).
+
 select_filter_action(Params) ->
     do_select_filter_action(kz_json:get_ne_binary_value(<<"action">>, Params)).
 do_select_filter_action(<<"keep">>) -> 'keep';
@@ -29,6 +32,7 @@ do_select_filter_mode(Mode, ModesList) ->
 
 get_source(<<"number">>) -> 'number';
 get_source(<<"cid_number">>) -> 'cid_number';
+get_source(<<"service_plans">>) -> 'service_plans';
 get_source(<<"request:", Field/binary>>) -> {'request', Field};
 get_source(<<"resource:", Field/binary>>) -> {'resource', Field};
 get_source(<<"database:", Selector/binary>>) -> {'database', Selector};
@@ -42,6 +46,21 @@ get_value('cid_number', _Resources, _Number, OffnetJObj, _DB, _Default) ->
         'false' -> kapi_offnet_resource:outbound_caller_id_number(OffnetJObj);
         'true' -> stepswitch_resources:check_diversion_fields(OffnetJObj)
     end;
+get_value('service_plans', _Resources, _Number, OffnetJObj, _DB, _Default) ->
+    AccountId = kapi_offnet_resource:account_id(OffnetJObj),
+    JObj = kz_services:public_json(AccountId),
+    PlansJObj = kz_json:get_json_value(<<"plans">>, JObj, kz_json:new()),
+    kz_json:foldl(fun({PlanId, J}, Acc) ->
+                          case kz_json:is_json_object(J) of
+                              'true' ->
+                                  PlanAccountId = kz_json:get_binary_value(<<"account_id">>, J, <<>>),
+                                  [<<PlanId/binary, <<":">>/binary, PlanAccountId/binary>> | Acc];
+                              'false' -> Acc
+                          end
+                  end
+                 ,[]
+                 ,PlansJObj
+                 );
 get_value({'request', Field}, _Resources, _Number, OffnetJObj, _DB, Default) ->
     kz_json:get_value(Field, OffnetJObj, Default);
 get_value({'resource', Field}, Resources, _Number, _OffnetJObj, _DB, _Default) ->
@@ -53,13 +72,11 @@ get_value({'database', SelectorName}, Resources, Number, OffnetJObj, DB, Default
     Options = [{'keys', Keys}],
     get_value({'database', View, Options}, Resources, Number, OffnetJObj, DB, Default);
 get_value({'database', View, Options}, _Resources, _Number, _OffnetJObj, DB, Default) ->
+    Now = kz_util:current_tstamp(),
     case kz_datamgr:get_results(DB, View, Options) of
         {'ok', Rows} ->
             lists:foldl(fun(Row, Acc) ->
-                                ID = kz_json:get_ne_value([<<"value">>, <<"resource">>], Row),
-                                Value = kz_json:get_ne_value([<<"value">>, <<"data">>], Row),
-                                OldValue = props:get_value(ID, Acc, Default),
-                                props:set_value(ID, [Value | OldValue], Acc)
+                                filter_by_start_stop(Now, Row, Acc, Default)
                         end
                        ,[]
                        ,Rows
@@ -79,4 +96,22 @@ check_value(Fun, Value) ->
     case Fun(Value) of
         'true' -> 'ok';
         'false' -> throw({invalid_value_type, Value})
+    end.
+
+filter_by_start_stop(Now, Row, Acc, Default) ->
+    Start = kz_json:get_integer_value([<<"value">>, <<"start_time">>], Row, ?MIN_START),
+    Stop = kz_json:get_integer_value([<<"value">>, <<"stop_time">>], Row, ?MAX_STOP),
+    filter_by_start_stop(Now, Start, Stop, Row, Acc, Default).
+
+filter_by_start_stop(Now, Start, Stop, Row, Acc, Default) ->
+    case Start =< Now
+        andalso
+        Stop >= Now
+    of
+        'true' ->
+            ID = kz_json:get_ne_value([<<"value">>, <<"resource">>], Row),
+            Value = kz_json:get_ne_value([<<"value">>, <<"data">>], Row),
+            OldValue = props:get_value(ID, Acc, Default),
+            props:set_value(ID, [Value | OldValue], Acc);
+        'false' -> Acc
     end.
